@@ -1964,26 +1964,33 @@ const frames = (n = 14) =>
 		await new Promise((resolve) => setTimeout(resolve, n * 20));
 	});
 
-test("the rail carries no tooltip, so nothing on it can pause the page (S5)", async () => {
+test("the rail label is mounted only when no browser view can clip it (S5 D2)", async () => {
 	await mount(async (api) => {
 		reset(api);
-		api.store({ isBrowserPaneOpen: true });
 		const release = registerBrowserViewRect(() => VIEW);
 		await api.render(rail());
-		assert.ok(api.item("canvas"), "the rail renders its items");
-		// S5: the tooltip is GONE, not merely non-pausing. A label opened LEFT would
-		// land on the native page, and the kind table forbids a tooltip taking the
-		// page away; nothing inside the 44px column can avoid it, so the accessible
-		// name is the channel.
 		act(() => api.item("canvas").focus());
-		await frames();
-		assert.equal(api.$('[role="tooltip"]'), null, "no tooltip panel exists");
+		await frames(30);
+		assert.equal(
+			api.$('[role="tooltip"]'),
+			null,
+			"with a view mounted the label would be clipped, so it is not mounted",
+		);
 		assert.ok(
 			api.item("canvas").getAttribute("aria-label"),
-			"and the name is still spoken",
+			"the accessible name still carries it",
 		);
-		assert.deepEqual(suppressedOverlayIds(), [], "focus alone never pauses");
+		assert.deepEqual(suppressedOverlayIds(), [], "focus never pauses");
 		release();
+
+		/* No surface: the same rail, the same focus, the label is back. This is the
+		   regression the round-1 review found — the removal was global, but the
+		   conflict exists only on the browser route. */
+		await frames(2);
+		act(() => api.item("canvas").focus());
+		await frames(30);
+		assert.ok(api.$('[role="tooltip"]'), "a tooltip is mounted with no view");
+		assert.deepEqual(suppressedOverlayIds(), [], "and it still never pauses");
 	});
 });
 

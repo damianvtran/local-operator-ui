@@ -61,7 +61,12 @@ import {
 	renderedRegion,
 } from "@shared/components/navigation/sidebar-destinations";
 import { UserProfileSidebar } from "@shared/components/navigation/user-profile-sidebar";
-import { Badge, Button, Tooltip } from "@shared/components/ui";
+import {
+	Badge,
+	BrowserSafeTooltip,
+	Button,
+	Tooltip,
+} from "@shared/components/ui";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -2057,45 +2062,47 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	) => {
 		const Icon = icon;
 		return (
-			<button
-				type="button"
-				{...props.attrs}
-				onClick={props.onClick}
-				disabled={props.disabled}
-				aria-label={label}
-				className={cn(
-					"flex size-8 items-center justify-center rounded-sm text-ink-muted",
-					"transition-colors duration-fast ease-out-quart",
-					"hover:bg-row-hover hover:text-ink",
-					"disabled:text-ink-disabled disabled:hover:bg-transparent",
-				)}
-			>
-				<span className="relative flex size-7 items-center justify-center">
-					<Icon size={16} aria-hidden="true" />
-					{(props.attention ?? 0) > 0 && (
-						<span className="pointer-events-none absolute -top-0.5 -end-0.5 flex">
-							<Badge
-								variant="attentionQuiet"
-								shape="pill"
-								size="count"
-								className="h-3.5 min-w-3.5 px-0.75 leading-none"
-								data-tour-tag={props.attentionTag}
-							>
-								{props.attention}
-							</Badge>
-						</span>
+			<BrowserSafeTooltip content={label} side="right">
+				<button
+					type="button"
+					{...props.attrs}
+					onClick={props.onClick}
+					disabled={props.disabled}
+					aria-label={label}
+					className={cn(
+						"flex size-8 items-center justify-center rounded-sm text-ink-muted",
+						"transition-colors duration-fast ease-out-quart",
+						"hover:bg-row-hover hover:text-ink",
+						"disabled:text-ink-disabled disabled:hover:bg-transparent",
 					)}
-					{props.working && (
-						<span className="pointer-events-none absolute -bottom-0.5 -end-0.5 flex">
-							<LoaderCircle
-								size={12}
-								aria-hidden="true"
-								className="text-accent motion-safe:animate-spin"
-							/>
-						</span>
-					)}
-				</span>
-			</button>
+				>
+					<span className="relative flex size-7 items-center justify-center">
+						<Icon size={16} aria-hidden="true" />
+						{(props.attention ?? 0) > 0 && (
+							<span className="pointer-events-none absolute -top-0.5 -end-0.5 flex">
+								<Badge
+									variant="attentionQuiet"
+									shape="pill"
+									size="count"
+									className="h-3.5 min-w-3.5 px-0.75 leading-none"
+									data-tour-tag={props.attentionTag}
+								>
+									{props.attention}
+								</Badge>
+							</span>
+						)}
+						{props.working && (
+							<span className="pointer-events-none absolute -bottom-0.5 -end-0.5 flex">
+								<LoaderCircle
+									size={12}
+									aria-hidden="true"
+									className="text-accent motion-safe:animate-spin"
+								/>
+							</span>
+						)}
+					</span>
+				</button>
+			</BrowserSafeTooltip>
 		);
 	};
 
@@ -2124,18 +2131,18 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					),
 			)}
 		>
-			{/* No tooltip (S5): it would open right over the browser page, which a
-			    tooltip may no longer take away; the aria-label carries the name. */}
-			<Button
-				variant="ghost"
-				size="icon-sm"
-				onClick={onCollapse}
-				aria-label={toggleLabel}
-				aria-expanded={mode === "overlay" ? undefined : expanded}
-				aria-keyshortcuts={sidebarToggleCap(isMac)}
-			>
-				<ToggleGlyph aria-hidden="true" />
-			</Button>
+			<BrowserSafeTooltip content={toggleLabel} side="right">
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					onClick={onCollapse}
+					aria-label={toggleLabel}
+					aria-expanded={mode === "overlay" ? undefined : expanded}
+					aria-keyshortcuts={sidebarToggleCap(isMac)}
+				>
+					<ToggleGlyph aria-hidden="true" />
+				</Button>
+			</BrowserSafeTooltip>
 		</div>
 	);
 

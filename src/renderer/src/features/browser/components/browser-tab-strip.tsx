@@ -1350,12 +1350,13 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 									    while its trigger is the row's leading identity slot. No overlay
 									    covers title text on hover or focus. */}
 									<div className="contents">
-										{/* The tab's actions, as a REGISTERED POPOUT (2026-09-28, operator
-										    report). It floats over the content area, where a native
-										    view paints above all DOM, so the strip registers it with
-										    the overlay policy while it is open: the view hides, the
-										    paused note shows behind the menu, and dismissing it brings
-										    the page back. The strip does not grow and the page does not
+										{/* The tab's actions, as a popout whose panel is a MEASURED
+										    pause (S5). It floats over the content area, where a native
+										    view paints above all DOM, so the shared `DropdownMenuContent`
+										    primitive registers only while its painted panel intersects
+										    the view: a panel that stays inside the band does nothing,
+										    and one that crosses hides the view with the paused note
+										    behind it. The strip does not grow and the page does not
 										    move — see the component docstring for the in-band row this
 										    replaces and why. */}
 										<DropdownMenu
@@ -1900,10 +1901,11 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 				/*
 				 * THE BAND ROW THE PINNED CONTROL OPENS, and the reason it is a row and not
 				 * a menu: a Radix menu anchored in the band paints DOWNWARD into the content
-				 * rect, where the native view wins — `browser-view-policy.ts:34-38`
-				 * deliberately does not register menus in the band, and no z-index beats a
-				 * native sibling view. This row is outside that rectangle, so nothing here can
-				 * be occluded and nothing needs suppressing; the strip grows by its height and
+				 * rect, where the native view wins. Menus now register a MEASURED pause
+				 * (S5), so a crossing panel would hide the page to be readable — an oxymoron
+				 * for a list whose job is to be read BESIDE the page. This row is outside
+				 * that rectangle, so nothing here can be occluded and nothing needs
+				 * suppressing; the strip grows by its height and
 				 * the page's own rectangle shrinks by exactly the same amount, because the
 				 * content element is measured by a `ResizeObserver` and the host re-bounds the
 				 * view. The same trade the dock makes — the page narrows rather than hides —

@@ -8,6 +8,7 @@ import {
 	type ElementRef,
 	type HTMLAttributes,
 	forwardRef,
+	useMemo,
 } from "react";
 
 /**
@@ -90,9 +91,13 @@ export const DropdownMenuSubContent = forwardRef<
 	// The submenu panel is the same kind of overlay as the parent menu: it pauses
 	// the native browser view only where it MEASURABLY intersects it.
 	const panelRef = useMeasuredBrowserViewPanel<HTMLDivElement>("menu");
+	const composedRef = useMemo(
+		() => composeRefs(ref, panelRef),
+		[ref, panelRef],
+	);
 	return (
 		<DropdownMenuPrimitive.SubContent
-			ref={composeRefs(ref, panelRef)}
+			ref={composedRef}
 			/*
 			 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it is
 			 * read by in `styles/index.css`. A menu that opens near the top of the window
@@ -125,10 +130,14 @@ export const DropdownMenuContent = forwardRef<
 	 * than for the two that remembered.
 	 */
 	const panelRef = useMeasuredBrowserViewPanel<HTMLDivElement>("menu");
+	const composedRef = useMemo(
+		() => composeRefs(ref, panelRef),
+		[ref, panelRef],
+	);
 	return (
 		<DropdownMenuPrimitive.Portal>
 			<DropdownMenuPrimitive.Content
-				ref={composeRefs(ref, panelRef)}
+				ref={composedRef}
 				data-titlebar-no-drag=""
 				sideOffset={sideOffset}
 				className={cn(panelClasses, className)}

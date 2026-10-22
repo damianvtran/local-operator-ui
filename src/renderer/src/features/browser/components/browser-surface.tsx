@@ -673,7 +673,11 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	const lastRefusedSeed = useRef<string | null>(null);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the transition and the refused address are the triggers.
 	useEffect(() => {
-		if (!showingNewTab) {
+		/* KEYED ON `onStartPage`, NOT `showingNewTab` (round-1 MINOR-1): the latter
+		   also drops while an overlay suppresses the view, so closing any dialog on a
+		   new tab pulled focus into the row a second time. The start STATE did not
+		   change when the dialog opened, and it must not re-arm when it closes. */
+		if (!onStartPage) {
 			startFocusArmed.current = false;
 			lastRefusedSeed.current = null;
 			return;
@@ -687,7 +691,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		startFocusArmed.current = true;
 		lastRefusedSeed.current = seed ?? null;
 		raiseAddress({ origin: "chrome", seed });
-	}, [showingNewTab, chrome.refusedUrl]);
+	}, [onStartPage, chrome.refusedUrl]);
 	/*
 	 * WHETHER THE OPAQUE WEBVIEW IS WHAT THE BARS SIT ABOVE. Window glass keys the
 	 * route host's paint on this: with a live page the chrome band and the native
@@ -959,6 +963,13 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				disabled={tabs.length === 0}
 				hideForward={rowWidth > 0 && rowWidth < 300}
 				hideHome={rowWidth > 0 && rowWidth < 360}
+				startPage={onStartPage}
+				placeholder={
+					onStartPage
+						? t("ui.browser.browser_new_tab.address_placeholder")
+						: undefined
+				}
+				suggestionsUnavailable={onStartPage || navFailure !== null}
 				onNavigate={(url, expectedTabId) =>
 					void chrome.navigate(url, expectedTabId)
 				}
@@ -975,48 +986,55 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				onCommitted={returnBrowserFocus}
 				menu={
 					<>
-						{/* APPROVALS IS A FIXED 28px ROW CONTROL (S5 ruling 1 and 7),
-							    always mounted with its space reserved: a control that appears
-							    and disappears would reflow the field every time an agent asked
-							    for a site. The badge is the outstanding count; pressing it
-							    opens the pending list (the dock), and it is the S6 anchor. */}
-						<span className="relative flex shrink-0 items-center">
-							<Tooltip
-								side="top"
-								align="end"
-								content={t("ui.browser.chrome.approvals")}
-							>
-								<Button
-									ref={approvalsTriggerRef}
-									variant={queue.count > 0 ? "outline" : "ghost"}
-									size="icon-sm"
-									onClick={() => setDockOpen((open) => !open)}
-									aria-label={
-										queue.count > 0
-											? t("ui.browser.browser_url_bar.approvals_waiting", {
-													count: queue.count,
-												})
-											: t("ui.browser.chrome.approvals")
-									}
-									data-tour-tag="browser-approvals"
+						{/* APPROVALS IS A FIXED 28px ROW CONTROL (S5 ruling 1 and 7):
+						    mounted with its space reserved, because a control that appears
+						    and disappears would reflow the field every time an agent asked
+						    for a site. Below a 300px row it FOLDS into ⋯ (round-1 D5): the
+						    field would otherwise fall under its text floor, and the menu
+						    item already carries the count. Its ring rides the ROW ground,
+						    not `canvas`, or the halo reads as a lighter box against the
+						    strip it overhangs (D6). */}
+						{!(rowWidth > 0 && rowWidth < 300) && (
+							<span className="relative flex shrink-0 items-center">
+								<Tooltip
+									side="top"
+									align="end"
+									content={t("ui.browser.chrome.approvals")}
 								>
-									<ShieldCheck aria-hidden className="size-3.5" />
-								</Button>
-							</Tooltip>
-							{queue.count > 0 && (
-								<span className="pointer-events-none absolute -top-1.5 -right-1.5">
-									<Badge
-										variant="attention"
-										shape="pill"
-										size="count"
-										className="ring-2 ring-canvas"
-										data-tour-tag="browser-approvals-badge"
+									<Button
+										ref={approvalsTriggerRef}
+										variant={queue.count > 0 || dockOpen ? "outline" : "ghost"}
+										size="icon-sm"
+										className={dockOpen ? "bg-row-selected" : undefined}
+										onClick={() => setDockOpen((open) => !open)}
+										aria-expanded={dockOpen}
+										aria-label={
+											queue.count > 0
+												? t("ui.browser.browser_url_bar.approvals_waiting", {
+														count: queue.count,
+													})
+												: t("ui.browser.chrome.approvals")
+										}
+										data-tour-tag="browser-approvals"
 									>
-										{countLabel(queue.count)}
-									</Badge>
-								</span>
-							)}
-						</span>
+										<ShieldCheck aria-hidden className="size-3.5" />
+									</Button>
+								</Tooltip>
+								{queue.count > 0 && (
+									<span className="pointer-events-none absolute -top-1 -right-1">
+										<Badge
+											variant="attention"
+											shape="pill"
+											size="count"
+											className="ring-2 ring-elevated"
+											data-tour-tag="browser-approvals-badge"
+										>
+											{countLabel(queue.count, 99)}
+										</Badge>
+									</span>
+								)}
+							</span>
+						)}
 						<BrowserPageMenu
 							disabled={tabs.length === 0}
 							canGoForward={Boolean(state?.canGoForward)}

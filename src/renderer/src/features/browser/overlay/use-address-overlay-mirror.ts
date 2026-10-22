@@ -307,6 +307,15 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 						latest.current.onUnavailable?.();
 						return;
 					}
+					// A HIDDEN VIEW IS A CONDITION, NOT A FAILURE (S5 round 1, UX U3).
+					// `stale_layout` means the page is on its start/failure state, so the
+					// native view is hidden and main will refuse this projection for as
+					// long as that holds. Clearing `lastSignature` here made the loop
+					// re-project every animation frame at a main that refused every one
+					// (the storm the reviewer measured). Keeping the signature idles the
+					// loop; any real change — the user types, the rect moves, the page
+					// lands — changes it and projects once.
+					if (answer.reason === "stale_layout") return;
 					// Terminal refusals stop the loop; everything else (a stale frame, a
 					// layout race) is retried by the next frame.
 					if (isPermanentOverlayRefusal(answer.reason)) {

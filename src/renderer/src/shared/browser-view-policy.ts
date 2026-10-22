@@ -1,5 +1,4 @@
 import {
-	type RefObject,
 	useCallback,
 	useEffect,
 	useId,
@@ -240,14 +239,50 @@ export interface ViewRect {
 	height: number;
 }
 const viewRectSources = new Set<() => ViewRect | null>();
+/**
+ * Subscribers that only need "is a browser surface mounted at all" — the
+ * tooltip placement decision. Separate from the suppression listeners because
+ * that question is about the SOURCE existing, not about an overlay being live,
+ * and a surface mounting/unmounting is exactly when it changes.
+ */
+const presenceListeners = new Set<() => void>();
+
+function notifyPresence(): void {
+	for (const listener of presenceListeners) listener();
+}
 
 /** Register a getter for the view's rect; returns the release. */
 export function registerBrowserViewRect(
 	source: () => ViewRect | null,
 ): () => void {
 	viewRectSources.add(source);
+	notifyPresence();
 	return () => {
 		viewRectSources.delete(source);
+		notifyPresence();
+	};
+}
+
+/**
+ * Whether a browser surface is mounted (so a native view may sit under DOM).
+ *
+ * WHY A TOOLTIP NEEDS THIS AND A DIALOG DOES NOT. A dialog always pauses the
+ * page, so it never has to ask. A tooltip may not pause by kind, so its only
+ * defence against being clipped is placement — and placement is only a problem
+ * on a route where the view is mounted. On every other route the original
+ * tooltip is perfectly visible and should stay: S5's first cut deleted the
+ * rail and collapsed-sidebar tooltips unconditionally, which regressed names
+ * and chords on chat, schedules and every screen with no browser (round-1
+ * design D2 / UX U2). This is the fact those call sites read.
+ */
+export function browserViewPresent(): boolean {
+	return viewRectSources.size > 0;
+}
+
+export function subscribeBrowserViewPresence(callback: () => void): () => void {
+	presenceListeners.add(callback);
+	return () => {
+		presenceListeners.delete(callback);
 	};
 }
 
@@ -481,23 +516,43 @@ export function useSuppressBrowserViewWhileIntersecting(
 }
 
 /**
- * The measured registration for a panel that MOUNTS ONLY WHILE OPEN.
+ * The measured registration for a Radix panel.
  *
- * Radix's `Content` components (menu, context menu, popover, select) are
- * conditionally rendered, so "is it open" is "does this element exist": the
- * component cannot pass an `open` flag it does not own. This gives those
- * primitives the same measured rule as `useSuppressBrowserViewWhileIntersecting`
- * without inventing an open state at every call site — register while the panel
- * is mounted, release on unmount. The release hold is not available on this
- * path (there is no close transition to hold across); a handoff between two
- * menus is covered by the replacement measuring in the same frame it paints.
+ * WHY THIS IS A CALLBACK REF AND NOT A REFOBJECT (agent BLOCKER-1, QA Q-1).
+ * `DropdownMenuContent` is a WRAPPER around `Primitive.Portal`; it mounts when
+ * its parent renders, not when the menu opens, and Radix mounts the panel
+ * inside it only on open. The first version returned a `RefObject` and passed
+ * `open: true` to the measured hook, so the measuring layout effect ran ONCE,
+ * on wrapper mount, found `ref.current === null`, waited its placement frames
+ * and gave up — forever. The row's ⋯ menu therefore opened with
+ * `data-suppressed-by` empty and painted under the native page. A callback ref
+ * that stores the NODE in state makes "open" mean "the panel exists": the hook
+ * re-arms on every mount, measures the painted panel, and releases on unmount
+ * with the usual hold. Every pause-measured primitive uses it, so a call site
+ * that mounts its content unconditionally is covered by construction.
  */
 export function useMeasuredBrowserViewPanel<T extends Element>(
 	kind: PausingKind,
-): RefObject<T | null> {
-	const ref = useRef<T | null>(null);
-	useSuppressBrowserViewWhileIntersecting(true, kind, () => ref.current);
+	label?: string,
+): (node: T | null) => void {
+	const [panel, setPanel] = useState<T | null>(null);
+	const ref = useCallback((node: T | null) => setPanel(node), []);
+	useSuppressBrowserViewWhileIntersecting(
+		panel !== null,
+		kind,
+		() => panel,
+		label,
+	);
 	return ref;
+}
+
+/** Subscribe to whether a browser surface is mounted; see `browserViewPresent`. */
+export function useBrowserViewPresent(): boolean {
+	return useSyncExternalStore(
+		useCallback(subscribeBrowserViewPresence, []),
+		browserViewPresent,
+		() => false,
+	);
 }
 
 /** Subscribe to the policy: true when the native view must be hidden. */

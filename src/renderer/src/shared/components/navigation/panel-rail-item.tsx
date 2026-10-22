@@ -1,4 +1,4 @@
-import { Button } from "@shared/components/ui";
+import { BrowserSafeTooltip, Button } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import {
 	type ButtonHTMLAttributes,
@@ -89,39 +89,37 @@ export const PanelRailItem = forwardRef<HTMLButtonElement, PanelRailItemProps>(
 		const register = rail?.register;
 		useLayoutEffect(() => register?.(id), [register, id]);
 		/*
-		 * NO TOOLTIP ON THE RAIL (S5). The rail is a 44px column at the window's
-		 * trailing edge, and the only place a label could open is LEFT — into the
-		 * pane, which with the browser open is the native `WebContentsView`'s rect.
-		 * Until S5 the shared tooltip hid the page while it was painted there; the
-		 * kind table now says a tooltip never pauses the page, and a label that needs
-		 * the page taken away to be readable is a placement defect, not a tooltip.
+		 * THE LABEL IS CONDITIONAL ON A VIEW BEING MOUNTED (S5 round 1, D2/U2).
 		 *
-		 * Nothing can be repositioned inside 44px: a bottom/top placement wider than
-		 * the column spills over the pane, and Radix shifts it inward rather than
-		 * letting it clip. So the ruling's second option applies — the tooltip is
-		 * dropped and the `aria-label` is the channel. The label is not lost to
-		 * assistive tech, and the rail's icons are the five primary destinations,
-		 * whose glyphs the app's own navigation does not hide behind a hint.
+		 * The rail is a 44px column at the window's trailing edge, so the only place
+		 * a label can open is LEFT — into the pane, which WITH THE BROWSER OPEN is
+		 * the native view's rect. A tooltip may not pause the page, and nothing can
+		 * be repositioned inside 44px, so on that route the `aria-label` is the
+		 * channel. On every other route there is no view under the pane at all, and
+		 * the label is exactly what it always was; deleting it globally regressed
+		 * every chat, schedule and settings screen (round-1 D2).
 		 */
 		return (
-			<Button
-				ref={ref}
-				variant="ghost"
-				size="icon"
-				data-panel-rail-item={id}
-				data-titlebar-no-drag=""
-				aria-label={ariaLabel ?? label}
-				aria-pressed={pressed}
-				tabIndex={rail ? (rail.roving === id ? 0 : -1) : undefined}
-				className={cn(
-					"relative focus-visible:outline-offset-1!",
-					pressed ? LIT : IDLE,
-					className,
-				)}
-				{...props}
-			>
-				{children}
-			</Button>
+			<BrowserSafeTooltip content={label} side="left">
+				<Button
+					ref={ref}
+					variant="ghost"
+					size="icon"
+					data-panel-rail-item={id}
+					data-titlebar-no-drag=""
+					aria-label={ariaLabel ?? label}
+					aria-pressed={pressed}
+					tabIndex={rail ? (rail.roving === id ? 0 : -1) : undefined}
+					className={cn(
+						"relative focus-visible:outline-offset-1!",
+						pressed ? LIT : IDLE,
+						className,
+					)}
+					{...props}
+				>
+					{children}
+				</Button>
+			</BrowserSafeTooltip>
 		);
 	},
 );

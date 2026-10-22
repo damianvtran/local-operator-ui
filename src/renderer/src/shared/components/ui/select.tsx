@@ -8,6 +8,7 @@ import {
 	type ComponentPropsWithoutRef,
 	type ElementRef,
 	forwardRef,
+	useMemo,
 } from "react";
 
 /**
@@ -130,10 +131,14 @@ export const SelectContent = forwardRef<
 	// A select's list is a measured pause: it is a DOM panel over the content area,
 	// so the native view must yield only where the list actually reaches it.
 	const panelRef = useMeasuredBrowserViewPanel<HTMLDivElement>("select");
+	const composedRef = useMemo(
+		() => composeRefs(ref, panelRef),
+		[ref, panelRef],
+	);
 	return (
 		<SelectPrimitive.Portal>
 			<SelectPrimitive.Content
-				ref={composeRefs(ref, panelRef)}
+				ref={composedRef}
 				/*
 				 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it is
 				 * read by in `styles/index.css`. A select opened near the top of the window

@@ -127,6 +127,15 @@ export interface BrowserUrlBarProps {
 	anchor: { x: number; width: number } | null;
 	/** A focus/seed request from the surface; see `AddressFocusRequest`. */
 	focusRequest?: AddressFocusRequest | null;
+	/** The active tab is the start page: Reload and Home act on nothing there, so
+	 * they are disabled rather than offering a press with no visible effect. */
+	startPage?: boolean;
+	/** The field's placeholder when empty (the start page's `example.com`). */
+	placeholder?: string;
+	/** The view is hidden for a browser-owned state (start page, load failure), so
+	 * main refuses suggestion projections. The field says so once the user types,
+	 * rather than leaving a silent dead list. */
+	suggestionsUnavailable?: boolean;
 	/** Escape or Enter on an untouched draft: abandon the draft and return focus. */
 	onDismiss?: () => void;
 	/** A commit happened: return focus per the surface's origin rule. */
@@ -163,6 +172,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	disabled,
 	hideForward = false,
 	hideHome = false,
+	startPage = false,
 	onNavigate,
 	onBack,
 	onForward,
@@ -174,6 +184,8 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	overlayMode,
 	anchor,
 	focusRequest = null,
+	placeholder,
+	suggestionsUnavailable = false,
 	onDismiss,
 	onCommitted,
 	addressHistory,
@@ -745,7 +757,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		if (event.key === "Enter") {
 			event.preventDefault();
 			// An untouched seed is the live URL, not a commitment: Enter with NO
-			// highlighted row dismisses the field, lowers the popout and navigates
+			// highlighted row abandons the draft, returns focus and navigates
 			// NOTHING (UX U1/U9). The active-row check comes FIRST in the next
 			// branch: Cmd+L then ArrowDown is an explicit choice of a history row,
 			// and Enter must commit it whatever the draft state (U8).
@@ -810,10 +822,10 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		if (event.key === "Escape") {
 			event.preventDefault();
 			/*
-			 * ONE STAGE in the popout (design §4). The old two-stage Escape existed
-			 * to let an accepted inline suffix survive the list's dismissal, but in
-			 * the popout the only commitment is Enter or a row, so there is nothing
-			 * to preserve: Escape discards the draft and lowers the whole field row.
+			 * ONE STAGE in the row (design §4). The old two-stage Escape existed to
+			 * let an accepted inline suffix survive the list's dismissal, but the only
+			 * commitment is Enter or a row, so there is nothing to preserve: Escape
+			 * discards the draft and returns focus.
 			 */
 			abandon();
 			onDismiss?.();
@@ -1072,7 +1084,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						variant="ghost"
 						size="icon-sm"
 						aria-label={t("ui.browser.browser_url_bar.stop_loading")}
-						disabled={disabled}
+						disabled={disabled || startPage}
 						onClick={onStop}
 						data-tour-tag="browser-stop"
 					>
@@ -1086,7 +1098,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						size="icon-sm"
 						aria-label={t("ui.browser.browser_url_bar.reload")}
 						aria-keyshortcuts={reload.aria}
-						disabled={disabled}
+						disabled={disabled || startPage}
 						onClick={onReload}
 						data-tour-tag="browser-reload"
 					>
@@ -1105,7 +1117,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						variant="ghost"
 						className="text-ink-muted hover:bg-control-hover hover:text-ink"
 						aria-label={t("ui.browser.browser_url_bar.home")}
-						disabled={disabled}
+						disabled={disabled || startPage}
 						onClick={onHome}
 						data-tour-tag="browser-home"
 					>
@@ -1160,7 +1172,9 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					spellCheck={false}
 					autoComplete="off"
 					aria-label={t("ui.browser.browser_url_bar.address")}
-					placeholder={loading && !live ? (pendingUrl ?? undefined) : undefined}
+					placeholder={
+						loading && !live ? (pendingUrl ?? undefined) : placeholder
+					}
 					data-tour-tag="browser-address"
 					data-address-editing={editing ? "true" : "false"}
 					data-address-loading={autocomplete.loading ? "true" : "false"}
@@ -1169,7 +1183,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					data-address-rows={String(suggestions.rows.length)}
 					className={cn(
 						"pr-7 pl-8 focus-visible:outline-offset-1!",
-						editing && "font-mono text-mono-sm",
+						editing ? "font-mono text-mono-sm" : "text-ellipsis",
 					)}
 				/>
 				{loading && !editing && (
@@ -1182,7 +1196,8 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				    width every time the list was unavailable (S4b U5); the permanent row
 				    cannot afford that, and the sentence belongs to the field that still
 				    works. `pointer-events-none` keeps the input clickable underneath. */}
-				{mode === "suspend" && !editing && (
+				{((mode === "suspend" && !editing) ||
+					(suggestionsUnavailable && editing && raw.length > 0)) && (
 					<span
 						className="pointer-events-none absolute top-1/2 right-7 max-w-[45%] -translate-y-1/2 truncate text-meta text-ink-dim"
 						data-tour-tag="browser-address-unavailable"

@@ -1939,6 +1939,27 @@ test("S2 permanent refusals are recognised, transient ones are not", () => {
 	}
 });
 
+test("S5: a stale_layout refusal keeps the frame signature, so the mirror idles", () => {
+	// UX U3 (round 1): the start page and the load-failure page hide the native
+	// view, so main answers `stale_layout` for as long as the user is there. If the
+	// renderer cleared its signature on that answer, the RAF loop re-projected
+	// every frame at a main that refused every one — the storm the reviewer
+	// measured. The early return is the fix; this pins it so a later "retry on any
+	// refusal" cannot quietly come back.
+	const src = readFileSync(
+		join(
+			ROOT,
+			"src/renderer/src/features/browser/overlay/use-address-overlay-mirror.ts",
+		),
+		"utf8",
+	);
+	assert.match(
+		src,
+		/if \(answer\.reason === "stale_layout"\) return;/,
+		"stale_layout must not reach the signature reset",
+	);
+});
+
 test("S2 escaping: the sanitizer, not JSON.stringify, removes line separators", () => {
 	// JSON.stringify does NOT escape these; S3/S4 must not rely on the old claim.
 	const json = JSON.stringify({ a: "x\u2028y\u2029z</script>" });
