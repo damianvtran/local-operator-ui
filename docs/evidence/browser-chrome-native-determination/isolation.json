@@ -1,0 +1,79 @@
+{
+  "before": {
+    "logsDir": {
+      "exists": true,
+      "isDirectory": true,
+      "size": null,
+      "mtimeMs": 1792640905814.0056
+    },
+    "config": {
+      "exists": true,
+      "isDirectory": false,
+      "size": 2771,
+      "mtimeMs": 1792587544023.4482
+    },
+    "profile": {
+      "exists": true,
+      "isDirectory": true,
+      "size": null,
+      "mtimeMs": 1792651748234.8616
+    }
+  },
+  "token": "http://127.0.0.1:51168/fixture",
+  "appPaths": {
+    "home": "/Users/damian",
+    "userData": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792651772941/profile",
+    "sessionData": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792651772941/profile",
+    "electronLogs": "/Users/damian/Library/Logs/Local Operator",
+    "env": {
+      "HOME": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792651772941/home",
+      "config": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792651772941/config",
+      "logs": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792651772941/logs"
+    }
+  },
+  "osHome": "/Users/damian",
+  "pathsUnderRun": {
+    "userData": true,
+    "sessionData": true,
+    "envHome": true,
+    "envConfig": true,
+    "envLogs": true
+  },
+  "logLine": "02:49:33.776 › Log path: /Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792651772941/logs",
+  "noFallback": true,
+  "browserProfileLine": "02:49:34.348 › [browser] host on 127.0.0.1:51177 (proto 1), profile /Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792651772941/profile/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))",
+  "browserProfileUnderRun": true,
+  "after": {
+    "logsDir": {
+      "exists": true,
+      "isDirectory": true,
+      "size": null,
+      "mtimeMs": 1792640905814.0056
+    },
+    "config": {
+      "exists": true,
+      "isDirectory": false,
+      "size": 2771,
+      "mtimeMs": 1792587544023.4482
+    },
+    "profile": {
+      "exists": true,
+      "isDirectory": true,
+      "size": null,
+      "mtimeMs": 1792651748234.8616
+    }
+  },
+  "unchanged": {
+    "logsDir": true,
+    "config": true,
+    "profile": true
+  },
+  "tokenHits": {
+    "files": 4,
+    "hits": 0
+  },
+  "launcherHits": {
+    "files": 4,
+    "hits": 0
+  }
+}

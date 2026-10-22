@@ -59,12 +59,15 @@ import {
 	existsSync,
 	mkdirSync,
 	readFileSync,
+	readdirSync,
+	statSync,
 	writeFileSync,
 } from "node:fs";
 import { createServer as createHttpServer } from "node:http";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
-import { dirname, join, resolve } from "node:path";
+import { homedir } from "node:os";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
@@ -74,11 +77,18 @@ import { withTelemetryOff } from "./telemetry-off.mjs";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const requireFromRepo = createRequire(join(ROOT, "package.json"));
 const ELECTRON_BIN = requireFromRepo("electron");
-const OUT = process.argv[process.argv.indexOf("--out") + 1];
-if (!OUT || OUT.startsWith("--")) {
+const OUT_ARG = process.argv[process.argv.indexOf("--out") + 1];
+if (!OUT_ARG || OUT_ARG.startsWith("--")) {
 	console.error("[native] --out <evidence dir> is required");
 	process.exit(2);
 }
+// RESOLVE, because every path below is handed to the app as HOME/config/log/profile
+// and a relative one is not a scratch path: the app rejects a relative
+// LOCAL_OPERATOR_LOG_DIR and falls back to the operator's real log directory, and a
+// relative HOME resolves against the launch cwd. The review of this rig measured
+// exactly that (2026-10-22), so the expansion is a correctness requirement rather
+// than tidiness. `RUN` inherits absoluteness from `OUT`.
+const OUT = resolve(OUT_ARG);
 const RUN = join(OUT, "run", `${Date.now()}`);
 const FRAMES = join(OUT, "frames");
 mkdirSync(RUN, { recursive: true });
@@ -262,12 +272,95 @@ async function waitForLog(pattern, timeoutMs = 30_000) {
 	throw new Error(`log never matched ${pattern}`);
 }
 
+/**
+ * The operator's real state, read only to prove this launch did not touch it.
+ *
+ * The previous version of this rig passed a relative `--out` into HOME/config/log/
+ * profile; the app rejected the relative log dir and wrote its log into the real
+ * `~/Library/Application Support/Local Operator/logs`. That is a defect of the
+ * rig, not of the app, and the fix is not just absolute paths: the run also has
+ * to be able to say whether the real paths changed. Stats are recorded, never
+ * contents; the only content read is a membership test for this run's unique
+ * launcher-pid token, so a hit cannot be confused with the operator's own app
+ * writing a normal line.
+ */
+const REAL_HOME = homedir();
+const REAL_LOGS_DIR = join(
+	REAL_HOME,
+	"Library/Application Support/Local Operator/logs",
+);
+const REAL_CONFIG = join(REAL_HOME, ".local-operator/config.yml");
+const REAL_PROFILE = join(
+	REAL_HOME,
+	"Library/Application Support/Local Operator/Partitions/local-operator-browser",
+);
+
+function statOf(path) {
+	try {
+		const stat = statSync(path);
+		return {
+			exists: true,
+			isDirectory: stat.isDirectory(),
+			size: stat.isDirectory() ? null : stat.size,
+			mtimeMs: stat.mtimeMs,
+		};
+	} catch {
+		return { exists: false };
+	}
+}
+
+function realState() {
+	return {
+		logsDir: statOf(REAL_LOGS_DIR),
+		config: statOf(REAL_CONFIG),
+		profile: statOf(REAL_PROFILE),
+	};
+}
+
+/**
+ * How many real log files contain this run's unique launcher token.
+ *
+ * The headless app writes `headless run launched by pid <probe pid>` on start, so
+ * a file containing that exact string was written by THIS run. Reading is a
+ * membership test only; the content is never recorded.
+ */
+function realLogTokenHits(token) {
+	let files = 0;
+	let hits = 0;
+	try {
+		for (const name of readdirSync(REAL_LOGS_DIR)) {
+			if (!name.endsWith(".log")) continue;
+			files += 1;
+			try {
+				if (readFileSync(join(REAL_LOGS_DIR, name), "utf8").includes(token))
+					hits += 1;
+			} catch {
+				// An unreadable log cannot be claimed either way; the count stays.
+			}
+		}
+	} catch {
+		return { files: null, hits: null };
+	}
+	return { files, hits };
+}
+
 async function boot() {
 	const home = join(RUN, "home");
 	const config = join(RUN, "config");
 	const logs = join(RUN, "logs");
 	const profile = join(RUN, "profile");
 	const cwd = join(RUN, "cwd");
+	const scratch = { home, config, logs, profile, cwd };
+	// A relative path here is the defect the rig was reviewed for: the app treats
+	// LOCAL_OPERATOR_LOG_DIR as an absolute path only and silently falls back to
+	// the operator's real logs otherwise. Fail loudly instead of measuring.
+	for (const [name, dir] of Object.entries(scratch)) {
+		if (!isAbsolute(dir)) {
+			throw new Error(
+				`[native] scratch ${name} is not absolute: ${dir}; pass an absolute --out`,
+			);
+		}
+	}
 	for (const dir of [home, config, logs, profile, cwd])
 		mkdirSync(dir, { recursive: true });
 	// A dead port in the scratch cwd's `.env`: the app's own dotenv load must not
@@ -320,6 +413,7 @@ async function boot() {
 	});
 	return {
 		child,
+		paths: scratch,
 		mainPort: null,
 		renderPort: null,
 		exited,
@@ -708,8 +802,18 @@ async function composite({ native, captures, name, background = "#202020" }) {
 
 plan(
 	"B1",
-	"the launched app is the built tree at the recorded commit",
+	"the launched app is the built tree at the recorded product source commit",
 	"source+boot",
+);
+plan(
+	"B2",
+	"every writable app path resolves inside the scratch run, and the logger took the absolute LOG_DIR",
+	"driven",
+);
+plan(
+	"B3",
+	"this run wrote nothing into the operator's real log, config or browser profile",
+	"driven",
 );
 plan(
 	"W1",
@@ -772,11 +876,7 @@ plan(
 	"driven",
 );
 plan("D1", "Escape lowers the popout and hides the native list", "driven");
-plan(
-	"D2",
-	"a page focus event lowers the popout (or is refused in a headless window)",
-	"driven",
-);
+plan("D2", "a page focus event lowers the popout", "driven");
 plan("D3", "a main-frame navigation lowers the popout", "driven");
 plan(
 	"D4",
@@ -795,7 +895,7 @@ plan(
 );
 plan(
 	"I1",
-	"paint order follows AppKit's back-to-front subviews rule",
+	"paint order follows AppKit's addSubview rule (a subview is displayed above its siblings)",
 	"inferred",
 );
 plan(
@@ -834,11 +934,13 @@ const captures = {};
 
 try {
 	// ---- build identity -----------------------------------------------------
-	let commit = "unknown";
+	let checkedOut = "unknown";
 	let branch = "unknown";
 	let dirty = "unknown";
+	let productSourceCommit = "unknown";
+	let productSourceClean = false;
 	try {
-		commit = execFileSync("git", ["rev-parse", "HEAD"], {
+		checkedOut = execFileSync("git", ["rev-parse", "HEAD"], {
 			cwd: ROOT,
 			encoding: "utf8",
 		}).trim();
@@ -851,23 +953,41 @@ try {
 		// artifact itself; neither is a source change. A tracked edit to any of
 		// these inputs would make the recorded hashes describe a tree that is not
 		// the commit they name.
+		// `scripts/` is deliberately NOT a build input: the probe and the other rigs
+		// are not bundled into the app, and the probe is normally edited in the same
+		// working tree that runs it. The build is the product tree below; the app
+		// the evidence describes is named by the commit that last changed it, not by
+		// the docs/scripts commit the probe happened to be checked out at.
+		const productPaths = [
+			"src",
+			"resources",
+			"build",
+			"electron.vite.config.js",
+			"package.json",
+			"pnpm-lock.yaml",
+		];
 		dirty = execFileSync(
 			"git",
-			[
-				"status",
-				"--porcelain",
-				"--untracked-files=no",
-				"--",
-				"src",
-				"scripts",
-				"resources",
-				"build",
-				"electron.vite.config.js",
-				"package.json",
-				"pnpm-lock.yaml",
-			],
+			["status", "--porcelain", "--untracked-files=no", "--", ...productPaths],
 			{ cwd: ROOT, encoding: "utf8" },
 		).trim();
+		productSourceCommit = execFileSync(
+			"git",
+			["log", "-1", "--format=%H", "--", ...productPaths],
+			{ cwd: ROOT, encoding: "utf8" },
+		).trim();
+		productSourceClean =
+			execFileSync(
+				"git",
+				[
+					"status",
+					"--porcelain",
+					"--untracked-files=no",
+					"--",
+					...productPaths,
+				],
+				{ cwd: ROOT, encoding: "utf8" },
+			).trim() === "";
 	} catch (error) {
 		event({ event: "identity-error", error: String(error) });
 	}
@@ -876,7 +996,9 @@ try {
 			.update(readFileSync(join(ROOT, path)))
 			.digest("hex");
 	const identity = {
-		commit,
+		checkedOut,
+		productSourceCommit,
+		productSourceClean,
 		branch,
 		dirtySource: dirty,
 		electron: null,
@@ -890,7 +1012,16 @@ try {
 	};
 	facts.identity = identity;
 
+	// Snapshot the operator's real state BEFORE the launch, so B3 can compare it
+	// after teardown. This is a stat-only read plus a membership test for the
+	// run's own launcher token.
+	const realBefore = realState();
 	const fixtureUrl = await startFixturePage();
+	// The fixture URL carries this run's random port and appears in the app log
+	// (`tab N navigated to …`), so finding it in the operator's real log would be
+	// this run writing there. The launcher-pid line is a second, weaker token.
+	const isolationToken = fixtureUrl;
+	const launcherToken = `headless run launched by pid ${process.pid}`;
 	bootHandle = await boot();
 	const mainPortMatch = await waitForLog(
 		/Debugger listening on ws:\/\/127\.0\.0\.1:(\d+)\//,
@@ -937,15 +1068,93 @@ try {
 	).catch(() => null);
 	const armed = armedMatch !== null;
 	writeJson("build-identity.json", identity);
-	record("B1", armed && identity.dirtySource === "" ? "PASS" : "FAIL", {
-		commit: identity.commit,
-		branch: identity.branch,
-		dirtySource: identity.dirtySource,
-		electron: identity.electron,
-		appVersion: identity.appVersion,
-		productChromeArmed: armed,
-		sha256: identity.sha256,
-	});
+	record(
+		"B1",
+		armed && identity.dirtySource === "" && identity.productSourceClean
+			? "PASS"
+			: "FAIL",
+		{
+			checkedOut: identity.checkedOut,
+			productSourceCommit: identity.productSourceCommit,
+			productSourceClean: identity.productSourceClean,
+			branch: identity.branch,
+			dirtySource: identity.dirtySource,
+			electron: identity.electron,
+			appVersion: identity.appVersion,
+			productChromeArmed: armed,
+			sha256: identity.sha256,
+		},
+	);
+
+	// The app's own answer for where it writes, plus the logger's resolved path.
+	// `app.getPath("logs")` is Electron's default and is not the app's override;
+	// the logger line is the authoritative one for LOCAL_OPERATOR_LOG_DIR.
+	const appPaths = await evaluate(
+		mainCdp,
+		`(() => {
+			const E = process.mainModule.require("electron");
+			return {
+				home: E.app.getPath("home"),
+				userData: E.app.getPath("userData"),
+				sessionData: E.app.getPath("sessionData"),
+				electronLogs: E.app.getPath("logs"),
+				env: {
+					HOME: process.env.HOME,
+					config: process.env.LOCAL_OPERATOR_CONFIG_DIR,
+					logs: process.env.LOCAL_OPERATOR_LOG_DIR,
+				},
+			};
+		})()`,
+	);
+	const underRun = (path) =>
+		typeof path === "string" && (path === RUN || path.startsWith(`${RUN}/`));
+	const isolationText = logText();
+	const logLine =
+		isolationText.split("\n").find((line) => line.includes("Log path:")) ??
+		null;
+	const noFallback = !isolationText.includes("is not an absolute path");
+	// The browser host names its partition profile on startup. That line is the
+	// direct proof the Chromium profile is the scratch one; the real profile's
+	// mtime is not gated because the operator's own app may write it concurrently.
+	const browserProfileLine =
+		isolationText
+			.split("\n")
+			.find((line) => line.includes("[browser] host on")) ?? null;
+	const browserProfileUnderRun = browserProfileLine
+		? browserProfileLine.includes(join(bootHandle.paths.profile, "Partitions"))
+		: false;
+	const pathsUnderRun = {
+		// `app.getPath("home")` is the OS account home and is not redirected by
+		// HOME; it is recorded, not gated. Every path the app writes through is
+		// gated: Electron's userData/sessionData and the three overrides.
+		userData: underRun(appPaths.userData),
+		sessionData: underRun(appPaths.sessionData),
+		envHome: underRun(appPaths.env.HOME),
+		envConfig: underRun(appPaths.env.config),
+		envLogs: underRun(appPaths.env.logs),
+	};
+	facts.isolation = {
+		before: realBefore,
+		token: isolationToken,
+		appPaths,
+		osHome: appPaths.home,
+		pathsUnderRun,
+		logLine,
+		noFallback,
+		browserProfileLine,
+		browserProfileUnderRun,
+	};
+	record(
+		"B2",
+		Object.values(pathsUnderRun).every(Boolean) &&
+			noFallback &&
+			browserProfileUnderRun &&
+			typeof logLine === "string" &&
+			logLine.includes(bootHandle.paths.logs)
+			? "PASS"
+			: "FAIL",
+		facts.isolation,
+	);
 
 	const ownerTarget = await waitForTarget(
 		bootHandle.renderPort,
@@ -1160,7 +1369,8 @@ try {
 			pageMoved,
 			restPageBounds: pageViewRest?.bounds ?? null,
 			openPageBounds: openIds.page?.bounds ?? null,
-			sameInstant: true,
+			readMode:
+				"sequential CDP reads on a stable layout; the page rect is identical before/open/after",
 		},
 	);
 	const listAtEnd =
@@ -1550,7 +1760,7 @@ try {
 			const E = process.mainModule.require("electron");
 			const contents = E.webContents.fromId(${openIds.list.webContentsId});
 			if (!contents) return null;
-			return await contents.executeJavaScript("(() => { const host = document.getElementById('address-list-rows'); const rows = host ? [...host.children] : []; const r = rows[0] ? rows[0].getBoundingClientRect() : null; const root = document.getElementById('address-list-root'); const notice = document.getElementById('address-list-notice'); return { x: r ? r.x : null, y: r ? r.y : null, width: r ? r.width : null, height: r ? r.height : null, count: rows.length, view: root ? root.dataset.view ?? null : null, notice: notice ? notice.textContent : null, body: document.body.innerText.slice(0, 200), htmlLength: host ? host.innerHTML.length : null }; })()");
+			return await contents.executeJavaScript("(() => { const host = document.getElementById('address-list-rows'); const rows = host ? [...host.children] : []; const r = rows[0] ? rows[0].getBoundingClientRect() : null; const root = document.getElementById('address-list-root'); const notice = document.getElementById('address-list-notice'); return { x: r ? r.x : null, y: r ? r.y : null, width: r ? r.width : null, height: r ? r.height : null, count: rows.length, view: root ? root.dataset.view ?? null : null, url: rows[0] ? (rows[0].querySelector('.lo-row-text')?.textContent ?? null) : null, notice: notice ? notice.textContent : null, body: document.body.innerText.slice(0, 200), htmlLength: host ? host.innerHTML.length : null }; })()");
 		})()`,
 	);
 	const rowPoint =
@@ -1568,9 +1778,11 @@ try {
 	);
 	const afterCommitNative = identify(await nativeRead(mainCdp));
 	const listCounter = (await counters())[String(openIds.list.webContentsId)];
+	const rowUrl = rowRect?.url ?? null;
 	facts.rowCommit = {
 		candidateCount,
 		rowRect,
+		rowUrl,
 		point: rowPoint,
 		lastMouse: listCounter?.lastMouse ?? null,
 		popoutPresent: afterCommit.popout,
@@ -1580,7 +1792,10 @@ try {
 	};
 	record(
 		"N8b",
-		!afterCommit.popout && !(afterCommitNative.list?.visible ?? false)
+		rowUrl !== null &&
+			afterCommit.state?.url === rowUrl &&
+			!afterCommit.popout &&
+			!(afterCommitNative.list?.visible ?? false)
 			? "PASS"
 			: "FAIL",
 		facts.rowCommit,
@@ -1705,9 +1920,11 @@ try {
 			);
 		}),
 	);
-	record("D2", dismissals[1].lowered ? "PASS" : "BLOCKED", {
-		...dismissals[1],
-		blockedReason: dismissals[1].lowered
+	const d2 = dismissals[1];
+	const d2Measured = d2.lowered && d2.childHidden && d2.pageUnmoved !== false;
+	record("D2", d2.lowered ? (d2Measured ? "PASS" : "FAIL") : "BLOCKED", {
+		...d2,
+		blockedReason: d2.lowered
 			? null
 			: "headless/unfocused window: the page view's native focus event did not fire, so the page-focus dismissal has no native trigger here",
 	});
@@ -1843,9 +2060,51 @@ try {
 		facts.teardown,
 	);
 
+	// ---- real-state control --------------------------------------------------
+	// The re-run's proof is two independent readings: the app's logger took the
+	// absolute scratch LOG_DIR (B2), and no file under the real log dir carries
+	// this run's unique launcher token. The stat comparison is recorded too, but
+	// it is not gated on the logs dir: the operator's own app may write there
+	// concurrently, and that is not this run's write.
+	const realAfter = realState();
+	const tokenHits = realLogTokenHits(isolationToken);
+	const launcherHits = realLogTokenHits(launcherToken);
+	const unchanged = {
+		logsDir:
+			JSON.stringify(facts.isolation.before.logsDir) ===
+			JSON.stringify(realAfter.logsDir),
+		config:
+			JSON.stringify(facts.isolation.before.config) ===
+			JSON.stringify(realAfter.config),
+		profile:
+			JSON.stringify(facts.isolation.before.profile) ===
+			JSON.stringify(realAfter.profile),
+	};
+	facts.isolation = {
+		...facts.isolation,
+		after: realAfter,
+		unchanged,
+		tokenHits,
+		launcherHits,
+	};
+	writeJson("isolation.json", facts.isolation);
+	const b3Ok =
+		tokenHits.hits === 0 &&
+		(launcherHits.hits ?? 0) === 0 &&
+		unchanged.config &&
+		facts.isolation.browserProfileUnderRun;
+	// `unchanged.profile` is recorded but not gated: the operator's own app may
+	// write the real Chromium profile while this run is in flight. The scratch
+	// profile is proved by the app's own `[browser] host ... profile` line (B2).
+	record(
+		"B3",
+		tokenHits.hits === null ? "BLOCKED" : b3Ok ? "PASS" : "FAIL",
+		facts.isolation,
+	);
+
 	// ---- conclusions, recorded as the plan's own rows -----------------------
 	record("I1", "INFERRED", {
-		rule: "AppKit: the subviews array is back-to-front, and drawing adds each subview above the ones before it",
+		rule: 'AppKit NSView.addSubview(_:): a subview is "displayed above its siblings"; the measured order puts the list after the page',
 		measuredInputs: {
 			popout: roundRect(openOwner.popout),
 			pageBounds: openIds.page?.bounds ?? null,

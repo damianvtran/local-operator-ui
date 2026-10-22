@@ -1,5 +1,7 @@
 {
-  "commit": "c5503204ed0bc88e20dadb624de949788dc52b80",
+  "checkedOut": "6725eaa62f0651bd082d44acfcf74b0cc4e97863",
+  "productSourceCommit": "c5503204ed0bc88e20dadb624de949788dc52b80",
+  "productSourceClean": true,
   "branch": "docs/browser-native-determination-s4b",
   "dirtySource": "",
   "electron": "44.3.0",

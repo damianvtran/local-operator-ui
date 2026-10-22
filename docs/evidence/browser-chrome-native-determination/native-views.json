@@ -1,6 +1,8 @@
 {
   "identity": {
-    "commit": "c5503204ed0bc88e20dadb624de949788dc52b80",
+    "checkedOut": "6725eaa62f0651bd082d44acfcf74b0cc4e97863",
+    "productSourceCommit": "c5503204ed0bc88e20dadb624de949788dc52b80",
+    "productSourceClean": true,
     "branch": "docs/browser-native-determination-s4b",
     "dirtySource": "",
     "electron": "44.3.0",
@@ -17,7 +19,7 @@
     }
   },
   "rest": {
-    "at": "2026-10-22T06:30:27.971Z",
+    "at": "2026-10-22T06:49:35.771Z",
     "window": {
       "id": 1,
       "visible": false,
@@ -79,7 +81,7 @@
         },
         "visible": true,
         "webContentsId": 4,
-        "url": "http://127.0.0.1:63114/fixture",
+        "url": "http://127.0.0.1:51168/fixture",
         "type": "window",
         "title": "native-determination fixture",
         "focused": false,
@@ -90,7 +92,7 @@
       {
         "id": 4,
         "type": "window",
-        "url": "http://127.0.0.1:63114/fixture",
+        "url": "http://127.0.0.1:51168/fixture",
         "title": "native-determination fixture",
         "focused": false
       },
@@ -118,7 +120,7 @@
     ]
   },
   "open": {
-    "at": "2026-10-22T06:30:31.659Z",
+    "at": "2026-10-22T06:49:38.361Z",
     "window": {
       "id": 1,
       "visible": false,
@@ -180,7 +182,7 @@
         },
         "visible": true,
         "webContentsId": 4,
-        "url": "http://127.0.0.1:63114/fixture",
+        "url": "http://127.0.0.1:51168/fixture",
         "type": "window",
         "title": "native-determination fixture",
         "focused": false,
@@ -215,7 +217,7 @@
       {
         "id": 4,
         "type": "window",
-        "url": "http://127.0.0.1:63114/fixture",
+        "url": "http://127.0.0.1:51168/fixture",
         "title": "native-determination fixture",
         "focused": false
       },
