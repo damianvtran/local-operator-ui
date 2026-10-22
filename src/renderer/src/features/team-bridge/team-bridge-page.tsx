@@ -1001,14 +1001,27 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										{t("ui.teamBridge.thread.empty")}
 									</p>
 								) : (
-									<TeamBridgeMessageList
-										messages={messages}
-										pendingSends={pendingSends}
-										onRetrySend={onRetrySend}
-										labelFor={(sender) =>
-											labelFor(sender, shown?.tenant_id ?? "")
-										}
-									/>
+									<>
+										{/* Rows are drawn over a failed read (pending sends, or a
+										    thread that loaded before the error), so the error is a
+										    line above them, never hidden (review R2-2 on #1334). */}
+										{messageState === "error" && (
+											<p
+												role="alert"
+												className="px-5 pt-3 text-[12px] text-danger"
+											>
+												{t("ui.teamBridge.thread.error")}
+											</p>
+										)}
+										<TeamBridgeMessageList
+											messages={messages}
+											pendingSends={pendingSends}
+											onRetrySend={onRetrySend}
+											labelFor={(sender) =>
+												labelFor(sender, shown?.tenant_id ?? "")
+											}
+										/>
+									</>
 								)}
 							</div>
 						</ScrollArea>

@@ -921,14 +921,6 @@ function dedupedAgentLabel(label: string): string {
 }
 
 /**
- * The create request a draft's first send makes.
- *
- * One recipient is a DM (find-or-create on the server, so a retry or a race
- * with another window lands on the same row); two or more is a private group,
- * agent-capable exactly when a chief of staff is among them. Returns null for
- * an empty draft: there is no one to send to.
- */
-/**
  * What an agent member's `display_label` is stored as.
  *
  * THE SERVER STORES THIS VERBATIM and every client reads it back, so it must be
@@ -1015,6 +1007,14 @@ export function recipientCandidates(
 	return [...humans, ...agents];
 }
 
+/**
+ * The create request a draft's first send makes.
+ *
+ * One recipient is a DM (find-or-create on the server, so a retry or a race
+ * with another window lands on the same row); two or more is a private group,
+ * agent-capable exactly when a chief of staff is among them. Returns null for
+ * an empty draft: there is no one to send to.
+ */
 export function draftCreateInput(recipients: readonly TeamBridgeRecipient[]): {
 	kind: "dm" | "group";
 	visibility: "private";
@@ -1067,7 +1067,11 @@ export type ChiefLabels = {
 	unnamed: (person: string) => string;
 };
 
-/** "Agent (Owner)": the shape `composeChiefLabel` writes and the server stores. */
+/**
+ * "Agent (Owner)": the composed display form. Older clients stored it as the
+ * agent member's `display_label`, so the read path must recognise it (and "X
+ * (X)") in existing rows; this client now stores a bare name (`storedAgentLabel`).
+ */
 const COMPOSED_LABEL = /^(.+?)\s*\((.+)\)$/;
 
 /** Case-, space- and accent-insensitive form for "is this the same name". */
@@ -1251,6 +1255,12 @@ export function threadItems(
 	return items;
 }
 
+/** In-flight creates per draft, keyed by the caller's `remembered` map. */
+const INFLIGHT_CREATES = new WeakMap<
+	object,
+	Map<string, Promise<{ id: string; tenantId: string | undefined }>>
+>();
+
 /**
  * A draft's FIRST SEND: create the conversation, then post into it.
  *
@@ -1269,11 +1279,6 @@ export function threadItems(
  *   message from the same recipients after success is a fresh draft only if
  *   the target is still a draft (in practice it is the conversation by then).
  */
-const INFLIGHT_CREATES = new WeakMap<
-	object,
-	Map<string, Promise<{ id: string; tenantId: string | undefined }>>
->();
-
 export async function sendFirstMessage(args: {
 	draftKey: string;
 	input: NonNullable<ReturnType<typeof draftCreateInput>>;
@@ -1288,6 +1293,13 @@ export async function sendFirstMessage(args: {
 		conversationId: string,
 		message: { clientRef: string; body: string; tenantId: string | undefined },
 	) => Promise<unknown>;
+	/**
+	 * Called for EVERY send of the draft once the conversation is known (the
+	 * create it ran, the create it shared, or one remembered from an earlier
+	 * attempt) and before the post, so each pending entry adopts the id even
+	 * when it shared another send's create (review R2-1 on #1334).
+	 */
+	onCreated?: (created: { id: string; tenantId: string | undefined }) => void;
 }): Promise<{ id: string; tenantId: string | undefined; posted: unknown }> {
 	let created = args.remembered.get(args.draftKey);
 	if (created === undefined) {
@@ -1323,6 +1335,7 @@ export async function sendFirstMessage(args: {
 		}
 		created = await creating;
 	}
+	args.onCreated?.(created);
 	const posted = await args.post(created.id, {
 		clientRef: args.clientRef,
 		body: args.body,
@@ -1550,17 +1563,9 @@ export async function performSend(args: {
 			clientRef: args.clientRef,
 			tenantId: args.draftTenantId,
 			remembered: args.remembered,
-			create: async (input) => {
-				const made = await args.create(input);
-				if (made.id) {
-					args.onCreated({
-						id: made.id,
-						tenantId: made.tenant_id ?? args.draftTenantId,
-					});
-				}
-				return made;
-			},
+			create: args.create,
 			post: args.post,
+			onCreated: args.onCreated,
 		});
 		return {
 			ok: true,
