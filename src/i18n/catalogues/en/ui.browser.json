@@ -189,6 +189,7 @@
 	"ui.browser.browser_url_bar.home_destination": "Home — go to the start page (blank)",
 	"ui.browser.browser_url_bar.latest_download": "Open downloads folder — {name} was saved there",
 	"ui.browser.browser_url_bar.newest_download": "Open downloads folder — {name} was the newest saved there ({count, plural, other {{count, number, ::group-off} this session}})",
+	"ui.browser.browser_url_bar.page_menu": "Page options",
 	"ui.browser.browser_url_bar.page_zoom_reset": "Page zoom {zoom, number, ::group-off}%, reset to 100%",
 	"ui.browser.browser_url_bar.print_page": "Print page",
 	"ui.browser.browser_url_bar.reload": "Reload",

@@ -13,12 +13,12 @@ import {
 	subscribeBrowserView,
 	suppressedOverlayIdsSnapshot,
 } from "../../../shared/browser-view-policy";
+import { chordPlatform } from "../../../shared/navigation-gesture";
 import { browserBridge } from "../model/browser-projection-store";
 import { browserOverlaySuppressing } from "../model/self-suppression";
 import { chordTarget } from "../model/tab-index-model";
 import type { BrowserChrome, BrowserTabView } from "./use-browser-chrome";
 
-const MAC_PLATFORM = /Mac|iPhone|iPad/;
 const STANDALONE_BROWSER_ROUTE = /^#\/browser(?:[/?]|$)/;
 
 // A document can mount more than one scoped browser. Resolve ONE owner before
@@ -81,11 +81,23 @@ function chordOwner(
  * focus. The DOM door also answers scripted KeyboardEvents (which never pass
  * Electron's hook). It claims the event before app navigation bubbles to window.
  * Commands are queued, not debounced: legitimate rapid tab cycling is retained. */
+/**
+ * The address surface's own door. S4b removed the always-mounted input, so a
+ * `RefObject<HTMLInputElement>` is null at rest and every `focusAddress()` was a
+ * silent no-op (design §4). The handle raises the popout instead; when the
+ * active tab is the start page the surface focuses that page's own field.
+ */
+export interface AddressController {
+	raise: (options?: { origin?: "page" | "chrome"; seed?: string }) => void;
+	/** Lower without restoring focus (a new tab's start page takes it). */
+	close: () => void;
+}
+
 export function useBrowserChords(
 	chrome: BrowserChrome,
 	tabs: BrowserTabView[],
 	sessionId: string | null,
-	address: RefObject<HTMLInputElement>,
+	address: RefObject<AddressController>,
 ) {
 	const [root, setRoot] = useState<HTMLDivElement | null>(null);
 	const findReturnToPage = useRef(false);
@@ -178,10 +190,6 @@ export function useBrowserChords(
 			reportedFocus.set(document, focused);
 			void api.setChordFocus(focused).catch(() => {});
 		};
-		const focusAddress = () => {
-			address.current?.focus();
-			address.current?.select();
-		};
 		const projectionDropped = async (tabId: number): Promise<void> => {
 			for (let waited = 0; waited < 1000; waited += 5) {
 				if (!latest.current.tabs.some((tab) => tab.tabId === tabId)) return;
@@ -209,12 +217,15 @@ export function useBrowserChords(
 				return;
 			}
 			if (intent === "focus-address") {
-				focusAddress();
+				address.current?.raise({ origin });
 				return;
 			}
 			if (intent === "new-tab") {
 				await c.newTab(current.sessionId);
-				focusAddress();
+				// The new tab IS its start page, whose own field autofocuses on mount.
+				// Raising the popout here would paint over the strip the start page
+				// lives under and leave a second, emptier address field on screen.
+				address.current?.close();
 				return;
 			}
 			if (intent === "reopen-tab") {
@@ -242,7 +253,8 @@ export function useBrowserChords(
 					// waits for the projection (a bound, not a debounce: it ends the
 					// moment the tab leaves the list), so rapid presses stay ordered.
 					if (closed) await projectionDropped(id);
-					if (replaced) focusAddress();
+					// A replacement blank tab is a start page; its own field takes focus.
+					if (replaced) address.current?.close();
 				}
 			} else {
 				const target = chordTarget(current.tabs, cursor, intent);
@@ -265,9 +277,11 @@ export function useBrowserChords(
 				chordOwner(document, event.target) !== root
 			)
 				return;
-			const platform = MAC_PLATFORM.test(navigator.platform)
-				? "darwin"
-				: "linux";
+			// `chordPlatform()` already answers the QUESTION ("mac" | "linux"); the
+			// intent model names the same fact "darwin". Deriving darwin from
+			// truthiness read every non-Mac host as mac, so a Linux user lost Ctrl+L/F/T/
+			// R/W and the digits (agent review round 2, MAJOR-3).
+			const platform = chordPlatform() === "mac" ? "darwin" : "linux";
 			const intent = browserChordIntent(
 				{
 					type: "keyDown",
@@ -284,7 +298,53 @@ export function useBrowserChords(
 				},
 				platform,
 			);
-			if (!intent) return;
+			if (!intent) {
+				/*
+				 * THE PRINTABLE-KEY SEED (design §4, entry 2). A single character typed
+				 * while the browser's own root owns focus — and the target is not
+				 * editable — opens the popout with that character. This must NEVER run
+				 * for a key that reached the driven page: that is a separate native
+				 * view with no DOM target here. Space/Enter on a real control are
+				 * activations, and a modifier combination is not typing.
+				 */
+				// CODE POINTS, not UTF-16 units (nit round 1, NIT-2): `event.key.length`
+				// is 2 for every astral character, so an emoji or a CJK character
+				// outside the BMP could not seed the field. A spread counts the
+				// character the user actually pressed.
+				if (
+					[...event.key].length !== 1 ||
+					event.metaKey ||
+					event.ctrlKey ||
+					event.altKey ||
+					event.repeat ||
+					event.isComposing
+				)
+					return;
+				if (event.key === " ") {
+					// Space activates a focused button/tab; only text fields take it as
+					// a character, and those are excluded below.
+					const focused = event.target;
+					if (
+						focused instanceof Element &&
+						focused.closest("button, [role=tab], [role=menuitem], a[href]")
+					)
+						return;
+				}
+				const target = event.target;
+				if (target instanceof Element) {
+					if (
+						target.closest(
+							'input, textarea, [contenteditable="true"], [contenteditable=""], [role=menu], [role=dialog], [role=combobox]',
+						)
+					)
+						return;
+				} else if (!(target instanceof Node)) return;
+				event.preventDefault();
+				event.stopPropagation();
+				report(true, true);
+				address.current?.raise({ origin: "chrome", seed: event.key });
+				return;
+			}
 			event.preventDefault();
 			event.stopPropagation();
 			// Main clears its report on restart/teardown; a real accepted DOM press

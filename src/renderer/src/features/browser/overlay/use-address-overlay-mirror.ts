@@ -17,7 +17,7 @@
  * compares a signature; identical frames send nothing.
  */
 
-import { type RefObject, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { lastDeliveredContentRect } from "../hooks/use-browser-chrome";
 import {
 	type AddressOverlayPost,
@@ -45,9 +45,19 @@ export interface AddressMirrorInput {
 	noticeKind: "error" | "hint" | "empty" | "no_match";
 	noticeText: string;
 	label: string;
-	fieldRef: RefObject<HTMLInputElement | null>;
-	listRef: RefObject<HTMLDivElement | null>;
+	/** The strip's own measured band, in CSS px. The surface reads it from the
+	 * strip element; main intersects it with the trusted page rect. Null until the
+	 * strip is measured, which is the correct "nothing to project yet". */
+	anchor: { x: number; width: number } | null;
 	onCommit: (index: number) => void;
+	/** A main-decided dismissal (page focus, navigation, layout, tab change).
+	 * The renderer owns what "come down" means; main owns the fact. */
+	onDismiss: (reason: string) => void;
+	/** The pane is below the list's width floor, so main will refuse every
+	 * projection until the anchor changes. The caller turns this into the
+	 * field-only state; the loop stops here rather than re-asking each frame
+	 * (nit round 1, MINOR-5). */
+	onUnavailable?: () => void;
 }
 
 /** The dock's theme tokens, read through a scratch element because the app's
@@ -124,20 +134,6 @@ function resolveTheme(): AddressOverlayTheme | null {
 	return resolved;
 }
 
-function roundRect(rect: DOMRect): {
-	x: number;
-	y: number;
-	width: number;
-	height: number;
-} {
-	return {
-		x: Math.round(rect.left),
-		y: Math.round(rect.top),
-		width: Math.round(rect.width),
-		height: Math.round(rect.height),
-	};
-}
-
 function viewOf(input: AddressMirrorInput): AddressOverlayView {
 	if (input.rows.length > 0) {
 		return {
@@ -157,12 +153,24 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 	latest.current = input;
 
 	useEffect(() => {
-		if (!input.enabled) return;
+		/*
+		 * THE LOOP EXISTS ONLY WHILE THERE IS A VISIBLE LIST (the OOM this shape
+		 * fixes): the previous version scheduled `requestAnimationFrame` at the TOP
+		 * of `tick`, before asking whether the mirror was enabled or the list open,
+		 * so a renderer with the hook mounted and the list closed kept a frame loop
+		 * alive for the life of the surface. Under a synchronous RAF polyfill that
+		 * is unbounded recursion; in jsdom-heavy tests it accumulated until the
+		 * process died. Scheduling now happens only from a running tick, and the
+		 * effect itself is keyed on visibility and the bound tab, so closing the
+		 * list cancels the frame and sends the one hide.
+		 */
+		if (!input.enabled || !input.visible || input.tabId === null) return;
 		const port = addressOverlayPort();
 		if (!port) return;
 
+		const boundTabId = input.tabId;
 		let frame = 0;
-		let wasVisible = false;
+		let wasVisible = true;
 		let lastSignature = "";
 		let projected: { seq: number; keys: string[] } | null = null;
 		/**
@@ -188,6 +196,11 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 
 		const unsubscribe = port.onEvent((event) => {
 			if (!event || typeof event !== "object") return;
+			if (event.type === "dismiss") {
+				if (typeof event.reason === "string")
+					latest.current.onDismiss(event.reason);
+				return;
+			}
 			const commit = event as {
 				type?: unknown;
 				seq?: unknown;
@@ -211,37 +224,39 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 		});
 
 		const sendHide = (): void => {
-			const current = latest.current;
-			if (current.tabId === null) return;
-			const hidden: AddressOverlayPost = {
-				v: 1,
-				seq: nextAddressOverlaySeq(),
-				tabId: current.tabId,
-				visible: false,
-			} as AddressOverlayPost;
-			void port.project(hidden).catch(() => {});
+			void port
+				.project({
+					v: 2,
+					seq: nextAddressOverlaySeq(),
+					tabId: boundTabId,
+					visible: false,
+				})
+				.catch(() => {});
 		};
+		// A window that comes back from the background has a child that main hid on
+		// blur (the draft and the field row survive). Clearing the signature makes
+		// the next frame re-project instead of comparing equal to a hidden child.
+		const onWindowFocus = (): void => {
+			lastSignature = "";
+		};
+		window.addEventListener("focus", onWindowFocus);
 
 		const tick = (): void => {
 			if (stopped) return;
-			frame = requestAnimationFrame(tick);
+			frame = 0;
 			const current = latest.current;
-			if (!current.enabled) return;
-			if (!current.visible || current.tabId === null) {
-				if (wasVisible) {
-					wasVisible = false;
-					lastSignature = "";
-					projected = null;
-					sendHide();
-				}
+			if (!current.enabled || !current.visible) return;
+			const tabId = current.tabId;
+			if (tabId === null) {
+				if (!stopped) frame = requestAnimationFrame(tick);
 				return;
 			}
-			const field = current.fieldRef.current;
-			const list = current.listRef.current;
 			const pageRect = lastDeliveredContentRect();
-			if (!field || !list || pageRect === null) return;
-			const fieldRect = roundRect(field.getBoundingClientRect());
-			const listTop = Math.round(list.getBoundingClientRect().top);
+			const anchor = current.anchor;
+			if (pageRect === null || anchor === null || anchor.width <= 0) {
+				if (!stopped) frame = requestAnimationFrame(tick);
+				return;
+			}
 			const view = viewOf(current);
 			const theme = resolveTheme();
 			const dir: "ltr" | "rtl" =
@@ -249,21 +264,26 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 					? "rtl"
 					: "ltr";
 			const body = {
-				v: 1 as const,
-				tabId: current.tabId,
+				v: 2 as const,
+				tabId,
 				visible: true,
 				pageRect,
-				field: fieldRect,
-				listTop,
+				anchor: { x: Math.round(anchor.x), width: Math.round(anchor.width) },
 				active: current.active,
 				view,
 				label: current.label,
 				dir,
 				...(theme ? { theme } : {}),
 			};
-			if (pending) return;
+			if (pending) {
+				if (!stopped) frame = requestAnimationFrame(tick);
+				return;
+			}
 			const signature = JSON.stringify(body);
-			if (signature === lastSignature) return;
+			if (signature === lastSignature) {
+				if (!stopped) frame = requestAnimationFrame(tick);
+				return;
+			}
 			lastSignature = signature;
 			pending = true;
 			wasVisible = true;
@@ -272,13 +292,21 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 				seq,
 				keys: view.kind === "rows" ? current.rows.map((row) => row.key) : [],
 			};
-			const payload = { ...body, seq } as AddressOverlayPost;
+			const payload: AddressOverlayPost = { ...body, seq };
 			void port
 				.project(payload)
 				.then((result) => {
 					pending = false;
 					const answer = result as { accepted?: unknown; reason?: unknown };
 					if (!answer || answer.accepted !== false) return;
+					// A pane below the floor is a CONDITION, not a failure: stop asking (the
+					// answer cannot change without a resize) and let the field say so. Any
+					// anchor width change re-runs the effect and re-enables projection.
+					if (answer.reason === "anchor_too_narrow") {
+						stop();
+						latest.current.onUnavailable?.();
+						return;
+					}
 					// Terminal refusals stop the loop; everything else (a stale frame, a
 					// layout race) is retried by the next frame.
 					if (isPermanentOverlayRefusal(answer.reason)) {
@@ -298,13 +326,18 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 					}
 					lastSignature = "";
 				});
+			// The ONE scheduling point: a frame is queued only after a tick that is
+			// still eligible, so closing the list ends the loop with the effect.
+			if (!stopped && latest.current.visible)
+				frame = requestAnimationFrame(tick);
 		};
 
 		tick();
 		return () => {
 			stop();
 			unsubscribe();
+			window.removeEventListener("focus", onWindowFocus);
 			if (wasVisible) sendHide();
 		};
-	}, [input.enabled]);
+	}, [input.enabled, input.visible, input.tabId]);
 }

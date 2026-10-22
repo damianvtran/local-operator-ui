@@ -44,6 +44,15 @@
  * policy, visible.
  *
  * Usage: node scripts/browser-chrome-proof.mjs [--keep]
+ *
+ * SUPERSEDED IN PART BY S4b (2026-10-21). This rig asserts `[data-tour-tag=
+ * "browser-tab-notch"]` on every active tab (around the tab-strip rows) and an
+ * unconditional toolbar row. S4b removed the notch and the bar: at rest there is
+ * one hairline under the strip and no tab interruption, and the address controls
+ * live in a popout. Those rows no longer describe the shipped chrome and are
+ * expected to fail here; the rest of the rig (overlay/consent/native-view
+ * ordering) still runs. The authoritative rig for the shipped chrome is
+ * `browser-chrome-s4b-probe.mjs`.
  */
 
 import { execFile, spawn } from "node:child_process";

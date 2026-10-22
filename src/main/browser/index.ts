@@ -56,6 +56,7 @@ import { DownloadArmer } from "./downloads";
 import type { DriveableView } from "./electron-types";
 import { BrowserHost, isReportableLoadFailure } from "./host";
 import {
+	PRODUCT_ADDRESS_OVERLAY_EVENT,
 	type RegisterBrowserIpcOptions,
 	registerBrowserIpc,
 	unregisterBrowserIpc,
@@ -234,6 +235,12 @@ export interface StartBrowserHostOptions {
 		list?: boolean;
 		/** S3: the launch gate's visible-probe fact, forwarded to facts only. */
 		visible?: boolean;
+		/**
+		 * S4b: the launch's PRODUCT chrome. True on darwin for an ordinary launch;
+		 * false when a probe gate armed instead, so the probe keeps its own channel
+		 * and the product never writes to the dev-driver's event stream.
+		 */
+		product?: boolean;
 		documentUrl: string;
 	};
 	log: (message: string) => void;
@@ -447,6 +454,19 @@ export function startBrowserHost(
 		 * then it reads the current attempt's callback through `bindings` (a retry
 		 * replaces it) rather than capturing a controller here.
 		 */
+		...(options.addressOverlay?.product === true
+			? {
+					addressOverlayProduct: (payload: unknown): Promise<unknown> => {
+						const project = bindings.addressOverlayProject;
+						if (!project) {
+							throw new Error(
+								"address_overlay_unavailable: the overlay controller is not running.",
+							);
+						}
+						return project(payload);
+					},
+				}
+			: {}),
 		...(options.addressOverlay?.enabled
 			? {
 					addressOverlayProbe: (
@@ -747,6 +767,15 @@ async function initializeBrowserHost(
 		let stateWriter: BrowserStateWriter | null = null;
 
 		/**
+		 * Where the address-overlay controller's health pushes land. Declared before
+		 * the controller because the controller is constructed first and only the
+		 * host knows how to broadcast; assigned once `notifyChanged` exists. A
+		 * failure can only arrive after a layout pass, which is after that
+		 * assignment, so the placeholder never swallows a real change.
+		 */
+		let notifyAddressOverlayHealth: () => void = () => {};
+
+		/**
 		 * S1's child, created only when the launch gate passed. The controller is
 		 * lightweight here: no native child exists until an explicit probe show
 		 * (`AddressOverlayController.show`). It is declared before the registry
@@ -760,16 +789,21 @@ async function initializeBrowserHost(
 						documentUrl: options.addressOverlay.documentUrl,
 						javascript: options.addressOverlay.list === true,
 						visible: options.addressOverlay.visible === true,
+						product: options.addressOverlay.product === true,
 						// The only consumer of a validated row click: the owner window's own
 						// renderer. Guarded because a stop can race a queued mouse event.
 						onEvent: (event) => {
-							if (!options.window.isDestroyed()) {
-								options.window.webContents.send(
-									DEV_DRIVER_ADDRESS_OVERLAY_EVENT,
-									event,
-								);
-							}
+							if (options.window.isDestroyed()) return;
+							options.window.webContents.send(
+								options.addressOverlay?.product === true
+									? PRODUCT_ADDRESS_OVERLAY_EVENT
+									: DEV_DRIVER_ADDRESS_OVERLAY_EVENT,
+								event,
+							);
 						},
+						// The renderer reads Tier 1 out of the projection, so a child that
+						// fails while the field is already raised must push one.
+						onHealthChange: () => notifyAddressOverlayHealth(),
 						log,
 						appMetrics: () =>
 							app.getAppMetrics().map((metric) => ({
@@ -872,7 +906,7 @@ async function initializeBrowserHost(
 			// the store's own seal, not a check here.
 			captureSession();
 		};
-
+		notifyAddressOverlayHealth = notifyChanged;
 		const registry = new TabRegistry(
 			(_createOptions, tabId) => {
 				const view = buildView(options.window);
@@ -992,6 +1026,16 @@ async function initializeBrowserHost(
 			onChanged: notifyChanged,
 			facts: () => facts,
 			forgetSiteData: (origin) => clearOriginData(browserSession, origin),
+			addressOverlayMode: () =>
+				addressOverlay
+					? addressOverlay.mode()
+					: {
+							mode: "suspend",
+							reason:
+								options.addressOverlay?.product === true
+									? "unavailable"
+									: "platform",
+						},
 		});
 
 		// Logical ownership includes the standalone BODY / pane header. Native
@@ -1467,8 +1511,28 @@ async function initializeBrowserHost(
 			// `getFocusedWebContents()` can stay null while a WebContentsView holds focus
 			// (measured on Electron 44.3.0), and a menu click may arrive with no callback
 			// window. `ownsPage` combines this with the active/presented check.
-			contents.on("focus", () => host.setPageFocused(tabId, true));
+			contents.on("focus", () => {
+				host.setPageFocused(tabId, true);
+				// Main owns "the user clicked into the page": a parent DOM blur cannot
+				// see it (S3 V-FOCUS-CLICK is blocked), and the native focus event is
+				// the fact itself. This lowers the product popout for that tab only.
+				addressOverlay?.dismissForTab(tabId, "page_focus");
+			});
 			contents.on("blur", () => host.setPageFocused(tabId, false));
+			// The user's own navigation starts here; a page/agent-initiated one shares
+			// the event, which is why the design scopes "navigating dismisses" to the
+			// bound tab's main frame and not to a background tab's load.
+			contents.on(
+				"did-start-navigation",
+				(_event, _url, isInPlace, isMainFrame) => {
+					// A SAME-DOCUMENT NAVIGATION IS NOT A NAVIGATION the user made: a SPA
+					// route change or a hash rewrite while the field is raised must not
+					// discard the draft. The owner-level listener excludes it for the same
+					// reason (nit round 1, NIT-1 / UX U4).
+					if (isMainFrame && !isInPlace)
+						addressOverlay?.dismissForTab(tabId, "navigation");
+				},
+			);
 
 			// Popups: `about:blank` and http(s) open as real child windows, everything
 			// else is refused with a log line (docs/design/browser-oauth-popups.md 1.1).
