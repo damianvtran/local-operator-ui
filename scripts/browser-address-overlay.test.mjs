@@ -146,9 +146,11 @@ const {
 	ADDRESS_OVERLAY_VISIBLE_ENV,
 	ADDRESS_LIST_ENV,
 	ADDRESS_LIST_MAX_HEIGHT_DIP,
+	ADDRESS_LIST_MIN_WIDTH_DIP,
 	ADDRESS_LIST_NOTICE_HEIGHT_DIP,
 	ADDRESS_LIST_ROW_HEIGHT,
 	addressListBoundsFor,
+	addressListBoundsV2For,
 	addressListDocumentUrlFor,
 	addressListHeightFor,
 	addressListMeasurementProblem,
@@ -311,6 +313,9 @@ function makeController(options = {}) {
 		log: options.log,
 		javascript: options.javascript === true,
 		visible: options.visible === true,
+		product: options.product === true,
+		onEvent: options.onEvent,
+		onHealthChange: options.onHealthChange,
 	};
 	if (!options.defaultFactory) deps.createView = createView;
 	const controller = new AddressOverlayController(deps);
@@ -960,6 +965,121 @@ test("child crash and load failure latch off for this host lifetime", async () =
 	}
 });
 
+/**
+ * S4b round-2 regressions. Both mechanisms below were found by reading in round
+ * 1 and are reproduced here against the REAL controller (electron stubbed), not
+ * a model of it.
+ */
+test("S4b: a presentation-only flip lowers nothing, and the child comes back", async () => {
+	const events = [];
+	let health = 0;
+	const { controller, views } = makeController({
+		product: true,
+		onEvent: (event) => events.push(event),
+		onHealthChange: () => {
+			health += 1;
+		},
+	});
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	const view = views[0];
+	view.webContents.emit("dom-ready");
+	view.webContents.emit("did-finish-load");
+	assert.equal((await pending).shown, true);
+	assert.equal(view.visible, true);
+
+	// The page menu suppresses the native page for as long as its panel is open:
+	// presented flips, the tab and the rectangle do not.
+	controller.onLayout(layout({ presented: false, revision: 2 }));
+	assert.deepEqual(events, [], "opening the menu must not dismiss the popout");
+	assert.equal(view.visible, false, "the child must yield to the menu panel");
+	assert.equal(controller.facts().state, "shown", "the row is still raised");
+
+	controller.onLayout(layout({ presented: true, revision: 3 }));
+	assert.deepEqual(events, [], "closing the menu must not dismiss either");
+	assert.equal(view.visible, true, "the list returns with the page");
+	assert.equal(health, 0, "presentation is not a health fact");
+
+	// A REAL layout change is still a dismissal.
+	controller.onLayout(
+		layout({ contentRect: { ...RECT, x: RECT.x + 40 }, revision: 4 }),
+	);
+	assert.deepEqual(
+		events.map((event) => [event.type, event.reason]),
+		[["dismiss", "layout"]],
+	);
+	controller.dispose("test");
+});
+
+test("S4b: a presentation-only flip does not drop a projection that arrives meanwhile", async () => {
+	const events = [];
+	const { controller, views } = makeController({
+		product: true,
+		onEvent: (event) => events.push(event),
+	});
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	const view = views[0];
+	view.webContents.emit("dom-ready");
+	view.webContents.emit("did-finish-load");
+	await pending;
+	controller.onLayout(layout({ presented: false, revision: 2 }));
+	// The renderer keeps projecting while the menu owns focus. Refusing would make
+	// the mirror re-project the same frame every animation frame.
+	const answer = await controller.project({
+		v: 2,
+		seq: 900,
+		tabId: 1,
+		visible: true,
+		pageRect: { ...RECT },
+		anchor: { x: RECT.x, width: 640 },
+		active: 0,
+		view: { kind: "rows", rows: [{ text: "example.com", title: "Example" }] },
+		label: "From this browser session",
+		dir: "ltr",
+	});
+	assert.equal(answer.accepted, true, JSON.stringify(answer));
+	assert.deepEqual(events, []);
+	assert.equal(controller.facts().state, "shown", "the row is still raised");
+	// Resuming hands the deferred payload to the projection queue. The stub view
+	// cannot answer `executeJavaScript`, so what is asserted here is the decision
+	// (accepted, deferred, no dismissal), not the paint.
+	controller.onLayout(layout({ presented: true, revision: 3 }));
+	assert.deepEqual(events, []);
+	controller.dispose("test");
+});
+
+test("S4b: a child failure while the field is raised pushes a health change", async () => {
+	let health = 0;
+	const { controller, views } = makeController({
+		product: true,
+		onHealthChange: () => {
+			health += 1;
+		},
+	});
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	assert.equal(health, 0, "warming the child is not a health fact");
+	views[0].webContents.emit(
+		"did-fail-load",
+		{},
+		-105,
+		"NAME_NOT_RESOLVED",
+		"",
+		true,
+	);
+	await pending;
+	assert.equal(health, 1, "the renderer reads Tier 1 from the projection");
+	assert.deepEqual(controller.mode(), {
+		mode: "suspend",
+		reason: "load_failed:-105",
+	});
+	controller.dispose("test");
+});
+
 test("a readiness timeout fails closed and rejects the pending show", async () => {
 	const { controller, views } = makeController({ readinessTimeoutMs: 10 });
 	controller.onLayout(layout());
@@ -1369,6 +1489,101 @@ test("S2 anchor: the 0..24 gap is measured, and every bad rectangle refuses", ()
 	);
 });
 
+function projectionV2(overrides = {}) {
+	return {
+		v: 2,
+		seq: 8,
+		tabId: 3,
+		visible: true,
+		pageRect: { x: 260, y: 69, width: 1120, height: 831 },
+		anchor: { x: 260, width: 1120 },
+		active: 0,
+		view: { kind: "rows", rows: rows(3) },
+		label: "Suggestions",
+		dir: "ltr",
+		...overrides,
+	};
+}
+
+test("S4b anchor geometry: strip width, page top, and a 240 DIP floor", () => {
+	const view = { kind: "rows", rows: rows(3) };
+	const pageRect = { x: 260, y: 69, width: 1120, height: 831 };
+	const bounds = addressListBoundsV2For(
+		{ x: 260, width: 1120 },
+		pageRect,
+		view,
+		S2_OWNER,
+	);
+	assert.deepEqual(bounds, {
+		x: 260,
+		y: 69,
+		width: 1120,
+		height: 140,
+	});
+	// The strip band is clipped to the page rect on both sides: a pane whose
+	// chrome is wider than its page can never paint the child beside the page.
+	assert.deepEqual(
+		addressListBoundsV2For({ x: 100, width: 900 }, pageRect, view, S2_OWNER),
+		{ x: 260, y: 69, width: 740, height: 140 },
+	);
+	// A rail pane narrower than the design's floor refuses instead of drawing a
+	// list whose rows cannot be read (the renderer then shows Tier 1).
+	assert.equal(
+		addressListBoundsV2For(
+			{ x: 0, width: ADDRESS_LIST_MIN_WIDTH_DIP - 1 },
+			{ x: 0, y: 69, width: ADDRESS_LIST_MIN_WIDTH_DIP - 1, height: 831 },
+			view,
+			S2_OWNER,
+		),
+		null,
+	);
+	assert.ok(ADDRESS_LIST_MIN_WIDTH_DIP >= 240);
+	// Never shortened: a list that would run past the owner's bottom refuses.
+	assert.equal(
+		addressListBoundsV2For(
+			{ x: 0, width: 1000 },
+			{ x: 0, y: 800, width: 1000, height: 60 },
+			{ kind: "rows", rows: rows(5) },
+			S2_OWNER,
+		),
+		null,
+	);
+});
+
+test("S4b projection: v2 replaces field/listTop and keeps the strict key set", () => {
+	const ok = sanitizeProjection(projectionV2());
+	assert.equal(ok.ok, true);
+	assert.equal(ok.projection.v, 2);
+	assert.deepEqual(ok.projection.anchor, { x: 260, width: 1120 });
+	const refused = (payload) => {
+		const result = sanitizeProjection(payload);
+		assert.equal(result.ok, false, JSON.stringify(payload).slice(0, 120));
+		return result.reason;
+	};
+	assert.equal(refused({ ...projectionV2(), v: 1 }), "unknown_key");
+	assert.equal(refused({ ...projectionV2(), anchor: { x: 0 } }), "bad_anchor");
+	assert.equal(
+		refused({ ...projectionV2(), anchor: { x: 0, width: 0 } }),
+		"bad_anchor",
+	);
+	assert.equal(
+		refused({ ...projectionV2(), field: { ...S2_FIELD } }),
+		"unknown_key",
+	);
+	assert.equal(
+		refused({ ...projectionV2(), anchor: { x: 0, width: 240, y: 1 } }),
+		"bad_anchor",
+	);
+	const hidden = sanitizeProjection({
+		v: 2,
+		seq: 9,
+		tabId: 3,
+		visible: false,
+	});
+	assert.equal(hidden.ok, true);
+	assert.equal(hidden.projection.visible, false);
+});
+
 test("S2 projection: every field revalidated, unknown keys refused", () => {
 	const ok = sanitizeProjection(projection());
 	assert.equal(ok.ok, true);
@@ -1379,7 +1594,10 @@ test("S2 projection: every field revalidated, unknown keys refused", () => {
 		assert.equal(result.ok, false, JSON.stringify(payload).slice(0, 120));
 		return result.reason;
 	};
-	assert.equal(refused({ ...projection(), v: 2 }), "bad_version");
+	assert.equal(refused({ ...projection(), v: 3 }), "bad_version");
+	// A v1 payload relabelled v2 keeps v1-only keys: the v2 key set is strict,
+	// so the shape is refused before any geometry is read.
+	assert.equal(refused({ ...projection(), v: 2 }), "unknown_key");
 	assert.equal(refused({ ...projection(), seq: 0 }), "bad_seq");
 	assert.equal(refused({ ...projection(), seq: 1.5 }), "bad_seq");
 	assert.equal(refused({ ...projection(), tabId: "3" }), "bad_tab");

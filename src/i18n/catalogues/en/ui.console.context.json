@@ -1,0 +1,317 @@
+{
+	"ui.console.capacity.summary": {
+		"role": "pane header status summary",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "App-wide console capacity in the pane's header, above the surface strip: how many terminal processes are live against the process limit. Placeholders: live and limit are counts, formatted with ICU ::group-off because the pre-extraction literal printed raw numbers (1000 must not grow a comma). This is ambient chrome, not a control; it sits beside the compact form and must stay one short line at the pane's narrow width."
+	},
+	"ui.console.capacity.summary_compact": {
+		"role": "pane header status summary, compact form",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The same app-wide capacity fact at the pane's narrow step: live/limit plus the number of retained histories. Placeholders: live, limit and archived are counts with ICU ::group-off. Compact enough for the header cluster; the full sentence is available in this control's tooltip and accessible name, so this form may abbreviate."
+	},
+	"ui.console.capacity.summary_compact_bare": {
+		"role": "pane header status summary, capsule form",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The capacity fact where the header has room only for live/limit (no retained-history clause). Placeholders: live and limit, ICU number ::group-off. Keep the slash form and the digit ordering; do not add words."
+	},
+	"ui.console.capacity.archived": {
+		"role": "status suffix on the capacity summary",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Appended to the full capacity sentence when retained histories exist: how many finished terminals are kept on disk. Placeholder: archived, an ICU number with ::group-off. Starts with the separator the English carries so the caller can concatenate without a second punctuation decision."
+	},
+	"ui.console.capacity.full": {
+		"role": "status suffix on the capacity summary",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Appended when the live count has reached the process limit; says the app is full. No placeholders. One short clause; it is the alarm half of the sentence, not a sentence of its own."
+	},
+	"ui.console.capacity.help": {
+		"role": "tooltip explaining the capacity summary",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Explains that the counts are app-wide across every conversation and that kept history does not consume a process slot. Shown as the tooltip/accessible explanation of the capacity summary, possibly concatenated with the resources sentence. Plain explanation, no placeholders."
+	},
+	"ui.console.capacity.resources": {
+		"role": "tooltip explaining modeled console resource use",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Second half of the capacity tooltip: modeled managed storage, byte logs, pending output, emulator cells and protected terminals, ending with the honest limit that child-process memory is not included. Placeholders: memory, logs and pending are MiB counts, cells and protected are counts, all ICU number ::group-off. Keep every figure and the exclusion; this note is the only place a reader learns what the number omits."
+	},
+	"ui.console.cleanup.label": {
+		"role": "accessible name for a control",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The button/menu control that clears finished agent-owned terminals in this conversation. Short enough for an icon button's aria-label; names the action and its scope (finished agent terminals)."
+	},
+	"ui.console.cleanup.help": {
+		"role": "tooltip on the cleanup control",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Explains exactly what the cleanup does: clears finished agent terminals in this conversation, keeps the ones the agent asked to retain, closes the rest without keeping output, and leaves user-opened or in-use terminals alone. Every clause is a promise about data loss; preserve all four."
+	},
+	"ui.console.cleanup.result": {
+		"role": "status line after cleanup",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Reports what a cleanup released and what was protected because it was in use. Placeholders: released and protected are counts with full ICU plural arms; each count also carries ICU number ::group-off. The protected sentence is a second plural clause that must be absent at zero. Keep the count/plural grammar complete for the target locale."
+	},
+	"ui.console.cleanup.result_none": {
+		"role": "status line after cleanup",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Says there was nothing to clear in this conversation. No placeholders; one short sentence. It is a success report, not an error."
+	},
+	"ui.console.dismiss_history": {
+		"role": "destructive confirmation action label",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The menu/dialog control that removes an ended terminal AND deletes its retained output from disk. Names both halves because the difference from a plain close is the deletion. Compact action label."
+	},
+	"ui.console.dismiss.body": {
+		"role": "destructive dialog body",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Explains that clearing a terminal deletes its retained output from disk, so a relaunch cannot restore it. No placeholders. This is irreversible-loss copy; do not soften the consequence."
+	},
+	"ui.console.dismiss.title": {
+		"role": "destructive dialog title",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Asks whether to clear this terminal, where clearing means deleting retained output. One short question; the body carries the consequence."
+	},
+	"ui.console.dismiss.confirm": {
+		"role": "destructive dialog confirmation button",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The confirming button for deleting a terminal and its retained output. Must name the deletion (Clear terminal), not a generic OK; short button width."
+	},
+	"ui.console.close.body": {
+		"role": "close-confirmation dialog body",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Explains that closing ends the program running in this terminal and removes its tab. No placeholders. The retention clause is a separate string that appears only where the surface keeps history."
+	},
+	"ui.console.close.busy": {
+		"role": "busy label on the close dialog",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Shown on the confirm button while the close is in flight. One short word/phrase; no placeholders."
+	},
+	"ui.console.close.confirm": {
+		"role": "close-confirmation dialog confirm button",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The confirming button that ends the running program. Short action label; distinct from the destructive Clear/Delete control because this one may keep history."
+	},
+	"ui.console.close.kept": {
+		"role": "conditional reassurance in the close dialog",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Appended only where the surface's own record says its output persists after the close: \"Its output is kept.\" One short sentence, no placeholders. Do not show or imply it for a surface whose history is not retained."
+	},
+	"ui.console.close.title": {
+		"role": "close-confirmation dialog title",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Asks whether to close this terminal. One short question; no placeholders."
+	},
+	"ui.console.create_failed.detail": {
+		"role": "error-state body",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Explains that the console host is running and refused to start a program for this conversation, so this is one failed attempt rather than the console being off; advises retrying first, and says the machine line below carries the host's reason. No placeholders; keep the distinction between a refusal and an unavailable feature."
+	},
+	"ui.console.create_failed.retry": {
+		"role": "retry button",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Retry action under the create-failed notice. Short button label, no placeholders."
+	},
+	"ui.console.create_failed.title": {
+		"role": "error-state title",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Title of the state where a create was refused by a running console host. Says the console could not start in this session; no placeholders, one sentence."
+	},
+	"ui.console.empty.title": {
+		"role": "empty-state title",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The pane's empty state when the conversation has no console surface: says there is no console in this session. No placeholders."
+	},
+	"ui.console.empty.detail": {
+		"role": "empty-state body",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Explains what a console is: it runs a program in this conversation's directory and keeps its output whether or not the pane is open. No placeholders; the create control sits beside it."
+	},
+	"ui.console.ended.exit_code": {
+		"role": "machine line (monospace)",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The ended banner's machine line when the exit status was observed. Placeholder: code, the process exit status as a number, shown verbatim (no ICU grouping). Monospace, machine voice, lower-case fragment so it reads as a fact beside the banner sentence."
+	},
+	"ui.console.ended.exit_unknown": {
+		"role": "machine line (monospace)",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The ended banner's machine line when no exit status was observed and no reason was recorded — including legacy restored surfaces. Says so honestly rather than guessing a code. No placeholders; monospace fragment."
+	},
+	"ui.console.ended.live": {
+		"role": "ended banner sentence",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The banner over a terminal whose process exited during this run. One sentence, no placeholders, no cause (the machine line carries the status). The banner stays until the retained surface is dismissed."
+	},
+	"ui.console.ended.restored": {
+		"role": "ended banner sentence",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The banner over a terminal reconstructed from persisted history after a relaunch: it ended before this run existed, and what is on screen is recorded history. One sentence, no placeholders; distinct from the live-exit sentence so a reader knows nothing was running in this launch."
+	},
+	"ui.console.loading.create": {
+		"role": "loading-state title",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Shown while the user's own open is starting a shell, before the first listing answers. One short sentence; it describes starting a program, not reading a listing."
+	},
+	"ui.console.loading.read": {
+		"role": "loading-state title",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Shown before the first console listing answers (a restored pane, a switch). One short sentence; it describes reading the projection, not starting a program."
+	},
+	"ui.console.new": {
+		"role": "create control label",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The pane's + control: starts a new console surface with the app's defaults (login shell, the conversation's directory). Short button label; present in the empty state too."
+	},
+	"ui.console.pane.blip": {
+		"role": "screen-reader text for an attention dot",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Accessible description of the unseen-completion dot on a surface row: something finished since the user last looked. No placeholders; a dot, not a count, so do not add a number."
+	},
+	"ui.console.pane.close": {
+		"role": "pane close control name",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Accessible name of the control that closes the console PANE (not a terminal). Short; distinct from closing a terminal."
+	},
+	"ui.console.pane.close_refusal": {
+		"role": "error toast",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Says the terminal could not be closed. No placeholders; the host's own reason is shown separately, so this is the headline only."
+	},
+	"ui.console.pane.label": {
+		"role": "pane title / region name",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The console pane's own name in its header and, where the pane is labelled, its accessible region name. One word or short noun phrase; do not translate it as a synonym for a shell."
+	},
+	"ui.console.pane.needs_conversation.detail": {
+		"role": "draft-state body",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Explains why no console can start on a draft: a console runs in a conversation's working directory, and a draft has none. No placeholders; one sentence, no blame."
+	},
+	"ui.console.pane.needs_conversation.title": {
+		"role": "draft-state title",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Title on a draft where the console pane has no conversation: a console needs a conversation. One short sentence."
+	},
+	"ui.console.pane.surfaces": {
+		"role": "accessible group name",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Names the strip of terminal tabs inside the pane (the tablist of surfaces). Short; it is a region/group label, not a button."
+	},
+	"ui.console.secure": {
+		"role": "secure-input banner",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The pane's secure-input marker: what is typed is not recorded. No placeholders. It sits over the terminal's top rows and must state the recording consequence plainly."
+	},
+	"ui.console.unavailable.disabled.detail": {
+		"role": "unavailable-state body",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Explains that LOCAL_OPERATOR_UI_CONSOLE_HOST=0 in this app's environment switched the console off, so no terminal starts and no surface can be created; removing the setting turns it back on. The variable name is literal and must not be translated."
+	},
+	"ui.console.unavailable.disabled.title": {
+		"role": "unavailable-state title",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Title when the console is switched off for this run by the environment switch. No placeholders; distinguishes a deliberate switch from a broken install."
+	},
+	"ui.console.unavailable.pty.detail": {
+		"role": "unavailable-state body",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Explains that terminal support did not load for this run, that updating Local Operator restores it, and that the app's log names the reason. No placeholders; do not imply the user misconfigured anything."
+	},
+	"ui.console.unavailable.title": {
+		"role": "unavailable-state title",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Title when the console cannot run in this app (switch off, or native terminal support missing). No placeholders; one sentence."
+	},
+	"ui.console.unavailable.unknown.detail": {
+		"role": "unavailable-state body",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Says the window could not reach the console and did not say why, and that the app's log carries the reason. No placeholders; the honest version of a missing cause."
+	},
+	"ui.console.tab.ended": {
+		"role": "status fragment on a terminal tab",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Suffix on a tab whose process has ended. One word/phrase, lower-case, read beside the command name as `zsh ended`. No placeholders; do not make it a sentence."
+	},
+	"ui.console.tab.agent_opened": {
+		"role": "provenance marker on a terminal tab",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Shown on a tab to say an agent opened this console. One short clause; provenance, not a judgement."
+	},
+	"ui.console.tab.agent_typed": {
+		"role": "provenance marker on a terminal tab",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Shown when an agent has typed into this console (including one the user opened). One short clause; distinct from who created it."
+	},
+	"ui.console.tab.close_label": {
+		"role": "accessible name for a tab's close button",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Accessible name of the close control on one terminal tab. Placeholders: title is the surface's own name (command plus argv tail), index and total are ICU numbers ::group-off for the tablist position. Keep both clauses and the count grammar."
+	},
+	"ui.console.tab.clear_label": {
+		"role": "accessible name for a tab's clear button",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Accessible name of the control that clears an ended terminal and its tab when its history is not retained. Placeholders: title, index, total with ICU number ::group-off. The retained variant adds the deletion clause in its own key; do not add it here."
+	},
+	"ui.console.tab.clear_label_retained": {
+		"role": "accessible name for a tab's clear button, retained history",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The clear control's accessible name where clearing also deletes retained output. Placeholders: title, index, total with ICU number ::group-off, plus the explicit deletion clause after an em dash. The distinction from the non-retained key is the data loss; keep it."
+	},
+	"ui.console.secure_toggle.stop": {
+		"role": "toggle label, secure input on",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Label/accessible name of the control that turns secure input OFF (it currently reads as a stop action). One short phrase; it is the button's action, not a description of the on state."
+	},
+	"ui.console.secure_toggle.start": {
+		"role": "toggle label, secure input off",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Label/accessible name of the control that turns secure input ON. One short phrase; it names secure input, which users must read as a privacy mode."
+	},
+	"ui.console.secure_toggle.start_tooltip": {
+		"role": "tooltip on the secure-input toggle",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Explains that turning secure input on stops this terminal from being recorded. One sentence; the privacy consequence is the load-bearing part, keep it."
+	},
+	"ui.console.close.cancel": {
+		"role": "dialog cancel button",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The safe answer in the close and dismiss dialogs. One word; it must not sound like the destructive action."
+	},
+	"ui.console.terminal.prompt_label": {
+		"role": "screen-reader label for xterm's hidden textarea",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The accessible name xterm gives its hidden input in the pane. Assigned to Terminal.strings.promptLabel before construction; the English value is byte-identical to xterm's own default. Short control label, no placeholders."
+	},
+	"ui.console.terminal.too_much_output": {
+		"role": "screen-reader notice for terminal overflow",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "xterm's announcement when its output is too large to read aloud, telling the user to navigate rows manually. No placeholders; a complete sentence read by a screen reader, not displayed as chrome."
+	},
+	"ui.console.ended.app_quit": {
+		"role": "machine line (monospace)",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The ended banner's machine line when the app itself closed the terminal during quit and the exit status could not be observed within the bounded wait. Placeholder-free fragment, lower case, monospace: it replaces \"exit code not observed\" only where main recorded end_reason=app_quit. Legacy sidecars with no reason keep the unknown sentence, so do not generalise this to every unknown status."
+	},
+	"ui.console.ended.marker": {
+		"role": "end-of-history marker label",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The pane-owned label painted where a live prompt would be, under a terminal whose process has ended. It marks the end of the recorded history and must not read as program output or as a prompt. Two or three words, sentence case; it sits in a footer band with the detail sentence beside it."
+	},
+	"ui.console.ended.marker_detail": {
+		"role": "end-of-history marker explanation",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Second sentence in the end-of-history footer: the terminal is read-only, and selecting text still copies it. No placeholders. It explains the interaction rule so a user does not keep typing into history; a separate live-region sentence reports a key that was actually swallowed."
+	},
+	"ui.console.ended.input_blocked": {
+		"role": "live-region announcement after a swallowed key",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "Shown and spoken (role=status, aria-live=polite) when a key arrives at an ended terminal: the key was not sent, and opening a new console is how to type again. No placeholders. It must be a complete sentence because a screen reader may announce it without the marker band around it."
+	},
+	"ui.console.ended.exit_signal": {
+		"role": "machine line (monospace)",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The ended banner's machine line when the process was terminated by a signal rather than exiting. Placeholder: signal is a POSIX signal name such as SIGKILL or SIGTERM, rendered as-is. It wins over the numeric exit code because node-pty reports 0 for a signalled process; this line is what makes a kill distinguishable from a clean exit. Keep the signal token untranslated."
+	},
+	"ui.console.tab.exit_code": {
+		"role": "status suffix on a surface tab",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The ended tab's status where the process reported an exit code: a labelled form of the code, so it cannot be mistaken for a count or an unread badge beside a live tab. Placeholder: code is the integer exit status, unformatted (no digit grouping). Compact enough for a tab in the strip."
+	}
+}

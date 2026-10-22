@@ -28,7 +28,7 @@ interface Model {
 		| { kind: "rows"; rows: Array<{ text: string; title: string }> }
 		| {
 				kind: "notice";
-				notice: "error" | "hint" | "empty" | "no_match";
+				notice: "error" | "empty" | "no_match";
 				text: string;
 		  };
 	theme: Record<string, string>;
@@ -136,9 +136,10 @@ export function apply(model: Model): ReturnType<typeof measure> {
 			}
 			const text = document.createElement("span");
 			text.className = "lo-row-text";
-			// A URL is machine text and stays LTR even in an RTL chrome; a URL
-			// reversed by the bidi algorithm is a different string.
-			text.dir = "ltr";
+			// `auto`, not `ltr`: a URL's strong Latin bytes already resolve LTR,
+			// while a search sentence in Urdu must read right-to-left (design D5).
+			// Forcing LTR reversed the sentence in an RTL chrome.
+			text.dir = "auto";
 			text.textContent = row.text;
 			rowEl.append(text);
 			if (row.title) {

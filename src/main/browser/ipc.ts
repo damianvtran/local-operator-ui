@@ -1,7 +1,8 @@
 import { type BrowserWindow, type IpcMainInvokeEvent, ipcMain } from "electron";
 import { t } from "../../i18n";
 import {
-	ADDRESS_HISTORY_MAX_SESSION_ID_LENGTH,
+	ADDRESS_HISTORY_MAX_LIMIT,
+	ADDRESS_HISTORY_MAX_QUERY_LENGTH,
 	type AddressHistoryRequest,
 } from "../../shared/browser-address-history";
 import { trustedDesktopFrame } from "../desktop-transport";
@@ -97,6 +98,12 @@ export interface RegisterBrowserIpcOptions {
 	 * channel is not registered at all and the renderer's port latches off.
 	 */
 	addressOverlayProject?: (payload: unknown) => Promise<unknown>;
+	/**
+	 * S4b's product projection handler. Registered whenever the launch built a
+	 * product controller, independently of the probe gate: the product has no
+	 * environment variable to turn it on, so this channel is the only door.
+	 */
+	addressOverlayProduct?: (payload: unknown) => Promise<unknown>;
 	/** Ask the host to start again for this window (design round 1, D1a). Injected
 	 * rather than imported so this module does not reach back into `index.ts`'s
 	 * lifecycle; `index.ts` supplies the same `startBrowserHost` the app already
@@ -114,6 +121,13 @@ export interface RegisterBrowserIpcOptions {
  * one, and allowing it would store an attribution no scope comparison can match. */
 const CONTROL_CHARS = /[\p{Cc}]/u;
 
+/**
+ * S4b's product event channel (main -> owner renderer): a validated row click or
+ * a main-decided dismissal. Distinct from the dev-driver's event so a product
+ * launch never depends on, or exposes, the probe bridge.
+ */
+export const PRODUCT_ADDRESS_OVERLAY_EVENT = "browser-address-overlay-event";
+
 /** The channels this namespace owns, in one place so a test can enumerate them. */
 export const BROWSER_IPC_CHANNELS = [
 	"browser-state",
@@ -128,6 +142,7 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-close-tabs",
 	"browser-activate-tab",
 	"browser-address-history",
+	"browser-address-overlay-project",
 	"browser-navigate",
 	"browser-home",
 	"browser-reload",
@@ -370,13 +385,23 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		return host.setContentRect(contentRectOrNull(rect));
 	});
 
-	ipcMain.handle("browser-set-visible", (event, visible: unknown) => {
-		const host = authorize(event);
-		if (typeof visible !== "boolean") {
-			throw new Error("Visibility must be a boolean.");
-		}
-		return host.setViewVisible(visible);
-	});
+	ipcMain.handle(
+		"browser-set-visible",
+		(event, visible: unknown, ownPage: unknown) => {
+			const host = authorize(event);
+			if (typeof visible !== "boolean") {
+				throw new Error("Visibility must be a boolean.");
+			}
+			// The reason half of the report (S4a). Absent is "no reason given", which
+			// keeps every pre-S4a caller's meaning: a hide with no reason is an overlay
+			// hide and refuses shortcuts. A truthy non-boolean is refused rather than
+			// coerced: this fact decides whether the browser consumes the user's keys.
+			if (ownPage !== undefined && typeof ownPage !== "boolean") {
+				throw new Error("The view-hidden reason must be a boolean.");
+			}
+			return host.setViewVisible(visible, ownPage === true);
+		},
+	);
 
 	ipcMain.handle(
 		"browser-hand-over",
@@ -567,6 +592,21 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 			},
 		);
 	}
+	if (options.addressOverlayProduct) {
+		ipcMain.handle(
+			"browser-address-overlay-project",
+			(event, payload: unknown) => {
+				authorizeSender(event);
+				const project = options.addressOverlayProduct;
+				if (!project) {
+					throw new Error(
+						"address_overlay_unavailable: the overlay projection is not running.",
+					);
+				}
+				return project(payload);
+			},
+		);
+	}
 	if (options.addressOverlayProject) {
 		ipcMain.handle(
 			DEV_DRIVER_ADDRESS_OVERLAY_PROJECT,
@@ -599,10 +639,12 @@ export function unregisterBrowserIpc(): void {
 /**
  * The address-history request, validated at the boundary.
  *
- * The scope is a DISPLAY filter over tabs the user can already see, so it grants
- * nothing: `all` is the route's lens and the conversation object is the pane's.
- * A session id is bounded here as well as in the shared type, because the shared
- * type is erased at runtime.
+ * The scope is gone: the list is one list for the field, and half of it (the
+ * persistent store) is session-agnostic, so a display scope would describe only
+ * the tab rows and mislead about the rest. The query and limit are bounded here
+ * as well as in the shared type, because the shared type is erased at runtime:
+ * a query is a prefix the user typed, never a pattern, and an unbounded limit
+ * is an unbounded IPC payload.
  */
 function addressHistoryRequestOrThrow(value: unknown): AddressHistoryRequest {
 	if (!value || typeof value !== "object") {
@@ -611,33 +653,30 @@ function addressHistoryRequestOrThrow(value: unknown): AddressHistoryRequest {
 	const request = value as {
 		requestId?: unknown;
 		expectedTabId?: unknown;
-		scope?: unknown;
+		query?: unknown;
+		limit?: unknown;
 	};
 	const requestId = numberOrThrow(request.requestId, "requestId");
 	const expectedTabId = tabIdOrThrow(request.expectedTabId, "expectedTabId");
-	let scope: AddressHistoryRequest["scope"];
-	if (request.scope === "all") {
-		scope = "all";
-	} else if (
-		request.scope &&
-		typeof request.scope === "object" &&
-		typeof (request.scope as { sessionId?: unknown }).sessionId === "string"
-	) {
-		const sessionId = (request.scope as { sessionId: string }).sessionId.trim();
-		if (
-			!sessionId ||
-			sessionId.length > ADDRESS_HISTORY_MAX_SESSION_ID_LENGTH ||
-			CONTROL_CHARS.test(sessionId)
-		) {
-			throw new Error(
-				"The address history scope needs a valid conversation id.",
-			);
-		}
-		scope = { sessionId };
-	} else {
-		throw new Error("The address history scope is invalid.");
+	if (typeof request.query !== "string") {
+		throw new Error("The address history query must be a string.");
 	}
-	return { requestId, expectedTabId, scope };
+	const query = request.query;
+	if (
+		query.length > ADDRESS_HISTORY_MAX_QUERY_LENGTH ||
+		CONTROL_CHARS.test(query)
+	) {
+		throw new Error("The address history query is invalid.");
+	}
+	if (
+		typeof request.limit !== "number" ||
+		!Number.isSafeInteger(request.limit) ||
+		request.limit < 1 ||
+		request.limit > ADDRESS_HISTORY_MAX_LIMIT
+	) {
+		throw new Error("The address history limit is invalid.");
+	}
+	return { requestId, expectedTabId, query, limit: request.limit };
 }
 
 /**

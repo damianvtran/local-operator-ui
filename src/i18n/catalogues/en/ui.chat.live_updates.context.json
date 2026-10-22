@@ -1,0 +1,30 @@
+{
+	"ui.chat.live_updates.paused": {
+		"role": "persistent warning band above the composer when the live update stream has paused or degraded",
+		"tone": "plain, non-alarming statement of consequence; sentence case; full stop",
+		"length": "One short sentence.",
+		"note": "Says live updates are paused and that the view may be out of date - the consequence the reader can act on, never the transport mechanism (a frame byte budget). The band's button repaints from history; do not imply the conversation was lost or that rows are wrong.",
+		"placeholders": {}
+	},
+	"ui.chat.live_updates.reload": {
+		"role": "button label in the live-updates-paused band that repaints the conversation from history",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"length": "Three words.",
+		"note": "Named for what it does. It must not read as reconnect (the socket may still be open) and must not promise that anything was deleted or recovered.",
+		"placeholders": {}
+	},
+	"ui.chat.live_updates.reloading": {
+		"role": "status word while the live-updates-paused band's reload press is in flight",
+		"tone": "present-participle status, sentence case, ellipsis is shipped punctuation",
+		"length": "One word plus the ellipsis.",
+		"note": "Replaces the reload control only until a frame proves the view current. Preserve the ellipsis: it is the established in-flight cue in this composer band.",
+		"placeholders": {}
+	},
+	"ui.chat.live_updates.reload_failed": {
+		"role": "sentence in the live-updates-paused band after the reload control's press failed",
+		"tone": "plain statement plus a short remedy; sentence case; full stops",
+		"length": "Two short sentences.",
+		"note": "Says the reload did not happen and offers the one action that retries it (the band's own button). It must not claim the conversation is lost or that anything was deleted.",
+		"placeholders": {}
+	}
+}

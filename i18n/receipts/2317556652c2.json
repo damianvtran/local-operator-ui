@@ -1,0 +1,20 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "2317556652c2",
+  "locale": "es",
+  "status": "passed",
+  "namespace": "ui.console",
+  "sha256": {
+    "en": "c0aa99e935c874ff2bdbac467ca9278007d885efcd6aa4f6269e0d1132a975f9",
+    "target": "33443ffb9ecdc1a358375e162139ad1e440f61627e7d91b6411d62ffac8bbbed"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.console.ended.marker_detail",
+      "issue": "68 cells against the 51-cell English source (+33%), outside the es guide's documented 15-25% expansion band; the marker row is flex-wrap, so the cost is an extra line in a narrow pane rather than clipped text.",
+      "suggestion": "Esta terminal es de solo lectura. Selecciona el texto y cópialo. (64 cells, +25%)"
+    }
+  ]
+}
