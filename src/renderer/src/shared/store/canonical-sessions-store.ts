@@ -5474,7 +5474,10 @@ export function mergePersistedSession(
 	 * path) does hand it back; a payload that reached a tombstone without passing
 	 * through a live delete has no box to come home to any more.
 	 */
-	const drafts = draftsWithoutTombstonedPointers(merged.drafts, merged.forgotten);
+	const drafts = draftsWithoutTombstonedPointers(
+		merged.drafts,
+		merged.forgotten,
+	);
 	const next = drafts === merged.drafts ? merged : { ...merged, drafts };
 	const target = launchTarget();
 	if (target.kind === "session") {
@@ -7511,15 +7514,15 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					});
 			},
 			retireDraftsForSession: (sessionId) => {
+				/*
+				 * STAGED DRAFTS ONLY (`draft:…`). A `send:<id>` row is a send made FROM an
+				 * existing conversation, not a new-chat pointer: no press resolves it (it
+				 * is never `activeDraftKey`), and its retry line belongs to that
+				 * conversation's own pane (`paneDraftKey` by belonging). Retiring it would
+				 * only strip the failure's sentence from the pane the user is looking at,
+				 * so the reported class ends at the staged shape.
+				 */
 				for (const [key, draft] of Object.entries(get().drafts))
-					/*
-					 * STAGED DRAFTS ONLY (`draft:…`). A `send:<id>` row is a send made FROM an
-					 * existing conversation, not a new-chat pointer: no press resolves it (it
-					 * is never `activeDraftKey`), and its retry line belongs to that
-					 * conversation's own pane (`paneDraftKey` by belonging). Retiring it would
-					 * only strip the failure's sentence from the pane the user is looking at,
-					 * so the reported class ends at the staged shape.
-					 */
 					if (key.startsWith("draft:") && draft.sessionId === sessionId)
 						get().retireDraftSession(key);
 			},
