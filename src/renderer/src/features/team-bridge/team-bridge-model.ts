@@ -862,7 +862,20 @@ export type TeamBridgeTarget =
 /** One addressee of a draft: a person, or a person's chief of staff. */
 export type TeamBridgeRecipient =
 	| { kind: "human"; accountId: string; label: string }
-	| { kind: "agent"; accountId: string; endpointId: string; label: string };
+	| {
+			kind: "agent";
+			accountId: string;
+			endpointId: string;
+			/** What the picker and rail show (composed; never stored). */
+			label: string;
+			/**
+			 * The agent's own name (empty when it has none) and its owner's name,
+			 * so the create payload stores a NAME, not the composed display label
+			 * (`recipientMemberInput`). Absent on a hand-built recipient.
+			 */
+			agentName?: string;
+			ownerLabel?: string;
+	  };
 
 export function recipientKey(recipient: TeamBridgeRecipient): string {
 	return `${recipient.kind}:${recipient.accountId}`;
@@ -899,6 +912,14 @@ export function targetConversation(
 	}
 }
 
+/** "X (X)" collapses to "X"; any other label is returned unchanged. */
+function dedupedAgentLabel(label: string): string {
+	const twice = COMPOSED_LABEL.exec(label.trim());
+	return twice && nameKey(twice[1]) === nameKey(twice[2])
+		? twice[1].trim()
+		: label;
+}
+
 /**
  * The create request a draft's first send makes.
  *
@@ -907,12 +928,27 @@ export function targetConversation(
  * agent-capable exactly when a chief of staff is among them. Returns null for
  * an empty draft: there is no one to send to.
  */
-/** "X (X)" collapses to "X"; any other label is returned unchanged. */
-function dedupedAgentLabel(label: string): string {
-	const twice = COMPOSED_LABEL.exec(label.trim());
-	return twice && nameKey(twice[1]) === nameKey(twice[2])
-		? twice[1].trim()
-		: label;
+/**
+ * What an agent member's `display_label` is stored as.
+ *
+ * THE SERVER STORES THIS VERBATIM and every client reads it back, so it must be
+ * a NAME, never the composed display label: storing "Ben Tran's chief of
+ * staff" made the read path compose it AGAIN ("Ben Tran's chief of staff (Ben
+ * Tran)", review R1-1 on #1334). So: the agent's own name when it has one;
+ * otherwise the OWNER's name, which every reader already treats as "no agent
+ * name" (`storedAgentName`) and resolves from the directory, in the reader's
+ * own language. A recipient without those fields (hand-built) falls back to
+ * its label with a doubled "X (X)" collapsed.
+ */
+function storedAgentLabel(
+	recipient: Extract<TeamBridgeRecipient, { kind: "agent" }>,
+): string {
+	const owner = recipient.ownerLabel?.trim();
+	if (recipient.agentName !== undefined && owner) {
+		const agent = recipient.agentName.trim();
+		return agent !== "" && nameKey(agent) !== nameKey(owner) ? agent : owner;
+	}
+	return dedupedAgentLabel(recipient.label);
 }
 
 /**
@@ -929,9 +965,7 @@ export function recipientMemberInput(
 				account_id: recipient.accountId,
 				kind: "agent",
 				endpoint_id: recipient.endpointId,
-				// The server stores this verbatim, so a duplicated "X (X)" must
-				// never leave the client even if a caller composed one by hand.
-				display_label: dedupedAgentLabel(recipient.label).slice(0, 64),
+				display_label: storedAgentLabel(recipient).slice(0, 64),
 			}
 		: {
 				account_id: recipient.accountId,
@@ -970,6 +1004,8 @@ export function recipientCandidates(
 		kind: "agent",
 		accountId: chief.person.account_id,
 		endpointId: chief.endpointId,
+		agentName: chief.agentName,
+		ownerLabel: personDisplayLabel(chief.person),
 		label: composeChiefLabel(
 			chief.agentName,
 			personDisplayLabel(chief.person),
@@ -1233,6 +1269,11 @@ export function threadItems(
  *   message from the same recipients after success is a fresh draft only if
  *   the target is still a draft (in practice it is the conversation by then).
  */
+const INFLIGHT_CREATES = new WeakMap<
+	object,
+	Map<string, Promise<{ id: string; tenantId: string | undefined }>>
+>();
+
 export async function sendFirstMessage(args: {
 	draftKey: string;
 	input: NonNullable<ReturnType<typeof draftCreateInput>>;
@@ -1250,13 +1291,37 @@ export async function sendFirstMessage(args: {
 }): Promise<{ id: string; tenantId: string | undefined; posted: unknown }> {
 	let created = args.remembered.get(args.draftKey);
 	if (created === undefined) {
-		const response = await args.create(args.input);
-		if (!response.id) throw new Error("create returned no conversation id");
-		created = {
-			id: response.id,
-			tenantId: response.tenant_id ?? args.tenantId,
-		};
-		args.remembered.set(args.draftKey, created);
+		/*
+		 * TWO SENDS WHILE THE FIRST CREATE IS IN FLIGHT share ONE create (review
+		 * R1-3 on #1334): `remembered` is only written once a create resolves, so
+		 * a second press before that would create a second GROUP (groups are not
+		 * find-or-create). The in-flight promise is kept per draft, beside the
+		 * `remembered` map it belongs to, and dropped when it settles.
+		 */
+		let inflight = INFLIGHT_CREATES.get(args.remembered);
+		if (inflight === undefined) {
+			inflight = new Map();
+			INFLIGHT_CREATES.set(args.remembered, inflight);
+		}
+		let creating = inflight.get(args.draftKey);
+		if (creating === undefined) {
+			creating = args
+				.create(args.input)
+				.then((response) => {
+					if (!response.id) {
+						throw new Error("create returned no conversation id");
+					}
+					const made = {
+						id: response.id,
+						tenantId: response.tenant_id ?? args.tenantId,
+					};
+					args.remembered.set(args.draftKey, made);
+					return made;
+				})
+				.finally(() => inflight.delete(args.draftKey));
+			inflight.set(args.draftKey, creating);
+		}
+		created = await creating;
 	}
 	const posted = await args.post(created.id, {
 		clientRef: args.clientRef,
@@ -1311,6 +1376,8 @@ export type PendingSend = {
 	status: "sending" | "sent" | "failed";
 	/** The id the POST answered with, when it did. */
 	confirmedId?: string;
+	/** When the POST answered (ms); a read that lands after it holds the copy. */
+	sentAt?: number;
 };
 
 /** Sorts after every real seq (a seq is a safe integer far below this). */

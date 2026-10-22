@@ -985,14 +985,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											</>
 										)}
 									</div>
-								) : messageState === "loading" ? (
+								) : messageState === "loading" && messages.length === 0 ? (
 									<div className="flex items-center justify-center py-10">
 										<Spinner
 											size="sm"
 											label={t("ui.teamBridge.thread.loading")}
 										/>
 									</div>
-								) : messageState === "error" ? (
+								) : messageState === "error" && messages.length === 0 ? (
 									<p className="px-5 py-8 text-[13px] text-ink-muted">
 										{t("ui.teamBridge.thread.error")}
 									</p>
@@ -1353,6 +1353,8 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 							kind: "agent",
 							accountId: chief.person.account_id,
 							endpointId: chief.endpointId,
+							agentName: chief.agentName,
+							ownerLabel: personDisplayLabel(chief.person),
 							label: composeChiefLabel(
 								chief.agentName,
 								personDisplayLabel(chief.person),
@@ -1413,11 +1415,6 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				row.clientRef === clientRef ? { ...row, ...patch } : row,
 			),
 		);
-
-	const releasePending = (clientRef: string) => {
-		attempts.current.delete(clientRef);
-		setPending((rows) => rows.filter((row) => row.clientRef !== clientRef));
-	};
 
 	/* The key of the unsent draft on screen; null when a thread exists. */
 	const draftKeyOf = (): string | null => {
@@ -1495,6 +1492,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				conversationId: outcome.id,
 				tenantId: outcome.tenantId,
 				confirmedId: outcome.confirmedId,
+				sentAt: Date.now(),
 			});
 			/*
 			 * Move to the new group only if the reader is STILL on the draft that
@@ -1512,10 +1510,6 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			} catch {
 				return;
 			}
-			// An existing thread has now been re-read: its confirmed list holds the
-			// message, so the pending copy is released even if no rule matched it
-			// (a server that rewrites the body). Nothing is left "sending" forever.
-			if (conversationId !== null) releasePending(clientRef);
 		};
 		attempts.current.set(clientRef, attempt);
 		return attempt();
@@ -1544,19 +1538,21 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				(row) => row.clientRef,
 			),
 		);
-		// A row from a NEW thread is released once that thread's own read (a
-		// fresh query, so it cannot be stale) has landed: whatever the server
-		// stored is in `confirmed`, so a pending copy must not outlive it.
-		const threadRead =
-			selected !== null && messages.isSuccess && !messages.isFetching;
+		// A SENT row is released once a read that started after its POST has
+		// landed on its thread (the send refetches, and a refetch cancels an
+		// older in-flight poll): whatever the server stored is then in
+		// `confirmed`, so a pending copy must not outlive it, even if the server
+		// rewrote the body and no matching rule claimed it (review R1-4/R1-6).
+		const readAfter = (row: PendingSend) =>
+			row.status === "sent" &&
+			row.sentAt !== undefined &&
+			!messages.isFetching &&
+			messages.dataUpdatedAt > row.sentAt &&
+			row.conversationId === selected?.id;
 		const claimed = threadPending.filter(
-			(row) =>
-				!open.has(row.clientRef) ||
-				(threadRead &&
-					row.status === "sent" &&
-					row.draftKey !== null &&
-					row.conversationId === selected?.id),
+			(row) => !open.has(row.clientRef) || readAfter(row),
 		);
+
 		if (claimed.length === 0) return;
 		for (const row of claimed) attempts.current.delete(row.clientRef);
 		const drop = new Set(claimed.map((row) => row.clientRef));

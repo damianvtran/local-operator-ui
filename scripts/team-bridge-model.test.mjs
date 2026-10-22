@@ -1469,3 +1469,114 @@ test("performSend: no thread and no draft to create is a failure, not a silent d
 	const rig = sendRig({ draftKey: null, input: null });
 	assert.deepEqual(await model.performSend(rig.args), { ok: false });
 });
+
+// ---------------------------------------------------------------------------
+// Review round 1 on #1334: R1-1 (round trip) and R1-3 (overlapping sends).
+// ---------------------------------------------------------------------------
+
+test("R1-1: what the create payload STORES reads back as the same single label (compose → store → read)", () => {
+	for (const agentName of ["Aida", "Ben Tran", ""]) {
+		const people = [
+			ben(
+				agentName
+					? { endpoint_id: "e1", name: agentName, state: "active" }
+					: { endpoint_id: "e1", name: "", state: "active" },
+			),
+		];
+		const [, chief] = model.recipientCandidates(people, "acct_self", chiefCopy);
+		const shown = chief.label;
+		const stored = model.recipientMemberInput(chief).display_label;
+		// Never the composed display label, so the read path cannot compose it twice.
+		assert.notEqual(stored, "Ben Tran's chief of staff");
+		assert.notEqual(stored, "Aida (Ben Tran)");
+		const read = model.participantLabel(
+			{ account_id: "acct_ben", kind: "agent", display_label: stored },
+			people,
+			chiefCopy,
+		);
+		assert.equal(read, shown, `agent name ${JSON.stringify(agentName)}`);
+		// With the directory unavailable the stored NAME is all there is: it
+		// never reads back as a doubled or composed label.
+		const offline = model.participantLabel(
+			{ account_id: "acct_ben", kind: "agent", display_label: stored },
+			[],
+			chiefCopy,
+		);
+		assert.equal(offline, stored);
+	}
+	assert.equal(
+		model.recipientMemberInput(
+			model.recipientCandidates(
+				[ben({ endpoint_id: "e1", name: "Aida", state: "active" })],
+				"acct_self",
+				chiefCopy,
+			)[1],
+		).display_label,
+		"Aida",
+	);
+});
+
+test("R1-3: two sends while the first create is in flight create ONE conversation", async () => {
+	let resolveCreate;
+	let creates = 0;
+	const posts = [];
+	const remembered = new Map();
+	const base = {
+		draftKey: "k",
+		input: groupInput,
+		tenantId: "tnt_1",
+		remembered,
+		create: () => {
+			creates += 1;
+			return new Promise((resolve) => {
+				resolveCreate = () => resolve({ id: "bcv_one", tenant_id: "tnt_1" });
+			});
+		},
+		post: async (id, message) => {
+			posts.push([id, message.clientRef]);
+			return {};
+		},
+	};
+	const first = model.sendFirstMessage({
+		...base,
+		body: "a",
+		clientRef: "ref-a",
+	});
+	const second = model.sendFirstMessage({
+		...base,
+		body: "b",
+		clientRef: "ref-b",
+	});
+	await Promise.resolve();
+	resolveCreate();
+	await Promise.all([first, second]);
+	assert.equal(creates, 1, "one create for one draft");
+	assert.deepEqual(
+		posts.map((p) => p[0]),
+		["bcv_one", "bcv_one"],
+	);
+	assert.deepEqual(posts.map((p) => p[1]).sort(), ["ref-a", "ref-b"]);
+});
+
+test("R1-3: a create that fails for overlapping sends fails both and leaves nothing remembered", async () => {
+	const remembered = new Map();
+	const base = {
+		draftKey: "k",
+		input: groupInput,
+		tenantId: "tnt_1",
+		remembered,
+		create: async () => {
+			throw new Error("403");
+		},
+		post: async () => ({}),
+	};
+	const results = await Promise.allSettled([
+		model.sendFirstMessage({ ...base, body: "a", clientRef: "ref-a" }),
+		model.sendFirstMessage({ ...base, body: "b", clientRef: "ref-b" }),
+	]);
+	assert.deepEqual(
+		results.map((r) => r.status),
+		["rejected", "rejected"],
+	);
+	assert.equal(remembered.size, 0);
+});
