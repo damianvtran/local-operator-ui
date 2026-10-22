@@ -322,15 +322,30 @@ export function chronological(
 }
 
 /**
- * Join the caller's ACTIVE memberships with the account aggregate's per-org
- * counts.
+ * The organizations the page may scope to and label rows with, joined with the
+ * account aggregate's per-org counts.
  *
- * Memberships remain the source of names and roles; the aggregate only supplies
- * numbers keyed by tenant id. An organization the aggregate did not mention (a
- * read that raced a membership change, or an ineligible org) renders with a
+ * THE HUB'S TENANT LIST IS AUTHORITATIVE when the status payload carries one
+ * (`hubTenants`, the bridge status `status.tenants[]`). It is the bridge's own
+ * answer to "which tenants does this account's Team Bridge span", and the
+ * conversations page is drawn from that same server. Radient memberships are a
+ * separate read with its own lag and its own failures; filtering by them
+ * silently dropped every row of a tenant the hub listed but the memberships
+ * read lacked, emptying the merged rail (F6 on #1314). So with a hub list:
+ * every hub tenant is an organization, in hub order; memberships contribute a
+ * name or role only; a membership the hub does not list is not an organization
+ * (the bridge has no conversations there to show). Names prefer the hub's
+ * `tenant_name`, then the membership's, then the tenant id — a neutral,
+ * distinct label, never "Unknown organization" for a tenant the hub vouches for.
+ *
+ * Without a hub list (status not answered yet, or a backend that predates it)
+ * the ACTIVE memberships stay the source, as before.
+ *
+ * Counts are keyed by tenant id. An organization the aggregate did not mention
+ * (a read that raced a membership change, or an ineligible org) renders with a
  * zero rather than disappearing: the switcher is a place to choose a scope, and
  * hiding an org because its count is unknown would make the menu disagree with
- * the memberships it is built from.
+ * the list it is built from.
  */
 export function organizationOptions(
 	memberships: ReadonlyArray<{
@@ -343,18 +358,47 @@ export function organizationOptions(
 		tenant_id: string;
 		unread: number;
 	}> = [],
+	hubTenants?: ReadonlyArray<{
+		tenant_id: string;
+		tenant_name?: string;
+	}> | null,
 ): TeamBridgeOrganization[] {
 	const counts = new Map(
 		unreadOrganizations.map((row) => [row.tenant_id, row.unread]),
 	);
-	return memberships
-		.filter((membership) => membership.status === "active")
-		.map((membership) => ({
+	const active = memberships.filter(
+		(membership) => membership.status === "active",
+	);
+	if (!hubTenants) {
+		return active.map((membership) => ({
 			tenantId: asTeamBridgeTenantId(membership.tenant_id),
 			name: membership.tenant_name,
 			role: membership.role,
 			unread: counts.get(membership.tenant_id) ?? 0,
 		}));
+	}
+	const byTenant = new Map(
+		active.map((membership) => [membership.tenant_id, membership]),
+	);
+	const seen = new Set<string>();
+	const organizations: TeamBridgeOrganization[] = [];
+	for (const tenant of hubTenants) {
+		// One switcher row per tenant even if a payload repeats one.
+		if (seen.has(tenant.tenant_id)) continue;
+		seen.add(tenant.tenant_id);
+		const membership = byTenant.get(tenant.tenant_id);
+		organizations.push({
+			tenantId: asTeamBridgeTenantId(tenant.tenant_id),
+			name:
+				tenant.tenant_name?.trim() ||
+				// The memberships read is cast, not parsed: tolerate a missing name.
+				membership?.tenant_name?.trim() ||
+				tenant.tenant_id,
+			role: membership?.role ?? "",
+			unread: counts.get(tenant.tenant_id) ?? 0,
+		});
+	}
+	return organizations;
 }
 
 /**
@@ -410,12 +454,42 @@ export function mergedConversationOrder(
 }
 
 /**
+ * The hub's tenant list from the bridge status payload, or null when the
+ * status has not answered or carries none (an older backend, a signed-out
+ * account). Null is what makes `organizationOptions` fall back to memberships,
+ * so an absent list must never be coerced to `[]`.
+ */
+export function hubTenantList(
+	status: Pick<AgentMessagesStatus, "status"> | null | undefined,
+): NonNullable<AgentMessagesStatus["status"]>["tenants"] | null {
+	return status?.status?.tenants ?? null;
+}
+
+/**
+ * Whether the organization list the merged rail filters by is still loading or
+ * has failed.
+ *
+ * With a hub tenant list the list is complete without memberships, so their
+ * loading or failure must not hold or fail the rail; that is what left F6's
+ * rail stuck or erroring on a read it no longer depends on. Without one the
+ * memberships ARE the list, so their state is the list's state.
+ */
+export function organizationsReadState(
+	hubTenants: readonly unknown[] | null,
+	memberships: { isLoading: boolean; isError: boolean },
+): { pending: boolean; failed: boolean } {
+	if (hubTenants !== null) return { pending: false, failed: false };
+	return { pending: memberships.isLoading, failed: memberships.isError };
+}
+
+/**
  * The organization name a conversation row wears in the merged view.
  *
- * `null` means the conversation's tenant is not in the caller's active
- * memberships. The page treats that as "unknown org" and refuses to render its
- * thread: a message shown under the wrong organization would be worse than a
- * row that waits for the membership read.
+ * `null` means the conversation's tenant is not among `organizations` (the
+ * hub's tenant list, or the active memberships when the hub sent none — see
+ * `organizationOptions`). The page treats that as "unknown org" and refuses to
+ * render its thread: a message shown under the wrong organization would be
+ * worse than a row that waits for the organization list to name it.
  */
 export function conversationOrganizationName(
 	conversation: Pick<TeamBridgeConversation, "tenant_id">,
@@ -432,10 +506,16 @@ export function conversationOrganizationName(
  * The rows a scope actually renders.
  *
  * A single-org scope keeps the server's order as-is. The merged scope orders
- * newest-first and DROPS rows whose organization is not in the active
- * memberships: every merged row is labelled with its org, and a row that cannot
- * be labelled is a row whose thread must not open. The container and the view
- * both call this, so the selection can never land on a row the rail is hiding.
+ * newest-first and DROPS rows whose organization is not in `organizations`:
+ * every merged row is labelled with its org, and a row that cannot be labelled
+ * is a row whose thread must not open. The container and the view both call
+ * this, so the selection can never land on a row the rail is hiding.
+ *
+ * `organizations` must come from the hub's tenant list whenever the status
+ * payload has one (`organizationOptions(..., hubTenants)`), NOT from Radient
+ * memberships alone: the memberships read can lack a tenant the hub serves,
+ * and filtering by it emptied the merged rail silently (F6 on #1314). A tenant
+ * the hub does not list still stays hidden here.
  */
 export function visibleConversationRows(
 	conversations: readonly TeamBridgeConversation[],
