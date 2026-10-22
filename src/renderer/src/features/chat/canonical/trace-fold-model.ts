@@ -856,6 +856,39 @@ export function foldRuns(
 		/** Receipts may bridge calls but never contribute action arithmetic. */
 		isReceipt?: (row: Row) => boolean;
 		receiptSummaryOf?: (rows: Row[]) => string[];
+		/**
+		 * Whether the turn this list belongs to is STILL BEING WRITTEN.
+		 *
+		 * It exists for one rule, `latchedFoldIds`: a live run's fold must not be
+		 * dissolved by the next call. See that option's note. Absent (the settled
+		 * default, and every pure test) keeps the threshold-only behaviour exactly.
+		 *
+		 * Named `liveTurn`, not `live`: `FoldGroup.live` is the condensed header's
+		 * live clause, and one word for two different facts is how a later reader
+		 * wires the wrong one in (agent review round 1, F5).
+		 */
+		liveTurn?: boolean;
+		/**
+		 * Ids of rows this pane has ALREADY PAINTED folded, while the turn is live.
+		 *
+		 * WHY A LATCH AND NOT ANOTHER THRESHOLD (operator report, 2026-10-21: job
+		 * messages and responses "alternate between forcing the tool group open and
+		 * then closing it back again"). `FOLD_MIN_RECEIPTS` licenses a fold on the
+		 * run's TRAILING receipt stretch, which is positional by design (the head-pair
+		 * negatives below must stay ordinary rows). A positional rule is not
+		 * monotonic under append: `[t1, j1, j2]` folds, `[t1, j1, j2, t2]` does not
+		 * (the new call ends the stretch), `[t1, j1, j2, t2, j3, j4]` folds again - so
+		 * every job response close to a call made the group open and close in turn,
+		 * with no reader action.
+		 *
+		 * The latch is the one fact the pure threshold cannot carry: this run was
+		 * already shown to the reader as a fold. While the turn is live it keeps
+		 * folding, so the group can only ever GROW; at settle the latch is no longer
+		 * consulted and the final shape comes from the final rows alone, which is why
+		 * every settled negative in `trace-fold-model.test.mjs` still holds (the
+		 * head-pair shapes are judged on the completed list, where no latch applies).
+		 */
+		latchedFoldIds?: ReadonlySet<string>;
 	},
 ): FoldGroup[] {
 	const groups: FoldGroup[] = [];
@@ -907,9 +940,20 @@ export function foldRuns(
 		const trailingReceipts = options.isReceipt
 			? trailingReceiptStretch(run, options.isReceipt)
 			: 0;
+		/*
+		 * THE LIVE LATCH (see `latchedFoldIds`). A run this pane has already painted
+		 * folded keeps folding while the turn is being written, so a call arriving
+		 * after a receipt wall cannot dissolve the group it belongs to. Settled
+		 * passes never consult it.
+		 */
+		const latchedHere =
+			options.liveTurn === true &&
+			options.latchedFoldIds !== undefined &&
+			run.some((row) => options.latchedFoldIds?.has(row.record.id) === true);
 		if (
 			actions.length >= FOLD_MIN_ACTIONS ||
-			trailingReceipts >= FOLD_MIN_RECEIPTS
+			trailingReceipts >= FOLD_MIN_RECEIPTS ||
+			latchedHere
 		) {
 			/*
 			 * THE ACTION SIDE OF A MIXED LINE IS A COUNT, NOT A SENTENCE.
@@ -974,6 +1018,41 @@ export function foldRuns(
 	}
 	flush();
 	return groups;
+}
+
+/**
+ * The next live fold latch: what was latched before, pruned to the STORE's live
+ * rows, plus every run this pass painted folded.
+ *
+ * WHY IT IS A UNION AND NOT A REBUILD (agent review round 1, F1). The transcript
+ * window is not the conversation: a snap, a widened page or a filter can paint a
+ * frame whose slice omits a run the pane has already shown folded. Rebuilding
+ * the set from that slice dropped the run's ids, so the rows came back on the
+ * next full pass and re-folded - the same open/close pair through another door.
+ * Retaining across the shrink and pruning against `held` (the STORE's ids) is
+ * what keeps the latch both sticky and bounded.
+ *
+ * `held` is asked per LATCHED id, never materialised as a set of the whole store
+ * (agent review round 2): this runs inside a memo that re-runs on every streamed
+ * token, and building a 20k-entry id set per token measured 0.677 ms against
+ * 0.013 ms at 500 records - work proportional to the conversation for a fact
+ * about a handful of rows. The transcript's own id index is already a `Map`, so
+ * it answers `.has` directly.
+ *
+ * Pure so the trade is arithmetic rather than a mount: the component owns the
+ * ref, this owns the rule.
+ */
+export function latchFoldedRuns(
+	previous: ReadonlySet<string>,
+	held: { has(id: string): boolean },
+	runs: readonly FoldGroup[],
+): Set<string> {
+	const next = new Set<string>();
+	for (const id of previous) if (held.has(id)) next.add(id);
+	for (const group of runs)
+		if (group.kind === "run")
+			for (const row of group.rows) next.add(row.record.id);
+	return next;
 }
 
 /**

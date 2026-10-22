@@ -31,7 +31,7 @@ import {
 	VolumeX,
 	X,
 } from "lucide-react";
-import type { FC } from "react";
+import type { FC, ReactNode } from "react";
 import {
 	Fragment,
 	useCallback,
@@ -126,6 +126,14 @@ import {
  */
 
 export interface BrowserTabStripProps {
+	/** The S4b address trigger, page menu and (when waiting) approvals control.
+	 * Rendered at the trailing edge, before the new-tab control; the strip owns
+	 * the row geometry, the surface owns these controls. */
+	trailing?: ReactNode;
+	/** True while the address popout covers the strip: every control here must
+	 * stop being focusable and clickable, or Tab would walk tabs underneath a
+	 * row the user cannot see. */
+	chromeInert?: boolean;
 	/** The host's OWN list — the pane's strip is scoped to a conversation, the route's is
 	 * everything — and it is the list every count in the band is taken from (design R5 as
 	 * the operator ruled it in review round 2, settling U7 against round 1's A3).
@@ -441,6 +449,8 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	onTabAction,
 	onHandOver,
 	onRevokeHandOver,
+	trailing,
+	chromeInert = false,
 }) => {
 	useI18nLocale();
 	const copy = {
@@ -504,6 +514,10 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	const newChord = chordCaption("primary+t", isMac ? "mac" : "linux");
 	const closeChord = chordCaption("primary+w", isMac ? "mac" : "linux");
 	const [overflowOpen, setOverflowOpen] = useState(false);
+	const stripRootRef = useRef<HTMLDivElement | null>(null);
+	useEffect(() => {
+		stripRootRef.current?.toggleAttribute("inert", chromeInert);
+	}, [chromeInert]);
 	const scrollerRef = useRef<HTMLDivElement | null>(null);
 	/** The pinned control's own element, so dismissing the list hands focus back to the
 	 * control that opened it — the same contract the actions menu has with its trigger
@@ -937,9 +951,12 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 
 	return (
 		<div
-			// `border-control`, not `hairline`: this is the strip's only boundary
-			// against the page area, so it is structural and carries a 3:1 floor
-			// (design 11.2). It is also the rule the active tab's notch interrupts.
+			ref={stripRootRef}
+			// S4b: ONE continuous hairline under every tab. The page now begins at
+			// this pixel, so a `border-control` boundary would read as a control
+			// edge over content, and the active tab no longer merges into an
+			// elevated toolbar (there is none): its fill plus x/top border is the
+			// whole affordance.
 			/*
 			 * A CHROME BAND, not a well and not a pane: on glass it wears the app
 			 * sidebar's own paint (`surface` at its floor, raw over the desktop), and
@@ -947,7 +964,14 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 			 * only nothing selects it and the flat `sunken` track is unchanged.
 			 */
 			data-glass-region="chrome"
-			className="flex flex-col border-control border-b bg-sunken"
+			className={cn(
+				"flex flex-col border-hairline border-b bg-sunken",
+				// The popout is opaque and covers this band; `invisible` is what
+				// stops the trailing controls and `+` painting THROUGH it (measured
+				// in the S4b owner frame: the trigger/host and plus sat over the
+				// field, because inert hides interaction but not pixels).
+				chromeInert && "invisible",
+			)}
 			role="tablist"
 			aria-label={t("ui.browser.browser_tab_strip.browser_tabs")}
 			data-tour-tag="browser-tab-strip"
@@ -1787,19 +1811,6 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											data-tour-tag="browser-tab-drop-marker"
 										/>
 									)}
-									{active && (
-										// THE NOTCH. The strip's rule runs along the whole band, and the
-										// active tab paints the page's own ground across its own bottom
-										// edge so the tab and the content area read as one sheet. It is
-										// one pixel of `elevated` — the same role the tab's fill and the
-										// content area use — and it is why the strip keeps its own
-										// `border-b`: the rule continues everywhere except here.
-										<span
-											aria-hidden
-											data-tour-tag="browser-tab-notch"
-											className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-elevated"
-										/>
-									)}
 								</div>
 							</Fragment>
 						);
@@ -1890,6 +1901,42 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 							</span>
 						</Button>
 					</Tooltip>
+				)}
+				{/* THE TRAILING CLUSTER HOLDS THE RIGHT EDGE (design round 1, D1). It used
+				    to follow the last tab, so the site/address trigger and its menu moved
+				    with the tab count — the page menu sat ~490px further left at rest than
+				    when the popout replaced the strip. `ml-auto` parks the cluster against
+				    the far edge and the leading hairline separates it from the tab run;
+				    the new-tab control stays outside it, because `+` belongs to the tabs,
+				    not to the origin. */}
+				{trailing != null && (
+					/*
+					 * THE RULE HAS ITS OWN GAP, not the cluster's border (design round 2,
+					 * D10). As `border-l` on the cluster it sat flush against the last
+					 * control in the run — the overflow count chip — and read as a strike
+					 * through the chip's right edge in the tabs-fill and narrow frames.
+					 *
+					 * THE MARGIN IS 16px BECAUSE THE CHIP IS WIDER THAN ITS BUTTON (QA round
+					 * 3, Q5). The count chip protrudes 7px past the 28px overflow button's
+					 * right edge, so `ml-2`'s 8px left margin left the chip only 1px from
+					 * the rule — measured, chipRight 446 vs ruleLeft 447 at the 560px strip
+					 * and 1266 vs 1267 when filled. The margin is the whole distance from
+					 * that button to the rule, so `ml-4` keeps 16 - 7 = 9px of clearance at
+					 * both widths. Fitting the chip inside the button would widen the
+					 * control by ~16px and take that width from the tab run; moving the
+					 * rule costs 8px, and the trailing cluster already owns the right edge
+					 * (D1).
+					 */
+					<div
+						className="ml-auto flex shrink-0 items-center"
+						data-tour-tag="browser-strip-trailing"
+					>
+						<span
+							aria-hidden
+							className="ml-4 w-px shrink-0 self-stretch bg-hairline"
+						/>
+						<div className="flex items-center pl-1">{trailing}</div>
+					</div>
 				)}
 				{tabs.length > 0 && (
 					<Tooltip

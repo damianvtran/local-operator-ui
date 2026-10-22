@@ -189,6 +189,7 @@
 	"ui.browser.browser_url_bar.home_destination": "ابتدائی صفحہ — آغاز کے خالی صفحے پر جائیں",
 	"ui.browser.browser_url_bar.latest_download": "ڈاؤن لوڈ فولڈر کھولیں — {name} وہاں محفوظ ہوئی",
 	"ui.browser.browser_url_bar.newest_download": "ڈاؤن لوڈ فولڈر کھولیں — وہاں سب سے حال میں {name} محفوظ ہوئی ({count, plural, other {اس سیشن میں {count, number, ::group-off}}})",
+	"ui.browser.browser_url_bar.page_menu": "صفحے کے اختیارات",
 	"ui.browser.browser_url_bar.page_zoom_reset": "صفحے کا زوم {zoom, number, ::group-off}%، 100% پر ری سیٹ کریں",
 	"ui.browser.browser_url_bar.print_page": "صفحہ پرنٹ کریں",
 	"ui.browser.browser_url_bar.reload": "دوبارہ لوڈ کریں",

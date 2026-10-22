@@ -251,6 +251,14 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/browser-chrome-s4b-probe.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to measure S4b's product chrome; the build carries the live PostHog key, so this unguarded product path needs the telemetry switch",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
 		"scripts/browser-address-overlay-probe.mjs",
 		"spawn",
 		1,

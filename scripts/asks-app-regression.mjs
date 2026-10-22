@@ -22,6 +22,15 @@ import { promisify } from "node:util";
 import { ASK_SESSION_IDS, startAsksAppFixture } from "./asks-app-fixture.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 const execute = promisify(execFile);
+// Hosted macOS arm64 has 7 GB RAM, but Node 22 defaults this isolated builder
+// to ~2 GB: run 39671897399 aborted in control-renderer chunk generation at
+// that V8 limit. Bound only this serial build to 4 GiB; global NODE_OPTIONS
+// would also enlarge Electron/fixture processes and defeat their own budgets.
+// This is a V8 heap allowance, not a replacement for process-group ceilings.
+export const CONTROL_BUILD_NODE_ARGS = [
+	"--max-old-space-size=4096",
+	"--input-type=module",
+];
 /**
  * The pristine revision the control leg renders: the BASE THE CANDIDATE WAS BUILT
  * FROM, resolved per run rather than fixed at one commit.
@@ -332,7 +341,7 @@ async function prepareControl(root, output) {
 		? "renderer"
 		: "main, c.config.preload, c.config.renderer";
 	const code = `import {resolveConfig} from 'electron-vite';import {build} from 'vite';const c=await resolveConfig({},'build','production');for (const cfg of [c.config.${targets}]) await build(cfg);`;
-	await execute(process.execPath, ["--input-type=module", "-e", code], {
+	await execute(process.execPath, [...CONTROL_BUILD_NODE_ARGS, "-e", code], {
 		cwd: root,
 		env: { ...process.env, LOCAL_OPERATOR_UI_NO_BYTECODE: "true" },
 		// A rebuild adds two bundles (main, preload) to the renderer build.

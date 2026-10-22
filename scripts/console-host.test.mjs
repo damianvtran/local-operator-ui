@@ -4709,7 +4709,11 @@ test("a signalled exit records the signal, not a clean zero (Q-3)", async () => 
 
 test("quitting does not raise the completion seam for the terminals it closes (M-1)", async () => {
 	let completions = 0;
-	const { host, spawned } = makeHost({ onExit: () => (completions += 1) });
+	const { host, spawned } = makeHost({
+		onExit: () => {
+			completions += 1;
+		},
+	});
 	host.create({
 		sessionId: "session-quit-seam",
 		origin: "user",
