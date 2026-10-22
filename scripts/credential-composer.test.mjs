@@ -326,7 +326,7 @@ const bundle = await build({
 				CREDENTIAL_EMPTY_SPAN_NOTICE,
 				CREDENTIAL_KEY_ALPHABET,
 				CREDENTIAL_TYPING_NOTICE,
-				HELD_TAKEN_BY,
+				CREDENTIAL_DISCARDED_NOTICE,
 				MASK_CELL,
 				unredactedNotice,
 			} from "./src/renderer/src/features/chat/components/credential-capture.ts";
@@ -370,7 +370,7 @@ const {
 	CREDENTIAL_EMPTY_SPAN_NOTICE,
 	CREDENTIAL_KEY_ALPHABET,
 	CREDENTIAL_TYPING_NOTICE,
-	HELD_TAKEN_BY,
+	CREDENTIAL_DISCARDED_NOTICE,
 	MASK_CELL,
 	unredactedNotice,
 	ASK_ITEM_SELECTOR,
@@ -1993,9 +1993,9 @@ test("a minted pill is persisted, and the value behind it never is", async () =>
  * SECRET IN THE DOCUMENT" cases) — so each could only pass by reconstructing the leak the
  * fix closes. What they pinned about the EMPTY-span cancel (the inert token, the caret, the
  * no-re-arm rule) is still pinned by the empty-span cases above, which a discard now
- * reaches as well. The held-press / restored-run rules these exercised are now reachable
- * only from a draft persisted before the fix; that machinery is a follow-up cleanup, not
- * part of this change. Retired, by name:
+ * reaches as well. The held-press / restored-run machinery these exercised was keyed on
+ * a cancel record with restored characters, which no cancel produces any more, so it was
+ * unreachable and has been deleted (agent review round 1, R1-2). Retired, by name:
  * - a cancel that EXPOSED characters is HELD on Enter, never sent and never an argument (operator requirement)
  * - an Esc-cancelled credential's words are never taken as the command's argument (operator requirement)
  * - an edit retires the disclosure, and the draft never carries a count it does not describe
@@ -2289,7 +2289,7 @@ test("the notice is tied to the field, sits ABOVE the composer box in the band's
 	);
 	assert.equal(
 		frame.notice(),
-		"masked as you type — Enter turns it into a pill, Esc cancels",
+		"masked as you type — Enter makes a pill, Esc twice discards",
 	);
 	assert.ok(
 		!/\bhidden\b/.test(idle.className),
@@ -2590,7 +2590,7 @@ test("a draft persisted by the pre-fix unredact still discloses its characters o
  * secret.
  */
 const DUMMY_SECRET = "dummy-not-a-secret-123";
-const HELD_NOTICE = /still masked — Esc again discards it/;
+const HELD_NOTICE = /^Esc again discards it — still masked/;
 
 const persistedRaw = () =>
 	window.localStorage.getItem("conversation-input-store") ?? "";
@@ -2720,6 +2720,66 @@ test("after a discard, the words typed past the inert token are the operator's s
 		assert.ok(!JSON.stringify(frame.sent).includes(DUMMY_SECRET));
 		assert.ok(!persistedRaw().includes(DUMMY_SECRET));
 	}
+});
+
+test("a hold ends with its capture: a later identical capture is not pre-held (agent review round 1, R1-1)", async () => {
+	/*
+	 * The hold is keyed on (buffer, value). Left standing after the mint, a second
+	 * capture that reached the same buffer and value lit the held sentence before
+	 * any Esc, and its FIRST Esc then discarded with no warning (reproduced by the
+	 * round-1 reviewer). The hold must end wherever the capture leaves typing.
+	 */
+	const frame = await mount({ conversationId: "conv-esc-stale" });
+	await openCapture(frame);
+	await type(frame, DUMMY_SECRET);
+	await esc(frame);
+	assert.match(frame.notice(), HELD_NOTICE);
+	await enter(frame);
+	assert.equal(frame.value(), `[Credential #1, ${DUMMY_SECRET.length} chars] `);
+	// Clear the box and re-enter the same secret in the same shape.
+	await act(async () => {
+		writeValue(frame.textarea(), "", 0);
+	});
+	await settle();
+	await openCapture(frame);
+	await type(frame, DUMMY_SECRET);
+	assert.equal(
+		frame.notice(),
+		CREDENTIAL_TYPING_NOTICE,
+		"a fresh capture opens in the typing state, not pre-held",
+	);
+	await esc(frame);
+	assert.equal(
+		frame.value(),
+		`/credential ${MASK_CELL.repeat(DUMMY_SECRET.length)}`,
+		"its first Esc holds rather than discards",
+	);
+	assert.match(frame.notice(), HELD_NOTICE);
+});
+
+test("the second Esc says the value was discarded, and the next edit retires the line (design review round 1, D2)", async () => {
+	const frame = await mount({ conversationId: "conv-esc-discarded-line" });
+	await openCapture(frame, { prose: "deploy with " });
+	await type(frame, DUMMY_SECRET);
+	await esc(frame);
+	await esc(frame);
+	assert.equal(frame.value(), "deploy with /credential ");
+	assert.equal(frame.notice(), CREDENTIAL_DISCARDED_NOTICE);
+	assert.ok(
+		!frame.notice().includes(String(DUMMY_SECRET.length)),
+		"the line names no length",
+	);
+	await type(frame, "x");
+	assert.notEqual(
+		frame.notice(),
+		CREDENTIAL_DISCARDED_NOTICE,
+		"an edit retires it",
+	);
+	// An EMPTY-span Esc discarded nothing, so it owes no such line.
+	const empty = await mount({ conversationId: "conv-esc-empty-no-line" });
+	await openCapture(empty);
+	await esc(empty);
+	assert.notEqual(empty.notice(), CREDENTIAL_DISCARDED_NOTICE);
 });
 
 test("leaving a held capture by switch or reload persists no plaintext", async () => {
