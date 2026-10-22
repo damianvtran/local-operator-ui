@@ -1,0 +1,6 @@
+{
+	"ui.chat.live_updates.paused": "براہ راست اپ ڈیٹس معطل ہیں، اس لیے یہ گفتگو پرانی ہو سکتی ہے۔",
+	"ui.chat.live_updates.reload": "تاریخچہ سے دوبارہ لوڈ کریں",
+	"ui.chat.live_updates.reloading": "دوبارہ لوڈ ہو رہا ہے…",
+	"ui.chat.live_updates.reload_failed": "یہ گفتگو دوبارہ لوڈ نہیں ہو سکی۔ دوبارہ کوشش کریں۔"
+}

@@ -309,6 +309,8 @@ export function ChatSessionStatus({
 	 * asked for an icon on this code (see `SubagentRunningMark`).
 	 */
 	const linkDown = row.locality === "remote" && row.link_down === true;
+	// Same shape (the link IS lost), quieter ink: amber is the escalation.
+	const reconnecting = linkDown && row.link_reconnecting === true;
 	const uncertainLabel = peerUncertainLabel(row);
 	const delegating = !uncertainLabel && !linkDown && code === "delegating";
 	/*
@@ -383,7 +385,9 @@ export function ChatSessionStatus({
 	const ink = uncertainLabel
 		? "text-ink-dim"
 		: linkDown
-			? "text-warning"
+			? reconnecting
+				? "text-ink-dim"
+				: "text-warning"
 			: code === "waiting"
 				? "text-accent"
 				: code === "busy"

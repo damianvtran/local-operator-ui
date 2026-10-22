@@ -779,6 +779,11 @@
 		"tone": "Short imperative",
 		"note": "Reloads the selected tab\u2019s current URL. Length: keep the content prop compact, around the English footprint; no hard cell cap is defined."
 	},
+	"ui.browser.browser_url_bar.page_menu": {
+		"role": "accessible control/region name \u2014 browser page menu trigger",
+		"tone": "Plain explanatory language; preserve confidence and safety meaning",
+		"note": "The strip and popout overflow trigger, naming the menu of page actions (address, history, find, print, zoom, downloads, approvals). Keep it a short noun phrase naming the PAGE: a borrow of the settings glass-material segment label was rejected in review because a control name has different length and translation constraints from a segmented-tab label. Length: keep the accessible control/region name compact, around the English footprint; no hard cell cap is defined."
+	},
 	"ui.browser.browser_url_bar.address": {
 		"role": "accessible control/region name \u2014 address and navigation bar",
 		"tone": "Plain explanatory language; preserve confidence and safety meaning",
@@ -1119,11 +1124,6 @@
 		"tone": "concise, neutral, sentence case",
 		"note": "Tooltip naming the reset-zoom chord. shortcut is runtime technical data and stays unchanged."
 	},
-	"ui.browser.browser_url_bar.address_required": {
-		"role": "status or explanatory text \u2014 address suggestions",
-		"tone": "concise, neutral, sentence case; a hint, never an alarm",
-		"note": "Shown in the suggestion list after Enter on input that is natural-language/search intent with no selected candidate. The app has no web-search provider by design, so this asks for an address or an offered row instead of inventing a search. No placeholders."
-	},
 	"ui.browser.browser_url_bar.address_suggestions_available": {
 		"role": "status or explanatory text \u2014 address suggestions",
 		"tone": "concise, neutral, sentence case",
@@ -1132,17 +1132,42 @@
 	"ui.browser.browser_url_bar.address_suggestions_empty": {
 		"role": "empty-state text \u2014 address suggestions",
 		"tone": "quiet, factual, not an error",
-		"note": "Shown while the field is focused and the tabs in this display scope have no HTTP(S) history to offer. Not a loading state and not a network search. No placeholders."
+		"note": "Shown while the field is focused and the local browsing history (plus any open tab) has no HTTP(S) destination to offer yet. Not a loading state and not a network search. No placeholders."
+	},
+	"ui.browser.browser_url_bar.address_suggestions_blocked": {
+		"role": "status or explanatory text \u2014 address suggestions",
+		"tone": "plain, factual, not an alarm",
+		"note": "Shown while the field holds input the browser will not open: a blocked scheme (javascript:, data:, about:, an unknown scheme) or a file: URL. It states the rule before Enter, so the refusal is not a surprise. No placeholders."
+	},
+	"ui.browser.browser_url_bar.address_search_row": {
+		"role": "first row \u2014 address suggestions, search intent",
+		"tone": "plain, actionable, sentence case",
+		"note": "The first, highlighted row when the typed text is a search rather than a URL. It names the destination explicitly (DuckDuckGo) so the user knows where Enter will send the query. Placeholders: query = the user\u2019s typed text, already trimmed."
+	},
+	"ui.browser.browser_url_bar.address_suggestion_open_tab": {
+		"role": "secondary line of an address suggestion row",
+		"tone": "quiet, factual, sentence case",
+		"note": "Marks a suggestion that comes from a tab this browser still has open, rather than from the persistent history. It is a source marker, not an action: committing the row navigates the CURRENT tab to that URL, it does not switch tabs. Placeholders: title = the page title."
+	},
+	"ui.browser.browser_url_bar.address_suggestion_open_tab_untitled": {
+		"role": "secondary line of an address suggestion row",
+		"tone": "quiet, factual, sentence case",
+		"note": "The same source marker as address_suggestion_open_tab when the open tab has no page title yet. Committing the row navigates the current tab, not a tab switch. No placeholders."
 	},
 	"ui.browser.browser_url_bar.address_suggestions_label": {
 		"role": "accessible control/region name \u2014 address suggestions list",
 		"tone": "concise, neutral, sentence case",
-		"note": "Names the in-flow suggestion list. The claim must stay TRUE: suggestions are derived from live tabs in this browser session (and restored tabs), never from a popularity table or a network service. Keep the label short, around the English footprint. No placeholders."
+		"note": "Names the suggestion list when EVERY row comes from the persistent local history. It must never sit over a web-search row or an open-tab row: use address_suggestions_label_mixed for those. Keep the label short, around the English footprint. No placeholders."
+	},
+	"ui.browser.browser_url_bar.address_suggestions_label_mixed": {
+		"role": "accessible control/region name \u2014 address suggestions list",
+		"tone": "concise, neutral, sentence case",
+		"note": "Names the suggestion list when it contains anything other than persistent history \u2014 the DuckDuckGo search row, open-tab rows, or the empty state. It is deliberately neutral: it claims nothing about where the rows came from. Keep it short, around the English footprint. No placeholders."
 	},
 	"ui.browser.browser_url_bar.address_suggestions_no_match": {
 		"role": "empty-state text \u2014 address suggestions",
 		"tone": "quiet, factual, not an error",
-		"note": "Shown when history exists but the typed prefix and titles match nothing. Distinct from the no-history message and from the unavailable message. No placeholders."
+		"note": "Shown when browsing history exists but the typed prefix and titles match nothing. Distinct from the no-history message and from the unavailable message. No placeholders."
 	},
 	"ui.browser.browser_url_bar.address_suggestions_unavailable": {
 		"role": "status or explanatory text \u2014 address suggestions",

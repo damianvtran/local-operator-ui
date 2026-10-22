@@ -66,6 +66,13 @@ const IDENTICAL_OK = new Map([
 		"French technical term kept English by the French style guide (token).",
 	],
 	[
+		"ui.browser.browser_url_bar.address_suggestions_label_mixed",
+		// French uses « Suggestions » for this list heading, the same word as the
+		// English source. The other six targets differ; this is a cognate, not a
+		// skipped string. The key is named here so the exemption is reviewable.
+		"French cognate: « Suggestions » has the same spelling",
+	],
+	[
 		"ui.settings.configuration.settings_page.version",
 		"French cognate: « version » has the same spelling.",
 	],

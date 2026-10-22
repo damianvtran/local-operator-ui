@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "live-update-i18n-zh-cn-r2-2461684f",
+  "namespace": "ui.chat.live_updates",
+  "locale": "zh-CN",
+  "keys_audited": 3,
+  "status": "passed",
+  "sha256": {
+    "zh-CN": "49bc19ba6865c5398ddfff1b4f819d6e3932a6a0b255312acc923bd3cb84d0ee",
+    "en": "a51ecfaed866a60d91b2e31493d44097e12d9978624d942e54f9ecdd87827760"
+  },
+  "scope": {
+    "base": "d98b597f150a74ed34bfcdefa641fc8ffe7571e1",
+    "head": "75236aa18e4042f85536162992ab3ead2d65613c",
+    "kind": "i18n remediation re-audit, 3 keys re-read",
+    "namespace": "ui.chat.live_updates",
+    "note": "Re-read all 3 keys in the file at head 75236aa18e; the only byte changes from d98b597f15 are the three flagged fixes (zh-CN paused and reloading, ru paused, ur reload). The English source is unchanged at a51ecfae…; core i18n/glossary.md and the locale style guide consulted; no rendered-frame or native-speaker pass claimed."
+  },
+  "findings": [],
+  "observations": [
+    "Round 2: the paused finding is resolved — the file now reads “实时更新已暂停，此对话可能已过时。”, replacing “实时更新已暂停，因此此对话可能已过期。” (both the “因此此” stutter and the “过期/过时” drift are gone). The reloading finding is resolved — “正在重新加载……”, replacing the single-U+2026 “正在重新加载…”. Re-read all 3 keys; the only byte changes from d98b597f15 are these two values, and reload is unchanged. No blocker/major; no placeholders."
+  ],
+  "independence": "Did not author or translate these strings; read the catalogue bytes on disk and audited against the English source, the core glossary and the locale style guide.",
+  "date": "2026-10-21",
+  "round": 2
+}
