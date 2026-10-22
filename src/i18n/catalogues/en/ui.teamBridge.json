@@ -111,5 +111,7 @@
 	"ui.teamBridge.thread.intro_person": "This is the beginning of your direct message history with {name}.",
 	"ui.teamBridge.thread.intro_chief": "This is the beginning of your conversation with {name}, a teammate's chief of staff agent. It reads your messages as untrusted input and its owner decides what it acts on.",
 	"ui.teamBridge.thread.intro_group": "Your first message starts a conversation with {names}.",
-	"ui.teamBridge.list.error_pane": "Conversations couldn’t be loaded. Try again from the list on the left."
+	"ui.teamBridge.list.error_pane": "Conversations couldn’t be loaded. Try again from the list on the left.",
+	"ui.teamBridge.sender.unknown_person": "Unknown person",
+	"ui.teamBridge.sender.unknown_agent": "Unknown agent"
 }

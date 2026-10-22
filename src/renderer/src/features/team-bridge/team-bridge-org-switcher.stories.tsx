@@ -3,6 +3,7 @@ import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeOrganization,
 	asTeamBridgeTenantId,
+	organizationOptions,
 } from "./team-bridge-model";
 import { TeamBridgeOrgSwitcher } from "./team-bridge-org-switcher";
 
@@ -69,6 +70,29 @@ export const MenuOpen: Story = {
 
 export const AccountWideSelected: Story = {
 	args: { scope: TEAM_BRIDGE_ALL_SCOPE, defaultOpen: true },
+};
+
+/**
+ * Hub tenants with an empty memberships read, built through
+ * `organizationOptions` as the page does: rows wear the hub's names and no
+ * role, so the menu shows no empty role slot before the count.
+ */
+export const HubTenantsWithoutMemberships: Story = {
+	args: {
+		organizations: organizationOptions(
+			[],
+			[
+				{ tenant_id: minerva.tenantId, unread: 5 },
+				{ tenant_id: northwind.tenantId, unread: 4 },
+			],
+			[
+				{ tenant_id: minerva.tenantId, tenant_name: "Minerva" },
+				{ tenant_id: northwind.tenantId, tenant_name: "Northwind Collective" },
+			],
+		),
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		defaultOpen: true,
+	},
 };
 
 export const MembershipsFailed: Story = {

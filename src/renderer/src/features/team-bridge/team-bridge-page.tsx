@@ -3,6 +3,7 @@ import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { formatRelativeTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -36,9 +37,11 @@ import {
 	dmWithAgent,
 	dmWithPerson,
 	draftCreateInput,
+	hubTenantList,
 	isPreviewConversation,
 	notifyFailureIsVisible,
 	organizationOptions,
+	organizationsReadState,
 	participantLabel,
 	personDisplayLabel,
 	preferredScope,
@@ -68,6 +71,7 @@ import {
 	useSendTeamBridgeMessage,
 	useSetTeamBridgeNotify,
 	useTeamBridgeConversations,
+	useTeamBridgeDirectories,
 	useTeamBridgeDirectory,
 	useTeamBridgeMessages,
 	useTeamBridgeStatus,
@@ -298,6 +302,17 @@ export type TeamBridgePageViewProps = {
 	initialDraft?: string;
 	/** The organization's directory: People and Chiefs of staff both read it. */
 	people?: readonly TeamBridgeDirectoryMember[];
+	/**
+	 * The merged view's per-organization rosters, keyed by tenant, used ONLY to
+	 * name senders and DM rows (`people` is empty there: no single roster to
+	 * list). A tenant whose read has not answered is absent.
+	 */
+	directories?: Readonly<Record<string, readonly TeamBridgeDirectoryMember[]>>;
+	/**
+	 * The signed-in reader's account name, so their own messages are named even
+	 * when no directory lists them (merged view, directory loading or failed).
+	 */
+	selfName?: string;
 	peopleState?: "loading" | "error" | "ready";
 	peopleError?: unknown;
 	peopleIncomplete?: boolean;
@@ -340,6 +355,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	defaultMenuOpen = false,
 	initialDraft = "",
 	people = [],
+	directories,
+	selfName,
 	peopleState = "ready",
 	peopleError,
 	peopleIncomplete = false,
@@ -370,11 +387,38 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	);
 	const chiefLabel = (agent: string, person: string) =>
 		t("ui.teamBridge.chief.label", { agent, person });
-	const labelFor = (participant: {
-		account_id: string;
-		kind: "human" | "agent";
-		display_label: string;
-	}) => participantLabel(participant, people, chiefLabel);
+	const self = useMemo(
+		() =>
+			selfAccountId && selfName?.trim()
+				? { accountId: selfAccountId, name: selfName }
+				: null,
+		[selfAccountId, selfName],
+	);
+	/*
+	 * Which roster names a participant: the organization's own in a single-org
+	 * scope, and in the merged view the roster of the conversation's own
+	 * organization (an account id is only meaningful inside its tenant).
+	 */
+	const rosterFor = (tenantId: string) =>
+		mergedView ? (directories?.[tenantId] ?? []) : people;
+	const labelFor = (
+		participant: {
+			account_id: string;
+			kind: "human" | "agent";
+			display_label: string;
+		},
+		tenantId: string,
+	) => participantLabel(participant, rosterFor(tenantId), chiefLabel, self);
+	/* A title has no "Unknown person" styling to lean on, so an unnamed peer
+	   keeps the same visibly-placeholder wording the thread uses. */
+	const titleFor = (
+		participant: Parameters<typeof labelFor>[0],
+		tenantId: string,
+	) =>
+		labelFor(participant, tenantId) ??
+		(participant.kind === "agent"
+			? t("ui.teamBridge.sender.unknown_agent")
+			: t("ui.teamBridge.sender.unknown_person"));
 	// The single-org rail paints DMs on People / Chiefs rows; only a DM no row
 	// owns is listed on its own. The merged view has no directory, so every DM
 	// is listed there.
@@ -412,7 +456,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							member.state !== "removed" &&
 							!(member.kind === "human" && member.account_id === selfAccountId),
 					);
-					return other ? labelFor(other) : t("ui.teamBridge.list.untitled");
+					return other
+						? titleFor(other, selected.tenant_id)
+						: t("ui.teamBridge.list.untitled");
 				})()
 			: (conversationTitle(selected, selfAccountId) ??
 				t("ui.teamBridge.list.untitled"))
@@ -508,7 +554,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 												member.account_id === selfAccountId
 											),
 									);
-									return other ? labelFor(other) : undefined;
+									return other
+										? titleFor(other, conversation.tenant_id)
+										: undefined;
 								})()
 							: undefined
 					}
@@ -947,7 +995,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								) : (
 									<TeamBridgeMessageList
 										messages={messages}
-										labelFor={(sender) => labelFor(sender)}
+										labelFor={(sender) =>
+											labelFor(sender, shown?.tenant_id ?? "")
+										}
 									/>
 								)}
 							</div>
@@ -1139,20 +1189,45 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	const readsEnabled = !gatePending && eligibility === null;
 	const selfAccountId = status.data?.account_id ?? undefined;
 	const readOnly = status.data?.read_only === true;
+	// The hub's status `tenants[]` is the switcher's and the merged filter's
+	// authoritative source; memberships only label it (and stand in when the
+	// status has no tenant list). Filtering by memberships alone dropped every
+	// row of a hub tenant the memberships read lacked (F6 on #1314). The
+	// account aggregate is the ONE unread read — the same cache entry the
+	// sidebar badge spends. Per-org counts are joined from that payload, never
+	// fetched per org.
 	const memberships = useMembershipsQuery({ enabled: readsEnabled });
 	const unread = useTeamBridgeUnread(readsEnabled, TEAM_BRIDGE_ALL_SCOPE);
+	const hubTenants = hubTenantList(status.data);
 	const organizations = useMemo(
 		() =>
-			organizationOptions(memberships.memberships, unread.data?.organizations),
-		[memberships.memberships, unread.data],
+			organizationOptions(
+				memberships.memberships,
+				unread.data?.organizations,
+				hubTenants,
+			),
+		[memberships.memberships, unread.data, hubTenants],
 	);
+	const { pending: organizationsPending, failed: organizationsFailed } =
+		organizationsReadState(hubTenants, memberships);
 	const list = useTeamBridgeConversations(scope, readsEnabled);
 	const directory = useTeamBridgeDirectory(
 		scope === TEAM_BRIDGE_ALL_SCOPE ? null : scope,
 		readsEnabled,
 	);
-	const conversations = list.data?.conversations ?? [];
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
+	// Names only (see `useTeamBridgeDirectories`): the merged view lists no
+	// roster, but its threads and DM rows still need their senders named.
+	const directories = useTeamBridgeDirectories(
+		mergedView
+			? organizations.map((organization) => organization.tenantId)
+			: [],
+		readsEnabled,
+	);
+	// The reader's own name for their own messages; `user` is null until the
+	// account read answers, never the user store's placeholder name.
+	const selfName = useRadientAuth().user?.name ?? undefined;
+	const conversations = list.data?.conversations ?? [];
 	const people = directory.data?.members ?? [];
 	// The channel form offers the same people and chiefs of staff as the To: bar.
 	const channelCandidates = recipientCandidates(
@@ -1186,6 +1261,10 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		setChannelFormOpen(false);
 	};
 
+	// The organization list (hub tenants, or memberships without them) resolves
+	// after the first paint; adopt the only one unless
+	// the reader has already picked a scope. A later unread poll re-renders the
+	// options array, so the equality check keeps this to the one transition.
 	useEffect(() => {
 		setScope((current) =>
 			preferredScope(organizations, current, scopeChosen.current),
@@ -1388,9 +1467,9 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		<>
 			<TeamBridgePageView
 				listState={
-					list.isPending || (mergedView && memberships.isLoading)
+					list.isPending || (mergedView && organizationsPending)
 						? "loading"
-						: list.isError || (mergedView && memberships.isError)
+						: list.isError || (mergedView && organizationsFailed)
 							? "error"
 							: "ready"
 				}
@@ -1409,8 +1488,8 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				organizations={organizations}
 				scope={scope}
 				totalUnread={unread.data?.total ?? 0}
-				membershipsLoading={memberships.isLoading}
-				organizationsFailed={memberships.isError}
+				membershipsLoading={organizationsPending}
+				organizationsFailed={organizationsFailed}
 				selfAccountId={selfAccountId}
 				sending={send.isPending || creating}
 				sendFailed={send.isError || firstSendFailed}
@@ -1436,6 +1515,8 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 					setChannelFormOpen(true);
 				}}
 				people={people}
+				directories={directories}
+				selfName={selfName}
 				peopleState={
 					directory.isPending
 						? "loading"
