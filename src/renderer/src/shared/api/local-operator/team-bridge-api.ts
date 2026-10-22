@@ -37,7 +37,10 @@ import {
 	teamBridgeScheduledMessageSchema,
 	teamBridgeUnreadSchema,
 } from "../../../../../shared/team-bridge-contract";
-import { reconcileDraftAccount } from "../../store/team-bridge-draft-account";
+import {
+	browserDraftStorage,
+	reconcileDraftAccount,
+} from "../../store/team-bridge-draft-account";
 import { desktopResult } from "./desktop-api";
 
 export const TeamBridgeApi = {
@@ -195,7 +198,7 @@ export const TeamBridgeApi = {
 			boundary: "surface_open",
 		});
 		const parsed = teamBridgeIdentitySchema.parse(answer);
-		reconcileDraftAccount(localStorage, parsed);
+		reconcileDraftAccount(browserDraftStorage(), parsed);
 		return parsed.account_id ?? null;
 	},
 
@@ -244,7 +247,7 @@ export const TeamBridgeApi = {
 			...(boundary ? { boundary } : {}),
 		});
 		const parsed = agentMessagesStatusSchema.parse(answer);
-		reconcileDraftAccount(localStorage, parsed);
+		reconcileDraftAccount(browserDraftStorage(), parsed);
 		return parsed;
 	},
 

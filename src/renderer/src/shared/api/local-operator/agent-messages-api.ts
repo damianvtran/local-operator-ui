@@ -9,7 +9,10 @@ import {
 	agentMessagesSettingsResultSchema,
 	agentMessagesStatusSchema,
 } from "../../../../../shared/agent-messages-contract";
-import { reconcileDraftAccount } from "../../store/team-bridge-draft-account";
+import {
+	browserDraftStorage,
+	reconcileDraftAccount,
+} from "../../store/team-bridge-draft-account";
 import { desktopResult } from "./desktop-api";
 
 /** No Radient JWT or direct hub request crosses the renderer boundary. */
@@ -21,7 +24,8 @@ export const agentMessagesApi = {
 		});
 		const parsed = agentMessagesStatusSchema.safeParse(result);
 		// An unknown shape cannot establish eligibility or permission to consent.
-		if (parsed.success) reconcileDraftAccount(localStorage, parsed.data);
+		if (parsed.success)
+			reconcileDraftAccount(browserDraftStorage(), parsed.data);
 		return parsed.success ? parsed.data : null;
 	},
 	async enable(body: AgentMessagesConsentPut) {
