@@ -736,7 +736,8 @@ test("the move is a row control: a menu, a chord, and a live region", () => {
 	assert.ok(
 		grouping.includes("bucket.rows.map((row) => sessionRow(row, false, true))"),
 	);
-	// LOH-11 deliberately spends one metadata slot before the unchanged Move pair.
+	// Sidebar tags v3 removes Move to tag… (the anchored Tags… picker now owns
+	// that act), while retaining Remove all tags and the pinned Move pair.
 	// Read only shipped menu markup so a comment cannot satisfy the item budget.
 	const code = source.replace(/\/\*[\s\S]*?\*\//g, "");
 	const menuStart = code.indexOf("<ContextMenuContent");
@@ -744,8 +745,10 @@ test("the move is a row control: a menu, a chord, and a live region", () => {
 		menuStart,
 		code.indexOf("</ContextMenuContent>", menuStart),
 	);
-	assert.equal(menu.split("<ContextMenuItem").length - 1, 10);
+	assert.equal(menu.split("<ContextMenuItem").length - 1, 9);
 	assert.equal(menu.split('t("ui.chat.tags.menu")').length - 1, 1);
+	assert.equal(menu.split('t("ui.chat.tags.remove_all",').length - 1, 1);
+	assert.ok(!menu.includes('t("ui.chat.tags.move_menu")'));
 	const tagsGate = menu.indexOf("{tagsAvailable && (");
 	const tagsLabel = menu.indexOf('t("ui.chat.tags.menu")');
 	assert.ok(tagsGate >= 0 && tagsGate < tagsLabel);

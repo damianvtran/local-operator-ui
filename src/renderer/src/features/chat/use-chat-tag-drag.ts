@@ -41,6 +41,7 @@ type Options = {
 };
 
 /** Pointer capture owns delivery, not hit testing. Resolve the underlying header
+ * (or an unused tag's footer slot, which is outside every section)
  * from viewport geometry, clipped to the owning scroll list, so hidden/offscreen
  * buckets never become drop targets during auto-scroll. Only Untagged sources
  * may cross sections; tagged sources keep their existing section boundary.
@@ -68,7 +69,11 @@ export function tagDropTargetAt(
 			return (
 				(header.closest("[data-chat-section]") === section ||
 					(sourceBucket === "untagged" &&
-						header.dataset.tagDropTarget !== "untagged")) &&
+						header.dataset.tagDropTarget !== "untagged") ||
+					// An unused tag's footer slot (v3 spec D3) belongs to no time
+					// section - it lists tags no conversation carries - so it is a
+					// target from every section. Pinned reorder never reads it.
+					(includeBodies && header.dataset.tagUnusedSlot !== undefined)) &&
 				!(
 					header.dataset.tagDropBody !== undefined &&
 					header.dataset.tagDropTarget === sourceBucket

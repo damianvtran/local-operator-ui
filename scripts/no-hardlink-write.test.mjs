@@ -122,6 +122,7 @@ const READ_BACK = /read=ORIGINAL/;
 const WILL_NOT_REFUSE = /will not be refused/;
 const EVASION = /EVASION=refused/;
 const EVASION_WROTE = /EVASION=wrote/;
+const EVASION_DEVICES = /EVASION_DEVICES=(\d+):(\d+)/;
 const IN_TEMP_STAGED = /IN_TEMP=STAGED/;
 const SHARED_INTACT = /SHARED=ORIGINAL SHARED CONTENT/;
 const SIBLING_INTACT = /SIBLING=ORIGINAL SHARED CONTENT/;
@@ -354,6 +355,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 const [shared, sibling] = process.argv.slice(2);
 const ground = fs.mkdtempSync(join(tmpdir(), "lo-evasion-"));
+console.log("EVASION_DEVICES=" + fs.statSync(shared).dev + ":" + fs.statSync(ground).dev);
 try {
 	// Sanctioned call one: give the shared inode a name inside the temp ground.
 	fs.linkSync(shared, join(ground, "linked"));
@@ -362,6 +364,10 @@ try {
 	console.log("EVASION=wrote");
 } catch (error) {
 	console.log("EVASION=refused:" + error.name);
+	// A native link/write failure is also named Error. Preserve its cause in
+	// the assertion's captured stdout; otherwise the unguarded control cannot
+	// distinguish a filesystem boundary from an installed guard on CI.
+	console.log("EVASION_ERROR=" + JSON.stringify({ code: error.code ?? null, syscall: error.syscall ?? null, message: error.message }));
 }
 console.log("SHARED=" + fs.readFileSync(shared, "utf8"));
 console.log("SIBLING=" + fs.readFileSync(sibling, "utf8"));
@@ -613,13 +619,31 @@ test("a name given to a shared inode inside the temp ground does not launder it"
 	const dir = fixture("evasion");
 	const shared = join(dir, "base");
 	const sibling = join(dir, "b");
-	const env = { ...process.env, TMPDIR: GROUND_TMP };
+	// Retain upstream's isolated temp-ground boundary, and additionally prove
+	// that the real child can link on one device rather than accepting EXDEV.
+	assert.equal(
+		statSync(shared).dev,
+		statSync(GROUND_TMP).dev,
+		"the evasion must be able to create a real same-device hardlink",
+	);
+	const env = {
+		...process.env,
+		TMPDIR: GROUND_TMP,
+		TMP: GROUND_TMP,
+		TEMP: GROUND_TMP,
+	};
 	for (const guard of [false, true]) {
 		reset(dir);
 		const args = guard
 			? [`--import=${PRELOAD}`, EVASION_PATH, shared, sibling]
 			: [EVASION_PATH, shared, sibling];
 		const result = spawnSync(process.execPath, args, { encoding: "utf8", env });
+		const devices = result.stdout.match(EVASION_DEVICES);
+		assert.ok(
+			devices,
+			`the child must report both st_dev values: ${result.stdout}`,
+		);
+		assert.equal(devices[1], devices[2], "the child must link on one device");
 		if (guard) {
 			assert.match(
 				result.stdout,
@@ -628,6 +652,14 @@ test("a name given to a shared inode inside the temp ground does not launder it"
 			);
 			assert.match(result.stdout, SHARED_INTACT);
 			assert.match(result.stdout, SIBLING_INTACT);
+			// Prove this isolated tmpdir still grants the REAL exemption to an
+			// inode declared entirely inside it, not blanket refusal of all links.
+			const declared = spawnSync(
+				process.execPath,
+				[`--import=${PRELOAD}`, IN_TEMP_PATH],
+				{ encoding: "utf8", env },
+			);
+			assert.match(declared.stdout, IN_TEMP_STAGED, declared.stderr);
 		} else {
 			assert.match(
 				result.stdout,

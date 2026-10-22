@@ -1014,7 +1014,11 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// renders in the menu's portal, so it can never sit inside the current row
 				// and no `CURRENT` entry can or should resolve it. The refusal still has to
 				// LOOK like a refusal, which is why the pair is kept.
-				"hover:bg-transparent": 3,
+				// PLUS ONE (sidebar tags v3): the remote Tags… refusal carries the
+				// same reset. It is a ContextMenuItem in the portalled row menu,
+				// not an element inside a current conversation row; it cannot
+				// override rowCurrent and needs no CURRENT-table expression.
+				"hover:bg-transparent": 4,
 				// The New chat row's disabled reset: it paints NOTHING, which is why no
 				// expression has to resolve it. The bulk read receipt carries no reset of
 				// its own: it is the shared `Button` primitive now, whose disabled styling
