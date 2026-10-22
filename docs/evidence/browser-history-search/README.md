@@ -10,23 +10,23 @@ Two claims that unit tests cannot make:
 ## What was under test
 
 - Branch: `feat/browser-history-search`
-- Head: `e6d4773fbc0baeb7ab0e3f1a67545ca81548985c`
+- Head: `042dc3feeeb2f4bf7e1f3a9d9365a5a2999d20dd`
   (`test(browser): expose a suggestion row's source in the listbox`)
 - Base branch: `feat/browser-chrome-s4b` at
-  `1e52d32b8828d0861efde1a5a6e59f1077ada5f4`
+  `8f9fe72ec7ec9aa69b70346031294c61ee732902`
 - Build: `pnpm build` on the head above, 2026-10-22 00:33 local. The probe does
   not need OAuth or analytics credentials; the build used placeholders for
   those variables only.
 - Build identity (`build-identity.json` in this directory): main loader
-  `9a0e2c…`, renderer index `cfc37c…`, overlay list document `9c8bf7…`,
-  `out/main/index.jsc` `9b882e…`. The main-loader hash is what the S4b probe has
+  `9a0e2c…`, renderer index `ccb8a3…`, overlay list document `9c8bf7…`,
+  `out/main/index.jsc` `ff0142…`. The main-loader hash is what the S4b probe has
   always recorded; the bytecode hash is added here because this change is
   main-process code.
 
 ## Command
 
 ```
-node scripts/browser-chrome-s4b-probe.mjs --out <scratch>/s4b-history-evidence
+node scripts/browser-chrome-s4b-probe.mjs --out <scratch>/s4b-history-8f9-1792645397
 ```
 
 The probe is the authoritative S4b rig (headless window mode, scratch

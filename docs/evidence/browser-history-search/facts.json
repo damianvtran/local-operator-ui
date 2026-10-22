@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-10-22T04:43:00Z",
-  "headUnderTest": "e6d4773fbc0baeb7ab0e3f1a67545ca81548985c",
-  "baseBranchHead": "1e52d32b8828d0861efde1a5a6e59f1077ada5f4",
+  "generatedAt": "2026-10-22T05:03:00Z",
+  "headUnderTest": "042dc3feeeb2f4bf7e1f3a9d9365a5a2999d20dd",
+  "baseBranchHead": "8f9fe72ec7ec9aa69b70346031294c61ee732902",
   "buildIdentity": {
     "main": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046",
-    "renderer": "cfc37c8a3d5e9828d2deb97134a2cee30d2712f9ff330eb12fcc30621a3bd265",
+    "renderer": "ccb8a3de815f5fbc13c32ffc8a0e61fbe0e1656b702a0c5c496243a397741254",
     "listDocument": "9c8bf7a57794c54e528aebad72f3b1eba8e226bc76c1eb889531b4a2b096e57e",
-    "mainBytecode": "9b882e178654200e5befdab1385381be114dd394d6c8a4b13a499d8ae606735e",
-    "rendererIndex": "cfc37c8a3d5e9828d2deb97134a2cee30d2712f9ff330eb12fcc30621a3bd265"
+    "mainBytecode": "ff0142a36c64257be4a60076b3c26ba3b1e725d5d6664eb050bffa4cfe9363c3",
+    "rendererIndex": "ccb8a3de815f5fbc13c32ffc8a0e61fbe0e1656b702a0c5c496243a397741254"
   },
-  "command": "node scripts/browser-chrome-s4b-probe.mjs --out <scratch>/s4b-history-evidence-1792644111",
+  "command": "node scripts/browser-chrome-s4b-probe.mjs --out <scratch>/s4b-history-8f9-1792645397",
   "rows": [
     {
       "id": "H1",
@@ -21,21 +21,21 @@
           "signal": null
         },
         "openOnFixture": false,
-        "query": "127.0.0.1:54144",
+        "query": "127.0.0.1:62229",
         "ownerRows": [
           {
-            "url": "http://127.0.0.1:54144/history-other",
+            "url": "http://127.0.0.1:62229/history-other",
             "source": "history"
           },
           {
-            "url": "http://127.0.0.1:54144/history-target",
+            "url": "http://127.0.0.1:62229/history-target",
             "source": "history"
           }
         ],
         "childHeader": "From your history",
         "childRows": [
-          "127.0.0.1:54144/history-other S4b fixture",
-          "127.0.0.1:54144/history-target S4b fixture"
+          "127.0.0.1:62229/history-other S4b fixture",
+          "127.0.0.1:62229/history-target S4b fixture"
         ]
       }
     },
@@ -83,8 +83,8 @@
           "signal": null
         },
         "githubUrl": "https://duckduckgo.com/?q=github",
-        "vpnUrl": "https://duckduckgo.com/?q=what+is+a+vpn",
-        "note": "github committed as ...?q=github and stayed; the vpn query committed as ...?q=what%20is%20a%20vpn and DuckDuckGo redirected it to the +/&ia=web spelling before the read, so the assertion is on the duckduckgo.com/?q= prefix plus the decoded query."
+        "vpnUrl": "https://duckduckgo.com/?q=what%20is%20a%20vpn",
+        "note": "github committed as ...?q=github; the vpn query committed as ...?q=what%20is%20a%20vpn. The earlier run observed DuckDuckGo redirect that one to the +/&ia=web spelling; this run read the committed URL before the redirect."
       }
     }
   ],
@@ -156,16 +156,16 @@
     }
   ],
   "frames": {
-    "child-history.png": "71080df8a24ecce23202168894437b087a82c2fb31ac0ba93ce68345494060d7",
+    "child-history.png": "ba79dc366a0f0b1560d09d97b78ac4a98026ca8a8519df55c34abe5d96c1eae3",
     "child-search-github.png": "6a9401ac14cadd4411452b75c7f5efbc9d171340d2c09e1aa2f7c683bf4413d3",
     "child-search-vpn.png": "451a04cabc1159e4c4f8c0692399bee150af98de1d35f80fab061d4dec31fa0f",
-    "owner-history.png": "aafe14e00b72587d88e327b28c109725466c146a878037af8e42f78146e28d6c",
+    "owner-history.png": "a5931f6f977ee0500c4d5f938d3d8c63272c9d296d11ff64a059eb9b40df4927",
     "owner-search-github.png": "5b182624ada99941a80fea0d4ac4e282e6b98ffd81a77b53775864578585699e",
-    "owner-search-vpn.png": "57ca146ef184e152dd766ac646b619d4c58bf7c330a3772c59894ea36660c580",
+    "owner-search-vpn.png": "c7c1f4ba537ec1c4017d0b825a8a561f6f6fc05b51fd1ff69f59a398c12a3caa",
     "child-rows.png": "b27a4f0135c1bb1ea0896bcc89498344ba607da7df19f9de42657f00043b8273",
     "owner-popout.png": "6a18daa1ead7560c582c9ea74a39272b6745f7b1dc09d198941422fb79cc5349"
   },
-  "beforeFramesFrom": "S4b round-3 run: $LOCAL_OPERATOR_SCRATCHPAD/s4b-r3-fix/frames (owner-popout.png, child-rows.png)",
+  "beforeFramesFrom": "S4b round-3 run: $LOCAL_OPERATOR_SCRATCHPAD/s4b-r3-fix/frames (owner-popout.png, child-rows.png); the 8f9fe72 change touches the strip trailing rule, not the popout list, so the before pair was copied rather than re-shot from the base.",
   "notProven": [
     "native composite pixels, native hit routing, macOS IME and VoiceOver",
     "Windows and Linux runs",

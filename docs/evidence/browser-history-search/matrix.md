@@ -1,14 +1,15 @@
 # Browser history and search — driven matrix
 
-Run: `node scripts/browser-chrome-s4b-probe.mjs --out <scratch>/s4b-history-evidence-1792644111`
-Head: `e6d4773fbc0baeb7ab0e3f1a67545ca81548985c`
+Run: `node scripts/browser-chrome-s4b-probe.mjs --out <scratch>/s4b-history-8f9-1792645397`
+Head: `042dc3feeeb2f4bf7e1f3a9d9365a5a2999d20dd`
+Base: `8f9fe72ec7ec9aa69b70346031294c61ee732902`
 
 | Row | Claim | Status | Actual evidence |
 | --- | --- | --- | --- |
-| H1 | a visit recorded in an earlier app run is suggested from history with no tab open on it | PASS | run 1 exited `code 0`; `openOnFixture: false`; query `127.0.0.1:54144`; rows `~:54144/history-other` and `~:54144/history-target`, both `data-address-suggestion-source="history"`; child header `From your history` |
+| H1 | a visit recorded in an earlier app run is suggested from history with no tab open on it | PASS | run 1 exited `code 0`; `openOnFixture: false`; query `127.0.0.1:62229`; rows `http://127.0.0.1:62229/history-other` and `http://127.0.0.1:62229/history-target`, both `data-address-suggestion-source="history"`; child header `From your history` |
 | H2 | typing `github` shows the Search DuckDuckGo row first and selected | PASS | row 0 text `Search DuckDuckGo for "github"`, `data-address-suggestion-search="true"`, `aria-activedescendant` = row 0; child paints the same row |
 | H3 | typing `what is a vpn` shows the same search row first and selected | PASS | row 0 text `Search DuckDuckGo for "what is a vpn"`, search marker, `aria-activedescendant` = row 0; child paints the same row |
-| H4 | Enter commits the highlighted search row's DuckDuckGo URL on the active tab | PASS | `github` → committed `https://duckduckgo.com/?q=github`; `what is a vpn` → committed `https://duckduckgo.com/?q=what%20is%20a%20vpn`, then DuckDuckGo redirected to `?q=what+is+a+vpn`; both asserted on the active tab URL, not the page body |
+| H4 | Enter commits the highlighted search row's DuckDuckGo URL on the active tab | PASS | `github` → committed `https://duckduckgo.com/?q=github`; `what is a vpn` → committed `https://duckduckgo.com/?q=what%20is%20a%20vpn`, read before any redirect (an earlier run observed DuckDuckGo redirecting it to `?q=what+is+a+vpn`); both asserted on the active tab URL, not the page body |
 
 ## Heuristic table
 
