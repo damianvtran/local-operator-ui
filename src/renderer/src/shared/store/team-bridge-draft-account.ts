@@ -3,6 +3,21 @@
 export const TEAM_BRIDGE_DRAFT_PREFIX = "team-bridge-authored-drafts:v1:";
 const PREFIX = TEAM_BRIDGE_DRAFT_PREFIX;
 const epochs = new Map<string, number>();
+/*
+ * Other account-owned, in-memory draft state (the composer's image previews)
+ * registers here so the SAME fence that erases stored drafts also drops it:
+ * a signed-out or replaced account must not leave its pictures in a module
+ * map for the next account to read. Listeners receive nothing - they drop
+ * everything - so no account id has to leave this module.
+ */
+const revocationListeners = new Set<() => void>();
+export function onDraftRevocation(listener: () => void): () => void {
+	revocationListeners.add(listener);
+	return () => revocationListeners.delete(listener);
+}
+const notifyRevocation = () => {
+	for (const listener of revocationListeners) listener();
+};
 export function draftAccountEpoch(accountId: string): number {
 	if (!epochs.has(accountId)) epochs.set(accountId, 0);
 	return epochs.get(accountId) ?? 0;
@@ -15,6 +30,7 @@ export function draftStorageKey(accountId: string, tenantId: string): string {
 export function eraseAccountDrafts(storage: Storage, accountId: string): void {
 	// Revocation still holds if browser storage itself refuses deletion.
 	epochs.set(accountId, draftAccountEpoch(accountId) + 1);
+	notifyRevocation();
 	const prefix = `${PREFIX}${encodeURIComponent(accountId)}:`;
 	try {
 		for (const key of Object.keys(storage)) {
@@ -38,8 +54,13 @@ export function reconcileDraftAccount(
 		status.state === "signed_out" ? null : (status.account_id ?? null);
 	// Revocation precedes disk cleanup: promises from an unmounted editor must
 	// not resurrect bodies even if storage removal fails or the account logs in again.
+	let revoked = false;
 	for (const [account, epoch] of epochs)
-		if (account !== next) epochs.set(account, epoch + 1);
+		if (account !== next) {
+			epochs.set(account, epoch + 1);
+			revoked = true;
+		}
+	if (revoked || next === null) notifyRevocation();
 	try {
 		const allowed = next ? `${PREFIX}${encodeURIComponent(next)}:` : null;
 		for (const key of Object.keys(storage))

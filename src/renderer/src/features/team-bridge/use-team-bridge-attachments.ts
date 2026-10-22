@@ -145,15 +145,16 @@ export function useTeamBridgeAttachments(args: {
 		prepared: PreparedImage,
 		into: string,
 		started = generation.current,
+		tenant = tenantId,
 	): Promise<DraftAttachment | null> => {
-		if (!tenantId) {
+		if (!tenant) {
 			patch(key, { status: "error", reason: "failed" });
 			return null;
 		}
 		patch(key, { status: "uploading", reason: undefined });
 		try {
 			const answer = await TeamBridgeApi.uploadAttachment(
-				tenantId,
+				tenant,
 				into,
 				prepared.bytes,
 			);
@@ -251,14 +252,19 @@ export function useTeamBridgeAttachments(args: {
 	 * Returns the full id list, or throws when any image did not stage: the
 	 * send must NOT go out text-only behind the author's back (manager rule).
 	 */
-	const uploadHeld = async (into: string): Promise<string[]> => {
+	const uploadHeld = async (
+		into: string,
+		tenant: string | undefined = tenantId,
+	): Promise<string[]> => {
 		const pending = live.current.filter(
 			(chip) =>
 				(chip.status === "held" || chip.status === "error") && chip.prepared,
 		);
 		await Promise.all(
 			pending.map((chip) =>
-				chip.prepared ? upload(chip.key, chip.prepared, into) : null,
+				chip.prepared
+					? upload(chip.key, chip.prepared, into, generation.current, tenant)
+					: null,
 			),
 		);
 		if (live.current.some((chip) => chip.status !== "ready"))

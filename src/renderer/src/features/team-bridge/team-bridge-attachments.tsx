@@ -42,7 +42,7 @@ import {
 	RotateCw,
 	X,
 } from "lucide-react";
-import type { FC } from "react";
+import type { ClipboardEvent, DragEvent, FC } from "react";
 import { useEffect, useRef, useState } from "react";
 import type {
 	TeamBridgeAttachment,
@@ -52,6 +52,7 @@ import { AttachmentFrame } from "../chat/components/message-item/attachment-fram
 import {
 	type AttachmentFailure,
 	attachmentView,
+	imageFiles,
 	uploadPreview,
 } from "./team-bridge-attachments-model";
 import type {
@@ -434,7 +435,7 @@ const boxFor = (attachment: TeamBridgeAttachment, single: boolean) => {
 
 const MessageImage: FC<{
 	message: TeamBridgeMessage;
-	tenantId: string;
+	tenantId: string | null;
 	attachment: TeamBridgeAttachment;
 	index: number;
 	count: number;
@@ -451,13 +452,13 @@ const MessageImage: FC<{
 	register,
 	buttonRef,
 }) => {
-	const view = attachmentView(attachment);
+	const view = tenantId === null ? "unavailable" : attachmentView(attachment);
 	const [attempt, setAttempt] = useState(0);
 	const key = `team-bridge:${tenantId}:${message.conversation_id}:${message.id}:${attachment.id}`;
 	const source = useBridgeAttachmentUrl(
 		key,
 		{
-			tenantId,
+			tenantId: tenantId ?? "",
 			conversationId: message.conversation_id,
 			messageId: message.id,
 			attachmentId: attachment.id,
@@ -529,7 +530,8 @@ const MessageImage: FC<{
  */
 export const TeamBridgeMessageAttachments: FC<{
 	message: TeamBridgeMessage;
-	tenantId: string;
+	/* `null` = the caller does not know the organization: nothing is fetched. */
+	tenantId: string | null;
 }> = ({ message, tenantId }) => {
 	useI18nLocale();
 	const attachments = message.attachments ?? [];
@@ -670,3 +672,33 @@ export const TeamBridgeScheduledAttachments: FC<{
 		</ul>
 	);
 };
+
+/**
+ * Paste and drop on the composer box. Only IMAGE files are taken; text in the
+ * same paste flows into the field untouched (the default is prevented only
+ * when the clipboard carried nothing but images). A paste of images on a hub
+ * without the capability falls through to the hook's "unsupported" note.
+ */
+export function attachmentPasteHandlers(state: TeamBridgeAttachmentsState) {
+	return {
+		onPaste: (event: ClipboardEvent<HTMLElement>) => {
+			const files = imageFiles(event.clipboardData);
+			if (files.length === 0) return;
+			const hasText = Array.from(event.clipboardData.types).includes(
+				"text/plain",
+			);
+			if (!hasText) event.preventDefault();
+			state.add(files);
+		},
+		onDragOver: (event: DragEvent<HTMLElement>) => {
+			if (Array.from(event.dataTransfer.types).includes("Files"))
+				event.preventDefault();
+		},
+		onDrop: (event: DragEvent<HTMLElement>) => {
+			const files = imageFiles(event.dataTransfer);
+			if (files.length === 0) return;
+			event.preventDefault();
+			state.add(files);
+		},
+	};
+}
