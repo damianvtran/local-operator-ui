@@ -137,5 +137,7 @@
 	"ui.teamBridge.replies.placeholder": "Responde en el hilo",
 	"ui.teamBridge.replies.more": "Cargar más respuestas",
 	"ui.teamBridge.actions.label": "Acciones del mensaje",
-	"ui.teamBridge.actions.more": "Más acciones"
+	"ui.teamBridge.actions.more": "Más acciones",
+	"ui.teamBridge.sender.unknown_person": "Persona desconocida",
+	"ui.teamBridge.sender.unknown_agent": "Agente desconocido"
 }

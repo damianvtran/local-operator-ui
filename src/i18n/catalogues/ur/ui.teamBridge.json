@@ -137,5 +137,7 @@
 	"ui.teamBridge.replies.placeholder": "تھریڈ میں جواب دیں",
 	"ui.teamBridge.replies.more": "مزید جوابات لوڈ کریں",
 	"ui.teamBridge.actions.label": "پیغام کے اعمال",
-	"ui.teamBridge.actions.more": "مزید اعمال"
+	"ui.teamBridge.actions.more": "مزید اعمال",
+	"ui.teamBridge.sender.unknown_person": "نامعلوم شخص",
+	"ui.teamBridge.sender.unknown_agent": "نامعلوم ایجنٹ"
 }

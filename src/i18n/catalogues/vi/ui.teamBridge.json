@@ -137,5 +137,7 @@
 	"ui.teamBridge.replies.placeholder": "Trả lời trong luồng",
 	"ui.teamBridge.replies.more": "Tải thêm câu trả lời",
 	"ui.teamBridge.actions.label": "Thao tác với tin nhắn",
-	"ui.teamBridge.actions.more": "Thao tác khác"
+	"ui.teamBridge.actions.more": "Thao tác khác",
+	"ui.teamBridge.sender.unknown_person": "Người không xác định",
+	"ui.teamBridge.sender.unknown_agent": "Tác nhân không xác định"
 }

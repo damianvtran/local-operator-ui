@@ -1007,5 +1007,19 @@
 		"length": "Short label; shown as a tooltip on a 28px icon button.",
 		"placeholders": {},
 		"note": "Opens the menu of further actions on one chat message. Not the conversation options menu (ui.teamBridge.menu.label)."
+	},
+	"ui.teamBridge.sender.unknown_person": {
+		"role": "placeholder sender name",
+		"tone": "plain, sentence case",
+		"length": "Short; fits a message header beside a time.",
+		"placeholders": {},
+		"note": "Shown as the author of a message when the person's name cannot be resolved (they left the organization, or the directory has not loaded). Must read as a placeholder, not as a name; rendered in muted italics."
+	},
+	"ui.teamBridge.sender.unknown_agent": {
+		"role": "placeholder sender name",
+		"tone": "plain, sentence case",
+		"length": "Short; fits a message header beside a time.",
+		"placeholders": {},
+		"note": "Shown as the author of an agent's message when the agent's name cannot be resolved. Must read as a placeholder, not as a name; rendered in muted italics. 'Agent' is an AI agent; use the glossary term."
 	}
 }

@@ -32,8 +32,10 @@ import { ComposerStatusRow } from "@features/chat/components/composer-status-row
  */
 import {
 	CREDENTIAL_CLEAR_UNDO_LABEL,
+	CREDENTIAL_DISCARDED_NOTICE,
 	CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
 	CREDENTIAL_EMPTY_SPAN_NOTICE,
+	CREDENTIAL_ESCAPE_HELD_NOTICE,
 	CREDENTIAL_TOKEN,
 	CREDENTIAL_TYPING_NOTICE,
 	CREDENTIAL_WORDS,
@@ -41,7 +43,6 @@ import {
 	type Capture,
 	type CredentialFate,
 	type CredentialPayload,
-	HELD_TAKEN_BY,
 	IDLE_CAPTURE,
 	MASK_CELL,
 	type UnredactedDisclosure,
@@ -54,6 +55,7 @@ import {
 	clearCitedCredential,
 	clearedToastLine,
 	credentialNamesFrom,
+	escapeHolds,
 	holdsCancelledToken,
 	isArmed,
 	isTyping,
@@ -2159,30 +2161,6 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * `MeasuredSuggestionStack` does not re-measure for unchanged content.
 		 */
 		const heldSample = useRef<readonly string[] | null>(null);
-		/*
-		 * The last held-press sentence RAISED, AND THE RECORD IT WAS RAISED FOR, so a
-		 * repeated Enter on an unchanged held box does not append the same transcript
-		 * line again (remediation round 1, U4). A ref rather than state: this decides
-		 * whether to say something, never what the frame draws, and a change that
-		 * re-rendered the composer here would be the re-render for its own sake.
-		 *
-		 * KEYED TO THE RECORD, NOT TO THE SENTENCE (agent review round 2, R6). The
-		 * dedupe used to hold the bare string and be reset imperatively when the
-		 * record was pruned — and that prune lives in `applyCapture`, which the
-		 * notice's OWN remedy never runs: clearing the box with the keyboard goes
-		 * through the textarea `onChange` → `applyDomEdit` route, which clears
-		 * `cancelledToken.current` (its effect is keyed on the buffer) but never this
-		 * ref. So the operator followed the app's named way out, re-armed the
-		 * identical shape, and the second hold was SILENT — the box kept, nothing
-		 * dispatched, no sentence. Folding the record into the key removes the
-		 * imperative reset altogether: a fresh cancel writes a NEW `CancelledToken`
-		 * object, so identity alone says this is a new hold that owes its own words,
-		 * on every route that can retire the old one — the keystroke path included.
-		 */
-		const lastHeldNotice = useRef<{
-			token: CancelledToken;
-			notice: string;
-		} | null>(null);
 		const suggestions = useMemo(() => {
 			if (!initialSuggestions || initialSuggestions.length === 0) return [];
 			/*
@@ -2221,19 +2199,57 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * to repaint as the mode changes, and the ref is what the event handlers read
 		 * so a handler built for one render cannot act on a stale capture.
 		 *
-		 * `unredactedChars` is the one disclosure the app makes, and it is the
-		 * operator's
-		 * own Esc: §5's notice that the characters are now plain text in the
-		 * composer. The sentence is derived from the count at the render site rather
-		 * than held as state, because it describes an EVENT and the state that follows
-		 * it is an ordinary composer holding prose.
+		 * `unredactedChars` is the disclosure for characters in the box that came from
+		 * a credential gesture as plain text. Esc wrote them until 2026-10-22 and does
+		 * not any more (§5); the remaining writer is the locked-run undo, which hands
+		 * back characters the operator typed UNMASKED and that were already in the
+		 * draft. A draft an older build persisted after an Esc is re-raised on arrival.
 		 */
+		/*
+		 * THE STATE A FIRST ESC WAS HELD OVER, or `null` (see `escapeHolds`): the buffer
+		 * and the held value together, compared field by field.
+		 *
+		 * Not a flag: a flag survives a typed character, so the operator's first Esc after
+		 * resuming would discard without the warning. Not the `Capture` object: caret
+		 * syncs rebuild it with the same contents, which would silently drop the hold.
+		 * Not the buffer alone: every cell is the same bullet, so a backspace-and-retype
+		 * of a different character leaves it byte-identical. The pair changes on every
+		 * edit to the span and on nothing else. In-memory only, like `Capture.value`.
+		 */
+		const [escapeHeldOver, setEscapeHeldOver] = useState<{
+			buffer: string;
+			value: string;
+		} | null>(null);
+		/*
+		 * A transient line after the second Esc, so a reflexive double-press does not
+		 * land on a box that silently lost its secret (design review round 1, D2). It
+		 * names no value and no length, and the next edit retires it (keyed on the
+		 * buffer it was raised over, the same way the hold is).
+		 */
+		const [discardedOver, setDiscardedOver] = useState<string | null>(null);
 		const [capture, setCaptureState] = useState<Capture>(IDLE_CAPTURE);
 		const captureRef = useRef<Capture>(IDLE_CAPTURE);
 		const setCapture = useCallback((next: Capture) => {
 			captureRef.current = next;
 			setCaptureState(next);
+			/*
+			 * THE HOLD ENDS WITH THE CAPTURE, on every route (agent review round 1,
+			 * R1-1). Mint, send, a whole-buffer replacement and a conversation switch
+			 * all leave typing through here; a hold left standing would re-light on a
+			 * later capture that reached the same buffer and value, raising "still
+			 * masked" before any Esc and turning the first press into an unwarned
+			 * discard.
+			 */
+			if (!isTyping(next)) setEscapeHeldOver(null);
 		}, []);
+
+		const escapeIsHeld = useCallback(
+			(buffer: string, held: Capture): boolean =>
+				escapeHeldOver !== null &&
+				escapeHeldOver.buffer === buffer &&
+				escapeHeldOver.value === held.value,
+			[escapeHeldOver],
+		);
 		const payloadsRef = useRef(new Map<number, CredentialPayload>());
 		const nextIndexRef = useRef(1);
 		/*
@@ -2326,12 +2342,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		/*
 		 * The token an Esc cancel just left inert in the buffer (§5).
 		 *
-		 * It is what keeps the SUBMIT seam from re-reading the restored plaintext as
-		 * the `/credential` COMMAND: the notice promices "Enter will expose them",
-		 * and the dispatcher used to take the leading token instead — opening the
-		 * picker and stripping the very characters the sentence was about (QA round
-		 * 1, Q2). Held as the cancel's own arrival offset and text, so it stops
-		 * applying the instant an edit moves the token (`holdsCancelledToken`).
+		 * It is what keeps the SUBMIT seam from reading the inert token as the
+		 * `/credential` COMMAND: the words the operator writes after a cancel are their
+		 * prose, and the dispatcher used to take them as the command's argument and
+		 * strip them out of the box (QA round 1, Q2; UX round 2, U9). Held as the
+		 * cancel's own arrival offset and text, so it stops applying the instant an
+		 * edit moves the token (`holdsCancelledToken`).
 		 */
 		const cancelledToken = useRef<CancelledToken | null>(null);
 		/*
@@ -3125,8 +3141,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * this hook makes — including the keystrokes that follow the cancel, which
 			 * is why it rides the hook rather than being written by the composer's own
 			 * capture path alone. Design round 2's D2 was the missing half of §6's
-			 * deliberate decision to persist the Esc-restored characters: the
-			 * characters came back and the sentence that makes them legible did not.
+			 * then-deliberate decision to persist the Esc-restored characters (retired
+			 * 2026-10-22; Esc no longer restores any): the characters came back and the
+			 * sentence that makes them legible did not.
 			 *
 			 * A FUNCTION OF THE VALUE rather than a number, because the write happens
 			 * inside the keystroke's own handler: a number captured at render time still
@@ -3445,13 +3462,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * makes the persisted draft agree with the box at the moments the box changes
 		 * for a reason the operator did not type.
 		 *
-		 * THE ESC-RESTORED PLAINTEXT IS PERSISTED TOO, deliberately (UX round 1,
-		 * U4). Leaving it out kept a secret off disk, which is defensible — but the
-		 * draft then held the inert `/credential ` the operator had just cancelled,
-		 * so a crash or a quit came back holding a token that looks like a capture
-		 * and is not one, with their line gone. The module's own words for that state
-		 * are the answer: after the unredact "it is their prose, not a credential",
-		 * and the composer persists prose.
+		 * NO TYPED CHARACTERS ARE PERSISTED BY ANY ESC (2026-10-22). Until then the
+		 * Esc-restored plaintext was persisted here on purpose (UX round 1, U4), which
+		 * is how a cancelled credential reached `localStorage`. Esc now holds and then
+		 * discards (§5), so what an Esc leaves for this write is the inert token and
+		 * the operator's own prose around it.
 		 */
 		const persistDraft = useCallback(
 			(capture: Capture, buffer: string) => {
@@ -3646,19 +3661,22 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 */
 			lockedRun.current = null;
 			setDisclosure(null);
+			// The held Esc is about this box's capture, which was just torn down: kept, a
+			// same-length secret typed in the next conversation would open already held.
+			setEscapeHeldOver(null);
+			setDiscardedOver(null);
 		}, [conversationId, setCapture, setDisclosure]);
 
 		/*
 		 * WHAT THE DRAFT SAYS ABOUT ITSELF, re-raised on arrival (design round 2,
 		 * D2).
 		 *
-		 * §6 persists the Esc-restored characters deliberately — by then they are the
-		 * operator's prose — and the teardown above clears this composer's own
-		 * disclosure on a switch, which is right for a LIVE cancel and was the whole
-		 * of the persisted state: the restored draft came back holding a secret with
-		 * no notice, no arm and no pill, and one Enter exposed it. §5 says that state
-		 * must never be silent, so the count now travels with the characters in the
-		 * draft store and this raises the same sentence on the way back in.
+		 * A draft can arrive holding plaintext a credential gesture produced: one an
+		 * older build persisted after an Esc unredact (retired 2026-10-22), or one a
+		 * locked-run undo handed back. The teardown above clears this composer's own
+		 * disclosure on a switch, so without this the draft would come back with no
+		 * notice and one Enter would expose it. The count travels with the characters
+		 * in the draft store and this raises the same sentence on the way back in.
 		 *
 		 * A subscription rather than a read of the hook's restored value, because the
 		 * store is what is persisted and the store is written on every keystroke: the
@@ -3856,51 +3874,45 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				}
 
 				if (event.key === "Escape") {
+					/*
+					 * THE FIRST ESC ON A SPAN WITH CHARACTERS IS CLAIMED AND CHANGES NOTHING
+					 * (operator-approved fix, 2026-10-22). It used to unredact the value into
+					 * the buffer, and `applyCapture` below persists the buffer — so a cancelled
+					 * credential reached `localStorage` in plaintext. The mask, the value and
+					 * the draft stay exactly as they were; only the notice changes, to name what
+					 * the second press does. Claimed (`true`) so the press does not fall through
+					 * to the composer's other Escape meanings while a capture is open.
+					 */
+					if (escapeHolds(current) && !escapeIsHeld(newMessage, current)) {
+						setEscapeHeldOver({ buffer: newMessage, value: current.value });
+						return true;
+					}
+					const discarding = current.value !== "";
 					const cancelled = cancelTypedCredential(current, newMessage);
 					if (!cancelled.cancelled) return false;
 					/*
-					 * THE TOKEN THIS CANCEL LEAVES INERT, remembered so the SUBMIT seam can
-					 * keep the promise the notice below makes (QA round 1, Q2). Enter on
-					 * the restored draft used to reach the dispatcher, which read the
-					 * leading `/credential` as the COMMAND: it opened the picker and
-					 * stripped the restored characters out of the operator's sentence, so
-					 * the text they were told they were about to expose was destroyed
-					 * instead. Recorded at the cancel because the cancel is the only place
-					 * that knows which token was the gesture.
+					 * THE TOKEN THIS CANCEL LEAVES INERT, remembered so the SUBMIT seam treats
+					 * the words written after it as the operator's prose rather than as the
+					 * command's argument (UX round 2, U9): `/credential ` + Esc + `mysecretname`
+					 * + Enter must send the sentence, not eat it. Recorded at the cancel because
+					 * the cancel is the only place that knows which token was the gesture.
 					 *
-					 * RECORDED FOR THE EMPTY-SPAN CANCEL TOO (UX round 2, U9), which is
-					 * the round-2 correction: `null` there was justified by the NOTICE
-					 * being suppressed — nothing was restored, so there is nothing to
-					 * warn about — and that is true about the notice and false about the
-					 * submit. With no token registered, `/credential ` + Esc +
-					 * `mysecretname` + Enter dispatched the command, ate the operator's
-					 * words as its argument and stripped them out of the box. What the
-					 * cancel promises is that the gesture is OVER; the token is how the
-					 * submit is told.
+					 * The token is LEFT in the box rather than removed (design review round 1,
+					 * D6): it is what the operator typed, an empty-span cancel has always left
+					 * it, and removing it would make the two cancels look different for one
+					 * gesture. It is inert, not re-armed (the no-re-arm rule above), and the
+					 * discard line below says what happened to the value.
 					 */
 					cancelledToken.current = cancelled.token;
 					/*
-					 * THE ONE DISCLOSURE THE APP ANNOUNCES, because the frame cannot
-					 * say it on its own: after the unredact the composer looks entirely
-					 * ordinary while holding characters that are now plain text, and
-					 * the very next Enter exposes them. The length is the count, never
-					 * the value. An empty cancel owes no warning — it put nothing in
-					 * the buffer — and the count travels with the draft it describes, so
-					 * the same sentence comes back on a reload (design round 2, D2).
-					 *
-					 * SET BEFORE `applyCapture`, deliberately, because that call is what
-					 * PERSISTS the draft: it asks `disclosureOver` for this buffer, and a
-					 * cancel that wrote the characters first and the disclosure second would
-					 * put a disclosure-free plaintext draft on disk — silently, and only
-					 * after a reload, which is exactly the shape D2 filed. There is ONE such
-					 * pair here: the remediation briefly had two, and the duplicate made the
-					 * ordering invisible to the pin (code review round 3, MINOR 2).
+					 * THE DISCLOSURE IS ALWAYS CLEARED. A cancel discards (`cancelTypedCredential`)
+					 * and puts nothing in the box for a sentence to warn about. Cleared BEFORE
+					 * `applyCapture`, which persists the draft with `disclosureOver` this buffer,
+					 * so a disclosure read back from a pre-fix draft cannot ride the post-cancel
+					 * write (design round 2, D2; code review round 3, MINOR 2).
 					 */
-					setDisclosure(
-						cancelled.restored > 0
-							? { chars: cancelled.restored, over: cancelled.buffer }
-							: null,
-					);
+					setDisclosure(null);
+					if (discarding) setDiscardedOver(cancelled.buffer);
 					applyCapture(cancelled);
 					return true;
 				}
@@ -3955,6 +3967,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				// dependency here.
 				submitCapture,
 				setDisclosure,
+				escapeIsHeld,
 			],
 		);
 
@@ -4020,25 +4033,15 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					 */
 					commandLockedWords: CREDENTIAL_LOCKED_WORDS,
 					/*
-					 * WHICH WORD'S RUN THIS DRAFT IS CARRYING, when the cancel record says it
-					 * put characters back — and NOTHING for a draft the app never un-masked.
-					 *
-					 * This is the whole difference between the two drafts that look alike:
-					 * `the docs/credential rotation policy is stale` is prose (no live run, so
-					 * the planner's boundary rule holds it to a word-opening slash, and the
-					 * sentence sends), while `please /credxential <secret>` one keystroke
-					 * after the app's own Escape is credential material (the run is still in
-					 * the box, so it is taken whatever spelling the word now has). The word
-					 * handed over is the record's own, and it is handed over only while the
-					 * run it restored is still in the draft — a record that restored nothing,
-					 * or whose characters have been edited away, hands nothing over. See
-					 * `carriesRestoredRun` above and `lockedWordPlan`.
+					 * WHICH WORD'S RUN THIS DRAFT IS CARRYING, when a PASTE brought it in and the
+					 * pasted run is still in the draft; NOTHING for a draft the app never exposed.
+					 * An Esc cancel used to hand its word over too, while the characters it
+					 * restored stood in the box; it restores none now (2026-10-22), so only the
+					 * paste route remains. See `carriesPastedRun` and `lockedWordPlan`.
 					 */
-					unmaskedRunWord: carriesRestoredRun(draft)
-						? cancelledToken.current?.text.trim().replace(/^\//, "")
-						: carriesPastedRun(draft)
-							? pastedRun.current?.word
-							: undefined,
+					unmaskedRunWord: carriesPastedRun(draft)
+						? pastedRun.current?.word
+						: undefined,
 					nameListCommands: slash.nameListCommands,
 					enabled: slash.available && Boolean(onSlashCommand),
 				}),
@@ -4079,12 +4082,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * The planner, with §5's one exception in front of it.
 		 *
 		 * AFTER AN ESC CANCEL THE TEXT THE OPERATOR SEES IS WHAT GETS SENT (QA round
-		 * 1, Q2). The notice the composer itself raises for that state promises
-		 * "Enter will expose them", and Enter did the opposite: the restored draft
-		 * still begins with `/credential`, so the planner read it as a COMMAND — the
-		 * picker opened, nothing was sent or stored, and mid-prose the dispatcher
-		 * stripped the restored characters out of the operator's sentence. The
-		 * characters they were just told they were about to expose were destroyed.
+		 * 1, Q2). The draft still begins with the inert `/credential`, and the planner
+		 * used to read it as a COMMAND: the picker opened, nothing was sent, and
+		 * mid-prose the dispatcher stripped the operator's words out of their sentence.
 		 *
 		 * Scoped to the token the composer KNOWS it just cancelled, which is why the
 		 * predicate is `holdsCancelledToken` rather than a flag: it matches the exact
@@ -4153,37 +4153,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			[recordWord],
 		);
 		/**
-		 * Whether THIS DRAFT still holds the characters the cancel put back.
-		 *
-		 * The record's own reach (UX round 6, U24; code review round 6, MINOR 1). The
-		 * composer's record lives until a send, a dispatch or a conversation change —
-		 * that is the pane's history, and handing the record's word to the planner on
-		 * the strength of it alone applied the run's rule to drafts holding NONE of the
-		 * app's characters: `/credential <secret>` -> Escape -> clear the box -> write a
-		 * sentence -> Enter truncated the sentence, opened a Credential dialog for a
-		 * secret the operator does not have, and left it unsendable (round 5's loop, on
-		 * prose). The control — the same sentence with no Escape — was never consumed.
-		 *
-		 * So the byte comparison decides, not the history: the record counts only while
-		 * the run it restored is still in the box, which is exactly the state every
-		 * shape this branch closes is in at the press.
-		 */
-		const carriesRestoredRun = useCallback((draft: string): boolean => {
-			const cancelled = cancelledToken.current;
-			if (cancelled === null || cancelled.restored === 0) return false;
-			/*
-			 * AS A TOKEN, not as a substring (UX round 7, U27): `prod` restored from
-			 * `/credential prod` is not the `prod` inside `the prod/staging split is stale`,
-			 * and a sentence the operator wrote must not have its tail taken because two
-			 * characters of it happen to match a short value.
-			 */
-			return standsAsToken(draft, cancelled.restoredText);
-		}, []);
-		/**
 		 * Whether this draft still carries the run a PASTE brought in (QA round 6, Q-1).
 		 *
-		 * The same shape as `carriesRestoredRun` and for the same reason — the bytes
-		 * decide, not the history — with the pasted TAIL as the bytes: an edit inside the
+		 * The bytes decide, not the history, with the pasted TAIL as the bytes: an edit inside the
 		 * word leaves the secret exposed and must stay covered, while a box that no longer
 		 * holds the pasted value is prose again.
 		 */
@@ -4191,98 +4163,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			const pasted = pastedRun.current;
 			return pasted !== null && standsAsToken(draft, pasted.run);
 		}, []);
-		/**
-		 * Whether THIS draft is one whose press is HELD — nothing runs, nothing
-		 * sends, the box is kept, one notice names the way out.
-		 *
-		 * ONE PREDICATE, TWO READERS (agent review round 2, R5). `planForDraft`
-		 * answers `{kind:"held"}` on exactly this shape, and the composer line must
-		 * not claim the hold on any other: the line said so on `unredactedChars !=
-		 * null`, and that disclosure OUTLIVES the record. On the reload /
-		 * conversation-switch shape the disclosure and the buffer persist while
-		 * `cancelledToken.current` (a ref) dies, so the old test passed where the
-		 * press runs no hold at all — Enter DISPATCHED `/credential <secret>` and ate
-		 * the trailing words as its argument, the very defect this change closes,
-		 * under a sentence promising the opposite. Both readers ask this now, so the
-		 * claim and the press cannot drift.
-		 *
-		 * The two facts are the press's own: `holdsCancelledToken` is the exact span
-		 * `gestureFor` reads (the draft still carries the box's cancelled token where
-		 * it was put back), and `restored > 0` is the branch's own condition — an
-		 * empty span restores nothing, so its words are prose and its press sends.
-		 * CARET-INDEPENDENT by construction, which is what lets the render path read
-		 * it: `gestureFor` takes the draft alone, and no part of the held answer
-		 * depends on where the cursor sits. A `useCallback` with NO dependency, like
-		 * `gestureFor` its sibling: it reads refs only, so its identity is stable and
-		 * `planForDraft` can list it without re-creating on every render.
-		 */
-		const holdsHeldPress = useCallback((draft: string): boolean => {
-			const token = cancelledToken.current;
-			return (
-				token !== null &&
-				token.restored > 0 &&
-				holdsCancelledToken(draft, token)
-			);
-		}, []);
 		const planForDraft = useCallback(
 			(draft: string, at: number): SlashSubmissionPlan => {
 				const gesture = gestureFor(draft);
-				if (gesture === "send" && holdsHeldPress(draft)) {
-					/*
-					 * §5's EXCEPTION, AND THE ONE DRAFT IT MAY NOT SEND.
-					 *
-					 * `send` here means "what you see is what gets sent" — the box cancelled this
-					 * token and the visible text is the operator's own prose (QA round 1 Q2; UX
-					 * round 2 U9). That reading cannot hold for a COMMAND-LOCKED word carrying a
-					 * tail, whose tail is a secret: [redacted] on a live conversation, type
-					 * `/credential `, type the secret behind the mask, press Escape — which THIS APP
-					 * offers in its own notice — and the press put `/credential <the secret>` into
-					 * the conversation, on the remediation's first head and on `main` alike (UX
-					 * round 1, U1). The exception promises the user their own words, not their
-					 * secret's.
-					 *
-					 * WHAT THE CANCEL ITSELF RECORDED DECIDES, and it is the only fact that can
-					 * (review round 3, MINOR 1). The first form of this asked the DISCLOSURE
-					 * (`unredactedChars !== null`), a whole-buffer equality any keystroke clears — so
-					 * one keystroke after the Escape the exception answered `send` and the secret went
-					 * to the model (QA round 2, Q-1). The second form asked the planner for EVERY
-					 * draft holding a locked run: that closed the door, and it also cost the
-					 * operator's own sentence on the one shape where a locked word arrives through a
-					 * route the app has already told them is over — `/credential ` + Escape + words +
-					 * Enter deleted the words instead of sending them.
-					 *
-					 * `token.restored` is the fact both readings were guessing at, taken where it is
-					 * known. An EMPTY span puts nothing back, so the words written after it are the
-					 * operator's own (§5) and the composer sends them as prose — and where the draft
-					 * OPENS with the token, the leading-slash policy refuses that send outright and
-					 * the words stay in the box with nothing sent (UX round 4, U16 [redacted] both, and
-					 * corrected this: the earlier claim here that the shape re-sends the sentence was
-					 * wrong — it is refused, and the gain over the previous head is that the words are
-					 * KEPT rather than consumed). A span that HELD characters puts a secret back, and
-					 * no later keystroke can make that untrue — but the run is no longer DISPATCHED
-					 * here; the press is HELD, which is what `holdsHeldPress` asks and the composer
-					 * line now reads too (agent review round 2, R5 — the two used to ask different
-					 * questions, and the line's was the survivor-less disclosure).
-					 */
-					/*
-					 * A HELD PRESS, NOT A DISPATCHED ONE (operator requirement).
-					 *
-					 * The dispatch route below used to run here and it answered Q-1 — the restored
-					 * secret was never SENT to the model — but at the operator's own cost: the words
-					 * they typed after the cancelled token became the command's ARGUMENT, the run
-					 * consumed them, and the receipt said so. The operator's requirement outranks
-					 * that route. Both of the plan's old answers are wrong at this state:
-					 * dispatching consumes their words, and `send` puts the restored secret into a
-					 * message record. So the press is HELD: nothing runs, nothing sends, the box is
-					 * kept, and one notice names the way out. The Q-1 security invariant is met by
-					 * the hold rather than by the dispatch.
-					 */
-					return {
-						kind: "held",
-						notice:
-							"These characters are still the credentials you cancelled — clear the box to release your words and send your sentence.",
-					};
-				}
 				if (gesture === "send") return { kind: "send" };
 				const plan =
 					gesture === "pick" ? planFor(draft, at, "pick") : planFor(draft, at);
@@ -4320,7 +4203,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 * which stopped being true when the call site at the composer line moved to
 			 * the held sentinel).
 			 */
-			[gestureFor, holdsHeldPress, planFor, recordWord],
+			[gestureFor, planFor, recordWord],
 		);
 		/*
 		 * The composer's syntax highlight, and the ONE gate that decides whether the
@@ -4458,39 +4341,6 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * guard rather than becoming a refusal that restores the draft (round 1 NIT-3).
 				 */
 				const runSlashCommand = onSlashCommand;
-				if (plan.kind === "held") {
-					/*
-					 * A HELD PRESS (operator requirement). This plan is asked of the composer
-					 * when the box still carries an Esc-cancelled credential token whose
-					 * characters were restored: the operator's own words after the token must not
-					 * become the command's argument, and the restored secret must not go to the
-					 * model. So the plan's answer is "do nothing, keep the box, and say the way
-					 * out". The notice is raised BEFORE the dispatcher guard below, deliberately:
-					 * the hold is a property of the composer's own state, not of whether a
-					 * dispatcher is wired, so a harness that mounts the composer alone still gets
-					 * the one sentence rather than a silently dead Enter.
-					 *
-					 * AND THE SENTENCE IS RAISED ONCE PER HOLD (remediation round 1, U4). The box
-					 * is byte-identical after the press, so nothing else about the frame changes:
-					 * four presses on a held box would otherwise append four identical transcript
-					 * lines, and the hold is one standing state rather than one event per press.
-					 * The guard lives HERE and not in the host's `note` for exactly that reason -
-					 * every other note is a fresh outcome with something new to say, and only this
-					 * branch repeats a sentence that is already the whole answer. A ref, not state:
-					 * re-raising the line must not itself re-render the composer, and any state
-					 * change (a keystroke, a clear) re-plans the draft and starts a new hold.
-					 */
-					const held = cancelledToken.current;
-					if (
-						held !== null &&
-						(lastHeldNotice.current?.token !== held ||
-							lastHeldNotice.current?.notice !== plan.notice)
-					) {
-						lastHeldNotice.current = { token: held, notice: plan.notice };
-						onSlashNote?.(plan.notice);
-					}
-					return;
-				}
 				if (!runSlashCommand) return;
 				/*
 				 * A `/model` SUBMISSION NAMING A ROW THAT NEEDS A SIGN-IN IS THE CONNECT
@@ -5583,8 +5433,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				/*
 				 * AND THE SENTENCE THAT DESCRIBES THE STATE IT RESTORES. Where the run took
 				 * characters, `record.text` is those characters — the operator's own — so the box
-				 * is holding a credential in plain text: exactly what §5's own Escape produces and
-				 * announces, and the one state this app says must never be silent (design round 2,
+				 * is holding a credential in plain text: the state §5's Escape produced until
+				 * 2026-10-22, and the one state this app says must never be silent (design round 2,
 				 * D2). `plain` is that run's count, so the announcement fires wherever the restore
 				 * is REAL rather than wherever a live mask was unredacted — a live mask never
 				 * reaches this record at all (it answers Enter by minting), so keying it on that
@@ -5598,7 +5448,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * asks `disclosureOver` for the buffer it is about to write), so an undo that
 				 * wrote the characters first and the disclosure second would persist a plaintext
 				 * secret with `unredactedChars: 0`, silently — measured exactly that way: the
-				 * sentence right on screen, `0` in the store. The Escape path sets its disclosure
+				 * sentence right on screen, `0` in the store. The Escape path clears its disclosure
 				 * before its own persist for the same reason, and there is ONE such pair here.
 				 */
 				if (record.plain > 0)
@@ -7588,66 +7438,59 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const credentialNotice = isTyping(capture)
 			? capture.value !== ""
-				? CREDENTIAL_TYPING_NOTICE
+				? // Keyed on (buffer, value), so the first edit after the held Esc
+					// restores the ordinary typing sentence without any reset path.
+					escapeIsHeld(newMessage, capture)
+					? CREDENTIAL_ESCAPE_HELD_NOTICE
+					: CREDENTIAL_TYPING_NOTICE
 				: credentialSessionId
 					? CREDENTIAL_EMPTY_SPAN_NOTICE
 					: CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE
-			: noticeLineFor({
-					unredacted:
-						unredactedChars !== null
-							? unredactedNotice(
-									unredactedChars,
-									/*
-									 * WHAT THE NEXT ENTER WILL DO WITH THEM, and the sentinel is passed ONLY where
-									 * the press really is held (agent review round 2, R5). The hold is a fact
-									 * about the RECORD, not about the disclosure: `unredactedChars !== null`
-									 * survives a reload / conversation switch while `cancelledToken` (a ref)
-									 * dies with it, so gating on the disclosure alone painted "Enter is held:
-									 * clear the box to release your words" over a box whose Enter DISPATCHES
-									 * `/credential <secret>` and eats the trailing words as its argument — the
-									 * defect this change exists to close, under a sentence promising the
-									 * opposite. `holdsHeldPress` is the same predicate the press asks, so the
-									 * claim and the press cannot drift; where it is false the plain
-									 * `unredactedNotice(n)` sentence stands, which is what a restored draft with
-									 * no live record actually does — expose the characters.
-									 */
-									holdsHeldPress(newMessage) ? HELD_TAKEN_BY : undefined,
-								)
-							: null,
-					/*
-					 * ARMED OUTRANKS CLEARED (UX round 2, U10), and it is the same rule that puts
-					 * the disclosure first: the sentence that knows what the NEXT keystroke will do
-					 * beats the one reporting the last edit. Measured on round 1's order: arm the
-					 * capture at the end of the buffer, clear a chip, and the line stopped saying
-					 * the capture was armed while it still was.
-					 *
-					 * Measured at the END OF THE BUFFER rather than at the `caret` state, and the
-					 * difference is a race rather than a nicety: `caret` lags one commit behind the
-					 * keystroke that moved it, so a derivation that read it here would flicker the
-					 * armed notice on and off between renders — and in the evidence play functions
-					 * it did, producing a frame with the notice in one theme and not in the next.
-					 * The line's tail is the true subject of the predicate (`CREDENTIAL_ARM` is
-					 * anchored to the caret's own line end), and the end of the buffer is that same
-					 * tail in every state the operator can be typing in.
-					 */
-					armed:
-						capture.arm !== null &&
-						armSpan(newMessage, newMessage.length) !== null,
-					cleared:
-						clearedReference === null
-							? null
-							: {
-									key: clearedReference.key,
-									index: clearedReference.index,
-								},
-					/*
-					 * THE SHORTCUT'S OWN SPELLING, from the label the handler's copy uses
-					 * (UX round 3, U15): the durable sentence has to name the key this
-					 * platform actually listens for, and the platform is the composer's to
-					 * know, not the copy module's.
-					 */
-					undoCap: lockedRunUndoCap(platform === "darwin"),
-				});
+			: // The discard line stands only over the buffer the discard left, so the
+				// next edit retires it the same way the hold is retired.
+				discardedOver !== null && discardedOver === newMessage
+				? CREDENTIAL_DISCARDED_NOTICE
+				: noticeLineFor({
+						unredacted:
+							unredactedChars !== null
+								? // Only a draft persisted by a pre-2026-10-22 build can carry this:
+									// no Esc writes characters into the box any more.
+									unredactedNotice(unredactedChars)
+								: null,
+						/*
+						 * ARMED OUTRANKS CLEARED (UX round 2, U10), and it is the same rule that puts
+						 * the disclosure first: the sentence that knows what the NEXT keystroke will do
+						 * beats the one reporting the last edit. Measured on round 1's order: arm the
+						 * capture at the end of the buffer, clear a chip, and the line stopped saying
+						 * the capture was armed while it still was.
+						 *
+						 * Measured at the END OF THE BUFFER rather than at the `caret` state, and the
+						 * difference is a race rather than a nicety: `caret` lags one commit behind the
+						 * keystroke that moved it, so a derivation that read it here would flicker the
+						 * armed notice on and off between renders — and in the evidence play functions
+						 * it did, producing a frame with the notice in one theme and not in the next.
+						 * The line's tail is the true subject of the predicate (`CREDENTIAL_ARM` is
+						 * anchored to the caret's own line end), and the end of the buffer is that same
+						 * tail in every state the operator can be typing in.
+						 */
+						armed:
+							capture.arm !== null &&
+							armSpan(newMessage, newMessage.length) !== null,
+						cleared:
+							clearedReference === null
+								? null
+								: {
+										key: clearedReference.key,
+										index: clearedReference.index,
+									},
+						/*
+						 * THE SHORTCUT'S OWN SPELLING, from the label the handler's copy uses
+						 * (UX round 3, U15): the durable sentence has to name the key this
+						 * platform actually listens for, and the platform is the composer's to
+						 * know, not the copy module's.
+						 */
+						undoCap: lockedRunUndoCap(platform === "darwin"),
+					});
 
 		const shortcutText = useMemo(() => {
 			if (platform === "darwin") {
@@ -7817,8 +7660,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			// The same padding step the interrupt notice beside the composer uses, so
 			// the two sentences share one text edge with the box's own contents.
 			isSmallView ? "px-2 pb-1" : "px-4 pb-2",
-			// The unredact is the one state where the next Enter discloses a
-			// secret, so it takes the warning role rather than muted ink.
+			// A plain-text credential in the box is the one state where the next
+			// Enter discloses a secret, so it takes the warning role, not muted ink.
 			unredactedChars !== null ? "text-warning" : "text-ink-muted",
 		);
 
@@ -8899,6 +8742,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								text={newMessage}
 								payloads={payloadsRef.current}
 								capture={capture}
+								held={escapeIsHeld(newMessage, capture)}
 								fieldRef={textareaRef}
 								mirrorRef={mirrorRef}
 								isSmallView={isSmallView}
