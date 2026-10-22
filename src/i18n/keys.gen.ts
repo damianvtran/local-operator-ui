@@ -5093,7 +5093,6 @@ export type MessageParams = {
 		countText: string;
 	};
 	"ui.teamBridge.actions.label": undefined;
-	"ui.teamBridge.actions.more": undefined;
 	"ui.teamBridge.builtin.agents_topic": undefined;
 	"ui.teamBridge.builtin.humans_topic": undefined;
 	"ui.teamBridge.chief.fallback": undefined;
