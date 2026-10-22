@@ -1115,6 +1115,9 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 								data-address-suggestion-search={
 									row.kind === "search" ? "true" : undefined
 								}
+								data-address-suggestion-source={
+									row.kind === "candidate" ? row.candidate.source : undefined
+								}
 								data-address-suggestion-url={
 									row.kind === "search" ? undefined : row.candidate.url
 								}
