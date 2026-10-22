@@ -32,10 +32,12 @@ import {
 	conversationTitle,
 	directoryFailureKind,
 	dmWithPerson,
+	hubTenantList,
 	isPreviewConversation,
 	notifyFailureIsVisible,
 	orderedMembers,
 	organizationOptions,
+	organizationsReadState,
 	personDisplayLabel,
 	personInitial,
 	personRowState,
@@ -1366,16 +1368,27 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	const readsEnabled = !gatePending && eligibility === null;
 	const selfAccountId = status.data?.account_id ?? undefined;
 	const readOnly = status.data?.read_only === true;
-	// The memberships are the switcher's ONE source, and the account aggregate
-	// is the ONE unread read — the same cache entry the sidebar badge spends.
-	// Per-org counts are joined from that payload, never fetched per org.
+	// The hub's status `tenants[]` is the switcher's and the merged filter's
+	// authoritative source; memberships only label it (and stand in when the
+	// status has no tenant list). Filtering by memberships alone dropped every
+	// row of a hub tenant the memberships read lacked (F6 on #1314). The
+	// account aggregate is the ONE unread read — the same cache entry the
+	// sidebar badge spends. Per-org counts are joined from that payload, never
+	// fetched per org.
 	const memberships = useMembershipsQuery({ enabled: readsEnabled });
 	const unread = useTeamBridgeUnread(readsEnabled, TEAM_BRIDGE_ALL_SCOPE);
+	const hubTenants = hubTenantList(status.data);
 	const organizations = useMemo(
 		() =>
-			organizationOptions(memberships.memberships, unread.data?.organizations),
-		[memberships.memberships, unread.data],
+			organizationOptions(
+				memberships.memberships,
+				unread.data?.organizations,
+				hubTenants,
+			),
+		[memberships.memberships, unread.data, hubTenants],
 	);
+	const { pending: organizationsPending, failed: organizationsFailed } =
+		organizationsReadState(hubTenants, memberships);
 	const list = useTeamBridgeConversations(scope, readsEnabled);
 	// The directory is disabled in the merged scope because there is no single
 	// tenant whose people that view could show, and by the gate like the rest.
@@ -1430,7 +1443,8 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		setComposeTo(null);
 	};
 
-	// The memberships resolve after the first paint; adopt the only one unless
+	// The organization list (hub tenants, or memberships without them) resolves
+	// after the first paint; adopt the only one unless
 	// the reader has already picked a scope. A later unread poll re-renders the
 	// options array, so the equality check keeps this to the one transition.
 	useEffect(() => {
@@ -1521,9 +1535,9 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		<>
 			<TeamBridgePageView
 				listState={
-					list.isPending || (mergedView && memberships.isLoading)
+					list.isPending || (mergedView && organizationsPending)
 						? "loading"
-						: list.isError || (mergedView && memberships.isError)
+						: list.isError || (mergedView && organizationsFailed)
 							? "error"
 							: "ready"
 				}
@@ -1542,8 +1556,8 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				organizations={organizations}
 				scope={scope}
 				totalUnread={unread.data?.total ?? 0}
-				membershipsLoading={memberships.isLoading}
-				organizationsFailed={memberships.isError}
+				membershipsLoading={organizationsPending}
+				organizationsFailed={organizationsFailed}
 				selfAccountId={selfAccountId}
 				sending={send.isPending}
 				sendFailed={send.isError}

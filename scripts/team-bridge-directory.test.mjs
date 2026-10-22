@@ -570,6 +570,41 @@ test("an unanswered gate holds the page and draws no conversation chrome", () =>
 	assert.doesNotMatch(html, /People<\/h2>/);
 });
 
+test("the merged rail lists a hub tenant's rows when memberships are empty", () => {
+	// F6 on #1314: the container builds organizations from the hub's status
+	// tenants; an empty memberships read must not empty the rail or fall back
+	// to "Unknown organization".
+	const organizations = model.organizationOptions(
+		[],
+		[],
+		[
+			{
+				tenant_id: "tnt_2",
+				tenant_name: "Northwind Collective",
+				eligible: true,
+				endpoint: null,
+			},
+		],
+	);
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				organizations,
+				scope: "all",
+				conversations: [
+					conversation({ id: "bcv_t2", tenant_id: "tnt_2" }),
+					conversation({ id: "bcv_t3", tenant_id: "tnt_3" }),
+				],
+			}),
+		),
+	);
+	assert.match(html, /data-conversation-id="bcv_t2"/);
+	assert.doesNotMatch(html, /data-conversation-id="bcv_t3"/);
+	assert.match(visible(html), /Northwind Collective/);
+	assert.doesNotMatch(visible(html), /Unknown organization/);
+});
+
 test("the People heading is an h2 under the page's h1", () => {
 	// ROUND-1 U-7: the sr-only page h1 had no h2 before the section's h3.
 	const html = renderToStaticMarkup(
