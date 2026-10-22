@@ -145,29 +145,39 @@ const MessageRow: FC<{
 		? formatDate(at, { dateStyle: "full", timeStyle: "short" }, locale)
 		: "";
 	const failed = pending?.status === "failed";
-	const state = pending ? (
-		<span
-			className={cn(
-				"flex shrink-0 items-center gap-2 text-[12px]",
-				failed ? "text-danger" : "text-ink-dim",
-			)}
-		>
-			{failed ? (
-				<>
-					<span role="alert">{t("ui.teamBridge.message.failed")}</span>
-					<Button
-						variant="link"
-						size="sm"
-						onClick={() => onRetrySend?.(pending.clientRef)}
-					>
-						{t("ui.common.actions.retry")}
-					</Button>
-				</>
-			) : (
-				<output>{t("ui.teamBridge.message.sending")}</output>
-			)}
-		</span>
-	) : null;
+	// `sent`: the server has the message and only its copy is awaited, so the
+	// row is no longer "Sending…" (and a failed refresh must not leave it so).
+	const unconfirmed = pending?.status === "sending";
+	const bodyId = pending
+		? `team-bridge-pending-${pending.clientRef}`
+		: undefined;
+	const state =
+		pending && pending.status !== "sent" ? (
+			<span
+				className={cn(
+					"flex shrink-0 items-center gap-2 text-[12px]",
+					failed ? "text-danger" : "text-ink-dim",
+				)}
+			>
+				{failed ? (
+					<>
+						<span role="alert">{t("ui.teamBridge.message.failed")}</span>
+						<Button
+							variant="link"
+							size="sm"
+							// Two failed rows must be told apart by assistive tech: the
+							// Retry is described by the message it re-sends.
+							aria-describedby={bodyId}
+							onClick={() => onRetrySend?.(pending.clientRef)}
+						>
+							{t("ui.common.actions.retry")}
+						</Button>
+					</>
+				) : (
+					<output>{t("ui.teamBridge.message.sending")}</output>
+				)}
+			</span>
+		) : null;
 	return (
 		<li
 			data-pending={pending ? pending.status : undefined}
@@ -250,14 +260,16 @@ const MessageRow: FC<{
 						{t("ui.teamBridge.thread.withheld")}
 					</p>
 				) : (
-					<TeamBridgeMarkdown
-						className={cn(
-							"team-bridge-message-body text-[14px] text-ink",
-							pending && !failed && "opacity-70",
-						)}
-					>
-						{message.body}
-					</TeamBridgeMarkdown>
+					<div id={bodyId}>
+						<TeamBridgeMarkdown
+							className={cn(
+								"team-bridge-message-body text-[14px] text-ink",
+								unconfirmed && "opacity-70",
+							)}
+						>
+							{message.body}
+						</TeamBridgeMarkdown>
+					</div>
 				)}
 				{/* Under the body, not in the header: a continuation row has no
 				    header, and a failed row must always carry its Retry. */}
