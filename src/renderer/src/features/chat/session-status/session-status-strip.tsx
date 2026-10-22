@@ -1,7 +1,7 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import { Zap } from "lucide-react";
+import { Info, Zap } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useState } from "react";
 import type {
 	CanonicalFrontendState,
@@ -32,6 +32,7 @@ import {
 } from "./session-duration";
 import {
 	bandReadings,
+	effortDisplacementNote,
 	effortDisplay,
 	effortState,
 	fastModeState,
@@ -1102,6 +1103,16 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	const fastOn = fastModeState(model) === "on";
 	const effort = reconcileEffort(effortState(readings.effort), effortEntities);
 	/*
+	 * WHY THE CHIP'S LEVEL IS NOT THE ONE THE USER PICKED, when that is the case
+	 * (operator report, 2026-10-21: `Max` read `High` after a send, with nothing
+	 * saying why). The chip keeps naming the level IN FORCE, which is its job.
+	 * This adds the reason beside it: the backend's own displacement sentence,
+	 * on the tooltip and in the accessible name, plus a mark on the chip so the
+	 * difference is visible without hovering. Never on a draft: a draft has no
+	 * serving model to be displaced from.
+	 */
+	const effortNote = draft ? null : effortDisplacementNote(frontend);
+	/*
 	 * The four readings that come off the snapshot, asked for a pane that has no
 	 * snapshot yet. A blank `SessionCostInput` answers the same "no spend" the
 	 * preview's own zeros answer, and `contextReading` of absent tokens is its
@@ -1502,7 +1513,11 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				<Reading
 					label={[
 						`Reasoning effort: ${effortDisplay(effort.label)}.`,
+						// The action BEFORE the reason (design review): "… resumes on
+						// X. Change it." read as though the instruction applied to
+						// the fallback sentence rather than to the effort level.
 						effortReason(draft, effort.adjustable, Boolean(openEffort)),
+						effortNote,
 					]
 						.filter(Boolean)
 						.join(" ")}
@@ -1510,6 +1525,9 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 						<TooltipLines
 							lines={[
 								effortDisplay(effort.label),
+								// The reason comes FIRST after the value: it answers the
+								// question the mark raised, before the ladder detail.
+								...(effortNote ? [effortNote] : []),
 								...(draft && effort.adjustable && !openEffort
 									? [DRAFT_EFFORT_LINE]
 									: [effort.detail]),
@@ -1538,8 +1556,24 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					 * The level is a machine-reported value, not prose, so it is
 					 * monospace like every other value in this row.
 					 */}
-					<span className="font-mono text-mono-sm">
+					<span
+						className={cn(
+							"font-mono text-mono-sm",
+							/*
+							 * `warning` is the role for "read this, nothing has broken"
+							 * (docs/branding.md § 3; the same reading `wedged` takes in
+							 * `chat-session-status.tsx`). Colour is never the only
+							 * channel: the `Info` glyph beside it is the shape, so the mark
+							 * survives a colour-blind reading. Both are `aria-hidden`
+							 * because the sentence already rides the accessible name.
+							 */
+							effortNote && "inline-flex items-center gap-1 text-warning",
+						)}
+					>
 						{effortDisplay(effort.label)}
+						{effortNote && (
+							<Info aria-hidden="true" className="size-3 shrink-0" />
+						)}
 					</span>
 				</Reading>
 			)}

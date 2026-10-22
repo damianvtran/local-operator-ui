@@ -82,5 +82,8 @@
 	"ui.agentMessages.settings.allowlist.person_id": "ID de la personne",
 	"ui.agentMessages.settings.allowlist.identifier_help_agent": "Saisissez un ID d’agent (bep_…)",
 	"ui.agentMessages.settings.allowlist.identifier_help_person": "Saisissez un ID de personne (acc_…)",
-	"ui.agentMessages.settings.error.no_changes": "Aucun paramètre n’a été modifié. Réessayez pour vérifier l’état actuel."
+	"ui.agentMessages.settings.error.no_changes": "Aucun paramètre n’a été modifié. Réessayez pour vérifier l’état actuel.",
+	"ui.agentMessages.settings.hold.chief_of_staff": "{count, plural, one {{count} message attend votre cheffe de cabinet. Envoyez un message dans sa conversation pour le recevoir.} many {{count} de messages attendent votre cheffe de cabinet. Envoyez un message dans sa conversation pour les recevoir.} other {{count} messages attendent votre cheffe de cabinet. Envoyez un message dans sa conversation pour les recevoir.}}",
+	"ui.agentMessages.settings.hold.chief_of_staff_unlinked": "{count, plural, one {{count} message attend votre cheffe de cabinet. Retrouvez sa conversation dans la barre latérale et envoyez-y un message pour le recevoir.} many {{count} de messages attendent votre cheffe de cabinet. Retrouvez sa conversation dans la barre latérale et envoyez-y un message pour les recevoir.} other {{count} messages attendent votre cheffe de cabinet. Retrouvez sa conversation dans la barre latérale et envoyez-y un message pour les recevoir.}}",
+	"ui.agentMessages.settings.hold.open": "Écrire à la cheffe de cabinet"
 }

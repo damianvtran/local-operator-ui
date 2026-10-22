@@ -29,6 +29,17 @@
  * stripped; mock keychain; notifications and telemetry off. The app is spawned by
  * absolute path, detached into its own process group, and the group is reaped by
  * its exact pid on every exit path.
+ *
+ * SUPERSEDED FOR CHROME GEOMETRY BY S4b (2026-10-21). This rig still asserts the
+ * in-flow list against the 104 px `data-address-dock-height` dock and the
+ * "page starts exactly at the dock's bottom rule" relation. S4b deleted that
+ * dock: at rest there is no bar and no dock (the page begins at the strip's
+ * bottom edge), and the list is a native child placed below a popout row at the
+ * STRIP's width. Those assertions no longer describe the shipped product and a
+ * run of this rig is expected to fail them; it is kept for the S3 history and
+ * for its input/IME checks, not as the S4b geometry gate. The authoritative
+ * rig for the shipped chrome is `browser-chrome-s4b-probe.mjs`
+ * (matrix: docs/evidence/browser-chrome-s4b/matrix.md).
  */
 
 import { spawn } from "node:child_process";
@@ -824,7 +835,8 @@ try {
 	const rawHistory = await evaluate(`window.api.browser.addressHistory({
 		requestId: 1,
 		expectedTabId: ${activeState.activeTabId},
-		scope: 'all',
+		query: '',
+		limit: 8,
 	}).catch((error) => ({ error: String(error?.message ?? error) }))`);
 	record("raw history", rawHistory);
 	check(
@@ -1134,7 +1146,8 @@ try {
 		const staleHistory = await evaluate(`window.api.browser.addressHistory({
 		requestId: 9001,
 		expectedTabId: ${oldTabId},
-		scope: 'all',
+		query: '',
+		limit: 8,
 	}).then(() => ({ ok: true })).catch((error) => ({ ok: false, message: String(error?.message ?? error) }))`);
 		record("stale history", staleHistory);
 		check(
@@ -1159,7 +1172,7 @@ try {
 		);
 
 		// ---- no-history / empty state on a fresh tab -------------------------
-		// Close the populated tab first: scope `all` would otherwise still offer its
+		// Close the populated tab first: the live-tab source would otherwise still offer its
 		// history, and the empty state would be tested against the wrong world.
 		for (const tab of stateAfter.tabs) {
 			if (tab.tabId !== stateAfter.activeTabId) {
