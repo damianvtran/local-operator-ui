@@ -606,6 +606,49 @@ async function historyScene({ shot, framesDir }) {
 		stopOne = await one.stop();
 		one = null;
 
+		// Seed two extra stored pages for the match rows: a www page real and a
+		// lookalike domain that must not match. Written between runs, so the
+		// phase-2 store loads it through the same read path the app uses.
+		const historyPath = join(profile, "browser-history.json");
+		let seeded;
+		try {
+			seeded = JSON.parse(readFileSync(historyPath, "utf8"));
+		} catch {
+			seeded = { version: 1, entries: [] };
+		}
+		const seededAt = Date.now();
+		seeded.entries.push(
+			{
+				url: "https://www.example.com/",
+				title: "Www example",
+				host: "www.example.com",
+				visitCount: 5,
+				lastVisitedAt: seededAt,
+			},
+			{
+				url: "https://www.example.com/page",
+				title: "Www page",
+				host: "www.example.com",
+				visitCount: 2,
+				lastVisitedAt: seededAt,
+			},
+			{
+				url: "https://www.example.com/other",
+				title: "Www other",
+				host: "www.example.com",
+				visitCount: 1,
+				lastVisitedAt: seededAt,
+			},
+			{
+				url: "https://www.example.com.evil.test/",
+				title: "Lookalike",
+				host: "www.example.com.evil.test",
+				visitCount: 9,
+				lastVisitedAt: seededAt,
+			},
+		);
+		writeFileSync(historyPath, JSON.stringify(seeded, null, 2));
+
 		// Phase 2: same profile, a different page on the host.
 		two = await boot({ profile, label: "history-2" });
 		const cdp = await mount(two.port);
@@ -618,6 +661,30 @@ async function historyScene({ shot, framesDir }) {
 		await focusChrome(cdp);
 		if (!(await raise(cdp)))
 			throw new Error("history scene: run 2 popout did not raise");
+
+		// H10 (U9): Enter on an untouched draft with no row selected lowers the
+		// popout and navigates nothing.
+		const untouchedUrl =
+			before.tabs.find((tab) => tab.tabId === before.activeTabId)?.url ?? null;
+		await press(cdp, "Enter", "Enter");
+		const untouchedClosed = await waitFor(
+			cdp,
+			`!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+			6_000,
+		);
+		const afterUntouched = await evaluate(cdp, "window.api.browser.state()");
+		const afterUntouchedUrl =
+			afterUntouched.tabs.find(
+				(tab) => tab.tabId === afterUntouched.activeTabId,
+			)?.url ?? null;
+		record(
+			"H10",
+			untouchedClosed && afterUntouchedUrl === untouchedUrl ? "PASS" : "FAIL",
+			{ untouchedClosed, untouchedUrl, afterUntouchedUrl },
+		);
+		await focusChrome(cdp);
+		if (!(await raise(cdp)))
+			throw new Error("history scene: popout did not re-raise");
 
 		// H1: history row, no open tab, source marks it.
 		await typeInAddressField(cdp, host);
@@ -652,6 +719,42 @@ async function historyScene({ shot, framesDir }) {
 				child: historyChild?.facts ?? null,
 			},
 		);
+
+		// H9 (U8): Cmd+L, ArrowDown, Enter commits the highlighted history row.
+		await press(cdp, "ArrowDown", "ArrowDown");
+		await waitFor(
+			cdp,
+			`!!document.querySelector('[aria-activedescendant]')`,
+			6_000,
+		);
+		const arrowRows = await suggestionRows(cdp);
+		const arrowSelected = arrowRows.rows.find(
+			(row) => row.id === arrowRows.active,
+		);
+		await press(cdp, "Enter", "Enter");
+		const arrowCommitted = arrowSelected
+			? await waitFor(
+					cdp,
+					`(async () => {
+						const state = await window.api.browser.state();
+						const tab = state.tabs.find((entry) => entry.tabId === state.activeTabId);
+						return tab?.url === ${JSON.stringify(arrowSelected.url)};
+					})()`,
+					20_000,
+				)
+			: false;
+		record("H9", Boolean(arrowSelected) && arrowCommitted ? "PASS" : "FAIL", {
+			selected: arrowSelected ?? null,
+			rows: arrowRows,
+			arrowCommitted,
+		});
+		await waitFor(
+			cdp,
+			"(async () => !(await window.api.browser.state()).loading)()",
+			20_000,
+		).catch(() => {});
+		await focusChrome(cdp);
+		await raise(cdp);
 
 		// H2: github is search intent; the search row is first and selected.
 		await typeInAddressField(cdp, "github");
@@ -908,11 +1011,71 @@ async function historyScene({ shot, framesDir }) {
 			{ child: rtlDir, facts: rtlChild?.facts ?? null },
 		);
 		await evaluate(cdp, `document.documentElement.dir = "ltr"`);
+
+		// H11: a complete host query must not match the lookalike domain; the
+		// real www page's other paths stay as rows (the root is the inline target).
+		await focusChrome(cdp);
+		await raise(cdp);
+		await typeInAddressField(cdp, "www.example.com");
+		await waitFor(
+			cdp,
+			`document.querySelectorAll("[data-address-suggestion]").length > 0`,
+			8_000,
+		);
+		const boundaryRows = await suggestionRows(cdp);
+		await frameScene(cdp, "owner-boundary.png");
+		const boundaryChild = await childFacts(two.port, "www.example.com");
+		if (boundaryChild) {
+			writeFileSync(
+				join(framesDir, "child-boundary.png"),
+				await shot(boundaryChild.child),
+			);
+			boundaryChild.child.close();
+		}
+		record(
+			"H11",
+			boundaryRows.rows.some((row) =>
+				row.url?.includes("www.example.com/page"),
+			) && !boundaryRows.rows.some((row) => row.url?.includes("evil.test"))
+				? "PASS"
+				: "FAIL",
+			{ owner: boundaryRows, child: boundaryChild?.facts ?? null },
+		);
+
+		// H12: `www` (a prefix shorter than a host) still recalls the stored www page.
+		await typeInAddressField(cdp, "www");
+		await waitFor(
+			cdp,
+			`document.querySelectorAll("[data-address-suggestion]").length > 0`,
+			8_000,
+		);
+		const wwwRows = await suggestionRows(cdp);
+		await frameScene(cdp, "owner-www.png");
+		record(
+			"H12",
+			wwwRows.rows.some((row) => row.url?.includes("www.example.com/"))
+				? "PASS"
+				: "FAIL",
+			{ owner: wwwRows },
+		);
 		cdp.close();
 		stopTwo = await two.stop();
 		two = null;
 	} catch (error) {
-		for (const id of ["H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8"]) {
+		for (const id of [
+			"H1",
+			"H2",
+			"H3",
+			"H4",
+			"H5",
+			"H6",
+			"H7",
+			"H8",
+			"H9",
+			"H10",
+			"H11",
+			"H12",
+		]) {
 			if (!rows.find((row) => row.id === id)?.at)
 				record(id, "BLOCKED", `history scene rig error: ${String(error)}`);
 		}
@@ -1052,6 +1215,22 @@ plan(
 	"at narrow width the open-tab title/marker keeps a floor and does not collapse",
 	"driven",
 );
+plan(
+	"H9",
+	"Cmd+L, ArrowDown, Enter commits the highlighted history row",
+	"driven",
+);
+plan(
+	"H10",
+	"Enter on an untouched field with no row lowers the popout and navigates nothing",
+	"driven",
+);
+plan(
+	"H11",
+	"a complete host query does not match the lookalike domain",
+	"driven",
+);
+plan("H12", "the prefix www recalls a stored www page", "driven");
 plan(
 	"H6",
 	"a query with no match shows the no-match notice and no rows",

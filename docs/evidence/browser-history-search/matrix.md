@@ -1,19 +1,23 @@
 # Browser history and search — driven matrix
 
-Run: `node scripts/browser-chrome-s4b-probe.mjs --out <scratch>/s4b-r2c-1792649569`
-Head under test: `7a339858546fb561b7fab314ec5bf89c8132d93a`
+Run: `node scripts/browser-chrome-s4b-probe.mjs --out <scratch>/s4b-r3b-1792653343`
+Head under test: `ca944e127c73d9824e636bcd1b14180db790171d`
 Base: `c5503204ed0bc88e20dadb624de949788dc52b80`
 
 | Row | Claim | Status | Actual evidence |
 | --- | --- | --- | --- |
-| H1 | a visit recorded in an earlier app run is suggested from history with no tab open on it | PASS | run 1 exited `code 0`; `openOnFixture: false`; query `127.0.0.1:56842`; rows `/history-target-b`, `/history-other`, `/history-target`, all `source: "history"`; child header `From your history` |
-| H2 | typing `github` shows the Search DuckDuckGo row first and selected | PASS | row 0 `Search DuckDuckGo for "github"`, `data-address-suggestion-search="true"`, `aria-activedescendant` = row 0; child header `Suggestions` |
+| H1 | a visit recorded in an earlier app run is suggested from history with no tab open on it | PASS | run 1 exited `code 0`; `openOnFixture: false`; query `127.0.0.1:58419`; rows `/history-target-b`, `/history-other`, `/history-target`, all `source: "history"`; child header `From your history` |
+| H2 | typing `github` shows the Search DuckDuckGo row first and selected | PASS | row 0 `Search DuckDuckGo for "github"`, search marker, `aria-activedescendant` = row 0; child header `Suggestions` |
 | H3 | typing `what is a vpn` shows the same search row first and selected | PASS | row 0 `Search DuckDuckGo for "what is a vpn"`, search marker, `aria-activedescendant` = row 0; child header `Suggestions` |
-| H4 | Enter commits the highlighted search row's DuckDuckGo URL on the active tab | PASS | `github` → committed `https://duckduckgo.com/?q=github`; `what is a vpn` → committed `https://duckduckgo.com/?q=what+is+a+vpn`; asserted on the active tab URL, not the page body |
-| H5 | an open tab with no stored history row is a tab row with its source mark | PASS | after `forgetSite(origin)`: one row, `url: http://127.0.0.1:56842/history-other`, `source: "tab"`; child title `Already open — S4b fixture`; header `Suggestions` |
-| H8 | at narrow width the open-tab title/marker keeps a floor and does not collapse | PASS | child viewport 304px; `titleText: "Already open — S4b fixture"`, `titleWidth: 78` (the CSS floor is 6em = 78px at 13px). Before the floor this column was 0px at the same width |
+| H4 | Enter commits the highlighted search row's DuckDuckGo URL on the active tab | PASS | `github` → committed `https://duckduckgo.com/?q=github`; `what is a vpn` → committed `https://duckduckgo.com/?q=what%20is%20a%20vpn`; asserted on the active tab URL, not the page body |
+| H9 | Cmd+L, ArrowDown, Enter commits the highlighted history row | PASS | selected `http://127.0.0.1:58419/history-target-b` (`source: history`), `aria-activedescendant` named it, and the active tab URL after Enter equals it. `arrowCommitted: true` |
+| H10 | Enter on an untouched field with no row lowers the popout and navigates nothing | PASS | `untouchedClosed: true`; URL before and after `http://127.0.0.1:58419/history-other` — the popout dismissed, no navigation |
+| H5 | an open tab with no stored history row is a tab row with its source mark | PASS | after `forgetSite(origin)`: one row, `http://127.0.0.1:58419/history-other`, `source: "tab"`; child title `Already open — S4b fixture`; header `Suggestions` |
+| H8 | at narrow width the open-tab title/marker keeps a floor and does not collapse | PASS | child viewport 304px; `titleText: "Already open — S4b fixture"`, `titleWidth: 104` (the 8em floor at 13px). The assertion fails unless the viewport is ≤360px |
 | H6 | a query with no match shows the no-match notice and no rows | PASS | value `zzz-nohistory.example`; owner rows `[]`; child `notice: "No matching pages in your history."`, header `Suggestions` |
-| H7 | an RTL owner chrome paints an RTL child and the row text is `dir=auto` | PASS | child `dir: "rtl"`, `.lo-row-text` `dir: "auto"`, row `Search DuckDuckGo for "github"`. Limitation: the app locale was not switched, so the sentence is English; the Urdu string is audited separately |
+| H7 | an RTL owner chrome paints an RTL child and the row text is `dir=auto` | PASS | child `dir: "rtl"`, `.lo-row-text` `dir: "auto"`, row `Search DuckDuckGo for "github"`. Limitation: app locale not switched, so the sentence is English |
+| H11 | a complete host query does not match the lookalike domain | PASS | query `www.example.com`; rows are the real `/`, `/page`, `/other` (all `source: history`); no `evil.test` row. The stored lookalike `https://www.example.com.evil.test/` is rejected by the host boundary |
+| H12 | the prefix `www` recalls a stored www page | PASS | query `www`; search row first (single word is search intent) and rows `https://www.example.com/`, `/page`, `/other` all present from history |
 
 ## Heuristic table
 
