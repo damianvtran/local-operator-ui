@@ -25,6 +25,7 @@ import type {
 	TeamBridgeAttachmentCapability,
 } from "../../../../shared/team-bridge-contract";
 import { teamBridgeAttachmentCapabilitySchema } from "../../../../shared/team-bridge-contract";
+import { onDraftRevocation } from "../../shared/store/team-bridge-draft-account";
 import {
 	type WireImageMime,
 	boundImageForWire,
@@ -385,3 +386,5 @@ export function uploadPreview(
 export function forgetUploadPreviews(): void {
 	previews.clear();
 }
+// Registered at module load: the account fence clears previews with drafts.
+onDraftRevocation(forgetUploadPreviews);

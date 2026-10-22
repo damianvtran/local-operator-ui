@@ -1214,5 +1214,12 @@
 		"length": "One sentence.",
 		"placeholders": {},
 		"note": "Shown when Send is pressed while a composer image failed; the message is not sent without it."
+	},
+	"ui.teamBridge.attachments.remove_all": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Button in the reschedule dialog that removes every image from a scheduled message. Images cannot be added here."
 	}
 }

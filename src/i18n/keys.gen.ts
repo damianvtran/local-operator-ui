@@ -5080,6 +5080,7 @@ export type MessageParams = {
 	"ui.teamBridge.attachments.open": { index: string; count: string };
 	"ui.teamBridge.attachments.position": { index: string; count: string };
 	"ui.teamBridge.attachments.remove": { label: string };
+	"ui.teamBridge.attachments.remove_all": undefined;
 	"ui.teamBridge.attachments.retry": { label: string };
 	"ui.teamBridge.attachments.retry_load": undefined;
 	"ui.teamBridge.attachments.send_blocked": undefined;

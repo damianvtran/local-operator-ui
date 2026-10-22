@@ -4,6 +4,7 @@ import { cn } from "@shared/lib/utils";
 import { Bot, MessageSquare } from "lucide-react";
 import type { FC } from "react";
 import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
+import { TeamBridgeMessageAttachments } from "./team-bridge-attachments";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
 import { type ThreadItem, threadItems } from "./team-bridge-model";
 import { threadSummary } from "./team-bridge-threads-model";
@@ -41,7 +42,14 @@ export const TeamBridgeMessageList: FC<{
 	messages: readonly TeamBridgeMessage[];
 	labelFor: (sender: TeamBridgeMessage["sender"]) => string;
 	onReply?: (message: TeamBridgeMessage) => void;
-}> = ({ messages, labelFor, onReply }) => {
+	/*
+	 * The organization the messages belong to: an image fetch is member-gated
+	 * per tenant on the hub, so the tenant travels with the request. Omitted by
+	 * callers with no images to fetch (and then images render as unavailable
+	 * rather than guessing a tenant).
+	 */
+	tenantId?: string;
+}> = ({ messages, labelFor, onReply, tenantId }) => {
 	const locale = useI18nLocale();
 	const items = threadItems(messages, new Date());
 	return (
@@ -57,6 +65,7 @@ export const TeamBridgeMessageList: FC<{
 						label={labelFor(item.message.sender)}
 						locale={locale}
 						onReply={onReply}
+						tenantId={tenantId}
 					/>
 				),
 			)}
@@ -100,7 +109,8 @@ const MessageRow: FC<{
 	label: string;
 	locale: string;
 	onReply?: (message: TeamBridgeMessage) => void;
-}> = ({ message, continuation, label, locale, onReply }) => {
+	tenantId?: string;
+}> = ({ message, continuation, label, locale, onReply, tenantId }) => {
 	const summary = threadSummary(message);
 	const agent = message.sender.kind === "agent";
 	const at = new Date(message.created_at);
@@ -190,10 +200,19 @@ const MessageRow: FC<{
 					<p className="text-[14px] text-ink-dim italic">
 						{t("ui.teamBridge.thread.withheld")}
 					</p>
-				) : (
+				) : message.body.trim() === "" &&
+					(message.attachments?.length ?? 0) > 0 ? null : (
+					/* An image-only message has an empty body: no empty prose block. */
 					<TeamBridgeMarkdown className="team-bridge-message-body text-[14px] text-ink">
 						{message.body}
 					</TeamBridgeMarkdown>
+				)}
+				{/* Images come ONLY from the structured list, never from the body. */}
+				{(message.attachments?.length ?? 0) > 0 && (
+					<TeamBridgeMessageAttachments
+						message={message}
+						tenantId={tenantId ?? null}
+					/>
 				)}
 				{onReply && summary.count > 0 && (
 					<button
