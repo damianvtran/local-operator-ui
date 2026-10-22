@@ -20,6 +20,7 @@ import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
 import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
 import { draftTargetKey } from "./team-bridge-drafts";
+import { TeamBridgeHeldAttempt } from "./team-bridge-held-attempt";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
@@ -394,6 +395,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		eligibility === "signed_out",
 		scope === TEAM_BRIDGE_ALL_SCOPE,
 	);
+	const heldAttempt =
+		Boolean(draftState.current?.sendAt) &&
+		!draftState.current?.createUncertain &&
+		!scheduling;
+
 	const { body: draft, setBody: setDraft } = draftState;
 	const selectTarget = (next: TeamBridgeTarget) => {
 		setQuickView(null);
@@ -1111,7 +1117,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						)}
 
 						<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block! [&_[data-radix-scroll-area-viewport]>div]:h-full">
-							<div className="flex h-full flex-col">
+							{/* Intrinsic transcript height must remain scrollable when localized recovery controls claim more composer space. */}
+							<div className="flex min-h-full flex-col">
 								{previewSelected ? (
 									<TeamBridgePreviewBanner
 										joining={joining}
@@ -1212,62 +1219,19 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									{t("ui.teamBridge.read_only.composer")}
 								</p>
 							) : (
-								<div className="shrink-0 px-4 pb-4">
-									{draftState.current?.sendAt &&
-										!draftState.current.createUncertain && (
-											<div className="text-sm text-ink-muted">
-												<p id={heldReasonId}>
-													{t("ui.teamBridge.schedule.held")}
-												</p>
-												<Button
-													variant="ghost"
-													disabled={scheduling || sending}
-													onClick={() => {
-														if (writing.current || scheduling || sending)
-															return;
-														// This acknowledges a manual Scheduled check, not server cancellation.
-														// Keep the body/created conversation, but never reuse the discarded key.
-														if (
-															draftState.update({
-																sendAt: undefined,
-																clientRef: crypto.randomUUID(),
-															})
-														)
-															setScheduleFailed(false);
-													}}
-												>
-													{t("ui.teamBridge.schedule.discard_attempt")}
-												</Button>
-											</div>
-										)}
+								/* Bound localized recovery controls without consuming the whole timeline. */
+								<div className="min-h-0 max-h-[60%] shrink-0 overflow-y-auto px-4 pb-4">
 									{scheduleFailed && (
 										<p role="alert" className="text-sm text-danger">
 											{t("ui.teamBridge.schedule.failed")}
 										</p>
 									)}
-									{draftState.current?.sendAt &&
-										!draftState.current.createUncertain &&
-										onSchedule && (
-											<Button
-												variant="ghost"
-												disabled={scheduling || sending}
-												onClick={() => {
-													const at = draftState.current?.sendAt;
-													if (at)
-														void schedule(at).catch(() =>
-															setScheduleFailed(true),
-														);
-												}}
-											>
-												{t("ui.teamBridge.schedule.retry")}
-											</Button>
-										)}
 									{scheduledSuccess && (
 										<p aria-live="polite" className="text-sm text-ink-muted">
 											{t("ui.teamBridge.schedule.success")}
 										</p>
 									)}
-									{draftState.current?.createUncertain && (
+									{draftState.current?.createUncertain && !scheduling && (
 										<div role="alert" className="text-sm text-danger">
 											<p id={`${heldReasonId}-group`}>
 												{t("ui.teamBridge.schedule.create_uncertain")}
@@ -1301,6 +1265,35 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											"has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-solid",
 										)}
 									>
+										{heldAttempt && (
+											<TeamBridgeHeldAttempt
+												reasonId={heldReasonId}
+												busy={sending || scheduling}
+												onRetry={
+													onSchedule
+														? () => {
+																const at = draftState.current?.sendAt;
+																if (at)
+																	void schedule(at).catch(() =>
+																		setScheduleFailed(true),
+																	);
+															}
+														: undefined
+												}
+												onDiscard={() => {
+													if (writing.current || scheduling || sending) return;
+													// This releases only the local attempt; the explicit acknowledgement asks
+													// the reader to check/cancel any server schedule before minting a fresh key.
+													if (
+														draftState.update({
+															sendAt: undefined,
+															clientRef: crypto.randomUUID(),
+														})
+													)
+														setScheduleFailed(false);
+												}}
+											/>
+										)}
 										<textarea
 											value={draft}
 											onChange={(event) => setDraft(event.target.value)}
@@ -1357,9 +1350,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 													size="icon"
 													aria-label={t("ui.teamBridge.schedule.title")}
 													aria-describedby={
-														draftState.current?.createUncertain
+														draftState.current?.createUncertain && !scheduling
 															? `${heldReasonId}-group`
-															: draftState.current?.sendAt
+															: heldAttempt
 																? heldReasonId
 																: undefined
 													}
@@ -1398,9 +1391,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 												}
 												aria-label={t("ui.teamBridge.composer.send")}
 												aria-describedby={
-													draftState.current?.createUncertain
+													draftState.current?.createUncertain && !scheduling
 														? `${heldReasonId}-group`
-														: draftState.current?.sendAt
+														: heldAttempt
 															? heldReasonId
 															: undefined
 												}
