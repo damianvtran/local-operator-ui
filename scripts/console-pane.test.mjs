@@ -246,27 +246,20 @@ test("the theme resolves roles through the document, and omits what is missing",
 		assert.equal(theme.red, "#ff5555");
 		assert.equal(theme.brightBlack, "#c0c0c0");
 		/*
-		 * HISTORY IS DIM ON THE DEFAULT INK; THE CARET IS HIDDEN IN CSS (D1).
+		 * HISTORY IS DIM ON THE DEFAULT INK; THE CARET IS HIDDEN BY DECTCEM (D1/U6).
 		 *
 		 * The program text steps down to `inkMuted` (a role with its own contrast
 		 * floor in every palette, not an opacity overlay). The cursor roles are
-		 * deliberately the LIVE ones: an earlier version painted both as the ground,
-		 * which hides the caret but also paints the glyph under it in the ground
-		 * colour. The history host's stylesheet makes the cursor cell transparent and
-		 * inherits its ink instead; a stylesheet failure leaves a visible caret rather
-		 * than an invisible character.
+		 * deliberately the LIVE ones: a stylesheet rule on `.xterm-cursor` lost to
+		 * xterm's injected styling, and painting the cell in the ground colour blanks
+		 * the glyph under it. The mirror writes `CSI ? 25 l` into its own view instead;
+		 * the mirror suite pins that write, and the frames pin the focused pixels.
 		 */
 		const history = readTerminalTheme({}, "history");
 		assert.equal(history.background, "#101010");
 		assert.equal(history.foreground, "#c0c0c0");
 		assert.equal(history.cursor, "#4488ff");
 		assert.equal(history.cursorAccent, "#181818");
-		const css = readFileSync("src/renderer/src/styles/index.css", "utf8");
-		assert.match(
-			css,
-			/\[data-console-history\] \.xterm-cursor\s*\{[^}]*background-color: transparent[^}]*color: inherit/s,
-			"the history stylesheet hides the cursor cell without blanking its glyph",
-		);
 		assert.equal(
 			history.red,
 			"#ff5555",

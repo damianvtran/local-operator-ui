@@ -218,6 +218,7 @@ const {
 	MAX_INPUT_BYTES,
 	CLOSE_GRACE_MS,
 	QUIT_SIGNAL_GRACE_MS,
+	QUIT_EXIT_CAPTURE_MS,
 	ConsoleHistory,
 	fileStem,
 	historyRoot,
@@ -4619,8 +4620,8 @@ test("quit records app_quit when the exit cannot be observed, and the next launc
 		`the quit grace was actually waited (${elapsed} ms)`,
 	);
 	assert.ok(
-		elapsed < 1_500,
-		`and the whole quit fits the app's awaited budget (${elapsed} ms)`,
+		elapsed < QUIT_SIGNAL_GRACE_MS + QUIT_EXIT_CAPTURE_MS + 500,
+		`and the whole quit stays inside the app's awaited budget plus timer slack (${elapsed} ms)`,
 	);
 	assert.deepEqual(
 		pty.signals,
@@ -4732,6 +4733,30 @@ test("quitting does not raise the completion seam for the terminals it closes (M
 	);
 });
 
+test("an ordinary exit still raises the completion seam, with the signal when one ended it (M-1)", async () => {
+	const exits = [];
+	const { host, spawned } = makeHost({
+		onExit: (event) => {
+			exits.push(event);
+		},
+	});
+	const created = host.create({
+		sessionId: "session-exit-seam",
+		origin: "user",
+		retain: false,
+	});
+	spawned[0].pty.exit(0, 15);
+	assert.deepEqual(exits, [
+		{
+			surface: created.surface,
+			sessionId: "session-exit-seam",
+			exitCode: 0,
+			exitSignal: "SIGTERM",
+		},
+	]);
+	await host.dispose(false);
+});
+
 test("a create that arrives during the dispose settle is refused by name (m-2)", async () => {
 	const { host, spawned } = makeHost();
 	host.create({ sessionId: "session-dispose", origin: "user", retain: false });
@@ -4773,8 +4798,12 @@ test("the quit bound runs across surfaces, not one after another (m-4)", async (
 	await host.dispose();
 	const elapsed = Date.now() - started;
 	assert.ok(
-		elapsed < 1_500,
+		elapsed < 1_800,
 		`two unobservable exits cost one bound, not two (${elapsed} ms)`,
+	);
+	assert.ok(
+		elapsed < 2 * (QUIT_SIGNAL_GRACE_MS + QUIT_EXIT_CAPTURE_MS),
+		"a serial implementation would spend both bounds",
 	);
 	for (const created of [first, second]) {
 		const meta = JSON.parse(

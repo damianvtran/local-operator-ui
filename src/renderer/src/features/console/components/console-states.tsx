@@ -316,24 +316,26 @@ export const ConsoleHistoryEnd: FC<{
 	announcementSeq?: number;
 }> = ({ announcement, announcementSeq = 0 }) => (
 	<div
+		/* TWO ROWS, ALWAYS (D3): the marker row and a reserved announcement row.
+		   `min-h-4` on a flex-wrap row was not enough - the sentence took its own
+		   wrapped row and moved the band's top border by ~21.5 px on the first
+		   refusal. An always-present row makes empty and spoken the same height. */
 		className={cn(
-			"flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-hairline border-t bg-sunken px-3 py-1.5",
+			"flex shrink-0 flex-col gap-0.5 border-hairline border-t bg-sunken px-3 py-1.5",
 		)}
 		data-tour-tag="console-history-end"
 	>
-		<span className={cn("text-ink-muted text-meta")}>
-			{t("ui.console.ended.marker")}
-		</span>
-		<span className={cn("text-ink-dim text-meta")}>
-			{t("ui.console.ended.marker_detail")}
-		</span>
+		<div className={cn("flex flex-wrap items-center gap-x-3")}>
+			<span className={cn("text-ink-muted text-meta")}>
+				{t("ui.console.ended.marker")}
+			</span>
+			<span className={cn("text-ink-dim text-meta")}>
+				{t("ui.console.ended.marker_detail")}
+			</span>
+		</div>
 		<output
 			aria-live="polite"
-			/* ONE RESERVED LINE (D3): the sentence used to wrap the band by its own
-			   height the moment a key was refused, moving every row above it. The
-			   announcement can still wrap to more lines at a narrow width, but the
-			   empty-to-one-line step — the one every refusal takes — costs nothing. */
-			className={cn("min-h-4 text-ink text-meta")}
+			className={cn("min-h-5 text-ink text-meta")}
 			data-announce-seq={announcementSeq}
 			data-tour-tag="console-history-announce"
 		>

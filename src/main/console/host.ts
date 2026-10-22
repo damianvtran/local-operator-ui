@@ -165,7 +165,7 @@ export const CLOSE_GRACE_MS = 1_500;
  * `onExit`, which is why it is far shorter than the SIGTERM grace. The two
  * bounds together are the most a quit may spend per surface, and they run
  * ACROSS surfaces rather than one after another (`dispose`), so ten terminals
- * cost two seconds rather than twenty.
+ * cost one bound rather than ten.
  */
 export const QUIT_EXIT_CAPTURE_MS = 400;
 

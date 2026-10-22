@@ -264,6 +264,9 @@ const installBridge = ({
 	const calls = { create: 0, state: 0, close: [] };
 	const listeners = [];
 	let listing = surfaces;
+	// Main's own displayed-surface acknowledgement: `openPane`/`closePane` write it
+	// and the push re-reads, exactly as the host does (Q-2's second cut).
+	let displayedSurface = null;
 	const setListing = (next) => {
 		listing = next;
 	};
@@ -277,6 +280,7 @@ const installBridge = ({
 					reason: null,
 					detail: null,
 					surfaces: listing,
+					displayed_surface: displayedSurface,
 				};
 			},
 			createSurface: async () => {
@@ -302,8 +306,13 @@ const installBridge = ({
 				};
 			},
 			setContentRect: async () => ({ available: true, surfaces: listing }),
-			openPane: async () => {},
-			closePane: async () => {},
+			openPane: async (surface) => {
+				displayedSurface = surface;
+				for (const listener of [...listeners]) listener();
+			},
+			closePane: async () => {
+				displayedSurface = null;
+			},
 		},
 	};
 	return {
@@ -1753,6 +1762,10 @@ test("a hidden completion's mark survives the open's fallback display until its 
 		harness.useUiPreferencesStore
 			.getState()
 			.consoleUnseen.some((mark) => mark.surface === "con:1:ended");
+	// jsdom reports no window focus; the clearing rule has a focus half, so the cell
+	// supplies it rather than testing the branch that returns early.
+	const realHasFocus = document.hasFocus;
+	document.hasFocus = () => true;
 	const { root, container } = await mountPane();
 	try {
 		await waitFor(() => ENDED_NOTICE.test(container.textContent ?? ""));
@@ -1779,6 +1792,7 @@ test("a hidden completion's mark survives the open's fallback display until its 
 			timeoutMs: 3000,
 		});
 	} finally {
+		document.hasFocus = realHasFocus;
 		harness.useUiPreferencesStore.setState({ consoleUnseen: [] });
 		root.unmount();
 		container.remove();
