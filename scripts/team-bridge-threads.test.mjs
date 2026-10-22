@@ -6,7 +6,7 @@ import { JSDOM } from "jsdom";
 // Execute the shipped model and render the real pane, not a second state map.
 const bundle = await build({
 	stdin: {
-		contents: `export * from './src/renderer/src/features/team-bridge/team-bridge-thread-read'; export {TeamBridgeApi} from './src/renderer/src/shared/api/local-operator/team-bridge-api'; export {teamBridgeOpenPath} from './src/shared/team-bridge-notify'; export {threadSummary} from './src/renderer/src/features/team-bridge/team-bridge-threads-model'; export {TeamBridgeThreadPane, TeamBridgeThreadPaneView} from './src/renderer/src/features/team-bridge/team-bridge-thread-pane'; export {teamBridgeMessageSchema} from './src/shared/team-bridge-contract'; export {QueryClient, QueryClientProvider} from '@tanstack/react-query'; export {createRoot} from 'react-dom/client'; export {act} from 'react'; export {createElement} from 'react'; export {renderToStaticMarkup} from 'react-dom/server';`,
+		contents: `export {manageThreadFocus} from './src/renderer/src/features/team-bridge/team-bridge-thread-focus'; export * from './src/renderer/src/features/team-bridge/team-bridge-thread-read'; export {TeamBridgeApi} from './src/renderer/src/shared/api/local-operator/team-bridge-api'; export {teamBridgeOpenPath} from './src/shared/team-bridge-notify'; export {threadSummary} from './src/renderer/src/features/team-bridge/team-bridge-threads-model'; export {TeamBridgeThreadPane, TeamBridgeThreadPaneView} from './src/renderer/src/features/team-bridge/team-bridge-thread-pane'; export {teamBridgeMessageSchema} from './src/shared/team-bridge-contract'; export {QueryClient, QueryClientProvider} from '@tanstack/react-query'; export {createRoot} from 'react-dom/client'; export {act} from 'react'; export {createElement} from 'react'; export {renderToStaticMarkup} from 'react-dom/server';`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -384,4 +384,68 @@ test("old-root pane load, visible-reply read clears badge, and late old-target r
 		for (const [name, value] of Object.entries(saved)) globalThis[name] = value;
 		dom.window.close();
 	}
+});
+
+test("loading/error pane does not invent zero replies; a known root count remains honest", () => {
+	for (const state of ["loading", "error"]) {
+		const props = {
+			root,
+			replies: [],
+			state,
+			labelFor: (s) => s.display_label,
+			onClose() {},
+			onRetry() {},
+			onSend: async () => {},
+		};
+		const unknown = mod.renderToStaticMarkup(
+			mod.createElement(mod.TeamBridgeThreadPaneView, props),
+		);
+		assert.equal(unknown.includes("0 replies"), false);
+		const known = mod.renderToStaticMarkup(
+			mod.createElement(mod.TeamBridgeThreadPaneView, {
+				...props,
+				root: { ...root, reply_count: 3 },
+			}),
+		);
+		assert.ok(known.includes("3 replies"));
+	}
+});
+
+test("opening a thread focuses close; Escape respects menus and close restores the invoking row", () => {
+	const dom = new JSDOM(
+		'<button id="origin">Reply</button><aside><button data-thread-close>Close</button><textarea></textarea></aside>',
+	);
+	const doc = dom.window.document;
+	const pane = doc.querySelector("aside");
+	const origin = doc.getElementById("origin");
+	origin.focus();
+	let closed = 0;
+	const cleanup = mod.manageThreadFocus(pane, () => {
+		closed++;
+	});
+	assert.equal(doc.activeElement, pane.querySelector("[data-thread-close]"));
+	const menu = doc.createElement("div");
+	menu.setAttribute("role", "menu");
+	pane.append(menu);
+	pane.querySelector("textarea").dispatchEvent(
+		new dom.window.KeyboardEvent("keydown", {
+			key: "Escape",
+			bubbles: true,
+			cancelable: true,
+		}),
+	);
+	assert.equal(closed, 0, "a menu owns the first Escape");
+	menu.remove();
+	pane.querySelector("textarea").focus();
+	pane.querySelector("textarea").dispatchEvent(
+		new dom.window.KeyboardEvent("keydown", {
+			key: "Escape",
+			bubbles: true,
+			cancelable: true,
+		}),
+	);
+	assert.equal(closed, 1);
+	cleanup();
+	assert.equal(doc.activeElement, origin);
+	dom.window.close();
 });

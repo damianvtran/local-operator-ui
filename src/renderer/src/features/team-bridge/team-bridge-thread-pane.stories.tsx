@@ -1,4 +1,6 @@
+import { t } from "@shared/i18n";
 import type { Meta, StoryObj } from "@storybook/react";
+import { userEvent, within } from "@storybook/test";
 import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
 import { TeamBridgeThreadPaneView } from "./team-bridge-thread-pane";
 
@@ -29,7 +31,9 @@ const meta = {
 		(Story) => (
 			<div className="flex h-[720px] bg-surface text-ink">
 				<div className="flex-1 p-6 text-ink-muted">#agents</div>
-				<Story />
+				<div className="h-full w-[26rem] shrink-0">
+					<Story />
+				</div>
 			</div>
 		),
 	],
@@ -57,5 +61,35 @@ export const SendError: Story = {
 		onSend: async () => {
 			throw new Error("refused");
 		},
+	},
+};
+
+/** Deterministic long-thread and request-pending boards; no real dispatch. */
+export const MoreReplies: Story = {
+	args: { root: { ...root, reply_count: 51 }, replies: [reply], hasMore: true },
+};
+export const LoadingMoreReplies: Story = {
+	args: {
+		root: { ...root, reply_count: 51 },
+		replies: [reply],
+		hasMore: true,
+		loadingMore: true,
+	},
+};
+export const Sending: Story = {
+	args: {
+		root: { ...root, reply_count: 1 },
+		replies: [reply],
+		onSend: () => new Promise<void>(() => {}),
+	},
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.type(
+			canvas.getByRole("textbox"),
+			"I am checking this now.",
+		);
+		await userEvent.click(
+			canvas.getByRole("button", { name: t("ui.teamBridge.composer.send") }),
+		);
 	},
 };
