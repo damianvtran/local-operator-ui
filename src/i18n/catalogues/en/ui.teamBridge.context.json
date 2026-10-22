@@ -1249,5 +1249,14 @@
 		"length": "Two or three words.",
 		"placeholders": {},
 		"note": "Tooltip and screen-reader status on an image that IS attached (to a draft or a scheduled message) but cannot be drawn on this device because its bytes were not kept. Not an error."
+	},
+	"ui.teamBridge.attachments.failed_count": {
+		"role": "image attachment control or status",
+		"tone": "plain, concise",
+		"length": "One short sentence.",
+		"placeholders": {
+			"count": "number of staged images (2-4) that failed or expired and must be retried or removed"
+		},
+		"note": "Shown first, in medium weight, in the one-line note under the composer's images when MORE THAN ONE image cannot be sent; the first image's own reason follows as a separate sentence. With a single failure the image's position (attachments.position) is shown instead."
 	}
 }

@@ -169,5 +169,6 @@
 	"ui.teamBridge.schedule.held": "Возможно, отправка уже запланирована предыдущей попыткой. Прежде чем сбросить эту попытку, проверьте раздел «Запланированные» и при необходимости отмените отправку. Черновик сохранён.",
 	"ui.teamBridge.schedule.discard_attempt": "Раздел «Запланированные» проверен — сбросить попытку",
 	"ui.teamBridge.attachments.expired_staged_retry": "Это изображение больше не готово к отправке. Повторите попытку или удалите его.",
-	"ui.teamBridge.attachments.preview_unavailable": "Предпросмотр недоступен"
+	"ui.teamBridge.attachments.preview_unavailable": "Предпросмотр недоступен",
+	"ui.teamBridge.attachments.failed_count": "{count, plural, one {# изображение нельзя отправить.} few {# изображения нельзя отправить.} many {# изображений нельзя отправить.} other {# изображения нельзя отправить.}}"
 }

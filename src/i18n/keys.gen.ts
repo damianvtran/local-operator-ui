@@ -5076,6 +5076,7 @@ export type MessageParams = {
 	"ui.teamBridge.attachments.expired": undefined;
 	"ui.teamBridge.attachments.expired_staged": undefined;
 	"ui.teamBridge.attachments.expired_staged_retry": undefined;
+	"ui.teamBridge.attachments.failed_count": { count: number };
 	"ui.teamBridge.attachments.in_message": { count: number };
 	"ui.teamBridge.attachments.limit": { max: number };
 	"ui.teamBridge.attachments.open": { index: string; count: string };

@@ -169,6 +169,7 @@ export function TeamBridgeThreadPaneView({
 						messages={[root]}
 						labelFor={labelFor}
 						tenantId={tenantId}
+						density="compact"
 					/>
 				)}
 				<div className="px-5 py-3 text-[12px] text-ink-dim">
@@ -196,6 +197,7 @@ export function TeamBridgeThreadPaneView({
 						messages={replies}
 						labelFor={labelFor}
 						tenantId={tenantId}
+						density="compact"
 					/>
 				)}
 				{hasMore && (
@@ -221,7 +223,9 @@ export function TeamBridgeThreadPaneView({
 							{t("ui.teamBridge.composer.error")}
 						</p>
 					)}
-					{imagesBlocked && images.blocked && (
+					{/* A hub that cannot take images is already explained by the strip's
+					   unsupported note; this alert is only for error-marked chips (R2-02). */}
+					{imagesBlocked && images.blocked && !images.unsupported && (
 						<p role="alert" className="pb-1 text-[12px] text-danger">
 							{t("ui.teamBridge.attachments.send_blocked")}
 						</p>

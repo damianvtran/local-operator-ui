@@ -252,6 +252,9 @@ export const TeamBridgeAttachmentStrip: FC<{
 		(chip) => chip.status === "error" || chip.status === "expired",
 	);
 	const failure = failureIndex >= 0 ? state.chips[failureIndex] : null;
+	const failures = state.chips.filter(
+		(chip) => chip.status === "error" || chip.status === "expired",
+	);
 	const working = state.chips.some(
 		(chip) => chip.status === "uploading" || chip.status === "preparing",
 	);
@@ -303,12 +306,21 @@ export const TeamBridgeAttachmentStrip: FC<{
 					)}
 				>
 					{failure && tone === "danger" && (
-						/* Which chip the sentence is about, as its own node (D10). */
+						/*
+						 * Which chip(s) the sentence is about, as its own node (D10). One
+						 * failure names its position; several say how many cannot be sent,
+						 * then the first reason follows (D13). Two nodes, never a code-side
+						 * string join, so each locale keeps its own word order.
+						 */
 						<span className="me-1.5 font-medium">
-							{t("ui.teamBridge.attachments.position", {
-								index: String(failureIndex + 1),
-								count: String(state.chips.length),
-							})}
+							{failures.length > 1
+								? t("ui.teamBridge.attachments.failed_count", {
+										count: failures.length,
+									})
+								: t("ui.teamBridge.attachments.position", {
+										index: String(failureIndex + 1),
+										count: String(state.chips.length),
+									})}
 						</span>
 					)}
 					{notice}
@@ -511,11 +523,21 @@ const Placeholder: FC<{
  * Tile geometry. One picture gets room (up to 360×240, aspect kept from the
  * descriptor so the box does not reflow when the bytes land); several share
  * a row of 2:3-ish tiles. The reserved box IS the loading state.
+ *
+ * `compact` is the thread pane: at an 800px window it is ~360px wide with
+ * ~272px of content, so 156px tiles stacked four in one column and pushed
+ * half the set below the composer (design round 2, D12). 128×88 lets two sit
+ * side by side (2 × 128 + 8 gap = 264), so four images are a 2×2 grid.
  */
-const boxFor = (attachment: TeamBridgeAttachment, single: boolean) => {
-	if (!single) return { width: 156, height: 104 };
-	const maxW = 360;
-	const maxH = 240;
+const boxFor = (
+	attachment: TeamBridgeAttachment,
+	single: boolean,
+	compact = false,
+) => {
+	if (!single)
+		return compact ? { width: 128, height: 88 } : { width: 156, height: 104 };
+	const maxW = compact ? 264 : 360;
+	const maxH = compact ? 176 : 240;
 	const { width, height } = attachment;
 	if (!width || !height) return { width: 240, height: 160 };
 	const scale = Math.min(maxW / width, maxH / height, 1);
@@ -531,6 +553,7 @@ const MessageImage: FC<{
 	attachment: TeamBridgeAttachment;
 	index: number;
 	count: number;
+	density: "regular" | "compact";
 	onOpen: (index: number) => void;
 	register: (index: number, url: string | null) => void;
 	buttonRef: (node: HTMLButtonElement | null) => void;
@@ -540,6 +563,7 @@ const MessageImage: FC<{
 	attachment,
 	index,
 	count,
+	density,
 	onOpen,
 	register,
 	buttonRef,
@@ -565,7 +589,7 @@ const MessageImage: FC<{
 	const url = source.state === "ready" ? source.url : null;
 	// biome-ignore lint/correctness/useExhaustiveDependencies: publish the URL to the lightbox set when it changes.
 	useEffect(() => register(index, url), [url, index]);
-	const box = boxFor(attachment, count === 1);
+	const box = boxFor(attachment, count === 1, density === "compact");
 	if (view !== "fetch")
 		return (
 			<Placeholder
@@ -626,7 +650,8 @@ export const TeamBridgeMessageAttachments: FC<{
 	message: TeamBridgeMessage;
 	/* `null` = the caller does not know the organization: nothing is fetched. */
 	tenantId: string | null;
-}> = ({ message, tenantId }) => {
+	density?: "regular" | "compact";
+}> = ({ message, tenantId, density = "regular" }) => {
 	useI18nLocale();
 	const attachments = message.attachments ?? [];
 	const [open, setOpen] = useState<number | null>(null);
@@ -667,6 +692,7 @@ export const TeamBridgeMessageAttachments: FC<{
 							attachment={attachment}
 							index={index}
 							count={count}
+							density={density}
 							register={register}
 							buttonRef={(node) => {
 								buttons.current[index] = node;

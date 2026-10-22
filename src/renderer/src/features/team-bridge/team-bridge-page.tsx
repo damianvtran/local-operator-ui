@@ -592,6 +592,21 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			((target?.type === "person" || target?.type === "chief") &&
 				draftPerson !== null));
 
+	/*
+	 * Records which ids a send/schedule actually put on the wire: the staged
+	 * ids taken at submit, or (for held images) what the upload inside the
+	 * request bound. Settle paths clear only these.
+	 */
+	const carriedIds = (staged: readonly string[]) => {
+		let bound: readonly string[] = staged;
+		return {
+			ids: () => bound,
+			stageHeld: async (conversationId: string, tenant: string | undefined) => {
+				bound = await images.uploadHeld(conversationId, tenant);
+				return [...bound];
+			},
+		};
+	};
 	// Capture the original entry and scope: navigation while a request is in
 	// flight must not clear the next target's text, even if it is identical.
 	const submit = () => {
@@ -617,17 +632,24 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		if (!draftState.update({ clientRef })) return;
 		setImagesBlocked(false);
 		const sentIds = images.readyIds();
+		/*
+		 * Exactly the ids THIS request carried. Paste and drop stay live while a
+		 * send is in flight, so re-reading the strip on settle would clear an
+		 * image added mid-send as "sent" when it never left (review round 2,
+		 * R2-01). Held images report their bound ids through the wrapper.
+		 */
+		const carried = carriedIds(sentIds);
 		// Fenced BEFORE the call: held images stage inside it (R1-02).
 		writing.current = true;
 		const result = onSend(body, clientRef, {
 			ids: sentIds,
-			...(images.held ? { stageHeld: images.uploadHeld } : {}),
+			...(images.held ? { stageHeld: carried.stageHeld } : {}),
 		});
 		if (!(result instanceof Promise)) writing.current = false;
 		if (result instanceof Promise) {
 			void result
 				.then(() => {
-					const bound = images.readyIds();
+					const bound = carried.ids();
 					// Chips first (still fenced by `writing`, so the key holds), then the
 					// draft entry, which by then carries no bound ids (R1-02).
 					images.clearSent(bound);
@@ -684,6 +706,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		setScheduleFailed(false);
 		try {
 			const scheduledIds = images.readyIds();
+			// The schedule's own reserved set, not the strip at settle (R2-01).
+			const carried = carriedIds(scheduledIds);
 			await onSchedule(
 				body,
 				clientRef,
@@ -702,10 +726,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				},
 				{
 					ids: scheduledIds,
-					...(images.held ? { stageHeld: images.uploadHeld } : {}),
+					...(images.held ? { stageHeld: carried.stageHeld } : {}),
 				},
 			);
-			const reserved = images.readyIds();
+			const reserved = carried.ids();
 			// Same order as send: chips, then the entry (R1-02).
 			images.clearSent(reserved);
 			draftState.clearSent(entryKey, body, clientRef, reserved);
@@ -1400,7 +1424,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											{t("ui.teamBridge.composer.error")}
 										</p>
 									)}
-									{imagesBlocked && images.blocked && (
+									{/* A hub that cannot take images is already explained by the strip's
+									   unsupported note; this alert is only for error-marked chips (R2-02). */}
+									{imagesBlocked && images.blocked && !images.unsupported && (
 										<p
 											role="alert"
 											className="px-2 pb-1 text-[12px] text-danger"

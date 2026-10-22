@@ -49,7 +49,9 @@ export const TeamBridgeMessageList: FC<{
 	 * rather than guessing a tenant).
 	 */
 	tenantId?: string;
-}> = ({ messages, labelFor, onReply, tenantId }) => {
+	/* `compact`: the thread pane's narrow column (see `boxFor`). */
+	density?: "regular" | "compact";
+}> = ({ messages, labelFor, onReply, tenantId, density }) => {
 	const locale = useI18nLocale();
 	const items = threadItems(messages, new Date());
 	return (
@@ -66,6 +68,7 @@ export const TeamBridgeMessageList: FC<{
 						locale={locale}
 						onReply={onReply}
 						tenantId={tenantId}
+						density={density}
 					/>
 				),
 			)}
@@ -110,7 +113,8 @@ const MessageRow: FC<{
 	locale: string;
 	onReply?: (message: TeamBridgeMessage) => void;
 	tenantId?: string;
-}> = ({ message, continuation, label, locale, onReply, tenantId }) => {
+	density?: "regular" | "compact";
+}> = ({ message, continuation, label, locale, onReply, tenantId, density }) => {
 	const summary = threadSummary(message);
 	const agent = message.sender.kind === "agent";
 	const at = new Date(message.created_at);
@@ -212,6 +216,7 @@ const MessageRow: FC<{
 					<TeamBridgeMessageAttachments
 						message={message}
 						tenantId={tenantId ?? null}
+						density={density}
 					/>
 				)}
 				{onReply && summary.count > 0 && (
