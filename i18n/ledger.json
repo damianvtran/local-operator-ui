@@ -3618,8 +3618,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.agentMessages",
-			"source_sha256": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
-			"target_sha256": "0eef4e751346c64024b42f67d9b8c334a1de7f301e335d8913a88d2425b92c23",
+			"source_sha256": "f1de50d192ed3935d5f1eaffae182986653e2fd703c33dd1804f05aa9de3cc71",
+			"target_sha256": "a1461786b4a3c274bd07ed63f20744f93c99ed824d48c1dfefa64d93f491fd07",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -3628,21 +3628,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-19",
-					"result": "clean",
-					"instance": "70602c67add2-ru",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-22",
+					"result": "clean-with-findings",
+					"instance": "dob-r1-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/70602c67add2-ru.json",
-					"receipt_sha256": "e88b0762770c91d0c8b117e9cfd011f36531daff11ed0fe6442ca7326ed90f63",
-					"scope": "Delta audit of the single changed key ui.agentMessages.dialog.consent_changed (direction-word removal); full namespace previously audited, unchanged bytes retained.",
-					"note": "0 blocker/major/minor/nit. Direction-neutral target confirmed; English and target hashes derived from the worktree bytes. Auditor model deepseek/deepseek-flash is the actual model, no fallback."
+					"receipt": "i18n/receipts/dob-r1-ru.json",
+					"receipt_sha256": "7bde429ef656c9285640edabb237fb4770031e5cdee624116a48bf6bd16534ee",
+					"scope": "Default-on banner: 15 new keys (10 ui.agentMessages, 5 ui.agentMessages.settings); other keys unchanged from prior audited rows. Catalogue audit, not activation approval.",
+					"note": "Independent audit of coder-subagent translation; findings fixed in-catalogue by auditor. Glossary/style-guide hashes in receipt."
 				}
 			],
 			"status": "audited",
@@ -3667,6 +3667,30 @@
 								"nit": 0
 							},
 							"note": "Automatic fallback from anthropic/claude-sonnet-5-5 due to quota. Copy audit only; rendered and second high-visibility audit gates remain separate."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
+					"target_sha256": "0eef4e751346c64024b42f67d9b8c334a1de7f301e335d8913a88d2425b92c23",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "70602c67add2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/70602c67add2-ru.json",
+							"receipt_sha256": "e88b0762770c91d0c8b117e9cfd011f36531daff11ed0fe6442ca7326ed90f63",
+							"scope": "Delta audit of the single changed key ui.agentMessages.dialog.consent_changed (direction-word removal); full namespace previously audited, unchanged bytes retained.",
+							"note": "0 blocker/major/minor/nit. Direction-neutral target confirmed; English and target hashes derived from the worktree bytes. Auditor model deepseek/deepseek-flash is the actual model, no fallback."
 						}
 					],
 					"status": "audited"
@@ -4353,8 +4377,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.agentMessages",
-			"source_sha256": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
-			"target_sha256": "7e5e750b59fab4433b09b444999d9918a963eae8175c6eb02140ed46e1b191c6",
+			"source_sha256": "f1de50d192ed3935d5f1eaffae182986653e2fd703c33dd1804f05aa9de3cc71",
+			"target_sha256": "7ea979b5d9129c3e28ccbb61b8504c8b1f8c298143d926a06db09c903c8585ac",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -4362,21 +4386,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-19",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "70602c67add2-es",
+					"instance": "dob-r1-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/70602c67add2-es.json",
-					"receipt_sha256": "7d3b7f8271a3ee6b9c6884e391589bb69fe5f1a89039fda26dd85a958d7f5d58",
-					"scope": "Delta audit of the single changed key ui.agentMessages.dialog.consent_changed (direction-word removal); full namespace previously audited, unchanged bytes retained.",
-					"note": "0 blocker/major/minor/nit. Direction-neutral target confirmed; English and target hashes derived from the worktree bytes. Auditor model deepseek/deepseek-flash is the actual model, no fallback."
+					"receipt": "i18n/receipts/dob-r1-es.json",
+					"receipt_sha256": "b622c7d278561d054cdeac3bcf0a50f7c5a28a7f1b017eb5509347037d2fc0e1",
+					"scope": "Default-on banner: 15 new keys (10 ui.agentMessages, 5 ui.agentMessages.settings); other keys unchanged from prior audited rows. Catalogue audit, not activation approval.",
+					"note": "Independent audit of coder-subagent translation; findings fixed in-catalogue by auditor. Glossary/style-guide hashes in receipt."
 				}
 			],
 			"status": "audited",
@@ -4400,6 +4424,30 @@
 							"receipt": "i18n/receipts/ea3629c2a645.json",
 							"receipt_sha256": "1adcf5201c953c8581cc9ebb888ae927bb4547d324f2ae550e1b8ca27f25874d",
 							"scope": "Deterministic semantic sample 8/16; exhaustive mechanical checks; exact keys in receipt."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
+					"target_sha256": "7e5e750b59fab4433b09b444999d9918a963eae8175c6eb02140ed46e1b191c6",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "70602c67add2-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/70602c67add2-es.json",
+							"receipt_sha256": "7d3b7f8271a3ee6b9c6884e391589bb69fe5f1a89039fda26dd85a958d7f5d58",
+							"scope": "Delta audit of the single changed key ui.agentMessages.dialog.consent_changed (direction-word removal); full namespace previously audited, unchanged bytes retained.",
+							"note": "0 blocker/major/minor/nit. Direction-neutral target confirmed; English and target hashes derived from the worktree bytes. Auditor model deepseek/deepseek-flash is the actual model, no fallback."
 						}
 					],
 					"status": "audited"
@@ -5189,8 +5237,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.agentMessages",
-			"source_sha256": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
-			"target_sha256": "65dab69ba8726cd865d83237a848b7175f64fc6b2e3bd89e2f1ac91bc35aa37e",
+			"source_sha256": "f1de50d192ed3935d5f1eaffae182986653e2fd703c33dd1804f05aa9de3cc71",
+			"target_sha256": "2d7622683cca6f9570781fef2c44a9cb29e856b14a2bda24e15dd1a446b4b52f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -5198,21 +5246,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-19",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "70602c67add2-fr",
+					"instance": "dob-r1-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/70602c67add2-fr.json",
-					"receipt_sha256": "524e2bf710d5ea08e3bfcb5614710fc4f5a737970ba55524671397bbe08a4217",
-					"scope": "Delta audit of the single changed key ui.agentMessages.dialog.consent_changed (direction-word removal); full namespace previously audited, unchanged bytes retained.",
-					"note": "0 blocker/major/minor/nit. Direction-neutral target confirmed; English and target hashes derived from the worktree bytes. Auditor model deepseek/deepseek-flash is the actual model, no fallback."
+					"receipt": "i18n/receipts/dob-r1-fr.json",
+					"receipt_sha256": "2543b46d5852d8d34ec7a4a7e570677b40e49b93618d7fe75cece22da58d1f39",
+					"scope": "Default-on banner: 15 new keys (10 ui.agentMessages, 5 ui.agentMessages.settings); other keys unchanged from prior audited rows. Catalogue audit, not activation approval.",
+					"note": "Independent audit of coder-subagent translation; findings fixed in-catalogue by auditor. Glossary/style-guide hashes in receipt."
 				}
 			],
 			"status": "audited",
@@ -5237,6 +5285,30 @@
 							"receipt_sha256": "384b9a6c0380589c8f2b2dad6f1e929275d213c813d99b564438f82337297c7d",
 							"scope": "Chunk D at 1516984ec99ae09e635b0cb58c4f2e747de1483c; full 206 new keys plus prior408 full coverage retained with typography-only delta.",
 							"note": "Actual automatic quota-fallback model verified; same resumed auditor, not second independent auditor. Nonblocking minors retained as deferred."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
+					"target_sha256": "65dab69ba8726cd865d83237a848b7175f64fc6b2e3bd89e2f1ac91bc35aa37e",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "70602c67add2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/70602c67add2-fr.json",
+							"receipt_sha256": "524e2bf710d5ea08e3bfcb5614710fc4f5a737970ba55524671397bbe08a4217",
+							"scope": "Delta audit of the single changed key ui.agentMessages.dialog.consent_changed (direction-word removal); full namespace previously audited, unchanged bytes retained.",
+							"note": "0 blocker/major/minor/nit. Direction-neutral target confirmed; English and target hashes derived from the worktree bytes. Auditor model deepseek/deepseek-flash is the actual model, no fallback."
 						}
 					],
 					"status": "audited"
@@ -10861,8 +10933,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.agentMessages",
-			"source_sha256": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
-			"target_sha256": "57d8e4846f0727597674cc64676131b0c8231fef378f4b5ad9a34e519a3e8171",
+			"source_sha256": "f1de50d192ed3935d5f1eaffae182986653e2fd703c33dd1804f05aa9de3cc71",
+			"target_sha256": "7114e27ddbd820f0f9bf55eea5bcc39eb543ae01fa9cdbd9596525fe15c96e4d",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -10871,21 +10943,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-19",
-					"result": "clean",
-					"instance": "5b6764cda3f8",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-22",
+					"result": "clean-with-findings",
+					"instance": "dob-r1-zhcn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 2,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/5b6764cda3f8.json",
-					"receipt_sha256": "170ff5c6c048447289a05eeed2e8c7917b01b56b44c69501b333deeeed06e6b7",
-					"scope": "Delta audit of the merged zh-CN namespace: five register rewrites on main's #1208 consent copy, 16 keys, zero 您",
-					"note": "Receipt 5b6764cda3f8. Prior audits 6b6868c6f100 and 70602c67add2-zh-cn remain under superseded."
+					"receipt": "i18n/receipts/dob-r1-zhcn.json",
+					"receipt_sha256": "3feb9a3d98410ad0febff1d70b11f2433c1f794540280831538f1713fcbcc2f4",
+					"scope": "Default-on banner: 15 new keys (10 ui.agentMessages, 5 ui.agentMessages.settings); other keys unchanged from prior audited rows. Catalogue audit, not activation approval.",
+					"note": "Independent audit of coder-subagent translation; findings fixed in-catalogue by auditor. Glossary/style-guide hashes in receipt."
 				}
 			],
 			"status": "audited",
@@ -10934,6 +11006,30 @@
 							"receipt_sha256": "95450a2fe8661e6ef6a004ced61cb637f523019ce034c87e56da471e46c0b667",
 							"scope": "Delta audit of the single changed key ui.agentMessages.dialog.consent_changed (direction-word removal); full namespace previously audited, unchanged bytes retained.",
 							"note": "0 blocker/major/minor/nit. Direction-neutral target confirmed; English and target hashes derived from the worktree bytes. Auditor model deepseek/deepseek-flash is the actual model, no fallback."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
+					"target_sha256": "57d8e4846f0727597674cc64676131b0c8231fef378f4b5ad9a34e519a3e8171",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "5b6764cda3f8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/5b6764cda3f8.json",
+							"receipt_sha256": "170ff5c6c048447289a05eeed2e8c7917b01b56b44c69501b333deeeed06e6b7",
+							"scope": "Delta audit of the merged zh-CN namespace: five register rewrites on main's #1208 consent copy, 16 keys, zero 您",
+							"note": "Receipt 5b6764cda3f8. Prior audits 6b6868c6f100 and 70602c67add2-zh-cn remain under superseded."
 						}
 					],
 					"status": "audited"
@@ -11498,8 +11594,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.agentMessages",
-			"source_sha256": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
-			"target_sha256": "85d66871d38261f8685edd081f504bce50b7984875f8fb4dc8476c8c4b84fcd4",
+			"source_sha256": "f1de50d192ed3935d5f1eaffae182986653e2fd703c33dd1804f05aa9de3cc71",
+			"target_sha256": "05737206c87bc76da0305936a36992b436d3d7222057ccad20d6e4d75a752258",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -11507,21 +11603,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "f290d34143fb",
+					"instance": "dob-r1-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f290d34143fb.json",
-					"receipt_sha256": "fe00a1582d23089953c6c308cd2de4c7506b9195f04ea0e736552971cf122221",
-					"scope": "hi ui.agentMessages vs current en source — main-repair delta audit (16 values across 3 namespaces)",
-					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+					"receipt": "i18n/receipts/dob-r1-hi.json",
+					"receipt_sha256": "3467a30355d97c7106370babe57e66734b315e7dd0ec38c8f0428489c553e7c2",
+					"scope": "Default-on banner: 15 new keys (10 ui.agentMessages, 5 ui.agentMessages.settings); other keys unchanged from prior audited rows. Catalogue audit, not activation approval.",
+					"note": "Independent audit of coder-subagent translation; findings fixed in-catalogue by auditor. Glossary/style-guide hashes in receipt."
 				}
 			],
 			"status": "audited",
@@ -11573,14 +11669,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
+					"target_sha256": "85d66871d38261f8685edd081f504bce50b7984875f8fb4dc8476c8c4b84fcd4",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "f290d34143fb",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/f290d34143fb.json",
+							"receipt_sha256": "fe00a1582d23089953c6c308cd2de4c7506b9195f04ea0e736552971cf122221",
+							"scope": "hi ui.agentMessages vs current en source — main-repair delta audit (16 values across 3 namespaces)",
+							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.agentMessages.settings",
-			"source_sha256": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
-			"target_sha256": "a7bbd901ced0ae96c5dc0040e9f8933a6f1c0c7745e48a2643a12d90f96b64c5",
+			"source_sha256": "dc4d78d84cd84092cc3f67d10dbf733f2ef0bea5eb3011250b39fa78637e6a74",
+			"target_sha256": "aae33bc2bc89c6f9ec59c39d4ba5889233692198bc05bf1a7298cdd4654678bf",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -11589,20 +11709,20 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "cosh-r2-hi",
+					"instance": "dob-r1-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cosh-r2-hi.json",
-					"receipt_sha256": "e1fe669b99642c9e2efc51364d5e35b7b59058980149445344d139075f8493dc",
-					"scope": "Agent-messages chief-of-staff hold: 3-key delta at en 2fb94727d3 audited in cosh-r1-hi (2 MINOR, fixed); remediation delta re-audited clean here; other 84 values inherited unchanged (018e45d9d582). Catalogue audit only, not rendered-fit, activation or release approval.",
-					"note": "Independent delta audit; round 1 retained at i18n/receipts/cosh-r1-hi.json. Record: i18n/audits/evidence/hi/ui.agentMessages.settings/cosh-cos-hold-20261022/."
+					"receipt": "i18n/receipts/dob-r1-hi.json",
+					"receipt_sha256": "3467a30355d97c7106370babe57e66734b315e7dd0ec38c8f0428489c553e7c2",
+					"scope": "Default-on banner: 15 new keys (10 ui.agentMessages, 5 ui.agentMessages.settings); other keys unchanged from prior audited rows. Catalogue audit, not activation approval.",
+					"note": "Independent audit of coder-subagent translation; findings fixed in-catalogue by auditor. Glossary/style-guide hashes in receipt."
 				}
 			],
 			"status": "audited",
@@ -11651,6 +11771,30 @@
 							"receipt_sha256": "3aa95d362b9463e82d53d42e41260f586cb83ae1eb409d248303fcbbacd26849",
 							"scope": "hi ui.agentMessages.settings vs en source — round 4 review-remediation audit on final bytes",
 							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+					"target_sha256": "a7bbd901ced0ae96c5dc0040e9f8933a6f1c0c7745e48a2643a12d90f96b64c5",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "cosh-r2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cosh-r2-hi.json",
+							"receipt_sha256": "e1fe669b99642c9e2efc51364d5e35b7b59058980149445344d139075f8493dc",
+							"scope": "Agent-messages chief-of-staff hold: 3-key delta at en 2fb94727d3 audited in cosh-r1-hi (2 MINOR, fixed); remediation delta re-audited clean here; other 84 values inherited unchanged (018e45d9d582). Catalogue audit only, not rendered-fit, activation or release approval.",
+							"note": "Independent delta audit; round 1 retained at i18n/receipts/cosh-r1-hi.json. Record: i18n/audits/evidence/hi/ui.agentMessages.settings/cosh-cos-hold-20261022/."
 						}
 					],
 					"status": "audited"
@@ -15661,8 +15805,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.agentMessages",
-			"source_sha256": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
-			"target_sha256": "d67fc9c4dd503ec1e14f4deed61ebb143ff32aa21da9e23d09eaa63c2f75df07",
+			"source_sha256": "f1de50d192ed3935d5f1eaffae182986653e2fd703c33dd1804f05aa9de3cc71",
+			"target_sha256": "7f741da8d57bbfaecb699b64985d765f41362d249de548f6301ec32731400ed0",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -15670,21 +15814,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "8b3e6f1c9d24",
+					"instance": "dob-r1-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/8b3e6f1c9d24.json",
-					"receipt_sha256": "2243a2332a513758386d81e5c2b3ff269a6e1b3767d5bf2c828e8e20c52075bc",
-					"scope": "post-#1202 drift repair: vi/ui.chat.tags 12 V2-1 keys + vi/ui.agentMessages consent delta",
-					"note": "Vietnamese half of the drift repair. Independent audit of the changed bytes; zero findings. Both roles ran on the harness-reported fallback model openai/gpt-6.1-sol."
+					"receipt": "i18n/receipts/dob-r1-vi.json",
+					"receipt_sha256": "1508b1ee85bc6f3e7ec0b05944a4a752a459b5b418285cd0d7662f4e37d80ff4",
+					"scope": "Default-on banner: 15 new keys (10 ui.agentMessages, 5 ui.agentMessages.settings); other keys unchanged from prior audited rows. Catalogue audit, not activation approval.",
+					"note": "Independent audit of coder-subagent translation; findings fixed in-catalogue by auditor. Glossary/style-guide hashes in receipt."
 				}
 			],
 			"status": "audited",
@@ -15709,6 +15853,30 @@
 							"receipt_sha256": "b89d416d59d13757353b742e959568d2ff0fd3f8ca34203ad18c4d69af997958",
 							"scope": "full namespace; post-remediation verification of round-1 native audit findings",
 							"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
+					"target_sha256": "d67fc9c4dd503ec1e14f4deed61ebb143ff32aa21da9e23d09eaa63c2f75df07",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "8b3e6f1c9d24",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/8b3e6f1c9d24.json",
+							"receipt_sha256": "2243a2332a513758386d81e5c2b3ff269a6e1b3767d5bf2c828e8e20c52075bc",
+							"scope": "post-#1202 drift repair: vi/ui.chat.tags 12 V2-1 keys + vi/ui.agentMessages consent delta",
+							"note": "Vietnamese half of the drift repair. Independent audit of the changed bytes; zero findings. Both roles ran on the harness-reported fallback model openai/gpt-6.1-sol."
 						}
 					],
 					"status": "audited"
@@ -16822,8 +16990,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.agentMessages",
-			"source_sha256": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
-			"target_sha256": "3fc28406c6f976c3ce3b6fc2f4db2c491446e18ee1f37ad453a677d113808a0a",
+			"source_sha256": "f1de50d192ed3935d5f1eaffae182986653e2fd703c33dd1804f05aa9de3cc71",
+			"target_sha256": "a9eac735647610b5a6c5d77a7c773e4650ea5b820a4136e1909f13803f998636",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -16831,21 +16999,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
-					"result": "clean",
-					"instance": "e81dd47e3e5c",
+					"agent": "translation-auditor",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-22",
+					"result": "clean-with-findings",
+					"instance": "dob-r1-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/e81dd47e3e5c.json",
-					"receipt_sha256": "2b7b0c2154c02248fc39624aab4cf896af3eedee1e02c0a2119f9806e2c20b9a",
-					"scope": "Post-merge drift fix: consent_changed at the final English and Urdu bytes.",
-					"note": "English dropped 'below' in #1208; Urdu value rewritten, independently audited."
+					"receipt": "i18n/receipts/dob-r1-ur.json",
+					"receipt_sha256": "5fee0ff742144b09a5061efcf778d11d099c9a1fb7b10d3ebbc64d689698f605",
+					"scope": "Default-on banner: 15 new keys (10 ui.agentMessages, 5 ui.agentMessages.settings); other keys unchanged from prior audited rows. Catalogue audit, not activation approval.",
+					"note": "Independent audit of coder-subagent translation; findings fixed in-catalogue by auditor. Glossary/style-guide hashes in receipt."
 				}
 			],
 			"status": "audited",
@@ -16873,14 +17041,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
+					"target_sha256": "3fc28406c6f976c3ce3b6fc2f4db2c491446e18ee1f37ad453a677d113808a0a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "e81dd47e3e5c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e81dd47e3e5c.json",
+							"receipt_sha256": "2b7b0c2154c02248fc39624aab4cf896af3eedee1e02c0a2119f9806e2c20b9a",
+							"scope": "Post-merge drift fix: consent_changed at the final English and Urdu bytes.",
+							"note": "English dropped 'below' in #1208; Urdu value rewritten, independently audited."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.agentMessages.settings",
-			"source_sha256": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
-			"target_sha256": "f3196d2cfd19cc1943cac1c319e2e939c427fe98d2dae2d1af4b01bde39ba668",
+			"source_sha256": "dc4d78d84cd84092cc3f67d10dbf733f2ef0bea5eb3011250b39fa78637e6a74",
+			"target_sha256": "77f9482d2561f379449c12f22a0916263c8341bbb4fac7719c3b00e39b6da779",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -16889,20 +17081,20 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "cosh-r2-ur",
+					"instance": "dob-r1-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cosh-r2-ur.json",
-					"receipt_sha256": "f84f0f82bf893fc7844cc3ce09b5a0170e4765106a13bd4afd07b31b8c5270b0",
-					"scope": "Agent-messages chief-of-staff hold: 3-key delta at en 2fb94727d3 audited in cosh-r1-ur (2 MINOR, fixed); remediation delta re-audited clean here; other 84 values inherited unchanged (102ffa6d185d). Catalogue audit only, not rendered-fit, activation or release approval.",
-					"note": "Independent delta audit; round 1 retained at i18n/receipts/cosh-r1-ur.json. Record: i18n/audits/evidence/ur/ui.agentMessages.settings/cosh-cos-hold-20261022/."
+					"receipt": "i18n/receipts/dob-r1-ur.json",
+					"receipt_sha256": "5fee0ff742144b09a5061efcf778d11d099c9a1fb7b10d3ebbc64d689698f605",
+					"scope": "Default-on banner: 15 new keys (10 ui.agentMessages, 5 ui.agentMessages.settings); other keys unchanged from prior audited rows. Catalogue audit, not activation approval.",
+					"note": "Independent audit of coder-subagent translation; findings fixed in-catalogue by auditor. Glossary/style-guide hashes in receipt."
 				}
 			],
 			"status": "audited",
@@ -16927,6 +17119,30 @@
 							"receipt_sha256": "9cf5311d3e87ee9ff90304782aae6ea3a5535cb78213ad107f9f48c737df1d63",
 							"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
 							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+					"target_sha256": "f3196d2cfd19cc1943cac1c319e2e939c427fe98d2dae2d1af4b01bde39ba668",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "cosh-r2-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cosh-r2-ur.json",
+							"receipt_sha256": "f84f0f82bf893fc7844cc3ce09b5a0170e4765106a13bd4afd07b31b8c5270b0",
+							"scope": "Agent-messages chief-of-staff hold: 3-key delta at en 2fb94727d3 audited in cosh-r1-ur (2 MINOR, fixed); remediation delta re-audited clean here; other 84 values inherited unchanged (102ffa6d185d). Catalogue audit only, not rendered-fit, activation or release approval.",
+							"note": "Independent delta audit; round 1 retained at i18n/receipts/cosh-r1-ur.json. Record: i18n/audits/evidence/ur/ui.agentMessages.settings/cosh-cos-hold-20261022/."
 						}
 					],
 					"status": "audited"
@@ -19031,8 +19247,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.agentMessages.settings",
-			"source_sha256": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
-			"target_sha256": "306e842db2d36589a8b6fb764c3097b7c034cc923819af19b3e3c6fa486d5eb0",
+			"source_sha256": "dc4d78d84cd84092cc3f67d10dbf733f2ef0bea5eb3011250b39fa78637e6a74",
+			"target_sha256": "cfec9f1377dddb89bb0b69c2f79205a6ba3413120c40e0672f83eed6e66d1643",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -19041,20 +19257,20 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "cosh-r2-fr",
+					"instance": "dob-r1-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cosh-r2-fr.json",
-					"receipt_sha256": "c5a0524e76326836f90d3f2727e5d5e7e2ed107516c5f67b7167c597d9f0c9ba",
-					"scope": "Agent-messages chief-of-staff hold: 3-key delta at en 2fb94727d3 audited in cosh-r1-fr (1 NIT, hold.open width); NIT closed here by a rendered Storybook check with no text change; other 84 values inherited unchanged (7f3a1c9e-r2). Catalogue audit, not activation or release approval.",
-					"note": "Independent delta audit; round 1 retained at i18n/receipts/cosh-r1-fr.json. Record: i18n/audits/evidence/fr/ui.agentMessages.settings/cosh-cos-hold-20261022/."
+					"receipt": "i18n/receipts/dob-r1-fr.json",
+					"receipt_sha256": "2543b46d5852d8d34ec7a4a7e570677b40e49b93618d7fe75cece22da58d1f39",
+					"scope": "Default-on banner: 15 new keys (10 ui.agentMessages, 5 ui.agentMessages.settings); other keys unchanged from prior audited rows. Catalogue audit, not activation approval.",
+					"note": "Independent audit of coder-subagent translation; findings fixed in-catalogue by auditor. Glossary/style-guide hashes in receipt."
 				}
 			],
 			"status": "audited",
@@ -19079,6 +19295,30 @@
 							"receipt_sha256": "3a791ebfb0bc2598474ca59c54b3398ae2eb9cb15277fc0c657ac100d5fac73e",
 							"scope": "fr ui.agentMessages.settings vs en source at 75428c035e - wave-1 full namespace pass",
 							"note": "0 BLOCKER/MAJOR; clean pass on the audited bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+					"target_sha256": "306e842db2d36589a8b6fb764c3097b7c034cc923819af19b3e3c6fa486d5eb0",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "cosh-r2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cosh-r2-fr.json",
+							"receipt_sha256": "c5a0524e76326836f90d3f2727e5d5e7e2ed107516c5f67b7167c597d9f0c9ba",
+							"scope": "Agent-messages chief-of-staff hold: 3-key delta at en 2fb94727d3 audited in cosh-r1-fr (1 NIT, hold.open width); NIT closed here by a rendered Storybook check with no text change; other 84 values inherited unchanged (7f3a1c9e-r2). Catalogue audit, not activation or release approval.",
+							"note": "Independent delta audit; round 1 retained at i18n/receipts/cosh-r1-fr.json. Record: i18n/audits/evidence/fr/ui.agentMessages.settings/cosh-cos-hold-20261022/."
 						}
 					],
 					"status": "audited"
@@ -19398,8 +19638,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.agentMessages.settings",
-			"source_sha256": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
-			"target_sha256": "b83a0b0f408f9d748257bb7c2307a9517282346ef169b04c6adfe54d4a549f62",
+			"source_sha256": "dc4d78d84cd84092cc3f67d10dbf733f2ef0bea5eb3011250b39fa78637e6a74",
+			"target_sha256": "cb575a99b94bd78d8e7c4093a6efb1d30a848253ec5fcdd9c15443fd77315874",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -19408,20 +19648,20 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "cosh-r1-es",
+					"instance": "dob-r1-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cosh-r1-es.json",
-					"receipt_sha256": "9fea92b2e10cce35b2219e706623f37f4aa2c20594e6d65d26d15c1ed35323fb",
-					"scope": "Agent-messages chief-of-staff hold: 3-key delta (hold.chief_of_staff, hold.chief_of_staff_unlinked, hold.open) at en 2fb94727d3, independently audited clean; other 84 values inherited unchanged (b28d4e61-r2). Catalogue audit only, not rendered-fit, activation or release approval.",
-					"note": "Independent delta audit, clean in round 1 so no round 2. Record: i18n/audits/evidence/es/ui.agentMessages.settings/cosh-cos-hold-20261022/."
+					"receipt": "i18n/receipts/dob-r1-es.json",
+					"receipt_sha256": "b622c7d278561d054cdeac3bcf0a50f7c5a28a7f1b017eb5509347037d2fc0e1",
+					"scope": "Default-on banner: 15 new keys (10 ui.agentMessages, 5 ui.agentMessages.settings); other keys unchanged from prior audited rows. Catalogue audit, not activation approval.",
+					"note": "Independent audit of coder-subagent translation; findings fixed in-catalogue by auditor. Glossary/style-guide hashes in receipt."
 				}
 			],
 			"status": "audited",
@@ -19446,6 +19686,30 @@
 							"receipt_sha256": "1a105061d61af7a578a2c47e558a798b212df9ff497f53ea766ee31e85cba26a",
 							"scope": "es ui.agentMessages.settings vs en source at 75428c035e - wave-1 full namespace pass",
 							"note": "0 BLOCKER/MAJOR; clean pass on the audited bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+					"target_sha256": "b83a0b0f408f9d748257bb7c2307a9517282346ef169b04c6adfe54d4a549f62",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "cosh-r1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cosh-r1-es.json",
+							"receipt_sha256": "9fea92b2e10cce35b2219e706623f37f4aa2c20594e6d65d26d15c1ed35323fb",
+							"scope": "Agent-messages chief-of-staff hold: 3-key delta (hold.chief_of_staff, hold.chief_of_staff_unlinked, hold.open) at en 2fb94727d3, independently audited clean; other 84 values inherited unchanged (b28d4e61-r2). Catalogue audit only, not rendered-fit, activation or release approval.",
+							"note": "Independent delta audit, clean in round 1 so no round 2. Record: i18n/audits/evidence/es/ui.agentMessages.settings/cosh-cos-hold-20261022/."
 						}
 					],
 					"status": "audited"
@@ -19853,8 +20117,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.agentMessages.settings",
-			"source_sha256": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
-			"target_sha256": "29dbb048958de8ecca72abf9a16c4c4fd4ab764e446e3405b28a89cd75fce2e3",
+			"source_sha256": "dc4d78d84cd84092cc3f67d10dbf733f2ef0bea5eb3011250b39fa78637e6a74",
+			"target_sha256": "42796468af5592e6a09e6df7c76d7ca205e9c2662b343cad1e4fad7fbc81f685",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -19863,20 +20127,20 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-22",
-					"result": "clean",
-					"instance": "cosh-r1-zh-cn",
+					"result": "clean-with-findings",
+					"instance": "dob-r1-zhcn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cosh-r1-zh-cn.json",
-					"receipt_sha256": "d5911cb29aec6f179af3ed2764711f74774a0a0feb603ecdbe08df04e1e51ddb",
-					"scope": "Agent-messages chief-of-staff hold: 3-key delta (hold.chief_of_staff, hold.chief_of_staff_unlinked, hold.open) at en 2fb94727d3, independently audited clean; other 84 values inherited unchanged (c94a2f70). Catalogue audit only, not rendered-fit, activation or release approval.",
-					"note": "Independent delta audit, clean in round 1 so no round 2. Record: i18n/audits/evidence/zh-CN/ui.agentMessages.settings/cosh-cos-hold-20261022/."
+					"receipt": "i18n/receipts/dob-r1-zhcn.json",
+					"receipt_sha256": "3feb9a3d98410ad0febff1d70b11f2433c1f794540280831538f1713fcbcc2f4",
+					"scope": "Default-on banner: 15 new keys (10 ui.agentMessages, 5 ui.agentMessages.settings); other keys unchanged from prior audited rows. Catalogue audit, not activation approval.",
+					"note": "Independent audit of coder-subagent translation; findings fixed in-catalogue by auditor. Glossary/style-guide hashes in receipt."
 				}
 			],
 			"status": "audited",
@@ -19901,6 +20165,30 @@
 							"receipt_sha256": "49bcf7665f9a32c19a825151ffa92bb1cd4e3244b20cdcd941a85e9a291416f9",
 							"scope": "zh-CN ui.agentMessages.settings vs en source at 75428c035e - wave-1 full namespace pass",
 							"note": "0 BLOCKER/MAJOR; clean pass on the audited bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+					"target_sha256": "29dbb048958de8ecca72abf9a16c4c4fd4ab764e446e3405b28a89cd75fce2e3",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "cosh-r1-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cosh-r1-zh-cn.json",
+							"receipt_sha256": "d5911cb29aec6f179af3ed2764711f74774a0a0feb603ecdbe08df04e1e51ddb",
+							"scope": "Agent-messages chief-of-staff hold: 3-key delta (hold.chief_of_staff, hold.chief_of_staff_unlinked, hold.open) at en 2fb94727d3, independently audited clean; other 84 values inherited unchanged (c94a2f70). Catalogue audit only, not rendered-fit, activation or release approval.",
+							"note": "Independent delta audit, clean in round 1 so no round 2. Record: i18n/audits/evidence/zh-CN/ui.agentMessages.settings/cosh-cos-hold-20261022/."
 						}
 					],
 					"status": "audited"
@@ -20757,8 +21045,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.agentMessages.settings",
-			"source_sha256": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
-			"target_sha256": "7d8efca849197942b2a037f8f7ba52da011bbb568706875aa61a27a2c9037224",
+			"source_sha256": "dc4d78d84cd84092cc3f67d10dbf733f2ef0bea5eb3011250b39fa78637e6a74",
+			"target_sha256": "928207048eb9f9f4acf6fadd90a21ba67ed7fedf41925dd093317b415367ca8d",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -20767,29 +21055,55 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "cosh-r2-ru",
+					"instance": "dob-r1-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cosh-r2-ru.json",
-					"receipt_sha256": "3b76ed8bb1b9a2163fa4d70ef3a7e007c05e61edbe3799fbb12213d7884d5b6c",
-					"scope": "New full-namespace ru catalogue (scope expansion, operator-approved): 84 base keys audited in cosh-r1-ru (3 MINOR, 3 NIT, fixed); remediation plus first audit of the 3 hold keys at en 2fb94727d3 clean here. Catalogue audit only, not rendered-fit, activation or release approval.",
-					"note": "Independent audit; round 1 retained at i18n/receipts/cosh-r1-ru.json. Allowance pair ru/ui.agentMessages.settings removed. Record: i18n/audits/evidence/ru/ui.agentMessages.settings/cosh-cos-hold-20261022/."
+					"receipt": "i18n/receipts/dob-r1-ru.json",
+					"receipt_sha256": "7bde429ef656c9285640edabb237fb4770031e5cdee624116a48bf6bd16534ee",
+					"scope": "Default-on banner: 15 new keys (10 ui.agentMessages, 5 ui.agentMessages.settings); other keys unchanged from prior audited rows. Catalogue audit, not activation approval.",
+					"note": "Independent audit of coder-subagent translation; findings fixed in-catalogue by auditor. Glossary/style-guide hashes in receipt."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+					"target_sha256": "7d8efca849197942b2a037f8f7ba52da011bbb568706875aa61a27a2c9037224",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "cosh-r2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cosh-r2-ru.json",
+							"receipt_sha256": "3b76ed8bb1b9a2163fa4d70ef3a7e007c05e61edbe3799fbb12213d7884d5b6c",
+							"scope": "New full-namespace ru catalogue (scope expansion, operator-approved): 84 base keys audited in cosh-r1-ru (3 MINOR, 3 NIT, fixed); remediation plus first audit of the 3 hold keys at en 2fb94727d3 clean here. Catalogue audit only, not rendered-fit, activation or release approval.",
+							"note": "Independent audit; round 1 retained at i18n/receipts/cosh-r1-ru.json. Allowance pair ru/ui.agentMessages.settings removed. Record: i18n/audits/evidence/ru/ui.agentMessages.settings/cosh-cos-hold-20261022/."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.agentMessages.settings",
-			"source_sha256": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
-			"target_sha256": "eeea2320f5b06e809c9ffce9c477782681bbba01e2c020c49186a8f228d2b151",
+			"source_sha256": "dc4d78d84cd84092cc3f67d10dbf733f2ef0bea5eb3011250b39fa78637e6a74",
+			"target_sha256": "be07880780612646fb8c53a68960d5ccf9d0d4d9c0e95344f3d50fff59f3ee57",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -20798,23 +21112,49 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"model": "anthropic/claude-sonnet-5-5",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "cosh-r2-vi",
+					"instance": "dob-r1-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/cosh-r2-vi.json",
-					"receipt_sha256": "17904af318357193960bc8b97b31fc8ce83600352e81ffa982de597b0ba8f738",
-					"scope": "New full-namespace vi catalogue (scope expansion, operator-approved): 84 base keys audited in cosh-r1-vi (3 MINOR, 2 NIT, fixed); remediation plus first audit of the 3 hold keys at en 2fb94727d3 clean here. Catalogue audit only, not rendered-fit, activation or release approval.",
-					"note": "Independent audit; round 1 retained at i18n/receipts/cosh-r1-vi.json. Allowance pair vi/ui.agentMessages.settings removed. Record: i18n/audits/evidence/vi/ui.agentMessages.settings/cosh-cos-hold-20261022/."
+					"receipt": "i18n/receipts/dob-r1-vi.json",
+					"receipt_sha256": "1508b1ee85bc6f3e7ec0b05944a4a752a459b5b418285cd0d7662f4e37d80ff4",
+					"scope": "Default-on banner: 15 new keys (10 ui.agentMessages, 5 ui.agentMessages.settings); other keys unchanged from prior audited rows. Catalogue audit, not activation approval.",
+					"note": "Independent audit of coder-subagent translation; findings fixed in-catalogue by auditor. Glossary/style-guide hashes in receipt."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+					"target_sha256": "eeea2320f5b06e809c9ffce9c477782681bbba01e2c020c49186a8f228d2b151",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "cosh-r2-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/cosh-r2-vi.json",
+							"receipt_sha256": "17904af318357193960bc8b97b31fc8ce83600352e81ffa982de597b0ba8f738",
+							"scope": "New full-namespace vi catalogue (scope expansion, operator-approved): 84 base keys audited in cosh-r1-vi (3 MINOR, 2 NIT, fixed); remediation plus first audit of the 3 hold keys at en 2fb94727d3 clean here. Catalogue audit only, not rendered-fit, activation or release approval.",
+							"note": "Independent audit; round 1 retained at i18n/receipts/cosh-r1-vi.json. Allowance pair vi/ui.agentMessages.settings removed. Record: i18n/audits/evidence/vi/ui.agentMessages.settings/cosh-cos-hold-20261022/."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }
