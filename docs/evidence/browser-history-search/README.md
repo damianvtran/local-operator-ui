@@ -17,7 +17,9 @@ What unit tests cannot claim, driven in the built app:
 
 - Branch: `feat/browser-history-search`
 - Head under test: `7a339858546fb561b7fab314ec5bf89c8132d93a`
-  (`fix(browser): keep the open-tab marker legible at narrow widths`)
+  (`fix(browser): keep the open-tab marker legible at narrow widths`). Commits
+  after it are the audited ledger (`31b47b8`), this evidence record
+  (`4a40c78`) and a locale-parity allowlist (`c0e3388`); no product byte moved.
 - Base: `main` at `c5503204ed0bc88e20dadb624de949788dc52b80` (the merged S4b
   product chrome).
 - Build: `pnpm build` on the head above, 2026-10-22 02:12 EDT (06:12 UTC). The
