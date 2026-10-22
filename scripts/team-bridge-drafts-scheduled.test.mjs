@@ -1151,3 +1151,30 @@ test("normal first scheduling never flashes held recovery; only settled failure 
 		}
 	}
 });
+
+test("denied browser storage preserves in-memory drafts but cannot authorize persistence-dependent sends", async () => {
+	localStorage.clear();
+	const descriptor = Object.getOwnPropertyDescriptor(window, "localStorage");
+	Object.defineProperty(window, "localStorage", {
+		configurable: true,
+		get() {
+			throw new Error("browser storage denied");
+		},
+	});
+	let app;
+	try {
+		app = await mount();
+		let persisted;
+		await act(async () => {
+			persisted = current.update({ body: "retain this denied-storage draft" });
+		});
+		assert.equal(persisted, false);
+		assert.equal(current.storageFailed, true);
+		await app.render({ target: other });
+		await app.render();
+		assert.equal(current.body, "retain this denied-storage draft");
+	} finally {
+		if (app) await app.close();
+		Object.defineProperty(window, "localStorage", descriptor);
+	}
+});
