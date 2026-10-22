@@ -16,19 +16,19 @@
       "exists": true,
       "isDirectory": true,
       "size": null,
-      "mtimeMs": 1792651748234.8616
+      "mtimeMs": 1792652591763.4233
     }
   },
-  "token": "http://127.0.0.1:51168/fixture",
+  "token": "http://127.0.0.1:55407/fixture",
   "appPaths": {
     "home": "/Users/damian",
-    "userData": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792651772941/profile",
-    "sessionData": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792651772941/profile",
+    "userData": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/profile",
+    "sessionData": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/profile",
     "electronLogs": "/Users/damian/Library/Logs/Local Operator",
     "env": {
-      "HOME": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792651772941/home",
-      "config": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792651772941/config",
-      "logs": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792651772941/logs"
+      "HOME": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/home",
+      "config": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/config",
+      "logs": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/logs"
     }
   },
   "osHome": "/Users/damian",
@@ -39,10 +39,14 @@
     "envConfig": true,
     "envLogs": true
   },
-  "logLine": "02:49:33.776 › Log path: /Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792651772941/logs",
+  "logLine": "Log path: /Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/logs",
   "noFallback": true,
-  "browserProfileLine": "02:49:34.348 › [browser] host on 127.0.0.1:51177 (proto 1), profile /Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792651772941/profile/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))",
+  "browserProfileLine": "[browser] host on 127.0.0.1:55450 (proto 1), profile /Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/profile/Partitions/local-operator-browser,",
+  "browserProfilePath": "/Users/damian/local-operator-ui/.worktrees/browser-native-determination/docs/evidence/browser-chrome-native-determination/run/1792652642668/profile/Partitions/local-operator-browser",
   "browserProfileUnderRun": true,
+  "b2WaitMs": 111,
+  "profileLineWaitMs": 110,
+  "electronLogsNote": "Electron's default app.getPath('logs'); the app's logger override is the writer (Log path above), so this value is recorded but outside RUN and not gated",
   "after": {
     "logsDir": {
       "exists": true,
@@ -60,13 +64,13 @@
       "exists": true,
       "isDirectory": true,
       "size": null,
-      "mtimeMs": 1792651748234.8616
+      "mtimeMs": 1792652652218.5032
     }
   },
   "unchanged": {
     "logsDir": true,
     "config": true,
-    "profile": true
+    "profile": false
   },
   "tokenHits": {
     "files": 4,

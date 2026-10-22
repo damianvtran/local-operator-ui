@@ -1,6 +1,6 @@
 {
   "identity": {
-    "checkedOut": "6725eaa62f0651bd082d44acfcf74b0cc4e97863",
+    "checkedOut": "54d68826541596299c33f5f0172901d014e4a81b",
     "productSourceCommit": "c5503204ed0bc88e20dadb624de949788dc52b80",
     "productSourceClean": true,
     "branch": "docs/browser-native-determination-s4b",
@@ -19,7 +19,7 @@
     }
   },
   "rest": {
-    "at": "2026-10-22T06:49:35.771Z",
+    "at": "2026-10-22T07:04:07.448Z",
     "window": {
       "id": 1,
       "visible": false,
@@ -81,7 +81,7 @@
         },
         "visible": true,
         "webContentsId": 4,
-        "url": "http://127.0.0.1:51168/fixture",
+        "url": "http://127.0.0.1:55407/fixture",
         "type": "window",
         "title": "native-determination fixture",
         "focused": false,
@@ -92,7 +92,7 @@
       {
         "id": 4,
         "type": "window",
-        "url": "http://127.0.0.1:51168/fixture",
+        "url": "http://127.0.0.1:55407/fixture",
         "title": "native-determination fixture",
         "focused": false
       },
@@ -120,7 +120,7 @@
     ]
   },
   "open": {
-    "at": "2026-10-22T06:49:38.361Z",
+    "at": "2026-10-22T07:04:10.507Z",
     "window": {
       "id": 1,
       "visible": false,
@@ -182,7 +182,7 @@
         },
         "visible": true,
         "webContentsId": 4,
-        "url": "http://127.0.0.1:51168/fixture",
+        "url": "http://127.0.0.1:55407/fixture",
         "type": "window",
         "title": "native-determination fixture",
         "focused": false,
@@ -217,7 +217,7 @@
       {
         "id": 4,
         "type": "window",
-        "url": "http://127.0.0.1:51168/fixture",
+        "url": "http://127.0.0.1:55407/fixture",
         "title": "native-determination fixture",
         "focused": false
       },

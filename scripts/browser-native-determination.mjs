@@ -593,6 +593,8 @@ async function capture(mainCdp, webContentsId, label) {
 const INDEX_TARGET = /\/index\.html(?:[?#].*)?$/;
 /** A page view is an http(s) document; the child documents are `file:` URLs. */
 const HTTP_URL = /^https?:/;
+/** The browser host's startup line, whose `profile` path proves the scratch partition. */
+const BROWSER_PROFILE_LINE = /\[browser\] host on [^\n]*?profile (\S+?),/;
 
 async function ownerMeasure(cdp) {
 	return evaluate(
@@ -807,7 +809,7 @@ plan(
 );
 plan(
 	"B2",
-	"every writable app path resolves inside the scratch run, and the logger took the absolute LOG_DIR",
+	"every path the app writes through resolves inside the scratch run, and the logger took the absolute LOG_DIR",
 	"driven",
 );
 plan(
@@ -827,7 +829,7 @@ plan(
 );
 plan(
 	"N2",
-	"at rest the page view's native rect is the reported content rect and no popout child is visible",
+	"at rest the page view's native rect is the reported content rect and no visible list child is present",
 	"driven",
 );
 plan(
@@ -1108,21 +1110,36 @@ try {
 	);
 	const underRun = (path) =>
 		typeof path === "string" && (path === RUN || path.startsWith(`${RUN}/`));
+	// WAIT for both lines instead of reading the log once. Measured on this rig:
+	// the browser host's `profile` line lands up to ~1.2 s after logger init, and
+	// a single read at ~1.1 s made B2 PASS/FAIL on launch timing (4 runs: -65 ms
+	// to +265 ms). `waitForLog` exists for exactly this and is already used by the
+	// boot ports and the product-arm line.
+	const b2WaitStart = Date.now();
+	const logWait = waitForLog(/Log path: (.+)/, 20_000).catch(() => null);
+	const profileWait = (async () => {
+		const started = Date.now();
+		const match = await waitForLog(BROWSER_PROFILE_LINE, 20_000).catch(
+			() => null,
+		);
+		return { match, ms: Date.now() - started };
+	})();
+	const [logLineMatch, profileResult] = await Promise.all([
+		logWait,
+		profileWait,
+	]);
+	const profileMatch = profileResult.match;
+	const b2WaitMs = Date.now() - b2WaitStart;
+	const profileLineWaitMs = profileResult.ms;
 	const isolationText = logText();
-	const logLine =
-		isolationText.split("\n").find((line) => line.includes("Log path:")) ??
-		null;
+	const logLine = logLineMatch ? logLineMatch[0] : null;
 	const noFallback = !isolationText.includes("is not an absolute path");
 	// The browser host names its partition profile on startup. That line is the
 	// direct proof the Chromium profile is the scratch one; the real profile's
 	// mtime is not gated because the operator's own app may write it concurrently.
-	const browserProfileLine =
-		isolationText
-			.split("\n")
-			.find((line) => line.includes("[browser] host on")) ?? null;
-	const browserProfileUnderRun = browserProfileLine
-		? browserProfileLine.includes(join(bootHandle.paths.profile, "Partitions"))
-		: false;
+	const browserProfilePath = profileMatch ? profileMatch[1] : null;
+	const browserProfileLine = profileMatch ? profileMatch[0] : null;
+	const browserProfileUnderRun = underRun(browserProfilePath);
 	const pathsUnderRun = {
 		// `app.getPath("home")` is the OS account home and is not redirected by
 		// HOME; it is recorded, not gated. Every path the app writes through is
@@ -1142,7 +1159,12 @@ try {
 		logLine,
 		noFallback,
 		browserProfileLine,
+		browserProfilePath,
 		browserProfileUnderRun,
+		b2WaitMs,
+		profileLineWaitMs,
+		electronLogsNote:
+			"Electron's default app.getPath('logs'); the app's logger override is the writer (Log path above), so this value is recorded but outside RUN and not gated",
 	};
 	record(
 		"B2",
