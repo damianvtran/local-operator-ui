@@ -190,6 +190,7 @@ import {
 	type TurnFoot,
 	foldImages,
 	foldRuns,
+	latchFoldedRuns,
 	receiptFoldUnits,
 	turnFeet,
 	workedSecondsOf,
@@ -4019,6 +4020,48 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const paneIsLive =
 		(workingLine === undefined ? paneWorking : workingLine) !== null ||
 		gate !== null;
+	/*
+	 * Whether this pane has NO live feed: connecting, reconnecting or
+	 * unavailable. Distinct from `paneIsLive` by exactly the gap, and NOT derived
+	 * from `frontend` (agent review round 3): the run panel's child reader passes
+	 * `frontend: null` for its whole life with `status: "live"`, so a null
+	 * snapshot is not evidence of a gap - and the settle pass there really does
+	 * end the turn. The status is the pane's own statement about its feed (see
+	 * `use-canonical-session`'s reconnect arm), so it is the one that decides.
+	 */
+	const paneGap = status !== "live";
+
+	/*
+	 * THE LIVE FOLD LATCH (operator report, 2026-10-21: job messages and
+	 * responses "alternate between forcing the tool group open and then closing
+	 * it back again").
+	 *
+	 * A fold is licensed by the run's TRAILING receipt stretch, a positional rule
+	 * that is not monotonic under append: `[t1, j1, j2]` folds, the next call makes
+	 * `[t1, j1, j2, t2]` fail the rule (the stretch has ended), and the next two
+	 * job results fold it again - so the group opened and closed on every job
+	 * response, with no reader action. The latch is the one fact the pure rule
+	 * cannot carry: this pane has already PAINTED that run as a fold. It is read
+	 * only while the turn is live (`foldRuns`'s `latchedFoldIds`), so a live group
+	 * can only grow; the settled shape is still decided by the final rows alone,
+	 * which is why the head-pair negatives (a settled `[peer, peer, tool]` stays
+	 * ordinary rows) are unchanged. Reset per conversation and per clear epoch,
+	 * like every other view registry here.
+	 */
+	const foldLatch = useRef<{
+		session: string | null;
+		epoch: number | undefined;
+		ids: Set<string>;
+	}>({ session: conversation, epoch: transcript.viewEpoch, ids: new Set() });
+	if (
+		foldLatch.current.session !== conversation ||
+		foldLatch.current.epoch !== transcript.viewEpoch
+	)
+		foldLatch.current = {
+			session: conversation,
+			epoch: transcript.viewEpoch,
+			ids: new Set(),
+		};
 
 	/*
 	 * The window's top edge lands on a RUN boundary, not a raw row count (the
@@ -4119,6 +4162,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * reply/steer indication. Operator asks, prose and arbitrary notices remain
 	 * boundaries.
 	 */
+	/* The store's id index, for the latch prune (see `latchFoldedRuns`). */
+	const recordIndex = transcript.index;
 	const rowGroups = useMemo(() => {
 		/*
 		 * `isNewestTurn` used to be computed here for the fold's condense; the
@@ -4179,7 +4224,48 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * rows, never a count that lumped them in as "incoming messages".
 			 */
 			receiptSummaryOf: (rows) => receiptFoldUnits(rows),
+			/*
+			 * A GAP HOLDS THE FOLD TOO (design review round 1, U1). With no
+			 * connection the pane has observed nothing, so the run is judged by
+			 * what it last painted rather than by a re-decision over stale rows -
+			 * the same reading the latch retains one line below.
+			 */
+			liveTurn: paneIsLive || paneGap,
+			latchedFoldIds: foldLatch.current.ids,
 		});
+		/*
+		 * Remember what this pane has painted folded, so a later pass cannot
+		 * dissolve it.
+		 *
+		 * ACCUMULATED, NOT REBUILT FROM THIS PASS'S WINDOW (agent review round 1,
+		 * F1). The window is not the conversation: a snap, a widened page or a
+		 * filter can paint a frame whose slice does not contain a run this pane
+		 * already showed folded, and rebuilding the set from THAT slice dropped the
+		 * ids - so the rows came back and the next frame re-folded them, the same
+		 * open/close pair through another door. The union is pruned against the
+		 * STORE's ids (`rawRecords`, not `visible`), which is what keeps the set
+		 * from pinning a run the conversation no longer holds.
+		 */
+		/*
+		 * A GAP IS NOT A SETTLE (design review round 1, U1). The clear used to run
+		 * on any non-live pass, and a reconnect gap is one: `frontend: null` drops
+		 * `working`, so the group opened for the gap's frames and the next live pass
+		 * folded it again - the same open/close through the door the settle rule was
+		 * meant to hold shut. A pane with NO connection has observed nothing about
+		 * the turn, so it retains the latch (pruned against the store, exactly as a
+		 * live pass does). Only a CONNECTED pane with no live reading - the session
+		 * is really idle - spends the latch, and the settled pass then renders from
+		 * the rows alone.
+		 */
+		if (paneIsLive || paneGap) {
+			foldLatch.current.ids = latchFoldedRuns(
+				foldLatch.current.ids,
+				recordIndex,
+				groups,
+			);
+		} else if (foldLatch.current.ids.size > 0) {
+			foldLatch.current.ids = new Set();
+		}
 		return groups.map((group) =>
 			group.kind === "run"
 				? {
@@ -4197,7 +4283,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					}
 				: group,
 		);
-	}, [visible]);
+	}, [visible, paneIsLive, paneGap, recordIndex]);
 	/*
 	 * KEYED ON THE WINDOW'S SIGNATURE, NOT ON `visible` (UI perf audit P4; PR-6).
 	 * The foot is arithmetic over the same partition the plan builds - counts,
