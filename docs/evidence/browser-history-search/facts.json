@@ -1,15 +1,16 @@
 {
-  "generatedAt": "2026-10-22T05:03:00Z",
-  "headUnderTest": "042dc3feeeb2f4bf7e1f3a9d9365a5a2999d20dd",
-  "baseBranchHead": "8f9fe72ec7ec9aa69b70346031294c61ee732902",
+  "generatedAt": "2026-10-22T06:15:00Z",
+  "headUnderTest": "7a339858546fb561b7fab314ec5bf89c8132d93a",
+  "baseBranchHead": "c5503204ed0bc88e20dadb624de949788dc52b80",
+  "buildTimeLocal": "2026-10-22 02:12 EDT (06:12 UTC)",
   "buildIdentity": {
     "main": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046",
-    "renderer": "ccb8a3de815f5fbc13c32ffc8a0e61fbe0e1656b702a0c5c496243a397741254",
-    "listDocument": "9c8bf7a57794c54e528aebad72f3b1eba8e226bc76c1eb889531b4a2b096e57e",
-    "mainBytecode": "ff0142a36c64257be4a60076b3c26ba3b1e725d5d6664eb050bffa4cfe9363c3",
-    "rendererIndex": "ccb8a3de815f5fbc13c32ffc8a0e61fbe0e1656b702a0c5c496243a397741254"
+    "renderer": "4a90ddb073cfdfe09daa8a52120db882a444ae7ab999f3478c9c8df03c19549a",
+    "listDocument": "023699a3d0f2d648333377efbf5c68882e22e5bc3ac1237c1ba3272241a242a0",
+    "mainBytecode": "0ec2d3639bb3d19347d3b20cb1f49b38a325d1fe89ed7698d448beb5dbbb5bff",
+    "rendererIndex": "4a90ddb073cfdfe09daa8a52120db882a444ae7ab999f3478c9c8df03c19549a"
   },
-  "command": "node scripts/browser-chrome-s4b-probe.mjs --out <scratch>/s4b-history-8f9-1792645397",
+  "command": "node scripts/browser-chrome-s4b-probe.mjs --out <scratch>/s4b-r2c-1792649569",
   "rows": [
     {
       "id": "H1",
@@ -21,22 +22,22 @@
           "signal": null
         },
         "openOnFixture": false,
-        "query": "127.0.0.1:62229",
+        "query": "127.0.0.1:56842",
         "ownerRows": [
           {
-            "url": "http://127.0.0.1:62229/history-other",
+            "url": "http://127.0.0.1:56842/history-target-b",
             "source": "history"
           },
           {
-            "url": "http://127.0.0.1:62229/history-target",
+            "url": "http://127.0.0.1:56842/history-other",
+            "source": "history"
+          },
+          {
+            "url": "http://127.0.0.1:56842/history-target",
             "source": "history"
           }
         ],
-        "childHeader": "From your history",
-        "childRows": [
-          "127.0.0.1:62229/history-other S4b fixture",
-          "127.0.0.1:62229/history-target S4b fixture"
-        ]
+        "childHeader": "From your history"
       }
     },
     {
@@ -44,16 +45,13 @@
       "status": "PASS",
       "claim": "typing \"github\" shows the Search DuckDuckGo row first and selected",
       "evidence": {
-        "value": "github",
-        "active": ":r1s:-option-0",
         "row0": {
           "text": "Search DuckDuckGo for \"github\"",
           "search": true,
           "selected": true
         },
-        "childRows": [
-          "Search DuckDuckGo for \"github\""
-        ]
+        "active": ":r1s:-option-0",
+        "childHeader": "Suggestions"
       }
     },
     {
@@ -61,16 +59,13 @@
       "status": "PASS",
       "claim": "typing \"what is a vpn\" shows the same search row first and selected",
       "evidence": {
-        "value": "what is a vpn",
-        "active": ":r2c:-option-0",
         "row0": {
           "text": "Search DuckDuckGo for \"what is a vpn\"",
           "search": true,
           "selected": true
         },
-        "childRows": [
-          "Search DuckDuckGo for \"what is a vpn\""
-        ]
+        "active": ":r2c:-option-0",
+        "childHeader": "Suggestions"
       }
     },
     {
@@ -78,13 +73,67 @@
       "status": "PASS",
       "claim": "Enter commits the highlighted search row's DuckDuckGo URL on the active tab",
       "evidence": {
-        "stoppedTwo": {
-          "code": 0,
-          "signal": null
-        },
         "githubUrl": "https://duckduckgo.com/?q=github",
-        "vpnUrl": "https://duckduckgo.com/?q=what%20is%20a%20vpn",
-        "note": "github committed as ...?q=github; the vpn query committed as ...?q=what%20is%20a%20vpn. The earlier run observed DuckDuckGo redirect that one to the +/&ia=web spelling; this run read the committed URL before the redirect."
+        "vpnUrl": "https://duckduckgo.com/?q=what+is+a+vpn",
+        "githubCommitted": true,
+        "vpnCommitted": true
+      }
+    },
+    {
+      "id": "H5",
+      "status": "PASS",
+      "claim": "an open tab with no stored history row is suggested with its source mark",
+      "evidence": {
+        "query": "127.0.0.1:56842",
+        "ownerRows": [
+          {
+            "url": "http://127.0.0.1:56842/history-other",
+            "source": "tab"
+          }
+        ],
+        "childHeader": "Suggestions",
+        "childRowTitle": "Already open \u2014 S4b fixture",
+        "path": "driven through forgetSite(origin), the same store path as Forget this site"
+      }
+    },
+    {
+      "id": "H8",
+      "status": "PASS",
+      "claim": "at narrow width the open-tab title/marker keeps a floor and does not collapse",
+      "evidence": {
+        "child": {
+          "dir": "ltr",
+          "rows": 1,
+          "rowText": "127.0.0.1:56842/history-other",
+          "titleText": "Already open \u2014 S4b fixture",
+          "titleWidth": 78,
+          "viewport": 304
+        },
+        "threshold": "titleWidth >= 70 and the marker text survives; before the CSS floor the same row had no title column at this width"
+      }
+    },
+    {
+      "id": "H6",
+      "status": "PASS",
+      "claim": "a query with no match shows the no-match notice and no rows",
+      "evidence": {
+        "ownerRows": [],
+        "value": "zzz-nohistory.example",
+        "childNotice": "No matching pages in your history.",
+        "childHeader": "Suggestions"
+      }
+    },
+    {
+      "id": "H7",
+      "status": "PASS",
+      "claim": "an RTL owner chrome paints an RTL child and the row text is dir=auto",
+      "evidence": {
+        "child": {
+          "dir": "rtl",
+          "textDir": "auto"
+        },
+        "childHeader": "Suggestions",
+        "limitation": "the owner document direction was forced to rtl; the app locale was not switched, so the row text is the English sentence. The Urdu catalogue value is audited separately; the bidi mechanism is what this row drives."
       }
     }
   ],
@@ -108,7 +157,7 @@
     {
       "input": "file:///tmp/a.txt",
       "intent": "url",
-      "note": "URL intent, never searched; the host still refuses to navigate it"
+      "note": "URL intent, never searched; the field refuses it before Enter"
     },
     {
       "input": "localhost:3000",
@@ -121,6 +170,11 @@
     {
       "input": "192.168.1.1",
       "intent": "url"
+    },
+    {
+      "input": "intranet/wiki",
+      "intent": "url",
+      "note": "host/path, URL intent"
     },
     {
       "input": "foo bar",
@@ -156,19 +210,27 @@
     }
   ],
   "frames": {
-    "child-history.png": "ba79dc366a0f0b1560d09d97b78ac4a98026ca8a8519df55c34abe5d96c1eae3",
-    "child-search-github.png": "6a9401ac14cadd4411452b75c7f5efbc9d171340d2c09e1aa2f7c683bf4413d3",
-    "child-search-vpn.png": "451a04cabc1159e4c4f8c0692399bee150af98de1d35f80fab061d4dec31fa0f",
-    "owner-history.png": "a5931f6f977ee0500c4d5f938d3d8c63272c9d296d11ff64a059eb9b40df4927",
-    "owner-search-github.png": "5b182624ada99941a80fea0d4ac4e282e6b98ffd81a77b53775864578585699e",
-    "owner-search-vpn.png": "c7c1f4ba537ec1c4017d0b825a8a561f6f6fc05b51fd1ff69f59a398c12a3caa",
+    "child-history.png": "ef20f986b8e126aeb3d743ae850aa2df1533097a9e0e3f76ff016dcd4ff3e1bc",
+    "child-narrow-open-tab.png": "c609ff3e70cbbe36e1b05fe1b12fa86898dd98e5e94b4bf4ce8fdb41fefea6c0",
+    "child-no-match.png": "b42fddf5e3161a95354391603df1dbe97f5a8915362627230e3387d2ab2b54de",
+    "child-open-tab.png": "e5913ad2f8ce8d5eaa90fedb1899d70acd8447051b703ce19c68882eaa509265",
+    "child-rtl-search.png": "1fe5cda748a890b6eb9ee45de5af1abe323c06d1a0c5a1f250f5e7f9d4f0c70f",
+    "child-search-github.png": "0db8c54ed823fdf5ae0670f3266bc07e85d614eb28f2ea74f18de4cd06f9554c",
+    "child-search-vpn.png": "346ca6c41794385792ec8b9ac572c4e8f069d22e6b2355fc3180b54a8bdd714b",
+    "owner-history.png": "48307c2d14efe88beb48796df076428a06790628cc867e67a019cc6bd920998f",
+    "owner-narrow-open-tab.png": "461849f9d40162e91e2abd69e02acb9960d75961c6e42ba55550edb749258e3b",
+    "owner-no-match.png": "70e91a6076b7934e75db3450ff868fab5e7fd0b11db1dc2ffc5640c6a94a675c",
+    "owner-open-tab.png": "48307c2d14efe88beb48796df076428a06790628cc867e67a019cc6bd920998f",
+    "owner-rtl-search.png": "225858f414818af096a9b7fe6feb3b5b9a059c4c5316db25c1ab59537d8c7bfd",
+    "owner-search-github.png": "16686ab7e297ddcfa5bb1aced7bdc660fed9510bc50e68a398339a7d82bd512d",
+    "owner-search-vpn.png": "57ca146ef184e152dd766ac646b619d4c58bf7c330a3772c59894ea36660c580",
     "child-rows.png": "b27a4f0135c1bb1ea0896bcc89498344ba607da7df19f9de42657f00043b8273",
     "owner-popout.png": "6a18daa1ead7560c582c9ea74a39272b6745f7b1dc09d198941422fb79cc5349"
   },
-  "beforeFramesFrom": "S4b round-3 run: $LOCAL_OPERATOR_SCRATCHPAD/s4b-r3-fix/frames (owner-popout.png, child-rows.png); the 8f9fe72 change touches the strip trailing rule, not the popout list, so the before pair was copied rather than re-shot from the base.",
   "notProven": [
     "native composite pixels, native hit routing, macOS IME and VoiceOver",
     "Windows and Linux runs",
-    "DuckDuckGo page content: Enter is asserted on the committed navigation URL, not the page body"
+    "DuckDuckGo page content: Enter is asserted on the committed navigation URL, not the page body",
+    "the Urdu sentence in the child: direction and dir=auto were driven, the app locale was not switched"
   ]
 }

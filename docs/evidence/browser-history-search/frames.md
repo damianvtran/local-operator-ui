@@ -5,7 +5,7 @@ The PNGs are NOT committed: `.gitignore` ignores `docs/evidence/**/*.png`, and
 tracked record of where they were written and their hashes.
 
 Run scratch directory:
-`$LOCAL_OPERATOR_SCRATCHPAD/s4b-history-8f9-1792645397/frames`
+`$LOCAL_OPERATOR_SCRATCHPAD/s4b-r2c-1792649569/frames`
 (copied to `docs/evidence/browser-history-search/frames/` for this run; pruned
 with the session).
 
@@ -13,12 +13,20 @@ with the session).
 
 | Frame | SHA-256 |
 | --- | --- |
-| owner-history.png | a5931f6f977ee0500c4d5f938d3d8c63272c9d296d11ff64a059eb9b40df4927 |
-| child-history.png | ba79dc366a0f0b1560d09d97b78ac4a98026ca8a8519df55c34abe5d96c1eae3 |
-| owner-search-github.png | 5b182624ada99941a80fea0d4ac4e282e6b98ffd81a77b53775864578585699e |
-| child-search-github.png | 6a9401ac14cadd4411452b75c7f5efbc9d171340d2c09e1aa2f7c683bf4413d3 |
-| owner-search-vpn.png | c7c1f4ba537ec1c4017d0b825a8a561f6f6fc05b51fd1ff69f59a398c12a3caa |
-| child-search-vpn.png | 451a04cabc1159e4c4f8c0692399bee150af98de1d35f80fab061d4dec31fa0f |
+| owner-history.png | 48307c2d14efe88beb48796df076428a06790628cc867e67a019cc6bd920998f |
+| child-history.png | ef20f986b8e126aeb3d743ae850aa2df1533097a9e0e3f76ff016dcd4ff3e1bc |
+| owner-search-github.png | 16686ab7e297ddcfa5bb1aced7bdc660fed9510bc50e68a398339a7d82bd512d |
+| child-search-github.png | 0db8c54ed823fdf5ae0670f3266bc07e85d614eb28f2ea74f18de4cd06f9554c |
+| owner-search-vpn.png | 57ca146ef184e152dd766ac646b619d4c58bf7c330a3772c59894ea36660c580 |
+| child-search-vpn.png | 346ca6c41794385792ec8b9ac572c4e8f069d22e6b2355fc3180b54a8bdd714b |
+| owner-open-tab.png | 48307c2d14efe88beb48796df076428a06790628cc867e67a019cc6bd920998f |
+| child-open-tab.png | e5913ad2f8ce8d5eaa90fedb1899d70acd8447051b703ce19c68882eaa509265 |
+| owner-narrow-open-tab.png | 461849f9d40162e91e2abd69e02acb9960d75961c6e42ba55550edb749258e3b |
+| child-narrow-open-tab.png | c609ff3e70cbbe36e1b05fe1b12fa86898dd98e5e94b4bf4ce8fdb41fefea6c0 |
+| owner-no-match.png | 70e91a6076b7934e75db3450ff868fab5e7fd0b11db1dc2ffc5640c6a94a675c |
+| child-no-match.png | b42fddf5e3161a95354391603df1dbe97f5a8915362627230e3387d2ab2b54de |
+| owner-rtl-search.png | 225858f414818af096a9b7fe6feb3b5b9a059c4c5316db25c1ab59537d8c7bfd |
+| child-rtl-search.png | 1fe5cda748a890b6eb9ee45de5af1abe323c06d1a0c5a1f250f5e7f9d4f0c70f |
 
 `owner-*` are screenshots of the owner renderer (the field row). The native
 overlay child cannot appear in the owner's screenshot, so `child-*` are
