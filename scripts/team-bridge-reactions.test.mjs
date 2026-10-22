@@ -5,7 +5,7 @@ const modifier = /(?:\u{1f3fb}|\u{1f3fc}|\u{1f3fd}|\u{1f3fe}|\u{1f3ff})/u;
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/team-bridge/team-bridge-emoji-model"; export * from "./src/shared/team-bridge-contract";',
+			'export * from "./src/renderer/src/features/team-bridge/team-bridge-emoji-model"; export * from "./src/shared/team-bridge-contract"; export * from "./src/renderer/src/features/team-bridge/team-bridge-emoji-support";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -124,4 +124,26 @@ test("future optional reaction overflow trims metadata, not the history page", (
 		}).success,
 		false,
 	);
+});
+
+test("glyph probe rejects fill-dependent tofu, blank pixels and unjoined sequences", () => {
+	const color = new Uint8ClampedArray([240, 120, 30, 255]);
+	assert.equal(model.isSingleColorGlyph(color, color, 28), true);
+	assert.equal(
+		model.isSingleColorGlyph(
+			new Uint8ClampedArray([255, 255, 255, 255]),
+			new Uint8ClampedArray([0, 0, 0, 255]),
+			28,
+		),
+		false,
+	);
+	assert.equal(
+		model.isSingleColorGlyph(
+			new Uint8ClampedArray(4),
+			new Uint8ClampedArray(4),
+			28,
+		),
+		false,
+	);
+	assert.equal(model.isSingleColorGlyph(color, color, 56), false);
 });

@@ -113,7 +113,7 @@ const MessageRow: FC<{
 	return (
 		<li
 			className={cn(
-				"group/message flex gap-3 px-5 transition-colors duration-fast ease-out-quart hover:bg-row-hover",
+				"group/message relative flex gap-3 px-5 transition-colors duration-fast ease-out-quart hover:bg-row-hover",
 				continuation ? "py-0.5" : "mt-2 pt-1.5 pb-0.5",
 			)}
 		>
