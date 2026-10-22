@@ -3,10 +3,12 @@ import type { AddressHistoryEntry } from "../../../../../shared/browser-address-
 /**
  * The address field's local completion model.
  *
- * WHY THE RANKING LIVES IN THE RENDERER: the query never crosses IPC per
- * keystroke. Main answers one bounded snapshot of URLs it already has, and this
- * module decides what the field shows — so typing cost stays local and no
- * suggestion service (local or remote) sees a prefix of what the user types.
+ * WHY THE RANKING IS SPLIT: the query crosses IPC only after a 120 ms debounce,
+ * and main answers the top N from its indexed history store plus the bounded
+ * live-tab window. This module still decides what the field SHOWS — the display
+ * spelling, the target URL and the inline suffix — because those depend on
+ * exactly what the user typed, while a visit-count ranking needs the table the
+ * renderer no longer holds.
  *
  * WHAT "COMPLETION" MEANS HERE, precisely: the field's REAL value becomes
  * `rawText + suffix`, and the suffix is selected. It is not a grey overlay: the
