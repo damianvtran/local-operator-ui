@@ -281,11 +281,17 @@ export function useTeamBridgeAttachments(args: {
 						: [],
 				);
 
-	/** The send's uniform 404: every staged id is suspect (no oracle says which). */
-	const markExpired = () => {
+	/**
+	 * The send's uniform 404: every id THAT REQUEST carried is suspect (no
+	 * oracle says which). A chip added while it was in flight was never sent,
+	 * so it stays as it is (review round 3, R3-02). `ids` omitted = all ready.
+	 */
+	const markExpired = (ids?: readonly string[]) => {
+		const carried = ids ? new Set(ids) : null;
 		write(
 			live.current.map((chip) =>
-				chip.status === "ready"
+				chip.status === "ready" &&
+				(!carried || (chip.attachment && carried.has(chip.attachment.id)))
 					? { ...chip, status: "expired", attachment: undefined }
 					: chip,
 			),
