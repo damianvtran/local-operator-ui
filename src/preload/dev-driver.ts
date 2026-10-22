@@ -30,6 +30,10 @@
 
 import { contextBridge, ipcRenderer } from "electron";
 import {
+	type AddressOverlayProbeAction,
+	DEV_DRIVER_ADDRESS_OVERLAY,
+	DEV_DRIVER_ADDRESS_OVERLAY_EVENT,
+	DEV_DRIVER_ADDRESS_OVERLAY_PROJECT,
 	DEV_DRIVER_CAPTURE,
 	DEV_DRIVER_FACTS,
 	DEV_DRIVER_WORLD_KEY,
@@ -54,6 +58,27 @@ export interface DevDriverBridge {
 	capture(label: string): Promise<unknown>;
 	/** Window facts from MAIN: mode, window vs content size, visibility, focus. */
 	facts(): Promise<unknown>;
+	/**
+	 * S1's native overlay probe: show/hide the inert child or read structural
+	 * facts. Main accepts only these three exact words and refuses the call
+	 * entirely (no handler) unless the launch gate passed; the renderer side
+	 * types the vocabulary, it does not grant it.
+	 */
+	addressOverlay(
+		action: AddressOverlayProbeAction,
+		argument?: unknown,
+	): Promise<unknown>;
+	/**
+	 * S2's renderer → main projection. The argument is a display model (rows of
+	 * text, an anchor rectangle, a seq); main revalidates every field before it
+	 * reaches the child, and only `{seq,index}` ever comes back. Rejects with
+	 * Electron's "No handler registered" in an S1-only or unarmed launch, which
+	 * the renderer's port treats as "not available" and latches off.
+	 */
+	addressOverlayProject(payload: unknown): Promise<unknown>;
+	/** Main → renderer commits and (future) lifecycle notes. Only a validated row
+	 * click is sent today; the callback returns its unsubscribe. */
+	onAddressOverlayEvent(callback: (event: unknown) => void): () => void;
 }
 
 function armedArgument(): { armed: true; outDir: string } | null {
@@ -101,6 +126,18 @@ export function installDevDriverBridge(): boolean {
 		},
 		capture: (label) => ipcRenderer.invoke(DEV_DRIVER_CAPTURE, label),
 		facts: () => ipcRenderer.invoke(DEV_DRIVER_FACTS),
+		addressOverlay: (action, argument) =>
+			ipcRenderer.invoke(DEV_DRIVER_ADDRESS_OVERLAY, action, argument),
+		addressOverlayProject: (payload) =>
+			ipcRenderer.invoke(DEV_DRIVER_ADDRESS_OVERLAY_PROJECT, payload),
+		onAddressOverlayEvent: (callback) => {
+			const listener = (_event: unknown, payload: unknown): void =>
+				callback(payload);
+			ipcRenderer.on(DEV_DRIVER_ADDRESS_OVERLAY_EVENT, listener);
+			return () => {
+				ipcRenderer.removeListener(DEV_DRIVER_ADDRESS_OVERLAY_EVENT, listener);
+			};
+		},
 	};
 
 	contextBridge.exposeInMainWorld(DEV_DRIVER_WORLD_KEY, bridge);

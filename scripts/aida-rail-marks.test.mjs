@@ -630,17 +630,46 @@ test("collapsed: the count is a corner mark on the icon, not a pill beside it (#
 	}
 });
 
-test("expanded: the count keeps its in-flow trailing slot (the #1083 fix is the strip's alone)", async () => {
+test("expanded: the count keeps an in-flow trailing slot, after the menu lane (the #1083 fix is the strip's alone)", async () => {
 	const { markup, teardown } = await mountRail({
 		collapsed: false,
 		row: herRow(unseen()),
 	});
 	try {
-		const { button, slot } = badgePlacement(markup);
-		assert.equal(slot?.parentElement, button, "a direct child of the row");
+		const doc = new JSDOM(markup).window.document;
+		const row = doc.querySelector('[data-sidebar-row="aida"]');
+		const button = row?.querySelector('[data-tour-tag="nav-item-aida"]');
+		const badge = row?.querySelector('[data-tour-tag="nav-aida-badge"]');
+		const slot = badge?.parentElement ?? null;
 		assert.ok(
-			classesOf(slot).includes("ms-auto"),
-			"pushed to the inline end (`ms-auto`: trailing edge in LTR and RTL alike)",
+			row !== null && button !== null && slot !== null,
+			"the expanded row draws its count",
+		);
+		/*
+		 * DESIGN ROUND 1, D1 moved the mark OUT of the main button and behind the
+		 * ellipsis lane: inside the button it sat 26px in from the row's edge, in a
+		 * second trailing column from More's chevron. The intent of the #1083 pin
+		 * is unchanged - the expanded count is an in-flow mark at the row's
+		 * trailing edge - so it is read at its new address.
+		 */
+		assert.equal(
+			slot.closest("button"),
+			null,
+			"the mark sits outside the main button",
+		);
+		assert.notEqual(
+			button.compareDocumentPosition(slot) & 4,
+			0,
+			"and after it in the row's flow",
+		);
+		assert.equal(
+			row.lastElementChild,
+			slot,
+			"and it is the row's LAST child - after the ellipsis lane, which this harness cannot draw because it mounts without the layout capability",
+		);
+		assert.ok(
+			classesOf(slot).includes("pe-2"),
+			"at the same 8px inset the More chevron takes",
 		);
 		assert.ok(
 			!classesOf(slot).includes("ml-auto") &&
@@ -785,7 +814,7 @@ const NAV =
 const PANEL_RAIL =
 	"src/renderer/src/shared/components/navigation/panel-rail.tsx";
 const URL_BAR =
-	"src/renderer/src/features/browser/components/browser-url-bar.tsx";
+	"src/renderer/src/features/browser/components/browser-surface.tsx";
 const APPROVALS_DOCK =
 	"src/renderer/src/features/browser/components/browser-approvals-dock.tsx";
 const BADGE = "src/renderer/src/shared/components/ui/badge.tsx";

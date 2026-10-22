@@ -196,7 +196,18 @@ export type TeamBridgePersonBridgeState = z.infer<
 export const teamBridgeDirectoryMemberSchema = z
 	.object({
 		account_id: id,
-		display_label: z.string().min(1).max(64),
+		/*
+		 * THE DIRECTORY DOES NOT PROMISE A NON-EMPTY LABEL. The hub keeps a
+		 * membership row when the account behind it was deleted between the two
+		 * reads (bridge_read_service.go: "keeps its row with an empty label"), and
+		 * an account may have neither a name nor an email. `min(1)` here made ONE
+		 * such row fail the whole `members` array and the People section rendered
+		 * "People could not be loaded." with no cause. The cap is likewise the
+		 * server's to enforce, not a render-time parser's: display names and email
+		 * fallbacks routinely exceed the old 64 characters. The row renderer
+		 * supplies a stable fallback label.
+		 */
+		display_label: z.string(),
 		role: z.string().min(1).max(32),
 		bridge_enabled: z.boolean(),
 		bridge_state: teamBridgePersonBridgeStateSchema,
@@ -213,9 +224,64 @@ export type TeamBridgeDirectoryMember = z.infer<
  * weight); re-sorting here would make the rail disagree with every other
  * directory the hub serves. The array is the whole answer this read returns.
  */
+function salvageDirectoryMember(
+	row: unknown,
+): TeamBridgeDirectoryMember | null {
+	if (row === null || typeof row !== "object") return null;
+	const candidate = row as Record<string, unknown>;
+	const accountId = candidate.account_id;
+	if (typeof accountId !== "string" || accountId.length === 0) return null;
+	const label =
+		typeof candidate.display_label === "string" ? candidate.display_label : "";
+	const role =
+		typeof candidate.role === "string" && candidate.role.length > 0
+			? candidate.role
+			: "member";
+	const bridgeEnabled = candidate.bridge_enabled === true;
+	const state = teamBridgePersonBridgeStateSchema.safeParse(
+		candidate.bridge_state,
+	);
+	return {
+		account_id: accountId,
+		display_label: label,
+		role,
+		bridge_enabled: bridgeEnabled,
+		bridge_state: state.success ? state.data : "none",
+	};
+}
+
 export const teamBridgeDirectorySchema = z
-	.object({ members: z.array(teamBridgeDirectoryMemberSchema) })
-	.passthrough();
+	.object({ members: z.array(z.unknown()) })
+	.passthrough()
+	.transform((payload) => {
+		/*
+		 * PER-ROW TOLERANCE, NOT PER-ARRAY. One unrecognized member row used to
+		 * throw the whole parse and blank every member the hub did send. A row is
+		 * now dropped on its own and counted, so a schema assumption that goes
+		 * stale for one account costs that account's row and a visible count,
+		 * never the directory. `unavailable_count` is derived here, not sent by
+		 * the hub.
+		 */
+		const members: TeamBridgeDirectoryMember[] = [];
+		let unavailableCount = 0;
+		for (const row of payload.members) {
+			const parsed = teamBridgeDirectoryMemberSchema.safeParse(row);
+			if (parsed.success) {
+				members.push(parsed.data);
+				continue;
+			}
+			/*
+			 * A row WITH a stable account id is salvaged into the inert state
+			 * rather than hidden: one future role/state value must not remove a
+			 * person from the directory. Only a row with no usable account id is
+			 * genuinely unrenderable, and only that increments the count.
+			 */
+			const salvaged = salvageDirectoryMember(row);
+			if (salvaged) members.push(salvaged);
+			else unavailableCount += 1;
+		}
+		return { ...payload, members, unavailable_count: unavailableCount };
+	});
 export type TeamBridgeDirectory = z.infer<typeof teamBridgeDirectorySchema>;
 
 /** The status read's identity slice: the signed-in hub account, or null. */

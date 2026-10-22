@@ -926,3 +926,50 @@ export type DesktopLibraryUpdateFields = {
 
 /** `library.list`'s `session_id`: one session id or a comma list. */
 export type DesktopLibrarySessionFilter = string;
+
+/**
+ * The sidebar's customisable destination rail (design contract § 1-§ 4).
+ *
+ * THE IDS ARE WIRE VOCABULARY, which is why they live here rather than being
+ * invented in the renderer: the route validates against this allow-list, and a
+ * second copy of nine strings in a component tree is exactly the kind of pair
+ * that drifts silently - a rename on one side would leave the other accepting a
+ * preference the backend refuses, or worse, storing one it silently drops. The
+ * renderer's pure model re-exports this tuple, so there is one spelling.
+ *
+ * ORDER IS THE DEFAULT ORDER, and it is load-bearing: `sanitizeSidebarLayout`
+ * re-inserts an id missing from a stored layout at its default position
+ * relative to the ids that remain, and that position is derived from this
+ * order. Changing the order here changes the default arrangement.
+ */
+export const SIDEBAR_DESTINATION_IDS = [
+	"aida",
+	"library",
+	"projects",
+	"agents",
+	"schedules",
+	"browser",
+	"team-bridge",
+	"agent-hub",
+	"mesh",
+] as const;
+
+/** The stable spelling of one destination, on the wire and in the store. */
+export type SidebarDestinationId = (typeof SIDEBAR_DESTINATION_IDS)[number];
+
+/**
+ * One stored arrangement: the ordered rail cut at one fold.
+ *
+ * `visible ++ more` is the single order a drag operates on; the boundary is
+ * `visible.length`, not a second container. All nine ids are stored even when a
+ * destination is temporarily unavailable (a capability gate removes it from the
+ * render, never from the stored order), so a preference survives an app or
+ * backend update that hides a destination and later restores it.
+ */
+export type DesktopSidebarLayout = {
+	visible: SidebarDestinationId[];
+	more: SidebarDestinationId[];
+};
+
+/** `GET`/`PUT /v1/desktop/sidebar-layout` answer with the normalised layout. */
+export type DesktopSidebarLayoutResponse = { layout: DesktopSidebarLayout };

@@ -323,3 +323,100 @@ activation and renderer leaks. Missing platform/AX/native-composite proof means
 hold overlay rollout on that platform, not claim cross-platform success. No
 implementation, feature flag, release, new permission or compositor rewrite is
 included in this proposal.
+
+## S3 outcome (2026-10-21): the input/focus/IME handoff stays in the parent
+
+S3 accepted **(a) is not warranted yet; the parent keeps the editing surface**
+and made that decision provable rather than merely argued. The parent still owns
+the `combobox` role, the draft, the undo stack, the IME composition ref, Escape/
+Tab/Enter, the blur dismissal and the chord ownership (`browser-chord.ts` needs a
+visible **and focused** window, which a child surface cannot give it). The child
+is visual-only: `before-input-event` prevents and counts every key,
+`before-mouse-event` prevents everything except `mouseMove`, and the document is
+`aria-hidden` with no focusable nodes.
+
+**Measured on the built app (`--s3`, headless, this repository's matrix).** The
+S2 rows were re-run as the regression surface on the same head; every one still
+passes. The S3 rows:
+
+- **F1 — focus owner stays the parent** through 20 hide/raise cycles: parent
+  `document.hasFocus()` true, `activeElement` is the real URL input, an injected
+  `blur` counter stayed 0, the child emitted 0 focus events, `isFocused` false,
+  and `webContents.getFocusedWebContents()` was never the child. **Focus is
+  EMULATED** (`Emulation.setFocusEmulationEnabled`); this says nothing about
+  macOS first-responder.
+- **F2 — synthetic child mouse/keys** move neither focus nor selection; the key
+  is counted as blocked and the row click commits exactly once. SYNTHETIC input,
+  not native hit routing.
+- **I1 — IME composition reaches the parent in order** (`compositionstart`,
+  ≥2 `compositionupdate`, `compositionend:日本`) and the mirror is hidden for the
+  whole composition, returning once a matching query is typed again. This is
+  Chromium's own CDP IME pipeline, **not** the macOS input method.
+- **AX1 — the accessible surface is the parent**: Chromium's AX tree has a
+  `combobox` (`expanded`, `controls`) and a `listbox` with one `option` per
+  mirror row, while the child target's tree is entirely ignored. Chromium AX,
+  **not VoiceOver**.
+- K3/M1 are derived from the S2 K1/K2 and C1/C2 receipts in the same run rather
+  than re-measured, so one run cannot report two answers for one event.
+
+**BLOCKED, not claimed:** the real macOS IME (candidate window, marked text), the
+composite pixel order, real hit routing and first-responder behaviour
+(`V-FOCUS-CLICK`, the row that would reopen (a) if a real mouse-down blurred the
+parent input before mouse-up), VoiceOver/NVDA (`AX2`), Windows/Linux (`W1`), and
+anything on a packaged build. Those need an operator attending
+`--s3-visible`; the headless matrix marks them BLOCKED rather than passing them,
+and the visible command's rows stay BLOCKED whenever nobody answers its prompts.
+
+One containment note for reviewers: the visible arm is a probe, not a feature.
+It is off by default, refused in `normal`, `headless` and a packaged build, capped
+at 120 s and launcher-bound. S3 adds no user-reachable path, no product flag, no
+IPC surface and no new document; the composite-pixel gap from S2 is **not**
+closed until an operator runs that command once.
+
+## S4b amendment — the overlay is product chrome on darwin (2026-10-21)
+
+**This section supersedes the "proposal only" status above for the darwin
+product path.** S4b (`feat/browser-chrome-s4b`, UI base `08d8cb452a`) ships the
+same window-owned child as PRODUCT chrome: an ordinary darwin launch arms it
+(`[address-overlay] product chrome armed (darwin)`), with no user env var and no
+probe gate. The S1–S3 env-gated probe arms remain probe-only and are unchanged.
+
+What ships, and what it replaces:
+
+- **No address bar or suggestion dock at rest.** The old unconditional URL row
+  and the 104 px dock are gone; the page begins at the tab strip's bottom edge.
+- **A popout field row over the strip.** Cmd+L, the strip's address trigger, a
+  printable key or the page menu raise a 37 px row at the strip's width; the
+  native list child sits below it. The page's rectangle and scroll do not move.
+- **The page menu.** Back/Forward/Reload/Home, Find, Print, Zoom reset,
+  Downloads and Approvals moved into one menu (`browser-page-menu.tsx`) that
+  suppresses the native page while its panel is open — a panel anchored in the
+  strip paints into the content rect, where a native view wins. **A suppression
+  is not a dismissal:** the controller keys the popout's dismissal on the tab
+  and rectangle (`layoutContentKeyOf`), never on presentation, and hides the
+  child's paint without dropping its shown state, so the menu can be opened from
+  the raised row and closed without lowering it.
+- **Tier 1** (the child cannot load): the field works, the page does not move,
+  and the row says "Address suggestions are unavailable." in a visible hint
+  (the placeholder only ever showed on an empty field). Main pushes the health
+  change (`onHealthChange` → chrome state), so a failure that lands while the
+  row is already raised reaches the renderer. **Tier 2** (two raises whose input
+  cannot take focus within 300 ms): the field moves into the flow for the rest
+  of the surface's life; every raise path is gated on that fallback
+  (`planAddressRaise`) and the strip is only made inert for a row that is
+  actually painted.
+- **i18n.** The page menu carries its own key
+  (`ui.browser.browser_url_bar.page_menu`) in all eight catalogues; it no longer
+  borrows the settings glass-material segment label.
+- **Trigger.** The at-rest address trigger is a bordered pill in a right-anchored
+  cluster (it used to follow the last tab and read as a third tab), its host is
+  elided at the leading subdomain labels instead of the registrable domain, and
+  a loopback origin gets a neutral glyph instead of a permanent warning padlock
+  (the classification stays `not-secure`; only the glyph is neutral).
+
+Measured evidence for this amendment lives in
+`docs/evidence/browser-chrome-s4b/` (`matrix.md`, `facts.json`, `events.jsonl`),
+with the frames each run's scratchpad keeps. **Still not claimed:** native
+composite pixels, native hit routing, a focused-window page-focus dismissal,
+real macOS IME, VoiceOver, and Windows/Linux. Those rows are BLOCKED, not passed,
+exactly as in S3.

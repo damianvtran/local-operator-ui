@@ -500,6 +500,66 @@ export type TeamBridgePersonRowState =
 	| "paused"
 	| "unavailable";
 
+/**
+ * The label a People row paints.
+ *
+ * The directory may carry an empty label for an account that was deleted between
+ * the membership and account reads (the hub keeps the membership row on purpose).
+ * An empty row is still a member the reader can recognize by the stable account
+ * id, so fall back to that rather than painting a blank row or rejecting the
+ * whole directory in the schema.
+ */
+export function personDisplayLabel(
+	member: Pick<TeamBridgeDirectoryMember, "account_id" | "display_label">,
+): string {
+	return member.display_label.trim() || member.account_id;
+}
+
+/**
+ * Classify a failed directory read so the People section can name the cause.
+ *
+ * The desktop transport reports the HTTP status separately from the backend's
+ * code. The four cases people actually hit are: signed out (401), not entitled
+ * or not a member of this organization (403 / bridge_not_available), the backend
+ * never answered (status null), and a server that answered with an error. The
+ * old single string made all four look like a retryable load failure, which is
+ * how a signed-out user ends up pressing Try again forever.
+ */
+export type DirectoryFailureKind =
+	| "sign_in"
+	| "plan"
+	| "invalid"
+	| "outdated"
+	| "refused"
+	| "unreachable"
+	| "server";
+
+export function directoryFailureKind(error: unknown): DirectoryFailureKind {
+	const candidate = error as { status?: unknown; code?: unknown } | null;
+	const status =
+		typeof candidate?.status === "number" ? candidate.status : null;
+	const code = typeof candidate?.code === "string" ? candidate.code : null;
+	if (status === 401) return "sign_in";
+	if (status === 403 && code === "bridge_not_available") return "plan";
+	if (status === 403) return "refused";
+	// A 422 from the LOCAL route is a client-side grammar refusal, not an old
+	// server. Before this branch it was classified as `outdated`, so a current
+	// client told the user to update Radient to fix its own rejected value.
+	if (status === 422 || code === "invalid_request") return "invalid";
+	// A route this daemon predates (404), a request it rejects (400), or a
+	// payload this client cannot parse (ZodError) are not transient. Retrying
+	// them is deterministic and reads as a broken button. A 422 is handled above
+	// as a local validation refusal.
+	if (
+		status === 400 ||
+		status === 404 ||
+		(candidate as { name?: unknown } | null)?.name === "ZodError"
+	)
+		return "outdated";
+	if (status === null) return "unreachable";
+	return "server";
+}
+
 export function personRowState(
 	member: Pick<
 		TeamBridgeDirectoryMember,

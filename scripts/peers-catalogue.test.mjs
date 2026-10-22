@@ -602,3 +602,47 @@ test("removal lapses a held link mark even when a newer placement protects its r
 	assert.equal(store.getState().sessions[0].link_down, false);
 	assert.equal(store.getState().sessions[0].peer_reach, "unknown");
 });
+
+test("a relay redial verdict softens link-down to reconnecting, then escalates", () => {
+	reset();
+	const original = remoteRow("redial-fixture");
+	land([original], store.getState().beginAnswer());
+	const graceAt = store.getState().beginAnswer();
+	store.getState().settlePeerCatalogue([], graceAt, {
+		d_node: {
+			reachable: false,
+			last_seen_at: 100,
+			reason: "timeout",
+			redial_state: "reconnecting",
+			at: graceAt,
+		},
+	});
+	let held = store.getState().sessions[0];
+	assert.equal(held.link_down, true, "every link-down guard still holds");
+	assert.equal(held.link_reconnecting, true);
+	assert.equal(held.last_seen_at, 100);
+	const downAt = store.getState().beginAnswer();
+	store.getState().settlePeerCatalogue([], downAt, {
+		d_node: {
+			reachable: false,
+			last_seen_at: 100,
+			reason: "timeout",
+			redial_state: "down",
+			at: downAt,
+		},
+	});
+	held = store.getState().sessions[0];
+	assert.equal(held.link_down, true);
+	assert.equal(held.link_reconnecting, false);
+	// An older backend sends no verdict: link-down stays loud, as before.
+	const legacyAt = store.getState().beginAnswer();
+	store.getState().settlePeerCatalogue([], legacyAt, {
+		d_node: {
+			reachable: false,
+			last_seen_at: 100,
+			reason: "timeout",
+			at: legacyAt,
+		},
+	});
+	assert.equal(store.getState().sessions[0].link_reconnecting, false);
+});

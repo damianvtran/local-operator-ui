@@ -182,7 +182,7 @@ test("the panel root utility is the only way a route reaches y0", () => {
 		{
 			path: "src/renderer/src/features/browser/components/browser-surface.tsx",
 			literal:
-				'"panel-flush flex min-h-0 flex-1 flex-col bg-elevated outline-none!"',
+				'"panel-flush relative flex min-h-0 flex-1 flex-col bg-elevated outline-none!"',
 		},
 	];
 	for (const { path, literal } of roots) {

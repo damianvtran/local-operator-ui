@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -278,6 +278,10 @@ import { withNotificationsOff } from "./notifications-off.mjs";
  * interpreter, so a new one has to say so there as well as here.
  */
 import { pythonChildEnv } from "./python-child-env.mjs";
+import {
+	prepareSidebarLayoutScene,
+	sceneSidebarLayout,
+} from "./sidebar-layout-scene.mjs";
 import { SEAL_AUDIT_PURPOSE } from "./skill-seal-fixture.mjs";
 import { sceneSounds } from "./sounds-scene.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
@@ -9699,9 +9703,16 @@ async function sceneTurnCollapse(cdp) {
 			(finished.runIds ?? "").split(" ").length >= 3,
 		JSON.stringify(finished),
 	);
+	/*
+	 * TWO STAMPS, per message (operator, 2026-10-20): the reader's own message
+	 * keeps its time on its action line, and the collapsed run carries the closing
+	 * answer's on the bar. The count was one while the stamp was a fact about the
+	 * turn; it is two now, and the assertion is `===` rather than `>=` because a
+	 * third would mean a stamp the per-message rule does not own.
+	 */
 	check(
-		"completed: the bar carries the turn's one stamp and the foot stands down",
-		finished !== null && finished.stamps === 1 && finished.foot === false,
+		"completed: the bar carries the answer's stamp and the message keeps its own",
+		finished !== null && finished.stamps === 2 && finished.foot === false,
 		JSON.stringify(finished),
 	);
 	const completedFrame = await captureSettled(cdp, "turn-collapse-completed");
@@ -49089,6 +49100,7 @@ async function main() {
 			);
 		}
 	}
+	if (SCENE === "sidebar-layout") await prepareSidebarLayoutScene();
 	if (SCENE === "mini-view" && BACKEND !== null && BACKEND_RECORDS === null) {
 		throw new Error(
 			"--scene mini-view with --backend needs --backend-records: the app admits only a daemon a serve record describes, and the live send walks that daemon's own routes through the record the run linked",
@@ -49236,6 +49248,20 @@ async function main() {
 			else if (SCENE === "connection-drop") await sceneConnectionDrop(cdp);
 			else if (SCENE === "row-space") await sceneRowSpace(cdp);
 			else if (SCENE === "sidebar-bottom") await sceneSidebarBottom(cdp);
+			else if (SCENE === "sidebar-layout")
+				await sceneSidebarLayout({
+					cdp,
+					verb,
+					capture: captureSettled,
+					check,
+					note,
+					wait,
+					waitForCondition,
+					factsOf,
+					require,
+					parkPointer,
+					pressPointer,
+				});
 			else if (SCENE === "states") await sceneStates(cdp);
 			/*
 			 * §I's pane floors (the chat column's 480, the canvas's dock cap and its

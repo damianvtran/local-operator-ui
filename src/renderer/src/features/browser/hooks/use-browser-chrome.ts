@@ -123,6 +123,9 @@ export interface ApprovalView {
 }
 
 export interface BrowserChromeState {
+	/** S4b: which list presenter the product chrome has. `suspend` is Tier 1 —
+	 * the field works, the native list does not. Absent on a pre-S4b main. */
+	addressOverlay?: { mode: "popout" | "suspend"; reason: string | null };
 	pageControls?: {
 		find: {
 			tabId: number;
@@ -283,9 +286,25 @@ export { browserBridgeAvailable };
  * would put a message there for a transient during a drag.
  */
 function deliverContentRect(rect: ContentRect | null): void {
+	lastDeliveredRect = rect;
 	void bridge()
 		?.setContentRect(rect)
 		.catch(() => {});
+}
+
+/**
+ * The last rectangle this renderer actually SENT main, for S2's projection echo.
+ *
+ * Main refuses a projection whose `pageRect` does not equal the layout it applied,
+ * so the mirror must echo the same value the page reporter sent rather than
+ * measuring the content element a second time: two measurements can disagree by a
+ * frame during a resize, and that disagreement would read as a stale layout. A
+ * reader after an unmount sees null, which is exactly "nowhere to paint".
+ */
+let lastDeliveredRect: ContentRect | null = null;
+
+export function lastDeliveredContentRect(): ContentRect | null {
+	return lastDeliveredRect === null ? null : { ...lastDeliveredRect };
 }
 
 export interface BrowserChrome {
@@ -385,9 +404,10 @@ export interface BrowserChrome {
 	 * navigation when that is no longer the active tab, so a commit that raced a
 	 * tab switch cannot load the new tab with the old draft. */
 	navigate: (url: string, expectedTabId?: number) => Promise<void>;
-	/** Local address suggestions, derived from this host's live tab history. A
-	 * failure here is not a navigation failure: the field degrades to plain URL
-	 * editing and `use-address-autocomplete` reports its own state. */
+	/** Local address suggestions: the persistent history store plus this host's
+	 * live tab stacks, ranked in main. A failure here is not a navigation failure:
+	 * the field degrades to plain URL editing and `use-address-autocomplete`
+	 * reports its own state. */
 	addressHistory: (
 		request: AddressHistoryRequest,
 	) => Promise<AddressHistoryResponse>;
@@ -413,7 +433,12 @@ export interface BrowserChrome {
 	retry: () => Promise<void>;
 	history: (direction: "back" | "forward") => Promise<void>;
 	setContentRect: (rect: ContentRect | null) => void;
-	setViewVisible: (visible: boolean) => void;
+	/** Hide/show the native view. `ownPage` names WHY it is hidden when it is: the
+	 * renderer is painting one of the browser's own state pages (start page,
+	 * load failure) rather than an overlay covering the content area. Main keeps
+	 * shortcut ownership for the first and refuses it for the second; see
+	 * `browser-surface.tsx` and `registry.ts:chromeVisible`. */
+	setViewVisible: (visible: boolean, ownPage?: boolean) => void;
 	respondToConsent: (
 		entryId: string,
 		decision: ConsentDecision,
@@ -714,10 +739,14 @@ export function useBrowserChrome(): BrowserChrome {
 	 * changed every render would re-run the layout effect on every state update,
 	 * and the cleanup would hide the view once per change — a flicker rather than
 	 * a policy.
+	 *
+	 * `ownPage` is forwarded unchanged: it is the reason half of the report, not a
+	 * second visibility flag. Dropping it here would leave main unable to tell the
+	 * browser's own start page from a dialog covering it, which is the S4a bug.
 	 */
-	const setViewVisible = useCallback((visible: boolean) => {
+	const setViewVisible = useCallback((visible: boolean, ownPage = false) => {
 		void bridge()
-			?.setViewVisible(visible)
+			?.setViewVisible(visible, ownPage)
 			.catch(() => {
 				// Losing a visibility update corrects itself on the next policy change;
 				// surfacing it would put a message in the band for a race the user cannot

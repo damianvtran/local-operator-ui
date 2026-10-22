@@ -272,6 +272,19 @@ export function installBrowserSessionHandlers(
 export type ClearWhat = "cookies" | "cache" | "everything";
 
 /**
+ * The suggestion history, as this module is allowed to see it.
+ *
+ * STRUCTURAL, because the store is the host's document and this module owns the
+ * Chromium session: passing the store itself would make `profile.ts` depend on
+ * the suggestion index, and passing nothing would leave "clear everything"
+ * silently keeping a list of every page the user visited.
+ */
+export interface HistoryClearer {
+	clear(): void;
+	clearOrigin(origin: string): void;
+}
+
+/**
  * Clear browsing data.
  *
  * Three named operations rather than one, and the design is explicit about why:
@@ -289,13 +302,20 @@ export type ClearWhat = "cookies" | "cache" | "everything";
 export async function clearBrowsingData(
 	browserSession: Session,
 	what: ClearWhat,
+	history?: HistoryClearer | null,
 ): Promise<void> {
 	browserSession.flushStorageData();
 	if (what === "cache") {
+		// CACHE IS NOT HISTORY: clearing a cache is a performance action, and
+		// forgetting every page the user visited because a page loaded slowly would
+		// be a surprise they could not undo.
 		await browserSession.clearCache();
 		return;
 	}
 	if (what === "cookies") {
+		// COOKIES ARE NOT HISTORY either: logging out of every site must leave the
+		// suggestions the user relies on alone, exactly as it leaves `session.json`
+		// and the approval store alone. Only the explicit "everything" clears it.
 		await browserSession.clearData({
 			dataTypes: [
 				"cookies",
@@ -314,6 +334,11 @@ export async function clearBrowsingData(
 	// user who asked for everything should not keep it.
 	await browserSession.clearData();
 	await browserSession.clearCache();
+	// HISTORY IS PART OF "EVERYTHING": a user who asked for all browsing data to
+	// be gone would be misled by a local list of every URL they visited surviving
+	// the clear. The snapshot is deleted synchronously inside `clear()`, so this
+	// await cannot return before the document is gone.
+	history?.clear();
 }
 
 /**
@@ -336,6 +361,7 @@ export async function clearBrowsingData(
 export async function clearOriginData(
 	browserSession: Session,
 	origin: string,
+	history?: HistoryClearer | null,
 ): Promise<void> {
 	browserSession.flushStorageData();
 	await browserSession.clearData({
@@ -352,6 +378,9 @@ export async function clearOriginData(
 			"cache",
 		],
 	});
+	// "Forget this site" is one intention, so the suggestion history for the
+	// origin goes with its cookies. Other origins' rows are untouched.
+	history?.clearOrigin(origin);
 }
 
 /** Write any buffered DOMStorage to disk. Called on quit so a hard kill does not
