@@ -44,6 +44,7 @@ import {
 	useAgentStatusesQuery,
 } from "./hooks/use-agent-statuses-query";
 import { useDebouncedValue } from "./hooks/use-debounced-value";
+import { type HubSkillScope, useRemoteSkills } from "./hooks/use-hub-skills";
 import { useMembershipsQuery } from "./hooks/use-memberships-query";
 import { useOrgTeamsQuery } from "./hooks/use-org-teams-query";
 import {
@@ -371,6 +372,56 @@ export const AgentHubPage: React.FC = () => {
 		orgScopeId && teamsQuery.isSuccess && !hasFilters
 			? teamsQuery.teams.length
 			: null;
+
+	/*
+	 * THE SKILLS READ ALSO RIDES SCOPE ENTRY, for the same reason the teams one
+	 * does: the tab carries its count, and a count cannot exist without the read.
+	 * It is enabled exactly when the Skills tab is offered (`hub_skills` present,
+	 * the same capability gate the strip renders on), under the same
+	 * `signedIn`/`accessible` pair the library itself passes - the public
+	 * catalogue is an anonymous read, so a signed-out viewer still gets a number,
+	 * while the organization's catalogue goes through the credential proxy and
+	 * must not be asked for without a credential or a usable scope.
+	 *
+	 * PAGE 1 IS DELIBERATE. `HubSkillsLibrary`'s first page registers the SAME
+	 * query key (scope + page), so React Query serves ONE cache entry to both
+	 * observers and the tab cannot disagree with the list it labels. A later page
+	 * is a separate entry, but `total` comes from `total_records`, which is
+	 * page-independent.
+	 *
+	 * THE COUNT IS THE CATALOGUE'S TOTAL, never the rows on screen: the public
+	 * listing is paginated at twenty rows, so `rows.length` would print "20" for
+	 * any catalogue of twenty or more. The organization's listing is unpaginated,
+	 * so its length IS the total; the hook states both readings in one field.
+	 */
+	const skillsScope: HubSkillScope =
+		scope === PUBLIC_SCOPE
+			? { visibility: "public", tenantId: null, organization: null }
+			: { visibility: "org", tenantId: scope, organization: orgName };
+	const skillsAccessible =
+		scopeIsAvailable && (scope === PUBLIC_SCOPE || orgSurfaceReady(orgState));
+	const skillsQuery = useRemoteSkills(
+		skillsScope,
+		1,
+		skillsAvailable &&
+			skillsAccessible &&
+			(scope === PUBLIC_SCOPE || isAuthenticated),
+	);
+	/*
+	 * `null` is "no number yet" and renders nothing, exactly like the other two
+	 * counts; zero is a real total and renders `0`. The public catalogue held
+	 * exactly zero when this count was added, and a blank tab reads as loading or
+	 * broken rather than as an empty catalogue.
+	 *
+	 * NOT SUPPRESSED UNDER `hasFilters`, unlike the agents and teams counts. Those
+	 * two go quiet because the agents total answers the QUERY and changes under
+	 * the search box (UX round 2, U11); the skill catalogue has no hub-side filter
+	 * at all - the library's own box narrows the rendered rows locally - so a
+	 * filter left active on the Agents view says nothing about this number, and
+	 * blanking a fact this page holds would restore exactly the ambiguity the
+	 * count exists to remove.
+	 */
+	const skillsCount = skillsQuery.isSuccess ? skillsQuery.data.total : null;
 
 	/*
 	 * Publishing INTO an organization needs the admin rank or above (§4.4), so the
@@ -752,29 +803,35 @@ export const AgentHubPage: React.FC = () => {
 									"teams",
 									...(skillsAvailable ? ["skills" as const] : []),
 								] as HubView[]
-							).map((value) => (
-								<TabsTrigger
-									key={value}
-									value={value}
-									id={VIEW_TAB_IDS[value]}
-									/* The panel below is one element for both views; only the selected tab claims it. */
-									aria-controls={view === value ? VIEW_PANEL_ID : undefined}
-									data-testid={`agent-hub-view-${value}`}
-								>
-									{value === "agents"
-										? "Agents"
+							).map((value) => {
+								const tabCount =
+									value === "agents"
+										? agentsTabCount
 										: value === "teams"
-											? "Teams"
-											: t("ui.hub.skills.title")}
-									{value !== "skills" &&
-										(value === "agents" ? agentsTabCount : teamsCount) !==
-											null && (
+											? teamsCount
+											: skillsCount;
+								return (
+									<TabsTrigger
+										key={value}
+										value={value}
+										id={VIEW_TAB_IDS[value]}
+										/* The panel below is one element for both views; only the selected tab claims it. */
+										aria-controls={view === value ? VIEW_PANEL_ID : undefined}
+										data-testid={`agent-hub-view-${value}`}
+									>
+										{value === "agents"
+											? "Agents"
+											: value === "teams"
+												? "Teams"
+												: t("ui.hub.skills.title")}
+										{tabCount !== null && (
 											<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
-												{value === "agents" ? agentsTabCount : teamsCount}
+												{tabCount}
 											</span>
 										)}
-								</TabsTrigger>
-							))}
+									</TabsTrigger>
+								);
+							})}
 						</TabsList>
 					</Tabs>
 					{/*

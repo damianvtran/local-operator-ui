@@ -942,8 +942,8 @@ const api = {
 		setContentRect: (
 			rect: { x: number; y: number; width: number; height: number } | null,
 		): Promise<unknown> => ipcRenderer.invoke("browser-set-content-rect", rect),
-		setViewVisible: (visible: boolean): Promise<unknown> =>
-			ipcRenderer.invoke("browser-set-visible", visible),
+		setViewVisible: (visible: boolean, ownPage = false): Promise<unknown> =>
+			ipcRenderer.invoke("browser-set-visible", visible, ownPage),
 		handOver: (tabId: number, sessionId: string): Promise<unknown> =>
 			ipcRenderer.invoke("browser-hand-over", tabId, sessionId),
 		revokeHandOver: (tabId: number): Promise<unknown> =>

@@ -850,6 +850,138 @@ test("StageA loading and failed selected tabs keep BODY reload targeted and new 
 	}
 });
 
+/*
+ * THE VIEW-SUPPRESSION REGISTRY CONFLATED TWO DIFFERENT FACTS (S4a).
+ *
+ * `availableRoots` refused every root while ANY registration was live, and the
+ * browser surface registers its OWN state pages there: the start page and the
+ * load-failure panel hide the NATIVE VIEW so their DOM can paint (design 11.3).
+ * That registration is not an overlay covering the browser - the browser is
+ * exactly what the user is looking at - so Cmd+L/T/R were dropped on those two
+ * states, and the renderer reported "focus left the browser" to main, which made
+ * main refuse the same keys on its side.
+ *
+ * The NEGATIVE CONTROL is the real modal case: an id the surface does not own
+ * must still take every chord away, including main's broadcast door.
+ */
+test("the browser's own state pages keep L/T/R and main's messages; a real modal takes them", async () => {
+	const r = await rig({ pane: true });
+	const releases = [];
+	try {
+		// EACH STATE ON ITS OWN. These are the surface's two self-registrations
+		// (`browser-surface.tsx`) pushed through the REAL shared registry, so
+		// ref-counting and id shape are the app's; a regression in either one must
+		// fail on its own line rather than hide behind the other.
+		for (const id of ["browser-start-page:test", "browser-load-failure:test"]) {
+			let release;
+			await act(async () => {
+				release = suppressBrowserView(id);
+			});
+			await r.focus("toolbar");
+			const reloads = r.events.filter((e) => e[0] === "reload").length;
+			const tabs = r.events.filter((e) => e[0] === "new").length;
+			const activeTab = r.chrome.state.activeTabId;
+			await r.key("l");
+			assert.equal(
+				document.activeElement.id,
+				"address",
+				`Cmd+L reaches the address field (${id})`,
+			);
+			assert.equal(document.activeElement.selectionStart, 0);
+			assert.equal(
+				document.activeElement.selectionEnd,
+				"https://example.test/one".length,
+				`and selects what is there, so typing replaces it (${id})`,
+			);
+			await r.key("r");
+			await r.key("t");
+			assert.deepEqual(
+				r.events.filter((e) => e[0] === "reload").slice(reloads),
+				[["reload", false, activeTab]],
+				`Cmd+R reloads the browser's tab, never the app window (${id})`,
+			);
+			assert.deepEqual(
+				r.events.filter((e) => e[0] === "new").slice(tabs),
+				[["new", "a"]],
+				`Cmd+T opens a browser tab in the existing scope (${id})`,
+			);
+			assert.equal(document.activeElement.id, "address");
+			await act(async () => release());
+		}
+
+		// BOTH AT ONCE: the filter has to be a union over the list, not a single
+		// prefix that happens to match. Main's broadcast door is the second door to
+		// the same owner and must find it while only self-registrations are live.
+		await act(async () => {
+			for (const id of ["browser-start-page:test", "browser-load-failure:test"])
+				releases.push(suppressBrowserView(id));
+		});
+		const start = r.events.length;
+		await act(async () => r.incoming({ intent: "new-tab", origin: "chrome" }));
+		await r.flush(20);
+		assert.deepEqual(
+			r.events.slice(start).filter((e) => e[0] === "new"),
+			[["new", "a"]],
+			"main's broadcast door finds the same owner while only state pages hide the view",
+		);
+		assert.deepEqual(r.events.filter((e) => e[0] === "focus").at(-1), [
+			"focus",
+			true,
+		]);
+
+		// NEGATIVE CONTROL: a genuine overlay is a different fact.
+		await act(async () => {
+			for (const release of releases.splice(0)) release();
+		});
+		await act(async () => {
+			releases.push(suppressBrowserView("dialog:test"));
+		});
+		await r.focus("toolbar");
+		const modalStart = r.events.length;
+		await r.key("l");
+		await r.key("r");
+		await r.key("t");
+		await act(async () => r.incoming({ intent: "new-tab", origin: "chrome" }));
+		await r.flush(20);
+		assert.equal(
+			r.events.slice(modalStart).filter((e) => ["reload", "new"].includes(e[0]))
+				.length,
+			0,
+			"a dialog owns the keyboard: no browser command executes",
+		);
+		assert.equal(
+			document.activeElement.id,
+			"toolbar",
+			"and Cmd+L does not move focus into the address field",
+		);
+		assert.deepEqual(r.events.filter((e) => e[0] === "focus").at(-1), [
+			"focus",
+			false,
+		]);
+
+		// Releasing the dialog restores ownership; ref-counting leaves nothing behind.
+		await act(async () => {
+			for (const release of releases.splice(0)) release();
+		});
+		const reloads = r.events.filter((e) => e[0] === "reload").length;
+		await r.focus("toolbar");
+		await r.key("r");
+		assert.equal(
+			r.events.filter((e) => e[0] === "reload").length,
+			reloads + 1,
+			"the chords come back when the overlay closes",
+		);
+		assert.deepEqual(r.events.filter((e) => e[0] === "focus").at(-1), [
+			"focus",
+			true,
+		]);
+	} finally {
+		for (const release of releases.splice(0)) release();
+		await act(async () => r.root.unmount());
+		r.finish();
+	}
+});
+
 test("StageA renderer window blur does not clear a retained pane DOM owner; real outside input does", async () => {
 	const r = await rig({ pane: true });
 	try {

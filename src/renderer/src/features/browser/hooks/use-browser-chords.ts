@@ -10,10 +10,11 @@ import {
 	browserChordIntent,
 } from "../../../../../shared/browser-chord";
 import {
-	browserViewSuppressed,
 	subscribeBrowserView,
+	suppressedOverlayIdsSnapshot,
 } from "../../../shared/browser-view-policy";
 import { browserBridge } from "../model/browser-projection-store";
+import { browserOverlaySuppressing } from "../model/self-suppression";
 import { chordTarget } from "../model/tab-index-model";
 import type { BrowserChrome, BrowserTabView } from "./use-browser-chrome";
 
@@ -26,7 +27,14 @@ const STANDALONE_BROWSER_ROUTE = /^#\/browser(?:[/?]|$)/;
 const chordRoots = new Set<HTMLDivElement>();
 const reportedFocus = new WeakMap<Document, boolean>();
 function availableRoots(document: Document): HTMLDivElement[] {
-	if (browserViewSuppressed()) return [];
+	// THE VIEW BEING HIDDEN IS NOT THE SAME FACT AS AN OVERLAY COVERING THE
+	// BROWSER (S4a). The surface registers its own start page and load-failure
+	// panel in this registry so the native view stops painting over their DOM;
+	// those two states are still the browser, and their keyboard belongs to it.
+	// `browserOverlaySuppressing` filters exactly those self-registrations (the
+	// one list lives in the model module, shared with the surface). Only a real
+	// overlay - dialog, menu, picker - takes the chords away.
+	if (browserOverlaySuppressing(suppressedOverlayIdsSnapshot())) return [];
 	return [...chordRoots].filter((root) => {
 		if (
 			root.ownerDocument !== document ||

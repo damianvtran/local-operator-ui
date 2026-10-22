@@ -3458,6 +3458,26 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		anchors: new Set(),
 	});
 	const sessionId = frontend?.session_id ?? null;
+	/*
+	 * THE CONVERSATION KEY THE READER'S STORES ARE KEYED BY (operator report,
+	 * 2026-10-21). `frontend` is null until the owner publishes a snapshot AND
+	 * again for the whole of a reconnect (`use-canonical-session`'s gap arm sets
+	 * `frontend: null` deliberately, so the pane stops claiming a state it cannot
+	 * prove). Reading the stores off the RAW id therefore swapped their key to the
+	 * empty bucket on every gap: the reader's expanded bars collapsed, the settle
+	 * latch was dropped and re-armed, and both came back when the snapshot
+	 * repopulated - a one-to-two-frame repaint of a conversation nobody changed.
+	 *
+	 * A STICKY id is the fix, and it is the one this file already uses one rung
+	 * down for the fold registry (`foldSession`): a non-null id always wins, so a
+	 * real switch still reads the NEW conversation's entries in its first paint,
+	 * and a null frame leaves the key alone. A genuinely ended conversation still
+	 * forgets its entries through `forgetWatchedRun`/`forgetTurnCollapseOpen`,
+	 * which is an explicit event rather than an absent sample.
+	 */
+	const conversationKey = useRef(sessionId);
+	if (sessionId !== null) conversationKey.current = sessionId;
+	const conversation = conversationKey.current;
 	const transcriptEpoch = useRef(transcript.viewEpoch);
 	transcriptEpoch.current = transcript.viewEpoch;
 	const entriesRef = useRef<HTMLDivElement>(null);
@@ -3794,14 +3814,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			evidence: captureInternalEpisodeIdentity([], new Set()),
 		};
 	const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() =>
-		expandedRunsOf(sessionId),
+		expandedRunsOf(conversation),
 	);
-	const [openRunsSession, setOpenRunsSession] = useState(sessionId);
+	const [openRunsSession, setOpenRunsSession] = useState(conversation);
 	const [openRunsEpoch, setOpenRunsEpoch] = useState(transcript.viewEpoch);
-	if (openRunsSession !== sessionId) {
-		setOpenRunsSession(sessionId);
+	if (openRunsSession !== conversation) {
+		setOpenRunsSession(conversation);
 		setOpenRunsEpoch(transcript.viewEpoch);
-		setOpenRuns(expandedRunsOf(sessionId));
+		setOpenRuns(expandedRunsOf(conversation));
 	} else if (openRunsEpoch !== transcript.viewEpoch) {
 		// An explicit clear invalidates reader ownership as well as alias evidence.
 		// Stable seg anchors can recur after the clear; retaining their old open
@@ -3812,7 +3832,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			typeof transcript.viewEpoch === "number" &&
 			transcript.viewEpoch > (openRunsEpoch ?? 0)
 		) {
-			forgetTurnCollapseOpen(sessionId);
+			forgetTurnCollapseOpen(conversation);
 			setOpenRuns(new Set());
 		}
 	}
@@ -3825,18 +3845,18 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * the NEW conversation's latch in its first paint.
 	 */
 	const [watchedRun, setWatchedRun] = useState<string | null>(() =>
-		watchedRunOf(sessionId),
+		watchedRunOf(conversation),
 	);
-	const [watchedRunSession, setWatchedRunSession] = useState(sessionId);
-	if (watchedRunSession !== sessionId) {
-		setWatchedRunSession(sessionId);
-		setWatchedRun(watchedRunOf(sessionId));
+	const [watchedRunSession, setWatchedRunSession] = useState(conversation);
+	if (watchedRunSession !== conversation) {
+		setWatchedRunSession(conversation);
+		setWatchedRun(watchedRunOf(conversation));
 	}
 	const setRunOpen = useCallback(
 		(runKey: string, open: boolean) => {
-			setOpenRuns(writeRunExpanded(sessionId, runKey, open));
+			setOpenRuns(writeRunExpanded(conversation, runKey, open));
 		},
-		[sessionId],
+		[conversation],
 	);
 	/*
 	 * Where the pressed bar sat when the reader pressed it, and the bar lookup the
@@ -5134,9 +5154,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		const newest = collapse.runs.at(-1);
 		const runId = newest ? visible[newest.run.openingIndex]?.record.id : null;
 		if (!runId) return;
-		writeWatchedRun(sessionId, runId);
+		writeWatchedRun(conversation, runId);
 		setWatchedRun((current) => (current === runId ? current : runId));
-	}, [collapse, collapseInputs.live, sessionId, visible]);
+	}, [collapse, collapseInputs.live, conversation, visible]);
 	/*
 	 * THE WALK'S CUT-RUN KEY (UI perf audit A3, corrected by review round 1 R1).
 	 * The completion walk below asks "is there a run whose bar is PAINTED and

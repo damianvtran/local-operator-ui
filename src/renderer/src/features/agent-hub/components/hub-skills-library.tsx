@@ -469,16 +469,32 @@ export function HubSkillsLibrary({
 	 * embed a scope noun a locale would have to decline (translation round 6),
 	 * and the source line keeps the hook the driver scene reads.
 	 */
+	/*
+	 * THE CATALOGUE'S TOTAL, not the rows this page happens to hold. The public
+	 * listing is paginated and the response carries `total_records` (the hook
+	 * exposes it as `total`), so counting rendered rows would print "20 skills"
+	 * for a catalogue of fourteen or fourteen hundred alike - and would make this
+	 * line disagree with the tab strip's count, which reads the same field. The
+	 * fallback is for an unavailable/disabled read whose body never arrived; the
+	 * line is already suppressed while loading or after a failure, so it is
+	 * reached only by the inaccessible state, where zero rows is the honest
+	 * reading.
+	 *
+	 * If `org_skills.list` ever grows pagination, read its `total_records` in
+	 * preference to `.length`: the length would then be a page size, and this
+	 * line - like the tab's - would state it as the catalogue's total, silently.
+	 */
+	const totalSkills = catalogue.data?.total ?? scopedRows.length;
 	const countLine = catalogue.error
 		? null
 		: catalogue.isLoading
 			? t("ui.hub.skills.loading")
 			: scope.organization
 				? t("ui.hub.skills.count_shared", {
-						count: scopedRows.length,
+						count: totalSkills,
 						organization: scope.organization,
 					})
-				: t("ui.hub.skills.count", { count: scopedRows.length });
+				: t("ui.hub.skills.count", { count: totalSkills });
 
 	return (
 		<section className="flex min-w-0 flex-col gap-4" data-hub-skills-library>
