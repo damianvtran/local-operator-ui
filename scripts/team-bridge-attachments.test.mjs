@@ -89,7 +89,8 @@ const bundle = await build({
  export {reconcileDraftAccount} from "./src/renderer/src/shared/store/team-bridge-draft-account";
  export {requestDesktopMediaOutcome} from "./src/main/desktop-media";
  export {TeamBridgePageView} from "./src/renderer/src/features/team-bridge/team-bridge-page";
- export {registerCatalogue, setLocale} from "./src/i18n";`,
+ export {registerCatalogue, setLocale} from "./src/i18n";
+ export {QueryClient, QueryClientProvider} from "@tanstack/react-query";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -1163,8 +1164,19 @@ async function mountPage(props) {
 	const element = document.createElement("div");
 	document.body.append(element);
 	const root = createRoot(element);
+	// The Scheduled quick view reads through react-query. The provider comes
+	// from the SAME bundle as the page, so the context instance matches.
+	const client = new m.QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
 	await act(async () =>
-		root.render(React.createElement(m.TeamBridgePageView, props)),
+		root.render(
+			React.createElement(
+				m.QueryClientProvider,
+				{ client },
+				React.createElement(m.TeamBridgePageView, props),
+			),
+		),
 	);
 	return {
 		element,
@@ -1505,4 +1517,52 @@ test("hook R3-02: a 404 expires only the ids the request carried", async () => {
 		"the image added mid-send was never sent, so it is not expired",
 	);
 	await app.close();
+});
+
+/*
+ * Round 4 (R4-02): with a thread open, the Drafts/Scheduled quick views must
+ * close it. Below 1024px the thread overlays the whole region and hides the
+ * section, so a quick view under an open thread changed nothing visible. JSDOM
+ * cannot evaluate container queries, so this pins the state the CSS keys on:
+ * the overlay is unmounted and the close hook fires.
+ */
+test("page R4-02: opening Drafts or Scheduled closes an open thread", async () => {
+	for (const label of ["Drafts", "Scheduled"]) {
+		localStorage.clear();
+		let closed = 0;
+		const app = await mountPage(
+			pageProps({
+				target: { type: "conversation", id: "bcv_dm" },
+				threadLink: {
+					tenantId: "org_page",
+					conversationId: "bcv_dm",
+					rootId: "bcmsg_root",
+				},
+				renderThreadPane: () =>
+					React.createElement("div", { "data-thread-probe": "" }),
+				onCloseThread: () => {
+					closed += 1;
+				},
+				onSend: async () => {},
+			}),
+		);
+		assert.ok(
+			app.element.querySelector("[data-thread-probe]"),
+			"the thread is open before the quick view",
+		);
+		const button = [...app.element.querySelectorAll("nav button")].find(
+			(node) => node.textContent === label,
+		);
+		assert.ok(button, `${label} quick view button`);
+		await act(async () => button.click());
+		await settle();
+		assert.equal(
+			app.element.querySelector("[data-thread-probe]"),
+			null,
+			`${label} closes the thread overlay`,
+		);
+		assert.equal(closed, 1, `${label} notifies the thread owner once`);
+		assert.equal(button.getAttribute("aria-current"), "page");
+		await app.close();
+	}
 });

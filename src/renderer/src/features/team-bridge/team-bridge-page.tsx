@@ -586,6 +586,21 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	// `selected` already resolves a one-recipient draft to its existing DM
 	// (`targetConversation`), so the view and the container agree on it.
 	const shown = selected;
+	/*
+	 * A quick view (Drafts / Scheduled) REPLACES the conversation in the main
+	 * region, so the thread belonging to that conversation closes with it, the
+	 * same way the pane's own Close does. Below 1024px the open thread overlays
+	 * the whole region and `threadIsOpen` hides the section, so leaving the
+	 * thread open made the Drafts/Scheduled buttons change nothing visible
+	 * (review round 4, R4-02).
+	 */
+	const openQuickView = (next: "drafts" | "scheduled") => {
+		if (threadSelection) {
+			setThreadSelection(null);
+			onCloseThread?.();
+		}
+		setQuickView(next);
+	};
 	const threadIsOpen = Boolean(
 		threadSelection &&
 			shown &&
@@ -899,7 +914,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					<button
 						type="button"
 						aria-current={quickView === "drafts" ? "page" : undefined}
-						onClick={() => setQuickView("drafts")}
+						onClick={() => openQuickView("drafts")}
 						className="flex h-[30px] items-center gap-2 rounded-md px-2 text-sm text-ink-muted hover:bg-row-hover"
 					>
 						<Pencil size={14} aria-hidden="true" />
@@ -909,7 +924,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						type="button"
 						disabled={!selfAccountId}
 						aria-current={quickView === "scheduled" ? "page" : undefined}
-						onClick={() => setQuickView("scheduled")}
+						onClick={() => openQuickView("scheduled")}
 						className="flex h-[30px] items-center gap-2 rounded-md px-2 text-sm text-ink-muted hover:bg-row-hover disabled:text-ink-disabled"
 					>
 						<Clock size={14} aria-hidden="true" />
