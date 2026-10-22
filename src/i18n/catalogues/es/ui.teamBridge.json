@@ -115,5 +115,7 @@
 	"ui.teamBridge.replies.last": "última respuesta: {time}",
 	"ui.teamBridge.replies.empty": "Aún no hay respuestas. Inicia el hilo.",
 	"ui.teamBridge.replies.placeholder": "Responde en el hilo",
-	"ui.teamBridge.replies.more": "Cargar más respuestas"
+	"ui.teamBridge.replies.more": "Cargar más respuestas",
+	"ui.teamBridge.sender.unknown_person": "Persona desconocida",
+	"ui.teamBridge.sender.unknown_agent": "Agente desconocido"
 }

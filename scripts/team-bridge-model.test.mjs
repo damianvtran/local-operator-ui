@@ -434,6 +434,93 @@ test("a participant is named from the live directory, not the stored label", () 
 	);
 });
 
+test('the legacy stored label "Member" is a placeholder, never a name', () => {
+	const people = [
+		{
+			account_id: "acct_ben",
+			display_label: "Ben Tran",
+			role: "admin",
+			bridge_enabled: true,
+			bridge_state: "active",
+		},
+	];
+	const chief = (agent, person) => `${agent} (${person})`;
+	// A directory hit names the sender even when the stored label is legacy.
+	assert.equal(
+		model.participantLabel(
+			{ account_id: "acct_ben", kind: "human", display_label: "Member" },
+			people,
+			chief,
+		),
+		"Ben Tran",
+	);
+	// No directory hit: the legacy label is ABSENT, so nothing resolves and the
+	// caller paints its "Unknown person" / "Unknown agent" placeholder.
+	for (const kind of ["human", "agent"]) {
+		assert.equal(
+			model.participantLabel(
+				{ account_id: "acct_gone", kind, display_label: "Member" },
+				people,
+				chief,
+			),
+			null,
+		);
+	}
+	// Exactly the server's fallback: a real name that merely contains it, or a
+	// different case, is somebody's chosen label and is kept.
+	assert.equal(
+		model.participantLabel(
+			{ account_id: "acct_gone", kind: "human", display_label: "member" },
+			people,
+			chief,
+		),
+		"member",
+	);
+	assert.equal(
+		model.participantLabel(
+			{ account_id: "acct_gone", kind: "human", display_label: "  " },
+			people,
+			chief,
+		),
+		null,
+	);
+});
+
+test("the reader's own messages resolve from the signed-in identity", () => {
+	const chief = (agent, person) => `${agent} (${person})`;
+	const self = { accountId: "acct_self", name: "Damian Tran" };
+	// The directory does not list the reader: the identity still names them.
+	assert.equal(
+		model.participantLabel(
+			{ account_id: "acct_self", kind: "human", display_label: "Member" },
+			[],
+			chief,
+			self,
+		),
+		"Damian Tran",
+	);
+	// The reader's AGENT is not the reader: identity names humans only.
+	assert.equal(
+		model.participantLabel(
+			{ account_id: "acct_self", kind: "agent", display_label: "Member" },
+			[],
+			chief,
+			self,
+		),
+		null,
+	);
+	// Somebody else's legacy label never borrows the reader's name.
+	assert.equal(
+		model.participantLabel(
+			{ account_id: "acct_other", kind: "human", display_label: "Member" },
+			[],
+			chief,
+			self,
+		),
+		null,
+	);
+});
+
 test("person and agent DMs with the same owner never resolve to each other", () => {
 	const base = {
 		tenant_id: "t",

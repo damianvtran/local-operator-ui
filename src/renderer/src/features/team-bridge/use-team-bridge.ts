@@ -33,6 +33,7 @@ import {
 	type UseMutationResult,
 	type UseQueryResult,
 	useMutation,
+	useQueries,
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
@@ -40,6 +41,7 @@ import type { AgentMessagesStatus } from "../../../../shared/agent-messages-cont
 import type {
 	TeamBridgeConversationList,
 	TeamBridgeDirectory,
+	TeamBridgeDirectoryMember,
 	TeamBridgeMessagePage,
 	TeamBridgeNotify,
 	TeamBridgeReadState,
@@ -178,6 +180,44 @@ export function useTeamBridgeDirectory(
 		staleTime: 30_000,
 		refetchOnWindowFocus: true,
 		retry: 1,
+	});
+}
+
+/**
+ * Every organization's directory, for NAMING senders in the merged view.
+ *
+ * WHY THE MERGED VIEW READS THEM AFTER ALL. `useTeamBridgeDirectory` is off in
+ * the merged scope because there is no single roster to LIST there. But a
+ * thread and its DM rows still need names: without a directory, every sender
+ * the stored label cannot name renders as unknown, and before agent-server
+ * #166 that stored label was the placeholder "Member" for creators and
+ * self-joins. One read per organization the reader belongs to (a handful),
+ * under the SAME per-tenant key as the People read, so switching into an
+ * organization afterwards is a cache hit rather than a second fetch.
+ *
+ * Returns the loaded rosters by tenant; a pending or failed read is simply
+ * absent, and its senders fall back to the unknown placeholder.
+ */
+export function useTeamBridgeDirectories(
+	tenantIds: readonly string[],
+	enabled = true,
+): Readonly<Record<string, readonly TeamBridgeDirectoryMember[]>> {
+	return useQueries({
+		queries: tenantIds.map((tenantId) => ({
+			queryKey: teamBridgeKeys.directory(tenantId),
+			queryFn: () => TeamBridgeApi.directory(tenantId),
+			enabled,
+			staleTime: 30_000,
+			refetchOnWindowFocus: true,
+			retry: 1,
+		})),
+		combine: (results) => {
+			const byTenant: Record<string, readonly TeamBridgeDirectoryMember[]> = {};
+			results.forEach((result, index) => {
+				if (result.data) byTenant[tenantIds[index]] = result.data.members;
+			});
+			return byTenant;
+		},
 	});
 }
 
