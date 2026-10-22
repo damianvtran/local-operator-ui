@@ -43,6 +43,8 @@ const AGENTS_SIDEBAR =
 	"src/renderer/src/features/agents/components/agents-sidebar.tsx";
 const LIBRARY_PAGE =
 	"src/renderer/src/features/library/components/library-page.tsx";
+const BROWSER_SURFACE =
+	"src/renderer/src/features/browser/components/browser-surface.tsx";
 
 /**
  * Every full-height panel that has to paint through the strip, the file it is
@@ -87,6 +89,19 @@ const PANEL_COLUMNS = [
 		path: "src/renderer/src/features/browser/components/browser-pane.tsx",
 		classes: [
 			'"panel-top-pad flex h-full flex-col bg-elevated @container/bpane"',
+		],
+	},
+	{
+		/*
+		 * The Browser ROUTE host is its own panel column as well as its flush root:
+		 * it is one column (strip, toolbar, page), so the root pads itself. Without
+		 * the pad the tab strip, `+`, the approvals button and the page menu sat at
+		 * y≈4-36 under the drag lane and the traffic lights (agent review round 1,
+		 * F1). The pane host is NOT listed: `browser-pane.tsx` pads its column.
+		 */
+		path: BROWSER_SURFACE,
+		classes: [
+			'"panel-flush panel-top-pad relative flex min-h-0 flex-1 flex-col bg-elevated outline-none!"',
 		],
 	},
 	{
@@ -180,9 +195,9 @@ test("the panel root utility is the only way a route reaches y0", () => {
 				'className="panel-flush flex min-h-0 flex-1 w-full overflow-hidden bg-canvas"',
 		},
 		{
-			path: "src/renderer/src/features/browser/components/browser-surface.tsx",
+			path: BROWSER_SURFACE,
 			literal:
-				'"panel-flush relative flex min-h-0 flex-1 flex-col bg-elevated outline-none!"',
+				'"panel-flush panel-top-pad relative flex min-h-0 flex-1 flex-col bg-elevated outline-none!"',
 		},
 	];
 	for (const { path, literal } of roots) {
@@ -191,6 +206,77 @@ test("the panel root utility is the only way a route reaches y0", () => {
 			`${path} lost its flush root (${literal}): without it the page starts at the shell's ordinary-content pad and its own ground cannot reach y0`,
 		);
 	}
+});
+
+test("no flush root leaves its content under the lane", () => {
+	/*
+	 * `panel-flush` moves a root's box to y0 and pads NOTHING (index.css says so).
+	 * So every file that wears it must also wear a pad - `panel-top-pad` on a
+	 * column or `panel-scroll` on a scroller - or its first row sits in the drag
+	 * lane under the traffic lights. Round 1's F1 was exactly this: the Browser
+	 * route root went flush in the merge with main and nothing inside it padded,
+	 * while the route audit claimed an "own panel pad" that no frame rendered.
+	 * A per-file pairing is the floor, not the whole proof; the per-panel class
+	 * lists above say WHICH box pads.
+	 */
+	const flushFiles = [
+		LIBRARY_PAGE,
+		"src/renderer/src/features/settings/components/settings-page.tsx",
+		"src/renderer/src/features/agents/components/agents-page.tsx",
+		"src/renderer/src/features/agents/components/legacy-agents-page.tsx",
+		"src/renderer/src/features/team-bridge/team-bridge-page.tsx",
+		BROWSER_SURFACE,
+	];
+	for (const path of flushFiles) {
+		const source = readSource(path);
+		assert.match(
+			source,
+			/"panel-flush[ "]/,
+			`${path} is no longer a flush root`,
+		);
+		assert.match(
+			source,
+			/["\s]panel-(?:top-pad|scroll)[\s"]/,
+			`${path} has a panel-flush root but nothing in it pads: its first row renders at y0, under the drag lane and the traffic lights`,
+		);
+	}
+});
+
+test("the Browser address popout anchors below the route's pad, not at y0", () => {
+	/*
+	 * The popout is `absolute inset-x-0 top-0`, and `top-0` resolves to the
+	 * containing block's PADDING box. On the route host that box starts at y0
+	 * (flush) and the pad lives inside it, so a popout anchored to the root
+	 * opens under the lane even once the root pads. It must instead anchor to
+	 * the strip's own `relative` wrapper, which sits below the pad in both hosts
+	 * (agent review round 1, F1: the #1305 popout opened at y0 after the merge).
+	 */
+	const source = readSource(BROWSER_SURFACE);
+	const wrapperStart = source.indexOf(
+		'<div ref={stripRef} className="relative">',
+	);
+	assert.notEqual(
+		wrapperStart,
+		-1,
+		"the tab strip's wrapper must be the popout's positioned ancestor (`relative`)",
+	);
+	const popoutAt = source.indexOf('data-tour-tag="browser-address-popout"');
+	assert.notEqual(popoutAt, -1, "the address popout must stay tagged");
+	// The wrapper's own closing tag: the first `</div>` at its indentation.
+	const indent = source.slice(
+		source.lastIndexOf("\n", wrapperStart) + 1,
+		wrapperStart,
+	);
+	const wrapperEnd = source.indexOf(`\n${indent}</div>`, wrapperStart);
+	assert.ok(
+		popoutAt > wrapperStart && popoutAt < wrapperEnd,
+		"the address popout must render INSIDE the strip's `relative` wrapper; anchored to the surface root it opens at y0 on the route, under the drag lane and the traffic lights",
+	);
+	assert.match(
+		source.slice(popoutAt - 200, popoutAt),
+		/className="absolute inset-x-0 top-0 z-30"/,
+		"the popout still overlays the strip's own row",
+	);
 });
 
 test("the Library dock and rail are the measured panels, and the dock scrolls inside its pad", () => {

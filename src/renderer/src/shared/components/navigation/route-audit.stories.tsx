@@ -19,6 +19,7 @@ import "../../../styles/index.css";
 import "@features/chat/components/story-electron-shim";
 import { AgentHubPage } from "@features/agent-hub/agent-hub-page";
 import { BrowserPage } from "@features/browser/components/browser-page";
+import type { BrowserChromeState } from "@features/browser/hooks/use-browser-chrome";
 import { MeshPage } from "@features/mesh/mesh-page";
 import { ProjectsPage } from "@features/projects/components/projects-page";
 import { SchedulesPage } from "@features/schedules/components/schedules-page";
@@ -69,6 +70,87 @@ export const Browser: Story = {
 	render: () => (
 		<AuditFrame path="/browser">
 			<BrowserPage />
+		</AuditFrame>
+	),
+};
+
+/*
+ * THE BROWSER ROUTE WITH A BRIDGE. Without `window.api.browser` the route
+ * renders its "desktop app only" notice, which sits under the shell's ordinary
+ * pad and so says nothing about the surface's own panel pad - the gap behind
+ * agent review round 1's F1 (the tab strip and the #1305 address popout drawn
+ * at y0, under the drag lane, while the audit claimed an "own panel pad"). This
+ * scene installs a projection with two tabs so the real strip renders inside the
+ * real shell; raise the popout from the strip's address trigger to see where it
+ * anchors. Every other bridge call resolves to an empty object.
+ */
+const BRIDGED_STATE: BrowserChromeState = {
+	tabs: [
+		{
+			tabId: 1,
+			title: "Reports",
+			url: "https://reports.example.com/q3",
+			owner: "agent",
+			active: true,
+			restored: false,
+			handedOver: false,
+			failed: false,
+			loading: false,
+			audible: false,
+			muted: false,
+			sessionId: null,
+		},
+		{
+			tabId: 2,
+			title: "Handbook",
+			url: "https://handbook.example.com/",
+			owner: "user",
+			active: false,
+			restored: false,
+			handedOver: false,
+			failed: false,
+			loading: false,
+			audible: false,
+			muted: false,
+			sessionId: null,
+		},
+	],
+	activeTabId: 1,
+	url: "https://reports.example.com/q3",
+	title: "Reports",
+	loading: false,
+	canGoBack: false,
+	canGoForward: false,
+	pendingConsent: [],
+	approvals: [],
+	navFailure: null,
+};
+
+const BridgedBrowser: FC = () => {
+	const resolved = () => Promise.resolve({});
+	(window as unknown as { api: unknown }).api = {
+		browser: new Proxy(
+			{
+				state: async () => BRIDGED_STATE,
+				addressHistory: async () => ({ entries: [] }),
+			} as Record<string, unknown>,
+			{
+				get: (target, key: string) =>
+					key in target
+						? target[key]
+						: key.startsWith("on")
+							? () => () => {}
+							: resolved,
+			},
+		),
+	};
+	return <BrowserPage />;
+};
+
+export const BrowserBridged: Story = {
+	render: () => (
+		<AuditFrame path="/browser">
+			<BridgedBrowser />
 		</AuditFrame>
 	),
 };
