@@ -42,7 +42,7 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 }: {
 	resetKey: string;
 	contentKey: string;
-}): { rootRef: RefObject<T>; pin: () => void } {
+}): { rootRef: RefObject<T>; pin: () => void; hold: () => void } {
 	const rootRef = useRef<T>(null);
 	// A ref, not state: following the bottom must not re-render the timeline.
 	const pinned = useRef(true);
@@ -58,6 +58,15 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 		pinned.current = true;
 		toBottom();
 	}, [toBottom]);
+	/*
+	 * Unpin WITHOUT moving: for an action the reader takes at the bottom that
+	 * appends content they mean to read from where they are - the thread's
+	 * forward-paging "Load more replies" (review r8 m2). Pinned, the new page
+	 * would scroll past every reply it just loaded.
+	 */
+	const hold = useCallback(() => {
+		pinned.current = false;
+	}, []);
 
 	// Layout effects: the jump happens before paint, so nothing flashes at the top.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: resetKey IS the trigger.
@@ -86,6 +95,14 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 		};
 		element.addEventListener("scroll", onScroll, { passive: true });
 		element.addEventListener("load", onLoad, true);
+		/*
+		 * Observe Radix's content wrapper AND its direct children (review r8 m1).
+		 * The channel timeline forces that wrapper to `h-full`, so it never
+		 * resizes there - growth happens in the inner column, which overflows it.
+		 * The thread pane keeps the wrapper auto-height, so the wrapper itself
+		 * carries its growth. Watching both covers either layout without the
+		 * caller having to name a box.
+		 */
 		const content = element.firstElementChild;
 		const resize =
 			typeof ResizeObserver === "function" && content
@@ -93,7 +110,10 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 						if (pinned.current) toBottom();
 					})
 				: null;
-		if (resize && content) resize.observe(content);
+		if (resize && content) {
+			resize.observe(content);
+			for (const child of content.children) resize.observe(child);
+		}
 		return () => {
 			element.removeEventListener("scroll", onScroll);
 			element.removeEventListener("load", onLoad, true);
@@ -101,5 +121,5 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 		};
 	}, [viewport, toBottom, resetKey]);
 
-	return { rootRef, pin };
+	return { rootRef, pin, hold };
 }

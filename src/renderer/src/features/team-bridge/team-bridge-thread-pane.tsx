@@ -224,7 +224,11 @@ export function TeamBridgeThreadPaneView({
 						variant="ghost"
 						size="sm"
 						disabled={loadingMore}
-						onClick={onMore}
+						onClick={() => {
+							// Read the loaded page from here, not from its end (r8 m2).
+							scroll.hold();
+							onMore?.();
+						}}
 						className="mx-5 my-2"
 					>
 						{t("ui.teamBridge.replies.more")}
