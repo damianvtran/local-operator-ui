@@ -46,7 +46,11 @@ export const fixture = {
 	tenants: {},
 	conversations: { conversations: [] },
 	listGate: null,
-	calls: { identity: 0, conversations: 0, unread: [] },
+	historyGate: null,
+	directoryGate: null,
+	messages: { messages: [] },
+	directoryMembers: [],
+	calls: { identity: 0, conversations: 0, unread: [], history: [], directory: [] },
 	releaseList: null,
 };
 
@@ -54,6 +58,16 @@ const tenantOf = (scope) =>
 	typeof scope === "string" ? scope : scope.tenantId;
 
 export const TeamBridgeApi = {
+	async listMessages(id, options) {
+		fixture.calls.history.push({ id, ...options });
+		if (fixture.historyGate) await fixture.historyGate;
+		return fixture.messages;
+	},
+	async directory(tenantId) {
+		fixture.calls.directory.push(tenantId);
+		if (fixture.directoryGate) await fixture.directoryGate;
+		return { members: fixture.directoryMembers };
+	},
 	async identity() {
 		fixture.calls.identity += 1;
 		return fixture.identity;
@@ -177,8 +191,21 @@ const mount = async () => {
 	const client = new QueryClient({
 		defaultOptions: { queries: { retry: false, gcTime: 1_000 } },
 	});
+	// Seed actual shared queries, not a replacement policy hook. App settings
+	// writes update this same cache while history/directory can be pending.
+	client.setQueryDefaults(["desktop", "capabilities"], {
+		staleTime: Number.POSITIVE_INFINITY,
+	});
+	client.setQueryData(["desktop", "capabilities"], {
+		desktop_available: true,
+		features: { settings: 1 },
+	});
+	client.setQueryData(["desktop", "settings"], {
+		settings: [{ key: "display.notifications", value: true }],
+	});
+	let enabled = true;
 	const Probe = () => {
-		api.useTeamBridgeNotifications(true);
+		api.useTeamBridgeNotifications(enabled);
 		return null;
 	};
 	const root = createRoot(dom.window.document.getElementById("root"));
@@ -194,6 +221,18 @@ const mount = async () => {
 	return {
 		client,
 		notifications,
+		setEnabled: async (value) => {
+			enabled = value;
+			await act(async () =>
+				root.render(
+					React.createElement(
+						QueryClientProvider,
+						{ client },
+						React.createElement(Probe),
+					),
+				),
+			);
+		},
 		teardown: async () => {
 			await act(async () => root.unmount());
 			client.clear();
@@ -230,8 +269,18 @@ const resetFixture = () => {
 	fixture.tenants = {};
 	fixture.conversations = { conversations: [] };
 	fixture.listGate = null;
+	fixture.historyGate = null;
+	fixture.directoryGate = null;
+	fixture.messages = { messages: [] };
+	fixture.directoryMembers = [];
 	fixture.releaseList = null;
-	fixture.calls = { identity: 0, conversations: 0, unread: [] };
+	fixture.calls = {
+		identity: 0,
+		conversations: 0,
+		unread: [],
+		history: [],
+		directory: [],
+	};
 };
 
 test("the mounted hook bounds the fan-out, orders by unread, filters eligibility, seeds per org and tags each row", async () => {
@@ -467,3 +516,108 @@ test("a zero-total org's first message before the conversation list resolves sti
 		await mounted.teardown();
 	}
 });
+
+/** Deferred real transport edges reproduce R1-2 through the mounted hook. */
+for (const pending of ["history", "directory"]) {
+	for (const disable of ["setting", "capability", "none"]) {
+		test(`a ${disable} change while ${pending} is pending is rechecked before IPC`, async () => {
+			resetFixture();
+			const org = {
+				tenant_id: "tnt_race",
+				tenant_name: "Race Org",
+				unread: 0,
+				eligible: true,
+			};
+			fixture.account = { total: 0, organizations: [org] };
+			fixture.conversations = {
+				conversations: [conversation("bcv_race", "tnt_race")],
+			};
+			fixture.messages = {
+				messages: [
+					{
+						seq: 1,
+						sender: {
+							account_id: "acct_bob",
+							kind: "human",
+							display_label: "Bob\n<admin>\u202e\u0085",
+						},
+						body: "fixture **message**",
+						conversation_id: "bcv_race",
+					},
+				],
+			};
+			let release;
+			fixture[`${pending}Gate`] = new Promise((resolve) => {
+				release = resolve;
+			});
+			const mounted = await mount();
+			try {
+				await until(
+					() =>
+						fixture.calls.conversations > 0 &&
+						fixture.calls.unread.includes("account"),
+					"seed reads",
+				);
+				await settle();
+				fixture.account = { total: 1, organizations: [{ ...org, unread: 1 }] };
+				fixture.tenants.tnt_race = {
+					total: 1,
+					conversations: [notifyRow("bcv_race", 1)],
+				};
+				await act(async () =>
+					mounted.client.invalidateQueries({
+						queryKey: api.teamBridgeKeys.unreadPrefix,
+					}),
+				);
+				await until(
+					() => fixture.calls[pending].length === 1,
+					`pending ${pending} read`,
+				);
+				assert.equal(mounted.notifications.length, 0);
+				assert.deepEqual(fixture.calls.history[0], {
+					id: "bcv_race",
+					tenantId: "tnt_race",
+					limit: 1,
+				});
+				if (disable === "setting") {
+					await act(async () =>
+						mounted.client.setQueryData(["desktop", "settings"], {
+							settings: [{ key: "display.notifications", value: false }],
+						}),
+					);
+					await settle();
+				} else if (disable === "capability") {
+					await mounted.setEnabled(false);
+				}
+				await act(async () => release());
+				await settle();
+				assert.equal(
+					mounted.notifications.length,
+					disable === "none" ? 1 : 0,
+					"only the enabled negative control may reach IPC",
+				);
+				if (disable === "none") {
+					assert.equal(mounted.notifications[0].title, "Bob ‹admin›");
+					assert.equal(mounted.notifications[0].body, "fixture message");
+				}
+				// Cursors consume silenced seqs; re-enabling must not replay them.
+				await mounted.setEnabled(true);
+				await act(async () =>
+					mounted.client.setQueryData(["desktop", "settings"], {
+						settings: [{ key: "display.notifications", value: true }],
+					}),
+				);
+				await act(async () =>
+					mounted.client.invalidateQueries({
+						queryKey: api.teamBridgeKeys.unreadPrefix,
+					}),
+				);
+				await settle();
+				assert.equal(mounted.notifications.length, disable === "none" ? 1 : 0);
+			} finally {
+				release();
+				await mounted.teardown();
+			}
+		});
+	}
+}
