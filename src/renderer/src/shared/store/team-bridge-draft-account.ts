@@ -49,8 +49,21 @@ export function eraseAccountDrafts(
  * including across app restarts. Pending/offline reads never mean sign-out.
  * If browser storage is unavailable the account-scoped reader still fails
  * closed; a storage refusal must not turn the status API into a failed read. */
+/** SSR has no browser storage, and a browser policy can deny its getter.
+ * Never borrow Node's experimental ambient localStorage: it masked a render
+ * crash on CI's Node 22 and is not the signed-in app's authored-draft store.
+ * (Introduced by #1309 in use-team-bridge-drafts.ts; it lives here so the
+ * status client's account fence and the draft editor read storage ONE way.) */
+export function browserDraftStorage(): Storage | null {
+	try {
+		return typeof window === "undefined" ? null : window.localStorage;
+	} catch {
+		return null;
+	}
+}
+
 export function reconcileDraftAccount(
-	storage: Storage,
+	storage: Storage | null,
 	status: { account_id?: string | null; state?: unknown },
 ): void {
 	if (status.state !== "signed_out" && !status.account_id) return;
@@ -65,6 +78,9 @@ export function reconcileDraftAccount(
 			revoked = true;
 		}
 	if (revoked || next === null) notifyRevocation();
+	// No storage means nothing on disk to clean; the revocation above (epochs
+	// and the in-memory preview listeners) has already happened regardless.
+	if (!storage) return;
 	try {
 		const allowed = next ? `${PREFIX}${encodeURIComponent(next)}:` : null;
 		for (const key of Object.keys(storage))

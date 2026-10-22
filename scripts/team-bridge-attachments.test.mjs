@@ -90,7 +90,9 @@ const bundle = await build({
  export {requestDesktopMediaOutcome} from "./src/main/desktop-media";
  export {TeamBridgePageView} from "./src/renderer/src/features/team-bridge/team-bridge-page";
  export {registerCatalogue, setLocale} from "./src/i18n";
- export {QueryClient, QueryClientProvider} from "@tanstack/react-query";`,
+ export {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+ export {browserDraftStorage} from "./src/renderer/src/shared/store/team-bridge-draft-account";
+ export {TeamBridgeApi} from "./src/renderer/src/shared/api/local-operator/team-bridge-api";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -1651,3 +1653,110 @@ test(
 		}
 	},
 );
+
+/*
+ * #1309 integration (6b0de644ac): SSR has no browser storage and a browser
+ * policy can deny the `localStorage` getter. Every team-bridge storage access
+ * goes through the nullable `browserDraftStorage()`; this pins that the
+ * ATTACHMENT paths this PR added (restored descriptors, a fresh upload's
+ * descriptor, message tiles) and the status client's account fence neither
+ * crash nor write anything when storage is unavailable.
+ */
+test("denied browser storage: attachment draft and descriptor paths render, read and persist nothing", async () => {
+	localStorage.clear();
+	const descriptor = Object.getOwnPropertyDescriptor(window, "localStorage");
+	let reads = 0;
+	Object.defineProperty(window, "localStorage", {
+		configurable: true,
+		get() {
+			reads += 1;
+			throw new Error("browser storage denied");
+		},
+	});
+	mediaCalls = [];
+	mediaAnswer = (request) =>
+		request.op === "team_bridge.attachment"
+			? { status: 200, kind: "bytes", mimeType: "image/png", data: PNG }
+			: staged("batt_denied1");
+	let app;
+	let list;
+	const realRequest = window.api.desktop.request;
+	try {
+		assert.equal(
+			m.browserDraftStorage(),
+			null,
+			"a throwing getter reads as no storage",
+		);
+		app = await mountPage(
+			pageProps({
+				target: { type: "person", accountId: "acct_b" },
+				onSend: async () => {},
+			}),
+		);
+		await settle();
+		assert.ok(app.element.querySelector("textarea"), "the composer renders");
+		await dropImage(app.element);
+		assert.equal(mediaCalls.length, 1, "the image still uploads");
+		const chips = [
+			...app.element.querySelectorAll("[data-attachment-chip]"),
+		].map((chip) => chip.dataset.attachmentChip);
+		assert.deepEqual(chips, ["ready"], "the chip is usable in memory");
+		list = await renderList([
+			message({
+				body: "",
+				attachments: [
+					{
+						id: "batt_ok",
+						mime: "image/png",
+						size: 10,
+						width: 4,
+						height: 3,
+						state: "bound",
+					},
+				],
+			}),
+		]);
+		assert.ok(list.element.querySelector("img"), "a message tile renders");
+		// The status client's account fence (team-bridge-api.ts identity/status).
+		window.api.desktop.request = async () => ({
+			status: 200,
+			body: {
+				result: {
+					state: "signed_out",
+					account_id: null,
+					tenant_id: null,
+				},
+			},
+		});
+		await assert.doesNotReject(
+			m.TeamBridgeApi.identity(),
+			"identity reconciles drafts without storage",
+		);
+		assert.ok(reads > 0, "the guarded getter was actually exercised");
+	} finally {
+		window.api.desktop.request = realRequest;
+		if (list) await list.close();
+		if (app) await app.close();
+		Object.defineProperty(window, "localStorage", descriptor);
+	}
+	assert.equal(localStorage.length, 0, "nothing was persisted");
+
+	// SSR: no `window` at all.
+	const savedWindow = globalThis.window;
+	try {
+		globalThis.window = undefined;
+		assert.equal(
+			m.browserDraftStorage(),
+			null,
+			"no window reads as no storage",
+		);
+		assert.doesNotThrow(() =>
+			m.reconcileDraftAccount(m.browserDraftStorage(), {
+				state: "signed_out",
+				account_id: null,
+			}),
+		);
+	} finally {
+		globalThis.window = savedWindow;
+	}
+});

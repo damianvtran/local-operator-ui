@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	TEAM_BRIDGE_DRAFT_PREFIX,
+	browserDraftStorage,
 	draftAccountEpoch,
 } from "../../shared/store/team-bridge-draft-account";
 import type { DraftAttachment } from "./team-bridge-attachments-model";
@@ -15,17 +16,6 @@ import {
 	readDrafts,
 } from "./team-bridge-drafts";
 import type { TeamBridgeTarget } from "./team-bridge-model";
-
-/** SSR has no browser storage, and a browser policy can deny its getter.
- * Never borrow Node's experimental ambient localStorage: it masked a render
- * crash on CI's Node 22 and is not the signed-in app's authored-draft store. */
-function browserDraftStorage(): Storage | null {
-	try {
-		return typeof window === "undefined" ? null : window.localStorage;
-	} catch {
-		return null;
-	}
-}
 
 /** Writes happen at the edit, not in an effect cleanup: a navigation followed
  * by a render must never save the old field under the new target's key. */
