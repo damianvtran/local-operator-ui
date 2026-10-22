@@ -413,6 +413,20 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	const hintShown =
 		(mode === "suspend" && !editing) ||
 		(suggestionsUnavailable && editing && raw.length > 0);
+	/*
+	 * THE ONE LIVE PATH FOR THE SENTENCE (round-4 Q4-2). The hint itself is a
+	 * description, not a live region: a region that also carried text on mount
+	 * would speak twice in suspend, where `announcement` already exists and was
+	 * measured saying "1 suggestion available" while the field was actually
+	 * unavailable. Route the sentence through that existing polite region, which
+	 * announces the transition once and is silent otherwise.
+	 */
+	useEffect(() => {
+		if (!hintShown) return;
+		setAnnouncement(
+			t("ui.browser.browser_url_bar.address_suggestions_unavailable"),
+		);
+	}, [hintShown]);
 	const suggestions = useMemo(
 		() =>
 			suggestAddresses(autocomplete.entries, query, {

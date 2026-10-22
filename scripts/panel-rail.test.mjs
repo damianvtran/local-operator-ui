@@ -55,6 +55,7 @@ const bundle = await build({
 			export { ChatHeader } from "./src/renderer/src/features/chat/components/chat-header";
 			export { AskDrawer } from "./src/renderer/src/features/chat/components/asks/ask-drawer";
 			export { Tooltip, TooltipProvider } from "./src/renderer/src/shared/components/ui/tooltip";
+			export { BrowserSafeTooltip } from "./src/renderer/src/shared/components/ui/browser-safe-tooltip";
 			export { ChatLayout } from "./src/renderer/src/shared/components/common/chat-layout";
 			export { InPanelRailHost, PanelRailHostContext } from "./${NAV}/panel-rail-host";
 			export { askRailLabels, browserRailLabels, canvasRailLabels, codeRailLabels, consoleRailLabels, PANEL_RAIL_ORDER } from "./${NAV}/panel-rail-model";
@@ -113,6 +114,7 @@ const {
 	overlapsBrowserView,
 	Tooltip,
 	TooltipProvider,
+	BrowserSafeTooltip,
 	ChatHeader,
 	AskDrawer,
 	ChatLayout,
@@ -2037,15 +2039,78 @@ test("Tooltip's onOpenChange follows what is SHOWN, so suppressed cannot leave a
 		await api.render(el(false));
 		assert.equal(
 			seen.at(-1),
-			false,
-			"lifting the override does NOT resurrect a panel suppression closed (U14)",
+			true,
+			"the DEFAULT resumes: suppression is not a discard (round-4 reviewer MAJOR-1)",
 		);
-		assert.equal(api.$('[role="tooltip"]'), null);
-		act(() => api.$("#t").blur());
-		await frames(2);
-		act(() => api.$("#t").focus());
-		await frames(20);
-		assert.equal(seen.at(-1), true, "a fresh focus opens it again");
+		assert.ok(
+			api.$('[role="tooltip"]'),
+			"the panel returns when the override lifts",
+		);
+	});
+});
+
+test("discard opt-in stays closed on lift, and BrowserSafeTooltip opts in by default (U14)", async () => {
+	await mount(async (api) => {
+		const warns = [];
+		const original = console.error;
+		console.error = (...args) => warns.push(args.join(" "));
+		try {
+			const el = (suppressed) =>
+				React.createElement(
+					TooltipProvider,
+					null,
+					React.createElement(
+						Tooltip,
+						{ content: "hint", suppressed, discardWhileSuppressed: true },
+						React.createElement("button", { id: "d", type: "button" }, "d"),
+					),
+				);
+			await api.render(el(false));
+			act(() => api.$("#d").focus());
+			await frames(20);
+			assert.ok(api.$('[role="tooltip"]'), "open before suppression");
+			await api.render(el(true));
+			assert.equal(api.$('[role="tooltip"]'), null, "suppression hides it");
+			await api.render(el(false));
+			assert.equal(
+				api.$('[role="tooltip"]'),
+				null,
+				"discard is opt-in: lifting must not repaint the closed panel",
+			);
+
+			// BrowserSafeTooltip: focus, view arrives, view leaves; the label must
+			// not repaint, and the root must never flip uncontrolled.
+			const safe = () =>
+				React.createElement(
+					BrowserSafeTooltip,
+					{ content: "safe" },
+					React.createElement("button", { id: "s", type: "button" }, "s"),
+				);
+			await api.render(safe());
+			act(() => api.$("#s").focus());
+			await frames(20);
+			assert.ok(
+				api.$('[role="tooltip"]'),
+				"no view: label is a normal tooltip",
+			);
+			const release = registerBrowserViewRect(() => VIEW);
+			await frames(4);
+			assert.equal(api.$('[role="tooltip"]'), null, "view: panel stands down");
+			release();
+			await frames(6);
+			assert.equal(
+				api.$('[role="tooltip"]'),
+				null,
+				"view gone: a view-based label must not resume",
+			);
+			assert.equal(
+				warns.filter((line) => /uncontrolled to controlled/i.test(line)).length,
+				0,
+				"a boolean suppressed prop cannot flip the Radix root",
+			);
+		} finally {
+			console.error = original;
+		}
 	});
 });
 

@@ -4015,7 +4015,20 @@ test("the unavailable sentence is announced and does not name implementation sta
 		bar.indexOf("hintShown && ("),
 		bar.indexOf("hintShown && (") + 1200,
 	);
-	assert.ok(!hint.includes("aria-live"), "one announcement path (U18)");
+	assert.ok(
+		!hint.includes("aria-live"),
+		"the hint itself is not a live region",
+	);
+	assert.equal(
+		(bar.match(/role="status"/g) ?? []).length,
+		1,
+		"exactly one polite live region (Q4-2)",
+	);
+	assert.match(
+		bar,
+		/if \(!hintShown\) return;\s*setAnnouncement\(\s*t\(/,
+		"the sentence reaches the existing status region on the transition (U18/U21)",
+	);
 	assert.match(bar, /content=\{t\("ui\.browser\.browser_url_bar\.home"\)\}/);
 	assert.doesNotMatch(bar, /home_destination/);
 });
@@ -4037,6 +4050,6 @@ test("the start/failure page stays non-controllable while an overlay is open (Q3
 	assert.match(
 		surface,
 		/approvalsTriggerRef\.current \?\? pageMenuTriggerRef\.current/,
-		"brand-empty handoff must reach the folded trigger too",
+		"band-empty handoff must reach the folded trigger too",
 	);
 });

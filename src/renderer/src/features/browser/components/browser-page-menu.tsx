@@ -81,6 +81,10 @@ export interface BrowserPageMenuProps {
 	/** Approvals is folded into this menu at narrow widths; carry its count on the
 	 * trigger so the signal is not lost with the row control (round-2 U12). */
 	showApprovalsFolded: boolean;
+	/** True when a page control here can run. False on the start/failure page,
+	 * where main refuses them; the items are disabled rather than painting the
+	 * refusal sentence (round-4 Q4-3). */
+	canControlPage: boolean;
 }
 
 export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
@@ -101,6 +105,7 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 	onDockOpened,
 	triggerRef,
 	showApprovalsFolded,
+	canControlPage,
 }) => {
 	const [open, setOpen] = useState(false);
 	/* A tooltip that opens on the focus the menu returns must not read as a
@@ -108,9 +113,13 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 	   close and for a moment after, so the focus event cannot open a panel. */
 	const [returning, setReturning] = useState(false);
 	const quietTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	/* The post-close tick that hands focus to the dock must not fire after this
+	   menu unmounts (round-4 U24). */
+	const dockOpenTimer = useRef<number | null>(null);
 	useEffect(
 		() => () => {
 			if (quietTimer.current) clearTimeout(quietTimer.current);
+			if (dockOpenTimer.current) clearTimeout(dockOpenTimer.current);
 		},
 		[],
 	);
@@ -128,12 +137,14 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 	const folded = showForward || showHome;
 	/* The folded trigger is the only route to the queue, so its NAME carries the
 	   count it shows (round 3, U15). */
+	/* U22: no hardcoded separator copy. When the folded trigger is also the
+	   count's only home (U15) the waiting sentence is its name outright; the
+	   "Page options" string remains the tooltip and the wide-path name. */
 	const pageMenuLabel =
 		showApprovalsFolded && waitingCount > 0
-			? `${t("ui.browser.browser_url_bar.page_menu")} — ${t(
-					"ui.browser.browser_url_bar.approvals_waiting",
-					{ count: waitingCount },
-				)}`
+			? t("ui.browser.browser_url_bar.approvals_waiting", {
+					count: waitingCount,
+				})
 			: t("ui.browser.browser_url_bar.page_menu");
 	return (
 		<DropdownMenu
@@ -153,6 +164,7 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 				content={t("ui.browser.browser_url_bar.page_menu")}
 				side="top"
 				suppressed={open || returning}
+				discardWhileSuppressed={open || returning}
 				disableHoverableContent
 			>
 				<DropdownMenuTrigger asChild>
@@ -193,7 +205,7 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 					/* The item unmounts before this handler, so focus is already on
 					   `<body>`; the dock's heading takes it on the next tick, after
 					   Radix has finished closing. */
-					window.setTimeout(() => onDockOpened?.(), 0);
+					dockOpenTimer.current = window.setTimeout(() => onDockOpened?.(), 0);
 				}}
 			>
 				{folded && (
@@ -221,17 +233,29 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 						<DropdownMenuSeparator />
 					</>
 				)}
-				<DropdownMenuItem onSelect={onFind} data-tour-tag="browser-find">
+				<DropdownMenuItem
+					disabled={!canControlPage}
+					onSelect={onFind}
+					data-tour-tag="browser-find"
+				>
 					<Search aria-hidden className="size-4" />
 					{t("ui.browser.browser_url_bar.find_in_page")}
 					<DropdownMenuShortcut>{find}</DropdownMenuShortcut>
 				</DropdownMenuItem>
-				<DropdownMenuItem onSelect={onPrint} data-tour-tag="browser-print">
+				<DropdownMenuItem
+					disabled={!canControlPage}
+					onSelect={onPrint}
+					data-tour-tag="browser-print"
+				>
 					<Printer aria-hidden className="size-4" />
 					{t("ui.browser.browser_url_bar.print_page")}
 				</DropdownMenuItem>
 				{pageZoom !== 1 && (
-					<DropdownMenuItem onSelect={onResetZoom} data-tour-tag="browser-zoom">
+					<DropdownMenuItem
+						disabled={!canControlPage}
+						onSelect={onResetZoom}
+						data-tour-tag="browser-zoom"
+					>
 						{t("ui.browser.browser_url_bar.page_zoom_reset", {
 							zoom: Math.round(pageZoom * 100),
 						})}

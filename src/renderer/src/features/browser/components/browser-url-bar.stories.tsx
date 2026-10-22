@@ -33,6 +33,7 @@ const menu = (
 		onOpenDownloads={() => {}}
 		onOpenApprovals={() => false}
 		showApprovalsFolded={false}
+		canControlPage
 	/>
 );
 
@@ -122,6 +123,7 @@ export const Narrow: Story = {
 				onOpenDownloads={() => {}}
 				onOpenApprovals={() => false}
 				showApprovalsFolded={false}
+				canControlPage
 			/>
 		),
 	},
