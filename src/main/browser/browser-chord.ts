@@ -23,6 +23,10 @@ export function browserWindowForeground(window: {
  * This is a predicate, not focus emulation: callers read real Electron facts. */
 export function browserChromeOwnsChord(facts: {
 	logicalFocus: boolean;
+	/** `registry.chromeVisible`: the browser's chrome band is the presented UI.
+	 * Deliberately NOT "the native view is visible": the browser's own start page
+	 * and load-failure panel hide that view so their DOM can paint, and they still
+	 * own the browser's keys. A real overlay is the only hide that clears this. */
 	chromeVisible: boolean;
 	window: {
 		isDestroyed(): boolean;

@@ -1694,10 +1694,16 @@ export class BrowserHost implements BrowserActionContext {
 	}
 
 	/** Full-window overlays hide the view: a native view paints above all DOM, so
-	 * an overlay is invisible unless the view goes away (design 11.3). */
-	setViewVisible(visible: boolean): Record<string, unknown> {
-		this.registry.setViewVisible(visible);
+	 * an overlay is invisible unless the view goes away (design 11.3).
+	 *
+	 * `ownPage` is the RENDERER'S REASON for the hide, and the only fact that lets
+	 * main tell the browser's own state pages (start page, load failure - hidden so
+	 * their DOM can paint) from an overlay covering them. Shortcut ownership keys
+	 * on it; presentation does not. See `TabRegistry.chromeVisible`. */
+	setViewVisible(visible: boolean, ownPage = false): Record<string, unknown> {
+		this.registry.setViewVisible(visible, ownPage);
 		// Suppressed by an overlay: the page must not keep the native key owner.
+		// True for a state page too - there is no presented page either way.
 		if (!visible) this.clearPageFocus();
 		return this.chromeState();
 	}

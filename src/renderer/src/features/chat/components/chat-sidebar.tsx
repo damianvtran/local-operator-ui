@@ -5073,7 +5073,10 @@ export function ChatSidebar({
 					</span>
 				) : row.link_down === true ? (
 					<span
-						className="shrink-0 text-meta text-warning"
+						className={cn(
+							"shrink-0 text-meta",
+							row.link_reconnecting === true ? "text-ink-dim" : "text-warning",
+						)}
 						title={peerLinkDownLabel(row, listNow / 1000)}
 					>
 						{peerLinkDownVisibleLabel(row, listNow / 1000)}

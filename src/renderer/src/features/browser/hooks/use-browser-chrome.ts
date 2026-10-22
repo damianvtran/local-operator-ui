@@ -429,7 +429,12 @@ export interface BrowserChrome {
 	retry: () => Promise<void>;
 	history: (direction: "back" | "forward") => Promise<void>;
 	setContentRect: (rect: ContentRect | null) => void;
-	setViewVisible: (visible: boolean) => void;
+	/** Hide/show the native view. `ownPage` names WHY it is hidden when it is: the
+	 * renderer is painting one of the browser's own state pages (start page,
+	 * load failure) rather than an overlay covering the content area. Main keeps
+	 * shortcut ownership for the first and refuses it for the second; see
+	 * `browser-surface.tsx` and `registry.ts:chromeVisible`. */
+	setViewVisible: (visible: boolean, ownPage?: boolean) => void;
 	respondToConsent: (
 		entryId: string,
 		decision: ConsentDecision,
@@ -730,10 +735,14 @@ export function useBrowserChrome(): BrowserChrome {
 	 * changed every render would re-run the layout effect on every state update,
 	 * and the cleanup would hide the view once per change — a flicker rather than
 	 * a policy.
+	 *
+	 * `ownPage` is forwarded unchanged: it is the reason half of the report, not a
+	 * second visibility flag. Dropping it here would leave main unable to tell the
+	 * browser's own start page from a dialog covering it, which is the S4a bug.
 	 */
-	const setViewVisible = useCallback((visible: boolean) => {
+	const setViewVisible = useCallback((visible: boolean, ownPage = false) => {
 		void bridge()
-			?.setViewVisible(visible)
+			?.setViewVisible(visible, ownPage)
 			.catch(() => {
 				// Losing a visibility update corrects itself on the next policy change;
 				// surfacing it would put a message in the band for a race the user cannot

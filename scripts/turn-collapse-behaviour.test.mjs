@@ -1814,6 +1814,235 @@ test("the settle latch: a steering re-entry cannot move a watched run's hides (o
 	);
 });
 
+test("a fresh pane's first pass cannot fold a run whose rows say it is still writing (operator report, 2026-10-21)", async (t) => {
+	/*
+	 * THE OTHER HALF OF THE SAME FLICKER. The latch above is written by a LIVE
+	 * pass, in an effect, after a paint. A pane whose first pass is not live -
+	 * a first open before the runtime publishes `streaming`, or the reconnect
+	 * arm's `frontend: null`, which drops `working` AND the latch's own store
+	 * key - has no latch to protect it, and the 2026-10-16 fix could not reach
+	 * it. What is left is the rows, and they state it plainly: a streaming
+	 * assistant row and an unfinished call cannot be a finished turn's last
+	 * word.
+	 *
+	 * THE SEQUENCE: the dip FIRST (the state the flicker is painted in), then
+	 * the live flag arriving. The plan must already be the correct one on the
+	 * dip, so the live pass adds nothing and takes nothing.
+	 */
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const frontend = { session_id: "chat-fresh-dip" };
+	const rows = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000, durationS: 3 }),
+		answerRecord("answer:1", {
+			ts: TS + 3_000,
+			settledAt: TS + 3_000,
+			stopReason: "stop",
+		}),
+		toolRecord("tool:2", { ts: TS + 4_000, phase: "running" }),
+		answerRecord("answer:2", {
+			ts: TS + 5_000,
+			text: "Streaming the rest",
+			streaming: true,
+		}),
+	];
+	const mounted = await mount(t, rows, { frontend, waiting: false });
+	const barIds = () =>
+		barsOf(mounted).map((element) => element.getAttribute("data-record-id"));
+	assert.equal(
+		watchedRunOf("chat-fresh-dip"),
+		null,
+		"this pane has no latch: the first pass is not live",
+	);
+	assert.deepEqual(
+		barIds(),
+		["tool:1"],
+		"only the settled span is barred; the run in flight draws in place",
+	);
+	assert.ok(rowBox(mounted, "tool:2"), "the running call is on screen");
+	assert.ok(rowBox(mounted, "answer:2"), "and so is the text being written");
+	// The live flag arrives: the same plan, so nothing repaints.
+	await mounted.render(rows, { frontend, waiting: true });
+	assert.deepEqual(barIds(), ["tool:1"], "the live pass moves nothing");
+	assert.ok(rowBox(mounted, "tool:2"), "t2 was never handed to a bar");
+	assert.ok(
+		rowBox(mounted, "answer:2"),
+		"and the streaming row never vanished",
+	);
+	// THE ROWS SETTLE: the turn condenses once, because its data changed.
+	const settled = rows.map((record) =>
+		record.id === "answer:2"
+			? { ...record, streaming: false }
+			: record.id === "tool:2"
+				? { ...record, phase: "done", endedAt: TS + 6_000 }
+				: record,
+	);
+	await mounted.render(settled, { frontend, waiting: false });
+	assert.deepEqual(
+		barIds(),
+		["tool:1", "tool:2"],
+		"the settled run condenses once, on the pass that settles it",
+	);
+});
+
+test("a reconnect frame cannot collapse the reader's opened bar (operator report, 2026-10-21)", async (t) => {
+	/*
+	 * THE OTHER VISIBLE FRAME OF THE SAME REPAINT. A reconnect sets
+	 * `frontend: null` for the whole gap (`use-canonical-session`'s gap arm), and
+	 * the reader's stores used to be keyed off that raw id: every opened bar
+	 * snapped shut, and opened again when the snapshot repopulated - text the
+	 * reader had just chosen to see, replaced for a frame or two and handed back.
+	 * The key is sticky now (`conversationKey`), the rule the fold registry in the
+	 * same file has always used.
+	 */
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const frontend = { session_id: "chat-gap" };
+	const rows = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000, durationS: 3 }),
+		answerRecord("answer:1", {
+			ts: TS + 3_000,
+			settledAt: TS + 3_000,
+			stopReason: "stop",
+		}),
+	];
+	const mounted = await mount(t, rows, { frontend });
+	const trigger = barTrigger(mounted);
+	await click(trigger);
+	assert.equal(
+		trigger.getAttribute("aria-expanded"),
+		"true",
+		"the reader opened the bar",
+	);
+	assert.ok(rowBox(mounted, "tool:1"), "and its rows are on screen");
+	// THE GAP: frontend goes away entirely, exactly as the reconnect arm writes it.
+	await mounted.render(rows, { frontend: null, waiting: false });
+	assert.equal(
+		barTrigger(mounted).getAttribute("aria-expanded"),
+		"true",
+		"the gap does not close a bar the reader opened",
+	);
+	assert.ok(
+		rowBox(mounted, "tool:1"),
+		"and does not take the rows back behind it",
+	);
+	// The snapshot returns on the same conversation: still open, still one press.
+	await mounted.render(rows, { frontend, waiting: false });
+	assert.equal(
+		barTrigger(mounted)?.getAttribute("aria-expanded"),
+		"true",
+		"the re-entry reads the same bucket",
+	);
+});
+
+test("a reconnect gap cannot fold a run the pane was watching (operator report, 2026-10-21)", async (t) => {
+	/*
+	 * THE LATCH HALF, MEASURED WHERE IT IS PAINTED (review round 2, M1). The
+	 * previous case proves the reader's EXPANSIONS survive a `frontend: null`
+	 * pass - which the store held even on the base, so it does not discriminate.
+	 * This one does: a run mid-flight after its first settled cycle has no
+	 * live-phase row (every call reported, no answer yet), so only the settle
+	 * latch can keep it open. The pane arms it on the live pass; the gap must not
+	 * drop it, or the work after the settled answer folds behind a bar and comes
+	 * back with the snapshot.
+	 */
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const frontend = { session_id: "chat-gap-latch" };
+	const rows = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000, durationS: 3 }),
+		answerRecord("answer:1", {
+			ts: TS + 3_000,
+			settledAt: TS + 3_000,
+			stopReason: "stop",
+		}),
+		toolRecord("tool:2", { ts: TS + 4_000, durationS: 4 }),
+	];
+	const mounted = await mount(t, rows, { frontend, waiting: true });
+	const barIds = () =>
+		barsOf(mounted).map((element) => element.getAttribute("data-record-id"));
+	assert.equal(
+		watchedRunOf("chat-gap-latch"),
+		"user:1",
+		"the live pass latched the run it is watching",
+	);
+	assert.deepEqual(barIds(), ["tool:1"], "only the settled span is barred");
+	assert.ok(rowBox(mounted, "tool:2"), "the work after the answer is in place");
+	// THE GAP: frontend goes away, so the pane reads not-live.
+	await mounted.render(rows, { frontend: null, waiting: false });
+	assert.deepEqual(
+		barIds(),
+		["tool:1"],
+		"the dip does not add a bar over the work being watched",
+	);
+	assert.ok(
+		rowBox(mounted, "tool:2"),
+		"and the work after the answer stays on screen through the gap",
+	);
+	// The snapshot returns: same plan, nothing handed back or taken.
+	await mounted.render(rows, { frontend, waiting: false });
+	assert.deepEqual(barIds(), ["tool:1"], "the re-entry reaches the same plan");
+});
+
+test("a steer before its lead-in's calls report does not condense the turn (operator report, 2026-10-21)", async (t) => {
+	/*
+	 * THE MOUNTED HALF OF THE LEAD-IN FIX (agent review round 1, U3): the model
+	 * test says the run does not split, this says what the reader sees - the turn
+	 * stays whole and drawn in place while it is being steered, and its steer row
+	 * survives the condense when the closing answer lands.
+	 */
+	__resetTurnCollapseOpen();
+	__resetWatchedRuns();
+	const frontend = { session_id: "chat-lead-in" };
+	const rows = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000, durationS: 3 }),
+		answerRecord("answer:1", {
+			ts: TS + 3_000,
+			text: "Reading the ledger first.",
+			settledAt: TS + 3_000,
+			stopReason: "toolUse",
+			callsTools: true,
+		}),
+		userRecord("user:2", { ts: TS + 4_000, text: "also check the ledger" }),
+		toolRecord("tool:2", { ts: TS + 5_000, durationS: 4 }),
+	];
+	const mounted = await mount(t, rows, { frontend, waiting: true });
+	const barIds = () =>
+		barsOf(mounted).map((element) => element.getAttribute("data-record-id"));
+	assert.deepEqual(
+		barIds(),
+		[],
+		"the steer did not condense the turn it interrupted",
+	);
+	assert.ok(
+		rowBox(mounted, "tool:1"),
+		"the work before the steer is on screen",
+	);
+	assert.ok(rowBox(mounted, "user:2"), "and the steer itself");
+	assert.ok(rowBox(mounted, "tool:2"), "and the work after it");
+	// The closing answer lands: the turn condenses ONCE, and keeps its steer.
+	await mounted.render(
+		[
+			...rows,
+			answerRecord("answer:2", {
+				ts: TS + 7_000,
+				settledAt: TS + 7_000,
+				stopReason: "stop",
+			}),
+		],
+		{ frontend, waiting: false },
+	);
+	assert.ok(barIds().length > 0, "the finished turn wears its bar");
+	assert.ok(
+		rowBox(mounted, "user:2"),
+		"and the steer stays on screen under it (V3)",
+	);
+});
+
 test("the trigger is focusable; the only press inside it toggles", async (t) => {
 	/*
 	 * DESIGN D4d's assertion, in the smallest honest form: the trigger is a

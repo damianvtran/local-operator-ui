@@ -19037,6 +19037,391 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.live_updates",
+			"source_sha256": "7b42c5d744358c7edc55f835b946a19d824b4675c814dd38e864da641847db32",
+			"target_sha256": "f3d89ad738176a31bdc4101e9c4a777f25f58cf5cbaf554cfae02727a87263e4",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-21"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "live-update-i18n-es-r2-6941772e",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/live-update-i18n-es-r2-6941772e.json",
+					"receipt_sha256": "895cda146a6116369ea3a3840615f71e232db1c1cd2abaa5dfa849486a66cafb",
+					"scope": "live-update paused/reload-failed banner copy (4 keys), post-remediation audit"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "a51ecfaed866a60d91b2e31493d44097e12d9978624d942e54f9ecdd87827760",
+					"target_sha256": "b63039ca383c37cf3944ea8f39c16d084262adc63b6a95d869c9657d6b8bbd48",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "live-update-i18n-es-15d3021f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/live-update-i18n-es-15d3021f.json",
+							"receipt_sha256": "17ec22e7b22c01ffb6f3f070126e0778b8cc14313b65bb0ec2ffc3ae4b7e40e5",
+							"scope": "live-update paused banner copy (3 keys), round-2 translation audit"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.live_updates",
+			"source_sha256": "7b42c5d744358c7edc55f835b946a19d824b4675c814dd38e864da641847db32",
+			"target_sha256": "330e33cd224efc941d729719fa96664ee5150b4f4a0a1bfa775048b555f59608",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-21"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "live-update-i18n-fr-r2-ab3de2fa",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/live-update-i18n-fr-r2-ab3de2fa.json",
+					"receipt_sha256": "0e99e1399967c208a4cd99087536f553469d7e95a894a933321cbddd97679407",
+					"scope": "live-update paused/reload-failed banner copy (4 keys), post-remediation audit"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "a51ecfaed866a60d91b2e31493d44097e12d9978624d942e54f9ecdd87827760",
+					"target_sha256": "4b06a78149b6b5e3cc90f46563377c452edae852ff2e7b65383c1142721f16a5",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "live-update-i18n-fr-13e3086c",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/live-update-i18n-fr-13e3086c.json",
+							"receipt_sha256": "d0de92467b3b02716d62cc5508af32f87e4ec16d3c7664b410aceaa1b973ed97",
+							"scope": "live-update paused banner copy (3 keys), round-2 translation audit"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.live_updates",
+			"source_sha256": "7b42c5d744358c7edc55f835b946a19d824b4675c814dd38e864da641847db32",
+			"target_sha256": "536afe2356672b81b0bff6f63e79553ac78578f14ab867e11efe53c6a4340348",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-21"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "live-update-i18n-zh-cn-r3-9f4ebe41",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/live-update-i18n-zh-cn-r3-9f4ebe41.json",
+					"receipt_sha256": "37f748ff42b85e753752bd8485bca1c2dcc03fc9e5ba8ee161947d8722b7521f",
+					"scope": "live-update paused/reload-failed banner copy (4 keys), post-remediation audit"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "a51ecfaed866a60d91b2e31493d44097e12d9978624d942e54f9ecdd87827760",
+					"target_sha256": "49bc19ba6865c5398ddfff1b4f819d6e3932a6a0b255312acc923bd3cb84d0ee",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "live-update-i18n-zh-cn-r2-2461684f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/live-update-i18n-zh-cn-r2-2461684f.json",
+							"receipt_sha256": "94d4c283272bf972ff05c8c6a1a796018e08803d0bbc5e87f1125a6152a22a0d",
+							"scope": "live-update paused banner copy (3 keys), round-2 translation audit"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.live_updates",
+			"source_sha256": "7b42c5d744358c7edc55f835b946a19d824b4675c814dd38e864da641847db32",
+			"target_sha256": "9715b2b148d14fe6c0efdf9f8d1fb322fea97b05e2547e8b6be482f8a9daee52",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-21"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "live-update-i18n-ru-r3-db107b06",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/live-update-i18n-ru-r3-db107b06.json",
+					"receipt_sha256": "4982c7360a8d79cb1267a834c15cf9dd570952c989372bd829726403dcd117e4",
+					"scope": "live-update paused/reload-failed banner copy (4 keys), post-remediation audit"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "a51ecfaed866a60d91b2e31493d44097e12d9978624d942e54f9ecdd87827760",
+					"target_sha256": "825b2b684484f5f72bac6bc655cd4c05f906ff72a879c212fbdf268f58e2cb24",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "live-update-i18n-ru-r2-c66af566",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/live-update-i18n-ru-r2-c66af566.json",
+							"receipt_sha256": "1cd4cb14020ac559568094984d506c9bec31046969d59634891b57587c2169a5",
+							"scope": "live-update paused banner copy (3 keys), round-2 translation audit"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.live_updates",
+			"source_sha256": "7b42c5d744358c7edc55f835b946a19d824b4675c814dd38e864da641847db32",
+			"target_sha256": "0b958b84cae997d12d948d5a20555683bf542e40fd92b67a6b96d6378619e682",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-21"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "live-update-i18n-vi-r2-1adde783",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/live-update-i18n-vi-r2-1adde783.json",
+					"receipt_sha256": "f3881317e75b23882450054f60fcd47c6876d5597746b62cee0cc74070d9a838",
+					"scope": "live-update paused/reload-failed banner copy (4 keys), post-remediation audit"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "a51ecfaed866a60d91b2e31493d44097e12d9978624d942e54f9ecdd87827760",
+					"target_sha256": "bd9b2991175b416bc28f13984051e195620dd022465b78c706102b59f10a6172",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "live-update-i18n-vi-c618cb9a",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/live-update-i18n-vi-c618cb9a.json",
+							"receipt_sha256": "df79e9003db653fbc4971628536752cf8a6ba10d4765c2093c97276e69a8fdb2",
+							"scope": "live-update paused banner copy (3 keys), round-2 translation audit"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.live_updates",
+			"source_sha256": "7b42c5d744358c7edc55f835b946a19d824b4675c814dd38e864da641847db32",
+			"target_sha256": "94426c480a07eb5b657cd4a9cc01cb4a042c0145fc203bba7566c284a3be9c09",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-21"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "live-update-i18n-ur-r3-d3357de9",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/live-update-i18n-ur-r3-d3357de9.json",
+					"receipt_sha256": "37befbb086e825b105e1afa7e6ea242b1cade5b70ce9c2a780853be147ef2be1",
+					"scope": "live-update paused/reload-failed banner copy (4 keys), post-remediation audit"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "a51ecfaed866a60d91b2e31493d44097e12d9978624d942e54f9ecdd87827760",
+					"target_sha256": "d300d52750824810df2e5af56b7c658f29b45cdfbbe11e51bba0a7f61da5391a",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "live-update-i18n-ur-r2-30eac3f7",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/live-update-i18n-ur-r2-30eac3f7.json",
+							"receipt_sha256": "78604233b33ef468cc8835c5499850465b2e5fde55aa0fbf803b1378bb35d6c6",
+							"scope": "live-update paused banner copy (3 keys), round-2 translation audit"
+						}
+					],
+					"status": "audited"
+				}
+			]
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.live_updates",
+			"source_sha256": "7b42c5d744358c7edc55f835b946a19d824b4675c814dd38e864da641847db32",
+			"target_sha256": "3a394f61f31a9ae296d40da13c78593c6664fdd91d3352b6cec737a0ceaeaf92",
+			"translator": {
+				"agent": "coder",
+				"model": "deepseek/deepseek-flash",
+				"date": "2026-10-21"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "live-update-i18n-hi-r2-6eaf2f82",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/live-update-i18n-hi-r2-6eaf2f82.json",
+					"receipt_sha256": "9b5d4190568210bae84df97855d2778bbc92397df928aa8d585ad2e0db1ac2c5",
+					"scope": "live-update paused/reload-failed banner copy (4 keys), post-remediation audit"
+				}
+			],
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "a51ecfaed866a60d91b2e31493d44097e12d9978624d942e54f9ecdd87827760",
+					"target_sha256": "6e857ad004faebf8ff1771feaddaf9650c7ffdcfbd1e4862137baf116d41226b",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "live-update-i18n-hi-32a84912",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/live-update-i18n-hi-32a84912.json",
+							"receipt_sha256": "7e6a616cbcaf2d454837cb50c94590573bb3b07df0a4fab5c5f80a5924587838",
+							"scope": "live-update paused banner copy (3 keys), round-2 translation audit"
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }

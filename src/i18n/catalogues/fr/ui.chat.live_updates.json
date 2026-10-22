@@ -1,0 +1,6 @@
+{
+	"ui.chat.live_updates.paused": "Les mises à jour en direct sont en pause, cette conversation peut donc être obsolète.",
+	"ui.chat.live_updates.reload": "Recharger depuis l’historique",
+	"ui.chat.live_updates.reloading": "Rechargement…",
+	"ui.chat.live_updates.reload_failed": "Impossible de recharger cette conversation. Réessayez."
+}
