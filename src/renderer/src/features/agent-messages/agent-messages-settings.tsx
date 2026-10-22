@@ -27,6 +27,7 @@ import {
 	type AgentMessagesRefusal,
 	type AgentMessagesSettingsResult,
 	type AgentMessagesStatus,
+	agentMessagesDefaultOnBannerConsentText,
 	agentMessagesDefaultOnInForce,
 } from "../../../../shared/agent-messages-contract";
 import { InfoGrid, InfoItem } from "../settings/components/settings-section";
@@ -319,7 +320,10 @@ export function AgentMessagesSettings({
 
 			{bannerVisible && (
 				<DefaultOnBanner
-					consentText={agentMessagesSettingsConsent(status)?.text ?? null}
+					consentText={agentMessagesDefaultOnBannerConsentText(
+						status,
+						readySettings,
+					)}
 					pending={bannerActions.pending}
 					failure={bannerActions.failure}
 					onTurnOff={() => void bannerActions.turnOff()}
@@ -714,6 +718,12 @@ const SettingsState: FC<SettingsStateProps> = ({
 							</AlertDescription>
 						</Alert>
 					)}
+					{/* DELIBERATE consent-bearing re-opt-in (operator ruling, review
+					    R1-2). After an EXPLICIT opt-out the runtime needs consent again
+					    and the member must read the served text before re-enrolling;
+					    removing this would strand them with no way back. The "no Enable
+					    affordance" rule covers the default-on FIRST-RUN and ENROLLED
+					    paths (B, C, D); this is the one control that opts back in. */}
 					<div className="flex flex-wrap items-center gap-3">
 						<Button
 							data-agent-messages-action="turn_on_again"
@@ -876,6 +886,25 @@ const ConsentRenewal: FC<{ onRenew: () => void; disabled: boolean }> = ({
  * read-only: a kill ends the flow, not the history, and no control may imply
  * the user can renew their way out of an organization's decision.
  */
+/**
+ * The label for where consent was collected. The wire value is an open string
+ * (a newer runtime may add a spelling), so an unknown one is shown as the
+ * runtime sent it rather than as a missing catalogue key. Literal keys keep
+ * the catalogue audit and the typed key union honest.
+ */
+function consentViaLabel(via: string): string {
+	switch (via) {
+		case "dialog":
+			return t("ui.agentMessages.settings.consent.via_dialog");
+		case "settings":
+			return t("ui.agentMessages.settings.consent.via_settings");
+		case "default_on":
+			return t("ui.agentMessages.settings.consent.via_default_on");
+		default:
+			return via;
+	}
+}
+
 const EndpointConsent: FC<{
 	settings: AgentMessagesSettingsResult;
 	status: AgentMessagesStatus;
@@ -899,9 +928,7 @@ const EndpointConsent: FC<{
 				/>
 				<InfoItem
 					label={t("ui.agentMessages.settings.consent.via")}
-					value={t(
-						`ui.agentMessages.settings.consent.via_${record.consented_via}`,
-					)}
+					value={consentViaLabel(record.consented_via)}
 				/>
 				<InfoItem
 					label={t("ui.agentMessages.settings.consent.at")}
