@@ -408,7 +408,11 @@ export class BrowserHost implements BrowserActionContext {
 
 	constructor(options: BrowserHostOptions) {
 		this.registry = options.registry;
-		this.pageControls = new PageControls(() => this.onChanged());
+		this.pageControls = new PageControls(
+			() => this.onChanged(),
+			5000,
+			(tabId) => this.registry.hiddenByOverlay(tabId),
+		);
 		this.cdp = options.cdp;
 		this.approvals = options.approvals;
 		this.ownership = options.ownership;
@@ -1104,7 +1108,7 @@ export class BrowserHost implements BrowserActionContext {
 			if (
 				!active ||
 				active.tabId !== tabId ||
-				!active.presented ||
+				(!active.presented && !this.registry.hiddenByOverlay(tabId)) ||
 				active.view.webContents.isDestroyed()
 			)
 				throw new Error("The browser tab is no longer presented.");

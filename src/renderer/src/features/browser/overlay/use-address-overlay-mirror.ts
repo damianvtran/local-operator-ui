@@ -188,6 +188,14 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 		 * exactly one invoke, and costs S2-on at most one skipped frame.
 		 */
 		let pending = false;
+		/** Bounded re-attempts after `stale_layout` (round-2 U11). The page being
+		 * hidden is a condition, but it can END (the view lands while the field is
+		 * still open). Four frame-spaced tries cover that handover without restoring
+		 * the per-frame storm; any real change resets the budget, and after four
+		 * refusals the loop idles until the projection body changes. */
+		let staleAttempts = 0;
+		const STALE_LAYOUT_ATTEMPTS = 4;
+		let forceProject = false;
 		const stop = (): void => {
 			stopped = true;
 			if (frame !== 0) cancelAnimationFrame(frame);
@@ -280,10 +288,12 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 				return;
 			}
 			const signature = JSON.stringify(body);
-			if (signature === lastSignature) {
+			if (!forceProject && signature === lastSignature) {
 				if (!stopped) frame = requestAnimationFrame(tick);
 				return;
 			}
+			if (!forceProject) staleAttempts = 0;
+			forceProject = false;
 			lastSignature = signature;
 			pending = true;
 			wasVisible = true;
@@ -307,15 +317,20 @@ export function useAddressOverlayMirror(input: AddressMirrorInput): void {
 						latest.current.onUnavailable?.();
 						return;
 					}
-					// A HIDDEN VIEW IS A CONDITION, NOT A FAILURE (S5 round 1, UX U3).
-					// `stale_layout` means the page is on its start/failure state, so the
-					// native view is hidden and main will refuse this projection for as
-					// long as that holds. Clearing `lastSignature` here made the loop
-					// re-project every animation frame at a main that refused every one
-					// (the storm the reviewer measured). Keeping the signature idles the
-					// loop; any real change — the user types, the rect moves, the page
-					// lands — changes it and projects once.
-					if (answer.reason === "stale_layout") return;
+					// A HIDDEN VIEW IS A CONDITION, NOT A FAILURE (S5 round 1, UX U3;
+					// bounded in round 2, U11). `stale_layout` means the page is on its
+					// start/failure state, so main refuses this projection while that
+					// holds. Clearing the signature on every refusal was the per-frame
+					// storm; never retrying at all left a list that could not come back
+					// when the view landed. Four forced retries, then idle: the signature
+					// keeps pointing at the refused body, so nothing loops, and the next
+					// real change (typing, a rect move) is a fresh attempt.
+					if (answer.reason === "stale_layout") {
+						if (staleAttempts >= STALE_LAYOUT_ATTEMPTS) return;
+						staleAttempts += 1;
+						forceProject = true;
+						return;
+					}
 					// Terminal refusals stop the loop; everything else (a stale frame, a
 					// layout race) is retried by the next frame.
 					if (isPermanentOverlayRefusal(answer.reason)) {

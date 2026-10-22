@@ -3999,3 +3999,21 @@ for (const outcome of [
 			globalThis.window = previous;
 		}
 	});
+
+test("the unavailable sentence is announced and does not name implementation states (U10, N2)", () => {
+	const bar = readFileSync(
+		"src/renderer/src/features/browser/components/browser-url-bar.tsx",
+		"utf8",
+	);
+	assert.match(bar, /<output\s+id=\{unavailableId\}/);
+	assert.match(bar, /aria-live="polite"/);
+	assert.match(
+		bar,
+		/bg-elevated px-1 text-meta text-ink-dim/,
+		"the hint needs an opaque ground over the text it covers",
+	);
+	assert.match(bar, /hintShown \? unavailableId : null/);
+	// N2: the Home tooltip says where the control goes, not "start page (blank)".
+	assert.match(bar, /content=\{t\("ui\.browser\.browser_url_bar\.home"\)\}/);
+	assert.doesNotMatch(bar, /home_destination/);
+});

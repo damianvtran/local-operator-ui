@@ -16,8 +16,13 @@ import { Tooltip, type TooltipProps } from "./tooltip";
  * The correct rule is conditional, not global: keep the tooltip where no surface
  * is mounted (`useBrowserViewPresent`), and fall back to the control's own
  * `aria-label` only where a view could clip it. Call sites pass the same props
- * they always did; the only thing this wrapper decides is whether the panel is
- * mounted at all.
+ * they always did.
+ *
+ * ONE TREE, ALWAYS (round-2 UX U8). The first version returned bare children in
+ * the view case, which REPLACED the trigger element whenever a view appeared or
+ * disappeared — React remounted the button and focus fell to `<body>` in the
+ * middle of a keyboard press. `Tooltip` already has the prop for this: the panel
+ * closes while the root and its trigger node stay mounted.
  *
  * It is a separate file rather than part of `tooltip.tsx` so the shared tooltip
  * keeps its S5 invariant: it does not import the browser-view policy at all, and
@@ -25,7 +30,8 @@ import { Tooltip, type TooltipProps } from "./tooltip";
  */
 export const BrowserSafeTooltip: FC<TooltipProps> = (props) => {
 	const viewPresent = useBrowserViewPresent();
-	if (viewPresent) return <>{props.children}</>;
-	return <Tooltip {...props} />;
+	/* `undefined || undefined` stays undefined: a call site that never suppresses
+	   keeps its Radix root uncontrolled, exactly as before. */
+	return <Tooltip {...props} suppressed={viewPresent || props.suppressed} />;
 };
 BrowserSafeTooltip.displayName = "BrowserSafeTooltip";

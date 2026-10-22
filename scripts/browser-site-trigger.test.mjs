@@ -52,9 +52,18 @@ test("the field's mark maps every kind exactly, with no loopback branch", () => 
 	assert.doesNotMatch(bar, /isLoopbackHost/);
 });
 
-test("the mark is the field's leading-edge control, focusable and read-only", () => {
+test("the mark is the field's leading-edge description, not a tab stop (U4)", () => {
 	assert.match(bar, /data-site-info=\{siteInfo\.kind\}/);
-	assert.match(bar, /tabIndex=\{0\}/);
+	assert.doesNotMatch(
+		bar,
+		/tabIndex=\{0\}/,
+		"a no-op control must not sit in the tab order",
+	);
 	assert.match(bar, /aria-label=\{siteInfoLabel\}/);
 	assert.match(bar, /absolute top-1\/2 left-2/);
+	// The description reaches the field without focus: one hidden sentence, named
+	// by the input's `aria-describedby`.
+	assert.match(bar, /const siteDescId = `\$\{listId\}-site`/);
+	assert.match(bar, /<span id=\{siteDescId\} className="sr-only">/);
+	assert.match(bar, /siteDescId,/);
 });

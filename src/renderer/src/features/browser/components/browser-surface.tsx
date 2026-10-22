@@ -282,6 +282,10 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	const overlaySuppressing = browserOverlaySuppressing(suppressedBy);
 	const contentRef = useRef<HTMLDivElement | null>(null);
 	const approvalsTriggerRef = useRef<HTMLButtonElement | null>(null);
+	/* The ⋯ trigger: at narrow widths the Approvals control is folded, so the
+	   dock has no shield to return focus to and falls back to the menu it came
+	   from (round-2 Q2-2). */
+	const pageMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
 	const [dockOpen, setDockOpen] = useState(false);
 	/** Which request's card is expanded. View state, defaulting to the attention
 	 * entry and then to the oldest — exactly the band's rule before this feature
@@ -570,7 +574,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		// Escape and the close button both return focus to the control that opened
 		// the dock (spec 4.2's keyboard contract), so a keyboard user is not dropped
 		// at the top of the document.
-		approvalsTriggerRef.current?.focus();
+		(approvalsTriggerRef.current ?? pageMenuTriggerRef.current)?.focus();
 	}, []);
 
 	const currentOrigin = activeTab ? originOfUrl(activeTab.url) : null;
@@ -1021,12 +1025,15 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 									</Button>
 								</Tooltip>
 								{queue.count > 0 && (
-									<span className="pointer-events-none absolute -top-1 -right-1">
+									<span className="pointer-events-none absolute -top-0.5 -right-0.5">
+										{/* 2px per side: half the 4px gap above the control, so the
+										    badge's 2px ring stays inside the row (D6b). */}
 										<Badge
 											variant="attention"
 											shape="pill"
 											size="count"
 											className="ring-2 ring-elevated"
+											aria-hidden="true"
 											data-tour-tag="browser-approvals-badge"
 										>
 											{countLabel(queue.count, 99)}
@@ -1056,6 +1063,8 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 							}}
 							onOpenDownloads={() => void chrome.revealDownloads()}
 							onOpenApprovals={() => setDockOpen((open) => !open)}
+							triggerRef={pageMenuTriggerRef}
+							showApprovalsFolded={rowWidth > 0 && rowWidth < 300}
 						/>
 					</>
 				}

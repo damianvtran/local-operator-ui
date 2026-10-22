@@ -1969,6 +1969,7 @@ test("the rail label is mounted only when no browser view can clip it (S5 D2)", 
 		reset(api);
 		const release = registerBrowserViewRect(() => VIEW);
 		await api.render(rail());
+		const node = api.item("canvas");
 		act(() => api.item("canvas").focus());
 		await frames(30);
 		assert.equal(
@@ -1986,6 +1987,18 @@ test("the rail label is mounted only when no browser view can clip it (S5 D2)", 
 		/* No surface: the same rail, the same focus, the label is back. This is the
 		   regression the round-1 review found — the removal was global, but the
 		   conflict exists only on the browser route. */
+		await frames(2);
+		assert.equal(
+			api.item("canvas"),
+			node,
+			"the trigger node survives the view appearing and disappearing (U8)",
+		);
+		assert.equal(
+			document.activeElement,
+			node,
+			"and focus does not fall to body while it happens",
+		);
+		act(() => api.item("canvas").blur());
 		await frames(2);
 		act(() => api.item("canvas").focus());
 		await frames(30);
