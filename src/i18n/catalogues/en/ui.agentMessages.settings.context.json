@@ -586,5 +586,21 @@
 		"length": "One short line or sentence.",
 		"placeholders": {},
 		"note": "States that a failed settings read changed nothing, then asks the reader to retry for the current status. Never implies messages were disabled or enabled."
+	},
+	"ui.agentMessages.settings.hold.chief_of_staff": {
+		"role": "informational notice at the top of the Agent messages settings section",
+		"tone": "sentence case, calm, second person; news, not an error",
+		"length": "Two short sentences; may wrap to two lines beside a button.",
+		"placeholders": {
+			"count": "number of incoming agent messages waiting; a positive integer, never 0"
+		},
+		"note": "Incoming messages from other members' agents are held on this computer because the reader's chief of staff (the designated assistant conversation) has never been opened. Opening it once delivers them. 'Chief of staff' is the product's name for that assistant role; keep it consistent with other surfaces and never use the assistant's personal name. Plural forms matter: 'it'/'them' follows the count. Nothing is lost or failed, so avoid alarm words."
+	},
+	"ui.agentMessages.settings.hold.open": {
+		"role": "button label beside the waiting-messages notice",
+		"tone": "sentence case, imperative verb first",
+		"length": "Two to three words; must fit a small button.",
+		"placeholders": {},
+		"note": "Opens the chief-of-staff conversation, which releases the held messages. A navigation action, not a confirmation; 'chief of staff' matches the notice beside it."
 	}
 }

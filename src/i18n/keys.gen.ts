@@ -1099,6 +1099,8 @@ export type MessageParams = {
 	"ui.agentMessages.settings.error.retry": undefined;
 	"ui.agentMessages.settings.error.title": undefined;
 	"ui.agentMessages.settings.error.unreadable": undefined;
+	"ui.agentMessages.settings.hold.chief_of_staff": { count: number };
+	"ui.agentMessages.settings.hold.open": undefined;
 	"ui.agentMessages.settings.local.label": undefined;
 	"ui.agentMessages.settings.local.stays_enrolled": undefined;
 	"ui.agentMessages.settings.off_by_default": undefined;

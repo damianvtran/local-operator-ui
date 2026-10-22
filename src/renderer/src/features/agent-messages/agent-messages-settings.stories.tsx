@@ -172,3 +172,47 @@ export const ReadFailed: Story = {
 		},
 	},
 };
+
+/*
+ * The chief-of-staff delivery hold (runtime #2777). The runtime holds incoming
+ * messages while the designated chief of staff has never been opened, and the
+ * status read reports how many; each story below is one count.
+ */
+const HOLD_SESSION = "aaaaaaaaaaaa";
+function holdStatus(count: number | null): AgentMessagesStatus {
+	return statusWith({
+		surface_state: "C",
+		local: { enabled: true, session: HOLD_SESSION },
+		delivery_hold:
+			count === null
+				? null
+				: { code: "open_chief_of_staff", count, session: HOLD_SESSION },
+	});
+}
+
+/** One message held: singular copy, with the button that opens the session. */
+export const HoldOneMessage: Story = {
+	args: { status: holdStatus(1), onOpenSession: () => {} },
+};
+
+/** Several messages held: plural copy. */
+export const HoldSeveralMessages: Story = {
+	args: { status: holdStatus(7), onOpenSession: () => {} },
+};
+
+/** Nothing held (the runtime sends `null`; an older one omits the key): no notice. */
+export const HoldNone: Story = {
+	args: { status: holdStatus(null), onOpenSession: () => {} },
+};
+
+/** The hold renders while the settings read is still loading. */
+export const HoldWhileLoading: Story = {
+	args: {
+		status: holdStatus(3),
+		onOpenSession: () => {},
+		api: {
+			...fakeApi(activeSettings),
+			settings: () => new Promise(() => {}),
+		},
+	},
+};
