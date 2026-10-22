@@ -5186,9 +5186,11 @@ export type MessageParams = {
 	"ui.teamBridge.schedule.confirm_action": undefined;
 	"ui.teamBridge.schedule.create_retry": undefined;
 	"ui.teamBridge.schedule.create_uncertain": undefined;
+	"ui.teamBridge.schedule.discard_attempt": undefined;
 	"ui.teamBridge.schedule.edit_body": undefined;
 	"ui.teamBridge.schedule.empty": undefined;
 	"ui.teamBridge.schedule.failed": undefined;
+	"ui.teamBridge.schedule.held": undefined;
 	"ui.teamBridge.schedule.invalid": undefined;
 	"ui.teamBridge.schedule.list": undefined;
 	"ui.teamBridge.schedule.load_failed": undefined;

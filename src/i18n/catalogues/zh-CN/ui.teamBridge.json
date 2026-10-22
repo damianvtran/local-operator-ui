@@ -165,5 +165,7 @@
 	"ui.teamBridge.attachments.unavailable": "图片不可用",
 	"ui.teamBridge.attachments.retry_load": "重试",
 	"ui.teamBridge.attachments.send_blocked": "发送前，请移除或重试标记为出错的图片。",
-	"ui.teamBridge.attachments.remove_all": "移除图片"
+	"ui.teamBridge.attachments.remove_all": "移除图片",
+	"ui.teamBridge.schedule.held": "上次的定时发送可能仍然存在。放弃本次尝试前，请先查看“定时消息”，必要时将其取消。草稿已保留。",
+	"ui.teamBridge.schedule.discard_attempt": "我已查看“定时消息”，放弃本次尝试"
 }

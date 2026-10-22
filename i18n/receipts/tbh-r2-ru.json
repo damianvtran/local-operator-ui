@@ -1,0 +1,58 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "tbh-r2-ru",
+ "session": "a36573e13fe0",
+ "date": "2026-10-21",
+ "locale": "ru",
+ "translator": "translator",
+ "translator_session": "485b723247d7",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 1,
+ "scope": "Round-2 remediation delta: 1 changed key (ui.teamBridge.schedule.discard_attempt) versus the round-1 audited snapshot; schedule.held and the 136 other values verified byte-identical to round-1 bytes (138/138 keys, same order as en); inherits the round-1 2-key held-schedule audit (tbh-r1-ru) and the 136-key tbs-r2-ru chain; catalogue audit only, not rendered-fit/activation/release.",
+ "sha256": {
+  "en": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+  "ru": "69aea2ec18b548942bb3e2b30c5c7747861b5ddf27aa4eb341bee7b92d126887",
+  "context": "02e7be8fe466cd83941fcead89f234a705d0aa40765d274b9d92390333e4337c"
+ },
+ "findings": [],
+ "previous_round": {
+  "path": "i18n/receipts/tbh-r1-ru.json",
+  "sha256": "8fa0a10211691b227bac05a3862df41ffabe9afe9ea2a25b10bce7a97885aa13",
+  "target_sha256": "2d57f6a72d84728bdce29911b08d15e83f671228aa2aeba8dd7b0635b79d37c0"
+ },
+ "remediation": [
+  {
+   "key": "ui.teamBridge.schedule.discard_attempt",
+   "r1_severity": "NIT",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "Раздел «Запланированные» проверен — сбросить попытку"
+  }
+ ],
+ "inherited_receipt": {
+  "base": "c06b457be9",
+  "path": "i18n/receipts/tbs-r2-ru.json",
+  "sha256": "0c951b061c26e0a174351b073eefead8ea5e9479e7caff4404cee677e4b60067",
+  "keys_inherited": 136,
+  "base_target_sha256": "b702e87e371d63bc481a0448cfdd619eb333f39f4430121316664be1cb233eb2",
+  "unchanged_values_verified": 136,
+  "previous_rounds": {
+   "path": "i18n/receipts/tbs-r1-ru.json",
+   "sha256": "9ff49d0dd09a5332e95ab37000b15f3f1d60a9f43c8fcae381ad89c2d5fa7b31"
+  }
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+ },
+ "validation": {
+  "independence": "Auditor session a36573e13fe0 is distinct from translator session 485b723247d7; round-1 receipt left untouched (sha256 re-verified 8fa0a102…aa13); no repo files edited, staged or committed.",
+  "semantics": "New value adopts the round-1 proposal verbatim: drops only 'эту'; keeps the explicit acknowledgement ('Раздел «Запланированные» проверен'), «Запланированные» = schedule.list, and the local verb 'сбросить' distinct from schedule.cancel's 'Отменить отправку'; the attempt stays unambiguous because the adjacent held paragraph names it ('эту попытку'). Pattern still mirrors create_retry. diff vs round-1 snapshot (sha256 2d57f6a7…d37c0) is that one line only; schedule.held and 136 other values byte-identical; key set/order equals r1 and en (138).",
+  "icu": "@formatjs/icu-messageformat-parser: ru value parses to a single literal node, as does en (no arguments, no plurals); intl-messageformat('ru').format() returns it unchanged.",
+  "typography": "NFC; no U+200E/F, U+202A–E, U+2066–9, U+061C; no Latin letters; «ёлочки» (U+00AB/U+00BB) and spaced em dash U+2014 retained; no double spaces; file LF, no BOM, trailing newline.",
+  "overflow": "52 characters vs en 42 (was 56, +24%) in a whitespace-nowrap ghost button — within the ru style guide's 20-30% expansion and below create_retry (55); residual fit still unverified without a rendered check.",
+  "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, visual-fit or rendered bidi claim. No catalogue/code edits. i18n/receipts/tbh-r1-ru.json is not yet tracked in the repo; previous_round.sha256 is the scratch round-1 receipt's bytes, to be copied unchanged."
+ }
+}

@@ -165,5 +165,7 @@
 	"ui.teamBridge.attachments.unavailable": "Không xem được hình ảnh",
 	"ui.teamBridge.attachments.retry_load": "Thử lại",
 	"ui.teamBridge.attachments.send_blocked": "Hãy xóa hoặc thử lại các hình ảnh bị đánh dấu lỗi trước khi gửi.",
-	"ui.teamBridge.attachments.remove_all": "Xóa hình ảnh"
+	"ui.teamBridge.attachments.remove_all": "Xóa hình ảnh",
+	"ui.teamBridge.schedule.held": "Lịch gửi trước đó có thể vẫn còn. Hãy kiểm tra mục “Đã lên lịch” và hủy lịch đó nếu cần trước khi bỏ lần thử này. Bản nháp của bạn vẫn được giữ.",
+	"ui.teamBridge.schedule.discard_attempt": "Tôi đã kiểm tra mục “Đã lên lịch” — bỏ lần thử này"
 }

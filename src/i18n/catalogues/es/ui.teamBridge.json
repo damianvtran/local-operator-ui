@@ -165,5 +165,7 @@
 	"ui.teamBridge.attachments.unavailable": "Imagen no disponible",
 	"ui.teamBridge.attachments.retry_load": "Volver a intentar",
 	"ui.teamBridge.attachments.send_blocked": "Quita o vuelve a subir las imágenes marcadas con un error antes de enviar.",
-	"ui.teamBridge.attachments.remove_all": "Quitar imágenes"
+	"ui.teamBridge.attachments.remove_all": "Quitar imágenes",
+	"ui.teamBridge.schedule.held": "Es posible que aún exista una programación anterior. Revisa Programados y, si es necesario, cancela el envío antes de descartar este intento. Tu borrador se conserva.",
+	"ui.teamBridge.schedule.discard_attempt": "He revisado Programados — descartar este intento"
 }

@@ -165,5 +165,7 @@
 	"ui.teamBridge.attachments.unavailable": "Image unavailable",
 	"ui.teamBridge.attachments.retry_load": "Try again",
 	"ui.teamBridge.attachments.send_blocked": "Remove or retry the images marked with an error before sending.",
-	"ui.teamBridge.attachments.remove_all": "Remove images"
+	"ui.teamBridge.attachments.remove_all": "Remove images",
+	"ui.teamBridge.schedule.held": "A previous schedule may still exist. Check Scheduled and cancel it if needed before discarding this attempt. Your draft is kept.",
+	"ui.teamBridge.schedule.discard_attempt": "I checked Scheduled — discard this attempt"
 }
