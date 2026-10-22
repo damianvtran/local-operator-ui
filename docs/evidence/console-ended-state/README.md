@@ -9,9 +9,9 @@ is shown and no `screencapture` runs.
 
 ## Provenance, at this revision
 
-The **after** set was built and captured at the remediation head `ce79fc90e4`
-(the merge of `origin/main` `0f1e6dd538` into `fix/console-ended-live`; the code
-commit under it is `314c098c39`). The **before** set was built at `a08d47b032`,
+The **after** set was built and captured at the app head `8542856be9`
+(the fold of `origin/main` `0f1e6dd538` into `fix/console-ended-live`, plus the
+rail-label correction; the round-1 remediation commit under it is `314c098c39`). The **before** set was built at `a08d47b032`,
 the PR's original base. Both builds were made with
 `VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:47391 pnpm build`; the captures ran
 after the build.
@@ -24,7 +24,7 @@ PNGs as the pictures beside them.
 
 Q-4's provenance caveat from round 1 is closed: the after build (`out/`) was
 written after the final source edit and the frames were taken from that build.
-Timing: after run `2026-10-22T09:58:55.613Z`, before run
+Timing: after run `2026-10-22T10:07:24.221Z`, before run
 `2026-10-22T10:01:07.833Z`.
 
 ## The frames
