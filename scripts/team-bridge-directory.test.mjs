@@ -31,7 +31,8 @@ const ROOT = process.cwd();
 /** The model bundle: no JSX, no DOM — a data URL is enough. */
 const modelBundle = await build({
 	stdin: {
-		contents: `export * from "./src/renderer/src/features/team-bridge/team-bridge-model";`,
+		contents: `export * from "./src/renderer/src/features/team-bridge/team-bridge-model";
+			export { teamBridgeDirectorySchema } from "./src/shared/team-bridge-contract";`,
 		resolveDir: ROOT,
 	},
 	bundle: true,
@@ -52,6 +53,7 @@ const componentBundle = await build({
 	stdin: {
 		contents: `
 			export { TeamBridgePageView, TeamBridgeEligibilityPanel } from "./src/renderer/src/features/team-bridge/team-bridge-page";
+			export { setLocale } from "./src/i18n";
 		`,
 		resolveDir: ROOT,
 		sourcefile: "team-bridge-directory.mjs",
@@ -84,6 +86,15 @@ process.on("exit", () => {
 const { createElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");
 const ui = await import(modulePath.href);
+// Relative-time formatting follows the active locale. Pin it so the suite
+// asserts the English source under a non-English host locale too.
+ui.setLocale("en");
+
+const visible = (fragment) =>
+	fragment
+		.replace(/<[^>]+>/g, " ")
+		.replace(/\s+/g, " ")
+		.trim();
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -585,6 +596,200 @@ test("a directory failure is stated in the rail and does not blank the list", ()
 	// independent, which is the whole reason the directory has its own state.
 	assert.match(html, /data-conversation-id="bcv_dm_bea"/);
 	assert.match(html, /Bea/);
+});
+
+test("the directory schema accepts an empty or long label instead of failing the whole roster", () => {
+	// The hub keeps a membership row when its account was deleted between the
+	// membership and account reads, and the row's label is then empty; names and
+	// email fallbacks can also exceed the old 64-character cap. Either one used to
+	// throw in the array parse, which the page reports as "People could not be
+	// loaded" for every member.
+	const parsed = model.teamBridgeDirectorySchema.parse({
+		members: [
+			{
+				account_id: "acct_deleted",
+				display_label: "",
+				role: "member",
+				bridge_enabled: false,
+				bridge_state: "none",
+			},
+			{
+				account_id: "acct_long",
+				display_label: `${"A".repeat(120)} <long@example.com>`,
+				role: "member",
+				bridge_enabled: false,
+				bridge_state: "none",
+			},
+			{
+				// A future field value this client has not learned. The row is
+				// salvaged into the inert state rather than hidden.
+				account_id: "acct_unrecognized",
+				display_label: "Future",
+				role: "member",
+				bridge_enabled: false,
+				bridge_state: "unknown-state",
+			},
+			{
+				// No stable account id: genuinely unrenderable, and counted.
+				display_label: "No id",
+			},
+		],
+	});
+	assert.equal(parsed.members.length, 3);
+	assert.equal(parsed.unavailable_count, 1);
+	assert.equal(parsed.members[2].bridge_state, "none");
+	assert.equal(model.personDisplayLabel(parsed.members[0]), "acct_deleted");
+	assert.match(
+		model.personDisplayLabel(parsed.members[1]),
+		/long@example\.com/,
+	);
+});
+
+test("a payload whose every row is unrenderable says so, not 'nobody joined'", () => {
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				people: [],
+				peopleState: "ready",
+				peopleIncomplete: true,
+			}),
+		),
+	);
+	assert.match(html, /People could not be loaded/);
+	assert.doesNotMatch(html, /No one else has joined/);
+});
+
+test("the row time moves to the header and a relative+absolute tooltip", () => {
+	const channel = conversation({
+		id: "bcv_channel_long",
+		kind: "channel",
+		name: "a-very-long-channel-name-that-would-crowd-the-row-at-narrow-width",
+		last_message_at: new Date(Date.now() - 10 * 60 * 60_000).toISOString(),
+	});
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				conversations: [channel],
+				selected: channel,
+				messages: [],
+			}),
+		),
+	);
+	const row = html.match(
+		/<button[^>]*data-conversation-id="bcv_channel_long"[\s\S]*?<\/button>/,
+	)?.[0];
+	const header = html
+		.match(/<header[^>]*flex h-11[^>]*>[\s\S]*?<\/header>/g)
+		?.at(-1);
+	assert.ok(row, "row rendered");
+	assert.ok(header, "header rendered");
+	// The row still carries the name and its relative+absolute tooltip, but the
+	// visible row text has no timestamp to clip at the edge.
+	assert.match(visible(row), /a-very-long-channel-name/);
+	assert.doesNotMatch(visible(row), /10 hours ago/);
+	assert.match(row, /title="10 hours ago · [^"]+"/);
+	// The selected header carries the relative time for every surface, including
+	// touch where a hover tooltip does not exist.
+	assert.match(visible(header), /10 hours ago/);
+});
+
+test("the merged row also keeps its visible time out of the row", () => {
+	const channel = conversation({
+		id: "bcv_channel_merged",
+		kind: "channel",
+		name: "a-very-long-channel-name",
+		last_message_at: new Date(Date.now() - 10 * 60 * 60_000).toISOString(),
+	});
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				scope: "all",
+				totalUnread: 0,
+				organizations: [
+					{ tenantId: "tnt_1", name: "Minerva", role: "owner", unread: 0 },
+				],
+				conversations: [channel],
+				selected: channel,
+				messages: [],
+			}),
+		),
+	);
+	const row = html.match(
+		/<button[^>]*data-conversation-id="bcv_channel_merged"[\s\S]*?<\/button>/,
+	)?.[0];
+	const header = html
+		.match(/<header[^>]*flex h-11[^>]*>[\s\S]*?<\/header>/g)
+		?.at(-1);
+	assert.ok(row, "merged row rendered");
+	assert.ok(header, "merged header rendered");
+	assert.doesNotMatch(visible(row), /10 hours ago/);
+	assert.match(visible(header), /10 hours ago/);
+	assert.match(visible(row), /Minerva/);
+});
+
+test("a local 422 is named as a validation cause, not an outdated client", () => {
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				peopleState: "error",
+				peopleError: {
+					status: 422,
+					code: "invalid_request",
+					message: "tenant_id was not in a shape this client accepts",
+				},
+			}),
+		),
+	);
+	assert.match(html, /tenant_id was not in a shape this client accepts/);
+	assert.doesNotMatch(html, /needs a newer version of Radient/);
+	assert.doesNotMatch(html, /Try again/);
+});
+
+test("a signed-out directory failure names sign-in and offers no retry", () => {
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				peopleState: "error",
+				peopleError: { status: 401 },
+			}),
+		),
+	);
+	assert.match(html, /People could not be loaded/);
+	assert.match(html, /Sign in to use Team Bridge/);
+	assert.doesNotMatch(html, /Try again/);
+});
+
+test("a plan refusal names the plan instead of offering a retry", () => {
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				peopleState: "error",
+				peopleError: { status: 403, code: "bridge_not_available" },
+			}),
+		),
+	);
+	assert.match(html, /does not include Team Bridge/);
+	assert.doesNotMatch(html, /Try again/);
+});
+
+test("a transport failure keeps Try again and says the service is unavailable", () => {
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				peopleState: "error",
+				peopleError: { status: null },
+			}),
+		),
+	);
+	assert.match(html, /not available right now/);
+	assert.match(html, /Try again/);
 });
 
 test("people loading is announced without displacing the conversation list", () => {

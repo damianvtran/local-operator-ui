@@ -97,6 +97,29 @@ export default defineConfig({
 			 * for this document by a case in `scripts/console-host.test.mjs`.
 			 */
 			mini: resolve(__dirname, "src/renderer/mini.html"),
+			/*
+			 * S1's inert address-overlay document. Listed in BOTH halves for the
+			 * reason the mini and console-capture documents are: this list is what
+			 * the dev server serves, and `rollupOptions.input` is what the BUILD
+			 * emits. Declaring only one ships a 404 at the first probe show, which
+			 * is exactly the failure mode the other two documents recorded. No JS
+			 * entry on purpose — the document is static by contract.
+			 */
+			addressOverlay: resolve(
+				__dirname,
+				"src/renderer/browser-address-overlay.html",
+			),
+			/*
+			 * S2's scripted mirror document. Unlike S1's inert document it has a real
+			 * module entry, so it MUST be in both halves of the config for the same
+			 * measured reason as the documents above: the dev server serves this list
+			 * and the BUILD emits `rollupOptions.input`. Declaring only one ships a
+			 * document whose script 404s at the first projection.
+			 */
+			addressOverlayList: resolve(
+				__dirname,
+				"src/renderer/browser-address-overlay-list.html",
+			),
 		},
 		build: {
 			// electron-vite defaults the renderer to minify:false on the assumption
@@ -137,6 +160,24 @@ export default defineConfig({
 					 * serves it — both halves are load-bearing and a test pins them.
 					 */
 					mini: resolve(__dirname, "src/renderer/mini.html"),
+					/*
+					 * S1's address-overlay document: the BUILD half of the pair above.
+					 * A static HTML input with no module script still gets emitted, and
+					 * the probe asserts `out/renderer/browser-address-overlay.html`
+					 * exists before launching the built app.
+					 */
+					addressOverlay: resolve(
+						__dirname,
+						"src/renderer/browser-address-overlay.html",
+					),
+					/*
+					 * S2's mirror document: the BUILD half of the pair above, with its own
+					 * module script and stylesheet emitted as assets.
+					 */
+					addressOverlayList: resolve(
+						__dirname,
+						"src/renderer/browser-address-overlay-list.html",
+					),
 				},
 			},
 		},

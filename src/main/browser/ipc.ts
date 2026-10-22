@@ -1,11 +1,17 @@
 import { type BrowserWindow, type IpcMainInvokeEvent, ipcMain } from "electron";
 import { t } from "../../i18n";
 import {
-	ADDRESS_HISTORY_MAX_SESSION_ID_LENGTH,
+	ADDRESS_HISTORY_MAX_LIMIT,
+	ADDRESS_HISTORY_MAX_QUERY_LENGTH,
 	type AddressHistoryRequest,
 } from "../../shared/browser-address-history";
 import { trustedDesktopFrame } from "../desktop-transport";
+import {
+	DEV_DRIVER_ADDRESS_OVERLAY,
+	DEV_DRIVER_ADDRESS_OVERLAY_PROJECT,
+} from "../dev-driver";
 import type { WebauthnChooser } from "../webauthn";
+import type { AddressOverlayFacts } from "./address-overlay";
 import type { BrowserHost, CloseTabsIntent } from "./host";
 import { type BrowserAvailability, MAX_START_ATTEMPTS } from "./lifecycle";
 import type { ClearWhat } from "./profile";
@@ -71,6 +77,33 @@ export interface RegisterBrowserIpcOptions {
 	 * otherwise — so a failure is shown rather than thrown: a reveal that fails is a
 	 * Finder problem, not a fault in the agent's download. */
 	revealDownloads: () => Promise<string>;
+	/**
+	 * S1's probe-only overlay channel, present ONLY when the launch gate passed
+	 * (see `StartBrowserHostOptions.addressOverlay`). It is registered under a
+	 * dev-driver channel rather than a `browser-*` one on purpose: the browser
+	 * namespace is the agent/tool protocol and its trust boundary is unchanged,
+	 * while this experimental surface exists for the armed headless probe alone.
+	 *
+	 * The callback reads the host's CURRENT controller per call; a retry replaces
+	 * it, so no handler holds a stale attempt's controller.
+	 */
+	addressOverlayProbe?: (
+		action: "show" | "hide" | "facts" | "click" | "measure" | "key",
+		argument?: unknown,
+	) => Promise<AddressOverlayFacts>;
+	/**
+	 * S2's projection handler, same lifetime and sender rules as the probe above.
+	 * Its argument is revalidated in the controller (`sanitizeProjection`), so a
+	 * renderer cannot widen what reaches the child document; absent means the
+	 * channel is not registered at all and the renderer's port latches off.
+	 */
+	addressOverlayProject?: (payload: unknown) => Promise<unknown>;
+	/**
+	 * S4b's product projection handler. Registered whenever the launch built a
+	 * product controller, independently of the probe gate: the product has no
+	 * environment variable to turn it on, so this channel is the only door.
+	 */
+	addressOverlayProduct?: (payload: unknown) => Promise<unknown>;
 	/** Ask the host to start again for this window (design round 1, D1a). Injected
 	 * rather than imported so this module does not reach back into `index.ts`'s
 	 * lifecycle; `index.ts` supplies the same `startBrowserHost` the app already
@@ -88,6 +121,13 @@ export interface RegisterBrowserIpcOptions {
  * one, and allowing it would store an attribution no scope comparison can match. */
 const CONTROL_CHARS = /[\p{Cc}]/u;
 
+/**
+ * S4b's product event channel (main -> owner renderer): a validated row click or
+ * a main-decided dismissal. Distinct from the dev-driver's event so a product
+ * launch never depends on, or exposes, the probe bridge.
+ */
+export const PRODUCT_ADDRESS_OVERLAY_EVENT = "browser-address-overlay-event";
+
 /** The channels this namespace owns, in one place so a test can enumerate them. */
 export const BROWSER_IPC_CHANNELS = [
 	"browser-state",
@@ -102,6 +142,7 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-close-tabs",
 	"browser-activate-tab",
 	"browser-address-history",
+	"browser-address-overlay-project",
 	"browser-navigate",
 	"browser-home",
 	"browser-reload",
@@ -122,6 +163,14 @@ export const BROWSER_IPC_CHANNELS = [
 	/** The user's own recovery click on the `unavailable` state (round 1, D1a).
 	 * Named here so the namespace stays the one place that lists its channels. */
 	"browser-retry",
+	/**
+	 * S1's probe-only channel. Listed here for unregistration only: the handler
+	 * below is registered only when the launch gate passed, and this entry makes
+	 * `unregisterBrowserIpc` remove it on a stop/retry like every other channel
+	 * (removing an unregistered handler is a no-op).
+	 */
+	DEV_DRIVER_ADDRESS_OVERLAY,
+	DEV_DRIVER_ADDRESS_OVERLAY_PROJECT,
 ] as const;
 
 export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
@@ -336,13 +385,23 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		return host.setContentRect(contentRectOrNull(rect));
 	});
 
-	ipcMain.handle("browser-set-visible", (event, visible: unknown) => {
-		const host = authorize(event);
-		if (typeof visible !== "boolean") {
-			throw new Error("Visibility must be a boolean.");
-		}
-		return host.setViewVisible(visible);
-	});
+	ipcMain.handle(
+		"browser-set-visible",
+		(event, visible: unknown, ownPage: unknown) => {
+			const host = authorize(event);
+			if (typeof visible !== "boolean") {
+				throw new Error("Visibility must be a boolean.");
+			}
+			// The reason half of the report (S4a). Absent is "no reason given", which
+			// keeps every pre-S4a caller's meaning: a hide with no reason is an overlay
+			// hide and refuses shortcuts. A truthy non-boolean is refused rather than
+			// coerced: this fact decides whether the browser consumes the user's keys.
+			if (ownPage !== undefined && typeof ownPage !== "boolean") {
+				throw new Error("The view-hidden reason must be a boolean.");
+			}
+			return host.setViewVisible(visible, ownPage === true);
+		},
+	);
 
 	ipcMain.handle(
 		"browser-hand-over",
@@ -486,6 +545,83 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 		await options.retry();
 		return { retried: true };
 	});
+
+	/*
+	 * S1's probe. Registered NOTHING unless the launch gate resolved a probe
+	 * callback, so an off-gate invocation reaches Electron's own
+	 * "No handler registered for 'dev-driver-address-overlay'" — the same
+	 * fail-closed shape the dev driver's own channels use.
+	 *
+	 * The ONLY accepted input is one of three exact action words. There is no
+	 * URL, script, geometry, tab selection, commit, navigation, clipboard or file
+	 * argument, because this surface exists to operate the real host's child, not
+	 * to become a second browser API. Sender authorization is the existing owner
+	 * check: the owner window's own main frame at the trusted document URL. A
+	 * driven page, a popup, a foreign window or a subframe is refused before the
+	 * action is read.
+	 */
+	if (options.addressOverlayProbe) {
+		ipcMain.handle(
+			DEV_DRIVER_ADDRESS_OVERLAY,
+			(event, action: unknown, argument: unknown) => {
+				authorizeSender(event);
+				if (
+					action !== "show" &&
+					action !== "hide" &&
+					action !== "facts" &&
+					action !== "click" &&
+					action !== "measure" &&
+					action !== "key"
+				) {
+					throw new Error(
+						"address_overlay_invalid_action: expected 'show', 'hide', 'facts', 'click', 'measure' or 'key'.",
+					);
+				}
+				const probe = options.addressOverlayProbe;
+				if (!probe) {
+					throw new Error(
+						"address_overlay_unavailable: the overlay probe is not running.",
+					);
+				}
+				// Only the three probe-only actions read a second argument. A stray
+				// payload on show/hide/facts is DROPPED rather than carried, so the
+				// probe surface cannot grow a second meaning by accident.
+				const readsArgument =
+					action === "click" || action === "measure" || action === "key";
+				return probe(action, readsArgument ? argument : undefined);
+			},
+		);
+	}
+	if (options.addressOverlayProduct) {
+		ipcMain.handle(
+			"browser-address-overlay-project",
+			(event, payload: unknown) => {
+				authorizeSender(event);
+				const project = options.addressOverlayProduct;
+				if (!project) {
+					throw new Error(
+						"address_overlay_unavailable: the overlay projection is not running.",
+					);
+				}
+				return project(payload);
+			},
+		);
+	}
+	if (options.addressOverlayProject) {
+		ipcMain.handle(
+			DEV_DRIVER_ADDRESS_OVERLAY_PROJECT,
+			(event, payload: unknown) => {
+				authorizeSender(event);
+				const project = options.addressOverlayProject;
+				if (!project) {
+					throw new Error(
+						"address_overlay_unavailable: the overlay projection is not running.",
+					);
+				}
+				return project(payload);
+			},
+		);
+	}
 }
 
 /**
@@ -503,10 +639,12 @@ export function unregisterBrowserIpc(): void {
 /**
  * The address-history request, validated at the boundary.
  *
- * The scope is a DISPLAY filter over tabs the user can already see, so it grants
- * nothing: `all` is the route's lens and the conversation object is the pane's.
- * A session id is bounded here as well as in the shared type, because the shared
- * type is erased at runtime.
+ * The scope is gone: the list is one list for the field, and half of it (the
+ * persistent store) is session-agnostic, so a display scope would describe only
+ * the tab rows and mislead about the rest. The query and limit are bounded here
+ * as well as in the shared type, because the shared type is erased at runtime:
+ * a query is a prefix the user typed, never a pattern, and an unbounded limit
+ * is an unbounded IPC payload.
  */
 function addressHistoryRequestOrThrow(value: unknown): AddressHistoryRequest {
 	if (!value || typeof value !== "object") {
@@ -515,33 +653,30 @@ function addressHistoryRequestOrThrow(value: unknown): AddressHistoryRequest {
 	const request = value as {
 		requestId?: unknown;
 		expectedTabId?: unknown;
-		scope?: unknown;
+		query?: unknown;
+		limit?: unknown;
 	};
 	const requestId = numberOrThrow(request.requestId, "requestId");
 	const expectedTabId = tabIdOrThrow(request.expectedTabId, "expectedTabId");
-	let scope: AddressHistoryRequest["scope"];
-	if (request.scope === "all") {
-		scope = "all";
-	} else if (
-		request.scope &&
-		typeof request.scope === "object" &&
-		typeof (request.scope as { sessionId?: unknown }).sessionId === "string"
-	) {
-		const sessionId = (request.scope as { sessionId: string }).sessionId.trim();
-		if (
-			!sessionId ||
-			sessionId.length > ADDRESS_HISTORY_MAX_SESSION_ID_LENGTH ||
-			CONTROL_CHARS.test(sessionId)
-		) {
-			throw new Error(
-				"The address history scope needs a valid conversation id.",
-			);
-		}
-		scope = { sessionId };
-	} else {
-		throw new Error("The address history scope is invalid.");
+	if (typeof request.query !== "string") {
+		throw new Error("The address history query must be a string.");
 	}
-	return { requestId, expectedTabId, scope };
+	const query = request.query;
+	if (
+		query.length > ADDRESS_HISTORY_MAX_QUERY_LENGTH ||
+		CONTROL_CHARS.test(query)
+	) {
+		throw new Error("The address history query is invalid.");
+	}
+	if (
+		typeof request.limit !== "number" ||
+		!Number.isSafeInteger(request.limit) ||
+		request.limit < 1 ||
+		request.limit > ADDRESS_HISTORY_MAX_LIMIT
+	) {
+		throw new Error("The address history limit is invalid.");
+	}
+	return { requestId, expectedTabId, query, limit: request.limit };
 }
 
 /**

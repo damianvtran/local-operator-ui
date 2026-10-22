@@ -218,6 +218,15 @@ export type DesktopFeature =
 	 * Library with an empty grid.
 	 */
 	| "library"
+	/**
+	 * The sidebar customisation resource (`GET`/`PUT /v1/desktop/sidebar-layout`,
+	 * design contract § 4). Its own key because the column must render TODAY'S
+	 * fixed arrangement on a backend that predates the route: the drag handle and
+	 * the row menu are absent (fail-closed) rather than present over a route that
+	 * would answer 404 to every save. Absent therefore means "not customisable",
+	 * not "customisable with an empty layout".
+	 */
+	| "sidebar_layout"
 	/** Route presence only; dynamic organization eligibility is backend-owned. */
 	| "team_bridge"
 	| "team_bridge_conversations"

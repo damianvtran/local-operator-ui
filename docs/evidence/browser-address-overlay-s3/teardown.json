@@ -1,0 +1,69 @@
+{
+  "at": "2026-10-21T11:53:58.722Z",
+  "boots": [
+    {
+      "tag": "s3-visible-headless-refusal",
+      "pid": 30435,
+      "exitCode": 0,
+      "exitSignal": null,
+      "alive": false,
+      "leftovers": []
+    },
+    {
+      "tag": "s2-off",
+      "pid": 30450,
+      "exitCode": 0,
+      "exitSignal": null,
+      "alive": false,
+      "leftovers": []
+    },
+    {
+      "tag": "s2-alone",
+      "pid": 30515,
+      "exitCode": 0,
+      "exitSignal": null,
+      "alive": false,
+      "leftovers": []
+    },
+    {
+      "tag": "s2-no-driver",
+      "pid": 30539,
+      "exitCode": 0,
+      "exitSignal": null,
+      "alive": false,
+      "leftovers": []
+    },
+    {
+      "tag": "s2-bad-value",
+      "pid": 30560,
+      "exitCode": 0,
+      "exitSignal": null,
+      "alive": false,
+      "leftovers": []
+    },
+    {
+      "tag": "s2-real",
+      "pid": 30574,
+      "exitCode": 0,
+      "exitSignal": null,
+      "alive": false,
+      "leftovers": []
+    },
+    {
+      "tag": "s2-synthetic",
+      "pid": 30722,
+      "exitCode": 0,
+      "exitSignal": null,
+      "alive": false,
+      "leftovers": []
+    },
+    {
+      "tag": "s3-headless",
+      "pid": 30816,
+      "exitCode": 0,
+      "exitSignal": null,
+      "alive": false,
+      "leftovers": []
+    }
+  ]
+}

@@ -1902,6 +1902,60 @@ test("A25: the bytecode check follows the main bundle's inputs", () => {
 });
 
 // ---------------------------------------------------------------------------
+// A26 - the language-coverage gate cannot be skipped by the diff it gates
+// ---------------------------------------------------------------------------
+
+/*
+ * Defect: `i18n/languages.json` promises every shipped language carries every
+ * English key, but nothing ran `pnpm check-i18n` at merge time - the policy was
+ * a `package.json` script and a paragraph. Adding the job to `ci.yml` is only
+ * half the fix: the classifier must SELECT it for every input the gate reads.
+ * The allowance is the case that matters most, because a change to it is pure
+ * data and looks inert to every category-based rule.
+ *
+ * Mutation: drop `i18n/` from `I18N_PREFIXES`, so an allowance-only change
+ * stops running the gate; or gate the job on `lint` and let a later narrowing
+ * of that predicate take the coverage check with it.
+ */
+test("A26: the language-coverage gate is selected by every path it reads", () => {
+	for (const path of [
+		"src/i18n/catalogues/en/ui.demo.json",
+		"src/i18n/keys.gen.ts",
+		"i18n/languages.json",
+		// Pure data. This is the path that would otherwise be skipped as "no code
+		// changed" while being exactly the file the gate polices.
+		"i18n/coverage-allowance.json",
+		"scripts/i18n/check-coverage.mjs",
+	]) {
+		assert.equal(
+			classify([path]).i18n,
+			true,
+			`'${path}' is an input to the coverage gate, so its job must run`,
+		);
+	}
+	// Its own predicate, not a second name for "source changed": prose and the
+	// suites that read no catalogue must not pay for it.
+	for (const path of ["docs/i18n.md", "README.md", "src/main/app.ts"]) {
+		assert.equal(
+			classify([path]).i18n,
+			false,
+			`'${path}' is not an input to the coverage gate`,
+		);
+	}
+	// Fail open where the classifier itself cannot answer, like every other flag.
+	assert.equal(classify([".github/workflows/ci.yml"]).i18n, true);
+	// The install is an input: `pnpm check-i18n` runs the script definitions in
+	// `package.json` and its parser/compiler come from the lockfile.
+	assert.equal(classify(["package.json"]).i18n, true);
+	assert.equal(classify(["pnpm-lock.yaml"]).i18n, true);
+	// An UNRECOGNISED path does not select it, unlike the code-suite flags: the
+	// gate reads a closed, named set of trees, and a new input tree cannot appear
+	// without a change under `scripts/i18n/**` - which does select it.
+	assert.equal(classify(["newdir/x"]).i18n, false);
+	assert.equal(classify(["newdir/x"]).lint, true);
+});
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 

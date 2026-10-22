@@ -10306,6 +10306,17 @@
       "capturedAtHeadNote": "`08aaa178ffc6` changes tests and comments only (no renderer path), so every frame still matches the head. The closing, mid-turn-final and condensed after frames were captured at `ceed42e2985e` where the remediation changed no visual code."
     },
     {
+      "path": "transcript-action-bar-timestamps",
+      "frames": 28,
+      "surfaces": 14,
+      "themes": 2,
+      "source": "QA's real-app CDP rig driving the built desktop app headless against an isolated daemon (`http://127.0.0.1:18731`) and a scratch config, at 1380x900 and at the app's 800px minimum, DPR 2, both localOperator palettes. The 28 webp frames are rig output in the ignored `docs/evidence-frames/transcript-action-bar-timestamps/` tree and are also hosted on the `evidence/1285-action-bar-timestamps` branch under `docs/pr-evidence/1285-action-bar-timestamps/`; no frame is committed on the PR branch (the post-#1256 split).",
+      "why": "The operator's rule is a pixel claim a unit test cannot make: every user message and every final response carries an always-visible absolute time at the right of its action line, while only the action icons are hover-revealed and their width stays reserved. The rest/hover pairs prove the timestamp's pixel box is identical before and after the pointer arrives, on the user row, the mid-turn final response and the closing answer, in both palettes and at the app's 800px minimum. The set also records the closing answer at rest and the 800px fit (8px gap, no clipping or overlap).",
+      "capturedAt": "2026-10-21T03:00:00.000Z",
+      "capturedAtHead": "f542db56e0a3631839f6bdc55573587ad26d770f",
+      "capturedAtHeadNote": "The C3 remediation widens the mid-turn final row to a textless reply-only record behind a unit test; the captured surfaces are text-bearing and unchanged by that condition. The closing-answer arm is unchanged by this PR."
+    },
+    {
       "path": "team-bridge-shell",
       "frames": 0,
       "capturedAt": "2026-10-20T15:39:35.000Z",
@@ -10337,6 +10348,16 @@
         "These frames cannot come from the PR branch's sweep: the stories and tuples that render them exist only as uncommitted scratch on the base tree, in the two patches beside this set."
       ],
       "capturedAt": "2026-10-20"
+    },
+    {
+      "path": "console-ended-state",
+      "frames": 0,
+      "surfaces": 1,
+      "themes": 1,
+      "source": "`scripts/console-ended-proof.mjs --pair 47391 --out <dir>` (the rig is committed), run twice on TWO BUILT trees: the base commit `a08d47b032` and the app head `03b918de2f` (round-2 remediation; parent folds `origin/main` `ac80e7a679`). The app is the documented `headless` window mode on a scratch HOME/config/profile, paired with a REAL `lop serve` daemon the rig starts and owns (port 47391, its own config root, its own desktop token). The conversation is seeded through that daemon and the app's persisted session store; every state is read from the live DOM and the app's own console bridge, and the pixels are `Page.captureScreenshot`. The set is PNG-only, so its `frames` term is 0: the sweep's walk counts WebP files and these are not among them - the convention the PNG-only sets beside it (`console-surface-close`, `console-pane-fit`) follow. `readings.json` and `-readings.json` beside the frames are the two runs' own reports.",
+      "why": "THE OPERATOR'S REPORT (2026-10-21): an exited console still looked alive, and opening the console when nothing was live landed on dead history. The pairs show, on the same rig bytes: an ended surface's caret was painted in the accent and blinking with an editable textarea on the base, and is the ground with `disableStdin`/`readOnly` and a pane-owned, localized end-of-history marker on this branch; the rail item was `aria-pressed=true` at `0 live of 128 in the app` and is `false` now, with the unseen mark kept as a dot that clears when its surface is looked at; the user's open with nothing live created no surface on the base and creates one - selected, focused, caret live - here; one live plus one ended focuses the live surface without creating a third; a quit with a live surface persisted `exit_code: null` on the base and the observed code here; a SIGKILLed shell showed `exit code 0` / a bare tab `0` before and `killed by SIGKILL` / `SIGKILL` after; the focused history has a measured 2px `border-control` outline; the re-captured set adds the unread-dot frame and the glyph-under-cursor frame; and the round-2 set proves the focused history has no cursor cells (DECTCEM), a full-box focus ring, a marker band whose top does not move, and a hidden-completion mark that survives the open until its row is looked at. The before set is one base state for several frames (the dead caret, the lit rail, a key that changes nothing, a reopen that creates nothing); the README says so rather than claiming four independent steps. The `app_quit` fallback is covered by `scripts/console-host.test.mjs`, not by a frame, because this host's quit observed the exit inside its bound.",
+      "capturedAt": "2026-10-22T07:07:50-0400",
+      "capturedAtNote": "DERIVED FROM THE RUN'S OWN FILES: the after run's `readings.json` carries `when: 2026-10-22T11:07:31.985Z`; the before run's carries `2026-10-22T10:01:07.833Z`. Both sets were copied into this directory at `07:07:50 -0400` (`stat -f '%Sm %N' -t '%Y-%m-%dT%H:%M:%S%z' docs/evidence/console-ended-state/after-relaunch-restored.png`). The after build was written after the final source edit and the frames were taken from it; the app head is `03b918de2f`, the docs commit beside this entry carries the readings and the README. The PNGs are gitignored rig output, so this set's manifest `frames` term stays 0."
     }
   ],
   "remediationRecord": {

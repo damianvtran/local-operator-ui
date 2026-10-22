@@ -1685,11 +1685,30 @@ test("U1: the picker's running model is the value the strip paints, held or live
 	 * reading. That read is what keeps the receipt naming the session the way the
 	 * pane names it rather than falling back to the id on every live session, so it
 	 * belongs in this set rather than beside it.
+	 *
+	 * #1299 adds an EIGHTH read for the conversation's CHOSEN effort while a
+	 * fallback serves at another level (Max chosen, High in force). That read
+	 * must use the same held/live snapshot, but it does not choose the running
+	 * provider/model. Pin it separately: just raising the old count would hide
+	 * losing one of the seven model/title reads behind the new effort read.
 	 */
+	const runningReads = source.match(/runningFrontend\(canonical\)/g) ?? [];
+	const chosenEffortReads =
+		source.match(/effortChosenRung\(runningFrontend\(canonical\)\)/g) ?? [];
 	assert.equal(
-		(source.match(/runningFrontend\(canonical\)/g) ?? []).length,
+		chosenEffortReads.length,
+		1,
+		"the chosen effort reads the same held/live frame as the running model",
+	);
+	assert.equal(
+		runningReads.length - chosenEffortReads.length,
 		7,
-		"every read uses the helper, on both of the fields each one names, plus the receipt's title",
+		"the seven running-model/title reads are retained independently of the chosen effort",
+	);
+	assert.match(
+		source,
+		/effortChosenRung\(runningFrontend\(canonical\)\)\s*\?\?\s*liveRung\s*\?\?\s*entities\.data\?\.current/,
+		"chosen Max wins only for the effort selection; without it, use the live in-force rung then the entity read",
 	);
 	assert.doesNotMatch(
 		source,

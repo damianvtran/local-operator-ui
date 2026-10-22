@@ -326,14 +326,25 @@ const PROBE = `(() => {
 		const userRow = box(userActionsEl);
 		/*
 		 * THE BOX IS THE BUBBLE'S ROW, not the bubble node: the user action row
-		 * is a column child again (review round 1, B1), so its previous sibling is
-		 * the 'justify-end' flex row that holds the bubble. The row's right edge is
-		 * the bubble's own ('justify-end' pins the bubble to it), which is why the
-		 * committed numbers in this set are unchanged; the 'bubble' key below keeps
-		 * its name so a re-capture compares like with like.
+		 * still stacks under the bubble (review round 1, B1), one level deeper
+		 * since the stamp joined it on the same line (operator, 2026-10-20). The
+		 * line is the toolbar's parent; the bubble's 'justify-end' flex row is the
+		 * LINE's previous sibling. The row's right edge is the bubble's own.
+		 *
+		 * THE DELTA IS NOW THE STAMP'S, not the toolbar's: the operator's placement
+		 * is that the time sits "at the row's right edge", so the toolbar no longer
+		 * reaches it - the stamp does, and 'bubbleDelta' is bubble right minus stamp
+		 * right. A toolbar-only delta would report the stamp's width as drift.
 		 */
+		const userActionsLine = userActionsEl
+			? userActionsEl.parentElement
+			: null;
+		const userStampEl = userActionsLine
+			? userActionsLine.querySelector("time, [data-lo-turn-stamp]")
+			: null;
+		const userStamp = box(userStampEl ?? null);
 		const userBubbleRow = box(
-			userActionsEl ? userActionsEl.previousElementSibling : null,
+			userActionsLine ? userActionsLine.previousElementSibling : null,
 		);
 		const userActions =
 			userRow && userActionsEl
@@ -349,9 +360,11 @@ const PROBE = `(() => {
 							(b.getAttribute("aria-label") ?? b.textContent ?? "").trim(),
 						),
 						bubble: userBubbleRow,
-						bubbleDelta: userBubbleRow
-							? round(userBubbleRow.right - userRow.right)
-							: null,
+						stamp: userStamp,
+						bubbleDelta:
+							userBubbleRow && userStamp
+								? round(userBubbleRow.right - userStamp.right)
+								: null,
 					}
 				: null;
 

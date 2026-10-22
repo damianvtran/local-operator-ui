@@ -1246,7 +1246,8 @@ equally important**, and the interface must not present them as though they are.
   the turn; a parked turn is unsettled, so nothing condenses). A finished turn
   also carries one turn-foot line (`Worked for 1m 12s · 8 actions`) — EXCEPT a
   turn that has condensed to ONE summary bar: there the foot stands down and the
-  bar IS the line (its own stamp replaces the foot's, one stamp per turn).
+  bar IS the line (its own stamp replaces the foot's, so the answer keeps one
+  stamp for the turn).
   A turn's hidden rows condense as SEGMENTS: one bar per contiguous hidden span,
   in place, around the rows that stay on screen (a compaction, a stop or incident
   marker, the turn's answer). When a pinned row splits the work into several

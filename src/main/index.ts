@@ -73,6 +73,12 @@ import {
 	startBrowserHost,
 	stopBrowserHost,
 } from "./browser";
+import {
+	ADDRESS_OVERLAY_VISIBLE_MAX_MS,
+	addressListDocumentUrlFor,
+	addressOverlayDocumentUrlFor,
+	resolveAddressOverlayGate,
+} from "./browser/address-overlay";
 import { runBrowserMenuAction } from "./browser/browser-chord";
 import {
 	CONSENT_ATTENTION_CHANNEL,
@@ -1485,6 +1491,54 @@ const devDriverLine = describeDevDriverArming(devDriverArming);
 if (devDriverLine) console.log(devDriverLine);
 
 /*
+ * S1's address-overlay gate, resolved ONCE here for the same reason the window
+ * mode and the dev driver are: it is a fact about the LAUNCH, decided before a
+ * window or a host exists. It needs the exact opt-in AND the already-armed dev
+ * driver AND `headless`; anything else refuses with a printed reason. Pure in
+ * `browser/address-overlay.ts`, so its edges are asserted without an app.
+ *
+ * S3 adds one more opt-in (`…_VISIBLE=1`) on top of S1+S2: same pure function,
+ * `packaged: app.isPackaged` so an installed build can never arm it, and the only
+ * accepted mode becomes `inactive`. Nothing here re-derives those conditions; the
+ * `visible` field is read by the launcher watch, the lifetime cap and the host.
+ *
+ * Nothing here reaches the product: an ordinary launch has no opt-in, so the
+ * host receives no `addressOverlay` option, registers no probe channel and
+ * creates no native child. The in-flow address editor and its list are untouched.
+ */
+const addressOverlayGate = resolveAddressOverlayGate({
+	env: launchEnv,
+	devDriverArmed: devDriverArming.armed,
+	windowMode: windowLaunch.mode,
+	packaged: app.isPackaged,
+});
+/**
+ * S4b's product chrome, with no user-facing switch.
+ *
+ * DARWIN ONLY, and that is evidence rather than preference: every measured fact
+ * about the native child is macOS (S1–S3; the Windows/Linux rows are BLOCKED),
+ * so the other platforms keep the Tier 1 field-only popout. A probe launch wins:
+ * when `addressOverlayGate.enabled`, the probe's own channels and child are the
+ * ones wired, so an evidence run never shares a controller with the product.
+ */
+const addressOverlayProduct =
+	process.platform === "darwin" && !addressOverlayGate.enabled;
+if (addressOverlayProduct) {
+	console.log(
+		"[address-overlay] product chrome armed (darwin): popout field over the tab strip, native list child",
+	);
+}
+if (addressOverlayGate.asked) {
+	console.log(
+		addressOverlayGate.enabled
+			? addressOverlayGate.visible
+				? "[address-overlay] ARMED (S3 VISIBLE probe, inactive window, 120 s cap, no product path)"
+				: `[address-overlay] ARMED (S${addressOverlayGate.list ? "2 probe: mirror list" : "1 probe: native child"}, no product path)`
+			: `[address-overlay] not armed: ${addressOverlayGate.reason}`,
+	);
+}
+
+/*
  * The renderer's half of that decision, as `webPreferences` for whichever window
  * is created. Empty in an unarmed launch, so a normal run's window options are
  * the options they would have had: the preload reads this entry out of its own
@@ -2284,6 +2338,9 @@ app
 			mode: windowLaunch.mode,
 			launcherPid: process.ppid,
 			env: launchEnv,
+			// S3 only: the one visible run nobody is watching still must not
+			// outlive its launcher. False for every product launch.
+			boundedVisibleProbe: addressOverlayGate.visible,
 		});
 		logger.info(`[window-mode] ${launcher.reason}`, LogFileType.BACKEND);
 		if (windowLaunch.mode !== "normal") {
@@ -2299,7 +2356,27 @@ app
 					endHeadlessRun(message, detail),
 			});
 		}
-		if (windowLaunch.mode === "headless") {
+		/*
+		 * S3's hard cap. The launcher watch above covers the harness dying; this
+		 * covers the harness hanging, the operator walking away, and any path where
+		 * the visible probe's own reaping fails. It is deliberately the same
+		 * `endHeadlessRun` terminal every other non-product run takes — a bounded quit
+		 * with a deadline underneath it — rather than a bare `app.exit`, so the overlay
+		 * and the pages are disposed in their normal order first. `unref()`
+		 * because the cap must never be the reason a process is alive.
+		 */
+		if (addressOverlayGate.visible) {
+			const cap = setTimeout(() => {
+				endHeadlessRun(
+					`the visible address-overlay probe reached its ${ADDRESS_OVERLAY_VISIBLE_MAX_MS / 1000} s cap`,
+				);
+			}, ADDRESS_OVERLAY_VISIBLE_MAX_MS);
+			cap.unref();
+			console.log(
+				`[address-overlay] visible probe cap: ${ADDRESS_OVERLAY_VISIBLE_MAX_MS / 1000} s from launch`,
+			);
+		}
+		if (windowLaunch.mode === "headless" || addressOverlayGate.visible) {
 			/*
 			 * A signal is the case the graceful path does NOT reach on its own.
 			 * Chromium's SIGTERM shutdown closes the window and then leaves the
@@ -2314,7 +2391,7 @@ app
 				process.on(signal, () => endHeadlessRun(`received ${signal}`));
 			}
 		}
-		if (windowLaunch.mode !== "headless") {
+		if (windowLaunch.mode !== "headless" && !addressOverlayGate.visible) {
 			/*
 			 * SIGTERM DURING A QUIT IS A CONTRACT, NOT A SURPRISE (2026-10-11).
 			 *
@@ -2337,7 +2414,11 @@ app
 			 * default) - a person's `kill` keeps meaning exactly what it meant.
 			 * The headless modes keep the handlers above, which own SIGINT too;
 			 * this one is SIGTERM only because it is the escalator's signal.
-			 * `scripts/launcher-watch.test.mjs` pins the gate.
+			 * `scripts/launcher-watch.test.mjs` pins the gate. S3's visible probe is
+			 * excluded from this handler on purpose: it already registers the direct
+			 * handlers above (same lifetime contract as headless, plus its cap), and
+			 * registering both would let this one re-raise TERM into the handler that
+			 * just took it.
 			 */
 			const onSigtermDuringQuit = () => {
 				if (!quitState.isQuitting()) {
@@ -2519,6 +2600,16 @@ app
 		 * test, in `console/capture-url.ts`.
 		 */
 		const consoleCaptureUrl = consoleCaptureUrlFor(rendererUrl);
+		/*
+		 * S1's inert document, derived from the same trusted URL rather than spelled
+		 * a second time: a dev server on another port or a moved bundle cannot leave
+		 * the overlay pointing at a document that is not there. The host only receives
+		 * it when the gate passed; the URL itself is never renderer- or caller-supplied.
+		 */
+		const addressOverlayDocumentUrl =
+			addressOverlayGate.list || addressOverlayProduct
+				? addressListDocumentUrlFor(rendererUrl)
+				: addressOverlayDocumentUrlFor(rendererUrl);
 		/*
 		 * The machine-wide feed's two consumers, and the split between them is the
 		 * design: main takes the notifications (so a completion banners with no
@@ -4038,6 +4129,19 @@ app
 					// document, and the preload every renderer in this app gets, which is what
 					// lets main feed the reconstruction to it.
 					consoleCaptureUrl,
+					// S1: only a gated headless probe arm gets this option at all. The
+					// URL is this app's own packaged document, not a caller's string.
+					...(addressOverlayGate.enabled || addressOverlayProduct
+						? {
+								addressOverlay: {
+									enabled: true,
+									list: addressOverlayGate.list || addressOverlayProduct,
+									visible: addressOverlayGate.visible,
+									product: addressOverlayProduct,
+									documentUrl: addressOverlayDocumentUrl,
+								},
+							}
+						: {}),
 					preloadPath: join(__dirname, "../preload/index.js"),
 					/*
 					 * The console's surfaces are handed the user's own PATH, from the same

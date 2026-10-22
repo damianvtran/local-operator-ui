@@ -337,9 +337,7 @@ test("neither switch disturbs a grouping the reader chose", async () => {
 	 * (or on) preserves the saved mode, which is what keeps a reader's Agent and
 	 * team grouping from being rewritten by a switch about tags.
 	 */
-	await act(() =>
-		document.querySelector('[aria-label="Group chats by tag"]').click(),
-	);
+	await act(() => document.querySelector("#sidebar-tags-switch").click());
 	assert.equal(written.tagsEnabled, false);
 	assert.equal(written.groupBy, "agent", "the Tags switch leaves it alone too");
 });

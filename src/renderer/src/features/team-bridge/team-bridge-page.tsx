@@ -30,11 +30,13 @@ import {
 	conversationMemberCount,
 	conversationOrganizationName,
 	conversationTitle,
+	directoryFailureKind,
 	dmWithPerson,
 	isPreviewConversation,
 	notifyFailureIsVisible,
 	orderedMembers,
 	organizationOptions,
+	personDisplayLabel,
 	personInitial,
 	personRowState,
 	preferredScope,
@@ -139,7 +141,7 @@ const PersonRow: FC<{
 				state === "unavailable" ? "text-ink-disabled" : "text-ink-muted",
 			)}
 		>
-			{personInitial(member.display_label)}
+			{personInitial(personDisplayLabel(member))}
 		</span>
 	);
 	const role =
@@ -204,7 +206,7 @@ const PersonRow: FC<{
 				>
 					{avatar}
 					<span className="min-w-0 flex-1 truncate">
-						{member.display_label}
+						{personDisplayLabel(member)}
 					</span>
 					{role}
 					<span id={cueId} className="sr-only">
@@ -228,10 +230,10 @@ const PersonRow: FC<{
 				aria-label={
 					paused
 						? t("ui.teamBridge.people.message_paused", {
-								name: member.display_label,
+								name: personDisplayLabel(member),
 							})
 						: t("ui.teamBridge.people.message", {
-								name: member.display_label,
+								name: personDisplayLabel(member),
 							})
 				}
 				className={cn(
@@ -240,7 +242,9 @@ const PersonRow: FC<{
 				)}
 			>
 				{avatar}
-				<span className="min-w-0 flex-1 truncate">{member.display_label}</span>
+				<span className="min-w-0 flex-1 truncate">
+					{personDisplayLabel(member)}
+				</span>
 				{role}
 				{paused && (
 					<span className="shrink-0 text-meta-sm text-ink-dim">
@@ -252,10 +256,59 @@ const PersonRow: FC<{
 	);
 };
 
+/**
+ * A failed directory read, with the cause named.
+ *
+ * The People section is the one place a reader goes to find a colleague, so a
+ * generic "could not be loaded" is not actionable: a signed-out viewer must be
+ * told to sign in (and not offered a Try again that cannot work), an org whose
+ * plan does not include the bridge must say so, and only a transport/server
+ * failure earns a retry. The status/code classification lives in the model so
+ * the view does not parse errors.
+ */
+const PeopleFailure: FC<{
+	error?: unknown;
+	onRetry?: () => void;
+}> = ({ error, onRetry }) => {
+	useI18nLocale();
+	const kind = directoryFailureKind(error);
+	const rawMessage = (error as { message?: unknown } | null | undefined)
+		?.message;
+	const detail = typeof rawMessage === "string" ? rawMessage.trim() : "";
+	const reason =
+		kind === "sign_in"
+			? t("ui.teamBridge.plan.sign_in_reason")
+			: kind === "plan"
+				? t("ui.teamBridge.plan.reason")
+				: kind === "invalid"
+					? detail || t("ui.teamBridge.scope.error")
+					: kind === "outdated"
+						? t("ui.teamBridge.plan.update_reason")
+						: t("ui.teamBridge.plan.unavailable_reason");
+	const retryable = kind === "unreachable" || kind === "server";
+	return (
+		<div className="flex flex-col items-start gap-2 px-2 py-1">
+			<p className="text-[12px] leading-snug text-ink-muted">
+				{t("ui.teamBridge.people.error")}
+			</p>
+			<p className="text-[12px] leading-snug text-ink-dim">{reason}</p>
+			{retryable && onRetry && (
+				<Button type="button" size="sm" variant="outline" onClick={onRetry}>
+					{t("ui.teamBridge.list.retry")}
+				</Button>
+			)}
+		</div>
+	);
+};
+
 const PeopleSection: FC<{
 	scope: TeamBridgeScope;
 	people: readonly TeamBridgeDirectoryMember[];
 	peopleState: "loading" | "error" | "ready";
+	/** The failed directory read, when `peopleState` is "error". */
+	peopleError?: unknown;
+	/** True when the parse had to discard rows that had no stable account id. */
+	peopleIncomplete?: boolean;
 	selfAccountId?: string;
 	identityKnown: boolean;
 	listState: "loading" | "error" | "ready";
@@ -268,6 +321,8 @@ const PeopleSection: FC<{
 	scope,
 	people,
 	peopleState,
+	peopleError,
+	peopleIncomplete = false,
 	selfAccountId,
 	identityKnown,
 	listState,
@@ -301,16 +356,11 @@ const PeopleSection: FC<{
 					<Spinner size="sm" label={t("ui.teamBridge.people.loading")} />
 				</div>
 			) : peopleState === "error" ? (
-				<div className="flex flex-col items-start gap-2 px-2 py-1">
-					<p className="text-[12px] leading-snug text-ink-muted">
-						{t("ui.teamBridge.people.error")}
-					</p>
-					{onRetry && (
-						<Button type="button" size="sm" variant="outline" onClick={onRetry}>
-							{t("ui.teamBridge.list.retry")}
-						</Button>
-					)}
-				</div>
+				<PeopleFailure error={peopleError} onRetry={onRetry} />
+			) : people.length === 0 && peopleIncomplete ? (
+				<p className="px-2 py-1 text-[12px] leading-snug text-ink-muted">
+					{t("ui.teamBridge.people.error")}
+				</p>
 			) : people.length === 0 ? (
 				<p className="px-2 py-1 text-[12px] leading-snug text-ink-dim">
 					{t("ui.teamBridge.people.empty")}
@@ -450,15 +500,19 @@ const ConversationRow: FC<{
 	const unread = conversation.unread_count;
 	const preview = isPreviewConversation(conversation);
 	const muted = showsMutedGlyph(conversation);
-	const lastMessage = conversation.last_message_at
-		? relative(conversation.last_message_at, locale)
-		: "";
+	const lastMessageAt = conversation.last_message_at;
+	const lastMessage = lastMessageAt ? relative(lastMessageAt, locale) : "";
 
 	return (
 		<li>
 			<button
 				type="button"
 				onClick={onSelect}
+				title={
+					lastMessage
+						? `${lastMessage} · ${absolute(lastMessageAt, locale)}`
+						: undefined
+				}
 				aria-current={selected ? "page" : undefined}
 				data-conversation-id={conversation.id}
 				data-conversation-tenant={conversation.tenant_id}
@@ -497,20 +551,13 @@ const ConversationRow: FC<{
 								</span>
 							</span>
 						)}
-						{/* The merged view moves the timestamp to the chip line: the org
-						    name is the fact that distinguishes two same-named conversations,
-						    so it keeps the title line's room. */}
 						{/*
-						 * The timestamp is the FIRST row item to yield. It keeps its basis
-						 * (`shrink` 1, `min-w-0`) while the title is `flex-1` over a zero basis,
-						 * so an over-full row spends the timestamp's width before the title's:
-						 * the name is the identification task, and Preview/unread stay whole.
+						 * THE ROW CARRIES NAME, BADGE, MUTE AND UNREAD ONLY. The relative
+						 * time used to compete with the name here and clipped to "10 hours
+						 * a" at the panel edge. It now lives in the selected header (always
+						 * visible, including touch/mobile) and in the row tooltip with the
+						 * absolute value; the title is the only item allowed to ellipsise.
 						 */}
-						{lastMessage && !showOrganization && (
-							<span className="min-w-0 truncate text-meta-sm text-ink-dim">
-								{lastMessage}
-							</span>
-						)}
 						{unread > 0 && (
 							<span className="ml-1 inline-flex shrink-0">
 								<Badge
@@ -531,11 +578,6 @@ const ConversationRow: FC<{
 							<span className="truncate rounded-sm border border-control bg-elevated px-1 text-meta-sm text-ink-dim">
 								{organizationName ?? t("ui.teamBridge.scope.unknown")}
 							</span>
-							{lastMessage && (
-								<span className="shrink-0 text-meta-sm text-ink-dim">
-									{lastMessage}
-								</span>
-							)}
 						</span>
 					)}
 				</span>
@@ -543,6 +585,16 @@ const ConversationRow: FC<{
 		</li>
 	);
 };
+
+function absolute(iso: string | null | undefined, locale: string): string {
+	if (!iso) return "";
+	const then = Date.parse(iso);
+	if (Number.isNaN(then)) return "";
+	return new Intl.DateTimeFormat(locale, {
+		dateStyle: "medium",
+		timeStyle: "short",
+	}).format(new Date(then));
+}
 
 function relative(iso: string, locale: string): string {
 	const then = Date.parse(iso);
@@ -666,6 +718,10 @@ export type TeamBridgePageViewProps = {
 	 */
 	people?: readonly TeamBridgeDirectoryMember[];
 	peopleState?: "loading" | "error" | "ready";
+	/** The failed directory read, when `peopleState` is "error". */
+	peopleError?: unknown;
+	/** True when the parse had to discard rows that had no stable account id. */
+	peopleIncomplete?: boolean;
 	/** Retry the directory read behind the People section. */
 	onRetryPeople?: () => void;
 	/**
@@ -720,6 +776,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	initialDraft = "",
 	people = [],
 	peopleState = "ready",
+	peopleError,
+	peopleIncomplete = false,
 	onRetryPeople,
 	onComposeToPerson,
 	eligibility = null,
@@ -732,12 +790,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onScopeChange,
 	onRetryMemberships,
 }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const [draft, setDraft] = useState(initialDraft);
 	const threadEnd = useRef<HTMLDivElement>(null);
 	const ordered = useMemo(() => chronological(messages), [messages]);
 
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
+	const selectedLastMessage = selected?.last_message_at
+		? relative(selected.last_message_at, locale)
+		: "";
 	const previewSelected = selected !== null && isPreviewConversation(selected);
 	const listRows = useMemo(
 		() => visibleConversationRows(conversations, scope, organizations),
@@ -866,7 +927,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						{createHint}
 					</p>
 				)}
-				<ScrollArea className="min-h-0 flex-1">
+				{/*
+				 * Radix wraps children in a display:table cell that sizes to its
+				 * content. At a narrow rail that made every row ~575px wide inside a
+				 * 248px viewport, so the name ran past the edge and the badge was
+				 * unreachable. Force the wrapper to block, exactly as the thread pane
+				 * already does, so the row is width-constrained and the name ellipsises.
+				 */}
+				<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block!">
 					{listState === "loading" && (
 						<div className="flex items-center justify-center py-8">
 							<Spinner size="sm" label={t("ui.teamBridge.list.loading")} />
@@ -912,6 +980,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						scope={scope}
 						people={people}
 						peopleState={peopleState}
+						peopleError={peopleError}
+						peopleIncomplete={peopleIncomplete}
 						selfAccountId={selfAccountId}
 						identityKnown={selfAccountId !== undefined}
 						listState={listState}
@@ -990,6 +1060,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									count: conversationMemberCount(selected),
 								})}
 							</span>
+							{selectedLastMessage && (
+								<span
+									className="shrink-0 text-meta-sm text-ink-dim"
+									title={absolute(selected.last_message_at as string, locale)}
+								>
+									<span aria-hidden="true">·</span> {selectedLastMessage}
+								</span>
+							)}
 							<div className="ml-auto flex items-center gap-1">
 								{/*
 								 * The strip draws exactly what the count states: ACTIVE members. The
@@ -1008,12 +1086,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 													? "bg-accent-wash text-accent"
 													: "bg-sunken text-ink-muted",
 											)}
-											title={member.display_label}
+											title={personDisplayLabel(member)}
 										>
 											{member.kind === "agent" ? (
 												<Bot size={12} aria-hidden="true" />
 											) : (
-												(member.display_label[0] ?? "?")
+												(personDisplayLabel(member)[0] ?? "?")
 											)}
 										</span>
 									))}
@@ -1036,7 +1114,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						    arbitrary variants make that wrapper fill the viewport so the
 						    list can justify-end (Slack anchors a short history at the
 						    bottom, next to the composer). */}
-						<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block [&_[data-radix-scroll-area-viewport]>div]:h-full">
+						<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block! [&_[data-radix-scroll-area-viewport]>div]:h-full">
 							<div className="flex h-full flex-col">
 								{previewSelected ? (
 									<TeamBridgePreviewBanner
@@ -1499,13 +1577,15 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 							? "error"
 							: "ready"
 				}
+				peopleError={directory.error}
+				peopleIncomplete={(directory.data?.unavailable_count ?? 0) > 0}
 				onRetryPeople={() => {
 					void directory.refetch();
 				}}
 				onComposeToPerson={(member) => {
 					setComposeTo({
 						accountId: member.account_id,
-						displayLabel: member.display_label,
+						displayLabel: personDisplayLabel(member),
 					});
 					setCreateOpen(true);
 				}}

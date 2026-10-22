@@ -175,6 +175,9 @@ export interface NavigationHistoryLike {
 	/** Optional so a fake view in a test need not model geometry. The driver reads
 	 * it to explain a capture that cannot happen (see `screenshot`). */
 	getBounds?(): { x: number; y: number; width: number; height: number };
+	/** Optional for the same reason as `getBounds`. Production is a
+	 * `WebContentsView`, whose native visibility is what the S1 probe reports. */
+	getVisible?(): boolean;
 	readonly webContents: DriveableWebContents;
 }
 

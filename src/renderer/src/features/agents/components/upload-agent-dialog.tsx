@@ -554,7 +554,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	 * describes what happened: a receipt is not a question about updating. WHY it is
 	 * not derived from `listing` alone: an accepted publication writes
 	 * `published-listings-store` while this dialog is still open, so a first publish
-	 * flipped its own headline to "Update the Agent hub listing …" above a panel
+	 * flipped its own headline to "Update the Agent Hub listing …" above a panel
 	 * saying the listing was CREATED — and the two states became impossible to tell
 	 * apart from their own frames.
 	 */
@@ -562,13 +562,13 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 		? published.orgName
 			? `Published "${agentName}" to ${published.orgName}`
 			: published.republished
-				? `Updated the Agent hub listing for "${agentName}"`
-				: `Published "${agentName}" to the Agent hub`
+				? `Updated the Agent Hub listing for "${agentName}"`
+				: `Published "${agentName}" to the Agent Hub`
 		: targetIsOrg
 			? `Publish "${agentName}" to ${targetDisplayName}?`
 			: listing
-				? `Update the Agent hub listing for "${agentName}"?`
-				: `Publish "${agentName}" to the Agent hub?`;
+				? `Update the Agent Hub listing for "${agentName}"?`
+				: `Publish "${agentName}" to the Agent Hub?`;
 
 	/*
 	 * Where focus goes when a RESULT renders, and why it goes to a SINK.
@@ -897,7 +897,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 						<p className="text-body text-ink">
 							{targetIsOrg
 								? `You are about to publish this agent's instruction set into ${targetDisplayName}, where only its members can read and install it. What is published is what describes the agent:`
-								: "You are about to publish this agent's instruction set to the public Agent hub. What is published is what describes the agent:"}
+								: "You are about to publish this agent's instruction set to the public Agent Hub. What is published is what describes the agent:"}
 						</p>
 						<ul className="list-disc space-y-1 pl-5 text-body text-ink-muted">
 							<li>Its name and description</li>

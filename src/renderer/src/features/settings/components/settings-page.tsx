@@ -1,3 +1,4 @@
+import { openConversation } from "@features/chat/open-conversation";
 import { formatDayBucket } from "@features/chat/pickers/panels/formatters";
 import { parseTranscriptDisplayMode } from "@features/chat/transcript-display-mode";
 import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
@@ -59,7 +60,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { WindowGlassSetting } from "./window-glass-setting";
 
 import {
@@ -490,6 +491,7 @@ export const SettingsPage: FC = () => {
 	const contentContainerRef = useRef<HTMLDivElement>(null);
 	const { startTour: startOnboardingTour } = useOnboardingTour();
 	const location = useLocation();
+	const navigate = useNavigate();
 
 	const { data: credentialsData, refetch: refetchCredentials } =
 		useCredentials();
@@ -1652,6 +1654,18 @@ export const SettingsPage: FC = () => {
 										refusal={agentMessagesSnapshot.refusal}
 										onRefreshStatus={refreshAgentMessages}
 										sessions={canonicalSessions}
+										/* The chief-of-staff hold's button goes through the
+										   one shared switch rule, so the URL moves with the
+										   store commit like every other entrance; the chat
+										   pane's composer takes focus on mount by itself.
+										   The status cache is dropped first so Settings'
+										   mount boundary on the way back reads the hold
+										   fresh and the notice clears once the owner has
+										   sent that message. */
+										onOpenSession={(sessionId) => {
+											agentMessagesModel.invalidateStatus();
+											void openConversation(navigate, sessionId);
+										}}
 									/>
 								) : agentMessagesSnapshot.refusal ? (
 									/*

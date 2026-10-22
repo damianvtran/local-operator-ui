@@ -2681,3 +2681,28 @@ html[data-glass~="canvas"] [data-glass-lane] {
 		transparent
 	);
 }
+
+/*
+ * ENDED CONSOLE HISTORY: NO CARET, BUT A FOCUS RING (D1, D2).
+ *
+ * The cursor cell is made transparent and its ink inherited from the row, so the
+ * glyph under it stays legible (painting the cell in the ground colour could blank
+ * a character — the reason this is CSS rather than a theme trick). The ring is a
+ * real outline on the mirror's own box, in the structural role the app uses for
+ * focus edges, and it appears only for keyboard focus: `focus()` from the pane's
+ * caret request is not a focus-visible state.
+ */
+/*
+ * THE RING IS ON THE PANE'S BOX, NOT THE MIRROR (D2, round 2). On the mirror the
+ * outline was clipped by the host's own `overflow-hidden` and by xterm's viewport:
+ * measured as a 16 px L with no top edge. This box is the visible history surface,
+ * owns the gutter and the marker, and does not clip its own outline. `:has` keeps
+ * it tied to the keyboard-focused textarea, so a programmatic caret focus does not
+ * paint it.
+ */
+[data-console-box]:has(
+		[data-console-history] .xterm-helper-textarea:focus-visible
+	) {
+	outline: 2px solid var(--lo-border-control);
+	outline-offset: -2px;
+}

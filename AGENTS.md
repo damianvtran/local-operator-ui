@@ -109,9 +109,33 @@ role in the same call collide and one is dropped **silently** — the component
 still looks right because colour inherits from `body`, until it renders on a
 ground where it does not.
 
-## Internationalization: maintainer pointer
+## Internationalization: mandatory policy
+
+**No new user-facing copy ships unkeyed, and no new feature ships in English
+only.** These rules are gates, not aspirations.
+
+- **All user-facing copy goes through `t()`.** No hardcoded strings in JSX text,
+  props, `aria-label`, `placeholder`, `title`, `alt`, toasts, dialogs, menus or
+  window copy. English is just another catalogue; there is no direct-string path.
+- **Every key, every language.** `i18n/languages.json` is the machine-readable
+  manifest of supported languages, shared byte-for-byte with the core repo;
+  read it, do not infer the set from locale directories. Every new or changed
+  key must exist in every language whose status is `supported` - including
+  languages added later. A feature is not done until it is localized in all of
+  them; English-only is a missing feature, not a follow-up.
+- **Idiomatic, never literal.** Translations are produced by an LLM translator
+  and reviewed by a different, independent auditor agent - never the same agent.
+  Follow the core glossary and each locale's style guide; preserve placeholders,
+  ICU syntax, plural/select arms and `<Trans>` tags exactly. RTL locales follow
+  the direction rules and must never contain manual bidi control characters.
+- **Adding a language** means a manifest row, a style guide and audited ledger
+  rows for every namespace. **Removing one** is a product decision, never a
+  cleanup an agent makes on its own.
+- **Generated files are hands-off.** `src/i18n/keys.gen.ts` and any shipped-locale
+  data are generated; never hand-edit them. Regenerate instead.
 
 Read `docs/I18N.md` for the contributor HOWTO and audit-evidence contract.
+The mechanics:
 
 - **Core:** `src/i18n/` owns the typed catalogue, ICU-message `t()` and locale-aware
   formatters; React bindings live in `src/renderer/src/shared/i18n/`. Use `t()` for
@@ -127,22 +151,36 @@ Read `docs/I18N.md` for the contributor HOWTO and audit-evidence contract.
   use `setLocale()` as a production override; backend choices own availability.
 - **Add a string:** put a stable semantic `ui.<area>.<name>` key in
   `src/i18n/catalogues/en/ui.<area>.json` (for example
-  `ui.settings.language.external_notice` in `ui.settings.json`). Use ICU
-  placeholders for values/plurals rather than concatenated sentences; optional
-  sibling `ui.<area>.context.json` files describe translator context, not keys.
-  Run `node scripts/i18n/generate.mjs` and commit `src/i18n/keys.gen.ts` with the
+  `ui.settings.language.external_notice` in `ui.settings.json`), and translate it
+  into every language whose status is `supported` in `i18n/languages.json`,
+  following the locale's style guide. Use ICU placeholders for values/plurals
+  rather than concatenated sentences; optional sibling
+  `ui.<area>.context.json` files describe translator context, not keys. Run
+  `node scripts/i18n/generate.mjs` and commit `src/i18n/keys.gen.ts` with the
   catalogue change. `t()`'s generated types reject unknown keys and missing,
   extra-on-bare-key or wrongly typed parameters at compile time.
-- **Add a locale:** mirror the namespace files under
-  `src/i18n/catalogues/<locale>/`, preserving English keys and ICU arguments.
-  The generator discovers every present locale directory and emits
-  `bundledCatalogues` (`en` aliases `bundledEnglish`). Regenerate before the
-  backend can select the tag and coordinate backend eligibility/rollout: a
+- **Add a locale:** add its row to `i18n/languages.json` and mirror the
+  namespace files under `src/i18n/catalogues/<locale>/`, preserving English keys
+  and ICU arguments. The generator discovers every present locale directory and
+  emits `bundledCatalogues` (`en` aliases `bundledEnglish`). Regenerate before
+  the backend can select the tag and coordinate backend eligibility/rollout: a
   directory alone is not audited activation. Do not hand-edit generated types
   for translations.
-- **Commands/gate:** `pnpm check-i18n` runs generator freshness (`--check`) plus
-  `scripts/i18n/check-strings.mjs`; `pnpm check-types` checks typed call sites.
-  The scanner ratchets literal JSX text and copy attributes against
+- **Commands/gate:** `pnpm check-i18n` runs generator freshness (`--check`),
+  `scripts/i18n/check-strings.mjs`, the ledger and context gates, and
+  `scripts/i18n/check-coverage.mjs`, which fails when a `supported` manifest
+  language is missing an English key — key by key, so a new key added inside
+  an already-incomplete namespace cannot slip through. Known gaps live in
+  `i18n/coverage-allowance.json`, one `(locale, namespace)` entry per reason
+  with the exact sorted missing key IDs, an owner and a payoff (ticket or ISO
+  date). That list is shrink-only: a listed key that is no longer missing fails
+  until `--update` drops it, and the check fails when the allowance grows
+  relative to the base branch. CI runs this gate in the `Language Coverage` job
+  for any change under `src/i18n/**`, `i18n/**` or `scripts/i18n/**` — including
+  an allowance-only edit — with the comparison base taken from the pull
+  request, so the policy is enforced at merge rather than by convention.
+  `pnpm check-types` checks typed call sites. The
+  scanner ratchets literal JSX text and copy attributes against
   `i18n/baseline.json`, and every finding blocks: there is no advisory scope.
   A file with counted literals and no recorded entry fails rather than starting
   at zero, so a new file is covered from its first commit — capture it with a

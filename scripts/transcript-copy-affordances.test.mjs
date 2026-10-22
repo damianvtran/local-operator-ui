@@ -887,6 +887,66 @@ test("a non-closing FINAL response reserves an in-flow row with the full answer 
 	await rig.unmount();
 });
 
+test("a non-closing FINAL response states its own time on its meta row", async () => {
+	/*
+	 * THE OPERATOR'S "FINAL RESPONSES EVEN IN BETWEEN" (2026-10-20): "The timestamp
+	 * must appear on ALL final responses and on user messages - not only the very
+	 * last agent response. Final responses get the time, including in-between
+	 * ones."
+	 *
+	 * The stamp rides the meta row this response already reserves - AFTER the
+	 * action row, inside the same `ml-auto` span - so the arrival of the pointer
+	 * fades the icons in beside a stamp that was already painted, and the icons
+	 * never move it. No `Worked for` caption and no bar: those are facts about a
+	 * TURN that finished, and this row is a mid-turn handover.
+	 */
+	const rig = await mountTranscript(FINAL_MIDTURN);
+	const dom = rig.dom;
+	const row = rowOf(dom, "f1");
+	const control = row.querySelector("[data-lo-response-actions]");
+	assert.ok(control, "the response row is on screen");
+	const stamp = row.querySelector('time[data-stamp="answer"]');
+	assert.ok(stamp, "the mid-turn final response states its own time");
+	assert.equal(
+		stamp.parentElement,
+		control.parentElement,
+		"it rides the meta row, in the same span as the icons",
+	);
+	assert.equal(
+		control.parentElement.className.includes("ml-auto"),
+		true,
+		"right-aligned with them, at the row's trailing edge",
+	);
+	assert.equal(
+		stamp.closest(".opacity-0") ?? null,
+		null,
+		"and is outside the opacity-only reveal, so it is painted at rest",
+	);
+	assert.ok(
+		(control.compareDocumentPosition(stamp) &
+			dom.window.Node.DOCUMENT_POSITION_FOLLOWING) !==
+			0,
+		"the stamp follows the action row in document order",
+	);
+	assert.equal(
+		stamp.closest("[data-lo-response-actions]"),
+		null,
+		"it is a sibling of the toolbar, not one of its controls",
+	);
+	assert.match(stamp.getAttribute("aria-label"), /^Answered /);
+	assert.equal(
+		stamp.closest("[data-turn-summary]"),
+		null,
+		"no collapsed bar covers this row",
+	);
+	assert.equal(
+		dom.window.document.body.textContent.includes("Worked"),
+		false,
+		"and no `Worked for` caption is painted on it",
+	);
+	await rig.unmount();
+});
+
 test("the user row's control is a reserved flow row under the bubble, revealed by focus", async () => {
 	const rig = await mountTranscript(MULTI_TURN);
 	const dom = rig.dom;
@@ -918,20 +978,27 @@ test("the user row's control is a reserved flow row under the bubble, revealed b
 		"IN THE FLOW: the operator asked for a row under the message that takes up space",
 	);
 	/*
-	 * Its seat: a child of the turn's own flex COLUMN, and the control's previous
-	 * sibling is the horizontal ROW that holds the bubble. Review round 1's B1
-	 * passed the old assertion (`control.parentElement ===
-	 * bubble.parentElement?.parentElement`) while the control was mounted INSIDE
-	 * that row, because the bubble's own wrapper nesting made both sides resolve
-	 * to the row. The assertions below cannot pass in that shape: the parent must
-	 * be the COLUMN (`flex-col`, not `justify-end`), the previous sibling must be
-	 * the bubble's row, and the control must follow the bubble in document order.
+	 * Its seat: the LINE the operator asked for (2026-10-20: "at the right of the
+	 * action line, below the message"), which is itself a child of the turn's own
+	 * flex COLUMN. Review round 1's B1 passed the old assertion
+	 * (`control.parentElement === bubble.parentElement?.parentElement`) while the
+	 * control was mounted INSIDE the bubble's row, because the bubble's own
+	 * wrapper nesting made both sides resolve to the row. The assertions below
+	 * cannot pass in that shape: the line must be the COLUMN's child (`flex-col`,
+	 * not `justify-end`), the line's previous sibling must be the bubble's row,
+	 * and the control must follow the bubble in document order.
 	 */
-	const seat = control.parentElement;
-	assert.ok(seat, "the control has a parent");
+	const line = control.parentElement;
+	assert.ok(line, "the control has a parent line");
+	assert.ok(
+		line.className.includes("items-center") && line.className.includes("gap-2"),
+		"the line lays the icons and the stamp out on one row with a static gap",
+	);
+	const seat = line.parentElement;
+	assert.ok(seat, "the line has a parent");
 	assert.ok(
 		seat.className.includes("flex-col"),
-		"it is a child of the turn's flex COLUMN, so it stacks under the bubble",
+		"the line is a child of the turn's flex COLUMN, so it stacks under the bubble",
 	);
 	assert.equal(
 		seat.className.includes("justify-end") ||
@@ -939,7 +1006,7 @@ test("the user row's control is a reserved flow row under the bubble, revealed b
 		false,
 		"it is NOT inside the horizontal bubble row",
 	);
-	const bubbleRow = control.previousElementSibling;
+	const bubbleRow = line.previousElementSibling;
 	assert.ok(
 		bubbleRow?.contains(bubble),
 		"the bubble's own row is its previous sibling - directly under the message",
@@ -950,6 +1017,31 @@ test("the user row's control is a reserved flow row under the bubble, revealed b
 			0,
 		"and the control follows the bubble in document order",
 	);
+	/*
+	 * THE STAMP ON THE SAME LINE (operator, 2026-10-20): "User messages get the
+	 * time too - on their row beneath the message, same position, right-aligned",
+	 * and "the time must not move the icons, and the icons must not move the time".
+	 * So it is a SIBLING of the toolbar inside this line - never one of its
+	 * controls, never inside the reveal - and it follows the icons, which are the
+	 * only element between it and the row's right edge.
+	 */
+	const stamp = line.querySelector('time[data-stamp="turn"]');
+	assert.ok(stamp, "the user message states its own time on the action line");
+	assert.equal(stamp.parentElement, line, "sits on the same line as the icons");
+	assert.equal(
+		stamp.closest("[data-lo-user-actions]"),
+		null,
+		"and is not inside the toolbar",
+	);
+	assert.equal(stamp.closest(".opacity-0"), null, "nor under the hover reveal");
+	assert.equal(
+		(control.compareDocumentPosition(stamp) &
+			dom.window.Node.DOCUMENT_POSITION_FOLLOWING) !==
+			0,
+		true,
+		"the stamp follows the icons in document order",
+	);
+	assert.match(stamp.getAttribute("aria-label"), /^Sent /);
 	assert.ok(
 		control.className.includes("group-focus-within:opacity-100"),
 		"revealed when the turn holds focus",
