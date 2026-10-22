@@ -471,6 +471,25 @@ const degradedFrame = (seq, ownerSequence) => ({
 	},
 });
 
+/**
+ * `replace_and_notify`'s shape: a complete same-epoch republish. It is the
+ * backend's own recovery from a shed delta, so it must clear an update-origin
+ * notice even though the epoch did not change.
+ */
+const fullStateFrame = (seq, ownerSequence) => ({
+	session_id: SESSION,
+	epoch: BRIDGE_EPOCH,
+	seq,
+	type: "frontend.update",
+	payload: {
+		epoch: OWNER_EPOCH,
+		sequence: ownerSequence,
+		changes: { epoch: OWNER_EPOCH, cwd: "/repo" },
+		job_trajectory_appends: {},
+		job_trajectory_replacements: [],
+	},
+});
+
 /** A full-state rollover: a new owner epoch, which is the one update that proves current. */
 const rolloverFrame = (seq, ownerSequence, epoch) => ({
 	session_id: SESSION,
@@ -520,16 +539,30 @@ test("an ordinary clean update does not clear the banner; a rollover does", asyn
 	assert.equal(view().liveUpdatesNotice, "none");
 });
 
-test("an event-origin notice outlives unrelated ticks and clears on a snapshot", async () => {
-	const view = await mount([reloadNoticeFrame(3), updateFrame(4, 2)]);
+test("a same-epoch full-state update clears an update-origin notice", async () => {
+	const view = await mount([degradedFrame(3, 2), fullStateFrame(4, 3)]);
+	assert.equal(
+		view().liveUpdatesPaused,
+		false,
+		"replace_and_notify restores the shed body without a new epoch",
+	);
+	assert.equal(view().liveUpdatesNotice, "none");
+});
+
+test("an event-origin notice outlives ticks and a rollover, and clears on a snapshot", async () => {
+	const view = await mount([
+		reloadNoticeFrame(3),
+		updateFrame(4, 2),
+		rolloverFrame(5, 3, "owner-epoch-2"),
+	]);
 	assert.equal(
 		view().liveUpdatesPaused,
 		true,
-		"a dropped transcript fact is not repaired by a roster tick",
+		"a rollover carries frontend state, never transcript rows",
 	);
 	assert.equal(view().liveUpdatesNotice, "event");
-	deliver(openFrame(5, true));
-	deliver(snapshotFrame(6));
+	deliver(openFrame(6, true));
+	deliver(snapshotFrame(7));
 	await pump();
 	assert.equal(
 		view().liveUpdatesPaused,

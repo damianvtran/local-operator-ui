@@ -2652,12 +2652,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * box below - a legacy path has no live stream to be paused.
 						 */}
 						{/*
-						 * THE SAME COLUMN CONTRACT AS THE DOCK AND THE COMPOSER, applied
-						 * exactly once. `CHAT_MEASURE` is what makes the band resolve to the
-						 * composer's 810px track instead of running full-bleed at a wide
-						 * column; `CHAT_COLUMN_INSET` is the 24px gutter, and the band root
-						 * deliberately carries no padding of its own (design round 1, D1 -
-						 * two insets stacked to 48px against the composer's 24px).
+						 * THE SAME COLUMN CONTRACT AS THE DOCK AND THE COMPOSER, and the
+						 * SAME NESTING the dock uses: the host carries the 24px gutter, the
+						 * BAND carries the 810px measure. Putting both on one element made
+						 * the measure pay for the inset (810 - 48 = 762px), so the band sat
+						 * 24px inside the composer on each side at every wide column (design
+						 * round 2, D1; code M5 residual). The root carries no horizontal
+						 * padding of its own.
 						 *
 						 * HIDDEN FOR A MISSING SESSION: the transcript replaces itself with
 						 * "this conversation is no longer on this machine", and a paused
@@ -2669,11 +2670,11 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								className={cn(
 									CHAT_COLUMN_CONTAINER,
 									CHAT_COLUMN_INSET,
-									CHAT_MEASURE,
 									"w-full shrink-0 pt-2",
 								)}
 							>
 								<LiveUpdatesPausedBanner
+									className={CHAT_MEASURE}
 									paused={canonical.view.liveUpdatesPaused}
 									reloading={canonical.view.liveUpdatesReloading}
 									reloadFailed={canonical.view.liveUpdatesReloadFailed}
