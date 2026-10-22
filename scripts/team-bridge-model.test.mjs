@@ -1580,3 +1580,58 @@ test("R1-3: a create that fails for overlapping sends fails both and leaves noth
 	);
 	assert.equal(remembered.size, 0);
 });
+
+test("R2-1: EVERY overlapping send adopts the created conversation, including the one that shared the create", async () => {
+	let resolveCreate;
+	const adopted = [];
+	const remembered = new Map();
+	const base = {
+		draftKey: "k",
+		input: groupInput,
+		tenantId: "tnt_1",
+		remembered,
+		create: () =>
+			new Promise((resolve) => {
+				resolveCreate = () => resolve({ id: "bcv_one", tenant_id: "tnt_1" });
+			}),
+		post: async () => ({}),
+	};
+	const a = model.sendFirstMessage({
+		...base,
+		body: "a",
+		clientRef: "ref-a",
+		onCreated: (c) => adopted.push(["ref-a", c.id]),
+	});
+	const b = model.sendFirstMessage({
+		...base,
+		body: "b",
+		clientRef: "ref-b",
+		onCreated: (c) => adopted.push(["ref-b", c.id]),
+	});
+	await Promise.resolve();
+	resolveCreate();
+	await Promise.all([a, b]);
+	assert.deepEqual(adopted.sort(), [
+		["ref-a", "bcv_one"],
+		["ref-b", "bcv_one"],
+	]);
+});
+
+test("R2-1: a retry that reuses the remembered conversation also adopts it", async () => {
+	const adopted = [];
+	const remembered = new Map([["k", { id: "bcv_old", tenantId: "tnt_1" }]]);
+	await model.sendFirstMessage({
+		draftKey: "k",
+		input: groupInput,
+		body: "a",
+		clientRef: "ref-a",
+		tenantId: "tnt_1",
+		remembered,
+		create: async () => {
+			throw new Error("must not create");
+		},
+		post: async () => ({}),
+		onCreated: (c) => adopted.push(c.id),
+	});
+	assert.deepEqual(adopted, ["bcv_old"]);
+});
