@@ -589,7 +589,7 @@ test("the picker host hides the native browser view while it is open", () => {
 	 */
 	assert.match(
 		code(HOST),
-		/useSuppressBrowserView\(open, "panel-picker"\);/,
+		/useSuppressBrowserView\(open, "dialog", "panel-picker"\);/,
 		"PickerHost must register with the browser-view policy",
 	);
 });

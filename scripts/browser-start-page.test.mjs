@@ -332,6 +332,7 @@ function reading(container) {
 	return {
 		startPage: !!within.querySelector('[data-tour-tag="browser-start-page"]'),
 		fieldValue: field ? field.value : null,
+		placeholder: field ? field.placeholder : null,
 		// `textContent`, not `innerText`: jsdom implements the first and leaves the
 		// second undefined, which is exactly how this reading came back empty.
 		band: within.querySelector('[data-tour-tag="browser-error"]')
@@ -374,6 +375,11 @@ test("an invalid address from the row returns to the start page with the address
 		reading(container).fieldValue,
 		"",
 		"and its field starts empty, so a restored value below is the fix rather than a leftover",
+	);
+	assert.equal(
+		reading(container).placeholder,
+		"example.com",
+		"the empty start field carries the brief's placeholder rather than a bare globe",
 	);
 
 	// Drive the page's OWN field: the path QA's first matrix missed, and the one

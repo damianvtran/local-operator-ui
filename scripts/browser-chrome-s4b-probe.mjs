@@ -1271,7 +1271,7 @@ plan(
 );
 plan(
 	"V3",
-	"the Address item raises/keeps the field and focus lands in it",
+	"the Find item opens the find row and the menu panel is gone",
 	"driven",
 );
 plan("V4", "list with several rows, one selected", "driven");
@@ -1508,8 +1508,10 @@ try {
 	// THE REST BAND, measured rather than inferred from what is visible. The page
 	// is a native view that paints above all DOM, so a bar could sit behind it and
 	// every frame would still look flush; "no bar visible" is not the LOH-13
-	// claim. The claim is geometric and DOM-level: the strip's bottom edge IS the
-	// page's top edge (band 0px) and no element occupies the gap. The scan walks
+	// claim. The claim is geometric and DOM-level: the strip's bottom edge is the
+	// ROW's top edge, the row's bottom edge IS the page's top edge (0px at both
+	// seams), and exactly one element — the row — is bounded by the outer pair.
+	// The scan walks
 	// every element instead of naming tags, because the regression it guards is a
 	// future element added to the band and a tag list would have to know its name.
 	// An occupant must be BOUNDED BY BOTH EDGES: its whole vertical extent lies
@@ -2007,9 +2009,12 @@ try {
 			`(() => {
 				const menu = document.querySelector('[role="menu"]');
 				const row = document.querySelector('[data-tour-tag="browser-url-bar"]');
+				const content = document.querySelector('[data-tour-tag="browser-content"]');
 				const input = document.querySelector('[data-tour-tag="browser-address"]');
 				return {
 					menu: menu ? menu.getBoundingClientRect().toJSON() : null,
+					page: content ? content.getBoundingClientRect().toJSON() : null,
+					suppressedBy: content?.getAttribute('data-suppressed-by') ?? null,
 					portal: !!document.querySelector('[data-radix-popper-content-wrapper]'),
 					row: !!row,
 					activeElement: document.activeElement?.getAttribute('data-tour-tag') ?? document.activeElement?.tagName ?? null,
@@ -2077,9 +2082,17 @@ try {
 		);
 		states.menuRest = { opened: restMenu, ...(await menuFacts()) };
 		await frame("menu-rest.png");
+		// THE PAUSE ASSERTION (S5 round 1, agent MAJOR-1 / QA Q-1): the panel is
+		// painted by the renderer, but the page is a native view above it, so the
+		// only honest proof that the menu is visible is that the policy hid the
+		// view. Rect overlap is reported beside it as the cause.
 		record(
 			"V1",
-			restMenu && states.menuRest.portal ? "PASS" : "FAIL",
+			restMenu &&
+				states.menuRest.portal &&
+				/(^|,)menu:[^,]*/.test(states.menuRest.suppressedBy ?? "")
+				? "PASS"
+				: "FAIL",
 			states.menuRest,
 		);
 		await pressEscape();
@@ -2103,27 +2116,33 @@ try {
 		await frame("menu-popout.png");
 		record(
 			"V2",
-			popoutMenuOpen && states.menuFromPopout.popout ? "PASS" : "FAIL",
+			popoutMenuOpen &&
+				states.menuFromPopout.row &&
+				/(^|,)menu:[^,]*/.test(states.menuFromPopout.suppressedBy ?? "")
+				? "PASS"
+				: "FAIL",
 			states.menuFromPopout,
 		);
 
-		// V3: the Address item, from the popout's menu, must keep the field and
-		// put focus in it — the control case round 1 measured failing.
-		const addressItem = await pointOf(
-			'[data-tour-tag="browser-page-menu-address"]',
-		);
-		await clickAt(addressItem);
+		// V3: Find, from the row's overflow — the item replaced the old Address row.
+		// It must open the in-flow find row and keep the page paused while the menu
+		// is up (the same measured rule as V1/V2).
+		const findItem = await pointOf('[data-tour-tag="browser-find"]');
+		await clickAt(findItem);
 		await sleep(400);
 		states.addressItem = await menuFacts();
-		await frame("menu-address-item.png");
+		const findRow = await waitFor(
+			cdp,
+			`!!document.querySelector('[data-tour-tag="browser-find-row"]')`,
+			4_000,
+		);
+		await frame("menu-find-item.png");
 		record(
 			"V3",
-			states.addressItem.popout &&
-				states.addressItem.activeElement === "browser-address" &&
-				states.addressItem.menu === null
+			states.addressItem.row && states.addressItem.menu === null && findRow
 				? "PASS"
 				: "FAIL",
-			states.addressItem,
+			{ ...states.addressItem, findRow },
 		);
 
 		// V4: several suggestion rows, one selected. History is seeded by real

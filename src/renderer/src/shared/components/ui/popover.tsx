@@ -6,6 +6,7 @@ import {
 	type ComponentPropsWithoutRef,
 	type ElementRef,
 	forwardRef,
+	useMemo,
 } from "react";
 
 /**
@@ -26,10 +27,14 @@ export const PopoverContent = forwardRef<
 	ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
 >(({ className, align = "center", sideOffset = 6, ...props }, ref) => {
 	const panelRef = useMeasuredBrowserViewPanel<HTMLDivElement>("popover");
+	const composedRef = useMemo(
+		() => composeRefs(ref, panelRef),
+		[ref, panelRef],
+	);
 	return (
 		<PopoverPrimitive.Portal>
 			<PopoverPrimitive.Content
-				ref={composeRefs(ref, panelRef)}
+				ref={composedRef}
 				/*
 				 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it is
 				 * read by in `styles/index.css`. A popover anchored near the top of the window

@@ -244,16 +244,15 @@ export function useBrowserChords(
 			if (intent === "close-tab") {
 				const id = c.state?.activeTabId;
 				if (id != null && current.tabs.some((tab) => tab.tabId === id)) {
-					const { closed, replaced } = await closeAndReplace(id);
+					const { closed } = await closeAndReplace(id);
 					// Queued presses must not read the pre-close projection: a second
 					// Cmd+W would otherwise target the tab that is already gone. This
 					// waits for the projection (a bound, not a debounce: it ends the
 					// moment the tab leaves the list), so rapid presses stay ordered.
 					if (closed) await projectionDropped(id);
 					// A replacement blank tab is a start page; the surface focuses the row
-					// when that state becomes current. `replaced` stays in the result for
-					// the strip's caret restore, which is its other consumer.
-					void replaced;
+					// when that state becomes current (the close result's own `replaced`
+					// stays for the strip's caret restore, which is its other consumer).
 				}
 			} else {
 				const target = chordTarget(current.tabs, cursor, intent);

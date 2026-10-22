@@ -84,6 +84,7 @@ const PROBE = `
 	import { closeConversationIntent, closeFailedIntent, closeOthersIntent, closeToTheRightIntent, groupTabsBySession, pooledTabs, scopeFromKey, scopeKey, sessionDisplayName, summariseConversations, tabsBySession, tabsInScope } from "./src/renderer/src/features/browser/model/tab-index-model";
 	import { BrowserLoadFailure, loadFailureSentence } from "./src/renderer/src/features/browser/components/browser-load-failure";
 	import { BrowserNewTab } from "./src/renderer/src/features/browser/components/browser-new-tab";
+	export { countLabel } from "./src/renderer/src/shared/components/ui/badge";
 	import { isStartPageUrl } from "./src/renderer/src/features/browser/model/start-page";
 	import { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 	import { browserBridgeAvailable, clearBrowserProjectionReadError, publishStagedProjection, readBrowserProjection, refreshBrowserProjection, subscribeBrowserProjection } from "./src/renderer/src/features/browser/model/browser-projection-store";
@@ -309,6 +310,7 @@ const {
 	browserViewSuppressed,
 	suppressBrowserView,
 	suppressedOverlayIds,
+	countLabel,
 	safeHttpUrl,
 	configurePslRules,
 } = mod;
@@ -1271,6 +1273,14 @@ test("a release is idempotent: a double-release cannot unbalance the count", () 
 	assert.equal(browserViewSuppressed(), true);
 	other();
 	assert.equal(browserViewSuppressed(), false);
+});
+
+test("the approvals badge counts are bounded at 99+ (round-1 D6)", () => {
+	// The badge is `size="count"` and the brief's frames ask for 1 / 9 / 99+.
+	assert.equal(countLabel(1, 99), "1");
+	assert.equal(countLabel(9, 99), "9");
+	assert.equal(countLabel(99, 99), "99");
+	assert.equal(countLabel(120, 99), "99+");
 });
 
 // ---- a bounded, validated restore (review round 1, R5) ----------------------

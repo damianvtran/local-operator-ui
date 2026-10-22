@@ -6,6 +6,7 @@ import {
 	type ComponentPropsWithoutRef,
 	type ElementRef,
 	forwardRef,
+	useMemo,
 } from "react";
 
 /**
@@ -100,10 +101,14 @@ export const ContextMenuContent = forwardRef<
 	ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Content>
 >(({ className, ...props }, ref) => {
 	const panelRef = useMeasuredBrowserViewPanel<HTMLDivElement>("context-menu");
+	const composedRef = useMemo(
+		() => composeRefs(ref, panelRef),
+		[ref, panelRef],
+	);
 	return (
 		<ContextMenuPrimitive.Portal>
 			<ContextMenuPrimitive.Content
-				ref={composeRefs(ref, panelRef)}
+				ref={composedRef}
 				data-titlebar-no-drag=""
 				className={cn(panelClasses, "min-w-56", className)}
 				{...props}

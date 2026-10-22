@@ -127,13 +127,33 @@ test("the sidebar conversation flyout opens below its row, inside the sidebar", 
 	assert.match(block, /w-\(--radix-tooltip-trigger-width\)/);
 });
 
-test("the panel rail keeps its aria-label and no longer owns a tooltip", () => {
+test("the panel rail's tooltip is conditional on a mounted browser view", () => {
 	const rail = read(
 		"src/renderer/src/shared/components/navigation/panel-rail-item.tsx",
 	);
-	assert.doesNotMatch(rail, /<Tooltip/);
-	assert.doesNotMatch(rail, /overlayName/);
+	// A tooltip may not pause, so with a view under the pane the label is clipped;
+	// the wrapper mounts it only when no surface is mounted, and `aria-label`
+	// carries the name then. On every other route the tooltip is unchanged.
+	assert.match(rail, /<BrowserSafeTooltip content=\{label\} side="left">/);
+	assert.doesNotMatch(rail, /useSuppressBrowserView/);
 	assert.match(rail, /aria-label=\{ariaLabel \?\? label\}/);
+	// The wrapper itself is the one place the presence decision lives, and it
+	// must not import the pause path beyond the read-only presence hook.
+	const wrapper = read(
+		"src/renderer/src/shared/components/ui/browser-safe-tooltip.tsx",
+	);
+	assert.match(wrapper, /useBrowserViewPresent/);
+	assert.doesNotMatch(wrapper, /suppressBrowserView/);
+});
+
+test("the collapsed sidebar and profile tooltips are restored conditionally", () => {
+	for (const path of [
+		"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
+		"src/renderer/src/shared/components/navigation/user-profile-sidebar.tsx",
+	]) {
+		const source = read(path);
+		assert.match(source, /<BrowserSafeTooltip content=/);
+	}
 });
 
 test("the surface still publishes why the page is hidden", () => {
