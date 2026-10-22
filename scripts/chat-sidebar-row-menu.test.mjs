@@ -135,12 +135,19 @@ test("the menu's items are drawn from the same predicates the pair reads", () =>
 		false,
 		"a menu item is disabled rather than withheld - the row's own rule is that an affordance that cannot act on a row is not drawn at all, and the two Move items state their boundary with `aria-disabled` instead",
 	);
+	/*
+	 * AND `Tags…` ON A REMOTE CONVERSATION (sidebar tags v3, §5 "Remote"): the act
+	 * exists - the row has tags - but this device cannot write them, and the reason
+	 * (`ui.chat.tags.remote`) must be announced BEFORE a write rather than after a
+	 * refused one. That is the Move boundaries' case exactly: a refusal with a
+	 * sentence, not an absent act.
+	 */
 	for (const item of MENU.split("<ContextMenuItem").slice(1)) {
 		if (!item.includes("aria-disabled")) continue;
 		assert.match(
 			item,
-			/ui\.chat\.sidebar\.row_menu\.move_(?:up|down)/,
-			"`aria-disabled` is on something other than the two boundary-bearing Move items",
+			/ui\.chat\.sidebar\.row_menu\.move_(?:up|down)|ui\.chat\.tags\.remote/,
+			"`aria-disabled` is on something other than the two boundary-bearing Move items and the remote Tags… refusal",
 		);
 	}
 	/*
@@ -235,16 +242,15 @@ test("Fork is the menu's third row: its order, copy, withheld condition and wiri
 			copyAt < renameAt &&
 			renameAt < tagsAt &&
 			tagsAt < MENU.indexOf('t("ui.chat.tags.remove_all"') &&
-			MENU.indexOf('t("ui.chat.tags.remove_all"') <
-				MENU.indexOf('t("ui.chat.tags.move_menu"') &&
-			MENU.indexOf('t("ui.chat.tags.move_menu"') < moveUpAt &&
+			MENU.indexOf('t("ui.chat.tags.remove_all"') < moveUpAt &&
+			!MENU.includes('t("ui.chat.tags.move_menu"') &&
 			moveUpAt < moveDownAt,
 		"the menu no longer reads Archive, Pin, Fork, Copy session ID, Rename conversation, Move up, Move down (D2, #893, #920) - the mirrored pair, the unconditional run, then the conditional block",
 	);
 	assert.equal(
 		MENU.split("<ContextMenuItem").length - 1,
-		10,
-		"V2-1 adds Remove all tags and Move to tag before the existing Move pair; the widest pinned/tagged menu has ten rows",
+		9,
+		"v3 (D4) deletes Move to tag…: Tags… opens the anchored popover and Remove all tags stays, so the widest pinned/tagged menu has nine rows",
 	);
 	/*
 	 * COPY: verb + object, the pair's register, with the icon `aria-hidden` like
