@@ -882,11 +882,6 @@ const ConsentRenewal: FC<{ onRenew: () => void; disabled: boolean }> = ({
 );
 
 /**
- * The consent/enrollment record in C/D. `readOnly` keeps F's retained record
- * read-only: a kill ends the flow, not the history, and no control may imply
- * the user can renew their way out of an organization's decision.
- */
-/**
  * The label for where consent was collected. The wire value is an open string
  * (a newer runtime may add a spelling), so an unknown one is shown as the
  * runtime sent it rather than as a missing catalogue key. Literal keys keep
@@ -905,6 +900,11 @@ function consentViaLabel(via: string): string {
 	}
 }
 
+/**
+ * The consent/enrollment record in C/D. `readOnly` keeps F's retained record
+ * read-only: a kill ends the flow, not the history, and no control may imply
+ * the user can renew their way out of an organization's decision.
+ */
 const EndpointConsent: FC<{
 	settings: AgentMessagesSettingsResult;
 	status: AgentMessagesStatus;
