@@ -91,6 +91,8 @@ const bundle = await build({
  export {TeamBridgePageView} from "./src/renderer/src/features/team-bridge/team-bridge-page";
  export {registerCatalogue, setLocale} from "./src/i18n";
  export {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+ export {TeamBridgeAttachmentChip} from "./src/renderer/src/features/team-bridge/team-bridge-attachments";
+ export {t} from "./src/renderer/src/shared/i18n";
  export {browserDraftStorage} from "./src/renderer/src/shared/store/team-bridge-draft-account";
  export {TeamBridgeApi} from "./src/renderer/src/shared/api/local-operator/team-bridge-api";`,
 		resolveDir: process.cwd(),
@@ -400,6 +402,8 @@ test("upload failures map to a closed set of reasons", () => {
 	assert.equal(m.uploadFailure(429), "rate_limited");
 	assert.equal(m.uploadFailure(400), "limit");
 	assert.equal(m.uploadFailure(404), "expired");
+	// QA Q3: a mid-compose sign-out answers 401 bridge_signin_required.
+	assert.equal(m.uploadFailure(401), "signed_out");
 	assert.equal(m.uploadFailure(null), "offline");
 	assert.equal(m.uploadFailure(500), "failed");
 	assert.equal(
@@ -1665,14 +1669,27 @@ test(
 test("denied browser storage: attachment draft and descriptor paths render, read and persist nothing", async () => {
 	localStorage.clear();
 	const descriptor = Object.getOwnPropertyDescriptor(window, "localStorage");
+	/*
+	 * BOTH bindings are denied (R6-02). The harness binds
+	 * `globalThis.localStorage` to JSDOM's store separately from
+	 * `window.localStorage`, so denying only the window left a bare
+	 * `localStorage` in source reaching a working store - the test passed
+	 * with the bug present. Same shape as team-bridge-directory.test.mjs.
+	 */
+	const globalDescriptor = Object.getOwnPropertyDescriptor(
+		globalThis,
+		"localStorage",
+	);
 	let reads = 0;
-	Object.defineProperty(window, "localStorage", {
+	const denied = {
 		configurable: true,
 		get() {
 			reads += 1;
 			throw new Error("browser storage denied");
 		},
-	});
+	};
+	Object.defineProperty(window, "localStorage", denied);
+	Object.defineProperty(globalThis, "localStorage", denied);
 	mediaCalls = [];
 	mediaAnswer = (request) =>
 		request.op === "team_bridge.attachment"
@@ -1682,6 +1699,19 @@ test("denied browser storage: attachment draft and descriptor paths render, read
 	let list;
 	const realRequest = window.api.desktop.request;
 	try {
+		// Harness self-check: a bare `localStorage` read (what the pre-fix
+		// status clients did) now throws, so a reintroduced bare read fails
+		// the identity() assertion below instead of finding a working store.
+		assert.throws(() => localStorage, /browser storage denied/);
+		assert.throws(() => globalThis.localStorage, /browser storage denied/);
+		assert.throws(() => window.localStorage, /browser storage denied/);
+		// And the pre-fix status-client shape, called through the real
+		// reconcileDraftAccount, now rejects: the harness would catch it.
+		await assert.rejects(
+			(async () =>
+				m.reconcileDraftAccount(localStorage, { state: "signed_out" }))(),
+			/browser storage denied/,
+		);
 		assert.equal(
 			m.browserDraftStorage(),
 			null,
@@ -1738,6 +1768,9 @@ test("denied browser storage: attachment draft and descriptor paths render, read
 		if (list) await list.close();
 		if (app) await app.close();
 		Object.defineProperty(window, "localStorage", descriptor);
+		if (globalDescriptor)
+			Object.defineProperty(globalThis, "localStorage", globalDescriptor);
+		else Reflect.deleteProperty(globalThis, "localStorage");
 	}
 	assert.equal(localStorage.length, 0, "nothing was persisted");
 
@@ -1758,5 +1791,64 @@ test("denied browser storage: attachment draft and descriptor paths render, read
 		);
 	} finally {
 		globalThis.window = savedWindow;
+	}
+});
+
+test("QA Q3: a 401 upload marks the chip signed_out and says so with the sign-in sentence", async () => {
+	mediaCalls = [];
+	mediaAnswer = () => ({
+		status: 401,
+		kind: "error",
+		detail: "x",
+		code: "pairing.refused",
+	});
+	const app = await mountHook({
+		scopeKey: "q3",
+		accountId: "acct_a",
+		tenantId: "tnt_1",
+		conversationId: "bcv_1",
+		capability: CAP,
+	});
+	try {
+		await act(async () => hook.add([new Blob([PNG])]));
+		await settle();
+		await settle();
+		const [chip] = hook.chips;
+		assert.equal(chip.status, "error");
+		assert.equal(chip.reason, "signed_out");
+		const view = document.createElement("div");
+		document.body.append(view);
+		const root = createRoot(view);
+		await act(async () =>
+			root.render(
+				React.createElement(m.TeamBridgeAttachmentChip, {
+					chip,
+					index: 0,
+					count: 1,
+					onRemove: () => {},
+					onRetry: () => {},
+				}),
+			),
+		);
+		const sentence = m.t("ui.teamBridge.plan.sign_in_reason");
+		assert.ok(
+			view.textContent.includes(sentence) ||
+				[
+					...view.querySelectorAll("[aria-label],[title],[aria-description]"),
+				].some((node) =>
+					[
+						node.getAttribute("aria-label"),
+						node.getAttribute("title"),
+						node.getAttribute("aria-description"),
+					]
+						.join(" ")
+						.includes(sentence),
+				),
+			"the chip names the sign-in fact, not a generic upload failure",
+		);
+		await act(async () => root.unmount());
+		view.remove();
+	} finally {
+		await app.close();
 	}
 });
