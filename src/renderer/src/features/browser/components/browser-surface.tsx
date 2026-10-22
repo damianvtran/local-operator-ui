@@ -1164,10 +1164,9 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 								onOpenApprovals={() => setDockOpen((open) => !open)}
 							/>
 						}
-						// The address suggestions follow the SAME display scope as the strip:
-						// the route offers every tab, a conversation pane offers its own.
-						addressScope={tabScope}
-						addressScopeKey={scopeField}
+						// Suggestions are one list for the field: persistent history is
+						// session-agnostic, so there is no display scope to pass. The
+						// strip's `tabScope` still governs which TABS are shown.
 						addressHistory={(request) => chrome.addressHistory(request)}
 						onStateChanged={chrome.onStateChanged}
 					/>

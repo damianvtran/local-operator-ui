@@ -15,13 +15,27 @@ import type { AddressHistoryEntry } from "../../../../../shared/browser-address-
  * `example.com/a` while navigating the exact canonical `https://example.com/a` —
  * typing alone must never silently upgrade or downgrade the scheme.
  *
- * NO INVENTED ORDER: every candidate comes from a live tab's Chromium history or
- * its restore row. There is no frequency table, no "common sites" list and no
- * timestamp; `distanceFromCurrent` is history-stack distance, which the source
- * actually has.
+ * TWO SOURCES, ONE LIST: `source: "history"` rows come ranked from main's
+ * persistent store (recency and frequency, see `history-store.ts`), and
+ * `source: "tab"` rows come from a live tab's Chromium history or its restore
+ * row. History rows keep main's order; tab rows are ranked here, where the
+ * stack distance is available.
+ *
+ * THE SEARCH ROW: when the text would be searched, the unified list's first row
+ * is the DuckDuckGo search. It is part of `rows` rather than a separate banner so
+ * the visible row, `aria-activedescendant` and the row Enter commits are always
+ * the same index.
  */
 
 export type AddressIntent = "empty" | "url" | "search" | "blocked";
+
+/** The one search destination. Encoded once, here, so no other module can
+ * invent a second spelling. */
+export const ADDRESS_SEARCH_URL_PREFIX = "https://duckduckgo.com/?q=";
+
+export function searchUrl(query: string): string {
+	return `${ADDRESS_SEARCH_URL_PREFIX}${encodeURIComponent(query.trim())}`;
+}
 
 export interface AddressCandidate extends AddressHistoryEntry {
 	/** The text a user sees for this candidate: scheme-less when the query had no
@@ -43,37 +57,173 @@ export interface InlineCompletion {
 	raw: string;
 }
 
+/** The first row when the text would be searched. */
+export interface AddressSearchRow {
+	kind: "search";
+	/** The text the user typed, trimmed. The UI wraps it in the localized row
+	 * copy; the model owns no user-facing strings. */
+	query: string;
+	/** The DuckDuckGo destination Enter will navigate. */
+	targetUrl: string;
+}
+
+export interface AddressCandidateRow {
+	kind: "candidate";
+	candidate: AddressCandidate;
+}
+
+/**
+ * One row of the unified list.
+ *
+ * ORDER, and it is the product decision: search row (when there is one),
+ * history matches by score, then open-tab matches. There are deliberately no
+ * section-heading rows: the native overlay protocol S4b owns has uniform row
+ * heights and a row count, so a heading row would be a row the user can select
+ * and a height the child cannot paint in its own model.
+ */
+export type AddressRow = AddressSearchRow | AddressCandidateRow;
+
 export interface AddressSuggestions {
 	inline: InlineCompletion | null;
-	/** Alternatives for the list, at most five, excluding the inline candidate. */
+	/** Candidate rows, in display order, excluding the search row. */
 	candidates: AddressCandidate[];
+	/** The unified list: at most five rows, the search row included. */
+	rows: AddressRow[];
+	/** The search row, or null when this input is not search intent. */
+	search: AddressSearchRow | null;
 	intent: AddressIntent;
 }
 
-/** The most alternatives the in-flow list ever shows. */
-export const MAX_ADDRESS_ALTERNATIVES = 5;
+/** The most rows the in-flow list ever shows. The search row counts against it,
+ * because the native child paints at most `ADDRESS_LIST_ROWS_MAX` rows. */
+export const MAX_ADDRESS_ROWS = 5;
+/** The most candidate rows when there is no search row. Kept as the contract's
+ * historical name; it is `MAX_ADDRESS_ROWS` for a list with no search row. */
+export const MAX_ADDRESS_ALTERNATIVES = MAX_ADDRESS_ROWS;
 
 const SCHEME_WITH_SLASHES = /^([a-z][a-z0-9+.-]*):\/\//i;
 const BARE_SCHEME = /^([a-z][a-z0-9+.-]*):/i;
 const HAS_WHITESPACE = /\s/;
-const LEADING_DIGITS = /^\d+/;
 const LEADING_DOUBLE_SLASH = /^\/\//;
 const URL_BOUNDARY = /[/?#]/;
 const CONTROL_CHARS = /[\p{Cc}]/u;
+const DNS_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
+const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+const IPV6_HOST = /^[0-9a-f:.%]+$/i;
+const TLD = /^[a-z]{2,63}$/i;
+const PUNYCODE_TLD = /^xn--[a-z0-9-]+$/i;
+const PORT_TAIL = /^\d+(?:[/?#]|$)/;
+/** Schemes that are never a destination: they execute, embed or address the
+ * browser itself. `about:` is refused as a typed destination too — the host
+ * treats `about:` as "not a load" and the address field must not dress it up as
+ * a location. */
+const BLOCKED_SCHEMES = new Set([
+	"javascript",
+	"data",
+	"about",
+	"blob",
+	"vbscript",
+]);
 
 function foldAscii(value: string): string {
 	return value.replace(/[A-Z]/g, (letter) => letter.toLowerCase());
 }
 
+/** A dotted quad with every octet in range. `1.2` is not one, which is the
+ * whole point: it is a version-looking string, not an address. */
+function isIpv4(host: string): boolean {
+	const match = IPV4.exec(host);
+	if (!match) return false;
+	return match.slice(1).every((part) => Number(part) <= 255);
+}
+
+/** Localhost by name, with any port handled by the caller. */
+function isLocalhost(host: string): boolean {
+	const folded = foldAscii(host);
+	return folded === "localhost" || folded.endsWith(".localhost");
+}
+
+/** Bracketed IPv6, including a zone id. The brackets are the URL grammar's own
+ * marker for "this colon is not a port". */
+function isIpv6(host: string): boolean {
+	return host.includes(":") && IPV6_HOST.test(host);
+}
+
 /**
- * What kind of input this is.
+ * Whether a host has the shape of a public DNS name.
  *
- * The five rows the proposal settles, in code: whitespace or a leading `?` is
- * search intent (this app has no search provider, so the list only offers local
- * matches); a fragment alone is not a host prefix; an explicit non-HTTP scheme is
- * blocked rather than suggested; a bare `host:port` without `//` is still a URL,
- * because `host:8080` is an authority with a port rather than a scheme; and an
- * unparseable slashless string is treated as search, not rewritten.
+ * THE RULE THAT MAKES `github` A SEARCH: a single label with no dot is a word,
+ * not a host — intranet hosts exist, but a suggestion field that treats every
+ * word as a URL cannot offer a search at all. A final label that is numeric is
+ * a version or a decimal (`1.2`), not a TLD; only a real TLD-shaped label (or a
+ * punycode one) clears the bar.
+ */
+function isDnsHostname(host: string): boolean {
+	if (host.length === 0 || host.length > 253) return false;
+	const labels = host.split(".");
+	if (labels.length < 2) return false;
+	if (!labels.every((label) => DNS_LABEL.test(label))) return false;
+	const tld = labels[labels.length - 1];
+	return TLD.test(tld) || PUNYCODE_TLD.test(tld);
+}
+
+interface AuthorityShape {
+	host: string;
+	/** `null` when there is no port; a number when the text has one (even an
+	 * out-of-range one, so the caller can call it blocked rather than search). */
+	port: number | null;
+	credentials: boolean;
+}
+
+/** Split the text before the first path/query/fragment byte into host and port.
+ * Returns null for text that cannot be an authority at all. */
+function authorityShape(raw: string): AuthorityShape | null {
+	const boundary = raw.search(URL_BOUNDARY);
+	const authority = boundary < 0 ? raw : raw.slice(0, boundary);
+	if (authority.length === 0) return null;
+	if (authority.includes("@")) {
+		return { host: "", port: null, credentials: true };
+	}
+	if (authority.startsWith("[")) {
+		const close = authority.indexOf("]");
+		if (close < 0) return null;
+		const host = authority.slice(1, close);
+		const tail = authority.slice(close + 1);
+		if (tail.length === 0) return { host, port: null, credentials: false };
+		if (!tail.startsWith(":")) return null;
+		return { host, port: Number(tail.slice(1)), credentials: false };
+	}
+	const firstColon = authority.indexOf(":");
+	if (firstColon < 0) {
+		return { host: authority, port: null, credentials: false };
+	}
+	if (authority.indexOf(":", firstColon + 1) >= 0) return null;
+	return {
+		host: authority.slice(0, firstColon),
+		port: Number(authority.slice(firstColon + 1)),
+		credentials: false,
+	};
+}
+
+/**
+ * What kind of input this is — THE single URL heuristic.
+ *
+ * The decision table the operator settled, in code order:
+ *   navigate: `example.com`, `example.com/path?q=1`, `https://example.com`,
+ *             `http://example.com`, `file:///tmp/a.txt`, `localhost:3000`,
+ *             `127.0.0.1:8080`, `192.168.1.1`
+ *   search:   `foo bar`, `what is a vpn`, `how to cook rice`, `github`,
+ *             `1.2`
+ *   blocked:  `javascript:`, `data:`, `about:` (and any other unknown scheme)
+ *
+ * `file://` IS URL INTENT and must never be searched: a user who pastes a file
+ * URL is naming a file, and turning it into a web search would silently send
+ * the path to DuckDuckGo. It is NOT a navigation permission: the host's
+ * `permittedScheme` still refuses non-HTTP(S) typed navigation, and that
+ * security boundary is deliberately untouched.
+ *
+ * Anything with whitespace, an untrimmed edge, or a leading `?`/`#` is search:
+ * those are sentence punctuation, not URL bytes.
  */
 export function addressIntent(raw: string): AddressIntent {
 	if (raw.length === 0) return "empty";
@@ -83,30 +233,47 @@ export function addressIntent(raw: string): AddressIntent {
 	const withSlashes = SCHEME_WITH_SLASHES.exec(raw);
 	if (withSlashes) {
 		const scheme = foldAscii(withSlashes[1]);
-		return scheme === "http" || scheme === "https" ? "url" : "blocked";
+		if (scheme === "http" || scheme === "https" || scheme === "file")
+			return "url";
+		return "blocked";
 	}
 	const bare = BARE_SCHEME.exec(raw);
 	if (bare) {
 		const scheme = foldAscii(bare[1]);
-		if (scheme === "http" || scheme === "https") return "url";
-		const after = raw.slice(bare[0].length);
-		// `host:8080` and `localhost:3000/a` are authorities, not schemes. A port
-		// beyond 65535 is the case the proposal asks to refuse rather than complete.
-		if (after.length > 0 && LEADING_DIGITS.test(after)) {
-			try {
-				new URL(`https://${raw}`);
-				return "url";
-			} catch {
-				return "blocked";
-			}
-		}
-		return "blocked";
+		if (BLOCKED_SCHEMES.has(scheme)) return "blocked";
+		if (scheme === "http" || scheme === "https" || scheme === "file")
+			return "url";
+		// `host:port` wears the same shape as a scheme. An all-digit tail is a
+		// port; a dotted prefix is a hostname (`example.com:8080/a`) because a real
+		// scheme cannot contain a dot. Anything else (`foo:bar`) is an unknown
+		// scheme and stays blocked.
+		const tail = raw.slice(bare[0].length);
+		if (!PORT_TAIL.test(tail) && !scheme.includes(".")) return "blocked";
 	}
+	const shape = authorityShape(raw);
+	if (!shape || shape.credentials) return "search";
+	if (shape.port !== null) {
+		if (
+			!Number.isSafeInteger(shape.port) ||
+			shape.port < 1 ||
+			shape.port > 65535
+		)
+			return "blocked";
+	}
+	if (isLocalhost(shape.host) || isIpv4(shape.host) || isIpv6(shape.host))
+		return "url";
+	// A single label WITH a port is a host, not a word: prose does not carry
+	// `:8080`, so `intranet:8080` is an intranet address.
+	if (shape.port !== null && shape.host.length > 0 && !shape.host.includes("."))
+		return "url";
+	if (!isDnsHostname(shape.host)) return "search";
 	try {
 		new URL(`https://${raw}`);
 		return "url";
 	} catch {
-		return "search";
+		// Host-shaped but unparseable: an invalid port or a rejected authority is
+		// a malformed URL, not a phrase. Blocked is the honest answer.
+		return "blocked";
 	}
 }
 
@@ -230,12 +397,20 @@ function matchEntry(
 }
 
 function compareCandidates(a: AddressCandidate, b: AddressCandidate): number {
+	// HISTORY FIRST: main already ranked it by recency and frequency, and the
+	// renderer has no basis to overrule a visit count it cannot see. Returning 0
+	// inside the group keeps the input order (Array#sort is stable), which is
+	// main's score order.
+	if (a.source !== b.source) return a.source === "history" ? -1 : 1;
+	if (a.source === "history") return 0;
 	if (a.rank !== b.rank) return a.rank - b.rank;
 	if (a.activeTab !== b.activeTab) return a.activeTab ? -1 : 1;
-	if (a.distanceFromCurrent !== b.distanceFromCurrent)
-		return a.distanceFromCurrent - b.distanceFromCurrent;
-	if (a.sourceTabId !== b.sourceTabId) return a.sourceTabId - b.sourceTabId;
-	if (a.sourceIndex !== b.sourceIndex) return a.sourceIndex - b.sourceIndex;
+	const distance = (a.distanceFromCurrent ?? 0) - (b.distanceFromCurrent ?? 0);
+	if (distance !== 0) return distance;
+	const tab = (a.sourceTabId ?? 0) - (b.sourceTabId ?? 0);
+	if (tab !== 0) return tab;
+	const index = (a.sourceIndex ?? 0) - (b.sourceIndex ?? 0);
+	if (index !== 0) return index;
 	return a.url.localeCompare(b.url);
 }
 
@@ -252,7 +427,7 @@ export function suggestAddresses(
 ): AddressSuggestions {
 	const intent = addressIntent(raw);
 	if (intent === "blocked") {
-		return { inline: null, candidates: [], intent };
+		return { inline: null, candidates: [], rows: [], search: null, intent };
 	}
 	const shape = queryShape(raw);
 	const seen = new Set<string>();
@@ -294,10 +469,26 @@ export function suggestAddresses(
 			};
 		}
 	}
+	// THE SEARCH ROW IS A ROW, not a banner: it takes the first slot, which is
+	// also why the candidate cap is one lower when it is present.
+	const search: AddressSearchRow | null =
+		intent === "search" && raw.trim().length > 0
+			? {
+					kind: "search",
+					query: raw.trim(),
+					targetUrl: searchUrl(raw),
+				}
+			: null;
 	const candidates = ranked
 		.filter((candidate) => candidate.url !== inline?.targetUrl)
-		.slice(0, MAX_ADDRESS_ALTERNATIVES);
-	return { inline, candidates, intent };
+		.slice(0, search ? MAX_ADDRESS_ROWS - 1 : MAX_ADDRESS_ROWS);
+	const rows: AddressRow[] = [
+		...(search ? [search] : []),
+		...candidates.map(
+			(candidate): AddressCandidateRow => ({ kind: "candidate", candidate }),
+		),
+	];
+	return { inline, candidates, rows, search, intent };
 }
 
 /**
@@ -341,13 +532,19 @@ export function inlineFor(
 	return suggestions.inline;
 }
 
-/** A URL a candidate row or the inline suggestion will navigate. */
-export function candidateTarget(
+/**
+ * The URL a row — or, with no row selected, the inline suggestion — will
+ * navigate. ONE function, so a search row, a candidate row and the inline
+ * completion cannot disagree about what Enter means.
+ */
+export function rowTarget(
 	suggestions: AddressSuggestions,
 	activeIndex: number,
 ): string | null {
 	if (activeIndex >= 0) {
-		return suggestions.candidates[activeIndex]?.url ?? null;
+		const row = suggestions.rows[activeIndex];
+		if (!row) return null;
+		return row.kind === "search" ? row.targetUrl : row.candidate.url;
 	}
 	return suggestions.inline?.targetUrl ?? null;
 }

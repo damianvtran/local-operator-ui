@@ -404,9 +404,10 @@ export interface BrowserChrome {
 	 * navigation when that is no longer the active tab, so a commit that raced a
 	 * tab switch cannot load the new tab with the old draft. */
 	navigate: (url: string, expectedTabId?: number) => Promise<void>;
-	/** Local address suggestions, derived from this host's live tab history. A
-	 * failure here is not a navigation failure: the field degrades to plain URL
-	 * editing and `use-address-autocomplete` reports its own state. */
+	/** Local address suggestions: the persistent history store plus this host's
+	 * live tab stacks, ranked in main. A failure here is not a navigation failure:
+	 * the field degrades to plain URL editing and `use-address-autocomplete`
+	 * reports its own state. */
 	addressHistory: (
 		request: AddressHistoryRequest,
 	) => Promise<AddressHistoryResponse>;
