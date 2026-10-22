@@ -17978,8 +17978,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
-			"target_sha256": "64093579763efc8c0c1b3edf81b35b22ea0021181241cdade19e4d2aa2b3f6db",
+			"source_sha256": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af",
+			"target_sha256": "8b41ea984ccf319fd8c5ce7c3a237e4576c7d1097c0a825247db1fc2df635e11",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -17993,17 +17993,17 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-22",
-					"result": "clean",
-					"instance": "att-r2-fr",
+					"result": "clean-with-findings",
+					"instance": "att-r3-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/att-r2-fr.json",
-					"receipt_sha256": "13c3adee6e328f0605d8be8a43478c4ad7df39ea0c9065e2a2dffa1f975b01c5",
-					"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
+					"receipt": "i18n/receipts/att-r3-fr.json",
+					"receipt_sha256": "a758272ea2d66753f5ca97cc9decdae27679817c617fa894e1aec80548ac6958",
+					"scope": "round-3 delta of ui.teamBridge.attachments.* at b787a8458f"
 				}
 			],
 			"status": "audited",
@@ -18176,6 +18176,29 @@
 							"receipt": "i18n/receipts/att-r1-fr.json",
 							"receipt_sha256": "39df265b9409774901916d375b69fccd737dd819a69f1255832a8052f2217de9",
 							"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+					"target_sha256": "64093579763efc8c0c1b3edf81b35b22ea0021181241cdade19e4d2aa2b3f6db",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "att-r2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/att-r2-fr.json",
+							"receipt_sha256": "13c3adee6e328f0605d8be8a43478c4ad7df39ea0c9065e2a2dffa1f975b01c5",
+							"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
 						}
 					],
 					"status": "audited"
@@ -18509,8 +18532,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
-			"target_sha256": "34ebfffbe978805ce0afa8a5e92cbfea3743587485494b3cb86c4cd4af51b8c9",
+			"source_sha256": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af",
+			"target_sha256": "83e665e3cd26a36db5bb0afd203f90d23a1a31de88f6f88d01a0d57813fa6750",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -18523,17 +18546,17 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-22",
-					"result": "clean",
-					"instance": "att-r2-es",
+					"result": "clean-with-findings",
+					"instance": "att-r3-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/att-r2-es.json",
-					"receipt_sha256": "c2183c6e7d564c22cf781425d034a1ef06a2a8a96e032352b2704b2df460310c",
-					"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
+					"receipt": "i18n/receipts/att-r3-es.json",
+					"receipt_sha256": "c7a00e37c43623c3b8a58a906c88571b41f4a2c678b05b2b15ef63a4a67fd96f",
+					"scope": "round-3 delta of ui.teamBridge.attachments.* at b787a8458f"
 				}
 			],
 			"status": "audited",
@@ -18685,14 +18708,37 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+					"target_sha256": "34ebfffbe978805ce0afa8a5e92cbfea3743587485494b3cb86c4cd4af51b8c9",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "att-r2-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/att-r2-es.json",
+							"receipt_sha256": "c2183c6e7d564c22cf781425d034a1ef06a2a8a96e032352b2704b2df460310c",
+							"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
-			"target_sha256": "9a66cc5265c438481620c908d75ea93399da3dad5dc0ffa46cc9b75f63cdec40",
+			"source_sha256": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af",
+			"target_sha256": "6de951c7cacb6a061dffb7c1825def627562ff03cfd8205cd96044a8ac9dd820",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -18705,17 +18751,17 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-22",
-					"result": "clean-with-findings",
-					"instance": "att-r2-zh-cn",
+					"result": "clean",
+					"instance": "att-r3-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/att-r2-zh-cn.json",
-					"receipt_sha256": "98f1329f08c9f78585937671507db2f5d50a7f020860657e69dab82375be56ab",
-					"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
+					"receipt": "i18n/receipts/att-r3-zh-cn.json",
+					"receipt_sha256": "9be3fb576d4502b4ffa191f065dd31f48935f391c28cefb68cffe82b536c8d2f",
+					"scope": "round-3 delta of ui.teamBridge.attachments.* at b787a8458f"
 				}
 			],
 			"status": "audited",
@@ -18864,6 +18910,29 @@
 							"receipt": "i18n/receipts/att-r1-zh-cn.json",
 							"receipt_sha256": "41e2204a1dee73226bfff2716a3445f0c40b45d6fea26c9903a07732cb3efe5c",
 							"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+					"target_sha256": "9a66cc5265c438481620c908d75ea93399da3dad5dc0ffa46cc9b75f63cdec40",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "att-r2-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/att-r2-zh-cn.json",
+							"receipt_sha256": "98f1329f08c9f78585937671507db2f5d50a7f020860657e69dab82375be56ab",
+							"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
 						}
 					],
 					"status": "audited"
@@ -19130,8 +19199,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
-			"target_sha256": "4f8908284652b26099e70fea80497be38e9728a1848634cff3c8e57b711c02aa",
+			"source_sha256": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af",
+			"target_sha256": "41d7e425b067e53fa9098da9279787dc23df235cf5ae13ea88fb184461f49721",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19146,16 +19215,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "att-r2-ru",
+					"instance": "att-r3-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/att-r2-ru.json",
-					"receipt_sha256": "2d06c4188b43a4d165521f9f9c877d705e55231732ee001ce0b3044799cb9d8c",
-					"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
+					"receipt": "i18n/receipts/att-r3-ru.json",
+					"receipt_sha256": "69e8409ba80bc7c1619e6f52d29a3a86ca5997a5bbd01838363e6b84cf4b6205",
+					"scope": "round-3 delta of ui.teamBridge.attachments.* at b787a8458f"
 				}
 			],
 			"status": "audited",
@@ -19254,14 +19323,37 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+					"target_sha256": "4f8908284652b26099e70fea80497be38e9728a1848634cff3c8e57b711c02aa",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "att-r2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/att-r2-ru.json",
+							"receipt_sha256": "2d06c4188b43a4d165521f9f9c877d705e55231732ee001ce0b3044799cb9d8c",
+							"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
-			"target_sha256": "3189d728113b51462c092b51d8ff41d26c1c26fd8e96e661179dfd3630f794b1",
+			"source_sha256": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af",
+			"target_sha256": "9ad93c48a0e90a7ce640c3db8d1ee1910df73720778f96ba631dc53ddcfd22f3",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19274,17 +19366,17 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-22",
-					"result": "clean-with-findings",
-					"instance": "att-r2-hi",
+					"result": "clean",
+					"instance": "att-r3-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/att-r2-hi.json",
-					"receipt_sha256": "f6e3bae43c1fb792e25c9d24d9412b7cec756ec3aa0bceed0c6dcaaa92244a58",
-					"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
+					"receipt": "i18n/receipts/att-r3-hi.json",
+					"receipt_sha256": "fe1e39e87fc29a74670841768e588052737ec222297f38b7507d66f30ce7b8fd",
+					"scope": "round-3 delta of ui.teamBridge.attachments.* at b787a8458f"
 				}
 			],
 			"status": "audited",
@@ -19383,14 +19475,37 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+					"target_sha256": "3189d728113b51462c092b51d8ff41d26c1c26fd8e96e661179dfd3630f794b1",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "att-r2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/att-r2-hi.json",
+							"receipt_sha256": "f6e3bae43c1fb792e25c9d24d9412b7cec756ec3aa0bceed0c6dcaaa92244a58",
+							"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
-			"target_sha256": "f9b0ae461b2e8cba71e0000e24e37b0f09aa932f65ba77be381a336ce98e411e",
+			"source_sha256": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af",
+			"target_sha256": "42fb7f345410eb56211049be9aa4277ef7380e4a4df41473a407ab85671a6dae",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19404,16 +19519,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "att-r2-ur",
+					"instance": "att-r3-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/att-r2-ur.json",
-					"receipt_sha256": "5f9baf25801f94b9af402007278a2255d99386008cf91d34e7282aa44fbcc091",
-					"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
+					"receipt": "i18n/receipts/att-r3-ur.json",
+					"receipt_sha256": "2d284222439b4c5a3f1b248520b6648782ea3cfe2df95f7a8d038e035d899ffb",
+					"scope": "round-3 delta of ui.teamBridge.attachments.* at b787a8458f"
 				}
 			],
 			"status": "audited",
@@ -19512,14 +19627,37 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+					"target_sha256": "f9b0ae461b2e8cba71e0000e24e37b0f09aa932f65ba77be381a336ce98e411e",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "att-r2-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/att-r2-ur.json",
+							"receipt_sha256": "5f9baf25801f94b9af402007278a2255d99386008cf91d34e7282aa44fbcc091",
+							"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
-			"target_sha256": "4853986bbd7c5c9e48a4616723878d948efd4ad7ce55e59e21aa9ad2d8a8c362",
+			"source_sha256": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af",
+			"target_sha256": "51afb668e31af62fb2050dd50ad3e62e607a8e310f651e69baa5b51bd69880d8",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19533,16 +19671,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "att-r2-vi",
+					"instance": "att-r3-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/att-r2-vi.json",
-					"receipt_sha256": "4249fef08a9c6e6d876646d9147502135a11d0373e35a40d2cd1ffbd52f639df",
-					"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
+					"receipt": "i18n/receipts/att-r3-vi.json",
+					"receipt_sha256": "2f74b6bd1ec0a4d2ac393c0edee267c40144bedafadcdc2eb581bd6bc0a70f2a",
+					"scope": "round-3 delta of ui.teamBridge.attachments.* at b787a8458f"
 				}
 			],
 			"status": "audited",
@@ -19638,6 +19776,29 @@
 							"receipt": "i18n/receipts/att-r1-vi.json",
 							"receipt_sha256": "a8f1ceb71bfbd5481e4a81842d1f9aacef58e286f98e25ee5ec38a4d0499a5b0",
 							"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+					"target_sha256": "4853986bbd7c5c9e48a4616723878d948efd4ad7ce55e59e21aa9ad2d8a8c362",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "att-r2-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/att-r2-vi.json",
+							"receipt_sha256": "4249fef08a9c6e6d876646d9147502135a11d0373e35a40d2cd1ffbd52f639df",
+							"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
 						}
 					],
 					"status": "audited"
