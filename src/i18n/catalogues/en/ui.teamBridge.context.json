@@ -1129,7 +1129,7 @@
 		"tone": "plain, concise",
 		"length": "One sentence.",
 		"placeholders": {},
-		"note": "Shown when the author pastes or drops an image but the server does not support image attachments; any pasted text still goes into the field."
+		"note": "Shown when the author pastes, drops or picks an image but the server does not support image attachments. Any text in the same paste still goes into the field; no image is added."
 	},
 	"ui.teamBridge.attachments.error_type": {
 		"role": "image attachment control or status",

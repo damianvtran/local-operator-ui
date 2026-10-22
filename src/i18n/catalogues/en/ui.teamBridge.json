@@ -152,7 +152,7 @@
 	"ui.teamBridge.attachments.retry": "Retry {label}",
 	"ui.teamBridge.attachments.uploading": "Uploading image…",
 	"ui.teamBridge.attachments.limit": "{max, plural, one {You can attach up to # image per message.} other {You can attach up to # images per message.}}",
-	"ui.teamBridge.attachments.unsupported": "Images can’t be sent in this organization yet. Only the text was pasted.",
+	"ui.teamBridge.attachments.unsupported": "Images can’t be sent in this organization yet.",
 	"ui.teamBridge.attachments.error_type": "This file isn’t an image that can be sent. Use PNG, JPEG, WebP or GIF.",
 	"ui.teamBridge.attachments.error_size": "This image is too large to send.",
 	"ui.teamBridge.attachments.error_invalid": "This image couldn’t be read. It may be damaged.",
