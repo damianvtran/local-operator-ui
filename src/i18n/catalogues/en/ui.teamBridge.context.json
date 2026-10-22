@@ -6,20 +6,6 @@
 		"placeholders": {},
 		"note": "The page's name. \"Team Bridge\" is the product surface name — never translate the words separately, they name one feature."
 	},
-	"ui.teamBridge.page.subtitle": {
-		"role": "page subheading",
-		"tone": "plain, factual",
-		"length": "One sentence; may wrap.",
-		"placeholders": {},
-		"note": "Says who the user talks to here: teammates and their agents. \"Agent\" is the product noun."
-	},
-	"ui.teamBridge.page.new_conversation": {
-		"role": "primary action button",
-		"tone": "imperative, short",
-		"length": "2-3 words.",
-		"placeholders": {},
-		"note": "Opens the create dialog. Used for DMs, groups and channels alike, so it must not say \"channel\"."
-	},
 	"ui.teamBridge.list.empty.title": {
 		"role": "empty-state heading",
 		"tone": "neutral",
@@ -125,20 +111,6 @@
 		"placeholders": {},
 		"note": "Names both key gestures. Key names stay untranslated; only \"to send\" and \"for a new line\" are copy."
 	},
-	"ui.teamBridge.member.agent": {
-		"role": "participant badge",
-		"tone": "neutral",
-		"length": "1 word.",
-		"placeholders": {},
-		"note": "Marks a participant whose messages come from an agent rather than a person. Product noun."
-	},
-	"ui.teamBridge.member.invited": {
-		"role": "participant state badge",
-		"tone": "neutral",
-		"length": "1 word.",
-		"placeholders": {},
-		"note": "A human invited to the conversation who has not joined yet. An invited agent is never shown to other members, so this is human-only in practice."
-	},
 	"ui.teamBridge.nav.label": {
 		"role": "sidebar navigation row label",
 		"tone": "neutral",
@@ -207,62 +179,6 @@
 			"count": "number of participants; a positive integer"
 		},
 		"note": "Sits beside the conversation title. Plural forms matter."
-	},
-	"ui.teamBridge.create.member_account": {
-		"role": "form field label",
-		"tone": "neutral",
-		"length": "2 words.",
-		"placeholders": {},
-		"note": "The organization account id of the person or agent to include. Shown because the app has no directory picker yet; the label is technical on purpose."
-	},
-	"ui.teamBridge.create.member_name": {
-		"role": "form field label",
-		"tone": "neutral",
-		"length": "2 words.",
-		"placeholders": {},
-		"note": "The name other members will see. This is the only name that crosses the wire, so it is required rather than derived."
-	},
-	"ui.teamBridge.create.member_kind": {
-		"role": "form field label",
-		"tone": "neutral",
-		"length": "2 words.",
-		"placeholders": {},
-		"note": "Chooses whether the row names a person or an agent."
-	},
-	"ui.teamBridge.create.member_person": {
-		"role": "select option",
-		"tone": "neutral",
-		"length": "1 word.",
-		"placeholders": {},
-		"note": "A human member. Keep distinct from the product noun 'Agent'."
-	},
-	"ui.teamBridge.create.member_agent": {
-		"role": "select option",
-		"tone": "neutral",
-		"length": "1 word.",
-		"placeholders": {},
-		"note": "An agent member. Product noun, same capitalization as elsewhere."
-	},
-	"ui.teamBridge.create.remove_member": {
-		"role": "icon button accessible name",
-		"tone": "imperative",
-		"length": "2 words.",
-		"placeholders": {},
-		"note": "Removes one row from the create form. Must work as a button name on its own."
-	},
-	"ui.teamBridge.create.add_member": {
-		"role": "row-adding button",
-		"tone": "imperative",
-		"length": "2 words.",
-		"placeholders": {},
-		"note": "Appends one empty member row to the form."
-	},
-	"ui.teamBridge.create.account_placeholder": {
-		"role": "input placeholder",
-		"tone": "technical",
-		"length": "One short token.",
-		"placeholders": {},
-		"note": "An example account id prefix. The ellipsis is part of the example; keep the 'acct_' prefix untranslated."
 	},
 	"ui.teamBridge.group.more": {
 		"role": "sidebar overflow group label",
@@ -356,15 +272,6 @@
 		"length": "One sentence.",
 		"placeholders": {},
 		"note": "Explains why New conversation is disabled while the account-wide scope is selected: a conversation must belong to exactly one organization."
-	},
-	"ui.teamBridge.group.more_unread": {
-		"role": "sidebar overflow disclosure, accessible name",
-		"tone": "concise, factual",
-		"length": "One short phrase.",
-		"placeholders": {
-			"count": "the unread total carried by the group"
-		},
-		"note": "States the count when the More row carries a badge, so a screen-reader user hears the same fact the badge shows. Do not name a single destination."
 	},
 	"ui.teamBridge.preview.chip": {
 		"role": "conversation row chip",
@@ -511,13 +418,6 @@
 		"placeholders": {},
 		"note": "No other active person is in this organization. Do not apologise and do not offer an invite action this surface does not have."
 	},
-	"ui.teamBridge.people.self": {
-		"role": "the signed-in person's own row",
-		"tone": "neutral",
-		"length": "One word.",
-		"placeholders": {},
-		"note": "Replaces the account's own display label. The row is not clickable; this word is not an action."
-	},
 	"ui.teamBridge.people.paused": {
 		"role": "a person's bridge status note",
 		"tone": "neutral, one word",
@@ -547,15 +447,6 @@
 			"name": "the person's display label"
 		},
 		"note": "Names the action the row performs (open a DM). It replaces the row's visible text for screen readers, so the label must contain the person's name."
-	},
-	"ui.teamBridge.people.message_paused": {
-		"role": "accessible name of a reachable person row whose bridge is paused",
-		"tone": "imperative plus a state note",
-		"length": "3-5 words.",
-		"placeholders": {
-			"name": "the person's display label"
-		},
-		"note": "Same action as the message row, with the paused state attached so the state is not lost when the visible note is overridden by the accessible name."
 	},
 	"ui.teamBridge.plan.title": {
 		"role": "eligibility panel heading for a plan without Team Bridge",
@@ -620,20 +511,6 @@
 		"placeholders": {},
 		"note": "Says the service, not the organization, is the cause. 'Try again later' is the only honest action this panel offers."
 	},
-	"ui.teamBridge.people.list_loading": {
-		"role": "explanation for an inert person row while conversations load",
-		"tone": "factual",
-		"length": "One sentence.",
-		"placeholders": {},
-		"note": "The row cannot know whether a DM already exists until the list answers, so it does not act. Do not imply the person is unavailable."
-	},
-	"ui.teamBridge.people.list_error": {
-		"role": "explanation for an inert person row after a list failure",
-		"tone": "factual, no blame",
-		"length": "One sentence.",
-		"placeholders": {},
-		"note": "The conversation list failed, so a DM cannot be resolved and a duplicate must not be started. This is about the read, not the person."
-	},
 	"ui.teamBridge.people.identity_loading": {
 		"role": "explanation for an inert person row before the account is known",
 		"tone": "neutral",
@@ -655,18 +532,280 @@
 		"placeholders": {},
 		"note": "Says the history is readable but sending is not. Do not offer a disabled composer."
 	},
-	"ui.teamBridge.read_only.person": {
-		"role": "explanation for an inert person row with no existing DM in surface F",
-		"tone": "factual",
-		"length": "One sentence.",
-		"placeholders": {},
-		"note": "Opening an existing DM is a read and stays available; starting one is a write and is not. Inline the reason so the row is not a silent no-op."
-	},
 	"ui.teamBridge.plan.checking": {
 		"role": "first-paint loading state while the eligibility read answers",
 		"tone": "neutral",
 		"length": "2-4 words.",
 		"placeholders": {},
 		"note": "Also the spinner's accessible label. Names the product, not a generic loading."
+	},
+	"ui.teamBridge.section.channels": {
+		"role": "rail section heading",
+		"tone": "plain, sentence case",
+		"length": "Short; one word.",
+		"placeholders": {},
+		"note": "Heading above the organization's channels in the conversation rail. Same sense as Slack's Channels."
+	},
+	"ui.teamBridge.section.channels_empty": {
+		"role": "clickable empty-state line",
+		"tone": "plain, sentence case",
+		"length": "One short line; may truncate in a narrow rail.",
+		"placeholders": {},
+		"note": "Shown under the Channels heading when the organization has no channels; the whole line is a button that opens the new-channel form. No trailing period: it reads as an action."
+	},
+	"ui.teamBridge.section.channels_none": {
+		"role": "empty-state line",
+		"tone": "plain, sentence case",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Channels heading's empty line when the reader cannot create one here (all organizations view, or read-only organization)."
+	},
+	"ui.teamBridge.section.groups": {
+		"role": "rail section heading",
+		"tone": "plain, sentence case",
+		"length": "Short; one word.",
+		"placeholders": {},
+		"note": "Heading above private group conversations (several people and/or agents)."
+	},
+	"ui.teamBridge.section.groups_empty": {
+		"role": "clickable empty-state line",
+		"tone": "plain, sentence case",
+		"length": "One short line; may truncate.",
+		"placeholders": {},
+		"note": "Shown under Groups when there are none; the line is a button that opens a new-message draft with a To: field. No trailing period."
+	},
+	"ui.teamBridge.section.groups_none": {
+		"role": "empty-state line",
+		"tone": "plain, sentence case",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Groups heading's empty line when the reader cannot start one here."
+	},
+	"ui.teamBridge.section.directs": {
+		"role": "rail section heading",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Heading above one-to-one conversations. Same sense as Slack's Direct messages."
+	},
+	"ui.teamBridge.section.chiefs": {
+		"role": "rail section heading",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Heading above each teammate's primary agent. 'Chief of staff' is the product's name for a person's primary agent; keep the glossary term."
+	},
+	"ui.teamBridge.section.chiefs_empty": {
+		"role": "empty-state line",
+		"tone": "plain, sentence case",
+		"length": "One sentence; may wrap.",
+		"placeholders": {},
+		"note": "Shown under Chiefs of staff when no other member has enrolled their agent."
+	},
+	"ui.teamBridge.chief.label": {
+		"role": "row label composition",
+		"tone": "plain, sentence case",
+		"length": "Short; must fit a 30px rail row.",
+		"placeholders": {
+			"agent": "The agent's current display name, verbatim (for example Aida).",
+			"person": "The owning teammate's display name, verbatim."
+		},
+		"note": "Names a teammate's chief of staff, e.g. 'Aida (Ben)'. Locales may reorder or change the brackets, but both placeholders must stay."
+	},
+	"ui.teamBridge.chief.fallback": {
+		"role": "fallback name",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Used in place of the agent's name when the server has not published one."
+	},
+	"ui.teamBridge.people.self_named": {
+		"role": "row label",
+		"tone": "plain, sentence case",
+		"length": "Short; must fit a 30px rail row.",
+		"placeholders": {
+			"name": "The signed-in person's display name, verbatim."
+		},
+		"note": "The reader's own row in People. Not a control."
+	},
+	"ui.teamBridge.row.menu": {
+		"role": "icon button accessible name",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {
+			"name": "The person or chief-of-staff label on that row, verbatim."
+		},
+		"note": "Screen-reader name of the '…' button revealed when hovering a People or Chiefs of staff row."
+	},
+	"ui.teamBridge.row.start_group": {
+		"role": "menu item",
+		"tone": "plain, sentence case",
+		"length": "Short; one line.",
+		"placeholders": {},
+		"note": "Opens a new-message draft already addressed to this row's person or agent, so more people can be added before the first message."
+	},
+	"ui.teamBridge.compose.new": {
+		"role": "icon button accessible name",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "The rail's compose button: opens an empty draft with a To: field."
+	},
+	"ui.teamBridge.compose.to": {
+		"role": "field prefix",
+		"tone": "plain, sentence case",
+		"length": "Very short.",
+		"placeholders": {},
+		"note": "Label in front of the recipient chips in a new-message draft, as in an email header."
+	},
+	"ui.teamBridge.compose.label": {
+		"role": "combobox accessible name",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Accessible name of the recipient field and its suggestion list."
+	},
+	"ui.teamBridge.compose.placeholder": {
+		"role": "input placeholder",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Placeholder of the empty recipient field."
+	},
+	"ui.teamBridge.compose.remove": {
+		"role": "icon button accessible name",
+		"tone": "plain, sentence case",
+		"length": "Short.",
+		"placeholders": {
+			"name": "The recipient's label, verbatim."
+		},
+		"note": "Removes one recipient chip from the draft."
+	},
+	"ui.teamBridge.compose.empty": {
+		"role": "pane hint",
+		"tone": "plain, sentence case",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Shown in the empty thread of a new-message draft with no recipients yet. Nothing is created until the first message is sent."
+	},
+	"ui.teamBridge.composer.placeholder_to": {
+		"role": "textarea placeholder",
+		"tone": "plain, sentence case",
+		"length": "Short; may truncate.",
+		"placeholders": {
+			"name": "The conversation's title (a person, agent label or #channel), verbatim."
+		},
+		"note": "Composer placeholder naming who the message goes to, as in Slack."
+	},
+	"ui.teamBridge.thread.today": {
+		"role": "day divider",
+		"tone": "plain, sentence case",
+		"length": "One word.",
+		"placeholders": {},
+		"note": "Divider label above today's messages."
+	},
+	"ui.teamBridge.thread.yesterday": {
+		"role": "day divider",
+		"tone": "plain, sentence case",
+		"length": "One word.",
+		"placeholders": {},
+		"note": "Divider label above yesterday's messages."
+	},
+	"ui.teamBridge.builtin.humans_topic": {
+		"role": "channel header topic",
+		"tone": "plain, sentence case",
+		"length": "One sentence; may truncate.",
+		"placeholders": {},
+		"note": "Describes the built-in #humans channel, which always contains every person in the organization."
+	},
+	"ui.teamBridge.builtin.agents_topic": {
+		"role": "channel header topic",
+		"tone": "plain, sentence case",
+		"length": "One sentence; may truncate.",
+		"placeholders": {},
+		"note": "Describes the built-in #agents channel: every enrolled agent is a member, and ordinary messages do not wake them; a mention does."
+	},
+	"ui.teamBridge.section.channels_add": {
+		"role": "icon button label (aria-label and tooltip)",
+		"tone": "Imperative, sentence case.",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "The '+' revealed on the Channels section heading in the Team Bridge rail. Opens the new-channel form."
+	},
+	"ui.teamBridge.section.groups_add": {
+		"role": "icon button label (aria-label and tooltip)",
+		"tone": "Imperative, sentence case.",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "The '+' revealed on the Groups section heading. Opens a To: draft where several people or agents can be added; the group is made when the first message is sent."
+	},
+	"ui.teamBridge.create.channel_description": {
+		"role": "dialog description",
+		"tone": "Plain, reassuring.",
+		"length": "One or two short sentences.",
+		"placeholders": {},
+		"note": "Under the title of the New channel form. 'Agents' are teammates' AI agents (chiefs of staff), which can also be channel members."
+	},
+	"ui.teamBridge.create.name_placeholder": {
+		"role": "input placeholder",
+		"tone": "Example, lower case.",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Example channel name inside the Name field. Channel names are lower case with hyphens; keep 'qa-coordination' as an untranslated slug or use an equivalent lower-case-hyphen example in the target language."
+	},
+	"ui.teamBridge.create.topic": {
+		"role": "field label",
+		"tone": "Sentence case.",
+		"length": "Short.",
+		"placeholders": {},
+		"note": "Label of an optional field describing what the channel is for; shown under the channel name in its header."
+	},
+	"ui.teamBridge.thread.intro_person": {
+		"role": "empty-state sentence",
+		"tone": "Warm, plain.",
+		"length": "One sentence.",
+		"placeholders": {
+			"name": "a teammate's display name, e.g. 'Ben Tran'"
+		},
+		"note": "Shown under a large avatar and the person's name when a DM with them has no messages yet. Mirrors how Slack/Discord open an empty DM."
+	},
+	"ui.teamBridge.thread.intro_chief": {
+		"role": "empty-state sentence",
+		"tone": "Plain; sets expectations.",
+		"length": "Two short sentences.",
+		"placeholders": {
+			"name": "the agent's label, e.g. 'Aida (Ben Tran)'"
+		},
+		"note": "Shown when the reader opens a DM with another person's primary AI agent and there are no messages yet. The second sentence is a safety expectation: the agent treats inbound messages as untrusted and does not take orders from them on its own."
+	},
+	"ui.teamBridge.thread.intro_group": {
+		"role": "empty-state sentence",
+		"tone": "Plain.",
+		"length": "One sentence.",
+		"placeholders": {
+			"names": "comma-separated list of recipient labels, e.g. 'Ben Tran, Aida (Sherman Tsui)'"
+		},
+		"note": "Shown in a new group draft once at least one recipient is added in the To: bar."
+	},
+	"ui.teamBridge.list.error_pane": {
+		"role": "main-pane state message",
+		"tone": "Plain, no blame.",
+		"length": "One sentence.",
+		"placeholders": {},
+		"note": "Shown in the main pane when the conversation list failed to load; the retry button lives in the rail on the left. ('left' is the inline-start side; in RTL locales say the side the list is actually on, i.e. right.)"
+	},
+	"ui.teamBridge.sender.unknown_person": {
+		"role": "placeholder sender name",
+		"tone": "plain, sentence case",
+		"length": "Short; fits a message header beside a time.",
+		"placeholders": {},
+		"note": "Shown as the author of a message when the person's name cannot be resolved (they left the organization, or the directory has not loaded). Must read as a placeholder, not as a name; rendered in muted italics."
+	},
+	"ui.teamBridge.sender.unknown_agent": {
+		"role": "placeholder sender name",
+		"tone": "plain, sentence case",
+		"length": "Short; fits a message header beside a time.",
+		"placeholders": {},
+		"note": "Shown as the author of an agent's message when the agent's name cannot be resolved. Must read as a placeholder, not as a name; rendered in muted italics. 'Agent' is an AI agent; use the glossary term."
 	}
 }

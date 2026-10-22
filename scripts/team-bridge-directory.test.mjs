@@ -26,6 +26,42 @@ import { build } from "esbuild";
  * companion agent-server change's own tests.
  */
 
+/*
+ * THE RAIL'S ONE IMPORT FROM THE CHAT SIDEBAR IS ITS SELECTED-ROW ROLE.
+ * `team-bridge-rail.tsx` imports `rowCurrent` from `chat-sidebar.tsx` so the
+ * selected person/channel paints the one role every sidebar shares (the
+ * selection guard in `scripts/chat-sidebar-selection.test.mjs` asserts that).
+ * That module drags MUI and the whole chat tree into a node bundle, which
+ * cannot load MUI's directory imports; the stub exports the SAME literal, read
+ * from the shipped source, so these tests render the real class string without
+ * the chat sidebar's dependency weight.
+ */
+const chatSidebarSource = readFileSync(
+	`${process.cwd()}/src/renderer/src/features/chat/components/chat-sidebar.tsx`,
+	"utf8",
+);
+const rowCurrentLiteral = chatSidebarSource.match(
+	/export const rowCurrent =\s*("[^"]+")/,
+)?.[1];
+if (!rowCurrentLiteral)
+	throw new Error("rowCurrent literal not found in chat-sidebar.tsx");
+const chatSidebarStub = {
+	name: "chat-sidebar-stub",
+	setup(pluginBuild) {
+		pluginBuild.onResolve(
+			{ filter: /chat\/components\/chat-sidebar$/ },
+			() => ({
+				path: "chat-sidebar-stub",
+				namespace: "stub",
+			}),
+		);
+		pluginBuild.onLoad({ filter: /.*/, namespace: "stub" }, () => ({
+			contents: `export const rowCurrent = ${rowCurrentLiteral};`,
+			loader: "js",
+		}));
+	},
+};
+
 const ROOT = process.cwd();
 
 /** The model bundle: no JSX, no DOM — a data URL is enough. */
@@ -64,6 +100,7 @@ const componentBundle = await build({
 	packages: "external",
 	jsx: "automatic",
 	loader: { ".css": "empty" },
+	plugins: [chatSidebarStub],
 	alias: {
 		"@shared": `${ROOT}/src/renderer/src/shared`,
 		"@features": `${ROOT}/src/renderer/src/features`,
@@ -147,7 +184,7 @@ const conversation = (patch = {}) => ({
 const viewProps = (patch = {}) => ({
 	selfAccountId: "acct_self",
 	conversations: [],
-	selected: null,
+	target: null,
 	messages: [],
 	organizations: [
 		{ tenantId: "tnt_1", name: "Minerva", role: "owner", unread: 0 },
@@ -158,16 +195,29 @@ const viewProps = (patch = {}) => ({
 	messageState: "idle",
 	people: [],
 	peopleState: "ready",
-	onSelect: () => {},
+	onTarget: () => {},
 	onSend: () => {},
-	onNewConversation: () => {},
+	onNewChannel: () => {},
 	onRetry: () => {},
 	onScopeChange: () => {},
 	onJoin: () => {},
 	onNotifyChange: () => {},
 	onRetryPeople: () => {},
-	onComposeToPerson: () => {},
 	...patch,
+	/*
+	 * The view selects by TARGET and resolves the conversation from the list,
+	 * so a fixture that names the selected conversation must also list it.
+	 */
+	...(patch.selectedConversation
+		? {
+				target: { type: "conversation", id: patch.selectedConversation.id },
+				conversations: patch.conversations?.some(
+					(row) => row.id === patch.selectedConversation.id,
+				)
+					? patch.conversations
+					: [...(patch.conversations ?? []), patch.selectedConversation],
+			}
+		: {}),
 });
 
 const { TeamBridgePageView } = ui;
@@ -223,13 +273,6 @@ test("a person row is self, openable, paused or inert from the frozen pairs", ()
 		"unavailable",
 		"active beside disabled is not reachable",
 	);
-});
-
-test("a role earns a badge only when it tells the reader something", () => {
-	assert.equal(model.showsPersonRole("owner"), true);
-	assert.equal(model.showsPersonRole("admin"), true);
-	assert.equal(model.showsPersonRole("member"), false);
-	assert.equal(model.showsPersonRole("auditor"), false);
 });
 
 test("the person initial is the label's first character, never empty", () => {
@@ -387,67 +430,49 @@ test("people render with self, paused and inert states at the rail's rhythm", ()
 			}),
 		),
 	);
-
 	assert.match(html, /People/);
-	// Self is the account's own row and is not a button.
-	assert.match(html, />You</);
+	// The reader's own row names them and is not a control.
+	assert.match(html, /Damian \(you\)/);
 	assert.doesNotMatch(html, /Message Damian/);
-	// A reachable person opens a DM (the existing one is selected by the view
-	// only on click; here the accessible name states the action).
+	// A reachable person's row is their DM; a paused one says so on the row.
 	assert.match(html, /aria-label="Message Bea"/);
-	assert.match(html, /aria-label="Message Cy, paused"/);
+	assert.match(html, /aria-label="Message Cy"/);
 	assert.match(html, />Paused</);
-	// The inert row explains itself rather than doing nothing silently.
+	// A bridge-off person is listed, inert, and explains why.
 	assert.match(html, /Hasn’t turned on Team Bridge yet/);
 	assert.match(html, /aria-disabled="true"/);
 	assert.match(html, /aria-describedby="[^"]+"/);
-	// A paused row is still a control; an inert row is not styled as one.
-	assert.match(html, /Message Cy, paused/);
 });
 
-test("a person row waits for the conversation list before it can start a DM", () => {
+test("a person row is the DM: no separate conversation row, and selecting needs no list", () => {
 	/*
-	 * ROUND-1 U-2. An unresolved list cannot say whether a DM already exists, so
-	 * a click must not fall through to the create flow and duplicate it. The row
-	 * is a labelled, inert statement until the list answers; a ready list beside
-	 * the same fixtures gives the row its action back.
+	 * OPERATOR REVIEW 2026-10-21. A DM with Bea is drawn ON Bea's People row (with
+	 * its unread count) and nowhere else; there is no "@ Bea" row above People.
+	 * Selecting Bea is safe while the list loads because nothing is created on
+	 * click any more: the draft is created by the first send, find-or-create.
 	 */
 	const bea = person({ display_label: "Bea" });
-	const dm = conversation();
+	const dm = conversation({ unread_count: 2 });
 	const ready = renderToStaticMarkup(
 		createElement(
 			TeamBridgePageView,
-			viewProps({
-				people: [bea],
-				conversations: [dm],
-				listState: "ready",
-			}),
+			viewProps({ people: [bea], conversations: [dm], listState: "ready" }),
 		),
 	);
 	assert.match(ready, /aria-label="Message Bea"/);
-
+	assert.doesNotMatch(ready, new RegExp(`data-conversation-id="${dm.id}"`));
+	assert.match(ready, /aria-label="2 unread"/);
 	for (const listState of ["loading", "error"]) {
 		const html = renderToStaticMarkup(
 			createElement(
 				TeamBridgePageView,
-				viewProps({
-					people: [bea],
-					conversations: [dm],
-					listState,
-				}),
+				viewProps({ people: [bea], conversations: [dm], listState }),
 			),
 		);
-		assert.doesNotMatch(
-			html,
-			/Message Bea/,
-			`a ${listState} list must not offer a compose that could duplicate a DM`,
-		);
-		assert.match(html, /aria-disabled="true"/);
 		assert.match(
 			html,
-			listState === "loading"
-				? /Conversations are still loading\./
-				: /Conversations could not be loaded/,
+			/aria-label="Message Bea"/,
+			`${listState} list keeps the row`,
 		);
 	}
 });
@@ -476,8 +501,8 @@ test("the viewer's own row is never offered as a message before identity answers
 });
 
 test("surface F withholds writes but still opens an existing DM", () => {
-	// ROUND-1 U-5: read_only disables New conversation and the composer; a
-	// person with an existing DM stays openable because opening is a read.
+	// ROUND-1 U-5: read_only withholds creation and the composer; opening a DM
+	// is a read, so a person with history stays selectable.
 	const bea = person({ display_label: "Bea" });
 	const dm = conversation();
 	const noDm = renderToStaticMarkup(
@@ -486,34 +511,30 @@ test("surface F withholds writes but still opens an existing DM", () => {
 			viewProps({ readOnly: true, people: [bea] }),
 		),
 	);
-	assert.match(noDm, /This organization is read-only\./);
-	assert.doesNotMatch(noDm, /Message Bea/);
 	assert.match(
 		noDm,
-		/Read-only: a new conversation can’t be started right now\./,
+		/aria-label="New message"[^>]*aria-disabled="true"|aria-disabled="true"[^>]*aria-label="New message"/,
 	);
-	assert.match(
-		noDm,
-		/aria-label="New conversation"[^>]*aria-disabled="true"|aria-disabled="true"[^>]*aria-label="New conversation"/,
-	);
+	assert.match(noDm, /No channels yet\./);
+	assert.doesNotMatch(noDm, /Create one/);
 
 	const withDm = renderToStaticMarkup(
 		createElement(
 			TeamBridgePageView,
 			viewProps({
 				readOnly: true,
-				selected: dm,
+				target: { type: "person", accountId: bea.account_id },
 				conversations: [dm],
 				messageState: "ready",
 				people: [bea],
 			}),
 		),
 	);
-	assert.doesNotMatch(withDm, /Message this conversation/);
 	assert.match(
 		withDm,
 		/This organization is read-only right now, so messages can’t be sent\./,
 	);
+	assert.doesNotMatch(withDm, /<textarea/);
 	assert.match(withDm, /aria-label="Message Bea"/);
 });
 
@@ -530,7 +551,10 @@ test("surface F withholds Join and the conversation menu", () => {
 			TeamBridgePageView,
 			viewProps({
 				readOnly: true,
-				selected: conversation({ discoverable: true, member: false }),
+				selectedConversation: conversation({
+					discoverable: true,
+					member: false,
+				}),
 			}),
 		),
 	);
@@ -541,13 +565,16 @@ test("surface F withholds Join and the conversation menu", () => {
 	const member = renderToStaticMarkup(
 		createElement(
 			TeamBridgePageView,
-			viewProps({ readOnly: true, selected: conversation() }),
+			viewProps({ readOnly: true, selectedConversation: conversation() }),
 		),
 	);
 	assert.doesNotMatch(member, /Conversation options/);
 
 	const writable = renderToStaticMarkup(
-		createElement(TeamBridgePageView, viewProps({ selected: conversation() })),
+		createElement(
+			TeamBridgePageView,
+			viewProps({ selectedConversation: conversation() }),
+		),
 	);
 	assert.match(writable, /Conversation options/);
 });
@@ -696,37 +723,27 @@ test("a payload whose every row is unrenderable says so, not 'nobody joined'", (
 });
 
 test("the row time moves to the header and a relative+absolute tooltip", () => {
+	const at = new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString();
 	const channel = conversation({
-		id: "bcv_channel_long",
+		id: "bcv_time",
 		kind: "channel",
-		name: "a-very-long-channel-name-that-would-crowd-the-row-at-narrow-width",
-		last_message_at: new Date(Date.now() - 10 * 60 * 60_000).toISOString(),
+		name: "release-proof-0.84.2",
+		last_message_at: at,
+		latest_seq: 3,
 	});
 	const html = renderToStaticMarkup(
 		createElement(
 			TeamBridgePageView,
-			viewProps({
-				conversations: [channel],
-				selected: channel,
-				messages: [],
-			}),
+			viewProps({ selectedConversation: channel, messageState: "ready" }),
 		),
 	);
 	const row = html.match(
-		/<button[^>]*data-conversation-id="bcv_channel_long"[\s\S]*?<\/button>/,
+		/<button[^>]*data-conversation-id="bcv_time"[\s\S]*?<\/button>/,
 	)?.[0];
-	const header = html
-		.match(/<header[^>]*flex h-11[^>]*>[\s\S]*?<\/header>/g)
-		?.at(-1);
-	assert.ok(row, "row rendered");
-	assert.ok(header, "header rendered");
-	// The row still carries the name and its relative+absolute tooltip, but the
-	// visible row text has no timestamp to clip at the edge.
-	assert.match(visible(row), /a-very-long-channel-name/);
+	const header = [...html.matchAll(/<header[\s\S]*?<\/header>/g)].at(-1)?.[0];
+	assert.ok(row && header);
 	assert.doesNotMatch(visible(row), /10 hours ago/);
 	assert.match(row, /title="10 hours ago · [^"]+"/);
-	// The selected header carries the relative time for every surface, including
-	// touch where a hover tooltip does not exist.
 	assert.match(visible(header), /10 hours ago/);
 });
 
@@ -747,7 +764,7 @@ test("the merged row also keeps its visible time out of the row", () => {
 					{ tenantId: "tnt_1", name: "Minerva", role: "owner", unread: 0 },
 				],
 				conversations: [channel],
-				selected: channel,
+				target: { type: "conversation", id: channel.id },
 				messages: [],
 			}),
 		),
@@ -763,6 +780,115 @@ test("the merged row also keeps its visible time out of the row", () => {
 	assert.doesNotMatch(visible(row), /10 hours ago/);
 	assert.match(visible(header), /10 hours ago/);
 	assert.match(visible(row), /Minerva/);
+});
+
+test("a chief of staff is listed by its current name and owner, and its DM is its row", () => {
+	const ben = person({
+		account_id: "acct_ben",
+		display_label: "Ben",
+		agent: { endpoint_id: "bep_ben", name: "Aida", state: "active" },
+	});
+	const agentDm = conversation({
+		id: "bcv_dm_aida",
+		kind: "dm",
+		name: "",
+		unread_count: 1,
+		members: [
+			selfMember,
+			{
+				account_id: "acct_ben",
+				kind: "agent",
+				display_label: "Member",
+				role: "member",
+				state: "active",
+			},
+		],
+	});
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({ conversations: [agentDm], people: [ben] }),
+		),
+	);
+	assert.match(html, /Chiefs of staff/);
+	assert.match(html, /Aida \(Ben\)/);
+	assert.match(html, /data-team-bridge-chief="acct_ben"/);
+	// The DM lives on the chief's row, not as its own conversation row, and
+	// Ben's PERSON row does not claim his agent's DM.
+	assert.doesNotMatch(html, /data-conversation-id="bcv_dm_aida"/);
+	const personRow = html.match(
+		/<button[^>]*data-team-bridge-person="acct_ben"[\s\S]*?<\/button>/,
+	)?.[0];
+	assert.ok(personRow);
+	assert.doesNotMatch(personRow, /unread/);
+	// A stale stored label never reaches the screen when the directory knows better.
+	assert.doesNotMatch(visible(html), /\bMember\b/);
+});
+
+test("every section keeps its header, and an empty one is the create action", () => {
+	const html = renderToStaticMarkup(
+		createElement(TeamBridgePageView, viewProps({ people: [] })),
+	);
+	for (const heading of ["Channels", "Groups", "People", "Chiefs of staff"]) {
+		assert.match(html, new RegExp(`>${heading}<`));
+	}
+	assert.match(html, /<button[^>]*>No channels yet\. Create one<\/button>/);
+	assert.match(html, /<button[^>]*>No groups yet\. Start one<\/button>/);
+});
+
+test("built-in channels lead the Channels section in a fixed order", () => {
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				conversations: [
+					conversation({ id: "bcv_ops", kind: "channel", name: "ops" }),
+					conversation({
+						id: "bcv_agents",
+						kind: "channel",
+						name: "agents",
+						builtin: "agents",
+					}),
+					conversation({
+						id: "bcv_humans",
+						kind: "channel",
+						name: "humans",
+						builtin: "humans",
+					}),
+				],
+			}),
+		),
+	);
+	const order = [...html.matchAll(/data-conversation-id="(bcv_[a-z]+)"/g)].map(
+		(m) => m[1],
+	);
+	assert.deepEqual(order, ["bcv_humans", "bcv_agents", "bcv_ops"]);
+});
+
+test("a person with no DM opens an addressed draft and nothing is created", () => {
+	const bea = person({ display_label: "Bea" });
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				people: [bea],
+				target: { type: "person", accountId: bea.account_id },
+			}),
+		),
+	);
+	// Slack/Discord's empty-DM intro (design round 1, D5): the name, then one
+	// line that never says "created" (that nothing is written yet is the code's
+	// fact, asserted by the model's sendFirstMessage tests, not the copy's).
+	assert.match(
+		html,
+		/This is the beginning of your direct message history with Bea\./,
+	);
+	assert.doesNotMatch(visible(html), /created/i);
+	assert.match(html, /placeholder="Message Bea"/);
+	assert.match(
+		html,
+		/aria-current="page"[^>]*data-team-bridge-person="acct_bea"|data-team-bridge-person="acct_bea"[^>]*aria-current="page"/,
+	);
 });
 
 test("a local 422 is named as a validation cause, not an outdated client", () => {
@@ -854,6 +980,90 @@ test("the merged scope explains why it has no People list and queries none", () 
 	);
 	assert.match(html, /Choose an organization to see its people/);
 	assert.doesNotMatch(html, /Message Bea/);
+});
+
+// ---------------------------------------------------------------------------
+// View: sender names (the legacy "Member" label)
+// ---------------------------------------------------------------------------
+
+/*
+ * OPERATOR REPORT 2026-10-22: every message, their own included, was signed
+ * "Member" with an "M" avatar. The hub stored that placeholder as the label of
+ * creators and self-joins, so these fixtures carry it exactly as prod rows do.
+ */
+const legacyThread = (conversationId) =>
+	[
+		["acct_self", "mine"],
+		["acct_bea", "from bea"],
+		["acct_gone", "from someone who left"],
+	].map(([accountId, body], index) => ({
+		id: `bcmsg_${index + 1}`,
+		conversation_id: conversationId,
+		seq: index + 1,
+		// Ten minutes apart, so each message draws its own header and avatar.
+		sender: { account_id: accountId, kind: "human", display_label: "Member" },
+		body,
+		origin: "human",
+		created_at: new Date(Date.UTC(2026, 9, 19, 10, index * 10)).toISOString(),
+	}));
+
+const senderNames = (html) =>
+	[...html.matchAll(/data-sender="[^"]*"[^>]*>([^<]*)</g)].map(
+		(match) => match[1],
+	);
+
+test('a legacy "Member" sender is named from the directory, the identity, or an unknown placeholder', () => {
+	const dm = conversation({
+		members: [
+			{ ...selfMember, display_label: "Member" },
+			{ ...conversation().members[1], display_label: "Member" },
+		],
+	});
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				// The directory lists Bea but neither the reader nor the leaver.
+				people: [person()],
+				selfName: "Damian Tran",
+				selectedConversation: dm,
+				messages: legacyThread(dm.id),
+				messageState: "ready",
+			}),
+		),
+	);
+	assert.deepEqual(senderNames(html), ["Damian Tran", "Bea", "Unknown person"]);
+	// The unknown sender wears a neutral glyph, not the initial of a placeholder.
+	assert.match(html, /data-sender-avatar="unknown"/);
+	assert.doesNotMatch(visible(html), /\bMember\b/);
+	assert.doesNotMatch(html, /data-sender-avatar="initial"[^>]*>U</);
+});
+
+test("the merged view names senders from the conversation's own organization directory", () => {
+	const dm = conversation({
+		members: [
+			{ ...selfMember, display_label: "Member" },
+			{ ...conversation().members[1], display_label: "Member" },
+		],
+	});
+	const html = renderToStaticMarkup(
+		createElement(
+			TeamBridgePageView,
+			viewProps({
+				scope: "all",
+				people: [],
+				directories: { tnt_1: [person()] },
+				selfName: "Damian Tran",
+				selectedConversation: dm,
+				messages: legacyThread(dm.id),
+				messageState: "ready",
+			}),
+		),
+	);
+	assert.deepEqual(senderNames(html), ["Damian Tran", "Bea", "Unknown person"]);
+	// The rail's DM row is titled from the same directory, not "Member".
+	assert.match(html, /data-conversation-id="bcv_dm_bea"[\s\S]*?Bea/);
+	assert.doesNotMatch(visible(html), /\bMember\b/);
 });
 
 test("an empty roster says so instead of rendering a blank section", () => {
