@@ -13,6 +13,7 @@ import { ArrowUp, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
+import { manageThreadFocus } from "./team-bridge-thread-focus";
 import {
 	type ThreadTarget,
 	loadThreadPage,
@@ -55,6 +56,12 @@ export function TeamBridgeThreadPaneView({
 }: ThreadPaneProps) {
 	useI18nLocale();
 	const pane = useRef<HTMLElement>(null);
+	const close = useRef(onClose);
+	close.current = onClose;
+	useEffect(() => {
+		if (pane.current)
+			return manageThreadFocus(pane.current, () => close.current());
+	}, []);
 	useEffect(() => {
 		if (!pane.current || state !== "ready" || !onRead) return;
 		return observeDisplayedThreadReplies(pane.current, replies, onRead);
@@ -90,13 +97,14 @@ export function TeamBridgeThreadPaneView({
 		<aside
 			ref={pane}
 			aria-label={t("ui.teamBridge.replies.title")}
-			className="flex h-full min-h-0 w-[min(26rem,45%)] min-w-72 shrink-0 flex-col bg-canvas pt-[var(--panel-top-pad,0px)]"
+			className="flex h-full min-h-0 w-full min-w-0 shrink-0 flex-col bg-canvas pt-[var(--panel-top-pad,0px)]"
 		>
 			<header className="flex h-11 shrink-0 items-center justify-between px-5">
 				<h2 className="font-semibold text-[15px] text-ink">
 					{t("ui.teamBridge.replies.title")}
 				</h2>
 				<Button
+					data-thread-close
 					size="icon-sm"
 					variant="ghost"
 					onClick={onClose}
@@ -109,11 +117,14 @@ export function TeamBridgeThreadPaneView({
 				{root && (
 					<TeamBridgeMessageList messages={[root]} labelFor={labelFor} />
 				)}
-				<div className="px-5 py-3 text-[12px] text-ink-dim">
-					{t("ui.teamBridge.replies.count", {
-						count: root?.reply_count ?? replies.length,
-					})}
-				</div>
+				{/* Pending/error pages cannot assert an empty count from an empty array. */}
+				{(state === "ready" || root?.reply_count !== undefined) && (
+					<div className="px-5 py-3 text-[12px] text-ink-dim">
+						{t("ui.teamBridge.replies.count", {
+							count: root?.reply_count ?? replies.length,
+						})}
+					</div>
+				)}
 				{state === "loading" ? (
 					<div className="flex justify-center py-8">
 						<Spinner size="sm" label={t("ui.teamBridge.thread.loading")} />

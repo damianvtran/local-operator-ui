@@ -7,7 +7,7 @@ import { formatRelativeTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ArrowUp, Bot, Hash, Plus, Users } from "lucide-react";
-import type { FC } from "react";
+import type { FC, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type {
@@ -270,6 +270,8 @@ export function relative(iso: string, locale: string): string {
 }
 
 export type TeamBridgePageViewProps = {
+	/** Presentation-only fixtures can render pane states without dispatching live queries. */
+	renderThreadPane?: (target: ThreadTarget, close: () => void) => ReactNode;
 	threadLink?: ThreadTarget | null;
 	onCloseThread?: () => void;
 	listState: "loading" | "error" | "ready";
@@ -325,6 +327,7 @@ export type TeamBridgePageViewProps = {
 };
 
 export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
+	renderThreadPane,
 	threadLink,
 	onCloseThread,
 	listState,
@@ -453,6 +456,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	// `selected` already resolves a one-recipient draft to its existing DM
 	// (`targetConversation`), so the view and the container agree on it.
 	const shown = selected;
+	const threadIsOpen = Boolean(
+		threadSelection &&
+			shown &&
+			threadSelection.conversationId === shown.id &&
+			threadSelection.tenantId === shown.tenant_id &&
+			!previewSelected &&
+			!selectedOrganizationUnknown,
+	);
 	const canCompose =
 		!readOnly &&
 		!previewSelected &&
@@ -542,7 +553,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	return (
 		<div
 			data-glass-region="canvas"
-			className="flex h-full min-h-0 w-full overflow-hidden bg-canvas"
+			className="@container/bridge relative flex h-full min-h-0 w-full overflow-hidden bg-canvas"
 		>
 			<aside
 				data-glass-region="page-sidebar"
@@ -772,7 +783,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 
 			{/* The ONE ground split: the rail inherits the page canvas, the thread
 			    carries the surface — two regions read apart without a rule. */}
-			<section className="flex min-w-0 flex-1 flex-col bg-surface pt-[var(--panel-top-pad,0px)]">
+			<section
+				className={cn(
+					"flex min-w-0 flex-1 flex-col bg-surface pt-[var(--panel-top-pad,0px)]",
+					threadIsOpen && "@max-[1024px]/bridge:invisible",
+				)}
+			>
 				{target === null ? (
 					<div className="flex flex-1 items-center justify-center px-6">
 						{listState === "loading" ? (
@@ -1080,19 +1096,31 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				threadSelection.tenantId === shown.tenant_id &&
 				!previewSelected &&
 				!selectedOrganizationUnknown && (
-					<TeamBridgeThreadPane
-						key={`${threadSelection.tenantId}:${threadSelection.conversationId}:${threadSelection.rootId}`}
-						target={threadSelection}
-						initialRoot={messages.find(
-							(message) => message.id === threadSelection.rootId,
+					/* At the supported 800px minimum a second flex column leaves only
+					   152px for the timeline. Take over its whole region below 1024px,
+					   rather than shrinking either reading measure. The 288px rail stays. */
+					<div className="absolute inset-y-0 right-0 left-72 z-20 min-w-0 @min-[1024px]/bridge:static @min-[1024px]/bridge:w-[min(26rem,45%)] @min-[1024px]/bridge:min-w-72 @min-[1024px]/bridge:shrink-0">
+						{renderThreadPane ? (
+							renderThreadPane(threadSelection, () => {
+								setThreadSelection(null);
+								onCloseThread?.();
+							})
+						) : (
+							<TeamBridgeThreadPane
+								key={`${threadSelection.tenantId}:${threadSelection.conversationId}:${threadSelection.rootId}`}
+								target={threadSelection}
+								initialRoot={messages.find(
+									(message) => message.id === threadSelection.rootId,
+								)}
+								labelFor={labelFor}
+								readOnly={readOnly}
+								onClose={() => {
+									setThreadSelection(null);
+									onCloseThread?.();
+								}}
+							/>
 						)}
-						labelFor={labelFor}
-						readOnly={readOnly}
-						onClose={() => {
-							setThreadSelection(null);
-							onCloseThread?.();
-						}}
-					/>
+					</div>
 				)}
 		</div>
 	);
