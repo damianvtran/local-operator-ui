@@ -905,6 +905,21 @@ const api = {
 			return () => ipcRenderer.removeListener("browser-chord", listener);
 		},
 		state: (): Promise<unknown> => ipcRenderer.invoke("browser-state"),
+		/** S4b's product popout. `project` carries display data and the strip's own
+		 * measured anchor, never a destination or a child rectangle; `onEvent`
+		 * receives a validated `{type:"commit",seq,index}` or a main-decided
+		 * `{type:"dismiss",reason}`. */
+		addressOverlay: {
+			project: (payload: unknown): Promise<unknown> =>
+				ipcRenderer.invoke("browser-address-overlay-project", payload),
+			onEvent: (callback: (event: unknown) => void) => {
+				const listener = (_event: unknown, payload: unknown) =>
+					callback(payload);
+				ipcRenderer.on("browser-address-overlay-event", listener);
+				return () =>
+					ipcRenderer.removeListener("browser-address-overlay-event", listener);
+			},
+		},
 		/** `sessionId` attributes the tab to the conversation it was opened from
 		 * (design R1); `null` is a tab that belongs to no conversation, which is what
 		 * the route and a draft pane open. Main validates it rather than trusting it. */
@@ -942,8 +957,8 @@ const api = {
 		setContentRect: (
 			rect: { x: number; y: number; width: number; height: number } | null,
 		): Promise<unknown> => ipcRenderer.invoke("browser-set-content-rect", rect),
-		setViewVisible: (visible: boolean): Promise<unknown> =>
-			ipcRenderer.invoke("browser-set-visible", visible),
+		setViewVisible: (visible: boolean, ownPage = false): Promise<unknown> =>
+			ipcRenderer.invoke("browser-set-visible", visible, ownPage),
 		handOver: (tabId: number, sessionId: string): Promise<unknown> =>
 			ipcRenderer.invoke("browser-hand-over", tabId, sessionId),
 		revokeHandOver: (tabId: number): Promise<unknown> =>

@@ -210,6 +210,7 @@ export const RESERVED_CHORDS: ReadonlyMap<string, string> = new Map([
 	["primary+alt+up", "Reserved: walks up the chat regions."],
 	["primary+alt+down", "Reserved: walks down the chat regions."],
 	["primary+shift+a", "Reserved: archives the focused conversation."],
+	["primary+shift+l", "Reserved: opens the focused conversation's tags."],
 	// Canvas-editor chords whose listeners are on `window` — the router's
 	// document-phase listener runs first, so a bound action would double-fire.
 	["primary+s", "Reserved: saves the canvas document."],

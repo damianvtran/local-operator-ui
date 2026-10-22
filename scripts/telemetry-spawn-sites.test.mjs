@@ -251,6 +251,22 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/browser-native-determination.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless for the post-merge S4b native determination; the build carries the live PostHog key, so this launch needs the telemetry switch",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/browser-chrome-s4b-probe.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to measure S4b's product chrome; the build carries the live PostHog key, so this unguarded product path needs the telemetry switch",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
 		"scripts/browser-address-overlay-probe.mjs",
 		"spawn",
 		1,
@@ -310,6 +326,16 @@ const APP_SPAWN_SITES = [
 		2,
 		/(?:\{|,)\s*env\s*,/,
 		"boots the built app headless and forks a REAL pty inside it - and with `--packaged` launches an electron-builder bundle the same way, so this rig is two separate runs",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/console-ended-proof.mjs",
+		"spawn",
+		/* #2, not #1: the `lop serve` daemon is spawned first; the app's own spawn is
+		 * the second and is the one this table exists to check. */
+		2,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the BUILT app twice over one quit on a scratch profile, so this rig is two chances to report a rig run as a product user",
 		/withTelemetryOff\(env\);/,
 	),
 	guarded(

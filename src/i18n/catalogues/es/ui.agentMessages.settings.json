@@ -82,5 +82,8 @@
 	"ui.agentMessages.settings.allowlist.person_id": "ID de la persona",
 	"ui.agentMessages.settings.allowlist.identifier_help_agent": "Escribe un ID de agente (bep_…)",
 	"ui.agentMessages.settings.allowlist.identifier_help_person": "Escribe un ID de persona (acc_…)",
-	"ui.agentMessages.settings.error.no_changes": "No se cambió ningún ajuste. Inténtalo de nuevo para comprobar el estado actual."
+	"ui.agentMessages.settings.error.no_changes": "No se cambió ningún ajuste. Inténtalo de nuevo para comprobar el estado actual.",
+	"ui.agentMessages.settings.hold.chief_of_staff": "{count, plural, one {{count} mensaje está esperando a tu jefa de gabinete. Basta con escribirle una vez en su conversación para recibirlo.} many {{count} de mensajes están esperando a tu jefa de gabinete. Basta con escribirle una vez en su conversación para recibirlos.} other {{count} mensajes están esperando a tu jefa de gabinete. Basta con escribirle una vez en su conversación para recibirlos.}}",
+	"ui.agentMessages.settings.hold.chief_of_staff_unlinked": "{count, plural, one {{count} mensaje está esperando a tu jefa de gabinete. Busca su conversación en la barra lateral y escríbele una vez para recibirlo.} many {{count} de mensajes están esperando a tu jefa de gabinete. Busca su conversación en la barra lateral y escríbele una vez para recibirlos.} other {{count} mensajes están esperando a tu jefa de gabinete. Busca su conversación en la barra lateral y escríbele una vez para recibirlos.}}",
+	"ui.agentMessages.settings.hold.open": "Escribir a tu jefa de gabinete"
 }

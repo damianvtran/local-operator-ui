@@ -117,7 +117,6 @@ type Props = {
 	view: SidebarView;
 	counts?: ViewMenuCounts;
 	tagsAvailable?: boolean;
-	tagsEmpty?: boolean;
 	/**
 	 * Whether this backend's fork route understands `auto_tag`
 	 * (`chat-auto-tag.ts` owns the version). The row is ABSENT rather than
@@ -125,7 +124,6 @@ type Props = {
 	 * reads is the dead control this repo's fail-closed rule forbids.
 	 */
 	autoTagAvailable?: boolean;
-	onManageTags?: () => void;
 	/** Called with the WHOLE next view - the model returns complete values. */
 	onView: (view: SidebarView) => void;
 };
@@ -192,9 +190,7 @@ export function ChatSidebarViewMenu({
 	counts,
 	onView,
 	tagsAvailable = false,
-	tagsEmpty = false,
 	autoTagAvailable = false,
-	onManageTags,
 }: Props) {
 	// Refresh all option/section labels when the backend-owned locale changes.
 	useI18nLocale();
@@ -351,25 +347,28 @@ export function ChatSidebarViewMenu({
 			{tagsAvailable && (
 				<div className="border-hairline border-b" data-sidebar-tags-options>
 					{/* 39px content plus the group hairline is the contracted 40px insertion. */}
+					{/*
+					 * LABEL + SWITCH ONLY (v3 spec D7). `Manage tags…` is gone: tags are
+					 * renamed, reordered and deleted on their own group headers and created
+					 * in the list's tag footer. The visible label IS the accessible name
+					 * (a real `<label>`), where it used to read "Tags" while the switch
+					 * announced "Group chats by tag" (WCAG 2.5.3, label in name).
+					 */}
 					<div className="flex h-[39px] items-center gap-2 px-1">
-						<span className="flex-1 text-meta text-ink-dim">
-							{t("ui.chat.tags.label")}
-						</span>
+						<label
+							htmlFor="sidebar-tags-switch"
+							className="flex-1 text-meta text-ink-dim"
+						>
+							{t("ui.chat.tags.group")}
+						</label>
 						<Switch
-							aria-label={t("ui.chat.tags.group")}
+							id="sidebar-tags-switch"
 							aria-describedby="sidebar-tags-help"
 							checked={view.tagsEnabled}
 							onCheckedChange={(tagsEnabled) =>
 								onView({ ...view, tagsEnabled })
 							}
 						/>
-						<Button
-							variant="ghost"
-							className="h-7 px-1 text-meta"
-							onClick={onManageTags}
-						>
-							{t("ui.chat.tags.manage")}
-						</Button>
 					</div>
 					{/*
 					 * THE AUTO-TAG INTENT, inside the Tags group rather than beside it
@@ -405,11 +404,6 @@ export function ChatSidebarViewMenu({
 								{t("ui.chat.tags.auto_tag_help")}
 							</p>
 						</>
-					)}
-					{view.tagsEnabled && tagsEmpty && (
-						<p className="px-1 pb-1 text-meta text-ink-muted">
-							{t("ui.chat.tags.none_yet")}
-						</p>
 					)}
 					<span id="sidebar-tags-help" className="sr-only">
 						{t("ui.chat.tags.discovery")}

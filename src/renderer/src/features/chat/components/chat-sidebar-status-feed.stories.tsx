@@ -3432,3 +3432,56 @@ export const RemoteDelegating: Story = {
 			);
 	},
 };
+
+/**
+ * Same row, four device facts: the shipped legacy symptom, the relay's grace,
+ * its escalation and its recovery. No arbitrary UI timer: the ambient peer
+ * catalogue owns the verdict, exactly as in production (core #2755).
+ */
+const remotePresenceStory = (
+	state: "legacy" | "reconnecting" | "down" | "recovered",
+): Story => ({
+	render: () => {
+		fixtures();
+		roster = [
+			wireRow("a1b2c3d4e5f6", "Local comparison", 1_760_003_600, OPEN, 1),
+		];
+		return <Page sidebarWidth={360} />;
+	},
+	play: async () => {
+		await catalogueSettled(1);
+		const store = useCanonicalSessionsStore.getState();
+		const at = store.beginAnswer();
+		store.settlePeerCatalogue(
+			[
+				{
+					session_id: "b2c3d4e5f6a1",
+					title: "Remote validation",
+					locality: "remote",
+					owner_device: "synthetic-presence-peer",
+					owner_device_name: "Test peer",
+					reachable: true,
+					updated_at: Date.now() / 1000,
+					status: { code: "idle", label: "Idle" },
+				},
+			],
+			at,
+			{
+				"synthetic-presence-peer": {
+					reachable: state === "recovered",
+					last_seen_at: state === "legacy" ? null : Date.now() / 1000 - 180,
+					reason: state === "recovered" ? null : "relay timeout",
+					redial_state:
+						state === "reconnecting" || state === "down" ? state : null,
+					at,
+				},
+			},
+		);
+		await sleep(100);
+	},
+});
+
+export const RemotePresenceBefore = remotePresenceStory("legacy");
+export const RemotePresenceReconnecting = remotePresenceStory("reconnecting");
+export const RemotePresenceDown = remotePresenceStory("down");
+export const RemotePresenceRecovered = remotePresenceStory("recovered");

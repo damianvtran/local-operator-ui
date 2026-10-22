@@ -119,6 +119,20 @@ export interface ConsoleSurfaceListing {
 	rows: number;
 	running: boolean;
 	exit_code: number | null;
+	/** The signal that ended the process, when one did (Q-3): `SIGKILL` etc.
+	 * node-pty reports exit code 0 for a signalled process, so this field is what
+	 * keeps a clean exit, a crash status and a signal distinguishable. */
+	exit_signal: string | null;
+	/**
+	 * Why the surface ended when there is no exit code to report.
+	 *
+	 * `app_quit` is main's own record that IT closed this terminal during quit and
+	 * could not observe the status within the bounded wait (`host.dispose`). It is
+	 * an additive field: a caller that does not know it reads exactly what it read
+	 * before, and a legacy sidecar with a null code and no reason keeps the honest
+	 * "exit code not observed" sentence rather than inventing a cause.
+	 */
+	end_reason: "app_quit" | null;
 	/** Seconds since the epoch, matching the record's own clock. */
 	last_activity: number;
 	/** False for a surface reconstructed from persisted history after a relaunch

@@ -23,6 +23,7 @@ import {
 	ASKS_CONTROL_PINNED,
 	ASKS_RAIL_CLOSE_POST_STATE,
 	CASES,
+	CONTROL_BUILD_NODE_ARGS,
 	CONTROL_REUSE_PARTS,
 	controlReusePlan,
 	describeMainPreloadReuse,
@@ -623,6 +624,43 @@ test("the control revision is DERIVED, and satisfies the reuse assertion by cons
 		touched === "",
 		`the reuse plan (${plan.reuse ? "reuse" : `rebuild: ${plan.differing.join(", ")}`}) disagrees with the diff of the reused parts (${JSON.stringify(touched)})`,
 	);
+});
+
+test("the isolated control builder has a bounded heap without changing global NODE_OPTIONS", () => {
+	assert.deepEqual(CONTROL_BUILD_NODE_ARGS, [
+		"--max-old-space-size=4096",
+		"--input-type=module",
+	]);
+	const source = readFileSync(
+		new URL("./asks-app-regression.mjs", import.meta.url),
+		"utf8",
+	);
+	assert.ok(
+		source.includes(
+			'await execute(process.execPath, [...CONTROL_BUILD_NODE_ARGS, "-e", code]',
+		),
+	);
+	const inherited = process.env.NODE_OPTIONS;
+	const env = { ...process.env, NODE_OPTIONS: "--max-old-space-size=128" };
+	const code = `import v8 from 'node:v8';console.log(JSON.stringify({heap:v8.getHeapStatistics().heap_size_limit,options:process.env.NODE_OPTIONS}));`;
+	const run = (args) => {
+		const child = spawnSync(process.execPath, [...args, "-e", code], {
+			encoding: "utf8",
+			env,
+			timeout: 15000,
+		});
+		assert.equal(child.status, 0, child.stderr);
+		return JSON.parse(child.stdout);
+	};
+	// A real low-heap control proves the explicit builder flag takes effect;
+	// reading V8's configured limit allocates no multi-gigabyte test heap.
+	const low = run(["--input-type=module"]);
+	const bounded = run(CONTROL_BUILD_NODE_ARGS);
+	assert.ok(low.heap < 256 * 1024 ** 2, JSON.stringify(low));
+	assert.ok(bounded.heap >= 4 * 1024 ** 3, JSON.stringify(bounded));
+	assert.ok(bounded.heap < 4.25 * 1024 ** 3, JSON.stringify(bounded));
+	assert.equal(bounded.options, env.NODE_OPTIONS);
+	assert.equal(process.env.NODE_OPTIONS, inherited);
 });
 
 test("controlReusePlan: identical trees reuse; a main/preload/config change rebuilds; a lockfile change installs control dependencies", () => {
