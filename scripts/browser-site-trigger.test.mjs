@@ -66,6 +66,27 @@ test("isLoopbackHost names the local-development addresses and nothing else", ()
 		"0.0.0.0",
 	])
 		assert.equal(isLoopbackHost(host), true, host);
+	/*
+	 * THE PORTED SPELLINGS (design round 2, D11). The trigger used to pass
+	 * `new URL(origin).host` here, which includes `:5173`; the helper matches
+	 * whole labels, so every dev server — the exact case the neutral glyph was
+	 * added for — kept the warning padlock. The helper's contract is a HOST: the
+	 * surface now feeds `hostname`, and this asserts both halves of that fact,
+	 * including that the old spelling really was false (so the case cannot pass
+	 * by accident if someone reverts it).
+	 */
+	for (const url of [
+		"http://127.0.0.1:53505/",
+		"http://localhost:5173/",
+		"http://[::1]:3000/",
+	]) {
+		assert.equal(isLoopbackHost(new URL(url).hostname), true, url);
+		assert.equal(
+			isLoopbackHost(new URL(url).host),
+			false,
+			`${url} host-with-port must not be the classification input`,
+		);
+	}
 	for (const host of [
 		"128.0.0.1",
 		"example.com",
@@ -73,14 +94,19 @@ test("isLoopbackHost names the local-development addresses and nothing else", ()
 		"localhost.example.com",
 	])
 		assert.equal(isLoopbackHost(host), false, host);
+	for (const host of ["128.0.0.1:8080", "example.com:443"])
+		assert.equal(isLoopbackHost(host), false, host);
 });
 
-test("the trigger uses both helpers and keeps the host in its accessible name", () => {
+test("the trigger classifies the hostname, and keeps the ported host in its name", () => {
 	const source = readFileSync(
 		"src/renderer/src/features/browser/components/browser-surface.tsx",
 		"utf8",
 	);
-	assert.match(source, /isLoopbackHost\(siteHost\) \?/);
+	// The glyph test must see the port-less spelling (D11); the visible label and
+	// the accessible name keep the port the user typed.
+	assert.match(source, /new URL\(triggerSiteInfo\.origin\)\.hostname/);
+	assert.match(source, /isLoopbackHost\(siteHostName\) \?/);
 	assert.match(source, /compactHost\(siteHost\)/);
 	assert.match(source, /aria-label=\{[\s\S]{0,160}?siteHost/);
 });

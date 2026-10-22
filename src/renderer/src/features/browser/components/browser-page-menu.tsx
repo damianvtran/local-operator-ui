@@ -28,7 +28,8 @@ import {
 	X,
 } from "lucide-react";
 import type { FC } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { PAGE_MENU_SURFACE_TAG } from "../model/floating-chrome";
 
 /**
  * The page menu: everything the 104px dock and the old toolbar row carried that
@@ -113,6 +114,27 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 	onCloseAutoFocus,
 }) => {
 	const [open, setOpen] = useState(false);
+	/*
+	 * A MENU THAT IS TORN DOWN MUST STILL SAY IT CLOSED (agent review round 2,
+	 * MINOR-8). Radix unmounts an open panel without emitting
+	 * `onOpenChange(false)` when the popout closes under it — Ctrl+Tab, a
+	 * main-side dismiss, the start page replacing the row. The surface's Escape
+	 * gate is driven by that callback, so a retained `true` swallowed Escape on
+	 * the NEXT raise. Resetting at the source means no owner has to remember the
+	 * teardown path, and the refs keep the cleanup from firing on a re-render
+	 * (the surface passes a fresh callback every render, so depending on it
+	 * directly would report `closed` while the menu is open).
+	 */
+	const openRef = useRef(open);
+	openRef.current = open;
+	const onOpenChangeRef = useRef(onOpenChange);
+	onOpenChangeRef.current = onOpenChange;
+	useEffect(
+		() => () => {
+			if (openRef.current) onOpenChangeRef.current?.(false);
+		},
+		[],
+	);
 	// The menu panel lands in the content rect; the page must yield while it is
 	// there, for the reason the file header states.
 	useSuppressBrowserView(open, "browser-page-menu");
@@ -153,6 +175,10 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 				align="end"
 				sideOffset={4}
 				onCloseAutoFocus={onCloseAutoFocus}
+				// The popout's blur rule admits focus in ITS menu's portal only; this
+				// marker is how that rule tells this panel from any other Radix menu in
+				// the document (agent review round 2, MINOR-7).
+				data-browser-chrome={PAGE_MENU_SURFACE_TAG}
 			>
 				<DropdownMenuItem
 					onSelect={onAddress}

@@ -1910,11 +1910,23 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 				    the new-tab control stays outside it, because `+` belongs to the tabs,
 				    not to the origin. */}
 				{trailing != null && (
+					/*
+					 * THE RULE HAS ITS OWN GAP, not the cluster's border (design round 2,
+					 * D10). As `border-l` on the cluster it sat flush against the last
+					 * control in the run — the overflow count chip — and read as a strike
+					 * through the chip's right edge in the tabs-fill and narrow frames.
+					 * `ml-2` moves the rule, not the chip, so the separator keeps the
+					 * full height the D1 layout asked for while the chip ends before it.
+					 */
 					<div
-						className="ml-auto flex shrink-0 items-center border-hairline border-l pl-1"
+						className="ml-auto flex shrink-0 items-center"
 						data-tour-tag="browser-strip-trailing"
 					>
-						{trailing}
+						<span
+							aria-hidden
+							className="ml-2 w-px shrink-0 self-stretch bg-hairline"
+						/>
+						<div className="flex items-center pl-1">{trailing}</div>
 					</div>
 				)}
 				{tabs.length > 0 && (

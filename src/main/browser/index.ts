@@ -888,7 +888,8 @@ async function initializeBrowserHost(
 		};
 
 		const notifyChanged = (): void => {
-			stateWriter?.publishNow(); // A WINDOW CLOSE DESTROYS ITS WEB CONTENTS BEFORE `closed` REACHES THIS
+			stateWriter?.publishNow();
+			// A WINDOW CLOSE DESTROYS ITS WEB CONTENTS BEFORE `closed` REACHES THIS
 			// HOST. `stop()` then tears tabs down, and each teardown notifies; reading
 			// `webContents` from a destroyed `BrowserWindow` throws "Object has been
 			// destroyed". Guarding both objects keeps the quit-time teardown silent,

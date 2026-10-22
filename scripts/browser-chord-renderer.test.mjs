@@ -56,6 +56,7 @@ async function rig({
 	activeId = 1,
 	pane = false,
 	sessionId = "a",
+	platform = "MacIntel",
 } = {}) {
 	const dom = new JSDOM(
 		'<div id="mount"></div><button id="chat">Chat</button><input id="chat-editor" aria-label="Chat editor">',
@@ -79,7 +80,7 @@ async function rig({
 		});
 	}
 	Object.defineProperty(dom.window.navigator, "platform", {
-		value: "MacIntel",
+		value: platform,
 	});
 	const events = [];
 	const incoming = new Set();
@@ -1184,6 +1185,78 @@ test("real renderer hook owns scoped DOM commands, focus lifecycle and queued ra
 			"focus",
 			false,
 		]);
+	} finally {
+		r.finish();
+	}
+});
+
+test("a Linux host gets Latin-1 primary chords on Ctrl, and Meta is not primary (MAJOR-3)", async () => {
+	/*
+	 * THE LANE THE MAC-ONLY RIG COULD NOT FAIL (agent review round 2, MAJOR-3).
+	 * The hook derived `darwin` from `chordPlatform()`'s truthiness, and that
+	 * helper answers `"mac" | "linux"` — two truthy strings — so every host was
+	 * read as a Mac. The rig hardcoded `MacIntel` and passed. This runs the same
+	 * shipped hook under a Linux `navigator.platform` and presses the primary
+	 * modifier the Linux table names: Ctrl for L/T/R/W/digits, while Cmd does
+	 * nothing. The Mac lane above is unchanged and still proves the other half.
+	 */
+	const r = await rig({
+		tabIds: [1, 3],
+		activeId: 1,
+		platform: "Linux x86_64",
+	});
+	const { events, key } = r;
+	const ctrl = { metaKey: false, ctrlKey: true };
+	try {
+		await r.focus("toolbar");
+		await key("l", ctrl);
+		assert.equal(
+			document.activeElement.id,
+			"address",
+			"Ctrl+L raises the address",
+		);
+
+		await r.focus("toolbar");
+		await key("t", ctrl);
+		assert.deepEqual(events.at(-1), ["new", "a"], "Ctrl+T opens a tab");
+
+		await r.focus("toolbar");
+		await key("r", ctrl);
+		assert.ok(
+			events.some((e) => e[0] === "reload" && e[1] === false),
+			"Ctrl+R reloads",
+		);
+
+		await r.focus("toolbar");
+		await key("2", ctrl);
+		assert.deepEqual(
+			events.filter((e) => e[0] === "activate").at(-1),
+			["activate", 3],
+			"Ctrl+2 selects the second tab",
+		);
+
+		await key("w", ctrl);
+		assert.deepEqual(
+			events.filter((e) => e[0] === "close").at(-1),
+			["close", 3],
+			"Ctrl+W closes the selected tab",
+		);
+
+		await r.focus("toolbar");
+		await key("f", ctrl);
+		assert.ok(
+			events.some((e) => e[0] === "page-control" && e[2] === "open"),
+			"Ctrl+F opens the find row",
+		);
+
+		// The OTHER half of the bug: on this host Meta is not primary, so the
+		// Mac spelling must not fire. A hook that still mapped everything to
+		// `darwin` would pass the Ctrl presses above only by accident if it read
+		// modifiers loosely; this pins the platform branch itself.
+		await r.focus("toolbar");
+		const before = events.length;
+		await key("l");
+		assert.equal(events.length, before, "Cmd+L is not a chord on Linux");
 	} finally {
 		r.finish();
 	}

@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-21T23:03:07.229Z",
-  "durationMs": 44565,
+  "generatedAt": "2026-10-22T01:41:06.257Z",
+  "durationMs": 51103,
   "source": "node scripts/browser-chrome-s4b-probe.mjs",
   "identity": {
     "main": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046",
-    "renderer": "2f3a151fc7921e3c47f73f49a169fa524c6d03b9326b844f191f0f2b8a0b8cc2",
+    "renderer": "39b404c1214a203dd105501e833bcf32ab258610ed1351c2324e3c6188730d27",
     "listDocument": "9c8bf7a57794c54e528aebad72f3b1eba8e226bc76c1eb889531b4a2b096e57e"
   },
   "rest": {
@@ -25,8 +25,8 @@
     "dockCount": 0,
     "popoutPresent": false,
     "addressTrigger": true,
-    "triggerText": "127.0.0.1:53505",
-    "triggerWidth": 123,
+    "triggerText": "127.0.0.1:53537",
+    "triggerWidth": 122,
     "hash": "#/browser"
   },
   "restPage": {
@@ -57,8 +57,8 @@
     "dockCount": 0,
     "popoutPresent": true,
     "addressTrigger": true,
-    "triggerText": "127.0.0.1:53505",
-    "triggerWidth": 123,
+    "triggerText": "127.0.0.1:53537",
+    "triggerWidth": 122,
     "hash": "#/browser"
   },
   "openPage": {
@@ -84,8 +84,8 @@
     "dockCount": 0,
     "popoutPresent": false,
     "addressTrigger": true,
-    "triggerText": "127.0.0.1:53505",
-    "triggerWidth": 123,
+    "triggerText": "127.0.0.1:53537",
+    "triggerWidth": 122,
     "hash": "#/browser"
   },
   "afterPage": {
@@ -130,14 +130,14 @@
       "portal": true,
       "popout": true,
       "activeElement": "DIV",
-      "value": "127.0.0.1:53505/fixture"
+      "value": "127.0.0.1:53537/fixture"
     },
     "addressItem": {
       "menu": null,
       "portal": false,
       "popout": true,
       "activeElement": "browser-address",
-      "value": "127.0.0.1:53505/fixture"
+      "value": "127.0.0.1:53537/fixture"
     },
     "listRows": {
       "candidates": 2,
@@ -151,14 +151,14 @@
     },
     "loading": {
       "loading": true,
-      "url": "http://127.0.0.1:53505/alto",
+      "url": "http://127.0.0.1:53537/alto",
       "activeTabId": 3
     },
     "loadFailure": {
       "navFailure": {
         "code": -102,
         "description": "ERR_CONNECTION_REFUSED",
-        "url": "http://127.0.0.1:53696/"
+        "url": "http://127.0.0.1:53711/"
       },
       "panel": true,
       "body": null
@@ -167,17 +167,17 @@
       "strip": 504,
       "trigger": 28,
       "text": "",
-      "label": "Address — 127.0.0.1:53505"
+      "label": "Address — 127.0.0.1:53537"
     },
     "lightTheme": {
       "theme": "localOperatorLight",
-      "dark": false,
+      "dark": true,
       "themedReady": true,
       "themedPopout": true
     },
     "triggerHover": {
       "hover": true,
-      "width": 123
+      "width": 122
     },
     "triggerFocus": {
       "focused": true,
@@ -197,24 +197,24 @@
       "claim": "built artifacts exist and the product logs the darwin chrome arm",
       "mode": "source+boot",
       "status": "PASS",
-      "evidence": "{\"armed\":true,\"identity\":{\"main\":\"9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046\",\"renderer\":\"2f3a151fc7921e3c47f73f49a169fa524c6d03b9326b844f191f0f2b8a0b8cc2\",\"listDocument\":\"9c8bf7a57794c54e528aebad72f3b1eba8e226bc76c1eb889531b4a2b096e57e\"}}",
-      "at": "2026-10-21T23:02:28.175Z"
+      "evidence": "{\"armed\":true,\"identity\":{\"main\":\"9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046\",\"renderer\":\"39b404c1214a203dd105501e833bcf32ab258610ed1351c2324e3c6188730d27\",\"listDocument\":\"9c8bf7a57794c54e528aebad72f3b1eba8e226bc76c1eb889531b4a2b096e57e\"}}",
+      "at": "2026-10-22T01:40:26.638Z"
     },
     {
       "id": "R1",
       "claim": "rest: no bar, no dock, no popout; page starts at the strip's bottom",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"rest\":{\"content\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"strip\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"popout\":null,\"barCount\":0,\"dockCount\":0,\"popoutPresent\":false,\"addressTrigger\":true,\"triggerText\":\"127.0.0.1:53505\",\"triggerWidth\":123,\"hash\":\"#/browser\"},\"restPage\":{\"scrollY\":1200,\"innerHeight\":831,\"markerY\":300}}",
-      "at": "2026-10-21T23:02:33.850Z"
+      "evidence": "{\"rest\":{\"content\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"strip\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"popout\":null,\"barCount\":0,\"dockCount\":0,\"popoutPresent\":false,\"addressTrigger\":true,\"triggerText\":\"127.0.0.1:53537\",\"triggerWidth\":122,\"hash\":\"#/browser\"},\"restPage\":{\"scrollY\":1200,\"innerHeight\":831,\"markerY\":300}}",
+      "at": "2026-10-22T01:40:29.601Z"
     },
     {
       "id": "P1",
       "claim": "Cmd+L raises the popout over the strip at the strip's width",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"raised\":true,\"open\":{\"content\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"strip\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"popout\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"barCount\":1,\"dockCount\":0,\"popoutPresent\":true,\"addressTrigger\":true,\"triggerText\":\"127.0.0.1:53505\",\"triggerWidth\":123,\"hash\":\"#/browser\"}}",
-      "at": "2026-10-21T23:02:34.702Z"
+      "evidence": "{\"raised\":true,\"open\":{\"content\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"strip\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"popout\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"barCount\":1,\"dockCount\":0,\"popoutPresent\":true,\"addressTrigger\":true,\"triggerText\":\"127.0.0.1:53537\",\"triggerWidth\":122,\"hash\":\"#/browser\"}}",
+      "at": "2026-10-22T01:40:30.243Z"
     },
     {
       "id": "P2",
@@ -222,7 +222,7 @@
       "mode": "driven",
       "status": "PASS",
       "evidence": "{\"restContent\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"openContent\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"restPage\":{\"scrollY\":1200,\"innerHeight\":831,\"markerY\":300},\"openPage\":{\"scrollY\":1200,\"innerHeight\":831,\"markerY\":300}}",
-      "at": "2026-10-21T23:02:34.702Z"
+      "at": "2026-10-22T01:40:30.243Z"
     },
     {
       "id": "P3",
@@ -230,15 +230,15 @@
       "mode": "driven",
       "status": "PASS",
       "evidence": "{\"childTarget\":{\"type\":\"page\",\"url\":\"file:///Users/damian/local-operator-ui/.worktrees/browser-chrome-s4b/out/renderer/browser-address-overlay-list.html\"},\"childViewport\":{\"innerWidth\":1120,\"innerHeight\":69},\"stripWidth\":1120,\"note\":\"child viewport read, not WebContentsView.getBounds(); innerHeight is the content-sized list, not a dock\"}",
-      "at": "2026-10-21T23:02:34.702Z"
+      "at": "2026-10-22T01:40:30.243Z"
     },
     {
       "id": "D1",
       "claim": "Escape lowers the popout and restores the page geometry",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"escaped\":true,\"after\":{\"content\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"strip\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"popout\":null,\"barCount\":0,\"dockCount\":0,\"popoutPresent\":false,\"addressTrigger\":true,\"triggerText\":\"127.0.0.1:53505\",\"triggerWidth\":123,\"hash\":\"#/browser\"},\"afterPage\":{\"scrollY\":1200,\"innerHeight\":831,\"markerY\":300}}",
-      "at": "2026-10-21T23:02:34.728Z"
+      "evidence": "{\"escaped\":true,\"after\":{\"content\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"strip\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"popout\":null,\"barCount\":0,\"dockCount\":0,\"popoutPresent\":false,\"addressTrigger\":true,\"triggerText\":\"127.0.0.1:53537\",\"triggerWidth\":122,\"hash\":\"#/browser\"},\"afterPage\":{\"scrollY\":1200,\"innerHeight\":831,\"markerY\":300}}",
+      "at": "2026-10-22T01:40:30.252Z"
     },
     {
       "id": "D2",
@@ -246,7 +246,7 @@
       "mode": "driven",
       "status": "BLOCKED",
       "evidence": "{\"clickDismissed\":false,\"reason\":\"headless/unfocused window: focusBrowserChordTarget refuses the page focus, so main's `focus` event never fires. Needs a focused window (QA/operator).\"}",
-      "at": "2026-10-21T23:02:39.807Z"
+      "at": "2026-10-22T01:40:35.376Z"
     },
     {
       "id": "D3",
@@ -254,15 +254,15 @@
       "mode": "driven",
       "status": "PASS",
       "evidence": "{\"navDismissed\":true}",
-      "at": "2026-10-21T23:02:39.925Z"
+      "at": "2026-10-22T01:40:35.606Z"
     },
     {
       "id": "T1",
       "claim": "the strip address trigger raises the same popout as Cmd+L",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"triggerRaised\":true,\"triggerState\":{\"value\":\"127.0.0.1:53505/second\",\"active\":\"browser-address\"}}",
-      "at": "2026-10-21T23:02:40.140Z"
+      "evidence": "{\"triggerRaised\":true,\"triggerState\":{\"value\":\"127.0.0.1:53537/second\",\"active\":\"browser-address\"}}",
+      "at": "2026-10-22T01:40:35.841Z"
     },
     {
       "id": "T2",
@@ -270,7 +270,7 @@
       "mode": "driven",
       "status": "PASS",
       "evidence": "{\"seeded\":true,\"seededValue\":\"s\",\"seedFocus\":{\"tag\":\"browser-tab\",\"role\":\"tab\"},\"synthetic\":{\"popout\":true,\"value\":\"s\"},\"note\":\"CDP key event\"}",
-      "at": "2026-10-21T23:02:40.499Z"
+      "at": "2026-10-22T01:40:35.883Z"
     },
     {
       "id": "T3",
@@ -278,15 +278,15 @@
       "mode": "driven",
       "status": "PASS",
       "evidence": "{\"tabDismissed\":true}",
-      "at": "2026-10-21T23:02:42.034Z"
+      "at": "2026-10-22T01:40:36.739Z"
     },
     {
       "id": "E1",
       "claim": "typing an address and pressing Enter navigates and lowers the popout",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"enteredGone\":true,\"enteredUrl\":\"http://127.0.0.1:53505/entered\"}",
-      "at": "2026-10-21T23:02:41.036Z"
+      "evidence": "{\"enteredGone\":true,\"enteredUrl\":\"http://127.0.0.1:53537/entered\"}",
+      "at": "2026-10-22T01:40:36.125Z"
     },
     {
       "id": "V1",
@@ -294,23 +294,23 @@
       "mode": "driven",
       "status": "PASS",
       "evidence": "{\"opened\":true,\"menu\":{\"x\":1128.5,\"y\":70,\"width\":207.390625,\"height\":289,\"top\":70,\"right\":1335.890625,\"bottom\":359,\"left\":1128.5},\"portal\":true,\"popout\":false,\"activeElement\":\"DIV\",\"value\":null}",
-      "at": "2026-10-21T23:02:43.823Z"
+      "at": "2026-10-22T01:40:37.495Z"
     },
     {
       "id": "V2",
       "claim": "the page menu opened from the popout keeps the field row raised",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"opened\":true,\"menu\":{\"x\":1164.5,\"y\":68,\"width\":207.390625,\"height\":289,\"top\":68,\"right\":1371.890625,\"bottom\":357,\"left\":1164.5},\"portal\":true,\"popout\":true,\"activeElement\":\"DIV\",\"value\":\"127.0.0.1:53505/fixture\"}",
-      "at": "2026-10-21T23:02:44.720Z"
+      "evidence": "{\"opened\":true,\"menu\":{\"x\":1164.5,\"y\":68,\"width\":207.390625,\"height\":289,\"top\":68,\"right\":1371.890625,\"bottom\":357,\"left\":1164.5},\"portal\":true,\"popout\":true,\"activeElement\":\"DIV\",\"value\":\"127.0.0.1:53537/fixture\"}",
+      "at": "2026-10-22T01:40:38.764Z"
     },
     {
       "id": "V3",
       "claim": "the Address item raises/keeps the field and focus lands in it",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"menu\":null,\"portal\":false,\"popout\":true,\"activeElement\":\"browser-address\",\"value\":\"127.0.0.1:53505/fixture\"}",
-      "at": "2026-10-21T23:02:45.447Z"
+      "evidence": "{\"menu\":null,\"portal\":false,\"popout\":true,\"activeElement\":\"browser-address\",\"value\":\"127.0.0.1:53537/fixture\"}",
+      "at": "2026-10-22T01:40:39.343Z"
     },
     {
       "id": "V4",
@@ -318,7 +318,7 @@
       "mode": "driven",
       "status": "PASS",
       "evidence": "{\"candidates\":2,\"active\":\":r60:-option-0\",\"options\":2}",
-      "at": "2026-10-21T23:02:47.619Z"
+      "at": "2026-10-22T01:40:41.276Z"
     },
     {
       "id": "V5",
@@ -326,31 +326,31 @@
       "mode": "driven",
       "status": "PASS",
       "evidence": "{\"candidates\":0,\"notice\":\":r60:-notice\",\"body\":\"No matching links from this browser session.\"}",
-      "at": "2026-10-21T23:02:48.234Z"
+      "at": "2026-10-22T01:40:42.040Z"
     },
     {
       "id": "V6",
       "claim": "loading: the strip/popout while a slow page is in flight",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"loading\":true,\"url\":\"http://127.0.0.1:53505/alto\",\"activeTabId\":3}",
-      "at": "2026-10-21T23:02:48.805Z"
+      "evidence": "{\"loading\":true,\"url\":\"http://127.0.0.1:53537/alto\",\"activeTabId\":3}",
+      "at": "2026-10-22T01:40:42.913Z"
     },
     {
       "id": "V7",
       "claim": "error: a refused navigation paints the load-failure panel",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"navFailure\":{\"code\":-102,\"description\":\"ERR_CONNECTION_REFUSED\",\"url\":\"http://127.0.0.1:53696/\"},\"panel\":true,\"body\":null}",
-      "at": "2026-10-21T23:02:54.469Z"
+      "evidence": "{\"navFailure\":{\"code\":-102,\"description\":\"ERR_CONNECTION_REFUSED\",\"url\":\"http://127.0.0.1:53711/\"},\"panel\":true,\"body\":null}",
+      "at": "2026-10-22T01:40:49.642Z"
     },
     {
       "id": "V8",
       "claim": "narrow pane: the trigger collapses to its icon",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"strip\":504,\"trigger\":28,\"text\":\"\",\"label\":\"Address — 127.0.0.1:53505\"}",
-      "at": "2026-10-21T23:02:56.633Z"
+      "evidence": "{\"strip\":504,\"trigger\":28,\"text\":\"\",\"label\":\"Address — 127.0.0.1:53537\"}",
+      "at": "2026-10-22T01:40:52.045Z"
     },
     {
       "id": "V9",
@@ -358,7 +358,7 @@
       "mode": "blocked",
       "status": "BLOCKED",
       "evidence": "a live pending approval cannot be injected from the renderer; the dock-open half is documented in docs/evidence/browser-address-overlay and the queue model is unit-tested. Needs a main-side fixture or a real agent request.",
-      "at": "2026-10-21T23:02:56.642Z"
+      "at": "2026-10-22T01:40:52.514Z"
     },
     {
       "id": "V10",
@@ -366,23 +366,23 @@
       "mode": "blocked",
       "status": "BLOCKED",
       "evidence": "closing the last tab creates a fresh blank tab by design (browser-chord-renderer.test.mjs), so the zero-tab state has no reachable door; measured tabs=3.",
-      "at": "2026-10-21T23:02:56.688Z"
+      "at": "2026-10-22T01:40:52.684Z"
     },
     {
       "id": "V11",
       "claim": "light theme at rest and popout",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"theme\":\"localOperatorLight\",\"dark\":false,\"themedReady\":true,\"themedPopout\":true}",
-      "at": "2026-10-21T23:03:01.001Z"
+      "evidence": "{\"theme\":\"localOperatorLight\",\"dark\":true,\"themedReady\":true,\"themedPopout\":true}",
+      "at": "2026-10-22T01:40:58.826Z"
     },
     {
       "id": "V12",
       "claim": "the at-rest trigger's hover state",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"hover\":true,\"width\":123}",
-      "at": "2026-10-21T23:03:01.718Z"
+      "evidence": "{\"hover\":true,\"width\":122}",
+      "at": "2026-10-22T01:40:59.649Z"
     },
     {
       "id": "V13",
@@ -390,7 +390,7 @@
       "mode": "driven",
       "status": "PASS",
       "evidence": "{\"focused\":true,\"focusVisible\":true,\"tag\":\"browser-address-trigger\"}",
-      "at": "2026-10-21T23:03:02.176Z"
+      "at": "2026-10-22T01:41:00.169Z"
     },
     {
       "id": "V14",
@@ -398,7 +398,7 @@
       "mode": "driven",
       "status": "PASS",
       "evidence": "{\"tabs\":9,\"tabsOffScreen\":\"3\",\"triggerRight\":1308,\"stripRight\":1380}",
-      "at": "2026-10-21T23:03:07.229Z"
+      "at": "2026-10-22T01:41:06.255Z"
     },
     {
       "id": "F1",
@@ -406,7 +406,7 @@
       "mode": "source",
       "status": "BLOCKED",
       "evidence": "Tier 1 (child unavailable) and Tier 2 (two focus failures) need fault injection in a debug build; source paths are browser-surface.tsx (addressFallback, overlayMode) and address-overlay.ts (mode). No user env var exists by design.",
-      "at": "2026-10-21T23:03:07.229Z"
+      "at": "2026-10-22T01:41:06.256Z"
     },
     {
       "id": "BL1",
@@ -414,7 +414,7 @@
       "mode": "blocked",
       "status": "BLOCKED",
       "evidence": "Composite pixels, native hit routing, real macOS IME, VoiceOver, Windows and Linux are unmeasured. The child viewport width is a renderer read, not native bounds.",
-      "at": "2026-10-21T23:03:07.229Z"
+      "at": "2026-10-22T01:41:06.256Z"
     }
   ]
 }

@@ -741,6 +741,16 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	const siteHost = triggerSiteInfo.origin
 		? new URL(triggerSiteInfo.origin).host
 		: "";
+	/**
+	 * The origin's host WITHOUT its port, which is the only spelling the loopback
+	 * test can answer (design round 2, D11). `host` includes `:5173`, and every
+	 * `isLoopbackHost` arm compares a whole label, so a dev server — the case the
+	 * neutral glyph exists for — stayed on the warning padlock. The visible host
+	 * keeps its port; only the classification drops it.
+	 */
+	const siteHostName = triggerSiteInfo.origin
+		? new URL(triggerSiteInfo.origin).hostname
+		: "";
 	const SiteTriggerIcon =
 		triggerSiteInfo.kind === "secure"
 			? Lock
@@ -999,7 +1009,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 									onClick={() => raiseAddress({ origin: "chrome" })}
 									data-tour-tag="browser-address-trigger"
 								>
-									{isLoopbackHost(siteHost) ? (
+									{isLoopbackHost(siteHostName) ? (
 										<Globe aria-hidden className="size-3.5" />
 									) : (
 										<SiteTriggerIcon aria-hidden className="size-3.5" />

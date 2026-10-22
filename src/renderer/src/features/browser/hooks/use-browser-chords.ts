@@ -277,7 +277,11 @@ export function useBrowserChords(
 				chordOwner(document, event.target) !== root
 			)
 				return;
-			const platform = chordPlatform() ? "darwin" : "linux";
+			// `chordPlatform()` already answers the QUESTION ("mac" | "linux"); the
+			// intent model names the same fact "darwin". Deriving darwin from
+			// truthiness read every non-Mac host as mac, so a Linux user lost Ctrl+L/F/T/
+			// R/W and the digits (agent review round 2, MAJOR-3).
+			const platform = chordPlatform() === "mac" ? "darwin" : "linux";
 			const intent = browserChordIntent(
 				{
 					type: "keyDown",
