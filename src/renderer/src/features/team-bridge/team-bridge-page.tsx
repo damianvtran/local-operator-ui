@@ -659,8 +659,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					// The hub's uniform 404 for a staged id that no longer binds (72 h
 					// TTL, or bound elsewhere): the chips flip to "expired" so the
 					// author re-adds or removes them; the text is kept.
-					if (sentIds.length > 0 && isAttachmentNotFound(error))
-						images.markExpired();
+					if (carried.ids().length > 0 && isAttachmentNotFound(error))
+						images.markExpired(carried.ids());
 				})
 				.finally(() => {
 					writing.current = false;
@@ -704,10 +704,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		setScheduling(true);
 		setScheduledSuccess(false);
 		setScheduleFailed(false);
+		const scheduledIds = images.readyIds();
+		// The schedule's own reserved set, not the strip at settle (R2-01); the
+		// 404 path below expires only these too (R3-02).
+		const carried = carriedIds(scheduledIds);
 		try {
-			const scheduledIds = images.readyIds();
-			// The schedule's own reserved set, not the strip at settle (R2-01).
-			const carried = carriedIds(scheduledIds);
 			await onSchedule(
 				body,
 				clientRef,
@@ -736,7 +737,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			setScheduledSuccess(true);
 		} catch (error) {
 			setScheduleFailed(true);
-			if (images.count > 0 && isAttachmentNotFound(error)) images.markExpired();
+			if (carried.ids().length > 0 && isAttachmentNotFound(error))
+				images.markExpired(carried.ids());
 			// A definitive client refusal cannot have created a group. A lost response
 			// can: require a deliberate Groups check before another create attempt.
 			const status = (error as { status?: number | null })?.status;

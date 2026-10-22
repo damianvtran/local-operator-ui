@@ -1344,3 +1344,165 @@ test("page R2-01: an image dropped DURING a send stays in the composer and the d
 	assert.equal(entry?.body ?? "", "", "the sent text does not come back");
 	await app.close();
 });
+
+/*
+ * Round 3 (R3-01): the schedule twin of `page R2-01`, and the R2-02 alert
+ * suppression. Both paths were remediated without a pinning test.
+ */
+test("page R3-01: an image dropped DURING a schedule stays in the composer and the draft", async () => {
+	localStorage.clear();
+	mediaCalls = [];
+	let n = 0;
+	mediaAnswer = () => staged(`batt_s${++n}`);
+	const schedules = [];
+	let release;
+	const target = { type: "person", accountId: "acct_b" };
+	const app = await mountPage(
+		pageProps({
+			target,
+			onSend: async () => {},
+			onSchedule: (_body, _clientRef, _sendAt, _cid, _ack, attachments) => {
+				schedules.push([...(attachments?.ids ?? [])]);
+				return new Promise((resolve) => {
+					release = resolve;
+				});
+			},
+		}),
+	);
+	await typeBody(app.element, "later");
+	await dropImage(app.element);
+	await act(async () =>
+		app.element.querySelector('button[aria-label="Schedule message"]').click(),
+	);
+	const dialog = document.querySelector('[role="dialog"]');
+	const input = dialog.querySelector('input[type="datetime-local"]');
+	await act(async () => {
+		Object.getOwnPropertyDescriptor(
+			window.HTMLInputElement.prototype,
+			"value",
+		).set.call(
+			input,
+			m.scheduledLocalInput(new Date(Date.now() + 7_200_000).toISOString()),
+		);
+		input.dispatchEvent(new window.Event("input", { bubbles: true }));
+	});
+	const action = () =>
+		[...dialog.querySelectorAll("button")].find(
+			(button) =>
+				button.textContent === "Review schedule" ||
+				button.textContent === "Confirm schedule",
+		);
+	await act(async () => action().click());
+	await act(async () => action().click());
+	await settle();
+	assert.deepEqual(schedules, [["batt_s1"]]);
+	await dropImage(app.element);
+	assert.equal(mediaCalls.length, 2, "the mid-schedule drop uploads at once");
+	await act(async () => release());
+	for (let i = 0; i < 5; i += 1) await settle();
+	const chips = [...app.element.querySelectorAll("[data-attachment-chip]")].map(
+		(chip) => chip.dataset.attachmentChip,
+	);
+	assert.deepEqual(chips, ["ready"], "only the reserved image left the strip");
+	const entry = Object.keys(localStorage)
+		.filter((key) => key.includes("org_page"))
+		.map(
+			(key) => JSON.parse(localStorage.getItem(key))[m.draftTargetKey(target)],
+		)
+		.find(Boolean);
+	assert.deepEqual(
+		entry?.attachments?.map((row) => row.id),
+		["batt_s2"],
+		"the unscheduled image survives in the draft",
+	);
+	await app.close();
+});
+
+test("page R3-01: with no hub capability, restored chips block the send with the strip note only", async () => {
+	localStorage.clear();
+	mediaCalls = [];
+	const target = { type: "person", accountId: "acct_b" };
+	localStorage.setItem(
+		m.draftStorageKey("acct_a", "org_page"),
+		JSON.stringify({
+			[m.draftTargetKey(target)]: {
+				target,
+				body: "hello",
+				clientRef: "restored-ref",
+				attachments: [
+					{
+						id: "batt_restored1",
+						conversationId: "bcv_dm",
+						mime: "image/png",
+						size: 70,
+						width: 1,
+						height: 1,
+						expiresAt: "2099-01-01T00:00:00Z",
+					},
+				],
+			},
+		}),
+	);
+	const sends = [];
+	const app = await mountPage(
+		pageProps({
+			target,
+			attachmentCapability: null,
+			onSend: async (sent, _ref, attachments) => {
+				sends.push({ sent, ids: attachments?.ids });
+			},
+		}),
+	);
+	await settle();
+	assert.equal(
+		app.element.querySelectorAll("[data-attachment-chip]").length,
+		1,
+	);
+	const field = app.element.querySelector("textarea");
+	// Enter submits; the blocked path raises `imagesBlocked`.
+	await act(async () =>
+		field.dispatchEvent(
+			new window.KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+		),
+	);
+	await settle();
+	assert.deepEqual(
+		sends,
+		[],
+		"nothing is sent to a hub that cannot take images",
+	);
+	const alerts = [...app.element.querySelectorAll('[role="alert"]')].map(
+		(node) => node.textContent,
+	);
+	assert.deepEqual(
+		alerts,
+		[],
+		"no 'marked with an error' alert without errors",
+	);
+	const status = app.element.querySelector('[role="status"]')?.textContent;
+	assert.equal(status, "Images can’t be sent in this organization yet.");
+	await app.close();
+});
+
+test("hook R3-02: a 404 expires only the ids the request carried", async () => {
+	mediaCalls = [];
+	let n = 0;
+	mediaAnswer = () => staged(`batt_x${++n}`);
+	const app = await mountHook({
+		scopeKey: "dm",
+		accountId: "acct_a",
+		tenantId: "tnt_1",
+		conversationId: "bcv_dm",
+		capability: CAP,
+	});
+	await act(async () => hook.add([new Blob([PNG]), new Blob([JPEG])]));
+	for (let i = 0; i < 5; i += 1) await settle();
+	assert.deepEqual(hook.readyIds(), ["batt_x1", "batt_x2"]);
+	await act(async () => hook.markExpired(["batt_x1"]));
+	assert.deepEqual(
+		hook.chips.map((chip) => chip.status),
+		["expired", "ready"],
+		"the image added mid-send was never sent, so it is not expired",
+	);
+	await app.close();
+});
