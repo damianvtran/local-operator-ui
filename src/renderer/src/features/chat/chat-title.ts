@@ -101,15 +101,18 @@ export function resolveChatTitle(input: {
 	if (!isBlankTitle(liveTitle)) return liveTitle as string;
 	if (!isBlankTitle(catalogueTitle)) return catalogueTitle as string;
 	/*
-	 * A CONVERSATION THAT HAS NO NAME YET KEEPS ITS TARGET'S (design review round
-	 * 1's D1). The create writes `sessionId` before the message is acknowledged,
-	 * and the name arrives a read later - so falling straight through to
-	 * `UNTITLED_CHAT` would blank the header to "Untitled chat" for exactly the
-	 * window the user is watching their first send. The binding is the durable
-	 * identity the header's description line already names, so it is the honest
-	 * stand-in; a draft with no target keeps the existing untitled fallback.
+	 * A CONVERSATION THAT HAS NO NAME YET KEEPS THE DRAFT'S OWN SENTENCE (design
+	 * review rounds 1 D1 and 2 D8). The create writes `sessionId` before the
+	 * message is acknowledged, and the name arrives a read later - so falling
+	 * straight through to `UNTITLED_CHAT` would blank the header to "Untitled
+	 * chat" for exactly the window the user is watching their first send. The
+	 * binding is the durable identity the header's description line already names,
+	 * so it is the honest stand-in for a targeted row; an UNTARGETED draft (⌘N,
+	 * the New-chat row) has no binding and keeps the sentence it wore before the
+	 * send: "New chat". "Untitled chat" is for a conversation that exists and has
+	 * no name, which is not this.
 	 */
-	if (draftKey) return draftTarget ?? UNTITLED_CHAT;
+	if (draftKey) return draftTarget ?? "New chat";
 	return UNTITLED_CHAT;
 }
 

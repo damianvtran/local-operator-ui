@@ -12,7 +12,7 @@ same isolated daemon and the same provider state, on two source trees.
 | --- | --- | --- |
 | `before.png` | `origin/main` | header *New chat with minerva-development* / device chip *On this device*; body *This conversation is no longer on this machine…*; composer *This conversation is gone*, `readOnly: true`; stored `sessionId` still `deadbeef0001` |
 | `after.png` | `fix/team-new-chat-stale-draft` | same title, device chip now *New on this device* (the chip reads the conversation state too); **no notice**; an editable composer holding the message the failed send was carrying (*"Can you pick up where we left off?"*) |
-| `control.png` | same branch, same daemon, **no seeded draft** | the app's own empty new chat: no notice, editable composer. It is the control for the after frame — the model chip's reading ("Retry" on the seeded draft, "Choose a model" here) is the daemon's model census, not a leftover of this defect (QA round 1 measured its `aria-label` and pressed it: nothing changed) |
+| `control.png` | same branch, same daemon, **no seeded draft** | the app's own empty new chat: no notice, editable composer. It is the control for the after frame — the toolbar's model chip reads "Retry" on the seeded row (a team target the run-owned daemon does not have, so its model could not be resolved) and "Choose a model" here. Neither is a leftover of this defect: QA round 1 measured the chip's `aria-label` (`Model: this conversation's model was not resolved. Retry.`) and pressed it — nothing changed |
 
 The scene seeds the persisted pair that produces the screen — the team's stable
 `draft:team:<name>` row carrying the `sessionId` its create wrote, `activeDraftKey`

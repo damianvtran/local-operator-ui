@@ -559,3 +559,33 @@ test("but a press from a fresh draft still forks when the last conversation happ
 		"and the failed conversation's retry moved aside",
 	);
 });
+
+test("a reloaded row's pending text comes home with the claim too", () => {
+	reset();
+	const stable = seedBoundDraft();
+	/*
+	 * The shape a reload leaves: the composer's own record of what was typed
+	 * during the create hop is `pendingText` (`foldReturn` wrote it, and
+	 * `rehydrateInputRows` does not adopt it). The move must adopt it first, or
+	 * that half stays stranded under the conversation that is gone (agent review
+	 * round 2's MINOR).
+	 */
+	useConversationInputStore.setState({
+		inputByConversation: {
+			[DEAD]: {
+				currentInput: "",
+				pendingText: "typed during the create hop",
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+			},
+		},
+	});
+	store.getState().retireDraftSession(stable);
+	assert.equal(
+		useConversationInputStore.getState().inputByConversation[stable]
+			?.pendingText,
+		"the message that failed\n\ntyped during the create hop",
+	);
+});
