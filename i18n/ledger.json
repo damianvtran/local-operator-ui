@@ -17978,8 +17978,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
-			"target_sha256": "1d888863b58369dc278d348d20f1975216e91daa54cd51c7e8e882db3d52540a",
+			"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+			"target_sha256": "a5b8b5ddbbc1523366b5daeaa2817b30aa8a53cb9a3f656c19ddc92fe518a8e4",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -17991,20 +17991,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-21",
-					"result": "clean",
-					"instance": "tbh-r2-fr",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-22",
+					"result": "clean-with-findings",
+					"instance": "att-r1-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 3,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/tbh-r2-fr.json",
-					"receipt_sha256": "ea54d0ab14dead34e0b18e912905cc9601c7c1cdc393c7bc2b18f0f26e4e6eb6",
-					"scope": "Team Bridge held-schedule recovery: 2-key delta (schedule.held, schedule.discard_attempt) independently audited in tbh-r1-fr, NIT remediation delta re-audited here; other 136 values inherited unchanged from c06b457be9 (tbs-r2-fr). Catalogue audit only, not rendered-fit, activation or release approval.",
-					"note": "Independent delta audit; round 1 retained at i18n/receipts/tbh-r1-fr.json and i18n/audits/evidence/fr/ui.teamBridge/tbh-held-schedule-20261021/. No rendered-fit claim."
+					"receipt": "i18n/receipts/att-r1-fr.json",
+					"receipt_sha256": "39df265b9409774901916d375b69fccd737dd819a69f1255832a8052f2217de9",
+					"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
 				}
 			],
 			"status": "audited",
@@ -18130,6 +18129,30 @@
 							"receipt_sha256": "a22cd7571d983c4b3a81c433d4d59edb3616de87e9b573348a48a58a9795918e",
 							"scope": "Team Bridge drafts/schedule: 27-key delta (5 drafts.*, 22 schedule.*) independently audited in tbs-r1-fr, remediation delta re-audited here; base 109 values inherited unchanged from 2e16fb1456. Catalogue audit only, not rendered-fit, activation or release approval.",
 							"note": "Independent delta audit; round 1 retained at i18n/receipts/tbs-r1-fr.json and i18n/audits/evidence/fr/ui.teamBridge/tbs-drafts-schedule-20261021/. No rendered-fit claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+					"target_sha256": "1d888863b58369dc278d348d20f1975216e91daa54cd51c7e8e882db3d52540a",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "tbh-r2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbh-r2-fr.json",
+							"receipt_sha256": "ea54d0ab14dead34e0b18e912905cc9601c7c1cdc393c7bc2b18f0f26e4e6eb6",
+							"scope": "Team Bridge held-schedule recovery: 2-key delta (schedule.held, schedule.discard_attempt) independently audited in tbh-r1-fr, NIT remediation delta re-audited here; other 136 values inherited unchanged from c06b457be9 (tbs-r2-fr). Catalogue audit only, not rendered-fit, activation or release approval.",
+							"note": "Independent delta audit; round 1 retained at i18n/receipts/tbh-r1-fr.json and i18n/audits/evidence/fr/ui.teamBridge/tbh-held-schedule-20261021/. No rendered-fit claim."
 						}
 					],
 					"status": "audited"
@@ -18463,8 +18486,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
-			"target_sha256": "055492d0493b4bad648830f5d5cc6c57ef5db2588aa8178fdc189b39d6f6eae7",
+			"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+			"target_sha256": "cf5d345b07f1425343eb091cab1959f258695532177ad5f473036231a730eebb",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -18476,19 +18499,18 @@
 				{
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-21",
-					"result": "clean",
-					"instance": "tbh-r1-es",
+					"date": "2026-10-22",
+					"result": "clean-with-findings",
+					"instance": "att-r1-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/tbh-r1-es.json",
-					"receipt_sha256": "3da7b99f0f97255ffdaf4c81901ed300326e4c22898d7559e436a420a708923f",
-					"scope": "Team Bridge held-schedule recovery: 2-key delta (schedule.held, schedule.discard_attempt) independently audited in tbh-r1-es with no findings; other 136 values inherited unchanged from c06b457be9 (tbs-r2-es). Catalogue audit only, not rendered-fit, activation or release approval.",
-					"note": "Independent 2-key delta audit, clean in round 1 (no remediation delta, so no round 2). Record: i18n/audits/evidence/es/ui.teamBridge/tbh-held-schedule-20261021/. No rendered-fit claim."
+					"receipt": "i18n/receipts/att-r1-es.json",
+					"receipt_sha256": "d267d3689a22c7bb760db10ddadfddf11813ce2609606ad870e393a07eb922ba",
+					"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
 				}
 			],
 			"status": "audited",
@@ -18593,14 +18615,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+					"target_sha256": "055492d0493b4bad648830f5d5cc6c57ef5db2588aa8178fdc189b39d6f6eae7",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "tbh-r1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbh-r1-es.json",
+							"receipt_sha256": "3da7b99f0f97255ffdaf4c81901ed300326e4c22898d7559e436a420a708923f",
+							"scope": "Team Bridge held-schedule recovery: 2-key delta (schedule.held, schedule.discard_attempt) independently audited in tbh-r1-es with no findings; other 136 values inherited unchanged from c06b457be9 (tbs-r2-es). Catalogue audit only, not rendered-fit, activation or release approval.",
+							"note": "Independent 2-key delta audit, clean in round 1 (no remediation delta, so no round 2). Record: i18n/audits/evidence/es/ui.teamBridge/tbh-held-schedule-20261021/. No rendered-fit claim."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
-			"target_sha256": "5892a79f1f3d8367d15efbfbe65e7ab429e697d6f63b01f4cba31ed181a81614",
+			"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+			"target_sha256": "941547bb3bd80e153820fbd9c6a2ba680f626e2f908e629240a8a9ace3bf13d0",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -18611,20 +18657,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-21",
-					"result": "clean",
-					"instance": "tbh-r1-zh-cn",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-22",
+					"result": "clean-with-findings",
+					"instance": "att-r1-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 4,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/tbh-r1-zh-cn.json",
-					"receipt_sha256": "d5a3be1199e70ad6d3989a1ff3825499d7ef396895fa4e3c2befa8896a90c4c3",
-					"scope": "Team Bridge held-schedule recovery: 2-key delta (schedule.held, schedule.discard_attempt) independently audited in tbh-r1-zh-cn with no findings; other 136 values inherited unchanged from c06b457be9 (tbs-r2-zh-cn). Catalogue audit only, not rendered-fit, activation or release approval.",
-					"note": "Independent 2-key delta audit, clean in round 1 (no remediation delta, so no round 2). Record: i18n/audits/evidence/zh-CN/ui.teamBridge/tbh-held-schedule-20261021/. No rendered-fit claim."
+					"receipt": "i18n/receipts/att-r1-zh-cn.json",
+					"receipt_sha256": "41e2204a1dee73226bfff2716a3445f0c40b45d6fea26c9903a07732cb3efe5c",
+					"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
 				}
 			],
 			"status": "audited",
@@ -18726,6 +18771,30 @@
 							"receipt_sha256": "ca6464ce006a72a0de9a3ddee9c9163938515e8da5ff787fb17366d68e35fedc",
 							"scope": "Team Bridge drafts/schedule: 27-key delta (5 drafts.*, 22 schedule.*) independently audited in tbs-r1-zh-cn, remediation delta re-audited here; base 109 values inherited unchanged from 2e16fb1456. Catalogue audit only, not rendered-fit, activation or release approval.",
 							"note": "Independent delta audit; round 1 retained at i18n/receipts/tbs-r1-zh-cn.json and i18n/audits/evidence/zh-CN/ui.teamBridge/tbs-drafts-schedule-20261021/. No rendered-fit claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+					"target_sha256": "5892a79f1f3d8367d15efbfbe65e7ab429e697d6f63b01f4cba31ed181a81614",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "tbh-r1-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbh-r1-zh-cn.json",
+							"receipt_sha256": "d5a3be1199e70ad6d3989a1ff3825499d7ef396895fa4e3c2befa8896a90c4c3",
+							"scope": "Team Bridge held-schedule recovery: 2-key delta (schedule.held, schedule.discard_attempt) independently audited in tbh-r1-zh-cn with no findings; other 136 values inherited unchanged from c06b457be9 (tbs-r2-zh-cn). Catalogue audit only, not rendered-fit, activation or release approval.",
+							"note": "Independent 2-key delta audit, clean in round 1 (no remediation delta, so no round 2). Record: i18n/audits/evidence/zh-CN/ui.teamBridge/tbh-held-schedule-20261021/. No rendered-fit claim."
 						}
 					],
 					"status": "audited"
@@ -18992,8 +19061,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
-			"target_sha256": "69aea2ec18b548942bb3e2b30c5c7747861b5ddf27aa4eb341bee7b92d126887",
+			"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+			"target_sha256": "33a931af827ba2d475c46ad82f96e2a851d0686d0e788350db8e1baa99ac0a8d",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19006,19 +19075,18 @@
 				{
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-21",
-					"result": "clean",
-					"instance": "tbh-r2-ru",
+					"date": "2026-10-22",
+					"result": "clean-with-findings",
+					"instance": "att-r1-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/tbh-r2-ru.json",
-					"receipt_sha256": "e685510a0eb4a2f0a2fc4e73381fab14c7627f32570a6973c7c6c07a72360b3f",
-					"scope": "Team Bridge held-schedule recovery: 2-key delta (schedule.held, schedule.discard_attempt) independently audited in tbh-r1-ru, NIT remediation delta re-audited here; other 136 values inherited unchanged from c06b457be9 (tbs-r2-ru). Catalogue audit only, not rendered-fit, activation or release approval.",
-					"note": "Independent delta audit; round 1 retained at i18n/receipts/tbh-r1-ru.json and i18n/audits/evidence/ru/ui.teamBridge/tbh-held-schedule-20261021/. No rendered-fit claim."
+					"receipt": "i18n/receipts/att-r1-ru.json",
+					"receipt_sha256": "8d72369fc69f6033efd26eb0d75d5baf7c087fef8e816839976ecd37fb1a9984",
+					"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
 				}
 			],
 			"status": "audited",
@@ -19070,14 +19138,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+					"target_sha256": "69aea2ec18b548942bb3e2b30c5c7747861b5ddf27aa4eb341bee7b92d126887",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "tbh-r2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbh-r2-ru.json",
+							"receipt_sha256": "e685510a0eb4a2f0a2fc4e73381fab14c7627f32570a6973c7c6c07a72360b3f",
+							"scope": "Team Bridge held-schedule recovery: 2-key delta (schedule.held, schedule.discard_attempt) independently audited in tbh-r1-ru, NIT remediation delta re-audited here; other 136 values inherited unchanged from c06b457be9 (tbs-r2-ru). Catalogue audit only, not rendered-fit, activation or release approval.",
+							"note": "Independent delta audit; round 1 retained at i18n/receipts/tbh-r1-ru.json and i18n/audits/evidence/ru/ui.teamBridge/tbh-held-schedule-20261021/. No rendered-fit claim."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
-			"target_sha256": "4e453d80c3efcf76bdd6524d149839c0d0016d68f6a1188e578535bf4c4d0e08",
+			"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+			"target_sha256": "81800a16e68bad3511726b517d74cc7648daf3696c76409e33dd7a8a30bfa78d",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19089,19 +19181,18 @@
 				{
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-21",
-					"result": "clean",
-					"instance": "tbh-r1-hi",
+					"date": "2026-10-22",
+					"result": "clean-with-findings",
+					"instance": "att-r1-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 4,
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/tbh-r1-hi.json",
-					"receipt_sha256": "e45b8b1e0467ccaab493e77cc2e385d046c15427266f012ae8c3147cea5aaff2",
-					"scope": "Team Bridge held-schedule recovery: 2-key delta (schedule.held, schedule.discard_attempt) independently audited in tbh-r1-hi with no findings; other 136 values inherited unchanged from c06b457be9 (tbs-r2-hi). Catalogue audit only, not rendered-fit, activation or release approval.",
-					"note": "Independent 2-key delta audit, clean in round 1 (no remediation delta, so no round 2). Record: i18n/audits/evidence/hi/ui.teamBridge/tbh-held-schedule-20261021/. No rendered-fit claim."
+					"receipt": "i18n/receipts/att-r1-hi.json",
+					"receipt_sha256": "81f022991c2c2d6ddd7fc82194a9f278e1049f8c403b56a6f0075a03a0000653",
+					"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
 				}
 			],
 			"status": "audited",
@@ -19153,14 +19244,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+					"target_sha256": "4e453d80c3efcf76bdd6524d149839c0d0016d68f6a1188e578535bf4c4d0e08",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "tbh-r1-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbh-r1-hi.json",
+							"receipt_sha256": "e45b8b1e0467ccaab493e77cc2e385d046c15427266f012ae8c3147cea5aaff2",
+							"scope": "Team Bridge held-schedule recovery: 2-key delta (schedule.held, schedule.discard_attempt) independently audited in tbh-r1-hi with no findings; other 136 values inherited unchanged from c06b457be9 (tbs-r2-hi). Catalogue audit only, not rendered-fit, activation or release approval.",
+							"note": "Independent 2-key delta audit, clean in round 1 (no remediation delta, so no round 2). Record: i18n/audits/evidence/hi/ui.teamBridge/tbh-held-schedule-20261021/. No rendered-fit claim."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
-			"target_sha256": "d8a04b1e39a509dbee21aa7b2cf9b1d021a23ba9d1c0ba1a0c2e0c55309d7c0b",
+			"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+			"target_sha256": "47bccf3a65d5ad9ccba4b375fba35c67d3c00ec689bd209fcb06361a655a6d99",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19171,20 +19286,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-21",
-					"result": "clean",
-					"instance": "tbh-r1-ur",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-22",
+					"result": "clean-with-findings",
+					"instance": "att-r1-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 2,
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/tbh-r1-ur.json",
-					"receipt_sha256": "c00b9c945c59680a460b68c7e78364157fdfb7536691a350ecd6f9fda349208b",
-					"scope": "Team Bridge held-schedule recovery: 2-key delta (schedule.held, schedule.discard_attempt) independently audited in tbh-r1-ur with no findings; other 136 values inherited unchanged from c06b457be9 (tbs-r2-ur). Catalogue audit only, not rendered-fit, activation or release approval.",
-					"note": "Independent 2-key delta audit, clean in round 1 (no remediation delta, so no round 2). Record: i18n/audits/evidence/ur/ui.teamBridge/tbh-held-schedule-20261021/. No rendered-fit claim."
+					"receipt": "i18n/receipts/att-r1-ur.json",
+					"receipt_sha256": "005c6def2dad56d91fc7bb9e0a4d2fb8daf216093d755239281631ef3905821e",
+					"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
 				}
 			],
 			"status": "audited",
@@ -19236,14 +19350,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+					"target_sha256": "d8a04b1e39a509dbee21aa7b2cf9b1d021a23ba9d1c0ba1a0c2e0c55309d7c0b",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "tbh-r1-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbh-r1-ur.json",
+							"receipt_sha256": "c00b9c945c59680a460b68c7e78364157fdfb7536691a350ecd6f9fda349208b",
+							"scope": "Team Bridge held-schedule recovery: 2-key delta (schedule.held, schedule.discard_attempt) independently audited in tbh-r1-ur with no findings; other 136 values inherited unchanged from c06b457be9 (tbs-r2-ur). Catalogue audit only, not rendered-fit, activation or release approval.",
+							"note": "Independent 2-key delta audit, clean in round 1 (no remediation delta, so no round 2). Record: i18n/audits/evidence/ur/ui.teamBridge/tbh-held-schedule-20261021/. No rendered-fit claim."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
-			"target_sha256": "0b6d510710c29488180fc315a4f44fdb62bf9e24a76fe172cb893964a09eaab8",
+			"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+			"target_sha256": "608e2f506070968878a48fdbbf2a10ddc174de7c0e0db872bc6ade21b938bc03",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19254,20 +19392,19 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-21",
-					"result": "clean",
-					"instance": "tbh-r1-vi",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-22",
+					"result": "clean-with-findings",
+					"instance": "att-r1-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/tbh-r1-vi.json",
-					"receipt_sha256": "6bdc2b3a8750028e0529f5526063213564c1762cece8fe38cdfaad1e673e7245",
-					"scope": "Team Bridge held-schedule recovery: 2-key delta (schedule.held, schedule.discard_attempt) independently audited in tbh-r1-vi with no findings; other 136 values inherited unchanged from c06b457be9 (tbs-r2-vi). Catalogue audit only, not rendered-fit, activation or release approval.",
-					"note": "Independent 2-key delta audit, clean in round 1 (no remediation delta, so no round 2). Record: i18n/audits/evidence/vi/ui.teamBridge/tbh-held-schedule-20261021/. No rendered-fit claim."
+					"receipt": "i18n/receipts/att-r1-vi.json",
+					"receipt_sha256": "a8f1ceb71bfbd5481e4a81842d1f9aacef58e286f98e25ee5ec38a4d0499a5b0",
+					"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
 				}
 			],
 			"status": "audited",
@@ -19316,6 +19453,30 @@
 							"receipt_sha256": "fbc9a2b9e3ba894b62c9c716dcc4af3fc00220854ba008ae212d86a19360ecd9",
 							"scope": "Team Bridge drafts/schedule: 27-key delta (5 drafts.*, 22 schedule.*) independently audited in tbs-r1-vi, remediation delta re-audited here; base 109 values inherited unchanged from 2e16fb1456. Catalogue audit only, not rendered-fit, activation or release approval.",
 							"note": "Independent delta audit; round 1 retained at i18n/receipts/tbs-r1-vi.json and i18n/audits/evidence/vi/ui.teamBridge/tbs-drafts-schedule-20261021/. No rendered-fit claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+					"target_sha256": "0b6d510710c29488180fc315a4f44fdb62bf9e24a76fe172cb893964a09eaab8",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-21",
+							"result": "clean",
+							"instance": "tbh-r1-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbh-r1-vi.json",
+							"receipt_sha256": "6bdc2b3a8750028e0529f5526063213564c1762cece8fe38cdfaad1e673e7245",
+							"scope": "Team Bridge held-schedule recovery: 2-key delta (schedule.held, schedule.discard_attempt) independently audited in tbh-r1-vi with no findings; other 136 values inherited unchanged from c06b457be9 (tbs-r2-vi). Catalogue audit only, not rendered-fit, activation or release approval.",
+							"note": "Independent 2-key delta audit, clean in round 1 (no remediation delta, so no round 2). Record: i18n/audits/evidence/vi/ui.teamBridge/tbh-held-schedule-20261021/. No rendered-fit claim."
 						}
 					],
 					"status": "audited"
