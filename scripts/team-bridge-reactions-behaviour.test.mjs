@@ -9,6 +9,7 @@ import { Profiler, createElement as h } from "react";
 const I18N_SEAM = /^@shared\/i18n(?:\/use-locale)?$/;
 const API_SEAM = /^@shared\/api\/local-operator\/team-bridge-api$/;
 const PROSE_SEAM = /^\.\/team-bridge-markdown$/;
+const FONT_SEAM = /^\.\/team-bridge-emoji-support$/;
 const ANY_SEAM = /.*/;
 const dom = new JSDOM("<!doctype html>", {
 	url: "http://localhost/",
@@ -79,12 +80,18 @@ const bundle = await build({
 					path: args.path,
 					namespace: "seam",
 				}));
+				b.onResolve({ filter: FONT_SEAM }, (args) => ({
+					path: args.path,
+					namespace: "seam",
+				}));
 				b.onLoad({ filter: ANY_SEAM, namespace: "seam" }, (args) => ({
-					contents: args.path.includes("api/")
-						? "export const TeamBridgeApi={react:(...args)=>globalThis.__reactionApi(...args)};"
-						: args.path.includes("markdown")
-							? "export const TeamBridgeMarkdown=({children})=>children;"
-							: 'export const t=(key)=>key; export const useI18nLocale=()=>"en";export const formatDate=()=>"today";export const formatTime=()=>"12:00";',
+					contents: args.path.includes("emoji-support")
+						? "export const canRenderEmoji=(emoji)=>!globalThis.__unsupportedGlyphs?.has(emoji);"
+						: args.path.includes("api/")
+							? "export const TeamBridgeApi={react:(...args)=>globalThis.__reactionApi(...args)};"
+							: args.path.includes("markdown")
+								? "export const TeamBridgeMarkdown=({children})=>children;"
+								: 'export const t=(key)=>key; export const useI18nLocale=()=>"en";export const formatDate=()=>"today";export const formatTime=()=>"12:00";',
 					loader: "js",
 				}));
 			},
@@ -116,6 +123,11 @@ const reaction = {
 	reacted_by_me: false,
 	sample_labels: ["Bea"],
 };
+const visibleText = (node) =>
+	[...node.querySelectorAll("span")]
+		.filter((span) => !span.classList.contains("sr-only"))
+		.map((span) => span.textContent)
+		.join("");
 const mount = () => {
 	const host = document.createElement("div");
 	document.body.append(host);
@@ -173,7 +185,10 @@ test("busy toggle ignores polls, disables second input, and restores snapshot on
 		),
 	);
 	await click(m.host.querySelector("button[aria-pressed]"));
-	assert.equal(m.host.querySelector("button[aria-pressed]").textContent, "👍3");
+	assert.equal(
+		visibleText(m.host.querySelector("button[aria-pressed]")),
+		"👍3",
+	);
 	assert.equal(m.host.querySelector("button[aria-pressed]").disabled, true);
 	await click(m.host.querySelector("button[aria-pressed]"));
 	assert.equal(calls, 1);
@@ -186,12 +201,18 @@ test("busy toggle ignores polls, disables second input, and restores snapshot on
 			}),
 		),
 	);
-	assert.equal(m.host.querySelector("button[aria-pressed]").textContent, "👍3");
+	assert.equal(
+		visibleText(m.host.querySelector("button[aria-pressed]")),
+		"👍3",
+	);
 	await act(async () => {
 		reject(new Error("reaction_limit"));
 		await Promise.resolve();
 	});
-	assert.equal(m.host.querySelector("button[aria-pressed]").textContent, "👍2");
+	assert.equal(
+		visibleText(m.host.querySelector("button[aria-pressed]")),
+		"👍2",
+	);
 	assert.ok(m.host.querySelector('[role="alert"]'));
 	assert.equal(m.host.querySelector("button[aria-pressed]").disabled, false);
 	await m.close();
@@ -224,9 +245,15 @@ test("account-keyed message-list mount cannot inherit a previous account's pendi
 		);
 	await act(() => render("a"));
 	await click(m.host.querySelector("button[aria-pressed]"));
-	assert.equal(m.host.querySelector("button[aria-pressed]").textContent, "👍3");
+	assert.equal(
+		visibleText(m.host.querySelector("button[aria-pressed]")),
+		"👍3",
+	);
 	await act(() => render("b"));
-	assert.equal(m.host.querySelector("button[aria-pressed]").textContent, "👍2");
+	assert.equal(
+		visibleText(m.host.querySelector("button[aria-pressed]")),
+		"👍2",
+	);
 	await act(async () => {
 		resolve({
 			message_id: message.id,
@@ -234,7 +261,10 @@ test("account-keyed message-list mount cannot inherit a previous account's pendi
 		});
 		await Promise.resolve();
 	});
-	assert.equal(m.host.querySelector("button[aria-pressed]").textContent, "👍2");
+	assert.equal(
+		visibleText(m.host.querySelector("button[aria-pressed]")),
+		"👍2",
+	);
 	await m.close();
 });
 
@@ -315,5 +345,82 @@ test("search and category grid dispatch the glyph displayed, preserving explicit
 	await click(mixed);
 	assert.equal(picks.at(-1), glyph);
 	assert.equal(Buffer.byteLength(glyph), 35);
+	await m.close();
+});
+
+test("empty reaction toolbar is off-flow; populated chips remain in the message flow", async () => {
+	const m = mount();
+	await act(() => m.root.render(h(TeamBridgeReactions, props)));
+	const toolbar = m.host.querySelector('[data-reaction-layout="toolbar"]');
+	assert.ok(toolbar);
+	assert.ok(toolbar.classList.contains("absolute"));
+	assert.equal(toolbar.classList.contains("mt-1"), false);
+	await act(() =>
+		m.root.render(h(TeamBridgeReactions, { ...props, reactions: [reaction] })),
+	);
+	const chips = m.host.querySelector('[data-reaction-layout="chips"]');
+	assert.ok(chips);
+	assert.equal(chips.classList.contains("absolute"), false);
+	const button = chips.querySelector("button[aria-pressed]");
+	assert.equal(button.getAttribute("aria-label"), "thumbs up 2");
+	assert.equal(
+		document.getElementById(button.getAttribute("aria-describedby"))
+			.textContent,
+		"Bea",
+	);
+	await m.close();
+});
+
+test("unsupported glyph is not offered, and an incoming unsupported reaction uses its name", async () => {
+	globalThis.__unsupportedGlyphs = new Set(["🫫"]);
+	const m = mount();
+	await act(() =>
+		m.root.render(
+			h(TeamBridgeEmojiPicker, {
+				accountId: "font",
+				initialQuery: "cracking face",
+				onSelect: () => {},
+				onClose: () => {},
+			}),
+		),
+	);
+	assert.equal(m.host.querySelector("table"), null);
+	assert.ok(m.host.textContent.includes("ui.teamBridge.reactions.noResults"));
+	await act(() =>
+		m.root.render(
+			h(TeamBridgeReactions, {
+				...props,
+				reactions: [{ ...reaction, emoji: "🫫" }],
+			}),
+		),
+	);
+	assert.equal(m.host.textContent.includes("🫫"), false);
+	assert.ok(m.host.textContent.includes("cracking face"));
+	await m.close();
+	globalThis.__unsupportedGlyphs = undefined;
+});
+
+test("categories are target-sized plain toggles, not incomplete tabs", async () => {
+	const m = mount();
+	await act(() =>
+		m.root.render(
+			h(TeamBridgeEmojiPicker, {
+				accountId: "categories",
+				onSelect: () => {},
+				onClose: () => {},
+			}),
+		),
+	);
+	assert.equal(m.host.querySelector('[role="tab"]'), null);
+	const buttons = [...m.host.querySelectorAll("fieldset button")];
+	assert.equal(buttons.length, 10);
+	assert.ok(
+		buttons.every(
+			(b) => b.classList.contains("min-w-6") && b.classList.contains("min-h-8"),
+		),
+	);
+	await click(buttons[2]);
+	assert.equal(buttons[2].getAttribute("aria-pressed"), "true");
+	assert.equal(buttons[0].getAttribute("aria-pressed"), "false");
 	await m.close();
 });
