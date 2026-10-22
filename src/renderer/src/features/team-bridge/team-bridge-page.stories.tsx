@@ -6,10 +6,12 @@ import type {
 } from "../../../../shared/team-bridge-contract";
 import { ChatLayout } from "../../shared/components/common/chat-layout";
 import {
+	type PendingSend,
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeOrganization,
 	asTeamBridgeTenantId,
 	organizationOptions,
+	threadWithPending,
 } from "./team-bridge-model";
 import { TeamBridgePageView } from "./team-bridge-page";
 
@@ -1048,5 +1050,160 @@ export const LegacyMemberLabelsAllOrganizations: Story = {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
 		people: [],
 		directories: { [minervaOrganization.tenantId]: rosterWithChiefs.slice(1) },
+	},
+};
+
+/*
+ * TEAM BRIDGE: OPTIMISTIC SEND, SPARSE THREAD, CHIEF-OF-STAFF LABEL
+ * (operator report after v0.39.9). Fixtures are hand-written; the pending rows
+ * are built with the same `threadWithPending` the page uses, so a story shows
+ * what the container really hands the view.
+ */
+const sentAt = new Date().toISOString();
+const pendingEntry = (
+	clientRef: string,
+	body: string,
+	status: "sending" | "failed",
+): PendingSend => ({
+	clientRef,
+	body,
+	createdAt: sentAt,
+	tenantId: "tnt_1",
+	conversationId: benDm.id,
+	draftKey: null,
+	baselineSeq: 1,
+	status,
+});
+const withPending = (pending: PendingSend[]) =>
+	threadWithPending(benThread, pending, {
+		accountId: self,
+		label: "Damian Tran",
+	});
+
+/** The message is on screen before the round trip: dimmed, "Sending…". */
+export const OptimisticSending: Story = {
+	args: (() => {
+		const pendingSends = [
+			pendingEntry("ref-1", "On my way, see you there.", "sending"),
+		];
+		return {
+			...slackRail,
+			selfName: "Damian Tran",
+			target: { type: "person" as const, accountId: "acct_ben" },
+			messages: withPending(pendingSends),
+			pendingSends,
+		};
+	})(),
+};
+
+/** A refused send stays in the thread as "Not sent" with a Retry. */
+export const OptimisticFailedWithRetry: Story = {
+	args: (() => {
+		const pendingSends = [
+			pendingEntry("ref-2", "On my way, see you there.", "failed"),
+		];
+		return {
+			...slackRail,
+			selfName: "Damian Tran",
+			target: { type: "person" as const, accountId: "acct_ben" },
+			messages: withPending(pendingSends),
+			pendingSends,
+			onRetrySend: () => {},
+		};
+	})(),
+};
+
+/** Sending, then a failed one beneath it: typed order, after confirmed rows. */
+export const OptimisticMixed: Story = {
+	args: (() => {
+		const pendingSends = [
+			pendingEntry("ref-3", "First, this one failed.", "failed"),
+			pendingEntry("ref-4", "Second, still sending.", "sending"),
+		];
+		return {
+			...slackRail,
+			selfName: "Damian Tran",
+			target: { type: "person" as const, accountId: "acct_ben" },
+			messages: withPending(pendingSends),
+			pendingSends,
+			onRetrySend: () => {},
+		};
+	})(),
+};
+
+/** One message in a thread: breathing room under it, above the composer. */
+export const SparseThread: Story = {
+	args: {
+		...slackRail,
+		target: { type: "person", accountId: "acct_ben" },
+		messages: benThread.slice(0, 1),
+	},
+};
+
+/**
+ * Chiefs of staff: Ben's agent name was defaulted to Ben's own name by the
+ * server ("Ben Tran" → "Ben Tran's chief of staff"), Sherman's is Juno
+ * ("Juno (Sherman Tsui)"). The DM below stores the doubled label "Ben Tran (Ben
+ * Tran)" as the agent member's name; it must read as the same single label on
+ * the rail, the thread header, the composer placeholder and the messages.
+ */
+const echoedRoster = rosterWithChiefs.map((row) =>
+	row.account_id === "acct_ben"
+		? {
+				...row,
+				agent: { endpoint_id: "bep_ben", name: "Ben Tran", state: "active" },
+			}
+		: row,
+);
+const chiefDm: TeamBridgeConversation = {
+	...dm,
+	id: "bcv_dm_chief",
+	agent_capable: true,
+	members: [
+		{
+			account_id: self,
+			kind: "human",
+			display_label: "Damian Tran",
+			role: "owner",
+			state: "active",
+		},
+		{
+			account_id: "acct_ben",
+			kind: "agent",
+			display_label: "Ben Tran (Ben Tran)",
+			role: "member",
+			state: "active",
+		},
+	],
+};
+export const ChiefLabelUnnamedAgent: Story = {
+	args: {
+		...slackRail,
+		people: echoedRoster,
+		conversations: [humansChannel, agentsChannel, chiefDm],
+		target: { type: "chief", accountId: "acct_ben" },
+		messages: [
+			{
+				id: "bcmsg_c1",
+				conversation_id: chiefDm.id,
+				seq: 1,
+				sender: {
+					account_id: "acct_ben",
+					kind: "agent",
+					display_label: "Ben Tran (Ben Tran)",
+				},
+				body: "Hi, this is Ben's chief of staff. How can I help?",
+				origin: "agent",
+				created_at: at(5),
+			},
+		],
+	},
+};
+
+/** The same, with the agent's own name published: "Aida (Ben Tran)". */
+export const ChiefLabelNamedAgent: Story = {
+	args: {
+		...ChiefLabelUnnamedAgent.args,
+		people: rosterWithChiefs,
 	},
 };
