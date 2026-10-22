@@ -45,7 +45,7 @@ Status vocabulary: **PASS** = the measured predicate held; **MEASURED** = a read
 
 | Row | Claim | Status | Actual (abridged) |
 | --- | --- | --- | --- |
-| B1 | the launched app is the built tree at the recorded product commit | PASS | `checkedOut 6725eaa…`, `productSourceCommit c5503204ed…`, `productSourceClean:true`, product chrome armed; Electron 44.3.0; app 0.39.4 |
+| B1 | the launched app is the built tree at the recorded product commit | PASS | `checkedOut 54d6882654…`, `productSourceCommit c5503204ed…`, `productSourceClean:true`, product chrome armed; Electron 44.3.0; app 0.39.4 |
 | B2 | every path the app writes through resolves inside the scratch run; the logger took the absolute `LOG_DIR` | PASS | `userData`/`sessionData`/env HOME/config/log under `RUN`; `Log path: …/run/…/logs`; no fallback line; browser profile `…/run/…/profile/Partitions/local-operator-browser`; the line is waited for, not read once (4-run wait 0–110 ms). `app.getPath("logs")` is Electron's default (`~/Library/Logs/Local Operator`), recorded but outside `RUN` and **not gated**: the app's logger override is the writer |
 | B3 | this run wrote nothing into the operator's real log, config or browser profile | PASS | real logs/config/profile snapshotted before/after; fixture-URL hits **0**, launcher-pid hits **0**; config and logs unchanged; real profile mtime recorded but not gated (the operator's app may write it), and B2's scratch profile line is the profile proof |
 | W1 | the window is headless | PASS | `visible:false`, `focused:false`, `focusable:false`, content `1380×900`; `[window-mode] state: visible=false` |
