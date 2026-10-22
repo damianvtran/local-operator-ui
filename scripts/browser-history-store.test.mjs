@@ -252,6 +252,74 @@ test("the serialised document is capped at 2 MB", (t) => {
 	assert.ok(store.size() < 5000, "entries were evicted to get under the cap");
 });
 
+test("www and uppercase schemes are recall, not a different page", (t) => {
+	const root = tempRoot(t);
+	const { store } = storeAt(root);
+	store.record("https://www.example.com/", "Www", NOW);
+	store.record("https://example.net/", "Plain", NOW);
+	assert.deepEqual(
+		store.suggest("example.com", 5).map((row) => row.url),
+		["https://www.example.com/"],
+		"a stored www page answers its bare host",
+	);
+	assert.deepEqual(
+		store.suggest("https://example.com", 5).map((row) => row.url),
+		["https://www.example.com/"],
+		"and a full HTTPS scheme in the query",
+	);
+	assert.deepEqual(
+		store.suggest("HTTPS://WWW.EXAMPLE.COM", 5).map((row) => row.url),
+		["https://www.example.com/"],
+		"scheme and host case do not change the match",
+	);
+	// The other direction: a bare stored page answers a www query.
+	store.record("https://bare.example/", "Bare", NOW);
+	assert.deepEqual(
+		store.suggest("www.bare.example", 5).map((row) => row.url),
+		["https://bare.example/"],
+	);
+	assert.deepEqual(
+		store.suggest("stored.example", 5),
+		[],
+		"a different host must not match either spelling",
+	);
+	assert.equal(
+		store.suggest("example.com", 1)[0].url,
+		"https://www.example.com/",
+		"the canonical URL is kept for display and navigation",
+	);
+});
+
+test("the spec'd bounds are 5000 entries and 2 MB, pinned as literals", () => {
+	assert.equal(HISTORY_STORE_MAX_ENTRIES, 5000);
+	assert.equal(HISTORY_STORE_MAX_BYTES, 2 * 1024 * 1024);
+});
+
+test("titles set only through updateTitle still count toward the 2 MB cap", (t) => {
+	const root = tempRoot(t);
+	const { file, store } = storeAt(root);
+	const tail = "q".repeat(400);
+	const title = "t".repeat(200);
+	// The app's own flow, exactly: the visit records an empty title, then the
+	// page-title event supplies the real one. If the estimate skips that
+	// mutation, the cap never sees the title bytes.
+	for (let index = 0; index < HISTORY_STORE_MAX_ENTRIES; index += 1) {
+		const url = `https://title${index}.example/${tail}`;
+		store.record(url, "", NOW);
+		store.updateTitle(url, title);
+	}
+	store.flush();
+	const bytes = readFileSync(file).byteLength;
+	assert.ok(
+		bytes <= HISTORY_STORE_MAX_BYTES,
+		`document is ${bytes} bytes, over the ${HISTORY_STORE_MAX_BYTES} cap`,
+	);
+	assert.ok(
+		store.size() < HISTORY_STORE_MAX_ENTRIES,
+		"entries were evicted once the titles made the document exceed the cap",
+	);
+});
+
 test("updateTitle changes a title without counting a visit", (t) => {
 	const root = tempRoot(t);
 	const { store } = storeAt(root);

@@ -2935,6 +2935,14 @@ test("the host merges persistent history ahead of the live-tab rows", async () =
 	host.flushHistory();
 	const persisted = JSON.parse(readFileSync(historyFile, "utf8"));
 	assert.ok(Array.isArray(persisted.entries));
+	assert.ok(
+		persisted.entries.every((entry) => entry.url.startsWith("http")),
+		"about:blank is not a stored destination",
+	);
+	assert.equal(
+		persisted.entries.some((entry) => entry.url === "about:blank"),
+		false,
+	);
 });
 
 test("closed-tab stack is user-only, scoped, bounded and erased with host UI lifetime", async () => {

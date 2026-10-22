@@ -25,15 +25,22 @@ import { readJson, writeJsonAtomic } from "./atomic-json";
  * rejects all of those.
  *
  * INDEXED, NOT SCANNED: `suggest()` is called on a typing debounce, so a
- * `Map`-values walk per keystroke is the wrong shape at 5000 entries. Three
+ * `Map`-values walk per keystroke is the wrong shape at 5000 entries. Two
  * in-memory indexes answer a prefix query without touching the rest of the
  * table:
  *   - `byUrl`: the canonical URL -> entry, for upsert and dedup;
- *   - `byHost`: host -> canonical URLs, for `clearOrigin`;
- *   - `prefix`: the first three characters of the scheme-less lowercase URL ->
- *     canonical URLs. Three is the shortest useful bucket: a one- or two-letter
- *     bucket would hold most of the table, and the remaining `startsWith` runs
- *     only over the bucket the query actually names.
+ *   - `prefix`: the first three characters of the MATCH KEY -> canonical URLs.
+ *     Three is the shortest useful bucket: a one- or two-letter bucket would
+ *     hold most of the table, and the remaining `startsWith` runs only over the
+ *     bucket the query actually names.
+ *
+ * THE MATCH KEY is scheme-less, lowercased, and has one leading `www.` removed.
+ * That is what makes `https://www.example.com/` answer `example.com`,
+ * `https://example.com` and `HTTPS://WWW.EXAMPLE.COM` alike: a user typing a
+ * host does not think about the scheme or the `www.` prefix, and a store that
+ * demanded either would hide exactly the pages a browser visits most. The
+ * canonical URL is kept for display and navigation, so folding never changes a
+ * destination.
  * The number of candidates examined before ranking is capped
  * (`SUGGEST_MAX_CANDIDATES`), so a pathological bucket cannot turn one
  * keystroke into a full sort.
@@ -66,7 +73,9 @@ export interface BrowserHistoryEntry {
 	url: string;
 	/** Plain display text, bounded by `historyTitle`. Empty is legal. */
 	title: string;
-	/** `URL.host` (hostname plus a non-default port), for `clearOrigin`. */
+	/** `URL.host` (hostname plus a non-default port), stored with the record.
+	 * `clearOrigin` matches by origin from the canonical URL, so this field is
+	 * descriptive rather than an index key. */
 	host: string;
 	/** Monotonic count of recorded visits. */
 	visitCount: number;
@@ -97,16 +106,23 @@ export interface BrowserHistoryStore {
 	flush(): void;
 }
 
-/** The scheme-less spelling used by the prefix index, lowercase. */
-function schemeLess(url: string): string {
-	if (url.startsWith("https://")) return url.slice("https://".length);
-	if (url.startsWith("http://")) return url.slice("http://".length);
-	return url;
+const SCHEME_PREFIX = /^([a-z][a-z0-9+.-]*):\/\//i;
+
+/** The spelling after any `scheme://`, whatever its case. */
+function schemeLess(value: string): string {
+	const match = SCHEME_PREFIX.exec(value);
+	return match ? value.slice(match[0].length) : value;
 }
 
-/** The bucket key for a URL, and for a query once its scheme is removed. */
-function prefixKey(schemeLessUrl: string): string {
-	return schemeLessUrl.slice(0, PREFIX_WIDTH).toLowerCase();
+/** The one normalised form both the index and a query are compared in. */
+function matchKey(value: string): string {
+	const bare = schemeLess(value.trim()).toLowerCase();
+	return bare.startsWith("www.") ? bare.slice("www.".length) : bare;
+}
+
+/** The bucket key for a URL, and for a query once it is normalised. */
+function prefixKey(matchKeyValue: string): string {
+	return matchKeyValue.slice(0, PREFIX_WIDTH);
 }
 
 /**
@@ -179,7 +195,6 @@ export function createBrowserHistoryStore(
 ): BrowserHistoryStore {
 	const now = options.now ?? Date.now;
 	const byUrl = new Map<string, BrowserHistoryEntry>();
-	const byHost = new Map<string, Set<string>>();
 	const prefix = new Map<string, Set<string>>();
 	let writeTimer: ReturnType<typeof setTimeout> | null = null;
 	// A cheap running estimate of the serialised size. The EXACT check runs only
@@ -196,14 +211,8 @@ export function createBrowserHistoryStore(
 	}
 
 	function indexAdd(entry: BrowserHistoryEntry): void {
-		let hosts = byHost.get(entry.host);
-		if (!hosts) {
-			hosts = new Set();
-			byHost.set(entry.host, hosts);
-		}
-		hosts.add(entry.url);
 		approxBytes += estimate(entry);
-		const key = prefixKey(schemeLess(entry.url));
+		const key = prefixKey(matchKey(entry.url));
 		let bucket = prefix.get(key);
 		if (!bucket) {
 			bucket = new Set();
@@ -214,12 +223,26 @@ export function createBrowserHistoryStore(
 
 	function indexRemove(entry: BrowserHistoryEntry): void {
 		approxBytes -= estimate(entry);
-		const hosts = byHost.get(entry.host);
-		hosts?.delete(entry.url);
-		if (hosts?.size === 0) byHost.delete(entry.host);
-		const bucket = prefix.get(prefixKey(schemeLess(entry.url)));
+		const key = prefixKey(matchKey(entry.url));
+		const bucket = prefix.get(key);
 		bucket?.delete(entry.url);
-		if (bucket?.size === 0) prefix.delete(prefixKey(schemeLess(entry.url)));
+		if (bucket?.size === 0) prefix.delete(key);
+	}
+
+	/**
+	 * Replace a title while keeping the size estimate honest.
+	 *
+	 * WHY THIS EXISTS: the 2 MB gate trusts `approxBytes` until the estimate says
+	 * the document might be over. A title mutation that skips this adjustment is
+	 * invisible to that gate — the app's own flow (`record(url, "")` then
+	 * `updateTitle(url, text)`) would then write the title bytes without ever
+	 * counting them, and the cap would silently miss (measured: 2.87 MB on disk).
+	 * Both title mutators must go through here.
+	 */
+	function setTitle(entry: BrowserHistoryEntry, next: string): void {
+		const before = estimate(entry);
+		entry.title = next;
+		approxBytes += estimate(entry) - before;
 	}
 
 	/**
@@ -329,8 +352,10 @@ export function createBrowserHistoryStore(
 					existing.lastVisitedAt,
 					raw.lastVisitedAt,
 				);
-				if (existing.title.length === 0)
-					existing.title = historyTitle(raw.title);
+				if (existing.title.length === 0) {
+					const title = historyTitle(raw.title);
+					if (title.length > 0) setTitle(existing, title);
+				}
 				continue;
 			}
 			const entry: BrowserHistoryEntry = {
@@ -358,7 +383,8 @@ export function createBrowserHistoryStore(
 				// An empty title never erases a known one: `page-title-updated` can
 				// arrive before the document has a title, and a title is display text
 				// the store should keep across visits.
-				if (title.length > 0) existing.title = title;
+				if (title.length > 0 && title !== existing.title)
+					setTitle(existing, title);
 			} else {
 				const entry: BrowserHistoryEntry = {
 					url,
@@ -381,7 +407,11 @@ export function createBrowserHistoryStore(
 			if (!entry) return;
 			const title = historyTitle(rawTitle);
 			if (title.length === 0 || title === entry.title) return;
-			entry.title = title;
+			setTitle(entry, title);
+			// A title can be the bytes that push the document over the cap (a
+			// page's own title is unbounded input, only clamped per entry), so the
+			// same eviction gate runs here as on a visit.
+			enforceBounds(now());
 			scheduleWrite();
 		},
 
@@ -392,7 +422,7 @@ export function createBrowserHistoryStore(
 			if (rawQuery.length === 0) {
 				return [...byUrl.values()].sort(compareEntries(at)).slice(0, wanted);
 			}
-			const needle = schemeLess(rawQuery.trim()).toLowerCase();
+			const needle = matchKey(rawQuery);
 			if (needle.length === 0) return [];
 			// The index key is three characters, so a SHORTER query names a SET of
 			// buckets rather than one: iterate the bucket keys (cheap, and far fewer
@@ -411,7 +441,7 @@ export function createBrowserHistoryStore(
 			for (const bucket of buckets) {
 				for (const url of bucket) {
 					if (candidates.length >= HISTORY_STORE_MAX_CANDIDATES) break;
-					if (!schemeLess(url).toLowerCase().startsWith(needle)) continue;
+					if (!matchKey(url).startsWith(needle)) continue;
 					const entry = byUrl.get(url);
 					if (entry) candidates.push(entry);
 				}
@@ -427,7 +457,6 @@ export function createBrowserHistoryStore(
 
 		clear(): void {
 			byUrl.clear();
-			byHost.clear();
 			prefix.clear();
 			// Immediate: "clear everything" that survives only until a crash is not a
 			// clear the user can rely on.
