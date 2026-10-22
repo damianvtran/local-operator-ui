@@ -1865,7 +1865,16 @@ test("QA Q3: a 401 upload marks the chip signed_out and says so with the sign-in
 			null,
 			"a signed_out chip offers Remove only",
 		);
-		assert.ok(view.querySelector("button"), "Remove is still there");
+		const removeLabel = m.t("ui.teamBridge.attachments.remove", {
+			label: m.t("ui.teamBridge.attachments.position", {
+				index: "1",
+				count: "1",
+			}),
+		});
+		assert.ok(
+			view.querySelector(`[aria-label="${removeLabel}"]`),
+			"Remove is still there, by its own label (r8 n1)",
+		);
 		await act(async () => root.unmount());
 		view.remove();
 	} finally {
@@ -1892,9 +1901,16 @@ function withScrollGeometry(run) {
 	};
 	const tops = new WeakMap();
 	const isViewport = (el) => el.hasAttribute("data-radix-scroll-area-viewport");
+	// `data-test-extra-height` models growth that is NOT a message row (a
+	// reply rollup, a reaction, a wrapped line) - the case r8 m1 is about.
 	const height = (el) =>
 		isViewport(el)
-			? el.querySelectorAll("[data-message-id]").length * ROW + 200
+			? el.querySelectorAll("[data-message-id]").length * ROW +
+				200 +
+				[...el.querySelectorAll("[data-test-extra-height]")].reduce(
+					(sum, node) => sum + Number(node.dataset.testExtraHeight),
+					0,
+				)
 			: 0;
 	Object.defineProperty(proto, "scrollHeight", {
 		configurable: true,
@@ -2103,6 +2119,153 @@ test(
 				assert.ok(atBottom(viewport), "the sent message lands in view");
 			} finally {
 				await app.close();
+			}
+		}),
+);
+
+/*
+ * r8 m1 / m2. A recording ResizeObserver stands in for the browser's (JSDOM has
+ * none): `fire(node)` delivers a resize for a node ONLY if the hook observes it,
+ * so a hook still watching the timeline's fixed h-full wrapper fails here.
+ */
+function withResizeObserver(run) {
+	const saved = globalThis.ResizeObserver;
+	const observers = [];
+	globalThis.ResizeObserver = class {
+		constructor(callback) {
+			this.callback = callback;
+			this.targets = new Set();
+			observers.push(this);
+		}
+		observe(target) {
+			this.targets.add(target);
+		}
+		unobserve(target) {
+			this.targets.delete(target);
+		}
+		disconnect() {
+			this.targets.clear();
+		}
+	};
+	const fire = (node) =>
+		act(async () => {
+			for (const observer of observers)
+				if (observer.targets.has(node))
+					observer.callback([{ target: node }], observer);
+		});
+	return Promise.resolve()
+		.then(() => run(fire))
+		.finally(() => {
+			globalThis.ResizeObserver = saved;
+		});
+}
+
+test(
+	"r8 m1: non-message growth in the channel timeline keeps a pinned reader at the bottom",
+	{ timeout: 30_000 },
+	() =>
+		withScrollGeometry(() =>
+			withResizeObserver(async (fire) => {
+				localStorage.clear();
+				const many = Array.from({ length: 10 }, (_, i) =>
+					message({
+						id: `bmsg_g${i + 1}`,
+						seq: i + 1,
+						conversation_id: "bcv_dm",
+						body: `g ${i + 1}`,
+					}),
+				);
+				const app = await mountPage(
+					pageProps({
+						target: { type: "conversation", id: "bcv_dm" },
+						messages: many,
+						onSend: async () => {},
+					}),
+				);
+				try {
+					const viewport = [
+						...app.element.querySelectorAll(
+							"[data-radix-scroll-area-viewport]",
+						),
+					].find((node) => node.querySelector("[data-message-id]"));
+					assert.ok(atBottom(viewport), "opens at the bottom");
+					// The inner column (the wrapper's child) grows by 300px; no message
+					// was added, so contentKey does not change.
+					const column = viewport.firstElementChild.firstElementChild;
+					assert.ok(column, "the timeline's inner column");
+					const growth = document.createElement("div");
+					growth.dataset.testExtraHeight = "300";
+					column.append(growth);
+					assert.equal(
+						atBottom(viewport),
+						false,
+						"the growth pushed the bottom away",
+					);
+					await fire(column);
+					assert.ok(
+						atBottom(viewport),
+						"the observer on the inner column re-pinned",
+					);
+				} finally {
+					await app.close();
+				}
+			}),
+		),
+);
+
+test(
+	"r8 m2: Load more replies keeps the reader's place instead of jumping past the new page",
+	{ timeout: 30_000 },
+	() =>
+		withScrollGeometry(async () => {
+			const element = document.createElement("div");
+			document.body.append(element);
+			const root = createRoot(element);
+			let more = 0;
+			const render = (replies, hasMore) =>
+				act(async () =>
+					root.render(
+						React.createElement(m.TeamBridgeThreadPaneView, {
+							root: message({ id: "bmsg_1", body: "root" }),
+							replies,
+							state: "ready",
+							labelFor: (sender) => sender.display_label,
+							onClose: () => {},
+							onRetry: () => {},
+							onSend: async () => {},
+							tenantId: "tnt_1",
+							conversationId: "bcv_1",
+							hasMore,
+							onMore: () => {
+								more += 1;
+							},
+						}),
+					),
+				);
+			try {
+				await render(thread(8), true);
+				const viewport = viewportOf(element);
+				assert.ok(
+					atBottom(viewport),
+					"the reader is at the bottom, by the button",
+				);
+				const before = viewport.scrollTop;
+				const button = [...element.querySelectorAll("button")].find(
+					(node) => node.textContent === m.t("ui.teamBridge.replies.more"),
+				);
+				assert.ok(button, "Load more replies");
+				await act(async () => button.click());
+				assert.equal(more, 1);
+				await render(thread(16), false);
+				assert.equal(
+					viewport.scrollTop,
+					before,
+					"the new page appears below; the reader reads it from where they were",
+				);
+				assert.equal(atBottom(viewport), false);
+			} finally {
+				await act(async () => root.unmount());
+				element.remove();
 			}
 		}),
 );
