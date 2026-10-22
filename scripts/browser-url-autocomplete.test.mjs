@@ -519,6 +519,57 @@ test("an untouched popout seed is not a query, and Enter navigates nothing", asy
 	);
 	await key(bundle, "Enter");
 	assert.deepEqual(bundle.navigations, []);
+	assert.deepEqual(
+		bundle.dismissals,
+		["dismiss"],
+		"the untouched Enter lowers the popout instead of leaving it raised (UX U9)",
+	);
+	await bundle.cleanup();
+});
+
+test("Cmd+L, ArrowDown, Enter commits the highlighted history row", async () => {
+	const bundle = await renderBar({ url: "https://example.com/account" });
+	await act(async () => bundle.input.focus());
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 160));
+	});
+	await flush();
+	await key(bundle, "ArrowDown");
+	const active = options(bundle).find(
+		(option) =>
+			option.id === bundle.input.getAttribute("aria-activedescendant"),
+	);
+	assert.ok(active, "Down selects a row even though the draft is untouched");
+	assert.deepEqual(bundle.navigations, []);
+	await key(bundle, "Enter");
+	assert.equal(
+		bundle.navigations.length,
+		1,
+		"an explicitly selected row commits whatever the draft state (UX U8)",
+	);
+	assert.equal(
+		bundle.navigations[0].url,
+		active.getAttribute("data-address-suggestion-url"),
+	);
+	await bundle.cleanup();
+});
+
+test("Cmd+L, type, ArrowDown, Enter commits the highlighted row", async () => {
+	const bundle = await renderBar({ url: "https://example.com/account" });
+	await type(bundle, "example");
+	await key(bundle, "ArrowDown");
+	const active = options(bundle).find(
+		(option) =>
+			option.id === bundle.input.getAttribute("aria-activedescendant"),
+	);
+	assert.ok(active);
+	await key(bundle, "Enter");
+	assert.deepEqual(bundle.navigations, [
+		{
+			url: active.getAttribute("data-address-suggestion-url"),
+			expectedTabId: 1,
+		},
+	]);
 	await bundle.cleanup();
 });
 

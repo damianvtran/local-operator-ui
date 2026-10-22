@@ -114,10 +114,58 @@ function schemeLess(value: string): string {
 	return match ? value.slice(match[0].length) : value;
 }
 
-/** The one normalised form both the index and a query are compared in. */
+/** Strip one leading `www.`, but only when a host remains. `www`, `www.` and
+ * `w` are prefixes a user may type, not hosts to normalise away. */
+function stripWww(value: string): string {
+	return value.startsWith("www.") && value.length > "www.".length
+		? value.slice("www.".length)
+		: value;
+}
+
+/** The normalised form used for ranking and for the stripped index variant. */
 function matchKey(value: string): string {
-	const bare = schemeLess(value.trim()).toLowerCase();
-	return bare.startsWith("www.") ? bare.slice("www.".length) : bare;
+	return stripWww(schemeLess(value.trim()).toLowerCase());
+}
+
+/** The unstripped scheme-less form; a stored `www.` page is also indexed under
+ * its literal spelling so `w`, `ww`, `www` and `www.` recall it. */
+function literalKey(value: string): string {
+	return schemeLess(value.trim()).toLowerCase();
+}
+
+/** Every prefix key a stored URL is indexed under. */
+function indexKeys(url: string): string[] {
+	const keys = new Set([literalKey(url), matchKey(url)]);
+	return [...keys].filter((key) => key.length > 0);
+}
+
+/** Every spelling a query is compared in: literal and www-stripped. Empty
+ * variants are dropped, so `www.` does not become an empty needle. */
+function queryNeedles(raw: string): string[] {
+	const literal = literalKey(raw);
+	const keys = new Set([literal, stripWww(literal)]);
+	return [...keys].filter((key) => key.length > 0);
+}
+
+/**
+ * Whether a needle that names a COMPLETE host ends at a host boundary.
+ *
+ * WHY: a prefix filter alone makes `example.com` match
+ * `https://www.example.com.evil.test/` — a different domain. When the query
+ * carries no path/query/fragment and ends in a dot-bearing host (not a trailing
+ * dot, which is still a prefix), the next byte must be the end of the string or
+ * one of `/ ? # :`. Path prefixes keep the plain `startsWith` rule: the user has
+ * already named the path.
+ */
+function matchesNeedle(value: string, needle: string): boolean {
+	if (!value.startsWith(needle)) return false;
+	const hostOnly = !/[/?#]/.test(needle);
+	if (!hostOnly) return true;
+	if (!needle.includes(".") || needle.endsWith(".")) return true;
+	const next = value.charAt(needle.length);
+	return (
+		next === "" || next === "/" || next === "?" || next === "#" || next === ":"
+	);
 }
 
 /** The bucket key for a URL, and for a query once it is normalised. */
@@ -212,21 +260,25 @@ export function createBrowserHistoryStore(
 
 	function indexAdd(entry: BrowserHistoryEntry): void {
 		approxBytes += estimate(entry);
-		const key = prefixKey(matchKey(entry.url));
-		let bucket = prefix.get(key);
-		if (!bucket) {
-			bucket = new Set();
-			prefix.set(key, bucket);
+		for (const key of indexKeys(entry.url)) {
+			const bucketKey = prefixKey(key);
+			let bucket = prefix.get(bucketKey);
+			if (!bucket) {
+				bucket = new Set();
+				prefix.set(bucketKey, bucket);
+			}
+			bucket.add(entry.url);
 		}
-		bucket.add(entry.url);
 	}
 
 	function indexRemove(entry: BrowserHistoryEntry): void {
 		approxBytes -= estimate(entry);
-		const key = prefixKey(matchKey(entry.url));
-		const bucket = prefix.get(key);
-		bucket?.delete(entry.url);
-		if (bucket?.size === 0) prefix.delete(key);
+		for (const key of indexKeys(entry.url)) {
+			const bucketKey = prefixKey(key);
+			const bucket = prefix.get(bucketKey);
+			bucket?.delete(entry.url);
+			if (bucket?.size === 0) prefix.delete(bucketKey);
+		}
 	}
 
 	/**
@@ -252,12 +304,13 @@ export function createBrowserHistoryStore(
 	 * Scores are computed at eviction time (not stored) so an old entry's score
 	 * decays without needing a write.
 	 */
-	function enforceBounds(at: number): void {
+	function enforceBounds(at: number): boolean {
+		let changed = false;
 		if (
 			byUrl.size <= HISTORY_STORE_MAX_ENTRIES &&
 			approxBytes <= HISTORY_STORE_MAX_BYTES
 		)
-			return;
+			return false;
 		if (byUrl.size > HISTORY_STORE_MAX_ENTRIES) {
 			const overflow = byUrl.size - HISTORY_STORE_MAX_ENTRIES;
 			const victims = [...byUrl.values()]
@@ -267,6 +320,7 @@ export function createBrowserHistoryStore(
 			for (const victim of victims) {
 				byUrl.delete(victim.url);
 				indexRemove(victim);
+				changed = true;
 			}
 		}
 		// Batch the byte check: re-serialising once per removal would be O(n^2) on a
@@ -298,8 +352,10 @@ export function createBrowserHistoryStore(
 			for (const victim of victims) {
 				byUrl.delete(victim.url);
 				indexRemove(victim);
+				changed = true;
 			}
 		}
+		return changed;
 	}
 
 	function document(): HistoryDocument {
@@ -368,7 +424,13 @@ export function createBrowserHistoryStore(
 			byUrl.set(url, entry);
 			indexAdd(entry);
 		}
-		enforceBounds(now());
+		if (enforceBounds(now())) {
+			// A PRIVACY FIX, not housekeeping: the on-disk document was over the cap
+			// (the title-flow bug wrote 2.87 MB in the field). Leaving it there until
+			// the next visit keeps bytes the cap promises not to keep. The trimmed
+			// document is written immediately on load.
+			writeNow();
+		}
 	}
 
 	return {
@@ -422,28 +484,39 @@ export function createBrowserHistoryStore(
 			if (rawQuery.length === 0) {
 				return [...byUrl.values()].sort(compareEntries(at)).slice(0, wanted);
 			}
-			const needle = matchKey(rawQuery);
-			if (needle.length === 0) return [];
+			const needles = queryNeedles(rawQuery);
+			if (needles.length === 0) return [];
 			// The index key is three characters, so a SHORTER query names a SET of
 			// buckets rather than one: iterate the bucket keys (cheap, and far fewer
 			// than URLs) and let the candidate cap bound the walk inside them.
-			const buckets: Array<Set<string>> = [];
-			if (needle.length >= PREFIX_WIDTH) {
-				const bucket = prefix.get(prefixKey(needle));
-				if (bucket) buckets.push(bucket);
-			} else {
-				for (const [key, bucket] of prefix) {
-					if (key.startsWith(needle)) buckets.push(bucket);
+			const bucketSet = new Set<Set<string>>();
+			for (const needle of needles) {
+				if (needle.length >= PREFIX_WIDTH) {
+					const bucket = prefix.get(prefixKey(needle));
+					if (bucket) bucketSet.add(bucket);
+				} else {
+					for (const [key, bucket] of prefix) {
+						if (key.startsWith(needle)) bucketSet.add(bucket);
+					}
 				}
 			}
+			const buckets = [...bucketSet];
 			if (buckets.length === 0) return [];
 			const candidates: BrowserHistoryEntry[] = [];
+			const seen = new Set<string>();
 			for (const bucket of buckets) {
 				for (const url of bucket) {
 					if (candidates.length >= HISTORY_STORE_MAX_CANDIDATES) break;
-					if (!matchKey(url).startsWith(needle)) continue;
+					if (seen.has(url)) continue;
+					const keys = indexKeys(url);
+					const hit = needles.some((needle) =>
+						keys.some((key) => matchesNeedle(key, needle)),
+					);
+					if (!hit) continue;
 					const entry = byUrl.get(url);
-					if (entry) candidates.push(entry);
+					if (!entry) continue;
+					seen.add(url);
+					candidates.push(entry);
 				}
 				if (candidates.length >= HISTORY_STORE_MAX_CANDIDATES) break;
 			}

@@ -735,12 +735,14 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 
 		if (event.key === "Enter") {
 			event.preventDefault();
-			// An untouched seed is the live URL, not a commitment: Enter dismisses
-			// the field and navigates NOTHING. This is the Cmd+L-then-Enter path
-			// that used to search a single-label host (UX U1).
-			if (untouchedDraft) {
-				setDraft(null);
-				clearGenerated();
+			// An untouched seed is the live URL, not a commitment: Enter with NO
+			// highlighted row dismisses the field, lowers the popout and navigates
+			// NOTHING (UX U1/U9). The active-row check comes FIRST in the next
+			// branch: Cmd+L then ArrowDown is an explicit choice of a history row,
+			// and Enter must commit it whatever the draft state (U8).
+			if (untouchedDraft && activeIndex < 0) {
+				abandon();
+				onDismiss?.();
 				return;
 			}
 			// The classification and the commit path agree here: blocked text and a

@@ -290,6 +290,69 @@ test("www and uppercase schemes are recall, not a different page", (t) => {
 	);
 });
 
+test("a host-only query cannot cross a domain boundary", (t) => {
+	const root = tempRoot(t);
+	const { store } = storeAt(root);
+	store.record("https://www.example.com/", "Real", NOW);
+	store.record("https://www.example.com.evil.test/", "Evil", NOW);
+	store.record("https://www.example.com/one", "Path", NOW);
+	assert.deepEqual(
+		store.suggest("example.com", 10).map((row) => row.url),
+		["https://www.example.com/", "https://www.example.com/one"],
+		"the evil suffix is a different domain, not a prefix of this one",
+	);
+	assert.deepEqual(
+		store.suggest("example.com/one", 10).map((row) => row.url),
+		["https://www.example.com/one"],
+		"a query that names a path keeps plain prefix matching",
+	);
+});
+
+test("w, ww, www and www. recall a stored www page", (t) => {
+	const root = tempRoot(t);
+	const { store } = storeAt(root);
+	store.record("https://www.example.com/", "Www", NOW);
+	for (const query of ["w", "ww", "www", "www."]) {
+		assert.deepEqual(
+			store.suggest(query, 5).map((row) => row.url),
+			["https://www.example.com/"],
+			`the prefix ${JSON.stringify(query)} must not be normalised away`,
+		);
+	}
+});
+
+test("an oversized legacy document is rewritten when it loads", (t) => {
+	const root = tempRoot(t);
+	const file = join(root, "browser-history.json");
+	const tail = "r".repeat(400);
+	const title = "t".repeat(200);
+	const entries = Array.from(
+		{ length: HISTORY_STORE_MAX_ENTRIES },
+		(_, index) => ({
+			url: `https://oversize${index}.example/${tail}`,
+			title,
+			host: `oversize${index}.example`,
+			visitCount: 1,
+			lastVisitedAt: NOW,
+		}),
+	);
+	// The shape the title-flow bug wrote: hand-written here because the fixed
+	// mutators now evict as they go, which is the point.
+	writeFileSync(file, JSON.stringify({ version: 1, entries }, null, 2));
+	const before = readFileSync(file).byteLength;
+	assert.ok(before > HISTORY_STORE_MAX_BYTES, "the bug's shape is on disk");
+	const second = storeAt(root);
+	assert.ok(
+		second.store.size() < HISTORY_STORE_MAX_ENTRIES,
+		"loading trimmed the table",
+	);
+	const after = readFileSync(file).byteLength;
+	assert.ok(
+		after <= HISTORY_STORE_MAX_BYTES,
+		`the trimmed document was rewritten immediately (${after} bytes)`,
+	);
+});
+
 test("the spec'd bounds are 5000 entries and 2 MB, pinned as literals", () => {
 	assert.equal(HISTORY_STORE_MAX_ENTRIES, 5000);
 	assert.equal(HISTORY_STORE_MAX_BYTES, 2 * 1024 * 1024);

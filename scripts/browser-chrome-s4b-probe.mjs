@@ -836,7 +836,9 @@ async function historyScene({ shot, framesDir }) {
 		}
 		record(
 			"H8",
-			(narrowChild?.facts.titleWidth ?? 0) >= 70 &&
+			(narrowChild?.facts.viewport ?? 0) > 0 &&
+				(narrowChild?.facts.viewport ?? 0) <= 360 &&
+				(narrowChild?.facts.titleWidth ?? 0) >= 100 &&
 				(narrowChild?.facts.titleText ?? "").includes("Already open")
 				? "PASS"
 				: "FAIL",
