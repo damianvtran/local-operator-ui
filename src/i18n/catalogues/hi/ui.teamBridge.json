@@ -111,5 +111,7 @@
 	"ui.teamBridge.thread.intro_person": "{name} के साथ आपके सीधे संदेशों का इतिहास यहाँ से शुरू होता है।",
 	"ui.teamBridge.thread.intro_chief": "{name} किसी टीम सदस्य का चीफ़ ऑफ़ स्टाफ़ एजेंट है, और उसके साथ आपकी बातचीत यहाँ से शुरू होती है। यह आपके संदेशों को भरोसेमंद इनपुट नहीं मानता, और यह किस पर अमल करेगा, यह इसका मालिक तय करता है।",
 	"ui.teamBridge.thread.intro_group": "आपके पहले संदेश से {names} के साथ बातचीत शुरू होगी।",
-	"ui.teamBridge.list.error_pane": "बातचीतें लोड नहीं हो सकीं। बाईं ओर की सूची से फिर कोशिश करें।"
+	"ui.teamBridge.list.error_pane": "बातचीतें लोड नहीं हो सकीं। बाईं ओर की सूची से फिर कोशिश करें।",
+	"ui.teamBridge.sender.unknown_person": "अज्ञात व्यक्ति",
+	"ui.teamBridge.sender.unknown_agent": "अज्ञात एजेंट"
 }

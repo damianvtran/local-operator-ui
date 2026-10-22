@@ -111,5 +111,7 @@
 	"ui.teamBridge.thread.intro_person": "Voici le début de votre historique de messages directs avec {name}.",
 	"ui.teamBridge.thread.intro_chief": "Voici le début de votre conversation avec {name}, la cheffe de cabinet d’un membre de l’équipe. Cet agent considère vos messages comme des entrées non fiables ; c’est son propriétaire qui décide des suites à donner.",
 	"ui.teamBridge.thread.intro_group": "Votre premier message démarrera une conversation avec {names}.",
-	"ui.teamBridge.list.error_pane": "Les conversations n’ont pas pu être chargées. Réessayez depuis la liste de gauche."
+	"ui.teamBridge.list.error_pane": "Les conversations n’ont pas pu être chargées. Réessayez depuis la liste de gauche.",
+	"ui.teamBridge.sender.unknown_person": "Personne inconnue",
+	"ui.teamBridge.sender.unknown_agent": "Agent inconnu"
 }
