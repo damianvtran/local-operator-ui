@@ -15,6 +15,17 @@ import {
 } from "./team-bridge-drafts";
 import type { TeamBridgeTarget } from "./team-bridge-model";
 
+/** SSR has no browser storage, and a browser policy can deny its getter.
+ * Never borrow Node's experimental ambient localStorage: it masked a render
+ * crash on CI's Node 22 and is not the signed-in app's authored-draft store. */
+function browserDraftStorage(): Storage | null {
+	try {
+		return typeof window === "undefined" ? null : window.localStorage;
+	} catch {
+		return null;
+	}
+}
+
 /** Writes happen at the edit, not in an effect cleanup: a navigation followed
  * by a render must never save the old field under the new target's key. */
 export function useTeamBridgeDrafts(
@@ -25,6 +36,7 @@ export function useTeamBridgeDrafts(
 	signedOut = false,
 	listAll = tenantId === "all",
 ) {
+	const storage = browserDraftStorage();
 	const key =
 		accountId && !signedOut ? draftStorageKey(accountId, tenantId) : null;
 	// Fence by account lifetime, not target: an authorized old-target send may
@@ -46,7 +58,7 @@ export function useTeamBridgeDrafts(
 		key: string | null;
 		drafts: TeamBridgeDrafts;
 	}>(() => {
-		const drafts = key ? readDrafts(localStorage, key) : {};
+		const drafts = key && storage ? readDrafts(storage, key) : {};
 		if (initialBody && target && !drafts[draftTargetKey(target)])
 			drafts[draftTargetKey(target)] = {
 				target,
@@ -63,16 +75,16 @@ export function useTeamBridgeDrafts(
 	useEffect(() => {
 		const previous = previousAccount.current;
 		if (previous && (signedOut || (accountId && previous !== accountId))) {
-			eraseAccountDrafts(localStorage, previous);
+			eraseAccountDrafts(storage, previous);
 			scopes.current.clear();
 			setSnapshot({ key: null, drafts: {} });
 		}
 		if (signedOut || accountId)
 			previousAccount.current = signedOut ? undefined : accountId;
-	}, [accountId, signedOut]);
+	}, [accountId, signedOut, storage]);
 	const load = () => {
 		if (!scopes.current.has(key))
-			scopes.current.set(key, key ? readDrafts(localStorage, key) : {});
+			scopes.current.set(key, key && storage ? readDrafts(storage, key) : {});
 		return scopes.current.get(key) ?? {};
 	};
 	const drafts = load();
@@ -89,8 +101,12 @@ export function useTeamBridgeDrafts(
 		scopes.current.set(key, next);
 		setSnapshot({ key, drafts: next });
 		if (key) {
+			if (!storage) {
+				setStorageFailed(true);
+				return false;
+			}
 			try {
-				localStorage.setItem(key, JSON.stringify(next));
+				storage.setItem(key, JSON.stringify(next));
 				setStorageFailed(false);
 				return true;
 			} catch {
@@ -170,10 +186,10 @@ export function useTeamBridgeDrafts(
 	// biome-ignore lint/correctness/useExhaustiveDependencies: revision represents external storage writes.
 	const storedScopes = useMemo(
 		() =>
-			accountId && !signedOut && listAll
-				? accountDraftScopes(localStorage, accountId)
+			accountId && !signedOut && listAll && storage
+				? accountDraftScopes(storage, accountId)
 				: new Map<string, TeamBridgeDrafts>(),
-		[accountId, signedOut, listAll, storageRevision],
+		[accountId, signedOut, listAll, storageRevision, storage],
 	);
 	const listScopes = new Map(storedScopes);
 	for (const [scopeKey, values] of scopes.current)
