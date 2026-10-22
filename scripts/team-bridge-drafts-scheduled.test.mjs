@@ -54,6 +54,9 @@ const sidebarStub = {
 const bundle = await build({
 	stdin: {
 		contents: `export {registerCatalogue, setLocale} from "./src/i18n";
+ export {TeamBridgeApi} from "./src/renderer/src/shared/api/local-operator/team-bridge-api";
+ export {agentMessagesApi} from "./src/renderer/src/shared/api/local-operator/agent-messages-api";
+ export {draftAccountEpoch} from "./src/renderer/src/shared/store/team-bridge-draft-account";
  export {TeamBridgePageView} from "./src/renderer/src/features/team-bridge/team-bridge-page";
  export * from "./src/renderer/src/features/team-bridge/team-bridge-drafts";
  export * from "./src/renderer/src/features/team-bridge/use-team-bridge-drafts";
@@ -1176,5 +1179,65 @@ test("denied browser storage preserves in-memory drafts but cannot authorize per
 	} finally {
 		if (app) await app.close();
 		Object.defineProperty(window, "localStorage", descriptor);
+	}
+});
+
+test("identity and status remain available with denied storage while account revocation still fences drafts", async () => {
+	const descriptors = [
+		Object.getOwnPropertyDescriptor(window, "localStorage"),
+		Object.getOwnPropertyDescriptor(globalThis, "localStorage"),
+	];
+	const previousApi = window.api;
+	let result = {
+		capability: 1,
+		state: "ready",
+		account_id: "acct_status_storage",
+		tenant_id: "org_status_storage",
+		surface_state: "B",
+		visibility: {
+			settings: true,
+			inbox: true,
+			account_door: true,
+			onboarding: false,
+		},
+		update_required: false,
+		local: { enabled: true, onboarding: "done", session: "fixture" },
+		status: null,
+		consent: null,
+		error: null,
+	};
+	window.api = {
+		desktop: { request: async () => ({ status: 200, body: { result } }) },
+	};
+	for (const object of [window, globalThis])
+		Object.defineProperty(object, "localStorage", {
+			configurable: true,
+			get() {
+				throw new Error("browser storage denied");
+			},
+		});
+	try {
+		assert.equal(await model.TeamBridgeApi.identity(), "acct_status_storage");
+		assert.equal((await model.TeamBridgeApi.status()).state, "ready");
+		assert.equal(
+			(await model.agentMessagesApi.status("surface_open")).state,
+			"ready",
+		);
+		const epoch = model.draftAccountEpoch("acct_status_storage");
+		result = {
+			...result,
+			state: "signed_out",
+			account_id: null,
+			tenant_id: null,
+		};
+		assert.equal((await model.TeamBridgeApi.status()).state, "signed_out");
+		assert.ok(model.draftAccountEpoch("acct_status_storage") > epoch);
+	} finally {
+		[window, globalThis].forEach((object, index) => {
+			if (descriptors[index])
+				Object.defineProperty(object, "localStorage", descriptors[index]);
+			else Reflect.deleteProperty(object, "localStorage");
+		});
+		window.api = previousApi;
 	}
 });
