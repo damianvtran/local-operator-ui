@@ -781,10 +781,9 @@ test("a minted name dodges one the session's store already holds", () => {
 
 test("an Esc cancel reports the token it left inert, and an edit that moves it ends that", () => {
 	/*
-	 * The submission seam's half of §5 (QA round 1, Q2): the notice promises
-	 * "Enter will expose them", and the dispatcher then took the leading token as
-	 * the COMMAND — opening the picker and stripping the restored prose out of
-	 * the operator's sentence. The composer asks `holdsCancelledToken` instead,
+	 * The submission seam's half of §5 (QA round 1, Q2; UX round 2, U9): the words
+	 * written after a cancelled token are the operator's prose, not the command's
+	 * argument. The composer asks `holdsCancelledToken`,
 	 * which is a question about the buffer and so is cleared by precisely the
 	 * edits that move the token.
 	 */
@@ -793,30 +792,15 @@ test("an Esc cancel reports the token it left inert, and an edit that moves it e
 	composer.type("hunter2");
 	composer.escape();
 	const { token } = composer.state.lastCancel;
-	/*
-	 * `restored` IS PART OF THE TOKEN NOW (review round 3, MINOR 1). The submit seam
-	 * has to know whether this cancel put characters back — an empty span restores
-	 * nothing, so the words written after it are the operator's own prose, while a
-	 * span that held characters leaves a secret in the box — and the record of the
-	 * gesture is where that fact belongs, because nothing later can tell the two
-	 * apart from the buffer.
-	 */
-	/*
-	 * `restoredText` moved with the count (UX round 6, U24): the composer needed the
-	 * characters themselves to answer "is the run still in this draft?", because a count
-	 * alone let a cleared box and a fresh sentence be read as the run's draft. Both
-	 * halves of this pair assert it — the characters here, and the empty string for the
-	 * span that put nothing back.
-	 */
+	// The record carries the run and its offset only: a cancel restores nothing
+	// (2026-10-22), so there is no count and no restored text to carry.
 	assert.deepEqual(
 		token,
 		{
 			span: { start: 0, end: 12 },
 			text: "/credential ",
-			restored: 0,
-			restoredText: "",
 		},
-		"a cancel DISCARDS now (2026-10-22), so a span that held characters reports the empty-span token",
+		"a cancel DISCARDS (2026-10-22): a span that held characters reports the empty-span token",
 	);
 	assert.equal(composer.state.buffer, "/credential ");
 	assert.ok(holdsCancelledToken(composer.state.buffer, token));
@@ -840,10 +824,7 @@ test("an Esc cancel reports the token it left inert, and an edit that moves it e
 	assert.deepEqual(empty.state.lastCancel.token, {
 		span: { start: 0, end: 12 },
 		text: "/credential ",
-		restored: 0,
-		restoredText: "",
 	});
-	assert.equal(empty.state.lastCancel.restored, 0);
 	// The characters the operator writes AFTER an empty-span cancel land after
 	// the run, so the run is still there — and that is the whole of U9: the same
 	// visible buffer behaved as prose when the span had held characters and as a
@@ -1360,7 +1341,6 @@ test("Esc DISCARDS the typed characters: none reach the buffer, the draft or the
 	assert.ok(result.cancelled);
 	assert.equal(composer.state.buffer, "deploy with /credential ");
 	assert.equal(result.caret, "deploy with /credential ".length);
-	assert.equal(result.restored, 0, "nothing restored, nothing to announce");
 	assert.ok(
 		!JSON.stringify(result).includes(secret),
 		"the result names no value",
@@ -1435,11 +1415,6 @@ test("Esc on an empty span ends the mode and leaves the token inert", () => {
 	composer.type("/credential ");
 	const result = composer.escape();
 	assert.ok(result.cancelled);
-	assert.equal(
-		result.restored,
-		0,
-		"nothing to restore, so nothing to announce",
-	);
 	assert.equal(composer.state.buffer, "/credential ");
 	assert.equal(isArmed(composer.state.capture), false);
 	assert.equal(isTyping(composer.state.capture), false);
@@ -1933,7 +1908,7 @@ test("the notices are the TUI's own sentences", () => {
 	 */
 	assert.equal(
 		CREDENTIAL_TYPING_NOTICE,
-		"masked as you type — Enter turns it into a pill, Esc cancels",
+		"masked as you type — Enter makes a pill, Esc twice discards",
 	);
 	assert.ok(
 		!CREDENTIAL_TYPING_NOTICE.includes("chip"),
