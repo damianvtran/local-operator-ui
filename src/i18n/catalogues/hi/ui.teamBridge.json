@@ -135,5 +135,7 @@
 	"ui.teamBridge.replies.last": "अंतिम जवाब {time}",
 	"ui.teamBridge.replies.empty": "अभी कोई जवाब नहीं। थ्रेड शुरू करें।",
 	"ui.teamBridge.replies.placeholder": "थ्रेड में जवाब लिखें",
-	"ui.teamBridge.replies.more": "और जवाब लोड करें"
+	"ui.teamBridge.replies.more": "और जवाब लोड करें",
+	"ui.teamBridge.actions.label": "संदेश की कार्रवाइयाँ",
+	"ui.teamBridge.actions.more": "और कार्रवाइयाँ"
 }

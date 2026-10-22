@@ -2,10 +2,12 @@ import { t } from "@shared/i18n";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, waitFor, within } from "@storybook/test";
 import { useState } from "react";
+import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
 import { QUICK_EMOJI } from "./team-bridge-emoji-model";
 import { TeamBridgeEmojiPicker } from "./team-bridge-emoji-picker";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import { TeamBridgeReactions } from "./team-bridge-reactions";
+import { TeamBridgeThreadPaneView } from "./team-bridge-thread-pane";
 
 const meta = {
 	title: "Team Bridge/Reactions",
@@ -184,5 +186,181 @@ export const EscapeReturnsFocus: Story = {
 				}),
 			).toHaveFocus(),
 		);
+	},
+};
+
+/*
+ * THE MESSAGE TOOLBAR BOARD (stack-integration finding: #1304's reply tool and
+ * #1308's reaction pill both sat top-right on the row and overlapped). One row
+ * carrying everything that competes for the row's space - reaction chips, a
+ * thread summary, a long first line - with the single toolbar forced visible,
+ * beside the thread pane, whose rows offer react and more but never reply.
+ *
+ * `attachments` rides the contract's passthrough: this branch does not render
+ * it, and #1314 (attachments) does, so the same fixture shows thumbnails once
+ * the stack lands. The play function measures what the design rule promises:
+ * the toolbar's rect intersects no other content in its row, and every button
+ * is at least 24x24.
+ */
+const toolbarRoot: TeamBridgeMessage = {
+	id: "bcmsg_toolbar01",
+	conversation_id: "bcv_example1",
+	seq: 1,
+	sender: { account_id: "ada", kind: "human", display_label: "Ada" },
+	body: "Shipping the conversation flow today. The first line is deliberately long so it reaches the toolbar's edge and has to wrap around it rather than run under it.",
+	origin: "human",
+	created_at: new Date(Date.UTC(2026, 9, 21, 12, 0)).toISOString(),
+	reactions: [
+		{
+			emoji: "👍",
+			count: 3,
+			reacted_by_me: true,
+			sample_labels: ["You", "Bea", "Cleo"],
+		},
+		{ emoji: "🚀", count: 1, reacted_by_me: false, sample_labels: ["Bea"] },
+	],
+	reply_count: 2,
+	reply_participants: ["Bea", "Cleo"],
+	last_reply_at: new Date(Date.UTC(2026, 9, 21, 12, 30)).toISOString(),
+	attachments: [
+		{
+			id: "batt_story01",
+			mime: "image/png",
+			size: 48213,
+			width: 640,
+			height: 400,
+		},
+	],
+};
+const toolbarReply: TeamBridgeMessage = {
+	...toolbarRoot,
+	id: "bcmsg_toolbar02",
+	seq: 2,
+	sender: { account_id: "bea", kind: "agent", display_label: "Bea's agent" },
+	body: "Claimed. Evidence will follow in this thread.",
+	origin: "agent",
+	thread_root_id: toolbarRoot.id,
+	reactions: [
+		{ emoji: "👀", count: 1, reacted_by_me: false, sample_labels: ["Ada"] },
+	],
+	reply_count: undefined,
+	reply_participants: undefined,
+	last_reply_at: undefined,
+	attachments: undefined,
+};
+const storyReactionContext = { accountId: "story-account", tenantId: "tnt_1" };
+
+const assertToolbarClear = async (canvasElement: HTMLElement) => {
+	for (const toolbar of canvasElement.querySelectorAll<HTMLElement>(
+		'[role="toolbar"]',
+	)) {
+		const box = toolbar.getBoundingClientRect();
+		const row = toolbar.closest("li");
+		const others = [
+			...(row?.querySelectorAll<HTMLElement>(
+				"p, li li, pre, img, button, [data-reaction-layout], time",
+			) ?? []),
+		].filter((node) => !toolbar.contains(node));
+		for (const node of others) {
+			const r = node.getBoundingClientRect();
+			const overlaps =
+				r.width > 0 &&
+				r.height > 0 &&
+				r.left < box.right &&
+				r.right > box.left &&
+				r.top < box.bottom &&
+				r.bottom > box.top;
+			await expect(
+				overlaps,
+				`toolbar overlaps ${node.outerHTML.slice(0, 80)}`,
+			).toBe(false);
+		}
+		for (const button of toolbar.querySelectorAll("button")) {
+			const r = button.getBoundingClientRect();
+			await expect(r.width).toBeGreaterThanOrEqual(24);
+			await expect(r.height).toBeGreaterThanOrEqual(24);
+		}
+	}
+};
+
+export const MessageToolbar: Story = {
+	parameters: { layout: "fullscreen" },
+	decorators: [
+		(Story) => (
+			<div className="flex h-[640px] bg-surface text-ink">
+				<Story />
+			</div>
+		),
+	],
+	render: () => (
+		<>
+			<div className="min-w-0 flex-1">
+				<TeamBridgeMessageList
+					labelFor={(sender) => sender.display_label}
+					reactionContext={storyReactionContext}
+					onReply={() => {}}
+					forceToolbar
+					messages={[toolbarRoot]}
+				/>
+			</div>
+			<div className="h-full w-[26rem] shrink-0">
+				<TeamBridgeThreadPaneView
+					root={toolbarRoot}
+					replies={[toolbarReply]}
+					state="ready"
+					labelFor={(sender) => sender.display_label}
+					onClose={() => {}}
+					onRetry={() => {}}
+					onSend={async () => {}}
+					reactionContext={storyReactionContext}
+					forceToolbar
+				/>
+			</div>
+		</>
+	),
+	play: async ({ canvasElement }) => {
+		await assertToolbarClear(canvasElement);
+		const pane = canvasElement.querySelector("aside");
+		await expect(
+			within(pane as HTMLElement).queryByRole("button", {
+				name: t("ui.teamBridge.replies.action"),
+			}),
+		).toBeNull();
+	},
+};
+
+/** The keyboard path, unforced: Tab from the row reaches the toolbar, which the
+ * row's `:focus-within` reveals; ArrowRight walks to reply. */
+export const MessageToolbarKeyboard: Story = {
+	...MessageToolbar,
+	render: () => (
+		<div className="min-w-0 flex-1">
+			<button type="button" className="sr-only">
+				before
+			</button>
+			<TeamBridgeMessageList
+				labelFor={(sender) => sender.display_label}
+				reactionContext={storyReactionContext}
+				onReply={() => {}}
+				messages={[toolbarRoot]}
+			/>
+		</div>
+	),
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		canvas.getByRole("button", { name: "before" }).focus();
+		await userEvent.tab();
+		await expect(
+			canvas.getByRole("button", { name: t("ui.teamBridge.reactions.add") }),
+		).toHaveFocus();
+		await userEvent.keyboard("{ArrowRight}");
+		const reply = canvas.getByRole("button", {
+			name: t("ui.teamBridge.replies.action"),
+		});
+		await expect(reply).toHaveFocus();
+		await waitFor(() =>
+			expect(getComputedStyle(canvas.getByRole("toolbar")).opacity).toBe("1"),
+		);
+		await assertToolbarClear(canvasElement);
 	},
 };

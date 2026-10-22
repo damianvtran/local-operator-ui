@@ -135,5 +135,7 @@
 	"ui.teamBridge.replies.last": "última respuesta: {time}",
 	"ui.teamBridge.replies.empty": "Aún no hay respuestas. Inicia el hilo.",
 	"ui.teamBridge.replies.placeholder": "Responde en el hilo",
-	"ui.teamBridge.replies.more": "Cargar más respuestas"
+	"ui.teamBridge.replies.more": "Cargar más respuestas",
+	"ui.teamBridge.actions.label": "Acciones del mensaje",
+	"ui.teamBridge.actions.more": "Más acciones"
 }

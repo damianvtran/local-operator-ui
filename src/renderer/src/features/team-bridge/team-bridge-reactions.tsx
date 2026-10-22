@@ -9,8 +9,8 @@ import { Tooltip } from "@shared/components/ui/tooltip";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Plus, SmilePlus } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { Plus } from "lucide-react";
+import { type ReactElement, useEffect, useId, useRef, useState } from "react";
 import type { TeamBridgeReaction } from "../../../../shared/team-bridge-contract";
 import { EMOJI_ENTRIES, toggleReaction } from "./team-bridge-emoji-model";
 import { TeamBridgeEmojiPicker } from "./team-bridge-emoji-picker";
@@ -34,23 +34,29 @@ type Props = {
 	defaultOpen?: boolean;
 	toggle?: typeof TeamBridgeApi.react;
 };
-/** One in-flight toggle per message prevents two snapshots racing on rollback. Server summaries
+
+/**
+ * One message's reaction state: the rows on screen, the toggle, and its
+ * busy/refused flags. A hook rather than component state because two places
+ * act on the same rows: the in-flow chips (and their `+`) and the message
+ * toolbar's react button (`team-bridge-message-toolbar.tsx`). Both must go
+ * through ONE `choose`, or a toolbar pick and a chip toggle could race on
+ * separate snapshots.
+ *
+ * One in-flight toggle per message prevents two snapshots racing on rollback. Server summaries
  * replace optimism on success; refusal restores the exact previous row and exposes a retry cue.
- * A polling answer arriving during the write cannot overwrite the pending optimistic projection. */
-export function TeamBridgeReactions({
+ * A polling answer arriving during the write cannot overwrite the pending optimistic projection.
+ */
+export function useTeamBridgeReactionState({
 	conversationId,
 	messageId,
 	accountId,
 	tenantId,
 	reactions = EMPTY_REACTIONS,
 	disabled = false,
-	defaultOpen = false,
 	toggle = TeamBridgeApi.react,
-}: Props) {
-	const descriptionId = useId();
-	const locale = useI18nLocale();
+}: Omit<Props, "defaultOpen">) {
 	const [rows, setRows] = useState(reactions);
-	const [open, setOpen] = useState(defaultOpen);
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState(false);
 	const busy = useRef(false);
@@ -84,16 +90,84 @@ export function TeamBridgeReactions({
 			setPending(false);
 		}
 	};
-	const unavailable = disabled || pending;
+	return {
+		accountId,
+		rows,
+		pending,
+		error,
+		disabled,
+		unavailable: disabled || pending,
+		choose,
+	};
+}
+export type TeamBridgeReactionState = ReturnType<
+	typeof useTeamBridgeReactionState
+>;
+
+/**
+ * The emoji picker in its popover, anchored to whatever `children` is (the
+ * chips' `+`, or the message toolbar's react button). Radix returns focus to
+ * that trigger on close, so the caller's control is where the reader lands.
+ */
+export function TeamBridgeReactionPicker({
+	state,
+	open,
+	onOpenChange,
+	children,
+}: {
+	state: TeamBridgeReactionState;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	children: ReactElement;
+}) {
+	return (
+		<Popover open={open} onOpenChange={onOpenChange}>
+			<PopoverTrigger asChild>{children}</PopoverTrigger>
+			<PopoverContent
+				className="max-h-[var(--radix-popover-content-available-height)] w-auto overflow-y-auto p-3"
+				align="start"
+				side="top"
+				collisionPadding={8}
+				avoidCollisions
+			>
+				<TeamBridgeEmojiPicker
+					disabled={state.unavailable}
+					accountId={state.accountId}
+					onSelect={(emoji) => void state.choose(emoji)}
+					onClose={() => onOpenChange(false)}
+				/>
+			</PopoverContent>
+		</Popover>
+	);
+}
+
+/**
+ * The in-flow reaction chips under a message body, plus the `+` that sits
+ * beside them once a message HAS reactions (Slack's placement).
+ *
+ * A message with no reactions renders NOTHING here: its add-reaction entry is
+ * the message toolbar's react button. This component used to draw its own
+ * hover-revealed toolbar in that case, which sat top-right on the row exactly
+ * where the thread reply tool sat; the two overlapped once #1304 and #1308
+ * met (the stack-integration finding), so the row now has one toolbar.
+ */
+export function TeamBridgeReactionChips({
+	state,
+	defaultOpen = false,
+}: {
+	state: TeamBridgeReactionState;
+	defaultOpen?: boolean;
+}) {
+	const descriptionId = useId();
+	const locale = useI18nLocale();
+	const [open, setOpen] = useState(defaultOpen);
+	const { rows, error, pending, unavailable } = state;
+	if (!rows.length && !error) return null;
 	return (
 		<div
-			className={
-				rows.length || error
-					? "mt-1 flex flex-wrap items-center gap-1"
-					: "absolute right-2 top-0 z-10 flex items-center rounded-md bg-elevated opacity-0 group-hover/message:opacity-100 group-focus-within/message:opacity-100"
-			}
+			className="mt-1 flex flex-wrap items-center gap-1"
 			aria-busy={pending}
-			data-reaction-layout={rows.length || error ? "chips" : "toolbar"}
+			data-reaction-layout="chips"
 		>
 			{rows.map((reaction, index) => (
 				<Tooltip
@@ -112,7 +186,7 @@ export function TeamBridgeReactions({
 								? `${descriptionId}-${index}`
 								: undefined
 						}
-						onClick={() => void choose(reaction.emoji)}
+						onClick={() => void state.choose(reaction.emoji)}
 						className={cn(
 							"inline-flex min-h-7 items-center gap-1 rounded-full border border-control px-2 text-[12px] disabled:text-ink-dim",
 							reaction.reacted_by_me
@@ -140,38 +214,21 @@ export function TeamBridgeReactions({
 					</button>
 				</Tooltip>
 			))}
-			{!disabled && (
-				<Popover open={open} onOpenChange={setOpen}>
-					<PopoverTrigger asChild>
-						<button
-							type="button"
-							disabled={unavailable}
-							aria-label={t("ui.teamBridge.reactions.add")}
-							className={cn(
-								"inline-flex min-h-7 items-center gap-1 rounded-full px-2 text-ink-muted hover:bg-row-hover focus-visible:opacity-100",
-								rows.length
-									? "bg-sunken"
-									: "opacity-0 group-hover/message:opacity-100 group-focus-within/message:opacity-100",
-							)}
-						>
-							{rows.length ? <Plus size={14} /> : <SmilePlus size={15} />}
-						</button>
-					</PopoverTrigger>
-					<PopoverContent
-						className="max-h-[var(--radix-popover-content-available-height)] w-auto overflow-y-auto p-3"
-						align="start"
-						side="top"
-						collisionPadding={8}
-						avoidCollisions
+			{!state.disabled && rows.length > 0 && (
+				<TeamBridgeReactionPicker
+					state={state}
+					open={open}
+					onOpenChange={setOpen}
+				>
+					<button
+						type="button"
+						disabled={unavailable}
+						aria-label={t("ui.teamBridge.reactions.add")}
+						className="inline-flex min-h-7 items-center gap-1 rounded-full bg-sunken px-2 text-ink-muted hover:bg-row-hover"
 					>
-						<TeamBridgeEmojiPicker
-							disabled={unavailable}
-							accountId={accountId}
-							onSelect={(emoji) => void choose(emoji)}
-							onClose={() => setOpen(false)}
-						/>
-					</PopoverContent>
-				</Popover>
+						<Plus size={14} />
+					</button>
+				</TeamBridgeReactionPicker>
 			)}
 			{error && (
 				<span role="alert" className="text-[12px] text-danger">
@@ -180,4 +237,11 @@ export function TeamBridgeReactions({
 			)}
 		</div>
 	);
+}
+
+/** Standalone chips for one message (stories and component tests): the state
+ * hook and the chips, without a message row or its toolbar. */
+export function TeamBridgeReactions({ defaultOpen = false, ...props }: Props) {
+	const state = useTeamBridgeReactionState(props);
+	return <TeamBridgeReactionChips state={state} defaultOpen={defaultOpen} />;
 }

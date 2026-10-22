@@ -165,7 +165,9 @@ test("missing optional reactions settle without an effect-render loop", async ()
 		),
 	);
 	assert.ok(renders <= 2, `rendered ${renders} times`);
-	assert.equal(m.host.querySelectorAll("button").length, 1);
+	// No reactions, no chips: the add entry for such a message is the message
+	// toolbar's react button, not a second pill on the row.
+	assert.equal(m.host.querySelectorAll("button").length, 0);
 	await m.close();
 });
 
@@ -348,13 +350,10 @@ test("search and category grid dispatch the glyph displayed, preserving explicit
 	await m.close();
 });
 
-test("empty reaction toolbar is off-flow; populated chips remain in the message flow", async () => {
+test("no reactions draws nothing on the row; populated chips remain in the message flow", async () => {
 	const m = mount();
 	await act(() => m.root.render(h(TeamBridgeReactions, props)));
-	const toolbar = m.host.querySelector('[data-reaction-layout="toolbar"]');
-	assert.ok(toolbar);
-	assert.ok(toolbar.classList.contains("absolute"));
-	assert.equal(toolbar.classList.contains("mt-1"), false);
+	assert.equal(m.host.querySelector("[data-reaction-layout]"), null);
 	await act(() =>
 		m.root.render(h(TeamBridgeReactions, { ...props, reactions: [reaction] })),
 	);
@@ -422,5 +421,139 @@ test("categories are target-sized plain toggles, not incomplete tabs", async () 
 	await click(buttons[2]);
 	assert.equal(buttons[2].getAttribute("aria-pressed"), "true");
 	assert.equal(buttons[0].getAttribute("aria-pressed"), "false");
+	await m.close();
+});
+
+/*
+ * THE ONE MESSAGE TOOLBAR (stack-integration finding #1304 x #1308: the reply
+ * tool and the reaction pill both sat top-right and overlapped). jsdom has no
+ * layout, so the no-overlap geometry lives in the MessageToolbar story's play
+ * function; these pin the structure and the keyboard contract.
+ */
+/* A border or a shadow on the toolbar would break docs/branding.md: borderless
+   chrome, and the one shadow only for objects that leave the flow. */
+const CHROME_EDGE = /\b(border|shadow)/;
+const rowMessage = {
+	id: "bcmsg_toolbar01",
+	conversation_id: "bcv_example1",
+	seq: 1,
+	sender: { account_id: "a", kind: "human", display_label: "Ada" },
+	body: "hello",
+	origin: "human",
+	created_at: "2026-10-21T12:00:00Z",
+	reactions: [reaction],
+	reply_count: 2,
+	reply_participants: ["Bea"],
+};
+const renderList = (m, extra = {}) =>
+	act(() =>
+		m.root.render(
+			h(TeamBridgeMessageList, {
+				messages: [rowMessage],
+				labelFor: () => "Ada",
+				reactionContext: { accountId: "a", tenantId: "tnt_1" },
+				onReply() {},
+				...extra,
+			}),
+		),
+	);
+const named = (scope, name) =>
+	[...scope.querySelectorAll("button")].filter(
+		(b) => b.getAttribute("aria-label") === name,
+	);
+
+test("a row renders exactly one toolbar, holding react, reply and more", async () => {
+	const m = mount();
+	await renderList(m);
+	const toolbars = m.host.querySelectorAll('[role="toolbar"]');
+	assert.equal(toolbars.length, 1);
+	const labels = [...toolbars[0].querySelectorAll("button")].map((b) =>
+		b.getAttribute("aria-label"),
+	);
+	assert.deepEqual(labels, [
+		"ui.teamBridge.reactions.add",
+		"ui.teamBridge.replies.action",
+		"ui.teamBridge.actions.more",
+	]);
+	assert.equal(
+		toolbars[0].getAttribute("aria-label"),
+		"ui.teamBridge.actions.label",
+	);
+	// The old separate affordances are gone: one reply-in-thread control on the
+	// row (the summary is a different label), and no reaction pill outside it.
+	assert.equal(named(m.host, "ui.teamBridge.replies.action").length, 1);
+	assert.equal(m.host.querySelector('[data-reaction-layout="toolbar"]'), null);
+	// Borderless, no shadow, 28px hit targets (>= 24), ghost buttons.
+	assert.equal(CHROME_EDGE.test(toolbars[0].className), false);
+	for (const b of toolbars[0].querySelectorAll("button"))
+		assert.ok(b.classList.contains("size-7"), b.outerHTML);
+	await m.close();
+});
+
+test("keyboard focus reveals the toolbar; one tab stop and arrows rove", async () => {
+	const m = mount();
+	await renderList(m);
+	const toolbar = m.host.querySelector('[role="toolbar"]');
+	// Revealed by the row's focus-within as well as its hover.
+	assert.ok(
+		toolbar.className.includes("group-focus-within/message:opacity-100"),
+	);
+	assert.ok(toolbar.className.includes("group-hover/message:opacity-100"));
+	const buttons = [...toolbar.querySelectorAll("button")];
+	assert.deepEqual(
+		buttons.map((b) => b.tabIndex),
+		[0, -1, -1],
+		"one tab stop: the row's Tab lands on the toolbar once",
+	);
+	await act(() => buttons[0].focus());
+	const key = (k) =>
+		act(() =>
+			document.activeElement.dispatchEvent(
+				new KeyboardEvent("keydown", { key: k, bubbles: true }),
+			),
+		);
+	await key("ArrowRight");
+	assert.equal(document.activeElement, buttons[1]);
+	assert.deepEqual(
+		buttons.map((b) => b.tabIndex),
+		[-1, 0, -1],
+		"the roving stop follows focus",
+	);
+	await key("End");
+	assert.equal(document.activeElement, buttons[2]);
+	await key("ArrowRight");
+	assert.equal(document.activeElement, buttons[2], "bounded, not wrapping");
+	await key("Home");
+	assert.equal(document.activeElement, buttons[0]);
+	await m.close();
+});
+
+test("thread replies get react and more, never reply-in-thread", async () => {
+	const m = mount();
+	await renderList(m, {
+		messages: [
+			{ ...rowMessage, id: "bcmsg_reply01", thread_root_id: rowMessage.id },
+		],
+	});
+	const toolbar = m.host.querySelector('[role="toolbar"]');
+	assert.deepEqual(
+		[...toolbar.querySelectorAll("button")].map((b) =>
+			b.getAttribute("aria-label"),
+		),
+		["ui.teamBridge.reactions.add", "ui.teamBridge.actions.more"],
+	);
+	// The thread pane passes no onReply at all: same answer for its root.
+	await renderList(m, { onReply: undefined });
+	assert.equal(named(m.host, "ui.teamBridge.replies.action").length, 0);
+	await m.close();
+});
+
+test("a reader who cannot react or reply gets no toolbar at all", async () => {
+	const m = mount();
+	await renderList(m, {
+		reactionContext: { accountId: "a", tenantId: "tnt_1", disabled: true },
+		onReply: undefined,
+	});
+	assert.equal(m.host.querySelector('[role="toolbar"]'), null);
 	await m.close();
 });

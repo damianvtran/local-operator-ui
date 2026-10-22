@@ -135,5 +135,7 @@
 	"ui.teamBridge.replies.last": "trả lời gần nhất lúc {time}",
 	"ui.teamBridge.replies.empty": "Chưa có câu trả lời nào. Hãy bắt đầu luồng trò chuyện.",
 	"ui.teamBridge.replies.placeholder": "Trả lời trong luồng",
-	"ui.teamBridge.replies.more": "Tải thêm câu trả lời"
+	"ui.teamBridge.replies.more": "Tải thêm câu trả lời",
+	"ui.teamBridge.actions.label": "Thao tác với tin nhắn",
+	"ui.teamBridge.actions.more": "Thao tác khác"
 }
