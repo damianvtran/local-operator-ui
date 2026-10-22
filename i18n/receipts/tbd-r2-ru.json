@@ -1,0 +1,44 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbd-r2-ru",
+  "session": "6b368b5dece7",
+  "date": "2026-10-21",
+  "locale": "ru",
+  "translator": "translator",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 109,
+      "scope": "Round 2: all 109 ru ui.teamBridge values vs en frozen at 7bf957741a and its context sidecar; ICU/placeholder/CLDR-plural/NFC/bidi/mixed-script verified in bytes, plural arms rendered, cue widths measured at 11px system font against the rail layout, terminology vs other ru ui.*.json, round-1 findings re-checked.",
+      "sha256": {
+        "en": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+        "ru": "2906ca288e1aa2242e4f85310a1b244e924f16ef85265d9a8a20caae0479781c",
+        "context": "17b7e1450dc7fa529d8e2e684bb8653fcc4f6cf220bf8261631d078d26545de5"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.people.bridge_off",
+          "current": "У этого участника Team Bridge ещё не включён",
+          "proposed": "Team Bridge ещё не включён",
+          "note": "Since D1 this is a visible truncating 11px second line directly under the person’s name, with about 236px available in the w-72 rail; the round-1 wording measures about 259px and gets truncated, and naming the participant is now redundant because the name sits right above, so I withdraw my round-1 proposal (about 157px)."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.thread.intro_group",
+          "current": "Первым сообщением вы начнёте разговор с собеседниками: {names}.",
+          "proposed": "Первым сообщением вы начнёте разговор. Кому: {names}.",
+          "note": "The draft shows this as soon as one recipient is added, so the common render is «…с собеседниками: Бен Тран.», a plural noun for one person; reusing the product’s number-neutral «Кому:» label keeps the uninflected name list correct for one or many."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.create.channel_description",
+          "current": "Любой участник вашей организации может найти канал и вступить в него. Добавьте людей и агентов сейчас или позже.",
+          "proposed": "Любой участник вашей организации может найти канал и вступить в него. Людей и агентов можно добавить сейчас или позже.",
+          "note": "«Добавьте … позже» is an odd imperative for an optional step, and the ru style guide prefers the impersonal construction."
+        }
+      ]
+    }
+  }
+}
