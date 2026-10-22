@@ -391,7 +391,8 @@ export function organizationOptions(
 			tenantId: asTeamBridgeTenantId(tenant.tenant_id),
 			name:
 				tenant.tenant_name?.trim() ||
-				membership?.tenant_name.trim() ||
+				// The memberships read is cast, not parsed: tolerate a missing name.
+				membership?.tenant_name?.trim() ||
 				tenant.tenant_id,
 			role: membership?.role ?? "",
 			unread: counts.get(tenant.tenant_id) ?? 0,
@@ -453,13 +454,42 @@ export function mergedConversationOrder(
 }
 
 /**
+ * The hub's tenant list from the bridge status payload, or null when the
+ * status has not answered or carries none (an older backend, a signed-out
+ * account). Null is what makes `organizationOptions` fall back to memberships,
+ * so an absent list must never be coerced to `[]`.
+ */
+export function hubTenantList(
+	status: Pick<AgentMessagesStatus, "status"> | null | undefined,
+): NonNullable<AgentMessagesStatus["status"]>["tenants"] | null {
+	return status?.status?.tenants ?? null;
+}
+
+/**
+ * Whether the organization list the merged rail filters by is still loading or
+ * has failed.
+ *
+ * With a hub tenant list the list is complete without memberships, so their
+ * loading or failure must not hold or fail the rail; that is what left F6's
+ * rail stuck or erroring on a read it no longer depends on. Without one the
+ * memberships ARE the list, so their state is the list's state.
+ */
+export function organizationsReadState(
+	hubTenants: readonly unknown[] | null,
+	memberships: { isLoading: boolean; isError: boolean },
+): { pending: boolean; failed: boolean } {
+	if (hubTenants !== null) return { pending: false, failed: false };
+	return { pending: memberships.isLoading, failed: memberships.isError };
+}
+
+/**
  * The organization name a conversation row wears in the merged view.
  *
  * `null` means the conversation's tenant is not among `organizations` (the
  * hub's tenant list, or the active memberships when the hub sent none — see
- * `organizationOptions`). The page treats that as "unknown org" and refuses to render its
- * thread: a message shown under the wrong organization would be worse than a
- * row that waits for the membership read.
+ * `organizationOptions`). The page treats that as "unknown org" and refuses to
+ * render its thread: a message shown under the wrong organization would be
+ * worse than a row that waits for the organization list to name it.
  */
 export function conversationOrganizationName(
 	conversation: Pick<TeamBridgeConversation, "tenant_id">,
