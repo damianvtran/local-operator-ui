@@ -27,6 +27,8 @@ import type {
 import { teamBridgeAttachmentCapabilitySchema } from "../../../../shared/team-bridge-contract";
 import { onDraftRevocation } from "../../shared/store/team-bridge-draft-account";
 import {
+	IMAGE_JPEG_QUALITY,
+	IMAGE_MAX_EDGE,
 	type WireImageMime,
 	boundImageForWire,
 } from "../chat/utils/bound-image";
@@ -109,6 +111,7 @@ export type AttachmentFailure =
 	| "limit"
 	| "expired"
 	| "offline"
+	| "signed_out"
 	| "failed";
 
 /**
@@ -134,6 +137,11 @@ export function uploadFailure(
 			return "limit";
 		case 404:
 			return "expired";
+		// 401 `bridge_signin_required`: the runtime lost its sign-in while the
+		// composer was open (the page gate hides it once status catches up).
+		// A sign-in cue, not "upload failed", which reads as retryable (QA Q3).
+		case 401:
+			return "signed_out";
 		case null:
 		case undefined:
 		case 502:
@@ -281,10 +289,14 @@ export async function prepareImageForUpload(
 		bytes = await convertToPng(bytes, sniffed);
 		mime = "image/png";
 	}
-	const bounded = await boundImageForWire({
-		data_b64: toBase64(bytes),
-		mime_type: mime,
-	});
+	// `edgeIsHard`: the 1024 px edge is the wire contract here (D3), so an
+	// over-edge image is downscaled even when that does not shrink its bytes.
+	const bounded = await boundImageForWire(
+		{ data_b64: toBase64(bytes), mime_type: mime },
+		IMAGE_MAX_EDGE,
+		IMAGE_JPEG_QUALITY,
+		{ edgeIsHard: true },
+	);
 	if (bounded.mime_type !== "image/png" && bounded.mime_type !== "image/jpeg")
 		throw new AttachmentPrepareError("unsupported");
 	const out = fromBase64(bounded.data_b64);

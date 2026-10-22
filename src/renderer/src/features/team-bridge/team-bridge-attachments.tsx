@@ -81,6 +81,9 @@ const failureCopy = (reason: AttachmentFailure | undefined): string => {
 			return t("ui.teamBridge.attachments.expired_staged");
 		case "offline":
 			return t("ui.teamBridge.attachments.error_offline");
+		// Reuses the page gate's own signed-out sentence: same fact, same words.
+		case "signed_out":
+			return t("ui.teamBridge.plan.sign_in_reason");
 		default:
 			return t("ui.teamBridge.attachments.error_upload");
 	}
