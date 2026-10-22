@@ -207,6 +207,23 @@ export const ChipsError: Story = {
 	},
 };
 
+/** D15: the runtime lost its sign-in mid-compose (401). The chip names the
+ * sign-in fact and offers Remove only - a Retry would 401 again (r7 M2). */
+export const ChipsSignedOut: Story = {
+	args: {
+		state: chipState([
+			{ key: "a", status: "ready", previewUrl: blobUrl(SHOT_WIDE_B64) },
+			{
+				key: "b",
+				status: "error",
+				reason: "signed_out",
+				previewUrl: blobUrl(SHOT_TALL_B64),
+				prepared,
+			},
+		]),
+	},
+};
+
 /** Restored from a draft after a reload: expired (remove-only) beside a good
  * chip whose bytes this session no longer holds (neutral glyph, D1). */
 export const ChipsExpiredRestored: Story = {
