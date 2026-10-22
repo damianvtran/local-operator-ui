@@ -284,6 +284,103 @@ test("a mirror that is gone stops forwarding", async () => {
 	);
 });
 
+test("history mode is read-only: stdin off, no caret, and a key never reaches the bridge", async () => {
+	/*
+	 * THE OPERATOR'S FRAME, AS A WIRING CLAIM: an ended surface looked alive because
+	 * its mirror still held a terminal with a cursor and a live input path. `history`
+	 * is the mode that makes the state structural rather than cosmetic — xterm's own
+	 * stdin is off, both cursor states are hidden, and no `onData` handler exists to
+	 * carry a key to main even if a synthetic event produced one.
+	 */
+	const restore = setPlatform("MacIntel");
+	installClipboard();
+	const calls = installBridge();
+	const { root, terminal } = await mountMirror({ mode: "history" });
+	try {
+		assert.equal(
+			terminal.options.disableStdin,
+			true,
+			"xterm itself refuses to encode input on history",
+		);
+		assert.equal(terminal.options.cursorBlink, false, "nothing blinks");
+		assert.equal(
+			terminal.options.cursorInactiveStyle,
+			"none",
+			"and the unfocused cursor is not painted at all",
+		);
+
+		// The stub's `typeKey` bypasses xterm's real `disableStdin` gate on purpose:
+		// it is the harshest version of the claim, that even a synthetic byte has no
+		// listener.
+		terminal.typeKey("a");
+		terminal.typeKey("Enter");
+		await settle();
+		assert.deepEqual(
+			calls,
+			[],
+			"no key reaches `api.input`, not even silently",
+		);
+
+		// Selection and copy stay on: a finished build log is the likely thing to copy.
+		terminal.setSelection("npm run build");
+		assert.equal(
+			terminal.pressKey({ key: "c", metaKey: true }),
+			false,
+			"the copy chord is still claimed rather than encoded",
+		);
+		assert.equal(terminal.getSelection(), "npm run build");
+	} finally {
+		root.unmount();
+		restore();
+	}
+});
+
+test("a surface ending transitions the SAME terminal to history, rather than remounting it", async () => {
+	/*
+	 * THE EDGE CASE THE FIRST CUT GOT WRONG (found while capturing the frames): a
+	 * process can exit WHILE THE USER IS TYPING, and a mirror that rebuilt its
+	 * terminal on the mode change disposed the focused textarea under their hands,
+	 * dropped the keyboard and replayed the record a second time. The mode is a
+	 * transition on one terminal: `disableStdin` and the cursor are applied to the
+	 * terminal that is already there, and no second one is constructed.
+	 */
+	const calls = installBridge();
+	const { root, terminal } = await mountMirror({ mode: "interactive" });
+	const constructed = __terminals.length;
+	root.render(
+		harness.createElement(harness.ConsoleMirror, {
+			surface: "con:1:test",
+			visible: true,
+			cols: 80,
+			rows: 24,
+			onReport: () => {},
+			mode: "history",
+		}),
+	);
+	await settle(60);
+	assert.equal(
+		__terminals.length,
+		constructed,
+		"the ending must not construct a second terminal",
+	);
+	assert.equal(
+		terminal.wasDisposed,
+		false,
+		"the terminal the user was typing at survives",
+	);
+	assert.equal(
+		terminal.options.disableStdin,
+		true,
+		"and it stops taking input on the same commit the state changed",
+	);
+	assert.equal(terminal.options.cursorBlink, false);
+	assert.equal(terminal.options.cursorInactiveStyle, "none");
+	terminal.typeKey("a");
+	await settle();
+	assert.deepEqual(calls, [], "a key after the transition reaches nothing");
+	root.unmount();
+});
+
 test("the pane's own writes are never sent back as input", async () => {
 	// The negative half, and the reason the tests above cannot pass by accident:
 	// bytes arriving FROM the record are written to the terminal and must never be

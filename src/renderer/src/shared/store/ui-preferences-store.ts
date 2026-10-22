@@ -735,6 +735,33 @@ type UiPreferencesState = {
 	clearConsoleOpenIntent: (sessionId: string) => void;
 
 	/**
+	 * How many of this conversation's console surfaces are RUNNING, as the pane
+	 * published it.
+	 *
+	 * A PROJECTION, NOT A SECOND READ: the pane owns the one `console-state`
+	 * subscription, and this is the fact the rail needs to decide whether its
+	 * console item is the active one. `null` means nothing is running — and also
+	 * "the pane is not mounted", which is the same answer to the rail's question
+	 * (no running terminal, so no active console). It is transient by construction
+	 * (excluded from `persistedUiPreferences`): a count that survived a relaunch
+	 * would claim a process nobody started.
+	 *
+	 * THE SESSION IS PART OF THE FACT for `consoleUnseen`'s reason: the rail renders
+	 * for ONE conversation, and a running terminal in another one must not light
+	 * this one's item. A count of zero is stored as `null` so every "nothing is
+	 * running" state has one representation.
+	 */
+	consoleLiveSurface: { sessionId: string; count: number } | null;
+
+	/**
+	 * Publish the running-surface count for one conversation, or clear it.
+	 *
+	 * @param sessionId - The conversation the pane is showing, or null to clear
+	 * @param count - Running surfaces; zero (or a null session) clears the fact
+	 */
+	setConsoleLiveSurface: (sessionId: string | null, count: number) => void;
+
+	/**
 	 * Set the console pane open state.
 	 *
 	 * Opening it closes the other three occupants, by the same construction as
@@ -2022,6 +2049,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			askOpenIntent: null,
 			rightSlotRoute: EMPTY_RIGHT_SLOT_ROUTE,
 			consoleOpenIntent: null,
+			consoleLiveSurface: null,
 			runPanelReveal: null,
 			codeReviewReveal: null,
 			browserPaneScope: "conversation",
@@ -2322,6 +2350,22 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 						? { consoleOpenIntent: null }
 						: {},
 				);
+			},
+
+			setConsoleLiveSurface: (sessionId: string | null, count: number) => {
+				set((state) => {
+					if (sessionId === null || count <= 0) {
+						return state.consoleLiveSurface === null
+							? {}
+							: { consoleLiveSurface: null };
+					}
+					const current = state.consoleLiveSurface;
+					// The identity is kept when nothing moved, so a listing refetch that
+					// changed only a surface's output does not re-render the rail.
+					return current?.sessionId === sessionId && current.count === count
+						? {}
+						: { consoleLiveSurface: { sessionId, count } };
+				});
 			},
 
 			markConsoleUnseen: (sessionId: string, surface: string) => {
@@ -2781,6 +2825,7 @@ export function persistedUiPreferences<
 		runPanelReveal: unknown;
 		codeReviewReveal: unknown;
 		consoleOpenIntent: unknown;
+		consoleLiveSurface: unknown;
 		askOpenIntent: unknown;
 		isAskDrawerOpen: unknown;
 		askDrawerScope: unknown;
@@ -2801,6 +2846,7 @@ export function persistedUiPreferences<
 	| "runPanelReveal"
 	| "codeReviewReveal"
 	| "consoleOpenIntent"
+	| "consoleLiveSurface"
 	| "askOpenIntent"
 	| "isAskDrawerOpen"
 	| "askDrawerScope"
@@ -2817,6 +2863,12 @@ export function persistedUiPreferences<
 		runPanelReveal: _pending,
 		codeReviewReveal: _reveal,
 		consoleOpenIntent: _intent,
+		/*
+		 * THE LIVENESS FACT IS A RUN'S OWN READING, not a preference: a restored count
+		 * would claim a process this launch did not start. It is excluded for
+		 * `consoleOpenIntent`'s reason, and the rail reads "no fact" as no live console.
+		 */
+		consoleLiveSurface: _live,
 		/* The menu row's open request (round-1 Q1): the drawer consumes it on the
 		 * commit that answers it, so a restored copy would open a surface nobody
 		 * pressed a door for. Excluded beside the console's for the same reason. */

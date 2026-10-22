@@ -55,5 +55,9 @@
 	"ui.console.secure_toggle.start_tooltip": "Secure input: stop recording this terminal",
 	"ui.console.close.cancel": "Cancel",
 	"ui.console.terminal.prompt_label": "Terminal input",
-	"ui.console.terminal.too_much_output": "Too much output to announce, navigate to rows manually to read"
+	"ui.console.terminal.too_much_output": "Too much output to announce, navigate to rows manually to read",
+	"ui.console.ended.app_quit": "the app closed it when it quit",
+	"ui.console.ended.marker": "End of history",
+	"ui.console.ended.marker_detail": "This terminal is read-only. Select text to copy it.",
+	"ui.console.ended.input_blocked": "This terminal has ended, so that key was not sent. Open a new console to type again."
 }

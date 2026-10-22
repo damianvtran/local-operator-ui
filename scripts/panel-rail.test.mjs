@@ -327,6 +327,9 @@ const NO_PANES = {
 	isAskDrawerOpen: false,
 	askDrawerScope: "session",
 	askDrawerEvictedPane: null,
+	/* The liveness projection the pane publishes: a reset must not leave one cell's
+	   running terminal lighting the next cell's item. */
+	consoleLiveSurface: null,
 };
 const details = () => deriveRunDetails(fixtures.settled());
 
@@ -463,7 +466,10 @@ test("aria-pressed follows each of the six store flags, one at a time", async ()
 			["isCodeReviewPaneOpen", "code"],
 		]) {
 			reset(api);
-			await api.render(rail());
+			/* The console item's lit state follows LIVENESS, not the pane flag
+			   (operator report, 2026-10-21), so the cell that opens it must say a
+			   process is running - the prop chat-content derives from the pane. */
+			await api.render(rail(id === "console" ? { consoleLiveCount: 1 } : {}));
 			assert.deepEqual(api.pressed(), [], "nothing is lit with the slot empty");
 			api.store({ [flag]: true });
 			assert.deepEqual(api.pressed(), [id], `${flag} lights ${id} and only it`);
@@ -474,6 +480,56 @@ test("aria-pressed follows each of the six store flags, one at a time", async ()
 				);
 			}
 		}
+	});
+});
+
+test("the console item follows liveness: open-with-history is unlit and its press opens a terminal", async () => {
+	/*
+	 * THE OPERATOR'S REPORT (2026-10-21), as the rail's two halves. With the pane
+	 * open on restored history, the item must NOT look active ("0 live"), and the
+	 * same press must mean OPEN - `requestConsoleOpen`, which the pane answers by
+	 * creating a surface - rather than closing the pane the user is reading.
+	 */
+	await mount(async (api) => {
+		reset(api);
+		api.store({ isConsolePaneOpen: true, consoleLiveSurface: null });
+		await api.render(rail({ consoleLiveCount: 0 }));
+		assert.deepEqual(
+			api.pressed(),
+			[],
+			"an open pane with no running surface is not the active console",
+		);
+		await api.click(api.item("console"));
+		const state = useUiPreferencesStore.getState();
+		assert.equal(
+			state.isConsolePaneOpen,
+			true,
+			"the press did not close the pane",
+		);
+		assert.equal(
+			state.consoleOpenIntent,
+			"session-1",
+			"it asked the pane for a terminal instead",
+		);
+
+		// And the live case is the toggle it always was.
+		reset(api);
+		api.store({
+			isConsolePaneOpen: true,
+			consoleLiveSurface: { sessionId: "session-1", count: 1 },
+		});
+		await api.render(rail({ consoleLiveCount: 1 }));
+		assert.deepEqual(
+			api.pressed(),
+			["console"],
+			"a running console is the active one",
+		);
+		await api.click(api.item("console"));
+		assert.equal(
+			useUiPreferencesStore.getState().isConsolePaneOpen,
+			false,
+			"the lit item is still the way to put a live console away",
+		);
 	});
 });
 
@@ -492,6 +548,9 @@ test("pressing an item claims the slot: the others are cleared, and a second pre
 			[],
 			"the lit item is also the way to close",
 		);
+		// The console's active treatment is liveness, so this door is judged in the
+		// state it is meant to be lit in: an open pane with a running surface.
+		await api.render(rail({ consoleLiveCount: 1 }));
 		await api.click(api.item("console"));
 		assert.deepEqual(api.pressed(), ["console"]);
 		assert.equal(
@@ -627,7 +686,6 @@ test("a claimed pane the route cannot draw lights NOTHING (the drawable-aware se
 		for (const [flag, id] of [
 			["isRunPanelOpen", "run"],
 			["isBrowserPaneOpen", "browser"],
-			["isConsolePaneOpen", "console"],
 			["isCanvasOpen", "canvas"],
 			["isCodeReviewPaneOpen", "code"],
 		]) {
@@ -636,6 +694,20 @@ test("a claimed pane the route cannot draw lights NOTHING (the drawable-aware se
 			await api.render(rail({ runDetails: null, sessionId: null }));
 			assert.deepEqual(api.pressed(), [id], `${flag} on a mounted draft`);
 		}
+		/*
+		 * THE CONSOLE IS THE EXCEPTION HERE, and it follows its own rule: the item is
+		 * active only while a terminal is RUNNING (operator report, 2026-10-21), and a
+		 * draft has no conversation to run one in. The pane still draws its notice; the
+		 * door just does not claim a live console.
+		 */
+		reset(api, DRAFT);
+		api.store({ isConsolePaneOpen: true });
+		await api.render(rail({ runDetails: null, sessionId: null }));
+		assert.deepEqual(
+			api.pressed(),
+			[],
+			"a draft has no live console, so the console door is not the active one",
+		);
 		reset(api, DRAFT);
 		api.store({ isAskDrawerOpen: true, askDrawerScope: "session" });
 		await api.render(rail({ runDetails: null, sessionId: null }));
@@ -690,7 +762,11 @@ test("a door pressed on a draft opens its pane, and the console files no open re
 			null,
 			"no conversation, so no console is requested",
 		);
-		assert.deepEqual(api.pressed(), ["console"]);
+		assert.deepEqual(
+			api.pressed(),
+			[],
+			"a draft has no live terminal, so the console item is not the active one",
+		);
 		for (const [id, flag] of [
 			["run", "isRunPanelOpen"],
 			["code", "isCodeReviewPaneOpen"],

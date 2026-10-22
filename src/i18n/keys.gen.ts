@@ -2450,9 +2450,13 @@ export type MessageParams = {
 	"ui.console.dismiss_history": undefined;
 	"ui.console.empty.detail": undefined;
 	"ui.console.empty.title": undefined;
+	"ui.console.ended.app_quit": undefined;
 	"ui.console.ended.exit_code": { code: string };
 	"ui.console.ended.exit_unknown": undefined;
+	"ui.console.ended.input_blocked": undefined;
 	"ui.console.ended.live": undefined;
+	"ui.console.ended.marker": undefined;
+	"ui.console.ended.marker_detail": undefined;
 	"ui.console.ended.restored": undefined;
 	"ui.console.loading.create": undefined;
 	"ui.console.loading.read": undefined;
