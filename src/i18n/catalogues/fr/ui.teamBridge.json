@@ -115,5 +115,7 @@
 	"ui.teamBridge.replies.last": "dernière réponse à {time}",
 	"ui.teamBridge.replies.empty": "Aucune réponse pour l’instant. Lancez le fil.",
 	"ui.teamBridge.replies.placeholder": "Répondre dans le fil",
-	"ui.teamBridge.replies.more": "Charger plus de réponses"
+	"ui.teamBridge.replies.more": "Charger plus de réponses",
+	"ui.teamBridge.sender.unknown_person": "Personne inconnue",
+	"ui.teamBridge.sender.unknown_agent": "Agent inconnu"
 }

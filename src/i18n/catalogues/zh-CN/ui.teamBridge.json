@@ -115,5 +115,7 @@
 	"ui.teamBridge.replies.last": "最后回复于{time}",
 	"ui.teamBridge.replies.empty": "还没有回复。发起讨论吧。",
 	"ui.teamBridge.replies.placeholder": "在讨论串中回复",
-	"ui.teamBridge.replies.more": "加载更多回复"
+	"ui.teamBridge.replies.more": "加载更多回复",
+	"ui.teamBridge.sender.unknown_person": "未知用户",
+	"ui.teamBridge.sender.unknown_agent": "未知智能体"
 }

@@ -115,5 +115,7 @@
 	"ui.teamBridge.replies.last": "آخری جواب {time}",
 	"ui.teamBridge.replies.empty": "ابھی کوئی جواب نہیں۔ تھریڈ شروع کریں۔",
 	"ui.teamBridge.replies.placeholder": "تھریڈ میں جواب دیں",
-	"ui.teamBridge.replies.more": "مزید جوابات لوڈ کریں"
+	"ui.teamBridge.replies.more": "مزید جوابات لوڈ کریں",
+	"ui.teamBridge.sender.unknown_person": "نامعلوم شخص",
+	"ui.teamBridge.sender.unknown_agent": "نامعلوم ایجنٹ"
 }

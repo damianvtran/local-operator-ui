@@ -25,7 +25,9 @@ export type ThreadPaneProps = {
 	root: TeamBridgeMessage | null;
 	replies: readonly TeamBridgeMessage[];
 	state: "loading" | "error" | "ready";
-	labelFor: (sender: TeamBridgeMessage["sender"]) => string;
+	/* Null = nobody names this sender (directory loading/failed, a member who
+	   left, the legacy "Member" label); the list renders it as unknown. */
+	labelFor: (sender: TeamBridgeMessage["sender"]) => string | null;
 	onClose: () => void;
 	onRetry: () => void;
 	onSend: (body: string, clientRef: string) => Promise<unknown>;

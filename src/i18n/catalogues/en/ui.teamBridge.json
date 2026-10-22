@@ -115,5 +115,7 @@
 	"ui.teamBridge.replies.last": "last reply {time}",
 	"ui.teamBridge.replies.empty": "No replies yet. Start the thread.",
 	"ui.teamBridge.replies.placeholder": "Reply in thread",
-	"ui.teamBridge.replies.more": "Load more replies"
+	"ui.teamBridge.replies.more": "Load more replies",
+	"ui.teamBridge.sender.unknown_person": "Unknown person",
+	"ui.teamBridge.sender.unknown_agent": "Unknown agent"
 }
