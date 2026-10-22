@@ -1,6 +1,6 @@
 {
   "pairPort": 47391,
-  "when": "2026-10-22T03:48:21.857Z",
+  "when": "2026-10-22T09:58:55.613Z",
   "report": [
     {
       "cell": "opened live",
@@ -34,7 +34,7 @@
           {
             "text": "zsh",
             "selected": "true",
-            "surface": "con:1:6Z9JLhrI_jIzKWDcW3tcJg"
+            "surface": "con:1:F9C_NJczr2aXsKuWWSWXJw"
           }
         ],
         "paneText": "Console\nzsh\n1 live of 128 in the app\nzsh\ndamian@damians-MacBook-Pro ~ %  "
@@ -43,21 +43,22 @@
     {
       "cell": "ended, pane open",
       "reading": {
-        "surface": "con:1:6Z9JLhrI_jIzKWDcW3tcJg",
+        "surface": "con:1:F9C_NJczr2aXsKuWWSWXJw",
         "state": [
           {
-            "surface": "con:1:6Z9JLhrI_jIzKWDcW3tcJg",
-            "session_id": "f4010517e337",
+            "surface": "con:1:F9C_NJczr2aXsKuWWSWXJw",
+            "session_id": "9875e01b8cc4",
             "origin": "user",
             "command": "zsh",
             "argv_tail": "",
-            "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-ended-9734/home",
+            "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-ended-40087/home",
             "cols": 74,
             "rows": 42,
             "running": false,
             "exit_code": 1,
+            "exit_signal": null,
             "end_reason": null,
-            "last_activity": 1792640872.372,
+            "last_activity": 1792663095.189,
             "live": true,
             "agent_owned": false,
             "last_actor": "user",
@@ -77,8 +78,8 @@
           "announce": "",
           "caret": {
             "text": " ",
-            "color": "rgb(29, 27, 25)",
-            "background": "rgb(29, 27, 25)",
+            "color": "rgb(43, 39, 33)",
+            "background": "rgb(56, 201, 106)",
             "blink": false,
             "block": true
           },
@@ -96,13 +97,24 @@
           },
           "tabs": [
             {
-              "text": "zsh\n1",
+              "text": "zsh\nexit 1",
               "selected": "true",
-              "surface": "con:1:6Z9JLhrI_jIzKWDcW3tcJg"
+              "surface": "con:1:F9C_NJczr2aXsKuWWSWXJw"
             }
           ],
-          "paneText": "Console\nzsh\n0 live of 128 in the app · 1 kept\nzsh\n1\nThis terminal has ended\nexit code 1\ndamian@damians-MacBook-Pro ~ % exit\n \nEnd of history\nThis terminal is read-only. Select text to copy it."
+          "paneText": "Console\nzsh\n0 live of 128 in the app · 1 kept\nzsh\nexit 1\nThis terminal has ended\nexit code 1\ndamian@damians-MacBook-Pro ~ % exit\n \nEnd of history\nThis terminal is read-only. Select text to copy it."
         }
+      }
+    },
+    {
+      "cell": "history focused",
+      "reading": {
+        "active": true,
+        "focusedWithin": true,
+        "focusVisible": true,
+        "outlineWidth": "2px",
+        "outlineStyle": "solid",
+        "outlineColor": "rgb(131, 124, 109)"
       }
     },
     {
@@ -112,12 +124,12 @@
         "paneOpen": true,
         "mirror": true,
         "banner": "This terminal has ended\nexit code 1",
-        "marker": "End of history\nThis terminal is read-only. Select text to copy it.\nThis terminal has ended, so that key was not sent. Open a new console to type again.",
-        "announce": "This terminal has ended, so that key was not sent. Open a new console to type again.",
+        "marker": "End of history\nThis terminal is read-only. Select text to copy it.\nThis terminal has ended, so that key was not sent. Open a new console to type again.​",
+        "announce": "This terminal has ended, so that key was not sent. Open a new console to type again.​",
         "caret": {
           "text": " ",
-          "color": "rgb(29, 27, 25)",
-          "background": "rgb(29, 27, 25)",
+          "color": "rgb(43, 39, 33)",
+          "background": "rgb(56, 201, 106)",
           "blink": false,
           "block": true
         },
@@ -135,12 +147,12 @@
         },
         "tabs": [
           {
-            "text": "zsh\n1",
+            "text": "zsh\nexit 1",
             "selected": "true",
-            "surface": "con:1:6Z9JLhrI_jIzKWDcW3tcJg"
+            "surface": "con:1:F9C_NJczr2aXsKuWWSWXJw"
           }
         ],
-        "paneText": "Console\nzsh\n0 live of 128 in the app · 1 kept\nzsh\n1\nThis terminal has ended\nexit code 1\ndamian@damians-MacBook-Pro ~ % exit\n \nEnd of history\nThis terminal is read-only. Select text to copy it.\nThis terminal has ended, so that key was not sent. Open a new console to type again."
+        "paneText": "Console\nzsh\n0 live of 128 in the app · 1 kept\nzsh\nexit 1\nThis terminal has ended\nexit code 1\ndamian@damians-MacBook-Pro ~ % exit\n \nEnd of history\nThis terminal is read-only. Select text to copy it.\nThis terminal has ended, so that key was not sent. Open a new console to type again.​"
       }
     },
     {
@@ -156,17 +168,17 @@
       "reading": {
         "surfacesBefore": [
           {
-            "surface": "con:1:6Z9JLhrI_jIzKWDcW3tcJg",
+            "surface": "con:1:F9C_NJczr2aXsKuWWSWXJw",
             "running": false
           }
         ],
         "surfacesAfter": [
           {
-            "surface": "con:1:6Z9JLhrI_jIzKWDcW3tcJg",
+            "surface": "con:1:F9C_NJczr2aXsKuWWSWXJw",
             "running": false
           },
           {
-            "surface": "con:2:VGNwSGqnxrn0PYhd-iSY9Q",
+            "surface": "con:2:eKvHePJPOhX786a9K9Q8Eg",
             "running": true
           }
         ],
@@ -201,15 +213,15 @@
             {
               "text": "zsh",
               "selected": "true",
-              "surface": "con:2:VGNwSGqnxrn0PYhd-iSY9Q"
+              "surface": "con:2:eKvHePJPOhX786a9K9Q8Eg"
             },
             {
-              "text": "zsh\n1",
+              "text": "zsh\nexit 1",
               "selected": "false",
-              "surface": "con:1:6Z9JLhrI_jIzKWDcW3tcJg"
+              "surface": "con:1:F9C_NJczr2aXsKuWWSWXJw"
             }
           ],
-          "paneText": "Console\nzsh\n1 live of 128 in the app · 1 kept\nzsh\nzsh\n1\ndamian@damians-MacBook-Pro ~ %  "
+          "paneText": "Console\nzsh\n1 live of 128 in the app · 1 kept\nzsh\nzsh\nexit 1\ndamian@damians-MacBook-Pro ~ %  "
         }
       }
     },
@@ -250,42 +262,42 @@
             {
               "text": "zsh",
               "selected": "true",
-              "surface": "con:2:VGNwSGqnxrn0PYhd-iSY9Q"
+              "surface": "con:2:eKvHePJPOhX786a9K9Q8Eg"
             },
             {
-              "text": "zsh\n1",
+              "text": "zsh\nexit 1",
               "selected": "false",
-              "surface": "con:1:6Z9JLhrI_jIzKWDcW3tcJg"
+              "surface": "con:1:F9C_NJczr2aXsKuWWSWXJw"
             }
           ],
-          "paneText": "Console\nzsh\n1 live of 128 in the app · 1 kept\nzsh\nzsh\n1\ndamian@damians-MacBook-Pro ~ %  "
+          "paneText": "Console\nzsh\n1 live of 128 in the app · 1 kept\nzsh\nzsh\nexit 1\ndamian@damians-MacBook-Pro ~ %  "
         }
       }
     },
     {
-      "cell": "two ended, user opens",
+      "cell": "all ended, user opens",
       "reading": {
         "surfacesBefore": [
           {
-            "surface": "con:1:6Z9JLhrI_jIzKWDcW3tcJg",
+            "surface": "con:1:F9C_NJczr2aXsKuWWSWXJw",
             "running": false
           },
           {
-            "surface": "con:2:VGNwSGqnxrn0PYhd-iSY9Q",
+            "surface": "con:2:eKvHePJPOhX786a9K9Q8Eg",
             "running": false
           }
         ],
         "surfacesAfter": [
           {
-            "surface": "con:1:6Z9JLhrI_jIzKWDcW3tcJg",
+            "surface": "con:1:F9C_NJczr2aXsKuWWSWXJw",
             "running": false
           },
           {
-            "surface": "con:2:VGNwSGqnxrn0PYhd-iSY9Q",
+            "surface": "con:2:eKvHePJPOhX786a9K9Q8Eg",
             "running": false
           },
           {
-            "surface": "con:3:92ciWl2lPOiiKcS-LTP6sg",
+            "surface": "con:3:qXqfwyFIyQfrTJwkQcX5TA",
             "running": true
           }
         ],
@@ -320,20 +332,20 @@
             {
               "text": "zsh",
               "selected": "true",
-              "surface": "con:3:92ciWl2lPOiiKcS-LTP6sg"
+              "surface": "con:3:qXqfwyFIyQfrTJwkQcX5TA"
             },
             {
-              "text": "zsh\n1",
+              "text": "zsh\nexit 1",
               "selected": "false",
-              "surface": "con:2:VGNwSGqnxrn0PYhd-iSY9Q"
+              "surface": "con:2:eKvHePJPOhX786a9K9Q8Eg"
             },
             {
-              "text": "zsh\n1",
+              "text": "zsh\nexit 1",
               "selected": "false",
-              "surface": "con:1:6Z9JLhrI_jIzKWDcW3tcJg"
+              "surface": "con:1:F9C_NJczr2aXsKuWWSWXJw"
             }
           ],
-          "paneText": "Console\nzsh\n1 live of 128 in the app · 2 kept\nzsh\nzsh\n1\nzsh\n1\ndamian@damians-MacBook-Pro ~ %  "
+          "paneText": "Console\nzsh\n1 live of 128 in the app · 2 kept\nzsh\nzsh\nexit 1\nzsh\nexit 1\ndamian@damians-MacBook-Pro ~ %  "
         }
       }
     },
@@ -349,18 +361,19 @@
       "cell": "the ended row is looked at",
       "reading": {
         "endedRow": {
-          "surface": "con:3:92ciWl2lPOiiKcS-LTP6sg",
-          "session_id": "f4010517e337",
+          "surface": "con:3:qXqfwyFIyQfrTJwkQcX5TA",
+          "session_id": "9875e01b8cc4",
           "origin": "user",
           "command": "zsh",
           "argv_tail": "",
-          "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-ended-9734/home",
+          "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-ended-40087/home",
           "cols": 74,
-          "rows": 42,
+          "rows": 41,
           "running": false,
           "exit_code": 1,
+          "exit_signal": null,
           "end_reason": null,
-          "last_activity": 1792640884.192,
+          "last_activity": 1792663109.839,
           "live": true,
           "agent_owned": false,
           "last_actor": "user",
@@ -394,44 +407,100 @@
             {
               "text": "zsh",
               "selected": "false",
-              "surface": "con:4:-_4k5trhsb-IPI6WMghBMQ"
+              "surface": "con:4:snB9WT9hf3gy7Dj9K9V1HA"
             },
             {
-              "text": "zsh\n1",
+              "text": "zsh\nexit 1",
               "selected": "true",
-              "surface": "con:3:92ciWl2lPOiiKcS-LTP6sg"
+              "surface": "con:3:qXqfwyFIyQfrTJwkQcX5TA"
             },
             {
-              "text": "zsh\n1",
+              "text": "zsh\nexit 1",
               "selected": "false",
-              "surface": "con:2:VGNwSGqnxrn0PYhd-iSY9Q"
+              "surface": "con:2:eKvHePJPOhX786a9K9Q8Eg"
             },
             {
-              "text": "zsh\n1",
+              "text": "zsh\nexit 1",
               "selected": "false",
-              "surface": "con:1:6Z9JLhrI_jIzKWDcW3tcJg"
+              "surface": "con:1:F9C_NJczr2aXsKuWWSWXJw"
             }
           ],
-          "paneText": "Console\nzsh\n1 live of 128 in the app · 3 kept\nzsh\nzsh\n1\nzsh\n1\nzsh\n1\nThis terminal has ended\nexit code 1\ndamian@damians-MacBook-Pro ~ % exit\n \nEnd of history\nThis terminal is read-only. Select text to copy it."
+          "paneText": "Console\nzsh\n1 live of 128 in the app · 3 kept\nzsh\nzsh\nexit 1\nzsh\nexit 1\nzsh\nexit 1\nThis terminal has ended\nexit code 1\n%                                                                         \ndamian@damians-MacBook-Pro ~ % exit\n \nEnd of history\nThis terminal is read-only. Select text to copy it."
+        }
+      }
+    },
+    {
+      "cell": "a glyph under the history cursor",
+      "reading": {
+        "surface": "con:4:snB9WT9hf3gy7Dj9K9V1HA",
+        "view": {
+          "hash": "#/chat",
+          "paneOpen": true,
+          "mirror": true,
+          "banner": "This terminal has ended\nkilled by SIGKILL",
+          "marker": "End of history\nThis terminal is read-only. Select text to copy it.",
+          "announce": "",
+          "caret": null,
+          "screenColor": "rgb(241, 238, 230)",
+          "textareaReadOnly": true,
+          "rail": {
+            "pressed": "true",
+            "label": "Console (⌘J)",
+            "blip": false
+          },
+          "active": {
+            "tag": "body",
+            "class": "",
+            "inTerminal": false
+          },
+          "tabs": [
+            {
+              "text": "zsh\nSIGKILL",
+              "selected": "true",
+              "surface": "con:4:snB9WT9hf3gy7Dj9K9V1HA"
+            },
+            {
+              "text": "zsh",
+              "selected": "false",
+              "surface": "con:5:e_amNUDlEXQljz0qvbtxMg"
+            },
+            {
+              "text": "zsh\nexit 1",
+              "selected": "false",
+              "surface": "con:3:qXqfwyFIyQfrTJwkQcX5TA"
+            },
+            {
+              "text": "zsh\nexit 1",
+              "selected": "false",
+              "surface": "con:2:eKvHePJPOhX786a9K9Q8Eg"
+            },
+            {
+              "text": "zsh\nexit 1",
+              "selected": "false",
+              "surface": "con:1:F9C_NJczr2aXsKuWWSWXJw"
+            }
+          ],
+          "paneText": "Console\nzsh\n1 live of 128 in the app · 4 kept\nzsh\nSIGKILL\nzsh\nzsh\nexit 1\nzsh\nexit 1\nzsh\nexit 1\nThis terminal has ended\nkilled by SIGKILL\n%                                                                         \ndamian@damians-MacBook-Pro ~ % printf ABC\nABC%                                                                      \ndamian@damians-MacBook-Pro ~ % \ndamian@damians-MacBook-Pro ~ % kill -9 $$\n \nEnd of history\nThis terminal is read-only. Select text to copy it."
         }
       }
     },
     {
       "cell": "quit with a live surface",
       "reading": {
-        "surface": "con:4:-_4k5trhsb-IPI6WMghBMQ",
+        "surface": "con:5:e_amNUDlEXQljz0qvbtxMg",
         "sidecar": {
-          "surface": "con:4:-_4k5trhsb-IPI6WMghBMQ",
-          "session_id": "f4010517e337",
+          "surface": "con:5:e_amNUDlEXQljz0qvbtxMg",
+          "session_id": "9875e01b8cc4",
           "origin": "user",
           "command": "zsh",
           "argv": [],
-          "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-ended-9734/home",
+          "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-ended-40087/home",
           "cols": 74,
           "rows": 46,
-          "created_at": 1792640885.726,
-          "last_seen_at": 1792640888.277,
+          "created_at": 1792663115.133,
+          "last_seen_at": 1792663120.404,
           "exit_code": 1,
+          "exit_signal": null,
           "end_reason": null,
           "truncated": false,
           "exit_epoch": 1,
@@ -445,18 +514,19 @@
       "cell": "relaunch, restored surface selected",
       "reading": {
         "restored": {
-          "surface": "con:4:-_4k5trhsb-IPI6WMghBMQ",
-          "session_id": "f4010517e337",
+          "surface": "con:5:e_amNUDlEXQljz0qvbtxMg",
+          "session_id": "9875e01b8cc4",
           "origin": "user",
           "command": "zsh",
           "argv_tail": "",
-          "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-ended-9734/home",
+          "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-ended-40087/home",
           "cols": 74,
           "rows": 46,
           "running": false,
           "exit_code": 1,
+          "exit_signal": null,
           "end_reason": null,
-          "last_activity": 1792640888.277,
+          "last_activity": 1792663120.404,
           "live": false,
           "agent_owned": false,
           "last_actor": null,
@@ -467,17 +537,18 @@
           "last_mark": null
         },
         "sidecar": {
-          "surface": "con:4:-_4k5trhsb-IPI6WMghBMQ",
-          "session_id": "f4010517e337",
+          "surface": "con:5:e_amNUDlEXQljz0qvbtxMg",
+          "session_id": "9875e01b8cc4",
           "origin": "user",
           "command": "zsh",
           "argv": [],
-          "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-ended-9734/home",
+          "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-ended-40087/home",
           "cols": 74,
           "rows": 46,
-          "created_at": 1792640885.726,
-          "last_seen_at": 1792640888.277,
+          "created_at": 1792663115.133,
+          "last_seen_at": 1792663120.404,
           "exit_code": 1,
+          "exit_signal": null,
           "end_reason": null,
           "truncated": false,
           "exit_epoch": 1,
@@ -507,27 +578,32 @@
           },
           "tabs": [
             {
-              "text": "zsh\n1",
+              "text": "zsh\nexit 1",
               "selected": "true",
-              "surface": "con:4:-_4k5trhsb-IPI6WMghBMQ"
+              "surface": "con:5:e_amNUDlEXQljz0qvbtxMg"
             },
             {
-              "text": "zsh\n1",
+              "text": "zsh\nSIGKILL",
               "selected": "false",
-              "surface": "con:3:92ciWl2lPOiiKcS-LTP6sg"
+              "surface": "con:4:snB9WT9hf3gy7Dj9K9V1HA"
             },
             {
-              "text": "zsh\n1",
+              "text": "zsh\nexit 1",
               "selected": "false",
-              "surface": "con:2:VGNwSGqnxrn0PYhd-iSY9Q"
+              "surface": "con:3:qXqfwyFIyQfrTJwkQcX5TA"
             },
             {
-              "text": "zsh\n1",
+              "text": "zsh\nexit 1",
               "selected": "false",
-              "surface": "con:1:6Z9JLhrI_jIzKWDcW3tcJg"
+              "surface": "con:2:eKvHePJPOhX786a9K9Q8Eg"
+            },
+            {
+              "text": "zsh\nexit 1",
+              "selected": "false",
+              "surface": "con:1:F9C_NJczr2aXsKuWWSWXJw"
             }
           ],
-          "paneText": "Console\nzsh\n0 live of 128 in the app · 4 kept\nzsh\n1\nzsh\n1\nzsh\n1\nzsh\n1\nThis terminal has ended and its history was restored\nexit code 1\ndamian@damians-MacBook-Pro ~ %  \nEnd of history\nThis terminal is read-only. Select text to copy it."
+          "paneText": "Console\nzsh\n0 live of 128 in the app · 5 kept\nzsh\nexit 1\nzsh\nSIGKILL\nzsh\nexit 1\nzsh\nexit 1\nzsh\nexit 1\nThis terminal has ended and its history was restored\nexit code 1\ndamian@damians-MacBook-Pro ~ %  \nEnd of history\nThis terminal is read-only. Select text to copy it."
         }
       }
     }
@@ -535,66 +611,87 @@
   "frames": [
     {
       "name": "live-opened",
-      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after/live-opened.png",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-final/live-opened.png",
       "width": 2760,
       "height": 1800,
-      "bytes": 573603
+      "bytes": 576261
     },
     {
       "name": "ended-pane-open",
-      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after/ended-pane-open.png",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-final/ended-pane-open.png",
       "width": 2760,
       "height": 1800,
-      "bytes": 594355
-    },
-    {
-      "name": "ended-key",
-      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after/ended-key.png",
-      "width": 2760,
-      "height": 1800,
-      "bytes": 607327
+      "bytes": 598182
     },
     {
       "name": "rail-zero-live",
-      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after/rail-zero-live.png",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-final/rail-zero-live.png",
       "width": 2760,
       "height": 1800,
-      "bytes": 607327
+      "bytes": 598182
+    },
+    {
+      "name": "history-focused",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-final/history-focused.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 598182
+    },
+    {
+      "name": "ended-key",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-final/ended-key.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 611214
     },
     {
       "name": "reopen-nothing-live",
-      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after/reopen-nothing-live.png",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-final/reopen-nothing-live.png",
       "width": 2760,
       "height": 1800,
-      "bytes": 574708
+      "bytes": 578721
     },
     {
       "name": "one-live-one-ended",
-      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after/one-live-one-ended.png",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-final/one-live-one-ended.png",
       "width": 2760,
       "height": 1800,
-      "bytes": 574708
+      "bytes": 578721
     },
     {
-      "name": "two-ended-open",
-      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after/two-ended-open.png",
+      "name": "all-ended-open",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-final/all-ended-open.png",
       "width": 2760,
       "height": 1800,
-      "bytes": 576353
+      "bytes": 579735
+    },
+    {
+      "name": "rail-unread-dot",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-final/rail-unread-dot.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 561533
     },
     {
       "name": "ended-row-looked-at",
-      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after/ended-row-looked-at.png",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-final/ended-row-looked-at.png",
       "width": 2760,
       "height": 1800,
-      "bytes": 598417
+      "bytes": 604600
+    },
+    {
+      "name": "history-glyph-cursor",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-final/history-glyph-cursor.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 628495
     },
     {
       "name": "relaunch-restored",
-      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after/relaunch-restored.png",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-after-final/relaunch-restored.png",
       "width": 2760,
       "height": 1800,
-      "bytes": 603175
+      "bytes": 608718
     }
   ]
 }
