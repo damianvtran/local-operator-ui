@@ -314,6 +314,11 @@ plan(
 	"driven",
 );
 plan(
+	"R2",
+	"rest: the strip→page band is 0px with nothing in it, and the #1263 dock is absent from the DOM",
+	"driven",
+);
+plan(
 	"P1",
 	"Cmd+L raises the popout over the strip at the strip's width",
 	"driven",
@@ -535,9 +540,63 @@ try {
 			pageCdp,
 			"({ scrollY: window.scrollY, innerHeight: window.innerHeight, markerY: window.__s4b.markerY() })",
 		);
+	// THE REST BAND, measured rather than inferred from what is visible. The page
+	// is a native view that paints above all DOM, so a bar could sit behind it and
+	// every frame would still look flush; "no bar visible" is not the LOH-13
+	// claim. The claim is geometric and DOM-level: the strip's bottom edge IS the
+	// page's top edge (band 0px) and no element occupies the gap. The scan walks
+	// every element instead of naming tags, because the regression it guards is a
+	// future element added to the band and a tag list would have to know its name.
+	// An occupant must be BOUNDED BY BOTH EDGES: its whole vertical extent lies
+	// between them. A full-height layout frame or the pane's own resize handle
+	// passes through the seam without being bounded by either edge, so neither is
+	// an occupant — whereas the #1263 104px dock was an in-flow sibling exactly
+	// between them, which is the failure this predicate reproduces if it returns.
+	// Its selector is an identity check too, and `=== null` is the point: a
+	// zero-height or `display:none` element would still be in the tree.
+	const bandFacts = () =>
+		evaluate(
+			cdp,
+			`(() => {
+				const strip = document.querySelector('[data-tour-tag="browser-tab-strip"]');
+				const content = document.querySelector('[data-tour-tag="browser-content"]');
+				const dockSelector = '[data-address-dock-height]';
+				if (!strip || !content) {
+					return { stripBottom: null, pageTop: null, stripHeight: null, bandPx: null, intruders: [], dockPresentAtRest: null, dockSelector };
+				}
+				const s = strip.getBoundingClientRect();
+				const c = content.getBoundingClientRect();
+				const stripBottom = Math.round(s.bottom);
+				const pageTop = Math.round(c.top);
+				const intruders = [];
+				for (const el of document.querySelectorAll('*')) {
+					const r = el.getBoundingClientRect();
+					if (r.height === 0) continue;
+					if (r.top < stripBottom - 0.5 || r.bottom > pageTop + 0.5) continue;
+					if (r.right <= s.left || r.left >= s.right) continue;
+					intruders.push({
+						tag: el.tagName.toLowerCase(),
+						className: typeof el.className === 'string' ? el.className.slice(0, 120) : '',
+						height: Math.round(r.height),
+						top: Math.round(r.top),
+						bottom: Math.round(r.bottom),
+					});
+				}
+				return {
+					stripBottom,
+					pageTop,
+					stripHeight: Math.round(s.height),
+					bandPx: Math.max(0, pageTop - stripBottom),
+					intruders,
+					dockPresentAtRest: document.querySelector(dockSelector) !== null,
+					dockSelector,
+				};
+			})()`,
+		);
 
 	const rest = await measure();
 	const restPage = await pageFacts();
+	const restBand = await bandFacts();
 	const FRAMES = join(OUT, "frames");
 	mkdirSync(FRAMES, { recursive: true });
 	const shot = async (target) => {
@@ -558,6 +617,17 @@ try {
 			? "PASS"
 			: "FAIL",
 		{ rest, restPage },
+	);
+	record(
+		"R2",
+		restBand.bandPx === 0 &&
+			restBand.stripHeight === 37 &&
+			restBand.pageTop === restBand.stripBottom &&
+			restBand.intruders.length === 0 &&
+			restBand.dockPresentAtRest === false
+			? "PASS"
+			: "FAIL",
+		restBand,
 	);
 
 	const sendKey = (type, key, code, modifiers = 0) =>
@@ -1392,6 +1462,14 @@ try {
 		identity,
 		rest,
 		restPage,
+		// The rest-band assertion, flattened so a reader of facts.json finds the
+		// numbers under the names R2's claim uses, not inside a nested blob.
+		restBandPx: restBand.bandPx,
+		stripBottom: restBand.stripBottom,
+		pageTop: restBand.pageTop,
+		stripHeight: restBand.stripHeight,
+		restBandIntruders: restBand.intruders,
+		dockPresentAtRest: restBand.dockPresentAtRest,
 		open,
 		openPage,
 		after,

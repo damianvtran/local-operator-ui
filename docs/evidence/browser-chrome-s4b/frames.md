@@ -22,11 +22,39 @@ reviewable from the repository alone.
   `9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046`, renderer
   `39b404c1214a203dd105501e833bcf32ab258610ed1351c2324e3c6188730d27`, list
   document `9c8bf7a57794c54e528aebad72f3b1eba8e226bc76c1eb889531b4a2b096e57e`
-- Head under test: the round-2 remediation commit on `feat/browser-chrome-s4b`
-  (this directory's `matrix.md` was written by that run; see the PR for the SHA)
+- Head under test: product head `87b2eb12b5` (the round-2 remediation commit
+  on `feat/browser-chrome-s4b`). The R2 evidence commit on top of it changes
+  only the probe and this directory; `build-identity.json` is byte-identical to
+  the design-round-2 run, so the measured app is the same build.
 - Re-captured for design round 2: `owner-rest.png` and `trigger-hover.png`
   (D11's neutral globe is visible for `127.0.0.1:<port>`), `tabs-fill.png` and
   `narrow.png` (D10's separator no longer touches the overflow chip)
+
+## Rest-band run (R2)
+
+The R2 assertion was measured in a fresh scratchpad,
+`$LOCAL_OPERATOR_SCRATCHPAD/s4b-r2-restband-evidence`. `facts.json` and
+`matrix.md` beside this file are that run's; its `owner-rest.png` (sha256
+`54d8d65d925fed694637066019800199d99733c889cd2e6bbbb81b5b904210b8`) shows the
+page flush under the strip.
+
+- `stripHeight`: 37 (strip 1120×37 at x=260, y=32)
+- `stripBottom`: 69, `pageTop`: 69 → **`restBandPx`: 0**
+- `restBandIntruders`: `[]` — every element with a non-zero height whose own
+  box is bounded by both edges was enumerated. The set is empty because the
+  band itself is 0px: there is no between-space for an element to occupy. An
+  element that merely crosses the seam (the pane's full-height resize handle,
+  or a layout frame enclosing both edges) is bounded by neither edge and is
+  not an occupant; the #1263 104px dock was bounded by both, so this predicate
+  is the one that reproduces its failure if it returns.
+- `dockPresentAtRest`: `false` —
+  `document.querySelector("[data-address-dock-height]") === null`. The #1263
+  104px dock is absent from the DOM tree, not hidden with `display:none` and
+  not collapsed to zero height.
+
+The hash table below remains the design-round-2 capture (its frames were
+written to that run's scratchpad); the R2 run's rest-frame hash is recorded
+above so the two runs cannot be confused.
 
 ## Frames and hashes
 
