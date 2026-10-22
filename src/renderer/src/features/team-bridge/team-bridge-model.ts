@@ -80,11 +80,12 @@ export function conversationTitle(
 	if (conversation.kind === "dm") {
 		const other =
 			others.find((member) => member.state === "active") ?? others[0];
-		return other?.display_label ?? null;
+		return other ? storedLabel(other.display_label) : null;
 	}
 	const labels = others
 		.filter((member) => member.state === "active")
-		.map((member) => member.display_label);
+		.map((member) => storedLabel(member.display_label))
+		.filter((label): label is string => label !== null);
 	if (labels.length === 0) return null;
 	if (labels.length <= 3) return labels.join(", ");
 	return `${labels.slice(0, 2).join(", ")} +${labels.length - 2}`;
@@ -886,15 +887,50 @@ export function draftCreateInput(recipients: readonly TeamBridgeRecipient[]): {
 }
 
 /**
- * The name to paint for a participant or message sender.
+ * The placeholder the hub stored as a member's label before it knew a name.
  *
- * WHY THE DIRECTORY WINS. A conversation stores each member's label at add
- * time, and the hub used to store the creator as the placeholder "Member" (the
- * operator saw their own message signed "Member"). The directory is the live
- * account name, so a person's name is looked up there first; the stored label
- * is the fallback for someone no longer in the directory. An agent is named
- * "{agent} ({person})" with its CURRENT name when the directory publishes one.
- * `chiefLabel` is injected because the composition is a catalogue string.
+ * WHY IT IS TREATED AS NO LABEL. agent-server's bridge membership writer used
+ * the literal "Member" as its fallback `display_label` for a conversation's
+ * creator and for self-joins (fixed for NEW rows by agent-server #166). Rows
+ * written before that fix are still in production, and rendered as-is they put
+ * "Member" — and an "M" avatar — on every message whose sender the directory
+ * does not resolve, the reader's own messages included (operator report,
+ * 2026-10-22). It reads as a real name, so it is worse than no name.
+ *
+ * Exact and case-sensitive on purpose: it matches the server's one fallback
+ * string, never a label somebody chose ("member", "Members' rep").
+ */
+export const LEGACY_PLACEHOLDER_LABEL = "Member";
+
+/** A stored label, or null when it is blank or the legacy placeholder. */
+export function storedLabel(label: string): string | null {
+	const trimmed = label.trim();
+	return trimmed === "" || trimmed === LEGACY_PLACEHOLDER_LABEL
+		? null
+		: trimmed;
+}
+
+/** The signed-in reader, when the account read has answered with a name. */
+export type TeamBridgeSelf = { accountId: string; name: string };
+
+/**
+ * The name to paint for a participant or message sender, or null when none is
+ * known.
+ *
+ * ORDER. The directory first: it is the live account name, and a conversation
+ * stores each member's label only at add time. Then, for the reader's own human
+ * messages, the signed-in identity (`self`): the directory may not list the
+ * reader, and the merged view may have no directory for the thread's
+ * organization yet, but the reader's own name is always known locally. The
+ * stored label last, for someone no longer in the directory, unless it is the
+ * legacy placeholder (`storedLabel`). An agent is named "{agent} ({person})"
+ * with its CURRENT name when the directory publishes one; the reader's own
+ * agent is not the reader, so `self` never names an agent.
+ *
+ * NULL IS THE CALLER'S TO PAINT. The caller renders an "Unknown person" /
+ * "Unknown agent" placeholder that is visibly not a name: inventing one here
+ * is how "Member" reached the screen. `chiefLabel` is injected because the
+ * composition is a catalogue string.
  */
 export function participantLabel(
 	participant: {
@@ -904,15 +940,22 @@ export function participantLabel(
 	},
 	people: readonly TeamBridgeDirectoryMember[],
 	chiefLabel: (agent: string, person: string) => string,
-): string {
+	self?: TeamBridgeSelf | null,
+): string | null {
 	const person = people.find(
 		(row) => row.account_id === participant.account_id,
 	);
 	const personName = person ? personDisplayLabel(person) : null;
+	const stored = storedLabel(participant.display_label);
 	if (participant.kind === "human") {
-		return personName ?? participant.display_label;
+		const selfName =
+			self && self.accountId === participant.account_id
+				? self.name.trim() || null
+				: null;
+		return personName ?? selfName ?? stored;
 	}
-	const agentName = person?.agent?.name.trim() || participant.display_label;
+	const agentName = person?.agent?.name.trim() || stored;
+	if (!agentName) return null;
 	return personName ? chiefLabel(agentName, personName) : agentName;
 }
 

@@ -3,6 +3,7 @@ import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { formatRelativeTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -67,6 +68,7 @@ import {
 	useSendTeamBridgeMessage,
 	useSetTeamBridgeNotify,
 	useTeamBridgeConversations,
+	useTeamBridgeDirectories,
 	useTeamBridgeDirectory,
 	useTeamBridgeMessages,
 	useTeamBridgeStatus,
@@ -297,6 +299,17 @@ export type TeamBridgePageViewProps = {
 	initialDraft?: string;
 	/** The organization's directory: People and Chiefs of staff both read it. */
 	people?: readonly TeamBridgeDirectoryMember[];
+	/**
+	 * The merged view's per-organization rosters, keyed by tenant, used ONLY to
+	 * name senders and DM rows (`people` is empty there: no single roster to
+	 * list). A tenant whose read has not answered is absent.
+	 */
+	directories?: Readonly<Record<string, readonly TeamBridgeDirectoryMember[]>>;
+	/**
+	 * The signed-in reader's account name, so their own messages are named even
+	 * when no directory lists them (merged view, directory loading or failed).
+	 */
+	selfName?: string;
 	peopleState?: "loading" | "error" | "ready";
 	peopleError?: unknown;
 	peopleIncomplete?: boolean;
@@ -339,6 +352,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	defaultMenuOpen = false,
 	initialDraft = "",
 	people = [],
+	directories,
+	selfName,
 	peopleState = "ready",
 	peopleError,
 	peopleIncomplete = false,
@@ -369,11 +384,38 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	);
 	const chiefLabel = (agent: string, person: string) =>
 		t("ui.teamBridge.chief.label", { agent, person });
-	const labelFor = (participant: {
-		account_id: string;
-		kind: "human" | "agent";
-		display_label: string;
-	}) => participantLabel(participant, people, chiefLabel);
+	const self = useMemo(
+		() =>
+			selfAccountId && selfName?.trim()
+				? { accountId: selfAccountId, name: selfName }
+				: null,
+		[selfAccountId, selfName],
+	);
+	/*
+	 * Which roster names a participant: the organization's own in a single-org
+	 * scope, and in the merged view the roster of the conversation's own
+	 * organization (an account id is only meaningful inside its tenant).
+	 */
+	const rosterFor = (tenantId: string) =>
+		mergedView ? (directories?.[tenantId] ?? []) : people;
+	const labelFor = (
+		participant: {
+			account_id: string;
+			kind: "human" | "agent";
+			display_label: string;
+		},
+		tenantId: string,
+	) => participantLabel(participant, rosterFor(tenantId), chiefLabel, self);
+	/* A title has no "Unknown person" styling to lean on, so an unnamed peer
+	   keeps the same visibly-placeholder wording the thread uses. */
+	const titleFor = (
+		participant: Parameters<typeof labelFor>[0],
+		tenantId: string,
+	) =>
+		labelFor(participant, tenantId) ??
+		(participant.kind === "agent"
+			? t("ui.teamBridge.sender.unknown_agent")
+			: t("ui.teamBridge.sender.unknown_person"));
 	// The single-org rail paints DMs on People / Chiefs rows; only a DM no row
 	// owns is listed on its own. The merged view has no directory, so every DM
 	// is listed there.
@@ -411,7 +453,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							member.state !== "removed" &&
 							!(member.kind === "human" && member.account_id === selfAccountId),
 					);
-					return other ? labelFor(other) : t("ui.teamBridge.list.untitled");
+					return other
+						? titleFor(other, selected.tenant_id)
+						: t("ui.teamBridge.list.untitled");
 				})()
 			: (conversationTitle(selected, selfAccountId) ??
 				t("ui.teamBridge.list.untitled"))
@@ -505,7 +549,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 												member.account_id === selfAccountId
 											),
 									);
-									return other ? labelFor(other) : undefined;
+									return other
+										? titleFor(other, conversation.tenant_id)
+										: undefined;
 								})()
 							: undefined
 					}
@@ -944,7 +990,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								) : (
 									<TeamBridgeMessageList
 										messages={messages}
-										labelFor={(sender) => labelFor(sender)}
+										labelFor={(sender) =>
+											labelFor(sender, shown?.tenant_id ?? "")
+										}
 									/>
 								)}
 							</div>
@@ -1148,8 +1196,19 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		scope === TEAM_BRIDGE_ALL_SCOPE ? null : scope,
 		readsEnabled,
 	);
-	const conversations = list.data?.conversations ?? [];
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
+	// Names only (see `useTeamBridgeDirectories`): the merged view lists no
+	// roster, but its threads and DM rows still need their senders named.
+	const directories = useTeamBridgeDirectories(
+		mergedView
+			? organizations.map((organization) => organization.tenantId)
+			: [],
+		readsEnabled,
+	);
+	// The reader's own name for their own messages; `user` is null until the
+	// account read answers, never the user store's placeholder name.
+	const selfName = useRadientAuth().user?.name ?? undefined;
+	const conversations = list.data?.conversations ?? [];
 	const people = directory.data?.members ?? [];
 	// The channel form offers the same people and chiefs of staff as the To: bar.
 	const channelCandidates = recipientCandidates(
@@ -1433,6 +1492,8 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 					setChannelFormOpen(true);
 				}}
 				people={people}
+				directories={directories}
+				selfName={selfName}
 				peopleState={
 					directory.isPending
 						? "loading"

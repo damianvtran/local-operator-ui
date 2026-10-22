@@ -934,3 +934,88 @@ export const EmptySections: Story = {
 		messageState: "idle",
 	},
 };
+
+/*
+ * THE LEGACY "Member" LABEL (operator report, 2026-10-22). Production rows
+ * written before agent-server #166 carry the hub's placeholder "Member" as the
+ * stored label for creators and self-joins. These boards hold every sender at
+ * that label: the reader (resolved from the signed-in identity, since this
+ * roster leaves them out), Ben (resolved from the directory) and a member who
+ * left (in no directory: rendered as an unknown person with a neutral glyph).
+ */
+const legacyGroup: TeamBridgeConversation = {
+	...dm,
+	id: "bcv_grp_legacy",
+	kind: "group",
+	name: "release-ops",
+	unread_count: 0,
+	last_read_seq: 3,
+	latest_seq: 3,
+	last_message_at: at(4),
+	members: [
+		{
+			account_id: self,
+			kind: "human",
+			display_label: "Member",
+			role: "owner",
+			state: "active",
+		},
+		{
+			account_id: "acct_ben",
+			kind: "human",
+			display_label: "Member",
+			role: "member",
+			state: "active",
+		},
+		{
+			account_id: "acct_departed",
+			kind: "human",
+			display_label: "Member",
+			role: "member",
+			state: "removed",
+		},
+	],
+};
+
+const legacyThread: TeamBridgeMessage[] = [
+	["acct_ben", "Cutting the 0.42 release branch now.", 30],
+	[self, "Thanks. I'll take the changelog.", 20],
+	["acct_departed", "Handing my open tickets over before I go.", 12],
+	[self, "Got them, thank you.", 4],
+].map(([accountId, body, minutesAgo], index) => ({
+	id: `bcmsg_legacy_${index + 1}`,
+	conversation_id: legacyGroup.id,
+	seq: index + 1,
+	sender: {
+		account_id: accountId as string,
+		kind: "human" as const,
+		display_label: "Member",
+	},
+	body: body as string,
+	origin: "human" as const,
+	created_at: at(minutesAgo as number),
+}));
+
+/** Every stored label is "Member": names come from directory and identity. */
+export const LegacyMemberLabels: Story = {
+	args: {
+		conversations: [humansChannel, legacyGroup],
+		// The roster leaves the reader out, as a self-excluding directory does.
+		people: rosterWithChiefs.slice(1),
+		organizations: [minervaOrganization],
+		scope: minervaOrganization.tenantId,
+		selfName: "Damian Tran",
+		target: { type: "conversation", id: legacyGroup.id },
+		messages: legacyThread,
+	},
+};
+
+/** The same thread in the merged view, named from its organization's roster. */
+export const LegacyMemberLabelsAllOrganizations: Story = {
+	args: {
+		...LegacyMemberLabels.args,
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		people: [],
+		directories: { [minervaOrganization.tenantId]: rosterWithChiefs.slice(1) },
+	},
+};
