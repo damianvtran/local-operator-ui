@@ -539,14 +539,37 @@ test("an ordinary clean update does not clear the banner; a rollover does", asyn
 	assert.equal(view().liveUpdatesNotice, "none");
 });
 
-test("a same-epoch full-state update clears an update-origin notice", async () => {
-	const view = await mount([degradedFrame(3, 2), fullStateFrame(4, 3)]);
+test("a same-epoch full-state update at the SAME sequence clears the notice", async () => {
+	/*
+	 * The producer's actual re-seat: `replace_and_notify` republishes the whole
+	 * state at `state.sequence` - the sequence the degraded delta already
+	 * consumed - so a strictly-newer gate would drop the one frame that repairs
+	 * the view. Only the full-state shape may reuse a sequence.
+	 */
+	const view = await mount([degradedFrame(3, 2), fullStateFrame(4, 2)]);
+	assert.equal(
+		view().frontend.cwd,
+		"/repo",
+		"the full state folded; its cwd is the applied one",
+	);
+	assert.equal(view().frontend.sequence, 2, "the sequence did not advance");
 	assert.equal(
 		view().liveUpdatesPaused,
 		false,
-		"replace_and_notify restores the shed body without a new epoch",
+		"replace_and_notify restores the shed body at the sequence already held",
 	);
 	assert.equal(view().liveUpdatesNotice, "none");
+});
+
+test("an ordinary delta at an equal sequence is still rejected", async () => {
+	const view = await mount([]);
+	deliver(updateFrame(3, 1, { cwd: "/replayed" }));
+	await pump();
+	assert.equal(
+		view().frontend.cwd,
+		"/repo",
+		"a replay must not double-apply a delta",
+	);
 });
 
 test("an event-origin notice outlives ticks and a rollover, and clears on a snapshot", async () => {

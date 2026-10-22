@@ -4862,10 +4862,23 @@ export function useCanonicalSessionStream(
 						const rollover =
 							update.epoch !== next.ownerEpoch &&
 							changes.epoch === update.epoch;
+						/*
+						 * THE FULL-STATE SHAPE, read before the sequence gate. `changes`
+						 * carrying the epoch is what `replace_and_notify` publishes - the
+						 * backend's own shed-body re-seat - and it reuses the sequence the
+						 * degraded delta already consumed. Strictly-newer alone therefore
+						 * DROPS the one frame that repairs a degraded view, so a
+						 * same-sequence update is accepted only in this shape; an ordinary
+						 * delta at an equal sequence is still rejected as a replay (code
+						 * review round 3, MAJOR-1a).
+						 */
+						const fullState =
+							update.changes !== undefined && changes.epoch === update.epoch;
 						if (
 							rollover ||
 							(update.epoch === next.ownerEpoch &&
-								next.frontend.sequence < update.sequence)
+								(next.frontend.sequence < update.sequence ||
+									(next.frontend.sequence === update.sequence && fullState)))
 						) {
 							// Field deltas, not a full repaint: spread only the changed
 							// keys over the current state.
@@ -4931,10 +4944,11 @@ export function useCanonicalSessionStream(
 							 * carry rows, so not even a rollover proves the transcript whole;
 							 * only a snapshot or an accepted replacement may clear it.
 							 */
-							const fullState =
+							if (
+								fullState &&
 								next.liveUpdatesNotice === "update" &&
-								changes.epoch === update.epoch;
-							if (fullState && next.liveUpdatesPaused)
+								next.liveUpdatesPaused
+							)
 								next = {
 									...next,
 									liveUpdatesPaused: false,

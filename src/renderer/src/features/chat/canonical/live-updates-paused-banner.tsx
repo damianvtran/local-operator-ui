@@ -23,13 +23,13 @@
  * conversation is still there and the control repaints it; `danger` is reserved
  * for the failure notice that says the conversation cannot be read at all.
  *
- * THE GUTTER BELONGS TO THE HOST. `chat-content` mounts this inside
- * `CHAT_COLUMN_CONTAINER` + `CHAT_COLUMN_INSET` + `CHAT_MEASURE`, the same
- * column contract as the blocking dock and the composer. The band therefore
- * carries no horizontal padding and no width of its own: at 1400px it resolves
- * to the composer's 810px track, and at 700px to the same 24px inset. A second
- * `px-6` here stacked to 48px against the composer's 24px (design round 1, D1)
- * - the exact double-edge the shared measure exists to remove.
+ * THE COLUMN CONTRACT IS TWO ELEMENTS, like `QuestionDock`. The host
+ * (`chat-content`) carries `CHAT_COLUMN_CONTAINER` + `CHAT_COLUMN_INSET`; the
+ * BAND carries `CHAT_MEASURE`, handed in through `className`. That is what makes
+ * the Alert span the composer's full 810px: putting the measure and the inset on
+ * one element charged the 24px gutter to the measure (810 - 48 = 762px), so the
+ * band sat 24px inside the composer at every wide column (design round 2, D1).
+ * The root carries no horizontal padding of its own.
  *
  * COPY. "Paused" is the transport's own word in the notice's vocabulary and the
  * sentence names the consequence (the view may be out of date) rather than the
