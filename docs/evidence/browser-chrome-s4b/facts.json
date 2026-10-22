@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-10-22T03:29:50.598Z",
-  "durationMs": 37638,
+  "generatedAt": "2026-10-22T04:03:53.340Z",
+  "durationMs": 51412,
   "source": "node scripts/browser-chrome-s4b-probe.mjs",
   "identity": {
     "main": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046",
-    "renderer": "39b404c1214a203dd105501e833bcf32ab258610ed1351c2324e3c6188730d27",
+    "renderer": "ba906a7e42fd8805f611c310be5219f1dfa39c9c55033e5e89f0872c88f9ee1f",
     "listDocument": "9c8bf7a57794c54e528aebad72f3b1eba8e226bc76c1eb889531b4a2b096e57e"
   },
   "rest": {
@@ -25,8 +25,8 @@
     "dockCount": 0,
     "popoutPresent": false,
     "addressTrigger": true,
-    "triggerText": "127.0.0.1:64934",
-    "triggerWidth": 124,
+    "triggerText": "127.0.0.1:58807",
+    "triggerWidth": 123,
     "hash": "#/browser"
   },
   "restPage": {
@@ -63,8 +63,8 @@
     "dockCount": 0,
     "popoutPresent": true,
     "addressTrigger": true,
-    "triggerText": "127.0.0.1:64934",
-    "triggerWidth": 124,
+    "triggerText": "127.0.0.1:58807",
+    "triggerWidth": 123,
     "hash": "#/browser"
   },
   "openPage": {
@@ -90,8 +90,8 @@
     "dockCount": 0,
     "popoutPresent": false,
     "addressTrigger": true,
-    "triggerText": "127.0.0.1:64934",
-    "triggerWidth": 124,
+    "triggerText": "127.0.0.1:58807",
+    "triggerWidth": 123,
     "hash": "#/browser"
   },
   "afterPage": {
@@ -136,35 +136,35 @@
       "portal": true,
       "popout": true,
       "activeElement": "DIV",
-      "value": "127.0.0.1:64934/fixture"
+      "value": "127.0.0.1:58807/fixture"
     },
     "addressItem": {
       "menu": null,
       "portal": false,
       "popout": true,
       "activeElement": "browser-address",
-      "value": "127.0.0.1:64934/fixture"
+      "value": "127.0.0.1:58807/fixture"
     },
     "listRows": {
       "candidates": 2,
-      "active": ":r69:-option-0",
+      "active": ":r60:-option-0",
       "options": 2
     },
     "noMatch": {
       "candidates": 0,
-      "notice": ":r69:-notice",
+      "notice": ":r60:-notice",
       "body": "No matching links from this browser session."
     },
     "loading": {
       "loading": true,
-      "url": "http://127.0.0.1:64934/alto",
+      "url": "http://127.0.0.1:58807/alto",
       "activeTabId": 3
     },
     "loadFailure": {
       "navFailure": {
         "code": -102,
         "description": "ERR_CONNECTION_REFUSED",
-        "url": "http://127.0.0.1:65056/"
+        "url": "http://127.0.0.1:59121/"
       },
       "panel": true,
       "body": null
@@ -173,7 +173,15 @@
       "strip": 504,
       "trigger": 28,
       "text": "",
-      "label": "Address — 127.0.0.1:64934"
+      "label": "Address — 127.0.0.1:58807"
+    },
+    "narrowGap": {
+      "present": true,
+      "chipRight": 438,
+      "ruleLeft": 447,
+      "gapPx": 9,
+      "buttonRight": 431,
+      "chipOverflowPx": 7
     },
     "lightTheme": {
       "theme": "localOperatorLight",
@@ -183,7 +191,7 @@
     },
     "triggerHover": {
       "hover": true,
-      "width": 124
+      "width": 123
     },
     "triggerFocus": {
       "focused": true,
@@ -195,6 +203,14 @@
       "tabsOffScreen": "3",
       "triggerRight": 1308,
       "stripRight": 1380
+    },
+    "filledGap": {
+      "present": true,
+      "chipRight": 1258,
+      "ruleLeft": 1267,
+      "gapPx": 9,
+      "buttonRight": 1251,
+      "chipOverflowPx": 7
     }
   },
   "rows": [
@@ -203,16 +219,16 @@
       "claim": "built artifacts exist and the product logs the darwin chrome arm",
       "mode": "source+boot",
       "status": "PASS",
-      "evidence": "{\"armed\":true,\"identity\":{\"main\":\"9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046\",\"renderer\":\"39b404c1214a203dd105501e833bcf32ab258610ed1351c2324e3c6188730d27\",\"listDocument\":\"9c8bf7a57794c54e528aebad72f3b1eba8e226bc76c1eb889531b4a2b096e57e\"}}",
-      "at": "2026-10-22T03:29:16.133Z"
+      "evidence": "{\"armed\":true,\"identity\":{\"main\":\"9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046\",\"renderer\":\"ba906a7e42fd8805f611c310be5219f1dfa39c9c55033e5e89f0872c88f9ee1f\",\"listDocument\":\"9c8bf7a57794c54e528aebad72f3b1eba8e226bc76c1eb889531b4a2b096e57e\"}}",
+      "at": "2026-10-22T04:03:10.851Z"
     },
     {
       "id": "R1",
       "claim": "rest: no bar, no dock, no popout; page starts at the strip's bottom",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"rest\":{\"content\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"strip\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"popout\":null,\"barCount\":0,\"dockCount\":0,\"popoutPresent\":false,\"addressTrigger\":true,\"triggerText\":\"127.0.0.1:64934\",\"triggerWidth\":124,\"hash\":\"#/browser\"},\"restPage\":{\"scrollY\":1200,\"innerHeight\":831,\"markerY\":300}}",
-      "at": "2026-10-22T03:29:19.432Z"
+      "evidence": "{\"rest\":{\"content\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"strip\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"popout\":null,\"barCount\":0,\"dockCount\":0,\"popoutPresent\":false,\"addressTrigger\":true,\"triggerText\":\"127.0.0.1:58807\",\"triggerWidth\":123,\"hash\":\"#/browser\"},\"restPage\":{\"scrollY\":1200,\"innerHeight\":831,\"markerY\":300}}",
+      "at": "2026-10-22T04:03:15.359Z"
     },
     {
       "id": "R2",
@@ -220,15 +236,15 @@
       "mode": "driven",
       "status": "PASS",
       "evidence": "{\"stripBottom\":69,\"pageTop\":69,\"stripHeight\":37,\"bandPx\":0,\"intruders\":[],\"dockPresentAtRest\":false,\"dockSelector\":\"[data-address-dock-height]\"}",
-      "at": "2026-10-22T03:29:19.432Z"
+      "at": "2026-10-22T04:03:15.360Z"
     },
     {
       "id": "P1",
       "claim": "Cmd+L raises the popout over the strip at the strip's width",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"raised\":true,\"open\":{\"content\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"strip\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"popout\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"barCount\":1,\"dockCount\":0,\"popoutPresent\":true,\"addressTrigger\":true,\"triggerText\":\"127.0.0.1:64934\",\"triggerWidth\":124,\"hash\":\"#/browser\"}}",
-      "at": "2026-10-22T03:29:20.009Z"
+      "evidence": "{\"raised\":true,\"open\":{\"content\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"strip\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"popout\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"barCount\":1,\"dockCount\":0,\"popoutPresent\":true,\"addressTrigger\":true,\"triggerText\":\"127.0.0.1:58807\",\"triggerWidth\":123,\"hash\":\"#/browser\"}}",
+      "at": "2026-10-22T04:03:16.179Z"
     },
     {
       "id": "P2",
@@ -236,7 +252,7 @@
       "mode": "driven",
       "status": "PASS",
       "evidence": "{\"restContent\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"openContent\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"restPage\":{\"scrollY\":1200,\"innerHeight\":831,\"markerY\":300},\"openPage\":{\"scrollY\":1200,\"innerHeight\":831,\"markerY\":300}}",
-      "at": "2026-10-22T03:29:20.010Z"
+      "at": "2026-10-22T04:03:16.180Z"
     },
     {
       "id": "P3",
@@ -244,15 +260,15 @@
       "mode": "driven",
       "status": "PASS",
       "evidence": "{\"childTarget\":{\"type\":\"page\",\"url\":\"file:///Users/damian/local-operator-ui/.worktrees/browser-chrome-s4b/out/renderer/browser-address-overlay-list.html\"},\"childViewport\":{\"innerWidth\":1120,\"innerHeight\":69},\"stripWidth\":1120,\"note\":\"child viewport read, not WebContentsView.getBounds(); innerHeight is the content-sized list, not a dock\"}",
-      "at": "2026-10-22T03:29:20.010Z"
+      "at": "2026-10-22T04:03:16.180Z"
     },
     {
       "id": "D1",
       "claim": "Escape lowers the popout and restores the page geometry",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"escaped\":true,\"after\":{\"content\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"strip\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"popout\":null,\"barCount\":0,\"dockCount\":0,\"popoutPresent\":false,\"addressTrigger\":true,\"triggerText\":\"127.0.0.1:64934\",\"triggerWidth\":124,\"hash\":\"#/browser\"},\"afterPage\":{\"scrollY\":1200,\"innerHeight\":831,\"markerY\":300}}",
-      "at": "2026-10-22T03:29:20.100Z"
+      "evidence": "{\"escaped\":true,\"after\":{\"content\":{\"x\":260,\"y\":69,\"width\":1120,\"height\":831},\"strip\":{\"x\":260,\"y\":32,\"width\":1120,\"height\":37},\"popout\":null,\"barCount\":0,\"dockCount\":0,\"popoutPresent\":false,\"addressTrigger\":true,\"triggerText\":\"127.0.0.1:58807\",\"triggerWidth\":123,\"hash\":\"#/browser\"},\"afterPage\":{\"scrollY\":1200,\"innerHeight\":831,\"markerY\":300}}",
+      "at": "2026-10-22T04:03:16.207Z"
     },
     {
       "id": "D2",
@@ -260,7 +276,7 @@
       "mode": "driven",
       "status": "BLOCKED",
       "evidence": "{\"clickDismissed\":false,\"reason\":\"headless/unfocused window: focusBrowserChordTarget refuses the page focus, so main's `focus` event never fires. Needs a focused window (QA/operator).\"}",
-      "at": "2026-10-22T03:29:25.181Z"
+      "at": "2026-10-22T04:03:21.470Z"
     },
     {
       "id": "D3",
@@ -268,15 +284,15 @@
       "mode": "driven",
       "status": "PASS",
       "evidence": "{\"navDismissed\":true}",
-      "at": "2026-10-22T03:29:25.252Z"
+      "at": "2026-10-22T04:03:22.026Z"
     },
     {
       "id": "T1",
       "claim": "the strip address trigger raises the same popout as Cmd+L",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"triggerRaised\":true,\"triggerState\":{\"value\":\"127.0.0.1:64934/second\",\"active\":\"browser-address\"}}",
-      "at": "2026-10-22T03:29:25.278Z"
+      "evidence": "{\"triggerRaised\":true,\"triggerState\":{\"value\":\"127.0.0.1:58807/second\",\"active\":\"browser-address\"}}",
+      "at": "2026-10-22T04:03:22.246Z"
     },
     {
       "id": "T2",
@@ -284,7 +300,7 @@
       "mode": "driven",
       "status": "PASS",
       "evidence": "{\"seeded\":true,\"seededValue\":\"s\",\"seedFocus\":{\"tag\":\"browser-tab\",\"role\":\"tab\"},\"synthetic\":{\"popout\":true,\"value\":\"s\"},\"note\":\"CDP key event\"}",
-      "at": "2026-10-22T03:29:25.538Z"
+      "at": "2026-10-22T04:03:22.390Z"
     },
     {
       "id": "T3",
@@ -292,15 +308,15 @@
       "mode": "driven",
       "status": "PASS",
       "evidence": "{\"tabDismissed\":true}",
-      "at": "2026-10-22T03:29:26.249Z"
+      "at": "2026-10-22T04:03:25.549Z"
     },
     {
       "id": "E1",
       "claim": "typing an address and pressing Enter navigates and lowers the popout",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"enteredGone\":true,\"enteredUrl\":\"http://127.0.0.1:64934/entered\"}",
-      "at": "2026-10-22T03:29:25.757Z"
+      "evidence": "{\"enteredGone\":true,\"enteredUrl\":\"http://127.0.0.1:58807/entered\"}",
+      "at": "2026-10-22T04:03:23.740Z"
     },
     {
       "id": "V1",
@@ -308,63 +324,63 @@
       "mode": "driven",
       "status": "PASS",
       "evidence": "{\"opened\":true,\"menu\":{\"x\":1128.5,\"y\":70,\"width\":207.390625,\"height\":289,\"top\":70,\"right\":1335.890625,\"bottom\":359,\"left\":1128.5},\"portal\":true,\"popout\":false,\"activeElement\":\"DIV\",\"value\":null}",
-      "at": "2026-10-22T03:29:27.232Z"
+      "at": "2026-10-22T04:03:26.866Z"
     },
     {
       "id": "V2",
       "claim": "the page menu opened from the popout keeps the field row raised",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"opened\":true,\"menu\":{\"x\":1164.5,\"y\":68,\"width\":207.390625,\"height\":289,\"top\":68,\"right\":1371.890625,\"bottom\":357,\"left\":1164.5},\"portal\":true,\"popout\":true,\"activeElement\":\"DIV\",\"value\":\"127.0.0.1:64934/fixture\"}",
-      "at": "2026-10-22T03:29:28.363Z"
+      "evidence": "{\"opened\":true,\"menu\":{\"x\":1164.5,\"y\":68,\"width\":207.390625,\"height\":289,\"top\":68,\"right\":1371.890625,\"bottom\":357,\"left\":1164.5},\"portal\":true,\"popout\":true,\"activeElement\":\"DIV\",\"value\":\"127.0.0.1:58807/fixture\"}",
+      "at": "2026-10-22T04:03:28.111Z"
     },
     {
       "id": "V3",
       "claim": "the Address item raises/keeps the field and focus lands in it",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"menu\":null,\"portal\":false,\"popout\":true,\"activeElement\":\"browser-address\",\"value\":\"127.0.0.1:64934/fixture\"}",
-      "at": "2026-10-22T03:29:29.030Z"
+      "evidence": "{\"menu\":null,\"portal\":false,\"popout\":true,\"activeElement\":\"browser-address\",\"value\":\"127.0.0.1:58807/fixture\"}",
+      "at": "2026-10-22T04:03:28.851Z"
     },
     {
       "id": "V4",
       "claim": "list with several rows, one selected",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"candidates\":2,\"active\":\":r69:-option-0\",\"options\":2}",
-      "at": "2026-10-22T03:29:30.550Z"
+      "evidence": "{\"candidates\":2,\"active\":\":r60:-option-0\",\"options\":2}",
+      "at": "2026-10-22T04:03:30.716Z"
     },
     {
       "id": "V5",
       "claim": "list with a query that matches nothing",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"candidates\":0,\"notice\":\":r69:-notice\",\"body\":\"No matching links from this browser session.\"}",
-      "at": "2026-10-22T03:29:31.296Z"
+      "evidence": "{\"candidates\":0,\"notice\":\":r60:-notice\",\"body\":\"No matching links from this browser session.\"}",
+      "at": "2026-10-22T04:03:31.609Z"
     },
     {
       "id": "V6",
       "claim": "loading: the strip/popout while a slow page is in flight",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"loading\":true,\"url\":\"http://127.0.0.1:64934/alto\",\"activeTabId\":3}",
-      "at": "2026-10-22T03:29:32.040Z"
+      "evidence": "{\"loading\":true,\"url\":\"http://127.0.0.1:58807/alto\",\"activeTabId\":3}",
+      "at": "2026-10-22T04:03:32.498Z"
     },
     {
       "id": "V7",
       "claim": "error: a refused navigation paints the load-failure panel",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"navFailure\":{\"code\":-102,\"description\":\"ERR_CONNECTION_REFUSED\",\"url\":\"http://127.0.0.1:65056/\"},\"panel\":true,\"body\":null}",
-      "at": "2026-10-22T03:29:37.584Z"
+      "evidence": "{\"navFailure\":{\"code\":-102,\"description\":\"ERR_CONNECTION_REFUSED\",\"url\":\"http://127.0.0.1:59121/\"},\"panel\":true,\"body\":null}",
+      "at": "2026-10-22T04:03:38.419Z"
     },
     {
       "id": "V8",
       "claim": "narrow pane: the trigger collapses to its icon",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"strip\":504,\"trigger\":28,\"text\":\"\",\"label\":\"Address — 127.0.0.1:64934\"}",
-      "at": "2026-10-22T03:29:39.713Z"
+      "evidence": "{\"strip\":504,\"trigger\":28,\"text\":\"\",\"label\":\"Address — 127.0.0.1:58807\"}",
+      "at": "2026-10-22T04:03:40.710Z"
     },
     {
       "id": "V9",
@@ -372,7 +388,7 @@
       "mode": "blocked",
       "status": "BLOCKED",
       "evidence": "a live pending approval cannot be injected from the renderer; the dock-open half is documented in docs/evidence/browser-address-overlay and the queue model is unit-tested. Needs a main-side fixture or a real agent request.",
-      "at": "2026-10-22T03:29:39.727Z"
+      "at": "2026-10-22T04:03:40.724Z"
     },
     {
       "id": "V10",
@@ -380,7 +396,7 @@
       "mode": "blocked",
       "status": "BLOCKED",
       "evidence": "closing the last tab creates a fresh blank tab by design (browser-chord-renderer.test.mjs), so the zero-tab state has no reachable door; measured tabs=3.",
-      "at": "2026-10-22T03:29:39.828Z"
+      "at": "2026-10-22T04:03:41.050Z"
     },
     {
       "id": "V11",
@@ -388,15 +404,15 @@
       "mode": "driven",
       "status": "PASS",
       "evidence": "{\"theme\":\"localOperatorLight\",\"dark\":false,\"themedReady\":true,\"themedPopout\":true}",
-      "at": "2026-10-22T03:29:43.930Z"
+      "at": "2026-10-22T04:03:45.690Z"
     },
     {
       "id": "V12",
       "claim": "the at-rest trigger's hover state",
       "mode": "driven",
       "status": "PASS",
-      "evidence": "{\"hover\":true,\"width\":124}",
-      "at": "2026-10-22T03:29:44.826Z"
+      "evidence": "{\"hover\":true,\"width\":123}",
+      "at": "2026-10-22T04:03:46.346Z"
     },
     {
       "id": "V13",
@@ -404,7 +420,7 @@
       "mode": "driven",
       "status": "PASS",
       "evidence": "{\"focused\":true,\"focusVisible\":true,\"tag\":\"browser-address-trigger\"}",
-      "at": "2026-10-22T03:29:45.233Z"
+      "at": "2026-10-22T04:03:46.883Z"
     },
     {
       "id": "V14",
@@ -412,7 +428,15 @@
       "mode": "driven",
       "status": "PASS",
       "evidence": "{\"tabs\":9,\"tabsOffScreen\":\"3\",\"triggerRight\":1308,\"stripRight\":1380}",
-      "at": "2026-10-22T03:29:50.598Z"
+      "at": "2026-10-22T04:03:53.318Z"
+    },
+    {
+      "id": "V15",
+      "claim": "the overflow chip clears the trailing rule in the narrow and filled strips",
+      "mode": "driven",
+      "status": "PASS",
+      "evidence": "{\"narrow\":{\"present\":true,\"chipRight\":438,\"ruleLeft\":447,\"gapPx\":9,\"buttonRight\":431,\"chipOverflowPx\":7},\"filled\":{\"present\":true,\"chipRight\":1258,\"ruleLeft\":1267,\"gapPx\":9,\"buttonRight\":1251,\"chipOverflowPx\":7}}",
+      "at": "2026-10-22T04:03:53.324Z"
     },
     {
       "id": "F1",
@@ -420,7 +444,7 @@
       "mode": "source",
       "status": "BLOCKED",
       "evidence": "Tier 1 (child unavailable) and Tier 2 (two focus failures) need fault injection in a debug build; source paths are browser-surface.tsx (addressFallback, overlayMode) and address-overlay.ts (mode). No user env var exists by design.",
-      "at": "2026-10-22T03:29:50.598Z"
+      "at": "2026-10-22T04:03:53.325Z"
     },
     {
       "id": "BL1",
@@ -428,7 +452,7 @@
       "mode": "blocked",
       "status": "BLOCKED",
       "evidence": "Composite pixels, native hit routing, real macOS IME, VoiceOver, Windows and Linux are unmeasured. The child viewport width is a renderer read, not native bounds.",
-      "at": "2026-10-22T03:29:50.598Z"
+      "at": "2026-10-22T04:03:53.329Z"
     }
   ]
 }

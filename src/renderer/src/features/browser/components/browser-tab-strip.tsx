@@ -1915,8 +1915,17 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					 * D10). As `border-l` on the cluster it sat flush against the last
 					 * control in the run — the overflow count chip — and read as a strike
 					 * through the chip's right edge in the tabs-fill and narrow frames.
-					 * `ml-2` moves the rule, not the chip, so the separator keeps the
-					 * full height the D1 layout asked for while the chip ends before it.
+					 *
+					 * THE MARGIN IS 16px BECAUSE THE CHIP IS WIDER THAN ITS BUTTON (QA round
+					 * 3, Q5). The count chip protrudes 7px past the 28px overflow button's
+					 * right edge, so `ml-2`'s 8px left margin left the chip only 1px from
+					 * the rule — measured, chipRight 446 vs ruleLeft 447 at the 560px strip
+					 * and 1266 vs 1267 when filled. The margin is the whole distance from
+					 * that button to the rule, so `ml-4` keeps 16 - 7 = 9px of clearance at
+					 * both widths. Fitting the chip inside the button would widen the
+					 * control by ~16px and take that width from the tab run; moving the
+					 * rule costs 8px, and the trailing cluster already owns the right edge
+					 * (D1).
 					 */
 					<div
 						className="ml-auto flex shrink-0 items-center"
@@ -1924,7 +1933,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					>
 						<span
 							aria-hidden
-							className="ml-2 w-px shrink-0 self-stretch bg-hairline"
+							className="ml-4 w-px shrink-0 self-stretch bg-hairline"
 						/>
 						<div className="flex items-center pl-1">{trailing}</div>
 					</div>

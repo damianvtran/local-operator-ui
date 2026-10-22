@@ -395,6 +395,11 @@ plan("V12", "the at-rest trigger's hover state", "driven");
 plan("V13", "the at-rest trigger's keyboard focus state", "driven");
 plan("V14", "a tab-filled strip at rest", "driven");
 plan(
+	"V15",
+	"the overflow chip clears the trailing rule in the narrow and filled strips",
+	"driven",
+);
+plan(
 	"F1",
 	"Tier 1/2 fallbacks are source-only here; native failure injection is BLOCKED",
 	"source",
@@ -994,6 +999,32 @@ try {
 				};
 			})()`,
 		);
+	// The overflow chip is WIDER THAN ITS 28px icon button and protrudes past it to
+	// the right (`chipOverflowPx`), so the trailing rule's margin is the only space
+	// between the chip and the rule. D10's claim is a real visual gap, and a frame
+	// cannot establish it at 2x: this reads both boxes. Measured in the two strips
+	// the design round cited, narrow and filled, because the gap can exist at one
+	// width and vanish at the other.
+	const chipRuleGap = () =>
+		evaluate(
+			cdp,
+			`(() => {
+				const chip = document.querySelector('[data-tour-tag="browser-tab-overflow"] span');
+				const rule = document.querySelector('[data-tour-tag="browser-strip-trailing"] > span');
+				if (!chip || !rule) return { present: false, chipRight: null, ruleLeft: null, gapPx: null, buttonRight: null, chipOverflowPx: null };
+				const c = chip.getBoundingClientRect();
+				const r = rule.getBoundingClientRect();
+				const button = chip.closest('button')?.getBoundingClientRect() ?? null;
+				return {
+					present: true,
+					chipRight: Math.round(c.right),
+					ruleLeft: Math.round(r.left),
+					gapPx: Math.round(r.left - c.right),
+					buttonRight: button ? Math.round(button.right) : null,
+					chipOverflowPx: button ? Math.round(c.right - button.right) : null,
+				};
+			})()`,
+		);
 	const pressEscape = async () => {
 		await sendKey("keyDown", "Escape", "Escape");
 		await sendKey("keyUp", "Escape", "Escape");
@@ -1244,6 +1275,7 @@ try {
 		);
 		await frame("narrow.png");
 		states.narrow = narrow;
+		states.narrowGap = await chipRuleGap();
 		record(
 			"V8",
 			narrow.strip !== null && narrow.strip < 672 && narrow.trigger === 28
@@ -1412,6 +1444,7 @@ try {
 		);
 		await frame("tabs-fill.png");
 		states.tabsFill = filled;
+		states.filledGap = await chipRuleGap();
 		record(
 			"V14",
 			filled.tabs >= 5 &&
@@ -1420,6 +1453,19 @@ try {
 				? "PASS"
 				: "FAIL",
 			filled,
+		);
+		// V15: the chip may protrude past its button, but a real gap must remain
+		// between the chip and the rule in BOTH strips. The floor is the 8px the
+		// `ml-2` originally intended; anything smaller is the 1px defect QA round 3
+		// measured (Q5).
+		record(
+			"V15",
+			[states.narrowGap, states.filledGap].every(
+				(gap) => gap?.present === true && gap.gapPx >= 8,
+			)
+				? "PASS"
+				: "FAIL",
+			{ narrow: states.narrowGap, filled: states.filledGap },
 		);
 	} catch (error) {
 		// A state rig failure must not discard the rows that already passed: it is
@@ -1438,6 +1484,7 @@ try {
 			"V12",
 			"V13",
 			"V14",
+			"V15",
 		]) {
 			if (!rows.find((row) => row.id === id)?.at)
 				record(id, "BLOCKED", `rig error: ${String(error)}`);
