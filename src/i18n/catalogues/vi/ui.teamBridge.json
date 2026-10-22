@@ -136,5 +136,7 @@
 	"ui.teamBridge.schedule.edit_body": "Tin nhắn",
 	"ui.teamBridge.schedule.retry": "Thử lại lịch gửi trước đó",
 	"ui.teamBridge.schedule.held": "Lịch gửi trước đó có thể vẫn còn. Hãy kiểm tra mục “Đã lên lịch” và hủy lịch đó nếu cần trước khi bỏ lần thử này. Bản nháp của bạn vẫn được giữ.",
-	"ui.teamBridge.schedule.discard_attempt": "Tôi đã kiểm tra mục “Đã lên lịch” — bỏ lần thử này"
+	"ui.teamBridge.schedule.discard_attempt": "Tôi đã kiểm tra mục “Đã lên lịch” — bỏ lần thử này",
+	"ui.teamBridge.sender.unknown_person": "Người không xác định",
+	"ui.teamBridge.sender.unknown_agent": "Tác nhân không xác định"
 }

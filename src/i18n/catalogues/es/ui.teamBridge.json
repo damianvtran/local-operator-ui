@@ -136,5 +136,7 @@
 	"ui.teamBridge.schedule.edit_body": "Mensaje",
 	"ui.teamBridge.schedule.retry": "Reintentar la programación anterior",
 	"ui.teamBridge.schedule.held": "Es posible que aún exista una programación anterior. Revisa Programados y, si es necesario, cancela el envío antes de descartar este intento. Tu borrador se conserva.",
-	"ui.teamBridge.schedule.discard_attempt": "He revisado Programados — descartar este intento"
+	"ui.teamBridge.schedule.discard_attempt": "He revisado Programados — descartar este intento",
+	"ui.teamBridge.sender.unknown_person": "Persona desconocida",
+	"ui.teamBridge.sender.unknown_agent": "Agente desconocido"
 }

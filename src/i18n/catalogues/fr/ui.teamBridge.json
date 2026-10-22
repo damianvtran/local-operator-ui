@@ -136,5 +136,7 @@
 	"ui.teamBridge.schedule.edit_body": "Contenu",
 	"ui.teamBridge.schedule.retry": "Réessayer la planification précédente",
 	"ui.teamBridge.schedule.held": "Une planification précédente existe peut-être encore. Vérifiez « Planifiés » et annulez-la si nécessaire avant d’abandonner cet essai. Votre brouillon est conservé.",
-	"ui.teamBridge.schedule.discard_attempt": "J’ai vérifié « Planifiés » — abandonner cet essai"
+	"ui.teamBridge.schedule.discard_attempt": "J’ai vérifié « Planifiés » — abandonner cet essai",
+	"ui.teamBridge.sender.unknown_person": "Personne inconnue",
+	"ui.teamBridge.sender.unknown_agent": "Agent inconnu"
 }

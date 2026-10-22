@@ -136,5 +136,7 @@
 	"ui.teamBridge.schedule.edit_body": "Сообщение",
 	"ui.teamBridge.schedule.retry": "Повторить планирование",
 	"ui.teamBridge.schedule.held": "Возможно, отправка уже запланирована предыдущей попыткой. Прежде чем сбросить эту попытку, проверьте раздел «Запланированные» и при необходимости отмените отправку. Черновик сохранён.",
-	"ui.teamBridge.schedule.discard_attempt": "Раздел «Запланированные» проверен — сбросить попытку"
+	"ui.teamBridge.schedule.discard_attempt": "Раздел «Запланированные» проверен — сбросить попытку",
+	"ui.teamBridge.sender.unknown_person": "Неизвестный пользователь",
+	"ui.teamBridge.sender.unknown_agent": "Неизвестный агент"
 }
