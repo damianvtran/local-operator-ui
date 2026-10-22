@@ -1308,21 +1308,50 @@ export type CancelResult = {
 };
 
 /**
- * Esc while TYPING: give the operator their characters back.
+ * Whether an Esc on this capture is HELD rather than acted on: a span with
+ * characters in it.
  *
- * UNREDACTS RATHER THAN DISCARDS (`_cancel_credential_typing`,
- * `editor.py:6419-6500`). An operator who typed a long secret and pressed Esc
- * because they meant it as prose gets exactly what they typed; an operator who
- * wanted it gone deletes it with the keystrokes they would use for any other
- * text. Discarding silently would be unrecoverable in the one direction that
- * matters — retyping a secret is precisely what an operator cannot do from
- * memory.
+ * THE FIRST ESC CHANGES NOTHING, AND THAT IS THE FIX (operator-approved,
+ * 2026-10-22). This port used to follow the TUI and UNREDACT on Esc — write the
+ * held characters back into the buffer as prose. The buffer is what the draft
+ * store persists, so a credential the operator had just CANCELLED was written to
+ * `localStorage` in plaintext: the one disclosure the module's load-bearing
+ * invariant (top of file) exists to close, re-opened by the gesture meant to back
+ * out of it. Discarding on the first press is the other easy answer and the wrong
+ * one: a single stray Esc would throw away a long secret the operator cannot
+ * retype from memory, with no way back.
  *
- * This is the ONLY route by which a typed secret enters the document, and it is
- * the operator explicitly asking for it: at that point it is their prose, not a
- * credential. The arm ends with it, because leaving the token armed would put
- * the composer in a state where the next paste is still swallowed as a
- * credential after the operator has visibly backed out.
+ * So the first Esc keeps the capture exactly as it is — cells in the buffer, the
+ * value in {@link Capture.value}, nothing written — and the composer says what the
+ * next press does. A SECOND Esc on the same buffer is the explicit request, and it
+ * DISCARDS ({@link cancelTypedCredential}). Deleting the cells by hand already
+ * empties the value through {@link maskEdit}, so that route needs nothing new and
+ * reaches the same empty-span cancel.
+ *
+ * An EMPTY span holds nothing worth protecting, so its Esc is not held: one press
+ * ends the mode, exactly as before (the TUI's R1/U2 no-re-arm case).
+ */
+export const escapeHolds = (capture: Capture): boolean =>
+	isTyping(capture) && capture.value !== "";
+
+/**
+ * Esc while TYPING, the press that actually ends the capture: DISCARD the held
+ * characters and leave the token inert.
+ *
+ * DISCARDS RATHER THAN UNREDACTS, which is a deliberate departure from the TUI
+ * (`_cancel_credential_typing`, `editor.py:6419-6500`, writes the characters
+ * back as prose). The unredact was the ONLY route by which a typed secret entered
+ * the document, and the document is what the draft store persists — so every Esc
+ * cancel put a plaintext credential on disk. The recovery the unredact offered
+ * ("retyping a secret is what an operator cannot do from memory") is kept by
+ * {@link escapeHolds} instead: a single stray press changes nothing, and only a
+ * second one — or deleting the cells — reaches here with characters held.
+ *
+ * The result is therefore always the empty-span shape: the mask cells come out of
+ * the buffer, the caret lands where they started, `restored` is 0, and the value
+ * is dropped with the capture. The arm ends with it, because leaving the token
+ * armed would put the composer in a state where the next paste is still
+ * swallowed as a credential after the operator has visibly backed out.
  *
  * THE EMPTY-SPAN CASE IS THE SAME CANCEL and is called out because it is the
  * regression the TUI shipped twice (`editor.py:6146-6155`): with no characters
@@ -1352,20 +1381,18 @@ export function cancelTypedCredential(
 			token: null,
 		};
 	}
-	const restoredText = capture.value;
-	const next = unredactedBuffer(buffer, capture);
 	const tokenStart = capture.arm === null ? span.start : capture.arm.start;
 	return {
 		cancelled: true,
 		capture: IDLE_CAPTURE,
-		buffer: next,
-		caret: span.start + restoredText.length,
-		restored: charCount(restoredText),
+		buffer: buffer.slice(0, span.start) + buffer.slice(span.end),
+		caret: span.start,
+		restored: 0,
 		token: {
 			span: { start: tokenStart, end: span.start },
 			text: buffer.slice(tokenStart, span.start),
-			restored: charCount(restoredText),
-			restoredText,
+			restored: 0,
+			restoredText: "",
 		},
 	};
 }
@@ -2386,6 +2413,17 @@ export const CREDENTIAL_EMPTY_SPAN_NOTICE =
  * action the live-session variant already carries. It keeps the dispatcher's own
  * cause, so the notice and the line that follows it still agree word for word.
  */
+/**
+ * Shown after the FIRST Esc on a span with characters in it ({@link escapeHolds}).
+ *
+ * The frame cannot say this on its own: the box looks exactly as it did before
+ * the press, so without a sentence the operator reads Esc as broken and presses it
+ * again — which now discards. Naming both keys keeps that second press a choice
+ * rather than a reflex, and keeps the way forward (the pill) one keystroke away.
+ */
+export const CREDENTIAL_ESCAPE_HELD_NOTICE =
+	"still masked — Esc again discards it, Enter turns it into a pill";
+
 export const CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE =
 	"masked — Enter runs /credential, which needs an open conversation; type or paste the secret into this span";
 
