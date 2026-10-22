@@ -1,13 +1,8 @@
 import { Button } from "@shared/components/ui/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@shared/components/ui/dropdown-menu";
+import { Tooltip } from "@shared/components/ui/tooltip";
 import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
-import { MessageSquare, MoreHorizontal, SmilePlus } from "lucide-react";
+import { MessageSquare, SmilePlus } from "lucide-react";
 import {
 	type ComponentProps,
 	type KeyboardEvent as ReactKeyboardEvent,
@@ -60,24 +55,31 @@ import {
  * horizontal here): Tab reaches the toolbar's roving button, ArrowLeft/Right
  * walk the buttons (mirrored in RTL), Home/End take the ends. It is revealed by
  * `:focus-within` on the row as well as hover, and stays visible while its
- * menu or picker is open, so a keyboard user never operates an invisible
- * control. Radix returns focus to the pressing button when the menu or picker
- * closes.
+ * picker is open, so a keyboard user never operates an invisible
+ * control. Radix returns focus to the react button when the picker closes.
  *
  * ONE-LEVEL THREADS. Reply-in-thread is offered only on a timeline root
  * (`canReply`): replies inside the thread pane get react and more, because a
  * reply to a reply would need nested threads, which the hub does not have.
  *
- * "MORE". There is no per-message menu elsewhere in Team Bridge yet, so More
- * holds the actions already on the row — reply in thread and add reaction —
- * and nothing else. It exists so the toolbar's shape does not change when
- * actions without a button of their own arrive (copy link, edit, delete).
+ * NO "MORE" MENU (agent review round 3 M4/F1, design round 3 D12). Team Bridge
+ * has no per-message action beyond react and reply, so a More menu could only
+ * repeat the two buttons beside it: a control and a tab stop with no
+ * capability, 28px off every first line. It was also where a real defect
+ * lived (choosing "Reply in thread" from the menu left focus on the More
+ * button, because Radix returns focus to the trigger AFTER the thread pane
+ * focused its close button). Removed until an action exists that has no
+ * button of its own.
  *
- * ADDING AN ACTION. Add a `<ToolbarButton>` here if it deserves a permanent
- * button (keep the toolbar at three or four; each button narrows the first
- * line of every message by 32px), or a `<DropdownMenuItem>` under More if it
- * does not. Label it through `t()`, gate it on a capability prop the row
- * passes in, and never give it its own position on the row.
+ * ADDING AN ACTION. Add a `<ToolbarButton>` here (keep the toolbar at two to
+ * four buttons; each one narrows the first line of every message by 30px).
+ * Label it through `t()` (that is its `aria-label` AND its tooltip), gate it on
+ * a capability prop the row passes in, spread `{...item()}` so it joins the
+ * roving tab stop, and never give it its own position on the row. If an action
+ * deserves no permanent button, reintroduce a "More" `DropdownMenu` whose
+ * trigger is the LAST item, and when an item opens something that takes focus
+ * (a pane, the picker) set a ref in its `onSelect` and `preventDefault()` in
+ * the content's `onCloseAutoFocus`, or focus lands back on the trigger.
  */
 export function TeamBridgeMessageToolbar({
 	reactions,
@@ -92,17 +94,20 @@ export function TeamBridgeMessageToolbar({
 	forceVisible?: boolean;
 }) {
 	const [pickerOpen, setPickerOpen] = useState(false);
-	const [menuOpen, setMenuOpen] = useState(false);
-	// Set when "Add reaction" is chosen from More: the menu's close must hand
-	// focus to the picker instead of back to the More button.
-	const openPickerAfterMenu = useRef(false);
 	const [roving, setRoving] = useState(0);
 	const root = useRef<HTMLDivElement>(null);
 	const canReact = reactions !== undefined && !reactions.disabled;
+	const count = (canReact ? 1 : 0) + (onReply ? 1 : 0);
+	/* The tab stop is CLAMPED to the buttons that exist now: `roving` is the
+	   index focus last rested on, and the list shrinks when the reader loses
+	   an ability (react drops out when the conversation closes). An index past
+	   the end would give no button `tabIndex=0` and Tab would skip the toolbar
+	   (review round 3, M3). */
+	let tabStop = Math.min(roving, Math.max(0, count - 1));
 	/* A busy react button is `disabled` and cannot take focus, so the tab stop
 	   must not sit on it, or the toolbar would have none while a toggle runs. */
-	const tabStop =
-		roving === 0 && canReact && reactions.unavailable ? 1 : roving;
+	if (tabStop === 0 && canReact && reactions.unavailable && count > 1)
+		tabStop = 1;
 
 	const buttons = () =>
 		Array.from(
@@ -146,9 +151,13 @@ export function TeamBridgeMessageToolbar({
 			/* The reserved slot: one LINE tall (`1lh`, 21.7px at the body's 14/1.55),
 			   so a one-line message keeps its height and the timeline's rhythm does
 			   not change. The 28px toolbar is centred on it and overhangs 3px above
-			   (into the row's own top padding) and 3px below (inside the next line's
-			   3.9px half-leading, above its glyphs). That is why the ground has no
-			   padding: a padded 32px ground would reach the next line's glyphs. */
+			   and 3px below. Below, that is inside the next line's 3.9px
+			   half-leading, above its glyphs. Above, a header row has 6px of
+			   padding (`pt-1.5`) to take it; a CONTINUATION row has only 2px
+			   (`py-0.5`), so there the lighter ground reaches 1px into the row
+			   above (design round 3, D15, deferred: 1px of an `elevated` ground
+			   on hover only). The ground has no padding for that reason: a
+			   padded 32px ground would reach the next line's glyphs. */
 			className="float-end ms-2 flex h-[1lh] items-center"
 		>
 			<div
@@ -160,7 +169,7 @@ export function TeamBridgeMessageToolbar({
 				className={cn(
 					"flex items-center gap-0.5 rounded-md bg-elevated",
 					"transition-opacity duration-fast ease-out-quart",
-					forceVisible || pickerOpen || menuOpen
+					forceVisible || pickerOpen
 						? "opacity-100"
 						: "opacity-0 group-focus-within/message:opacity-100 group-hover/message:opacity-100",
 				)}
@@ -189,49 +198,18 @@ export function TeamBridgeMessageToolbar({
 						<MessageSquare aria-hidden="true" />
 					</ToolbarButton>
 				)}
-				<DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-					<DropdownMenuTrigger asChild>
-						<ToolbarButton {...item()} label={t("ui.teamBridge.actions.more")}>
-							<MoreHorizontal aria-hidden="true" />
-						</ToolbarButton>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent
-						align="end"
-						onCloseAutoFocus={(event) => {
-							if (!openPickerAfterMenu.current) return;
-							openPickerAfterMenu.current = false;
-							event.preventDefault();
-							setPickerOpen(true);
-						}}
-					>
-						{onReply && (
-							<DropdownMenuItem onSelect={onReply}>
-								<MessageSquare aria-hidden="true" />
-								<span>{t("ui.teamBridge.replies.action")}</span>
-							</DropdownMenuItem>
-						)}
-						{canReact && reactions && (
-							<DropdownMenuItem
-								disabled={reactions.unavailable}
-								onSelect={() => {
-									openPickerAfterMenu.current = true;
-								}}
-							>
-								<SmilePlus aria-hidden="true" />
-								<span>{t("ui.teamBridge.reactions.add")}</span>
-							</DropdownMenuItem>
-						)}
-					</DropdownMenuContent>
-				</DropdownMenu>
 			</div>
 		</div>
 	);
 }
 
 /** A toolbar button: the shared ghost icon control, named through `t()`.
- * Radix's `asChild` triggers (the menu, the picker) inject a ref, handlers and
- * aria-expanded, and position their content against the ref, so it forwards
- * the ref and everything else to the `<Button>`. */
+ * `label` is both the accessible name and the tooltip, which is the shared
+ * `Tooltip` the chips in this feature already use, not the native `title`
+ * (delayed and unthemed; design round 3, D13). Radix's `asChild` triggers (the
+ * picker) inject a ref, handlers and aria-expanded, and position their content
+ * against the ref, so it forwards the ref and everything else to the
+ * `<Button>`; the tooltip's own trigger props merge onto the same element. */
 const ToolbarButton = forwardRef<
 	HTMLButtonElement,
 	{ label: string; children: ReactNode } & Omit<
@@ -240,16 +218,17 @@ const ToolbarButton = forwardRef<
 	>
 >(function ToolbarButton({ label, children, ...props }, ref) {
 	return (
-		<Button
-			ref={ref}
-			type="button"
-			variant="ghost"
-			size="icon-sm"
-			aria-label={label}
-			title={label}
-			{...props}
-		>
-			{children}
-		</Button>
+		<Tooltip content={label}>
+			<Button
+				ref={ref}
+				type="button"
+				variant="ghost"
+				size="icon-sm"
+				aria-label={label}
+				{...props}
+			>
+				{children}
+			</Button>
+		</Tooltip>
 	);
 });

@@ -47,6 +47,7 @@ const bundle = await build({
 		contents: [
 			'export {TeamBridgeReactions} from "./src/renderer/src/features/team-bridge/team-bridge-reactions";',
 			'export {TeamBridgeMessageList} from "./src/renderer/src/features/team-bridge/team-bridge-message-list";',
+			'export {TeamBridgeThreadPaneView} from "./src/renderer/src/features/team-bridge/team-bridge-thread-pane";',
 			'export {TeamBridgeEmojiPicker} from "./src/renderer/src/features/team-bridge/team-bridge-emoji-picker";',
 			'export {useReactionPreferences} from "./src/renderer/src/features/team-bridge/team-bridge-reaction-preferences";',
 		].join("\n"),
@@ -106,6 +107,7 @@ await writeFile(file, bundle.outputFiles[0].text);
 const {
 	TeamBridgeReactions,
 	TeamBridgeMessageList,
+	TeamBridgeThreadPaneView,
 	TeamBridgeEmojiPicker,
 	useReactionPreferences,
 } = await import(file.href);
@@ -462,7 +464,7 @@ const named = (scope, name) =>
 		(b) => b.getAttribute("aria-label") === name,
 	);
 
-test("a row renders exactly one toolbar, holding react, reply and more", async () => {
+test("a row renders exactly one toolbar, holding react and reply", async () => {
 	const m = mount();
 	await renderList(m);
 	const toolbars = m.host.querySelectorAll('[role="toolbar"]');
@@ -473,8 +475,14 @@ test("a row renders exactly one toolbar, holding react, reply and more", async (
 	assert.deepEqual(labels, [
 		"ui.teamBridge.reactions.add",
 		"ui.teamBridge.replies.action",
-		"ui.teamBridge.actions.more",
 	]);
+	// No "More" menu (review round 3, M4/F1; design D12): it could only repeat
+	// the two buttons beside it.
+	assert.equal(named(m.host, "ui.teamBridge.actions.more").length, 0);
+	assert.equal(toolbars[0].querySelector('[aria-haspopup="menu"]'), null);
+	// The name comes from the shared Tooltip, not the native `title` (D13).
+	for (const b of toolbars[0].querySelectorAll("button"))
+		assert.equal(b.getAttribute("title"), null, b.outerHTML);
 	assert.equal(
 		toolbars[0].getAttribute("aria-label"),
 		"ui.teamBridge.actions.label",
@@ -502,7 +510,7 @@ test("keyboard focus reveals the toolbar; one tab stop and arrows rove", async (
 	const buttons = [...toolbar.querySelectorAll("button")];
 	assert.deepEqual(
 		buttons.map((b) => b.tabIndex),
-		[0, -1, -1],
+		[0, -1],
 		"one tab stop: the row's Tab lands on the toolbar once",
 	);
 	await act(() => buttons[0].focus());
@@ -516,19 +524,19 @@ test("keyboard focus reveals the toolbar; one tab stop and arrows rove", async (
 	assert.equal(document.activeElement, buttons[1]);
 	assert.deepEqual(
 		buttons.map((b) => b.tabIndex),
-		[-1, 0, -1],
+		[-1, 0],
 		"the roving stop follows focus",
 	);
 	await key("End");
-	assert.equal(document.activeElement, buttons[2]);
+	assert.equal(document.activeElement, buttons[1]);
 	await key("ArrowRight");
-	assert.equal(document.activeElement, buttons[2], "bounded, not wrapping");
+	assert.equal(document.activeElement, buttons[1], "bounded, not wrapping");
 	await key("Home");
 	assert.equal(document.activeElement, buttons[0]);
 	await m.close();
 });
 
-test("thread replies get react and more, never reply-in-thread", async () => {
+test("thread replies get react, never reply-in-thread", async () => {
 	const m = mount();
 	await renderList(m, {
 		messages: [
@@ -540,11 +548,86 @@ test("thread replies get react and more, never reply-in-thread", async () => {
 		[...toolbar.querySelectorAll("button")].map((b) =>
 			b.getAttribute("aria-label"),
 		),
-		["ui.teamBridge.reactions.add", "ui.teamBridge.actions.more"],
+		["ui.teamBridge.reactions.add"],
 	);
 	// The thread pane passes no onReply at all: same answer for its root.
 	await renderList(m, { onReply: undefined });
 	assert.equal(named(m.host, "ui.teamBridge.replies.action").length, 0);
+	await m.close();
+});
+
+test("the tab stop is clamped when the button list shrinks (review round 3, M3)", async () => {
+	const m = mount();
+	await renderList(m);
+	const reply = () => named(m.host, "ui.teamBridge.replies.action")[0];
+	await act(() => reply().focus());
+	assert.equal(reply().tabIndex, 0, "focus last rested on the second button");
+	// The reader loses the ability to react (the conversation closed): the
+	// list shrinks to ONE button, while `roving` still points at index 1.
+	await renderList(m, {
+		reactionContext: { accountId: "a", tenantId: "tnt_1", disabled: true },
+	});
+	const buttons = [...m.host.querySelectorAll('[role="toolbar"] button')];
+	assert.equal(buttons.length, 1);
+	assert.deepEqual(
+		buttons.map((b) => b.tabIndex),
+		[0],
+		"the toolbar always keeps exactly one tab stop",
+	);
+	await m.close();
+});
+
+test("choosing Reply in thread leaves focus where the pane put it (review round 3, F1)", async () => {
+	// The hand-off defect lived in the removed More menu: Radix returned focus
+	// to its trigger AFTER the pane focused its close button. The direct button
+	// must not take focus back either, so this models the pane (an element that
+	// focuses itself synchronously when the reply opens it).
+	const pane = document.createElement("button");
+	pane.setAttribute("data-thread-close", "");
+	document.body.append(pane);
+	const m = mount();
+	await renderList(m, { onReply: () => pane.focus() });
+	await click(named(m.host, "ui.teamBridge.replies.action")[0]);
+	assert.equal(document.activeElement, pane, "focus stays in the pane");
+	pane.remove();
+	await m.close();
+});
+
+test("the thread pane's rows carry react and never reply-in-thread, with no overlap-prone second affordance (review round 3, M1)", async () => {
+	// Rendered through the real pane, which is what the CI-less story guard
+	// used to be the only check of: a regression where the pane starts passing
+	// `onReply` is caught here.
+	const m = mount();
+	await act(() =>
+		m.root.render(
+			h(TeamBridgeThreadPaneView, {
+				root: rowMessage,
+				replies: [
+					{ ...rowMessage, id: "bcmsg_reply02", thread_root_id: rowMessage.id },
+				],
+				state: "ready",
+				labelFor: () => "Ada",
+				onClose() {},
+				onRetry() {},
+				onSend: async () => {},
+				reactionContext: { accountId: "a", tenantId: "tnt_1" },
+			}),
+		),
+	);
+	const toolbars = m.host.querySelectorAll('[role="toolbar"]');
+	assert.equal(toolbars.length, 2, "one per row: the root and the reply");
+	for (const toolbar of toolbars)
+		assert.deepEqual(
+			[...toolbar.querySelectorAll("button")].map((b) =>
+				b.getAttribute("aria-label"),
+			),
+			["ui.teamBridge.reactions.add"],
+		);
+	assert.equal(named(m.host, "ui.teamBridge.replies.action").length, 0);
+	assert.equal(
+		m.host.querySelectorAll('[data-reaction-layout="toolbar"]').length,
+		0,
+	);
 	await m.close();
 });
 

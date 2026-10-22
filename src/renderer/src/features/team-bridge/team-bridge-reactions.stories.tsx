@@ -250,6 +250,27 @@ const toolbarReply: TeamBridgeMessage = {
 };
 const storyReactionContext = { accountId: "story-account", tenantId: "tnt_1" };
 
+/*
+ * The overlap check measures what a reader sees, not element boxes. The
+ * toolbar's ground deliberately overhangs the body's first-line BOX by about
+ * 3px (it sits in the line's half-leading: the 28px bar is centred on a 21.7px
+ * line) while clearing the glyphs by 2.5px, so a box-against-box test reports
+ * an overlap that is the design (design round 3, D11). Text nodes are measured
+ * through a Range, which returns the glyph boxes; every other element (images,
+ * chips, buttons, the time) is compared by its own box, because those have no
+ * half-leading to hide in.
+ */
+const glyphRects = (node: HTMLElement): DOMRect[] => {
+	const rects: DOMRect[] = [];
+	const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+	for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+		if (!text.textContent?.trim()) continue;
+		const range = document.createRange();
+		range.selectNodeContents(text);
+		rects.push(...Array.from(range.getClientRects()));
+	}
+	return rects;
+};
 const assertToolbarClear = async (canvasElement: HTMLElement) => {
 	for (const toolbar of canvasElement.querySelectorAll<HTMLElement>(
 		'[role="toolbar"]',
@@ -262,18 +283,23 @@ const assertToolbarClear = async (canvasElement: HTMLElement) => {
 			) ?? []),
 		].filter((node) => !toolbar.contains(node));
 		for (const node of others) {
-			const r = node.getBoundingClientRect();
-			const overlaps =
-				r.width > 0 &&
-				r.height > 0 &&
-				r.left < box.right &&
-				r.right > box.left &&
-				r.top < box.bottom &&
-				r.bottom > box.top;
-			await expect(
-				overlaps,
-				`toolbar overlaps ${node.outerHTML.slice(0, 80)}`,
-			).toBe(false);
+			const rects =
+				node.tagName === "P" || node.tagName === "PRE"
+					? glyphRects(node)
+					: [node.getBoundingClientRect()];
+			for (const r of rects) {
+				const overlaps =
+					r.width > 0 &&
+					r.height > 0 &&
+					r.left < box.right &&
+					r.right > box.left &&
+					r.top < box.bottom &&
+					r.bottom > box.top;
+				await expect(
+					overlaps,
+					`toolbar overlaps ${node.outerHTML.slice(0, 80)}`,
+				).toBe(false);
+			}
 		}
 		for (const button of toolbar.querySelectorAll("button")) {
 			const r = button.getBoundingClientRect();
@@ -348,19 +374,23 @@ export const MessageToolbarKeyboard: Story = {
 	),
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
+		/* Scoped to the toolbar: the chips' `+` carries the same "Add reaction"
+		   name, so an unscoped query matches two buttons. */
+		const toolbar = within(canvas.getByRole("toolbar"));
 		canvas.getByRole("button", { name: "before" }).focus();
 		await userEvent.tab();
 		await expect(
-			canvas.getByRole("button", { name: t("ui.teamBridge.reactions.add") }),
+			toolbar.getByRole("button", { name: t("ui.teamBridge.reactions.add") }),
 		).toHaveFocus();
 		await userEvent.keyboard("{ArrowRight}");
-		const reply = canvas.getByRole("button", {
+		const reply = toolbar.getByRole("button", {
 			name: t("ui.teamBridge.replies.action"),
 		});
 		await expect(reply).toHaveFocus();
-		await waitFor(() =>
-			expect(getComputedStyle(canvas.getByRole("toolbar")).opacity).toBe("1"),
-		);
+		/* The reveal is the row's `:focus-within` (opacity follows through a
+		   transition, which a background tab may not advance), so assert the
+		   driver, not the animated value. */
+		await expect(reply.closest("li")?.matches(":focus-within")).toBe(true);
 		await assertToolbarClear(canvasElement);
 	},
 };

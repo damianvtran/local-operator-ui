@@ -79,7 +79,9 @@ for (const state of ["ready", "loading", "error"])
 					? /Loading messages/
 					: /Messages could not be loaded/,
 		);
-		assert.doesNotMatch(html, /title="Reply in thread"/);
+		// The composer's textbox legitimately carries this name; a reply BUTTON
+		// (the toolbar's) must not exist in the pane.
+		assert.doesNotMatch(html, /<button[^>]*aria-label="Reply in thread"/);
 	});
 test("populated thread renders reply through safe markdown, never image requests", () => {
 	const html = mod.renderToStaticMarkup(
@@ -463,7 +465,7 @@ test("reply hover tool and summary initials have no nested ladder plates", () =>
 	const dom = new JSDOM(html);
 	try {
 		const reply = dom.window.document.querySelector(
-			'button[title="Reply in thread"]',
+			'button[aria-label="Reply in thread"]',
 		);
 		assert.ok(reply);
 		assert.equal(
