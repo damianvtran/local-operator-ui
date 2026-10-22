@@ -66,11 +66,10 @@ const Stage = ({
 			className={cn(
 				CHAT_COLUMN_CONTAINER,
 				CHAT_COLUMN_INSET,
-				CHAT_MEASURE,
 				"w-full shrink-0 pt-2",
 			)}
 		>
-			<LiveUpdatesPausedBannerView {...props} />
+			<LiveUpdatesPausedBannerView className={CHAT_MEASURE} {...props} />
 		</div>
 		<div
 			className={cn(
@@ -80,6 +79,7 @@ const Stage = ({
 			)}
 		>
 			<div
+				data-story-composer
 				className={cn(
 					CHAT_MEASURE,
 					"min-h-24 rounded-lg border border-control bg-elevated",
@@ -127,6 +127,32 @@ export const ReloadingNarrow: StoryObj = {
 	),
 };
 
+export const PausedMid: StoryObj = {
+	name: "Paused, 700px column",
+	render: () => (
+		<Stage
+			width={700}
+			paused
+			reloading={false}
+			reloadFailed={false}
+			onReload={() => {}}
+		/>
+	),
+};
+
+export const PausedWide: StoryObj = {
+	name: "Paused, 1400px column",
+	render: () => (
+		<Stage
+			width={1400}
+			paused
+			reloading={false}
+			reloadFailed={false}
+			onReload={() => {}}
+		/>
+	),
+};
+
 export const Clear: StoryObj = {
 	name: "Clear",
 	render: () => (
@@ -160,11 +186,11 @@ export const InContext: StoryObj = {
 				className={cn(
 					CHAT_COLUMN_CONTAINER,
 					CHAT_COLUMN_INSET,
-					CHAT_MEASURE,
 					"w-full shrink-0 pt-2",
 				)}
 			>
 				<LiveUpdatesPausedBannerView
+					className={CHAT_MEASURE}
 					paused
 					reloading={false}
 					reloadFailed={false}

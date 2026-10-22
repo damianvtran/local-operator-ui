@@ -4917,14 +4917,24 @@ export function useCanonicalSessionStream(
 									: {}),
 							};
 							/*
-							 * ONLY A ROLLOVER CLEARS IT. A rollover carries the whole state (the
-							 * comment above), so it is a complete projection in the same sense as
-							 * a snapshot. An ordinary clean `frontend.update` does NOT: it carries
-							 * one field delta and cannot restore a shed body, so clearing on it
-							 * would retract the warning while the view is still missing text
-							 * (UX round 1, U1; code review M3).
+							 * THE CLEAR RULE IS ORIGIN-AWARE, because the two notices lose
+							 * different kinds of fact (code review round 2, MAJOR-1).
+							 *
+							 * An `"update"`-origin notice lost a frontend body, and a
+							 * full-state update at the SAME epoch - `replace_and_notify`, the
+							 * backend's own shed-body re-seat - restores exactly that body.
+							 * `changes.epoch === update.epoch` is the marker of the full-state
+							 * shape: an ordinary delta never carries the epoch. A rollover is a
+							 * special case of the same predicate, not a separate one.
+							 *
+							 * An `"event"`-origin notice lost a TRANSCRIPT fact. No update can
+							 * carry rows, so not even a rollover proves the transcript whole;
+							 * only a snapshot or an accepted replacement may clear it.
 							 */
-							if (rollover && next.liveUpdatesPaused)
+							const fullState =
+								next.liveUpdatesNotice === "update" &&
+								changes.epoch === update.epoch;
+							if (fullState && next.liveUpdatesPaused)
 								next = {
 									...next,
 									liveUpdatesPaused: false,

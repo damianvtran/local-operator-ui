@@ -43,7 +43,8 @@ import { COMPOSER_TEXTAREA_SELECTOR } from "@features/chat/composer-field";
 import { NOTICE_BAND } from "@shared/components/common/notice-band";
 import { Alert, Button } from "@shared/components/ui";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import { useEffect, useRef } from "react";
+import { cn } from "@shared/lib/utils";
+import { useLayoutEffect, useRef } from "react";
 import { t } from "../../../../../i18n/messages";
 
 export type LiveUpdatesPausedBannerViewProps = {
@@ -53,6 +54,8 @@ export type LiveUpdatesPausedBannerViewProps = {
 	reloading: boolean;
 	/** The last press spent the retry budget without an answer. */
 	reloadFailed: boolean;
+	/** The host's column measure, applied by the mount that knows the column. */
+	className?: string;
 	onReload: () => void;
 };
 
@@ -74,6 +77,7 @@ export const LiveUpdatesPausedBannerView = ({
 	paused,
 	reloading,
 	reloadFailed,
+	className,
 	onReload,
 }: LiveUpdatesPausedBannerViewProps) => {
 	useI18nLocale();
@@ -86,7 +90,7 @@ export const LiveUpdatesPausedBannerView = ({
 	 * repairs use - and only when focus was actually inside this band, so a
 	 * reader typing elsewhere is never moved.
 	 */
-	useEffect(
+	useLayoutEffect(
 		() => () => {
 			const root = rootRef.current;
 			if (!root?.contains(document.activeElement)) return;
@@ -101,7 +105,7 @@ export const LiveUpdatesPausedBannerView = ({
 		<div
 			ref={rootRef}
 			data-lo-live-updates-paused
-			className="w-full shrink-0 py-1"
+			className={cn("w-full shrink-0 py-1", className)}
 		>
 			<Alert variant="warning" className={NOTICE_BAND}>
 				<div className="flex w-full min-w-0 flex-wrap items-center gap-2">
@@ -135,9 +139,34 @@ export const LiveUpdatesPausedBannerView = ({
 							onClick={reloading ? undefined : onReload}
 							aria-live="polite"
 						>
-							{reloading
-								? t("ui.chat.live_updates.reloading")
-								: t("ui.chat.live_updates.reload")}
+							{/*
+							 * BOTH LABELS OCCUPY THE SAME CELL, so the control's width is
+							 * the wider of the two in every state. Without it a narrow
+							 * column's band dropped 101px -> 65px on the reader's own press,
+							 * because "Reloading…" is narrower than "Reload from history"
+							 * (design round 2, D3 residual). The hidden label is `invisible`
+							 * and `aria-hidden`, so it takes space but is not read.
+							 */}
+							<span className="grid">
+								<span
+									className={cn(
+										"col-start-1 row-start-1",
+										reloading && "invisible",
+									)}
+									aria-hidden={reloading}
+								>
+									{t("ui.chat.live_updates.reload")}
+								</span>
+								<span
+									className={cn(
+										"col-start-1 row-start-1",
+										!reloading && "invisible",
+									)}
+									aria-hidden={!reloading}
+								>
+									{t("ui.chat.live_updates.reloading")}
+								</span>
+							</span>
 						</Button>
 					</span>
 				</div>
