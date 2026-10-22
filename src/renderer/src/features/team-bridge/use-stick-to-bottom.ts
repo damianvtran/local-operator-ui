@@ -23,6 +23,9 @@ import {
  *   when the reader was already within `NEAR_BOTTOM_PX` of it. Someone who
  *   scrolled up to read history is never yanked back down.
  *
+ * The composer growing shrinks the viewport rather than growing the content,
+ * so the viewport is observed too (D9, below).
+ *
  * Image tiles reserve their box before loading (`boxFor`), so a load should
  * not move anything. In case a reflow still happens (a font swap, a localized
  * line that wraps, a placeholder swapping for its picture), image `load` events
@@ -114,6 +117,15 @@ export function useStickToBottom<T extends HTMLElement = HTMLDivElement>({
 			resize.observe(content);
 			for (const child of content.children) resize.observe(child);
 		}
+		/*
+		 * And the VIEWPORT itself (design round 2, D9): the composer below the
+		 * timeline grows (a long draft, a held attempt, a localized recovery
+		 * line) by taking height from the viewport, not by growing the content,
+		 * so nothing above fires and the last row slides under the composer's
+		 * top edge. A pinned reader stays pinned; one who scrolled up is not
+		 * moved, the same rule as every other re-pin here.
+		 */
+		resize?.observe(element);
 		return () => {
 			element.removeEventListener("scroll", onScroll);
 			element.removeEventListener("load", onLoad, true);
