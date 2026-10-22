@@ -1032,12 +1032,19 @@ export function foldRuns(
  * Retaining across the shrink and pruning against `held` (the STORE's ids) is
  * what keeps the latch both sticky and bounded.
  *
+ * `held` is asked per LATCHED id, never materialised as a set of the whole store
+ * (agent review round 2): this runs inside a memo that re-runs on every streamed
+ * token, and building a 20k-entry id set per token measured 0.677 ms against
+ * 0.013 ms at 500 records - work proportional to the conversation for a fact
+ * about a handful of rows. The transcript's own id index is already a `Map`, so
+ * it answers `.has` directly.
+ *
  * Pure so the trade is arithmetic rather than a mount: the component owns the
  * ref, this owns the rule.
  */
 export function latchFoldedRuns(
 	previous: ReadonlySet<string>,
-	held: ReadonlySet<string>,
+	held: { has(id: string): boolean },
 	runs: readonly FoldGroup[],
 ): Set<string> {
 	const next = new Set<string>();

@@ -4020,6 +4020,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const paneIsLive =
 		(workingLine === undefined ? paneWorking : workingLine) !== null ||
 		gate !== null;
+	/*
+	 * Whether this pane holds a live connection at all. Distinct from `paneIsLive`
+	 * by exactly the reconnect gap: a null `frontend` means the snapshot is gone,
+	 * which is not evidence that the turn ended (see the fold latch below).
+	 */
+	const paneConnected = frontend !== null;
 
 	/*
 	 * THE LIVE FOLD LATCH (operator report, 2026-10-21: job messages and
@@ -4152,6 +4158,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * reply/steer indication. Operator asks, prose and arbitrary notices remain
 	 * boundaries.
 	 */
+	/* The store's id index, for the latch prune (see `latchFoldedRuns`). */
+	const recordIndex = transcript.index;
 	const rowGroups = useMemo(() => {
 		/*
 		 * `isNewestTurn` used to be computed here for the fold's condense; the
@@ -4212,7 +4220,13 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * rows, never a count that lumped them in as "incoming messages".
 			 */
 			receiptSummaryOf: (rows) => receiptFoldUnits(rows),
-			liveTurn: paneIsLive,
+			/*
+			 * A GAP HOLDS THE FOLD TOO (design review round 1, U1). With no
+			 * connection the pane has observed nothing, so the run is judged by
+			 * what it last painted rather than by a re-decision over stale rows -
+			 * the same reading the latch retains one line below.
+			 */
+			liveTurn: paneIsLive || !paneConnected,
 			latchedFoldIds: foldLatch.current.ids,
 		});
 		/*
@@ -4228,14 +4242,24 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 * STORE's ids (`rawRecords`, not `visible`), which is what keeps the set
 		 * from pinning a run the conversation no longer holds.
 		 */
-		if (paneIsLive) {
+		/*
+		 * A GAP IS NOT A SETTLE (design review round 1, U1). The clear used to run
+		 * on any non-live pass, and a reconnect gap is one: `frontend: null` drops
+		 * `working`, so the group opened for the gap's frames and the next live pass
+		 * folded it again - the same open/close through the door the settle rule was
+		 * meant to hold shut. A pane with NO connection has observed nothing about
+		 * the turn, so it retains the latch (pruned against the store, exactly as a
+		 * live pass does). Only a CONNECTED pane with no live reading - the session
+		 * is really idle - spends the latch, and the settled pass then renders from
+		 * the rows alone.
+		 */
+		if (paneIsLive || !paneConnected) {
 			foldLatch.current.ids = latchFoldedRuns(
 				foldLatch.current.ids,
-				new Set(rawRecords.current.map((record) => record.id)),
+				recordIndex,
 				groups,
 			);
 		} else if (foldLatch.current.ids.size > 0) {
-			// Settled: the rows decide, and the next live pass starts clean.
 			foldLatch.current.ids = new Set();
 		}
 		return groups.map((group) =>
@@ -4255,7 +4279,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					}
 				: group,
 		);
-	}, [visible, paneIsLive]);
+	}, [visible, paneIsLive, paneConnected, recordIndex]);
 	/*
 	 * KEYED ON THE WINDOW'S SIGNATURE, NOT ON `visible` (UI perf audit P4; PR-6).
 	 * The foot is arithmetic over the same partition the plan builds - counts,
