@@ -127,5 +127,13 @@
 	"ui.teamBridge.reactions.category7": "Symboles",
 	"ui.teamBridge.reactions.category8": "Drapeaux",
 	"ui.teamBridge.reactions.choose": "Choisir un émoji",
-	"ui.teamBridge.reactions.noResults": "Aucun émoji trouvé"
+	"ui.teamBridge.reactions.noResults": "Aucun émoji trouvé",
+	"ui.teamBridge.replies.action": "Répondre dans le fil",
+	"ui.teamBridge.replies.title": "Fil de discussion",
+	"ui.teamBridge.replies.close": "Fermer le fil",
+	"ui.teamBridge.replies.count": "{count, plural, one {# réponse} many {# de réponses} other {# réponses}}",
+	"ui.teamBridge.replies.last": "dernière réponse à {time}",
+	"ui.teamBridge.replies.empty": "Aucune réponse pour l’instant. Lancez le fil.",
+	"ui.teamBridge.replies.placeholder": "Répondre dans le fil",
+	"ui.teamBridge.replies.more": "Charger plus de réponses"
 }

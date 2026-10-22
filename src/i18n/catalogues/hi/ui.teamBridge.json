@@ -127,5 +127,13 @@
 	"ui.teamBridge.reactions.category7": "चिह्न",
 	"ui.teamBridge.reactions.category8": "झंडे",
 	"ui.teamBridge.reactions.choose": "इमोजी चुनें",
-	"ui.teamBridge.reactions.noResults": "कोई इमोजी नहीं मिला"
+	"ui.teamBridge.reactions.noResults": "कोई इमोजी नहीं मिला",
+	"ui.teamBridge.replies.action": "थ्रेड में जवाब दें",
+	"ui.teamBridge.replies.title": "थ्रेड",
+	"ui.teamBridge.replies.close": "थ्रेड बंद करें",
+	"ui.teamBridge.replies.count": "{count, plural, one {# जवाब} other {# जवाब}}",
+	"ui.teamBridge.replies.last": "अंतिम जवाब {time}",
+	"ui.teamBridge.replies.empty": "अभी कोई जवाब नहीं। थ्रेड शुरू करें।",
+	"ui.teamBridge.replies.placeholder": "थ्रेड में जवाब लिखें",
+	"ui.teamBridge.replies.more": "और जवाब लोड करें"
 }

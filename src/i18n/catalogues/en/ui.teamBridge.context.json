@@ -933,5 +933,65 @@
 		"length": "Short",
 		"placeholders": {},
 		"note": "Accessible picker label or empty search state."
+	},
+	"ui.teamBridge.replies.action": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.title": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.close": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.count": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {
+			"count": "Number of replies"
+		},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.last": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {
+			"time": "Localized clock time"
+		},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.empty": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.placeholder": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.more": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
 	}
 }

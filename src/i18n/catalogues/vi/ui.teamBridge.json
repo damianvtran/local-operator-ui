@@ -127,5 +127,13 @@
 	"ui.teamBridge.reactions.category7": "Biểu tượng",
 	"ui.teamBridge.reactions.category8": "Cờ",
 	"ui.teamBridge.reactions.choose": "Chọn biểu tượng cảm xúc",
-	"ui.teamBridge.reactions.noResults": "Không tìm thấy biểu tượng cảm xúc"
+	"ui.teamBridge.reactions.noResults": "Không tìm thấy biểu tượng cảm xúc",
+	"ui.teamBridge.replies.action": "Trả lời trong luồng",
+	"ui.teamBridge.replies.title": "Luồng trò chuyện",
+	"ui.teamBridge.replies.close": "Đóng luồng trò chuyện",
+	"ui.teamBridge.replies.count": "{count, plural, other {# câu trả lời}}",
+	"ui.teamBridge.replies.last": "trả lời gần nhất lúc {time}",
+	"ui.teamBridge.replies.empty": "Chưa có câu trả lời nào. Hãy bắt đầu luồng trò chuyện.",
+	"ui.teamBridge.replies.placeholder": "Trả lời trong luồng",
+	"ui.teamBridge.replies.more": "Tải thêm câu trả lời"
 }

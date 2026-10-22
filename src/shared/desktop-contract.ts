@@ -3487,6 +3487,22 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			client_ref: id,
 			body: z.string().min(1),
 			agent_label: z.string().min(1).max(64).optional(),
+			/* Reply in this root message's thread; the hub validates the root. */
+			thread_root_id: id.optional(),
+		})
+		.strict(),
+	/*
+	 * One thread (root + replies, oldest-first) under the history gate. Paging
+	 * runs FORWARD with an inclusive `after_seq`, because a thread reads top-down.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.messages.replies"),
+			conversation_id: id,
+			message_id: id,
+			tenant_id: id.optional(),
+			limit: z.number().int().min(1).max(100).optional(),
+			after_seq: z.number().int().nonnegative().optional(),
 		})
 		.strict(),
 	z
@@ -5916,6 +5932,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"team_bridge.conversations.list",
 	"team_bridge.conversations.get",
 	"team_bridge.messages.list",
+	"team_bridge.messages.replies",
 	"team_bridge.unread",
 	"team_bridge.directory",
 	"team_bridge.status",
@@ -8708,8 +8725,24 @@ export function desktopEndpoint(request: DesktopRequest): {
 					client_ref: request.client_ref,
 					body: request.body,
 					...(request.agent_label ? { agent_label: request.agent_label } : {}),
+					...(request.thread_root_id
+						? { thread_root_id: request.thread_root_id }
+						: {}),
 				},
 			};
+		case "team_bridge.messages.replies": {
+			const query = new URLSearchParams();
+			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
+			if (request.limit !== undefined)
+				query.set("limit", String(request.limit));
+			if (request.after_seq !== undefined)
+				query.set("after_seq", String(request.after_seq));
+			const suffix = query.size > 0 ? `?${query.toString()}` : "";
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages/${encodeURIComponent(request.message_id)}/replies${suffix}`,
+				method: "GET",
+			};
+		}
 		case "team_bridge.read":
 			return {
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/read`,

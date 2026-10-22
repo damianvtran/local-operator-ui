@@ -127,5 +127,13 @@
 	"ui.teamBridge.reactions.category7": "Символы",
 	"ui.teamBridge.reactions.category8": "Флаги",
 	"ui.teamBridge.reactions.choose": "Выберите эмодзи",
-	"ui.teamBridge.reactions.noResults": "Эмодзи не найдены"
+	"ui.teamBridge.reactions.noResults": "Эмодзи не найдены",
+	"ui.teamBridge.replies.action": "Ответить в ветке",
+	"ui.teamBridge.replies.title": "Ветка",
+	"ui.teamBridge.replies.close": "Закрыть ветку",
+	"ui.teamBridge.replies.count": "{count, plural, one {# ответ} few {# ответа} many {# ответов} other {# ответа}}",
+	"ui.teamBridge.replies.last": "последний ответ: {time}",
+	"ui.teamBridge.replies.empty": "Ответов пока нет. Начните ветку.",
+	"ui.teamBridge.replies.placeholder": "Ответить в ветке",
+	"ui.teamBridge.replies.more": "Загрузить ещё ответы"
 }
