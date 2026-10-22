@@ -49,13 +49,12 @@ import {
 	organizationsReadState,
 	participantLabel,
 	pendingForThread,
+	performSend,
 	personDisplayLabel,
-	postedMessageId,
 	preferredScope,
 	railSections,
 	recipientCandidates,
 	recipientKey,
-	sendFirstMessage,
 	targetConversation,
 	teamBridgeEligibility,
 	threadWithPending,
@@ -1415,6 +1414,11 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			),
 		);
 
+	const releasePending = (clientRef: string) => {
+		attempts.current.delete(clientRef);
+		setPending((rows) => rows.filter((row) => row.clientRef !== clientRef));
+	};
+
 	/* The key of the unsent draft on screen; null when a thread exists. */
 	const draftKeyOf = (): string | null => {
 		const recipients = draftRecipients();
@@ -1456,58 +1460,41 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		]);
 		const attempt = async () => {
 			patchPending(clientRef, { status: "sending" });
-			let landedIn: { id: string; tenantId: string | undefined };
-			let posted: unknown;
-			try {
-				if (conversationId !== null) {
-					posted = await TeamBridgeApi.send(conversationId, {
-						clientRef,
-						body,
-						tenantId,
-					});
-					landedIn = { id: conversationId, tenantId };
-				} else if (input !== null && draftKey !== null) {
-					const done = await sendFirstMessage({
-						draftKey,
-						input,
-						body,
-						clientRef,
-						tenantId: mergedView ? undefined : scope,
-						remembered: createdForDraft.current,
-						create: async (createInput) => {
-							const made = (await create.mutateAsync(createInput)) as {
-								id?: string;
-								tenant_id?: string;
-							};
-							// Adopt the created conversation the moment it exists, so a
-							// copy arriving before the POST resolves is matched to it.
-							if (made.id) {
-								patchPending(clientRef, {
-									conversationId: made.id,
-									tenantId: made.tenant_id ?? tenantId,
-								});
-							}
-							return made;
-						},
-						// Straight to the API rather than a mutation hook bound to the
-						// conversation selected at RENDER time (a just-created row is
-						// not selected yet).
-						post: (id, message) => TeamBridgeApi.send(id, message),
-					});
-					posted = done.posted;
-					landedIn = done;
-				} else {
-					return;
-				}
-			} catch {
+			const outcome = await performSend({
+				conversationId,
+				tenantId,
+				draftKey,
+				input,
+				draftTenantId: mergedView ? undefined : scope,
+				body,
+				clientRef,
+				remembered: createdForDraft.current,
+				create: (createInput) =>
+					create.mutateAsync(createInput) as Promise<{
+						id?: string;
+						tenant_id?: string;
+					}>,
+				// Straight to the API rather than a mutation hook bound to the
+				// conversation selected at RENDER time (a just-created row is not
+				// selected yet).
+				post: (id, message) => TeamBridgeApi.send(id, message),
+				// Adopt the created conversation the moment it exists, so a copy
+				// arriving before the POST resolves is matched to it.
+				onCreated: (created) =>
+					patchPending(clientRef, {
+						conversationId: created.id,
+						tenantId: created.tenantId,
+					}),
+			});
+			if (!outcome.ok) {
 				patchPending(clientRef, { status: "failed" });
 				return;
 			}
 			patchPending(clientRef, {
 				status: "sent",
-				conversationId: landedIn.id,
-				tenantId: landedIn.tenantId,
-				confirmedId: postedMessageId(posted),
+				conversationId: outcome.id,
+				tenantId: outcome.tenantId,
+				confirmedId: outcome.confirmedId,
 			});
 			/*
 			 * Move to the new group only if the reader is STILL on the draft that
@@ -1515,14 +1502,20 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			 * refetches, the same target resolves to the new DM by itself.
 			 */
 			if (startedOn?.type === "compose" && targetRef.current === startedOn) {
-				setTarget({ type: "conversation", id: landedIn.id });
+				setTarget({ type: "conversation", id: outcome.id });
 			}
 			// The message is sent. A failed refresh is the next poll's to repeat,
 			// never a reason to show the message as unsent.
 			try {
-				await refreshAfterSend(client, landedIn.id, landedIn.tenantId);
+				await refreshAfterSend(client, outcome.id, outcome.tenantId);
 				if (conversationId === null) await list.refetch();
-			} catch {}
+			} catch {
+				return;
+			}
+			// An existing thread has now been re-read: its confirmed list holds the
+			// message, so the pending copy is released even if no rule matched it
+			// (a server that rewrites the body). Nothing is left "sending" forever.
+			if (conversationId !== null) releasePending(clientRef);
 		};
 		attempts.current.set(clientRef, attempt);
 		return attempt();
@@ -1551,12 +1544,24 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				(row) => row.clientRef,
 			),
 		);
-		const claimed = threadPending.filter((row) => !open.has(row.clientRef));
+		// A row from a NEW thread is released once that thread's own read (a
+		// fresh query, so it cannot be stale) has landed: whatever the server
+		// stored is in `confirmed`, so a pending copy must not outlive it.
+		const threadRead =
+			selected !== null && messages.isSuccess && !messages.isFetching;
+		const claimed = threadPending.filter(
+			(row) =>
+				!open.has(row.clientRef) ||
+				(threadRead &&
+					row.status === "sent" &&
+					row.draftKey !== null &&
+					row.conversationId === selected?.id),
+		);
 		if (claimed.length === 0) return;
 		for (const row of claimed) attempts.current.delete(row.clientRef);
 		const drop = new Set(claimed.map((row) => row.clientRef));
 		setPending((rows) => rows.filter((row) => !drop.has(row.clientRef)));
-	}, [messages.data]);
+	}, [messages.data, messages.isFetching]);
 
 	const newest = messages.data?.messages.reduce<number | undefined>(
 		(max, message) =>

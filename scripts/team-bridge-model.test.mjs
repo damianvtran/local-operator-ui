@@ -1365,3 +1365,107 @@ test("first send then failed post then retry: same client_ref, one create, one m
 		["ref-1", "ref-1"],
 	);
 });
+
+// ---------------------------------------------------------------------------
+// performSend: the page container's whole optimistic attempt, executed.
+// ---------------------------------------------------------------------------
+
+const sendRig = (over = {}) => {
+	const calls = { create: 0, post: [], created: [] };
+	return {
+		calls,
+		args: {
+			conversationId: null,
+			tenantId: undefined,
+			draftKey: "tnt_1|dm|human:acct_ben",
+			input: groupInput,
+			draftTenantId: "tnt_1",
+			body: "hello",
+			clientRef: "ref-1",
+			remembered: new Map(),
+			create: async () => {
+				calls.create += 1;
+				return { id: "bcv_new", tenant_id: "tnt_1" };
+			},
+			post: async (id, message) => {
+				calls.post.push({ id, ...message });
+				return { id: "bcmsg_9" };
+			},
+			onCreated: (created) => calls.created.push(created),
+			...over,
+		},
+	};
+};
+
+test("performSend: the first send creates, adopts the id BEFORE the post, and reports the posted id", async () => {
+	const order = [];
+	const rig = sendRig({
+		post: async (id, message) => {
+			order.push("post");
+			rig.calls.post.push({ id, ...message });
+			return { message: { id: "bcmsg_9" } };
+		},
+		onCreated: () => order.push("adopt"),
+	});
+	const out = await model.performSend(rig.args);
+	assert.deepEqual(order, ["adopt", "post"]);
+	assert.deepEqual(out, {
+		ok: true,
+		id: "bcv_new",
+		tenantId: "tnt_1",
+		confirmedId: "bcmsg_9",
+	});
+});
+
+test("performSend: a failed post is {ok:false}, never a throw; the retry reuses the client_ref and the created conversation", async () => {
+	let failing = true;
+	const rig = sendRig({
+		post: async (id, message) => {
+			rig.calls.post.push({ id, ...message });
+			if (failing) throw new Error("offline");
+			return { id: "bcmsg_9" };
+		},
+	});
+	assert.deepEqual(await model.performSend(rig.args), { ok: false });
+	failing = false;
+	const retried = await model.performSend(rig.args);
+	assert.equal(retried.ok, true);
+	assert.equal(rig.calls.create, 1, "the retry must not create again");
+	assert.deepEqual(
+		rig.calls.post.map((c) => [c.id, c.clientRef]),
+		[
+			["bcv_new", "ref-1"],
+			["bcv_new", "ref-1"],
+		],
+	);
+});
+
+test("performSend: an existing thread posts straight to it, with its tenant, and never creates", async () => {
+	const rig = sendRig({
+		conversationId: "bcv_1",
+		tenantId: "tnt_9",
+		draftKey: null,
+		input: null,
+	});
+	const out = await model.performSend(rig.args);
+	assert.equal(rig.calls.create, 0);
+	assert.deepEqual(rig.calls.post, [
+		{ id: "bcv_1", clientRef: "ref-1", body: "hello", tenantId: "tnt_9" },
+	]);
+	assert.equal(out.ok && out.confirmedId, "bcmsg_9");
+});
+
+test("performSend: a failed create is a failed row, and nothing is posted", async () => {
+	const rig = sendRig({
+		create: async () => {
+			throw new Error("403");
+		},
+	});
+	assert.deepEqual(await model.performSend(rig.args), { ok: false });
+	assert.equal(rig.calls.post.length, 0);
+});
+
+test("performSend: no thread and no draft to create is a failure, not a silent drop", async () => {
+	const rig = sendRig({ draftKey: null, input: null });
+	assert.deepEqual(await model.performSend(rig.args), { ok: false });
+});
