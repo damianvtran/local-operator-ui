@@ -274,6 +274,7 @@ import hiUiSettingsSpeech from "./catalogues/hi/ui.settings.speech.json";
 import hiUiSettingsUpdates from "./catalogues/hi/ui.settings.updates.json";
 import hiUiShell from "./catalogues/hi/ui.shell.json";
 import hiUiShellRail from "./catalogues/hi/ui.shell.rail.json";
+import hiUiTeamBridge from "./catalogues/hi/ui.teamBridge.json";
 import ruUiAgentMessages from "./catalogues/ru/ui.agentMessages.json";
 import ruUiAgentMessagesSettings from "./catalogues/ru/ui.agentMessages.settings.json";
 import ruUiAgentsDialogs from "./catalogues/ru/ui.agents.dialogs.json";
@@ -333,6 +334,7 @@ import ruUiSettingsSpeech from "./catalogues/ru/ui.settings.speech.json";
 import ruUiSettingsUpdates from "./catalogues/ru/ui.settings.updates.json";
 import ruUiShell from "./catalogues/ru/ui.shell.json";
 import ruUiShellRail from "./catalogues/ru/ui.shell.rail.json";
+import ruUiTeamBridge from "./catalogues/ru/ui.teamBridge.json";
 import urUiAgentMessages from "./catalogues/ur/ui.agentMessages.json";
 import urUiAgentMessagesSettings from "./catalogues/ur/ui.agentMessages.settings.json";
 import urUiAgentsDialogs from "./catalogues/ur/ui.agents.dialogs.json";
@@ -392,6 +394,7 @@ import urUiSettingsSpeech from "./catalogues/ur/ui.settings.speech.json";
 import urUiSettingsUpdates from "./catalogues/ur/ui.settings.updates.json";
 import urUiShell from "./catalogues/ur/ui.shell.json";
 import urUiShellRail from "./catalogues/ur/ui.shell.rail.json";
+import urUiTeamBridge from "./catalogues/ur/ui.teamBridge.json";
 import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
 import viUiAgentMessagesSettings from "./catalogues/vi/ui.agentMessages.settings.json";
 import viUiAgentsDialogs from "./catalogues/vi/ui.agents.dialogs.json";
@@ -450,6 +453,7 @@ import viUiSettingsSpeech from "./catalogues/vi/ui.settings.speech.json";
 import viUiSettingsUpdates from "./catalogues/vi/ui.settings.updates.json";
 import viUiShell from "./catalogues/vi/ui.shell.json";
 import viUiShellRail from "./catalogues/vi/ui.shell.rail.json";
+import viUiTeamBridge from "./catalogues/vi/ui.teamBridge.json";
 import zhCNUiAgentMessages from "./catalogues/zh-CN/ui.agentMessages.json";
 import zhCNUiAgentMessagesSettings from "./catalogues/zh-CN/ui.agentMessages.settings.json";
 import zhCNUiAgentsDialogs from "./catalogues/zh-CN/ui.agents.dialogs.json";
@@ -780,6 +784,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiSettingsUpdates,
 		...hiUiShell,
 		...hiUiShellRail,
+		...hiUiTeamBridge,
 	},
 	ru: {
 		...ruUiAgentMessages,
@@ -841,6 +846,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiSettingsUpdates,
 		...ruUiShell,
 		...ruUiShellRail,
+		...ruUiTeamBridge,
 	},
 	ur: {
 		...urUiAgentMessages,
@@ -902,6 +908,7 @@ export const bundledCatalogues: Readonly<
 		...urUiSettingsUpdates,
 		...urUiShell,
 		...urUiShellRail,
+		...urUiTeamBridge,
 	},
 	vi: {
 		...viUiAgentMessages,
@@ -962,6 +969,7 @@ export const bundledCatalogues: Readonly<
 		...viUiSettingsUpdates,
 		...viUiShell,
 		...viUiShellRail,
+		...viUiTeamBridge,
 	},
 	"zh-CN": {
 		...zhCNUiAgentMessages,
@@ -5084,38 +5092,42 @@ export type MessageParams = {
 		count: number;
 		countText: string;
 	};
+	"ui.teamBridge.builtin.agents_topic": undefined;
+	"ui.teamBridge.builtin.humans_topic": undefined;
+	"ui.teamBridge.chief.fallback": undefined;
+	"ui.teamBridge.chief.label": { agent: string; person: string };
+	"ui.teamBridge.compose.empty": undefined;
+	"ui.teamBridge.compose.label": undefined;
+	"ui.teamBridge.compose.new": undefined;
+	"ui.teamBridge.compose.placeholder": undefined;
+	"ui.teamBridge.compose.remove": { name: string };
+	"ui.teamBridge.compose.to": undefined;
 	"ui.teamBridge.composer.error": undefined;
 	"ui.teamBridge.composer.hint": undefined;
 	"ui.teamBridge.composer.placeholder": undefined;
+	"ui.teamBridge.composer.placeholder_to": { name: string };
 	"ui.teamBridge.composer.send": undefined;
-	"ui.teamBridge.create.account_placeholder": undefined;
-	"ui.teamBridge.create.add_member": undefined;
 	"ui.teamBridge.create.cancel": undefined;
+	"ui.teamBridge.create.channel_description": undefined;
 	"ui.teamBridge.create.confirm": undefined;
 	"ui.teamBridge.create.error": undefined;
-	"ui.teamBridge.create.member_account": undefined;
-	"ui.teamBridge.create.member_agent": undefined;
-	"ui.teamBridge.create.member_kind": undefined;
-	"ui.teamBridge.create.member_name": undefined;
-	"ui.teamBridge.create.member_person": undefined;
 	"ui.teamBridge.create.members": undefined;
 	"ui.teamBridge.create.name": undefined;
-	"ui.teamBridge.create.remove_member": undefined;
+	"ui.teamBridge.create.name_placeholder": undefined;
 	"ui.teamBridge.create.title": undefined;
+	"ui.teamBridge.create.topic": undefined;
 	"ui.teamBridge.group.more": undefined;
-	"ui.teamBridge.group.more_unread": { count: number };
 	"ui.teamBridge.kind.channel": undefined;
 	"ui.teamBridge.kind.dm": undefined;
 	"ui.teamBridge.kind.group": undefined;
 	"ui.teamBridge.list.empty.body": undefined;
 	"ui.teamBridge.list.empty.title": undefined;
 	"ui.teamBridge.list.error": undefined;
+	"ui.teamBridge.list.error_pane": undefined;
 	"ui.teamBridge.list.loading": undefined;
 	"ui.teamBridge.list.retry": undefined;
 	"ui.teamBridge.list.untitled": undefined;
-	"ui.teamBridge.member.agent": undefined;
 	"ui.teamBridge.member.count": { count: number };
-	"ui.teamBridge.member.invited": undefined;
 	"ui.teamBridge.menu.label": undefined;
 	"ui.teamBridge.menu.mute": undefined;
 	"ui.teamBridge.menu.unmute": undefined;
@@ -5130,21 +5142,16 @@ export type MessageParams = {
 	"ui.teamBridge.notify.mute": undefined;
 	"ui.teamBridge.notify.muted": undefined;
 	"ui.teamBridge.notify.title": { conversation: string; organization: string };
-	"ui.teamBridge.page.new_conversation": undefined;
-	"ui.teamBridge.page.subtitle": undefined;
 	"ui.teamBridge.page.title": undefined;
 	"ui.teamBridge.people.all_scope": undefined;
 	"ui.teamBridge.people.bridge_off": undefined;
 	"ui.teamBridge.people.empty": undefined;
 	"ui.teamBridge.people.error": undefined;
 	"ui.teamBridge.people.identity_loading": undefined;
-	"ui.teamBridge.people.list_error": undefined;
-	"ui.teamBridge.people.list_loading": undefined;
 	"ui.teamBridge.people.loading": undefined;
 	"ui.teamBridge.people.message": { name: string };
-	"ui.teamBridge.people.message_paused": { name: string };
 	"ui.teamBridge.people.paused": undefined;
-	"ui.teamBridge.people.self": undefined;
+	"ui.teamBridge.people.self_named": { name: string };
 	"ui.teamBridge.people.title": undefined;
 	"ui.teamBridge.plan.body": undefined;
 	"ui.teamBridge.plan.checking": undefined;
@@ -5162,7 +5169,8 @@ export type MessageParams = {
 	"ui.teamBridge.preview.join_error": undefined;
 	"ui.teamBridge.read_only.composer": undefined;
 	"ui.teamBridge.read_only.note": undefined;
-	"ui.teamBridge.read_only.person": undefined;
+	"ui.teamBridge.row.menu": { name: string };
+	"ui.teamBridge.row.start_group": undefined;
 	"ui.teamBridge.scope.all": undefined;
 	"ui.teamBridge.scope.create_needs_org": undefined;
 	"ui.teamBridge.scope.empty": undefined;
@@ -5172,10 +5180,28 @@ export type MessageParams = {
 	"ui.teamBridge.scope.thread_unknown": undefined;
 	"ui.teamBridge.scope.trigger": { name: string };
 	"ui.teamBridge.scope.unknown": undefined;
+	"ui.teamBridge.section.channels": undefined;
+	"ui.teamBridge.section.channels_add": undefined;
+	"ui.teamBridge.section.channels_empty": undefined;
+	"ui.teamBridge.section.channels_none": undefined;
+	"ui.teamBridge.section.chiefs": undefined;
+	"ui.teamBridge.section.chiefs_empty": undefined;
+	"ui.teamBridge.section.directs": undefined;
+	"ui.teamBridge.section.groups": undefined;
+	"ui.teamBridge.section.groups_add": undefined;
+	"ui.teamBridge.section.groups_empty": undefined;
+	"ui.teamBridge.section.groups_none": undefined;
+	"ui.teamBridge.sender.unknown_agent": undefined;
+	"ui.teamBridge.sender.unknown_person": undefined;
 	"ui.teamBridge.thread.empty": undefined;
 	"ui.teamBridge.thread.error": undefined;
+	"ui.teamBridge.thread.intro_chief": { name: string };
+	"ui.teamBridge.thread.intro_group": { names: string };
+	"ui.teamBridge.thread.intro_person": { name: string };
 	"ui.teamBridge.thread.loading": undefined;
+	"ui.teamBridge.thread.today": undefined;
 	"ui.teamBridge.thread.withheld": undefined;
+	"ui.teamBridge.thread.yesterday": undefined;
 	"ui.teamBridge.unread.count": { count: number };
 };
 

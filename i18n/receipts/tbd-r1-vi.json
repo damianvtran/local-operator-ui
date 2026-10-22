@@ -1,0 +1,65 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbd-r1-vi",
+  "session": "5ba00fcd73ed",
+  "date": "2026-10-21",
+  "locale": "vi",
+  "translator": "translator",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 113,
+      "scope": "All 113 keys of ui.teamBridge (new vi catalogue, first audit), read side by side with en and the context sidecar. Checked against the glossary, style-guides/vi.md and the other vi ui.* catalogues. ICU, NFC and bidi verified in the bytes with node.",
+      "sha256": {
+        "en": "0dfc0c5ed780b7b6e2cf2a560f007350ce4d17d512c39cce001a182bf43a09a7",
+        "vi": "9c37ca643f95d07e1d201dbd7b56bea6b5deb1deaa78576f20257e028604e540",
+        "context": "267fc1892bb84cd4d7dbab1ff86a8120e5ec07069d3437241cf45391c9fb2291"
+      },
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.page.subtitle",
+          "current": "Trò chuyện với đồng đội và tác nhân của họ.",
+          "proposed": "Trò chuyện với đồng nghiệp và tác nhân của họ.",
+          "note": "“đồng đội” is sports/military register for coworkers; “đồng nghiệp” is what a native speaker writes in a workplace app. Leaving nhóm (glossary team) is justified because “Nhóm” = Group on the same rail, but the per-locale exception must be recorded in style-guides/vi.md (glossary §4)."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.plan.body",
+          "current": "Trao đổi với đồng đội và tác nhân của họ, đồng thời để các tác nhân cộng tác với những tác nhân khác trong tổ chức của bạn.",
+          "proposed": "Trao đổi với đồng nghiệp và tác nhân của họ, đồng thời để các tác nhân cộng tác với những tác nhân khác trong tổ chức của bạn.",
+          "note": "Same issue as page.subtitle: in a workplace messaging app, “đồng đội” (sports/military teammate) reads marked; “đồng nghiệp” is the native word for colleagues. Moving away from the glossary’s team → nhóm is correct here (human colleagues, not a Local Operator agent team, and “Nhóm” is already the Group kind and section), but that exception still has to be recorded in the vi style guide."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.section.chiefs_empty",
+          "current": "Chưa có đồng đội nào đưa tác nhân lên Team Bridge.",
+          "proposed": "Chưa có đồng nghiệp nào đưa tác nhân lên Team Bridge.",
+          "note": "Same issue as page.subtitle: in a workplace messaging app, “đồng đội” (sports/military teammate) reads marked; “đồng nghiệp” is the native word for colleagues. Moving away from the glossary’s team → nhóm is correct here (human colleagues, not a Local Operator agent team, and “Nhóm” is already the Group kind and section), but that exception still has to be recorded in the vi style guide."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.builtin.agents_topic",
+          "current": "Chánh văn phòng của mọi đồng đội. Tác nhân chỉ thức dậy khi được nhắc đến.",
+          "proposed": "Chánh văn phòng của mọi đồng nghiệp. Tác nhân chỉ thức dậy khi được nhắc đến.",
+          "note": "Same issue as page.subtitle: in a workplace messaging app, “đồng đội” (sports/military teammate) reads marked; “đồng nghiệp” is the native word for colleagues. Moving away from the glossary’s team → nhóm is correct here (human colleagues, not a Local Operator agent team, and “Nhóm” is already the Group kind and section), but that exception still has to be recorded in the vi style guide."
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.notify.mention",
+          "current": "Lượt nhắc đến",
+          "proposed": "Khi được nhắc đến",
+          "note": "“Lượt” counts occurrences (as in lượt xem), so the option reads like a statistic, not the level “only mentions notify”. The proposed condition says what the radio selects. It is +4 characters in a menu row, so do a rendered check."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.people.all_scope",
+          "current": "Chọn một tổ chức để xem thành viên của tổ chức đó.",
+          "proposed": "Chọn một tổ chức để xem mọi người trong tổ chức đó.",
+          "note": "English “People” is “Mọi người” in the section heading, loading and error lines, but “thành viên” here, which is also this namespace’s word for “member”. Aligning the two ties the note to the section it explains."
+        }
+      ]
+    }
+  }
+}

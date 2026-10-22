@@ -75,6 +75,18 @@ export const teamBridgeConversationSchema = z
 		 * server that does not publish this label falls back to "New message".
 		 */
 		last_sender_label: z.string().min(1).max(64).optional(),
+		/*
+		 * A BUILT-IN CHANNEL'S IDENTITY (agent-server, built-in channels slice).
+		 * Every eligible organization has two server-provisioned channels whose
+		 * membership the server DERIVES: `humans` is every active person and
+		 * `agents` is every enrolled chief of staff. The client never creates,
+		 * renames or fills them; it only orders them first and explains them.
+		 *
+		 * A plain string, not an enum: a third built-in added server-side must
+		 * still parse (and render as an ordinary channel) on this client rather
+		 * than failing the whole conversation list. Absent on older servers.
+		 */
+		builtin: z.string().min(1).max(32).optional(),
 	})
 	.passthrough();
 export type TeamBridgeConversation = z.infer<
@@ -193,6 +205,27 @@ export type TeamBridgePersonBridgeState = z.infer<
 	typeof teamBridgePersonBridgeStateSchema
 >;
 
+/**
+ * A person's chief of staff, as the directory publishes it.
+ *
+ * WHY THE DIRECTORY CARRIES IT. Clicking a chief of staff must open a DM with
+ * that person's primary agent, and a DM with an agent names the agent's
+ * endpoint. The endpoint id is only ever published to co-members of the same
+ * organization, and `name` is the agent's CURRENT display name (renaming Aida
+ * on the owner's machine re-syncs it), which is why the rail never hardcodes a
+ * name. Absent when the person has no enrolled agent, or on an older server.
+ */
+export const teamBridgeDirectoryAgentSchema = z
+	.object({
+		endpoint_id: id,
+		name: z.string().max(128),
+		state: z.string().min(1).max(32),
+	})
+	.passthrough();
+export type TeamBridgeDirectoryAgent = z.infer<
+	typeof teamBridgeDirectoryAgentSchema
+>;
+
 export const teamBridgeDirectoryMemberSchema = z
 	.object({
 		account_id: id,
@@ -211,6 +244,12 @@ export const teamBridgeDirectoryMemberSchema = z
 		role: z.string().min(1).max(32),
 		bridge_enabled: z.boolean(),
 		bridge_state: teamBridgePersonBridgeStateSchema,
+		/*
+		 * `.catch(undefined)`: a malformed agent object costs the person their
+		 * chief-of-staff row, never their People row. The person is still a
+		 * colleague; only the agent shortcut is withheld.
+		 */
+		agent: teamBridgeDirectoryAgentSchema.optional().catch(undefined),
 	})
 	.passthrough();
 export type TeamBridgeDirectoryMember = z.infer<
@@ -241,12 +280,14 @@ function salvageDirectoryMember(
 	const state = teamBridgePersonBridgeStateSchema.safeParse(
 		candidate.bridge_state,
 	);
+	const agent = teamBridgeDirectoryAgentSchema.safeParse(candidate.agent);
 	return {
 		account_id: accountId,
 		display_label: label,
 		role,
 		bridge_enabled: bridgeEnabled,
 		bridge_state: state.success ? state.data : "none",
+		...(agent.success ? { agent: agent.data } : {}),
 	};
 }
 

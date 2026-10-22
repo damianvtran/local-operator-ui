@@ -1,0 +1,208 @@
+import { formatDate, formatTime, t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
+import { cn } from "@shared/lib/utils";
+import { Bot, UserRound } from "lucide-react";
+import type { FC } from "react";
+import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
+import { TeamBridgeMarkdown } from "./team-bridge-markdown";
+import { type ThreadItem, threadItems } from "./team-bridge-model";
+
+/**
+ * The thread, drawn the way Slack and Discord draw a channel, not a messenger.
+ *
+ * WHY NO BUBBLES (operator review, 2026-10-21). A bubble per message turns a
+ * busy channel into a column of boxes and halves the width a long agent
+ * write-up can use: the operator's reference is Slack's list, where each
+ * message is an avatar, a name, a time, and the body below it at the full
+ * width of the pane. Own messages are NOT right-aligned or tinted either; in
+ * a group conversation "who said it" is the name, and alignment only works for
+ * two people.
+ *
+ * RUNS. Consecutive messages from the same sender within five minutes collapse
+ * into one header (Slack's continuation rows): the avatar and name are drawn
+ * once, and a continuation shows its clock time in the gutter on hover only.
+ * A day divider starts each calendar day. Both decisions live in
+ * `threadItems` (the model) so they are tested without a DOM.
+ *
+ * THE BODY IS MARKDOWN. Agents post structured write-ups (headings, lists,
+ * code, links) and the operator's QA-coordination traffic is exactly that, so
+ * the body goes through the app's one sanctioned prose renderer
+ * (`TeamBridgeMarkdown`: GFM, external links open in the browser, images as text, nothing else
+ * is a link). That renderer emits no raw HTML, so a hostile body cannot inject
+ * markup.
+ *
+ * NAMES ARE THE CALLER'S. `labelFor` maps a sender onto the name the rail
+ * shows for them (the directory's current name for a person, "Aida (Ben)" for
+ * a chief of staff), so a message and the People row agree, and a stale stored
+ * label never reaches the screen when a better one is known.
+ *
+ * NULL MEANS UNKNOWN, AND LOOKS IT. When nothing names the sender (directory
+ * still loading or failed, a member who left, the legacy "Member" label the
+ * hub stored), the row says "Unknown person" / "Unknown agent" in a muted
+ * italic with a neutral glyph. An initial avatar under a plausible word is what
+ * made "Member" read as somebody's name (operator report, 2026-10-22).
+ */
+export const TeamBridgeMessageList: FC<{
+	messages: readonly TeamBridgeMessage[];
+	labelFor: (sender: TeamBridgeMessage["sender"]) => string | null;
+}> = ({ messages, labelFor }) => {
+	const locale = useI18nLocale();
+	const items = threadItems(messages, new Date());
+	return (
+		<ol className="mt-auto flex flex-col pt-4 pb-2">
+			{items.map((item) =>
+				item.type === "day" ? (
+					<DayDivider key={`day:${item.key}`} item={item} locale={locale} />
+				) : (
+					<MessageRow
+						key={item.message.id}
+						message={item.message}
+						continuation={item.continuation}
+						label={labelFor(item.message.sender)}
+						locale={locale}
+					/>
+				),
+			)}
+		</ol>
+	);
+};
+
+/*
+ * A full-width hairline-free divider: the label sits in the middle of a
+ * divider drawn as background value (`bg-hairline` at 1px is a ground, not a
+ * border on a panel), matching Slack's centred day pill without its outline.
+ */
+const DayDivider: FC<{
+	item: Extract<ThreadItem, { type: "day" }>;
+	locale: string;
+}> = ({ item, locale }) => {
+	const label =
+		item.relative === "today"
+			? t("ui.teamBridge.thread.today")
+			: item.relative === "yesterday"
+				? t("ui.teamBridge.thread.yesterday")
+				: formatDate(
+						item.date,
+						{ weekday: "long", month: "long", day: "numeric" },
+						locale,
+					);
+	return (
+		<li className="flex items-center gap-3 px-5 py-2" aria-label={label}>
+			<span aria-hidden="true" className="h-px flex-1 bg-hairline" />
+			<span className="shrink-0 rounded-full bg-elevated px-2.5 py-0.5 font-medium text-[12px] text-ink-muted">
+				{label}
+			</span>
+			<span aria-hidden="true" className="h-px flex-1 bg-hairline" />
+		</li>
+	);
+};
+
+const MessageRow: FC<{
+	message: TeamBridgeMessage;
+	continuation: boolean;
+	label: string | null;
+	locale: string;
+}> = ({ message, continuation, label: known, locale }) => {
+	const agent = message.sender.kind === "agent";
+	const label =
+		known ??
+		(agent
+			? t("ui.teamBridge.sender.unknown_agent")
+			: t("ui.teamBridge.sender.unknown_person"));
+	const at = new Date(message.created_at);
+	const valid = !Number.isNaN(at.getTime());
+	const clock = valid
+		? formatTime(at, { hour: "numeric", minute: "2-digit" }, locale)
+		: "";
+	const full = valid
+		? formatDate(at, { dateStyle: "full", timeStyle: "short" }, locale)
+		: "";
+	return (
+		<li
+			className={cn(
+				"group/message flex gap-3 px-5 transition-colors duration-fast ease-out-quart hover:bg-row-hover",
+				continuation ? "py-0.5" : "mt-2 pt-1.5 pb-0.5",
+			)}
+		>
+			{/* The 36px gutter holds the avatar on a run's first message and the
+			    hover clock on its continuations, so bodies share one left edge. */}
+			<div className="w-9 shrink-0">
+				{continuation ? (
+					valid && (
+						<time
+							dateTime={message.created_at}
+							title={full}
+							className="block pt-0.5 text-right text-[11px] text-ink-dim opacity-0 group-hover/message:opacity-100"
+						>
+							{clock}
+						</time>
+					)
+				) : (
+					<span
+						aria-hidden="true"
+						data-sender-avatar={
+							agent ? "agent" : known === null ? "unknown" : "initial"
+						}
+						className={cn(
+							// A rounded SQUARE, as the operator's reference draws it:
+							// Slack's people are squares, and a circle here would read as
+							// the app's own account avatar.
+							"mt-0.5 flex size-9 items-center justify-center rounded-md font-medium text-[14px]",
+							/* `border-control` because the row's hover is a row state:
+							   `sunken` sits on the hover's own rung on some palettes, and
+							   the plate would vanish into the row (selection guard). */
+							agent
+								? "border border-control bg-accent-wash text-accent"
+								: "border border-control bg-sunken text-ink-muted",
+						)}
+					>
+						{agent ? (
+							<Bot size={18} />
+						) : known === null ? (
+							<UserRound size={18} />
+						) : (
+							known.trim().charAt(0).toUpperCase() || "?"
+						)}
+					</span>
+				)}
+			</div>
+			<div className="min-w-0 flex-1">
+				{!continuation && (
+					<div className="flex items-baseline gap-2">
+						<span
+							data-sender={known === null ? "unknown" : "known"}
+							className={cn(
+								"truncate text-[14px]",
+								known === null
+									? "text-ink-muted italic"
+									: "font-semibold text-ink",
+							)}
+						>
+							{label}
+						</span>
+						{valid && (
+							<time
+								dateTime={message.created_at}
+								title={full}
+								className="shrink-0 text-[12px] text-ink-dim"
+							>
+								{clock}
+							</time>
+						)}
+					</div>
+				)}
+				{/* A null body is an agent member's unadmitted message: say so
+				    rather than rendering an empty row. */}
+				{message.body === null ? (
+					<p className="text-[14px] text-ink-dim italic">
+						{t("ui.teamBridge.thread.withheld")}
+					</p>
+				) : (
+					<TeamBridgeMarkdown className="team-bridge-message-body text-[14px] text-ink">
+						{message.body}
+					</TeamBridgeMarkdown>
+				)}
+			</div>
+		</li>
+	);
+};
