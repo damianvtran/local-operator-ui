@@ -188,7 +188,9 @@ export const TeamBridgeAttachmentChip: FC<{
 			>
 				<X size={12} aria-hidden="true" />
 			</ChipAction>
-			{failed && chip.prepared && (
+			{/* No Retry for signed_out: it would 401 again until the user signs in
+			    (review r7 M2), the same rule as the page's error view. */}
+			{failed && chip.prepared && chip.reason !== "signed_out" && (
 				<ChipAction
 					position="bottom"
 					label={t("ui.teamBridge.attachments.retry", { label })}

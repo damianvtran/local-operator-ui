@@ -87,6 +87,7 @@ import {
 	type ThreadTarget,
 	threadTargetFromSearch,
 } from "./team-bridge-thread-read";
+import { useStickToBottom } from "./use-stick-to-bottom";
 import {
 	useCreateTeamBridgeConversation,
 	useJoinTeamBridgeConversation,
@@ -635,6 +636,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	};
 	// Capture the original entry and scope: navigation while a request is in
 	// flight must not clear the next target's text, even if it is identical.
+	// Opens at the newest message and follows new ones while the reader is at
+	// the bottom (F9). Keyed by conversation; content key = the newest message.
+	const timeline = useStickToBottom({
+		resetKey: `${shown?.tenant_id ?? ""}:${shown?.id ?? ""}:${messageState}`,
+		contentKey: `${messages.length}:${messages.at(-1)?.id ?? ""}`,
+	});
 	const submit = () => {
 		const body = draft.trim();
 		if (images.blocked) {
@@ -667,6 +674,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		const carried = carriedIds(sentIds);
 		// Fenced BEFORE the call: held images stage inside it (R1-02).
 		writing.current = true;
+		// The author's own send lands in view when it arrives (F9).
+		timeline.pin();
 		const result = onSend(body, clientRef, {
 			ids: sentIds,
 			...(images.held ? { stageHeld: carried.stageHeld } : {}),
@@ -1305,7 +1314,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							</p>
 						)}
 
-						<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block! [&_[data-radix-scroll-area-viewport]>div]:h-full">
+						<ScrollArea
+							ref={timeline.rootRef}
+							className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block! [&_[data-radix-scroll-area-viewport]>div]:h-full"
+						>
 							{/* Intrinsic transcript height must remain scrollable when localized recovery controls claim more composer space. */}
 							<div className="flex min-h-full flex-col">
 								{previewSelected ? (

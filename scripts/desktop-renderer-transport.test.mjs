@@ -845,6 +845,11 @@ test("edgeIsHard (Team Bridge) always bounds the edge; chat keeps never-grow", a
 		`Team Bridge path: edge ${Math.max(bridgeMeta.width, bridgeMeta.height)} must be <= ${IMAGE_MAX_EDGE}`,
 	);
 	assert.ok(["image/png", "image/jpeg"].includes(bridge.mime_type));
+	// <= 1 MiB in practice (r7 M1): the hard cap is the capability's, upstream.
+	assert.ok(
+		base64ByteLength(bridge.data_b64) <= 1024 * 1024,
+		`Team Bridge path bytes ${base64ByteLength(bridge.data_b64)} must be <= 1 MiB`,
+	);
 
 	// An in-bounds image is still returned verbatim with the flag on.
 	const small = await resampleGrowsPng(300, 200);
