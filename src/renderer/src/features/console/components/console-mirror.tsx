@@ -92,8 +92,9 @@ export interface ConsoleMirrorProps {
 		visible: boolean;
 		theme: string;
 	}) => void;
-	/** Interactive (the pane) or a one-frame reconstruction (the capture view). */
-	mode?: "interactive" | "capture";
+	/** Interactive (the pane), a one-frame reconstruction (the capture view), or the
+	 * READ-ONLY history of a surface whose process has ended. */
+	mode?: "interactive" | "capture" | "history";
 	/** Called when main reports this surface's process exited, so the pane can say
 	 * so without waiting for its next listing (§12.3's rung 1 is the fact). */
 	onExit?: (exitCode: number) => void;
@@ -169,6 +170,22 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 	 * an ownership invariant this file does not have will be wrong.
 	 */
 	const heldTerminalRef = useRef<Terminal | null>(null);
+	/** The terminal's palette derivation for the current mode. */
+	const themeMode = mode === "history" ? "history" : "live";
+	/**
+	 * WHAT RE-CONSTRUCTS THE TERMINAL, AND WHAT MUST NOT.
+	 *
+	 * `capture` is a different host (it paints supplied bytes once), so a switch to
+	 * or from it is a different terminal. `interactive` and `history` are the SAME
+	 * terminal in two states, and a process exit moves a surface from one to the
+	 * other while the user is typing at it — reconstructing there would dispose the
+	 * focused textarea, drop the keyboard, and replay the whole record a second time.
+	 * So the constructor keys on this, the mode is read through `modeRef`, and the
+	 * option effect below applies `disableStdin`/cursor as a transition.
+	 */
+	const constructionMode = mode === "capture" ? "capture" : "pane";
+	const modeRef = useRef(mode);
+	modeRef.current = mode;
 	exitRef.current = onExit;
 	settledRef.current = onSettled;
 	/*
@@ -228,14 +245,31 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		 */
 		Terminal.strings.promptLabel = t("ui.console.terminal.prompt_label");
 		Terminal.strings.tooMuchOutput = t("ui.console.terminal.too_much_output");
+		// The mode THIS constructor sees; a later transition is applied by the option
+		// effect, never by building a second terminal. A capture host is never the
+		// pane and never transitions.
+		const initialMode =
+			constructionMode === "capture" ? "capture" : modeRef.current;
+		const initialThemeMode = initialMode === "history" ? "history" : "live";
 		const term = new Terminal({
 			scrollback: 5000,
-			theme: readTerminalTheme(),
+			theme: readTerminalTheme(document.documentElement, initialThemeMode),
 			fontFamily: terminalFontFamily(),
 			fontSize: TERMINAL_FONT_SIZE,
 			allowProposedApi: true,
-			cursorBlink: mode === "interactive",
-			disableStdin: mode === "capture",
+			cursorBlink: initialMode === "interactive",
+			/*
+			 * STDIN IS OFF FOR BOTH NON-INTERACTIVE MODES, and switching it off is the
+			 * structural half of "an ended terminal takes no input": it stops xterm
+			 * encoding a keystroke at all rather than sending one main will refuse. The
+			 * pane adds the human half — a visible, announced sentence — because a
+			 * read-only terminal that swallows a key in silence is the same lie as the
+			 * caret the operator reported.
+			 */
+			disableStdin: initialMode !== "interactive",
+			/* `none` covers the unfocused half; the focused cursor is hidden by the
+			 * history theme painting it as the ground (see `readTerminalTheme`). */
+			cursorInactiveStyle: initialMode === "history" ? "none" : "outline",
 			convertEol: false,
 			scrollOnUserInput: true,
 		});
@@ -327,7 +361,7 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 			setTerminal(null);
 			term.dispose();
 		};
-	}, [mode]);
+	}, [constructionMode]);
 
 	/*
 	 * The subscription: replay, then stream (§10.3).
@@ -408,7 +442,16 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		 * the keystroke and the call, and a rejected promise per character would be an
 		 * unhandled rejection for a state the pane's own listing already shows.
 		 */
+		/*
+		 * WIRED ONCE, GATED AT THE CALL — not wired conditionally on the mode. The
+		 * subscription below must not re-run when a surface ends: that would
+		 * unsubscribe and resubscribe, replaying the whole record into a terminal that
+		 * already holds it. A keystroke on history reaches this handler (a readOnly
+		 * textarea still fires `onData`? it does not) and is refused here as the
+		 * second gate behind xterm's own `disableStdin`.
+		 */
 		const offData = terminal.onData((data) => {
+			if (modeRef.current !== "interactive") return;
 			void api.input(surface, data).catch(() => {});
 		});
 		/*
@@ -460,7 +503,7 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 			disposed = true;
 			offOutput();
 			offExit();
-			offData.dispose();
+			offData?.dispose();
 			void api.unsubscribe(surface).catch(() => {});
 		};
 	}, [terminal, surface, bytes]);
@@ -503,6 +546,12 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 	 */
 	useEffect(() => {
 		if (!terminal || !focusRequest) return;
+		// A HISTORY terminal never takes the keyboard: its mirror holds a record, not
+		// a program, and focusing it would be the same false promise as painting a
+		// caret in it. The request is not consumed here because there is nothing in
+		// this pane that could spend it; a create arms its own token for the surface
+		// it makes.
+		if (mode !== "interactive") return;
 		/*
 		 * ONLY THE TERMINAL THIS MOUNT STILL HOLDS TAKES THE CARET, and this line is the
 		 * difference between a caret and a spent token in the dev loop (`pnpm dev`).
@@ -528,7 +577,7 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		if (heldTerminalRef.current !== terminal) return;
 		terminal.focus();
 		focusTakenRef.current?.(focusRequest);
-	}, [terminal, focusRequest]);
+	}, [terminal, focusRequest, mode]);
 
 	/*
 	 * THE THEME, THE RECT AND THEIR ONE OBSERVER.
@@ -561,7 +610,25 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		const host = hostRef.current;
 		if (!host) return;
 		const applyTheme = () => {
-			terminal.options.theme = readTerminalTheme();
+			terminal.options.theme = readTerminalTheme(
+				document.documentElement,
+				themeMode,
+			);
+		};
+		/**
+		 * THE MODE TRANSITION, APPLIED TO THE TERMINAL THAT IS ALREADY THERE.
+		 *
+		 * The same three options the constructor would have given a fresh terminal
+		 * (`disableStdin`, the cursor's blink and its unfocused style), set on the
+		 * live one when its surface ends or is replayed. The keyboard, the record in
+		 * the buffer and the selection all survive the transition, which is what makes
+		 * a shell exiting under a user's hands a state change rather than a remount.
+		 */
+		const applyMode = () => {
+			terminal.options.disableStdin = mode !== "interactive";
+			terminal.options.cursorBlink = mode === "interactive";
+			terminal.options.cursorInactiveStyle =
+				mode === "history" ? "none" : "outline";
 		};
 		const send = () => {
 			const report = reportRef.current;
@@ -583,6 +650,7 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 			});
 		};
 		const refresh = () => {
+			applyMode();
 			applyTheme();
 			send();
 		};
@@ -598,12 +666,24 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 			resize.disconnect();
 			theme.disconnect();
 		};
-	}, [terminal, visible]);
+	}, [terminal, visible, themeMode, mode]);
 
 	return (
 		<div
 			ref={hostRef}
-			className={cn("h-full w-full overflow-hidden", className)}
+			/* The pane's ended-input guard addresses the mirror by this attribute rather
+			 * than by xterm's own `.xterm` class: the guard is about keys arriving at
+			 * the terminal's subtree, and a class internal to the renderer is not a
+			 * contract this app should key a behaviour on. */
+			data-console-mirror=""
+			/* HISTORY GROWS beside the pane's end marker; live and capture fill their
+			 * box outright. The difference is layout, not a second terminal: a `h-full`
+			 * history host would paint over the marker row the pane draws after it. */
+			className={cn(
+				"w-full overflow-hidden",
+				mode === "history" ? "min-h-0 grow" : "h-full",
+				className,
+			)}
 			/*
 			 * The mirror is not a control: it holds no border of its own and takes no
 			 * focus ring. Its ground is the terminal's own (`sunken`, §9) and the

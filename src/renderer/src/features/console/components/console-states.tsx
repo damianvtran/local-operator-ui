@@ -256,7 +256,13 @@ export const ConsoleEmpty: FC<{ onCreate: () => void; disabled?: boolean }> = ({
 export const ConsoleEndedBar: FC<{
 	exitCode: number | null;
 	live: boolean;
-}> = ({ exitCode, live }) => (
+	/** Why the surface ended when no exit code was observed. `app_quit` is main's
+	 * own record that the app closed it on the way out (`host.dispose`), and it is
+	 * a different sentence from "not observed": the exit may well never be
+	 * observable there, and telling the user nobody looked is the misleading half
+	 * the operator reported. Legacy sidecars carry null and keep the honest one. */
+	endReason?: "app_quit" | null;
+}> = ({ exitCode, live, endReason = null }) => (
 	/* The notice is a band on the PANE's ground, so it wears a step of its own:
 	   `elevated` on the drawer's rung (`canvas/index.tsx`) measures ΔE00 0, which
 	   is why this is `surface` — a step down that survives every palette, and the
@@ -271,10 +277,54 @@ export const ConsoleEndedBar: FC<{
 			{t(live ? "ui.console.ended.live" : "ui.console.ended.restored")}
 		</span>
 		<span className={cn("text-ink-dim text-mono-sm")}>
-			{exitCode === null
-				? t("ui.console.ended.exit_unknown")
-				: t("ui.console.ended.exit_code", { code: String(exitCode) })}
+			{exitCode !== null
+				? t("ui.console.ended.exit_code", { code: String(exitCode) })
+				: endReason === "app_quit"
+					? t("ui.console.ended.app_quit")
+					: t("ui.console.ended.exit_unknown")}
 		</span>
+	</div>
+);
+
+/**
+ * THE END OF THE RECORDED HISTORY, painted where a live prompt would be.
+ *
+ * A PANE-OWNED ELEMENT, never bytes written into the terminal, and that is the
+ * point rather than a style choice: fake output would be indistinguishable from
+ * something the program printed, would be replayed into a later capture as if the
+ * shell had said it, and would be unselectable-as-chrome. This row is outside the
+ * mirror's box, in the pane's own roles and type, so a person and a screenshot
+ * agree that the terminal stopped here.
+ *
+ * IT IS ALSO THE LIVE REGION FOR A KEYSTROKE. `announced` is the pane's answer to a
+ * key that arrived while this surface was ended (see `console-pane.tsx`'s choice):
+ * `role="status"` with `aria-live` means the sentence is spoken, and the same
+ * sentence is visible here so a sighted user is not left guessing why nothing
+ * typed. The marker itself is always present, which is what makes the state
+ * legible before anyone presses a key.
+ */
+export const ConsoleHistoryEnd: FC<{ announced: boolean }> = ({
+	announced,
+}) => (
+	<div
+		className={cn(
+			"flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-hairline border-t bg-sunken px-3 py-1.5",
+		)}
+		data-tour-tag="console-history-end"
+	>
+		<span className={cn("text-ink-muted text-meta")}>
+			{t("ui.console.ended.marker")}
+		</span>
+		<span className={cn("text-ink-dim text-meta")}>
+			{t("ui.console.ended.marker_detail")}
+		</span>
+		<output
+			aria-live="polite"
+			className={cn("text-ink text-meta")}
+			data-tour-tag="console-history-announce"
+		>
+			{announced ? t("ui.console.ended.input_blocked") : ""}
+		</output>
 	</div>
 );
 

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import {
 	type FC,
+	type KeyboardEvent as ReactKeyboardEvent,
 	useCallback,
 	useEffect,
 	useMemo,
@@ -29,6 +30,7 @@ import {
 	type ConsoleSurface,
 	consoleOpenAction,
 	pickActiveSurface,
+	pickLiveSurface,
 	surfaceTitle,
 	surfacesForSession,
 } from "../model/console-surfaces";
@@ -38,6 +40,7 @@ import {
 	ConsoleCreateFailed,
 	ConsoleEmpty,
 	ConsoleEndedBar,
+	ConsoleHistoryEnd,
 	ConsoleLoading,
 	ConsoleNotice,
 	ConsoleSecureBar,
@@ -184,6 +187,89 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		() => pickActiveSurface(session.snapshot, sessionId, stored),
 		[session.snapshot, sessionId, stored],
 	);
+	/** The surface an explicit open may focus instead of the one the lens remembers
+	 * (see `consoleOpenAction`): the most recently active RUNNING surface. */
+	const liveSurface = useMemo(
+		() => pickLiveSurface(session.snapshot, sessionId),
+		[session.snapshot, sessionId],
+	);
+	const setConsoleLiveSurface = useUiPreferencesStore(
+		(state) => state.setConsoleLiveSurface,
+	);
+	/**
+	 * THE RAIL'S LIVENESS FACT, published rather than re-read.
+	 *
+	 * The rail needs "does this conversation have a running terminal" to decide
+	 * whether its console item is the lit one, and the pane is the only component
+	 * with that listing. Publishing a projection keeps one reader of the projection
+	 * (the pane's `useConsoleSession`) instead of mounting a second one in
+	 * `chat-content` or polling for it. `running`, not `live`: a restored surface is
+	 * `live: false` AND `running: false`, and only a process makes a console active.
+	 */
+	useEffect(() => {
+		setConsoleLiveSurface(
+			sessionId,
+			session.loading ? 0 : surfaces.filter((row) => row.running).length,
+		);
+	}, [sessionId, session.loading, surfaces, setConsoleLiveSurface]);
+	// The fact dies with the pane: a stale count from a closed pane would light (or
+	// unlight) the rail for a conversation nobody is looking at. It is a transient
+	// projection, not the persisted preferences it sits beside (`persistedUiPreferences`
+	// excludes it for the same reason it excludes the open intent).
+	useEffect(
+		() => () => setConsoleLiveSurface(null, 0),
+		[setConsoleLiveSurface],
+	);
+	/**
+	 * Which surface's ended terminal last swallowed a key, if any.
+	 *
+	 * THE ID RATHER THAN A BOOLEAN, so switching surfaces clears the announcement by
+	 * construction: the sentence is shown only while the surface it was said for is
+	 * still the one on screen, and a new surface cannot inherit it. An effect that
+	 * reset a flag on a surface change would be the same rule spelled with an extra
+	 * render and a dependency the body never reads.
+	 */
+	const [historyAnnouncedFor, setHistoryAnnouncedFor] = useState<string | null>(
+		null,
+	);
+	const historyInputBlocked =
+		surface !== null && historyAnnouncedFor === surface.surface;
+	/**
+	 * A KEY PRESSED ON ENDED HISTORY: SWALLOWED, AND SAID SO.
+	 *
+	 * The mirror's `disableStdin` already stops xterm from sending the key, so the
+	 * moment a person types into a finished terminal produces nothing anywhere. That
+	 * silence is the defect this function exists to refuse: it is the same lie as the
+	 * painted caret, one layer down. The choice made here — rather than starting a
+	 * fresh console from a keystroke — is deliberate: a key on history is most often
+	 * a scroll, a copy, or a reflex, and silently spawning a shell from it would
+	 * replace the recording the user was reading. The explicit open is the action
+	 * that creates a terminal (`consoleOpenAction`), and the sentence below tells the
+	 * user that door exists.
+	 *
+	 * It listens over the mirror's OWN subtree rather than the whole pane so the +,
+	 * the tabs and the close control keep their ordinary keys, and it exempts the
+	 * copy chord: xterm's selection copy runs before the key would be encoded, and
+	 * "that key was not sent" would be false about a copy that worked.
+	 */
+	const announceEndedInput = useCallback(
+		(event: ReactKeyboardEvent<HTMLDivElement>) => {
+			if (!surface || surface.running) return;
+			if (event.key === "c" && (event.metaKey || event.ctrlKey)) return;
+			if (
+				event.key === "Shift" ||
+				event.key === "Control" ||
+				event.key === "Alt" ||
+				event.key === "Meta"
+			)
+				return;
+			const target = event.target as HTMLElement | null;
+			if (!target?.closest("[data-console-mirror]")) return;
+			setHistoryAnnouncedFor(surface.surface);
+		},
+		[surface],
+	);
+
 	/* Whether main says a console can exist at all (§15). Read once and used in two
 	   places — the body's state choice and the header's `+` — because a `+` that is
 	   offered where none can be created is the pane's own "a control with nothing to
@@ -558,12 +644,22 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	useEffect(() => {
 		if (!surface) return;
 		const clear = () => {
-			if (document.hasFocus()) clearUnseen(surface.surface);
+			if (document.hasFocus() && isConsoleUnseen(unseen, surface.surface))
+				clearUnseen(surface.surface);
 		};
 		clear();
 		window.addEventListener("focus", clear);
 		return () => window.removeEventListener("focus", clear);
-	}, [surface?.surface, clearUnseen, surface]);
+		/*
+		 * `unseen` IS A DEPENDENCY, AND THE BUG IT CLOSES IS THE OPERATOR'S (2026-10-21):
+		 * the watch that writes a mark (`useConsoleAttention`) and this pane both read
+		 * the SAME push, and when the completion is the push - a shell exiting while
+		 * the user is typing into it - the mark was written AFTER this effect's last
+		 * pass and nothing re-ran it. The mark then survived the console's death and an
+		 * open look at its history, which is what the rail carried. Re-running on the
+		 * store's own update clears it on the commit that paints the mark.
+		 */
+	}, [clearUnseen, surface, unseen]);
 
 	/*
 	 * THE USER'S OPEN, ANSWERED (design 6.1; the operator's report that the pane
@@ -605,11 +701,20 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	}, [surface]);
 	useEffect(() => {
 		if (!unansweredForThisSession) return;
+		/*
+		 * A CREATE ALREADY IN FLIGHT ANSWERS THIS REQUEST. The effect re-runs when the
+		 * lens or the listing commits (and the listing does commit before a create's
+		 * reply), so without this the same open could ask for a second shell. The
+		 * request stays filed, and the effect runs again the moment the count returns
+		 * to zero - by which time the created surface is either live (focus branch) or
+		 * not (a retry is the user's, not this effect's).
+		 */
+		if (creating) return;
 		const action = consoleOpenAction({
 			requested: true,
 			loading: session.loading,
 			available,
-			hasSurface: surface !== null,
+			hasLiveSurface: liveSurface !== null,
 		});
 		if (action === "none") {
 			// `available: false` with the read settled is main's own "no console can
@@ -627,6 +732,10 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		 * choose.
 		 */
 		if (action === "create") {
+			// The lens at request time, so a row the user picks while the create is in
+			// flight is a later, explicit choice the landing surface must not override
+			// (the `+` path's F-3 rule, applied to the open's own create).
+			const from = stored;
 			beginCreate();
 			/*
 			 * THE REQUEST IS CLEARED WHEN THE CREATE ANSWERS, not when it is made — the same
@@ -656,14 +765,32 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				.createSurface()
 				.then((created) => {
 					if (created === null) return;
+					// THE CREATED SURFACE MUST BE THE ONE SHOWN, which is the half of the
+					// operator's report the first cut missed: creating a shell behind a
+					// pane still painting the old history leaves the user looking at the
+					// dead one and typing at nothing. `showCreated` moves the lens and
+					// arms the caret in the same commit as the listing that holds it
+					// (#1084's mechanism, reused rather than given a second spelling).
 					setAwaitingSurface(true);
-					setFocusRequest((value) => value + 1);
+					setShowCreated({ id: created, from });
 				})
 				.finally(() => {
 					endCreate();
 					clearOpenIntent(sessionId);
 				});
 		} else {
+			/*
+			 * A LIVE SIBLING TAKES THE LENS (the operator's report): with one running
+			 * surface and one ended one, `pickActiveSurface` may have been showing the
+			 * ended row — the remembered lens, or the most recent row. The user's open is
+			 * a request to TYPE, so the pane shows the surface that can take keys and
+			 * leaves the ended one where it belongs: a row they can click to read. The
+			 * branch above is unchanged for a conversation with no live surface, where
+			 * the open makes a fresh one rather than focusing the history.
+			 */
+			if (liveSurface && liveSurface.surface !== surface?.surface) {
+				setStored(liveSurface.surface);
+			}
 			// The surface the request was for is already in the pane, so its mirror is mounted
 			// (or mounts with the token) and the caret is armed at once.
 			clearOpenIntent(sessionId);
@@ -676,6 +803,10 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		session.createSurface,
 		available,
 		surface,
+		liveSurface,
+		stored,
+		creating,
+		setStored,
 		clearOpenIntent,
 		beginCreate,
 		endCreate,
@@ -823,7 +954,11 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				    a replayed surface shows what it printed and says that nothing is
 				    running. `live: false` is the relaunch case and gets its own sentence. */}
 				{!surface.running ? (
-					<ConsoleEndedBar exitCode={surface.exitCode} live={surface.live} />
+					<ConsoleEndedBar
+						exitCode={surface.exitCode}
+						live={surface.live}
+						endReason={surface.endReason}
+					/>
 				) : null}
 				{/*
 				 * `relative` FOR THE SECURE MARKER ONLY: it is an overlay so that
@@ -859,6 +994,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				 */}
 				<div
 					className={cn("relative flex min-h-0 grow flex-col px-2 bg-sunken")}
+					onKeyDownCapture={announceEndedInput}
 				>
 					{/*
 					 * `key` ON THE SURFACE, and it is the re-attach rule rather than a
@@ -870,6 +1006,14 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 					<ConsoleMirror
 						key={surface.surface}
 						surface={surface.surface}
+						/*
+						 * THE ENDED SURFACE IS HISTORY, NOT A TERMINAL. `history` switches stdin
+						 * off, hides the caret in both focus states, and moves the default ink
+						 * down one role step (see `readTerminalTheme`). Selection and copy stay
+						 * on, because a finished build log is the most likely thing in this pane
+						 * to be copied out of.
+						 */
+						mode={surface.running ? "interactive" : "history"}
 						/* The caret, on the user's own open and never on a mount (see
 						   `focusRequest` above) — and the token is CONSUMED by the mirror that
 						   applies it, so a mirror mounted later for a surface the user never asked
@@ -919,6 +1063,11 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 						}
 						onExit={() => session.refresh()}
 					/>
+					{/* The marker sits AFTER the mirror, where a live prompt would be, and it
+					    is chrome rather than bytes: see `ConsoleHistoryEnd`. */}
+					{!surface.running ? (
+						<ConsoleHistoryEnd announced={historyInputBlocked} />
+					) : null}
 					{surface.secure ? <ConsoleSecureBar /> : null}
 				</div>
 			</div>

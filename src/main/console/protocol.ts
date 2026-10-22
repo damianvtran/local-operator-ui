@@ -119,6 +119,16 @@ export interface ConsoleSurfaceListing {
 	rows: number;
 	running: boolean;
 	exit_code: number | null;
+	/**
+	 * Why the surface ended when there is no exit code to report.
+	 *
+	 * `app_quit` is main's own record that IT closed this terminal during quit and
+	 * could not observe the status within the bounded wait (`host.dispose`). It is
+	 * an additive field: a caller that does not know it reads exactly what it read
+	 * before, and a legacy sidecar with a null code and no reason keeps the honest
+	 * "exit code not observed" sentence rather than inventing a cause.
+	 */
+	end_reason: "app_quit" | null;
 	/** Seconds since the epoch, matching the record's own clock. */
 	last_activity: number;
 	/** False for a surface reconstructed from persisted history after a relaunch

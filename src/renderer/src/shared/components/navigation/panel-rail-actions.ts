@@ -88,12 +88,23 @@ export function togglePanelRailItem(
 			return true;
 		case "console": {
 			/*
-			 * A CLOSE ALWAYS ACTS — the pane is on screen and the press means "put
-			 * it away" even on a route whose conversation has gone (the claim can
-			 * outlive the route; the slot's resolver is what refuses to draw it,
-			 * and the same close the item's own press performs is the honest one).
+			 * A CLOSE ALWAYS ACTS *ON A LIVE CONSOLE* — the pane is on screen with a
+			 * process in it, and the press means "put it away". The same press while the
+			 * pane shows only ended history is an OPEN, not a close (operator report:
+			 * opening the console when nothing is live landed on the dead history). It
+			 * is the same rule the lit state follows: the item is active only while a
+			 * terminal is running, so an unlit item must mean "give me one", and
+			 * `requestConsoleOpen` is what makes the pane create a fresh surface
+			 * (`consoleOpenAction`). The store's fact is the pane's own published count,
+			 * so this door and the rail's paint cannot disagree.
 			 */
-			if (state.isConsolePaneOpen) {
+			const live = state.consoleLiveSurface;
+			const hasLive =
+				context.sessionId !== undefined &&
+				context.sessionId !== null &&
+				live?.sessionId === context.sessionId &&
+				live.count > 0;
+			if (state.isConsolePaneOpen && (hasLive || context.sessionId == null)) {
 				state.setConsolePaneOpen(false);
 				return true;
 			}

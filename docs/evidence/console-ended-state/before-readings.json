@@ -1,0 +1,413 @@
+{
+  "pairPort": 47391,
+  "when": "2026-10-22T03:45:47.579Z",
+  "report": [
+    {
+      "cell": "opened live",
+      "reading": {
+        "hash": "#/chat",
+        "paneOpen": true,
+        "mirror": true,
+        "banner": null,
+        "marker": null,
+        "announce": null,
+        "caret": {
+          "text": " ",
+          "color": "rgb(43, 39, 33)",
+          "background": "rgb(56, 201, 106)",
+          "blink": true,
+          "block": true
+        },
+        "screenColor": "rgb(241, 238, 230)",
+        "textareaReadOnly": false,
+        "rail": {
+          "pressed": "true",
+          "label": "Console (⌘J)",
+          "blip": false
+        },
+        "active": {
+          "tag": "textarea",
+          "class": "xterm-helper-textarea",
+          "inTerminal": false
+        },
+        "tabs": [
+          {
+            "text": "zsh",
+            "selected": "true",
+            "surface": "con:1:2qxiHHjE7DnibfmnUhsCHw"
+          }
+        ],
+        "paneText": "Console\nzsh\n1 live of 128 in the app\nzsh\ndamian@damians-MacBook-Pro ~ %  "
+      }
+    },
+    {
+      "cell": "ended, pane open",
+      "reading": {
+        "surface": "con:1:2qxiHHjE7DnibfmnUhsCHw",
+        "state": [
+          {
+            "surface": "con:1:2qxiHHjE7DnibfmnUhsCHw",
+            "session_id": "ccaee6957172",
+            "origin": "user",
+            "command": "zsh",
+            "argv_tail": "",
+            "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-ended-7379/home",
+            "cols": 74,
+            "rows": 44,
+            "running": false,
+            "exit_code": 1,
+            "last_activity": 1792640721.932,
+            "live": true,
+            "agent_owned": false,
+            "last_actor": "user",
+            "secure": false,
+            "retain": true,
+            "sizing": "auto",
+            "displayed": true,
+            "last_mark": null
+          }
+        ],
+        "view": {
+          "hash": "#/chat",
+          "paneOpen": true,
+          "mirror": true,
+          "banner": "This terminal has ended\nexit code 1",
+          "marker": null,
+          "announce": null,
+          "caret": {
+            "text": " ",
+            "color": "rgb(43, 39, 33)",
+            "background": "rgb(56, 201, 106)",
+            "blink": true,
+            "block": true
+          },
+          "screenColor": "rgb(241, 238, 230)",
+          "textareaReadOnly": false,
+          "rail": {
+            "pressed": "true",
+            "label": "Console (⌘J)",
+            "blip": false
+          },
+          "active": {
+            "tag": "textarea",
+            "class": "xterm-helper-textarea",
+            "inTerminal": false
+          },
+          "tabs": [
+            {
+              "text": "zsh\n1",
+              "selected": "true",
+              "surface": "con:1:2qxiHHjE7DnibfmnUhsCHw"
+            }
+          ],
+          "paneText": "Console\nzsh\n0 live of 128 in the app · 1 kept\nzsh\n1\nThis terminal has ended\nexit code 1\ndamian@damians-MacBook-Pro ~ % exit\n "
+        }
+      }
+    },
+    {
+      "cell": "ended, one key typed",
+      "reading": {
+        "hash": "#/chat",
+        "paneOpen": true,
+        "mirror": true,
+        "banner": "This terminal has ended\nexit code 1",
+        "marker": null,
+        "announce": null,
+        "caret": {
+          "text": " ",
+          "color": "rgb(43, 39, 33)",
+          "background": "rgb(56, 201, 106)",
+          "blink": true,
+          "block": true
+        },
+        "screenColor": "rgb(241, 238, 230)",
+        "textareaReadOnly": false,
+        "rail": {
+          "pressed": "true",
+          "label": "Console (⌘J)",
+          "blip": false
+        },
+        "active": {
+          "tag": "textarea",
+          "class": "xterm-helper-textarea",
+          "inTerminal": false
+        },
+        "tabs": [
+          {
+            "text": "zsh\n1",
+            "selected": "true",
+            "surface": "con:1:2qxiHHjE7DnibfmnUhsCHw"
+          }
+        ],
+        "paneText": "Console\nzsh\n0 live of 128 in the app · 1 kept\nzsh\n1\nThis terminal has ended\nexit code 1\ndamian@damians-MacBook-Pro ~ % exit\n "
+      }
+    },
+    {
+      "cell": "rail with 0 live, pane open",
+      "reading": {
+        "pressed": "true",
+        "label": "Console (⌘J)",
+        "blip": false
+      }
+    },
+    {
+      "cell": "reopen with nothing live",
+      "reading": {
+        "surfacesBefore": [
+          {
+            "surface": "con:1:2qxiHHjE7DnibfmnUhsCHw",
+            "running": false
+          }
+        ],
+        "surfacesAfter": [
+          {
+            "surface": "con:1:2qxiHHjE7DnibfmnUhsCHw",
+            "running": false
+          }
+        ],
+        "created": false,
+        "view": {
+          "hash": "#/chat",
+          "paneOpen": true,
+          "mirror": true,
+          "banner": "This terminal has ended\nexit code 1",
+          "marker": null,
+          "announce": null,
+          "caret": {
+            "text": " ",
+            "color": "rgb(43, 39, 33)",
+            "background": "rgb(56, 201, 106)",
+            "blink": true,
+            "block": true
+          },
+          "screenColor": "rgb(241, 238, 230)",
+          "textareaReadOnly": false,
+          "rail": {
+            "pressed": "true",
+            "label": "Console (⌘J)",
+            "blip": false
+          },
+          "active": {
+            "tag": "textarea",
+            "class": "xterm-helper-textarea",
+            "inTerminal": false
+          },
+          "tabs": [
+            {
+              "text": "zsh\n1",
+              "selected": "true",
+              "surface": "con:1:2qxiHHjE7DnibfmnUhsCHw"
+            }
+          ],
+          "paneText": "Console\nzsh\n0 live of 128 in the app · 1 kept\nzsh\n1\nThis terminal has ended\nexit code 1\ndamian@damians-MacBook-Pro ~ % exit\n "
+        }
+      }
+    },
+    {
+      "cell": "two ended, user opens",
+      "reading": {
+        "surfacesBefore": [
+          {
+            "surface": "con:1:2qxiHHjE7DnibfmnUhsCHw",
+            "running": false
+          }
+        ],
+        "surfacesAfter": [
+          {
+            "surface": "con:1:2qxiHHjE7DnibfmnUhsCHw",
+            "running": false
+          }
+        ],
+        "created": false,
+        "view": {
+          "hash": "#/chat",
+          "paneOpen": true,
+          "mirror": true,
+          "banner": "This terminal has ended\nexit code 1",
+          "marker": null,
+          "announce": null,
+          "caret": {
+            "text": " ",
+            "color": "rgb(43, 39, 33)",
+            "background": "rgb(56, 201, 106)",
+            "blink": true,
+            "block": true
+          },
+          "screenColor": "rgb(241, 238, 230)",
+          "textareaReadOnly": false,
+          "rail": {
+            "pressed": "true",
+            "label": "Console (⌘J)",
+            "blip": false
+          },
+          "active": {
+            "tag": "textarea",
+            "class": "xterm-helper-textarea",
+            "inTerminal": false
+          },
+          "tabs": [
+            {
+              "text": "zsh\n1",
+              "selected": "true",
+              "surface": "con:1:2qxiHHjE7DnibfmnUhsCHw"
+            }
+          ],
+          "paneText": "Console\nzsh\n0 live of 128 in the app · 1 kept\nzsh\n1\nThis terminal has ended\nexit code 1\ndamian@damians-MacBook-Pro ~ % exit\n "
+        }
+      }
+    },
+    {
+      "cell": "quit with a live surface",
+      "reading": {
+        "surface": "con:2:KRKWQMGDPsi0tnMfT3dTSA",
+        "sidecar": {
+          "surface": "con:2:KRKWQMGDPsi0tnMfT3dTSA",
+          "session_id": "ccaee6957172",
+          "origin": "user",
+          "command": "zsh",
+          "argv": [],
+          "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-ended-7379/home",
+          "cols": 74,
+          "rows": 46,
+          "created_at": 1792640731.184,
+          "last_seen_at": 1792640731.201,
+          "exit_code": null,
+          "truncated": false,
+          "exit_epoch": 0,
+          "secure": false,
+          "dropped_live_bytes": 0,
+          "dropped_grid_bytes": 0
+        }
+      }
+    },
+    {
+      "cell": "relaunch, restored surface selected",
+      "reading": {
+        "restored": {
+          "surface": "con:2:KRKWQMGDPsi0tnMfT3dTSA",
+          "session_id": "ccaee6957172",
+          "origin": "user",
+          "command": "zsh",
+          "argv_tail": "",
+          "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-ended-7379/home",
+          "cols": 74,
+          "rows": 44,
+          "running": false,
+          "exit_code": null,
+          "last_activity": 1792640731.201,
+          "live": false,
+          "agent_owned": false,
+          "last_actor": null,
+          "secure": false,
+          "retain": true,
+          "sizing": "auto",
+          "displayed": true,
+          "last_mark": null
+        },
+        "sidecar": {
+          "surface": "con:2:KRKWQMGDPsi0tnMfT3dTSA",
+          "session_id": "ccaee6957172",
+          "origin": "user",
+          "command": "zsh",
+          "argv": [],
+          "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-ended-7379/home",
+          "cols": 74,
+          "rows": 46,
+          "created_at": 1792640731.184,
+          "last_seen_at": 1792640731.201,
+          "exit_code": null,
+          "truncated": false,
+          "exit_epoch": 0,
+          "secure": false,
+          "dropped_live_bytes": 0,
+          "dropped_grid_bytes": 0
+        },
+        "view": {
+          "hash": "#/chat",
+          "paneOpen": true,
+          "mirror": true,
+          "banner": "This terminal has ended and its history was restored\nexit code not observed",
+          "marker": null,
+          "announce": null,
+          "caret": null,
+          "screenColor": "rgb(241, 238, 230)",
+          "textareaReadOnly": false,
+          "rail": {
+            "pressed": "true",
+            "label": "Console (⌘J)",
+            "blip": false
+          },
+          "active": {
+            "tag": "textarea",
+            "class": "w-full whitespace-pre-wrap break-words px-1.5 py-1 text-body-sm block max-h-24 r",
+            "inTerminal": false
+          },
+          "tabs": [
+            {
+              "text": "zsh\nended",
+              "selected": "true",
+              "surface": "con:2:KRKWQMGDPsi0tnMfT3dTSA"
+            },
+            {
+              "text": "zsh\n1",
+              "selected": "false",
+              "surface": "con:1:2qxiHHjE7DnibfmnUhsCHw"
+            }
+          ],
+          "paneText": "Console\nzsh\n0 live of 128 in the app · 2 kept\nzsh\nended\nzsh\n1\nThis terminal has ended and its history was restored\nexit code not observed\ndamian@damians-MacBook-Pro ~ %  "
+        }
+      }
+    }
+  ],
+  "frames": [
+    {
+      "name": "live-opened",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-before/live-opened.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 572370
+    },
+    {
+      "name": "ended-pane-open",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-before/ended-pane-open.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 582116
+    },
+    {
+      "name": "ended-key",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-before/ended-key.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 582116
+    },
+    {
+      "name": "rail-zero-live",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-before/rail-zero-live.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 582116
+    },
+    {
+      "name": "reopen-nothing-live",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-before/reopen-nothing-live.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 582116
+    },
+    {
+      "name": "two-ended-open",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-before/two-ended-open.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 582122
+    },
+    {
+      "name": "relaunch-restored",
+      "path": "/Users/damian/.local-operator/sessions/b3b305bf7df7/scratchpad/console-ended-before/relaunch-restored.png",
+      "width": 2760,
+      "height": 1800,
+      "bytes": 592419
+    }
+  ]
+}

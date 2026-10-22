@@ -102,6 +102,7 @@ const {
 	readConsoleSurface,
 	surfacesForSession,
 	pickActiveSurface,
+	pickLiveSurface,
 	surfaceTitle,
 	consoleCompletionHooks,
 	consoleRevealMayNavigate,
@@ -244,6 +245,26 @@ test("the theme resolves roles through the document, and omits what is missing",
 		assert.equal(theme.selectionForeground, "#0b0b0b");
 		assert.equal(theme.red, "#ff5555");
 		assert.equal(theme.brightBlack, "#c0c0c0");
+		/*
+		 * HISTORY IS DIM ON THE DEFAULT INK, AND ITS CARET IS THE GROUND.
+		 *
+		 * Two claims in one reading: the ended surface's program text steps down to
+		 * `inkMuted` (a role with its own contrast floor in every palette, rather
+		 * than an opacity overlay), and the caret is painted in the background in
+		 * BOTH focus states — `cursorInactiveStyle: none` alone would leave the
+		 * focused block blinking after a restored prompt, which is the operator's
+		 * "still alive" frame.
+		 */
+		const history = readTerminalTheme({}, "history");
+		assert.equal(history.background, "#101010");
+		assert.equal(history.foreground, "#c0c0c0");
+		assert.equal(history.cursor, "#101010");
+		assert.equal(history.cursorAccent, "#101010");
+		assert.equal(
+			history.red,
+			"#ff5555",
+			"the program's own colours are not dimmed: they are its vocabulary",
+		);
 		assert.deepEqual(missingTerminalRoles({}), []);
 		/*
 		 * AND AN UNRESOLVED ROLE IS OMITTED. xterm keeps its own default for a key
@@ -363,6 +384,52 @@ test("the pane's lens recalls a surface, and falls back to the most recent", () 
 		),
 		null,
 	);
+	/*
+	 * THE EXPLICIT OPEN'S TARGET, beside the lens above because the two answer
+	 * different questions: the lens may legitimately rest on an ENDED row the user
+	 * clicked, while the open must land on something typeable. Here the newest row
+	 * is ended and the older one is live, so the naive "most recent" answer would
+	 * create a third surface over a working terminal.
+	 */
+	const mixed = readConsoleSnapshot({
+		available: true,
+		surfaces: [
+			listing({
+				surface: "con:1:live",
+				last_activity: 100,
+				running: true,
+			}),
+			listing({
+				surface: "con:2:ended",
+				last_activity: 300,
+				running: false,
+				exit_code: 0,
+			}),
+		],
+	});
+	assert.equal(
+		pickLiveSurface(mixed, "session-1f4c")?.surface,
+		"con:1:live",
+		"one live and one ended: the live one is the open's target",
+	);
+	const allEnded = readConsoleSnapshot({
+		available: true,
+		surfaces: [
+			listing({ surface: "con:3:a", running: false, exit_code: 0 }),
+			listing({ surface: "con:4:b", running: false, exit_code: 1 }),
+		],
+	});
+	assert.equal(
+		pickLiveSurface(allEnded, "session-1f4c"),
+		null,
+		"two ended surfaces leave the open nothing to focus, which is what makes it create",
+	);
+	assert.equal(
+		pickLiveSurface(mixed, null),
+		null,
+		"a draft has no live surface",
+	);
+
 	assert.equal(surfaceTitle({ command: "npm", argvTail: "run dev" }), "npm");
 	assert.equal(surfaceTitle({ command: "", argvTail: "zsh -l" }), "zsh");
 	assert.equal(
@@ -828,19 +895,39 @@ test("an open by the user creates a surface in a conversation that has none", ()
 			requested: true,
 			loading: false,
 			available: true,
-			hasSurface: false,
+			hasLiveSurface: false,
 		}),
 		"create",
 	);
 });
 
-test("an open by the user FOCUSES the surface the pane already shows rather than making a second", () => {
+/*
+ * THE OPERATOR'S REPORT, AS TWO CASES (2026-10-21): opening the console when
+ * nothing is live landed on dead history instead of a usable shell. An ENDED
+ * surface is history - `hasLiveSurface` is false for it - so the same open that
+ * focuses a running terminal creates one over a recording, and clicking the
+ * ended row is still the way to read that recording (`pickActiveSurface`).
+ */
+test("an open by the user CREATES over ended history rather than focusing it", () => {
 	assert.equal(
 		consoleOpenAction({
 			requested: true,
 			loading: false,
 			available: true,
-			hasSurface: true,
+			hasLiveSurface: false,
+		}),
+		"create",
+		"two ended surfaces are still nothing to type at; the open must make a shell",
+	);
+});
+
+test("an open by the user FOCUSES a live surface rather than making a second", () => {
+	assert.equal(
+		consoleOpenAction({
+			requested: true,
+			loading: false,
+			available: true,
+			hasLiveSurface: true,
 		}),
 		"focus",
 		"a second surface would take the lens off the one the user was reading",
@@ -853,7 +940,7 @@ test("the request WAITS for the first read rather than creating on a listing it 
 			requested: true,
 			loading: true,
 			available: true,
-			hasSurface: false,
+			hasLiveSurface: false,
 		}),
 		"none",
 		"acting here would be a controller deciding the conversation has no surface before anything answered",
@@ -867,7 +954,7 @@ test("no other way this pane opens is an open by the user", () => {
 				requested: false,
 				loading,
 				available: true,
-				hasSurface: false,
+				hasLiveSurface: false,
 			}),
 			"none",
 			"a restored pane, an agent's reveal and a session switch all arrive with no request",
@@ -881,7 +968,7 @@ test("a console that cannot exist here is told so rather than given a shell", ()
 			requested: true,
 			loading: false,
 			available: false,
-			hasSurface: false,
+			hasLiveSurface: false,
 		}),
 		"none",
 	);
