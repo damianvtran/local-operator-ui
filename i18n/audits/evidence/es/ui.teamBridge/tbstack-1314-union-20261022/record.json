@@ -1,0 +1,174 @@
+{
+ "audit_id": "tbstack-1314-union-20261022",
+ "date": "2026-10-22",
+ "locale": "es",
+ "namespace": "ui.teamBridge",
+ "source_commit": "bbf4d1c0cc33ed658d1894d9587983c8111f19cd",
+ "source_base": "9aa14137dec1562dac0ee72a5f056010d5438432",
+ "merge_parents": {
+  "own_pre_merge": "69c71578b680d6baa44128927f854d0745bca9fa",
+  "integrated": "3751b6750bfc1a6ff90c6b8b7956ca6f559a686c"
+ },
+ "scope": "PR #1314 (feat/tb-attachments) merged head bbf4d1c0cc: union integrity of all 174 es ui.teamBridge values over parents 69c71578b6/3751b6750b; no new or changed values. Terminology checked namespace-wide.",
+ "status": "audited",
+ "translator": {
+  "agent": "translator",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-21",
+  "session": "87a8efad496d",
+  "job": "cc64f5dc3c0c"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-opus-5-5",
+   "date": "2026-10-22",
+   "result": "clean-with-findings",
+   "instance": "tbstack-r1-1314-es",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "receipt": "i18n/receipts/tbstack-r1-1314-es.json",
+   "receipt_sha256": "d05e810d40cb929285f25070cbf94dc5960a8279e60366d735be4a40a39e427a",
+   "scope": "Team Bridge stack union at bbf4d1c0cc (#1314): 174 values verified equal to their source side and traced to audited snapshots. Catalogue audit, not activation or release approval.",
+   "note": "Union audit; inherits att-r3-es, tbd-sender-r1-es. 1 NIT carried (attachments.failed_count many arm). Record: i18n/audits/evidence/es/ui.teamBridge/tbstack-1314-union-20261022/."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "tbstack-r1-1314-es",
+   "session": "c0d3d761bdad",
+   "job": "cc3ccc31983c",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 174,
+   "keys_substantive": 0,
+   "en_sha256": "9da45f3026229bfd8c10f0a09dbc6e52b0d7f82a4c8a20af8feb77ef4c83931c",
+   "context_sha256": "5a18898b0ee57a11b3b67e796f0203248b4371a7e66b8ed11c5eebcc42ad0d13",
+   "target_sha256": "eababe1ff4f0443a4d3b60fb882a7e4a4db1a19b8867a64dd9ea26007c64534b",
+   "findings": [
+    {
+     "id": "TBS1314-ES-N1",
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.failed_count"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/tbstack-r1-1314-es.json",
+    "sha256": "d05e810d40cb929285f25070cbf94dc5960a8279e60366d735be4a40a39e427a"
+   }
+  }
+ ],
+ "inherited_receipts": [
+  {
+   "base": "69c71578b6",
+   "reached_via_parent": "69c71578b6",
+   "path": "i18n/receipts/att-r3-es.json",
+   "sha256": "c7a00e37c43623c3b8a58a906c88571b41f4a2c678b05b2b15ef63a4a67fd96f",
+   "instance": "att-r3-es",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "base_source_sha256": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af",
+   "base_target_sha256": "83e665e3cd26a36db5bb0afd203f90d23a1a31de88f6f88d01a0d57813fa6750",
+   "keys_inherited": 172,
+   "unchanged_values_verified": 172
+  },
+  {
+   "base": "fd926568e3",
+   "reached_via_parent": "3751b6750b",
+   "path": "i18n/receipts/tbh-r1-es.json",
+   "sha256": "3da7b99f0f97255ffdaf4c81901ed300326e4c22898d7559e436a420a708923f",
+   "instance": "tbh-r1-es",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "base_source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+   "base_target_sha256": "055492d0493b4bad648830f5d5cc6c57ef5db2588aa8178fdc189b39d6f6eae7",
+   "keys_inherited": 0,
+   "unchanged_values_verified": 0
+  },
+  {
+   "base": "9aa14137de",
+   "reached_via_parent": "9aa14137de",
+   "path": "i18n/receipts/tbd-sender-r1-es.json",
+   "sha256": "e621cc31a7dbb50c5a3227a4ede62832b2294c0a3c7658f9f3d118864ebf39c0",
+   "instance": "tbd-sender-r1-es",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "base_source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
+   "base_target_sha256": "23b17040807c59c54240eb97a30841b41697a985d104ca94f09994c1e0d04361",
+   "keys_inherited": 2,
+   "unchanged_values_verified": 2
+  }
+ ],
+ "union_integrity": {
+  "tool": "scripts/i18n/catalogue-union-parity.mjs",
+  "tool_sha256": "cec426a66faf52c04bfec2f9b602237430560fb34998decd4d28ced0b3e5f065",
+  "result": "PASS (exit 0)",
+  "output": {
+   "path": "tb-attachments/union-parity-fr-es-vi.txt (auditor staging; not a repo path)",
+   "sha256": "fd0c0ba0beb8ee93c0f51f8d63a76bee545cec84ade9d133fae36c53defe559c"
+  },
+  "own_side_only": 34,
+  "integrated_side_only": 2,
+  "shared": 138,
+  "dropped": 0,
+  "shared_altered": 0,
+  "uncovered_by_audited_snapshot": []
+ },
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "9da45f3026229bfd8c10f0a09dbc6e52b0d7f82a4c8a20af8feb77ef4c83931c"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/es/ui.teamBridge.json",
+   "sha256": "eababe1ff4f0443a4d3b60fb882a7e4a4db1a19b8867a64dd9ea26007c64534b"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "5a18898b0ee57a11b3b67e796f0203248b4371a7e66b8ed11c5eebcc42ad0d13"
+  }
+ },
+ "references": {
+  "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/es.md",
+   "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+  }
+ },
+ "independence": "Translator(s) and auditor are different agents in different sessions: translator/coder vs translation-auditor session c0d3d761bdad. The auditor edited no catalogue and no repo file; every byte was read with git show. The auditor neither translated nor assembled the ledger; ledger rows are for ledger-assemble.mjs.",
+ "limitations": [
+  "Catalogue audit only. No rendered-fit, pseudo-localization, activation or release evidence is claimed; the browser was not used.",
+  "Inherited values rest on their own receipts. This audit re-verified their bytes and audited (en, target) pairing, not their translation quality.",
+  "Open NIT TBS1314-ES-N1 (= ATT-ES-R3-01) awaits the coder's disposition: fix, or reject as unreachable at count 2-4."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/tbstack-r1-1314-es.json",
+   "sha256": "d05e810d40cb929285f25070cbf94dc5960a8279e60366d735be4a40a39e427a"
+  }
+ ]
+}

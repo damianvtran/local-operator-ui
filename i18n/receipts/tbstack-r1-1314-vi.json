@@ -1,0 +1,92 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "tbstack-r1-1314-vi",
+ "session": "c0d3d761bdad",
+ "job": "cc3ccc31983c",
+ "date": "2026-10-22",
+ "locale": "vi",
+ "translator": "translator",
+ "translator_session": "8c0c0af95212",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 174,
+ "keys_substantive": 0,
+ "scope": "PR #1314 (feat/tb-attachments) at merged head bbf4d1c0cc: union audit of vi ui.teamBridge after merge bbf4d1c0cc (parents 69c71578b6 own pre-merge, 3751b6750b integrated). No new or changed values; no substantive retranslation audit was needed. Union integrity: all 174 values verified equal to the side they came from (34 own-side only, 2 integrated-side only, 138 shared, 0 dropped, 0 altered), and every non-toolbar value traced to an audited (en, target) snapshot. Terminology checked namespace-wide for message, more/actions, thread, reply in thread, react/reaction. ICU and CLDR plurals were parsed for all 174 keys.",
+ "source_head": "bbf4d1c0cc33ed658d1894d9587983c8111f19cd",
+ "source_base": "9aa14137dec1562dac0ee72a5f056010d5438432",
+ "sha256": {
+  "en": "9da45f3026229bfd8c10f0a09dbc6e52b0d7f82a4c8a20af8feb77ef4c83931c",
+  "vi": "b261333a19d24a4cca31f80b8397e002d6c26ae02b2c1621e19bfb3ec6a0787f",
+  "context": "5a18898b0ee57a11b3b67e796f0203248b4371a7e66b8ed11c5eebcc42ad0d13"
+ },
+ "findings": [],
+ "inherited_receipts": [
+  {
+   "base": "69c71578b6",
+   "reached_via_parent": "69c71578b6",
+   "path": "i18n/receipts/att-r3-vi.json",
+   "sha256": "2f74b6bd1ec0a4d2ac393c0edee267c40144bedafadcdc2eb581bd6bc0a70f2a",
+   "instance": "att-r3-vi",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "base_source_sha256": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af",
+   "base_target_sha256": "51afb668e31af62fb2050dd50ad3e62e607a8e310f651e69baa5b51bd69880d8",
+   "keys_inherited": 172,
+   "unchanged_values_verified": 172
+  },
+  {
+   "base": "fd926568e3",
+   "reached_via_parent": "3751b6750b",
+   "path": "i18n/receipts/tbh-r1-vi.json",
+   "sha256": "6bdc2b3a8750028e0529f5526063213564c1762cece8fe38cdfaad1e673e7245",
+   "instance": "tbh-r1-vi",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "base_source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+   "base_target_sha256": "0b6d510710c29488180fc315a4f44fdb62bf9e24a76fe172cb893964a09eaab8",
+   "keys_inherited": 0,
+   "unchanged_values_verified": 0
+  },
+  {
+   "base": "9aa14137de",
+   "reached_via_parent": "9aa14137de",
+   "path": "i18n/receipts/tbd-sender-r1-vi.json",
+   "sha256": "129595328b3631706971cb678011f957efe4b4a1ce28a64fb41c47e2bb589b5b",
+   "instance": "tbd-sender-r1-vi",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "base_source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
+   "base_target_sha256": "998baa1266abfdd624ec0bb0f37f286bf17873ed1c7603f9d599dfed8e9aa8c3",
+   "keys_inherited": 2,
+   "unchanged_values_verified": 2
+  }
+ ],
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+ },
+ "validation": {
+  "independence": "Auditor session c0d3d761bdad (job cc3ccc31983c, translation-auditor) translated none of these strings. The other values were translated in earlier sessions and audited under the inherited receipts listed. Every claim was checked against bytes read with `git show <sha>:<path>`; no checkout, worktree or repo edit was made. The ledger row's own translator is translator (8c0c0af95212).",
+  "union": "Merge bbf4d1c0cc: parents 69c71578b6 (own pre-merge head) and 3751b6750b (integrated). scripts/i18n/catalogue-union-parity.mjs (origin/main, sha256 cec426a6…) ran read-only from a scratch copy with --repo, --head bbf4d1c0cc --old-head 69c71578b6 --base 3751b6750b, over the en catalogue, the context and fr/es/vi. RESULT: PASS, exit 0 (union-parity-fr-es-vi.txt, sha256 fd0c0ba0beb8ee93c0f51f8d63a76bee545cec84ade9d133fae36c53defe559c). An independent Python pass gave the same answer: vi merged 174 keys = own 172 ∪ integrated 140, 0 dropped, 0 shared keys altered, 0 side conflicts, and key order equals en. Provenance: each value equals an audited (en value, target value) pair at a fresh ledger snapshot (att-r3-vi@69c71578b6: 172; tbh-r1-vi@fd926568e3: 0; tbd-sender-r1-vi@9aa14137de: 2). No key is uncovered. All inherited receipt files re-hashed equal to their ledger receipt_sha256. The parity tool also flags three historical merges (fbb29247e5, f1520f143e, 9aa14137de). Each flag is expected and not a defect: an earlier-audited value was kept over a pre-audit draft, or a deliberate key removal (d6b202c9c4) was carried. None is one of these heads' own merges, and every resulting value traces to an audited snapshot.",
+  "semantics": "No new values to judge. For terminology, the shared terms are message, more/actions, thread, reply in thread, and react/reaction (the last only where present). Read across the whole merged namespace, each maps to one local term. Union deltas from the integrated side (sender.unknown_person/unknown_agent, and the drafts/schedule/notify/replies/attachments copy where it applies) agree with those terms.",
+  "icu": "Parsed all 174 en/vi pairs with @formatjs/icu-messageformat-parser (~/local-operator-ui/node_modules, run from the auditor scratchpad). Argument names and types, and markup tags, are identical to en for every key; context parity holds (174 en = 174 context keys).",
+  "plurals": "vi other only. Every plural selector carries exactly the locale's categories.",
+  "limitations": "Catalogue audit only. No rendered-fit, pseudo-localization, activation or release evidence is claimed; the browser was not used. The toolbar label is an accessible name and the more button's text is a tooltip, so the text is not painted in the row."
+ }
+}
