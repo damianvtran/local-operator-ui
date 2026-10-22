@@ -34,6 +34,42 @@ export const agentMessagesRefusalSchema = z
 export type AgentMessagesRefusal = z.infer<typeof agentMessagesRefusalSchema>;
 
 /**
+ * Messages this machine is HOLDING for the owner (runtime PR #2777, F8).
+ *
+ * WHY: a member whose accepted consent is v1 never agreed that a message may
+ * engage a session they have not used, so the runtime holds cards addressed to
+ * a never-opened designated chief of staff (`open_chief_of_staff`) instead of
+ * delivering them. Opening that session once releases them; this field is how
+ * the owner learns that. Code + count + the designated session id only, never
+ * message ids or content.
+ *
+ * CONSTRAINTS: additive and optional. A runtime older than #2777 omits the key,
+ * #2777 sends `null` when nothing waits. A malformed hold degrades to `null`
+ * (`.catch`) rather than failing the whole status read: the hint is advisory,
+ * and the status read gates every agent-messages surface, so a bad hint must
+ * never take Settings or the inbox down with it. `code` stays an open string
+ * so a future hold reason parses; the renderer shows only codes it has copy
+ * for.
+ */
+export const agentMessagesDeliveryHoldSchema = z
+	.object({
+		code: z.string().min(1),
+		count: z.number().int().nonnegative(),
+		/*
+		 * Its own `.catch` (review R1-2): a bad session id degrades only the
+		 * "Message chief of staff" target, never the count the owner must see.
+		 */
+		session: z.string().min(1).nullable().optional().catch(null),
+	})
+	.passthrough()
+	.nullable()
+	.optional()
+	.catch(null);
+export type AgentMessagesDeliveryHold = NonNullable<
+	z.infer<typeof agentMessagesDeliveryHoldSchema>
+>;
+
+/**
  * The local desktop projection, not a second Radient eligibility policy.
  * Unknown additive fields survive; missing or unfamiliar required state fails
  * closed. The backend alone selects the v1 organization (HOME-first, then ID).
@@ -86,6 +122,7 @@ export const agentMessagesStatusSchema = z
 		// section gates the reach editor's controls rather than letting a reader
 		// press a Save the server will refuse.
 		read_only: z.boolean().optional(),
+		delivery_hold: agentMessagesDeliveryHoldSchema,
 	})
 	.passthrough();
 export type AgentMessagesStatus = z.infer<typeof agentMessagesStatusSchema>;

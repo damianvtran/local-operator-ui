@@ -41,6 +41,7 @@ import enUiChatComposerMedia from "./catalogues/en/ui.chat.composer_media.json";
 import enUiChatDialogs from "./catalogues/en/ui.chat.dialogs.json";
 import enUiChatHeader from "./catalogues/en/ui.chat.header.json";
 import enUiChat from "./catalogues/en/ui.chat.json";
+import enUiChatLiveUpdates from "./catalogues/en/ui.chat.live_updates.json";
 import enUiChatPickers from "./catalogues/en/ui.chat.pickers.json";
 import enUiChatResponseActions from "./catalogues/en/ui.chat.response_actions.json";
 import enUiChatRunDetails from "./catalogues/en/ui.chat.run_details.json";
@@ -108,6 +109,7 @@ import esUiChatComposerMedia from "./catalogues/es/ui.chat.composer_media.json";
 import esUiChatDialogs from "./catalogues/es/ui.chat.dialogs.json";
 import esUiChatHeader from "./catalogues/es/ui.chat.header.json";
 import esUiChat from "./catalogues/es/ui.chat.json";
+import esUiChatLiveUpdates from "./catalogues/es/ui.chat.live_updates.json";
 import esUiChatResponseActions from "./catalogues/es/ui.chat.response_actions.json";
 import esUiChatSidebarView from "./catalogues/es/ui.chat.sidebar_view.json";
 import esUiChatTags from "./catalogues/es/ui.chat.tags.json";
@@ -169,6 +171,7 @@ import frUiChatComposerMedia from "./catalogues/fr/ui.chat.composer_media.json";
 import frUiChatDialogs from "./catalogues/fr/ui.chat.dialogs.json";
 import frUiChatHeader from "./catalogues/fr/ui.chat.header.json";
 import frUiChat from "./catalogues/fr/ui.chat.json";
+import frUiChatLiveUpdates from "./catalogues/fr/ui.chat.live_updates.json";
 import frUiChatResponseActions from "./catalogues/fr/ui.chat.response_actions.json";
 import frUiChatSidebarView from "./catalogues/fr/ui.chat.sidebar_view.json";
 import frUiChatTags from "./catalogues/fr/ui.chat.tags.json";
@@ -230,6 +233,7 @@ import hiUiChatComposerMedia from "./catalogues/hi/ui.chat.composer_media.json";
 import hiUiChatDialogs from "./catalogues/hi/ui.chat.dialogs.json";
 import hiUiChatHeader from "./catalogues/hi/ui.chat.header.json";
 import hiUiChat from "./catalogues/hi/ui.chat.json";
+import hiUiChatLiveUpdates from "./catalogues/hi/ui.chat.live_updates.json";
 import hiUiChatResponseActions from "./catalogues/hi/ui.chat.response_actions.json";
 import hiUiChatSidebarView from "./catalogues/hi/ui.chat.sidebar_view.json";
 import hiUiChatTags from "./catalogues/hi/ui.chat.tags.json";
@@ -272,6 +276,7 @@ import hiUiShell from "./catalogues/hi/ui.shell.json";
 import hiUiShellRail from "./catalogues/hi/ui.shell.rail.json";
 import hiUiTeamBridge from "./catalogues/hi/ui.teamBridge.json";
 import ruUiAgentMessages from "./catalogues/ru/ui.agentMessages.json";
+import ruUiAgentMessagesSettings from "./catalogues/ru/ui.agentMessages.settings.json";
 import ruUiAgentsDialogs from "./catalogues/ru/ui.agents.dialogs.json";
 import ruUiAgents from "./catalogues/ru/ui.agents.json";
 import ruUiAgentsModels from "./catalogues/ru/ui.agents.models.json";
@@ -287,6 +292,7 @@ import ruUiChatComposerMedia from "./catalogues/ru/ui.chat.composer_media.json";
 import ruUiChatDialogs from "./catalogues/ru/ui.chat.dialogs.json";
 import ruUiChatHeader from "./catalogues/ru/ui.chat.header.json";
 import ruUiChat from "./catalogues/ru/ui.chat.json";
+import ruUiChatLiveUpdates from "./catalogues/ru/ui.chat.live_updates.json";
 import ruUiChatResponseActions from "./catalogues/ru/ui.chat.response_actions.json";
 import ruUiChatSidebarView from "./catalogues/ru/ui.chat.sidebar_view.json";
 import ruUiChatTags from "./catalogues/ru/ui.chat.tags.json";
@@ -346,6 +352,7 @@ import urUiChatComposerMedia from "./catalogues/ur/ui.chat.composer_media.json";
 import urUiChatDialogs from "./catalogues/ur/ui.chat.dialogs.json";
 import urUiChatHeader from "./catalogues/ur/ui.chat.header.json";
 import urUiChat from "./catalogues/ur/ui.chat.json";
+import urUiChatLiveUpdates from "./catalogues/ur/ui.chat.live_updates.json";
 import urUiChatResponseActions from "./catalogues/ur/ui.chat.response_actions.json";
 import urUiChatSidebarView from "./catalogues/ur/ui.chat.sidebar_view.json";
 import urUiChatTags from "./catalogues/ur/ui.chat.tags.json";
@@ -389,6 +396,7 @@ import urUiShell from "./catalogues/ur/ui.shell.json";
 import urUiShellRail from "./catalogues/ur/ui.shell.rail.json";
 import urUiTeamBridge from "./catalogues/ur/ui.teamBridge.json";
 import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
+import viUiAgentMessagesSettings from "./catalogues/vi/ui.agentMessages.settings.json";
 import viUiAgentsDialogs from "./catalogues/vi/ui.agents.dialogs.json";
 import viUiAgents from "./catalogues/vi/ui.agents.json";
 import viUiAgentsModels from "./catalogues/vi/ui.agents.models.json";
@@ -404,6 +412,7 @@ import viUiChatComposerMedia from "./catalogues/vi/ui.chat.composer_media.json";
 import viUiChatDialogs from "./catalogues/vi/ui.chat.dialogs.json";
 import viUiChatHeader from "./catalogues/vi/ui.chat.header.json";
 import viUiChat from "./catalogues/vi/ui.chat.json";
+import viUiChatLiveUpdates from "./catalogues/vi/ui.chat.live_updates.json";
 import viUiChatResponseActions from "./catalogues/vi/ui.chat.response_actions.json";
 import viUiChatSidebarView from "./catalogues/vi/ui.chat.sidebar_view.json";
 import viUiChatTags from "./catalogues/vi/ui.chat.tags.json";
@@ -462,6 +471,7 @@ import zhCNUiChatComposerMedia from "./catalogues/zh-CN/ui.chat.composer_media.j
 import zhCNUiChatDialogs from "./catalogues/zh-CN/ui.chat.dialogs.json";
 import zhCNUiChatHeader from "./catalogues/zh-CN/ui.chat.header.json";
 import zhCNUiChat from "./catalogues/zh-CN/ui.chat.json";
+import zhCNUiChatLiveUpdates from "./catalogues/zh-CN/ui.chat.live_updates.json";
 import zhCNUiChatResponseActions from "./catalogues/zh-CN/ui.chat.response_actions.json";
 import zhCNUiChatSidebarView from "./catalogues/zh-CN/ui.chat.sidebar_view.json";
 import zhCNUiChatTags from "./catalogues/zh-CN/ui.chat.tags.json";
@@ -529,6 +539,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatDialogs,
 	...enUiChatHeader,
 	...enUiChat,
+	...enUiChatLiveUpdates,
 	...enUiChatPickers,
 	...enUiChatResponseActions,
 	...enUiChatRunDetails,
@@ -604,6 +615,7 @@ export const bundledCatalogues: Readonly<
 		...esUiChatDialogs,
 		...esUiChatHeader,
 		...esUiChat,
+		...esUiChatLiveUpdates,
 		...esUiChatResponseActions,
 		...esUiChatSidebarView,
 		...esUiChatTags,
@@ -667,6 +679,7 @@ export const bundledCatalogues: Readonly<
 		...frUiChatDialogs,
 		...frUiChatHeader,
 		...frUiChat,
+		...frUiChatLiveUpdates,
 		...frUiChatResponseActions,
 		...frUiChatSidebarView,
 		...frUiChatTags,
@@ -730,6 +743,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatDialogs,
 		...hiUiChatHeader,
 		...hiUiChat,
+		...hiUiChatLiveUpdates,
 		...hiUiChatResponseActions,
 		...hiUiChatSidebarView,
 		...hiUiChatTags,
@@ -774,6 +788,7 @@ export const bundledCatalogues: Readonly<
 	},
 	ru: {
 		...ruUiAgentMessages,
+		...ruUiAgentMessagesSettings,
 		...ruUiAgentsDialogs,
 		...ruUiAgents,
 		...ruUiAgentsModels,
@@ -789,6 +804,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatDialogs,
 		...ruUiChatHeader,
 		...ruUiChat,
+		...ruUiChatLiveUpdates,
 		...ruUiChatResponseActions,
 		...ruUiChatSidebarView,
 		...ruUiChatTags,
@@ -850,6 +866,7 @@ export const bundledCatalogues: Readonly<
 		...urUiChatDialogs,
 		...urUiChatHeader,
 		...urUiChat,
+		...urUiChatLiveUpdates,
 		...urUiChatResponseActions,
 		...urUiChatSidebarView,
 		...urUiChatTags,
@@ -895,6 +912,7 @@ export const bundledCatalogues: Readonly<
 	},
 	vi: {
 		...viUiAgentMessages,
+		...viUiAgentMessagesSettings,
 		...viUiAgentsDialogs,
 		...viUiAgents,
 		...viUiAgentsModels,
@@ -910,6 +928,7 @@ export const bundledCatalogues: Readonly<
 		...viUiChatDialogs,
 		...viUiChatHeader,
 		...viUiChat,
+		...viUiChatLiveUpdates,
 		...viUiChatResponseActions,
 		...viUiChatSidebarView,
 		...viUiChatTags,
@@ -970,6 +989,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatDialogs,
 		...zhCNUiChatHeader,
 		...zhCNUiChat,
+		...zhCNUiChatLiveUpdates,
 		...zhCNUiChatResponseActions,
 		...zhCNUiChatSidebarView,
 		...zhCNUiChatTags,
@@ -1091,6 +1111,9 @@ export type MessageParams = {
 	"ui.agentMessages.settings.error.retry": undefined;
 	"ui.agentMessages.settings.error.title": undefined;
 	"ui.agentMessages.settings.error.unreadable": undefined;
+	"ui.agentMessages.settings.hold.chief_of_staff": { count: number };
+	"ui.agentMessages.settings.hold.chief_of_staff_unlinked": { count: number };
+	"ui.agentMessages.settings.hold.open": undefined;
 	"ui.agentMessages.settings.local.label": undefined;
 	"ui.agentMessages.settings.local.stays_enrolled": undefined;
 	"ui.agentMessages.settings.off_by_default": undefined;
@@ -1533,10 +1556,14 @@ export type MessageParams = {
 	"ui.browser.browser_tab_strip.unmute_tab": undefined;
 	"ui.browser.browser_tab_strip.watch": { title: string };
 	"ui.browser.browser_url_bar.address": undefined;
-	"ui.browser.browser_url_bar.address_required": undefined;
+	"ui.browser.browser_url_bar.address_search_row": { query: string };
+	"ui.browser.browser_url_bar.address_suggestion_open_tab": { title: string };
+	"ui.browser.browser_url_bar.address_suggestion_open_tab_untitled": undefined;
 	"ui.browser.browser_url_bar.address_suggestions_available": { count: number };
+	"ui.browser.browser_url_bar.address_suggestions_blocked": undefined;
 	"ui.browser.browser_url_bar.address_suggestions_empty": undefined;
 	"ui.browser.browser_url_bar.address_suggestions_label": undefined;
+	"ui.browser.browser_url_bar.address_suggestions_label_mixed": undefined;
 	"ui.browser.browser_url_bar.address_suggestions_no_match": undefined;
 	"ui.browser.browser_url_bar.address_suggestions_unavailable": undefined;
 	"ui.browser.browser_url_bar.approvals_waiting": { count: number };
@@ -1550,6 +1577,7 @@ export type MessageParams = {
 	"ui.browser.browser_url_bar.home_destination": undefined;
 	"ui.browser.browser_url_bar.latest_download": { name: string };
 	"ui.browser.browser_url_bar.newest_download": { name: string; count: number };
+	"ui.browser.browser_url_bar.page_menu": undefined;
 	"ui.browser.browser_url_bar.page_zoom_reset": { zoom: number };
 	"ui.browser.browser_url_bar.print_page": undefined;
 	"ui.browser.browser_url_bar.reload": undefined;
@@ -1758,6 +1786,10 @@ export type MessageParams = {
 	"ui.chat.usage.eligibility_unknown": undefined;
 	"ui.chat.usage.family_caps": undefined;
 	"ui.chat.usage.unlimited": undefined;
+	"ui.chat.live_updates.paused": undefined;
+	"ui.chat.live_updates.reload": undefined;
+	"ui.chat.live_updates.reload_failed": undefined;
+	"ui.chat.live_updates.reloading": undefined;
 	"ui.chat.pickers.approvals.title": undefined;
 	"ui.chat.pickers.commands.title": undefined;
 	"ui.chat.pickers.copy.title": undefined;
@@ -1862,63 +1894,53 @@ export type MessageParams = {
 	"ui.chat.sidebar_view.time_section": undefined;
 	"ui.chat.tag_dialogs.assign_created_failed": { name: string };
 	"ui.chat.tag_dialogs.changed_elsewhere": undefined;
-	"ui.chat.tag_dialogs.close": undefined;
 	"ui.chat.tag_dialogs.created_assigned": { name: string };
 	"ui.chat.tag_dialogs.deleted_name": { name: string };
-	"ui.chat.tag_dialogs.manage_description": undefined;
-	"ui.chat.tag_dialogs.picker_description": undefined;
 	"ui.chat.tags.add": undefined;
-	"ui.chat.tags.apply": undefined;
-	"ui.chat.tags.apply_deletion_first": { name: string };
 	"ui.chat.tags.applying": undefined;
 	"ui.chat.tags.auto_tag": undefined;
 	"ui.chat.tags.auto_tag_help": undefined;
 	"ui.chat.tags.cancel": undefined;
 	"ui.chat.tags.changed_elsewhere": undefined;
-	"ui.chat.tags.clear": undefined;
 	"ui.chat.tags.create_failed": undefined;
 	"ui.chat.tags.create_helper": undefined;
 	"ui.chat.tags.create_name": { name: string };
-	"ui.chat.tags.create_pending": undefined;
 	"ui.chat.tags.created_name": { name: string };
 	"ui.chat.tags.delete": undefined;
 	"ui.chat.tags.delete_description": { count: number };
 	"ui.chat.tags.delete_tag": undefined;
 	"ui.chat.tags.delete_title": { name: string };
 	"ui.chat.tags.discovery": undefined;
+	"ui.chat.tags.dropped_on": { name: string };
 	"ui.chat.tags.duplicate_name": { name: string };
 	"ui.chat.tags.empty": undefined;
+	"ui.chat.tags.empty_hint": { chord: string };
+	"ui.chat.tags.empty_title": undefined;
 	"ui.chat.tags.group": undefined;
-	"ui.chat.tags.group_under": undefined;
+	"ui.chat.tags.header_actions": { name: string };
+	"ui.chat.tags.header_first": { name: string };
+	"ui.chat.tags.header_last": { name: string };
+	"ui.chat.tags.hidden": undefined;
 	"ui.chat.tags.label": undefined;
 	"ui.chat.tags.load_failed": undefined;
 	"ui.chat.tags.loading": undefined;
-	"ui.chat.tags.manage": undefined;
-	"ui.chat.tags.manage_description": undefined;
-	"ui.chat.tags.manage_title": undefined;
 	"ui.chat.tags.menu": undefined;
 	"ui.chat.tags.mode_hint": undefined;
 	"ui.chat.tags.move_armed": { name: string };
 	"ui.chat.tags.move_cancelled": undefined;
-	"ui.chat.tags.move_description": undefined;
 	"ui.chat.tags.move_down": { name: string };
 	"ui.chat.tags.move_failed": undefined;
-	"ui.chat.tags.move_menu": undefined;
-	"ui.chat.tags.move_title": { title: string };
 	"ui.chat.tags.move_undone": undefined;
 	"ui.chat.tags.move_up": { name: string };
-	"ui.chat.tags.moved_to": { name: string };
+	"ui.chat.tags.moved_tag": { name: string };
 	"ui.chat.tags.name_long": undefined;
+	"ui.chat.tags.name_placeholder": undefined;
 	"ui.chat.tags.name_reserved": undefined;
-	"ui.chat.tags.new": undefined;
 	"ui.chat.tags.new_name": undefined;
+	"ui.chat.tags.new_tag": undefined;
 	"ui.chat.tags.no_matches": { query: string };
-	"ui.chat.tags.none_yet": undefined;
-	"ui.chat.tags.picker_description": undefined;
-	"ui.chat.tags.picker_title": { title: string };
 	"ui.chat.tags.primary": undefined;
 	"ui.chat.tags.registry_changed": undefined;
-	"ui.chat.tags.registry_count": { count: string };
 	"ui.chat.tags.registry_limit": undefined;
 	"ui.chat.tags.remote": undefined;
 	"ui.chat.tags.remove_all": { count: number };
@@ -1927,20 +1949,19 @@ export type MessageParams = {
 	"ui.chat.tags.rename": undefined;
 	"ui.chat.tags.rename_label": { name: string };
 	"ui.chat.tags.renamed_name": { name: string };
-	"ui.chat.tags.reorder_filtered": undefined;
 	"ui.chat.tags.retry": undefined;
-	"ui.chat.tags.save": undefined;
 	"ui.chat.tags.save_failed": undefined;
 	"ui.chat.tags.search": undefined;
 	"ui.chat.tags.selection_count": { count: string };
 	"ui.chat.tags.selection_limit": undefined;
 	"ui.chat.tags.selection_status": { count: string; name: string };
-	"ui.chat.tags.staged_added": { name: string };
-	"ui.chat.tags.tag_usage": { count: number };
+	"ui.chat.tags.show_groups": undefined;
+	"ui.chat.tags.show_under": undefined;
+	"ui.chat.tags.shown_under": { tag: string };
+	"ui.chat.tags.shown_untagged": undefined;
 	"ui.chat.tags.undo": undefined;
 	"ui.chat.tags.untagged": undefined;
-	"ui.chat.tags.updated_grouped": { tag: string };
-	"ui.chat.tags.updated_untagged": undefined;
+	"ui.chat.tags.unused": { count: string };
 	"ui.chat.tags.use_time": undefined;
 	"ui.chat.transcript_copy.menu.copy_markdown": undefined;
 	"ui.chat.transcript_copy.menu.copy_selection": undefined;
@@ -2438,9 +2459,14 @@ export type MessageParams = {
 	"ui.console.dismiss_history": undefined;
 	"ui.console.empty.detail": undefined;
 	"ui.console.empty.title": undefined;
+	"ui.console.ended.app_quit": undefined;
 	"ui.console.ended.exit_code": { code: string };
+	"ui.console.ended.exit_signal": { signal: string };
 	"ui.console.ended.exit_unknown": undefined;
+	"ui.console.ended.input_blocked": undefined;
 	"ui.console.ended.live": undefined;
+	"ui.console.ended.marker": undefined;
+	"ui.console.ended.marker_detail": undefined;
 	"ui.console.ended.restored": undefined;
 	"ui.console.loading.create": undefined;
 	"ui.console.loading.read": undefined;
@@ -2466,6 +2492,7 @@ export type MessageParams = {
 	};
 	"ui.console.tab.close_label": { title: string; index: number; total: number };
 	"ui.console.tab.ended": undefined;
+	"ui.console.tab.exit_code": { code: string };
 	"ui.console.terminal.prompt_label": undefined;
 	"ui.console.terminal.too_much_output": undefined;
 	"ui.console.unavailable.disabled.detail": undefined;

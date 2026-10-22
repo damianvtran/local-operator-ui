@@ -1512,6 +1512,22 @@ const addressOverlayGate = resolveAddressOverlayGate({
 	windowMode: windowLaunch.mode,
 	packaged: app.isPackaged,
 });
+/**
+ * S4b's product chrome, with no user-facing switch.
+ *
+ * DARWIN ONLY, and that is evidence rather than preference: every measured fact
+ * about the native child is macOS (S1–S3; the Windows/Linux rows are BLOCKED),
+ * so the other platforms keep the Tier 1 field-only popout. A probe launch wins:
+ * when `addressOverlayGate.enabled`, the probe's own channels and child are the
+ * ones wired, so an evidence run never shares a controller with the product.
+ */
+const addressOverlayProduct =
+	process.platform === "darwin" && !addressOverlayGate.enabled;
+if (addressOverlayProduct) {
+	console.log(
+		"[address-overlay] product chrome armed (darwin): popout field over the tab strip, native list child",
+	);
+}
 if (addressOverlayGate.asked) {
 	console.log(
 		addressOverlayGate.enabled
@@ -2590,9 +2606,10 @@ app
 		 * the overlay pointing at a document that is not there. The host only receives
 		 * it when the gate passed; the URL itself is never renderer- or caller-supplied.
 		 */
-		const addressOverlayDocumentUrl = addressOverlayGate.list
-			? addressListDocumentUrlFor(rendererUrl)
-			: addressOverlayDocumentUrlFor(rendererUrl);
+		const addressOverlayDocumentUrl =
+			addressOverlayGate.list || addressOverlayProduct
+				? addressListDocumentUrlFor(rendererUrl)
+				: addressOverlayDocumentUrlFor(rendererUrl);
 		/*
 		 * The machine-wide feed's two consumers, and the split between them is the
 		 * design: main takes the notifications (so a completion banners with no
@@ -4114,12 +4131,13 @@ app
 					consoleCaptureUrl,
 					// S1: only a gated headless probe arm gets this option at all. The
 					// URL is this app's own packaged document, not a caller's string.
-					...(addressOverlayGate.enabled
+					...(addressOverlayGate.enabled || addressOverlayProduct
 						? {
 								addressOverlay: {
 									enabled: true,
-									list: addressOverlayGate.list,
+									list: addressOverlayGate.list || addressOverlayProduct,
 									visible: addressOverlayGate.visible,
+									product: addressOverlayProduct,
 									documentUrl: addressOverlayDocumentUrl,
 								},
 							}

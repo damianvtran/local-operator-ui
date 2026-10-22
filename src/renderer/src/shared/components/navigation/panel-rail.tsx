@@ -74,6 +74,16 @@ export type PanelRailProps = {
 	/** Console completions not yet looked at, and whether they still pulse. */
 	consoleUnseenCount: number;
 	consoleUnseenPulsing: boolean;
+	/**
+	 * Running console surfaces in THIS conversation, as the pane published them.
+	 *
+	 * THE ACTIVE TREATMENT FOLLOWS LIVENESS, not the pane's flag (operator report,
+	 * 2026-10-21: "0 live" still painted the console item as the active one). The
+	 * item is lit only when the slot holds the console AND a process is running; an
+	 * open pane showing restored history is a reader, not an active terminal, and
+	 * pressing the unlit item asks for a live one (`togglePanelRailItem`).
+	 */
+	consoleLiveCount: number;
 	/** Files the conversation has been seen to mention (the canvas item's dot). */
 	fileCount: number;
 	/** Rows in the ledger's Opened group (the name and tooltip clauses, §8). */
@@ -156,6 +166,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 	askScope,
 	consoleUnseenCount,
 	consoleUnseenPulsing,
+	consoleLiveCount,
 	fileCount,
 	codeOpened,
 	codeMentioned,
@@ -305,6 +316,14 @@ export const PanelRail: FC<PanelRailProps> = ({
 		askCount,
 		capFor("panel.ask"),
 	);
+	const consoleActive = drawn === "console" && consoleLiveCount > 0;
+	/*
+	 * THE LABEL FOLLOWS THE PRESS, NOT THE LIGHT (m-5). The item toggles the pane
+	 * whenever it is drawn, so an unlit history/draft pane still says "Close console"
+	 * and its tooltip matches the act. `consoleActive` stays the paint and
+	 * `aria-pressed` fact; conflating them made the label promise an open while the
+	 * press closed.
+	 */
 	const terminal = consoleRailLabels(
 		drawn === "console",
 		consoleUnseenCount,
@@ -494,7 +513,7 @@ export const PanelRail: FC<PanelRailProps> = ({
 					id="console"
 					label={terminal.tooltip}
 					ariaLabel={terminal.aria}
-					pressed={drawn === "console"}
+					pressed={consoleActive}
 					onClick={() => togglePanelRailItem("console", actionContext)}
 					data-tour-tag="console-pane-trigger"
 				>

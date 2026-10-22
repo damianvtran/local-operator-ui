@@ -32,6 +32,12 @@
  *
  * Evidence written into <out>: plan.json, build-identity.json, matrix.md,
  * events.jsonl, facts.json, app.log, teardown.json.
+ *
+ * SUPERSEDED IN PART BY S4b (2026-10-21). The S2 `measure` action still reads
+ * `data-address-dock-open`; S4b deleted the dock (there is no bar and no dock at
+ * rest), so that field is permanently false here. Keep the reads that describe
+ * the v1 child document; do not read this probe's chrome geometry as the shipped
+ * one. The S4b rig is `browser-chrome-s4b-probe.mjs`.
  */
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -2096,7 +2102,7 @@ async function s2RealInputMatrix() {
 				const notice = document.querySelector('[data-address-suggestions-notice]')?.textContent ?? null;
 				try {
 					const state = await window.api.browser.state();
-					const answer = await window.api.browser.addressHistory({ requestId: 993, expectedTabId: state.activeTabId, scope: "all" });
+					const answer = await window.api.browser.addressHistory({ requestId: 993, expectedTabId: state.activeTabId, query: "", limit: 8 });
 					return { notice, entries: answer.entries.length, urls: answer.entries.map((entry) => entry.url), activeTabId: state.activeTabId };
 				} catch (error) {
 					return { notice, error: String(error && error.message ? error.message : error) };
@@ -2666,7 +2672,7 @@ async function s2SyntheticMatrix() {
 
 		// R2: each notice kind at the dock's 104.
 		const notices = [];
-		for (const kind of ["error", "hint", "empty", "no_match"]) {
+		for (const kind of ["error", "empty", "no_match"]) {
 			const answer = await project({
 				kind: "notice",
 				notice: kind,

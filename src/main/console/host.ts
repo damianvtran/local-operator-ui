@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { homedir } from "node:os";
+import { homedir, constants as osConstants } from "node:os";
 import { basename, isAbsolute } from "node:path";
 import type { BrowserWindow, NativeImage } from "electron";
 import { defaultShell } from "../shell-path";
@@ -158,6 +158,45 @@ export const FRAME_RETRY_DELAY_MS = 120;
  * killed outright (§6.7). */
 export const CLOSE_GRACE_MS = 1_500;
 
+/**
+ * How long the QUIT path waits for an exit after SIGKILL.
+ *
+ * A killed process is gone; this only bounds the event loop's delivery of
+ * `onExit`, which is why it is far shorter than the SIGTERM grace. The two
+ * bounds together are the most a quit may spend per surface, and they run
+ * ACROSS surfaces rather than one after another (`dispose`), so ten terminals
+ * cost one bound rather than ten.
+ */
+export const QUIT_EXIT_CAPTURE_MS = 400;
+
+/**
+ * node-pty's exit signal as a POSIX name (Q-3), or null.
+ *
+ * `onExit` reports `{exitCode, signal}`; a killed pty reports code 0, so without
+ * this field a SIGKILL is indistinguishable from a clean exit. The number is
+ * mapped through the platform's own table rather than a second hard-coded list,
+ * and an unknown number still gets a token (`SIG9`) instead of being dropped.
+ */
+function signalName(signal: number | string | undefined): string | null {
+	if (typeof signal === "string") {
+		if (signal.length === 0) return null;
+		return signal.startsWith("SIG") ? signal : `SIG${signal}`;
+	}
+	if (typeof signal !== "number" || signal <= 0) return null;
+	for (const [name, number] of Object.entries(osConstants.signals))
+		if (number === signal) return name;
+	return `SIG${signal}`;
+}
+
+/** The SIGTERM grace inside the AWAITED quit budget (m-1).
+ *
+ * The app holds quit for ~1.5 s (the session-cookie hold). The close path's own
+ * grace plus the capture window added up to 2 s, so the final persist could land
+ * after the app had finished waiting. This pair fits the whole quit inside 1.3 s:
+ * 0.9 s for the signal, then 0.4 s for `onExit` to arrive.
+ */
+export const QUIT_SIGNAL_GRACE_MS = 900;
+
 /** The environment markers a program can read to tell which console it is in
  * (§6.5), and the two variables a driven surface must not lose (§6.6). */
 export const SURFACE_ENV_MARKER = "LOCAL_OPERATOR_CONSOLE_SURFACE";
@@ -196,7 +235,11 @@ export interface ConsoleContentReport {
 /** A subscriber to one surface's byte stream (§10.3). */
 export interface ConsoleSubscriber {
 	output(frame: { surface: string; seq: number; bytes: Uint8Array }): void;
-	exit(frame: { surface: string; exitCode: number }): void;
+	exit(frame: {
+		surface: string;
+		exitCode: number;
+		exitSignal?: string | null;
+	}): void;
 }
 
 export interface ConsoleHostOptions {
@@ -256,6 +299,7 @@ export interface ConsoleHostOptions {
 		surface: string;
 		sessionId: string;
 		exitCode: number;
+		exitSignal: string | null;
 	}) => void;
 	/** Called whenever something a listing or the record reports has changed. */
 	onChanged?: () => void;
@@ -327,7 +371,9 @@ export interface SurfaceRuntime {
 export interface PtyHandle {
 	readonly pid: number;
 	onData(listener: (data: string) => void): void;
-	onExit(listener: (event: { exitCode: number }) => void): void;
+	onExit(
+		listener: (event: { exitCode: number; signal?: number | string }) => void,
+	): void;
 	/**
 	 * A string node-pty encodes as UTF-8, or raw bytes it copies through.
 	 *
@@ -462,6 +508,18 @@ export class ConsoleHost {
 	 * removes the record rather than leaving a surface that lists as running.
 	 */
 	create(options: CreateSurfaceOptions): CreateSurfaceResult {
+		/*
+		 * NO CREATE DURING DISPOSAL (m-2). The dispose settle is where a create used
+		 * to be silently dropped: the registry was still publishing, the caller got a
+		 * handle, and the teardown then cleared it. Refusing by name is the honest
+		 * answer and it is what the pane's create-refused state already renders.
+		 */
+		if (this.disposing)
+			throw new ConsoleError(
+				"console_unavailable",
+				"The console host is shutting down",
+				{ reason: "host_disposing" },
+			);
 		if (this.failedAllocations.size)
 			throw new ConsoleError(
 				"console_unavailable",
@@ -555,7 +613,9 @@ export class ConsoleHost {
 			this.registry.attach(surface, runtime);
 
 			pty.onData((data) => this.consume(surface, data));
-			pty.onExit((event) => this.exited(surface, event.exitCode));
+			pty.onExit((event) =>
+				this.exited(surface, event.exitCode, signalName(event.signal)),
+			);
 
 			// The initial input is written after the listeners exist, so a program that
 			// answers immediately cannot beat the record.
@@ -679,10 +739,16 @@ export class ConsoleHost {
 			meta.surface,
 			Number.isFinite(meta.exit_epoch) ? meta.exit_epoch : 0,
 		);
+		// The reason the quit path could not observe a code (§7.3), seeded from the
+		// sidecar exactly as the epoch is: the pane must be able to say "the app
+		// closed it" on the launch after the close.
+		if (meta.end_reason === "app_quit")
+			this.endReasons.set(meta.surface, "app_quit");
 		if (!existing)
 			this.registry.update(meta.surface, {
 				running: false,
 				exitCode: meta.exit_code,
+				exitSignal: meta.exit_signal,
 				live: false,
 				secure: meta.secure === true,
 				lastActivity: meta.last_seen_at,
@@ -755,6 +821,7 @@ export class ConsoleHost {
 				this.registry.update(entry.record.surface, {
 					running: false,
 					exitCode: meta.exit_code,
+					exitSignal: meta.exit_signal,
 					live: false,
 					lastActivity: meta.last_seen_at,
 				});
@@ -805,6 +872,12 @@ export class ConsoleHost {
 			rows: record.rows,
 			running: record.running,
 			exit_code: record.exitCode,
+			exit_signal: record.exitSignal,
+			/* Why the end happened when no code was observable (§7.3). Only the quit
+			 * path writes one, and it is the difference between "nobody could have
+			 * seen this" and main's old silence, which the pane read as an unknown
+			 * status. */
+			end_reason: this.endReasons.get(record.surface) ?? null,
 			last_activity: record.lastActivity,
 			live: record.live,
 			agent_owned: record.origin === "agent",
@@ -846,6 +919,8 @@ export class ConsoleHost {
 		return {
 			running: entry.record.running,
 			exit_code: entry.record.exitCode,
+			exit_signal: entry.record.exitSignal,
+			end_reason: this.endReasons.get(surface) ?? null,
 			// The retention layer's counter, bumped once per `process_exited` (§7.3,
 			// §10.2). Read from the host's live view of it: the sidecar is what makes
 			// it survive a relaunch, and this is what the running process reports.
@@ -1525,7 +1600,11 @@ export class ConsoleHost {
 		runtime.pendingTimer.unref?.();
 	}
 
-	private exited(surface: string, exitCode: number): void {
+	private exited(
+		surface: string,
+		exitCode: number,
+		exitSignal: string | null = null,
+	): void {
 		// `find`, not `require`: an exit can land after its surface was closed, and
 		// an event handler that threw would be an unhandled exception inside a pty
 		// callback rather than a refusal anybody could read.
@@ -1534,8 +1613,13 @@ export class ConsoleHost {
 		this.registry.update(surface, {
 			running: false,
 			exitCode,
+			exitSignal,
 			lastActivity: this.now(),
 		});
+		// A REAL exit supersedes whatever the quit path recorded: the status exists,
+		// so the reason is no longer the honest answer (and a surface replayed under
+		// this handle later must not inherit an old one).
+		this.endReasons.delete(surface);
 		// The generation is bumped BEFORE anything is written or delivered, because
 		// every consumer of it keys on it: the sidecar stores it (§7.3) and §12.3's
 		// notifier dedupes on `(surface, exit_epoch)`. It is the retention layer's
@@ -1551,20 +1635,30 @@ export class ConsoleHost {
 		if (!runtime.exitDelivered) {
 			runtime.exitDelivered = true;
 			for (const subscriber of runtime.subscribers) {
-				subscriber.exit({ surface, exitCode });
+				subscriber.exit({ surface, exitCode, exitSignal });
 			}
 		}
 		this.options.log(
-			`[console] surface ${redactSurface(surface)} exited ${exitCode}`,
+			`[console] surface ${redactSurface(surface)} exited ${exitCode}${exitSignal === null ? "" : ` by ${exitSignal}`}`,
 		);
 		this.options.onChanged?.();
 		// The app's own completion seam, after every other reader has the exit. See
 		// `ConsoleHostOptions.onExit` for why this is not left to `onChanged`.
-		this.options.onExit?.({
-			surface,
-			sessionId: entry.record.sessionId,
-			exitCode,
-		});
+		/*
+		 * A QUIT IS NOT A COMPLETION (M-1). `dispose` keeps entries registered while
+		 * it settles so the exit can be observed and persisted, but the same
+		 * registration used to let this seam fire while the app was going away: every
+		 * console the quit closed announced "exited with code …" and, on a surface the
+		 * pane was not showing, raised a native notification. Nothing is completing
+		 * from the user's point of view; the app is closing.
+		 */
+		if (!this.disposing)
+			this.options.onExit?.({
+				surface,
+				sessionId: entry.record.sessionId,
+				exitCode,
+				exitSignal,
+			});
 		// Wait for the final emulator parse before releasing a reloadable runtime.
 		// Pane subscribers and secure views remain pinned; no process is killed.
 		void runtime.emulator
@@ -2128,6 +2222,8 @@ export class ConsoleHost {
 			created_at: this.createdAt.get(surface) ?? this.now(),
 			last_seen_at: record.lastActivity,
 			exit_code: record.exitCode,
+			exit_signal: record.exitSignal,
+			end_reason: this.endReasons.get(surface) ?? null,
 			truncated: runtime.log.truncated,
 			exit_epoch: this.exitEpoch.get(surface) ?? 0,
 			secure: record.secure,
@@ -2264,11 +2360,75 @@ export class ConsoleHost {
 		this.persistedBytes.delete(surface);
 		this.metaSignatures.delete(surface);
 		this.exitEpoch.delete(surface);
+		this.endReasons.delete(surface);
 		this.options.onChanged?.();
 	}
 
+	/**
+	 * Let the quit path OBSERVE a surface's exit instead of killing it blind (§7.3).
+	 *
+	 * THE DEFECT THIS CLOSES: `dispose` used to persist the sidecar (with
+	 * `exit_code: null`) and then kill the pty, so the next launch restored "exit
+	 * code not observed" for a surface the app itself closed — a status the app
+	 * could have had, reported as one nobody could have. The order is now flush,
+	 * signal, wait, and let the exit land in the record before the final persist.
+	 *
+	 * BOUNDED TWICE, AND IN PARALLEL ACROSS SURFACES (`dispose` awaits them all at
+	 * once): SIGTERM gets the same grace a user-initiated close does, SIGKILL gets
+	 * `QUIT_EXIT_CAPTURE_MS` for the event loop to deliver its `onExit`, and only
+	 * after BOTH fail is the end recorded as `app_quit` — the honest sentence for a
+	 * status that genuinely could not be observed, and distinguishable from a legacy
+	 * sidecar that never looked.
+	 */
+	private async settleOnQuit(
+		entry: ConsoleRegistryEntry<SurfaceRuntime>,
+		persistHistory: boolean,
+	): Promise<void> {
+		const runtime = entry.runtime;
+		if (!runtime || !entry.record.running || !runtime.pty) return;
+		// THE LAST FLUSH IS THE POINT OF THE FLUSH: bytes still inside the pending
+		// window when the app quits are the one thing the coalescing must never lose.
+		// It runs before the signal so the process's earlier output is already in the
+		// log; output emitted after it lands through `exited`'s own flush when the exit
+		// is observed, and is the stated durability boundary when it is not (§7.4).
+		if (persistHistory && entry.record.retain) this.persist(entry, runtime);
+		const pty = runtime.pty;
+		const exit = new Promise<number>((resolve) => {
+			runtime.exitWaiters.push(resolve);
+		});
+		let signalled = true;
+		try {
+			pty.kill();
+		} catch {
+			// A pty already gone can throw on a signal; the exit event is still the
+			// only thing that answers this wait, so the bounds below decide it.
+			signalled = false;
+		}
+		const observed = await Promise.race([
+			exit,
+			delay(QUIT_SIGNAL_GRACE_MS).then(() => null),
+		]);
+		if (observed !== null) return;
+		try {
+			pty.kill("SIGKILL");
+		} catch {
+			// Same as above; the second bound is what remains.
+		}
+		const killed = await Promise.race([
+			exit,
+			delay(QUIT_EXIT_CAPTURE_MS).then(() => null),
+		]);
+		if (killed === null) {
+			this.endReasons.set(entry.record.surface, "app_quit");
+			this.options.log(
+				`[console] surface ${redactSurface(entry.record.surface)} did not report an exit within the quit bound${signalled ? "" : " (the signal itself was refused)"}; recording app_quit`,
+			);
+		}
+	}
+
 	/** Stop everything: every pty, every record, every subscriber. */
-	dispose(persistHistory = true): void {
+	async dispose(persistHistory = true): Promise<void> {
+		this.disposing = true;
 		const allocationFailures = [...this.failedAllocations].flatMap(
 			(allocation) => this.releaseFailedAllocation(allocation),
 		);
@@ -2333,29 +2493,45 @@ export class ConsoleHost {
 					failures,
 					"Partial console runtime cleanup incomplete.",
 				);
-		} else
-			for (const entry of this.registry.clear()) {
+		} else {
+			/*
+			 * THREE PHASES, NOT ONE LOOP: release every surface's timers first, let every
+			 * exit settle concurrently, then write what actually happened. The old loop
+			 * killed and persisted per surface, which is why the status of the surface it
+			 * was closing was always the one before the kill.
+			 */
+			const entries = this.registry.list();
+			for (const entry of entries) {
 				const runtime = entry.runtime;
 				if (!runtime) continue;
 				if (runtime.pendingTimer) clearTimeout(runtime.pendingTimer);
 				if (runtime.persistTimer) clearTimeout(runtime.persistTimer);
 				runtime.subscribers.clear();
-				// THE LAST FLUSH IS THE POINT OF THE FLUSH: bytes still inside the pending
-				// window when the app quits are the one thing the coalescing must never
-				// lose, and this path used to write the SIDECAR only — so with a bounded
-				// flush it would have dropped the last quarter-second of every retained
-				// surface. It runs before the kill so the process's final bytes are
-				// already in the log either way (a pty that emits after this write lands
-				// nothing, which is the durability boundary §7.4 states rather than a
-				// promise this makes).
+			}
+			await Promise.all(
+				entries.map((entry) => this.settleOnQuit(entry, persistHistory)),
+			);
+			for (const entry of entries) {
+				const runtime = entry.runtime;
+				if (!runtime) continue;
+				// The exit's own flush ran if it was observed. This second persist is what
+				// records an exit code main only learned about on the way out, and the
+				// `app_quit` reason when it did not; `metaSignature` skips an unchanged
+				// document, so an already-persisted surface costs no extra write.
 				if (persistHistory && entry.record.retain) this.persist(entry, runtime);
-				if (entry.record.running) runtime.pty?.kill();
+				// No second kill here: `settleOnQuit` is the only place this path signals
+				// a pty, and it has already either observed the exit or escalated to
+				// SIGKILL and bounded its own wait. A kill here was a third signal to a
+				// process that never reported one.
 				runtime.emulator.dispose();
 			}
+			this.registry.clear();
+		}
 		this.createdAt.clear();
 		this.persistedBytes.clear();
 		this.metaSignatures.clear();
 		this.exitEpoch.clear();
+		this.endReasons.clear();
 		if (allocationFailures.length)
 			throw new AggregateError(
 				allocationFailures,
@@ -2377,6 +2553,19 @@ export class ConsoleHost {
 
 	/** Each surface's exit generation, seeded from the sidecar on restore (§7.3). */
 	private readonly exitEpoch = new Map<string, number>();
+
+	/**
+	 * Why a surface's end could not be observed, when the quit path itself ended it.
+	 *
+	 * A SEPARATE MAP FROM THE RECORD, like `exitEpoch`: the reason has to outlive the
+	 * process that owns the record (it is persisted into the sidecar and read back on
+	 * the next launch), and it is cleared the moment a real exit is observed so a
+	 * subsequent run under the same handle cannot inherit the previous ending.
+	 */
+	private readonly endReasons = new Map<string, "app_quit">();
+	/** True from the first line of `dispose`; refuses creates and suppresses the
+	 * completion seam for the whole teardown (M-1, m-2). */
+	private disposing = false;
 }
 
 /**
@@ -2391,6 +2580,7 @@ export class ConsoleHost {
 function metaSignature(meta: ConsoleHistoryMeta): string {
 	return [
 		meta.exit_code,
+		meta.end_reason ?? "",
 		meta.truncated,
 		meta.cols,
 		meta.rows,

@@ -51,9 +51,11 @@ test("shipped Urdu covers settings, console, onboarding and the wider UI, then s
 	// imported, not just the onboarding tranche.
 	assert.equal(messages.t("ui.common.actions.retry"), "دوبارہ کوشش کریں");
 	assert.equal(messages.t("ui.chat.tags.label"), "ٹیگز");
-	// Keys that landed on main after the tranche: prove the rebased bundle
-	// carries the drift rather than falling back to English for them.
-	assert.equal(messages.t("ui.chat.tags.move_menu"), "ٹیگ میں منتقل کریں…");
+	// The v3 footer and picker replaced Move to tag…; prove their CURRENT
+	// audited Urdu strings are bundled rather than restoring a retired key or
+	// letting the missing-key spelling satisfy an obsolete activation contract.
+	assert.equal(messages.t("ui.chat.tags.new_tag"), "نیا ٹیگ");
+	assert.equal(messages.t("ui.chat.tags.show_under"), "اس گروہ میں رکھیں");
 	assert.equal(messages.t("ui.library.filter.scope_final"), "حتمی فائلیں");
 	console.log(
 		`ur: ${messages.t("ui.settings.page.title")} | ${messages.t("ui.console.pane.label")} | ${messages.t("ui.onboarding.modal.step_of", { current: 2, total: 5 })}`,
