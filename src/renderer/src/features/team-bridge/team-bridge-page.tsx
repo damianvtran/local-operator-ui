@@ -8,7 +8,7 @@ import { formatRelativeTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ArrowUp, Bot, Hash, Plus, Users } from "lucide-react";
-import type { FC } from "react";
+import type { FC, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type {
@@ -20,6 +20,7 @@ import type {
 import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
 import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
+import { TeamBridgeDefaultOnBanner } from "./team-bridge-default-on-banner";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
@@ -319,6 +320,12 @@ export type TeamBridgePageViewProps = {
 	eligibility?: TeamBridgeEligibility | null;
 	gatePending?: boolean;
 	readOnly?: boolean;
+	/**
+	 * A band above the thread pane (the default-on first-run notice). A slot
+	 * rather than a prop bag so the pure view stays ignorant of the notice's
+	 * reads and writes, which live in its container.
+	 */
+	notice?: ReactNode;
 	onTarget: (target: TeamBridgeTarget) => void;
 	/**
 	 * Send `body`. For a target with no conversation yet the container creates
@@ -363,6 +370,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	eligibility = null,
 	gatePending = false,
 	readOnly = false,
+	notice = null,
 	onTarget,
 	onSend,
 	onNewChannel,
@@ -805,6 +813,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			{/* The ONE ground split: the rail inherits the page canvas, the thread
 			    carries the surface — two regions read apart without a rule. */}
 			<section className="flex min-w-0 flex-1 flex-col bg-surface pt-[var(--panel-top-pad,0px)]">
+				{notice}
 				{target === null ? (
 					<div className="flex flex-1 items-center justify-center px-6">
 						{listState === "loading" ? (
@@ -1529,6 +1538,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				eligibility={eligibility}
 				gatePending={gatePending}
 				readOnly={readOnly}
+				notice={<TeamBridgeDefaultOnBanner status={status.data} />}
 				onRetry={() => {
 					void list.refetch();
 					if (memberships.isError) void memberships.refetch();

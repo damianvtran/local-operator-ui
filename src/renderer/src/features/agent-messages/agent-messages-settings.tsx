@@ -22,11 +22,12 @@ import { cn } from "@shared/lib/utils";
 import { Save } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import type { FC } from "react";
-import type {
-	AgentMessagesAllowlistResult,
-	AgentMessagesRefusal,
-	AgentMessagesSettingsResult,
-	AgentMessagesStatus,
+import {
+	type AgentMessagesAllowlistResult,
+	type AgentMessagesRefusal,
+	type AgentMessagesSettingsResult,
+	type AgentMessagesStatus,
+	agentMessagesDefaultOnInForce,
 } from "../../../../shared/agent-messages-contract";
 import { InfoGrid, InfoItem } from "../settings/components/settings-section";
 import { agentMessagesRefusal } from "./agent-messages-refusal";
@@ -47,10 +48,15 @@ import {
 	allowlistSignature,
 	settingsRefusalSentence,
 } from "./agent-messages-settings-model";
+import { DefaultOnBanner } from "./default-on-banner";
 import {
 	checkAgentMessagesSurface,
 	useAgentMessages,
 } from "./use-agent-messages";
+import {
+	useDefaultOnBannerActions,
+	useDefaultOnBannerVisible,
+} from "./use-default-on-banner";
 
 export type AgentMessagesSettingsApi = Pick<
 	typeof agentMessagesApi,
@@ -59,6 +65,7 @@ export type AgentMessagesSettingsApi = Pick<
 	| "allowlist"
 	| "updateAllowlist"
 	| "localSetting"
+	| "dismissOnboarding"
 >;
 
 type Load =
@@ -217,6 +224,30 @@ export function AgentMessagesSettings({
 
 	const retry = () => setReloadKey((key) => key + 1);
 
+	/*
+	 * Default-on banner (runtime #2790). Hooks sit above the early returns below
+	 * because the section can flip between availabilities while mounted.
+	 * `accountMatches` gates the actions: a status that belongs to another
+	 * account must not be able to write this account's receipt.
+	 */
+	const readySettings = load.kind === "ready" ? load.settings : null;
+	const bannerVisible = useDefaultOnBannerVisible(
+		status,
+		readySettings,
+		loadAccount,
+	);
+	const bannerActions = useDefaultOnBannerActions({
+		api,
+		accountId: accountMatches ? loadAccount : null,
+		tenantId: readySettings?.settings.tenant_id ?? null,
+		markerTenantId: status?.tenant_id ?? null,
+		onSettings: (settings) =>
+			setLoad((current) =>
+				current.kind === "ready" ? { ...current, settings } : current,
+			),
+		onChanged: () => onRefreshStatus(true),
+	});
+
 	if (availability === "absent") return null;
 
 	if (availability === "dark") {
@@ -283,6 +314,16 @@ export function AgentMessagesSettings({
 							? () => onOpenSession(hold.sessionId as string)
 							: undefined
 					}
+				/>
+			)}
+
+			{bannerVisible && (
+				<DefaultOnBanner
+					consentText={agentMessagesSettingsConsent(status)?.text ?? null}
+					pending={bannerActions.pending}
+					failure={bannerActions.failure}
+					onTurnOff={() => void bannerActions.turnOff()}
+					onDismiss={() => void bannerActions.dismiss()}
 				/>
 			)}
 
@@ -492,6 +533,22 @@ const STATE_BODY_KEY: Record<SettingsStateProps["state"], WithoutParams> = {
 	F: "ui.agentMessages.settings.state.f_body",
 };
 
+/*
+ * Copy overrides for the two states whose opt-in wording would be false or
+ * would invite an Enable under default-on. B (no endpoint yet) is described as
+ * waiting for the automatic set-up, not as "off, turn it on"; E (turned off by
+ * the member) points at the explicit path back without the word Enable.
+ */
+function defaultOnTitleKey(state: SettingsStateProps["state"]): WithoutParams {
+	if (state === "B") return "ui.agentMessages.settings.default_on.b_title";
+	return STATE_TITLE_KEY[state];
+}
+function defaultOnBodyKey(state: SettingsStateProps["state"]): WithoutParams {
+	if (state === "B") return "ui.agentMessages.settings.default_on.b_body";
+	if (state === "E") return "ui.agentMessages.settings.default_on.e_body";
+	return STATE_BODY_KEY[state];
+}
+
 const SettingsState: FC<SettingsStateProps> = ({
 	state,
 	status,
@@ -510,6 +567,16 @@ const SettingsState: FC<SettingsStateProps> = ({
 	const consent = agentMessagesSettingsConsent(status);
 	const tenant = settings.settings.tenant_id;
 	const disabled = pending !== null || !accountMatches;
+	/*
+	 * Default-on is in force (runtime #2790): there is nothing to opt INTO, so
+	 * this state renders no Enable button, no "enable later" or "off by
+	 * default" cue and no consent-collection form for the not-yet-enrolled
+	 * state. The way back after a Turn off stays the explicit settings path,
+	 * worded "Turn on again" so no control here is named Enable. When the flag
+	 * is absent or false (v1 hub, older runtime) every branch below is the
+	 * opt-in UI it has always been.
+	 */
+	const defaultOn = agentMessagesDefaultOnInForce(status);
 
 	async function write(
 		next: "active" | "paused" | "disabled",
@@ -527,7 +594,10 @@ const SettingsState: FC<SettingsStateProps> = ({
 				...extra,
 			});
 			onSettings(result);
-			if (next === "disabled") {
+			// Under default-on the runtime persists the sticky local opt-out itself
+			// once the hub accepts the disable; a second client write would be a
+			// second source of truth for the same switch.
+			if (next === "disabled" && !defaultOn) {
 				// Opting out IS the endpoint's off switch, so the machine-local
 				// preference follows it. Pause deliberately does not: "not now" is
 				// not "off", and the enrollment stays usable for other machines.
@@ -619,17 +689,43 @@ const SettingsState: FC<SettingsStateProps> = ({
 	return (
 		<div data-agent-messages-state={state} className="flex flex-col gap-4">
 			<div className="flex flex-wrap items-center gap-2">
-				<h3 className="text-heading text-ink">{t(STATE_TITLE_KEY[state])}</h3>
+				<h3 className="text-heading text-ink">
+					{t(defaultOn ? defaultOnTitleKey(state) : STATE_TITLE_KEY[state])}
+				</h3>
 				{endpointLabel && (
 					<span className="text-body-sm text-ink-muted">{endpointLabel}</span>
 				)}
 			</div>
 			<p className="max-w-2xl text-body-sm text-ink-muted">
-				{t(STATE_BODY_KEY[state])}
+				{t(defaultOn ? defaultOnBodyKey(state) : STATE_BODY_KEY[state])}
 			</p>
 
-			{/* B and E collect consent: the served text is shown EXACTLY. */}
-			{(state === "B" || state === "E") && (
+			{/* B and E collect consent: the served text is shown EXACTLY. Under
+			    default-on B renders nothing here (no opt-in to offer) and E offers
+			    the explicit way back without the word Enable. */}
+			{defaultOn && state === "E" && (
+				<div className="flex flex-col gap-3">
+					{consent ? (
+						<ConsentText text={consent.text} />
+					) : (
+						<Alert variant="warning">
+							<AlertDescription>
+								{t("ui.agentMessages.settings.consent.unavailable")}
+							</AlertDescription>
+						</Alert>
+					)}
+					<div className="flex flex-wrap items-center gap-3">
+						<Button
+							data-agent-messages-action="turn_on_again"
+							onClick={() => void enable()}
+							disabled={disabled || !consent}
+						>
+							{t("ui.agentMessages.settings.action.turn_on_again")}
+						</Button>
+					</div>
+				</div>
+			)}
+			{!defaultOn && (state === "B" || state === "E") && (
 				<div className="flex flex-col gap-3">
 					{consent ? (
 						<ConsentText text={consent.text} />
@@ -678,7 +774,7 @@ const SettingsState: FC<SettingsStateProps> = ({
 						</Button>
 					</div>
 					<EndpointConsent settings={settings} status={status} />
-					{staleConsent && (
+					{staleConsent && !defaultOn && (
 						<ConsentRenewal
 							onRenew={() => void enable()}
 							disabled={disabled || !consent}
@@ -743,7 +839,7 @@ const SettingsState: FC<SettingsStateProps> = ({
 						</p>
 					)}
 					<EndpointConsent settings={settings} status={status} />
-					{staleConsent && (
+					{staleConsent && !defaultOn && (
 						<ConsentRenewal
 							onRenew={() => void enable()}
 							disabled={disabled || !consent}
