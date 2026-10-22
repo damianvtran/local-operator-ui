@@ -59,6 +59,8 @@ mkdirSync(RUN, { recursive: true });
 const T0 = Date.now();
 /** One spelling of the owner document, so a second call site cannot drift. */
 const INDEX_TARGET = /\/index\.html(?:[?#].*)?$/;
+const GITHUB_SEARCH_ROW = /Search DuckDuckGo for "github"/;
+const VPN_SEARCH_ROW = /Search DuckDuckGo for "what is a vpn"/;
 const at = () => new Date().toISOString();
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
@@ -224,12 +226,16 @@ function freePort() {
 	});
 }
 
-async function boot() {
-	const home = join(RUN, "home");
-	const config = join(RUN, "config");
-	const logs = join(RUN, "logs");
-	const profile = join(RUN, "profile");
-	const cwd = join(RUN, "cwd");
+async function boot(options = {}) {
+	// `profile` and `label` let a second scene boot against the SAME user-data
+	// directory (the cross-restart history claim) while every other scratch dir
+	// stays fresh. The default keeps the original single-run shape.
+	const label = options.label ?? "app";
+	const home = join(RUN, label, "home");
+	const config = join(RUN, label, "config");
+	const logs = join(RUN, label, "logs");
+	const profile = options.profile ?? join(RUN, "profile");
+	const cwd = join(RUN, label, "cwd");
 	for (const dir of [home, config, logs, profile, cwd])
 		mkdirSync(dir, { recursive: true });
 	const deadPort = await freePort();
@@ -265,7 +271,7 @@ async function boot() {
 		],
 		{ env, cwd, stdio: ["ignore", "pipe", "pipe"], detached: true },
 	);
-	const logPath = join(OUT, "app.log");
+	const logPath = join(OUT, label === "app" ? "app.log" : `app-${label}.log`);
 	const stream = [];
 	const write = () => {
 		if (stream.length === 0) return;
@@ -299,6 +305,428 @@ async function boot() {
 			]);
 		},
 	};
+}
+
+// ---- two-run history scene -------------------------------------------------
+
+/**
+ * Replace the address field's text with a REAL input event.
+ *
+ * WHY NOT Cmd+A + Input.insertText: the app's chord router owns Cmd+A while the
+ * popout is raised, so the selection never reached the input and the typed text
+ * appended to the live URL (measured in the sibling probe:
+ * `127.0.0.1:54102github`). React's controlled input needs its own value
+ * property setter before the event.
+ */
+async function typeInAddressField(cdp, text) {
+	await evaluate(
+		cdp,
+		`(() => {
+			const input = document.querySelector('[data-tour-tag="browser-address"]');
+			if (!input) throw new Error("no address input");
+			input.focus({ preventScroll: true });
+			const setter = Object.getOwnPropertyDescriptor(
+				HTMLInputElement.prototype,
+				"value",
+			).set;
+			setter.call(input, ${JSON.stringify(text)});
+			input.dispatchEvent(new Event("input", { bubbles: true }));
+			return input.value;
+		})()`,
+	);
+}
+
+/** The owner listbox's rows, including the machine-readable source. */
+function suggestionRows(cdp) {
+	return evaluate(
+		cdp,
+		`(() => {
+			const input = document.querySelector('[data-tour-tag="browser-address"]');
+			return {
+				value: input?.value ?? null,
+				active: input?.getAttribute("aria-activedescendant") ?? null,
+				rows: [...document.querySelectorAll("[data-address-suggestion]")].map((row) => ({
+					id: row.id,
+					text: row.textContent,
+					url: row.getAttribute("data-address-suggestion-url"),
+					source: row.getAttribute("data-address-suggestion-source"),
+					search: row.getAttribute("data-address-suggestion-search") === "true",
+					selected: row.getAttribute("aria-selected") === "true",
+				})),
+			};
+		})()`,
+	);
+}
+
+/**
+ * H1–H4: two app runs against ONE scratch profile.
+ *
+ * Phase 1 records a fixture visit and closes its tab. Phase 2 relaunches with
+ * the same `--user-data-dir`, opens a DIFFERENT page on that host (so the
+ * popout can raise and the visited URL is not an open tab), and the suggestion
+ * must come from the persistent store. Then the two search queries and Enter.
+ */
+async function historyScene({ shot, framesDir }) {
+	const profile = join(RUN, "history-profile");
+	const fixture = `${pageBase}/history-target`;
+	const decoy = `${pageBase}/history-target-b`;
+	const other = `${pageBase}/history-other`;
+	const host = new URL(fixture).host;
+	// The main probe's `frame` captures ITS target, which is stopped before this
+	// scene runs; every capture here names the scene's own owner target.
+	const frameScene = async (target, name) => {
+		writeFileSync(join(framesDir, name), await shot(target));
+	};
+	const mount = async (port) => {
+		const target = await waitForTarget(
+			port,
+			(t) => t.type === "page" && INDEX_TARGET.test(t.url),
+		);
+		const cdp = await connect(target.webSocketDebuggerUrl);
+		// WAIT FOR THE REACT ROOT BEFORE ROUTING: setting the hash before the
+		// router has mounted occasionally left the app on its restored route for
+		// the whole wait (measured once), while the renderer itself was healthy.
+		await waitFor(
+			cdp,
+			`document.readyState === "complete" && !!document.querySelector("#root")?.firstElementChild`,
+			35_000,
+		);
+		await evaluate(cdp, `location.hash = "#/browser"`);
+		let ready = await waitFor(
+			cdp,
+			`!!document.querySelector('[data-tour-tag="browser-tab-strip"]') && !!window.api?.browser`,
+			15_000,
+		);
+		if (!ready) {
+			// A hash set before the router subscribed is invisible to it; dispatch
+			// the change the router listens for and give it one more window.
+			await evaluate(
+				cdp,
+				`(() => {
+					location.hash = "#/browser";
+					window.dispatchEvent(new HashChangeEvent("hashchange"));
+				})()`,
+			);
+			ready = await waitFor(
+				cdp,
+				`!!document.querySelector('[data-tour-tag="browser-tab-strip"]') && !!window.api?.browser`,
+				20_000,
+			);
+		}
+		if (!ready)
+			throw new Error("history scene: the browser surface did not mount");
+		return cdp;
+	};
+	const focusChrome = (cdp) =>
+		evaluate(
+			cdp,
+			`(() => {
+				const el = document.querySelector('[data-tour-tag="browser-address-trigger"]');
+				if (el) el.focus({ preventScroll: true });
+			})()`,
+		);
+	// The scene drives its OWN app: the outer `sendKey` is bound to the main
+	// probe's owner target, and sending Cmd+L through it would raise the first
+	// app's popout rather than this run's.
+	const press = async (cdp, key, code, modifiers = 0) => {
+		const params = {
+			key,
+			code,
+			modifiers,
+			windowsVirtualKeyCode:
+				key === "l" ? 76 : key === "Escape" ? 27 : key === "Enter" ? 13 : 0,
+			nativeVirtualKeyCode:
+				key === "l" ? 76 : key === "Escape" ? 27 : key === "Enter" ? 13 : 0,
+		};
+		await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", ...params });
+		await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", ...params });
+	};
+	const raise = async (cdp) => {
+		await press(cdp, "l", "KeyL", 4);
+		return waitFor(
+			cdp,
+			`!!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+			6_000,
+		);
+	};
+	const openPage = async (cdp, url) => {
+		await evaluate(
+			cdp,
+			`(async () => {
+				await window.api.browser.newTab();
+				const state = await window.api.browser.state();
+				await window.api.browser.navigate(${JSON.stringify(url)}, state.activeTabId);
+			})()`,
+		);
+		return waitFor(
+			cdp,
+			"(async () => !(await window.api.browser.state()).loading)()",
+			20_000,
+		);
+	};
+	const navigateActive = async (cdp, url) => {
+		await evaluate(
+			cdp,
+			`(async () => {
+				const state = await window.api.browser.state();
+				await window.api.browser.navigate(${JSON.stringify(url)}, state.activeTabId);
+			})()`,
+		);
+		await waitFor(
+			cdp,
+			"(async () => !(await window.api.browser.state()).loading)()",
+			20_000,
+		);
+		await sleep(250);
+	};
+	const childFacts = async (port, expectedText) => {
+		const target = await waitForTarget(
+			port,
+			(t) => t.url.endsWith("browser-address-overlay-list.html"),
+			8_000,
+		).catch(() => null);
+		if (!target) return null;
+		const child = await connect(target.webSocketDebuggerUrl);
+		const updated = await waitFor(
+			child,
+			`(document.querySelector("#address-list-rows")?.textContent ?? "").includes(${JSON.stringify(expectedText)})`,
+			6_000,
+		);
+		const facts = await evaluate(
+			child,
+			`(() => ({
+				updated: ${JSON.stringify(updated)},
+				header: document.querySelector("#address-list-label")?.textContent ?? null,
+				rows: [...document.querySelectorAll("#address-list-rows > *")].map((row) => row.textContent),
+			}))()`,
+		);
+		await sleep(200);
+		return { child, facts };
+	};
+
+	let stopOne = null;
+	let stopTwo = null;
+	let one = null;
+	let two = null;
+	try {
+		// Phase 1: visit, let the store write, close the tab, quit.
+		one = await boot({ profile, label: "history-1" });
+		const cdpOne = await mount(one.port);
+		await evaluate(cdpOne, "window.api.browser.newTab()");
+		await navigateActive(cdpOne, fixture);
+		// A DECOY with more visits, so phase 2's inline completion takes the decoy
+		// and the visited page is left as a LIST row. Without it the visited URL
+		// is the inline candidate, which the model correctly keeps out of the
+		// candidate rows.
+		await navigateActive(cdpOne, decoy);
+		await navigateActive(cdpOne, decoy);
+		await sleep(1_200);
+		await evaluate(
+			cdpOne,
+			`(async () => {
+				const state = await window.api.browser.state();
+				const tabId = state.activeTabId;
+				await window.api.browser.newTab();
+				await window.api.browser.closeTab(tabId);
+			})()`,
+		);
+		// The session capture is debounced; a short sleep let a stale record
+		// restore the visited tab in phase 2 (measured: openOnFixture true).
+		const closed = await waitFor(
+			cdpOne,
+			`(async () => {
+				const state = await window.api.browser.state();
+				return !state.tabs.some(
+					(tab) => tab.url === ${JSON.stringify(fixture)} || tab.url === ${JSON.stringify(decoy)},
+				);
+			})()`,
+			10_000,
+		);
+		if (!closed) throw new Error("history scene: phase 1 tab did not close");
+		await sleep(1_800);
+		cdpOne.close();
+		stopOne = await one.stop();
+		one = null;
+
+		// Phase 2: same profile, a different page on the host.
+		two = await boot({ profile, label: "history-2" });
+		const cdp = await mount(two.port);
+		await openPage(cdp, other);
+		await sleep(300);
+		const before = await evaluate(cdp, "window.api.browser.state()");
+		const openOnFixture = (before.tabs ?? []).some(
+			(tab) => tab.url === fixture,
+		);
+		await focusChrome(cdp);
+		if (!(await raise(cdp)))
+			throw new Error("history scene: run 2 popout did not raise");
+
+		// H1: history row, no open tab, source marks it.
+		await typeInAddressField(cdp, host);
+		await waitFor(
+			cdp,
+			`document.querySelectorAll("[data-address-suggestion]").length > 0`,
+			8_000,
+		);
+		const historyRows = await suggestionRows(cdp);
+		await frameScene(cdp, "owner-history.png");
+		const historyChild = await childFacts(two.port, "/history-target");
+		if (historyChild) {
+			writeFileSync(
+				join(framesDir, "child-history.png"),
+				await shot(historyChild.child),
+			);
+			historyChild.child.close();
+		}
+		record(
+			"H1",
+			!openOnFixture &&
+				historyRows.rows.some(
+					(row) => row.url === fixture && row.source === "history",
+				)
+				? "PASS"
+				: "FAIL",
+			{
+				stoppedOne: stopOne,
+				openOnFixture,
+				query: host,
+				owner: historyRows,
+				child: historyChild?.facts ?? null,
+			},
+		);
+
+		// H2: github is search intent; the search row is first and selected.
+		await typeInAddressField(cdp, "github");
+		await waitFor(
+			cdp,
+			`/Search DuckDuckGo/.test(document.querySelector("[data-address-suggestion]")?.textContent ?? "")`,
+			8_000,
+		);
+		const githubRows = await suggestionRows(cdp);
+		await frameScene(cdp, "owner-search-github.png");
+		const githubChild = await childFacts(
+			two.port,
+			'Search DuckDuckGo for "github"',
+		);
+		if (githubChild) {
+			writeFileSync(
+				join(framesDir, "child-search-github.png"),
+				await shot(githubChild.child),
+			);
+			githubChild.child.close();
+		}
+		record(
+			"H2",
+			githubRows.rows[0]?.search === true &&
+				GITHUB_SEARCH_ROW.test(githubRows.rows[0]?.text ?? "") &&
+				githubRows.active === githubRows.rows[0]?.id
+				? "PASS"
+				: "FAIL",
+			{ owner: githubRows, child: githubChild?.facts ?? null },
+		);
+
+		// H4a: Enter on the highlighted search row commits its URL.
+		await press(cdp, "Enter", "Enter");
+		const githubCommitted = await waitFor(
+			cdp,
+			`(async () => {
+				const state = await window.api.browser.state();
+				const tab = state.tabs.find((entry) => entry.tabId === state.activeTabId);
+				return (tab?.url ?? "").startsWith("https://duckduckgo.com/?q=github");
+			})()`,
+			20_000,
+		);
+		const afterGithub = await evaluate(cdp, "window.api.browser.state()");
+		const githubUrl =
+			afterGithub.tabs.find((tab) => tab.tabId === afterGithub.activeTabId)
+				?.url ?? null;
+		await sleep(400);
+
+		// H3: the operator's wording, then H4b: Enter commits THAT query.
+		await focusChrome(cdp);
+		await raise(cdp);
+		await typeInAddressField(cdp, "what is a vpn");
+		await waitFor(
+			cdp,
+			`/Search DuckDuckGo/.test(document.querySelector("[data-address-suggestion]")?.textContent ?? "")`,
+			8_000,
+		);
+		await waitFor(
+			cdp,
+			`(() => {
+				const input = document.querySelector('[data-tour-tag="browser-address"]');
+				const first = document.querySelector("[data-address-suggestion]");
+				return !!first && input?.getAttribute("aria-activedescendant") === first.id;
+			})()`,
+			4_000,
+		);
+		const vpnRows = await suggestionRows(cdp);
+		await frameScene(cdp, "owner-search-vpn.png");
+		const vpnChild = await childFacts(
+			two.port,
+			'Search DuckDuckGo for "what is a vpn"',
+		);
+		if (vpnChild) {
+			writeFileSync(
+				join(framesDir, "child-search-vpn.png"),
+				await shot(vpnChild.child),
+			);
+			vpnChild.child.close();
+		}
+		record(
+			"H3",
+			vpnRows.rows[0]?.search === true &&
+				VPN_SEARCH_ROW.test(vpnRows.rows[0]?.text ?? "") &&
+				vpnRows.active === vpnRows.rows[0]?.id
+				? "PASS"
+				: "FAIL",
+			{ owner: vpnRows, child: vpnChild?.facts ?? null },
+		);
+		await press(cdp, "Enter", "Enter");
+		const vpnCommitted = await waitFor(
+			cdp,
+			`(async () => {
+				const state = await window.api.browser.state();
+				const tab = state.tabs.find((entry) => entry.tabId === state.activeTabId);
+				const url = tab?.url ?? "";
+				return (
+					url.startsWith("https://duckduckgo.com/?q=") &&
+					decodeURIComponent((url.split("?q=")[1] ?? "").replaceAll("+", " ")).includes("what is a vpn")
+				);
+			})()`,
+			20_000,
+		);
+		const afterVpn = await evaluate(cdp, "window.api.browser.state()");
+		const vpnUrl =
+			afterVpn.tabs.find((tab) => tab.tabId === afterVpn.activeTabId)?.url ??
+			null;
+		cdp.close();
+		stopTwo = await two.stop();
+		two = null;
+		record(
+			"H4",
+			githubCommitted &&
+				vpnCommitted &&
+				githubUrl?.startsWith("https://duckduckgo.com/?q=github") &&
+				vpnUrl?.startsWith("https://duckduckgo.com/?q=") &&
+				decodeURIComponent(
+					(vpnUrl.split("?q=")[1] ?? "").replaceAll("+", " "),
+				).includes("what is a vpn")
+				? "PASS"
+				: "FAIL",
+			{ stoppedTwo: stopTwo, githubUrl, vpnUrl, githubCommitted, vpnCommitted },
+		);
+	} catch (error) {
+		for (const id of ["H1", "H2", "H3", "H4"]) {
+			if (!rows.find((row) => row.id === id)?.at)
+				record(id, "BLOCKED", `history scene rig error: ${String(error)}`);
+		}
+	} finally {
+		// A phase that threw before its own stop must still reap its exact process
+		// group; a leaked Electron is a window on the operator's desktop.
+		if (one) await one.stop().catch(() => {});
+		if (two) await two.stop().catch(() => {});
+	}
 }
 
 // ---- main ------------------------------------------------------------------
@@ -397,6 +825,26 @@ plan("V14", "a tab-filled strip at rest", "driven");
 plan(
 	"V15",
 	"the overflow chip clears the trailing rule in the narrow and filled strips",
+	"driven",
+);
+plan(
+	"H1",
+	"a visit recorded in an earlier app run is suggested from history with no tab open on it",
+	"driven",
+);
+plan(
+	"H2",
+	'typing "github" shows the Search DuckDuckGo row first and selected',
+	"driven",
+);
+plan(
+	"H3",
+	'typing "what is a vpn" shows the same search row first and selected',
+	"driven",
+);
+plan(
+	"H4",
+	"Enter commits the highlighted search row's DuckDuckGo URL on the active tab",
 	"driven",
 );
 plan(
@@ -641,8 +1089,10 @@ try {
 			key,
 			code,
 			modifiers,
-			windowsVirtualKeyCode: key === "l" ? 76 : key === "Escape" ? 27 : 0,
-			nativeVirtualKeyCode: key === "l" ? 76 : key === "Escape" ? 27 : 0,
+			windowsVirtualKeyCode:
+				key === "l" ? 76 : key === "Escape" ? 27 : key === "Enter" ? 13 : 0,
+			nativeVirtualKeyCode:
+				key === "l" ? 76 : key === "Escape" ? 27 : key === "Enter" ? 13 : 0,
 		});
 	await sendKey("keyDown", "l", "KeyL", 4);
 	await sendKey("keyUp", "l", "KeyL", 4);
@@ -1467,6 +1917,16 @@ try {
 				: "FAIL",
 			{ narrow: states.narrowGap, filled: states.filledGap },
 		);
+		// H1–H4: two app runs against one scratch profile. Runs after the geometry
+		// matrix so a history-scene failure cannot discard rows that already
+		// passed (the scene catches and records its own BLOCKED rows). The main
+		// app is stopped first: three concurrent Electron instances on a loaded
+		// machine was the difference between a mount and a 35 s timeout.
+		if (bootHandle) {
+			await bootHandle.stop();
+			bootHandle = null;
+		}
+		await historyScene({ shot, framesDir: FRAMES });
 	} catch (error) {
 		// A state rig failure must not discard the rows that already passed: it is
 		// recorded once, and the rest of the matrix still runs.
@@ -1542,6 +2002,11 @@ try {
 		"Limitation: no native composite, hit routing, IME, AX or non-darwin measurement.",
 	].join("\n");
 	writeFileSync(join(OUT, "matrix.md"), matrix);
+	for (const row of rows) {
+		console.log(
+			`[s4b] ${row.status} ${row.id} ${row.claim} :: ${row.evidence.slice(0, 900)}`,
+		);
+	}
 	cdp.close();
 	pageCdp.close();
 	console.log(`[s4b] wrote ${join(OUT, "matrix.md")}`);
