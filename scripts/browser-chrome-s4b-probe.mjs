@@ -529,7 +529,7 @@ async function historyScene({ shot, framesDir }) {
 		await sleep(200);
 		return { child, facts };
 	};
-	const childTitleGeometry = async (port, expectedText) => {
+	const childTitleGeometry = async (port, expectedText, maxWidth = null) => {
 		const target = await waitForTarget(
 			port,
 			(t) => t.url.endsWith("browser-address-overlay-list.html"),
@@ -542,6 +542,11 @@ async function historyScene({ shot, framesDir }) {
 			`(document.querySelector("#address-list-rows")?.textContent ?? "").includes(${JSON.stringify(expectedText)})`,
 			6_000,
 		);
+		if (maxWidth !== null) {
+			// The claim is about the NARROW viewport; a resize that has not landed
+			// yet would measure the full-width child (2/3 flakes).
+			await waitFor(child, `window.innerWidth <= ${maxWidth}`, 6_000);
+		}
 		const facts = await evaluate(
 			child,
 			`(() => {
@@ -560,6 +565,49 @@ async function historyScene({ shot, framesDir }) {
 		);
 		await sleep(200);
 		return { child, facts };
+	};
+
+	/** R2 on the child the S4b matrix actually uses: apply each notice model and
+	 * read the child's own layout. The S2 probe is superseded by S4b and aborts
+	 * looking for the deleted dock; this drives the same child headlessly. */
+	const childNoticeMatrix = async (port) => {
+		const target = await waitForTarget(
+			port,
+			(t) => t.url.endsWith("browser-address-overlay-list.html"),
+			8_000,
+		).catch(() => null);
+		if (!target) return null;
+		const child = await connect(target.webSocketDebuggerUrl);
+		const facts = await evaluate(
+			child,
+			`(() => {
+				const kinds = ["error", "empty", "no_match"];
+				const out = [];
+				kinds.forEach((kind, index) => {
+					window.__loAddressOverlay.apply({
+						v: 1,
+						seq: 900 + index,
+						dir: "ltr",
+						label: "Suggestions",
+						active: -1,
+						height: 104,
+						view: { kind: "notice", notice: kind, text: "notice-" + kind },
+						theme: {},
+					});
+					const root = document.getElementById("address-list-root").getBoundingClientRect();
+					out.push({
+						kind,
+						rootHeight: Math.round(root.height),
+						rows: document.querySelectorAll("#address-list-rows > *").length,
+						noticeHidden: document.getElementById("address-list-notice").hidden,
+						noticeText: document.getElementById("address-list-notice").textContent,
+					});
+				});
+				return out;
+			})()`,
+		);
+		child.close();
+		return facts;
 	};
 
 	let stopOne = null;
@@ -720,7 +768,29 @@ async function historyScene({ shot, framesDir }) {
 			},
 		);
 
-		// H9 (U8): Cmd+L, ArrowDown, Enter commits the highlighted history row.
+		// H9 (U8): a REAL Cmd+L raise, ArrowDown, Enter. H1 left a typed draft in
+		// the popout; Escape discards it and lowers the row, then Cmd+L raises a
+		// fresh untouched field (the state U8 is about).
+		await press(cdp, "Escape", "Escape");
+		await waitFor(
+			cdp,
+			`!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+			6_000,
+		);
+		await focusChrome(cdp);
+		await press(cdp, "l", "KeyL", 4);
+		await waitFor(
+			cdp,
+			`!!document.querySelector('[data-tour-tag="browser-address-popout"]')`,
+			6_000,
+		);
+		// The untouched query is answered asynchronously; ArrowDown before the
+		// first row exists would move over an empty list and select nothing.
+		await waitFor(
+			cdp,
+			`document.querySelectorAll("[data-address-suggestion]").length > 0`,
+			8_000,
+		);
 		await press(cdp, "ArrowDown", "ArrowDown");
 		await waitFor(
 			cdp,
@@ -762,6 +832,15 @@ async function historyScene({ shot, framesDir }) {
 			cdp,
 			`/Search DuckDuckGo/.test(document.querySelector("[data-address-suggestion]")?.textContent ?? "")`,
 			8_000,
+		);
+		await waitFor(
+			cdp,
+			`(() => {
+				const input = document.querySelector('[data-tour-tag="browser-address"]');
+				const first = document.querySelector("[data-address-suggestion]");
+				return !!first && input?.getAttribute("aria-activedescendant") === first.id;
+			})()`,
+			4_000,
 		);
 		const githubRows = await suggestionRows(cdp);
 		await frameScene(cdp, "owner-search-github.png");
@@ -929,7 +1008,7 @@ async function historyScene({ shot, framesDir }) {
 		});
 		await sleep(500);
 		await frameScene(cdp, "owner-narrow-open-tab.png");
-		const narrowChild = await childTitleGeometry(two.port, "Already open");
+		const narrowChild = await childTitleGeometry(two.port, "Already open", 360);
 		if (narrowChild) {
 			writeFileSync(
 				join(framesDir, "child-narrow-open-tab.png"),
@@ -1036,27 +1115,58 @@ async function historyScene({ shot, framesDir }) {
 			"H11",
 			boundaryRows.rows.some((row) =>
 				row.url?.includes("www.example.com/page"),
-			) && !boundaryRows.rows.some((row) => row.url?.includes("evil.test"))
+			) &&
+				!boundaryRows.rows.some(
+					(row) => row.source === "history" && row.url?.includes("evil.test"),
+				)
 				? "PASS"
 				: "FAIL",
+			// The evil host is an OPEN TAB (its page was visited in this profile),
+			// which is a real suggestion. The claim is about the HISTORY match.
 			{ owner: boundaryRows, child: boundaryChild?.facts ?? null },
 		);
 
-		// H12: `www` (a prefix shorter than a host) still recalls the stored www page.
-		await typeInAddressField(cdp, "www");
-		await waitFor(
+		// H12: ask main DIRECTLY for the `www` prefix, so a stale renderer result
+		// from H11 cannot satisfy the row. This is the same IPC the field uses, a
+		// fresh response for a new query.
+		const wwwAnswer = await evaluate(
 			cdp,
-			`document.querySelectorAll("[data-address-suggestion]").length > 0`,
-			8_000,
+			`(async () => {
+				const state = await window.api.browser.state();
+				return window.api.browser.addressHistory({
+					requestId: 424242,
+					expectedTabId: state.activeTabId,
+					query: "www",
+					limit: 6,
+				});
+			})()`,
 		);
-		const wwwRows = await suggestionRows(cdp);
-		await frameScene(cdp, "owner-www.png");
 		record(
 			"H12",
-			wwwRows.rows.some((row) => row.url?.includes("www.example.com/"))
+			(wwwAnswer.entries ?? []).some(
+				(entry) => entry.url === "https://www.example.com/",
+			)
 				? "PASS"
 				: "FAIL",
-			{ owner: wwwRows },
+			{ answer: wwwAnswer },
+		);
+
+		// R2: all three notice kinds paint on the child the matrix uses.
+		const noticeMatrix = await childNoticeMatrix(two.port);
+		record(
+			"R2-notices",
+			Array.isArray(noticeMatrix) &&
+				noticeMatrix.length === 3 &&
+				noticeMatrix.every(
+					(entry) =>
+						entry.rootHeight === 104 &&
+						entry.rows === 0 &&
+						entry.noticeHidden === false &&
+						entry.noticeText === `notice-${entry.kind}`,
+				)
+				? "PASS"
+				: "FAIL",
+			{ notices: noticeMatrix },
 		);
 		cdp.close();
 		stopTwo = await two.stop();
@@ -1231,6 +1341,11 @@ plan(
 	"driven",
 );
 plan("H12", "the prefix www recalls a stored www page", "driven");
+plan(
+	"R2-notices",
+	"error, empty and no_match notices each paint at 104px with no rows",
+	"driven",
+);
 plan(
 	"H6",
 	"a query with no match shows the no-match notice and no rows",

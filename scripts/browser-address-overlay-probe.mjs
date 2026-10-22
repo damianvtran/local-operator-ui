@@ -2672,7 +2672,7 @@ async function s2SyntheticMatrix() {
 
 		// R2: each notice kind at the dock's 104.
 		const notices = [];
-		for (const kind of ["error", "hint", "empty", "no_match"]) {
+		for (const kind of ["error", "empty", "no_match"]) {
 			const answer = await project({
 				kind: "notice",
 				notice: kind,

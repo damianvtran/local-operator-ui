@@ -14,10 +14,11 @@ Base: `c5503204ed0bc88e20dadb624de949788dc52b80`
 | H10 | Enter on an untouched field with no row lowers the popout and navigates nothing | PASS | `untouchedClosed: true`; URL before and after `http://127.0.0.1:58419/history-other` — the popout dismissed, no navigation |
 | H5 | an open tab with no stored history row is a tab row with its source mark | PASS | after `forgetSite(origin)`: one row, `http://127.0.0.1:58419/history-other`, `source: "tab"`; child title `Already open — S4b fixture`; header `Suggestions` |
 | H8 | at narrow width the open-tab title/marker keeps a floor and does not collapse | PASS | child viewport 304px; `titleText: "Already open — S4b fixture"`, `titleWidth: 104` (the 8em floor at 13px). The assertion fails unless the viewport is ≤360px |
+| R2-notices | error, empty and no_match notices each paint at 104px with no rows | PASS | child root height 104, row count 0, notice visible with its own text for all three kinds |
 | H6 | a query with no match shows the no-match notice and no rows | PASS | value `zzz-nohistory.example`; owner rows `[]`; child `notice: "No matching pages in your history."`, header `Suggestions` |
 | H7 | an RTL owner chrome paints an RTL child and the row text is `dir=auto` | PASS | child `dir: "rtl"`, `.lo-row-text` `dir: "auto"`, row `Search DuckDuckGo for "github"`. Limitation: app locale not switched, so the sentence is English |
-| H11 | a complete host query does not match the lookalike domain | PASS | query `www.example.com`; rows are the real `/`, `/page`, `/other` (all `source: history`); no `evil.test` row. The stored lookalike `https://www.example.com.evil.test/` is rejected by the host boundary |
-| H12 | the prefix `www` recalls a stored www page | PASS | query `www`; search row first (single word is search intent) and rows `https://www.example.com/`, `/page`, `/other` all present from history |
+| H11 | a complete host query does not match the lookalike domain | PASS | query `www.example.com`; history rows are the real `/`, `/page`, `/other`; no `evil.test` history row. The lookalike is still an open tab in the profile, so it appears once as `source: tab`, which is a real suggestion |
+| H12 | the prefix `www` recalls a stored www page | PASS | fresh IPC `addressHistory({query:"www", limit:6})` returned `https://www.example.com/` (plus `/page`, `/other` and the seeded lookalike). Read directly from main, so a stale H11 renderer row cannot satisfy it |
 
 ## Heuristic table
 

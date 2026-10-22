@@ -107,6 +107,7 @@ export interface BrowserHistoryStore {
 }
 
 const SCHEME_PREFIX = /^([a-z][a-z0-9+.-]*):\/\//i;
+const PATH_OR_QUERY = /[/?#]/;
 
 /** The spelling after any `scheme://`, whatever its case. */
 function schemeLess(value: string): string {
@@ -159,7 +160,7 @@ function queryNeedles(raw: string): string[] {
  */
 function matchesNeedle(value: string, needle: string): boolean {
 	if (!value.startsWith(needle)) return false;
-	const hostOnly = !/[/?#]/.test(needle);
+	const hostOnly = !PATH_OR_QUERY.test(needle);
 	if (!hostOnly) return true;
 	if (!needle.includes(".") || needle.endsWith(".")) return true;
 	const next = value.charAt(needle.length);

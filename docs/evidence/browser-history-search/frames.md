@@ -29,7 +29,6 @@ with the session).
 | child-rtl-search.png | 1fe5cda748a890b6eb9ee45de5af1abe323c06d1a0c5a1f250f5e7f9d4f0c70f |
 | owner-boundary.png | 1e38eff4ae34da7a8d470b3b084becb6dc55903a72f53e5c79f6991c9cc5a228 |
 | child-boundary.png | 95eeed6c440a6ca53f533f3efc8f5fcbf28f9961e61f1808639b7c4bd062147b |
-| owner-www.png | 818218b282fbe97e492c31102cff663f1bdb1b5bea3b9b2891879098934e678d |
 
 `owner-*` are screenshots of the owner renderer (the field row). The native
 overlay child cannot appear in the owner's screenshot, so `child-*` are

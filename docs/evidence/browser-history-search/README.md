@@ -71,12 +71,15 @@ as selected text.
 | H10 | Enter on an untouched field with no row lowers the popout, no navigation | PASS |
 | H5 | an open tab with no stored history row is a tab row with `Already open —` | PASS |
 | H8 | at 304px the marker keeps a 104px title floor (was 0) | PASS |
+| R2-notices | error, empty and no_match each paint at 104px with no rows | PASS |
 | H6 | a no-match query paints the notice and no rows | PASS |
 | H7 | an RTL owner paints an RTL child with `dir=auto` row text | PASS |
 | H11 | `www.example.com` does not match `www.example.com.evil.test` | PASS |
-| H12 | the prefix `www` recalls the stored www page | PASS |
+| H12 | the prefix `www` recalls the stored www page (fresh IPC) | PASS |
 
-Exact output is in `facts.json` and `matrix.md`. The S4b geometry rows (R1, R2,
+Exact output is in `facts.json` and `matrix.md`. R2-notices runs on the same
+child document the S4b matrix uses: the legacy S2 probe aborts looking for the
+deleted dock, so it cannot drive R2 on this base. The S4b geometry rows (R1, R2,
 P1–P3, D1/D3, T1–T3, E1, V1–V8, V11–V15) remain PASS; D2, V9, V10, F1 and BL1
 remain their previously recorded BLOCKED rows.
 
@@ -94,7 +97,6 @@ the commit; `frames.md` records their SHA-256 and the scratch path.
 - `frames/owner-no-match.png`, `frames/child-no-match.png`
 - `frames/owner-rtl-search.png`, `frames/child-rtl-search.png`
 - `frames/owner-boundary.png`, `frames/child-boundary.png`
-- `frames/owner-www.png`
 - `before/owner-popout.png`, `before/child-rows.png`
 
 ## What is and is not proven

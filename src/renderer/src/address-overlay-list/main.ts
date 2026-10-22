@@ -28,7 +28,7 @@ interface Model {
 		| { kind: "rows"; rows: Array<{ text: string; title: string }> }
 		| {
 				kind: "notice";
-				notice: "error" | "hint" | "empty" | "no_match";
+				notice: "error" | "empty" | "no_match";
 				text: string;
 		  };
 	theme: Record<string, string>;
