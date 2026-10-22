@@ -1,4 +1,3 @@
-import { useSuppressBrowserViewWhileReaching } from "@shared/browser-view-policy";
 import { cn } from "@shared/lib/utils";
 import { Tooltip as TooltipPrimitive } from "radix-ui";
 import {
@@ -252,14 +251,6 @@ export type TooltipProps = {
 	 * Radix's uncontrolled-to-controlled warning.
 	 */
 	onOpenChange?: (open: boolean) => void;
-	/**
-	 * The id prefix this tooltip registers under with the browser-view policy while
-	 * its painted panel reaches the native view (see `Tooltip` below). Only a name:
-	 * it is what the browser surface publishes as `data-suppressed-by`, so a caller
-	 * whose tooltips a test or a reader must tell apart from the rest names them
-	 * (`panel-rail-tooltip`, `sidebar-row-flyout`); every other tooltip is `tooltip`.
-	 */
-	overlayName?: string;
 	/** Applied to the tooltip panel, not to the trigger. */
 	className?: string;
 	/* No `defaultOpen`: it was added here to photograph tooltip strings, then
@@ -281,7 +272,6 @@ export const Tooltip = ({
 	disabled = false,
 	suppressed,
 	onOpenChange,
-	overlayName = "tooltip",
 	className,
 }: TooltipProps) => {
 	const hasProvider = useContext(TooltipProviderPresence);
@@ -315,35 +305,6 @@ export const Tooltip = ({
 	useEffect(() => {
 		if (bare && !controlling) setOpen(false);
 	}, [bare, controlling]);
-
-	/*
-	 * EVERY TOOLTIP THAT REACHES THE NATIVE BROWSER VIEW HIDES IT FOR AS LONG AS IT
-	 * IS PAINTED THERE - and for `RELEASE_HOLD_FRAMES` frames past the close, so that a
-	 * pointer moving from one flyout to the next cannot flash the page in the gap before
-	 * the new panel is placed (review round 1, R1; the count and its why live with the
-	 * policy). A `WebContentsView` paints above all DOM, so a panel that lands inside
-	 * its rect is invisible: the sidebar's conversation flyout opens
-	 * `right`, into the content area, and with the Browser route open only the sliver
-	 * over the sidebar's own edge survived (operator report). That is the panel rail's
-	 * problem (#872) for a different side, and the cure is the same measured
-	 * registration, made here rather than per call site for the reason `BaseDialog`
-	 * registers every dialog: a tooltip added next year must not silently vanish over
-	 * the page. MEASURED, not blanket - `useSuppressBrowserViewWhileReaching` reads the
-	 * painted panel against the rect the browser surface reports to main - so the app's
-	 * ~190 tooltip call sites that never reach the view (the chrome band's, anything with
-	 * no browser surface mounted) register nothing and cannot flash the page; the ones
-	 * that do pay the flash the policy header records as unmeasured (probe P11).
-	 *
-	 * Fed what is PAINTED: the controlled path's `shown` (so `suppressed` stands the
-	 * registration down with the panel), the root's own report otherwise, and nothing
-	 * while the child renders bare.
-	 */
-	const contentRef = useRef<HTMLDivElement | null>(null);
-	useSuppressBrowserViewWhileReaching(
-		!bare && (controlling ? shown : open),
-		overlayName,
-		() => contentRef.current,
-	);
 
 	if (bare) {
 		return <>{children}</>;
@@ -380,7 +341,6 @@ export const Tooltip = ({
 			<TooltipTrigger asChild>{children}</TooltipTrigger>
 			<TooltipPortal>
 				<TooltipContent
-					ref={contentRef}
 					side={side}
 					align={align}
 					sideOffset={sideOffset}

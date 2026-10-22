@@ -52,33 +52,53 @@ import {
 	suggestAddresses,
 	usableRawAddress,
 } from "../model/address-autocomplete";
-import { isPortalledChromeTarget } from "../model/floating-chrome";
 import { isSecurityLoadFailure, siteInfoForUrl } from "../model/site-info";
 import { useAddressOverlayMirror } from "../overlay/use-address-overlay-mirror";
 
 const FILE_SCHEME = /^file:/i;
 
 /**
- * The browser's address chrome, in the two placements S4b defines.
+ * The browser's address row: ONE placement, permanently in flow between the tab
+ * strip and the page (S5, LOH-13).
  *
- * `popout` is the product chrome: a 37px field row painted over the tab strip
- * while raised, with the navigation controls and the page menu beside it. The
- * suggestion rows are NOT here — they are the native child at the strip's
- * width — so this component owns the input, DOM focus, IME, undo, the keys and
- * the accessible combobox, exactly as S3 established.
+ * The row is 37px (4px pad + 28px controls + 4px pad + the 1px rule) and holds
+ * Back, Forward, Reload/Stop, Home, the address field with its site mark, the
+ * fixed 28px Approvals control and the overflow menu. The suggestion rows are
+ * NOT here — they are the native child anchored to this row — so this component
+ * owns the input, DOM focus, IME, undo, the keys and the accessible combobox,
+ * exactly as S3 established.
  *
- * `bar` is the Tier 2 fallback (design §6): an in-flow 41px row with Back,
- * Forward, Reload/Stop, Home and the field, no dock and no suggestions. One
- * component for both, so ids, order and key handling cannot drift between the
- * product and the fallback.
+ * THERE IS NO SECOND PLACEMENT ANY MORE. The S4b popout and its Tier 2 in-flow
+ * fallback both existed because the field was only mounted while raised; with a
+ * permanent field there is nothing to raise, nothing to fall back to, and one
+ * code path instead of two views of the same row.
  *
  * THE DISPLAY RULE: the field shows the tab's LIVE url, never the requested one.
  * THE EDITING RULE: an incoming live url never overwrites a draft.
  */
 
+/**
+ * A request from the surface to move focus into the row.
+ *
+ * The row is always mounted now, so "raise" is not a mount and the old
+ * mount-only selection effect has nothing to run on. Cmd+L, a printable seed
+ * and the start page's mount all emit a NONCE, and the row applies the request
+ * in a layout effect: focus, then either seed the draft (caret at end) or
+ * select the live URL. A nonce rather than a boolean so a second Cmd+L while
+ * the row already has focus still re-selects.
+ */
+export interface AddressFocusRequest {
+	nonce: number;
+	seed?: string;
+	selectAll: boolean;
+}
+
 export interface BrowserUrlBarProps {
+	/** The row root, for the surface's anchor measurement (the native suggestion
+	 * child hangs from this box). Its own element rather than a wrapper so the
+	 * "exactly one element between strip and page" predicate is literally true. */
+	rootRef?: Ref<HTMLDivElement>;
 	inputRef?: Ref<HTMLInputElement>;
-	placement: "popout" | "bar";
 	tabId: number | null;
 	url: string;
 	pendingUrl: string | null;
@@ -86,6 +106,11 @@ export interface BrowserUrlBarProps {
 	canGoBack: boolean;
 	canGoForward: boolean;
 	disabled: boolean;
+	/** Narrow-pane fold tiers (design §8): below 360px Home moves into the
+	 * overflow menu, below 300px Forward does too. Back and Reload/Stop never
+	 * fold — they are the two controls a stuck page needs. */
+	hideForward?: boolean;
+	hideHome?: boolean;
 	onNavigate: (url: string, expectedTabId?: number) => void;
 	onBack: () => void;
 	onForward: () => void;
@@ -100,11 +125,11 @@ export interface BrowserUrlBarProps {
 	overlayMode: "popout" | "suspend";
 	/** The strip's measured band for the projection. */
 	anchor: { x: number; width: number } | null;
-	/** Raise seed: the printable character that opened the popout, if any. */
-	seed?: string;
-	selectOnMount?: boolean;
-	/** One Escape / a committed navigation lowers the row. */
+	/** A focus/seed request from the surface; see `AddressFocusRequest`. */
+	focusRequest?: AddressFocusRequest | null;
+	/** Escape or Enter on an untouched draft: abandon the draft and return focus. */
 	onDismiss?: () => void;
+	/** A commit happened: return focus per the surface's origin rule. */
 	onCommitted?: () => void;
 	addressHistory?: (
 		request: AddressHistoryRequest,
@@ -127,8 +152,8 @@ export function displayUrl(url: string): string {
 }
 
 export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
+	rootRef,
 	inputRef,
-	placement,
 	tabId,
 	url,
 	pendingUrl,
@@ -136,6 +161,8 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	canGoBack,
 	canGoForward,
 	disabled,
+	hideForward = false,
+	hideHome = false,
 	onNavigate,
 	onBack,
 	onForward,
@@ -146,8 +173,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	menu,
 	overlayMode,
 	anchor,
-	seed,
-	selectOnMount = false,
+	focusRequest = null,
 	onDismiss,
 	onCommitted,
 	addressHistory,
@@ -173,13 +199,11 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	const [typed, setTyped] = useState<{
 		tabId: number | null;
 		text: string;
-	} | null>(() =>
-		placement === "popout" && seed !== undefined ? { tabId, text: seed } : null,
-	);
+	} | null>(null);
 	/** Whether the current draft came from the user at all. Focus seeds the
 	 * field with the live URL; that seed is not a query (UX U1), and only a
 	 * `change`/composition/undo can make it one. */
-	const [edited, setEdited] = useState(seed !== undefined);
+	const [edited, setEdited] = useState(false);
 	const draft = typed && typed.tabId === tabId ? typed.text : null;
 	const setDraft = (
 		next: string | null | ((current: string | null) => string | null),
@@ -196,13 +220,12 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	/**
 	 * The list exists only where there is something that can paint it.
 	 *
-	 * `bar` is the Tier 2 fallback (an in-flow row, no dock, no suggestions);
 	 * `suspend` is the Tier 1 child-unavailable state (the field works, the list
-	 * does not). Neither may fetch history it has no surface for, because a
-	 * query with no presenter is work whose result nobody sees.
+	 * does not; Windows and Linux stay here). It must not fetch history it has no
+	 * surface for, because a query with no presenter is work whose result nobody
+	 * sees.
 	 */
-	const suggestionsEnabled =
-		placement === "popout" && mode === "popout" && addressHistory !== undefined;
+	const suggestionsEnabled = mode === "popout" && addressHistory !== undefined;
 	const inputEl = useRef<HTMLInputElement | null>(null);
 	/**
 	 * False once THIS popout/bar is unmounting. React removes the focused input
@@ -510,7 +533,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		setDraft(null);
 		clearGenerated();
 		setDismissedForText(null);
-		// The popout has done its job. The bar placement has nothing to close.
+		// A commit ends the edit: the surface returns focus per its origin rule.
 		onCommitted?.();
 	};
 
@@ -687,24 +710,10 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		 * the native page, a click on the child row, or the window losing
 		 * activation. Main resolves the first two (page focus, child mouse-down
 		 * focus-back), and a window deactivation must NOT throw the draft away. So
-		 * the popout only drops the draft when focus moves to a node the document
-		 * can name; the surface's own focusout decides whether that node is still
-		 * inside the popout.
+		 * the row only drops the draft when focus moves to a node the document can
+		 * name.
 		 */
-		/**
-		 * If focus went INTO chrome the popout owns (the page menu's portal), this is
-		 * not the user leaving the field: keep the draft, as a click on the child row
-		 * or a window deactivation does. The surface applies the same rule to decide
-		 * whether to lower the row (agent review round 1, MAJOR-1).
-		 */
-		if (
-			placement === "popout" &&
-			isPortalledChromeTarget(event.relatedTarget)
-		) {
-			clearGenerated();
-			return;
-		}
-		if (placement === "popout" && event.relatedTarget === null) {
+		if (event.relatedTarget === null) {
 			// The draft survives a window deactivation, but a generated suffix is
 			// not part of what the user typed: the field must show the raw draft
 			// when it comes back, not a proposal nobody accepted.
@@ -981,41 +990,45 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		suggestions.rows.length,
 	]);
 
-	// The raise's own focus contract (design §4): Cmd+L selects the live URL, a
-	// typed seed leaves the caret after the character, and a click on the strip
-	// trigger starts with the field ready rather than needing a second click.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: mount-only; the seed and the selection are the reason this instance was mounted.
+	// THE FOCUS CONTRACT, ON A NONCE (S5). The row is permanently mounted, so a
+	// raise cannot be "this instance mounted": Cmd+L selects the live URL, a typed
+	// seed leaves the caret after the character, and a second Cmd+L re-selects. A
+	// seed also makes the draft USER-AUTHORED (`edited`), which is what keeps it
+	// from being read as an untouched live URL.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the nonce is the trigger; reading the seed and selection is the point.
 	useLayoutEffect(() => {
 		const element = inputEl.current;
-		if (!element || placement !== "popout") return;
+		if (!element) return;
 		element.focus({ preventScroll: true });
-		if (seed !== undefined) {
-			const end = element.value.length;
+		if (focusRequest?.seed !== undefined) {
+			setEdited(true);
+			setDraft(focusRequest.seed);
+			const end = focusRequest.seed.length;
 			element.setSelectionRange(end, end);
-		} else if (selectOnMount) {
+		} else if (focusRequest?.selectAll) {
 			element.select();
 		}
-	}, []);
+	}, [focusRequest?.nonce]);
 
 	// Tier 1 is a fact the user must be told once, not a silent missing list.
 	useEffect(() => {
-		if (placement === "popout" && mode === "suspend")
+		if (mode === "suspend")
 			setAnnouncement(
 				t("ui.browser.browser_url_bar.address_suggestions_unavailable"),
 			);
-	}, [placement, mode]);
+	}, [mode]);
 
 	return (
 		<div
-			/* A CHROME BAND: it is the strip's own row when raised, and an in-flow
-			   row only in the Tier 2 fallback. */
+			ref={rootRef}
+			/* A CHROME BAND, permanent and in flow between the strip and the page:
+			   4px pad + 28px controls + 4px pad + the 1px rule = 37px. The rule is
+			   `border-control` rather than `hairline` because it is the only separator
+			   against a white page (3.30:1 dark / 3.92:1 light; hairline would be
+			   1.23:1 and fail as an edge). */
 			data-glass-region="chrome"
-			className={cn(
-				"flex w-full items-center gap-1 border-control border-b bg-elevated px-2 py-1",
-				placement === "popout" && "h-[37px]",
-			)}
+			className="flex h-[37px] w-full items-center gap-1 border-control border-b bg-elevated px-2 py-1"
 			data-tour-tag="browser-url-bar"
-			data-placement={placement}
 		>
 			<Tooltip
 				content={t("ui.browser.browser_url_bar.back_shortcut", {
@@ -1034,23 +1047,25 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					<ArrowLeft aria-hidden className="size-4" />
 				</Button>
 			</Tooltip>
-			<Tooltip
-				content={t("ui.browser.browser_url_bar.forward_shortcut", {
-					shortcut: forwardChord,
-				})}
-			>
-				<Button
-					variant="ghost"
-					size="icon-sm"
-					aria-label={t("ui.browser.browser_url_bar.forward")}
-					aria-keyshortcuts={forwardChord}
-					disabled={disabled || !canGoForward}
-					onClick={onForward}
-					data-tour-tag="browser-forward"
+			{!hideForward && (
+				<Tooltip
+					content={t("ui.browser.browser_url_bar.forward_shortcut", {
+						shortcut: forwardChord,
+					})}
 				>
-					<ArrowRight aria-hidden className="size-4" />
-				</Button>
-			</Tooltip>
+					<Button
+						variant="ghost"
+						size="icon-sm"
+						aria-label={t("ui.browser.browser_url_bar.forward")}
+						aria-keyshortcuts={forwardChord}
+						disabled={disabled || !canGoForward}
+						onClick={onForward}
+						data-tour-tag="browser-forward"
+					>
+						<ArrowRight aria-hidden className="size-4" />
+					</Button>
+				</Tooltip>
+			)}
 			{loading ? (
 				<Tooltip content={t("ui.browser.browser_url_bar.stop_loading")}>
 					<Button
@@ -1079,7 +1094,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					</Button>
 				</Tooltip>
 			)}
-			{onHome && (
+			{onHome && !hideHome && (
 				<Tooltip
 					content={t("ui.browser.browser_url_bar.home_destination")}
 					side="top"
@@ -1116,7 +1131,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				</Tooltip>
 				<Input
 					ref={setInputEl}
-					inputSize={placement === "popout" ? "sm" : "md"}
+					inputSize="sm"
 					aria-keyshortcuts={address.aria}
 					value={value}
 					disabled={disabled}
@@ -1145,13 +1160,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					spellCheck={false}
 					autoComplete="off"
 					aria-label={t("ui.browser.browser_url_bar.address")}
-					placeholder={
-						mode === "suspend" && placement === "popout"
-							? t("ui.browser.browser_url_bar.address_suggestions_unavailable")
-							: loading && !live
-								? (pendingUrl ?? undefined)
-								: undefined
-					}
+					placeholder={loading && !live ? (pendingUrl ?? undefined) : undefined}
 					data-tour-tag="browser-address"
 					data-address-editing={editing ? "true" : "false"}
 					data-address-loading={autocomplete.loading ? "true" : "false"}
@@ -1168,19 +1177,20 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						<Spinner size="xs" />
 					</span>
 				)}
+				{/* TIER 1 IS TOLD, NOT HINTED (UX U5), and the telling lives INSIDE the
+				    field. Beside it was a second control-shaped box that cost the field
+				    width every time the list was unavailable (S4b U5); the permanent row
+				    cannot afford that, and the sentence belongs to the field that still
+				    works. `pointer-events-none` keeps the input clickable underneath. */}
+				{mode === "suspend" && !editing && (
+					<span
+						className="pointer-events-none absolute top-1/2 right-7 max-w-[45%] -translate-y-1/2 truncate text-meta text-ink-dim"
+						data-tour-tag="browser-address-unavailable"
+					>
+						{t("ui.browser.browser_url_bar.address_suggestions_unavailable")}
+					</span>
+				)}
 			</div>
-			{/* TIER 1 IS TOLD, NOT HINTED (UX U5). The placeholder only shows on an
-			    empty field, and both a Cmd+L selection and a typed seed are non-empty,
-			    so the "unavailable" sentence used to reach screen readers only. It is
-			    now painted beside the field as well. */}
-			{placement === "popout" && mode === "suspend" && (
-				<span
-					className="max-w-64 shrink-0 truncate pl-1 text-meta text-ink-dim"
-					data-tour-tag="browser-address-unavailable"
-				>
-					{t("ui.browser.browser_url_bar.address_suggestions_unavailable")}
-				</span>
-			)}
 			{menu}
 			{/* THE ACCESSIBLE LIST lives in the parent and is clipped, never in flow:
 			    the visual rows are the native child, which is `aria-hidden`. One

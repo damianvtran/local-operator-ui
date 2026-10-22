@@ -132,6 +132,10 @@ async function rig({
 			tabs = [...tabs, { tabId: id, sessionId: session }];
 			active = id;
 			redraw();
+			// S5: the surface focuses the PERMANENT ROW when the new tab's start
+			// page becomes current — a surface-side effect, not a chord `close()`.
+			// The rig's stand-in is the root, so the DOM owner still survives.
+			document.getElementById("surface")?.focus();
 		},
 		closeTab: async (id) => {
 			events.push(["close", id]);
@@ -169,13 +173,9 @@ async function rig({
 				inputRef.current?.focus();
 				inputRef.current?.select();
 			},
-			// `close` lowers the popout for a new tab. The product's start page
-			// focuses its OWN field INSIDE the same surface root; the rig focuses the
-			// root as that field's stand-in, so the DOM owner survives the change.
-			close: () => {
-				inputRef.current?.blur();
-				document.getElementById("surface")?.focus();
-			},
+			// S5 deleted `close()`: nothing is raised to lower. The new tab's start
+			// page focuses the row from the SURFACE, which this rig models in the
+			// `newTab` mock above.
 		});
 		const {
 			root: ref,
@@ -682,7 +682,7 @@ test("StageA real pane ancestor header owns R/T; chat, modal, wrong modifiers, I
 		]);
 		await r.focus("pane-header");
 		await act(async () => {
-			release = suppressBrowserView("StageA-modal");
+			release = suppressBrowserView("dialog:StageA-modal");
 		});
 		await r.key("r");
 		await r.key("t");
@@ -895,7 +895,10 @@ test("the browser's own state pages keep L/T/R and main's messages; a real modal
 		// (`browser-surface.tsx`) pushed through the REAL shared registry, so
 		// ref-counting and id shape are the app's; a regression in either one must
 		// fail on its own line rather than hide behind the other.
-		for (const id of ["browser-start-page:test", "browser-load-failure:test"]) {
+		for (const id of [
+			"browser-state:browser-start-page:test",
+			"browser-state:browser-load-failure:test",
+		]) {
 			let release;
 			await act(async () => {
 				release = suppressBrowserView(id);
@@ -928,8 +931,8 @@ test("the browser's own state pages keep L/T/R and main's messages; a real modal
 				[["new", "a"]],
 				`Cmd+T opens a browser tab in the existing scope (${id})`,
 			);
-			// Cmd+T lands on a start page whose own field owns focus; the popout was
-			// lowered, and this rig has no start page to focus.
+			// Cmd+T lands on a start page; the surface focuses the permanent row,
+			// which this rig models as the surface root.
 			assert.equal(document.activeElement.id, "surface");
 			await act(async () => release());
 		}
@@ -938,7 +941,10 @@ test("the browser's own state pages keep L/T/R and main's messages; a real modal
 		// prefix that happens to match. Main's broadcast door is the second door to
 		// the same owner and must find it while only self-registrations are live.
 		await act(async () => {
-			for (const id of ["browser-start-page:test", "browser-load-failure:test"])
+			for (const id of [
+				"browser-state:browser-start-page:test",
+				"browser-state:browser-load-failure:test",
+			])
 				releases.push(suppressBrowserView(id));
 		});
 		const start = r.events.length;

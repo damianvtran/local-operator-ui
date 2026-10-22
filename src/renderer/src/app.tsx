@@ -226,9 +226,9 @@ const App: FC = () => {
 	 * `ModelsInitializer` renders nothing, so it has nothing to register.
 	 */
 	useSuppressBrowserView(isCommandPaletteOpen, "command-palette");
-	useSuppressBrowserView(isCreateAgentDialogOpen, "create-agent-dialog");
+	useSuppressBrowserView(isCreateAgentDialogOpen, "dialog", "create-agent");
 	useSuppressBrowserView(isOnboardingActive, "onboarding");
-	useSuppressBrowserView(isLowCreditsDialogOpen, "low-credits");
+	useSuppressBrowserView(isLowCreditsDialogOpen, "dialog", "low-credits");
 	const navigate = useNavigate(); // For onAgentCreated
 
 	/*

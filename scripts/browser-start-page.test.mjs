@@ -327,9 +327,8 @@ try {
  */
 function reading(container) {
 	const within = container ?? document;
-	const field = within.querySelector(
-		'[data-tour-tag="browser-start-page-address"]',
-	);
+	// S5: the row is the only address field on every state, including this one.
+	const field = within.querySelector('[data-tour-tag="browser-address"]');
 	return {
 		startPage: !!within.querySelector('[data-tour-tag="browser-start-page"]'),
 		fieldValue: field ? field.value : null,
@@ -362,7 +361,7 @@ function freshContainer() {
 	return host;
 }
 
-test("an invalid address from the START PAGE's own field returns to the start page with the address restored", async () => {
+test("an invalid address from the row returns to the start page with the address restored", async () => {
 	const container = freshContainer();
 	const handle = mount(container);
 	await flush();
@@ -379,29 +378,29 @@ test("an invalid address from the START PAGE's own field returns to the start pa
 
 	// Drive the page's OWN field: the path QA's first matrix missed, and the one
 	// the finding is about.
-	const field = document.querySelector(
-		'[data-tour-tag="browser-start-page-address"]',
-	);
+	const field = container.querySelector('[data-tour-tag="browser-address"]');
 	const setter = Object.getOwnPropertyDescriptor(
 		dom.window.HTMLInputElement.prototype,
 		"value",
 	).set;
 	await act(async () => {
-		setter.call(field, "foo bar");
+		setter.call(field, "refused.example");
 		field.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
 	});
 	await act(async () => {
-		field
-			.closest("form")
-			.dispatchEvent(
-				new dom.window.Event("submit", { bubbles: true, cancelable: true }),
-			);
+		field.dispatchEvent(
+			new dom.window.KeyboardEvent("keydown", {
+				key: "Enter",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
 	});
 	await flush();
 
 	assert.deepEqual(
 		handle.refused(),
-		["foo bar"],
+		["refused.example"],
 		"the typed address reached main through the surface's own navigate path",
 	);
 	const after = reading(container);
@@ -411,7 +410,7 @@ test("an invalid address from the START PAGE's own field returns to the start pa
 	);
 	assert.equal(
 		after.fieldValue,
-		"foo bar",
+		"refused.example",
 		`the refused address is restored into the field rather than lost with the unmount (reading: ${JSON.stringify(after)})`,
 	);
 	assert.ok(
@@ -434,9 +433,9 @@ test("an invalid address from the START PAGE's own field returns to the start pa
  * in step with the component.
  */
 async function submitFromStartField(container, value) {
-	const field = container.querySelector(
-		'[data-tour-tag="browser-start-page-address"]',
-	);
+	// S5: the permanent row is the field the start state types into. Enter is the
+	// commit path the row owns (there is no form to submit any more).
+	const field = container.querySelector('[data-tour-tag="browser-address"]');
 	const setter = Object.getOwnPropertyDescriptor(
 		dom.window.HTMLInputElement.prototype,
 		"value",
@@ -446,11 +445,13 @@ async function submitFromStartField(container, value) {
 		field.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
 	});
 	await act(async () => {
-		field
-			.closest("form")
-			.dispatchEvent(
-				new dom.window.Event("submit", { bubbles: true, cancelable: true }),
-			);
+		field.dispatchEvent(
+			new dom.window.KeyboardEvent("keydown", {
+				key: "Enter",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
 	});
 }
 
@@ -474,11 +475,11 @@ test("the restored address SURVIVES the page being destroyed and rebuilt (F6, ro
 	const handle = mount(container);
 	await flush();
 
-	await submitFromStartField(container, "foo bar");
+	await submitFromStartField(container, "refused.example");
 	await flush();
 	assert.equal(
 		reading(container).fieldValue,
-		"foo bar",
+		"refused.example",
 		"the refusal restored the address",
 	);
 
@@ -496,7 +497,7 @@ test("the restored address SURVIVES the page being destroyed and rebuilt (F6, ro
 	await flush();
 	assert.equal(
 		reading(container).fieldValue,
-		"foo bar",
+		"refused.example",
 		"the address is seeded into the rebuilt page; with the seed removed this reads empty",
 	);
 	await act(async () => {
@@ -513,11 +514,11 @@ test("a refused address does NOT leak into a fresh tab, and the refused tab keep
 	const handle = mount(container);
 	await flush();
 
-	await submitFromStartField(container, "foo bar");
+	await submitFromStartField(container, "refused.example");
 	await flush();
 	assert.equal(
 		reading(container).fieldValue,
-		"foo bar",
+		"refused.example",
 		"tab 1 restored its refused address",
 	);
 
@@ -541,7 +542,7 @@ test("a refused address does NOT leak into a fresh tab, and the refused tab keep
 	await flush();
 	assert.equal(
 		reading(container).fieldValue,
-		"foo bar",
+		"refused.example",
 		"and the tab that made the attempt still restores its own address",
 	);
 	await act(async () => {

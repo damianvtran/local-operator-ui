@@ -1,3 +1,5 @@
+import { useMeasuredBrowserViewPanel } from "@shared/browser-view-policy";
+import { composeRefs } from "@shared/lib/compose-refs";
 import { cn } from "@shared/lib/utils";
 import { type VariantProps, cva } from "class-variance-authority";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
@@ -124,43 +126,48 @@ SelectScrollDownButton.displayName = "SelectScrollDownButton";
 export const SelectContent = forwardRef<
 	ElementRef<typeof SelectPrimitive.Content>,
 	ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = "popper", ...props }, ref) => (
-	<SelectPrimitive.Portal>
-		<SelectPrimitive.Content
-			ref={ref}
-			/*
-			 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it is
-			 * read by in `styles/index.css`. A select opened near the top of the window
-			 * can flip its list over the chrome strip, and every row in it is a control.
-			 */
-			data-titlebar-no-drag=""
-			position={position}
-			className={cn(
-				"relative z-50 max-h-96 min-w-32 overflow-hidden rounded-md",
-				// No entrance animation; see the note at the top of `tooltip.tsx`.
-				"border border-hairline bg-elevated shadow-overlay",
-				position === "popper" &&
-					"data-[side=bottom]:mt-1.5 data-[side=top]:mb-1.5",
-				className,
-			)}
-			{...props}
-		>
-			<SelectScrollUpButton />
-			<SelectPrimitive.Viewport
+>(({ className, children, position = "popper", ...props }, ref) => {
+	// A select's list is a measured pause: it is a DOM panel over the content area,
+	// so the native view must yield only where the list actually reaches it.
+	const panelRef = useMeasuredBrowserViewPanel<HTMLDivElement>("select");
+	return (
+		<SelectPrimitive.Portal>
+			<SelectPrimitive.Content
+				ref={composeRefs(ref, panelRef)}
+				/*
+				 * Not a drag surface; see the marker's note in `dialog.tsx` and the rule it is
+				 * read by in `styles/index.css`. A select opened near the top of the window
+				 * can flip its list over the chrome strip, and every row in it is a control.
+				 */
+				data-titlebar-no-drag=""
+				position={position}
 				className={cn(
-					"p-1",
-					// Match the trigger's width so the panel does not jump narrower
-					// than the control that opened it. Height is left to content.
+					"relative z-50 max-h-96 min-w-32 overflow-hidden rounded-md",
+					// No entrance animation; see the note at the top of `tooltip.tsx`.
+					"border border-hairline bg-elevated shadow-overlay",
 					position === "popper" &&
-						"w-full min-w-(--radix-select-trigger-width)",
+						"data-[side=bottom]:mt-1.5 data-[side=top]:mb-1.5",
+					className,
 				)}
+				{...props}
 			>
-				{children}
-			</SelectPrimitive.Viewport>
-			<SelectScrollDownButton />
-		</SelectPrimitive.Content>
-	</SelectPrimitive.Portal>
-));
+				<SelectScrollUpButton />
+				<SelectPrimitive.Viewport
+					className={cn(
+						"p-1",
+						// Match the trigger's width so the panel does not jump narrower
+						// than the control that opened it. Height is left to content.
+						position === "popper" &&
+							"w-full min-w-(--radix-select-trigger-width)",
+					)}
+				>
+					{children}
+				</SelectPrimitive.Viewport>
+				<SelectScrollDownButton />
+			</SelectPrimitive.Content>
+		</SelectPrimitive.Portal>
+	);
+});
 SelectContent.displayName = "SelectContent";
 
 export const SelectLabel = forwardRef<

@@ -1,3 +1,5 @@
+import { useMeasuredBrowserViewPanel } from "@shared/browser-view-policy";
+import { composeRefs } from "@shared/lib/compose-refs";
 import { cn } from "@shared/lib/utils";
 import { ContextMenu as ContextMenuPrimitive } from "radix-ui";
 import {
@@ -96,16 +98,19 @@ const itemClasses = [
 export const ContextMenuContent = forwardRef<
 	ElementRef<typeof ContextMenuPrimitive.Content>,
 	ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Content>
->(({ className, ...props }, ref) => (
-	<ContextMenuPrimitive.Portal>
-		<ContextMenuPrimitive.Content
-			ref={ref}
-			data-titlebar-no-drag=""
-			className={cn(panelClasses, "min-w-56", className)}
-			{...props}
-		/>
-	</ContextMenuPrimitive.Portal>
-));
+>(({ className, ...props }, ref) => {
+	const panelRef = useMeasuredBrowserViewPanel<HTMLDivElement>("context-menu");
+	return (
+		<ContextMenuPrimitive.Portal>
+			<ContextMenuPrimitive.Content
+				ref={composeRefs(ref, panelRef)}
+				data-titlebar-no-drag=""
+				className={cn(panelClasses, "min-w-56", className)}
+				{...props}
+			/>
+		</ContextMenuPrimitive.Portal>
+	);
+});
 ContextMenuContent.displayName = "ContextMenuContent";
 
 export const ContextMenuItem = forwardRef<

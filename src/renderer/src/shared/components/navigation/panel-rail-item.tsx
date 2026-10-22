@@ -1,4 +1,4 @@
-import { Button, Tooltip } from "@shared/components/ui";
+import { Button } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import {
 	type ButtonHTMLAttributes,
@@ -89,60 +89,39 @@ export const PanelRailItem = forwardRef<HTMLButtonElement, PanelRailItemProps>(
 		const register = rail?.register;
 		useLayoutEffect(() => register?.(id), [register, id]);
 		/*
-		 * A RAIL TOOLTIP IS PAINTED OVER THE NATIVE BROWSER VIEW (design D1). The
-		 * tooltips open `left`, into the pane, and with the Browser pane open that is
-		 * the `WebContentsView`'s rect: a native view paints above ALL DOM, so the
-		 * only visible label of three icon-only controls would vanish in the most-used
-		 * state. The repo's own answer is the policy registry (`browser-view-policy`,
-		 * the same call the pickers and the tab strip's menu make for a popover opened
-		 * inside the pane area): hide the view for the span the tooltip is open.
-		 * Scoped to that span and to this item (`useId`-suffixed, ref-counted), so a
-		 * stray hover blanks the page for the tooltip's lifetime only and nothing is
-		 * ever left suppressed - the registration is released by the effect cleanup
-		 * on close, on unmount, and when the item goes absent. The cost is the page
-		 * flash the policy header names as unmeasured (probe P11).
+		 * NO TOOLTIP ON THE RAIL (S5). The rail is a 44px column at the window's
+		 * trailing edge, and the only place a label could open is LEFT — into the
+		 * pane, which with the browser open is the native `WebContentsView`'s rect.
+		 * Until S5 the shared tooltip hid the page while it was painted there; the
+		 * kind table now says a tooltip never pauses the page, and a label that needs
+		 * the page taken away to be readable is a placement defect, not a tooltip.
 		 *
-		 * AND ONLY WHEN IT REACHES THE VIEW (design round 2, D11). At the 1280x900
-		 * geometry the round measured (the four-item rail), only the LAST item's tooltip
-		 * (Canvas) overlapped the view's rect; the others ended above it, and on a draft
-		 * none does, so registering for all of them blanked the page for a hint that never
-		 * touched it. #896 added a FIFTH item above the lower three, which shifts each
-		 * lower tooltip down by one pitch: which items cross the view's top edge is the
-		 * measurement's to say (the evidence pass re-derives the numbers), and the
-		 * mechanism never assumed a fixed count. `useSuppressBrowserViewWhileReaching`
-		 * measures the open tooltip's painted box against the rect the browser surface
-		 * reports to main, and ends the registration on pointer-leave / window blur as
-		 * well as on close (a tooltip left open by an exit through the window edge would
-		 * otherwise hold the page blank until the pointer returned).
-		 *
-		 * The shared `Tooltip` now makes that measured registration for every tooltip that
-		 * reaches the view (the sidebar's conversation flyout had the same occlusion,
-		 * opening `right`); this item only names its registrations, so the paused page and
-		 * the tests can still tell a rail tooltip from the rest.
+		 * Nothing can be repositioned inside 44px: a bottom/top placement wider than
+		 * the column spills over the pane, and Radix shifts it inward rather than
+		 * letting it clip. So the ruling's second option applies — the tooltip is
+		 * dropped and the `aria-label` is the channel. The label is not lost to
+		 * assistive tech, and the rail's icons are the five primary destinations,
+		 * whose glyphs the app's own navigation does not hide behind a hint.
 		 */
 		return (
-			/* Tooltips open TOWARD the pane (`left`): the rail is at the window's edge, so
-			   the other three sides either leave the window or cover a sibling item. */
-			<Tooltip content={label} side="left" overlayName="panel-rail-tooltip">
-				<Button
-					ref={ref}
-					variant="ghost"
-					size="icon"
-					data-panel-rail-item={id}
-					data-titlebar-no-drag=""
-					aria-label={ariaLabel}
-					aria-pressed={pressed}
-					tabIndex={rail ? (rail.roving === id ? 0 : -1) : undefined}
-					className={cn(
-						"relative focus-visible:outline-offset-1!",
-						pressed ? LIT : IDLE,
-						className,
-					)}
-					{...props}
-				>
-					{children}
-				</Button>
-			</Tooltip>
+			<Button
+				ref={ref}
+				variant="ghost"
+				size="icon"
+				data-panel-rail-item={id}
+				data-titlebar-no-drag=""
+				aria-label={ariaLabel ?? label}
+				aria-pressed={pressed}
+				tabIndex={rail ? (rail.roving === id ? 0 : -1) : undefined}
+				className={cn(
+					"relative focus-visible:outline-offset-1!",
+					pressed ? LIT : IDLE,
+					className,
+				)}
+				{...props}
+			>
+				{children}
+			</Button>
 		);
 	},
 );

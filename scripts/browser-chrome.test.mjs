@@ -1246,10 +1246,12 @@ test("revoking one origin takes the broad grant that admitted it, too", () => {
 
 test("the overlay policy is ref-counted, so an inner close cannot clear an outer overlay", () => {
 	assert.equal(browserViewSuppressed(), false);
-	const outer = suppressBrowserView("dialog");
-	const inner = suppressBrowserView("dialog");
+	// S5: an id names its KIND first (`${kind}:${label}:${uid}`). Two registrations
+	// of the same overlay still ref-count; the kind prefix is what the policy reads.
+	const outer = suppressBrowserView("dialog:test:outer");
+	const inner = suppressBrowserView("dialog:test:outer");
 	assert.equal(browserViewSuppressed(), true);
-	assert.deepEqual(suppressedOverlayIds(), ["dialog"]);
+	assert.deepEqual(suppressedOverlayIds(), ["dialog:test:outer"]);
 	inner();
 	assert.equal(
 		browserViewSuppressed(),
@@ -1261,11 +1263,11 @@ test("the overlay policy is ref-counted, so an inner close cannot clear an outer
 });
 
 test("a release is idempotent: a double-release cannot unbalance the count", () => {
-	const release = suppressBrowserView("toast");
+	const release = suppressBrowserView("dialog:test:notice");
 	release();
 	release();
 	assert.equal(browserViewSuppressed(), false);
-	const other = suppressBrowserView("toast");
+	const other = suppressBrowserView("dialog:test:notice");
 	assert.equal(browserViewSuppressed(), true);
 	other();
 	assert.equal(browserViewSuppressed(), false);
@@ -3134,9 +3136,9 @@ test("the start page paints the app's own surface, and only the exact start stat
 	assert.equal(isStartPageUrl("https://example.com/"), false);
 
 	const navigated = [];
-	const markup = render(
-		el(BrowserNewTab, { onNavigate: (url) => navigated.push(url) }),
-	);
+	// S5: the start page has no field and no Go — the permanent row is the only
+	// address input (ruling 2). Rendering it takes no navigation props.
+	const markup = render(el(BrowserNewTab, {}));
 	assert.ok(
 		markup.includes("browser-start-page") && markup.includes("data-brand-mark"),
 		"the brand mark leads the surface, not a bare blank rectangle",
@@ -3147,9 +3149,10 @@ test("the start page paints the app's own surface, and only the exact start stat
 		"the wordmark and the one instruction the page gives",
 	);
 	assert.ok(
-		markup.includes("browser-start-page-address") &&
-			markup.includes("browser-start-page-go"),
-		"a way to start a navigation from the page itself",
+		!markup.includes("browser-start-page-address") &&
+			!markup.includes("browser-start-page-go") &&
+			!markup.includes("<input"),
+		"the page owns no second address field; the row above is the one input",
 	);
 	assert.ok(
 		!markup.includes("http") && !markup.includes("<img"),
@@ -3273,8 +3276,12 @@ test("the surface's own view registrations are not read as the overlay that hide
 	const surface = shippedSource(
 		"src/renderer/src/features/browser/components/browser-surface.tsx",
 	);
+	// S5: the id is `${kind}:${label}:${uid}`, so the self-suppression list names
+	// the LABEL of a `browser-state` registration.
 	const registered = [
-		...surface.matchAll(/useSuppressBrowserView\([^,]+,\s*"([^"]+)"/g),
+		...surface.matchAll(
+			/useSuppressBrowserView\([^,]+,\s*"browser-state"\s*,\s*"([^"]+)"/g,
+		),
 	].map((match) => match[1]);
 	assert.ok(
 		registered.length >= 2,
@@ -3286,7 +3293,7 @@ test("the surface's own view registrations are not read as the overlay that hide
 	assert.ok(exclusionBlock, "the exclusion list exists");
 	for (const name of registered) {
 		assert.ok(
-			exclusionBlock[1].includes(`"${name}:"`),
+			exclusionBlock[1].includes(`"browser-state:${name}:"`),
 			`\`${name}\` registers itself for the view, so the overlay filter must exclude it — otherwise the state is hidden by its own registration`,
 		);
 	}

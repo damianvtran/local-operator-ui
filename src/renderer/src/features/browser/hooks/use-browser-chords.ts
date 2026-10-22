@@ -82,15 +82,13 @@ function chordOwner(
  * Electron's hook). It claims the event before app navigation bubbles to window.
  * Commands are queued, not debounced: legitimate rapid tab cycling is retained. */
 /**
- * The address surface's own door. S4b removed the always-mounted input, so a
- * `RefObject<HTMLInputElement>` is null at rest and every `focusAddress()` was a
- * silent no-op (design §4). The handle raises the popout instead; when the
- * active tab is the start page the surface focuses that page's own field.
+ * The address row's own door. S5 made the field permanent, so a raise is a focus
+ * request rather than a mount: the surface bumps a nonce and the row applies it.
+ * There is no `close()` — nothing is ever raised to lower; a new tab's start
+ * state focuses the same row, and a tab switch is main's own dismissal.
  */
 export interface AddressController {
 	raise: (options?: { origin?: "page" | "chrome"; seed?: string }) => void;
-	/** Lower without restoring focus (a new tab's start page takes it). */
-	close: () => void;
 }
 
 export function useBrowserChords(
@@ -222,10 +220,9 @@ export function useBrowserChords(
 			}
 			if (intent === "new-tab") {
 				await c.newTab(current.sessionId);
-				// The new tab IS its start page, whose own field autofocuses on mount.
-				// Raising the popout here would paint over the strip the start page
-				// lives under and leave a second, emptier address field on screen.
-				address.current?.close();
+				// The new tab is its start page; the surface focuses the permanent
+				// row when that state becomes current, so there is no second field to
+				// send focus to and nothing to lower.
 				return;
 			}
 			if (intent === "reopen-tab") {
@@ -253,8 +250,10 @@ export function useBrowserChords(
 					// waits for the projection (a bound, not a debounce: it ends the
 					// moment the tab leaves the list), so rapid presses stay ordered.
 					if (closed) await projectionDropped(id);
-					// A replacement blank tab is a start page; its own field takes focus.
-					if (replaced) address.current?.close();
+					// A replacement blank tab is a start page; the surface focuses the row
+					// when that state becomes current. `replaced` stays in the result for
+					// the strip's caret restore, which is its other consumer.
+					void replaced;
 				}
 			} else {
 				const target = chordTarget(current.tabs, cursor, intent);
