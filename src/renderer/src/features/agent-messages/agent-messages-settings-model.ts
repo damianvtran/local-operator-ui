@@ -138,8 +138,9 @@ export const OPEN_CHIEF_OF_STAFF_HOLD = "open_chief_of_staff";
  * `null`), and for a hold code this build has no copy for: a sentence about
  * the chief of staff must never describe a different hold. The session id is
  * the runtime's own designation answer; the local preference is the fallback
- * for a hold that names none, and with neither the notice still renders but
- * offers no button, because there is nothing honest to open.
+ * for a hold that names none. With neither, the notice still renders, without
+ * a button and with copy that says where to find the conversation instead
+ * (design D2): an instruction the reader cannot act on is a dead end.
  */
 export function agentMessagesChiefOfStaffHold(
 	status: AgentMessagesStatus | null,

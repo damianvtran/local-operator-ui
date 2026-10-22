@@ -278,7 +278,7 @@ export function AgentMessagesSettings({
 			{hold && (
 				<ChiefOfStaffHoldNotice
 					count={hold.count}
-					onOpen={
+					onMessage={
 						hold.sessionId && onOpenSession
 							? () => onOpenSession(hold.sessionId as string)
 							: undefined
@@ -406,32 +406,44 @@ function SettingsSkeleton() {
  * WHY IT EXISTS. Under consent v1 the runtime holds incoming Team Bridge
  * messages rather than waking a chief of staff the owner has never used, and
  * that hold was silent: messages simply never arrived. One action releases
- * them - opening the session once - so the notice names that action and
- * carries it.
+ * them, and it is SENDING a message in that conversation: #2777 releases the
+ * hold only once the session has a real user turn on disk, so opening it
+ * alone does nothing (review R1-1). The copy names that action and the button
+ * takes the reader to where it happens.
+ *
+ * WITHOUT A TARGET (design D2) there is no button, and the sentence says
+ * where to find the conversation instead of pointing at a control that is not
+ * there.
  *
  * WHY IT LOOKS LIKE THIS. It is news, not a fault: the info band grammar
  * (`NOTICE_BAND`, the delegated-cleanup notice's shape) with its border made
  * transparent so the wash alone separates it, per the borderless rule for
- * quiet chrome; a ghost button, not a primary, because nothing is broken.
+ * quiet chrome. The button stays ghost (nothing is broken) but at full `ink`
+ * rather than the ghost's muted resting ink (design D3): it is the one remedy
+ * on the band, and outlined Pause/Turn off below must not out-shout it.
  * `<output>` is a polite live region, so a hold that appears while Settings is
  * open is announced without interrupting.
  */
-const ChiefOfStaffHoldNotice: FC<{ count: number; onOpen?: () => void }> = ({
+const ChiefOfStaffHoldNotice: FC<{ count: number; onMessage?: () => void }> = ({
 	count,
-	onOpen,
+	onMessage,
 }) => (
 	<output className="block" data-agent-messages-hold="open_chief_of_staff">
 		<Alert variant="info" className={cn(NOTICE_BAND, "border-transparent")}>
 			<div className="flex w-full min-w-0 items-center gap-3">
 				<p className="min-w-0 flex-1 text-body-sm text-ink">
-					{t("ui.agentMessages.settings.hold.chief_of_staff", { count })}
+					{onMessage
+						? t("ui.agentMessages.settings.hold.chief_of_staff", { count })
+						: t("ui.agentMessages.settings.hold.chief_of_staff_unlinked", {
+								count,
+							})}
 				</p>
-				{onOpen && (
+				{onMessage && (
 					<Button
 						variant="ghost"
 						size="sm"
-						className="shrink-0"
-						onClick={onOpen}
+						className="shrink-0 text-ink"
+						onClick={onMessage}
 					>
 						{t("ui.agentMessages.settings.hold.open")}
 					</Button>

@@ -83,6 +83,7 @@
 	"ui.agentMessages.settings.allowlist.identifier_help_agent": "Enter an agent ID (bep_…)",
 	"ui.agentMessages.settings.allowlist.identifier_help_person": "Enter a person ID (acc_…)",
 	"ui.agentMessages.settings.error.no_changes": "No settings were changed. Try again to check the current status.",
-	"ui.agentMessages.settings.hold.chief_of_staff": "{count, plural, one {{count} message is waiting for your chief of staff. Open your chief of staff once to receive it.} other {{count} messages are waiting for your chief of staff. Open your chief of staff once to receive them.}}",
-	"ui.agentMessages.settings.hold.open": "Open chief of staff"
+	"ui.agentMessages.settings.hold.chief_of_staff": "{count, plural, one {{count} message is waiting for your chief of staff. Send one message in that conversation to receive it.} other {{count} messages are waiting for your chief of staff. Send one message in that conversation to receive them.}}",
+	"ui.agentMessages.settings.hold.chief_of_staff_unlinked": "{count, plural, one {{count} message is waiting for your chief of staff. Find that conversation in the sidebar and send one message to receive it.} other {{count} messages are waiting for your chief of staff. Find that conversation in the sidebar and send one message to receive them.}}",
+	"ui.agentMessages.settings.hold.open": "Message chief of staff"
 }
