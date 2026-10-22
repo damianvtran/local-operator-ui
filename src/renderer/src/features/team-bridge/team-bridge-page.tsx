@@ -32,10 +32,12 @@ import {
 	conversationTitle,
 	directoryFailureKind,
 	dmWithPerson,
+	hubTenantList,
 	isPreviewConversation,
 	notifyFailureIsVisible,
 	orderedMembers,
 	organizationOptions,
+	organizationsReadState,
 	personDisplayLabel,
 	personInitial,
 	personRowState,
@@ -1375,7 +1377,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	// fetched per org.
 	const memberships = useMembershipsQuery({ enabled: readsEnabled });
 	const unread = useTeamBridgeUnread(readsEnabled, TEAM_BRIDGE_ALL_SCOPE);
-	const hubTenants = status.data?.status?.tenants ?? null;
+	const hubTenants = hubTenantList(status.data);
 	const organizations = useMemo(
 		() =>
 			organizationOptions(
@@ -1385,10 +1387,8 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			),
 		[memberships.memberships, unread.data, hubTenants],
 	);
-	// With a hub tenant list the merged rail no longer depends on memberships,
-	// so their loading or failure must not hold or fail it.
-	const organizationsPending = hubTenants === null && memberships.isLoading;
-	const organizationsFailed = hubTenants === null && memberships.isError;
+	const { pending: organizationsPending, failed: organizationsFailed } =
+		organizationsReadState(hubTenants, memberships);
 	const list = useTeamBridgeConversations(scope, readsEnabled);
 	// The directory is disabled in the merged scope because there is no single
 	// tenant whose people that view could show, and by the gate like the rest.
@@ -1443,7 +1443,8 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		setComposeTo(null);
 	};
 
-	// The memberships resolve after the first paint; adopt the only one unless
+	// The organization list (hub tenants, or memberships without them) resolves
+	// after the first paint; adopt the only one unless
 	// the reader has already picked a scope. A later unread poll re-renders the
 	// options array, so the equality check keeps this to the one transition.
 	useEffect(() => {
