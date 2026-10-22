@@ -548,8 +548,16 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	// flight must not clear the next target's text, even if it is identical.
 	// Opens at the newest message and follows new ones while the reader is at
 	// the bottom (F9). Keyed by conversation; content key = the newest message.
+	/*
+	 * `quickView` is part of the key because Drafts and Scheduled UNMOUNT the
+	 * timeline's ScrollArea (it is the last branch of the quick-view ternary).
+	 * Re-selecting the same conversation afterwards mounts a NEW viewport while
+	 * tenant, conversation and message state are all unchanged; without it the
+	 * hook's scroll/load/ResizeObserver listeners stay bound to the dead
+	 * viewport and the timeline reopens at scrollTop 0 (review round 6, F1).
+	 */
 	const timeline = useStickToBottom({
-		resetKey: `${shown?.tenant_id ?? ""}:${shown?.id ?? ""}:${messageState}`,
+		resetKey: `${shown?.tenant_id ?? ""}:${shown?.id ?? ""}:${messageState}:${quickView ?? ""}`,
 		contentKey: `${messages.length}:${messages.at(-1)?.id ?? ""}`,
 	});
 	const submit = () => {

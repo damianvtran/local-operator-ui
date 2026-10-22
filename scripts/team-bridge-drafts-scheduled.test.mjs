@@ -1352,6 +1352,147 @@ test("D9: the timeline opens at the bottom and stays pinned when the composer gr
 	}
 });
 
+/*
+ * Review round 6 (F1 + M1): the stick-to-bottom hook binds its scroll, `load`
+ * and ResizeObserver listeners per VIEWPORT. Drafts and Scheduled unmount the
+ * timeline's ScrollArea, so returning to the same conversation mounts a new
+ * viewport while tenant, conversation and message state are unchanged: the
+ * page folds `quickView` into `resetKey` so the effect re-binds. These tests
+ * model that shape (a viewport that unmounts and remounts) with the same
+ * jsdom geometry stand-ins as the D9 test above.
+ */
+async function withStickHarness(run) {
+	const proto = window.HTMLElement.prototype;
+	const saved = ["scrollHeight", "clientHeight", "scrollTop"].map((name) => [
+		name,
+		Object.getOwnPropertyDescriptor(proto, name),
+	]);
+	const tops = new WeakMap();
+	const isViewport = (el) => el.hasAttribute("data-radix-scroll-area-viewport");
+	Object.defineProperty(proto, "scrollHeight", {
+		configurable: true,
+		get() {
+			return isViewport(this) ? 600 : 0;
+		},
+	});
+	Object.defineProperty(proto, "clientHeight", {
+		configurable: true,
+		get() {
+			return isViewport(this) ? 400 : 0;
+		},
+	});
+	Object.defineProperty(proto, "scrollTop", {
+		configurable: true,
+		get() {
+			return tops.get(this) ?? 0;
+		},
+		set(value) {
+			const max = Math.max(0, this.scrollHeight - this.clientHeight);
+			tops.set(this, Math.max(0, Math.min(max, value)));
+		},
+	});
+	const observers = [];
+	const savedObserver = globalThis.ResizeObserver;
+	globalThis.ResizeObserver = class {
+		constructor() {
+			this.targets = new Set();
+			observers.push(this);
+		}
+		observe(target) {
+			this.targets.add(target);
+		}
+		disconnect() {
+			this.targets.clear();
+		}
+	};
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	try {
+		await run({ element, root, observers });
+	} finally {
+		await act(async () => root.unmount());
+		element.remove();
+		globalThis.ResizeObserver = savedObserver;
+		for (const [name, descriptor] of saved)
+			if (descriptor) Object.defineProperty(proto, name, descriptor);
+			else Reflect.deleteProperty(proto, name);
+	}
+}
+const VIEWPORT = "[data-radix-scroll-area-viewport]";
+function StickTimeline({ quickView, withQuickViewKey }) {
+	const { rootRef } = model.useStickToBottom({
+		resetKey: `org_a:bcv_a:ready${withQuickViewKey ? `:${quickView ?? ""}` : ""}`,
+		contentKey: "1:bmsg_1",
+	});
+	// The page's shape: the timeline is the last branch of the quick-view ternary.
+	return quickView
+		? React.createElement("p", null, quickView)
+		: React.createElement(
+				"div",
+				{ ref: rootRef },
+				React.createElement(
+					"div",
+					{ "data-radix-scroll-area-viewport": "" },
+					React.createElement("div", null, "rows"),
+				),
+			);
+}
+test("F1: re-selecting the conversation after Drafts/Scheduled reopens the timeline at the newest row, and the harness fails without the quickView key", async () => {
+	for (const withQuickViewKey of [true, false]) {
+		await withStickHarness(async ({ element, root, observers }) => {
+			const render = (quickView) =>
+				act(async () =>
+					root.render(
+						React.createElement(StickTimeline, { quickView, withQuickViewKey }),
+					),
+				);
+			await render(null);
+			const first = element.querySelector(VIEWPORT);
+			assert.equal(first.scrollTop, 200, "first mount opens at the bottom");
+			await render("scheduled");
+			assert.equal(
+				element.querySelector(VIEWPORT),
+				null,
+				"Scheduled unmounts it",
+			);
+			await render(null);
+			const second = element.querySelector(VIEWPORT);
+			assert.notEqual(second, first, "a NEW viewport mounted");
+			const bound = observers.some((o) => o.targets.has(second));
+			if (withQuickViewKey) {
+				assert.equal(second.scrollTop, 200, "reopens at the newest row");
+				assert.ok(bound, "listeners are bound to the new viewport");
+			} else {
+				// Negative control: the pre-fix key leaves the new viewport unbound.
+				assert.equal(bound, false, "harness: without the key the hook is dead");
+			}
+		});
+	}
+});
+test("M1: unmounting the timeline releases every listener it bound", async () => {
+	await withStickHarness(async ({ element, root, observers }) => {
+		await act(async () =>
+			root.render(
+				React.createElement(StickTimeline, { withQuickViewKey: true }),
+			),
+		);
+		const viewport = element.querySelector(VIEWPORT);
+		const calls = [];
+		const remove = viewport.removeEventListener.bind(viewport);
+		viewport.removeEventListener = (type, ...rest) => {
+			calls.push(type);
+			return remove(type, ...rest);
+		};
+		const watching = observers.filter((o) => o.targets.has(viewport));
+		assert.ok(watching.length > 0, "the viewport was observed");
+		await act(async () => root.render(React.createElement("p", null, "gone")));
+		assert.deepEqual(calls.sort(), ["load", "scroll"]);
+		for (const observer of watching)
+			assert.equal(observer.targets.size, 0, "the observer disconnected");
+	});
+});
+
 const BORDER_CLASS = /\bborder\b/;
 test("D11: scheduled rows take the elevated ground on the surface page, never a border", async () => {
 	const element = document.createElement("div");
