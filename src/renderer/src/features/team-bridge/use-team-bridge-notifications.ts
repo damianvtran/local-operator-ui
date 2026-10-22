@@ -207,9 +207,15 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 
 		const reads = tenantUnreadRef.current;
 		const organizationsForRead = notificationOrganizationsRef.current;
+		// Name orgs from the account aggregate first: it already carries each
+		// tenant's `tenant_name` and is the list the per-tenant reads came
+		// from, so a tenant the memberships read lacks still gets its name on
+		// the banner. Memberships only fill a blank name, or stand in when an
+		// older aggregate sends no organizations.
 		const organizations = organizationOptions(
 			membershipsData?.memberships ?? [],
 			accountUnread.data.organizations,
+			accountUnread.data.organizations ?? null,
 		);
 		let plannedCursors = cursors.current;
 

@@ -170,5 +170,7 @@
 	"ui.teamBridge.schedule.discard_attempt": "Tôi đã kiểm tra mục “Đã lên lịch” — bỏ lần thử này",
 	"ui.teamBridge.attachments.expired_staged_retry": "Hình ảnh này không còn sẵn sàng để gửi. Hãy thử lại hoặc gỡ hình ảnh.",
 	"ui.teamBridge.attachments.preview_unavailable": "Không có bản xem trước",
-	"ui.teamBridge.attachments.failed_count": "{count, plural, other {Không gửi được # hình ảnh.}}"
+	"ui.teamBridge.attachments.failed_count": "{count, plural, other {Không gửi được # hình ảnh.}}",
+	"ui.teamBridge.sender.unknown_person": "Người không xác định",
+	"ui.teamBridge.sender.unknown_agent": "Tác nhân không xác định"
 }

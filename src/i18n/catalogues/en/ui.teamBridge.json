@@ -170,5 +170,7 @@
 	"ui.teamBridge.schedule.discard_attempt": "I checked Scheduled — discard this attempt",
 	"ui.teamBridge.attachments.expired_staged_retry": "This image is no longer ready to send. Retry it or remove it.",
 	"ui.teamBridge.attachments.preview_unavailable": "Preview unavailable",
-	"ui.teamBridge.attachments.failed_count": "{count, plural, one {# image can’t be sent.} other {# images can’t be sent.}}"
+	"ui.teamBridge.attachments.failed_count": "{count, plural, one {# image can’t be sent.} other {# images can’t be sent.}}",
+	"ui.teamBridge.sender.unknown_person": "Unknown person",
+	"ui.teamBridge.sender.unknown_agent": "Unknown agent"
 }

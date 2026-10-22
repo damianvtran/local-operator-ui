@@ -2,7 +2,7 @@ import { Button } from "@shared/components/ui/button";
 import { formatDate, formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Bot, MessageSquare } from "lucide-react";
+import { Bot, MessageSquare, UserRound } from "lucide-react";
 import type { FC } from "react";
 import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
 import { TeamBridgeMessageAttachments } from "./team-bridge-attachments";
@@ -38,10 +38,16 @@ import { threadSummary } from "./team-bridge-threads-model";
  * shows for them (the directory's current name for a person, "Aida (Ben)" for
  * a chief of staff), so a message and the People row agree, and a stale stored
  * label never reaches the screen when a better one is known.
+ *
+ * NULL MEANS UNKNOWN, AND LOOKS IT. When nothing names the sender (directory
+ * still loading or failed, a member who left, the legacy "Member" label the
+ * hub stored), the row says "Unknown person" / "Unknown agent" in a muted
+ * italic with a neutral glyph. An initial avatar under a plausible word is what
+ * made "Member" read as somebody's name (operator report, 2026-10-22).
  */
 export const TeamBridgeMessageList: FC<{
 	messages: readonly TeamBridgeMessage[];
-	labelFor: (sender: TeamBridgeMessage["sender"]) => string;
+	labelFor: (sender: TeamBridgeMessage["sender"]) => string | null;
 	onReply?: (message: TeamBridgeMessage) => void;
 	/*
 	 * The organization the messages belong to: an image fetch is member-gated
@@ -110,14 +116,27 @@ const DayDivider: FC<{
 const MessageRow: FC<{
 	message: TeamBridgeMessage;
 	continuation: boolean;
-	label: string;
+	label: string | null;
 	locale: string;
 	onReply?: (message: TeamBridgeMessage) => void;
 	tenantId?: string;
 	density?: "regular" | "compact";
-}> = ({ message, continuation, label, locale, onReply, tenantId, density }) => {
+}> = ({
+	message,
+	continuation,
+	label: known,
+	locale,
+	onReply,
+	tenantId,
+	density,
+}) => {
 	const summary = threadSummary(message);
 	const agent = message.sender.kind === "agent";
+	const label =
+		known ??
+		(agent
+			? t("ui.teamBridge.sender.unknown_agent")
+			: t("ui.teamBridge.sender.unknown_person"));
 	const at = new Date(message.created_at);
 	const valid = !Number.isNaN(at.getTime());
 	const clock = valid
@@ -150,6 +169,9 @@ const MessageRow: FC<{
 				) : (
 					<span
 						aria-hidden="true"
+						data-sender-avatar={
+							agent ? "agent" : known === null ? "unknown" : "initial"
+						}
 						className={cn(
 							// A rounded SQUARE, as the operator's reference draws it:
 							// Slack's people are squares, and a circle here would read as
@@ -165,8 +187,10 @@ const MessageRow: FC<{
 					>
 						{agent ? (
 							<Bot size={18} />
+						) : known === null ? (
+							<UserRound size={18} />
 						) : (
-							label.trim().charAt(0).toUpperCase() || "?"
+							known.trim().charAt(0).toUpperCase() || "?"
 						)}
 					</span>
 				)}
@@ -190,7 +214,15 @@ const MessageRow: FC<{
 			<div className="min-w-0 flex-1">
 				{!continuation && (
 					<div className="flex items-baseline gap-2">
-						<span className="truncate font-semibold text-[14px] text-ink">
+						<span
+							data-sender={known === null ? "unknown" : "known"}
+							className={cn(
+								"truncate text-[14px]",
+								known === null
+									? "text-ink-muted italic"
+									: "font-semibold text-ink",
+							)}
+						>
 							{label}
 						</span>
 						{valid && (
