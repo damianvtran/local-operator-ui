@@ -387,7 +387,7 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 
 	ipcMain.handle(
 		"browser-set-visible",
-		(event, visible: unknown, ownPage: unknown) => {
+		(event, visible: unknown, ownPage: unknown, ownStatePage: unknown) => {
 			const host = authorize(event);
 			if (typeof visible !== "boolean") {
 				throw new Error("Visibility must be a boolean.");
@@ -399,7 +399,14 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 			if (ownPage !== undefined && typeof ownPage !== "boolean") {
 				throw new Error("The view-hidden reason must be a boolean.");
 			}
-			return host.setViewVisible(visible, ownPage === true);
+			if (ownStatePage !== undefined && typeof ownStatePage !== "boolean") {
+				throw new Error("The own-state reason must be a boolean.");
+			}
+			return host.setViewVisible(
+				visible,
+				ownPage === true,
+				ownStatePage === undefined ? ownPage === true : ownStatePage,
+			);
 		},
 	);
 

@@ -33,8 +33,9 @@ import { useEffect, useRef, useState } from "react";
  * would be two affordances for one action — the thing "conventional browser
  * chrome" exists to avoid. What remains is what has no row control: Find, Print,
  * Reset zoom when it is off 100%, the downloads folder when one is known, and
- * Approvals — which is also the way back to site access when nothing is pending
- * (the row's Approvals control is always present and opens the same list).
+ * Approvals — which is also the way back to site access when nothing is pending.
+ * At wide widths the row's shield opens the same dock; below 300px that control
+ * is folded and this item is the only route to the list.
  *
  * FOLDED CONTROLS COME BACK HERE. In a narrow pane the row sheds Home (below
  * 360px) and then Forward (below 300px) — see `browser-surface.tsx`'s width
@@ -67,7 +68,13 @@ export interface BrowserPageMenuProps {
 	onPrint: () => void;
 	onResetZoom: () => void;
 	onOpenDownloads: () => void;
-	onOpenApprovals: () => void;
+	/** Returns whether this request OPENS the dock: only an open declines Radix's
+	 * focus return; a request that closes an already-open dock must let focus go
+	 * back to this trigger (round 3, U16). */
+	onOpenApprovals: () => boolean;
+	/** The menu has fully closed after an opening request; focus the dock heading
+	 * now, not while Radix is still moving focus (round 3, U13). */
+	onDockOpened?: () => void;
 	/** The trigger node, so a caller can return focus to it when the control that
 	 * opened the menu is gone (the folded Approvals row). */
 	triggerRef?: Ref<HTMLButtonElement>;
@@ -91,6 +98,7 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 	onResetZoom,
 	onOpenDownloads,
 	onOpenApprovals,
+	onDockOpened,
 	triggerRef,
 	showApprovalsFolded,
 }) => {
@@ -118,6 +126,15 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 	const find = chordCaption("primary+f", platform).glyph;
 	const zoomReset = chordCaption("primary+0", platform).glyph;
 	const folded = showForward || showHome;
+	/* The folded trigger is the only route to the queue, so its NAME carries the
+	   count it shows (round 3, U15). */
+	const pageMenuLabel =
+		showApprovalsFolded && waitingCount > 0
+			? `${t("ui.browser.browser_url_bar.page_menu")} — ${t(
+					"ui.browser.browser_url_bar.approvals_waiting",
+					{ count: waitingCount },
+				)}`
+			: t("ui.browser.browser_url_bar.page_menu");
 	return (
 		<DropdownMenu
 			open={open}
@@ -144,7 +161,7 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 						variant="ghost"
 						size="icon-sm"
 						className="relative shrink-0"
-						aria-label={t("ui.browser.browser_url_bar.page_menu")}
+						aria-label={pageMenuLabel}
 						disabled={disabled}
 						data-tour-tag="browser-page-menu"
 					>
@@ -173,6 +190,10 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 					if (!dockRequested.current) return;
 					dockRequested.current = false;
 					event.preventDefault();
+					/* The item unmounts before this handler, so focus is already on
+					   `<body>`; the dock's heading takes it on the next tick, after
+					   Radix has finished closing. */
+					window.setTimeout(() => onDockOpened?.(), 0);
 				}}
 			>
 				{folded && (
@@ -229,8 +250,7 @@ export const BrowserPageMenu: FC<BrowserPageMenuProps> = ({
 				<DropdownMenuSeparator />
 				<DropdownMenuItem
 					onSelect={() => {
-						dockRequested.current = true;
-						onOpenApprovals();
+						dockRequested.current = onOpenApprovals();
 					}}
 					data-tour-tag="browser-approvals"
 				>

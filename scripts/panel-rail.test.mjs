@@ -2035,7 +2035,17 @@ test("Tooltip's onOpenChange follows what is SHOWN, so suppressed cannot leave a
 			"forced shut by `suppressed`: the report follows, it is not left at true",
 		);
 		await api.render(el(false));
-		assert.equal(seen.at(-1), true, "and back when the override lifts");
+		assert.equal(
+			seen.at(-1),
+			false,
+			"lifting the override does NOT resurrect a panel suppression closed (U14)",
+		);
+		assert.equal(api.$('[role="tooltip"]'), null);
+		act(() => api.$("#t").blur());
+		await frames(2);
+		act(() => api.$("#t").focus());
+		await frames(20);
+		assert.equal(seen.at(-1), true, "a fresh focus opens it again");
 	});
 });
 

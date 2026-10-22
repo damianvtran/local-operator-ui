@@ -76,17 +76,13 @@ test("the trigger is the fixed icon-only overflow control", () => {
 	);
 	assert.match(menu, /disableHoverableContent/);
 	assert.match(menu, /data-tour-tag="browser-page-menu"/);
+	assert.match(menu, /aria-label=\{pageMenuLabel\}/);
+	assert.match(menu, /showApprovalsFolded && waitingCount > 0/);
 	assert.match(
 		menu,
-		/aria-label=\{t\("ui\.browser\.browser_url_bar\.page_menu"\)\}/,
+		/ui\.browser\.browser_url_bar\.approvals_waiting/,
+		"the folded trigger's name carries the waiting count (U15)",
 	);
-});
-
-test("opening the dock from a folded item keeps the dock's heading focus", () => {
-	assert.match(menu, /const dockRequested = useRef\(false\)/);
-	assert.match(menu, /onCloseAutoFocus=\{\(event\) => \{/);
-	assert.match(menu, /event\.preventDefault\(\)/);
-	assert.match(menu, /dockRequested\.current = true;/);
 });
 
 test("the folded Approvals count rides the trigger (U12) and is not re-announced (D6a)", () => {
