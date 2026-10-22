@@ -1425,3 +1425,83 @@ export function pendingForThread(
 			(draftKey !== null && entry.draftKey === draftKey),
 	);
 }
+
+/**
+ * One send ATTEMPT for a pending entry, as a pure async function so the page's
+ * optimistic flow is testable without a DOM (the container only turns its
+ * outcome into state). Used for the first try and for every Retry: the
+ * `clientRef` is the entry's, never re-minted, so an ambiguous failure whose
+ * request landed cannot post twice.
+ *
+ * - An existing thread posts straight to it.
+ * - A new thread goes through `sendFirstMessage` (create once per draft, then
+ *   post), calling `onCreated` the instant the conversation exists so the
+ *   pending entry adopts its id before the POST resolves.
+ * - It never throws: a failure is `{ ok: false }`, which the caller renders as
+ *   a failed row with Retry.
+ */
+export async function performSend(args: {
+	conversationId: string | null;
+	tenantId: string | undefined;
+	draftKey: string | null;
+	input: Parameters<typeof sendFirstMessage>[0]["input"] | null;
+	draftTenantId: string | undefined;
+	body: string;
+	clientRef: string;
+	remembered: Parameters<typeof sendFirstMessage>[0]["remembered"];
+	create: Parameters<typeof sendFirstMessage>[0]["create"];
+	post: Parameters<typeof sendFirstMessage>[0]["post"];
+	onCreated: (created: { id: string; tenantId: string | undefined }) => void;
+}): Promise<
+	| {
+			ok: true;
+			id: string;
+			tenantId: string | undefined;
+			confirmedId: string | undefined;
+	  }
+	| { ok: false }
+> {
+	try {
+		if (args.conversationId !== null) {
+			const posted = await args.post(args.conversationId, {
+				clientRef: args.clientRef,
+				body: args.body,
+				tenantId: args.tenantId,
+			});
+			return {
+				ok: true,
+				id: args.conversationId,
+				tenantId: args.tenantId,
+				confirmedId: postedMessageId(posted),
+			};
+		}
+		if (args.input === null || args.draftKey === null) return { ok: false };
+		const done = await sendFirstMessage({
+			draftKey: args.draftKey,
+			input: args.input,
+			body: args.body,
+			clientRef: args.clientRef,
+			tenantId: args.draftTenantId,
+			remembered: args.remembered,
+			create: async (input) => {
+				const made = await args.create(input);
+				if (made.id) {
+					args.onCreated({
+						id: made.id,
+						tenantId: made.tenant_id ?? args.draftTenantId,
+					});
+				}
+				return made;
+			},
+			post: args.post,
+		});
+		return {
+			ok: true,
+			id: done.id,
+			tenantId: done.tenantId,
+			confirmedId: postedMessageId(done.posted),
+		};
+	} catch {
+		return { ok: false };
+	}
+}
