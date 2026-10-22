@@ -116,6 +116,19 @@ export interface ConsoleMirrorProps {
 	className?: string;
 }
 
+/**
+ * HIDE THE CURSOR NATIVELY (D1/U6).
+ *
+ * A stylesheet rule on `.xterm-cursor` loses specificity to xterm's own injected
+ * cursor styling in the DOM renderer (measured: the computed background stayed the
+ * accent). DECTCEM is the terminal's own mechanism: `CSI ? 25 l` makes xterm stop
+ * rendering the cursor, and the mirror writes it to its own view only — never into
+ * the record, the log or the bytes main replays. The reverse (`CSI ? 25 h`) runs on
+ * the transition back to an interactive surface.
+ */
+const HIDE_CURSOR = "\x1b[?25l";
+const SHOW_CURSOR = "\x1b[?25h";
+
 /** Decode the base64 a `console-output` frame or a replay carries. */
 const decodeBytes = (base64: string): Uint8Array => {
 	const binary = atob(base64);
@@ -505,6 +518,9 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 				}
 				streaming = true;
 				for (const bytes of buffered.splice(0)) terminal.write(bytes);
+				// Replay may contain a program's own show-cursor sequence; the view's
+				// mode wins after the record is in.
+				if (modeRef.current === "history") terminal.write(HIDE_CURSOR);
 				settledRef.current?.(terminal);
 			})
 			.catch(() => {
@@ -643,6 +659,10 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		 */
 		const applyMode = () => {
 			terminal.options.disableStdin = mode !== "interactive";
+			// The native hide/show; see `HIDE_CURSOR`. A capture is a static paint and
+			// owns no input, so it gets neither sequence.
+			if (mode !== "capture")
+				terminal.write(mode === "history" ? HIDE_CURSOR : SHOW_CURSOR);
 			terminal.options.cursorBlink = mode === "interactive";
 			terminal.options.cursorInactiveStyle =
 				mode === "history" ? "none" : "outline";

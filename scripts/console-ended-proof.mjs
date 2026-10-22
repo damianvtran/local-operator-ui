@@ -417,8 +417,30 @@ const READ = `(() => {
 		return el ? (el.innerText || el.textContent || "").trim() : null;
 	};
 	const rail = document.querySelector('[data-tour-tag="console-pane-trigger"]');
+	const cursorCells = [...document.querySelectorAll(".xterm-cursor")].map((el) => {
+		const rect = el.getBoundingClientRect();
+		const style = getComputedStyle(el);
+		return {
+			rect: {
+				x: Math.round(rect.x),
+				y: Math.round(rect.y),
+				width: Math.round(rect.width),
+				height: Math.round(rect.height),
+			},
+			background: style.backgroundColor,
+			visibility: style.visibility,
+			display: style.display,
+			opacity: style.opacity,
+			text: el.textContent,
+		};
+	});
 	const cursor = document.querySelector(".xterm-cursor");
 	const cursorStyle = cursor ? getComputedStyle(cursor) : null;
+	const box = document.querySelector("[data-console-box]");
+	const boxRect = box ? box.getBoundingClientRect() : null;
+	const boxStyle = box ? getComputedStyle(box) : null;
+	const markerEl = document.querySelector('[data-tour-tag="console-history-end"]');
+	const markerRect = markerEl ? markerEl.getBoundingClientRect() : null;
 	const active = document.activeElement;
 	const tabs = [...document.querySelectorAll('[role="tab"]')].map((tab) => ({
 		text: (tab.innerText || "").trim(),
@@ -433,6 +455,24 @@ const READ = `(() => {
 		banner: text('[data-tour-tag="console-ended"]'),
 		marker: text('[data-tour-tag="console-history-end"]'),
 		announce: text('[data-tour-tag="console-history-announce"]'),
+		cursorCells,
+		historyBox: boxRect
+			? {
+					x: Math.round(boxRect.x),
+					y: Math.round(boxRect.y),
+					width: Math.round(boxRect.width),
+					height: Math.round(boxRect.height),
+					outlineWidth: boxStyle.outlineWidth,
+					outlineStyle: boxStyle.outlineStyle,
+					outlineColor: boxStyle.outlineColor,
+				}
+			: null,
+		markerTop: markerRect ? Math.round(markerRect.y) : null,
+		markerHeight: markerRect ? Math.round(markerRect.height) : null,
+		startCue: text('[data-tour-tag="console-starting"]'),
+		announceSeq: document
+			.querySelector('[data-tour-tag="console-history-announce"]')
+			?.getAttribute("data-announce-seq") ?? null,
 		caret: cursor
 			? {
 					text: cursor.textContent,
@@ -504,6 +544,31 @@ async function pressKey(key, code) {
 		key,
 		windowsVirtualKeyCode: code,
 		nativeVirtualKeyCode: code,
+	});
+}
+
+/** Put the keyboard in the terminal's textarea, as a click there would. */
+async function focusTerminal() {
+	return evaluate(
+		`(() => { const t = document.querySelector(".xterm-helper-textarea"); if (!t) return false; t.focus(); return document.activeElement === t; })()`,
+	);
+}
+
+/** Tab through Chromium's pipeline without text (the key that must leave history). */
+async function pressTab() {
+	await cdp.call("Input.dispatchKeyEvent", {
+		type: "keyDown",
+		key: "Tab",
+		code: "Tab",
+		windowsVirtualKeyCode: 9,
+		nativeVirtualKeyCode: 9,
+	});
+	await cdp.call("Input.dispatchKeyEvent", {
+		type: "keyUp",
+		key: "Tab",
+		code: "Tab",
+		windowsVirtualKeyCode: 9,
+		nativeVirtualKeyCode: 9,
 	});
 }
 
@@ -615,6 +680,8 @@ async function main() {
 	await waitForLive(sessionId, false);
 	await sleep(1200);
 	state = await consoleState(sessionId);
+	await focusTerminal();
+	await sleep(300);
 	say("ended, pane open", {
 		surface: first.surface,
 		state: state.surfaces,
@@ -626,38 +693,51 @@ async function main() {
 	// state it claims and not the refusal band's after-state (Q-4).
 	await shot("rail-zero-live");
 
-	// 4. Keyboard focus on the history: the outline the caret can no longer give.
-	await evaluate(
-		`(() => { const t = document.querySelector(".xterm-helper-textarea"); if (!t) return false; t.focus(); return true; })()`,
-	);
+	// 4. Keyboard focus on the history: the ring the caret can no longer give. Read
+	// the PANE'S BOX (round 2 D2: on the mirror it was a clipped 16px L).
+	await focusTerminal();
 	await sleep(300);
-	const focused = await evaluate(`
-		(() => {
-			const mirror = document.querySelector('[data-console-mirror]');
-			const t = document.querySelector('.xterm-helper-textarea');
-			if (!mirror || !t) return null;
-			const style = getComputedStyle(mirror);
-			return {
-				active: document.activeElement === t,
-				focusedWithin: mirror.matches(':focus-within'),
-				focusVisible: t.matches(':focus-visible'),
-				outlineWidth: style.outlineWidth,
-				outlineStyle: style.outlineStyle,
-				outlineColor: style.outlineColor,
-			};
-		})()
-	`);
-	say("history focused", focused);
+	say("history focused", {
+		view: await read(),
+		active: await evaluate(
+			`document.activeElement === document.querySelector('.xterm-helper-textarea')`,
+		),
+		focusVisible: await evaluate(
+			`document.querySelector('.xterm-helper-textarea')?.matches(':focus-visible') ?? false`,
+		),
+	});
 	await shot("history-focused");
 
-	// 5. A key typed at the ended terminal.
-	await evaluate(
-		`(() => { const t = document.querySelector(".xterm-helper-textarea"); if (!t) return false; t.focus(); return true; })()`,
-	);
+	// 5. Real keys at the ended terminal: the refusal, a repeat (the live region's
+	// text must change), then Tab (which must MOVE FOCUS, not announce).
+	await focusTerminal();
+	const bandBefore = await read();
 	await pressKey("a", 65);
 	await sleep(600);
-	say("ended, one key typed", await read());
+	const firstRefusal = await read();
+	say("ended, one key typed", firstRefusal);
+	say("band geometry", {
+		beforeTop: bandBefore.markerTop,
+		afterTop: firstRefusal.markerTop,
+	});
+	await pressKey("b", 66);
+	await sleep(600);
+	const secondRefusal = await read();
+	say("ended, a second key typed", {
+		announceSeq: secondRefusal.announceSeq,
+		announce: secondRefusal.announce,
+		firstSeq: firstRefusal.announceSeq,
+	});
 	await shot("ended-key");
+	await focusTerminal();
+	await pressTab();
+	await sleep(300);
+	say("Tab on history", {
+		active: await evaluate(
+			`(() => { const a = document.activeElement; return { tag: a?.tagName?.toLowerCase() ?? null, inTerminal: Boolean(a?.closest?.('[data-console-mirror]')) }; })()`,
+		),
+	});
+	await focusTerminal();
 
 	// 6. The rail reading while the pane shows ended history (the frame above is
 	// the same state before the key).
@@ -757,7 +837,20 @@ async function main() {
 		await sleep(1500);
 		say("ended while the pane was closed", (await read()).rail);
 		await shot("rail-unread-dot");
+		const samples = [];
 		await openPane();
+		for (const wait of [0, 120, 300, 700]) {
+			await sleep(wait);
+			const view = await read();
+			const rows = await consoleState(sessionId);
+			samples.push({
+				at: wait,
+				blip: view.rail?.blip,
+				selected: view.tabs.find((tab) => tab.selected === "true")?.surface,
+				running: rows.surfaces.filter((row) => row.running).length,
+			});
+		}
+		say("unread mark through the open", samples);
 		await sleep(1200);
 		const reopened = await consoleState(sessionId);
 		const endedRow = reopened.surfaces.find(

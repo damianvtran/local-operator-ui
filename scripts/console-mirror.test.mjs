@@ -308,6 +308,16 @@ test("history mode is read-only: stdin off, no caret, and a key never reaches th
 			"none",
 			"and the unfocused cursor is not painted at all",
 		);
+		/*
+		 * D1/U6: the CURSOR IS HIDDEN BY THE TERMINAL'S OWN MECHANISM. A CSS rule on
+		 * `.xterm-cursor` lost specificity to xterm's injected styling (measured in the
+		 * round-2 review as a still-green block), so the mirror writes DECTCEM into its
+		 * own view. The hide sequence must be the last mode write it made.
+		 */
+		assert.ok(
+			written(terminal).includes("\x1b[?25l"),
+			"history hides the cursor with DECTCEM rather than with a stylesheet",
+		);
 
 		// The stub's `typeKey` bypasses xterm's real `disableStdin` gate on purpose:
 		// it is the harshest version of the claim, that even a synthetic byte has no
@@ -406,6 +416,10 @@ test("a surface ending transitions the SAME terminal to history, rather than rem
 	);
 	assert.equal(terminal.options.cursorBlink, false);
 	assert.equal(terminal.options.cursorInactiveStyle, "none");
+	assert.ok(
+		written(terminal).includes("\x1b[?25l"),
+		"the transition writes the native hide into the terminal that was already there",
+	);
 	terminal.typeKey("a");
 	await settle();
 	assert.deepEqual(calls, [], "a key after the transition reaches nothing");

@@ -695,8 +695,10 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	 * what clears a mark when the user comes back to a window that was showing the
 	 * surface all along.
 	 */
+	const [awaitingSurface, setAwaitingSurface] = useState(false);
 	useEffect(() => {
 		if (!surface) return;
+		const surfaceId = surface.surface;
 		const clear = () => {
 			/*
 			 * Q-2: NOT WHILE A CREATE OR THE OPEN REQUEST IS IN FLIGHT. The pane's
@@ -706,13 +708,35 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			 * a look at the REAL displayed surface, so the gate waits for both the
 			 * request to clear and every create to answer.
 			 */
-			if (creating || openIntent === sessionId) return;
-			if (document.hasFocus() && isConsoleUnseen(unseen, surface.surface))
-				clearUnseen(surface.surface);
+			/*
+			 * Q-2, SECOND CUT (round 2). The first gate still let the mark die in the
+			 * post-create commit where the lens had moved to the new live surface: the
+			 * ended row had been the fallback display, main had acknowledged it, and
+			 * `creating`/the request had both cleared. Three gates now hold:
+			 *
+			 *  - the pane must be past every create and every open request, including
+			 *    the listing catch-up (`awaitingSurface`);
+			 *  - MAIN must say this surface is the displayed one (`displayedSurface`),
+			 *    not the renderer's fallback opinion;
+			 *  - it must have stayed that way for 350 ms, so a transient fallback frame
+			 *    cannot consume a mark the user has not looked at.
+			 */
+			if (
+				creating ||
+				openIntent === sessionId ||
+				awaitingSurface ||
+				session.snapshot.displayedSurface !== surfaceId
+			)
+				return;
+			if (document.hasFocus() && isConsoleUnseen(unseen, surfaceId))
+				clearUnseen(surfaceId);
 		};
-		clear();
+		const timer = setTimeout(clear, 350);
 		window.addEventListener("focus", clear);
-		return () => window.removeEventListener("focus", clear);
+		return () => {
+			clearTimeout(timer);
+			window.removeEventListener("focus", clear);
+		};
 		/*
 		 * `unseen` IS A DEPENDENCY, AND THE BUG IT CLOSES IS THE OPERATOR'S (2026-10-21):
 		 * the watch that writes a mark (`useConsoleAttention`) and this pane both read
@@ -722,7 +746,16 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		 * open look at its history, which is what the rail carried. Re-running on the
 		 * store's own update clears it on the commit that paints the mark.
 		 */
-	}, [clearUnseen, creating, openIntent, sessionId, surface, unseen]);
+	}, [
+		awaitingSurface,
+		clearUnseen,
+		creating,
+		openIntent,
+		session.snapshot.displayedSurface,
+		sessionId,
+		surface,
+		unseen,
+	]);
 
 	/*
 	 * THE USER'S OPEN, ANSWERED (design 6.1; the operator's report that the pane
@@ -758,7 +791,6 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	 * `console-pane-render.test.mjs`, which is why this is a STATE the listing settles
 	 * rather than a timer: the effect below clears it on the commit that shows the surface.
 	 */
-	const [awaitingSurface, setAwaitingSurface] = useState(false);
 	useEffect(() => {
 		if (surface !== null) setAwaitingSurface(false);
 	}, [surface]);
@@ -1058,6 +1090,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				 */}
 				<div
 					className={cn("relative flex min-h-0 grow flex-col px-2 bg-sunken")}
+					data-console-box=""
 					onKeyDownCapture={announceEndedInput}
 				>
 					{/*
@@ -1453,17 +1486,21 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			 * line names the work; it sits below the header like the release result, so
 			 * the header's height does not move.
 			 */}
-			{creating && surfaces.length > 0 ? (
-				<output
-					aria-live="polite"
-					className={cn(
-						"shrink-0 border-hairline border-b bg-surface px-3 py-1 text-ink-muted text-meta",
-					)}
-					data-tour-tag="console-starting"
-				>
-					{t("ui.console.loading.create")}
-				</output>
-			) : null}
+			{/* ALWAYS MOUNTED (U7): a live region inserted with its text already in it
+			    is not reliably announced - assistive tech has to see the region first.
+			    The element is in the DOM from the pane's first commit; only its text
+			    and its visible styling change while a create runs. */}
+			<output
+				aria-live="polite"
+				className={cn(
+					creating && surfaces.length > 0
+						? "shrink-0 border-hairline border-b bg-surface px-3 py-1 text-ink-muted text-meta"
+						: "sr-only",
+				)}
+				data-tour-tag="console-starting"
+			>
+				{creating && surfaces.length > 0 ? t("ui.console.loading.create") : ""}
+			</output>
 			{/*
 			 * THE RELEASE RESULT (design round 1, D2). The button used to give no answer,
 			 * so a user could not tell released-from-kept-from-deleted; that outcome now

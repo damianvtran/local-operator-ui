@@ -502,6 +502,15 @@ test("the console item follows liveness, and an open history pane still toggles 
 			[],
 			"an open pane with no running surface is not the active console",
 		);
+		// THE TOOLTIP FOLLOWS THE PRESS (m-5): the pane is drawn, so the act is close
+		// even though the item is unlit.
+		act(() => api.item("console").focus());
+		await frames(30);
+		assert.match(
+			api.$('[role="tooltip"]')?.textContent ?? "",
+			/Close console/,
+			"an open history pane's tooltip says close, not open",
+		);
 		await api.click(api.item("console"));
 		let state = useUiPreferencesStore.getState();
 		assert.equal(
