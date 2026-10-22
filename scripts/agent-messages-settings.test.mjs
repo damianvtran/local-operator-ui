@@ -1155,9 +1155,9 @@ test("the hold notice renders singular copy at count 1 and opens the chief of st
 	assert.ok(notice, "the notice renders");
 	assert.match(
 		notice.textContent,
-		/^1 message is waiting for your chief of staff\. Open your chief of staff once to receive it\./,
+		/^1 message is waiting for your chief of staff\. Send one message in that conversation to receive it\./,
 	);
-	await press(button("Open chief of staff", notice));
+	await press(button("Message chief of staff", notice));
 	assert.deepEqual(opened, [HOLD_SESSION]);
 });
 
@@ -1172,7 +1172,7 @@ test("the hold notice renders plural copy at count N", async (t) => {
 	});
 	assert.match(
 		holdNotice()?.textContent ?? "",
-		/^4 messages are waiting for your chief of staff\. Open your chief of staff once to receive them\./,
+		/^4 messages are waiting for your chief of staff\. Send one message in that conversation to receive them\./,
 	);
 });
 
@@ -1205,5 +1205,72 @@ test("the hold notice offers no button when there is nothing to open", async (t)
 		onOpenSession: () => {},
 	});
 	assert.ok(holdNotice());
-	assert.equal(button("Open chief of staff", holdNotice()), undefined);
+	assert.equal(button("Message chief of staff", holdNotice()), undefined);
+	/* Design D2: no button, so the sentence says where to go instead. */
+	assert.match(
+		holdNotice().textContent,
+		/^2 messages are waiting for your chief of staff\. Find that conversation in the sidebar and send one message to receive them\./,
+	);
+});
+
+test("a malformed hold session degrades only the target, never the count (R1-2)", () => {
+	const parsed = mod.agentMessagesStatusSchema.parse({
+		...statusFixture,
+		delivery_hold: { code: "open_chief_of_staff", count: 2, session: "" },
+	});
+	assert.deepEqual(parsed.delivery_hold, {
+		code: "open_chief_of_staff",
+		count: 2,
+		session: null,
+	});
+	const wrongType = mod.agentMessagesStatusSchema.parse({
+		...statusFixture,
+		delivery_hold: { code: "open_chief_of_staff", count: 2, session: 42 },
+	});
+	assert.equal(wrongType.delivery_hold?.count, 2);
+	assert.equal(wrongType.delivery_hold?.session, null);
+});
+
+test("the hold button reads at full ink while staying a ghost button (design D3)", async (t) => {
+	await mount(t, {
+		status: holdStatus({
+			code: "open_chief_of_staff",
+			count: 1,
+			session: HOLD_SESSION,
+		}),
+		onOpenSession: () => {},
+	});
+	const control = button("Message chief of staff", holdNotice());
+	assert.ok(control);
+	assert.match(control.className, /(^|\s)text-ink(\s|$)/);
+	assert.doesNotMatch(control.className, /(^|\s)text-ink-muted(\s|$)/);
+});
+
+/*
+ * R1-3: the section only knows `onOpenSession`; what makes the button real is
+ * the page passing it, through the shared switch rule. A dropped prop is a
+ * SUPPORTED state (no button, sidebar copy), so it would fail silently - pin
+ * the wiring at its source, the same way session-switch.test.mjs pins the
+ * entrances. The cache drop (QA follow-up) has to come before the switch, so
+ * Settings' mount boundary on the way back reads the hold fresh.
+ */
+test("settings-page wires onOpenSession to openConversation after dropping the status cache", () => {
+	const page = readFileSync(
+		"src/renderer/src/features/settings/components/settings-page.tsx",
+		"utf8",
+	);
+	assert.match(
+		page,
+		/import \{ openConversation \} from "@features\/chat\/open-conversation";/,
+	);
+	const wiring = page.match(
+		/onOpenSession=\{\(sessionId\) => \{([\s\S]*?)\}\}/,
+	);
+	assert.ok(wiring, "AgentMessagesSettings receives onOpenSession");
+	const body = wiring[1];
+	const invalidate = body.indexOf("agentMessagesModel.invalidateStatus();");
+	const open = body.indexOf("openConversation(navigate, sessionId)");
+	assert.ok(invalidate >= 0, "the status cache is dropped");
+	assert.ok(open > invalidate, "then the shared switch rule opens the session");
+	assert.doesNotMatch(body, /\/chat\//, "no hand-built chat URL");
 });

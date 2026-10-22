@@ -1658,12 +1658,18 @@ export const SettingsPage: FC = () => {
 										refusal={agentMessagesSnapshot.refusal}
 										onRefreshStatus={refreshAgentMessages}
 										sessions={canonicalSessions}
-										/* The chief-of-staff hold's "Open" goes through the
+										/* The chief-of-staff hold's button goes through the
 										   one shared switch rule, so the URL moves with the
-										   store commit like every other entrance. */
-										onOpenSession={(sessionId) =>
-											void openConversation(navigate, sessionId)
-										}
+										   store commit like every other entrance; the chat
+										   pane's composer takes focus on mount by itself.
+										   The status cache is dropped first so Settings'
+										   mount boundary on the way back reads the hold
+										   fresh and the notice clears once the owner has
+										   sent that message. */
+										onOpenSession={(sessionId) => {
+											agentMessagesModel.invalidateStatus();
+											void openConversation(navigate, sessionId);
+										}}
 									/>
 								) : agentMessagesSnapshot.refusal ? (
 									/*

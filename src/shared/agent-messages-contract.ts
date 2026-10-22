@@ -55,7 +55,11 @@ export const agentMessagesDeliveryHoldSchema = z
 	.object({
 		code: z.string().min(1),
 		count: z.number().int().nonnegative(),
-		session: z.string().min(1).nullable().optional(),
+		/*
+		 * Its own `.catch` (review R1-2): a bad session id degrades only the
+		 * "Message chief of staff" target, never the count the owner must see.
+		 */
+		session: z.string().min(1).nullable().optional().catch(null),
 	})
 	.passthrough()
 	.nullable()
