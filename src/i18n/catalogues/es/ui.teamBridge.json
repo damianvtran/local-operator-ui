@@ -127,5 +127,13 @@
 	"ui.teamBridge.reactions.category7": "Símbolos",
 	"ui.teamBridge.reactions.category8": "Banderas",
 	"ui.teamBridge.reactions.choose": "Elige un emoji",
-	"ui.teamBridge.reactions.noResults": "No se encontraron emojis"
+	"ui.teamBridge.reactions.noResults": "No se encontraron emojis",
+	"ui.teamBridge.replies.action": "Responder en el hilo",
+	"ui.teamBridge.replies.title": "Hilo",
+	"ui.teamBridge.replies.close": "Cerrar hilo",
+	"ui.teamBridge.replies.count": "{count, plural, one {# respuesta} many {# de respuestas} other {# respuestas}}",
+	"ui.teamBridge.replies.last": "última respuesta: {time}",
+	"ui.teamBridge.replies.empty": "Aún no hay respuestas. Inicia el hilo.",
+	"ui.teamBridge.replies.placeholder": "Responde en el hilo",
+	"ui.teamBridge.replies.more": "Cargar más respuestas"
 }

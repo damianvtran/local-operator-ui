@@ -127,5 +127,13 @@
 	"ui.teamBridge.reactions.category7": "علامات",
 	"ui.teamBridge.reactions.category8": "پرچم",
 	"ui.teamBridge.reactions.choose": "ایموجی منتخب کریں",
-	"ui.teamBridge.reactions.noResults": "کوئی ایموجی نہیں ملا"
+	"ui.teamBridge.reactions.noResults": "کوئی ایموجی نہیں ملا",
+	"ui.teamBridge.replies.action": "تھریڈ میں جواب دیں",
+	"ui.teamBridge.replies.title": "تھریڈ",
+	"ui.teamBridge.replies.close": "تھریڈ بند کریں",
+	"ui.teamBridge.replies.count": "{count, plural, one {# جواب} other {# جوابات}}",
+	"ui.teamBridge.replies.last": "آخری جواب {time}",
+	"ui.teamBridge.replies.empty": "ابھی کوئی جواب نہیں۔ تھریڈ شروع کریں۔",
+	"ui.teamBridge.replies.placeholder": "تھریڈ میں جواب دیں",
+	"ui.teamBridge.replies.more": "مزید جوابات لوڈ کریں"
 }

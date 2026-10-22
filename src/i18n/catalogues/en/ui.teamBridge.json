@@ -127,5 +127,13 @@
 	"ui.teamBridge.reactions.category7": "Symbols",
 	"ui.teamBridge.reactions.category8": "Flags",
 	"ui.teamBridge.reactions.choose": "Choose an emoji",
-	"ui.teamBridge.reactions.noResults": "No emoji found"
+	"ui.teamBridge.reactions.noResults": "No emoji found",
+	"ui.teamBridge.replies.action": "Reply in thread",
+	"ui.teamBridge.replies.title": "Thread",
+	"ui.teamBridge.replies.close": "Close thread",
+	"ui.teamBridge.replies.count": "{count, plural, one {# reply} other {# replies}}",
+	"ui.teamBridge.replies.last": "last reply {time}",
+	"ui.teamBridge.replies.empty": "No replies yet. Start the thread.",
+	"ui.teamBridge.replies.placeholder": "Reply in thread",
+	"ui.teamBridge.replies.more": "Load more replies"
 }

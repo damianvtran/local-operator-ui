@@ -129,6 +129,7 @@ const conversation = (id, tenantId) => ({
 	tenant_id: tenantId,
 	kind: "group",
 	name: `Conversation ${id}`,
+	latest_seq: 1,
 	members: [
 		member("Alice", "human", "active", "acct_alice"),
 		member("Bob", "human", "active", "acct_bob"),
@@ -335,6 +336,13 @@ test("the mounted hook bounds the fan-out, orders by unread, filters eligibility
 		}, "every seeded organization to answer before the second poll");
 		await settle();
 
+		fixture.conversations = {
+			conversations: fixture.conversations.conversations.map((row) =>
+				row.id === "bcv_tnt_01" || row.id === "bcv_tnt_a"
+					? { ...row, latest_seq: 2 }
+					: row,
+			),
+		};
 		fixture.tenants.tnt_01.total = 2;
 		fixture.tenants.tnt_01.conversations = [notifyRow("bcv_tnt_01", 2)];
 		fixture.tenants.tnt_a.total = 2;
@@ -351,6 +359,16 @@ test("the mounted hook bounds the fan-out, orders by unread, filters eligibility
 		await act(async () => {
 			await mounted.client.refetchQueries({
 				queryKey: api.teamBridgeKeys.unreadPrefix,
+			});
+		});
+		assert.equal(
+			mounted.notifications.length,
+			0,
+			"unread seq2 must wait for a matching summary snapshot, not link a stale root",
+		);
+		await act(async () => {
+			await mounted.client.refetchQueries({
+				queryKey: api.teamBridgeKeys.conversationsPrefix,
 			});
 		});
 		await until(

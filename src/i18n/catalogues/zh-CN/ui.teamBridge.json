@@ -127,5 +127,13 @@
 	"ui.teamBridge.reactions.category7": "符号",
 	"ui.teamBridge.reactions.category8": "旗帜",
 	"ui.teamBridge.reactions.choose": "选择表情",
-	"ui.teamBridge.reactions.noResults": "未找到表情"
+	"ui.teamBridge.reactions.noResults": "未找到表情",
+	"ui.teamBridge.replies.action": "在讨论串中回复",
+	"ui.teamBridge.replies.title": "讨论串",
+	"ui.teamBridge.replies.close": "关闭讨论串",
+	"ui.teamBridge.replies.count": "{count, plural, other {#条回复}}",
+	"ui.teamBridge.replies.last": "最后回复于{time}",
+	"ui.teamBridge.replies.empty": "还没有回复。发起讨论吧。",
+	"ui.teamBridge.replies.placeholder": "在讨论串中回复",
+	"ui.teamBridge.replies.more": "加载更多回复"
 }
