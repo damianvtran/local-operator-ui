@@ -298,6 +298,75 @@ test("receipt families fold alone, and boundaries still split", () => {
 	}
 });
 
+test("a live run keeps the fold it has painted: a job response cannot reopen it (operator report, 2026-10-21)", () => {
+	/*
+	 * THE OSCILLATION. The licensing rule is positional ("the run's TRAILING
+	 * receipt stretch"), and a positional rule is not monotonic under append, so
+	 * one continuous run used to change shape on every job response:
+	 *
+	 *   [t1, j1, j2]                    -> fold        (bar over 3 rows)
+	 *   [t1, j1, j2, t2]                -> ordinary rows (the call ended the stretch)
+	 *   [t1, j1, j2, t2, j3, j4]        -> fold again
+	 *
+	 * The operator sees the group force itself open and close back, repeatedly,
+	 * with no reader action. While the turn is live, a run this pane has already
+	 * painted folded keeps folding; the latch records that fact and nothing else.
+	 */
+	const tools = (n, prefix = "t") =>
+		Array.from({ length: n }, (_, index) => row(`${prefix}${index}`));
+	const jobs = (n, prefix = "j") =>
+		Array.from({ length: n }, (_, index) =>
+			custom(`${prefix}${index}`, "job_result"),
+		);
+
+	const liveOptions = (latchedFoldIds) => ({
+		...receiptOptions,
+		live: true,
+		latchedFoldIds,
+	});
+
+	const first = foldRuns([...tools(1), ...jobs(2)], liveOptions(new Set()));
+	assert.equal(first.length, 1, "the wall folds on its trailing stretch");
+	assert.equal(first[0].kind, "run");
+	const latched = new Set(first[0].rows.map((row) => row.record.id));
+
+	const grew = [...tools(1), ...jobs(2), ...tools(1, "t2")];
+	const afterCall = foldRuns(grew, liveOptions(latched));
+	assert.equal(
+		afterCall.length,
+		1,
+		"the call that ends the receipt stretch does not dissolve the fold",
+	);
+	assert.equal(
+		afterCall[0].rows.length,
+		4,
+		"the fold grew to hold the new call instead of opening",
+	);
+	assert.deepEqual(
+		afterCall[0].summary.units,
+		["2 shell", "2 job results"],
+		"and its header counts the new call",
+	);
+
+	const withMore = [...grew, ...jobs(2, "j3")];
+	assert.equal(
+		foldRuns(withMore, liveOptions(latched)).length,
+		1,
+		"a further pair of job responses does not refold from scratch",
+	);
+
+	/*
+	 * THE LATCH IS LIVE-ONLY. On a settled list no latch is read, so the final
+	 * rows alone decide - including the head-pair negatives below, which must
+	 * stay ordinary rows.
+	 */
+	assert.deepEqual(
+		foldRuns(grew, receiptOptions).map((group) => group.kind),
+		["row", "row", "row", "row"],
+		"a settled run with one trailing-free call stays ordinary rows",
+	);
+});
+
 test("a run folds on its TRAILING receipt stretch, never a head pair", () => {
 	/*
 	 * The operator's wall leaves `[call, receipt, receipt…]`: the work first,

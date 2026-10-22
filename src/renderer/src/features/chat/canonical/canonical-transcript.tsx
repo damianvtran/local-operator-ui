@@ -4021,6 +4021,38 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		gate !== null;
 
 	/*
+	 * THE LIVE FOLD LATCH (operator report, 2026-10-21: job messages and
+	 * responses "alternate between forcing the tool group open and then closing
+	 * it back again").
+	 *
+	 * A fold is licensed by the run's TRAILING receipt stretch, a positional rule
+	 * that is not monotonic under append: `[t1, j1, j2]` folds, the next call makes
+	 * `[t1, j1, j2, t2]` fail the rule (the stretch has ended), and the next two
+	 * job results fold it again - so the group opened and closed on every job
+	 * response, with no reader action. The latch is the one fact the pure rule
+	 * cannot carry: this pane has already PAINTED that run as a fold. It is read
+	 * only while the turn is live (`foldRuns`'s `latchedFoldIds`), so a live group
+	 * can only grow; the settled shape is still decided by the final rows alone,
+	 * which is why the head-pair negatives (a settled `[peer, peer, tool]` stays
+	 * ordinary rows) are unchanged. Reset per conversation and per clear epoch,
+	 * like every other view registry here.
+	 */
+	const foldLatch = useRef<{
+		session: string | null;
+		epoch: number | undefined;
+		ids: Set<string>;
+	}>({ session: conversation, epoch: transcript.viewEpoch, ids: new Set() });
+	if (
+		foldLatch.current.session !== conversation ||
+		foldLatch.current.epoch !== transcript.viewEpoch
+	)
+		foldLatch.current = {
+			session: conversation,
+			epoch: transcript.viewEpoch,
+			ids: new Set(),
+		};
+
+	/*
 	 * The window's top edge lands on a RUN boundary, not a raw row count (the
 	 * on-load fix, operator report 2026-09-28: a completed run the edge cut
 	 * through could not collapse until the reader scrolled its head in). See
@@ -4179,7 +4211,20 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * rows, never a count that lumped them in as "incoming messages".
 			 */
 			receiptSummaryOf: (rows) => receiptFoldUnits(rows),
+			live: paneIsLive,
+			latchedFoldIds: foldLatch.current.ids,
 		});
+		/*
+		 * Remember what this pass painted folded, so the next one cannot dissolve
+		 * it. Rebuilt from the result rather than accumulated, so an id that leaves
+		 * the list (a paged-out row, a replaced record) cannot pin a run forever.
+		 */
+		const latched = new Set<string>();
+		if (paneIsLive)
+			for (const group of groups)
+				if (group.kind === "run")
+					for (const row of group.rows) latched.add(row.record.id);
+		foldLatch.current.ids = latched;
 		return groups.map((group) =>
 			group.kind === "run"
 				? {
@@ -4197,7 +4242,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					}
 				: group,
 		);
-	}, [visible]);
+	}, [visible, paneIsLive]);
 	/*
 	 * KEYED ON THE WINDOW'S SIGNATURE, NOT ON `visible` (UI perf audit P4; PR-6).
 	 * The foot is arithmetic over the same partition the plan builds - counts,

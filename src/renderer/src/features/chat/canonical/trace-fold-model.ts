@@ -856,6 +856,35 @@ export function foldRuns(
 		/** Receipts may bridge calls but never contribute action arithmetic. */
 		isReceipt?: (row: Row) => boolean;
 		receiptSummaryOf?: (rows: Row[]) => string[];
+		/**
+		 * Whether the turn this list belongs to is STILL BEING WRITTEN.
+		 *
+		 * It exists for one rule, `latchedFoldIds`: a live run's fold must not be
+		 * dissolved by the next call. See that option's note. Absent (the settled
+		 * default, and every pure test) keeps the threshold-only behaviour exactly.
+		 */
+		live?: boolean;
+		/**
+		 * Ids of rows this pane has ALREADY PAINTED folded, while the turn is live.
+		 *
+		 * WHY A LATCH AND NOT ANOTHER THRESHOLD (operator report, 2026-10-21: job
+		 * messages and responses "alternate between forcing the tool group open and
+		 * then closing it back again"). `FOLD_MIN_RECEIPTS` licenses a fold on the
+		 * run's TRAILING receipt stretch, which is positional by design (the head-pair
+		 * negatives below must stay ordinary rows). A positional rule is not
+		 * monotonic under append: `[t1, j1, j2]` folds, `[t1, j1, j2, t2]` does not
+		 * (the new call ends the stretch), `[t1, j1, j2, t2, j3, j4]` folds again - so
+		 * every job response close to a call made the group open and close in turn,
+		 * with no reader action.
+		 *
+		 * The latch is the one fact the pure threshold cannot carry: this run was
+		 * already shown to the reader as a fold. While the turn is live it keeps
+		 * folding, so the group can only ever GROW; at settle the latch is no longer
+		 * consulted and the final shape comes from the final rows alone, which is why
+		 * every settled negative in `trace-fold-model.test.mjs` still holds (the
+		 * head-pair shapes are judged on the completed list, where no latch applies).
+		 */
+		latchedFoldIds?: ReadonlySet<string>;
 	},
 ): FoldGroup[] {
 	const groups: FoldGroup[] = [];
@@ -907,9 +936,20 @@ export function foldRuns(
 		const trailingReceipts = options.isReceipt
 			? trailingReceiptStretch(run, options.isReceipt)
 			: 0;
+		/*
+		 * THE LIVE LATCH (see `latchedFoldIds`). A run this pane has already painted
+		 * folded keeps folding while the turn is being written, so a call arriving
+		 * after a receipt wall cannot dissolve the group it belongs to. Settled
+		 * passes never consult it.
+		 */
+		const latchedHere =
+			options.live === true &&
+			options.latchedFoldIds !== undefined &&
+			run.some((row) => options.latchedFoldIds?.has(row.record.id) === true);
 		if (
 			actions.length >= FOLD_MIN_ACTIONS ||
-			trailingReceipts >= FOLD_MIN_RECEIPTS
+			trailingReceipts >= FOLD_MIN_RECEIPTS ||
+			latchedHere
 		) {
 			/*
 			 * THE ACTION SIDE OF A MIXED LINE IS A COUNT, NOT A SENTENCE.
