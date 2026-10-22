@@ -123,6 +123,34 @@ export function agentMessagesSettingsState(
 	return "C";
 }
 
+/** The runtime's hold code for "open your chief of staff once" (#2777). */
+export const OPEN_CHIEF_OF_STAFF_HOLD = "open_chief_of_staff";
+
+/**
+ * The chief-of-staff delivery hold this section should announce, or null.
+ *
+ * WHY: under consent v1 the runtime will not wake a designated chief of staff
+ * that has never been used, so incoming Team Bridge messages wait silently
+ * until the owner opens that session once. The status read carries the count;
+ * this decides whether there is anything to say and where "Open" goes.
+ *
+ * Null for an older runtime (no field), for nothing waiting (count 0 or
+ * `null`), and for a hold code this build has no copy for: a sentence about
+ * the chief of staff must never describe a different hold. The session id is
+ * the runtime's own designation answer; the local preference is the fallback
+ * for a hold that names none, and with neither the notice still renders but
+ * offers no button, because there is nothing honest to open.
+ */
+export function agentMessagesChiefOfStaffHold(
+	status: AgentMessagesStatus | null,
+): { count: number; sessionId: string | null } | null {
+	const hold = status?.delivery_hold;
+	if (!hold || hold.code !== OPEN_CHIEF_OF_STAFF_HOLD || hold.count <= 0)
+		return null;
+	const sessionId = hold.session || status?.local.session || null;
+	return { count: hold.count, sessionId };
+}
+
 /** The served consent text a surface must render verbatim, or null. */
 export function agentMessagesSettingsConsent(status: AgentMessagesStatus) {
 	return agentMessagesServedConsent(status);

@@ -1,4 +1,5 @@
 import { agentMessagesApi } from "@shared/api/local-operator/agent-messages-api";
+import { NOTICE_BAND } from "@shared/components/common/notice-band";
 import {
 	Alert,
 	AlertDescription,
@@ -35,6 +36,7 @@ import {
 	type AllowlistDraftEntry,
 	type AllowlistEntryKind,
 	type AllowlistMode,
+	agentMessagesChiefOfStaffHold,
 	agentMessagesSettingsAvailability,
 	agentMessagesSettingsConsent,
 	agentMessagesSettingsState,
@@ -77,6 +79,12 @@ export type AgentMessagesSettingsProps = {
 	onRefreshStatus: (force?: boolean) => Promise<unknown> | undefined;
 	/** The real canonical sessions store; the section never invents a row. */
 	sessions?: readonly { session_id: string; title?: string | null }[];
+	/**
+	 * Opens a conversation by session id. The page owns navigation (the section
+	 * stays prop-driven for stories and the test lane); without it the
+	 * chief-of-staff hold notice still explains itself but offers no button.
+	 */
+	onOpenSession?: (sessionId: string) => void;
 };
 
 /** Radix refuses an empty item value, and "" is the designation's own word. */
@@ -98,6 +106,7 @@ export function AgentMessagesSettings({
 	api = agentMessagesApi,
 	onRefreshStatus,
 	sessions = [],
+	onOpenSession,
 }: AgentMessagesSettingsProps) {
 	useI18nLocale();
 	const [load, setLoad] = useState<Load>({ kind: "loading" });
@@ -257,8 +266,26 @@ export function AgentMessagesSettings({
 
 	if (!status || !accountId) return null;
 
+	const hold = agentMessagesChiefOfStaffHold(status);
+
 	return (
 		<div data-agent-messages-section="" className="flex flex-col gap-6">
+			{/*
+			 * Above the settings read on purpose: the hold comes from the status
+			 * read the section already has, so it must not wait behind (or vanish
+			 * with) the settings skeleton or a failed settings read.
+			 */}
+			{hold && (
+				<ChiefOfStaffHoldNotice
+					count={hold.count}
+					onOpen={
+						hold.sessionId && onOpenSession
+							? () => onOpenSession(hold.sessionId as string)
+							: undefined
+					}
+				/>
+			)}
+
 			{actionRefusal && (
 				<Alert variant="warning">
 					<AlertDescription>
@@ -372,6 +399,47 @@ function SettingsSkeleton() {
 		</div>
 	);
 }
+
+/**
+ * "N messages are waiting for your chief of staff" (runtime #2777, F8).
+ *
+ * WHY IT EXISTS. Under consent v1 the runtime holds incoming Team Bridge
+ * messages rather than waking a chief of staff the owner has never used, and
+ * that hold was silent: messages simply never arrived. One action releases
+ * them - opening the session once - so the notice names that action and
+ * carries it.
+ *
+ * WHY IT LOOKS LIKE THIS. It is news, not a fault: the info band grammar
+ * (`NOTICE_BAND`, the delegated-cleanup notice's shape) with its border made
+ * transparent so the wash alone separates it, per the borderless rule for
+ * quiet chrome; a ghost button, not a primary, because nothing is broken.
+ * `<output>` is a polite live region, so a hold that appears while Settings is
+ * open is announced without interrupting.
+ */
+const ChiefOfStaffHoldNotice: FC<{ count: number; onOpen?: () => void }> = ({
+	count,
+	onOpen,
+}) => (
+	<output className="block" data-agent-messages-hold="open_chief_of_staff">
+		<Alert variant="info" className={cn(NOTICE_BAND, "border-transparent")}>
+			<div className="flex w-full min-w-0 items-center gap-3">
+				<p className="min-w-0 flex-1 text-body-sm text-ink">
+					{t("ui.agentMessages.settings.hold.chief_of_staff", { count })}
+				</p>
+				{onOpen && (
+					<Button
+						variant="ghost"
+						size="sm"
+						className="shrink-0"
+						onClick={onOpen}
+					>
+						{t("ui.agentMessages.settings.hold.open")}
+					</Button>
+				)}
+			</div>
+		</Alert>
+	</output>
+);
 
 /** The consent block every state that collects consent renders verbatim. */
 const ConsentText: FC<{ text: string }> = ({ text }) => (
