@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -177,6 +178,220 @@ test("the merged view withholds a row whose organization it cannot name", () => 
 			.map((row) => row.id),
 		["bcv_1", "bcv_x"],
 	);
+});
+
+/*
+ * F6 on #1314: the merged filter and the labels come from the HUB's tenant list
+ * (bridge status `status.tenants[]`), not Radient memberships. The memberships
+ * read can lack a tenant the hub serves; filtering by it emptied the rail.
+ */
+test("the hub's tenant list, not memberships, decides which merged rows show", () => {
+	const hubTenants = [
+		{
+			tenant_id: "tnt_1",
+			tenant_name: "Minerva",
+			eligible: true,
+			endpoint: null,
+		},
+		{
+			tenant_id: "tnt_2",
+			tenant_name: "Northwind Collective",
+			eligible: true,
+			endpoint: null,
+		},
+	];
+	const memberships = [membership("tnt_1", "Minerva", "owner")];
+	const rows = [
+		conversation("bcv_1", "tnt_1", "2026-10-18T10:00:00Z"),
+		conversation("bcv_2", "tnt_2", "2026-10-18T11:00:00Z"),
+		conversation("bcv_3", "tnt_3", "2026-10-18T12:00:00Z"),
+	];
+
+	// The old filter, reproduced: memberships alone drop the hub's tnt_2 row.
+	const membershipOnly = model.organizationOptions(memberships);
+	assert.deepEqual(
+		model
+			.visibleConversationRows(
+				rows,
+				model.TEAM_BRIDGE_ALL_SCOPE,
+				membershipOnly,
+			)
+			.map((row) => row.id),
+		["bcv_1"],
+	);
+
+	const fromHub = model.organizationOptions(memberships, [], hubTenants);
+	assert.deepEqual(
+		fromHub.map((org) => [org.tenantId, org.name, org.role]),
+		[
+			["tnt_1", "Minerva", "owner"],
+			["tnt_2", "Northwind Collective", ""],
+		],
+	);
+	// Merged: both hub tenants show; tnt_3, which the hub does not list, stays
+	// hidden.
+	assert.deepEqual(
+		model
+			.visibleConversationRows(rows, model.TEAM_BRIDGE_ALL_SCOPE, fromHub)
+			.map((row) => row.id),
+		["bcv_2", "bcv_1"],
+	);
+	// The per-org scope keeps its existing behaviour: the server's rows as sent.
+	assert.deepEqual(
+		model
+			.visibleConversationRows([rows[1]], "tnt_2", fromHub)
+			.map((row) => row.id),
+		["bcv_2"],
+	);
+	assert.equal(
+		model.organizationForScope(fromHub, "tnt_2")?.name,
+		"Northwind Collective",
+	);
+	assert.equal(
+		model.conversationOrganizationName(rows[1], fromHub),
+		"Northwind Collective",
+	);
+	assert.equal(model.conversationOrganizationName(rows[2], fromHub), null);
+});
+
+test("a hub tenant is named by the hub, then the membership, then its id", () => {
+	const orgs = model.organizationOptions(
+		[
+			membership("tnt_1", "Minerva (membership)"),
+			membership("tnt_2", "Northwind"),
+		],
+		[{ tenant_id: "tnt_2", unread: 4 }],
+		[
+			{
+				tenant_id: "tnt_1",
+				tenant_name: "Minerva",
+				eligible: true,
+				endpoint: null,
+			},
+			{ tenant_id: "tnt_2", eligible: true, endpoint: null },
+			{ tenant_id: "tnt_9", tenant_name: "  ", eligible: true, endpoint: null },
+			{
+				tenant_id: "tnt_9",
+				tenant_name: "Duplicate",
+				eligible: true,
+				endpoint: null,
+			},
+		],
+	);
+	assert.deepEqual(
+		orgs.map((org) => [org.tenantId, org.name, org.unread]),
+		[
+			["tnt_1", "Minerva", 0],
+			["tnt_2", "Northwind", 4],
+			["tnt_9", "tnt_9", 0],
+		],
+	);
+});
+
+test("without a hub tenant list, active memberships remain the source", () => {
+	assert.deepEqual(
+		model
+			.organizationOptions([membership("tnt_1", "Minerva")], [], null)
+			.map((org) => org.tenantId),
+		["tnt_1"],
+	);
+});
+
+/*
+ * #1322 round 1 m2: the container's half of F6. The page reads the hub list
+ * through `hubTenantList` and decides the merged rail's loading/error through
+ * `organizationsReadState`; reverting either to memberships would pass the
+ * view test above, so both decisions are asserted here and the page is held
+ * to calling them.
+ */
+test("the hub list is read from the status payload, absent stays null", () => {
+	const tenants = [{ tenant_id: "tnt_2", eligible: true, endpoint: null }];
+	assert.deepEqual(model.hubTenantList({ status: { tenants } }), tenants);
+	// Null, not [], is what keeps memberships as the fallback source.
+	assert.equal(model.hubTenantList({ status: null }), null);
+	assert.equal(model.hubTenantList(undefined), null);
+});
+
+test("memberships hold or fail the merged rail only without a hub list", () => {
+	const loading = { isLoading: true, isError: false };
+	const failed = { isLoading: false, isError: true };
+	const hub = [{ tenant_id: "tnt_2" }];
+	assert.deepEqual(model.organizationsReadState(hub, loading), {
+		pending: false,
+		failed: false,
+	});
+	assert.deepEqual(model.organizationsReadState(hub, failed), {
+		pending: false,
+		failed: false,
+	});
+	assert.deepEqual(model.organizationsReadState(null, loading), {
+		pending: true,
+		failed: false,
+	});
+	assert.deepEqual(model.organizationsReadState(null, failed), {
+		pending: false,
+		failed: true,
+	});
+});
+
+test("the page wires the hub list into the organizations and the rail state", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/team-bridge/team-bridge-page.tsx",
+		"utf8",
+	);
+	assert.match(source, /const hubTenants = hubTenantList\(status\.data\);/);
+	assert.match(
+		source,
+		/organizationOptions\(\s*memberships\.memberships,\s*unread\.data\?\.organizations,\s*hubTenants,\s*\)/,
+	);
+	assert.match(source, /organizationsReadState\(hubTenants, memberships\)/);
+	// The rail and the switcher read the derived state, never memberships raw.
+	assert.match(source, /mergedView && organizationsPending/);
+	assert.match(source, /mergedView && organizationsFailed/);
+	assert.doesNotMatch(source, /mergedView && memberships\.is(Loading|Error)/);
+	assert.doesNotMatch(source, /membershipsLoading=\{memberships\.isLoading\}/);
+	assert.doesNotMatch(source, /organizationsFailed=\{memberships\.isError\}/);
+});
+
+/*
+ * #1322 round 1 m1: a notification banner names its org from the account
+ * aggregate's `tenant_name`, which the watcher already holds, before
+ * memberships.
+ */
+test("the notification watcher names orgs from the unread aggregate first", () => {
+	const aggregate = [
+		{ tenant_id: "tnt_2", tenant_name: "Northwind", unread: 3, eligible: true },
+		{ tenant_id: "tnt_1", tenant_name: "", unread: 1, eligible: true },
+	];
+	const orgs = model.organizationOptions(
+		[membership("tnt_1", "Minerva")],
+		aggregate,
+		aggregate,
+	);
+	assert.deepEqual(
+		orgs.map((org) => [org.tenantId, org.name, org.unread]),
+		[
+			["tnt_2", "Northwind", 3],
+			["tnt_1", "Minerva", 1],
+		],
+	);
+	const source = readFileSync(
+		"src/renderer/src/features/team-bridge/use-team-bridge-notifications.ts",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/organizationOptions\(\s*membershipsData\?\.memberships \?\? \[\],\s*accountUnread\.data\.organizations,\s*accountUnread\.data\.organizations \?\? null,\s*\)/,
+	);
+});
+
+test("a cast membership with no name does not throw", () => {
+	const orgs = model.organizationOptions(
+		[{ tenant_id: "tnt_1", role: "member", status: "active" }],
+		[],
+		[{ tenant_id: "tnt_1", tenant_name: "" }],
+	);
+	assert.equal(orgs[0].name, "tnt_1");
 });
 
 test("every merged row still names exactly one tenant", () => {

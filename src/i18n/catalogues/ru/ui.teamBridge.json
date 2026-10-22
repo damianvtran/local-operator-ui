@@ -137,5 +137,7 @@
 	"ui.teamBridge.replies.placeholder": "Ответить в ветке",
 	"ui.teamBridge.replies.more": "Загрузить ещё ответы",
 	"ui.teamBridge.actions.label": "Действия с сообщением",
-	"ui.teamBridge.actions.more": "Другие действия"
+	"ui.teamBridge.actions.more": "Другие действия",
+	"ui.teamBridge.sender.unknown_person": "Неизвестный пользователь",
+	"ui.teamBridge.sender.unknown_agent": "Неизвестный агент"
 }
