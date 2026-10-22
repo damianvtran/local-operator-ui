@@ -456,18 +456,23 @@ async function mountHook(props) {
 }
 const settle = () =>
 	act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+/* The runtime's real answer shape: its CRUD envelope around the hub's `{attachment}`. */
 const staged = (id) => ({
 	status: 201,
 	kind: "json",
 	body: {
-		attachment: {
-			id,
-			mime: "image/png",
-			size: PNG.byteLength,
-			width: 1,
-			height: 1,
-			state: "staged",
-			expires_at: "2099-01-01T00:00:00Z",
+		status: 201,
+		message: "Attachment staged.",
+		result: {
+			attachment: {
+				id,
+				mime: "image/png",
+				size: PNG.byteLength,
+				width: 1,
+				height: 1,
+				state: "staged",
+				expires_at: "2099-01-01T00:00:00Z",
+			},
 		},
 	},
 });
