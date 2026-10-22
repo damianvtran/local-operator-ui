@@ -251,6 +251,14 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/browser-native-determination.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless for the post-merge S4b native determination; the build carries the live PostHog key, so this launch needs the telemetry switch",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
 		"scripts/browser-chrome-s4b-probe.mjs",
 		"spawn",
 		1,
