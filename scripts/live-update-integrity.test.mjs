@@ -563,7 +563,7 @@ test("a same-epoch full-state update at the SAME sequence clears the notice", as
 
 test("an ordinary delta at an equal sequence is still rejected", async () => {
 	const view = await mount([]);
-	deliver(updateFrame(3, 1, { cwd: "/replayed" }));
+	deliver(updateFrame(3, 1, { changes: { cwd: "/replayed" } }));
 	await pump();
 	assert.equal(
 		view().frontend.cwd,
