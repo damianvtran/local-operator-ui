@@ -1985,6 +1985,39 @@ test("a turn that GROWS while the live flag is down does not condense (operator 
 		rowBox(mounted, "grow-t2") !== null,
 		"the new row is painted in place",
 	);
+
+	/*
+	 * AND A PAGE LANDING ABOVE IS NOT GROWTH (QA round 1, Q-F1). Loading older
+	 * history lengthens a head-cut run too, but the reader asked for it and no
+	 * turn is being written; only a row appended at the TAIL moves the run's last
+	 * id, which is the append this arm is about.
+	 */
+	const page = await mount(
+		t,
+		[
+			userRecord("page-old"),
+			toolRecord("page-t0"),
+			prose("page-p0"),
+			toolRecord("page-t1"),
+		],
+		{ frontend: { session_id: "synthetic-page" }, waiting: false },
+	);
+	assert.ok(bar(page) !== null, "the page fixture starts collapsed");
+	await page.render(
+		[
+			userRecord("page-cut"),
+			toolRecord("page-t-1"),
+			userRecord("page-old"),
+			toolRecord("page-t0"),
+			prose("page-p0"),
+			toolRecord("page-t1"),
+		],
+		{ frontend: { session_id: "synthetic-page" }, waiting: false },
+	);
+	assert.ok(
+		bar(page) !== null,
+		"older rows landing above a finished run do not arm the latch",
+	);
 });
 
 test("a reconnect gap cannot fold a run the pane was watching (operator report, 2026-10-21)", async (t) => {

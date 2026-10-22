@@ -5179,19 +5179,28 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * holding no latch and arriving collapsed exactly as before; only growth
 	 * OBSERVED (a later pass on the same conversation) can arm.
 	 */
-	const latchSeen = useRef<{ session: string | null; count: number }>({
+	const latchSeen = useRef<{ session: string | null; tailId: string | null }>({
 		session: null,
-		count: -1,
+		tailId: null,
 	});
 	useEffect(() => {
 		const newest = collapse.runs.at(-1);
 		const runId = newest ? visible[newest.run.openingIndex]?.record.id : null;
 		if (!newest || !runId) return;
-		const count = newest.recordIds.length;
+		/*
+		 * GROWTH AT THE TAIL, not any change of size (QA round 1, Q-F1). A page
+		 * landing ABOVE a head-cut newest run also grows the run, and that is the
+		 * reader loading older history, not the turn being written - counting rows
+		 * armed the latch for a finished, answerless run and kept it expanded after
+		 * "load older". The run's LAST row id moves only when a row is appended to
+		 * its end, which is the append this rule is about; a head prepend leaves it
+		 * unchanged.
+		 */
+		const tailId = newest.recordIds.at(-1) ?? null;
 		const seen = latchSeen.current;
 		const firstLook = seen.session !== conversation;
-		const grew = !firstLook && count > seen.count;
-		latchSeen.current = { session: conversation, count };
+		const grew = !firstLook && tailId !== null && tailId !== seen.tailId;
+		latchSeen.current = { session: conversation, tailId };
 		const wrote = grew && newest.answerId === null;
 		if (!collapseInputs.live && !wrote) return;
 		writeWatchedRun(conversation, runId);
