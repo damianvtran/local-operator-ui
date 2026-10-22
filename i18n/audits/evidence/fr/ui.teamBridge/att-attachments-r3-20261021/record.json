@@ -1,0 +1,177 @@
+{
+ "audit_id": "att-attachments-r3-20261021",
+ "date": "2026-10-21",
+ "locale": "fr",
+ "namespace": "ui.teamBridge",
+ "source_commit": "b787a8458fb1c44a7e479949155c6e32240d6e79",
+ "source_base": "8cf05961d64322fe64ebccd6282069c7f52f12f3",
+ "scope": "Round-3 delta of #1314 (8cf05961d6..b787a8458f): 1 fr value(s) changed/added (failed_count): the new en attachments.failed_count (design D13). The other 171 values are byte-unchanged and inherited from att-r2-fr.",
+ "status": "audited",
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-21",
+  "session": "03594b2dcc02",
+  "job": "5084d4f46f6c",
+  "commit": "b787a8458f"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-opus-5-5",
+   "date": "2026-10-21",
+   "result": "clean-with-findings",
+   "instance": "att-r3-fr",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "receipt": "i18n/receipts/att-r3-fr.json",
+   "receipt_sha256": "a758272ea2d66753f5ca97cc9decdae27679817c617fa894e1aec80548ac6958",
+   "scope": "Team Bridge image attachments round 3: remediation delta (1 key(s)) independently audited at head b787a8458f. Catalogue audit only, not rendered-fit, activation or release approval.",
+   "note": "Round 3: ATT-FR-R3-01 NIT (failed_count many arm, unreachable). No rendered-fit claim."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "att-r1-fr",
+   "session": "4177e47d05b0",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 23,
+   "target_sha256": "a5b8b5ddbbc1523366b5daeaa2817b30aa8a53cb9a3f656c19ddc92fe518a8e4",
+   "findings": [
+    {
+     "id": "ATT-FR-01",
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.remove"
+    },
+    {
+     "id": "ATT-FR-02",
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.error_upload"
+    },
+    {
+     "id": "ATT-FR-03",
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.send_blocked"
+    },
+    {
+     "id": "ATT-FR-04",
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.error_type"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/att-r1-fr.json",
+    "sha256": "39df265b9409774901916d375b69fccd737dd819a69f1255832a8052f2217de9"
+   }
+  },
+  {
+   "round": 2,
+   "instance": "att-r2-fr",
+   "session": "12aab7b684ab",
+   "job": "d8717b64c01a",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 10,
+   "target_sha256": "64093579763efc8c0c1b3edf81b35b22ea0021181241cdade19e4d2aa2b3f6db",
+   "findings": [],
+   "round1_dispositions": [
+    {
+     "finding": "ATT-FR-01",
+     "keys": "remove/retry",
+     "verified": "applied: U+202F (bytes e2 80 af) before ':' verified in both values ('Retirer : {label}', 'Réessayer : {label}')"
+    },
+    {
+     "finding": "ATT-FR-02",
+     "keys": "error_upload/error_offline/uploading",
+     "verified": "applied verbatim: 'téléversée' in error_upload and error_offline, 'Téléversement de l’image…' in uploading; upload/send verbs now separated in all three"
+    },
+    {
+     "finding": "ATT-FR-03",
+     "keys": "send_blocked",
+     "verified": "applied verbatim: 'Avant d’envoyer, retirez les images signalées en erreur ou réessayez de les téléverser.'"
+    },
+    {
+     "finding": "ATT-FR-04",
+     "keys": "error_type",
+     "verified": "applied verbatim: 'Utilisez un fichier PNG, JPEG, WebP ou GIF.'"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/att-r2-fr.json",
+    "sha256": "13c3adee6e328f0605d8be8a43478c4ad7df39ea0c9065e2a2dffa1f975b01c5"
+   }
+  },
+  {
+   "round": 3,
+   "instance": "att-r3-fr",
+   "session": "57c37248b1be",
+   "job": "8d68b2c4680c",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 1,
+   "target_sha256": "8b41ea984ccf319fd8c5ce7c3a237e4576c7d1097c0a825247db1fc2df635e11",
+   "findings": [
+    {
+     "id": "ATT-FR-R3-01",
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.failed_count"
+    }
+   ],
+   "round2_dispositions": [],
+   "receipt": {
+    "path": "i18n/receipts/att-r3-fr.json",
+    "sha256": "a758272ea2d66753f5ca97cc9decdae27679817c617fa894e1aec80548ac6958"
+   }
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+   "sha256": "8b41ea984ccf319fd8c5ce7c3a237e4576c7d1097c0a825247db1fc2df635e11"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "53d21a0cbcb9a35d6ea280dec60aa55225d995e21a87d92ed5cb5f7ff82bcf38"
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/fr.md",
+   "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+  }
+ },
+ "independence": "Translator (coder session 03594b2dcc02, job 5084d4f46f6c, commit b787a8458f) and round-3 auditor (translation-auditor session 57c37248b1be, job 8d68b2c4680c) are different agents in different sessions; the round-3 auditor is also distinct from the round-2 auditor session 12aab7b684ab and the round-1 auditor sessions. The auditor never edited catalogues, ran no git operations and did not run ledger-assemble.",
+ "limitations": [
+  "Browser not used; no rendered-fit, screenshots, glyph metrics, pseudo-localization or activation evidence claimed.",
+  "Round 3 covers the b787a8458f delta only; unchanged values rely on att-r2/att-r1 and their inherited receipts.",
+  "Open NIT ATT-FR-R3-01 awaits the coder's disposition (fix, or reject as unreachable at count 2-4)."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/att-r1-fr.json",
+   "sha256": "39df265b9409774901916d375b69fccd737dd819a69f1255832a8052f2217de9"
+  },
+  {
+   "path": "i18n/receipts/att-r2-fr.json",
+   "sha256": "13c3adee6e328f0605d8be8a43478c4ad7df39ea0c9065e2a2dffa1f975b01c5"
+  },
+  {
+   "path": "i18n/receipts/att-r3-fr.json",
+   "sha256": "a758272ea2d66753f5ca97cc9decdae27679817c617fa894e1aec80548ac6958"
+  }
+ ]
+}
