@@ -51,6 +51,10 @@ import {
 	type PublicAgentSort,
 	usePublicAgentsQuery,
 } from "./hooks/use-public-agents-query";
+import {
+	PUBLIC_TEAMS_PER_PAGE,
+	usePublicTeamsQuery,
+} from "./hooks/use-public-teams-query";
 import { orgRefusalFromError, usableOrgs } from "./org-access";
 import { orgSurfaceNotice, orgSurfaceReady } from "./org-surface-gate";
 
@@ -339,39 +343,66 @@ export const AgentHubPage: React.FC = () => {
 	const hasFilters = selectedCategory !== null || debouncedSearch !== "";
 
 	/*
-	 * THE TEAMS READ RIDES SCOPE ENTRY, not the Teams tab.
+	 * THE TEAMS READS RIDE SCOPE ENTRY, not the Teams tab.
 	 *
-	 * Eager on purpose: the tab carries its count ("Teams 2") so the split is
-	 * legible without visiting it, and that number cannot exist without the read.
-	 * It costs nothing over the old layout, which mounted the roster (and so read
-	 * the list) on every org-scope entry too. `OrgTeamsList` calls the same hook
-	 * with the same key, so the two observers share ONE request; a tab switch
-	 * re-issues neither list (`staleTime` five minutes, focus refetch off), and a
+	 * Eager on purpose, in BOTH scopes: the tab carries its count ("Teams 2") so
+	 * the split is legible without visiting it, and that number cannot exist
+	 * without the read. The organization's roster was already read on every
+	 * org-scope entry before the tab existed; the public listing is one anonymous
+	 * page-1 read per public-scope entry, less than the agent grid beside it.
+	 *
+	 * ONE READ PER SCOPE. `OrgTeamsList` and `PublicTeamsLibrary` call the same
+	 * hooks with the same keys as the two observers here, so the tab and the list
+	 * it labels share ONE cache entry and cannot disagree about the number they
+	 * both paint. The public key is `(page, perPage)`, so the count observes PAGE
+	 * 1 with the library's own page size (`PUBLIC_TEAMS_PER_PAGE`): the entry the
+	 * library registers when it mounts. A later page is a separate entry, but
+	 * `total_records` is page-independent, so the count stays right while the
+	 * reader pages. `staleTime` five minutes and focus refetch off mean a tab
+	 * switch or a scope flip inside that window re-issues neither list, and a
 	 * refused read is not re-issued by the roster mounting either
-	 * (`retryOnMount: false` in the hook - QA round 1, Q1). The public scope passes
-	 * no tenant, so THIS query is disabled and issues zero reads: the public
-	 * catalogue has a query of its own (`usePublicTeamsQuery`, read by the library
-	 * the public Teams view mounts), which the tab's count deliberately does not
-	 * observe - its total is already on the library's own line, and a second
-	 * observer here would re-issue the read every time the library pages.
+	 * (`retryOnMount: false` in the org hook - QA round 1, Q1).
 	 *
-	 * The count is the number of rows LOADED: `org_teams.list` returns the whole
-	 * unpaginated roster and reports no total, so no other number exists to show.
+	 * THE ORG COUNT IS THE NUMBER OF ROWS LOADED: `org_teams.list` returns the
+	 * whole unpaginated roster and reports no total, so no other number exists to
+	 * show. THE PUBLIC COUNT IS THE CATALOGUE'S TOTAL, never the rows on screen:
+	 * that listing is paginated, so a page of three rows under a catalogue of nine
+	 * must say nine. `null` is "no number yet" and renders nothing, exactly like
+	 * the other two counts; zero is a real total and renders `0`.
 	 */
 	const teamsQuery = useOrgTeamsQuery({ tenantId: orgScopeId });
+	const publicTeamsQuery = usePublicTeamsQuery({
+		page: 1,
+		perPage: PUBLIC_TEAMS_PER_PAGE,
+		/*
+		 * The public catalogue is a different catalogue from the organization's, and
+		 * nothing visible in an org scope reads its number: in that scope the tab is
+		 * the roster's length. Disabled rather than merely unused, so entering an
+		 * organization does not issue a read it never paints - and re-enabling it on
+		 * the way back does not refetch either, because the cached entry is still
+		 * fresh (`staleTime`).
+		 */
+		enabled: scope === PUBLIC_SCOPE,
+	});
+	const orgTeamsCount =
+		orgScopeId && teamsQuery.isSuccess ? teamsQuery.teams.length : null;
+	const publicTeamsCount = publicTeamsQuery.isSuccess
+		? (publicTeamsQuery.pagination?.totalRecords ?? null)
+		: null;
 	/*
 	 * THE TEAMS COUNT IS SUPPRESSED UNDER THE SAME FILTER AS THE AGENTS ONE (UX
-	 * round 2, U11). It is not a filtered number - `org_teams.list` takes no
-	 * filters - but leaving it up while "Agents" went bare read as an asymmetric
-	 * pair ("Agents   Teams 2") with nothing saying which quiet count meant what.
-	 * Both tabs now say nothing while a search or category is active, and the
-	 * status line carries the filtered figure; the counts come back the moment the
-	 * filter is cleared.
+	 * round 2, U11). It is not a filtered number - neither teams listing takes a
+	 * hub-side filter - but leaving it up while "Agents" went bare read as an
+	 * asymmetric pair ("Agents   Teams 2") with nothing saying which quiet count
+	 * meant what. Both tabs now say nothing while a search or category is active,
+	 * and the status line carries the filtered figure; the counts come back the
+	 * moment the filter is cleared.
 	 */
-	const teamsCount =
-		orgScopeId && teamsQuery.isSuccess && !hasFilters
-			? teamsQuery.teams.length
-			: null;
+	const teamsTabCount = hasFilters
+		? null
+		: scope === PUBLIC_SCOPE
+			? publicTeamsCount
+			: orgTeamsCount;
 
 	/*
 	 * THE SKILLS READ ALSO RIDES SCOPE ENTRY, for the same reason the teams one
@@ -701,8 +732,8 @@ export const AgentHubPage: React.FC = () => {
 		 */
 		if (!orgScopeId) statusSentence = "\u00a0";
 		else if (teamsQuery.isLoading) statusSentence = "Loading teams…";
-		else if (teamsCount !== null)
-			statusSentence = countPhrase(teamsCount, "team");
+		else if (teamsTabCount !== null)
+			statusSentence = countPhrase(teamsTabCount, "team");
 		/*
 		 * A refused or failed read still says WHOSE view this is (agent review
 		 * round 1, m5): the line used to go to zero height here and the roster's
@@ -808,7 +839,7 @@ export const AgentHubPage: React.FC = () => {
 									value === "agents"
 										? agentsTabCount
 										: value === "teams"
-											? teamsCount
+											? teamsTabCount
 											: skillsCount;
 								return (
 									<TabsTrigger

@@ -282,6 +282,25 @@ const mountPage = async ({
 				},
 			});
 		}
+		/*
+		 * THE PAGE READS THE PUBLIC TEAM CATALOGUE TOO, for the Teams tab count
+		 * (the sibling `agent-hub-teams-tab-count` suite tests that behaviour). This
+		 * harness mounts the whole page, so it answers the read: without an arm here
+		 * every mount issues a request that lands in the catch-all, and its retry
+		 * timer outlives the assertions.
+		 */
+		if (url.pathname === "/v1/teams") {
+			return jsonResponse(200, {
+				msg: "Teams listed successfully",
+				result: {
+					page: 1,
+					per_page: 12,
+					total_pages: 0,
+					total_records: 0,
+					records: [],
+				},
+			});
+		}
 		throw new Error(`unexpected public-hub fetch: ${url}`);
 	};
 	dom.window.fetch = hubFetch;
