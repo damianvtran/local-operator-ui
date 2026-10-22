@@ -1937,6 +1937,99 @@ test("a reconnect frame cannot collapse the reader's opened bar (operator report
 	);
 });
 
+test("a turn that GROWS while the live flag is down stops condensing (operator frames, 2026-10-21)", async (t) => {
+	/*
+	 * THE SECOND MECHANISM BEHIND THE FRAMES. Captured from a live turn: the
+	 * turn's rows out (the working line saying it is thinking), then the same
+	 * turn painted as its bar a frame later, then out again.
+	 *
+	 * The plan's `anchored` falls back to the pane's instantaneous `live` in the
+	 * gap between two calls, where no row is streaming and no call is in flight.
+	 * A pane that never caught a live pass for this run holds no latch, so every
+	 * dip alternates the whole turn. Growth of the newest run is the fact that
+	 * does not dip: rows are appended only while the turn is being written.
+	 *
+	 * Prose between the calls keeps the TOOL-GROUP tier out of this fixture
+	 * (`foldRuns` only folds a run of three or more adjacent actions), so the bar
+	 * these assertions are about is the turn's own.
+	 *
+	 * WHAT THIS PROVES, EXACTLY (agent review round 1, M2): the assertion is the
+	 * state after the arming pass has committed - the growth pass renders once
+	 * unarmed and the effect's setState re-renders it armed - so it proves the
+	 * turn does not STAY condensed once growth is observed, not that the very first
+	 * frame of the append is already expanded. The frame between the two is the
+	 * pass the effect cannot preempt.
+	 */
+	const prose = (id) => ({
+		kind: "assistant",
+		id,
+		ts: TS,
+		text: "Working through it.",
+		streaming: false,
+		stopReason: null,
+	});
+	const records = [
+		userRecord("grow-user"),
+		toolRecord("grow-t0"),
+		prose("grow-p0"),
+		toolRecord("grow-t1"),
+		prose("grow-p1"),
+	];
+	const over = { frontend: { session_id: "synthetic-grow" }, waiting: false };
+	__resetWatchedRuns();
+	const mounted = await mount(t, records, over);
+	assert.ok(
+		bar(mounted) !== null,
+		"the baseline pass paints the turn's bar (no latch before growth)",
+	);
+	await mounted.render(
+		[...records, prose("grow-p2"), toolRecord("grow-t2")],
+		over,
+	);
+	assert.ok(
+		bar(mounted) === null,
+		"a run that gained a row is being written: no bar while the flag is down",
+	);
+	assert.ok(
+		rowBox(mounted, "grow-t2") !== null,
+		"the new row is painted in place",
+	);
+
+	/*
+	 * AND A PAGE LANDING ABOVE IS NOT GROWTH (QA round 1, Q-F1). Loading older
+	 * history lengthens a head-cut run too, but the reader asked for it and no
+	 * turn is being written; only a row appended at the TAIL moves the run's last
+	 * id, which is the append this arm is about.
+	 */
+	__resetWatchedRuns();
+	const page = await mount(
+		t,
+		[
+			userRecord("page-old"),
+			toolRecord("page-t0"),
+			prose("page-p0"),
+			toolRecord("page-t1"),
+		],
+		{ frontend: { session_id: "synthetic-page" }, waiting: false },
+	);
+	assert.ok(bar(page) !== null, "the page fixture starts collapsed");
+	await page.render(
+		[
+			userRecord("page-cut"),
+			toolRecord("page-t-1"),
+			userRecord("page-old"),
+			toolRecord("page-t0"),
+			prose("page-p0"),
+			toolRecord("page-t1"),
+		],
+		{ frontend: { session_id: "synthetic-page" }, waiting: false },
+	);
+	assert.ok(
+		bar(page) !== null,
+		"older rows landing above a finished run do not arm the latch",
+	);
+});
+
 test("a reconnect gap cannot fold a run the pane was watching (operator report, 2026-10-21)", async (t) => {
 	/*
 	 * THE LATCH HALF, MEASURED WHERE IT IS PAINTED (review round 2, M1). The

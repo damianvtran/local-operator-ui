@@ -5149,11 +5149,67 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * a first open of a finished transcript - holding no latch and arriving
 	 * collapsed exactly as today.
 	 */
+	/*
+	 * THE SECOND ARMING CONDITION: A RUN THAT GREW IS BEING WRITTEN (operator
+	 * report, 2026-10-21: the conversation "briefly flicker[s] some different
+	 * text on for a frame or two", captured as the same turn's rows visible and
+	 * then replaced by its bar and back again).
+	 *
+	 * WHY THE FLAG ALONE IS NOT ENOUGH. The model's `anchored` reads
+	 * `live || watched || runStatesItsOwnLiveness`, and in the gap BETWEEN two
+	 * calls a turn has no streaming row and no in-flight call - so the plan falls
+	 * back to the pane's instantaneous `live`. A live turn with settled rows and
+	 * no closing answer then paints as a bar when the flag dips and as rows when
+	 * it returns (`turn-collapse-model.test.mjs`'s dip case), and the latch is
+	 * the only thing that stops it - but the latch is armed by a LIVE pass alone.
+	 * A pane that never caught a live pass for this run (a re-render that missed
+	 * the window, a mount that arrived between calls, a session the pane opened
+	 * with the flag already down) holds no latch, so every dip alternates the
+	 * whole turn for as long as the reader watches.
+	 *
+	 * WHAT ARMS IT. The newest run gaining a row is not a sample of a flag: rows
+	 * are APPENDED to a run only while it is being written, and a finished turn's
+	 * rows never grow under a mounted pane. So growth since the pass this pane
+	 * last saw is a fact about the data, and it licenses the same latch the flag
+	 * does. A run with its closing answer already landed is excluded: a later row
+	 * after a delivered answer opens a new cycle, not a turn still being written.
+	 *
+	 * THE FIRST LOOK NEVER ARMS. The baseline is taken without writing, which is
+	 * what keeps a fresh pane - a reload, a first open of a finished transcript -
+	 * holding no latch and arriving collapsed exactly as before; only growth
+	 * OBSERVED (a later pass on the same conversation) can arm.
+	 */
+	/*
+	 * `seen` is a FIELD, not an inference from `session`: the conversation id is
+	 * itself nullable (the child reader mounts with `frontend: null`), so a
+	 * `session !== conversation` test read a null-conversation mount as a second
+	 * look and armed on its first pass (agent review round 1, M1).
+	 */
+	const latchSeen = useRef<{
+		seen: boolean;
+		session: string | null;
+		tailId: string | null;
+	}>({ seen: false, session: null, tailId: null });
 	useEffect(() => {
-		if (!collapseInputs.live) return;
 		const newest = collapse.runs.at(-1);
 		const runId = newest ? visible[newest.run.openingIndex]?.record.id : null;
-		if (!runId) return;
+		if (!newest || !runId) return;
+		/*
+		 * GROWTH AT THE TAIL, not any change of size (QA round 1, Q-F1). A page
+		 * landing ABOVE a head-cut newest run also grows the run, and that is the
+		 * reader loading older history, not the turn being written - counting rows
+		 * armed the latch for a finished, answerless run and kept it expanded after
+		 * "load older". The run's LAST row id moves only when a row is appended to
+		 * its end, which is the append this rule is about; a head prepend leaves it
+		 * unchanged.
+		 */
+		const tailId = newest.recordIds.at(-1) ?? null;
+		const seen = latchSeen.current;
+		const firstLook = !seen.seen || seen.session !== conversation;
+		const grew = !firstLook && tailId !== null && tailId !== seen.tailId;
+		latchSeen.current = { seen: true, session: conversation, tailId };
+		const wrote = grew && newest.answerId === null;
+		if (!collapseInputs.live && !wrote) return;
 		writeWatchedRun(conversation, runId);
 		setWatchedRun((current) => (current === runId ? current : runId));
 	}, [collapse, collapseInputs.live, conversation, visible]);
