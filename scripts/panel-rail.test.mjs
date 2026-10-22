@@ -483,12 +483,15 @@ test("aria-pressed follows each of the six store flags, one at a time", async ()
 	});
 });
 
-test("the console item follows liveness: open-with-history is unlit and its press opens a terminal", async () => {
+test("the console item follows liveness, and an open history pane still toggles closed (U5)", async () => {
 	/*
-	 * THE OPERATOR'S REPORT (2026-10-21), as the rail's two halves. With the pane
-	 * open on restored history, the item must NOT look active ("0 live"), and the
-	 * same press must mean OPEN - `requestConsoleOpen`, which the pane answers by
-	 * creating a surface - rather than closing the pane the user is reading.
+	 * THE OPERATOR'S REPORT (2026-10-21) AND ITS UX ROUND-1 CORRECTION (U5).
+	 *
+	 * Open on restored history: the item must NOT look active ("0 live"), and the
+	 * press is the pane's TOGGLE - it closes the pane the user is reading, because a
+	 * rail item is a door. The create-on-open rule belongs to the CLOSED state: a
+	 * press that opens an empty/history pane files `requestConsoleOpen`, and the pane
+	 * creates. A live console keeps the lit paint and the same close.
 	 */
 	await mount(async (api) => {
 		reset(api);
@@ -500,19 +503,32 @@ test("the console item follows liveness: open-with-history is unlit and its pres
 			"an open pane with no running surface is not the active console",
 		);
 		await api.click(api.item("console"));
-		const state = useUiPreferencesStore.getState();
+		let state = useUiPreferencesStore.getState();
 		assert.equal(
 			state.isConsolePaneOpen,
-			true,
-			"the press did not close the pane",
+			false,
+			"the unlit item on an open history pane is the toggle that closes it",
 		);
 		assert.equal(
 			state.consoleOpenIntent,
-			"session-1",
-			"it asked the pane for a terminal instead",
+			null,
+			"closing is not a request for a new terminal",
 		);
 
-		// And the live case is the toggle it always was.
+		// A CLOSED pane's press is the open that may create.
+		reset(api);
+		api.store({ isConsolePaneOpen: false, consoleLiveSurface: null });
+		await api.render(rail({ consoleLiveCount: 0 }));
+		await api.click(api.item("console"));
+		state = useUiPreferencesStore.getState();
+		assert.equal(state.isConsolePaneOpen, true, "a closed item opens the pane");
+		assert.equal(
+			state.consoleOpenIntent,
+			"session-1",
+			"and asks the pane for a terminal",
+		);
+
+		// And the live case is the lit toggle it always was.
 		reset(api);
 		api.store({
 			isConsolePaneOpen: true,

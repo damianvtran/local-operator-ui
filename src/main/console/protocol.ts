@@ -119,6 +119,10 @@ export interface ConsoleSurfaceListing {
 	rows: number;
 	running: boolean;
 	exit_code: number | null;
+	/** The signal that ended the process, when one did (Q-3): `SIGKILL` etc.
+	 * node-pty reports exit code 0 for a signalled process, so this field is what
+	 * keeps a clean exit, a crash status and a signal distinguishable. */
+	exit_signal: string | null;
 	/**
 	 * Why the surface ended when there is no exit code to report.
 	 *

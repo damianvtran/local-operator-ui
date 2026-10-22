@@ -246,20 +246,27 @@ test("the theme resolves roles through the document, and omits what is missing",
 		assert.equal(theme.red, "#ff5555");
 		assert.equal(theme.brightBlack, "#c0c0c0");
 		/*
-		 * HISTORY IS DIM ON THE DEFAULT INK, AND ITS CARET IS THE GROUND.
+		 * HISTORY IS DIM ON THE DEFAULT INK; THE CARET IS HIDDEN IN CSS (D1).
 		 *
-		 * Two claims in one reading: the ended surface's program text steps down to
-		 * `inkMuted` (a role with its own contrast floor in every palette, rather
-		 * than an opacity overlay), and the caret is painted in the background in
-		 * BOTH focus states — `cursorInactiveStyle: none` alone would leave the
-		 * focused block blinking after a restored prompt, which is the operator's
-		 * "still alive" frame.
+		 * The program text steps down to `inkMuted` (a role with its own contrast
+		 * floor in every palette, not an opacity overlay). The cursor roles are
+		 * deliberately the LIVE ones: an earlier version painted both as the ground,
+		 * which hides the caret but also paints the glyph under it in the ground
+		 * colour. The history host's stylesheet makes the cursor cell transparent and
+		 * inherits its ink instead; a stylesheet failure leaves a visible caret rather
+		 * than an invisible character.
 		 */
 		const history = readTerminalTheme({}, "history");
 		assert.equal(history.background, "#101010");
 		assert.equal(history.foreground, "#c0c0c0");
-		assert.equal(history.cursor, "#101010");
-		assert.equal(history.cursorAccent, "#101010");
+		assert.equal(history.cursor, "#4488ff");
+		assert.equal(history.cursorAccent, "#181818");
+		const css = readFileSync("src/renderer/src/styles/index.css", "utf8");
+		assert.match(
+			css,
+			/\[data-console-history\] \.xterm-cursor\s*\{[^}]*background-color: transparent[^}]*color: inherit/s,
+			"the history stylesheet hides the cursor cell without blanking its glyph",
+		);
 		assert.equal(
 			history.red,
 			"#ff5555",

@@ -172,20 +172,16 @@ export const readTerminalTheme = (
 		if (value) theme[role] = value;
 	}
 	/*
-	 * NO CARET ON HISTORY, FOCUSED OR NOT.
+	 * THE CARET IS HIDDEN IN CSS, NOT PAINTED AWAY (design round 1, D1).
 	 *
-	 * `cursorBlink: false` alone leaves a STATIC block painted after the restored
-	 * prompt, which is exactly the "this terminal is still waiting for you" the
-	 * operator reported. xterm has no `cursorStyle: none`; it has
-	 * `cursorInactiveStyle: none` for the unfocused half, and the focused cursor is
-	 * painted in the `cursor` colour. Painting both cursor colours as the ground is
-	 * the one lever a theme has, and it hides the mark in every renderer because it
-	 * is not drawn at all rather than drawn in a similar colour.
+	 * An earlier version painted both cursor colours as the ground, which hides the
+	 * block in every renderer but also paints the glyph UNDER the cursor in the ground
+	 * colour — a character vanished at the end of a recording. The history host now
+	 * carries `data-console-history` and the stylesheet makes the cursor cell
+	 * transparent while inheriting the row's ink; the theme deliberately leaves the
+	 * cursor roles as the live ones so a stylesheet that fails to load shows a visible
+	 * caret rather than an invisible glyph.
 	 */
-	if (mode === "history" && theme.background) {
-		theme.cursor = theme.background;
-		theme.cursorAccent = theme.background;
-	}
 	/*
 	 * LOUD WHEN NOTHING RESOLVES, once per document theme.
 	 *

@@ -2452,6 +2452,7 @@ export type MessageParams = {
 	"ui.console.empty.title": undefined;
 	"ui.console.ended.app_quit": undefined;
 	"ui.console.ended.exit_code": { code: string };
+	"ui.console.ended.exit_signal": { signal: string };
 	"ui.console.ended.exit_unknown": undefined;
 	"ui.console.ended.input_blocked": undefined;
 	"ui.console.ended.live": undefined;
@@ -2482,6 +2483,7 @@ export type MessageParams = {
 	};
 	"ui.console.tab.close_label": { title: string; index: number; total: number };
 	"ui.console.tab.ended": undefined;
+	"ui.console.tab.exit_code": { code: string };
 	"ui.console.terminal.prompt_label": undefined;
 	"ui.console.terminal.too_much_output": undefined;
 	"ui.console.unavailable.disabled.detail": undefined;

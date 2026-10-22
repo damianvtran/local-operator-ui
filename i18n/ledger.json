@@ -55,8 +55,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.console",
-			"source_sha256": "c0aa99e935c874ff2bdbac467ca9278007d885efcd6aa4f6269e0d1132a975f9",
-			"target_sha256": "c7e9fe1123cdbcf895d866ba460d83d093e056e19c95b5206bdb23933a94967c",
+			"source_sha256": "70587d7052f6129b3f56420f78427a588f64ce79a500e39c00d8a3a6d923aa52",
+			"target_sha256": "5e9d8e44ed256774266337de568522578ecec5f0d96efbbfeaab07b7056d998f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol (original 30 keys, 2026-10-13); anthropic/claude-sonnet-5-5 (24 keys added 2026-10-14)",
@@ -68,15 +68,15 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-22",
 					"result": "clean-with-findings",
-					"instance": "e6acb20846bf",
+					"instance": "800cdf46a2e2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/e6acb20846bf.json",
-					"receipt_sha256": "0d6f6823e9c4cd5f9682a94ddbfc7f51a5f2d6ad4854f190e9d5f26993f170aa"
+					"receipt": "i18n/receipts/800cdf46a2e2.json",
+					"receipt_sha256": "01aa8195a21dcf92b0e9218973ff7a08781b05e373db256a4241e41ab09766ab"
 				}
 			],
 			"status": "audited",
@@ -192,6 +192,28 @@
 							"receipt_sha256": "172ab736cd7eb6e372f770331eb0c139172ad73637d57f8e0fde490efc13e12b",
 							"scope": "fr ui.console vs en source at a6eb53a2e3 - token-only ::group-off count carriage closing the #1131 fidelity fix",
 							"note": "Independent second run; token mirror verified end-to-end."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c0aa99e935c874ff2bdbac467ca9278007d885efcd6aa4f6269e0d1132a975f9",
+					"target_sha256": "c7e9fe1123cdbcf895d866ba460d83d093e056e19c95b5206bdb23933a94967c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "e6acb20846bf",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/e6acb20846bf.json",
+							"receipt_sha256": "0d6f6823e9c4cd5f9682a94ddbfc7f51a5f2d6ad4854f190e9d5f26993f170aa"
 						}
 					],
 					"status": "audited"
@@ -379,8 +401,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.console",
-			"source_sha256": "c0aa99e935c874ff2bdbac467ca9278007d885efcd6aa4f6269e0d1132a975f9",
-			"target_sha256": "33443ffb9ecdc1a358375e162139ad1e440f61627e7d91b6411d62ffac8bbbed",
+			"source_sha256": "70587d7052f6129b3f56420f78427a588f64ce79a500e39c00d8a3a6d923aa52",
+			"target_sha256": "3b5e618f8a04f1cbff46ca93ea380c1612c50ba33f8a826550f2745d4e45d091",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -392,15 +414,15 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-22",
 					"result": "clean-with-findings",
-					"instance": "2317556652c2",
+					"instance": "8708b6f95296",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2317556652c2.json",
-					"receipt_sha256": "d3297771eccc8a0c55d4b29ca77ddf748faee9d87d4d7022d85a37c34f6a165b"
+					"receipt": "i18n/receipts/8708b6f95296.json",
+					"receipt_sha256": "dcfee1b75c08aee55cb0766d46bd2f5d81228f060d9f40dd78f1e54cd484f92b"
 				}
 			],
 			"status": "audited",
@@ -507,6 +529,28 @@
 							"receipt_sha256": "cf5a10248bdd471dc5ba5a248192f118d1d265ee8d90d6892a35a2284514aadd",
 							"scope": "es ui.console vs en source at 6ef27a744 - token-only ::group-off count carriage closing the #1131 fidelity fix",
 							"note": "Independent second run; token mirror verified end-to-end (57/57 renders)."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c0aa99e935c874ff2bdbac467ca9278007d885efcd6aa4f6269e0d1132a975f9",
+					"target_sha256": "33443ffb9ecdc1a358375e162139ad1e440f61627e7d91b6411d62ffac8bbbed",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "2317556652c2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2317556652c2.json",
+							"receipt_sha256": "d3297771eccc8a0c55d4b29ca77ddf748faee9d87d4d7022d85a37c34f6a165b"
 						}
 					],
 					"status": "audited"
@@ -655,8 +699,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.console",
-			"source_sha256": "c0aa99e935c874ff2bdbac467ca9278007d885efcd6aa4f6269e0d1132a975f9",
-			"target_sha256": "91588caae1709d6761805c50614a08462f178ca6eaf3cff658149e12e76716f4",
+			"source_sha256": "70587d7052f6129b3f56420f78427a588f64ce79a500e39c00d8a3a6d923aa52",
+			"target_sha256": "228b9fcb76ac24eb45e5310ab9cad6fee6e71046170b484ebb8065dabb9ecd04",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -667,16 +711,16 @@
 					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-22",
-					"result": "clean",
-					"instance": "74ffea0ecebd",
+					"result": "clean-with-findings",
+					"instance": "c14a81a47c01",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 1,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/74ffea0ecebd.json",
-					"receipt_sha256": "3451c59f9cc727bee45cf2ccdb7a84fa9c0ab942666f923e1920949893a07425"
+					"receipt": "i18n/receipts/c14a81a47c01.json",
+					"receipt_sha256": "cae43a5f420c49d9400f49385748e205ce68ec62e3aa7ca05bfbc1ec87680bed"
 				}
 			],
 			"status": "audited",
@@ -757,6 +801,28 @@
 							"receipt": "i18n/receipts/46f8fb2f32f5.json",
 							"receipt_sha256": "38bbee1576b2d9827f47ffef8fadd42113c8d648bc6762bafdac14128fcf5969",
 							"scope": "ru ui.console vs en source - token-only ::group-off count carriage closing the #1131 fidelity fix (base af6de1dd9)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c0aa99e935c874ff2bdbac467ca9278007d885efcd6aa4f6269e0d1132a975f9",
+					"target_sha256": "91588caae1709d6761805c50614a08462f178ca6eaf3cff658149e12e76716f4",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "74ffea0ecebd",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/74ffea0ecebd.json",
+							"receipt_sha256": "3451c59f9cc727bee45cf2ccdb7a84fa9c0ab942666f923e1920949893a07425"
 						}
 					],
 					"status": "audited"
@@ -903,8 +969,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.console",
-			"source_sha256": "c0aa99e935c874ff2bdbac467ca9278007d885efcd6aa4f6269e0d1132a975f9",
-			"target_sha256": "e4638cf12e63c70fddf1430c3e929a932acfaafb0a3f270efe0b4559d1432020",
+			"source_sha256": "70587d7052f6129b3f56420f78427a588f64ce79a500e39c00d8a3a6d923aa52",
+			"target_sha256": "a9d18b1603f155bf0c1e82ba190c6f3a17489a71060b914d6211b3d0899d6db9",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -916,15 +982,15 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-22",
 					"result": "clean-with-findings",
-					"instance": "b79ea7ec9e17",
+					"instance": "d8814883ee09",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 0
+						"minor": 0,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/b79ea7ec9e17.json",
-					"receipt_sha256": "92ebd34a7273d39e142a0c61edc1ff9848992b2cacdc951603117af22dd5a566"
+					"receipt": "i18n/receipts/d8814883ee09.json",
+					"receipt_sha256": "cdc622480cf73e707d4b7847d5c73fb895bfffd2408e66b73ef0369e3f8a7a8b"
 				}
 			],
 			"status": "audited",
@@ -1005,6 +1071,28 @@
 							"receipt": "i18n/receipts/4ee81688d7f8.json",
 							"receipt_sha256": "94c8568187348ce9b9d069d300306d037deff51a8c3bfe743df24a3026fa3cb5",
 							"scope": "vi ui.console vs en source - token-only ::group-off count carriage closing the #1131 fidelity fix (base af6de1dd9)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c0aa99e935c874ff2bdbac467ca9278007d885efcd6aa4f6269e0d1132a975f9",
+					"target_sha256": "e4638cf12e63c70fddf1430c3e929a932acfaafb0a3f270efe0b4559d1432020",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "b79ea7ec9e17",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b79ea7ec9e17.json",
+							"receipt_sha256": "92ebd34a7273d39e142a0c61edc1ff9848992b2cacdc951603117af22dd5a566"
 						}
 					],
 					"status": "audited"
@@ -1151,8 +1239,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.console",
-			"source_sha256": "c0aa99e935c874ff2bdbac467ca9278007d885efcd6aa4f6269e0d1132a975f9",
-			"target_sha256": "96a44783d6b161952e7b75d12001b76b6876344ff795fa78d9e718c018b6dd77",
+			"source_sha256": "70587d7052f6129b3f56420f78427a588f64ce79a500e39c00d8a3a6d923aa52",
+			"target_sha256": "9feafec660fdc5657b9315a673eff86850c3b5575743190a0f13782206b5c7c5",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -1164,15 +1252,15 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-22",
 					"result": "clean-with-findings",
-					"instance": "53ef66c9d7df",
+					"instance": "748f4aa733da",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/53ef66c9d7df.json",
-					"receipt_sha256": "ad80df3fb87a3afa3e3aef602d63289dc840374583346e08f336f67381257ec0"
+					"receipt": "i18n/receipts/748f4aa733da.json",
+					"receipt_sha256": "ab58df82565a0227d3d4aecb889e5c48c7f9ac29be58cc64d4656e7dd269d721"
 				}
 			],
 			"status": "audited",
@@ -1277,6 +1365,28 @@
 							"receipt": "i18n/receipts/c714d9b2d14a.json",
 							"receipt_sha256": "476ac5d97db5f214f42801bdb6f305eb7a39ee9f21eab83b1371c979290ec0bc",
 							"scope": "hi ui.console vs en source - token-only ::group-off count carriage closing the #1131 fidelity fix (base af6de1dd9)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c0aa99e935c874ff2bdbac467ca9278007d885efcd6aa4f6269e0d1132a975f9",
+					"target_sha256": "96a44783d6b161952e7b75d12001b76b6876344ff795fa78d9e718c018b6dd77",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "53ef66c9d7df",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/53ef66c9d7df.json",
+							"receipt_sha256": "ad80df3fb87a3afa3e3aef602d63289dc840374583346e08f336f67381257ec0"
 						}
 					],
 					"status": "audited"
@@ -1466,8 +1576,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.console",
-			"source_sha256": "c0aa99e935c874ff2bdbac467ca9278007d885efcd6aa4f6269e0d1132a975f9",
-			"target_sha256": "2167d00a2fb48ff71c8d7dee2b6757349679db8179624da15be47f5201c9324b",
+			"source_sha256": "70587d7052f6129b3f56420f78427a588f64ce79a500e39c00d8a3a6d923aa52",
+			"target_sha256": "c04f1cc1cbb1c1faae53c7d6fb3b99798c42b9436e1e57b5cb344b7508add15f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -1479,15 +1589,15 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-22",
 					"result": "clean-with-findings",
-					"instance": "860b01935e9f",
+					"instance": "d585aca3712e",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/860b01935e9f.json",
-					"receipt_sha256": "ea617a36f0e56d1fc6ec4b6dcd7c25789c374c0527c1bd8c96b16909314a0cd4"
+					"receipt": "i18n/receipts/d585aca3712e.json",
+					"receipt_sha256": "5f4008af044db16ed6b6b6c5411cabddb85c0f966aede604e63e597f5495532a"
 				}
 			],
 			"status": "audited",
@@ -1609,6 +1719,28 @@
 							"receipt": "i18n/receipts/86c4c355d318.json",
 							"receipt_sha256": "006362664f2382f7eee928bca56877f2ac6fbf2723bd52c6db22dabdb72a4740",
 							"scope": "zh-CN ui.console vs en source - token-only ::group-off count carriage closing the #1131 fidelity fix (base af6de1dd9)"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c0aa99e935c874ff2bdbac467ca9278007d885efcd6aa4f6269e0d1132a975f9",
+					"target_sha256": "2167d00a2fb48ff71c8d7dee2b6757349679db8179624da15be47f5201c9324b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "860b01935e9f",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/860b01935e9f.json",
+							"receipt_sha256": "ea617a36f0e56d1fc6ec4b6dcd7c25789c374c0527c1bd8c96b16909314a0cd4"
 						}
 					],
 					"status": "audited"
@@ -17171,8 +17303,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.console",
-			"source_sha256": "c0aa99e935c874ff2bdbac467ca9278007d885efcd6aa4f6269e0d1132a975f9",
-			"target_sha256": "8bad094e4ae1ef383004454eb38d74daff624255c5f9a2287822de6fb829229a",
+			"source_sha256": "70587d7052f6129b3f56420f78427a588f64ce79a500e39c00d8a3a6d923aa52",
+			"target_sha256": "80399be9a729ce20cce0d36083944f194de93c30851e3f8cb84fce2d48e995fb",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -17184,15 +17316,15 @@
 					"model": "deepseek/deepseek-flash",
 					"date": "2026-10-22",
 					"result": "clean-with-findings",
-					"instance": "3fe393199d96",
+					"instance": "07183e129af1",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/3fe393199d96.json",
-					"receipt_sha256": "ed210fb44793d6fdf80085e0baa0bbead6d8095fee09539612a279e6febf3dd2"
+					"receipt": "i18n/receipts/07183e129af1.json",
+					"receipt_sha256": "7db60fa4eaf709a085ed874936de402752a2d8c17c65e3623865328f52aea4f7"
 				}
 			],
 			"status": "audited",
@@ -17217,6 +17349,28 @@
 							"receipt_sha256": "ace633137c65dd99aacecb37c02832e3fc304fa445c5bf0af649dc0c9ab32514",
 							"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
 							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c0aa99e935c874ff2bdbac467ca9278007d885efcd6aa4f6269e0d1132a975f9",
+					"target_sha256": "8bad094e4ae1ef383004454eb38d74daff624255c5f9a2287822de6fb829229a",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "3fe393199d96",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/3fe393199d96.json",
+							"receipt_sha256": "ed210fb44793d6fdf80085e0baa0bbead6d8095fee09539612a279e6febf3dd2"
 						}
 					],
 					"status": "audited"

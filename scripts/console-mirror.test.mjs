@@ -321,6 +321,37 @@ test("history mode is read-only: stdin off, no caret, and a key never reaches th
 			"no key reaches `api.input`, not even silently",
 		);
 
+		/*
+		 * TAB AND ESCAPE BELONG TO THE APP ON A RECORDING (U1). Returning false is
+		 * xterm's "do not claim this key": the event keeps its default, so Tab moves
+		 * focus to the strip/`+` and Escape reaches the pane. Scroll keys stay xterm's,
+		 * because they are how a user reads the history above the cursor.
+		 */
+		assert.equal(
+			terminal.pressKey({ key: "Tab" }),
+			false,
+			"Tab is not consumed by a terminal that has no program to give it to",
+		);
+		assert.equal(
+			terminal.pressKey({ key: "Tab", shiftKey: true }),
+			false,
+			"Shift+Tab likewise moves focus backwards",
+		);
+		assert.equal(
+			terminal.pressKey({ key: "Escape" }),
+			false,
+			"Escape is the page's on history",
+		);
+		assert.equal(
+			terminal.pressKey({ key: "PageUp" }),
+			true,
+			"PageUp still scrolls the recorded output",
+		);
+		assert.ok(
+			document.querySelector("[data-console-history]"),
+			"the host carries the history attribute the cursor-hiding stylesheet keys on",
+		);
+
 		// Selection and copy stay on: a finished build log is the likely thing to copy.
 		terminal.setSelection("npm run build");
 		assert.equal(

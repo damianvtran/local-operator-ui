@@ -41,6 +41,10 @@ export interface ConsoleSurface {
 	/** Whether the process is alive. False is the ended state (§7.3). */
 	running: boolean;
 	exitCode: number | null;
+	/** The signal that ended the process (`SIGKILL` etc.), when main reported one
+	 * (Q-3). node-pty reports code 0 for a signalled process, so this is the field
+	 * that keeps a kill distinguishable from a clean exit. */
+	exitSignal: string | null;
 	/** Why the surface ended when no exit code was observed. `app_quit` is main's
 	 * own record that the app closed this terminal on the way out (`host.dispose`),
 	 * so the pane can say that instead of the misleading "exit code not observed".
@@ -84,6 +88,7 @@ export interface ConsoleMark {
 	kind?: string;
 	/** The status the shell reported on a `D` mark, or null. */
 	exitCode?: number | null;
+	exitSignal?: string | null;
 	/** Absolute offset of the sequence's first byte, counted from the first byte ever
 	 * fed — the coordinate that makes two marks distinguishable rather than merely
 	 * two instances of the same value. */
@@ -163,6 +168,7 @@ export const readConsoleSurface = (value: unknown): ConsoleSurface | null => {
 		rows: numberOr(row.rows),
 		running: booleanOr(row.running),
 		exitCode: typeof row.exit_code === "number" ? row.exit_code : null,
+		exitSignal: typeof row.exit_signal === "string" ? row.exit_signal : null,
 		endReason: row.end_reason === "app_quit" ? "app_quit" : null,
 		lastActivity: numberOr(row.last_activity),
 		live: booleanOr(row.live, true),
@@ -391,5 +397,5 @@ export const surfaceTitle = (surface: ConsoleSurface): string => {
 export const completionMark = (surface: ConsoleSurface): string => {
 	const mark = surface.lastMark;
 	const markKey = mark ? `${mark.kind ?? ""}:${mark.offset ?? ""}` : "";
-	return `${surface.running ? "run" : "end"}:${surface.exitCode ?? ""}:${surface.lastActivity}:${markKey}`;
+	return `${surface.running ? "run" : "end"}:${surface.exitCode ?? ""}:${surface.exitSignal ?? ""}:${surface.lastActivity}:${markKey}`;
 };

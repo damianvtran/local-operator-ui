@@ -48,6 +48,32 @@ import {
 } from "./console-states";
 
 /**
+ * KEYS THAT ARE NOT TERMINAL INPUT (U2/m-3).
+ *
+ * The refusal sentence must be true, so it is announced only for keys that would
+ * have gone to the program: a printable character, Enter, Backspace, Delete, a
+ * paste. Navigation (Tab, Escape, the arrows, PgUp/PgDn, Home/End) and every chord
+ * are somebody else's — scrolls, selection, focus movement, copy — and claiming
+ * they were "not sent" is a lie a screen-reader user pays for on every press.
+ */
+const NON_INPUT_KEYS = new Set([
+	"Tab",
+	"Escape",
+	"ArrowUp",
+	"ArrowDown",
+	"ArrowLeft",
+	"ArrowRight",
+	"PageUp",
+	"PageDown",
+	"Home",
+	"End",
+	"Shift",
+	"Control",
+	"Alt",
+	"Meta",
+]);
+
+/**
  * The row's close control, revealed while its row is INACTIVE.
  *
  * THE BROWSER STRIP'S OWN RULE, taken verbatim (`browser-tab-strip.tsx`'s
@@ -229,11 +255,40 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	 * reset a flag on a surface change would be the same rule spelled with an extra
 	 * render and a dependency the body never reads.
 	 */
-	const [historyAnnouncedFor, setHistoryAnnouncedFor] = useState<string | null>(
-		null,
-	);
+	const [historyAnnounce, setHistoryAnnounce] = useState<{
+		surface: string;
+		tick: number;
+	} | null>(null);
+	const [historyAnnouncement, setHistoryAnnouncement] = useState("");
 	const historyInputBlocked =
-		surface !== null && historyAnnouncedFor === surface.surface;
+		surface !== null && historyAnnounce?.surface === surface.surface;
+	const announceTick = historyAnnounce?.tick ?? 0;
+	/*
+	 * A LIVE REGION ONLY ANNOUNCES A CHANGE, so a second key on the same ended
+	 * surface must change the text. Clearing it and setting the same sentence one
+	 * frame later is the smallest honest way to re-announce; the visible band never
+	 * flickers because the clear and the set are one animation frame apart and the
+	 * output reserves its line (D3).
+	 */
+	useEffect(() => {
+		if (!historyInputBlocked) {
+			setHistoryAnnouncement("");
+			return;
+		}
+		setHistoryAnnouncement("");
+		const timer = setTimeout(
+			() =>
+				setHistoryAnnouncement(
+					// The alternating zero-width space is a second reason the text differs:
+					// some screen readers ignore a clear-and-set inside one frame, and an
+					// identical string is never re-announced.
+					t("ui.console.ended.input_blocked") +
+						(announceTick % 2 === 1 ? "\u200B" : ""),
+				),
+			40,
+		);
+		return () => clearTimeout(timer);
+	}, [announceTick, historyInputBlocked]);
 	/**
 	 * A KEY PRESSED ON ENDED HISTORY: SWALLOWED, AND SAID SO.
 	 *
@@ -255,17 +310,16 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	const announceEndedInput = useCallback(
 		(event: ReactKeyboardEvent<HTMLDivElement>) => {
 			if (!surface || surface.running) return;
-			if (event.key === "c" && (event.metaKey || event.ctrlKey)) return;
-			if (
-				event.key === "Shift" ||
-				event.key === "Control" ||
-				event.key === "Alt" ||
-				event.key === "Meta"
-			)
-				return;
+			// A chord (copy, select-all, the app's own accelerators) can succeed, so it
+			// is not "not sent"; navigation keys are the page's (U2/m-3).
+			if (event.metaKey || event.ctrlKey || event.altKey) return;
+			if (NON_INPUT_KEYS.has(event.key)) return;
 			const target = event.target as HTMLElement | null;
 			if (!target?.closest("[data-console-mirror]")) return;
-			setHistoryAnnouncedFor(surface.surface);
+			setHistoryAnnounce((previous) => ({
+				surface: surface.surface,
+				tick: (previous?.surface === surface.surface ? previous.tick : 0) + 1,
+			}));
 		},
 		[surface],
 	);
@@ -644,6 +698,15 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	useEffect(() => {
 		if (!surface) return;
 		const clear = () => {
+			/*
+			 * Q-2: NOT WHILE A CREATE OR THE OPEN REQUEST IS IN FLIGHT. The pane's
+			 * fallback display is the old ended row for the commits between the request
+			 * and the created surface; clearing on that transient painting consumed the
+			 * mark before the user could see which surface finished. The mark belongs to
+			 * a look at the REAL displayed surface, so the gate waits for both the
+			 * request to clear and every create to answer.
+			 */
+			if (creating || openIntent === sessionId) return;
 			if (document.hasFocus() && isConsoleUnseen(unseen, surface.surface))
 				clearUnseen(surface.surface);
 		};
@@ -659,7 +722,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		 * open look at its history, which is what the rail carried. Re-running on the
 		 * store's own update clears it on the commit that paints the mark.
 		 */
-	}, [clearUnseen, surface, unseen]);
+	}, [clearUnseen, creating, openIntent, sessionId, surface, unseen]);
 
 	/*
 	 * THE USER'S OPEN, ANSWERED (design 6.1; the operator's report that the pane
@@ -956,6 +1019,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				{!surface.running ? (
 					<ConsoleEndedBar
 						exitCode={surface.exitCode}
+						exitSignal={surface.exitSignal}
 						live={surface.live}
 						endReason={surface.endReason}
 					/>
@@ -1066,7 +1130,10 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 					{/* The marker sits AFTER the mirror, where a live prompt would be, and it
 					    is chrome rather than bytes: see `ConsoleHistoryEnd`. */}
 					{!surface.running ? (
-						<ConsoleHistoryEnd announced={historyInputBlocked} />
+						<ConsoleHistoryEnd
+							announcement={historyAnnouncement}
+							announcementSeq={announceTick}
+						/>
 					) : null}
 					{surface.secure ? <ConsoleSecureBar /> : null}
 				</div>
@@ -1380,6 +1447,24 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				</div>
 			</div>
 			{/*
+			 * STARTING A CONSOLE BESIDE HISTORY (U5): with an ended surface on screen
+			 * the empty state cannot show, so the create's round trip had no visible
+			 * answer and the `+` was disabled with nothing saying why. A polite status
+			 * line names the work; it sits below the header like the release result, so
+			 * the header's height does not move.
+			 */}
+			{creating && surfaces.length > 0 ? (
+				<output
+					aria-live="polite"
+					className={cn(
+						"shrink-0 border-hairline border-b bg-surface px-3 py-1 text-ink-muted text-meta",
+					)}
+					data-tour-tag="console-starting"
+				>
+					{t("ui.console.loading.create")}
+				</output>
+			) : null}
+			{/*
 			 * THE RELEASE RESULT (design round 1, D2). The button used to give no answer,
 			 * so a user could not tell released-from-kept-from-deleted; that outcome now
 			 * lands here. It is a polite `<output>` region (the implicit status role) so a
@@ -1515,10 +1600,26 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 										/>
 									) : null}
 									{!row.running ? (
-										<span className={cn("text-ink-dim text-mono-sm")}>
-											{row.exitCode === null
-												? t("ui.console.tab.ended")
-												: row.exitCode}
+										/* A LABELLED END (D5): the bare code read as a count or an
+										   unread badge beside a live tab. `exit 1` / the signal's own
+										   machine token is unambiguous and keeps its mono register. */
+										<span
+											className={cn("text-ink-dim text-mono-sm")}
+											title={
+												row.exitSignal
+													? t("ui.console.ended.exit_signal", {
+															signal: row.exitSignal,
+														})
+													: undefined
+											}
+										>
+											{row.exitSignal
+												? row.exitSignal
+												: row.exitCode === null
+													? t("ui.console.tab.ended")
+													: t("ui.console.tab.exit_code", {
+															code: String(row.exitCode),
+														})}
 										</span>
 									) : null}
 									{isConsoleUnseen(unseen, row.surface) ? (
