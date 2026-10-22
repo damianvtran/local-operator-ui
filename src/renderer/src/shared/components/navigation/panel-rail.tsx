@@ -317,8 +317,15 @@ export const PanelRail: FC<PanelRailProps> = ({
 		capFor("panel.ask"),
 	);
 	const consoleActive = drawn === "console" && consoleLiveCount > 0;
+	/*
+	 * THE LABEL FOLLOWS THE PRESS, NOT THE LIGHT (m-5). The item toggles the pane
+	 * whenever it is drawn, so an unlit history/draft pane still says "Close console"
+	 * and its tooltip matches the act. `consoleActive` stays the paint and
+	 * `aria-pressed` fact; conflating them made the label promise an open while the
+	 * press closed.
+	 */
 	const terminal = consoleRailLabels(
-		consoleActive,
+		drawn === "console",
 		consoleUnseenCount,
 		capFor("panel.console"),
 	);
