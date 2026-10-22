@@ -217,6 +217,7 @@ const {
 	LIVE_PENDING_MAX_BYTES,
 	MAX_INPUT_BYTES,
 	CLOSE_GRACE_MS,
+	QUIT_SIGNAL_GRACE_MS,
 	ConsoleHistory,
 	fileStem,
 	historyRoot,
@@ -332,9 +333,10 @@ class FakePty {
 		for (const listener of this.dataListeners) listener(text);
 	}
 
-	/** The process ended. */
-	exit(code) {
-		for (const listener of this.exitListeners) listener({ exitCode: code });
+	/** The process ended, optionally by a signal (node-pty's shape). */
+	exit(code, signal) {
+		for (const listener of this.exitListeners)
+			listener({ exitCode: code, signal });
 	}
 }
 
@@ -360,6 +362,7 @@ function makeHost({
 	spawn,
 	policy,
 	nativeCapacity,
+	onExit,
 } = {}) {
 	const registry = new ConsoleRegistry({ policy });
 	const spawned = [];
@@ -370,6 +373,7 @@ function makeHost({
 		history,
 		env,
 		now,
+		onExit,
 		spawn: (options) => {
 			const pty = spawn ? spawn(options) : new FakePty(options);
 			spawned.push({ pty, options });
@@ -2575,6 +2579,7 @@ test("history round-trips a surface's bytes and its parameters", () => {
 		created_at: 1,
 		last_seen_at: 2,
 		exit_code: null,
+		exit_signal: null,
 		end_reason: null,
 		truncated: false,
 		exit_epoch: 0,
@@ -2636,6 +2641,7 @@ test("a log past the rotate bound is rewritten to the retained window, and says 
 		created_at: 1,
 		last_seen_at: 1,
 		exit_code: null,
+		exit_signal: null,
 		end_reason: null,
 		truncated: false,
 		exit_epoch: 0,
@@ -4609,12 +4615,12 @@ test("quit records app_quit when the exit cannot be observed, and the next launc
 	await host.dispose();
 	const elapsed = Date.now() - started;
 	assert.ok(
-		elapsed >= CLOSE_GRACE_MS,
-		`the SIGTERM grace was actually waited (${elapsed} ms)`,
+		elapsed >= QUIT_SIGNAL_GRACE_MS,
+		`the quit grace was actually waited (${elapsed} ms)`,
 	);
 	assert.ok(
-		elapsed < CLOSE_GRACE_MS + 5_000,
-		`and the wait stayed bounded (${elapsed} ms)`,
+		elapsed < 1_500,
+		`and the whole quit fits the app's awaited budget (${elapsed} ms)`,
 	);
 	assert.deepEqual(
 		pty.signals,
@@ -4652,6 +4658,129 @@ test("quit records app_quit when the exit cannot be observed, and the next launc
 		assert.equal(listing.exit_code, null);
 	} finally {
 		await restored.host.dispose(false);
+	}
+});
+
+test("a signalled exit records the signal, not a clean zero (Q-3)", async () => {
+	const root = historyRoot(scratch());
+	const history = new ConsoleHistory(root);
+	const { host, spawned } = makeHost({ history });
+	const created = host.create({
+		sessionId: "session-signal",
+		origin: "user",
+		retain: true,
+	});
+	const pty = spawned[0].pty;
+	pty.exit(0, 9);
+	const listing = host.list().find((row) => row.surface === created.surface);
+	assert.equal(
+		listing.exit_code,
+		0,
+		"node-pty reports zero for a signalled pty",
+	);
+	assert.equal(
+		listing.exit_signal,
+		"SIGKILL",
+		"and the signal name is what makes the kill distinguishable",
+	);
+	host.flush(created.surface);
+	const meta = JSON.parse(
+		readFileSync(sidecarPath(root, "session-signal", created.surface), "utf8"),
+	);
+	assert.equal(
+		meta.exit_signal,
+		"SIGKILL",
+		"the sidecar carries it across a relaunch",
+	);
+	await host.dispose(false);
+
+	const restored = makeHost({ history });
+	try {
+		const [entry] = history.listMetadata();
+		restored.host.restore(entry);
+		const row = restored.host
+			.list()
+			.find((candidate) => candidate.surface === created.surface);
+		assert.equal(row.exit_signal, "SIGKILL");
+	} finally {
+		await restored.host.dispose(false);
+	}
+});
+
+test("quitting does not raise the completion seam for the terminals it closes (M-1)", async () => {
+	let completions = 0;
+	const { host, spawned } = makeHost({ onExit: () => (completions += 1) });
+	host.create({
+		sessionId: "session-quit-seam",
+		origin: "user",
+		retain: false,
+	});
+	const pty = spawned[0].pty;
+	pty.kill = function kill(signal = "SIGTERM") {
+		this.signals.push(signal);
+		queueMicrotask(() => this.exit(129, 15));
+	};
+	await host.dispose();
+	assert.equal(
+		completions,
+		0,
+		"the exit was observed and persisted, but the app going away is not a completion",
+	);
+});
+
+test("a create that arrives during the dispose settle is refused by name (m-2)", async () => {
+	const { host, spawned } = makeHost();
+	host.create({ sessionId: "session-dispose", origin: "user", retain: false });
+	const pty = spawned[0].pty;
+	pty.kill = function kill(signal = "SIGTERM") {
+		this.signals.push(signal);
+	};
+	const disposing = host.dispose();
+	assert.throws(
+		() => host.create({ sessionId: "session-dispose", origin: "user" }),
+		(error) =>
+			error?.code === "console_unavailable" &&
+			error?.data?.reason === "host_disposing",
+		"the pane's create path gets a typed refusal instead of a handle nobody keeps",
+	);
+	await disposing;
+});
+
+test("the quit bound runs across surfaces, not one after another (m-4)", async () => {
+	const root = historyRoot(scratch());
+	const history = new ConsoleHistory(root);
+	const { host, spawned } = makeHost({ history });
+	const first = host.create({
+		sessionId: "session-two-quit",
+		origin: "user",
+		retain: true,
+	});
+	const second = host.create({
+		sessionId: "session-two-quit",
+		origin: "user",
+		retain: true,
+	});
+	for (const { pty } of spawned) {
+		pty.kill = function kill(signal = "SIGTERM") {
+			this.signals.push(signal);
+		};
+	}
+	const started = Date.now();
+	await host.dispose();
+	const elapsed = Date.now() - started;
+	assert.ok(
+		elapsed < 1_500,
+		`two unobservable exits cost one bound, not two (${elapsed} ms)`,
+	);
+	for (const created of [first, second]) {
+		const meta = JSON.parse(
+			readFileSync(
+				sidecarPath(root, "session-two-quit", created.surface),
+				"utf8",
+			),
+		);
+		assert.equal(meta.exit_code, null);
+		assert.equal(meta.end_reason, "app_quit");
 	}
 });
 

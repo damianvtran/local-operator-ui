@@ -303,5 +303,15 @@
 		"role": "live-region announcement after a swallowed key",
 		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
 		"note": "Shown and spoken (role=status, aria-live=polite) when a key arrives at an ended terminal: the key was not sent, and opening a new console is how to type again. No placeholders. It must be a complete sentence because a screen reader may announce it without the marker band around it."
+	},
+	"ui.console.ended.exit_signal": {
+		"role": "machine line (monospace)",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The ended banner's machine line when the process was terminated by a signal rather than exiting. Placeholder: signal is a POSIX signal name such as SIGKILL or SIGTERM, rendered as-is. It wins over the numeric exit code because node-pty reports 0 for a signalled process; this line is what makes a kill distinguishable from a clean exit. Keep the signal token untranslated."
+	},
+	"ui.console.tab.exit_code": {
+		"role": "status suffix on a surface tab",
+		"tone": "Plain, factual, sentence case; the app's voice, never terminal output.",
+		"note": "The ended tab's status where the process reported an exit code: a labelled form of the code, so it cannot be mistaken for a count or an unread badge beside a live tab. Placeholder: code is the integer exit status, unformatted (no digit grouping). Compact enough for a tab in the strip."
 	}
 }

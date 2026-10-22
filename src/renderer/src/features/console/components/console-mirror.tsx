@@ -243,14 +243,16 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		 * when announcing output. Subscribe separately from terminal construction:
 		 * replacing a terminal on locale changes would discard its output/selection.
 		 */
-		Terminal.strings.promptLabel = t("ui.console.terminal.prompt_label");
-		Terminal.strings.tooMuchOutput = t("ui.console.terminal.too_much_output");
 		// The mode THIS constructor sees; a later transition is applied by the option
 		// effect, never by building a second terminal. A capture host is never the
-		// pane and never transitions.
+		// pane and never transitions. Read BEFORE the strings assignment so the
+		// localization lifecycle slice in `console-i18n-fit.test.mjs` stays the
+		// library-strings setup it pins.
 		const initialMode =
 			constructionMode === "capture" ? "capture" : modeRef.current;
 		const initialThemeMode = initialMode === "history" ? "history" : "live";
+		Terminal.strings.promptLabel = t("ui.console.terminal.prompt_label");
+		Terminal.strings.tooMuchOutput = t("ui.console.terminal.too_much_output");
 		const term = new Terminal({
 			scrollback: 5000,
 			theme: readTerminalTheme(document.documentElement, initialThemeMode),
@@ -267,8 +269,10 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 			 * caret the operator reported.
 			 */
 			disableStdin: initialMode !== "interactive",
-			/* `none` covers the unfocused half; the focused cursor is hidden by the
-			 * history theme painting it as the ground (see `readTerminalTheme`). */
+			/* The cursor is hidden by the history stylesheet, not painted away (D1):
+			 * a ground-painted cursor could blank a glyph under it. `none` covers the
+			 * unfocused half natively; the focused half is the CSS rule keyed on
+			 * `data-console-history` below. */
 			cursorInactiveStyle: initialMode === "history" ? "none" : "outline",
 			convertEol: false,
 			scrollOnUserInput: true,
@@ -342,6 +346,19 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		};
 		term.attachCustomKeyEventHandler((event) => {
 			if (event.type !== "keydown") return true;
+			/*
+			 * TAB AND ESCAPE BELONG TO THE APP ON A RECORDING (U1). A live shell owns
+			 * them (its programs read Tab and Esc), but an ended one has no program to
+			 * give them to, and xterm would otherwise `preventDefault` them — trapping a
+			 * keyboard user in dead history. Returning `false` leaves the event to the
+			 * page, so Tab moves focus to the strip/`+` and Escape reaches the pane's own
+			 * handling. Scroll keys (PgUp/PgDn/arrows) stay xterm's: they read history.
+			 */
+			if (
+				modeRef.current !== "interactive" &&
+				(event.key === "Tab" || event.key === "Escape")
+			)
+				return false;
 			return copyChord(event);
 		});
 		const onCopy = (event: ClipboardEvent) => {
@@ -692,6 +709,10 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 			 * lives.
 			 */
 			data-tour-tag="console-mirror"
+			/* The history stylesheet's own key: the cursor cell is hidden by CSS here
+			 * rather than by painting it in the ground colour (D1), and the focus ring
+			 * below is the one focus indicator a caret-less history can have (D2). */
+			data-console-history={mode === "history" ? "" : undefined}
 		/>
 	);
 };

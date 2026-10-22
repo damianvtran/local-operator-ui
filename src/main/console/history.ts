@@ -88,6 +88,9 @@ export interface ConsoleHistoryMeta {
 	created_at: number;
 	last_seen_at: number;
 	exit_code: number | null;
+	/** The signal that ended the process, when the pty reported one (Q-3). A
+	 * sidecar written before this field existed reads as null. */
+	exit_signal: string | null;
 	/**
 	 * Why the surface ended when no exit code was observed.
 	 *
@@ -455,6 +458,11 @@ function parseMeta(raw: string): ConsoleHistoryMeta {
 	// Normalised once, here, for `exit_epoch`'s reason: every reader of a sidecar
 	// written by an older build gets the documented value rather than `undefined`.
 	if (meta.end_reason !== "app_quit") meta.end_reason = null;
+	if (
+		typeof meta.exit_signal !== "string" ||
+		!/^SIG[A-Z0-9]+$/.test(meta.exit_signal)
+	)
+		meta.exit_signal = null;
 	return meta;
 }
 

@@ -129,7 +129,7 @@ async function startDaemon() {
 			"mock-model",
 		],
 		{
-			env: isolatedEnv(),
+			env,
 			cwd: ROOT,
 			stdio: ["ignore", "pipe", "pipe"],
 			detached: true,
@@ -189,6 +189,7 @@ const DEVTOOLS_PORT = 9500 + (process.pid % 300);
 let app = null;
 
 async function launchApp(sessionId) {
+	const env = isolatedEnv();
 	const child = spawn(
 		electronPath,
 		[
@@ -199,7 +200,7 @@ async function launchApp(sessionId) {
 			`--open-session=${sessionId}`,
 		],
 		{
-			env: isolatedEnv(),
+			env,
 			cwd: ROOT,
 			stdio: ["ignore", "pipe", "pipe"],
 			detached: true,

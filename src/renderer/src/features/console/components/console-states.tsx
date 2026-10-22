@@ -255,6 +255,10 @@ export const ConsoleEmpty: FC<{ onCreate: () => void; disabled?: boolean }> = ({
  */
 export const ConsoleEndedBar: FC<{
 	exitCode: number | null;
+	/** The signal that ended the process, when node-pty reported one (Q-3). A
+	 * signalled exit carries code 0 in node-pty, so this is the only field that can
+	 * tell a `kill -9` from a clean exit; it wins over the code when present. */
+	exitSignal?: string | null;
 	live: boolean;
 	/** Why the surface ended when no exit code was observed. `app_quit` is main's
 	 * own record that the app closed it on the way out (`host.dispose`), and it is
@@ -262,7 +266,7 @@ export const ConsoleEndedBar: FC<{
 	 * observable there, and telling the user nobody looked is the misleading half
 	 * the operator reported. Legacy sidecars carry null and keep the honest one. */
 	endReason?: "app_quit" | null;
-}> = ({ exitCode, live, endReason = null }) => (
+}> = ({ exitCode, exitSignal = null, live, endReason = null }) => (
 	/* The notice is a band on the PANE's ground, so it wears a step of its own:
 	   `elevated` on the drawer's rung (`canvas/index.tsx`) measures ΔE00 0, which
 	   is why this is `surface` — a step down that survives every palette, and the
@@ -277,11 +281,13 @@ export const ConsoleEndedBar: FC<{
 			{t(live ? "ui.console.ended.live" : "ui.console.ended.restored")}
 		</span>
 		<span className={cn("text-ink-dim text-mono-sm")}>
-			{exitCode !== null
-				? t("ui.console.ended.exit_code", { code: String(exitCode) })
-				: endReason === "app_quit"
-					? t("ui.console.ended.app_quit")
-					: t("ui.console.ended.exit_unknown")}
+			{exitSignal !== null
+				? t("ui.console.ended.exit_signal", { signal: exitSignal })
+				: exitCode !== null
+					? t("ui.console.ended.exit_code", { code: String(exitCode) })
+					: endReason === "app_quit"
+						? t("ui.console.ended.app_quit")
+						: t("ui.console.ended.exit_unknown")}
 		</span>
 	</div>
 );
@@ -303,9 +309,12 @@ export const ConsoleEndedBar: FC<{
  * typed. The marker itself is always present, which is what makes the state
  * legible before anyone presses a key.
  */
-export const ConsoleHistoryEnd: FC<{ announced: boolean }> = ({
-	announced,
-}) => (
+export const ConsoleHistoryEnd: FC<{
+	announcement: string;
+	/** The press counter, exposed for tests and for the live region's own
+	 * re-announcement; it has no visible role. */
+	announcementSeq?: number;
+}> = ({ announcement, announcementSeq = 0 }) => (
 	<div
 		className={cn(
 			"flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-hairline border-t bg-sunken px-3 py-1.5",
@@ -320,10 +329,15 @@ export const ConsoleHistoryEnd: FC<{ announced: boolean }> = ({
 		</span>
 		<output
 			aria-live="polite"
-			className={cn("text-ink text-meta")}
+			/* ONE RESERVED LINE (D3): the sentence used to wrap the band by its own
+			   height the moment a key was refused, moving every row above it. The
+			   announcement can still wrap to more lines at a narrow width, but the
+			   empty-to-one-line step — the one every refusal takes — costs nothing. */
+			className={cn("min-h-4 text-ink text-meta")}
+			data-announce-seq={announcementSeq}
 			data-tour-tag="console-history-announce"
 		>
-			{announced ? t("ui.console.ended.input_blocked") : ""}
+			{announcement}
 		</output>
 	</div>
 );

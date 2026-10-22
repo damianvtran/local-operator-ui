@@ -2641,3 +2641,26 @@ html[data-glass~="canvas"] [data-glass-lane] {
 		transparent
 	);
 }
+
+/*
+ * ENDED CONSOLE HISTORY: NO CARET, BUT A FOCUS RING (D1, D2).
+ *
+ * The cursor cell is made transparent and its ink inherited from the row, so the
+ * glyph under it stays legible (painting the cell in the ground colour could blank
+ * a character — the reason this is CSS rather than a theme trick). The ring is a
+ * real outline on the mirror's own box, in the structural role the app uses for
+ * focus edges, and it appears only for keyboard focus: `focus()` from the pane's
+ * caret request is not a focus-visible state.
+ */
+[data-console-history] .xterm-cursor {
+	background-color: transparent !important;
+	color: inherit !important;
+	box-shadow: none !important;
+}
+
+[data-console-history][data-console-mirror]:has(
+		.xterm-helper-textarea:focus-visible
+	) {
+	outline: 2px solid var(--lo-border-control);
+	outline-offset: -2px;
+}

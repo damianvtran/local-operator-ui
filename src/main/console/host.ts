@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { homedir } from "node:os";
+import { homedir, constants as osConstants } from "node:os";
 import { basename, isAbsolute } from "node:path";
 import type { BrowserWindow, NativeImage } from "electron";
 import { defaultShell } from "../shell-path";
@@ -167,7 +167,35 @@ export const CLOSE_GRACE_MS = 1_500;
  * ACROSS surfaces rather than one after another (`dispose`), so ten terminals
  * cost two seconds rather than twenty.
  */
-export const QUIT_EXIT_CAPTURE_MS = 500;
+export const QUIT_EXIT_CAPTURE_MS = 400;
+
+/**
+ * node-pty's exit signal as a POSIX name (Q-3), or null.
+ *
+ * `onExit` reports `{exitCode, signal}`; a killed pty reports code 0, so without
+ * this field a SIGKILL is indistinguishable from a clean exit. The number is
+ * mapped through the platform's own table rather than a second hard-coded list,
+ * and an unknown number still gets a token (`SIG9`) instead of being dropped.
+ */
+function signalName(signal: number | string | undefined): string | null {
+	if (typeof signal === "string") {
+		if (signal.length === 0) return null;
+		return signal.startsWith("SIG") ? signal : `SIG${signal}`;
+	}
+	if (typeof signal !== "number" || signal <= 0) return null;
+	for (const [name, number] of Object.entries(osConstants.signals))
+		if (number === signal) return name;
+	return `SIG${signal}`;
+}
+
+/** The SIGTERM grace inside the AWAITED quit budget (m-1).
+ *
+ * The app holds quit for ~1.5 s (the session-cookie hold). The close path's own
+ * grace plus the capture window added up to 2 s, so the final persist could land
+ * after the app had finished waiting. This pair fits the whole quit inside 1.3 s:
+ * 0.9 s for the signal, then 0.4 s for `onExit` to arrive.
+ */
+export const QUIT_SIGNAL_GRACE_MS = 900;
 
 /** The environment markers a program can read to tell which console it is in
  * (§6.5), and the two variables a driven surface must not lose (§6.6). */
@@ -207,7 +235,11 @@ export interface ConsoleContentReport {
 /** A subscriber to one surface's byte stream (§10.3). */
 export interface ConsoleSubscriber {
 	output(frame: { surface: string; seq: number; bytes: Uint8Array }): void;
-	exit(frame: { surface: string; exitCode: number }): void;
+	exit(frame: {
+		surface: string;
+		exitCode: number;
+		exitSignal?: string | null;
+	}): void;
 }
 
 export interface ConsoleHostOptions {
@@ -267,6 +299,7 @@ export interface ConsoleHostOptions {
 		surface: string;
 		sessionId: string;
 		exitCode: number;
+		exitSignal: string | null;
 	}) => void;
 	/** Called whenever something a listing or the record reports has changed. */
 	onChanged?: () => void;
@@ -338,7 +371,9 @@ export interface SurfaceRuntime {
 export interface PtyHandle {
 	readonly pid: number;
 	onData(listener: (data: string) => void): void;
-	onExit(listener: (event: { exitCode: number }) => void): void;
+	onExit(
+		listener: (event: { exitCode: number; signal?: number | string }) => void,
+	): void;
 	/**
 	 * A string node-pty encodes as UTF-8, or raw bytes it copies through.
 	 *
@@ -473,6 +508,18 @@ export class ConsoleHost {
 	 * removes the record rather than leaving a surface that lists as running.
 	 */
 	create(options: CreateSurfaceOptions): CreateSurfaceResult {
+		/*
+		 * NO CREATE DURING DISPOSAL (m-2). The dispose settle is where a create used
+		 * to be silently dropped: the registry was still publishing, the caller got a
+		 * handle, and the teardown then cleared it. Refusing by name is the honest
+		 * answer and it is what the pane's create-refused state already renders.
+		 */
+		if (this.disposing)
+			throw new ConsoleError(
+				"console_unavailable",
+				"The console host is shutting down",
+				{ reason: "host_disposing" },
+			);
 		if (this.failedAllocations.size)
 			throw new ConsoleError(
 				"console_unavailable",
@@ -566,7 +613,9 @@ export class ConsoleHost {
 			this.registry.attach(surface, runtime);
 
 			pty.onData((data) => this.consume(surface, data));
-			pty.onExit((event) => this.exited(surface, event.exitCode));
+			pty.onExit((event) =>
+				this.exited(surface, event.exitCode, signalName(event.signal)),
+			);
 
 			// The initial input is written after the listeners exist, so a program that
 			// answers immediately cannot beat the record.
@@ -699,6 +748,7 @@ export class ConsoleHost {
 			this.registry.update(meta.surface, {
 				running: false,
 				exitCode: meta.exit_code,
+				exitSignal: meta.exit_signal,
 				live: false,
 				secure: meta.secure === true,
 				lastActivity: meta.last_seen_at,
@@ -771,6 +821,7 @@ export class ConsoleHost {
 				this.registry.update(entry.record.surface, {
 					running: false,
 					exitCode: meta.exit_code,
+					exitSignal: meta.exit_signal,
 					live: false,
 					lastActivity: meta.last_seen_at,
 				});
@@ -821,6 +872,7 @@ export class ConsoleHost {
 			rows: record.rows,
 			running: record.running,
 			exit_code: record.exitCode,
+			exit_signal: record.exitSignal,
 			/* Why the end happened when no code was observable (§7.3). Only the quit
 			 * path writes one, and it is the difference between "nobody could have
 			 * seen this" and main's old silence, which the pane read as an unknown
@@ -867,6 +919,7 @@ export class ConsoleHost {
 		return {
 			running: entry.record.running,
 			exit_code: entry.record.exitCode,
+			exit_signal: entry.record.exitSignal,
 			end_reason: this.endReasons.get(surface) ?? null,
 			// The retention layer's counter, bumped once per `process_exited` (§7.3,
 			// §10.2). Read from the host's live view of it: the sidecar is what makes
@@ -1547,7 +1600,11 @@ export class ConsoleHost {
 		runtime.pendingTimer.unref?.();
 	}
 
-	private exited(surface: string, exitCode: number): void {
+	private exited(
+		surface: string,
+		exitCode: number,
+		exitSignal: string | null = null,
+	): void {
 		// `find`, not `require`: an exit can land after its surface was closed, and
 		// an event handler that threw would be an unhandled exception inside a pty
 		// callback rather than a refusal anybody could read.
@@ -1556,6 +1613,7 @@ export class ConsoleHost {
 		this.registry.update(surface, {
 			running: false,
 			exitCode,
+			exitSignal,
 			lastActivity: this.now(),
 		});
 		// A REAL exit supersedes whatever the quit path recorded: the status exists,
@@ -1577,20 +1635,30 @@ export class ConsoleHost {
 		if (!runtime.exitDelivered) {
 			runtime.exitDelivered = true;
 			for (const subscriber of runtime.subscribers) {
-				subscriber.exit({ surface, exitCode });
+				subscriber.exit({ surface, exitCode, exitSignal });
 			}
 		}
 		this.options.log(
-			`[console] surface ${redactSurface(surface)} exited ${exitCode}`,
+			`[console] surface ${redactSurface(surface)} exited ${exitCode}${exitSignal === null ? "" : ` by ${exitSignal}`}`,
 		);
 		this.options.onChanged?.();
 		// The app's own completion seam, after every other reader has the exit. See
 		// `ConsoleHostOptions.onExit` for why this is not left to `onChanged`.
-		this.options.onExit?.({
-			surface,
-			sessionId: entry.record.sessionId,
-			exitCode,
-		});
+		/*
+		 * A QUIT IS NOT A COMPLETION (M-1). `dispose` keeps entries registered while
+		 * it settles so the exit can be observed and persisted, but the same
+		 * registration used to let this seam fire while the app was going away: every
+		 * console the quit closed announced "exited with code …" and, on a surface the
+		 * pane was not showing, raised a native notification. Nothing is completing
+		 * from the user's point of view; the app is closing.
+		 */
+		if (!this.disposing)
+			this.options.onExit?.({
+				surface,
+				sessionId: entry.record.sessionId,
+				exitCode,
+				exitSignal,
+			});
 		// Wait for the final emulator parse before releasing a reloadable runtime.
 		// Pane subscribers and secure views remain pinned; no process is killed.
 		void runtime.emulator
@@ -2154,6 +2222,7 @@ export class ConsoleHost {
 			created_at: this.createdAt.get(surface) ?? this.now(),
 			last_seen_at: record.lastActivity,
 			exit_code: record.exitCode,
+			exit_signal: record.exitSignal,
 			end_reason: this.endReasons.get(surface) ?? null,
 			truncated: runtime.log.truncated,
 			exit_epoch: this.exitEpoch.get(surface) ?? 0,
@@ -2337,7 +2406,7 @@ export class ConsoleHost {
 		}
 		const observed = await Promise.race([
 			exit,
-			delay(CLOSE_GRACE_MS).then(() => null),
+			delay(QUIT_SIGNAL_GRACE_MS).then(() => null),
 		]);
 		if (observed !== null) return;
 		try {
@@ -2359,6 +2428,7 @@ export class ConsoleHost {
 
 	/** Stop everything: every pty, every record, every subscriber. */
 	async dispose(persistHistory = true): Promise<void> {
+		this.disposing = true;
 		const allocationFailures = [...this.failedAllocations].flatMap(
 			(allocation) => this.releaseFailedAllocation(allocation),
 		);
@@ -2493,6 +2563,9 @@ export class ConsoleHost {
 	 * subsequent run under the same handle cannot inherit the previous ending.
 	 */
 	private readonly endReasons = new Map<string, "app_quit">();
+	/** True from the first line of `dispose`; refuses creates and suppresses the
+	 * completion seam for the whole teardown (M-1, m-2). */
+	private disposing = false;
 }
 
 /**
