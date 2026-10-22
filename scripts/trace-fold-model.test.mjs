@@ -55,6 +55,7 @@ const {
 	foldMediaSlots,
 	foldRuns,
 	foldSpan,
+	latchFoldedRuns,
 	foldSummary,
 	foldSummarySpec,
 	foldSummaryUnits,
@@ -298,6 +299,53 @@ test("receipt families fold alone, and boundaries still split", () => {
 	}
 });
 
+test("the live latch survives a window shrink and still forgets a row the store dropped (review round 1, F1)", () => {
+	/*
+	 * THE WINDOW IS NOT THE CONVERSATION. A snap, a widened page or a filter can
+	 * paint a frame whose slice omits a run the pane has already shown folded;
+	 * rebuilding the latch from that slice dropped its ids, the rows came back on
+	 * the next full pass and re-folded - the same open/close pair through another
+	 * door. The union retains across the shrink and prunes against the STORE.
+	 */
+	const foldedRun = foldRuns(
+		[row("t1"), custom("j1", "job_result"), custom("j2", "job_result")],
+		receiptOptions,
+	)[0];
+	assert.equal(foldedRun.kind, "run");
+
+	// The shrink: this pass paints no group at all, and the store still holds t1.
+	const shrunk = latchFoldedRuns(
+		new Set(["t1", "j1", "j2"]),
+		new Set(["t1", "j1", "j2", "elsewhere"]),
+		[],
+	);
+	assert.deepEqual(
+		[...shrunk].sort(),
+		["j1", "j2", "t1"],
+		"a pass with no run on screen does not forget the run it painted",
+	);
+
+	// The record leaves the store: the latch forgets it.
+	const dropped = latchFoldedRuns(new Set(["t1", "j1"]), new Set(["t1"]), []);
+	assert.deepEqual(
+		[...dropped],
+		["t1"],
+		"only ids the store still holds survive",
+	);
+
+	// And a fresh fold joins the set.
+	const joined = latchFoldedRuns(
+		new Set(["t1"]),
+		new Set(["t1", "x1", "x2", "x3"]),
+		foldRuns([row("x1"), row("x2"), row("x3")], receiptOptions),
+	);
+	assert.deepEqual(
+		[...joined].sort(),
+		["t1", "x1", "x2", "x3"],
+		"what this pass folded is added, not substituted",
+	);
+});
+
 test("a live run keeps the fold it has painted: a job response cannot reopen it (operator report, 2026-10-21)", () => {
 	/*
 	 * THE OSCILLATION. The licensing rule is positional ("the run's TRAILING
@@ -321,7 +369,7 @@ test("a live run keeps the fold it has painted: a job response cannot reopen it 
 
 	const liveOptions = (latchedFoldIds) => ({
 		...receiptOptions,
-		live: true,
+		liveTurn: true,
 		latchedFoldIds,
 	});
 
@@ -365,6 +413,26 @@ test("a live run keeps the fold it has painted: a job response cannot reopen it 
 		["row", "row", "row", "row"],
 		"a settled run with one trailing-free call stays ordinary rows",
 	);
+
+	/*
+	 * AND THE HEAD-PAIR NEGATIVES HOLD LIVE TOO (agent review round 1, F2). The
+	 * change's only new input is live-only, so the pin has to be asked of a LIVE
+	 * pass with an empty latch: two receipts at the head still license nothing,
+	 * which is what keeps a call mountable for the turn bar. The latch can only
+	 * hold a shape this pane has ALREADY painted folded - it never licenses a
+	 * first fold - so these are unreachable from it on a fresh pass.
+	 */
+	for (const [label, rows] of [
+		["peer, peer, tool", [peerReceipt("p1"), peerReceipt("p2"), row("a")]],
+		["peer, tool, wake", [peerReceipt("p1"), row("a"), wakeReceipt("w1")]],
+		["peer, tool, peer", [peerReceipt("p1"), row("a"), peerReceipt("p2")]],
+	]) {
+		assert.deepEqual(
+			foldRuns(rows, liveOptions(new Set())).map((group) => group.kind),
+			rows.map(() => "row"),
+			`${label} stays ordinary rows on a live pass with no latch`,
+		);
+	}
 });
 
 test("a run folds on its TRAILING receipt stretch, never a head pair", () => {

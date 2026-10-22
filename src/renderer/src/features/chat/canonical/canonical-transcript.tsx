@@ -190,6 +190,7 @@ import {
 	type TurnFoot,
 	foldImages,
 	foldRuns,
+	latchFoldedRuns,
 	receiptFoldUnits,
 	turnFeet,
 	workedSecondsOf,
@@ -4211,20 +4212,32 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * rows, never a count that lumped them in as "incoming messages".
 			 */
 			receiptSummaryOf: (rows) => receiptFoldUnits(rows),
-			live: paneIsLive,
+			liveTurn: paneIsLive,
 			latchedFoldIds: foldLatch.current.ids,
 		});
 		/*
-		 * Remember what this pass painted folded, so the next one cannot dissolve
-		 * it. Rebuilt from the result rather than accumulated, so an id that leaves
-		 * the list (a paged-out row, a replaced record) cannot pin a run forever.
+		 * Remember what this pane has painted folded, so a later pass cannot
+		 * dissolve it.
+		 *
+		 * ACCUMULATED, NOT REBUILT FROM THIS PASS'S WINDOW (agent review round 1,
+		 * F1). The window is not the conversation: a snap, a widened page or a
+		 * filter can paint a frame whose slice does not contain a run this pane
+		 * already showed folded, and rebuilding the set from THAT slice dropped the
+		 * ids - so the rows came back and the next frame re-folded them, the same
+		 * open/close pair through another door. The union is pruned against the
+		 * STORE's ids (`rawRecords`, not `visible`), which is what keeps the set
+		 * from pinning a run the conversation no longer holds.
 		 */
-		const latched = new Set<string>();
-		if (paneIsLive)
-			for (const group of groups)
-				if (group.kind === "run")
-					for (const row of group.rows) latched.add(row.record.id);
-		foldLatch.current.ids = latched;
+		if (paneIsLive) {
+			foldLatch.current.ids = latchFoldedRuns(
+				foldLatch.current.ids,
+				new Set(rawRecords.current.map((record) => record.id)),
+				groups,
+			);
+		} else if (foldLatch.current.ids.size > 0) {
+			// Settled: the rows decide, and the next live pass starts clean.
+			foldLatch.current.ids = new Set();
+		}
 		return groups.map((group) =>
 			group.kind === "run"
 				? {

@@ -862,8 +862,12 @@ export function foldRuns(
 		 * It exists for one rule, `latchedFoldIds`: a live run's fold must not be
 		 * dissolved by the next call. See that option's note. Absent (the settled
 		 * default, and every pure test) keeps the threshold-only behaviour exactly.
+		 *
+		 * Named `liveTurn`, not `live`: `FoldGroup.live` is the condensed header's
+		 * live clause, and one word for two different facts is how a later reader
+		 * wires the wrong one in (agent review round 1, F5).
 		 */
-		live?: boolean;
+		liveTurn?: boolean;
 		/**
 		 * Ids of rows this pane has ALREADY PAINTED folded, while the turn is live.
 		 *
@@ -943,7 +947,7 @@ export function foldRuns(
 		 * passes never consult it.
 		 */
 		const latchedHere =
-			options.live === true &&
+			options.liveTurn === true &&
 			options.latchedFoldIds !== undefined &&
 			run.some((row) => options.latchedFoldIds?.has(row.record.id) === true);
 		if (
@@ -1014,6 +1018,34 @@ export function foldRuns(
 	}
 	flush();
 	return groups;
+}
+
+/**
+ * The next live fold latch: what was latched before, pruned to the STORE's live
+ * rows, plus every run this pass painted folded.
+ *
+ * WHY IT IS A UNION AND NOT A REBUILD (agent review round 1, F1). The transcript
+ * window is not the conversation: a snap, a widened page or a filter can paint a
+ * frame whose slice omits a run the pane has already shown folded. Rebuilding
+ * the set from that slice dropped the run's ids, so the rows came back on the
+ * next full pass and re-folded - the same open/close pair through another door.
+ * Retaining across the shrink and pruning against `held` (the STORE's ids) is
+ * what keeps the latch both sticky and bounded.
+ *
+ * Pure so the trade is arithmetic rather than a mount: the component owns the
+ * ref, this owns the rule.
+ */
+export function latchFoldedRuns(
+	previous: ReadonlySet<string>,
+	held: ReadonlySet<string>,
+	runs: readonly FoldGroup[],
+): Set<string> {
+	const next = new Set<string>();
+	for (const id of previous) if (held.has(id)) next.add(id);
+	for (const group of runs)
+		if (group.kind === "run")
+			for (const row of group.rows) next.add(row.record.id);
+	return next;
 }
 
 /**
