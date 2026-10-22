@@ -169,6 +169,5 @@
 	"ui.teamBridge.schedule.held": "Lịch gửi trước đó có thể vẫn còn. Hãy kiểm tra mục “Đã lên lịch” và hủy lịch đó nếu cần trước khi bỏ lần thử này. Bản nháp của bạn vẫn được giữ.",
 	"ui.teamBridge.schedule.discard_attempt": "Tôi đã kiểm tra mục “Đã lên lịch” — bỏ lần thử này",
 	"ui.teamBridge.attachments.expired_staged_retry": "Hình ảnh này không còn sẵn sàng để gửi. Hãy thử lại hoặc gỡ hình ảnh.",
-	"ui.teamBridge.attachments.with_status": "{label}: {status}",
 	"ui.teamBridge.attachments.preview_unavailable": "Không có bản xem trước"
 }

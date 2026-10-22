@@ -158,6 +158,10 @@ export function useTeamBridgeDrafts(
 		// Read the STORED entry, not this render's `current`: uploads settle
 		// asynchronously, after renders that predate the send's key.
 		const stored = targetKey ? load()[targetKey] : undefined;
+		// Clearing images on an entry that no longer exists (a confirmed send
+		// just deleted it) must not recreate it: `update` would rebuild the
+		// entry from this render's body and resurrect the sent text.
+		if (!stored && next.length === 0) return true;
 		const before = (stored?.attachments ?? []).map((row) => row.id).join(",");
 		const after = next.map((row) => row.id).join(",");
 		return update({

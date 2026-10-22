@@ -169,6 +169,5 @@
 	"ui.teamBridge.schedule.held": "A previous schedule may still exist. Check Scheduled and cancel it if needed before discarding this attempt. Your draft is kept.",
 	"ui.teamBridge.schedule.discard_attempt": "I checked Scheduled — discard this attempt",
 	"ui.teamBridge.attachments.expired_staged_retry": "This image is no longer ready to send. Retry it or remove it.",
-	"ui.teamBridge.attachments.with_status": "{label}: {status}",
 	"ui.teamBridge.attachments.preview_unavailable": "Preview unavailable"
 }

@@ -169,6 +169,5 @@
 	"ui.teamBridge.schedule.held": "ممکن ہے پچھلا شیڈول اب بھی موجود ہو۔ یہ کوشش ترک کرنے سے پہلے “شیڈول شدہ” دیکھ لیں اور ضرورت ہو تو اسے منسوخ کر دیں۔ آپ کا مسودہ برقرار ہے۔",
 	"ui.teamBridge.schedule.discard_attempt": "میں نے “شیڈول شدہ” دیکھ لیا ہے — یہ کوشش ترک کریں",
 	"ui.teamBridge.attachments.expired_staged_retry": "یہ تصویر اب بھیجنے کے لیے تیار نہیں ہے۔ دوبارہ کوشش کریں یا اسے ہٹا دیں۔",
-	"ui.teamBridge.attachments.with_status": "{label}: {status}",
 	"ui.teamBridge.attachments.preview_unavailable": "پیش منظر دستیاب نہیں"
 }

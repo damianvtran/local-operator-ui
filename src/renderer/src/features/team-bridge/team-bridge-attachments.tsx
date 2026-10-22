@@ -44,7 +44,7 @@ import {
 	X,
 } from "lucide-react";
 import type { ClipboardEvent, DragEvent, FC, ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type {
 	TeamBridgeAttachment,
 	TeamBridgeMessage,
@@ -106,21 +106,24 @@ export const TeamBridgeAttachmentChip: FC<{
 	const failed = chip.status === "error" || chip.status === "expired";
 	const working = chip.status === "uploading" || chip.status === "preparing";
 	const reason = chipStatusCopy(chip);
+	const reasonId = useId();
 	return (
 		<li
 			className="group/chip relative"
 			data-attachment-chip={chip.status}
-			/* One keyed pattern, not `${label}. ${reason}`: locales order and
-			   punctuate the pair themselves (zh-CN audit, att-r1). */
-			aria-label={
-				reason
-					? t("ui.teamBridge.attachments.with_status", {
-							label,
-							status: reason,
-						})
-					: label
-			}
+			/*
+			 * Name and status are two nodes joined by `aria-describedby`, never a
+			 * `${label}. ${reason}` string: a code-side join fixes English order
+			 * and punctuation for every locale (zh-CN audit, att-r1).
+			 */
+			aria-label={label}
+			aria-describedby={reason ? reasonId : undefined}
 		>
+			{reason && (
+				<span id={reasonId} className="sr-only">
+					{reason}
+				</span>
+			)}
 			<div
 				title={
 					!chip.previewUrl && chip.status === "ready"
@@ -263,13 +266,7 @@ export const TeamBridgeAttachmentStrip: FC<{
 			: state.notice === "limit"
 				? t("ui.teamBridge.attachments.limit", { max: state.max })
 				: failure
-					? t("ui.teamBridge.attachments.with_status", {
-							label: t("ui.teamBridge.attachments.position", {
-								index: String(failureIndex + 1),
-								count: String(state.chips.length),
-							}),
-							status: chipStatusCopy(failure) ?? "",
-						})
+					? (chipStatusCopy(failure) ?? "")
 					: working
 						? t("ui.teamBridge.attachments.uploading")
 						: null;
@@ -305,6 +302,15 @@ export const TeamBridgeAttachmentStrip: FC<{
 						tone === "danger" ? "text-danger" : "text-ink-muted",
 					)}
 				>
+					{failure && tone === "danger" && (
+						/* Which chip the sentence is about, as its own node (D10). */
+						<span className="me-1.5 font-medium">
+							{t("ui.teamBridge.attachments.position", {
+								index: String(failureIndex + 1),
+								count: String(state.chips.length),
+							})}
+						</span>
+					)}
 					{notice}
 				</p>
 			)}
@@ -471,13 +477,12 @@ const Placeholder: FC<{
 		kind === "expired"
 			? t("ui.teamBridge.attachments.expired")
 			: t("ui.teamBridge.attachments.unavailable");
+	const copyId = useId();
 	return (
 		<div
 			role="img"
-			aria-label={t("ui.teamBridge.attachments.with_status", {
-				label,
-				status: copy,
-			})}
+			aria-label={label}
+			aria-describedby={copyId}
 			data-attachment-placeholder={kind}
 			style={{ width: box.width, height: box.height }}
 			className="flex flex-col items-center justify-center gap-1 rounded-sm border border-control bg-sunken px-2 text-center text-[12px] text-ink-dim"
@@ -487,7 +492,7 @@ const Placeholder: FC<{
 			) : (
 				<ImageOff size={16} aria-hidden="true" />
 			)}
-			<span>{copy}</span>
+			<span id={copyId}>{copy}</span>
 			{kind === "failed" && onRetry && (
 				<button
 					type="button"
@@ -716,6 +721,7 @@ export const TeamBridgeScheduledAttachments: FC<{
 	accountId: string | undefined;
 }> = ({ attachments, accountId }) => {
 	useI18nLocale();
+	const listId = useId();
 	const [urls, setUrls] = useState<Record<string, string>>({});
 	const ids = attachments.map((row) => row.id).join(",");
 	// biome-ignore lint/correctness/useExhaustiveDependencies: the id list is the identity.
@@ -733,54 +739,54 @@ export const TeamBridgeScheduledAttachments: FC<{
 	if (attachments.length === 0) return null;
 	const count = attachments.length;
 	return (
-		<ul
-			aria-label={t("ui.teamBridge.attachments.in_message", { count })}
-			className="mt-1.5 flex flex-wrap gap-2"
-		>
-			{attachments.map((row, index) => {
-				const label = t("ui.teamBridge.attachments.position", {
-					index: String(index + 1),
-					count: String(count),
-				});
-				const url = urls[row.id];
-				return (
-					<li key={row.id}>
-						<AttachmentFrame
-							className="size-16"
-							role="img"
-							aria-label={
-								url
-									? label
-									: t("ui.teamBridge.attachments.with_status", {
-											label,
-											status: t(
-												"ui.teamBridge.attachments.preview_unavailable",
-											),
-										})
-							}
-							title={
-								url
-									? undefined
-									: t("ui.teamBridge.attachments.preview_unavailable")
-							}
-							data-attachment-scheduled={url ? "preview" : "descriptor"}
-						>
-							{url ? (
-								<img src={url} alt="" className="size-full object-cover" />
-							) : (
-								/* Attached and reserved, just not drawable here: a neutral
+		<>
+			<ul
+				aria-label={t("ui.teamBridge.attachments.in_message", { count })}
+				className="mt-1.5 flex flex-wrap gap-2"
+			>
+				{attachments.map((row, index) => {
+					const label = t("ui.teamBridge.attachments.position", {
+						index: String(index + 1),
+						count: String(count),
+					});
+					const url = urls[row.id];
+					return (
+						<li key={row.id}>
+							<AttachmentFrame
+								className="size-16"
+								role="img"
+								aria-label={label}
+								aria-describedby={url ? undefined : `${listId}-none`}
+								title={
+									url
+										? undefined
+										: t("ui.teamBridge.attachments.preview_unavailable")
+								}
+								data-attachment-scheduled={url ? "preview" : "descriptor"}
+							>
+								{url ? (
+									<img src={url} alt="" className="size-full object-cover" />
+								) : (
+									/* Attached and reserved, just not drawable here: a neutral
 								   picture glyph, never the broken one (design round 1, D6). */
-								<ImageIcon
-									size={16}
-									aria-hidden="true"
-									className="text-ink-dim"
-								/>
-							)}
-						</AttachmentFrame>
-					</li>
-				);
-			})}
-		</ul>
+									<ImageIcon
+										size={16}
+										aria-hidden="true"
+										className="text-ink-dim"
+									/>
+								)}
+							</AttachmentFrame>
+						</li>
+					);
+				})}
+			</ul>
+			{/* One shared description for every tile that cannot be drawn (D6);
+		    `hidden` still resolves through aria-describedby, and keeps the
+		    list's item count honest. */}
+			<span hidden id={`${listId}-none`}>
+				{t("ui.teamBridge.attachments.preview_unavailable")}
+			</span>
+		</>
 	);
 };
 
