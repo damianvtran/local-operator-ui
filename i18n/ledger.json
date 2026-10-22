@@ -17978,8 +17978,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
-			"target_sha256": "a5b8b5ddbbc1523366b5daeaa2817b30aa8a53cb9a3f656c19ddc92fe518a8e4",
+			"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+			"target_sha256": "64093579763efc8c0c1b3edf81b35b22ea0021181241cdade19e4d2aa2b3f6db",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -17993,17 +17993,17 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-22",
-					"result": "clean-with-findings",
-					"instance": "att-r1-fr",
+					"result": "clean",
+					"instance": "att-r2-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/att-r1-fr.json",
-					"receipt_sha256": "39df265b9409774901916d375b69fccd737dd819a69f1255832a8052f2217de9",
-					"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+					"receipt": "i18n/receipts/att-r2-fr.json",
+					"receipt_sha256": "13c3adee6e328f0605d8be8a43478c4ad7df39ea0c9065e2a2dffa1f975b01c5",
+					"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
 				}
 			],
 			"status": "audited",
@@ -18153,6 +18153,29 @@
 							"receipt_sha256": "ea54d0ab14dead34e0b18e912905cc9601c7c1cdc393c7bc2b18f0f26e4e6eb6",
 							"scope": "Team Bridge held-schedule recovery: 2-key delta (schedule.held, schedule.discard_attempt) independently audited in tbh-r1-fr, NIT remediation delta re-audited here; other 136 values inherited unchanged from c06b457be9 (tbs-r2-fr). Catalogue audit only, not rendered-fit, activation or release approval.",
 							"note": "Independent delta audit; round 1 retained at i18n/receipts/tbh-r1-fr.json and i18n/audits/evidence/fr/ui.teamBridge/tbh-held-schedule-20261021/. No rendered-fit claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+					"target_sha256": "a5b8b5ddbbc1523366b5daeaa2817b30aa8a53cb9a3f656c19ddc92fe518a8e4",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "att-r1-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/att-r1-fr.json",
+							"receipt_sha256": "39df265b9409774901916d375b69fccd737dd819a69f1255832a8052f2217de9",
+							"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
 						}
 					],
 					"status": "audited"
@@ -18486,8 +18509,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
-			"target_sha256": "cf5d345b07f1425343eb091cab1959f258695532177ad5f473036231a730eebb",
+			"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+			"target_sha256": "34ebfffbe978805ce0afa8a5e92cbfea3743587485494b3cb86c4cd4af51b8c9",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -18500,17 +18523,17 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-22",
-					"result": "clean-with-findings",
-					"instance": "att-r1-es",
+					"result": "clean",
+					"instance": "att-r2-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/att-r1-es.json",
-					"receipt_sha256": "d267d3689a22c7bb760db10ddadfddf11813ce2609606ad870e393a07eb922ba",
-					"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+					"receipt": "i18n/receipts/att-r2-es.json",
+					"receipt_sha256": "c2183c6e7d564c22cf781425d034a1ef06a2a8a96e032352b2704b2df460310c",
+					"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
 				}
 			],
 			"status": "audited",
@@ -18639,14 +18662,37 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+					"target_sha256": "cf5d345b07f1425343eb091cab1959f258695532177ad5f473036231a730eebb",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "att-r1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/att-r1-es.json",
+							"receipt_sha256": "d267d3689a22c7bb760db10ddadfddf11813ce2609606ad870e393a07eb922ba",
+							"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
-			"target_sha256": "941547bb3bd80e153820fbd9c6a2ba680f626e2f908e629240a8a9ace3bf13d0",
+			"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+			"target_sha256": "9a66cc5265c438481620c908d75ea93399da3dad5dc0ffa46cc9b75f63cdec40",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -18660,16 +18706,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-22",
 					"result": "clean-with-findings",
-					"instance": "att-r1-zh-cn",
+					"instance": "att-r2-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 4,
+						"minor": 0,
 						"nit": 1
 					},
-					"receipt": "i18n/receipts/att-r1-zh-cn.json",
-					"receipt_sha256": "41e2204a1dee73226bfff2716a3445f0c40b45d6fea26c9903a07732cb3efe5c",
-					"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+					"receipt": "i18n/receipts/att-r2-zh-cn.json",
+					"receipt_sha256": "98f1329f08c9f78585937671507db2f5d50a7f020860657e69dab82375be56ab",
+					"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
 				}
 			],
 			"status": "audited",
@@ -18795,6 +18841,29 @@
 							"receipt_sha256": "d5a3be1199e70ad6d3989a1ff3825499d7ef396895fa4e3c2befa8896a90c4c3",
 							"scope": "Team Bridge held-schedule recovery: 2-key delta (schedule.held, schedule.discard_attempt) independently audited in tbh-r1-zh-cn with no findings; other 136 values inherited unchanged from c06b457be9 (tbs-r2-zh-cn). Catalogue audit only, not rendered-fit, activation or release approval.",
 							"note": "Independent 2-key delta audit, clean in round 1 (no remediation delta, so no round 2). Record: i18n/audits/evidence/zh-CN/ui.teamBridge/tbh-held-schedule-20261021/. No rendered-fit claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+					"target_sha256": "941547bb3bd80e153820fbd9c6a2ba680f626e2f908e629240a8a9ace3bf13d0",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "att-r1-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/att-r1-zh-cn.json",
+							"receipt_sha256": "41e2204a1dee73226bfff2716a3445f0c40b45d6fea26c9903a07732cb3efe5c",
+							"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
 						}
 					],
 					"status": "audited"
@@ -19061,8 +19130,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
-			"target_sha256": "33a931af827ba2d475c46ad82f96e2a851d0686d0e788350db8e1baa99ac0a8d",
+			"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+			"target_sha256": "4f8908284652b26099e70fea80497be38e9728a1848634cff3c8e57b711c02aa",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19076,17 +19145,17 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-22",
-					"result": "clean-with-findings",
-					"instance": "att-r1-ru",
+					"result": "clean",
+					"instance": "att-r2-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/att-r1-ru.json",
-					"receipt_sha256": "8d72369fc69f6033efd26eb0d75d5baf7c087fef8e816839976ecd37fb1a9984",
-					"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+					"receipt": "i18n/receipts/att-r2-ru.json",
+					"receipt_sha256": "2d06c4188b43a4d165521f9f9c877d705e55231732ee001ce0b3044799cb9d8c",
+					"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
 				}
 			],
 			"status": "audited",
@@ -19162,14 +19231,37 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+					"target_sha256": "33a931af827ba2d475c46ad82f96e2a851d0686d0e788350db8e1baa99ac0a8d",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "att-r1-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/att-r1-ru.json",
+							"receipt_sha256": "8d72369fc69f6033efd26eb0d75d5baf7c087fef8e816839976ecd37fb1a9984",
+							"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
-			"target_sha256": "81800a16e68bad3511726b517d74cc7648daf3696c76409e33dd7a8a30bfa78d",
+			"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+			"target_sha256": "3189d728113b51462c092b51d8ff41d26c1c26fd8e96e661179dfd3630f794b1",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19183,16 +19275,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-22",
 					"result": "clean-with-findings",
-					"instance": "att-r1-hi",
+					"instance": "att-r2-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 4,
-						"nit": 3
+						"minor": 1,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/att-r1-hi.json",
-					"receipt_sha256": "81f022991c2c2d6ddd7fc82194a9f278e1049f8c403b56a6f0075a03a0000653",
-					"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+					"receipt": "i18n/receipts/att-r2-hi.json",
+					"receipt_sha256": "f6e3bae43c1fb792e25c9d24d9412b7cec756ec3aa0bceed0c6dcaaa92244a58",
+					"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
 				}
 			],
 			"status": "audited",
@@ -19268,14 +19360,37 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+					"target_sha256": "81800a16e68bad3511726b517d74cc7648daf3696c76409e33dd7a8a30bfa78d",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "att-r1-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 4,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/att-r1-hi.json",
+							"receipt_sha256": "81f022991c2c2d6ddd7fc82194a9f278e1049f8c403b56a6f0075a03a0000653",
+							"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
-			"target_sha256": "47bccf3a65d5ad9ccba4b375fba35c67d3c00ec689bd209fcb06361a655a6d99",
+			"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+			"target_sha256": "f9b0ae461b2e8cba71e0000e24e37b0f09aa932f65ba77be381a336ce98e411e",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19288,17 +19403,17 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-22",
-					"result": "clean-with-findings",
-					"instance": "att-r1-ur",
+					"result": "clean",
+					"instance": "att-r2-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 2,
-						"nit": 3
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/att-r1-ur.json",
-					"receipt_sha256": "005c6def2dad56d91fc7bb9e0a4d2fb8daf216093d755239281631ef3905821e",
-					"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+					"receipt": "i18n/receipts/att-r2-ur.json",
+					"receipt_sha256": "5f9baf25801f94b9af402007278a2255d99386008cf91d34e7282aa44fbcc091",
+					"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
 				}
 			],
 			"status": "audited",
@@ -19374,14 +19489,37 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+					"target_sha256": "47bccf3a65d5ad9ccba4b375fba35c67d3c00ec689bd209fcb06361a655a6d99",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "att-r1-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 2,
+								"nit": 3
+							},
+							"receipt": "i18n/receipts/att-r1-ur.json",
+							"receipt_sha256": "005c6def2dad56d91fc7bb9e0a4d2fb8daf216093d755239281631ef3905821e",
+							"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
-			"target_sha256": "608e2f506070968878a48fdbbf2a10ddc174de7c0e0db872bc6ade21b938bc03",
+			"source_sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+			"target_sha256": "4853986bbd7c5c9e48a4616723878d948efd4ad7ce55e59e21aa9ad2d8a8c362",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19394,17 +19532,17 @@
 					"agent": "translation-auditor",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-22",
-					"result": "clean-with-findings",
-					"instance": "att-r1-vi",
+					"result": "clean",
+					"instance": "att-r2-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 1
+						"minor": 0,
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/att-r1-vi.json",
-					"receipt_sha256": "a8f1ceb71bfbd5481e4a81842d1f9aacef58e286f98e25ee5ec38a4d0499a5b0",
-					"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
+					"receipt": "i18n/receipts/att-r2-vi.json",
+					"receipt_sha256": "4249fef08a9c6e6d876646d9147502135a11d0373e35a40d2cd1ffbd52f639df",
+					"scope": "round-2 delta of ui.teamBridge.attachments.* at 8cf05961d6"
 				}
 			],
 			"status": "audited",
@@ -19477,6 +19615,29 @@
 							"receipt_sha256": "6bdc2b3a8750028e0529f5526063213564c1762cece8fe38cdfaad1e673e7245",
 							"scope": "Team Bridge held-schedule recovery: 2-key delta (schedule.held, schedule.discard_attempt) independently audited in tbh-r1-vi with no findings; other 136 values inherited unchanged from c06b457be9 (tbs-r2-vi). Catalogue audit only, not rendered-fit, activation or release approval.",
 							"note": "Independent 2-key delta audit, clean in round 1 (no remediation delta, so no round 2). Record: i18n/audits/evidence/vi/ui.teamBridge/tbh-held-schedule-20261021/. No rendered-fit claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+					"target_sha256": "608e2f506070968878a48fdbbf2a10ddc174de7c0e0db872bc6ade21b938bc03",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean-with-findings",
+							"instance": "att-r1-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/att-r1-vi.json",
+							"receipt_sha256": "a8f1ceb71bfbd5481e4a81842d1f9aacef58e286f98e25ee5ec38a4d0499a5b0",
+							"scope": "23-key ui.teamBridge.attachments.* delta at cf1d7c616c"
 						}
 					],
 					"status": "audited"
