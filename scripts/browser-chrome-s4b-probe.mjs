@@ -504,6 +504,64 @@ async function historyScene({ shot, framesDir }) {
 		return { child, facts };
 	};
 
+	const childNotice = async (port, expectedText) => {
+		const target = await waitForTarget(
+			port,
+			(t) => t.url.endsWith("browser-address-overlay-list.html"),
+			8_000,
+		).catch(() => null);
+		if (!target) return null;
+		const child = await connect(target.webSocketDebuggerUrl);
+		const updated = await waitFor(
+			child,
+			`(document.querySelector("#address-list-notice")?.textContent ?? "").includes(${JSON.stringify(expectedText)})`,
+			6_000,
+		);
+		const facts = await evaluate(
+			child,
+			`(() => ({
+				updated: ${JSON.stringify(updated)},
+				notice: document.querySelector("#address-list-notice")?.textContent ?? null,
+				header: document.querySelector("#address-list-label")?.textContent ?? null,
+				dir: document.documentElement.dir,
+			}))()`,
+		);
+		await sleep(200);
+		return { child, facts };
+	};
+	const childTitleGeometry = async (port, expectedText) => {
+		const target = await waitForTarget(
+			port,
+			(t) => t.url.endsWith("browser-address-overlay-list.html"),
+			8_000,
+		).catch(() => null);
+		if (!target) return null;
+		const child = await connect(target.webSocketDebuggerUrl);
+		await waitFor(
+			child,
+			`(document.querySelector("#address-list-rows")?.textContent ?? "").includes(${JSON.stringify(expectedText)})`,
+			6_000,
+		);
+		const facts = await evaluate(
+			child,
+			`(() => {
+				const rows = [...document.querySelectorAll("#address-list-rows > *")];
+				const row = rows[0] ?? null;
+				const title = row?.querySelector(".lo-row-title") ?? null;
+				return {
+					dir: document.documentElement.dir,
+					rows: rows.length,
+					rowText: row?.querySelector(".lo-row-text")?.textContent ?? null,
+					titleText: title?.textContent ?? null,
+					titleWidth: title ? Math.round(title.getBoundingClientRect().width) : 0,
+					viewport: Math.round(document.documentElement.getBoundingClientRect().width),
+				};
+			})()`,
+		);
+		await sleep(200);
+		return { child, facts };
+	};
+
 	let stopOne = null;
 	let stopTwo = null;
 	let one = null;
@@ -700,9 +758,6 @@ async function historyScene({ shot, framesDir }) {
 		const vpnUrl =
 			afterVpn.tabs.find((tab) => tab.tabId === afterVpn.activeTabId)?.url ??
 			null;
-		cdp.close();
-		stopTwo = await two.stop();
-		two = null;
 		record(
 			"H4",
 			githubCommitted &&
@@ -716,8 +771,146 @@ async function historyScene({ shot, framesDir }) {
 				: "FAIL",
 			{ stoppedTwo: stopTwo, githubUrl, vpnUrl, githubCommitted, vpnCommitted },
 		);
+		// Let the search page finish its redirects before navigating this tab
+		// again; a navigate during the redirect chain is aborted (-3).
+		await waitFor(
+			cdp,
+			"(async () => !(await window.api.browser.state()).loading)()",
+			20_000,
+		).catch(() => {});
+		await sleep(600);
+
+		// H5: the open-tab source. Visit a page, forget that origin (the same
+		// store path "Forget this site" uses), and query the host while the tab is
+		// still open: every remaining row comes from a live stack, not history.
+		await navigateActive(cdp, other);
+		const origin = new URL(fixture).origin;
+		await evaluate(
+			cdp,
+			`window.api.browser.forgetSite(${JSON.stringify(origin)})`,
+		);
+		await sleep(400);
+		await focusChrome(cdp);
+		await raise(cdp);
+		await typeInAddressField(cdp, host);
+		await waitFor(
+			cdp,
+			`document.querySelectorAll("[data-address-suggestion]").length > 0`,
+			8_000,
+		);
+		const tabRows = await suggestionRows(cdp);
+		await frameScene(cdp, "owner-open-tab.png");
+		const openTabChild = await childFacts(two.port, "Already open");
+		if (openTabChild) {
+			writeFileSync(
+				join(framesDir, "child-open-tab.png"),
+				await shot(openTabChild.child),
+			);
+			openTabChild.child.close();
+		}
+		record(
+			"H5",
+			tabRows.rows.length > 0 && tabRows.rows[0].source === "tab"
+				? "PASS"
+				: "FAIL",
+			{ owner: tabRows, child: openTabChild?.facts ?? null },
+		);
+
+		// H8 (D3): the same row in a narrow popout; the title/marker must keep a
+		// floor instead of collapsing to 0px.
+		await cdp.send("Emulation.setDeviceMetricsOverride", {
+			width: 360,
+			height: 900,
+			deviceScaleFactor: 1,
+			mobile: false,
+		});
+		await sleep(500);
+		await frameScene(cdp, "owner-narrow-open-tab.png");
+		const narrowChild = await childTitleGeometry(two.port, "Already open");
+		if (narrowChild) {
+			writeFileSync(
+				join(framesDir, "child-narrow-open-tab.png"),
+				await shot(narrowChild.child),
+			);
+			narrowChild.child.close();
+		}
+		record(
+			"H8",
+			(narrowChild?.facts.titleWidth ?? 0) >= 70 &&
+				(narrowChild?.facts.titleText ?? "").includes("Already open")
+				? "PASS"
+				: "FAIL",
+			{ child: narrowChild?.facts ?? null },
+		);
+		await cdp.send("Emulation.clearDeviceMetricsOverride");
+		await sleep(400);
+
+		// H6: a query the (now empty) store cannot match shows the notice, not a
+		// search row and not a false history row.
+		await focusChrome(cdp);
+		await raise(cdp);
+		await typeInAddressField(cdp, "zzz-nohistory.example");
+		await sleep(300);
+		await frameScene(cdp, "owner-no-match.png");
+		const noMatchChild = await childNotice(
+			two.port,
+			"No matching pages in your history",
+		);
+		if (noMatchChild) {
+			writeFileSync(
+				join(framesDir, "child-no-match.png"),
+				await shot(noMatchChild.child),
+			);
+			noMatchChild.child.close();
+		}
+		const noMatchRows = await suggestionRows(cdp);
+		record(
+			"H6",
+			noMatchRows.rows.length === 0 && noMatchChild?.facts.updated === true
+				? "PASS"
+				: "FAIL",
+			{ owner: noMatchRows, child: noMatchChild?.facts ?? null },
+		);
+
+		// H7 (D5): force the owner chrome RTL, type a search, and read the child's
+		// direction. The Urdu string is a real translation; this drives the same
+		// document the app builds.
+		await evaluate(cdp, `document.documentElement.dir = "rtl"`);
+		await sleep(200);
+		await focusChrome(cdp);
+		await raise(cdp);
+		await typeInAddressField(cdp, "github");
+		await waitFor(
+			cdp,
+			`/Search DuckDuckGo/.test(document.querySelector("[data-address-suggestion]")?.textContent ?? "")`,
+			8_000,
+		);
+		await sleep(300);
+		await frameScene(cdp, "owner-rtl-search.png");
+		const rtlChild = await childFacts(two.port, "Search DuckDuckGo");
+		let rtlDir = null;
+		if (rtlChild) {
+			writeFileSync(
+				join(framesDir, "child-rtl-search.png"),
+				await shot(rtlChild.child),
+			);
+			rtlDir = await evaluate(
+				rtlChild.child,
+				`({ dir: document.documentElement.dir, textDir: document.querySelector(".lo-row-text")?.dir ?? null })`,
+			);
+			rtlChild.child.close();
+		}
+		record(
+			"H7",
+			rtlDir?.dir === "rtl" && rtlDir?.textDir === "auto" ? "PASS" : "FAIL",
+			{ child: rtlDir, facts: rtlChild?.facts ?? null },
+		);
+		await evaluate(cdp, `document.documentElement.dir = "ltr"`);
+		cdp.close();
+		stopTwo = await two.stop();
+		two = null;
 	} catch (error) {
-		for (const id of ["H1", "H2", "H3", "H4"]) {
+		for (const id of ["H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8"]) {
 			if (!rows.find((row) => row.id === id)?.at)
 				record(id, "BLOCKED", `history scene rig error: ${String(error)}`);
 		}
@@ -845,6 +1038,26 @@ plan(
 plan(
 	"H4",
 	"Enter commits the highlighted search row's DuckDuckGo URL on the active tab",
+	"driven",
+);
+plan(
+	"H5",
+	"an open tab with no stored history row is suggested with its source mark",
+	"driven",
+);
+plan(
+	"H8",
+	"at narrow width the open-tab title/marker keeps a floor and does not collapse",
+	"driven",
+);
+plan(
+	"H6",
+	"a query with no match shows the no-match notice and no rows",
+	"driven",
+);
+plan(
+	"H7",
+	"an RTL owner chrome paints an RTL child and the row text is dir=auto",
 	"driven",
 );
 plan(
