@@ -24653,6 +24653,42 @@ async function sceneStaleTeamDraft(cdp) {
 	);
 	const frame = await captureSettled(cdp, "stale-team-draft");
 	note("frame", JSON.stringify(frame));
+	/*
+	 * THE CONTROL (design review round 1's D3): the same build, the same daemon,
+	 * and NO seeded draft - the app's own launch state. It answers whether anything
+	 * the after frame shows (the model chip's "Retry", the empty-state prompts)
+	 * belongs to the fix or to a daemon with no resolved model. A pair is only
+	 * evidence if the control shares the environment.
+	 */
+	await cdp.evaluate(`(() => {
+		localStorage.removeItem("canonical-sessions-storage");
+		localStorage.removeItem("conversation-input-store");
+		return true;
+	})()`);
+	await cdp.send("Page.reload", { ignoreCache: false });
+	await wait(1500);
+	await waitForBridge(cdp);
+	const control = await read();
+	note(
+		"the plain-new-chat control (no seeded draft)",
+		JSON.stringify({
+			notice: control.notice,
+			composer: control.composer,
+			sessionId: control.storedDraft?.sessionId ?? null,
+		}),
+	);
+	check(
+		"the control is the app's own new chat: no notice and an editable composer",
+		control.notice === null &&
+			control.composer !== null &&
+			control.composer.disabled === false &&
+			control.composer.readOnly === false,
+		JSON.stringify({ notice: control.notice, composer: control.composer }),
+	);
+	note(
+		"control frame",
+		JSON.stringify(await captureSettled(cdp, "stale-team-draft-control")),
+	);
 }
 
 async function sceneDrafts(cdp) {
