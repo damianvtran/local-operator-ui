@@ -472,6 +472,16 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			(target?.type === "compose" && composeRecipients.length > 0) ||
 			((target?.type === "person" || target?.type === "chief") &&
 				draftPerson !== null));
+	/* One reaction context for the timeline AND the thread pane, so a reply can
+	   be reacted to under exactly the rules its root is. */
+	const reactionContext =
+		selfAccountId && selected
+			? {
+					accountId: selfAccountId,
+					tenantId: selected.tenant_id,
+					disabled: !canCompose || selected.status !== "open",
+				}
+			: undefined;
 
 	// The retry's idempotency key: a failed send is retried with the SAME
 	// `client_ref`, so an ambiguous failure (request landed, answer lost) cannot
@@ -977,15 +987,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									<TeamBridgeMessageList
 										messages={messages}
 										labelFor={(sender) => labelFor(sender)}
-										reactionContext={
-											selfAccountId && selected
-												? {
-														accountId: selfAccountId,
-														tenantId: selected.tenant_id,
-														disabled: !canCompose || selected.status !== "open",
-													}
-												: undefined
-										}
+										reactionContext={reactionContext}
 										onReply={(message) => {
 											if (shown)
 												setThreadSelection({
@@ -1123,6 +1125,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								)}
 								labelFor={labelFor}
 								readOnly={readOnly}
+								reactionContext={reactionContext}
 								onClose={() => {
 									setThreadSelection(null);
 									onCloseThread?.();

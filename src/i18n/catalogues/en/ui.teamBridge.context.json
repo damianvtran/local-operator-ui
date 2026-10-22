@@ -993,5 +993,19 @@
 		"length": "One short line.",
 		"placeholders": {},
 		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.actions.label": {
+		"role": "accessible name of the message toolbar",
+		"tone": "neutral, sentence case",
+		"length": "Short label; screen readers announce it as the toolbar's name.",
+		"placeholders": {},
+		"note": "Slack-style hover toolbar on one chat message (react, reply in thread, more). Names the group of actions for ONE message, not the conversation."
+	},
+	"ui.teamBridge.actions.more": {
+		"role": "icon button label and tooltip (three-dot menu)",
+		"tone": "neutral, sentence case",
+		"length": "Short label; shown as a tooltip on a 28px icon button.",
+		"placeholders": {},
+		"note": "Opens the menu of further actions on one chat message. Not the conversation options menu (ui.teamBridge.menu.label)."
 	}
 }
