@@ -458,18 +458,43 @@ export type TeamBridgeMemberInput = {
 
 /** Server-owned delivery intent; bodies here are explicit user-authored work,
  * never a desktop inbound-body cache. Terminal rows are absent from list. */
-export const teamBridgeScheduledMessageSchema = z.object({
-	id: id,
-	tenant_id: id,
-	conversation_id: id,
-	body: z.string(),
-	send_at: z.string().datetime({ offset: true }),
-	status: z.enum(["scheduled", "sending"]),
-	created_at: z.string().datetime({ offset: true }),
-	/* Reserved images; descriptors only (not bound to a message, so no bytes). */
-	attachments: z.array(teamBridgeAttachmentSchema).max(16).optional(),
-});
-export type TeamBridgeScheduledMessage = z.infer<
+export const teamBridgeScheduledMessageSchema = z
+	.object({
+		id: id,
+		tenant_id: id,
+		conversation_id: id,
+		body: z.string(),
+		send_at: z.string().datetime({ offset: true }),
+		status: z.enum(["scheduled", "sending"]),
+		created_at: z.string().datetime({ offset: true }),
+		/* Reserved images; descriptors only (not bound to a message, so no bytes). */
+		attachments: z.array(teamBridgeAttachmentSchema).max(16).optional(),
+		/*
+		 * The S2 hub's first shape: reserved ids only. A newer hub sends
+		 * `attachments` descriptors beside them (manager decision, round 1); the
+		 * descriptors win when present, otherwise each id becomes an id-only
+		 * descriptor (no size/geometry), which the scheduled tile draws as
+		 * "Preview unavailable" or as this session's in-memory preview. Edits keep
+		 * and remove by id either way, so both hub versions behave the same.
+		 */
+		attachment_ids: z.array(attachmentId).max(16).optional(),
+	})
+	.transform(({ attachment_ids, ...row }) =>
+		row.attachments !== undefined || !attachment_ids?.length
+			? row
+			: {
+					...row,
+					attachments: attachment_ids.map((attachmentRef) => ({
+						id: attachmentRef,
+						mime: "",
+						size: 0,
+						width: 0,
+						height: 0,
+						state: "reserved",
+					})),
+				},
+	);
+export type TeamBridgeScheduledMessage = z.output<
 	typeof teamBridgeScheduledMessageSchema
 >;
 export const teamBridgeScheduledListSchema = z.object({

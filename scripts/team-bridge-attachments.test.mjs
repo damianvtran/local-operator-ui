@@ -270,6 +270,49 @@ test("message and scheduled schemas accept additive attachment descriptors", () 
 
 /* --------------------------------------------------------------- model */
 
+test("scheduled rows: descriptors win; S2's attachment_ids become id-only tiles", () => {
+	const row = {
+		id: "bsch_1",
+		tenant_id: "org_1",
+		conversation_id: "bcv_1",
+		body: "",
+		send_at: "2030-01-01T00:00:00Z",
+		status: "scheduled",
+		created_at: "2029-12-31T00:00:00Z",
+	};
+	const ids = m.teamBridgeScheduledMessageSchema.parse({
+		...row,
+		attachment_ids: ["batt_a", "batt_b"],
+	});
+	assert.deepEqual(
+		ids.attachments.map((a) => [a.id, a.width, a.state]),
+		[
+			["batt_a", 0, "reserved"],
+			["batt_b", 0, "reserved"],
+		],
+	);
+	assert.equal("attachment_ids" in ids, false);
+	const both = m.teamBridgeScheduledMessageSchema.parse({
+		...row,
+		attachment_ids: ["batt_a"],
+		attachments: [
+			{ id: "batt_a", mime: "image/png", size: 9, width: 4, height: 3 },
+		],
+	});
+	assert.deepEqual(
+		both.attachments.map((a) => [a.id, a.width]),
+		[["batt_a", 4]],
+	);
+	assert.equal(
+		m.teamBridgeScheduledMessageSchema.parse(row).attachments,
+		undefined,
+	);
+	// Edits keep/remove by id regardless of which shape arrived.
+	assert.deepEqual(m.scheduledEditPatch(ids, ids.send_at, "", ["batt_a"]), {
+		attachment_ids: ["batt_a"],
+	});
+});
+
 test("capability gate: absent, disabled or narrower blocks hide attachments", () => {
 	assert.equal(m.attachmentCapability({ status: { tenants: [] } }), null);
 	assert.equal(m.attachmentCapability({ status: null }), null);
