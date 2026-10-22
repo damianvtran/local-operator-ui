@@ -8,6 +8,7 @@ import { TAG_DROP_PREVIEW_CLASSES } from "@features/chat/chat-tag-drag";
 import {
 	groupChatsByTag,
 	tagBucketRowIds,
+	unusedTags,
 } from "@features/chat/chat-tag-groups";
 import { moveChatToTag } from "@features/chat/chat-tag-move";
 import { tagHeaderAt, useChatTagDrag } from "@features/chat/use-chat-tag-drag";
@@ -200,6 +201,9 @@ import {
 	chatRowAct,
 	chatRowActCapJoined,
 	chatRowActControl,
+	chatTagsChord,
+	chatTagsChordCap,
+	chatTagsChordText,
 } from "../chat-regions";
 /*
  * THE REMOTE ROW'S OWN FACTS (the shared convention; the header of
@@ -292,8 +296,13 @@ import {
 import { ChatRemoteMark } from "./chat-remote-mark";
 import { ChatRowHoverIntent } from "./chat-row-hover-intent";
 import { ChatRowTitle } from "./chat-row-title";
-import { ChatSessionTagsDialog } from "./chat-session-tags-dialog";
 import { ChatSidebarViewMenu } from "./chat-sidebar-view-menu";
+import {
+	ChatTagFooter,
+	ChatTagHeader,
+	TAG_HEADER_STOP_ATTR,
+} from "./chat-tag-header";
+import { ChatTagPopover } from "./chat-tag-popover";
 import {
 	HubLinkAggregateMark,
 	HubLinkExpandedPolicy,
@@ -306,7 +315,6 @@ import {
 	HubSectionLines,
 	HubUpdateMark,
 } from "./hub-update-mark";
-import { ManageTagsDialog } from "./manage-tags-dialog";
 import { TeamAvatarBubble } from "./team-avatar-bubble";
 
 /*
@@ -1401,28 +1409,35 @@ export function ChatSidebar({
 	const fetchTagCategories = useSessionTagsStore(
 		(state) => state.fetchCategories,
 	);
-	const [tagMoveMode, setTagMoveMode] = useState(false);
+	/*
+	 * THE ONE OPEN TAGS POPOVER (sidebar tags v3, D1), by the row it belongs to.
+	 * The row object is a snapshot for the popover's mount; the assignment hook
+	 * re-seeds from the canonical row as writes land. The dialogs this replaces
+	 * (`tagRow` + a move mode + a Manage dialog) are gone: management lives on
+	 * the group headers and the tag footer.
+	 */
 	const [tagRow, setTagRow] = useState<CanonicalSessionRow | null>(null);
-	const [manageTagsOpen, setManageTagsOpen] = useState(false);
-	const tagsInvoker = useRef<HTMLElement | null>(null);
 	const tagsOriginId = useRef<string | null>(null);
 	useEffect(() => {
 		if (ready && tagsAvailable) void fetchTagCategories();
 	}, [ready, tagsAvailable, fetchTagCategories]);
 	const returnTagsFocus = () => {
-		// Applying can move the row into another bucket and remount its button.
-		// Resolve the stable identity after the modal's focus trap has torn down,
-		// rather than focusing the detached element the context menu opened from.
+		// A write can move the row into another bucket and remount its button.
+		// Resolve the stable identity after the popover has torn down, rather than
+		// focusing the detached element the context menu opened from.
 		requestAnimationFrame(() => {
 			const id = tagsOriginId.current;
-			const target = id
-				? document.querySelector<HTMLElement>(
-						`[data-session-row="${CSS.escape(id)}"] [data-chat-row]`,
-					)
-				: tagsInvoker.current;
+			if (!id) return;
+			const target = document.querySelector<HTMLElement>(
+				`[data-session-row="${CSS.escape(id)}"] [data-chat-row]`,
+			);
 			target?.focus();
 			target?.scrollIntoView({ block: "nearest" });
 		});
+	};
+	const openTagsPopover = (row: CanonicalSessionRow) => {
+		tagsOriginId.current = row.session_id;
+		setTagRow(row);
 	};
 	const teamLabels = useMemo(
 		() =>
@@ -3085,6 +3100,13 @@ export function ChatSidebar({
 	 */
 	const view = parseSidebarView(chatSidebarView);
 	/*
+	 * Whether tag groups are the list's arrangement (search aside). The tag footer
+	 * and the popover's "Shown under" line read this; the row grouping itself also
+	 * suspends while searching, which is why that predicate keeps its own spelling.
+	 */
+	const tagsGrouped =
+		tagsAvailable && view.tagsEnabled && view.groupBy === "section";
+	/*
 	 * A pin pressed in this panel is written at the BOTTOM of the stored order (issue
 	 * #1067, rule 3; the WHY is on `appendPinnedOrder`). Kept out of the pin control's
 	 * handler so that handler stays short beside the row markup it sits in.
@@ -4251,23 +4273,28 @@ export function ChatSidebar({
 				!query.trim(),
 		);
 		if (!groups) return rows.map((row) => sessionRow(row));
+		/*
+		 * THE HEADER IS THE TAG'S MANAGEMENT SURFACE (v3 spec D2). `above`/`below`
+		 * are the tags drawn next to it IN THIS SECTION (Untagged excluded, it is
+		 * not in the registry), which is what a header's Move up/down moves past.
+		 */
+		const visibleTags = groups
+			.map((bucket) => bucket.id)
+			.filter((id) => id !== "untagged");
 		return groups.map((bucket) => (
 			<div
 				key={bucket.id}
 				data-chat-tag-group={bucket.id}
 				className="[&[data-tag-drop-preview]_[data-chat-row]]:bg-row-selected [&[data-tag-drop-preview]_[data-session-row]]:bg-row-selected"
 			>
-				<div
-					data-tag-drop-target={bucket.id}
-					className="flex h-7 items-center gap-2 px-2 text-meta text-ink-dim"
-				>
-					<span className="min-w-0 flex-1 truncate" title={bucket.name}>
-						{bucket.id === "untagged"
-							? t("ui.chat.tags.untagged")
-							: bucket.name}
-					</span>
-					<span>{bucket.rows.length}</span>
-				</div>
+				<ChatTagHeader
+					id={bucket.id}
+					name={bucket.name}
+					count={bucket.rows.length}
+					above={visibleTags[visibleTags.indexOf(bucket.id) - 1] ?? null}
+					below={visibleTags[visibleTags.indexOf(bucket.id) + 1] ?? null}
+					announce={announcePinMove}
+				/>
 				<div data-tag-drop-target={bucket.id} data-tag-drop-body>
 					{bucket.rows.map((row) => sessionRow(row, false, true))}
 				</div>
@@ -4732,7 +4759,10 @@ export function ChatSidebar({
 								.join(" "),
 						}
 					: {})}
-				onPointerDown={(event) => rowTagDrag.start(row.session_id, event)}
+				onPointerDown={(event) => {
+					// Remote assignments are refused before a gesture can arm (v3 §5).
+					if (!remote) rowTagDrag.start(row.session_id, event);
+				}}
 				onClick={(event) => {
 					if (rowTagDrag.consumeClick(row.session_id, event.detail)) {
 						event.preventDefault();
@@ -5043,7 +5073,10 @@ export function ChatSidebar({
 					</span>
 				) : row.link_down === true ? (
 					<span
-						className="shrink-0 text-meta text-warning"
+						className={cn(
+							"shrink-0 text-meta",
+							row.link_reconnecting === true ? "text-ink-dim" : "text-warning",
+						)}
 						title={peerLinkDownLabel(row, listNow / 1000)}
 					>
 						{peerLinkDownVisibleLabel(row, listNow / 1000)}
@@ -5274,7 +5307,7 @@ export function ChatSidebar({
 				suppressed={
 					pinDrag !== null ||
 					rowTagDrag.armedId !== null ||
-					// The modal owns the overlay plane, including pending/error states.
+					// The Tags popover owns the overlay plane while it is open beside the row.
 					tagRow !== null ||
 					teamBubbleHovered === row.session_id ||
 					teamBubbleFocused === row.session_id
@@ -6431,48 +6464,51 @@ export function ChatSidebar({
 						<span>{t("ui.chat.sidebar.row_menu.rename")}</span>
 					</ContextMenuItem>
 					{tagsAvailable && (
+						/*
+						 * ONE DOOR TO A CONVERSATION'S TAGS (v3 spec D1/D4): the anchored popover,
+						 * with its chord printed like the row's other chord-carrying acts. A
+						 * remote conversation's tags cannot be changed (the server refuses with
+						 * `session_is_remote`), so the item says so BEFORE any write rather than
+						 * after one - `aria-disabled` keeps the reason readable, as the Move
+						 * items' boundaries do.
+						 */
 						<ContextMenuItem
-							onSelect={() => {
-								tagsInvoker.current = document.querySelector<HTMLElement>(
-									`[data-session-row="${CSS.escape(row.session_id)}"] [data-chat-row]`,
-								);
-								tagsOriginId.current = row.session_id;
-								setTagMoveMode(false);
-								setTagRow(row);
+							aria-disabled={row.locality === "remote"}
+							title={
+								row.locality === "remote" ? t("ui.chat.tags.remote") : undefined
+							}
+							className="aria-disabled:cursor-default aria-disabled:text-ink-disabled! aria-disabled:hover:bg-transparent!"
+							onSelect={(event) => {
+								if (row.locality === "remote") {
+									event.preventDefault();
+									announcePinMove(t("ui.chat.tags.remote"));
+									return;
+								}
+								openTagsPopover(row);
 							}}
 						>
 							<Tag aria-hidden="true" className="size-3.5" />
-							{t("ui.chat.tags.menu")}
+							<span>{t("ui.chat.tags.menu")}</span>
+							<span className="ms-auto ps-6">
+								<KeyboardShortcut shortcut={chatTagsChordCap(isMac)} joined />
+							</span>
 						</ContextMenuItem>
 					)}
 
-					{tagsAvailable && (
-						<>
-							{(row.tags?.length ?? 0) > 0 && (
-								<ContextMenuItem
-									onSelect={() => {
-										void moveChatToTag(row, "untagged", announcePinMove).catch(
-											() => {},
-										);
-									}}
-								>
-									<X aria-hidden="true" />
-									{t("ui.chat.tags.remove_all", {
-										count: new Set(row.tags?.map((tag) => tag.id)).size,
-									})}
-								</ContextMenuItem>
-							)}
-							<ContextMenuItem
-								onSelect={() => {
-									tagsOriginId.current = row.session_id;
-									setTagMoveMode(true);
-									setTagRow(row);
-								}}
-							>
-								<Tag aria-hidden="true" />
-								{t("ui.chat.tags.move_menu")}
-							</ContextMenuItem>
-						</>
+					{/* The two-step path to an empty row (v3 spec D4), kept beside Tags…. */}
+					{tagsAvailable && (row.tags?.length ?? 0) > 0 && (
+						<ContextMenuItem
+							onSelect={() => {
+								void moveChatToTag(row, "untagged", announcePinMove).catch(
+									() => {},
+								);
+							}}
+						>
+							<X aria-hidden="true" />
+							{t("ui.chat.tags.remove_all", {
+								count: new Set(row.tags?.map((tag) => tag.id)).size,
+							})}
+						</ContextMenuItem>
 					)}
 
 					{offersMove && (
@@ -7693,6 +7729,12 @@ export function ChatSidebar({
 	 * below uses, so the walk and the ring cannot disagree about what a row is.
 	 */
 	const rowStopRef = useRef<HTMLElement | null>(null);
+	/*
+	 * A TAG GROUP HEADER IS A STOP TOO (v3 spec D2): its `⋯` control, by its own
+	 * attribute rather than `data-chat-row`, because the type-to-filter branch and
+	 * the row chords test `data-chat-row` and a header must answer neither.
+	 */
+	const RING_STOPS = `[data-chat-row], [${TAG_HEADER_STOP_ATTR}]`;
 	const applyRowStop = (stop: HTMLElement | null) => {
 		const nav = navRef.current;
 		if (nav === null) return;
@@ -7702,9 +7744,12 @@ export function ChatSidebar({
 		 * neither hold the stop nor keep `tabIndex` 0 - `focus()` on it is a no-op,
 		 * and a stop nobody can focus is the dead stop that finding measured.
 		 */
-		const allRows = [...nav.querySelectorAll<HTMLElement>("[data-chat-row]")];
+		const allRows = [...nav.querySelectorAll<HTMLElement>(RING_STOPS)];
 		const rows = allRows.filter(
-			(row) => !(row as { disabled?: boolean }).disabled,
+			(row) =>
+				!(row as { disabled?: boolean }).disabled &&
+				// Collapsed Unused tags are not stops until expanded (v3 D3).
+				row.closest("[hidden]") === null,
 		);
 		if (rows.length === 0) return;
 		/*
@@ -7747,7 +7792,7 @@ export function ChatSidebar({
 	 * bubbles from the focused element, which is where the answer is.
 	 */
 	const onRowFocus = (event: ReactFocusEvent<HTMLElement>) => {
-		const row = (event.target as HTMLElement).closest?.("[data-chat-row]");
+		const row = (event.target as HTMLElement).closest?.(RING_STOPS);
 		/*
 		 * Only a row inside THIS panel moves the stop. Focus arriving on a control
 		 * that is not a row - the search field, the foot's menu, a section's `Show
@@ -7890,6 +7935,14 @@ export function ChatSidebar({
 		 * on that row's unmount (UX round 1, U1).
 		 */
 		if (openMenuRowId !== null) return;
+		/*
+		 * A KEY FROM A PORTAL IS NOT THE LIST'S. React bubbles synthetic events
+		 * through the component tree, so the Tags popover's input and a tag
+		 * header's menu - portalled out of this panel's DOM but rendered by it -
+		 * would otherwise reach the walk below, and an ArrowDown in the popover's
+		 * combobox would move focus out of it to the first row.
+		 */
+		if (!event.currentTarget.contains(event.target as Node)) return;
 		const target = event.target as HTMLElement;
 		/*
 		 * THE ROW ACTS' CHORD (§C4, U2). Both controls left the Tab ring below, and
@@ -7906,6 +7959,29 @@ export function ChatSidebar({
 		 * itself, guards included. Calling the handlers directly is how the two paths
 		 * drift.
 		 */
+		/*
+		 * THE TAGS CHORD (v3 spec D8), on a focused conversation row only. A remote
+		 * row is answered with the reason and opens nothing: its tags cannot be
+		 * written, and a popover that refuses every press is worse than a sentence.
+		 */
+		if (
+			tagsAvailable &&
+			chatTagsChord(event) &&
+			target.hasAttribute("data-chat-row")
+		) {
+			const id =
+				target.closest<HTMLElement>("[data-session-row]")?.dataset.sessionRow;
+			const row = [...listed, ...heldRows].find(
+				(entry) => entry.session_id === id,
+			);
+			if (row) {
+				event.preventDefault();
+				if (row.locality === "remote")
+					announcePinMove(t("ui.chat.tags.remote"));
+				else openTagsPopover(row);
+			}
+			return;
+		}
 		const act = chatRowAct(event);
 		if (act !== null) {
 			const control = chatRowActControl(target, act);
@@ -8084,8 +8160,12 @@ export function ChatSidebar({
 		 * this filter protects the class rather than only today's controls.
 		 */
 		const rows = [
-			...event.currentTarget.querySelectorAll<HTMLElement>("[data-chat-row]"),
-		].filter((row) => !(row as { disabled?: boolean }).disabled);
+			...event.currentTarget.querySelectorAll<HTMLElement>(RING_STOPS),
+		].filter(
+			(row) =>
+				!(row as { disabled?: boolean }).disabled &&
+				row.closest("[hidden]") === null,
+		);
 		const index = rows.indexOf(target);
 		const next =
 			event.key === "ArrowDown"
@@ -8853,6 +8933,26 @@ export function ChatSidebar({
 		</p>
 	) : null;
 
+	/*
+	 * WHERE TAGS LIVE (v3 spec D3/D6): `+ New tag` and the unused tags, at the
+	 * list's foot once a tag exists, and as the first-use empty state at its TOP
+	 * while the registry is empty - the foot of a long list is no place to teach a
+	 * feature. Only while grouping is on and the registry has settled: a loading
+	 * or failed registry is not an empty one.
+	 */
+	const tagFooter =
+		tagsGrouped &&
+		!query.trim() &&
+		!tagCategoriesLoading &&
+		tagCategoriesError === null ? (
+			<ChatTagFooter
+				unused={unusedTags(tagCategories)}
+				total={tagCategories.length}
+				dragArmed={rowTagDrag.armedId !== null}
+				announce={announcePinMove}
+				chord={chatTagsChordText(menuIsMac())}
+			/>
+		) : null;
 	const listRegion = (
 		/*
 		 * THE LIST'S OWN REGION MARKER LIVES HERE (round 1, R3). It used to be on the
@@ -9398,6 +9498,7 @@ export function ChatSidebar({
 			 * rows keep their own place ahead of it, because their order is the reader's
 			 * manual arrangement (`chat-pin-order.ts`) and no clock's to change.
 			 */}
+			{tagFooter && tagCategories.length === 0 && tagFooter}
 			{view.groupBy !== "section" &&
 				(groupRows([...pinned, ...pagedRows], view.groupBy) ?? []).map(
 					(entry) => (
@@ -9564,6 +9665,7 @@ export function ChatSidebar({
 					{tailArrival}
 				</span>
 			)}
+			{tagFooter && tagCategories.length > 0 && tagFooter}
 			{/* A COLD-START sentence, not an empty-list one: it says the store
 		    holds no chats at all, so it must not appear beside rows. The
 		    catalogue being empty while `matching` is not is reachable now
@@ -9730,21 +9832,18 @@ export function ChatSidebar({
 			 * every one. Sharing it is what makes the panel's hover read as one surface.
 			 */}
 			{tagsAvailable && tagRow && (
-				<ChatSessionTagsDialog
+				<ChatTagPopover
 					key={tagRow.session_id}
 					row={tagRow}
-					onMove={
-						tagMoveMode
-							? (target) => moveChatToTag(tagRow, target, announcePinMove)
-							: undefined
+					grouped={tagsGrouped}
+					onShowGroups={() =>
+						setChatSidebarView({
+							...view,
+							tagsEnabled: true,
+							groupBy: "section",
+						})
 					}
 					onClose={() => setTagRow(null)}
-					returnFocus={returnTagsFocus}
-				/>
-			)}
-			{tagsAvailable && manageTagsOpen && (
-				<ManageTagsDialog
-					onClose={() => setManageTagsOpen(false)}
 					returnFocus={returnTagsFocus}
 				/>
 			)}
@@ -9880,19 +9979,6 @@ export function ChatSidebar({
 									counts={viewCounts}
 									tagsAvailable={tagsAvailable}
 									autoTagAvailable={autoTagAvailable}
-									tagsEmpty={
-										!tagCategoriesLoading &&
-										tagCategoriesError === null &&
-										tagCategories.length === 0
-									}
-									onManageTags={() => {
-										tagsInvoker.current = document.querySelector<HTMLElement>(
-											"[data-sidebar-view-options]",
-										);
-										tagsOriginId.current = null;
-										setViewOpen(false);
-										setManageTagsOpen(true);
-									}}
 									onView={setChatSidebarView}
 								/>
 							</PopoverContent>

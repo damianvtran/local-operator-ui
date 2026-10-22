@@ -814,7 +814,7 @@ const NAV =
 const PANEL_RAIL =
 	"src/renderer/src/shared/components/navigation/panel-rail.tsx";
 const URL_BAR =
-	"src/renderer/src/features/browser/components/browser-url-bar.tsx";
+	"src/renderer/src/features/browser/components/browser-surface.tsx";
 const APPROVALS_DOCK =
 	"src/renderer/src/features/browser/components/browser-approvals-dock.tsx";
 const BADGE = "src/renderer/src/shared/components/ui/badge.tsx";

@@ -2880,14 +2880,20 @@ test("address history refuses a stale expected tab and reads the live snapshot",
 	assert.notEqual(second, first, "a second tab became active");
 	assert.throws(
 		() =>
-			host.addressHistory({ requestId: 1, expectedTabId: first, scope: "all" }),
+			host.addressHistory({
+				requestId: 1,
+				expectedTabId: first,
+				query: "",
+				limit: 8,
+			}),
 		/active tab changed before suggestions were read/,
 		"a request naming the previous tab is refused rather than answered",
 	);
 	const response = host.addressHistory({
 		requestId: 2,
 		expectedTabId: second,
-		scope: "all",
+		query: "",
+		limit: 8,
 	});
 	assert.equal(response.requestId, 2);
 	assert.equal(response.activeTabId, second);
@@ -2898,6 +2904,45 @@ test("address history refuses a stale expected tab and reads the live snapshot",
 		"the other tab's live history is in the snapshot",
 	);
 	assert.ok(response.entries.length <= 256, "the DTO cap holds");
+});
+
+test("the host merges persistent history ahead of the live-tab rows", async () => {
+	const historyFile = join(root, `browser-history-${Date.now()}.json`);
+	const { host } = makeHost({ historyFilePath: historyFile });
+	await host.newTab(null);
+	const tabId = host.chromeState().activeTabId;
+	host.recordHistoryVisit("https://remembered.example/a");
+	host.recordHistoryTitle("https://remembered.example/a", "Remembered page");
+	host.recordHistoryVisit("https://remembered.example/a");
+	const response = host.addressHistory({
+		requestId: 3,
+		expectedTabId: tabId,
+		query: "remembered",
+		limit: 8,
+	});
+	const first = response.entries[0];
+	assert.equal(first.source, "history");
+	assert.equal(first.url, "https://remembered.example/a");
+	assert.equal(first.title, "Remembered page");
+	assert.equal(first.visitCount, 2);
+	assert.ok(first.lastVisitedAt > 0);
+	assert.ok(
+		response.entries.length <= 8,
+		"the request's limit bounds the merged answer",
+	);
+	// A non-HTTP(S) visit never reaches the document.
+	host.recordHistoryVisit("about:blank");
+	host.flushHistory();
+	const persisted = JSON.parse(readFileSync(historyFile, "utf8"));
+	assert.ok(Array.isArray(persisted.entries));
+	assert.ok(
+		persisted.entries.every((entry) => entry.url.startsWith("http")),
+		"about:blank is not a stored destination",
+	);
+	assert.equal(
+		persisted.entries.some((entry) => entry.url === "about:blank"),
+		false,
+	);
 });
 
 test("closed-tab stack is user-only, scoped, bounded and erased with host UI lifetime", async () => {

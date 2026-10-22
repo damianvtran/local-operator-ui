@@ -13,7 +13,11 @@ import { build } from "esbuild";
 const electron = `
 import { EventEmitter } from 'node:events';
 const f = () => globalThis.__browserStartupFixture;
-export const app = { getVersion: () => 'isolated-test' };
+// A real EventEmitter: production startup registers a module-level
+// before-quit history flush (browser/index.ts), and a bare object stub
+// turns that registration into a startup crash the app never has. The fake
+// models the listener surface; the test never fires quit itself.
+export const app = Object.assign(new EventEmitter(), { getVersion: () => 'isolated-test' });
 export class BrowserWindow { constructor() { throw new Error('A test must never create a desktop window'); } }
 export const shell = { openPath: async () => '' };
 // The page context menu's two Electron members (LOH-13), modelled only so

@@ -95,6 +95,22 @@ export class AgentMessagesModel {
 		for (const listener of this.listeners) listener();
 	}
 
+	/**
+	 * Forget the cached status for the signed-in account, so the NEXT natural
+	 * boundary (Settings mounting again, window focus) reads fresh instead of
+	 * replaying the five-minute cache.
+	 *
+	 * WHY: the chief-of-staff hold (runtime #2777) is released by something the
+	 * owner does elsewhere - sending a message in that conversation - so the
+	 * notice asking for it must not outlive their return to Settings by up to
+	 * five minutes. Same move the consent paths make (`lastChecks.delete`), but
+	 * with no read of its own: no timer, and the boundary that follows still
+	 * decides when to ask.
+	 */
+	invalidateStatus() {
+		if (this.accountId) this.lastChecks.delete(this.accountId);
+	}
+
 	setAccount(accountId: string | null) {
 		if (this.accountId === accountId) return;
 		// In-flight IPC cannot be unsent; generation fences discard its response

@@ -74,12 +74,15 @@ const categories = Array.from({ length: 12 }, (_, index) => ({
 }));
 let creates = 0;
 let toggles = [];
-let closeList;
-function Harness({ initial = [], unready = false }) {
+let promotes = [];
+/*
+ * The v3 popover body (spec D1): one focus home (the input), options reached by
+ * aria-activedescendant, Create as the list's last option. The harness owns
+ * selection the way `useChatTagAssignment` does, so a toggle is observable.
+ */
+function Harness({ initial = [], unready = false, createIssue = null }) {
 	const [selected, setSelected] = React.useState(initial);
 	const [query, setQuery] = React.useState("");
-	const [listOpen, setListOpen] = React.useState(true);
-	closeList = () => setListOpen(false);
 	const input = React.useRef(null);
 	return React.createElement(TagPickerCombobox, {
 		categories,
@@ -87,15 +90,21 @@ function Harness({ initial = [], unready = false }) {
 		primary: selected[0] ?? null,
 		query,
 		setQuery,
-		listOpen,
-		setListOpen,
 		disabled: false,
 		unready,
 		input,
-		createIssue: selected.length >= 8 ? "Choose up to 8 tags" : null,
+		createIssue,
 		toggle: (id) => {
 			toggles.push(id);
 			setSelected((held) => togglePickerTag(held, id));
+		},
+		showUnder: (id) => {
+			promotes.push(id);
+			setSelected((held) =>
+				held.includes(id)
+					? [id, ...held.filter((x) => x !== id)]
+					: [id, ...held],
+			);
 		},
 		create: () => {
 			creates++;
@@ -103,12 +112,18 @@ function Harness({ initial = [], unready = false }) {
 	});
 }
 let instance = 0;
-async function mount(initial = [], unready = false) {
+async function mount(initial = [], unready = false, createIssue = null) {
 	creates = 0;
 	toggles = [];
+	promotes = [];
 	await act(() =>
 		root.render(
-			React.createElement(Harness, { key: ++instance, initial, unready }),
+			React.createElement(Harness, {
+				key: ++instance,
+				initial,
+				unready,
+				createIssue,
+			}),
 		),
 	);
 	return document.querySelector('[role="combobox"]');
@@ -133,6 +148,10 @@ async function query(input, value) {
 	});
 }
 const options = () => [...document.querySelectorAll('[role="option"]')];
+const tagOptions = () =>
+	options().filter((node) => !node.hasAttribute("data-tag-create"));
+const activeOf = (input) =>
+	document.getElementById(input.getAttribute("aria-activedescendant"));
 
 test("name rules count code points, preserve Unicode and reserve Untagged", () => {
 	assert.equal(tagNameIssue("  "), "blank");
@@ -163,89 +182,90 @@ test("selection preserves assignment order, blocks ninth, permits removal", () =
 		{ name: "Release 東京" },
 	]);
 });
-test("input editing keys stay native; empty and unmatched Enter do not mutate", async () => {
+test("input editing keys stay native; empty Enter does not mutate", async () => {
 	const input = await mount();
 	await act(() => input.focus());
-	for (const value of [" ", "Home", "End"])
+	for (const value of [" ", "ArrowLeft", "ArrowRight", "Backspace"])
 		assert.equal((await key(input, value)).defaultPrevented, false);
 	await key(input, "Enter");
 	assert.deepEqual(toggles, []);
 	assert.equal(creates, 0);
+});
+test("Enter on a query with zero matches creates in one press (v3 D1)", async () => {
+	const input = await mount();
+	await act(() => input.focus());
 	await query(input, "No match");
-	assert.equal(options().length, 0);
-	assert.equal(input.hasAttribute("aria-activedescendant"), false);
+	assert.equal(tagOptions().length, 0);
+	const create = document.querySelector("[data-tag-create]");
+	assert.ok(create, "Create is the list's last option");
+	assert.equal(create.getAttribute("role"), "option");
+	assert.equal(activeOf(input), create, "Create is the active option");
 	await key(input, "Enter");
-	assert.equal(creates, 0);
+	assert.equal(creates, 1);
 	assert.deepEqual(toggles, []);
-	const create = [...document.querySelectorAll("button")].find((button) =>
-		button.textContent.includes("Create"),
-	);
-	assert.ok(create);
-	assert.equal(create.closest('[role="option"]'), null);
-	await act(() => create.click());
+});
+test("Enter with a partial match toggles the match, never creates; Create is one End away", async () => {
+	const input = await mount();
+	await act(() => input.focus());
+	await query(input, "Tag 1");
+	// "Tag 1", "Tag 10", "Tag 11": an exact match exists, so Create is not offered.
+	assert.equal(document.querySelector("[data-tag-create]"), null);
+	await query(input, "Tag 1x");
+	assert.equal(tagOptions().length, 0);
+	await query(input, "Ta");
+	assert.equal(activeOf(input), tagOptions()[0]);
+	await key(input, "Enter");
+	assert.deepEqual(toggles, ["0"]);
+	assert.equal(creates, 0);
+	await query(input, "Ta");
+	await key(input, "End");
+	assert.equal(activeOf(input), document.querySelector("[data-tag-create]"));
+	await key(input, "Enter");
 	assert.equal(creates, 1);
 });
 test("active descendant exists, arrows clamp, Enter toggles once and resets", async () => {
 	const input = await mount();
 	await act(() => input.focus());
 	await key(input, "ArrowDown");
-	assert.equal(
-		document.getElementById(input.getAttribute("aria-activedescendant")),
-		options()[0],
-	);
+	assert.equal(activeOf(input), options()[0]);
 	await key(input, "ArrowUp");
-	assert.equal(
-		document.getElementById(input.getAttribute("aria-activedescendant")),
-		options()[0],
-	);
+	assert.equal(activeOf(input), options()[0]);
 	await key(input, "Enter");
 	assert.deepEqual(toggles, ["0"]);
 	assert.equal(input.value, "");
 	assert.equal(input.hasAttribute("aria-activedescendant"), false);
-	assert.equal(options().filter((option) => option.tabIndex === 0).length, 1);
+	assert.ok(options().every((option) => option.tabIndex === -1));
 	assert.equal(options()[0].getAttribute("aria-selected"), "true");
 });
-test("closed-list Enter reopens first option without selection or Create", async () => {
-	const input = await mount();
+test("Shift+Enter adds and shows under; Show under appears only with two or more", async () => {
+	const input = await mount(["0"]);
 	await act(() => input.focus());
+	assert.equal(document.querySelector("[data-tag-show-under]"), null);
 	await key(input, "ArrowDown");
 	await key(input, "ArrowDown");
-	await act(() => closeList());
-	assert.equal(input.getAttribute("aria-expanded"), "false");
-	assert.equal(document.querySelector('[role="listbox"]').hidden, true);
-	await key(input, "Enter");
-	assert.equal(input.getAttribute("aria-expanded"), "true");
-	assert.equal(document.activeElement, input);
-	assert.equal(
-		document.getElementById(input.getAttribute("aria-activedescendant")),
-		options()[0],
-	);
+	await key(input, "Enter", { shiftKey: true });
+	assert.deepEqual(promotes, ["1"]);
 	assert.deepEqual(toggles, []);
-	assert.equal(creates, 0);
 });
-test("one roving option stop, option Home/End and Space, input mode cleared", async () => {
-	const input = await mount();
-	await act(() => options()[0].focus());
-	assert.equal(input.hasAttribute("aria-activedescendant"), false);
-	await key(options()[0], "End");
-	assert.equal(document.activeElement, options().at(-1));
-	await key(document.activeElement, "Home");
-	assert.equal(document.activeElement, options()[0]);
-	await key(document.activeElement, " ");
-	assert.deepEqual(toggles, ["0"]);
-	assert.equal(document.activeElement, input);
-});
-test("eight cap preserves removable options; IME Backspace does not remove", async () => {
-	const input = await mount(["0", "1", "2", "3", "4", "5", "6", "7"]);
+test("eight cap leaves checked options removable and refuses unchecked ones", async () => {
+	await mount(["0", "1", "2", "3", "4", "5", "6", "7"]);
+	assert.equal(options()[8].getAttribute("aria-disabled"), "true");
 	await act(() => options()[8].click());
 	assert.deepEqual(toggles, []);
-	await key(input, "Backspace", { isComposing: true });
-	assert.deepEqual(toggles, []);
-	await key(input, "Backspace");
+	await act(() => options()[7].click());
 	assert.deepEqual(toggles, ["7"]);
-	assert.equal(options()[7].getAttribute("aria-selected"), "false");
 	await act(() => options()[8].click());
 	assert.deepEqual(toggles, ["7", "8"]);
+});
+test("a refused Create states its reason and does not create", async () => {
+	const input = await mount([], false, "You can have up to 32 tags");
+	await act(() => input.focus());
+	await query(input, "Fresh");
+	const create = document.querySelector("[data-tag-create]");
+	assert.equal(create.getAttribute("aria-disabled"), "true");
+	assert.match(create.textContent, /You can have up to 32 tags/);
+	await key(input, "Enter");
+	assert.equal(creates, 0);
 });
 test("unready registry has no active/selectable options and cannot create", async () => {
 	const input = await mount([], true);

@@ -190,6 +190,7 @@ import {
 	type TurnFoot,
 	foldImages,
 	foldRuns,
+	latchFoldedRuns,
 	receiptFoldUnits,
 	turnFeet,
 	workedSecondsOf,
@@ -3458,6 +3459,26 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		anchors: new Set(),
 	});
 	const sessionId = frontend?.session_id ?? null;
+	/*
+	 * THE CONVERSATION KEY THE READER'S STORES ARE KEYED BY (operator report,
+	 * 2026-10-21). `frontend` is null until the owner publishes a snapshot AND
+	 * again for the whole of a reconnect (`use-canonical-session`'s gap arm sets
+	 * `frontend: null` deliberately, so the pane stops claiming a state it cannot
+	 * prove). Reading the stores off the RAW id therefore swapped their key to the
+	 * empty bucket on every gap: the reader's expanded bars collapsed, the settle
+	 * latch was dropped and re-armed, and both came back when the snapshot
+	 * repopulated - a one-to-two-frame repaint of a conversation nobody changed.
+	 *
+	 * A STICKY id is the fix, and it is the one this file already uses one rung
+	 * down for the fold registry (`foldSession`): a non-null id always wins, so a
+	 * real switch still reads the NEW conversation's entries in its first paint,
+	 * and a null frame leaves the key alone. A genuinely ended conversation still
+	 * forgets its entries through `forgetWatchedRun`/`forgetTurnCollapseOpen`,
+	 * which is an explicit event rather than an absent sample.
+	 */
+	const conversationKey = useRef(sessionId);
+	if (sessionId !== null) conversationKey.current = sessionId;
+	const conversation = conversationKey.current;
 	const transcriptEpoch = useRef(transcript.viewEpoch);
 	transcriptEpoch.current = transcript.viewEpoch;
 	const entriesRef = useRef<HTMLDivElement>(null);
@@ -3794,14 +3815,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			evidence: captureInternalEpisodeIdentity([], new Set()),
 		};
 	const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() =>
-		expandedRunsOf(sessionId),
+		expandedRunsOf(conversation),
 	);
-	const [openRunsSession, setOpenRunsSession] = useState(sessionId);
+	const [openRunsSession, setOpenRunsSession] = useState(conversation);
 	const [openRunsEpoch, setOpenRunsEpoch] = useState(transcript.viewEpoch);
-	if (openRunsSession !== sessionId) {
-		setOpenRunsSession(sessionId);
+	if (openRunsSession !== conversation) {
+		setOpenRunsSession(conversation);
 		setOpenRunsEpoch(transcript.viewEpoch);
-		setOpenRuns(expandedRunsOf(sessionId));
+		setOpenRuns(expandedRunsOf(conversation));
 	} else if (openRunsEpoch !== transcript.viewEpoch) {
 		// An explicit clear invalidates reader ownership as well as alias evidence.
 		// Stable seg anchors can recur after the clear; retaining their old open
@@ -3812,7 +3833,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			typeof transcript.viewEpoch === "number" &&
 			transcript.viewEpoch > (openRunsEpoch ?? 0)
 		) {
-			forgetTurnCollapseOpen(sessionId);
+			forgetTurnCollapseOpen(conversation);
 			setOpenRuns(new Set());
 		}
 	}
@@ -3825,18 +3846,18 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * the NEW conversation's latch in its first paint.
 	 */
 	const [watchedRun, setWatchedRun] = useState<string | null>(() =>
-		watchedRunOf(sessionId),
+		watchedRunOf(conversation),
 	);
-	const [watchedRunSession, setWatchedRunSession] = useState(sessionId);
-	if (watchedRunSession !== sessionId) {
-		setWatchedRunSession(sessionId);
-		setWatchedRun(watchedRunOf(sessionId));
+	const [watchedRunSession, setWatchedRunSession] = useState(conversation);
+	if (watchedRunSession !== conversation) {
+		setWatchedRunSession(conversation);
+		setWatchedRun(watchedRunOf(conversation));
 	}
 	const setRunOpen = useCallback(
 		(runKey: string, open: boolean) => {
-			setOpenRuns(writeRunExpanded(sessionId, runKey, open));
+			setOpenRuns(writeRunExpanded(conversation, runKey, open));
 		},
-		[sessionId],
+		[conversation],
 	);
 	/*
 	 * Where the pressed bar sat when the reader pressed it, and the bar lookup the
@@ -3999,6 +4020,48 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const paneIsLive =
 		(workingLine === undefined ? paneWorking : workingLine) !== null ||
 		gate !== null;
+	/*
+	 * Whether this pane has NO live feed: connecting, reconnecting or
+	 * unavailable. Distinct from `paneIsLive` by exactly the gap, and NOT derived
+	 * from `frontend` (agent review round 3): the run panel's child reader passes
+	 * `frontend: null` for its whole life with `status: "live"`, so a null
+	 * snapshot is not evidence of a gap - and the settle pass there really does
+	 * end the turn. The status is the pane's own statement about its feed (see
+	 * `use-canonical-session`'s reconnect arm), so it is the one that decides.
+	 */
+	const paneGap = status !== "live";
+
+	/*
+	 * THE LIVE FOLD LATCH (operator report, 2026-10-21: job messages and
+	 * responses "alternate between forcing the tool group open and then closing
+	 * it back again").
+	 *
+	 * A fold is licensed by the run's TRAILING receipt stretch, a positional rule
+	 * that is not monotonic under append: `[t1, j1, j2]` folds, the next call makes
+	 * `[t1, j1, j2, t2]` fail the rule (the stretch has ended), and the next two
+	 * job results fold it again - so the group opened and closed on every job
+	 * response, with no reader action. The latch is the one fact the pure rule
+	 * cannot carry: this pane has already PAINTED that run as a fold. It is read
+	 * only while the turn is live (`foldRuns`'s `latchedFoldIds`), so a live group
+	 * can only grow; the settled shape is still decided by the final rows alone,
+	 * which is why the head-pair negatives (a settled `[peer, peer, tool]` stays
+	 * ordinary rows) are unchanged. Reset per conversation and per clear epoch,
+	 * like every other view registry here.
+	 */
+	const foldLatch = useRef<{
+		session: string | null;
+		epoch: number | undefined;
+		ids: Set<string>;
+	}>({ session: conversation, epoch: transcript.viewEpoch, ids: new Set() });
+	if (
+		foldLatch.current.session !== conversation ||
+		foldLatch.current.epoch !== transcript.viewEpoch
+	)
+		foldLatch.current = {
+			session: conversation,
+			epoch: transcript.viewEpoch,
+			ids: new Set(),
+		};
 
 	/*
 	 * The window's top edge lands on a RUN boundary, not a raw row count (the
@@ -4099,6 +4162,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * reply/steer indication. Operator asks, prose and arbitrary notices remain
 	 * boundaries.
 	 */
+	/* The store's id index, for the latch prune (see `latchFoldedRuns`). */
+	const recordIndex = transcript.index;
 	const rowGroups = useMemo(() => {
 		/*
 		 * `isNewestTurn` used to be computed here for the fold's condense; the
@@ -4159,7 +4224,48 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * rows, never a count that lumped them in as "incoming messages".
 			 */
 			receiptSummaryOf: (rows) => receiptFoldUnits(rows),
+			/*
+			 * A GAP HOLDS THE FOLD TOO (design review round 1, U1). With no
+			 * connection the pane has observed nothing, so the run is judged by
+			 * what it last painted rather than by a re-decision over stale rows -
+			 * the same reading the latch retains one line below.
+			 */
+			liveTurn: paneIsLive || paneGap,
+			latchedFoldIds: foldLatch.current.ids,
 		});
+		/*
+		 * Remember what this pane has painted folded, so a later pass cannot
+		 * dissolve it.
+		 *
+		 * ACCUMULATED, NOT REBUILT FROM THIS PASS'S WINDOW (agent review round 1,
+		 * F1). The window is not the conversation: a snap, a widened page or a
+		 * filter can paint a frame whose slice does not contain a run this pane
+		 * already showed folded, and rebuilding the set from THAT slice dropped the
+		 * ids - so the rows came back and the next frame re-folded them, the same
+		 * open/close pair through another door. The union is pruned against the
+		 * STORE's ids (`rawRecords`, not `visible`), which is what keeps the set
+		 * from pinning a run the conversation no longer holds.
+		 */
+		/*
+		 * A GAP IS NOT A SETTLE (design review round 1, U1). The clear used to run
+		 * on any non-live pass, and a reconnect gap is one: `frontend: null` drops
+		 * `working`, so the group opened for the gap's frames and the next live pass
+		 * folded it again - the same open/close through the door the settle rule was
+		 * meant to hold shut. A pane with NO connection has observed nothing about
+		 * the turn, so it retains the latch (pruned against the store, exactly as a
+		 * live pass does). Only a CONNECTED pane with no live reading - the session
+		 * is really idle - spends the latch, and the settled pass then renders from
+		 * the rows alone.
+		 */
+		if (paneIsLive || paneGap) {
+			foldLatch.current.ids = latchFoldedRuns(
+				foldLatch.current.ids,
+				recordIndex,
+				groups,
+			);
+		} else if (foldLatch.current.ids.size > 0) {
+			foldLatch.current.ids = new Set();
+		}
 		return groups.map((group) =>
 			group.kind === "run"
 				? {
@@ -4177,7 +4283,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					}
 				: group,
 		);
-	}, [visible]);
+	}, [visible, paneIsLive, paneGap, recordIndex]);
 	/*
 	 * KEYED ON THE WINDOW'S SIGNATURE, NOT ON `visible` (UI perf audit P4; PR-6).
 	 * The foot is arithmetic over the same partition the plan builds - counts,
@@ -5129,14 +5235,70 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * a first open of a finished transcript - holding no latch and arriving
 	 * collapsed exactly as today.
 	 */
+	/*
+	 * THE SECOND ARMING CONDITION: A RUN THAT GREW IS BEING WRITTEN (operator
+	 * report, 2026-10-21: the conversation "briefly flicker[s] some different
+	 * text on for a frame or two", captured as the same turn's rows visible and
+	 * then replaced by its bar and back again).
+	 *
+	 * WHY THE FLAG ALONE IS NOT ENOUGH. The model's `anchored` reads
+	 * `live || watched || runStatesItsOwnLiveness`, and in the gap BETWEEN two
+	 * calls a turn has no streaming row and no in-flight call - so the plan falls
+	 * back to the pane's instantaneous `live`. A live turn with settled rows and
+	 * no closing answer then paints as a bar when the flag dips and as rows when
+	 * it returns (`turn-collapse-model.test.mjs`'s dip case), and the latch is
+	 * the only thing that stops it - but the latch is armed by a LIVE pass alone.
+	 * A pane that never caught a live pass for this run (a re-render that missed
+	 * the window, a mount that arrived between calls, a session the pane opened
+	 * with the flag already down) holds no latch, so every dip alternates the
+	 * whole turn for as long as the reader watches.
+	 *
+	 * WHAT ARMS IT. The newest run gaining a row is not a sample of a flag: rows
+	 * are APPENDED to a run only while it is being written, and a finished turn's
+	 * rows never grow under a mounted pane. So growth since the pass this pane
+	 * last saw is a fact about the data, and it licenses the same latch the flag
+	 * does. A run with its closing answer already landed is excluded: a later row
+	 * after a delivered answer opens a new cycle, not a turn still being written.
+	 *
+	 * THE FIRST LOOK NEVER ARMS. The baseline is taken without writing, which is
+	 * what keeps a fresh pane - a reload, a first open of a finished transcript -
+	 * holding no latch and arriving collapsed exactly as before; only growth
+	 * OBSERVED (a later pass on the same conversation) can arm.
+	 */
+	/*
+	 * `seen` is a FIELD, not an inference from `session`: the conversation id is
+	 * itself nullable (the child reader mounts with `frontend: null`), so a
+	 * `session !== conversation` test read a null-conversation mount as a second
+	 * look and armed on its first pass (agent review round 1, M1).
+	 */
+	const latchSeen = useRef<{
+		seen: boolean;
+		session: string | null;
+		tailId: string | null;
+	}>({ seen: false, session: null, tailId: null });
 	useEffect(() => {
-		if (!collapseInputs.live) return;
 		const newest = collapse.runs.at(-1);
 		const runId = newest ? visible[newest.run.openingIndex]?.record.id : null;
-		if (!runId) return;
-		writeWatchedRun(sessionId, runId);
+		if (!newest || !runId) return;
+		/*
+		 * GROWTH AT THE TAIL, not any change of size (QA round 1, Q-F1). A page
+		 * landing ABOVE a head-cut newest run also grows the run, and that is the
+		 * reader loading older history, not the turn being written - counting rows
+		 * armed the latch for a finished, answerless run and kept it expanded after
+		 * "load older". The run's LAST row id moves only when a row is appended to
+		 * its end, which is the append this rule is about; a head prepend leaves it
+		 * unchanged.
+		 */
+		const tailId = newest.recordIds.at(-1) ?? null;
+		const seen = latchSeen.current;
+		const firstLook = !seen.seen || seen.session !== conversation;
+		const grew = !firstLook && tailId !== null && tailId !== seen.tailId;
+		latchSeen.current = { seen: true, session: conversation, tailId };
+		const wrote = grew && newest.answerId === null;
+		if (!collapseInputs.live && !wrote) return;
+		writeWatchedRun(conversation, runId);
 		setWatchedRun((current) => (current === runId ? current : runId));
-	}, [collapse, collapseInputs.live, sessionId, visible]);
+	}, [collapse, collapseInputs.live, conversation, visible]);
 	/*
 	 * THE WALK'S CUT-RUN KEY (UI perf audit A3, corrected by review round 1 R1).
 	 * The completion walk below asks "is there a run whose bar is PAINTED and

@@ -178,6 +178,33 @@ test("header hit testing clips targets to owning list and ignores empty/offscree
 	assert.equal(tagDropTargetAt(owner, 201, 55, section), null);
 	assert.equal(tagDropTargetAt(owner, 100, 90, section), null);
 });
+test("an unused tag's footer slot is a drop target from every section, never for pinned reorder (v3 D3)", () => {
+	const section = {};
+	const footer = {}; // the tag footer lives outside every [data-chat-section]
+	const slot = {
+		closest: () => footer,
+		dataset: { tagDropTarget: "unused", tagUnusedSlot: "" },
+		getBoundingClientRect: () => ({
+			left: 0,
+			right: 200,
+			top: 200,
+			bottom: 228,
+			height: 28,
+		}),
+	};
+	const owner = {
+		getBoundingClientRect: () => ({ left: 0, right: 200, top: 0, bottom: 400 }),
+		querySelectorAll: (selector) =>
+			selector.includes(":not([data-tag-drop-body])") ? [slot] : [slot],
+	};
+	assert.equal(tagDropTargetAt(owner, 100, 210, section, "a"), slot);
+	assert.equal(tagDropTargetAt(owner, 100, 210, section, "untagged"), slot);
+	assert.equal(
+		tagHeaderAt(owner, 100, 210, section),
+		null,
+		"pinned reorder keeps its section-local header-only test",
+	);
+});
 test("group body accepts Untagged across sections but keeps tagged sources section-local", () => {
 	const source = {};
 	const other = {};
@@ -234,7 +261,12 @@ test("copy has singular/plural count, named move/cancel/undo/conflict announceme
 	const en = JSON.parse(
 		readFileSync("src/i18n/catalogues/en/ui.chat.tags.json", "utf8"),
 	);
-	assert.equal(en["ui.chat.tags.moved_to"], "Moved to “{name}”");
+	// A drop ADDS the tag and makes it primary; "Moved to" read as a replace (v3 UX audit).
+	assert.equal(
+		en["ui.chat.tags.dropped_on"],
+		"Added “{name}” and grouped under it",
+	);
+	assert.equal(en["ui.chat.tags.moved_to"], undefined);
 	assert.equal(en["ui.chat.tags.removed_all"], "Removed all tags");
 	assert.equal(en["ui.chat.tags.changed_elsewhere"], "Tags changed elsewhere");
 	assert.equal(
@@ -245,13 +277,7 @@ test("copy has singular/plural count, named move/cancel/undo/conflict announceme
 		en["ui.chat.tags.move_failed"],
 		"Tags were not moved. Try again.",
 	);
-	for (const key of [
-		"move_armed",
-		"move_cancelled",
-		"move_undone",
-		"move_menu",
-		"undo",
-	])
+	for (const key of ["move_armed", "move_cancelled", "move_undone", "undo"])
 		assert.ok(en[`ui.chat.tags.${key}`]);
 });
 
@@ -295,7 +321,7 @@ test("remove action formatting is exact singular only at one, including Russian 
 		const catalogue = JSON.parse(
 			readFileSync(`src/i18n/catalogues/${locale}/ui.chat.tags.json`, "utf8"),
 		);
-		assert.equal(Object.keys(catalogue).length, 75);
+		assert.equal(Object.keys(catalogue).length, 67);
 		const message = new IntlMessageFormat(
 			catalogue["ui.chat.tags.remove_all"],
 			locale,
@@ -322,7 +348,7 @@ test("shipping Chinese tag namespace preserves exact-one removal semantics", () 
 	const zh = JSON.parse(
 		readFileSync("src/i18n/catalogues/zh-CN/ui.chat.tags.json", "utf8"),
 	);
-	assert.equal(Object.keys(zh).length, 75);
+	assert.equal(Object.keys(zh).length, 67);
 	const message = new IntlMessageFormat(zh["ui.chat.tags.remove_all"], "zh-CN");
 	assert.equal(message.format({ count: 1 }), "移除标签（1）");
 	for (const count of [2, 21, 101])
