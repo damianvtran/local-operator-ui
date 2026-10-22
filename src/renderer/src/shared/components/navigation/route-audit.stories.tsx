@@ -128,7 +128,17 @@ const BRIDGED_STATE: BrowserChromeState = {
 
 const BridgedBrowser: FC = () => {
 	const resolved = () => Promise.resolve({});
-	(window as unknown as { api: unknown }).api = {
+	/*
+	 * SPREAD the preview's mock rather than replacing it (agent review round 2,
+	 * F2): Storybook keeps one preview iframe across stories, so a bare
+	 * `{ browser }` erased `session`, `systemInfo`, `ipcRenderer` and the rest
+	 * for every story opened after this one - `Audit/Routes → Browser` then drew
+	 * the bridged strip instead of its desktop-only notice, and stories reading
+	 * `window.api.systemInfo` threw until a reload.
+	 */
+	const host = window as unknown as { api: Record<string, unknown> };
+	host.api = {
+		...host.api,
 		browser: new Proxy(
 			{
 				state: async () => BRIDGED_STATE,

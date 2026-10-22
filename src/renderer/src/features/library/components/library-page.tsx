@@ -1072,7 +1072,15 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 			)}
 			{standalone && (
 				<div
-					className="panel-top-pad min-w-0 flex-1"
+					/*
+					 * `bg-surface` HERE, on the padded box, and not only on
+					 * `LibraryPreview`'s root: the pad is inside this wrapper, so the
+					 * preview's own ground begins at y32 and a groundless wrapper let the
+					 * page root's `canvas` show through the strip as a band (design round
+					 * 1, D2). The panel that owns the pad owns the ground, which also
+					 * grounds the spinner and `UnavailableAsset` arms.
+					 */
+					className="panel-top-pad min-w-0 flex-1 bg-surface"
 					aria-label={t("ui.library.page.preview")}
 				>
 					{selectedMissing ? (

@@ -45,6 +45,11 @@ const LIBRARY_PAGE =
 	"src/renderer/src/features/library/components/library-page.tsx";
 const BROWSER_SURFACE =
 	"src/renderer/src/features/browser/components/browser-surface.tsx";
+const CHAT_PAGE = "src/renderer/src/features/chat/components/chat-page.tsx";
+const CHAT_CONTENT =
+	"src/renderer/src/features/chat/components/chat-content.tsx";
+const SHELL_STORIES =
+	"src/renderer/src/shared/components/navigation/shell.stories.tsx";
 
 /**
  * Every full-height panel that has to paint through the strip, the file it is
@@ -66,6 +71,17 @@ const PANEL_COLUMNS = [
 	{
 		path: "src/renderer/src/shared/components/common/chat-layout.tsx",
 		classes: ['className="panel-top-pad h-full shrink-0 bg-surface"'],
+	},
+	{
+		/*
+		 * The chat route's conversation column: the route root is `panel-flush`, so
+		 * this column's `canvas` ground starts at y0 and its header is pushed below
+		 * the strip by its own pad (design round 1, D1).
+		 */
+		path: CHAT_CONTENT,
+		classes: [
+			'className="panel-top-pad flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-canvas"',
+		],
 	},
 	{
 		path: "src/renderer/src/features/chat/components/canvas/index.tsx",
@@ -117,7 +133,13 @@ const PANEL_COLUMNS = [
 			'className="panel-top-pad flex h-full w-48 shrink-0 flex-col overflow-hidden bg-surface"',
 			'className="panel-top-pad flex min-w-0 flex-1 flex-col"',
 			'className="panel-top-pad flex h-full w-[448px] shrink-0 bg-surface"',
-			'className="panel-top-pad min-w-0 flex-1"',
+			/*
+			 * The standalone preview's wrapper owns the `surface` ground, not only the
+			 * pad: `LibraryPreview` paints `bg-surface` on its own root, which sits
+			 * BELOW this pad, so a groundless wrapper left the root's `canvas` showing
+			 * through the strip as a band (design round 1, D2).
+			 */
+			'className="panel-top-pad min-w-0 flex-1 bg-surface"',
 			'className="panel-top-pad hidden h-full w-[448px] shrink-0 items-start justify-center bg-surface p-8 lg:flex"',
 		],
 	},
@@ -199,6 +221,10 @@ test("the panel root utility is the only way a route reaches y0", () => {
 			literal:
 				'"panel-flush panel-top-pad relative flex min-h-0 flex-1 flex-col bg-elevated outline-none!"',
 		},
+		{
+			path: CHAT_PAGE,
+			literal: 'className="panel-flush flex min-h-0 flex-1 flex-col"',
+		},
 	];
 	for (const { path, literal } of roots) {
 		assert.ok(
@@ -226,6 +252,7 @@ test("no flush root leaves its content under the lane", () => {
 		"src/renderer/src/features/agents/components/legacy-agents-page.tsx",
 		"src/renderer/src/features/team-bridge/team-bridge-page.tsx",
 		BROWSER_SURFACE,
+		CHAT_PAGE,
 	];
 	for (const path of flushFiles) {
 		const source = readSource(path);
@@ -240,6 +267,57 @@ test("no flush root leaves its content under the lane", () => {
 			`${path} has a panel-flush root but nothing in it pads: its first row renders at y0, under the drag lane and the traffic lights`,
 		);
 	}
+});
+
+test("the chat dock pads once: the route is flush, so each column's own pad is the only one", () => {
+	/*
+	 * Design round 1, D1. The right-slot occupants (canvas, asks, run panel,
+	 * browser and console panes) each wear `panel-top-pad`, and so does the rail
+	 * host. That is only correct if the row they sit in starts at y0. On
+	 * 842d2f513f the chat route was an ORDINARY page: `<main>`'s shell pad moved
+	 * the whole row to y32 and each occupant then padded a second time, so the
+	 * dock's ground began 32px down (a band in the strip) and its first row sat
+	 * at ~y66. The fix is the contract's own: the route root is `panel-flush`,
+	 * and the conversation column pads itself like every other column.
+	 */
+	const page = readSource(CHAT_PAGE);
+	const rootAt = page.indexOf("export function ChatPage()");
+	assert.notEqual(rootAt, -1, "ChatPage must stay the route component");
+	// The FIRST element `ChatPage` returns, past any explanatory comment.
+	const returned = page.slice(page.indexOf("return (", rootAt));
+	const root = returned.slice(returned.indexOf("<div"));
+	assert.match(
+		root,
+		/^<div className="panel-flush flex min-h-0 flex-1 flex-col">/,
+		"the chat route's root must be `panel-flush` (and `flex-1`, so the bottom 32px are not lost): without it `<main>`'s pad moves the dock down and the occupants' own pad doubles it",
+	);
+	const content = readSource(CHAT_CONTENT);
+	const column = content.slice(
+		content.indexOf("ref={chatContainerRef}"),
+		content.indexOf("<ChatHeader"),
+	);
+	assert.match(
+		column,
+		/className="panel-top-pad [^"]*bg-canvas"/,
+		"the conversation column must pad itself on its own `canvas` ground: under a flush root nothing else keeps the chat header out of the lane",
+	);
+	/*
+	 * The evidence scene must be built the way the route is, or its frames
+	 * certify a layout the app does not draw: `ChatShellFrame` mirrors
+	 * `app.tsx`'s padded `<main>`, so its route row must be the flush root and
+	 * its conversation stand-in the padded column.
+	 */
+	const stories = readSource(SHELL_STORIES);
+	assert.match(
+		stories,
+		/ref=\{rowRef\}\s*data-tour-tag="pane-row"\s*className="panel-flush flex min-h-0 w-full flex-1 overflow-hidden"/,
+		"the chat shell story's pane row must be the route's flush root, as `ChatPage` is",
+	);
+	assert.match(
+		stories,
+		/data-tour-tag="chat-column"\s*(?:\/\*[\s\S]*?\*\/\s*)?className="panel-top-pad [^"]*bg-canvas"/,
+		"the chat shell story's conversation stand-in must pad itself on `canvas`, as `chat-content` does",
+	);
 });
 
 test("the Browser address popout anchors below the route's pad, not at y0", () => {
