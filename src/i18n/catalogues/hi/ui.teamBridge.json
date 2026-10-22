@@ -169,6 +169,5 @@
 	"ui.teamBridge.schedule.held": "हो सकता है पिछला शेड्यूल अब भी मौजूद हो। इस कोशिश को छोड़ने से पहले “शेड्यूल किए गए” देखें और ज़रूरत हो तो उसे रद्द करें। आपका ड्राफ़्ट सुरक्षित है।",
 	"ui.teamBridge.schedule.discard_attempt": "मैंने “शेड्यूल किए गए” देख लिया — यह कोशिश छोड़ें",
 	"ui.teamBridge.attachments.expired_staged_retry": "यह तस्वीर अब भेजने के लिए तैयार नहीं है। फिर कोशिश करें या इसे हटाएँ।",
-	"ui.teamBridge.attachments.with_status": "{label}: {status}",
 	"ui.teamBridge.attachments.preview_unavailable": "पूर्वावलोकन उपलब्ध नहीं"
 }

@@ -1185,7 +1185,7 @@
 		"tone": "plain, concise",
 		"length": "One sentence.",
 		"placeholders": {},
-		"note": "An uploaded-but-unsent image expired on the server (after about 3 days) or was refused at send time, and this device no longer holds its bytes, so the only action is to remove the chip and add the picture again. Shown on its own and as the {status} of attachments.with_status."
+		"note": "An uploaded-but-unsent image expired on the server (after about 3 days) or was refused at send time, and this device no longer holds its bytes, so the only action is to remove the chip and add the picture again. Shown on the chip (screen readers) and in the note under the composer's images, after the image's position label."
 	},
 	"ui.teamBridge.attachments.expired": {
 		"role": "image attachment control or status",
@@ -1242,16 +1242,6 @@
 		"length": "One sentence.",
 		"placeholders": {},
 		"note": "Same situation as attachments.expired_staged, but this device still holds the image, so a Retry button is shown on the chip next to Remove. 'Retry' re-uploads the same picture."
-	},
-	"ui.teamBridge.attachments.with_status": {
-		"role": "image attachment control or status",
-		"tone": "plain, concise",
-		"length": "One short line.",
-		"placeholders": {
-			"label": "positional label such as 'Image 2 of 3' (attachments.position)",
-			"status": "a full sentence or short status from another attachments.* key, e.g. 'Uploading image…' or 'Image expired'"
-		},
-		"note": "Joins an image's position with what is wrong with it, for screen-reader names and the one-line note under the composer's images. Reorder or change the separator as the locale needs; do not drop either part."
 	},
 	"ui.teamBridge.attachments.preview_unavailable": {
 		"role": "image attachment control or status",

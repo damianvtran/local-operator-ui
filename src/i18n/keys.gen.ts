@@ -5090,7 +5090,6 @@ export type MessageParams = {
 	"ui.teamBridge.attachments.unavailable": undefined;
 	"ui.teamBridge.attachments.unsupported": undefined;
 	"ui.teamBridge.attachments.uploading": undefined;
-	"ui.teamBridge.attachments.with_status": { label: string; status: string };
 	"ui.teamBridge.builtin.agents_topic": undefined;
 	"ui.teamBridge.builtin.humans_topic": undefined;
 	"ui.teamBridge.chief.fallback": undefined;

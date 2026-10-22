@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import Module from "node:module";
 import { test } from "node:test";
@@ -35,6 +36,7 @@ for (const name of [
 	"CustomEvent",
 	"HTMLInputElement",
 	"HTMLButtonElement",
+	"HTMLTextAreaElement",
 ])
 	globalThis[name] = dom.window[name];
 globalThis.getComputedStyle = dom.window.getComputedStyle;
@@ -50,6 +52,28 @@ URL.revokeObjectURL = (url) => liveUrls.delete(url);
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { createRoot } = await import("react-dom/client");
+// The page imports the sidebar's selected-row role; stub it like the drafts
+// suite does so the page-level probes do not pull the whole chat sidebar in.
+const sidebarRole = readFileSync(
+	"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+	"utf8",
+).match(/export const rowCurrent =\s*("[^"]+")/)?.[1];
+assert.ok(sidebarRole);
+const SIDEBAR_IMPORT = /chat\/components\/chat-sidebar$/;
+const ANY_PATH = /.*/;
+const sidebarStub = {
+	name: "chat-sidebar-stub",
+	setup(build) {
+		build.onResolve({ filter: SIDEBAR_IMPORT }, () => ({
+			path: "sidebar-role",
+			namespace: "stub",
+		}));
+		build.onLoad({ filter: ANY_PATH, namespace: "stub" }, () => ({
+			contents: `export const rowCurrent = ${sidebarRole};`,
+			loader: "js",
+		}));
+	},
+};
 const bundle = await build({
 	stdin: {
 		contents: `export * from "./src/renderer/src/features/team-bridge/team-bridge-attachments-model";
@@ -63,13 +87,16 @@ const bundle = await build({
  export {desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract";
  export {teamBridgeMessageSchema, teamBridgeScheduledMessageSchema} from "./src/shared/team-bridge-contract";
  export {reconcileDraftAccount} from "./src/renderer/src/shared/store/team-bridge-draft-account";
- export {requestDesktopMediaOutcome} from "./src/main/desktop-media";`,
+ export {requestDesktopMediaOutcome} from "./src/main/desktop-media";
+ export {TeamBridgePageView} from "./src/renderer/src/features/team-bridge/team-bridge-page";
+ export {registerCatalogue, setLocale} from "./src/i18n";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
 	format: "cjs",
 	platform: "node",
 	external: ["react", "react-dom"],
+	plugins: [sidebarStub],
 	loader: { ".css": "empty" },
 	tsconfig: "tsconfig.app.json",
 	write: false,
@@ -337,6 +364,8 @@ test("upload failures map to a closed set of reasons", () => {
 		m.isAttachmentNotFound({ status: 404, code: "conversation_not_found" }),
 		false,
 	);
+	// R1-05: an undeclared 404 (the conversation itself) is not an expiry.
+	assert.equal(m.isAttachmentNotFound({ status: 404 }), false);
 });
 
 test("scheduled edit patch sends the whole image set only when it changed", () => {
@@ -356,6 +385,13 @@ test("scheduled edit patch sends the whole image set only when it changed", () =
 		m.scheduledEditPatch(message, message.send_at, "x", undefined),
 		{},
 	);
+	// R1-03: clearing the caption but keeping the images is an image-only edit,
+	// so the unchanged set rides along and the contract accepts it.
+	const imageOnly = m.scheduledEditPatch(message, message.send_at, "", [
+		"a",
+		"b",
+	]);
+	assert.deepEqual(imageOnly, { body: "", attachment_ids: ["a", "b"] });
 });
 
 test("first-send scheduling stages held images into the new conversation BEFORE the POST", async () => {
@@ -1010,4 +1046,193 @@ test("main relay: upload/fetch paths, bearer, id validation, type and size refus
 	} finally {
 		await new Promise((done) => server.close(done));
 	}
+});
+
+/* ------------------------------------------------------------ page level */
+
+/*
+ * TeamBridgePageView submit with held images, driven the way an author does:
+ * drop a PNG on the composer, click Send. These are the round-1 R1-01/R1-02
+ * reproductions; both failed on cf1d7c616c (text posted alone / draft left
+ * behind) and must stay green.
+ */
+const human = (account_id, display_label) => ({
+	account_id,
+	kind: "human",
+	display_label,
+	state: "active",
+	role: "member",
+});
+const dmRow = {
+	id: "bcv_dm",
+	tenant_id: "org_page",
+	kind: "dm",
+	name: null,
+	members: [human("acct_a", "Ada"), human("acct_b", "Bea")],
+	visibility: "private",
+	agent_capable: false,
+	status: "open",
+	created_by: "acct_a",
+	last_message_at: "2030-01-01T00:00:00Z",
+	latest_seq: 1,
+	last_read_seq: 1,
+	unread_count: 0,
+	muted: false,
+};
+const pageProps = (overrides) => ({
+	selfAccountId: "acct_a",
+	scope: "org_page",
+	conversations: [dmRow],
+	people: [
+		{ account_id: "acct_b", display_label: "Bea", email: "bea@example.com" },
+	],
+	messages: [],
+	organizations: [
+		{ tenantId: "org_page", name: "Page org", role: "owner", unread: 0 },
+	],
+	totalUnread: 0,
+	listState: "ready",
+	messageState: "ready",
+	attachmentCapability: CAP,
+	onTarget: () => {},
+	onNewChannel: () => {},
+	onScopeChange: () => {},
+	...overrides,
+});
+async function mountPage(props) {
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	await act(async () =>
+		root.render(React.createElement(m.TeamBridgePageView, props)),
+	);
+	return {
+		element,
+		close: async () => {
+			await act(async () => root.unmount());
+			element.remove();
+		},
+	};
+}
+async function dropImage(element) {
+	const field = element.querySelector("textarea");
+	assert.ok(field, "composer field is mounted");
+	const box = field.parentElement;
+	// Node's File: JSDOM's has no arrayBuffer(), which prepare reads.
+	const file = new File([PNG], "", { type: "image/png" });
+	const transfer = {
+		types: ["Files"],
+		items: [{ kind: "file", getAsFile: () => file }],
+		files: [file],
+	};
+	const event = new window.Event("drop", { bubbles: true, cancelable: true });
+	event.dataTransfer = transfer;
+	await act(async () => box.dispatchEvent(event));
+	for (let i = 0; i < 5; i += 1) await settle();
+}
+async function typeBody(element, text) {
+	const field = element.querySelector("textarea");
+	const setter = Object.getOwnPropertyDescriptor(
+		window.HTMLTextAreaElement.prototype,
+		"value",
+	).set;
+	await act(async () => {
+		setter.call(field, text);
+		field.dispatchEvent(new window.Event("input", { bubbles: true }));
+	});
+}
+const sendButton = (element) =>
+	[...element.querySelectorAll("button")].find((button) =>
+		["Send", "Send message"].includes(button.getAttribute("aria-label")),
+	);
+
+for (const [label, body] of [
+	["text + image", "see attached"],
+	["image only", ""],
+]) {
+	test(`page R1-01: a person row whose DM exists uploads on drop and sends the ids (${label})`, async () => {
+		localStorage.clear();
+		mediaCalls = [];
+		let n = 0;
+		mediaAnswer = () => staged(`batt_p${++n}`);
+		const sends = [];
+		const app = await mountPage(
+			pageProps({
+				target: { type: "person", accountId: "acct_b" },
+				onSend: async (sent, clientRef, attachments) => {
+					sends.push({
+						body: sent,
+						ids: [...(attachments?.ids ?? [])],
+						held: Boolean(attachments?.stageHeld),
+					});
+				},
+			}),
+		);
+		if (body) await typeBody(app.element, body);
+		await dropImage(app.element);
+		assert.deepEqual(
+			mediaCalls.map((call) => call.request.conversationId),
+			["bcv_dm"],
+			"the drop uploads straight into the existing DM",
+		);
+		const send = sendButton(app.element);
+		assert.ok(send && !send.disabled, "send is enabled with a staged image");
+		await act(async () => send.click());
+		await settle();
+		assert.deepEqual(sends, [{ body, ids: ["batt_p1"], held: false }]);
+		await app.close();
+	});
+}
+
+test("page R1-02: first send to a new DM stages held images under the SAME key and clears the draft", async () => {
+	localStorage.clear();
+	mediaCalls = [];
+	let n = 0;
+	mediaAnswer = () => staged(`batt_n${++n}`);
+	const keys = [];
+	let staged_ids = null;
+	const target = { type: "person", accountId: "acct_c" };
+	const app = await mountPage(
+		pageProps({
+			people: [
+				{ account_id: "acct_b", display_label: "Bea", email: "b@example.com" },
+				{ account_id: "acct_c", display_label: "Cy", email: "c@example.com" },
+			],
+			target,
+			onSend: async (_sent, clientRef, attachments) => {
+				keys.push(clientRef);
+				assert.ok(attachments?.stageHeld, "no DM yet: images are held");
+				// The container creates the DM, then stages into it, then posts.
+				staged_ids = await attachments.stageHeld("bcv_new", "org_page");
+				keys.push(clientRef);
+			},
+		}),
+	);
+	await typeBody(app.element, "hello");
+	await dropImage(app.element);
+	assert.equal(mediaCalls.length, 0, "held, not uploaded, before the send");
+	await act(async () => sendButton(app.element).click());
+	for (let i = 0; i < 5; i += 1) await settle();
+	assert.deepEqual(staged_ids, ["batt_n1"]);
+	const store = Object.keys(localStorage)
+		.filter((key) => key.includes("org_page"))
+		.map((key) => JSON.parse(localStorage.getItem(key)));
+	const entry = store
+		.map((drafts) => drafts[m.draftTargetKey(target)])
+		.find(Boolean);
+	assert.equal(
+		entry?.body ?? "",
+		"",
+		"the sent text does not come back as a draft",
+	);
+	assert.equal(
+		entry?.attachments,
+		undefined,
+		"bound ids are not left behind for a later send",
+	);
+	assert.equal(
+		app.element.querySelectorAll("[data-attachment-chip]").length,
+		0,
+	);
+	await app.close();
 });

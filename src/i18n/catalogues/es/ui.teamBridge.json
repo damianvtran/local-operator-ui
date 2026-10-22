@@ -169,6 +169,5 @@
 	"ui.teamBridge.schedule.held": "Es posible que aún exista una programación anterior. Revisa Programados y, si es necesario, cancela el envío antes de descartar este intento. Tu borrador se conserva.",
 	"ui.teamBridge.schedule.discard_attempt": "He revisado Programados — descartar este intento",
 	"ui.teamBridge.attachments.expired_staged_retry": "Esta imagen ya no está lista para enviarse. Vuelve a intentarlo o quítala.",
-	"ui.teamBridge.attachments.with_status": "{label}: {status}",
 	"ui.teamBridge.attachments.preview_unavailable": "Vista previa no disponible"
 }

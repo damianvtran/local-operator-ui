@@ -628,8 +628,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			void result
 				.then(() => {
 					const bound = images.readyIds();
-					draftState.clearSent(entryKey, body, clientRef, bound);
+					// Chips first (still fenced by `writing`, so the key holds), then the
+					// draft entry, which by then carries no bound ids (R1-02).
 					images.clearSent(bound);
+					draftState.clearSent(entryKey, body, clientRef, bound);
 				})
 				.catch((error) => {
 					// The hub's uniform 404 for a staged id that no longer binds (72 h
@@ -704,8 +706,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				},
 			);
 			const reserved = images.readyIds();
-			draftState.clearSent(entryKey, body, clientRef, reserved);
+			// Same order as send: chips, then the entry (R1-02).
 			images.clearSent(reserved);
+			draftState.clearSent(entryKey, body, clientRef, reserved);
 			setScheduledSuccess(true);
 		} catch (error) {
 			setScheduleFailed(true);
