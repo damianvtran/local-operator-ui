@@ -306,7 +306,15 @@ export function TeamBridgeScheduledRow({
 	const [failed, setFailed] = useState(false);
 	const [edit, setEdit] = useState(false);
 	return (
-		<article className="rounded-lg bg-surface p-3 text-ink">
+		/*
+		 * `elevated`, one lightness step above the `surface` page (design round
+		 * 2, D11): a row on its own page's ground had no edge, and consecutive
+		 * rows ran together. Grouped by ground value, never by a border
+		 * (docs/branding.md: elevation is a lightness step; panels and cards
+		 * take no rule). The row's secondary buttons rest on `surface`, a step
+		 * below the card, and keep their own `border-control`.
+		 */
+		<article className="rounded-lg bg-elevated p-3 text-ink">
 			<p className="text-sm text-ink-muted">
 				{new Intl.DateTimeFormat(locale, {
 					dateStyle: "medium",

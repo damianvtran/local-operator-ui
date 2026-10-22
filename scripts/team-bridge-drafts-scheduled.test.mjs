@@ -63,7 +63,8 @@ const bundle = await build({
  export * from "./src/renderer/src/features/team-bridge/team-bridge-scheduling";
  export {desktopEndpoint, desktopRequestSchema} from "./src/shared/desktop-contract";
  export {TeamBridgeScheduledListView, TeamBridgeScheduledRow, TeamBridgeScheduleDialog} from "./src/renderer/src/features/team-bridge/team-bridge-scheduled";
- export {teamBridgeScheduledMessageSchema, teamBridgeScheduledListSchema} from "./src/shared/team-bridge-contract";`,
+ export {teamBridgeScheduledMessageSchema, teamBridgeScheduledListSchema} from "./src/shared/team-bridge-contract";
+ export {useStickToBottom} from "./src/renderer/src/features/team-bridge/use-stick-to-bottom";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -1239,5 +1240,146 @@ test("identity and status remain available with denied storage while account rev
 			else Reflect.deleteProperty(object, "localStorage");
 		});
 		window.api = previousApi;
+	}
+});
+
+/*
+ * Design round 2, D9: at 640px the last timeline row sat under the composer's
+ * top edge on first paint, because the timeline opened at scrollTop 0 and a
+ * growing composer shrinks the viewport without growing the content. jsdom has
+ * no layout, so the geometry is modelled (scrollHeight/clientHeight per
+ * element, scrollTop clamped like a browser) and a stub ResizeObserver lets
+ * the test resize the VIEWPORT: what is proved is the hook's decisions.
+ */
+test("D9: the timeline opens at the bottom and stays pinned when the composer grows, unless the reader scrolled up", async () => {
+	const proto = window.HTMLElement.prototype;
+	const saved = ["scrollHeight", "clientHeight", "scrollTop"].map((name) => [
+		name,
+		Object.getOwnPropertyDescriptor(proto, name),
+	]);
+	const tops = new WeakMap();
+	const client = new WeakMap();
+	const isViewport = (el) => el.hasAttribute("data-radix-scroll-area-viewport");
+	Object.defineProperty(proto, "scrollHeight", {
+		configurable: true,
+		get() {
+			return isViewport(this) ? 418 : 0;
+		},
+	});
+	Object.defineProperty(proto, "clientHeight", {
+		configurable: true,
+		get() {
+			return isViewport(this) ? (client.get(this) ?? 373) : 0;
+		},
+	});
+	Object.defineProperty(proto, "scrollTop", {
+		configurable: true,
+		get() {
+			return tops.get(this) ?? 0;
+		},
+		set(value) {
+			const max = Math.max(0, this.scrollHeight - this.clientHeight);
+			tops.set(this, Math.max(0, Math.min(max, value)));
+		},
+	});
+	const observers = [];
+	const savedObserver = globalThis.ResizeObserver;
+	globalThis.ResizeObserver = class {
+		constructor(callback) {
+			this.callback = callback;
+			this.targets = new Set();
+			observers.push(this);
+		}
+		observe(target) {
+			this.targets.add(target);
+		}
+		disconnect() {
+			this.targets.clear();
+		}
+	};
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	function Timeline() {
+		const { rootRef } = model.useStickToBottom({
+			resetKey: "org_a:bcv_a:ready",
+			contentKey: "1:bmsg_1",
+		});
+		return React.createElement(
+			"div",
+			{ ref: rootRef },
+			React.createElement(
+				"div",
+				{ "data-radix-scroll-area-viewport": "" },
+				React.createElement("div", null, "rows"),
+			),
+		);
+	}
+	const atBottom = (v) => v.scrollHeight - v.scrollTop - v.clientHeight <= 1;
+	try {
+		await act(async () => root.render(React.createElement(Timeline)));
+		const viewport = element.querySelector("[data-radix-scroll-area-viewport]");
+		assert.ok(atBottom(viewport), "opens at the newest row, not scrollTop 0");
+		const watching = observers.find((o) => o.targets.has(viewport));
+		assert.ok(
+			watching,
+			"the viewport itself is observed, not only its content",
+		);
+		// The composer grows by 60px: the viewport shrinks, content is unchanged.
+		client.set(viewport, 313);
+		assert.equal(
+			atBottom(viewport),
+			false,
+			"harness: the shrink alone uncovers the bug",
+		);
+		await act(async () => watching.callback([]));
+		assert.ok(atBottom(viewport), "a pinned reader stays on the newest row");
+		// A reader who scrolled up is never moved by the composer.
+		await act(async () => {
+			viewport.scrollTop = 0;
+			viewport.dispatchEvent(new window.Event("scroll"));
+		});
+		client.set(viewport, 253);
+		await act(async () => watching.callback([]));
+		assert.equal(viewport.scrollTop, 0);
+	} finally {
+		await act(async () => root.unmount());
+		element.remove();
+		globalThis.ResizeObserver = savedObserver;
+		for (const [name, descriptor] of saved)
+			if (descriptor) Object.defineProperty(proto, name, descriptor);
+			else Reflect.deleteProperty(proto, name);
+	}
+});
+
+const BORDER_CLASS = /\bborder\b/;
+test("D11: scheduled rows take the elevated ground on the surface page, never a border", async () => {
+	const element = document.createElement("div");
+	document.body.append(element);
+	const root = createRoot(element);
+	try {
+		await act(async () =>
+			root.render(
+				React.createElement(model.TeamBridgeScheduledRow, {
+					message: {
+						id: "bsch_d11",
+						tenant_id: "org_a",
+						conversation_id: "bcv_a",
+						body: "fixture",
+						send_at: "2030-04-05T12:30:00Z",
+						status: "scheduled",
+						created_at: "2030-04-05T10:00:00Z",
+					},
+					refresh: async () => {},
+				}),
+			),
+		);
+		const card = element.querySelector("article");
+		assert.ok(card.classList.contains("bg-elevated"));
+		assert.equal(card.classList.contains("bg-surface"), false);
+		assert.equal(BORDER_CLASS.test(card.className), false);
+	} finally {
+		await act(async () => root.unmount());
+		element.remove();
 	}
 });
