@@ -2164,57 +2164,6 @@ test("a child reader's null snapshot is not a gap: its settle releases the fold 
 	);
 });
 
-test("a child reader's null snapshot is not a gap: its settle releases the fold (agent review round 4)", async (t) => {
-	/*
-	 * THE RUN PANEL'S CHILD READER passes `frontend: null` for its whole life
-	 * with `status: "live"`. Reading the gap off the SNAPSHOT therefore held its
-	 * fold across the settle, and a finished child turn never painted its rows;
-	 * the pane's own `status` is the signal. This case mounts the reader's exact
-	 * prop shape and drives its live frame and its settle, so a revert of the
-	 * status reading fails HERE - the earlier assertion in the job-fold case runs
-	 * after a connected settle has already spent the latch and cannot see it.
-	 */
-	__resetTurnCollapseOpen();
-	__resetWatchedRuns();
-	const job = (id) => ({
-		kind: "custom",
-		id,
-		ts: TS + 1_000,
-		customType: "job_result",
-		text: "job finished",
-		attribution: "job",
-	});
-	const records = [
-		userRecord("child:u"),
-		toolRecord("child:1"),
-		job("child:j1"),
-		job("child:j2"),
-	];
-	const live = {
-		frontend: null,
-		status: "live",
-		workingLine: { activity: "running", phase: "running" },
-	};
-	const child = await mount(t, records, live);
-	assert.ok(
-		rowBox(child, "child:1") === null,
-		"the child's live frame folds the wall",
-	);
-	/*
-	 * The settle frame ends the receipt stretch with a call (`[t1, j1, j2, t2]`):
-	 * two actions, no trailing receipt pair, so the rows only stay folded if the
-	 * latch is still consulted - which is what a snapshot-derived gap did.
-	 */
-	await child.render([...records, toolRecord("child:2", { ts: TS + 2_000 })], {
-		frontend: null,
-		status: "live",
-	});
-	assert.ok(
-		rowBox(child, "child:1") !== null,
-		"and its settle paints the rows",
-	);
-});
-
 test("a reconnect gap cannot fold a run the pane was watching (operator report, 2026-10-21)", async (t) => {
 	/*
 	 * THE LATCH HALF, MEASURED WHERE IT IS PAINTED (review round 2, M1). The
