@@ -6,7 +6,6 @@ import {
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-	Tooltip,
 } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { isRadientAccountFailure } from "@shared/hooks/use-radient-user-query";
@@ -234,13 +233,10 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 
 		/* Collapsed, the tooltip is the only name on screen; the accessible name
 		   is the button's own `aria-label`. */
-		const labelled = expanded ? (
-			row
-		) : (
-			<Tooltip content={collapsedLabel} side="right">
-				{row}
-			</Tooltip>
-		);
+		/* Collapsed, the tooltip used to be the only visible name; since S5 a
+		   right-opening hint would be clipped by a live browser page (a tooltip may
+		   not pause it), so the button's own `aria-label` is the channel. */
+		const labelled = row;
 
 		if (!useAuth) return labelled;
 
@@ -257,9 +253,7 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 				{expanded ? (
 					<DropdownMenuTrigger asChild>{row}</DropdownMenuTrigger>
 				) : (
-					<Tooltip content={collapsedLabel} side="right">
-						<DropdownMenuTrigger asChild>{row}</DropdownMenuTrigger>
-					</Tooltip>
+					<DropdownMenuTrigger asChild>{row}</DropdownMenuTrigger>
 				)}
 				<DropdownMenuContent align="end" side="top" className="min-w-50">
 					{reconnect ? (

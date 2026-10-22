@@ -1525,7 +1525,7 @@ const addressOverlayProduct =
 	process.platform === "darwin" && !addressOverlayGate.enabled;
 if (addressOverlayProduct) {
 	console.log(
-		"[address-overlay] product chrome armed (darwin): popout field over the tab strip, native list child",
+		"[address-overlay] product chrome armed (darwin): permanent address row, native list child",
 	);
 }
 if (addressOverlayGate.asked) {

@@ -41,11 +41,19 @@ function chromeBandTooltipTag(source, keyId) {
 // Source/layout guard ONLY: jsdom cannot measure a WebContentsView or prove
 // Radix's final placement. Keep new triggers in the in-flow chrome band with
 // explicit top placement; native intersection evidence remains a separate gate.
-test("source guard: find/zoom live in the page menu, which hides the page while open", () => {
+test("source guard: find/zoom live in the page menu, which pauses the page while open", () => {
 	const base = "src/renderer/src/features/browser/components/";
 	const row = readFileSync(`${base}browser-find-row.tsx`, "utf8");
 	const menu = readFileSync(`${base}browser-page-menu.tsx`, "utf8");
 	const surface = readFileSync(`${base}browser-surface.tsx`, "utf8");
+	// S5: the pause moved into the shared primitive, and it is MEASURED. The page
+	// menu is a `DropdownMenuContent`, so it registers only where its painted panel
+	// intersects the native view — which the row's bottom edge makes true in the
+	// product, and which an inside-band menu can measure as false.
+	const primitive = readFileSync(
+		"src/renderer/src/shared/components/ui/dropdown-menu.tsx",
+		"utf8",
+	);
 	const tags = [...row.matchAll(/<Tooltip\b[^>]*>/g)].map((m) => m[0]);
 	assert.equal(tags.length, 3, "Previous, Next and Close all need this guard");
 	for (const tag of tags) assert.ok(tag.includes('side="top"'), tag);
@@ -56,15 +64,25 @@ test("source guard: find/zoom live in the page menu, which hides the page while 
 	assert.match(menu, /ui\.browser\.browser_url_bar\.page_zoom_reset/);
 	assert.match(
 		menu,
-		/useSuppressBrowserView\(open, "browser-page-menu"\)/,
-		"the page menu hides the native page while its panel is open",
+		/<DropdownMenuContent/,
+		"the menu uses the shared primitive",
+	);
+	assert.match(
+		primitive,
+		/useMeasuredBrowserViewPanel<HTMLDivElement>\("menu"\)/,
+		"the shared menu primitive registers the measured pause",
+	);
+	assert.doesNotMatch(
+		menu,
+		/useSuppressBrowserView\(/,
+		"the page menu carries no unconditional registration of its own",
 	);
 	const popout = surface.indexOf("<BrowserUrlBar");
 	const find = surface.indexOf("<BrowserFindRow");
 	const viewport = surface.indexOf('data-tour-tag="browser-content"');
 	assert.ok(
 		popout >= 0 && find > popout && viewport > find,
-		"the raised field row and the find row precede the native viewport",
+		"the permanent address row and the find row precede the native viewport",
 	);
 	assert.match(row, /className="@container\/bfind flex shrink-0 flex-wrap/);
 	assert.doesNotMatch(row + menu, /useSuppressBrowserViewWhileReaching/);
@@ -79,14 +97,18 @@ test("negative control: removing the page menu's view suppression fails the guar
 		"src/renderer/src/features/browser/components/browser-page-menu.tsx",
 		"utf8",
 	);
+	const primitive = readFileSync(
+		"src/renderer/src/shared/components/ui/dropdown-menu.tsx",
+		"utf8",
+	);
 	const guard = (source) =>
-		/useSuppressBrowserView\(open, "browser-page-menu"\)/.test(source);
-	assert.ok(guard(menu), "the shipped menu hides the view");
-	const stripped = menu.replace(
-		'useSuppressBrowserView(open, "browser-page-menu")',
+		/useMeasuredBrowserViewPanel<HTMLDivElement>\("menu"\)/.test(source);
+	assert.ok(guard(primitive), "the shipped primitive registers the pause");
+	const stripped = primitive.replaceAll(
+		'useMeasuredBrowserViewPanel<HTMLDivElement>("menu")',
 		"",
 	);
-	assert.notEqual(stripped, menu, "the control must alter the source");
+	assert.notEqual(stripped, primitive, "the control must alter the source");
 	assert.ok(!guard(stripped), "without the call the guard fails");
 });
 
