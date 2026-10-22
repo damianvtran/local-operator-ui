@@ -35,8 +35,9 @@ export type DefaultOnBannerProps = {
  * with a modal to announce a state that already holds - and that costs
  * nothing to leave alone - would be a consent ceremony with no decision in it.
  * So this is a quiet, dismissible band in the page flow: it never takes
- * focus, never blocks, and is announced politely (`<section>` + the Alert's
- * own live-region-free body).
+ * focus, never blocks, and is NOT announced: a labelled `<section>` is a
+ * landmark a reader can navigate to, not a live region. That is deliberate -
+ * nothing here is urgent, and the state it describes already holds.
  *
  * WHAT IT OFFERS, AND WHAT IT DELIBERATELY DOES NOT. Exactly two actions
  * (Turn off, Read what this means) plus a dismiss control. There is no Enable
@@ -107,7 +108,7 @@ export const DefaultOnBanner: FC<DefaultOnBannerProps> = ({
 							size="sm"
 							className="text-ink"
 							aria-expanded={expanded}
-							aria-controls={detailsId}
+							aria-controls={expanded ? detailsId : undefined}
 							onClick={() => setExpanded((open) => !open)}
 							data-agent-messages-banner-action="read"
 						>

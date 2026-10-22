@@ -7,6 +7,16 @@
  * would pass while an Enable button sat beside it, so every state asserts the
  * absence of /enable/i buttons and of role=dialog/alertdialog explicitly.
  *
+ * The local "Enabled on this machine" switch (role=switch) is ALLOWED in state C
+ * and F and asserted exactly: it is the machine-local control of an enrolment
+ * that already holds, not a way to opt in to Team Bridge, and the existing
+ * settings surface owns it. It must NOT appear in B, D or E, and no other
+ * switch may appear anywhere.
+ *
+ * Every "no dialog" claim about the onboarding dialog is made against a MOUNTED
+ * AgentMessagesOnboarding with a negative control (a v1 hub does open it), so
+ * it cannot pass merely because nothing that could render a dialog is mounted.
+ *
  * jsdom has no layout; nothing here claims geometry (the Storybook frames do).
  */
 import assert from "node:assert/strict";
@@ -34,6 +44,8 @@ for (const key of Object.getOwnPropertyNames(dom.window)) {
 globalThis.window = dom.window;
 globalThis.document = dom.window.document;
 globalThis.Event = dom.window.Event;
+// Radix dispatches DOM-realm CustomEvents when the onboarding dialog opens.
+globalThis.CustomEvent = dom.window.CustomEvent;
 globalThis.localStorage = dom.window.localStorage;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 window.Element.prototype.scrollIntoView = () => {};
@@ -47,6 +59,7 @@ const EXTERNAL = /^(react|react-dom|@tanstack\/react-query)(\/.*)?$/;
 const bundled = await build({
 	stdin: {
 		contents: `
+			export {AgentMessagesOnboarding} from "./src/renderer/src/features/agent-messages/agent-messages-onboarding";
 			export {AgentMessagesSettings} from "./src/renderer/src/features/agent-messages/agent-messages-settings";
 			// react-query comes through the bundle so the provider and the component
 			// share ONE copy; importing it beside the bundle resolves its ESM build
@@ -55,7 +68,7 @@ const bundled = await build({
 			export {TeamBridgeDefaultOnBanner} from "./src/renderer/src/features/team-bridge/team-bridge-default-on-banner";
 			export {useAgentMessagesOnboardingStore} from "./src/renderer/src/shared/store/agent-messages-onboarding-store";
 			export {desktopEndpoint} from "./src/shared/desktop-contract";
-			export {agentMessagesStatusSchema,agentMessagesSettingsResultSchema,agentMessagesOnboardingContext,agentMessagesDefaultOnBannerPending,agentMessagesDefaultOnInForce} from "./src/shared/agent-messages-contract";
+			export {agentMessagesStatusSchema,agentMessagesSettingsResultSchema,agentMessagesOnboardingContext,agentMessagesDefaultOnBannerPending,agentMessagesDefaultOnInForce,agentMessagesDefaultOnBannerConsentText} from "./src/shared/agent-messages-contract";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -225,14 +238,32 @@ const press = async (el) => {
 	await flush();
 };
 
-/** The two absences the product ruling demands, asserted in every state. */
+const switchLabels = () =>
+	[...document.querySelectorAll('[role="switch"]')].map((el) =>
+		(
+			document.getElementById(el.getAttribute("aria-labelledby") ?? "")
+				?.textContent ?? ""
+		).trim(),
+	);
+
+/** The absences the product ruling demands, asserted in every state. */
 function assertNoOptInAffordance(where) {
+	// Only Settings states C and F carry the machine-local switch (see header).
+	const state =
+		document
+			.querySelector("[data-agent-messages-state]")
+			?.getAttribute("data-agent-messages-state") ?? null;
+	assert.deepEqual(
+		switchLabels(),
+		state === "C" || state === "F" ? ["Enabled on this machine"] : [],
+		`${where}: only the machine-local switch, only in C/F`,
+	);
 	assert.deepEqual(
 		enableButtons().map(labelOf),
 		[],
 		`${where}: no Enable button`,
 	);
-	assert.equal(dialogs().length, 0, `${where}: no dialog`);
+	assert.equal(dialogs().length === 0, true, `${where}: no dialog`);
 	assert.doesNotMatch(
 		document.body.textContent,
 		/enable (this )?later|Off by default/i,
@@ -290,14 +321,14 @@ async function mountPage(t, { status, settings, api }) {
 		client.clear();
 	});
 	const built = api ? { api, calls: null } : makeApi(settings);
-	const render = () =>
+	const render = (nextStatus = status) =>
 		act(async () =>
 			root.render(
 				React.createElement(
 					QueryClientProvider,
 					{ client },
 					React.createElement(mod.TeamBridgeDefaultOnBanner, {
-						status,
+						status: nextStatus,
 						api: built.api,
 					}),
 				),
@@ -343,8 +374,9 @@ test("Settings: Read what this means shows the served v2 text verbatim", async (
 		settings: settingsWith(),
 	});
 	assert.equal(
-		document.querySelector("[data-agent-messages-banner-consent]"),
-		null,
+		document.querySelector("[data-agent-messages-banner-consent]") === null,
+		true,
+		"collapsed until asked",
 	);
 	await press(button("Read what this means"));
 	const text = banner().querySelector("[data-agent-messages-banner-consent] p");
@@ -619,6 +651,235 @@ test("Team Bridge page: the view mounts the banner in its notice slot", () => {
 // ---------------------------------------------------------------------------
 // Contract, routes and the onboarding dialog
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// R1 remediation: mounted-dialog guard, races, tenant/account switch, versions
+// ---------------------------------------------------------------------------
+
+async function mountOnboarding(t, status) {
+	window.__agentMessagesState = {
+		accountId: "account-a",
+		snapshot: { status, presentable: true, pending: false, confirmed: false },
+		model: {
+			setBlocked: () => {},
+			consentIdentity: () => null,
+			canEnable: () => false,
+			dismiss: () => {},
+		},
+	};
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	let mounted = true;
+	const unmount = async () => {
+		if (!mounted) return;
+		mounted = false;
+		await act(async () => root.unmount());
+		container.remove();
+	};
+	t.after(unmount);
+	await act(async () =>
+		root.render(
+			React.createElement(mod.AgentMessagesOnboarding, {
+				blocked: false,
+				sessionId: null,
+			}),
+		),
+	);
+	return { container, unmount };
+}
+
+test("Onboarding dialog: MOUNTED, it renders nothing under default-on and DOES open for a v1 hub (negative control)", async (t) => {
+	const control = await mountOnboarding(t, structuredClone(statusFixture));
+	assert.equal(
+		dialogs().length > 0,
+		true,
+		"control: a v1 hub opens the dialog",
+	);
+	// Unmount the control first: its dialog portals into <body>.
+	await control.unmount();
+	for (const defaultOn of [PENDING, SEEN]) {
+		const view = await mountOnboarding(
+			t,
+			statusWith({ surface: "B", defaultOn }),
+		);
+		assert.equal(dialogs().length === 0, true, "no dialog under default-on");
+		assert.equal(
+			view.container.childNodes.length === 0,
+			true,
+			"renders nothing",
+		);
+		await view.unmount();
+	}
+});
+
+test("Settings: a double click on Turn off sends one PUT", async (t) => {
+	const { calls } = await mountSettings(t, {
+		status: statusWith({ defaultOn: PENDING }),
+		settings: settingsWith(),
+	});
+	const turnOff = banner().querySelector(
+		'[data-agent-messages-banner-action="turn_off"]',
+	);
+	// Both clicks land before React re-renders the button disabled.
+	await act(async () => {
+		for (let i = 0; i < 2; i += 1) {
+			turnOff.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+		}
+	});
+	await flush();
+	assert.equal(calls.settings.length, 1);
+});
+
+test("Settings: Dismiss while Turn off is in flight is dropped", async (t) => {
+	const base = makeApi(settingsWith());
+	let release;
+	const gate = new Promise((done) => {
+		release = done;
+	});
+	const api = {
+		...base.api,
+		updateSettings: async (body) => {
+			await gate;
+			return base.api.updateSettings(body);
+		},
+	};
+	await mountSettings(t, {
+		status: statusWith({ defaultOn: PENDING }),
+		api,
+	});
+	const bannerButton = (name) =>
+		banner().querySelector(`[data-agent-messages-banner-action="${name}"]`);
+	const turnOff = bannerButton("turn_off");
+	const dismiss = bannerButton("dismiss");
+	// One act: the dismiss click arrives before the pending state has rendered.
+	await act(async () => {
+		turnOff.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+		dismiss.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+	});
+	assert.equal(base.calls.dismiss, 0, "dismiss dropped while Turn off pending");
+	release();
+	await flush();
+	assert.equal(base.calls.dismiss, 0);
+	assert.equal(base.calls.settings.length, 1);
+});
+
+test("Settings: state D (paused) under default-on has no banner, no Enable, no dialog", async (t) => {
+	await mountSettings(t, {
+		status: statusWith({ defaultOn: SEEN }),
+		settings: settingsWith({ state: "paused" }),
+	});
+	assert.equal(
+		document.querySelector('[data-agent-messages-state="D"]') === null,
+		false,
+		"state D rendered",
+	);
+	assert.equal(banner() === null, true, "no banner while paused");
+	assertNoOptInAffordance("D under default-on");
+});
+
+test("Banner consent text is shown only when its version is the one enrolled; otherwise the unavailable copy", async (t) => {
+	const moved = settingsWith();
+	moved.endpoint.consent.version = "bridge_consent_v1";
+	assert.equal(
+		mod.agentMessagesDefaultOnBannerConsentText(
+			statusWith({ defaultOn: PENDING }),
+			settingsWith(),
+		),
+		V2_TEXT,
+	);
+	assert.equal(
+		mod.agentMessagesDefaultOnBannerConsentText(
+			statusWith({ defaultOn: PENDING }),
+			moved,
+		),
+		null,
+	);
+	await mountSettings(t, {
+		status: statusWith({ defaultOn: PENDING }),
+		settings: moved,
+	});
+	await press(button("Read what this means"));
+	const body = banner().querySelector("[data-agent-messages-banner-consent]");
+	assert.equal(body.textContent.includes(V2_TEXT), false, "newer text hidden");
+	assert.match(body.textContent, /full text is not available/);
+});
+
+test("Team Bridge page: a version mismatch shows the unavailable copy, not another version's text", async (t) => {
+	const moved = settingsWith();
+	moved.endpoint.consent.version = "bridge_consent_v1";
+	await mountPage(t, {
+		status: statusWith({ defaultOn: PENDING }),
+		settings: moved,
+	});
+	await press(button("Read what this means"));
+	const body = banner().querySelector("[data-agent-messages-banner-consent]");
+	assert.equal(body.textContent.includes(V2_TEXT), false);
+	assert.match(body.textContent, /full text is not available/);
+});
+
+test("Team Bridge page: a dismissal is per tenant; another tenant's banner still shows", async (t) => {
+	const view = await mountPage(t, {
+		status: statusWith({ defaultOn: PENDING }),
+		settings: settingsWith(),
+	});
+	await press(button("Dismiss"));
+	assert.equal(banner() === null, true, "dismissed for tenant-home");
+	const other = statusWith({ defaultOn: PENDING });
+	other.tenant_id = "tenant-other";
+	await view.render(other);
+	await flush();
+	assert.equal(banner() === null, false, "tenant-other is not dismissed");
+});
+
+test("Team Bridge page: a sign-in switch within one tenant re-reads settings instead of replaying the other account's", async (t) => {
+	let reads = 0;
+	const { api } = makeApi(settingsWith());
+	const counting = {
+		...api,
+		settings: async () => {
+			reads += 1;
+			return settingsWith();
+		},
+	};
+	const view = await mountPage(t, {
+		status: statusWith({ defaultOn: PENDING }),
+		api: counting,
+	});
+	assert.equal(reads, 1);
+	const switched = statusWith({ defaultOn: PENDING });
+	switched.account_id = "account-b";
+	await view.render(switched);
+	await flush();
+	await flush();
+	assert.equal(reads, 2, "account is part of the settings query key");
+});
+
+test("Settings: an unknown consented_via from a newer runtime still renders, shown as sent", async (t) => {
+	const future = settingsWith();
+	future.endpoint.consent.consented_via = "carrier_pigeon";
+	assert.equal(
+		mod.agentMessagesSettingsResultSchema.safeParse(future).success,
+		true,
+	);
+	await mountSettings(t, {
+		status: statusWith({ defaultOn: SEEN }),
+		settings: future,
+	});
+	assert.match(document.body.textContent, /carrier_pigeon/);
+	assertNoOptInAffordance("unknown consented_via");
+});
+
+test("contract: a malformed notice_pending alone keeps in_force true (dialog stays closed) and hides the banner", () => {
+	const parsed = mod.agentMessagesStatusSchema.parse({
+		...statusFixture,
+		surface_state: "B",
+		default_on: { in_force: true, notice_pending: "soon" },
+	});
+	assert.equal(mod.agentMessagesDefaultOnInForce(parsed), true);
+	assert.equal(parsed.default_on.notice_pending, false);
+	assert.equal(mod.agentMessagesOnboardingContext(parsed, "account-a"), null);
+});
 
 test("contract: absent default_on fields parse and behave as today; default_on consented_via parses in responses", () => {
 	const v1 = mod.agentMessagesStatusSchema.parse(statusFixture);

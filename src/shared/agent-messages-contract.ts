@@ -87,7 +87,11 @@ export type AgentMessagesDeliveryHold = NonNullable<
 export const agentMessagesDefaultOnSchema = z
 	.object({
 		in_force: z.boolean(),
-		notice_pending: z.boolean(),
+		// Tolerated on its own: a malformed `notice_pending` must read as "no
+		// notice", never collapse the whole block to absent - an absent block
+		// means "not in force" and would reopen the opt-in dialog for a member
+		// who is enrolled. false only hides the banner.
+		notice_pending: z.boolean().catch(false),
 	})
 	.passthrough()
 	.optional()
@@ -190,9 +194,11 @@ const consentRecordSchema = z
 		consented_at: z.string().min(1),
 		// RESPONSES ONLY may carry "default_on" (a member the runtime enrolled
 		// automatically). Requests use AgentMessagesRequestConsentVia, which
-		// cannot. An unknown future value would fail the whole settings read, so
-		// a new spelling needs a client release - the same posture as `state`.
-		consented_via: z.enum(["dialog", "settings", "default_on"]),
+		// cannot. The enum has already grown once, so the read stays open: an
+		// unknown spelling from a newer runtime must not fail the settings read
+		// (it would put the whole section in its error state). Surfaces label the
+		// known values through the catalogue and show an unknown one as-is.
+		consented_via: z.string().min(1),
 		// False means the served text moved on since this record was written; the
 		// surface must route the reader back through the enable action.
 		current: z.boolean(),
@@ -350,6 +356,25 @@ export function agentMessagesDefaultOnInForce(
 	status: AgentMessagesStatus | null,
 ): boolean {
 	return status?.default_on?.in_force === true;
+}
+
+/**
+ * The consent text the default-on banner may show, or null.
+ *
+ * The banner promises the member the text they were ENROLLED under. The status
+ * read serves the CURRENT text (or a cached copy), which can have moved on
+ * since enrolment; showing it would put words in front of the member that they
+ * never accepted. So the served text is returned only when its version equals
+ * the endpoint's recorded consent version; on any mismatch (or no record) the
+ * caller shows the "unavailable" copy rather than a different version's text.
+ */
+export function agentMessagesDefaultOnBannerConsentText(
+	status: AgentMessagesStatus | null,
+	settings: Pick<AgentMessagesSettingsResult, "endpoint"> | null,
+): string | null {
+	const served = agentMessagesServedConsent(status);
+	const enrolled = settings?.endpoint?.consent?.version;
+	return served && enrolled && served.version === enrolled ? served.text : null;
 }
 
 /**

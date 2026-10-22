@@ -4,7 +4,7 @@ import type { FC } from "react";
 import {
 	type AgentMessagesSettingsResult,
 	type AgentMessagesStatus,
-	agentMessagesServedConsent,
+	agentMessagesDefaultOnBannerConsentText,
 } from "../../../../shared/agent-messages-contract";
 import { DefaultOnBanner } from "../agent-messages/default-on-banner";
 import { agentMessagesModel } from "../agent-messages/use-agent-messages";
@@ -43,6 +43,10 @@ export const TeamBridgeDefaultOnBanner: FC<{
 	const settingsKey = [
 		...teamBridgeKeys.all,
 		"default-on-settings",
+		// Two accounts of one organisation share a tenant, so a tenant-only key
+		// would replay the previous account's default_on/endpoint after a
+		// sign-in switch. The account is part of the identity of this read.
+		accountId,
 		tenantId,
 	] as const;
 	const settings = useQuery<AgentMessagesSettingsResult | null>({
@@ -77,9 +81,12 @@ export const TeamBridgeDefaultOnBanner: FC<{
 	});
 	if (!status || !visible) return null;
 	return (
-		<div className="shrink-0 px-5 pt-2">
+		<div className="shrink-0 px-6 py-1">
 			<DefaultOnBanner
-				consentText={agentMessagesServedConsent(status)?.text ?? null}
+				consentText={agentMessagesDefaultOnBannerConsentText(
+					status,
+					settingsData,
+				)}
 				pending={actions.pending}
 				failure={actions.failure}
 				onTurnOff={() => void actions.turnOff()}
