@@ -1221,5 +1221,19 @@
 		"length": "One short line.",
 		"placeholders": {},
 		"note": "Button in the reschedule dialog that removes every image from a scheduled message. Images cannot be added here."
+	},
+	"ui.teamBridge.schedule.held": {
+		"role": "Held scheduling attempt recovery explanation",
+		"tone": "Clear, calm, explicit about uncertainty and user acknowledgement",
+		"length": "Permit wrapping; do not shorten away the Scheduled check or cancellation distinction.",
+		"placeholders": {},
+		"note": "Scheduled is the existing named quick link. A lost server response may hide a pending scheduled message. This action clears only the local attempt/idempotency reference and retains the authored draft; it does NOT cancel server delivery. The reader must check Scheduled and cancel any unwanted server message before acknowledging. Keep this distinct from the Cancel message server action."
+	},
+	"ui.teamBridge.schedule.discard_attempt": {
+		"role": "Explicit local scheduling-attempt discard acknowledgement",
+		"tone": "Clear, calm, explicit about uncertainty and user acknowledgement",
+		"length": "Permit wrapping; do not shorten away the Scheduled check or cancellation distinction.",
+		"placeholders": {},
+		"note": "Scheduled is the existing named quick link. A lost server response may hide a pending scheduled message. This action clears only the local attempt/idempotency reference and retains the authored draft; it does NOT cancel server delivery. The reader must check Scheduled and cancel any unwanted server message before acknowledging. Keep this distinct from the Cancel message server action."
 	}
 }

@@ -165,5 +165,7 @@
 	"ui.teamBridge.attachments.unavailable": "Image indisponible",
 	"ui.teamBridge.attachments.retry_load": "Réessayer",
 	"ui.teamBridge.attachments.send_blocked": "Retirez ou renvoyez les images signalées par une erreur avant d’envoyer.",
-	"ui.teamBridge.attachments.remove_all": "Retirer les images"
+	"ui.teamBridge.attachments.remove_all": "Retirer les images",
+	"ui.teamBridge.schedule.held": "Une planification précédente existe peut-être encore. Vérifiez « Planifiés » et annulez-la si nécessaire avant d’abandonner cet essai. Votre brouillon est conservé.",
+	"ui.teamBridge.schedule.discard_attempt": "J’ai vérifié « Planifiés » — abandonner cet essai"
 }

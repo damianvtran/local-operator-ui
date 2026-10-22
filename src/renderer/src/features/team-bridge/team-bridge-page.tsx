@@ -8,7 +8,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ArrowUp, Bot, Clock, Hash, Pencil, Plus, Users } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type {
 	TeamBridgeAttachmentCapability,
@@ -30,6 +30,7 @@ import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
 import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
 import { draftTargetKey } from "./team-bridge-drafts";
+import { TeamBridgeHeldAttempt } from "./team-bridge-held-attempt";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
@@ -427,6 +428,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const [scheduledSuccess, setScheduledSuccess] = useState(false);
 	const [scheduleFailed, setScheduleFailed] = useState(false);
 	const writing = useRef(false);
+	const heldReasonId = useId();
 	const draftTenant =
 		scope === TEAM_BRIDGE_ALL_SCOPE && target?.type === "conversation"
 			? (conversations.find((row) => row.id === target.id)?.tenant_id ?? scope)
@@ -439,6 +441,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		eligibility === "signed_out",
 		scope === TEAM_BRIDGE_ALL_SCOPE,
 	);
+	const heldAttempt =
+		Boolean(draftState.current?.sendAt) &&
+		!draftState.current?.createUncertain &&
+		!scheduling;
+
 	const { body: draft, setBody: setDraft } = draftState;
 	/*
 	 * The composer's staged images. Keyed to the same draft identity as the
@@ -1068,6 +1075,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				{quickView === "scheduled" && selfAccountId ? (
 					<TeamBridgeScheduledList
 						accountId={selfAccountId}
+						organizationNames={Object.fromEntries(
+							organizations.map((row) => [row.tenantId, row.name]),
+						)}
 						tenantIds={
 							mergedView ? organizations.map((row) => row.tenantId) : [scope]
 						}
@@ -1223,7 +1233,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						)}
 
 						<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block! [&_[data-radix-scroll-area-viewport]>div]:h-full">
-							<div className="flex h-full flex-col">
+							{/* Intrinsic transcript height must remain scrollable when localized recovery controls claim more composer space. */}
+							<div className="flex min-h-full flex-col">
 								{previewSelected ? (
 									<TeamBridgePreviewBanner
 										joining={joining}
@@ -1333,37 +1344,23 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									{t("ui.teamBridge.read_only.composer")}
 								</p>
 							) : (
-								<div className="shrink-0 px-4 pb-4">
+								/* Bound localized recovery controls without consuming the whole timeline. */
+								<div className="min-h-0 max-h-[60%] shrink-0 overflow-y-auto px-4 pb-4">
 									{scheduleFailed && (
 										<p role="alert" className="text-sm text-danger">
 											{t("ui.teamBridge.schedule.failed")}
 										</p>
 									)}
-									{draftState.current?.sendAt &&
-										!draftState.current.createUncertain &&
-										onSchedule && (
-											<Button
-												variant="ghost"
-												disabled={scheduling || sending}
-												onClick={() => {
-													const at = draftState.current?.sendAt;
-													if (at)
-														void schedule(at).catch(() =>
-															setScheduleFailed(true),
-														);
-												}}
-											>
-												{t("ui.teamBridge.schedule.retry")}
-											</Button>
-										)}
 									{scheduledSuccess && (
 										<p aria-live="polite" className="text-sm text-ink-muted">
 											{t("ui.teamBridge.schedule.success")}
 										</p>
 									)}
-									{draftState.current?.createUncertain && (
+									{draftState.current?.createUncertain && !scheduling && (
 										<div role="alert" className="text-sm text-danger">
-											<p>{t("ui.teamBridge.schedule.create_uncertain")}</p>
+											<p id={`${heldReasonId}-group`}>
+												{t("ui.teamBridge.schedule.create_uncertain")}
+											</p>
 											<Button
 												variant="ghost"
 												onClick={() =>
@@ -1402,6 +1399,35 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										)}
 										{...(canCompose ? attachmentPasteHandlers(images) : {})}
 									>
+										{heldAttempt && (
+											<TeamBridgeHeldAttempt
+												reasonId={heldReasonId}
+												busy={sending || scheduling}
+												onRetry={
+													onSchedule
+														? () => {
+																const at = draftState.current?.sendAt;
+																if (at)
+																	void schedule(at).catch(() =>
+																		setScheduleFailed(true),
+																	);
+															}
+														: undefined
+												}
+												onDiscard={() => {
+													if (writing.current || scheduling || sending) return;
+													// This releases only the local attempt; the explicit acknowledgement asks
+													// the reader to check/cancel any server schedule before minting a fresh key.
+													if (
+														draftState.update({
+															sendAt: undefined,
+															clientRef: crypto.randomUUID(),
+														})
+													)
+														setScheduleFailed(false);
+												}}
+											/>
+										)}
 										<TeamBridgeAttachmentStrip state={images} />
 										<textarea
 											value={draft}
@@ -1462,7 +1488,16 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 													variant="ghost"
 													size="icon"
 													aria-label={t("ui.teamBridge.schedule.title")}
+													aria-describedby={
+														draftState.current?.createUncertain && !scheduling
+															? `${heldReasonId}-group`
+															: heldAttempt
+																? heldReasonId
+																: undefined
+													}
 													disabled={
+														Boolean(draftState.current?.sendAt) ||
+														Boolean(draftState.current?.createUncertain) ||
 														!hasContent ||
 														!imagesSettled ||
 														sending ||
@@ -1487,14 +1522,22 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 												   D11), not the pill the size's default radius gave. */
 												className="rounded-md"
 												disabled={
+													Boolean(draftState.current?.sendAt) ||
+													Boolean(draftState.current?.createUncertain) ||
 													!hasContent ||
 													images.busy ||
 													sending ||
 													scheduling ||
-													Boolean(draftState.current?.createUncertain) ||
 													!canCompose
 												}
 												aria-label={t("ui.teamBridge.composer.send")}
+												aria-describedby={
+													draftState.current?.createUncertain && !scheduling
+														? `${heldReasonId}-group`
+														: heldAttempt
+															? heldReasonId
+															: undefined
+												}
 												onClick={submit}
 											>
 												{sending ? (

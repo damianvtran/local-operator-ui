@@ -165,5 +165,7 @@
 	"ui.teamBridge.attachments.unavailable": "Изображение недоступно",
 	"ui.teamBridge.attachments.retry_load": "Повторить",
 	"ui.teamBridge.attachments.send_blocked": "Перед отправкой удалите изображения с ошибкой или повторите их загрузку.",
-	"ui.teamBridge.attachments.remove_all": "Удалить изображения"
+	"ui.teamBridge.attachments.remove_all": "Удалить изображения",
+	"ui.teamBridge.schedule.held": "Возможно, отправка уже запланирована предыдущей попыткой. Прежде чем сбросить эту попытку, проверьте раздел «Запланированные» и при необходимости отмените отправку. Черновик сохранён.",
+	"ui.teamBridge.schedule.discard_attempt": "Раздел «Запланированные» проверен — сбросить попытку"
 }
