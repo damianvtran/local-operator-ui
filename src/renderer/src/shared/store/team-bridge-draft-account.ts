@@ -12,10 +12,14 @@ export function draftStorageKey(accountId: string, tenantId: string): string {
 	return `${PREFIX}${encodeURIComponent(accountId)}:${encodeURIComponent(tenantId)}`;
 }
 
-export function eraseAccountDrafts(storage: Storage, accountId: string): void {
+export function eraseAccountDrafts(
+	storage: Storage | null,
+	accountId: string,
+): void {
 	// Revocation still holds if browser storage itself refuses deletion.
 	epochs.set(accountId, draftAccountEpoch(accountId) + 1);
 	const prefix = `${PREFIX}${encodeURIComponent(accountId)}:`;
+	if (!storage) return;
 	try {
 		for (const key of Object.keys(storage)) {
 			if (key.startsWith(prefix)) storage.removeItem(key);
