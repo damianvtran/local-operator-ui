@@ -419,7 +419,7 @@ const mount = async (t, records, over = {}) => {
 						onLoadOlder: nextOver.onLoadOlder ?? (async () => true),
 						containerRef: { current: mounted.container },
 						isSmallView: nextOver.isSmallView ?? false,
-						status: "live",
+						status: nextOver.status ?? "live",
 						failure: null,
 						awaitingHydration: false,
 						onReconnect: () => {},
@@ -2110,6 +2110,21 @@ test("a job response cannot reopen a tool group the pane has already folded (ope
 	assert.ok(
 		rowBox(mounted, "tool:1") !== null,
 		"settled, the same rows paint as ordinary rows",
+	);
+	/*
+	 * AND A NULL SNAPSHOT IS NOT A GAP (agent review round 3). The run panel's
+	 * child reader passes `frontend: null` for its whole life with `status:
+	 * "live"`; treating that as a gap would keep its settled turn folded forever.
+	 * The pane's own status is the signal, so this frame releases like any settle.
+	 */
+	await mounted.render(withCall, {
+		frontend: null,
+		waiting: false,
+		status: "live",
+	});
+	assert.ok(
+		rowBox(mounted, "tool:1") !== null,
+		"a null frontend with a live status is not a gap",
 	);
 });
 

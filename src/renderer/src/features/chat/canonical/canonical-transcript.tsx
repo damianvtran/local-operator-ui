@@ -4021,11 +4021,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		(workingLine === undefined ? paneWorking : workingLine) !== null ||
 		gate !== null;
 	/*
-	 * Whether this pane holds a live connection at all. Distinct from `paneIsLive`
-	 * by exactly the reconnect gap: a null `frontend` means the snapshot is gone,
-	 * which is not evidence that the turn ended (see the fold latch below).
+	 * Whether this pane has NO live feed: connecting, reconnecting or
+	 * unavailable. Distinct from `paneIsLive` by exactly the gap, and NOT derived
+	 * from `frontend` (agent review round 3): the run panel's child reader passes
+	 * `frontend: null` for its whole life with `status: "live"`, so a null
+	 * snapshot is not evidence of a gap - and the settle pass there really does
+	 * end the turn. The status is the pane's own statement about its feed (see
+	 * `use-canonical-session`'s reconnect arm), so it is the one that decides.
 	 */
-	const paneConnected = frontend !== null;
+	const paneGap = status !== "live";
 
 	/*
 	 * THE LIVE FOLD LATCH (operator report, 2026-10-21: job messages and
@@ -4226,7 +4230,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * what it last painted rather than by a re-decision over stale rows -
 			 * the same reading the latch retains one line below.
 			 */
-			liveTurn: paneIsLive || !paneConnected,
+			liveTurn: paneIsLive || paneGap,
 			latchedFoldIds: foldLatch.current.ids,
 		});
 		/*
@@ -4253,7 +4257,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 * is really idle - spends the latch, and the settled pass then renders from
 		 * the rows alone.
 		 */
-		if (paneIsLive || !paneConnected) {
+		if (paneIsLive || paneGap) {
 			foldLatch.current.ids = latchFoldedRuns(
 				foldLatch.current.ids,
 				recordIndex,
@@ -4279,7 +4283,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					}
 				: group,
 		);
-	}, [visible, paneIsLive, paneConnected, recordIndex]);
+	}, [visible, paneIsLive, paneGap, recordIndex]);
 	/*
 	 * KEYED ON THE WINDOW'S SIGNATURE, NOT ON `visible` (UI perf audit P4; PR-6).
 	 * The foot is arithmetic over the same partition the plan builds - counts,
