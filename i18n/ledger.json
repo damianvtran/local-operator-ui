@@ -19143,8 +19143,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
-			"target_sha256": "9a9cab08059a8572e7aaab55449476e7293c35ed288bc989920176fddcdfa463",
+			"source_sha256": "6d5e3ddfb925ee3835d768f4f1c9c82c7fcecc49303a987aa2f8a4393c0881c4",
+			"target_sha256": "c2ea497ee86c401de99d79bed2948d151c5ced4facdfc4cf4465246a60b49d2e",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19155,20 +19155,20 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-22",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "tbd-sender-r1-fr",
+					"instance": "tbd-cos-r1-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbd-sender-r1-fr.json",
-					"receipt_sha256": "bab4b302a8a0685aff261ec4b595f00ee734176ea9c752960b23f0a3a12dcf8c",
-					"scope": "PR #1296 sender placeholder: 2-key delta (sender.unknown_person, sender.unknown_agent); other 109 values byte-identical to the audited prior row",
-					"note": "Independent reviewer delta audit, 0 findings. Prior full coverage superseded on this row; catalogue audit only, no rendered-fit or activation claim."
+					"receipt": "i18n/receipts/tbd-cos-r1-fr.json",
+					"receipt_sha256": "40abdae33b24985f4e8659aea211d2225ad10d4499da7d79956ee1c69691d75f",
+					"scope": "Team Bridge chief-of-staff label and optimistic-send status: 3-key delta (chief.unnamed, message.sending, message.failed); other values not re-audited here",
+					"note": "Independent reviewer delta audit, 0 findings. Catalogue audit only; no rendered-fit or activation claim."
 				}
 			],
 			"status": "audited",
@@ -19270,6 +19270,30 @@
 							"receipt_sha256": "fe0341dd78a19bfe03e02625f56ec08e77aab77f27123a57b00e3cd4a045fbcd",
 							"scope": "Team Bridge rail and compose; frozen 109-key source, independent full audit plus remediation delta",
 							"note": "Catalogue audit only; no rendered-fit or activation claim. Earlier rounds retained under i18n/receipts/."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
+					"target_sha256": "9a9cab08059a8572e7aaab55449476e7293c35ed288bc989920176fddcdfa463",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbd-sender-r1-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbd-sender-r1-fr.json",
+							"receipt_sha256": "bab4b302a8a0685aff261ec4b595f00ee734176ea9c752960b23f0a3a12dcf8c",
+							"scope": "PR #1296 sender placeholder: 2-key delta (sender.unknown_person, sender.unknown_agent); other 109 values byte-identical to the audited prior row",
+							"note": "Independent reviewer delta audit, 0 findings. Prior full coverage superseded on this row; catalogue audit only, no rendered-fit or activation claim."
 						}
 					],
 					"status": "audited"
@@ -19629,8 +19653,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
-			"target_sha256": "23b17040807c59c54240eb97a30841b41697a985d104ca94f09994c1e0d04361",
+			"source_sha256": "6d5e3ddfb925ee3835d768f4f1c9c82c7fcecc49303a987aa2f8a4393c0881c4",
+			"target_sha256": "86c8e83ea3c13f1571831614dd5e1d1bb4078f6b7e74d7036a7541327ccf4a4b",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19641,20 +19665,20 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-22",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "tbd-sender-r1-es",
+					"instance": "tbd-cos-r1-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbd-sender-r1-es.json",
-					"receipt_sha256": "e621cc31a7dbb50c5a3227a4ede62832b2294c0a3c7658f9f3d118864ebf39c0",
-					"scope": "PR #1296 sender placeholder: 2-key delta (sender.unknown_person, sender.unknown_agent); other 109 values byte-identical to the audited prior row",
-					"note": "Independent reviewer delta audit, 0 findings. Prior full coverage superseded on this row; catalogue audit only, no rendered-fit or activation claim."
+					"receipt": "i18n/receipts/tbd-cos-r1-es.json",
+					"receipt_sha256": "71649005e3c74d138f8019985ea0aac7ce6768d4a856cc16f9eaf864152e7dc4",
+					"scope": "Team Bridge chief-of-staff label and optimistic-send status: 3-key delta (chief.unnamed, message.sending, message.failed); other values not re-audited here",
+					"note": "Independent reviewer delta audit, 0 findings. Catalogue audit only; no rendered-fit or activation claim."
 				}
 			],
 			"status": "audited",
@@ -19735,14 +19759,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
+					"target_sha256": "23b17040807c59c54240eb97a30841b41697a985d104ca94f09994c1e0d04361",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbd-sender-r1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbd-sender-r1-es.json",
+							"receipt_sha256": "e621cc31a7dbb50c5a3227a4ede62832b2294c0a3c7658f9f3d118864ebf39c0",
+							"scope": "PR #1296 sender placeholder: 2-key delta (sender.unknown_person, sender.unknown_agent); other 109 values byte-identical to the audited prior row",
+							"note": "Independent reviewer delta audit, 0 findings. Prior full coverage superseded on this row; catalogue audit only, no rendered-fit or activation claim."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
-			"target_sha256": "764ad74c15e1d0e4eadeb4338a06eb42721dd995e8aa4b33110e2c56bfb581ca",
+			"source_sha256": "6d5e3ddfb925ee3835d768f4f1c9c82c7fcecc49303a987aa2f8a4393c0881c4",
+			"target_sha256": "16eda9cb102db5a9c046dea97d3e9b1aed147f88fc126cf8c97a89b9385f85c0",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19753,20 +19801,20 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-22",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "tbd-sender-r1-zhcn",
+					"instance": "tbd-cos-r1-zhcn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbd-sender-r1-zhcn.json",
-					"receipt_sha256": "474f0b573354241171940bb43e50cf1a89c93e4667300fe35c0e7bcad0ab0f82",
-					"scope": "PR #1296 sender placeholder: 2-key delta (sender.unknown_person, sender.unknown_agent); other 109 values byte-identical to the audited prior row",
-					"note": "Independent reviewer delta audit, 0 findings. Prior full coverage superseded on this row; catalogue audit only, no rendered-fit or activation claim."
+					"receipt": "i18n/receipts/tbd-cos-r1-zhcn.json",
+					"receipt_sha256": "8cea5980719c4c2ca98fd0214e75ae2c7c066d8c80f8bab1df021411c54e795a",
+					"scope": "Team Bridge chief-of-staff label and optimistic-send status: 3-key delta (chief.unnamed, message.sending, message.failed); other values not re-audited here",
+					"note": "Independent reviewer delta audit, 0 findings. Catalogue audit only; no rendered-fit or activation claim."
 				}
 			],
 			"status": "audited",
@@ -19844,6 +19892,30 @@
 							"receipt_sha256": "85d1f0e0870d1a20d82e242187fbb7fba745a88189d98965e51010bd0e7125e9",
 							"scope": "Team Bridge rail and compose; frozen 109-key source, independent full audit plus remediation delta",
 							"note": "Catalogue audit only; no rendered-fit or activation claim. Earlier rounds retained under i18n/receipts/."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
+					"target_sha256": "764ad74c15e1d0e4eadeb4338a06eb42721dd995e8aa4b33110e2c56bfb581ca",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbd-sender-r1-zhcn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbd-sender-r1-zhcn.json",
+							"receipt_sha256": "474f0b573354241171940bb43e50cf1a89c93e4667300fe35c0e7bcad0ab0f82",
+							"scope": "PR #1296 sender placeholder: 2-key delta (sender.unknown_person, sender.unknown_agent); other 109 values byte-identical to the audited prior row",
+							"note": "Independent reviewer delta audit, 0 findings. Prior full coverage superseded on this row; catalogue audit only, no rendered-fit or activation claim."
 						}
 					],
 					"status": "audited"
@@ -20136,8 +20208,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
-			"target_sha256": "090f49174aebbb63085c1d91d54af51c6223e870f53f7052f393b5e3bbb25722",
+			"source_sha256": "6d5e3ddfb925ee3835d768f4f1c9c82c7fcecc49303a987aa2f8a4393c0881c4",
+			"target_sha256": "1ecb0ed02c91a845eb29dfb9d1cc6a80d9778e22f97912fcc1f958287ab248b1",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -20148,20 +20220,20 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-22",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "tbd-sender-r1-ru",
+					"instance": "tbd-cos-r2-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbd-sender-r1-ru.json",
-					"receipt_sha256": "2a4051cf0cb169ac952ecd4e4ecbed8edcd6c37e49ed98a3e11c10cfd9624765",
-					"scope": "PR #1296 sender placeholder: 2-key delta (sender.unknown_person, sender.unknown_agent); other 109 values byte-identical to the audited prior row",
-					"note": "Independent reviewer delta audit, 0 findings. Prior full coverage superseded on this row; catalogue audit only, no rendered-fit or activation claim."
+					"receipt": "i18n/receipts/tbd-cos-r2-ru.json",
+					"receipt_sha256": "d5b2fa4c1e9f72d4a0aeb37771fbb1db0fac01b72b6a48ac36edaddf80b2fd1d",
+					"scope": "Team Bridge chief-of-staff label and optimistic-send status: 3-key delta; r1 changes_requested (MAJOR chief.unnamed) remediated to 'Координатор ({person})', r2 passed",
+					"note": "Independent reviewer delta audit, r2 clean after r1 MAJOR fixed. Catalogue audit only; no rendered-fit or activation claim."
 				}
 			],
 			"status": "audited",
@@ -20189,14 +20261,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
+					"target_sha256": "090f49174aebbb63085c1d91d54af51c6223e870f53f7052f393b5e3bbb25722",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbd-sender-r1-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbd-sender-r1-ru.json",
+							"receipt_sha256": "2a4051cf0cb169ac952ecd4e4ecbed8edcd6c37e49ed98a3e11c10cfd9624765",
+							"scope": "PR #1296 sender placeholder: 2-key delta (sender.unknown_person, sender.unknown_agent); other 109 values byte-identical to the audited prior row",
+							"note": "Independent reviewer delta audit, 0 findings. Prior full coverage superseded on this row; catalogue audit only, no rendered-fit or activation claim."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
-			"target_sha256": "4c98c32e473622f9aee3e1241e4b5b4b5085411e18c9d92f7e30a2fdc0ef5b4b",
+			"source_sha256": "6d5e3ddfb925ee3835d768f4f1c9c82c7fcecc49303a987aa2f8a4393c0881c4",
+			"target_sha256": "842bf5363d6e82e30ac4df321fb1b4b017e856d963e47242eceaa8f9d72e4c80",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -20207,20 +20303,20 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-22",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "tbd-sender-r1-hi",
+					"instance": "tbd-cos-r1-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbd-sender-r1-hi.json",
-					"receipt_sha256": "1f188f9cee7eb3e9902398bcaf3622519c588da569424ecb2d9e3d772e7b99f3",
-					"scope": "PR #1296 sender placeholder: 2-key delta (sender.unknown_person, sender.unknown_agent); other 109 values byte-identical to the audited prior row",
-					"note": "Independent reviewer delta audit, 0 findings. Prior full coverage superseded on this row; catalogue audit only, no rendered-fit or activation claim."
+					"receipt": "i18n/receipts/tbd-cos-r1-hi.json",
+					"receipt_sha256": "f81c51a3905d6f57f625a86c6758312cdd6b936af15f25d9905b9b435fe15298",
+					"scope": "Team Bridge chief-of-staff label and optimistic-send status: 3-key delta (chief.unnamed, message.sending, message.failed); other values not re-audited here",
+					"note": "Independent reviewer delta audit, 0 findings. Catalogue audit only; no rendered-fit or activation claim."
 				}
 			],
 			"status": "audited",
@@ -20248,14 +20344,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
+					"target_sha256": "4c98c32e473622f9aee3e1241e4b5b4b5085411e18c9d92f7e30a2fdc0ef5b4b",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbd-sender-r1-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbd-sender-r1-hi.json",
+							"receipt_sha256": "1f188f9cee7eb3e9902398bcaf3622519c588da569424ecb2d9e3d772e7b99f3",
+							"scope": "PR #1296 sender placeholder: 2-key delta (sender.unknown_person, sender.unknown_agent); other 109 values byte-identical to the audited prior row",
+							"note": "Independent reviewer delta audit, 0 findings. Prior full coverage superseded on this row; catalogue audit only, no rendered-fit or activation claim."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
-			"target_sha256": "d450e7167746c3e80789b58dbf8f165aa1a2b6581e114fa70a56e353058cc52b",
+			"source_sha256": "6d5e3ddfb925ee3835d768f4f1c9c82c7fcecc49303a987aa2f8a4393c0881c4",
+			"target_sha256": "da7f1eddd12795521c1b8cf01d5734cf9ea18b3cf88df9e567c757dc04cbb0e3",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -20266,20 +20386,20 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-22",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "tbd-sender-r1-ur",
+					"instance": "tbd-cos-r1-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbd-sender-r1-ur.json",
-					"receipt_sha256": "00923f770a8382642b549567afe337c320f1ca0dc9562693cfc9236d08674801",
-					"scope": "PR #1296 sender placeholder: 2-key delta (sender.unknown_person, sender.unknown_agent); other 109 values byte-identical to the audited prior row",
-					"note": "Independent reviewer delta audit, 0 findings. Prior full coverage superseded on this row; catalogue audit only, no rendered-fit or activation claim."
+					"receipt": "i18n/receipts/tbd-cos-r1-ur.json",
+					"receipt_sha256": "e0773806c299cb3f36a7aaaa5e4bcf6e566f3e7a99872b2e4f3eba84d658fff1",
+					"scope": "Team Bridge chief-of-staff label and optimistic-send status: 3-key delta (chief.unnamed, message.sending, message.failed); other values not re-audited here",
+					"note": "Independent reviewer delta audit, 0 findings. Catalogue audit only; no rendered-fit or activation claim."
 				}
 			],
 			"status": "audited",
@@ -20307,14 +20427,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
+					"target_sha256": "d450e7167746c3e80789b58dbf8f165aa1a2b6581e114fa70a56e353058cc52b",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbd-sender-r1-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbd-sender-r1-ur.json",
+							"receipt_sha256": "00923f770a8382642b549567afe337c320f1ca0dc9562693cfc9236d08674801",
+							"scope": "PR #1296 sender placeholder: 2-key delta (sender.unknown_person, sender.unknown_agent); other 109 values byte-identical to the audited prior row",
+							"note": "Independent reviewer delta audit, 0 findings. Prior full coverage superseded on this row; catalogue audit only, no rendered-fit or activation claim."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
-			"target_sha256": "998baa1266abfdd624ec0bb0f37f286bf17873ed1c7603f9d599dfed8e9aa8c3",
+			"source_sha256": "6d5e3ddfb925ee3835d768f4f1c9c82c7fcecc49303a987aa2f8a4393c0881c4",
+			"target_sha256": "3d98610e14d454c21691502a53a49b4664177ce86e2b785e90fab6dc73d25bc1",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -20325,20 +20469,20 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "anthropic/claude-opus-5-5",
-					"date": "2026-10-22",
+					"model": "anthropic/claude-sonnet-5-5",
+					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "tbd-sender-r1-vi",
+					"instance": "tbd-cos-r1-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbd-sender-r1-vi.json",
-					"receipt_sha256": "129595328b3631706971cb678011f957efe4b4a1ce28a64fb41c47e2bb589b5b",
-					"scope": "PR #1296 sender placeholder: 2-key delta (sender.unknown_person, sender.unknown_agent); other 109 values byte-identical to the audited prior row",
-					"note": "Independent reviewer delta audit, 0 findings. Prior full coverage superseded on this row; catalogue audit only, no rendered-fit or activation claim."
+					"receipt": "i18n/receipts/tbd-cos-r1-vi.json",
+					"receipt_sha256": "2e5c111e96992d11623c1f5f6287667f6b5748682eccecb0df1e74ba6c96ebe9",
+					"scope": "Team Bridge chief-of-staff label and optimistic-send status: 3-key delta (chief.unnamed, message.sending, message.failed); other values not re-audited here",
+					"note": "Independent reviewer delta audit, 0 findings. Catalogue audit only; no rendered-fit or activation claim."
 				}
 			],
 			"status": "audited",
@@ -20363,6 +20507,30 @@
 							"receipt_sha256": "b06b33c45ad38222050412836b2f095a369eab4905066f0e96b9443045851bd8",
 							"scope": "Team Bridge rail and compose; frozen 109-key source, independent full audit plus remediation delta",
 							"note": "Catalogue audit only; no rendered-fit or activation claim. Earlier rounds retained under i18n/receipts/."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
+					"target_sha256": "998baa1266abfdd624ec0bb0f37f286bf17873ed1c7603f9d599dfed8e9aa8c3",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbd-sender-r1-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbd-sender-r1-vi.json",
+							"receipt_sha256": "129595328b3631706971cb678011f957efe4b4a1ce28a64fb41c47e2bb589b5b",
+							"scope": "PR #1296 sender placeholder: 2-key delta (sender.unknown_person, sender.unknown_agent); other 109 values byte-identical to the audited prior row",
+							"note": "Independent reviewer delta audit, 0 findings. Prior full coverage superseded on this row; catalogue audit only, no rendered-fit or activation claim."
 						}
 					],
 					"status": "audited"
