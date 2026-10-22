@@ -1937,7 +1937,7 @@ test("a reconnect frame cannot collapse the reader's opened bar (operator report
 	);
 });
 
-test("a turn that GROWS while the live flag is down does not condense (operator frames, 2026-10-21)", async (t) => {
+test("a turn that GROWS while the live flag is down stops condensing (operator frames, 2026-10-21)", async (t) => {
 	/*
 	 * THE SECOND MECHANISM BEHIND THE FRAMES. Captured from a live turn: the
 	 * turn's rows out (the working line saying it is thinking), then the same
@@ -1952,6 +1952,13 @@ test("a turn that GROWS while the live flag is down does not condense (operator 
 	 * Prose between the calls keeps the TOOL-GROUP tier out of this fixture
 	 * (`foldRuns` only folds a run of three or more adjacent actions), so the bar
 	 * these assertions are about is the turn's own.
+	 *
+	 * WHAT THIS PROVES, EXACTLY (agent review round 1, M2): the assertion is the
+	 * state after the arming pass has committed - the growth pass renders once
+	 * unarmed and the effect's setState re-renders it armed - so it proves the
+	 * turn does not STAY condensed once growth is observed, not that the very first
+	 * frame of the append is already expanded. The frame between the two is the
+	 * pass the effect cannot preempt.
 	 */
 	const prose = (id) => ({
 		kind: "assistant",
@@ -1959,6 +1966,7 @@ test("a turn that GROWS while the live flag is down does not condense (operator 
 		ts: TS,
 		text: "Working through it.",
 		streaming: false,
+		stopReason: null,
 	});
 	const records = [
 		userRecord("grow-user"),
@@ -1968,6 +1976,7 @@ test("a turn that GROWS while the live flag is down does not condense (operator 
 		prose("grow-p1"),
 	];
 	const over = { frontend: { session_id: "synthetic-grow" }, waiting: false };
+	__resetWatchedRuns();
 	const mounted = await mount(t, records, over);
 	assert.ok(
 		bar(mounted) !== null,
@@ -1992,6 +2001,7 @@ test("a turn that GROWS while the live flag is down does not condense (operator 
 	 * turn is being written; only a row appended at the TAIL moves the run's last
 	 * id, which is the append this arm is about.
 	 */
+	__resetWatchedRuns();
 	const page = await mount(
 		t,
 		[

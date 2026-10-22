@@ -5179,10 +5179,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * holding no latch and arriving collapsed exactly as before; only growth
 	 * OBSERVED (a later pass on the same conversation) can arm.
 	 */
-	const latchSeen = useRef<{ session: string | null; tailId: string | null }>({
-		session: null,
-		tailId: null,
-	});
+	/*
+	 * `seen` is a FIELD, not an inference from `session`: the conversation id is
+	 * itself nullable (the child reader mounts with `frontend: null`), so a
+	 * `session !== conversation` test read a null-conversation mount as a second
+	 * look and armed on its first pass (agent review round 1, M1).
+	 */
+	const latchSeen = useRef<{
+		seen: boolean;
+		session: string | null;
+		tailId: string | null;
+	}>({ seen: false, session: null, tailId: null });
 	useEffect(() => {
 		const newest = collapse.runs.at(-1);
 		const runId = newest ? visible[newest.run.openingIndex]?.record.id : null;
@@ -5198,9 +5205,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 */
 		const tailId = newest.recordIds.at(-1) ?? null;
 		const seen = latchSeen.current;
-		const firstLook = seen.session !== conversation;
+		const firstLook = !seen.seen || seen.session !== conversation;
 		const grew = !firstLook && tailId !== null && tailId !== seen.tailId;
-		latchSeen.current = { session: conversation, tailId };
+		latchSeen.current = { seen: true, session: conversation, tailId };
 		const wrote = grew && newest.answerId === null;
 		if (!collapseInputs.live && !wrote) return;
 		writeWatchedRun(conversation, runId);
