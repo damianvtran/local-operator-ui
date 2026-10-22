@@ -1000,5 +1000,19 @@
 		"length": "Permit wrapping; do not shorten away the Scheduled check or cancellation distinction.",
 		"placeholders": {},
 		"note": "Scheduled is the existing named quick link. A lost server response may hide a pending scheduled message. This action clears only the local attempt/idempotency reference and retains the authored draft; it does NOT cancel server delivery. The reader must check Scheduled and cancel any unwanted server message before acknowledging. Keep this distinct from the Cancel message server action."
+	},
+	"ui.teamBridge.sender.unknown_person": {
+		"role": "placeholder sender name",
+		"tone": "plain, sentence case",
+		"length": "Short; fits a message header beside a time.",
+		"placeholders": {},
+		"note": "Shown as the author of a message when the person's name cannot be resolved (they left the organization, or the directory has not loaded). Must read as a placeholder, not as a name; rendered in muted italics."
+	},
+	"ui.teamBridge.sender.unknown_agent": {
+		"role": "placeholder sender name",
+		"tone": "plain, sentence case",
+		"length": "Short; fits a message header beside a time.",
+		"placeholders": {},
+		"note": "Shown as the author of an agent's message when the agent's name cannot be resolved. Must read as a placeholder, not as a name; rendered in muted italics. 'Agent' is an AI agent; use the glossary term."
 	}
 }

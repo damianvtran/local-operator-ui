@@ -135,9 +135,13 @@ export const TeamBridgeOrgSwitcher: FC<{
 							<span className="min-w-0 flex-1 truncate">
 								{organization.name}
 							</span>
-							<span className="shrink-0 text-meta-sm text-ink-dim capitalize">
-								{organization.role}
-							</span>
+							{/* A hub tenant with no membership has no role; an empty
+							    span would still take a flex slot before the badge. */}
+							{organization.role && (
+								<span className="shrink-0 text-meta-sm text-ink-dim capitalize">
+									{organization.role}
+								</span>
+							)}
 							{organization.unread > 0 && (
 								<Badge
 									variant="attentionQuiet"

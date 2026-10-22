@@ -136,5 +136,7 @@
 	"ui.teamBridge.schedule.edit_body": "消息",
 	"ui.teamBridge.schedule.retry": "重试上次定时发送",
 	"ui.teamBridge.schedule.held": "上次的定时发送可能仍然存在。放弃本次尝试前，请先查看“定时消息”，必要时将其取消。草稿已保留。",
-	"ui.teamBridge.schedule.discard_attempt": "我已查看“定时消息”，放弃本次尝试"
+	"ui.teamBridge.schedule.discard_attempt": "我已查看“定时消息”，放弃本次尝试",
+	"ui.teamBridge.sender.unknown_person": "未知用户",
+	"ui.teamBridge.sender.unknown_agent": "未知智能体"
 }

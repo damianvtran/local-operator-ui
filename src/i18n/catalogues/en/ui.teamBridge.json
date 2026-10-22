@@ -136,5 +136,7 @@
 	"ui.teamBridge.schedule.edit_body": "Message",
 	"ui.teamBridge.schedule.retry": "Retry previous schedule",
 	"ui.teamBridge.schedule.held": "A previous schedule may still exist. Check Scheduled and cancel it if needed before discarding this attempt. Your draft is kept.",
-	"ui.teamBridge.schedule.discard_attempt": "I checked Scheduled — discard this attempt"
+	"ui.teamBridge.schedule.discard_attempt": "I checked Scheduled — discard this attempt",
+	"ui.teamBridge.sender.unknown_person": "Unknown person",
+	"ui.teamBridge.sender.unknown_agent": "Unknown agent"
 }
