@@ -29,7 +29,7 @@ export type AddressOverlayView =
 	| { kind: "rows"; rows: AddressOverlayRow[] }
 	| {
 			kind: "notice";
-			notice: "error" | "hint" | "empty" | "no_match";
+			notice: "error" | "empty" | "no_match";
 			text: string;
 	  };
 
@@ -44,21 +44,31 @@ export interface AddressOverlayTheme {
 	control: string;
 }
 
-/** What the renderer is allowed to say: display text, its own measured
- * geometry, a seq and a theme. No URL, no HTML, no destination. */
+/**
+ * What the renderer is allowed to say: display text, the strip's own anchor, a
+ * seq and a theme. No URL, no HTML, no destination, and no child rectangle —
+ * main derives the child's box from the trusted page rect and this anchor.
+ */
 export interface AddressOverlayPost {
-	v: 1;
+	v: 2;
 	seq: number;
 	tabId: number;
 	visible: boolean;
 	pageRect: AddressOverlayRect;
-	field: AddressOverlayRect;
-	listTop: number;
+	anchor: { x: number; width: number };
 	active: number;
 	view: AddressOverlayView;
 	label: string;
 	dir: "ltr" | "rtl";
 	theme?: AddressOverlayTheme;
+}
+
+/** A hide is the one projection that carries no geometry. */
+export interface AddressOverlayHide {
+	v: 2;
+	seq: number;
+	tabId: number;
+	visible: false;
 }
 
 export interface AddressOverlayCommit {
@@ -67,9 +77,16 @@ export interface AddressOverlayCommit {
 	index: number;
 }
 
+export interface AddressOverlayEvent {
+	type: "commit" | "dismiss";
+	seq?: number;
+	index?: number;
+	reason?: string;
+}
+
 export interface AddressOverlayPort {
-	project(payload: AddressOverlayPost): Promise<unknown>;
-	onEvent(callback: (event: unknown) => void): () => void;
+	project(payload: AddressOverlayPost | AddressOverlayHide): Promise<unknown>;
+	onEvent(callback: (event: AddressOverlayEvent) => void): () => void;
 }
 
 const NO_HANDLER = /No handler registered/;
@@ -101,6 +118,10 @@ export function isPermanentOverlayRefusal(reason: unknown): boolean {
  */
 interface AddressOverlayPortState {
 	latched: boolean;
+	/** The product channel answered "No handler registered", so this launch is a
+	 * probe without the product door. Sticky for the renderer process: the answer
+	 * cannot change without a relaunch. */
+	productDoorRefused: boolean;
 	inFlight: Promise<unknown> | null;
 }
 const PORT_STATE_KEY = "__loAddressOverlayPortState";
@@ -112,7 +133,11 @@ function portState(): AddressOverlayPortState {
 	>;
 	const existing = holder[PORT_STATE_KEY];
 	if (existing) return existing;
-	const created: AddressOverlayPortState = { latched: false, inFlight: null };
+	const created: AddressOverlayPortState = {
+		latched: false,
+		productDoorRefused: false,
+		inFlight: null,
+	};
 	holder[PORT_STATE_KEY] = created;
 	return created;
 }
@@ -139,8 +164,16 @@ function unavailable(): Error {
 	);
 }
 
-export function addressOverlayPort(): AddressOverlayPort | null {
-	if (portState().latched) return null;
+/** One door's pair of calls. A door is a transport, not a trust decision. */
+interface AddressOverlayDoor {
+	project: (
+		payload: AddressOverlayPost | AddressOverlayHide,
+	) => Promise<unknown>;
+	onEvent: (callback: (event: AddressOverlayEvent) => void) => () => void;
+}
+
+/** The armed evidence launch's door, or null when this renderer has no driver. */
+function devDoor(): AddressOverlayDoor | null {
 	const bridge =
 		typeof window === "undefined" ? undefined : window.__loDevDriver;
 	if (!bridge || bridge.armed !== true) return null;
@@ -151,6 +184,52 @@ export function addressOverlayPort(): AddressOverlayPort | null {
 		return null;
 	}
 	return {
+		project: (payload) => bridge.addressOverlayProject(payload),
+		onEvent: (callback) =>
+			bridge.onAddressOverlayEvent(callback as (event: unknown) => void),
+	};
+}
+
+/**
+ * The PRODUCT door first, the probe door second, and a no-handler answer DEMOTES
+ * the product door instead of latching everything off.
+ *
+ * S4b's popout is default-on (darwin) and must not read `__loDevDriver`: that
+ * object exists only for an armed evidence launch. The ordinary app bridge is
+ * the product path. But the bridge is defined by PRELOAD unconditionally, while
+ * main registers `browser-address-overlay-project` only when the product
+ * controller is wired — so in an S1–S3 probe launch the first projection used to
+ * reject "No handler registered" and set the renderer-wide latch, which also hid
+ * the dev-driver door for the rest of the run (agent review round 1, MINOR-1).
+ * A refusal now remembers only that the PRODUCT door is closed.
+ *
+ * Both event subscriptions are opened while both doors exist. In a product
+ * launch the driver object is absent; in a probe launch the product channel is
+ * never sent on. Nothing can arrive twice.
+ */
+export function addressOverlayPort(): AddressOverlayPort | null {
+	if (portState().latched) return null;
+	const productBridge =
+		typeof window === "undefined"
+			? undefined
+			: window.api?.browser?.addressOverlay;
+	const product: AddressOverlayDoor | null = productBridge
+		? {
+				project: (payload) => productBridge.project(payload),
+				onEvent: (callback) =>
+					productBridge.onEvent(callback as (event: unknown) => void),
+			}
+		: null;
+	const dev = devDoor();
+	if (!product && !dev) return null;
+	return makePort(product, dev);
+}
+
+function makePort(
+	product: AddressOverlayDoor | null,
+	dev: AddressOverlayDoor | null,
+): AddressOverlayPort {
+	return {
 		project: (payload) => {
 			// The latch is checked INSIDE the returned method as well as before it:
 			// a caller that captured this object before the first no-handler answer
@@ -160,12 +239,31 @@ export function addressOverlayPort(): AddressOverlayPort | null {
 			if (state.latched) {
 				return Promise.reject(unavailable());
 			}
-			const run = (): Promise<unknown> => {
-				if (state.latched) return Promise.reject(unavailable());
-				return bridge.addressOverlayProject(payload).catch((error: unknown) => {
-					if (looksLikeNoHandler(error)) state.latched = true;
-					throw error;
-				});
+			const run = async (): Promise<unknown> => {
+				if (state.latched) throw unavailable();
+				if (product && !state.productDoorRefused) {
+					try {
+						return await product.project(payload);
+					} catch (error) {
+						if (!looksLikeNoHandler(error)) throw error;
+						state.productDoorRefused = true;
+						if (!dev) {
+							state.latched = true;
+							throw error;
+						}
+					}
+				}
+				if (dev) {
+					try {
+						return await dev.project(payload);
+					} catch (error) {
+						// The dev door is the last one: its no-handler answer is the latch.
+						if (looksLikeNoHandler(error)) state.latched = true;
+						throw error;
+					}
+				}
+				state.latched = true;
+				throw unavailable();
 			};
 			const previous = state.inFlight;
 			const next = (previous ?? Promise.resolve()).then(run, run);
@@ -177,6 +275,13 @@ export function addressOverlayPort(): AddressOverlayPort | null {
 				});
 			return next;
 		},
-		onEvent: (callback) => bridge.onAddressOverlayEvent(callback),
+		onEvent: (callback) => {
+			const offProduct = product?.onEvent(callback) ?? (() => {});
+			const offDev = dev?.onEvent(callback) ?? (() => {});
+			return () => {
+				offProduct();
+				offDev();
+			};
+		},
 	};
 }

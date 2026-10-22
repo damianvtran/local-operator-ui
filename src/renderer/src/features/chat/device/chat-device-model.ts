@@ -393,7 +393,7 @@ function conversations(n: number): string {
  * `1 device` / `2 devices`, the one spelling of a section heading's count.
  *
  * EXPORTED because the heading lives in `chat-header-device.tsx` and the count is
- * an arithmetic on the membership (`members.length - 1`, this device excluded) - two
+ * an arithmetic on the membership (its ACTIVE members, this device excluded) - two
  * places writing the plural by hand is how the list and its heading drift.
  */
 export function devices(n: number): string {
@@ -669,7 +669,15 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 
 	const sections: DeviceSection[] = networks.map((network) => {
 		const rows: DeviceRow[] = network.members
-			.filter((member) => member.device_id !== selfDeviceId)
+			/*
+			 * A REVOKED MEMBER IS NOT A DEVICE TO PICK, and it is not counted either:
+			 * the section heading is `rows.length`, so a tombstone on the wire read as a
+			 * second device that "did not answer" (measured on damian-mesh, 2026-10-21:
+			 * "2 devices" for one peer). The topology keeps a plain revocation on
+			 * purpose - the Mesh tab draws it as revoked - so the filter belongs to the
+			 * surfaces that OFFER devices, here, rather than to the route.
+			 */
+			.filter((member) => member.device_id !== selfDeviceId && member.active)
 			.map((member) => {
 				const peer = byDeviceId.get(member.device_id);
 				/*
@@ -734,7 +742,8 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 	 */
 	const answered = networks.some((network) =>
 		network.members.some(
-			(member) => member.device_id !== selfDeviceId && member.reachable,
+			(member) =>
+				member.device_id !== selfDeviceId && member.active && member.reachable,
 		),
 	);
 	/*
@@ -746,6 +755,7 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 		network.members.some(
 			(member) =>
 				member.device_id !== selfDeviceId &&
+				member.active &&
 				input.canTransfer &&
 				!member.reachable,
 		),

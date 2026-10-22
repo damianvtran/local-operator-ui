@@ -309,13 +309,16 @@ export async function startConsoleHost(
 	let host: ConsoleHost | null = null;
 	let policyWatcher: QuickSendWatcher | null = null;
 	let capacityProbe: NativeCapacityProbe | null = null;
-	let rollbackOwners: Array<() => void> = [];
-	const cleanupStartupOwners = (): void => {
-		const pending: Array<() => void> = [];
+	let rollbackOwners: Array<() => void | Promise<void>> = [];
+	const cleanupStartupOwners = async (): Promise<void> => {
+		const pending: Array<() => void | Promise<void>> = [];
 		const failures: unknown[] = [];
 		for (const release of rollbackOwners.splice(0).reverse()) {
 			try {
-				release();
+				// Awaitable because the host's disposal is asynchronous since it captures
+				// quit-time exit status (host.ts `dispose`): a bare `release()` would
+				// report a cleanup complete that is still running.
+				await release();
 			} catch (error) {
 				pending.unshift(release);
 				failures.push(error);
@@ -517,7 +520,10 @@ export async function startConsoleHost(
 				// released explicitly on quit rather than left to the app's teardown: an
 				// idle timer that outlives the host would keep it alive past the window.
 				capture?.dispose();
-				readyHost.dispose();
+				// Await: the host's disposal now waits for the ptys' exit statuses within
+				// a bound, and a quit that resolved early would persist the sidecar it is
+				// about to correct.
+				await readyHost.dispose();
 				log("[console] host stopped");
 			},
 		};
@@ -526,7 +532,7 @@ export async function startConsoleHost(
 		// restore must release only this attempt's emulators/capture view and must
 		// never rewrite a partly restored history over the durable original.
 		try {
-			cleanupStartupOwners();
+			await cleanupStartupOwners();
 		} catch (cleanupError) {
 			log(
 				`[console] partial cleanup retained for stop: ${String(cleanupError)}`,
@@ -544,7 +550,7 @@ export async function startConsoleHost(
 				policyWatcher?.stop();
 				capacityProbe?.stop();
 				unregisterConsoleIpc();
-				cleanupStartupOwners();
+				await cleanupStartupOwners();
 			},
 		};
 	}
