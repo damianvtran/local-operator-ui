@@ -268,6 +268,12 @@ export function addressIntent(raw: string): AddressIntent {
 	// `:8080`, so `intranet:8080` is an intranet address.
 	if (shape.port !== null && shape.host.length > 0 && !shape.host.includes("."))
 		return "url";
+	// A single label is a WORD (`github`), but a single label followed by a path,
+	// query or fragment byte is a site path (`intranet/wiki`): prose does not
+	// carry `/` without a space, and a page whose host has no dot is exactly the
+	// case the user is retyping. This is URL intent only — `permittedScheme` in
+	// the host still has the final say on what may actually be navigated.
+	if (!shape.host.includes(".") && URL_BOUNDARY.test(raw)) return "url";
 	if (!isDnsHostname(shape.host)) return "search";
 	try {
 		new URL(`https://${raw}`);
@@ -426,7 +432,17 @@ function compareCandidates(a: AddressCandidate, b: AddressCandidate): number {
 export function suggestAddresses(
 	entries: readonly AddressHistoryEntry[],
 	raw: string,
+	options: {
+		/** True only when the field is actually showing `inline` as selected
+		 * text. The inline target is dropped from the candidate rows in that case
+		 * (showing the same destination twice is noise), but NOT when the suffix
+		 * was suppressed — a paste or a deletion can leave the best prefix match
+		 * with no visible completion, and filtering then makes the list claim
+		 * there is no match while Enter commits the shorter, wrong host. */
+		inlineShown?: boolean;
+	} = {},
 ): AddressSuggestions {
+	const inlineShown = options.inlineShown ?? true;
 	const intent = addressIntent(raw);
 	if (intent === "blocked") {
 		return { inline: null, candidates: [], rows: [], search: null, intent };
@@ -482,7 +498,9 @@ export function suggestAddresses(
 				}
 			: null;
 	const candidates = ranked
-		.filter((candidate) => candidate.url !== inline?.targetUrl)
+		.filter(
+			(candidate) => !(inlineShown && candidate.url === inline?.targetUrl),
+		)
 		.slice(0, search ? MAX_ADDRESS_ROWS - 1 : MAX_ADDRESS_ROWS);
 	const rows: AddressRow[] = [
 		...(search ? [search] : []),

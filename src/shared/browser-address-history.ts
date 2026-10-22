@@ -38,8 +38,6 @@ export const ADDRESS_HISTORY_MAX_ENTRIES = 256;
 export const ADDRESS_HISTORY_MAX_URL_LENGTH = 2048;
 /** The title cap. Titles are display text, not identity. */
 export const ADDRESS_HISTORY_MAX_TITLE_LENGTH = 256;
-/** The session id cap, mirroring the ids the app's routes already carry. */
-export const ADDRESS_HISTORY_MAX_SESSION_ID_LENGTH = 256;
 /** The query cap: a prefix longer than the URL bound cannot match anything. */
 export const ADDRESS_HISTORY_MAX_QUERY_LENGTH = ADDRESS_HISTORY_MAX_URL_LENGTH;
 /** How many rows one response may carry. The renderer shows at most five. */

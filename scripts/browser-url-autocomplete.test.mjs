@@ -155,14 +155,11 @@ const SWAPPED_SIX = [
 	distanceFromCurrent: 6 - sourceIndex,
 }));
 
-const FROM_YOUR_HISTORY = /From your history/;
+const SUGGESTIONS = /Suggestions/;
 const ADDRESS_SUGGESTIONS_UNAVAILABLE = /Address suggestions are unavailable/;
-const FIXED_DOCK_HEIGHT = /h-\[104px\]/;
-const BOTTOM_RULE = /border-b/;
-const HEADER_ZONE_HEIGHT = /h-\[28px\]/;
-const OPTIONS_VIEWPORT_HEIGHT = /h-\[75px\]/;
-const FIXED_ROW_HEIGHT = /h-\[35\.5px\]/;
-const NO_LINKS_YET = /No links/;
+const SEARCH_ROW_HELLO = /Search DuckDuckGo for "hello world"/;
+const BLOCKED_HINT = /Only web addresses can open here/;
+const NO_BROWSING_HISTORY = /No browsing history/;
 
 const flush = async () => {
 	await act(async () => {
@@ -303,12 +300,12 @@ test("focus fetches once and an empty query shows the session's entries", async 
 	assert.equal(bundle.requests[0].expectedTabId, 1);
 	assert.equal(
 		bundle.requests[0].query,
-		"example.com/account",
-		"focus raises the popout with the live URL selected, so that is the query",
+		"",
+		"an untouched Cmd+L seed is not a query: it asks for the top history (UX U1)",
 	);
 	assert.ok(bundle.requests[0].limit >= 1);
 	assert.ok(options(bundle).length > 0);
-	assert.match(list(bundle).textContent, FROM_YOUR_HISTORY);
+	assert.match(list(bundle).textContent, SUGGESTIONS);
 	await bundle.cleanup();
 });
 
@@ -390,8 +387,16 @@ test("Down changes the active option and Enter commits it once", async () => {
 	await key(bundle, "ArrowDown");
 	const rows = options(bundle);
 	assert.ok(rows.length > 0);
-	assert.equal(bundle.input.getAttribute("aria-activedescendant"), rows[0].id);
-	assert.equal(rows[0].getAttribute("aria-selected"), "true");
+	const active = rows.find(
+		(option) =>
+			option.id === bundle.input.getAttribute("aria-activedescendant"),
+	);
+	assert.equal(
+		active?.getAttribute("data-address-suggestion-url"),
+		"https://example.com/account",
+		"Down lands on the first alternative the user could see, not the inline target",
+	);
+	assert.equal(active?.getAttribute("aria-selected"), "true");
 	await key(bundle, "Enter");
 	assert.deepEqual(bundle.navigations, [
 		{ url: "https://example.com/account", expectedTabId: 1 },
@@ -465,7 +470,7 @@ test("a search-intent Enter searches DuckDuckGo and the search row is the defaul
 		1,
 		"no suggestion matches, so only the search row exists",
 	);
-	assert.match(rows[0].textContent, /Search DuckDuckGo for "hello world"/);
+	assert.match(rows[0].textContent, SEARCH_ROW_HELLO);
 	assert.equal(
 		bundle.input.getAttribute("aria-activedescendant"),
 		rows[0].id,
@@ -497,6 +502,211 @@ test("arrow keys move over the search row as well as candidate rows", async () =
 		"Enter committed the row Down landed on",
 	);
 	assert.notEqual(bundle.navigations[0].url, "https://duckduckgo.com/");
+	await bundle.cleanup();
+});
+
+test("an untouched popout seed is not a query, and Enter navigates nothing", async () => {
+	const bundle = await renderBar({ url: "http://intranet/wiki" });
+	await act(async () => bundle.input.focus());
+	await flush();
+	assert.equal(
+		options(bundle).some(
+			(option) =>
+				option.getAttribute("data-address-suggestion-search") === "true",
+		),
+		false,
+		"the live URL is not typed text, so it cannot produce a search row (UX U1)",
+	);
+	await key(bundle, "Enter");
+	assert.deepEqual(bundle.navigations, []);
+	await bundle.cleanup();
+});
+
+test("a paste with no displayed suffix keeps the best match as a row", async () => {
+	const history = [
+		{
+			url: "https://github.com/",
+			title: "GitHub",
+			visitCount: 40,
+			lastVisitedAt: 0,
+			source: "history",
+		},
+		{
+			url: "https://github.com/damianvtran",
+			title: "Damian",
+			visitCount: 1,
+			lastVisitedAt: 0,
+			source: "history",
+		},
+	];
+	const bundle = await renderBar({
+		addressHistory: async (request) => ({
+			requestId: request.requestId,
+			activeTabId: 1,
+			entries: history,
+		}),
+	});
+	await act(async () => bundle.input.focus());
+	await flush();
+	await act(async () => {
+		setValue(bundle.input, "github.co", "insertFromPaste");
+	});
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 160));
+	});
+	await flush();
+	assert.equal(bundle.input.value, "github.co", "a paste shows no suffix");
+	assert.ok(
+		options(bundle).some(
+			(option) =>
+				option.getAttribute("data-address-suggestion-url") ===
+				"https://github.com/",
+		),
+		"the best match stays a row when no suffix is on screen (UX U2)",
+	);
+	await bundle.cleanup();
+});
+
+test("blocked input says so before Enter, and Enter refuses it", async () => {
+	const bundle = await renderBar();
+	await type(bundle, "example.com:");
+	const described = bundle.input.getAttribute("aria-describedby");
+	assert.ok(described);
+	assert.match(document.getElementById(described).textContent, BLOCKED_HINT);
+	await key(bundle, "Enter");
+	assert.deepEqual(bundle.navigations, []);
+	assert.equal(bundle.input.value, "example.com:");
+	await bundle.cleanup();
+});
+
+test("a file URL is refused with the same hint and never searched", async () => {
+	const bundle = await renderBar();
+	await type(bundle, "file:///tmp/a.txt");
+	const described = bundle.input.getAttribute("aria-describedby");
+	assert.ok(described);
+	assert.match(document.getElementById(described).textContent, BLOCKED_HINT);
+	await key(bundle, "Enter");
+	assert.deepEqual(bundle.navigations, []);
+	await bundle.cleanup();
+});
+
+test("an arrow key clears the inline suffix it is about to disagree with", async () => {
+	const bundle = await renderBar();
+	await act(async () => bundle.input.focus());
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 160));
+	});
+	await flush();
+	await type(bundle, "example.com/acc");
+	assert.equal(
+		bundle.input.value,
+		"example.com/account/profile",
+		"the suffix is real selected text",
+	);
+	await key(bundle, "ArrowDown");
+	assert.equal(
+		bundle.input.value,
+		"example.com/acc",
+		"the field stops naming a destination the highlighted row does not use (UX U6)",
+	);
+	await bundle.cleanup();
+});
+
+test("an explicit arrow selection survives a late answer for the same query", async () => {
+	let entries = ENTRIES;
+	let notify = () => {};
+	const bundle = await renderBar({
+		addressHistory: async (request) => ({
+			requestId: request.requestId,
+			activeTabId: 1,
+			entries,
+		}),
+		onStateChanged: (callback) => {
+			notify = callback;
+			return () => {};
+		},
+	});
+	await type(bundle, "example");
+	await key(bundle, "ArrowDown");
+	const selectedUrl = options(bundle)
+		.find(
+			(option) =>
+				option.id === bundle.input.getAttribute("aria-activedescendant"),
+		)
+		?.getAttribute("data-address-suggestion-url");
+	assert.ok(selectedUrl);
+	entries = [
+		...ENTRIES,
+		{
+			...ENTRIES[0],
+			url: "https://example.com/late",
+			sourceIndex: 9,
+			distanceFromCurrent: 9,
+		},
+	];
+	await act(async () => notify());
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 160));
+	});
+	await flush();
+	const active = options(bundle).find(
+		(option) =>
+			option.id === bundle.input.getAttribute("aria-activedescendant"),
+	);
+	assert.equal(
+		active?.getAttribute("data-address-suggestion-url"),
+		selectedUrl,
+		"the highlight stays on the row the user arrowed to (UX U4)",
+	);
+	await bundle.cleanup();
+});
+
+test("the header is true for the rows it sits over", async () => {
+	const history = [
+		{
+			url: "https://example.com/",
+			title: "Example",
+			visitCount: 3,
+			lastVisitedAt: 0,
+			source: "history",
+		},
+		{
+			url: "https://example.com/account",
+			title: "Account",
+			visitCount: 1,
+			lastVisitedAt: 0,
+			source: "history",
+		},
+	];
+	const bundle = await renderBar({
+		addressHistory: async (request) => ({
+			requestId: request.requestId,
+			activeTabId: 1,
+			entries: history,
+		}),
+	});
+	await act(async () => bundle.input.focus());
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 160));
+	});
+	await flush();
+	await type(bundle, "example.com");
+	const labelId = bundle.container
+		.querySelector("[data-address-suggestions-list]")
+		?.getAttribute("aria-labelledby");
+	assert.equal(
+		document.getElementById(labelId).textContent,
+		"From your history",
+	);
+	await type(bundle, "hello world");
+	const searchLabelId = bundle.container
+		.querySelector("[data-address-suggestions-list]")
+		?.getAttribute("aria-labelledby");
+	assert.equal(
+		document.getElementById(searchLabelId).textContent,
+		"Suggestions",
+		"a search row under 'From your history' would be false (design D1)",
+	);
 	await bundle.cleanup();
 });
 
@@ -762,7 +972,7 @@ test("aria-controls names the listbox only while a listbox exists", async () => 
 	assert.ok(described);
 	assert.match(
 		document.getElementById(described).textContent,
-		/No browsing history/,
+		NO_BROWSING_HISTORY,
 	);
 	await empty.cleanup();
 });

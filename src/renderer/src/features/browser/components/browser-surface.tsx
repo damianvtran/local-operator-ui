@@ -19,7 +19,7 @@ import {
 	File,
 	Globe,
 	Lock,
-	LockOpen,
+	LockKeyholeOpen,
 	Search,
 	ShieldCheck,
 	X,
@@ -756,7 +756,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			? Lock
 			: triggerSiteInfo.kind === "not-secure" ||
 					triggerSiteInfo.kind === "unverified"
-				? LockOpen
+				? LockKeyholeOpen
 				: triggerSiteInfo.kind === "file"
 					? File
 					: Search;

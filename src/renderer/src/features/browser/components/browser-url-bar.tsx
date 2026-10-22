@@ -12,7 +12,7 @@ import {
 	Globe,
 	Home,
 	Lock,
-	LockOpen,
+	LockKeyholeOpen,
 	RotateCw,
 	X,
 } from "lucide-react";
@@ -55,6 +55,8 @@ import {
 import { isPortalledChromeTarget } from "../model/floating-chrome";
 import { isSecurityLoadFailure, siteInfoForUrl } from "../model/site-info";
 import { useAddressOverlayMirror } from "../overlay/use-address-overlay-mirror";
+
+const FILE_SCHEME = /^file:/i;
 
 /**
  * The browser's address chrome, in the two placements S4b defines.
@@ -174,6 +176,10 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	} | null>(() =>
 		placement === "popout" && seed !== undefined ? { tabId, text: seed } : null,
 	);
+	/** Whether the current draft came from the user at all. Focus seeds the
+	 * field with the live URL; that seed is not a query (UX U1), and only a
+	 * `change`/composition/undo can make it one. */
+	const [edited, setEdited] = useState(seed !== undefined);
 	const draft = typed && typed.tabId === tabId ? typed.text : null;
 	const setDraft = (
 		next: string | null | ((current: string | null) => string | null),
@@ -222,6 +228,10 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	const completionRef = useRef<InlineCompletion | null>(null);
 	completionRef.current = completion;
 	const [activeIndex, setActiveIndex] = useState(-1);
+	/** The row the user explicitly arrowed to, and the query it belonged to.
+	 * A late answer for the SAME query keeps that row selected when it is still
+	 * present; a new query (or a vanished row) falls back to the default. */
+	const explicitSelection = useRef<{ query: string; key: string } | null>(null);
 	/** The destination an accepted suffix came from. The field's text after
 	 * acceptance is the display spelling (no scheme), which is not enough to
 	 * navigate: Enter must use the canonical HTTP(S) target the suggestion was
@@ -306,7 +316,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		siteInfo.kind === "secure"
 			? Lock
 			: siteInfo.kind === "not-secure" || siteInfo.kind === "unverified"
-				? LockOpen
+				? LockKeyholeOpen
 				: siteInfo.kind === "file"
 					? File
 					: Globe;
@@ -328,11 +338,25 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	// separate overlay the field renders into the real input and selects. Every
 	// commit path reads `targetUrl` from the completion, never the displayed value.
 	const raw = draft ?? live;
-	// The hook needs `raw`, and it must stay above every conditional return: the
-	// order of hooks is the component's identity.
+	/*
+	 * AN UNTOUCHED DRAFT IS NOT A QUERY (UX U1). The popout mounts with the live
+	 * URL as its draft and fully selected. That text is the page's address, not
+	 * something the user typed into the suggestion field: treating it as a query
+	 * put `Search DuckDuckGo for "intranet/wiki"` first and selected, so Cmd+L
+	 * then Enter sent an internal hostname to a third party. The empty query is
+	 * the top-history list; Enter on this state dismisses, and only text the
+	 * user edited can become a search.
+	 */
+	const untouchedDraft = draft !== null && !edited;
+	// Only user-authored text is a query. A Cmd+L field seeded with the live URL
+	// has not been typed into, and a printable-character seed HAS (that is how
+	// the popout opened).
+	const query = edited ? raw : "";
+	// The hook needs `query`, and it must stay above every conditional return:
+	// the order of hooks is the component's identity.
 	const autocomplete = useAddressAutocomplete({
 		tabId,
-		query: raw,
+		query,
 		requestHistory:
 			addressHistory ??
 			(() => Promise.reject(new Error("address history is unavailable"))),
@@ -344,8 +368,22 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	const value = currentCompletion ? currentCompletion.text : raw;
 	const editing = draft !== null;
 	const suggestions = useMemo(
-		() => suggestAddresses(autocomplete.entries, raw),
-		[autocomplete.entries, raw],
+		() =>
+			suggestAddresses(autocomplete.entries, query, {
+				inlineShown: currentCompletion !== null,
+			}),
+		[autocomplete.entries, query, currentCompletion],
+	);
+	/** The header must be true for the rows it sits over: a search row or an
+	 * open-tab row under "From your history" is a false claim (design D1), so the
+	 * mixed list gets its own sentence. Empty uses the mixed/neutral sentence. */
+	const listLabel = t(
+		suggestions.rows.length > 0 &&
+			suggestions.rows.every(
+				(row) => row.kind === "candidate" && row.candidate.source === "history",
+			)
+			? "ui.browser.browser_url_bar.address_suggestions_label"
+			: "ui.browser.browser_url_bar.address_suggestions_label_mixed",
 	);
 	/**
 	 * Row copy. The model owns no user-facing strings, and a live-tab row is
@@ -368,6 +406,17 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				})
 			: t("ui.browser.browser_url_bar.address_suggestion_open_tab_untitled");
 	};
+	const rowKey = (row: AddressRow): string =>
+		row.kind === "search" ? `search:${row.targetUrl}` : row.candidate.url;
+	/** The option spoken by assistive tech. A tab row appends its source mark:
+	 * the native child is `aria-hidden`, so without this the open-tab/history
+	 * distinction would be sighted-only (design D6). */
+	const rowAccessibleText = (row: AddressRow): string => {
+		const text = rowText(row);
+		if (row.kind !== "candidate" || row.candidate.source !== "tab") return text;
+		const source = rowSubtitle(row);
+		return source.length > 0 ? `${text} — ${source}` : text;
+	};
 	const hasResult = suggestions.rows.length > 0;
 	// A dismissal suppresses the list until the text changes. Without this, the
 	// first Escape restored the raw text but left the rows on screen — the copy
@@ -380,19 +429,20 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		!suppressed &&
 		(autocomplete.error ||
 			suggestions.rows.length > 0 ||
-			(!autocomplete.loading &&
-				!autocomplete.error &&
-				!hasResult &&
-				suggestions.intent !== "blocked"));
+			(!autocomplete.loading && !autocomplete.error && !hasResult));
 
 	/** The one line the list shows when it has no rows. Separate from the empty
 	 * field's copy: a filtered no-match and "nothing here yet" are different
 	 * facts, and an error must not look like an empty history. */
+	const refusedInput =
+		suggestions.intent === "blocked" || FILE_SCHEME.test(raw.trim());
 	const listNotice = autocomplete.error
 		? t("ui.browser.browser_url_bar.address_suggestions_unavailable")
-		: raw.length === 0
-			? t("ui.browser.browser_url_bar.address_suggestions_empty")
-			: t("ui.browser.browser_url_bar.address_suggestions_no_match");
+		: refusedInput
+			? t("ui.browser.browser_url_bar.address_suggestions_blocked")
+			: query.length === 0
+				? t("ui.browser.browser_url_bar.address_suggestions_empty")
+				: t("ui.browser.browser_url_bar.address_suggestions_no_match");
 
 	/**
 	 * THE LIST IS INSET TO THE FIELD, NOT THE PANE.
@@ -481,6 +531,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 
 	const undoEdit = (): void => {
 		setAcceptedTarget(null);
+		setEdited(true);
 		const undo = undoRef.current;
 		if (undo.stack.length <= 1) return;
 		undo.redo.push(undo.stack.pop() as string);
@@ -492,6 +543,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 
 	const redoEdit = (): void => {
 		setAcceptedTarget(null);
+		setEdited(true);
 		const undo = undoRef.current;
 		const next = undo.redo.pop();
 		if (next === undefined) return;
@@ -518,16 +570,15 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		rows: suggestions.rows.map((row) => ({
 			text: rowText(row),
 			title: rowSubtitle(row),
-			key:
-				row.kind === "search" ? `search:${row.targetUrl}` : row.candidate.url,
+			key: rowKey(row),
 		})),
 		noticeKind: autocomplete.error
 			? "error"
-			: raw.length === 0
+			: query.length === 0 && !refusedInput
 				? "empty"
 				: "no_match",
 		noticeText: listNotice,
-		label: t("ui.browser.browser_url_bar.address_suggestions_label"),
+		label: listLabel,
 		anchor,
 		onCommit: (index) => {
 			// The child sends back only `{seq,index}`; the destination is resolved
@@ -549,6 +600,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 */
 	const change = (event: ChangeEvent<HTMLInputElement>): void => {
 		setAcceptedTarget(null);
+		setEdited(true);
 		const next = event.target.value;
 		const input = event.currentTarget;
 		const inputType = (event.nativeEvent as InputEvent).inputType ?? "";
@@ -609,12 +661,14 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		composingRef.current = false;
 		setComposing(false);
 		const next = event.currentTarget.value;
+		setEdited(true);
 		setDraft(next);
 		recordEdit(next);
 		clearGenerated();
 	};
 
 	const focus = (): void => {
+		if (draft === null) setEdited(false);
 		setDraft((current) => current ?? live);
 		undoRef.current = { stack: [live], redo: [] };
 		clearGenerated();
@@ -681,6 +735,23 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 
 		if (event.key === "Enter") {
 			event.preventDefault();
+			// An untouched seed is the live URL, not a commitment: Enter dismisses
+			// the field and navigates NOTHING. This is the Cmd+L-then-Enter path
+			// that used to search a single-label host (UX U1).
+			if (untouchedDraft) {
+				setDraft(null);
+				clearGenerated();
+				return;
+			}
+			// The classification and the commit path agree here: blocked text and a
+			// non-web scheme are refused BEFORE anything can navigate them, with
+			// the same sentence the list already shows (UX U5).
+			if (refusedInput) {
+				setAnnouncement(
+					t("ui.browser.browser_url_bar.address_suggestions_blocked"),
+				);
+				return;
+			}
 			if (activeIndex >= 0) {
 				const target = rowTarget(suggestions, activeIndex);
 				if (target) {
@@ -705,13 +776,14 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				abandon();
 				return;
 			}
-			// ENTER PRECEDENCE, in one place: (1) a highlighted row commits that
-			// row — the search row searches, a candidate row navigates;
-			// (2) with no row selected but search intent, the query is searched;
-			// (3) an inline completion navigates its canonical target;
-			// (4) otherwise the raw text is navigated. The search row is normally
-			// highlighted (the default), so (2) is the safety net for a dismissal
-			// that left no row selected.
+			// ENTER PRECEDENCE, in the code's own order: (1) a highlighted row
+			// commits that row — the search row searches, a candidate row
+			// navigates; (2) an accepted suffix commits its canonical target;
+			// (3) a displayed inline completion commits its canonical target;
+			// (4) with none of those, search intent commits the DuckDuckGo URL;
+			// (5) otherwise the raw text is navigated (or, equal to the live URL,
+			// dismisses). The search row is normally highlighted by default, so
+			// (4) is the safety net for a dismissal that left no row selected.
 			if (addressIntent(next) === "search") {
 				commit(searchUrl(next));
 				return;
@@ -743,13 +815,32 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			// believes they are on disagree.
 			if (suggestions.rows.length === 0) return;
 			event.preventDefault();
-			setActiveIndex(
-				moveActive(
-					activeIndex,
-					event.key === "ArrowDown" ? 1 : -1,
-					suggestions.rows.length,
-				),
+			const nextIndex = moveActive(
+				activeIndex,
+				event.key === "ArrowDown" ? 1 : -1,
+				suggestions.rows.length,
 			);
+			const selected = suggestions.rows[nextIndex];
+			explicitSelection.current = selected
+				? { query, key: rowKey(selected) }
+				: null;
+			// An arrow starts explicit row navigation: the field must stop showing
+			// a suffix that names a different destination than the highlighted row
+			// Enter will commit (UX U6). Clearing the completion makes the inline
+			// target a row again, so resolve the selection BY KEY in the expanded
+			// list rather than keeping an index that now points at a different row.
+			if (current) {
+				setCompletion(null);
+				const expanded = suggestAddresses(autocomplete.entries, query, {
+					inlineShown: false,
+				}).rows;
+				const expandedIndex = selected
+					? expanded.findIndex((row) => rowKey(row) === rowKey(selected))
+					: -1;
+				setActiveIndex(expandedIndex);
+			} else {
+				setActiveIndex(nextIndex);
+			}
 			return;
 		}
 
@@ -818,15 +909,25 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		.join("\n");
 	// biome-ignore lint/correctness/useExhaustiveDependencies: `candidateKey` is the trigger, not a value the body reads - the URL SET changing is what must reset the selection and the scroll, and a same-length swap changes no count.
 	useEffect(() => {
-		// UNCONDITIONAL (review A-4): a same-length swap can leave the old index
-		// inside the new range while naming a row the new query never ranked
-		// there. `aria-activedescendant` would then point at a row the user never
-		// saw, and Enter would commit that unseen destination. A changed SET is a
-		// new list; nothing in it is selected yet.
-		// THE SEARCH ROW IS THE DEFAULT: when the text would be searched, its first
-		// row is selected so Enter does the obvious thing before the user touches
-		// an arrow key. A changed row set selects that default again, never the old
-		// index.
+		// AN EXPLICIT SELECTION SURVIVES A LATE ANSWER for the same query (UX U4):
+		// the user arrowed to a row while the previous list was still on screen,
+		// and the answer that lands afterwards must not snap the highlight back to
+		// the search row. Keep it when the same row key is still in the set.
+		const prior = explicitSelection.current;
+		if (prior && prior.query === query) {
+			const index = suggestions.rows.findIndex(
+				(row) => rowKey(row) === prior.key,
+			);
+			if (index >= 0) {
+				setActiveIndex(index);
+				return;
+			}
+		}
+		// Otherwise (review A-4) a changed SET is a new list: a same-length swap
+		// can leave the old index naming a row the new query never ranked, and
+		// Enter would commit that unseen destination. The search row is the
+		// default when present; no explicit selection otherwise.
+		explicitSelection.current = null;
 		setActiveIndex(suggestions.rows[0]?.kind === "search" ? 0 : -1);
 	}, [candidateKey]);
 
@@ -1085,9 +1186,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			    the user actually presses naming the same candidate. */}
 			{listVisible && suggestions.rows.length > 0 && (
 				<div className="sr-only" data-tour-tag="browser-address-suggestions">
-					<span id={listLabelId}>
-						{t("ui.browser.browser_url_bar.address_suggestions_label")}
-					</span>
+					<span id={listLabelId}>{listLabel}</span>
 					{/* biome-ignore lint/a11y/useFocusableInteractive: DOM focus stays in the input; the listbox is reached through aria-activedescendant. */}
 					{/* biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a listbox cannot be a native <select> and must stay a list of options. */}
 					{/* biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox list cannot be a native <select>. */}
@@ -1122,7 +1221,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 									row.kind === "search" ? undefined : row.candidate.url
 								}
 							>
-								{rowText(row)}
+								{rowAccessibleText(row)}
 							</div>
 						))}
 					</div>

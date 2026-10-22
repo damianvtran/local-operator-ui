@@ -77,6 +77,12 @@ test("intent: every navigate row the operator's table settles", () => {
 	assert.equal(addressIntent("example.com/A?Q=X#Y"), "url");
 	assert.equal(addressIntent("example.com:8080/a"), "url");
 	assert.equal(addressIntent("host:8080/a"), "url");
+	assert.equal(
+		addressIntent("intranet/wiki"),
+		"url",
+		"a no-whitespace host/path is a site path, not a single-word search (UX U1)",
+	);
+	assert.equal(addressIntent("nas/d/1"), "url");
 });
 
 test("intent: every search row the operator's table settles", () => {
@@ -239,7 +245,7 @@ test("the current tab wins an equal rank before another tab's equal candidate", 
 	);
 });
 
-test("the list is capped at five alternatives and the inline candidate is excluded", () => {
+test("the list is capped at five rows and the search row takes one slot", () => {
 	const entries = Array.from({ length: 12 }, (_, index) =>
 		entry(`https://site${index}.example/`, {
 			sourceTabId: index + 1,
@@ -257,8 +263,32 @@ test("the list is capped at five alternatives and the inline candidate is exclud
 	assert.equal(result.rows.length, 5, "the search row takes one of the five");
 	assert.equal(result.rows[0].kind, "search");
 	assert.equal(result.candidates.length, MAX_ADDRESS_ALTERNATIVES - 1);
-	assert.ok(
-		result.candidates.every((row) => row.url !== result.inline?.targetUrl),
+});
+
+test("the inline target is excluded only when the suffix is actually shown", () => {
+	const entries = [
+		entry("https://github.com/", { source: "history", visitCount: 40 }),
+		entry("https://github.com/damianvtran", { source: "history" }),
+	];
+	const shown = suggestAddresses(entries, "github.co", { inlineShown: true });
+	assert.equal(shown.inline?.targetUrl, "https://github.com/");
+	assert.deepEqual(
+		shown.candidates.map((row) => row.url),
+		["https://github.com/damianvtran"],
+		"the destination shown as selected text is not repeated as a row",
+	);
+	const hidden = suggestAddresses(entries, "github.co", {
+		inlineShown: false,
+	});
+	assert.equal(
+		hidden.inline?.targetUrl,
+		"https://github.com/",
+		"the model still computes the candidate",
+	);
+	assert.deepEqual(
+		hidden.candidates.map((row) => row.url),
+		["https://github.com/", "https://github.com/damianvtran"],
+		"with no suffix on screen the best prefix match must stay a row (UX U2)",
 	);
 });
 
