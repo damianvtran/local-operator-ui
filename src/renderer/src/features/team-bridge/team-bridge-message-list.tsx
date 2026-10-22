@@ -1,3 +1,4 @@
+import { Button } from "@shared/components/ui/button";
 import { formatDate, formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -5,7 +6,12 @@ import { Bot, UserRound } from "lucide-react";
 import type { FC } from "react";
 import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
-import { type ThreadItem, threadItems } from "./team-bridge-model";
+import {
+	type PendingSend,
+	type ThreadItem,
+	pendingMark,
+	threadItems,
+} from "./team-bridge-model";
 
 /**
  * The thread, drawn the way Slack and Discord draw a channel, not a messenger.
@@ -45,11 +51,21 @@ import { type ThreadItem, threadItems } from "./team-bridge-model";
 export const TeamBridgeMessageList: FC<{
 	messages: readonly TeamBridgeMessage[];
 	labelFor: (sender: TeamBridgeMessage["sender"]) => string | null;
-}> = ({ messages, labelFor }) => {
+	/**
+	 * The reader's unconfirmed sends, already drawn into `messages` as the last
+	 * rows (see `threadWithPending`): a row whose id matches one is marked
+	 * Sending, or Not sent with a Retry that re-posts with the same client_ref.
+	 */
+	pendingSends?: readonly PendingSend[];
+	onRetrySend?: (clientRef: string) => void;
+}> = ({ messages, labelFor, pendingSends = [], onRetrySend }) => {
 	const locale = useI18nLocale();
 	const items = threadItems(messages, new Date());
 	return (
-		<ol className="mt-auto flex flex-col pt-4 pb-2">
+		/* The bottom padding is INSIDE the scroller on purpose: a lone message
+		   must not sit flush on the composer. Padding, not a margin on a panel,
+		   so the panel's ground still runs to the edge. */
+		<ol className="mt-auto flex flex-col pt-4 pb-6">
 			{items.map((item) =>
 				item.type === "day" ? (
 					<DayDivider key={`day:${item.key}`} item={item} locale={locale} />
@@ -59,6 +75,8 @@ export const TeamBridgeMessageList: FC<{
 						message={item.message}
 						continuation={item.continuation}
 						label={labelFor(item.message.sender)}
+						pending={pendingMark(item.message, pendingSends)}
+						onRetrySend={onRetrySend}
 						locale={locale}
 					/>
 				),
@@ -102,7 +120,16 @@ const MessageRow: FC<{
 	continuation: boolean;
 	label: string | null;
 	locale: string;
-}> = ({ message, continuation, label: known, locale }) => {
+	pending?: PendingSend | null;
+	onRetrySend?: (clientRef: string) => void;
+}> = ({
+	message,
+	continuation,
+	label: known,
+	locale,
+	pending = null,
+	onRetrySend,
+}) => {
 	const agent = message.sender.kind === "agent";
 	const label =
 		known ??
@@ -117,8 +144,33 @@ const MessageRow: FC<{
 	const full = valid
 		? formatDate(at, { dateStyle: "full", timeStyle: "short" }, locale)
 		: "";
+	const failed = pending?.status === "failed";
+	const state = pending ? (
+		<span
+			className={cn(
+				"flex shrink-0 items-center gap-2 text-[12px]",
+				failed ? "text-danger" : "text-ink-dim",
+			)}
+		>
+			{failed ? (
+				<>
+					<span role="alert">{t("ui.teamBridge.message.failed")}</span>
+					<Button
+						variant="link"
+						size="sm"
+						onClick={() => onRetrySend?.(pending.clientRef)}
+					>
+						{t("ui.common.actions.retry")}
+					</Button>
+				</>
+			) : (
+				<output>{t("ui.teamBridge.message.sending")}</output>
+			)}
+		</span>
+	) : null;
 	return (
 		<li
+			data-pending={pending ? pending.status : undefined}
 			className={cn(
 				"group/message flex gap-3 px-5 transition-colors duration-fast ease-out-quart hover:bg-row-hover",
 				continuation ? "py-0.5" : "mt-2 pt-1.5 pb-0.5",
@@ -198,10 +250,18 @@ const MessageRow: FC<{
 						{t("ui.teamBridge.thread.withheld")}
 					</p>
 				) : (
-					<TeamBridgeMarkdown className="team-bridge-message-body text-[14px] text-ink">
+					<TeamBridgeMarkdown
+						className={cn(
+							"team-bridge-message-body text-[14px] text-ink",
+							pending && !failed && "opacity-70",
+						)}
+					>
 						{message.body}
 					</TeamBridgeMarkdown>
 				)}
+				{/* Under the body, not in the header: a continuation row has no
+				    header, and a failed row must always carry its Retry. */}
+				{state}
 			</div>
 		</li>
 	);
