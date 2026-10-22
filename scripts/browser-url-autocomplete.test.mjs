@@ -85,6 +85,9 @@ const ENTRIES = [
 	{
 		url: "https://example.com/",
 		title: "Example",
+		visitCount: 0,
+		lastVisitedAt: 0,
+		source: "tab",
 		sourceTabId: 1,
 		sourceIndex: 0,
 		activeTab: true,
@@ -93,6 +96,9 @@ const ENTRIES = [
 	{
 		url: "https://example.com/account",
 		title: "Account",
+		visitCount: 0,
+		lastVisitedAt: 0,
+		source: "tab",
 		sourceTabId: 1,
 		sourceIndex: 1,
 		activeTab: true,
@@ -101,6 +107,9 @@ const ENTRIES = [
 	{
 		url: "https://example.com/account/profile",
 		title: "Profile",
+		visitCount: 0,
+		lastVisitedAt: 0,
+		source: "tab",
 		sourceTabId: 1,
 		sourceIndex: 2,
 		activeTab: true,
@@ -118,6 +127,9 @@ const SIX_ENTRIES = [
 ].map((path, sourceIndex) => ({
 	url: `https://example.com${path}`,
 	title: `Page ${sourceIndex}`,
+	visitCount: 0,
+	lastVisitedAt: 0,
+	source: "tab",
 	sourceTabId: 1,
 	sourceIndex,
 	activeTab: true,
@@ -134,14 +146,16 @@ const SWAPPED_SIX = [
 ].map((path, sourceIndex) => ({
 	url: `https://example.com${path}`,
 	title: `Other ${sourceIndex}`,
+	visitCount: 0,
+	lastVisitedAt: 0,
+	source: "tab",
 	sourceTabId: 1,
 	sourceIndex,
 	activeTab: true,
 	distanceFromCurrent: 6 - sourceIndex,
 }));
 
-const FROM_THIS_BROWSER_SESSION = /From this browser session/;
-const ENTER_A_WEB_ADDRESS = /Enter a web address/;
+const FROM_YOUR_HISTORY = /From your history/;
 const ADDRESS_SUGGESTIONS_UNAVAILABLE = /Address suggestions are unavailable/;
 const FIXED_DOCK_HEIGHT = /h-\[104px\]/;
 const BOTTOM_RULE = /border-b/;
@@ -189,8 +203,6 @@ async function renderBar(overrides = {}) {
 		waitingCount: 0,
 		downloadsDir: null,
 		onOpenDownloads: () => {},
-		addressScope: "all",
-		addressScopeKey: "all",
 		addressHistory: async (request) => {
 			requests.push(request);
 			return {
@@ -289,9 +301,14 @@ test("focus fetches once and an empty query shows the session's entries", async 
 	await flush();
 	assert.equal(bundle.requests.length, 1);
 	assert.equal(bundle.requests[0].expectedTabId, 1);
-	assert.equal(bundle.requests[0].scope, "all");
+	assert.equal(
+		bundle.requests[0].query,
+		"example.com/account",
+		"focus raises the popout with the live URL selected, so that is the query",
+	);
+	assert.ok(bundle.requests[0].limit >= 1);
 	assert.ok(options(bundle).length > 0);
-	assert.match(list(bundle).textContent, FROM_THIS_BROWSER_SESSION);
+	assert.match(list(bundle).textContent, FROM_YOUR_HISTORY);
 	await bundle.cleanup();
 });
 
@@ -439,12 +456,47 @@ test("Tab never commits an unaccepted suffix", async () => {
 	await bundle.cleanup();
 });
 
-test("a search-intent Enter shows the address hint instead of navigating", async () => {
+test("a search-intent Enter searches DuckDuckGo and the search row is the default", async () => {
 	const bundle = await renderBar();
 	await type(bundle, "hello world");
+	const rows = options(bundle);
+	assert.equal(
+		rows.length,
+		1,
+		"no suggestion matches, so only the search row exists",
+	);
+	assert.match(rows[0].textContent, /Search DuckDuckGo for "hello world"/);
+	assert.equal(
+		bundle.input.getAttribute("aria-activedescendant"),
+		rows[0].id,
+		"the search row is the highlighted default before any arrow key",
+	);
 	await key(bundle, "Enter");
-	assert.equal(bundle.navigations.length, 0);
-	assert.match(describedNotice(bundle).textContent, ENTER_A_WEB_ADDRESS);
+	assert.deepEqual(bundle.navigations, [
+		{ url: "https://duckduckgo.com/?q=hello%20world", expectedTabId: 1 },
+	]);
+	await bundle.cleanup();
+});
+
+test("arrow keys move over the search row as well as candidate rows", async () => {
+	const bundle = await renderBar();
+	await type(bundle, "example");
+	const rows = options(bundle);
+	assert.equal(rows[0].getAttribute("data-address-suggestion-search"), "true");
+	assert.equal(bundle.input.getAttribute("aria-activedescendant"), rows[0].id);
+	await key(bundle, "ArrowDown");
+	assert.equal(
+		bundle.input.getAttribute("aria-activedescendant"),
+		rows[1].id,
+		"Down leaves the search row for the first candidate",
+	);
+	await key(bundle, "Enter");
+	assert.equal(bundle.navigations.length, 1);
+	assert.ok(
+		bundle.navigations[0].url.startsWith("https://example.com/"),
+		"Enter committed the row Down landed on",
+	);
+	assert.notEqual(bundle.navigations[0].url, "https://duckduckgo.com/");
 	await bundle.cleanup();
 });
 
@@ -618,7 +670,7 @@ test("a response for a tab that is no longer active is discarded", async () => {
 	await bundle.cleanup();
 });
 
-test("an in-flight response is discarded when the display scope changes", async () => {
+test("an in-flight response is discarded when the tab changes", async () => {
 	const pending = [];
 	const bundle = await renderBar({
 		addressHistory: (request) =>
@@ -626,7 +678,7 @@ test("an in-flight response is discarded when the display scope changes", async 
 	});
 	await act(async () => bundle.input.focus());
 	await flush();
-	await bundle.rerender({ addressScopeKey: "session:other" });
+	await bundle.rerender({ tabId: 2, url: "about:blank" });
 	await act(async () => {
 		pending[0].resolve({
 			requestId: pending[0].request.requestId,
@@ -708,7 +760,10 @@ test("aria-controls names the listbox only while a listbox exists", async () => 
 	assert.equal(empty.input.getAttribute("aria-controls"), null);
 	const described = empty.input.getAttribute("aria-describedby");
 	assert.ok(described);
-	assert.match(document.getElementById(described).textContent, /No links/);
+	assert.match(
+		document.getElementById(described).textContent,
+		/No browsing history/,
+	);
 	await empty.cleanup();
 });
 

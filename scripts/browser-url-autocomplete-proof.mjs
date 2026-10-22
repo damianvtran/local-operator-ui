@@ -835,7 +835,8 @@ try {
 	const rawHistory = await evaluate(`window.api.browser.addressHistory({
 		requestId: 1,
 		expectedTabId: ${activeState.activeTabId},
-		scope: 'all',
+		query: '',
+		limit: 8,
 	}).catch((error) => ({ error: String(error?.message ?? error) }))`);
 	record("raw history", rawHistory);
 	check(
@@ -1145,7 +1146,8 @@ try {
 		const staleHistory = await evaluate(`window.api.browser.addressHistory({
 		requestId: 9001,
 		expectedTabId: ${oldTabId},
-		scope: 'all',
+		query: '',
+		limit: 8,
 	}).then(() => ({ ok: true })).catch((error) => ({ ok: false, message: String(error?.message ?? error) }))`);
 		record("stale history", staleHistory);
 		check(
@@ -1170,7 +1172,7 @@ try {
 		);
 
 		// ---- no-history / empty state on a fresh tab -------------------------
-		// Close the populated tab first: scope `all` would otherwise still offer its
+		// Close the populated tab first: the live-tab source would otherwise still offer its
 		// history, and the empty state would be tested against the wrong world.
 		for (const tab of stateAfter.tabs) {
 			if (tab.tabId !== stateAfter.activeTabId) {
