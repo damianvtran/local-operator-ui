@@ -233,6 +233,14 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/browser-native-determination.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless for the post-merge S4b native determination; it launches Electron directly, so the notification kill switch must ride the launch env",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-chrome-s4b-probe.mjs",
 		"spawn",
 		1,
