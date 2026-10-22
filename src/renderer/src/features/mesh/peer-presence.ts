@@ -8,6 +8,11 @@ export type PeerDeviceFact = {
 	last_seen_at: number | null;
 	session_count?: number | null;
 	reason: string | null;
+	/**
+	 * The relay's redial verdict for a lost link (`PeerRow.redial.state`), or
+	 * `null`/absent when it made none — an older backend, or a link that is up.
+	 */
+	redial_state?: "reconnecting" | "down" | null;
 	at: number;
 };
 
@@ -37,6 +42,7 @@ export function applyPeerDeviceFact(
 					...row,
 					peer_reach: "unknown",
 					link_down: false,
+					link_reconnecting: false,
 					reachable: false,
 					link_down_reason: null,
 					last_seen_at: null,
@@ -50,9 +56,14 @@ export function applyPeerDeviceFact(
 		sessionCount: fact.session_count ?? null,
 	});
 	const linkDown = reach === "unanswered";
+	// SOFTENED, NEVER HIDDEN: inside the relay's grace window the row is still
+	// link-down for every guard, and only says so less loudly (2026-10-21: a
+	// 14:45 drop read "Link down · unknown" on the first missed beat).
+	const reconnecting = linkDown && fact.redial_state === "reconnecting";
 	if (
 		row.peer_reach === reach &&
 		row.link_down === linkDown &&
+		(row.link_reconnecting ?? false) === reconnecting &&
 		row.reachable === fact.reachable &&
 		row.last_seen_at === fact.last_seen_at &&
 		row.link_down_reason === fact.reason
@@ -64,6 +75,7 @@ export function applyPeerDeviceFact(
 		...row,
 		reachable: fact.reachable,
 		link_down: linkDown,
+		link_reconnecting: reconnecting,
 		peer_reach: reach,
 		last_seen_at: fact.last_seen_at,
 		link_down_reason: fact.reason,
@@ -75,6 +87,11 @@ export function peerLinkDownLabel(
 	nowSeconds = Date.now() / 1000,
 ): string {
 	const seen = typeof row.last_seen_at === "number" ? row.last_seen_at : null;
+	if (row.link_reconnecting === true)
+		// Two already-translated fragments joined by the row's own separator: a new
+		// presence sentence would stale every audited ui.presence ledger entry and
+		// grow the shrink-only coverage allowance (see the PR for the follow-up).
+		return `${t("ui.chat.canonical.transcript.reconnecting")} · ${lastSeenAge(seen, nowSeconds)}`;
 	return t("ui.presence.link_down_last_seen", {
 		age: lastSeenAge(seen, nowSeconds),
 	});
@@ -100,6 +117,8 @@ export function peerLinkDownVisibleLabel(
 	row: CanonicalSessionRow,
 	nowSeconds: number,
 ): string {
+	if (row.link_reconnecting === true)
+		return t("ui.chat.canonical.transcript.reconnecting");
 	const seen = typeof row.last_seen_at === "number" ? row.last_seen_at : null;
 	return t("ui.presence.link_down_compact", {
 		age: lastSeenAge(seen, nowSeconds),

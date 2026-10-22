@@ -77,6 +77,7 @@ export const PeersCatalogueSync: FC<{ enabled: boolean }> = ({ enabled }) => {
 					last_seen_at: peer.last_seen_at,
 					reason: peer.unreachable_reason,
 					session_count: peer.session_count,
+					redial_state: peer.redial?.state ?? null,
 					at: peers.data.requestedAt,
 				},
 			]),

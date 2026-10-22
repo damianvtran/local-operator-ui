@@ -704,6 +704,203 @@ test("the latch names ONE run: an unwatched newest run keeps the idle shape (the
 });
 
 /*
+ * A DIP CANNOT FOLD ROWS THAT STATE THEY ARE STILL BEING WRITTEN (operator
+ * report, 2026-10-21: the conversation "briefly flickers some different text on
+ * for a frame or two" while a turn is in progress).
+ *
+ * THE 2026-10-16 LATCH IS THE WRONG TOOL FOR THIS HALF. It was built on the
+ * premise that "will this turn resume?" is not a fact the rows carry - true of
+ * the INTER-CYCLE gap, where a finished call and a dead run are the same rows.
+ * But for most of a live turn the rows state it exactly: an assistant row still
+ * `streaming`, or a tool row whose `phase` is not `done`, cannot be a finished
+ * turn's last word. When the pane's `live` flag dipped (a tool-segment
+ * boundary) or blanked (the reconnect arm sets `frontend: null`, which drops
+ * `working` AND the latch's own store key), those rows were folded behind a bar
+ * and handed straight back: the reported one-to-two-frame flicker, with no
+ * reader action and no change to any row.
+ *
+ * The residual case the latch still owns is pinned by the test above: a run
+ * whose rows are all settled and whose turn has not resumed reads as finished,
+ * and nothing in the rows can say otherwise.
+ */
+test("a liveness dip cannot fold a run whose own rows say it is still being written", () => {
+	const rows = [
+		user("u1"),
+		tool("t1", { ts: TS + 1_000, durationS: 3 }),
+		answer("a1", { ts: TS + 3_000, settledAt: TS + 3_000, stopReason: "stop" }),
+		tool("t2", { ts: TS + 4_000, phase: "running" }),
+		row("a2", "assistant", {
+			ts: TS + 5_000,
+			text: "writing",
+			streaming: true,
+		}),
+	];
+	const live = planOf(rows, true);
+	const dip = planOf(rows, false);
+	assert.deepEqual(
+		hidesOf(live),
+		["t1"],
+		"only the settled span before the answer is barred",
+	);
+	assert.deepEqual(
+		hidesOf(dip),
+		hidesOf(live),
+		"a dip moves no row: the run's own rows still say it is in flight",
+	);
+	// The same rows with the flight settled ARE a finished turn: the anchor reads
+	// the rows, so it releases them the moment they stop claiming to be live.
+	const settled = rows.map((entry, index) =>
+		index === rows.length - 1
+			? row("a2", "assistant", { ts: TS + 5_000, text: "writing" })
+			: entry,
+	);
+	assert.notDeepEqual(
+		hidesOf(planOf(settled, false)),
+		hidesOf(live),
+		"once the rows settle, the turn condenses as a finished turn does",
+	);
+});
+
+/*
+ * A LEAD-IN IS NOT THE TURN'S HANDOVER (operator report, 2026-10-21: steering
+ * "alternates between condensing the messages before it and expanding them").
+ *
+ * `settledTail` closed a run on any settled assistant row. But an assistant row
+ * that CARRIES TOOL CALLS is narration - "Reading the ledger first." followed by
+ * the call it announces - and its calls are still owed, so a user row arriving
+ * between the narration and the call's tool row is a STEER into this turn. Read
+ * as a close it flushed the run, made the steer a new turn, withdrew `live` from
+ * everything before it and condensed it: one bar where the reader had just been
+ * reading rows, replaced a pass later by the rows again when the tool row landed
+ * and the tail was no longer an "answer". The transcript already states this
+ * rule once, for the answer rail (`turn-segments.ts::isFinalResponse`); the run
+ * closure now reads the same fact instead of contradicting it.
+ */
+test("a lead-in's user row steers into the turn instead of opening the next one", () => {
+	const leadIn = {
+		streaming: false,
+		callsTools: true,
+		stopReason: "toolUse",
+	};
+	const rows = [
+		user("u1"),
+		tool("t1"),
+		answer("a1", leadIn),
+		user("s1", { text: "also check the ledger" }),
+		tool("t2", {}, "trace"),
+		answer("a2", { text: "done" }),
+	];
+	const runs = runsOf(rows);
+	assert.equal(runs.length, 1, "the steer did not split the turn in two");
+	assert.equal(
+		runs[0].closingAnswerId,
+		"a2",
+		"the turn closes on its answer, not on its narration",
+	);
+	// The control: the same rows with a real handover DO open the next turn.
+	const handedOver = rows.map((entry) =>
+		entry.record.id === "a1"
+			? answer("a1", { streaming: false, callsTools: false })
+			: entry,
+	);
+	assert.equal(
+		runsOf(handedOver).length,
+		2,
+		"a settled answer with no calls still ends the turn",
+	);
+	/*
+	 * THE RESIDUE, PINNED (agent review round 1, F2): the rows genuinely cannot
+	 * tell a steer from a user message after a turn whose declared calls never
+	 * landed. A terminal marker can, and still closes the run - so the merge costs
+	 * a mis-grouped bar only when the turn died invisibly, never when it said so.
+	 */
+	const withMarker = rows.flatMap((entry, index) =>
+		index === 2
+			? [
+					entry,
+					row("m1", "custom", {
+						text: "the turn died",
+						level: "error",
+						customType: "session_incident",
+					}),
+				]
+			: [entry],
+	);
+	assert.equal(
+		runsOf(withMarker).length,
+		2,
+		"a terminal marker after the lead-in closes it: the next user row opens a turn",
+	);
+});
+
+/*
+ * THE RELEASE THE FIX RELIES ON, DRIVEN THROUGH THE REDUCER (ux round 1, U2;
+ * review round 2, M2). `runStatesItsOwnLiveness` keeps a run open while its rows
+ * claim to be live; `agent_end` is what makes them stop, and this pins that the
+ * turn then condenses - for a clean end and for an abort, which is the one
+ * settle that happens without a `message_end` (the reducer's own sweep).
+ */
+const liveTurn = () => {
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{ type: "message_start", message: userMessage("u1", "Which invoices?") },
+		TS,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "t1",
+			tool_name: "bash",
+			args: { command: "pnpm test" },
+		},
+		TS + 500,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_end",
+			tool_call_id: "t1",
+			tool_name: "bash",
+			result: { content: [{ type: "text", text: "ok\n" }] },
+			is_error: false,
+			duration_s: 2,
+		},
+		TS + 1_500,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistantMessage("a1", "") },
+		TS + 2_000,
+	);
+	return state;
+};
+
+for (const aborted of [false, true]) {
+	test(`agent_end (${aborted ? "aborted" : "clean"}) settles the rows and condenses the turn`, () => {
+		const state = applyEvent(
+			liveTurn(),
+			{ type: "agent_end", aborted },
+			TS + 3_000,
+		);
+		const rows = buildRows(state.records, []);
+		const answer = state.records.find((record) => record.id === "a1");
+		assert.equal(
+			answer?.kind === "assistant" && answer.streaming,
+			false,
+			"the turn end settled the streaming row",
+		);
+		const plan = collapsePlan(rows, { live: false });
+		assert.equal(plan.runs.length, 1, "one turn, not a split");
+		assert.equal(
+			plan.runs[0].collapses,
+			true,
+			"and it condenses: nothing is left claiming to be live",
+		);
+	});
+}
+
+/*
  * THE WINDOW SNAP MOVES THE SLICE ON THE DIP FRAME (agent review round 1,
  * R1-1). `openingIndex` is slice-relative: for a run whose head the window
  * cuts it names the run's first VISIBLE row, and the snap grows the window to
@@ -5050,11 +5247,28 @@ test("F2: only the episode in the cycle still being written is unsettled", () =>
 	const live = planOf(rows, true);
 	assert.equal(internalSpanOf(live, "f2-w1").internal.unsettled, false);
 	assert.equal(internalSpanOf(live, "f2-w2").internal.unsettled, true);
-	const settled = planOf(rows, false);
+	const settledRows = rows.map((entry) =>
+		entry.record.id === "f2-t2"
+			? tool("f2-t2", { phase: "done" }, "trace")
+			: entry,
+	);
+	const settled = planOf(settledRows, false);
 	assert.equal(
 		internalSpanOf(settled, "f2-w2").internal.unsettled,
 		false,
-		"a settled pane has no unsettled episode",
+		"nothing is in flight once the rows settle",
+	);
+	/*
+	 * THE DIP SHAPE (2026-10-21). `live` false while a tool row still says it is
+	 * running is exactly what a liveness dip paints, and the row is the better
+	 * witness: the episode is still being written whatever the pane's sampled
+	 * flag says. See `planRun`'s `runStatesItsOwnLiveness`.
+	 */
+	const dip = planOf(rows, false);
+	assert.equal(
+		internalSpanOf(dip, "f2-w2").internal.unsettled,
+		true,
+		"a running row keeps the episode unsettled through a liveness dip",
 	);
 });
 
@@ -5143,16 +5357,26 @@ test("the settle latch: a watched episode's gate cannot move on a liveness flip 
 		"and the dip does not hand it back",
 	);
 	/*
-	 * UNWATCHED CONTROL (the R2 residual, unchanged): the same dip still folds -
-	 * the freeze is the latch's, not a blanket rule.
+	 * UNWATCHED CONTROL (the R2 residual): a run whose rows are ALL settled - the
+	 * inter-cycle gap the latch was built for, where a resumed turn and a dead run
+	 * are the same rows - still folds on a dip. The freeze above is the rows' for
+	 * a visibly-live run and the latch's for this one, never a blanket rule.
 	 */
+	const settledRows = [
+		user("dip-u"),
+		tool("dip-t0", { durationS: 3 }),
+		answer("dip-a0", { settledAt: TS + 3_000, stopReason: "stop" }),
+		peerRow("dip-w1"),
+		tool("dip-t2", { durationS: 2 }),
+	];
 	assert.notDeepEqual(
-		outcomes(collapsePlan(rows, { live: false })),
-		outcomes(collapsePlan(rows, { live: true })),
-		"an unwatched run is not frozen: its dip still moves the plan",
+		outcomes(collapsePlan(settledRows, { live: false })),
+		outcomes(collapsePlan(settledRows, { live: true })),
+		"an unwatched run with no live row is not frozen: its dip still moves the plan",
 	);
 	assert.equal(
-		episodeOf(collapsePlan(rows, { live: false })).collapsed,
+		internalSpanOf(collapsePlan(settledRows, { live: false }), "dip-w1")
+			.collapsed,
 		true,
 		"the unwatched dip folds the episode into its bar",
 	);

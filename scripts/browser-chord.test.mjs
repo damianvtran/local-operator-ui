@@ -237,6 +237,93 @@ test("RT-only visibility uses actual registry setters, not absence of an active 
 	);
 });
 
+test("the browser's own state page hides the VIEW but keeps its shortcuts; an overlay takes them", () => {
+	const registry = new TabRegistry(() => {
+		throw new Error("No native view may be created by this source control");
+	});
+	registry.setContentRect({ x: 0, y: 0, width: 400, height: 300 });
+	/*
+	 * THE TWO FACTS THIS PINS APART. The browser surface hides the native view
+	 * for its OWN state pages (start page, load-failure panel) so their DOM can
+	 * paint, and reports `ownPage: true` with that hide. The chrome band is still
+	 * on screen and still the browser, so the keys are the browser's. An overlay
+	 * (`ownPage: false`) covers the chrome too, so they are not.
+	 *
+	 * Before this distinction existed the surface sent only `false`, main read
+	 * it as "no chrome", and Cmd+L/T/R fell through to the app menu - where
+	 * `app-reload` reloaded the WHOLE APP WINDOW from the start page.
+	 */
+	registry.setViewVisible(false, true);
+	assert.equal(
+		registry.chromeVisible,
+		true,
+		"a state page is the browser the user is looking at",
+	);
+	const effects = [];
+	const router = createBrowserChordRouter({
+		platform: "darwin",
+		ownsChrome: () =>
+			browserChromeOwnsChord({
+				logicalFocus: true,
+				chromeVisible: registry.chromeVisible,
+				window: {
+					isDestroyed: () => false,
+					isVisible: () => true,
+					isFocused: () => true,
+				},
+			}),
+		ownsPage: () => false,
+		reload: (hard) => effects.push(["reload", hard]),
+		history: () => {},
+		send: (m) => effects.push([m.intent, m.origin]),
+		focusChrome: () => {},
+	});
+	for (const key of ["l", "t", "r"]) {
+		const event = {
+			defaultPrevented: false,
+			preventDefault() {
+				this.defaultPrevented = true;
+			},
+		};
+		assert.equal(router.chromeInput(event, input(key)), true, key);
+		assert.equal(
+			event.defaultPrevented,
+			true,
+			`${key}: consumed, so the app menu accelerator never receives it`,
+		);
+	}
+	assert.deepEqual(effects, [
+		["focus-address", "chrome"],
+		["new-tab", "chrome"],
+		["reload", false],
+	]);
+
+	// NEGATIVE CONTROL: a real overlay still refuses every one of them.
+	registry.setViewVisible(false, false);
+	assert.equal(registry.chromeVisible, false);
+	const before = effects.length;
+	for (const key of ["l", "t", "r"]) {
+		const event = {
+			defaultPrevented: false,
+			preventDefault() {
+				this.defaultPrevented = true;
+			},
+		};
+		assert.equal(router.chromeInput(event, input(key)), false, key);
+		assert.equal(event.defaultPrevented, false, `${key}: not consumed`);
+	}
+	assert.deepEqual(effects.slice(before), []);
+	assert.equal(router.menu("reload"), false);
+
+	// A visible view with the reason still set is still just the browser.
+	registry.setViewVisible(true);
+	assert.equal(registry.chromeVisible, true);
+	// ...and an unmounted surface owns nothing whatever the reason said.
+	registry.setViewVisible(false, true);
+	registry.setContentRect(null);
+	assert.equal(registry.chromeVisible, false);
+});
+
 const { chordTarget } = await moduleAt(
 	"src/renderer/src/features/browser/model/tab-index-model.ts",
 );

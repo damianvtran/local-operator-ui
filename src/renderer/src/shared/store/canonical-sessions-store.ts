@@ -120,6 +120,13 @@ export type CanonicalSessionRow = {
 	attention?: CompletionAttention;
 	live_state?: string;
 	link_down?: boolean;
+	/**
+	 * `link_down` while the owner's relay is still inside its redial grace window
+	 * (`PeerDeviceFact.redial_state`). The row keeps every link-down guard (no
+	 * stale idle mark, no stale status) and only its WORDS and INK soften:
+	 * "Reconnecting" in dim ink rather than an amber "Link down" for a blip.
+	 */
+	link_reconnecting?: boolean;
 	peer_reach?: import("../../features/mesh/mesh-reach").DeviceReach;
 	last_seen_at?: number | null;
 	link_down_reason?: string | null;
