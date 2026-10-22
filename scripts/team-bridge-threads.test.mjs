@@ -6,7 +6,7 @@ import { JSDOM } from "jsdom";
 // Execute the shipped model and render the real pane, not a second state map.
 const bundle = await build({
 	stdin: {
-		contents: `export {manageThreadFocus} from './src/renderer/src/features/team-bridge/team-bridge-thread-focus'; export * from './src/renderer/src/features/team-bridge/team-bridge-thread-read'; export {TeamBridgeApi} from './src/renderer/src/shared/api/local-operator/team-bridge-api'; export {teamBridgeOpenPath} from './src/shared/team-bridge-notify'; export {threadSummary} from './src/renderer/src/features/team-bridge/team-bridge-threads-model'; export {TeamBridgeThreadPane, TeamBridgeThreadPaneView} from './src/renderer/src/features/team-bridge/team-bridge-thread-pane'; export {teamBridgeMessageSchema} from './src/shared/team-bridge-contract'; export {QueryClient, QueryClientProvider} from '@tanstack/react-query'; export {createRoot} from 'react-dom/client'; export {act} from 'react'; export {createElement} from 'react'; export {renderToStaticMarkup} from 'react-dom/server';`,
+		contents: `export {TeamBridgeMessageList} from './src/renderer/src/features/team-bridge/team-bridge-message-list'; export {manageThreadFocus} from './src/renderer/src/features/team-bridge/team-bridge-thread-focus'; export * from './src/renderer/src/features/team-bridge/team-bridge-thread-read'; export {TeamBridgeApi} from './src/renderer/src/shared/api/local-operator/team-bridge-api'; export {teamBridgeOpenPath} from './src/shared/team-bridge-notify'; export {threadSummary} from './src/renderer/src/features/team-bridge/team-bridge-threads-model'; export {TeamBridgeThreadPane, TeamBridgeThreadPaneView} from './src/renderer/src/features/team-bridge/team-bridge-thread-pane'; export {teamBridgeMessageSchema} from './src/shared/team-bridge-contract'; export {QueryClient, QueryClientProvider} from '@tanstack/react-query'; export {createRoot} from 'react-dom/client'; export {act} from 'react'; export {createElement} from 'react'; export {renderToStaticMarkup} from 'react-dom/server';`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -448,4 +448,47 @@ test("opening a thread focuses close; Escape respects menus and close restores t
 	cleanup();
 	assert.equal(doc.activeElement, origin);
 	dom.window.close();
+});
+
+test("reply hover tool and summary initials have no nested ladder plates", () => {
+	const html = mod.renderToStaticMarkup(
+		mod.createElement(mod.TeamBridgeMessageList, {
+			messages: [
+				{ ...root, reply_count: 2, reply_participants: ["Ada", "Bea"] },
+			],
+			labelFor: (sender) => sender.display_label,
+			onReply() {},
+		}),
+	);
+	const dom = new JSDOM(html);
+	try {
+		const reply = dom.window.document.querySelector(
+			'button[title="Reply in thread"]',
+		);
+		assert.ok(reply);
+		assert.equal(
+			reply.classList.contains("bg-elevated"),
+			false,
+			"the shared ghost control has no independent resting ground",
+		);
+		assert.equal(reply.classList.contains("focus-visible:opacity-100"), true);
+		assert.equal(
+			reply.classList.contains("hover:bg-accent-wash"),
+			true,
+			"the established ghost primitive owns interaction feedback",
+		);
+		const initials = [
+			...dom.window.document.querySelectorAll(
+				'button span[aria-hidden="true"] span',
+			),
+		];
+		assert.equal(initials.length, 2);
+		assert.equal(
+			initials.some((span) => span.classList.contains("bg-sunken")),
+			false,
+			"initials are ink on the summary action, not another plate inside its hover",
+		);
+	} finally {
+		dom.window.close();
+	}
 });

@@ -1,3 +1,4 @@
+import { Button } from "@shared/components/ui/button";
 import { formatDate, formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
@@ -157,15 +158,20 @@ const MessageRow: FC<{
 				)}
 			</div>
 			{onReply && !message.thread_root_id && (
-				<button
+				/* A row hover can equal any ladder ground on some palette. Like the
+				   sibling hover tools, use a ghost control whose ink/focus outline is
+				   the affordance, not a new filled plate needing its own boundary. */
+				<Button
 					type="button"
+					variant="ghost"
+					size="icon-sm"
 					aria-label={t("ui.teamBridge.replies.action")}
 					title={t("ui.teamBridge.replies.action")}
 					onClick={() => onReply(message)}
-					className="absolute right-4 top-0 rounded-md bg-elevated p-1.5 text-ink-muted opacity-0 hover:text-ink focus-visible:opacity-100 group-hover/message:opacity-100"
+					className="absolute right-4 top-0 opacity-0 focus-visible:opacity-100 group-hover/message:opacity-100"
 				>
 					<MessageSquare size={16} />
-				</button>
+				</Button>
 			)}
 			<div className="min-w-0 flex-1">
 				{!continuation && (
@@ -205,7 +211,9 @@ const MessageRow: FC<{
 							{summary.participants.map((name, index) => (
 								<span
 									key={`${index}:${name}`}
-									className="flex size-5 items-center justify-center rounded bg-sunken text-[10px] text-ink-muted"
+									// Initials are ink, not plates: the summary button already owns
+									// the row-hover state, so nesting a ladder fill loses its edge.
+									className="flex size-5 items-center justify-center text-[10px] text-ink-muted"
 								>
 									{name.trim().charAt(0).toUpperCase()}
 								</span>
