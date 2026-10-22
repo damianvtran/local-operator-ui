@@ -5171,7 +5171,19 @@ function restoreRetiredDraftPayload(
 ): void {
 	const input = useConversationInputStore.getState();
 	if (sessionId && sessionId !== key) {
-		const typed = input.inputByConversation[sessionId];
+		/*
+		 * A RETURNED MESSAGE IS ADOPTED FIRST (agent review round 2's MINOR): a
+		 * reload leaves text that was typed during the create hop in `pendingText`
+		 * (`foldReturn` writes it; `rehydrateInputRows` does not adopt it), and
+		 * `returnInFlight` only moves `currentInput`. Adopting folds the two into
+		 * the box, so the move below carries both rather than stranding the typed
+		 * half under a conversation that is gone.
+		 */
+		input.adoptReturnedText(sessionId);
+		// Re-read: the adopt above is a store write, so the snapshot taken before
+		// it still holds the pre-adopt row.
+		const typed =
+			useConversationInputStore.getState().inputByConversation[sessionId];
 		if (
 			typed &&
 			typed.inFlight === undefined &&

@@ -249,7 +249,8 @@ test("a draft that has already created a conversation names the conversation, no
 			liveTitle: "",
 			catalogueTitle: "",
 		}),
-		UNTITLED_CHAT,
+		"New chat",
+		"an untargeted draft (⌘N) keeps the sentence it wore before the send, not Untitled chat (design round 2's D8)",
 	);
 });
 
