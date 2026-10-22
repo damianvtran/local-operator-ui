@@ -601,8 +601,13 @@ export const BubbleLoadingDelayed: StoryObj<typeof Thread> = {
 /* ------------------------------ lightbox keys ----------------------------- */
 
 /**
- * Opens image 2 of 4, walks with ArrowRight/ArrowLeft, closes with Escape and
- * asserts focus returns to the tile that opened it.
+ * Opens image 2 of 4, walks with ArrowRight/ArrowLeft, checks Tab stays
+ * inside the dialog (focus trap), closes with Escape and asserts focus
+ * returns to the tile that opened it.
+ *
+ * Queries are by the dialog's HEADING role: the lightbox renders its position
+ * twice (the sr-only `DialogTitle` and an `aria-live` announcer), so a text
+ * query is ambiguous and stopped the round-2 run at step 5 (D11).
  */
 export const LightboxKeyboard: StoryObj<typeof Thread> = {
 	render: () => <Thread messages={[fourImages]} />,
@@ -614,15 +619,25 @@ export const LightboxKeyboard: StoryObj<typeof Thread> = {
 		await waitFor(() => expect(tile).not.toBeDisabled());
 		await userEvent.click(tile);
 		const dialog = await screen.findByRole("dialog");
-		await expect(within(dialog).getByText("Image 2 of 4")).toBeInTheDocument();
+		const at = (name: string) =>
+			waitFor(() =>
+				expect(
+					within(dialog).getByRole("heading", { name }),
+				).toBeInTheDocument(),
+			);
+		await at("Image 2 of 4");
 		await userEvent.keyboard("{ArrowRight}");
-		await waitFor(() =>
-			expect(within(dialog).getByText("Image 3 of 4")).toBeInTheDocument(),
-		);
+		await at("Image 3 of 4");
 		await userEvent.keyboard("{ArrowLeft}{ArrowLeft}");
-		await waitFor(() =>
-			expect(within(dialog).getByText("Image 1 of 4")).toBeInTheDocument(),
-		);
+		await at("Image 1 of 4");
+		// Focus trap: a full lap of Tab (more presses than controls) never
+		// leaves the dialog.
+		for (let press = 0; press < 10; press += 1) {
+			await userEvent.tab();
+			await expect(dialog.contains(document.activeElement)).toBe(true);
+		}
+		await userEvent.tab({ shift: true });
+		await expect(dialog.contains(document.activeElement)).toBe(true);
 		await userEvent.keyboard("{Escape}");
 		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 		await waitFor(() => expect(tile).toHaveFocus());

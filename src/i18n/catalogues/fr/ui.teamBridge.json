@@ -169,5 +169,6 @@
 	"ui.teamBridge.schedule.held": "Une planification précédente existe peut-être encore. Vérifiez « Planifiés » et annulez-la si nécessaire avant d’abandonner cet essai. Votre brouillon est conservé.",
 	"ui.teamBridge.schedule.discard_attempt": "J’ai vérifié « Planifiés » — abandonner cet essai",
 	"ui.teamBridge.attachments.expired_staged_retry": "Cette image n’est plus prête à être envoyée. Réessayez ou retirez-la.",
-	"ui.teamBridge.attachments.preview_unavailable": "Aperçu indisponible"
+	"ui.teamBridge.attachments.preview_unavailable": "Aperçu indisponible",
+	"ui.teamBridge.attachments.failed_count": "{count, plural, one {# image ne peut pas être envoyée.} other {# images ne peuvent pas être envoyées.}}"
 }

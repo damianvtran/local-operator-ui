@@ -921,6 +921,23 @@ test("scheduled images: descriptor tile, or this account's own in-memory preview
 	].map((node) => node.getAttribute("data-attachment-scheduled"));
 	assert.deepEqual(tiles, ["preview", "descriptor"]);
 	assert.equal(mediaCalls.length, 0);
+	// D6: the undrawable tile is NAMED by position and DESCRIBED as attached
+	// but not previewable; the drawn one carries no such description.
+	const [drawn, undrawn] = element.querySelectorAll(
+		"[data-attachment-scheduled]",
+	);
+	assert.equal(drawn.getAttribute("role"), "img");
+	assert.equal(drawn.getAttribute("aria-label"), "Image 1 of 2");
+	assert.equal(drawn.getAttribute("aria-describedby"), null);
+	assert.equal(undrawn.getAttribute("role"), "img");
+	assert.equal(undrawn.getAttribute("aria-label"), "Image 2 of 2");
+	assert.equal(undrawn.getAttribute("title"), "Preview unavailable");
+	const describedBy = undrawn.getAttribute("aria-describedby");
+	assert.ok(describedBy);
+	assert.equal(
+		element.querySelector(`[id="${describedBy}"]`)?.textContent,
+		"Preview unavailable",
+	);
 	await act(async () => root.unmount());
 });
 
@@ -1202,7 +1219,7 @@ for (const [label, body] of [
 		const app = await mountPage(
 			pageProps({
 				target: { type: "person", accountId: "acct_b" },
-				onSend: async (sent, clientRef, attachments) => {
+				onSend: async (sent, _clientRef, attachments) => {
 					sends.push({
 						body: sent,
 						ids: [...(attachments?.ids ?? [])],
@@ -1277,5 +1294,53 @@ test("page R1-02: first send to a new DM stages held images under the SAME key a
 		app.element.querySelectorAll("[data-attachment-chip]").length,
 		0,
 	);
+	await app.close();
+});
+
+test("page R2-01: an image dropped DURING a send stays in the composer and the draft", async () => {
+	localStorage.clear();
+	mediaCalls = [];
+	let n = 0;
+	mediaAnswer = () => staged(`batt_d${++n}`);
+	const sends = [];
+	let release;
+	const target = { type: "person", accountId: "acct_b" };
+	const app = await mountPage(
+		pageProps({
+			target,
+			onSend: (sent, _clientRef, attachments) => {
+				sends.push({ body: sent, ids: [...(attachments?.ids ?? [])] });
+				return new Promise((resolve) => {
+					release = resolve;
+				});
+			},
+		}),
+	);
+	await typeBody(app.element, "first");
+	await dropImage(app.element);
+	await act(async () => sendButton(app.element).click());
+	await settle();
+	assert.deepEqual(sends, [{ body: "first", ids: ["batt_d1"] }]);
+	// The author keeps working while the POST is in flight.
+	await dropImage(app.element);
+	assert.equal(mediaCalls.length, 2, "the mid-send drop uploads at once");
+	await act(async () => release());
+	for (let i = 0; i < 5; i += 1) await settle();
+	const chips = [...app.element.querySelectorAll("[data-attachment-chip]")].map(
+		(chip) => chip.dataset.attachmentChip,
+	);
+	assert.deepEqual(chips, ["ready"], "only the sent image left the strip");
+	const entry = Object.keys(localStorage)
+		.filter((key) => key.includes("org_page"))
+		.map(
+			(key) => JSON.parse(localStorage.getItem(key))[m.draftTargetKey(target)],
+		)
+		.find(Boolean);
+	assert.deepEqual(
+		entry?.attachments?.map((row) => row.id),
+		["batt_d2"],
+		"the unsent image survives in the draft",
+	);
+	assert.equal(entry?.body ?? "", "", "the sent text does not come back");
 	await app.close();
 });

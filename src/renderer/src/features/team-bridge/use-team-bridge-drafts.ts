@@ -197,6 +197,9 @@ export function useTeamBridgeDrafts(
 		else
 			write(entryKey, {
 				...entry,
+				// An image added mid-send keeps the entry alive, but the text that
+				// DID go out must not come back with it (R2-01).
+				body: entry.body.trim() === sentBody ? "" : entry.body,
 				attachments: remaining.length > 0 ? remaining : undefined,
 				sendAt: undefined,
 				clientRef: crypto.randomUUID(),

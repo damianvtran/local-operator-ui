@@ -168,6 +168,7 @@
 	"ui.teamBridge.attachments.remove_all": "移除所有图片",
 	"ui.teamBridge.schedule.held": "上次的定时发送可能仍然存在。放弃本次尝试前，请先查看“定时消息”，必要时将其取消。草稿已保留。",
 	"ui.teamBridge.schedule.discard_attempt": "我已查看“定时消息”，放弃本次尝试",
-	"ui.teamBridge.attachments.expired_staged_retry": "此图片已无法发送。请重试或将其移除。",
-	"ui.teamBridge.attachments.preview_unavailable": "无法预览"
+	"ui.teamBridge.attachments.expired_staged_retry": "此图片当前无法发送。请重试或将其移除。",
+	"ui.teamBridge.attachments.preview_unavailable": "无法预览",
+	"ui.teamBridge.attachments.failed_count": "{count, plural, other {#张图片无法发送。}}"
 }
