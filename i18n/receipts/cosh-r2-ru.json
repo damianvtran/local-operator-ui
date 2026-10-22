@@ -1,0 +1,96 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "cosh-r2-ru",
+ "session": "2728570e45a1",
+ "date": "2026-10-22",
+ "locale": "ru",
+ "translator": "translator",
+ "translator_session": "073cc3536c59",
+ "namespace": "ui.agentMessages.settings",
+ "status": "passed",
+ "keys_audited": 10,
+ "scope": "Round-2 audit at head 2fb94727d3: the round-1 remediation delta (7 changed non-hold keys: 6 round-1 findings plus the cue_listed_only knock-on, with the other 77 non-hold values verified byte-identical to the round-1 snapshot) and the FIRST audit of the 3 hold.* keys, whose English was rewritten for code review R1-1 (hold.chief_of_staff changed, hold.chief_of_staff_unlinked added, hold.open relabelled); catalogue audit only, not rendered-fit/activation/release.",
+ "scope_expansion": {
+  "reason": "ru had no ui.agentMessages.settings catalogue; the 84 pre-existing keys were covered only by i18n/coverage-allowance.json, so the 2-key PR #1325 delta could not land without creating the full file, and the translator created all 86 keys.",
+  "approved_by": "operator (via coordinator), 2026-10-22",
+  "allowance_pair_removed": "ru/ui.agentMessages.settings (84 keys)"
+ },
+ "previous_round": {
+  "path": "i18n/receipts/cosh-r1-ru.json",
+  "sha256": "2462f94db03853c85cf9d9254f1d149f940e43bcf04079310c91299e55fa3ea9",
+  "target_sha256": "b6d469500f277296ff5057d8d8d36eb2b5459bdf2a2a41ec4a7462d0820afd63",
+  "en_sha256": "840f0821444e5e70af15435c82c43a1996db8be4f06cb59926a12f537794e2af"
+ },
+ "sha256": {
+  "en": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+  "ru": "7d8efca849197942b2a037f8f7ba52da011bbb568706875aa61a27a2c9037224",
+  "context": "0796c27031e5a3b9a600147e67e1341234f6ed0f5adfd3b7c4f7758a5bcff63d"
+ },
+ "excluded_keys": [],
+ "remediation": [
+  {
+   "key": "ui.agentMessages.settings.consent.changed",
+   "r1_severity": "MINOR",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "Прочитайте актуальный текст согласия ниже и включите снова."
+  },
+  {
+   "key": "ui.agentMessages.settings.consent.via_dialog",
+   "r1_severity": "MINOR",
+   "disposition": "fixed-alternative",
+   "verified": true,
+   "value": "Окно согласия"
+  },
+  {
+   "key": "ui.agentMessages.settings.local.stays_enrolled",
+   "r1_severity": "MINOR",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "Ваша регистрация остаётся активной для этой учётной записи и на других ваших компьютерах."
+  },
+  {
+   "key": "ui.agentMessages.settings.allowlist.allowed_heading",
+   "r1_severity": "NIT",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "Разрешённые"
+  },
+  {
+   "key": "ui.agentMessages.settings.allowlist.blocked_heading",
+   "r1_severity": "NIT",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "Заблокированные"
+  },
+  {
+   "key": "ui.agentMessages.settings.allowlist.listed_only",
+   "r1_severity": "NIT",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "Только выбранные агенты"
+  },
+  {
+   "key": "ui.agentMessages.settings.allowlist.cue_listed_only",
+   "r1_severity": "NIT (knock-on of allowlist.listed_only)",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "Если выбрать «Только выбранные агенты», новые разговоры в этом направлении будут ограничены этим списком."
+  }
+ ],
+ "unchanged_values_verified": 77,
+ "findings": [],
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+ },
+ "validation": {
+  "independence": "Same independent auditor session as round 1 (2728570e45a1, anthropic/claude-opus-5-5), separate from translator session 073cc3536c59. All values were read from the catalogue bytes; no translator summary was relied on.",
+  "semantics": "English diff 359a2f55ec..2fb94727d3 touches only en settings/context and keys.gen.ts. The 84 non-hold en and context values are byte-identical to round 1, and only hold.chief_of_staff_unlinked is new. Remediation: consent.changed, local.stays_enrolled, allowed_heading, blocked_heading and listed_only match the round-1 proposals, and cue_listed_only quotes the new listed_only label exactly. consent.via_dialog took an alternative, «Окно согласия» ('consent window'), instead of the proposed «Вводное окно». It is accepted: accurate for the one-time Agent messages consent dialog, no collision with the onboarding wizard's «Первоначальная настройка», and shorter than the English. Hold keys: «координатор» matches the onboarding term (ui.onboarding.extras.greeting_*), and «на боковой панели» matches the ru sidebar term (ui.shell.sidebar_navigation.*). Both notices make sending one message the condition («Чтобы получить его/их, отправьте одно сообщение…»), so opening alone is not implied to release anything. Nothing reads as refused, failed, read or lost («ждёт/ждут» is calm news). hold.open «Написать координатору» is an infinitive verb label, 'write to the coordinator', and does not imply it sends anything.",
+  "icu": "All 87 en and ru values parse with @formatjs/icu-messageformat-parser (run from the auditor scratchpad via NODE_PATH). The hold arms are one/few/many/other, matching Intl.PluralRules('ru') categories [one, few, many, other]; {count} is preserved in every arm. intl-messageformat output: 1 → «1 сообщение ждёт … получить его»; 2 → «2 сообщения ждут … их»; 5 → «5 сообщений ждут … их»; 21 → «21 сообщение ждёт … его»; 1000000 → «1000000 сообщений ждут … их». Noun case, verb number and pronoun agree in every arm, for both hold keys.",
+  "typography": "UTF-8, no BOM, no CR, trailing newline, tab indentation, NFC, no Cf/bidi controls or NBSP. Changed values contain no straight quotes, triple dots or spaced hyphens. Key set and order equal en (87/87).",
+  "overflow": "hold.open is 21 chars against 22 in English, in a shrink-0 ghost sm button. Rendered hold notice arms run 105-106 chars against 104-108 in English (chief_of_staff) and 136-137 against 125-129 (unlinked), all inside a wrapping flex-1 paragraph. listed_only drops from 28 to 23 chars against 20 in English. consent.via_dialog is 13 chars against 17.",
+  "limitations": "Browser unavailable; no screenshots/rendered-fit claim. No catalogue/code edits. No files created in the worktree (scripts kept in the auditor scratchpad); git status is unchanged from before the audit; no stashes touched."
+ }
+}

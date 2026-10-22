@@ -1,0 +1,19 @@
+{
+  "checkedOut": "54d68826541596299c33f5f0172901d014e4a81b",
+  "productSourceCommit": "c5503204ed0bc88e20dadb624de949788dc52b80",
+  "productSourceClean": true,
+  "branch": "docs/browser-native-determination-s4b",
+  "dirtySource": "",
+  "electron": "44.3.0",
+  "appVersion": {
+    "app": "0.39.4",
+    "chrome": "152.0.7977.78",
+    "node": "24.20.0"
+  },
+  "sha256": {
+    "mainIndexJs": "9a0e2c5478d7c4b8188f0f9e27b5776453db3b6748d7a3ef735ee37132205046",
+    "mainIndexJsc": "269d88d0c01168ffd62f1844bb7862e5e518b5b3659c7c24f8e362ccbc4c4cbe",
+    "rendererIndexHtml": "a0e2b36ed2ed70fc1c17ea1dfd692293ff990566eb90fdf9a577bcd20df93286",
+    "overlayListHtml": "9c8bf7a57794c54e528aebad72f3b1eba8e226bc76c1eb889531b4a2b096e57e"
+  }
+}
