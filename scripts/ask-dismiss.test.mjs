@@ -205,6 +205,22 @@ test("the real schema accepts a dismissal and refuses the shapes that contradict
 		}).success,
 		false,
 	);
+	/*
+	 * `dismiss: false` is the same statement as omitting the key (the backend's
+	 * own words), so the gate shape accepts it rather than inventing a stricter
+	 * rule than the route that answers it.
+	 */
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "sessions.answer",
+			sessionId: SESSION,
+			epoch: "owner-epoch",
+			requestId: "gate-id",
+			approved: true,
+			dismiss: false,
+		}).success,
+		true,
+	);
 });
 
 test("the transport sends the dismissal as ask_id + dismiss + reason", () => {

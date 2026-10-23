@@ -4440,11 +4440,14 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 					message: "revise applies to a queued ask",
 					path: ["revise"],
 				});
-			if (request.dismiss !== undefined)
+			if (request.dismiss === true)
 				/*
 				 * A dismissal is addressed by `ask_id` alone, so on the gate shape the
 				 * field names no ask it could put away — refused rather than ignored, the
-				 * same rule `revise` just took.
+				 * same rule `revise` just took. `dismiss: false` is deliberately NOT
+				 * refused: the backend states it is the same statement as omitting the
+				 * field, and a client stricter than the wire would refuse a body the
+				 * route answers.
 				 */
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
