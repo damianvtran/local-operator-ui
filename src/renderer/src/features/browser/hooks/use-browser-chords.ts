@@ -25,6 +25,54 @@ const STANDALONE_BROWSER_ROUTE = /^#\/browser(?:[/?]|$)/;
 // consuming an event or a main-process broadcast; a global listener per surface
 // without this arbitration would create two tabs for one physical press.
 const chordRoots = new Set<HTMLDivElement>();
+
+/**
+ * Stand a browser surface up as a chord root, and hand back its disposer.
+ *
+ * The registry is a module-level Set rather than render state, so the ONE
+ * question every other surface has to ask it - "is the browser the keyboard
+ * owner right now?" - is answerable without a component: this export is what
+ * `scripts/session-switcher.test.mjs` registers a root with, and the hook below
+ * is its only other caller. Extracted rather than duplicated because the
+ * alternative is a second, drifted copy of the ownership rule in whatever
+ * surface needs the answer next.
+ */
+export function registerBrowserChordRoot(root: HTMLDivElement): () => void {
+	chordRoots.add(root);
+	return () => {
+		chordRoots.delete(root);
+	};
+}
+
+/**
+ * Whether the keyboard is inside the in-app browser panel, i.e. whether Ctrl+Tab
+ * and Ctrl+Shift+Tab are the BROWSER's tab chords rather than the app's.
+ *
+ * THE RULE, in one sentence: when keyboard focus is inside the in-app browser
+ * panel - its tab strip, address bar/popout, start page, or the web page itself -
+ * Ctrl+Tab and Ctrl+Shift+Tab switch browser tabs; everywhere else they open the
+ * session switcher. (docs/session-switcher.md carries the same sentence.)
+ *
+ * It wraps `chordOwner`, which is the arbitration the browser's own DOM door
+ * already does, so the two surfaces cannot disagree: if the browser would take
+ * the press, it says so here, and the switcher stays out of the way. This
+ * function is the ARBITER and not a hint - the switcher checks it on both keys
+ * and bails on true. `event.defaultPrevented` is not part of the decision: the
+ * press has to be claimed by one door or the other regardless of which listener
+ * happens to run first.
+ *
+ * A press that reaches a NATIVE `WebContentsView` never arrives in this DOM at
+ * all - the view's own `before-input-event` hook in main answers it - so the
+ * page case this returns false for is a pane whose focus is logical (the strip,
+ * the start page) and never the driven page itself.
+ */
+export function browserOwnsTabChord(
+	document: Document,
+	target?: Node | null,
+): boolean {
+	return chordOwner(document, target ?? document.activeElement) !== null;
+}
+
 const reportedFocus = new WeakMap<Document, boolean>();
 function availableRoots(document: Document): HTMLDivElement[] {
 	// THE VIEW BEING HIDDEN IS NOT THE SAME FACT AS AN OVERLAY COVERING THE
@@ -179,7 +227,7 @@ export function useBrowserChords(
 		const api = browserBridge();
 		if (!api) return;
 		const document = root.ownerDocument;
-		chordRoots.add(root);
+		const releaseChordRoot = registerBrowserChordRoot(root);
 		let alive = true;
 		let chain = Promise.resolve();
 		let cursor: number | null =
@@ -419,7 +467,7 @@ export function useBrowserChords(
 		});
 		return () => {
 			alive = false;
-			chordRoots.delete(root);
+			releaseChordRoot();
 			reconcile(); // removing hidden B must not clear the still-focused A
 			unsubscribe();
 			stopPolicy();
