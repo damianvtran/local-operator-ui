@@ -22451,8 +22451,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
-			"target_sha256": "cc81bdcf675bdd88627b3e8fe940020da669727371308814d5222ba0dbbb3bac",
+			"source_sha256": "c89158c597dfcf7fdab1fb7008052ef13f50be9d3f5834ba2b0d0fd9b6e1c292",
+			"target_sha256": "1a47de5d87270dfea36b2ba63ae095cea98bd2e5a0b2f09851421e8fc1192fbe",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -22464,17 +22464,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "pr5-20261023-r3-es",
+					"instance": "pr5-20261023-r5-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr5-20261023-r3-es.json",
-					"receipt_sha256": "e2dc5efa83b4e58dbc2f18aac6c2926c7232fe939e309bb7d5a5c28a1528ca85",
-					"scope": "independent round-3 re-read of the remediation delta (in_flight + messages_since) across all 10 keys at b47b4dd8a",
-					"note": "Round 2 was clean at 1dcafbba5; remediation round 1 changed two keys, re-audited here. Copy authored by the implementing coder, audited independently."
+					"receipt": "i18n/receipts/pr5-20261023-r5-es.json",
+					"receipt_sha256": "148cb6f59d3b0e47ab4eb899be1e149d66e9f4f3c0ba2f44e07152b43d99305a",
+					"scope": "PR #1363 round-5 delta audit of es/ui.chat.asks at 5de3195e7: new key dismiss.refused; the other 11 values verified unchanged."
 				}
 			],
 			"status": "audited",
@@ -22502,14 +22501,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
+					"target_sha256": "cc81bdcf675bdd88627b3e8fe940020da669727371308814d5222ba0dbbb3bac",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "pr5-20261023-r3-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr5-20261023-r3-es.json",
+							"receipt_sha256": "e2dc5efa83b4e58dbc2f18aac6c2926c7232fe939e309bb7d5a5c28a1528ca85",
+							"scope": "independent round-3 re-read of the remediation delta (in_flight + messages_since) across all 10 keys at b47b4dd8a",
+							"note": "Round 2 was clean at 1dcafbba5; remediation round 1 changed two keys, re-audited here. Copy authored by the implementing coder, audited independently."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
-			"target_sha256": "dca9ae6d9d4c629d5bdc9c7efa1b3170ff50e670873c097eb6398b66be1e17b6",
+			"source_sha256": "c89158c597dfcf7fdab1fb7008052ef13f50be9d3f5834ba2b0d0fd9b6e1c292",
+			"target_sha256": "5d343faf3f9236d29761f12c3a5585403d9933d982e1b1a4f9a4ae3afbc5f38b",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -22520,18 +22543,17 @@
 					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-23",
-					"result": "clean",
-					"instance": "pr5-20261023-r4-fr",
+					"result": "clean-with-findings",
+					"instance": "pr5-20261023-r5-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr5-20261023-r4-fr.json",
-					"receipt_sha256": "2f3a9d354340adef85a7a4e8491a7390009e549dea594b6f4b7194fe4fa19262",
-					"scope": "fr-only round-4 delta check at dfb45ee7d: the in_flight value changed from « Fermeture en cours… » to « En cours… »; the other 10 keys are byte-identical to the round-3 audit",
-					"note": "Round 3 passed with one MINOR on this key (fr-r3-m1); the fix is re-read here and clean. Copy authored by the implementing coder, audited independently."
+					"receipt": "i18n/receipts/pr5-20261023-r5-fr.json",
+					"receipt_sha256": "6e2f8634e77023110afc566b8e5b69fd305aaccc66b3556b918daae4c1a74d11",
+					"scope": "PR #1363 round-5 delta audit of fr/ui.chat.asks at 5de3195e7: new key dismiss.refused; the other 11 values verified unchanged."
 				}
 			],
 			"status": "audited",
@@ -22559,14 +22581,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
+					"target_sha256": "dca9ae6d9d4c629d5bdc9c7efa1b3170ff50e670873c097eb6398b66be1e17b6",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "pr5-20261023-r4-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr5-20261023-r4-fr.json",
+							"receipt_sha256": "2f3a9d354340adef85a7a4e8491a7390009e549dea594b6f4b7194fe4fa19262",
+							"scope": "fr-only round-4 delta check at dfb45ee7d: the in_flight value changed from « Fermeture en cours… » to « En cours… »; the other 10 keys are byte-identical to the round-3 audit",
+							"note": "Round 3 passed with one MINOR on this key (fr-r3-m1); the fix is re-read here and clean. Copy authored by the implementing coder, audited independently."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
-			"target_sha256": "1297fc5473edeb3d02614d67fa27c2c8f4879715bb50e2e9c4635e4976c89a41",
+			"source_sha256": "c89158c597dfcf7fdab1fb7008052ef13f50be9d3f5834ba2b0d0fd9b6e1c292",
+			"target_sha256": "48416d3c2131c435bb47bf437655c177aa798faa6f3452bb666845ec815e597a",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -22578,17 +22624,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "pr5-20261023-r3-hi",
+					"instance": "pr5-20261023-r5-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr5-20261023-r3-hi.json",
-					"receipt_sha256": "018b5dfb9289f087b1d32e3e55944ae88d34044eb2911b36e3db592cbb97c1b4",
-					"scope": "independent round-3 re-read of the remediation delta (in_flight + messages_since) across all 10 keys at b47b4dd8a",
-					"note": "Round 2 was clean at 1dcafbba5; remediation round 1 changed two keys, re-audited here. Copy authored by the implementing coder, audited independently."
+					"receipt": "i18n/receipts/pr5-20261023-r5-hi.json",
+					"receipt_sha256": "96ab7ace003aba02749fafd46b3072f651b4e10762231ba6726e00f561008917",
+					"scope": "PR #1363 round-5 delta audit of hi/ui.chat.asks at 5de3195e7: new key dismiss.refused; the other 11 values verified unchanged."
 				}
 			],
 			"status": "audited",
@@ -22616,14 +22661,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
+					"target_sha256": "1297fc5473edeb3d02614d67fa27c2c8f4879715bb50e2e9c4635e4976c89a41",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "pr5-20261023-r3-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr5-20261023-r3-hi.json",
+							"receipt_sha256": "018b5dfb9289f087b1d32e3e55944ae88d34044eb2911b36e3db592cbb97c1b4",
+							"scope": "independent round-3 re-read of the remediation delta (in_flight + messages_since) across all 10 keys at b47b4dd8a",
+							"note": "Round 2 was clean at 1dcafbba5; remediation round 1 changed two keys, re-audited here. Copy authored by the implementing coder, audited independently."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
-			"target_sha256": "f308224414b791a12c1da184054e1057795a748e257e8d57dead7d691d5fcaef",
+			"source_sha256": "c89158c597dfcf7fdab1fb7008052ef13f50be9d3f5834ba2b0d0fd9b6e1c292",
+			"target_sha256": "1b450d75c185d7f5c0f77985932e37d7d7570c10481d8af6c9b8a09205693274",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -22634,18 +22703,17 @@
 					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-23",
-					"result": "clean-with-findings",
-					"instance": "pr5-20261023-r3-ru",
+					"result": "clean",
+					"instance": "pr5-20261023-r5-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr5-20261023-r3-ru.json",
-					"receipt_sha256": "f0285c249ce34d152617c65370e6323ccc8bb4c11be7337e38899e42bedc7229",
-					"scope": "independent round-3 re-read of the remediation delta (in_flight + messages_since) across all 10 keys at b47b4dd8a",
-					"note": "Round 2 was clean at 1dcafbba5; remediation round 1 changed two keys, re-audited here. Copy authored by the implementing coder, audited independently."
+					"receipt": "i18n/receipts/pr5-20261023-r5-ru.json",
+					"receipt_sha256": "ce1bbdd032782d1eeb92ebea774b9a17d0560f4ff05ce69ab842f7653ee50011",
+					"scope": "PR #1363 round-5 delta audit of ru/ui.chat.asks at 5de3195e7: new key dismiss.refused; the other 11 values verified unchanged."
 				}
 			],
 			"status": "audited",
@@ -22673,14 +22741,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
+					"target_sha256": "f308224414b791a12c1da184054e1057795a748e257e8d57dead7d691d5fcaef",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-23",
+							"result": "clean-with-findings",
+							"instance": "pr5-20261023-r3-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/pr5-20261023-r3-ru.json",
+							"receipt_sha256": "f0285c249ce34d152617c65370e6323ccc8bb4c11be7337e38899e42bedc7229",
+							"scope": "independent round-3 re-read of the remediation delta (in_flight + messages_since) across all 10 keys at b47b4dd8a",
+							"note": "Round 2 was clean at 1dcafbba5; remediation round 1 changed two keys, re-audited here. Copy authored by the implementing coder, audited independently."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
-			"target_sha256": "e86144a3e95643820762add97903ec423e17bb889c3c3974318670fee66a4eb9",
+			"source_sha256": "c89158c597dfcf7fdab1fb7008052ef13f50be9d3f5834ba2b0d0fd9b6e1c292",
+			"target_sha256": "47d638942b65e007397b965ac89901e719039ef6a5c96a088f627edeccff8e5a",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -22692,17 +22784,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "pr5-20261023-r3-ur",
+					"instance": "pr5-20261023-r5-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr5-20261023-r3-ur.json",
-					"receipt_sha256": "dcd02d903dddee603edda22e9cb8dc762071423901863f6e66099578b9f7e433",
-					"scope": "independent round-3 re-read of the remediation delta (in_flight + messages_since) across all 10 keys at b47b4dd8a",
-					"note": "Round 2 was clean at 1dcafbba5; remediation round 1 changed two keys, re-audited here. Copy authored by the implementing coder, audited independently."
+					"receipt": "i18n/receipts/pr5-20261023-r5-ur.json",
+					"receipt_sha256": "c795809414c478eab3e728b9804a7cafee9d144b90459ebd3e1aca0bc02ae587",
+					"scope": "PR #1363 round-5 delta audit of ur/ui.chat.asks at 5de3195e7: new key dismiss.refused; the other 11 values verified unchanged."
 				}
 			],
 			"status": "audited",
@@ -22730,14 +22821,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
+					"target_sha256": "e86144a3e95643820762add97903ec423e17bb889c3c3974318670fee66a4eb9",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "pr5-20261023-r3-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr5-20261023-r3-ur.json",
+							"receipt_sha256": "dcd02d903dddee603edda22e9cb8dc762071423901863f6e66099578b9f7e433",
+							"scope": "independent round-3 re-read of the remediation delta (in_flight + messages_since) across all 10 keys at b47b4dd8a",
+							"note": "Round 2 was clean at 1dcafbba5; remediation round 1 changed two keys, re-audited here. Copy authored by the implementing coder, audited independently."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
-			"target_sha256": "baaca7870e4ef1c067c06fe81a1d50d2c49e19d2df5a8a490b68739677108123",
+			"source_sha256": "c89158c597dfcf7fdab1fb7008052ef13f50be9d3f5834ba2b0d0fd9b6e1c292",
+			"target_sha256": "0ef979794f4c113779b8b8436063321cb7934968b6ba5fb2776fd0b10773010d",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -22749,17 +22864,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "pr5-20261023-r3-vi",
+					"instance": "pr5-20261023-r5-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr5-20261023-r3-vi.json",
-					"receipt_sha256": "6c9a8ad07ee9d80b56195baa371a1a3f648b690b1dea8227258f3e70e84f30f5",
-					"scope": "independent round-3 re-read of the remediation delta (in_flight + messages_since) across all 10 keys at b47b4dd8a",
-					"note": "Round 2 was clean at 1dcafbba5; remediation round 1 changed two keys, re-audited here. Copy authored by the implementing coder, audited independently."
+					"receipt": "i18n/receipts/pr5-20261023-r5-vi.json",
+					"receipt_sha256": "2b4bde174401e10aa59d370d515ce186e7587cf261ded3196d035da7fe668023",
+					"scope": "PR #1363 round-5 delta audit of vi/ui.chat.asks at 5de3195e7: new key dismiss.refused; the other 11 values verified unchanged."
 				}
 			],
 			"status": "audited",
@@ -22787,14 +22901,38 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
+					"target_sha256": "baaca7870e4ef1c067c06fe81a1d50d2c49e19d2df5a8a490b68739677108123",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "pr5-20261023-r3-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr5-20261023-r3-vi.json",
+							"receipt_sha256": "6c9a8ad07ee9d80b56195baa371a1a3f648b690b1dea8227258f3e70e84f30f5",
+							"scope": "independent round-3 re-read of the remediation delta (in_flight + messages_since) across all 10 keys at b47b4dd8a",
+							"note": "Round 2 was clean at 1dcafbba5; remediation round 1 changed two keys, re-audited here. Copy authored by the implementing coder, audited independently."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
-			"target_sha256": "d0ecc3cc3dbbb837fda8a3ab0a84dec2f9764d29771dc5a7c44e71092b244de7",
+			"source_sha256": "c89158c597dfcf7fdab1fb7008052ef13f50be9d3f5834ba2b0d0fd9b6e1c292",
+			"target_sha256": "7b2299471ceff68cf77f6ba346981ad0240177305a82c16fe0f303444a69865a",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -22806,17 +22944,16 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "pr5-20261023-r3-zh-cn",
+					"instance": "pr5-20261023-r5-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr5-20261023-r3-zh-cn.json",
-					"receipt_sha256": "cfeb97a5d4c411658e2ce05b9d6155488fde01abb0f458ac1c57fa6bd78e2384",
-					"scope": "independent round-3 re-read of the remediation delta (in_flight + messages_since) across all 10 keys at b47b4dd8a",
-					"note": "Round 2 was clean at 1dcafbba5; remediation round 1 changed two keys, re-audited here. Copy authored by the implementing coder, audited independently."
+					"receipt": "i18n/receipts/pr5-20261023-r5-zh-cn.json",
+					"receipt_sha256": "3cd5213be64f712314db5e49176f7a5be3eb7ac5aeb5cb2277fc03e9e1bc71ca",
+					"scope": "PR #1363 round-5 delta audit of zh-CN/ui.chat.asks at 5de3195e7: new key dismiss.refused; the other 11 values verified unchanged."
 				}
 			],
 			"status": "audited",
@@ -22841,6 +22978,30 @@
 							"receipt_sha256": "c358b1f1f2c715b0f28cc4e8b10d48af04774ec1be7227dd954ba410cf723add",
 							"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
 							"note": "Round 1 raised one MAJOR (moot note addressed the operator) and further findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
+					"target_sha256": "d0ecc3cc3dbbb837fda8a3ab0a84dec2f9764d29771dc5a7c44e71092b244de7",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "pr5-20261023-r3-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr5-20261023-r3-zh-cn.json",
+							"receipt_sha256": "cfeb97a5d4c411658e2ce05b9d6155488fde01abb0f458ac1c57fa6bd78e2384",
+							"scope": "independent round-3 re-read of the remediation delta (in_flight + messages_since) across all 10 keys at b47b4dd8a",
+							"note": "Round 2 was clean at 1dcafbba5; remediation round 1 changed two keys, re-audited here. Copy authored by the implementing coder, audited independently."
 						}
 					],
 					"status": "audited"
