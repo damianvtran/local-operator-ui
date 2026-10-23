@@ -620,7 +620,12 @@ test("an in-flight failure after the dialog is gone is raised as a toast", async
  * so they run without a DOM at all.
  */
 /** Mount the real rename picker; its owner unmounts it when it closes. */
-const mountRename = async (context, answer, name = "New name") => {
+const mountRename = async (
+	context,
+	answer,
+	name = "New name",
+	strict = false,
+) => {
 	document.body.innerHTML = "";
 	toasts.length = 0;
 	errors.length = 0;
@@ -656,7 +661,12 @@ const mountRename = async (context, answer, name = "New name") => {
 				})
 			: null;
 	};
-	await act(async () => root.render(React.createElement(Host)));
+	await act(async () => {
+		const tree = React.createElement(Host);
+		root.render(
+			strict ? React.createElement(React.StrictMode, null, tree) : tree,
+		);
+	});
 	const input = document.querySelector('input:not([aria-hidden="true"])');
 	assert.ok(input);
 	assert.equal(
@@ -710,9 +720,41 @@ for (const enter of [false, true]) {
 	});
 }
 
+/*
+ * AND THE RE-ARM SURVIVES StrictMode (agent review round 1, R1-4), which is the
+ * reason the latch is armed at setup rather than only closed at unmount:
+ * StrictMode's development mount/unmount/mount runs this effect's cleanup and
+ * then its setup on the same instance, so a one-way latch leaves the dialog open
+ * forever on a dev build - while every mount outside StrictMode, this file's
+ * included until now, stayed green. `b760ac5c41` argued that in its message and
+ * carried no test; this pins it.
+ */
+test("a StrictMode remount still lets a successful rename close its dialog", async (context) => {
+	const run = await mountRename(
+		context,
+		async () => ({
+			result: { kind: "notice", style: "info", text: "renamed to New name" },
+		}),
+		"New name",
+		true,
+	);
+	await run.submit();
+	assert.equal(run.requests.length, 1);
+	assert.equal(run.closed(), 1, "the dialog closes on a dev-build mount too");
+	assert.equal(document.querySelector('[role="dialog"]') === null, true);
+	assert.deepEqual(toasts, ["renamed to New name"]);
+});
+
 for (const outcome of [
 	{ kind: "error", style: "error", text: "rename refused" },
 	{ kind: "notice", style: "error", text: "rename refused" },
+	/*
+	 * The refusal a rename actually meets: `_rename_slash` answers both of its
+	 * refusals as `notice` + `warning` and never as `error` (serving.py:8267,
+	 * :8280), so folding `warning` into success would otherwise keep these tests
+	 * green (agent review round 1, R1-2).
+	 */
+	{ kind: "notice", style: "warning", text: "session is still starting…" },
 	{ kind: "native_action", destination: "session.rename" },
 ]) {
 	test(`a rename ${outcome.kind}/${outcome.style ?? "input"} response keeps the dialog open`, async (context) => {
@@ -892,6 +934,103 @@ test("a late rename receipt leaves a picker opened after its dismissal up", asyn
 		toasts,
 		["renamed to New name"],
 		"and it still lands - the receipt survives the dialog that carried it",
+	);
+});
+
+/*
+ * AND A NON-SUCCESS THAT LANDS AFTER THE DISMISSAL MUST SPEAK SOMEWHERE
+ * (agent review round 1, R1-1). The refusal strip is inside the dialog, and the
+ * busy-state `Close` dismisses the dialog without cancelling the command - so a
+ * refusal that lands afterwards has no carrier at all unless the submit raises
+ * it as a toast. The refusal a rename actually meets is `notice` + `warning`
+ * ("session is still starting…", `serving.py:8280`), which is the case pinned
+ * here: before the fix it left `toasts === []`, `errors === []`, and the one
+ * sentence saying the name was not stored in no DOM node.
+ */
+test("a warning refusal that lands after dismissal is raised as an error toast", async (context) => {
+	document.body.innerHTML = "";
+	toasts.length = 0;
+	errors.length = 0;
+	const requests = [];
+	let finish = null;
+	nextAnswer = (request) => {
+		requests.push(request);
+		assert.equal(request.op, "sessions.command");
+		assert.equal(request.command, "rename");
+		assert.equal(request.args, "New name");
+		return new Promise((resolve) => {
+			finish = () =>
+				resolve({
+					result: {
+						kind: "notice",
+						style: "warning",
+						text: "session is still starting…",
+					},
+				});
+		});
+	};
+
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	context.after(async () => {
+		await act(async () => root.unmount());
+	});
+	const Host = () => {
+		const [open, setOpen] = React.useState(true);
+		return open
+			? React.createElement(RenamePicker, {
+					sessionId: "session-1",
+					action: { args: "", data: {} },
+					canonical: { frontend: { conversation_title: "Old name" } },
+					onClose: () => setOpen(false),
+				})
+			: null;
+	};
+	await act(async () => root.render(React.createElement(Host)));
+	const input = document.querySelector('input:not([aria-hidden="true"])');
+	assert.ok(input);
+	assert.equal(
+		input.value,
+		"Old name",
+		"edit the rename field, not the host search",
+	);
+	const setter = Object.getOwnPropertyDescriptor(
+		DOM.window.HTMLInputElement.prototype,
+		"value",
+	).set;
+	await act(async () => {
+		setter.call(input, "New name");
+		input.dispatchEvent(new DOM.window.Event("input", { bubbles: true }));
+	});
+	await act(async () => {
+		buttonByText("Rename").click();
+	});
+	assert.equal(requests.length, 1, "the command has reached the transport");
+	assert.ok(finish, "and its answer has not landed yet");
+	await act(async () => {
+		buttonByText("Close").click();
+	});
+	assert.equal(
+		document.querySelector('[role="dialog"]') === null,
+		true,
+		"the dismissed dialog is really gone",
+	);
+	await act(async () => {
+		finish();
+		await Promise.resolve();
+		await Promise.resolve();
+	});
+	assert.deepEqual(
+		errors,
+		["session is still starting…"],
+		"the refusal sentence is said where the reader still is",
+	);
+	assert.deepEqual(toasts, [], "and no success is claimed");
+	assert.equal(
+		document.querySelector('[role="dialog"]') === null,
+		true,
+		"and nothing re-opened a dialog to carry it",
 	);
 });
 
