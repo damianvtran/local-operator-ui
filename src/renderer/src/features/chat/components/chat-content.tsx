@@ -79,6 +79,7 @@ import { settleQueuedAdoption } from "../aside";
 import { gateIsSecret } from "../ask-answer";
 import type {
 	AskAnswerAttempt,
+	AskDismissReason,
 	AskDraft,
 	AskOutcome,
 	AskScope,
@@ -575,6 +576,15 @@ type ChatContentProps = {
 		 * §10 rules out.
 		 */
 		onReviseAsk?: (askId: string, answers: Record<string, string[]>) => void;
+		/**
+		 * PUT AN OPEN ASK AWAY without answering it (harness PR #2833, SA-D5).
+		 *
+		 * Raised to `SessionPanel` beside its three siblings for their reason: the
+		 * shared lock and the refusal surface live there. ABSENT where the backend
+		 * does not advertise `features.ask_dismiss` — the page gates it, and the panel
+		 * then draws no button.
+		 */
+		onDismissAsk?: (askId: string, reason: AskDismissReason) => void;
 		/**
 		 * What `SessionPanel` knows about each queued ask it just answered, keyed by
 		 * ask id: the sentence the owner refused with, or `null` while it is live - and,
@@ -3265,6 +3275,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onAnswer={canonical?.onAnswerAsk}
 								onDecline={canonical?.onDeclineAsk}
 								onRevise={canonical?.onReviseAsk}
+								onDismiss={canonical?.onDismissAsk}
 								answering={Boolean(canonical?.admitting)}
 								outcomes={canonical?.askOutcomes}
 								drafts={canonical?.askDrafts}
