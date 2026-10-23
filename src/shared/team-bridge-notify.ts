@@ -1,3 +1,6 @@
+/// <reference lib="es2022.intl" />
+// Electron 44 and the renderer both provide Intl.Segmenter; import only its
+// standard declarations rather than widening the main project's ES target.
 /**
  * The narrow contract between the renderer's Team Bridge watcher and main.
  *
@@ -7,11 +10,16 @@
  * conversation metadata it already holds, and main must not trust either
  * string just because a preload sent it.
  *
- * NO BODY EVER CROSSES THIS CHANNEL. The payload carries a conversation id, a
- * tenant id used to open the right organization, the two display strings the
- * server already exposed (a conversation name, an organization name and a
- * sender label), and the sequence number the banner is about. Nothing here is
- * persisted except that sequence number (`team-bridge-notify-store.ts`).
+ * A MESSAGE PREVIEW MAY CROSS THIS CHANNEL, AND NOTHING KEEPS IT. The payload
+ * carries a conversation id, a tenant id used to open the right organization,
+ * the display strings (sender, place, and a short single-line preview of the
+ * newest message the signed-in HUMAN member was entitled to read through the
+ * history route), and the sequence number the banner is about. Main hands the
+ * strings to the native Notification (retained for its click lifetime); our
+ * routing closures keep only IDs, not this preview-bearing request. Nothing
+ * here is persisted except that sequence number (`team-bridge-notify-store.ts`),
+ * and no field is ever logged. The bridge's no-body-cache rule is about the server and the logs;
+ * Notification Center holding the banner the person asked for is the feature.
  *
  * WHY VALIDATE IN A SHARED MODULE. Main is the security boundary, but the
  * renderer and the tests must agree about what a "valid" payload is and what
@@ -28,8 +36,18 @@
  */
 export const TEAM_BRIDGE_NOTIFY_MAX_TITLE = 320;
 
-/** Longest banner body. The composed sentence is short by construction. */
-export const TEAM_BRIDGE_NOTIFY_MAX_BODY = 200;
+/**
+ * Longest banner body, in code units.
+ *
+ * The preview is bounded at 140 CODE POINTS (`team-bridge-banner-format.ts`),
+ * and an emoji or CJK-supplementary preview is two code units per point, so
+ * this has to cover 280 plus the "N new messages: " lead rather than the 140
+ * a Latin preview would need.
+ */
+export const TEAM_BRIDGE_NOTIFY_MAX_BODY = 360;
+
+/** Longest subtitle: a channel or group name (128) and an organization. */
+export const TEAM_BRIDGE_NOTIFY_MAX_SUBTITLE = 320;
 
 /**
  * Sequence numbers are non-negative integers. `Number.isSafeInteger` is what
@@ -42,36 +60,83 @@ const MAX_SEQ = Number.MAX_SAFE_INTEGER;
 const SAFE_ID = /^[A-Za-z0-9_.:-]{1,128}$/;
 
 /**
- * Characters forbidden in banner text.
- *
- * `<` and `>` are refused rather than escaped: a native notification has no
- * HTML renderer, but accepting markup-shaped text would make a future surface
- * that DOES render it inherit an injection. Control characters are refused
- * because one line is all an OS banner can show, and a newline in a title is
- * how a sender label learns to impersonate a second line. The tab is included
- * for the same reason.
+ * One unsafe-character policy for every banner line, at BOTH ends of IPC.
+ * C1 and bidi marks matter as much as newlines: a sender name can otherwise
+ * reorder its own title or impersonate the place line. Angle brackets are not
+ * markup on the native surface, but refusing them keeps future HTML consumers
+ * from inheriting markup-shaped text. ZWJ/variation selectors stay: they are
+ * necessary parts of emoji, not directional controls.
  */
-/**
- * Whether the text contains a character a one-line native banner must not
- * carry.
- *
- * A code-point loop rather than a regex: the forbidden set is exactly "markup
- * delimiters and control characters", and a loop states that without the
- * escaping a control-character regex needs in source.
- */
+function unsafeBannerCharacter(character: string): boolean {
+	const code = character.codePointAt(0) ?? 0;
+	return (
+		character === "<" ||
+		character === ">" ||
+		code < 0x20 ||
+		(code >= 0x7f && code <= 0x9f) ||
+		code === 0x061c ||
+		code === 0x200e ||
+		code === 0x200f ||
+		(code >= 0x202a && code <= 0x202e) ||
+		(code >= 0x2066 && code <= 0x2069) ||
+		code === 0x2028 ||
+		code === 0x2029
+	);
+}
+
 function hasUnsafeText(value: string): boolean {
-	for (const character of value) {
-		const code = character.codePointAt(0) ?? 0;
-		if (
-			character === "<" ||
-			character === ">" ||
-			code < 0x20 ||
-			code === 0x7f
-		) {
-			return true;
-		}
+	return Array.from(value).some(unsafeBannerCharacter);
+}
+
+const BANNER_WHITESPACE = /\s+/g;
+const bannerSegments = new Intl.Segmenter(undefined, {
+	granularity: "grapheme",
+});
+
+/**
+ * Keep whole graphemes within a payload budget. The preview's budget counts
+ * code points; IPC limits count UTF-16 code units. Neither may split a flag,
+ * ZWJ family or combining accent, even if that leaves a little unused space.
+ * The ellipsis is in addition to the content budget, as on the original preview.
+ */
+export function truncateTeamBridgeText(
+	text: string,
+	max: number,
+	measure: "points" | "units" = "points",
+): string {
+	let used = 0;
+	let result = "";
+	for (const { segment } of bannerSegments.segment(text)) {
+		const size =
+			measure === "points" ? Array.from(segment).length : segment.length;
+		if (used + size > max) return `${result.trimEnd()}…`;
+		result += segment;
+		used += size;
 	}
-	return false;
+	return result;
+}
+
+/**
+ * Sanitise, rather than lose, an otherwise useful banner for a hostile label.
+ * All title/place/body inputs use this before IPC; main still refuses the same
+ * unsafe set as a strict backstop. Comparisons retain their meaning using
+ * guillemets, and controls become spaces so adjacent words cannot run together.
+ * `maxUnits` INCLUDES the ellipsis and matches the shared parser's wire limit.
+ */
+export function safeTeamBridgeBannerText(
+	value: string,
+	maxUnits: number,
+): string {
+	let safe = "";
+	for (const character of value) {
+		if (character === "<") safe += "‹";
+		else if (character === ">") safe += "›";
+		else safe += unsafeBannerCharacter(character) ? " " : character;
+	}
+	const line = safe.replace(BANNER_WHITESPACE, " ").trim();
+	return line.length <= maxUnits
+		? line
+		: truncateTeamBridgeText(line, Math.max(0, maxUnits - 1), "units");
 }
 
 export type TeamBridgeNotifyRequest = {
@@ -80,12 +145,35 @@ export type TeamBridgeNotifyRequest = {
 	title: string;
 	body: string;
 	seq: number;
+	/**
+	 * Where the message was posted ("#general · Minerva"). ADDITIVE and optional:
+	 * a renderer that predates it sends none and the banner keeps two lines.
+	 * macOS renders it as the native subtitle; elsewhere main folds it into the
+	 * body, because Electron documents `subtitle` as macOS-only.
+	 */
+	subtitle?: string;
+	/**
+	 * THE THREAD HOOK. A banner about a reply names its thread root so the click
+	 * can open the thread lane. Carried through to the click target untouched;
+	 * nothing sends it until the thread lane lands.
+	 */
+	threadId?: string;
+	/**
+	 * The renderer is showing THIS conversation right now. Main still owns
+	 * quiet (only it knows real focus); this tells it that a focused window is
+	 * on this conversation, so quiet applies. A banner for a DIFFERENT
+	 * conversation is allowed through even while the window is focused, which
+	 * is Slack's rule: a person reading #general still hears about a DM.
+	 */
+	viewing?: boolean;
 };
 
 /** What a click names: the organization and the conversation to open. */
 export type TeamBridgeOpenTarget = {
 	conversationId: string;
 	tenantId: string;
+	/** See `TeamBridgeNotifyRequest.threadId`. Absent unless one was sent. */
+	threadId?: string;
 };
 
 function cleanId(value: unknown): string | null {
@@ -96,7 +184,7 @@ function cleanText(value: unknown, max: number): string | null {
 	if (typeof value !== "string") return null;
 	const trimmed = value.trim();
 	if (trimmed.length === 0 || trimmed.length > max) return null;
-	if (hasUnsafeText(trimmed)) return null;
+	if (hasUnsafeText(value)) return null;
 	return trimmed;
 }
 
@@ -118,6 +206,26 @@ export function parseTeamBridgeNotifyRequest(
 	const title = cleanText(input.title, TEAM_BRIDGE_NOTIFY_MAX_TITLE);
 	const body = cleanText(input.body, TEAM_BRIDGE_NOTIFY_MAX_BODY);
 	const seq = input.seq;
+	/*
+	 * The additive fields are refused WHOLE when present and malformed, the
+	 * same rule as the required ones: a subtitle that failed the text check is
+	 * a caller bug, and silently dropping it would hide that bug behind a
+	 * banner that looks almost right.
+	 */
+	const subtitle =
+		input.subtitle === undefined
+			? undefined
+			: cleanText(input.subtitle, TEAM_BRIDGE_NOTIFY_MAX_SUBTITLE);
+	const threadId =
+		input.threadId === undefined ? undefined : cleanId(input.threadId);
+	const viewing = input.viewing;
+	if (
+		subtitle === null ||
+		threadId === null ||
+		(viewing !== undefined && typeof viewing !== "boolean")
+	) {
+		return null;
+	}
 	if (
 		conversationId === null ||
 		tenantId === null ||
@@ -130,7 +238,16 @@ export function parseTeamBridgeNotifyRequest(
 	) {
 		return null;
 	}
-	return { conversationId, tenantId, title, body, seq };
+	return {
+		conversationId,
+		tenantId,
+		title,
+		body,
+		seq,
+		...(subtitle === undefined ? {} : { subtitle }),
+		...(threadId === undefined ? {} : { threadId }),
+		...(viewing === undefined ? {} : { viewing }),
+	};
 }
 
 /**
@@ -146,6 +263,8 @@ export function teamBridgeOpenPath(target: TeamBridgeOpenTarget): string {
 	const query = new URLSearchParams({
 		tenant: target.tenantId,
 		conversation: target.conversationId,
+		// The thread lane's hook: the page ignores an unknown parameter today.
+		...(target.threadId ? { thread: target.threadId } : {}),
 	});
 	return `/team-bridge?${query.toString()}`;
 }

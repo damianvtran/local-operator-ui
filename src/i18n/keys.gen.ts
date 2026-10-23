@@ -5136,11 +5136,15 @@ export type MessageParams = {
 	"ui.teamBridge.notify.all": undefined;
 	"ui.teamBridge.notify.body": { sender: string };
 	"ui.teamBridge.notify.body_fallback": undefined;
+	"ui.teamBridge.notify.channel": { channel: string };
+	"ui.teamBridge.notify.count": { count: number };
+	"ui.teamBridge.notify.count_preview": { count: number; preview: string };
 	"ui.teamBridge.notify.error": undefined;
 	"ui.teamBridge.notify.label": undefined;
 	"ui.teamBridge.notify.mention": undefined;
 	"ui.teamBridge.notify.mute": undefined;
 	"ui.teamBridge.notify.muted": undefined;
+	"ui.teamBridge.notify.subtitle": { place: string; organization: string };
 	"ui.teamBridge.notify.title": { conversation: string; organization: string };
 	"ui.teamBridge.page.title": undefined;
 	"ui.teamBridge.people.all_scope": undefined;

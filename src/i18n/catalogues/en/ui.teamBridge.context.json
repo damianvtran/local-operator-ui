@@ -390,6 +390,44 @@
 		"placeholders": {},
 		"note": "The honest sentence when the server does not expose a sender label. Do not invent a sender name."
 	},
+	"ui.teamBridge.notify.channel": {
+		"role": "OS notification subtitle fragment naming a channel",
+		"tone": "neutral",
+		"length": "The channel name with its prefix.",
+		"placeholders": {
+			"channel": "the channel's own name, as the rail shows it"
+		},
+		"note": "The '#' prefix is how chat apps mark a channel and matches the rail's channel glyph. Keep the prefix unless the target locale has a different established channel marker; never translate the channel name."
+	},
+	"ui.teamBridge.notify.subtitle": {
+		"role": "OS notification subtitle (macOS) / body lead (Windows, Linux)",
+		"tone": "neutral",
+		"length": "Two short nouns joined by a separator.",
+		"placeholders": {
+			"place": "where the message was posted: a '#channel', 'Direct message', or a group name",
+			"organization": "the organization the conversation belongs to"
+		},
+		"note": "Names where the message is. Keep both parts and the order place-then-organization: two same-named channels in different organizations are the case this line disambiguates. The middle dot is a separator, not punctuation; keep it unless the locale has a conventional equivalent."
+	},
+	"ui.teamBridge.notify.count": {
+		"role": "OS notification body when several messages arrived and no preview could be read",
+		"tone": "neutral",
+		"length": "2-4 words.",
+		"placeholders": {
+			"count": "how many unread messages the conversation now has, always 2 or more in practice"
+		},
+		"note": "Replaces the earlier banner for the same conversation, so it summarises the burst. Do not imply who sent them."
+	},
+	"ui.teamBridge.notify.count_preview": {
+		"role": "OS notification body when several messages arrived, followed by the newest one's text",
+		"tone": "neutral",
+		"length": "A short count, a colon, then the quoted preview.",
+		"placeholders": {
+			"count": "how many unread messages the conversation now has, always 2 or more in practice",
+			"preview": "the newest message's text, already shortened to one line; insert it verbatim"
+		},
+		"note": "The preview is the sender's own words: never translate or reword it, and keep it last so the OS truncates the preview rather than the count."
+	},
 	"ui.teamBridge.people.title": {
 		"role": "rail section heading",
 		"tone": "neutral, sentence-case noun",
