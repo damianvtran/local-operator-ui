@@ -94,6 +94,29 @@ scene. `--window-size WxH` sets the window (default 1380x900, the app's own
 default). The scratch tree is kept and its path printed; `--clean` removes it,
 `--out <dir>` puts frames somewhere you choose.
 
+**`--scene attach` presses the composer's paperclip and proves what it stages
+(`--attach <absolute-path>`, repeatable).** The attach path is `handleAttachFile`
+-> `show-open-dialog` -> `addAttachment`; the one step a headless CDP scene cannot
+perform is the native picker's answer, so an armed launch that was given
+`--attach` has main return those queued paths from `show-open-dialog`
+(`src/main/dev-driver-attach.ts`) and **only that answer is replaced** — the
+press, the IPC round trip, the store write and the rendered chips are the app's
+own. The scene opens a conversation on its own daemon, presses
+`[data-tour-tag="chat-input-attach-file-button"]`, and asserts: the persisted
+`conversation-input-store` row holds exactly the paths given, in order; one
+`[data-attachment-id]` chip is on screen per path; the row carries the pending
+caption; and the app log names the queue-answered dialog. It does not prove that
+the OS picker opens or that a person can choose a file through it — say so beside
+the frame rather than implying it. `--attach` is refused for a relative path, and
+the queue is read only when the dev-driver bridge is armed.
+
+```bash
+pnpm build
+node scripts/renderer-driver.mjs --scene attach \
+  --backend http://127.0.0.1:<port> --attach /abs/path/report.pdf \
+  --seed-onboarding-complete --out /tmp/frames
+```
+
 **`--scene authoring-refresh` is the one scene whose write comes from OUTSIDE the
 app.** Its subject is an agent creating a team or a profile on the backend, so
 the write is an HTTP request from this script's own Node process to the

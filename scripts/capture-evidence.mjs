@@ -5582,6 +5582,19 @@ export const STORIES = [
 	["chat-message-input--pending-send-chip-row-small-view", 440, 400],
 	["chat-message-input--pending-send-payload-small-view", 440, 400],
 	["chat-message-input--pending-send-small-view", 440, 300],
+	/* THE FILE CARDS THE CONTRACT ADDED (attachment contract v1 §5/§6): a PDF chip
+	   and a mixed image+PDF row, plus the sent history card in its two existence
+	   states. 400 tall, like the chip-row frames beside them: the file card is
+	   100px like the tile, and `pending_caption` adds one meta line under the row.
+	   `sent-file-card` renders the leaf at 1024x240, centred: it is a row, not a
+	   composer, and the frames are read against the pending chip above. */
+	["chat-message-input--pending-send-pdf", 1024, 400],
+	["chat-message-input--pending-send-pdf-remove-focus", 1024, 400],
+	["chat-message-input--pending-send-mixed", 1024, 400],
+	["chat-sent-file-card--sent-file", 1024, 240],
+	["chat-sent-file-card--moved-or-deleted", 1024, 240],
+	["chat-canonical-user-card-measure--file-attachment", 1024, 620],
+
 	/* THE NOTICE A FAILED SEND LEAVES - the six states the operator's own screen
 	   was one of. Their frames answer the report directly: the message and its
 	   file are IN the composer, and the sentence beside them is one line with at
