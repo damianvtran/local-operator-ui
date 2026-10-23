@@ -932,7 +932,7 @@ export const ToolRow = ({
 					// The live/settled difference is the working line and the missing
 					// duration (§E7), not a dimmer summary.
 					/*
-					 * TWO WHOLE STRINGS, not a base plus a token (UX round 2 on #1112, U4):
+					 * TWO WHOLE STRINGS, not a base plus a token (#1363 CI, desktop shard 2/3):
 					 * the default must stay BYTE-IDENTICAL to what it was before this prop
 					 * existed - `tool-row.test.mjs` pins the rendered `min-w-0 flex-1
 					 * truncate` order, and a conditional token appended after the base
