@@ -43,30 +43,35 @@ is the store's re-minted request id.
 
 | reading | base tree (`--expect broken`) | this branch (`--expect fresh`) |
 | --- | --- | --- |
-| the notice in the document, ever | **painted at 42 ms** | **never** (`noticeAt: null`) |
-| the composer refused (`readOnly`/`disabled`), ever | **refused at 42 ms** | **never** (`refusedAt: null`) |
-| the retire (row's request id changes), first sample | never (the id stays) | 49 ms |
+| the notice in the document, ever | **painted at 66 ms** | **never** (`noticeAt: null`) |
+| the composer refused (`readOnly`/`disabled`), ever | **refused at 66 ms** | **never** (`refusedAt: null`) |
+| the retire (row's request id changes), first sample | never (the id stays) | 53 ms |
 | the pane usable (notice absent, box editable), first sample | 0 ms (before the 404 lands) | 0 ms |
 | samples that differed, including mutation-time samples | 3 | 3 |
 
 So on this branch the reader never sees a notice, a banner or a refused box in
 the window; the pane that was usable before the 404 is the same pane after it.
 `after-first.png` (taken on the first observation of the answer) and
-`after-new-chat.png` (settled, 600 ms later) are the same screen; their bytes
-differ only by the caret's blink phase, which is why the assertion is the state
-(the header, the notice's absence, the box's value and editability) and the byte
-comparison is reported beside it.
+`after-new-chat.png` (settled, 600 ms later) are the same screen with no layout
+change: the composer's boundary is the same rect (physical 778,1540-2414,1776,
+which is the design review's own measurement) and the typed `C`'s ink is
+identical. The bytes differ in transient paint only - the focus ring on that
+boundary, the send control's ink, and the starter-prompt chips' mount
+transition; a connected-components diff of the pair confines every differing
+pixel to those three (28,688 px, 0.58% of the frame) - which is why the
+assertion is the state (the header, the notice's absence, the box's value and
+editability) and the byte comparison is reported beside it.
 
 ### A send raced into that window (`--expect immediate`)
 
 `immediate-after-send.png`. The words and Enter go in without waiting for the
-mint or the 404. In this run the retire's write landed at 65 ms and the typed
-text at 76 ms — the send followed the retire; the daemon's log shows the dead
-bridge's `404`, the create's `200`, and the new conversation's stream `200`.
-Enter → rendered bubble **3 ms**, delivered (`[data-undelivered]` absent),
-notice never painted, box never refused, conversation `3402f49950e6`. The scene
-reports the ordering it observed rather than asserting which side of the race
-must win.
+mint or the 404. In this run the typed text landed at 54 ms, the box cleared on
+the send at 94 ms, and the retire's write at 99 ms — the send preceded the
+retire; the daemon's log shows the dead bridge's `404`, the create's `200`, and
+the new conversation's stream `200`. Enter → rendered bubble **17 ms**,
+delivered (`[data-undelivered]` absent), notice never painted, box never
+refused, conversation `1c75bcdfb71e`. The scene reports the ordering it observed
+rather than asserting which side of the race must win.
 
 ## The missing notice's way out (`--expect carry`)
 
@@ -75,10 +80,10 @@ persisted row a user can genuinely hold) has the words `carry-me` and a chip.
 
 | frame | reading |
 | --- | --- |
-| `carry-notice.png` | the notice painted within one poll (0 ms), detail *It was deleted, or it belongs to a machine this app is not connected to.*, action *Start a new chat*; the composer holds `carry-me` and the chip, `readOnly: true`; `activeSessionId` is the missing id |
-| `carry-new-chat.png` | the notice's own press, **keyboard-activated** (focus on the button, Space through CDP, activated in 11 ms — no pointer fallback needed): route `/chat`, no notice, `activeDraftKey` a fresh `draft:<uuid>`, `activeSessionId: null`; composer `carry-me`, editable, focused, caret 8; the chip is in the box (1) and in the new row's `attachments`; the dead identity's row is gone |
-| `carry-reload.png` | `Page.reload`: route `/chat`, no notice, the same draft key, `carry-me` visible, the chip still there — the Q1 fix |
-| `carry-sent.png` | continued typing in the carried box (`carry-me and then some`), the chip removed through its own *Remove attachment* control, Enter: the message lands once (one occurrence in the transcript), delivered, composer empty, conversation `857127ff279b`. The `session mcp unavailable` lines above the bubble are this fixture's copied MCP config, not a finding of this change |
+| `carry-notice.png` | the notice painted within one poll (0 ms), detail *It was deleted, or it belongs to a machine this app is not connected to.*, action *Start a new chat*; route `/chat/abcdef123456`; the composer holds `carry-me` and the chip, `readOnly: true`; `activeSessionId` is the missing id |
+| `carry-new-chat.png` | the notice's own press, **keyboard-activated** (focus on the button, Space through CDP, activated in 13 ms — no pointer fallback needed): route `/chat`, no notice, `activeDraftKey` a fresh `draft:<uuid>`, `activeSessionId: null`; composer `carry-me`, editable, focused, caret 8; the chip is in the box (1) and in the new row's `attachments`; the dead identity's row is gone |
+| `carry-reload.png` | `Page.reload`: route `/chat`, no notice, the same draft key, `carry-me` visible, the chip still there — the Q1 fix. With `onStartNewChat?.()` deleted from the same tree, this frame is the dead address with the notice back and an empty box (the round-2 mutation proof) |
+| `carry-sent.png` | continued typing in the carried box (`carry-me and then some`), the chip removed through its own *Remove attachment* control, Enter: the message lands once (one occurrence in the transcript), delivered, composer empty, conversation `e16269a32f27`. The `session mcp unavailable` lines above the bubble are this fixture's copied MCP config, not a finding of this change |
 
 ## Measured numbers (final head)
 
@@ -88,10 +93,37 @@ from each leg's own serve log, one precondition `curl` probe per leg included:
 
 | leg | the id the pane streamed | `GET …/<D>/events` | Enter → bubble |
 | --- | --- | --- | --- |
-| before (base tree) | `328931ed0b8d` | 2 lines, both 404 (1 probe + 1 app bridge) | no bubble in 45 s |
-| fresh | `29e87f628acf` | 2 lines, both 404 (same split) + `200` for the created `61acd566e15d` | **46 ms** |
-| immediate | `debfa1b4fd2a` | 2 lines, both 404 + `200` for `3402f49950e6` | **3 ms** |
-| carry | — (no draft receipt) | `abcdef123456` → 404 (the genuine missing id) | 1577 ms (carry flow) |
+| before (base tree) | `4267814924d9` | 2 lines, both 404 (1 probe + 1 app bridge) | no bubble in 45 s |
+| fresh | `cbe90f8d7468` | 2 lines, both 404 (same split) + `200` for the created `9976827edcb3` | **52 ms** |
+| immediate | `3f9f5235675e` | 2 lines, both 404 + `200` for `1c75bcdfb71e` | **17 ms** |
+| carry | — (no draft receipt; the row's replay `75a72c566f75` is probed and 404s) | `abcdef123456` → 404 once (the genuine missing id, taken as the route) | 1585 ms (carry flow) |
+
+## Frames and provenance
+
+All frames were captured at 1380x900 DPR 2 in `localOperatorDark`, headless, one
+isolated daemon per leg, and read back by eye. The pair ran on this head
+(`f024b78d50`) and on a control worktree at `origin/main` (`39164868fc`) with
+the scene module byte-identical (`cmp` clean); the carry leg took the dead
+conversation's own route (`/chat/abcdef123456`) before the press.
+
+sha256 (a settled frame can be byte-identical across runs because the draft's
+key and the route are not painted; the state they were captured from is in the
+tables above):
+
+| frame | sha256 |
+| --- | --- |
+| `before.png` | `72b5b0144cae2d46984a60f1438b4666f13467ef914b95b59c375c8618ffabd5` |
+| `after-first.png` | `efb3890e7e1d112c21b56d0fb82dde36b91edca390abf82b1012fece9367b9e5` |
+| `after-new-chat.png` | `a33c0c9512adc10bd4b3a4b9ec112c17b9ab6320c146c17baac2fa8408b73273` |
+| `carry-notice.png` | `3cafa2d37133314ae9221da2658ad100a66ddfaee681f98526e4e5d574df6cba` |
+| `carry-new-chat.png` | `a3d49e784268ff60cee1b5ba18b429de45b2c51350ad48b40bf8b64145e3815e` |
+| `carry-reload.png` | `8d5317bd95cb5f4485e5738576dab5523fff7ca1ae86c3da25e6542ba08d7873` |
+| `carry-sent.png` | `da651a3ef49f4bbf1b16b23937c0bc6e89ef6ef320e3697cbf436317491e3e52` |
+
+`before`, `after-new-chat`, `carry-notice`, `carry-new-chat` and `carry-reload`
+are byte-identical to the same frames taken on the previous head
+(`039ae756cf`): the commit between them changes the press's route handling and
+the adoption order, neither of which the settled carry screen paints.
 
 ## Reproducing
 

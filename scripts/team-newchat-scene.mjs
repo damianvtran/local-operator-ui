@@ -856,11 +856,23 @@ async function runCarry({
 		`Boolean(document.querySelector(${JSON.stringify(NOTICE)}))`,
 		30_000,
 	);
+	/*
+	 * THE DEAD ADDRESS, TAKEN AS AN ADDRESS (agent review round 2, R2-1). The seed
+	 * alone left the route at `/chat`, so a route assertion after the press could
+	 * not fail: the pane shows the missing conversation because the STORE names
+	 * it, not because the URL does. Standing the leg at the id's own route is what
+	 * makes the press's `/chat` and the reload's emptiness discriminating - the
+	 * unpatched press leaves the address here, and the reload then re-opens the
+	 * dead id instead of the staged draft.
+	 */
+	const deadRoute = `/chat/${MISSING_ID}`;
+	const beforePress = await verb(cdp, "navigate", deadRoute);
 	const before = await readScreen(cdp);
 	note(
 		"the genuinely missing conversation",
 		JSON.stringify({
 			noticePaintedAtMs: missing.waitedMs,
+			route: beforePress.route,
 			notice: before.notice,
 			detail: before.noticeDetail,
 			action: before.noticeAction,
@@ -870,6 +882,11 @@ async function runCarry({
 		}),
 	);
 	await capture(cdp, "team-newchat-carry-notice");
+	check(
+		"the leg stands at the dead conversation's own address before the press",
+		beforePress.route === deadRoute,
+		`route: ${JSON.stringify(beforePress.route)} expected ${JSON.stringify(deadRoute)}`,
+	);
 	check(
 		"the missing conversation says so, with the one action",
 		before.notice !== null &&

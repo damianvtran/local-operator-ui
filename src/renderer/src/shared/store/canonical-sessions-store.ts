@@ -7454,13 +7454,27 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * selected conversation.
 				 */
 				set({ activeSessionId: null, validatingSessionId: null });
-				// The whole box, not only its words (R1-1): `returnInFlight` folds text,
-				// chips and quotes into the target and deletes the source row, which is
-				// both the move and the old key's clear. The composer adopts the returned
-				// text on mount (`pendingText`), so the words are in the box on the new
-				// pane's first frame.
-				if (from)
-					useConversationInputStore.getState().returnInFlight(from, key);
+				if (from) {
+					/*
+					 * THE WORDS THAT HAVE NOT BEEN ADOPTED YET GO FIRST (agent review round 2,
+					 * R2-2). `returnInFlight` folds `currentInput` and then DELETES the source
+					 * row; it never reads `pendingText`. A row whose returned payload landed
+					 * in the same turn as the 404 - or whose adoption a masked capture
+					 * skipped - therefore has its words nowhere else, and the move would
+					 * discard them. The retired-draft path adopts before it moves for the same
+					 * reason (`restoreRetiredDraftPayload`); this is that order.
+					 *
+					 * A row that STILL holds `pendingText` after the adopt did not take the
+					 * text (no row to adopt into, or a capture in progress), so it is left
+					 * where it is rather than deleted under the words: the rule is that a
+					 * draft follows the reader or stays put, never vanishes.
+					 */
+					useConversationInputStore.getState().adoptReturnedText(from);
+					const source =
+						useConversationInputStore.getState().inputByConversation[from];
+					if (source?.pendingText === undefined)
+						useConversationInputStore.getState().returnInFlight(from, key);
+				}
 				return key;
 			},
 			updateDraft: (key, patch) =>
