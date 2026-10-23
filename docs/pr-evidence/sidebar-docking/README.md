@@ -18,30 +18,36 @@ merely to fit a narrow window.
 
 - Base application: `d406006bdfa43d73fe23d82089be4de24cae3ea4` (`origin/main`
   when the branch was cut), plus only the same driver/scene bytes used on head.
-- Head application: that base plus the complete `fix/1077-sidebar-docking` diff.
-  `after-build.txt` records the modified files before and after the final build.
-- Both runs used the repository-pinned Electron 44.3.0 and a freshly built app.
-  `pnpm build` immediately preceded each accepted driver run and exited 0.
+- Merged-head application: `b1b252d846dc2202054dc7819ba5a97727721a3e`, the
+  merge of `aeb3574aa68ae79a8f11b60e9bf3c2bea29e4c5e` and `origin/main`
+  `2eaf19928b2b7b26c67b690fbe2a013308584d63`. `after-build.txt` records the
+  clean tree, application/driver/scene hashes and build. The subsequent
+  evidence-only commit changes no application, driver or scene bytes.
+- The base, original-head and merged-head runs used repository-pinned Electron
+  44.3.0 and freshly built apps. `pnpm build` immediately preceded each accepted
+  driver run and exited 0.
 - Base bundle inspection finds `data-sidebar-sheet` in
-  `out/renderer/assets/conversation-input-sync-BTDJOSN7.js`; the final head
+  `out/renderer/assets/conversation-input-sync-BTDJOSN7.js`; the merged-head
   bundle has no match in any renderer JS. This is in addition to the behavioral
   negative control, not a substitute for it.
-- The daemon was a separate `local-operator serve` on `127.0.0.1:8080`, with
+- The base/original-head daemon used `127.0.0.1:8080`; the merged-head recapture
+  used a new separate `local-operator serve` on `127.0.0.1:18080`. Each used
   fresh HOME/TMPDIR/config/log roots, `hosting: test`, `model_name: mock-model`
   and a synthetic bearer. Another session owned `[::1]:8080`; it was not used or
   stopped. The operator's 1111 daemon was explicitly checked as unconnected.
 - OAuth values were synthetic build-only placeholders because the build config
   requires all four. No credential file was read and no OAuth flow was exercised.
 - The driver used a fresh headless Electron profile and its exact-process
-  teardown. Both accepted runs report no surviving app process.
+  teardown. The accepted runs report no surviving app process. After the
+  merged-head run, its daemon was reaped and port 18080 had no listener.
 
 Setup verification against the daemon's own routes:
 
 ```text
 health_status=200
-create_status=200 synthetic_session=1c2c0fd840e6
-message_status=200 response_present=True
-history_status=200 question=True mock_answer=True bytes=27446
+create_status=200 synthetic_session=20a68eacec85
+message_status=200 response_present=true
+history_status=200 question=true mock_answer=true bytes=27957
 ```
 
 ## Commands
@@ -51,12 +57,14 @@ bearer, and `$SESSION` the synthetic session above. The four required OAuth
 variables were set to synthetic placeholders in the actual build environment.
 
 ```sh
+# Base/original-head used PORT=8080; the merged-head recapture used 18080.
 # Immediately before EACH accepted base/head run:
-VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:8080 pnpm build
+PORT=18080
+VITE_LOCAL_OPERATOR_API_URL="http://127.0.0.1:$PORT" pnpm build
 
 LOCAL_OPERATOR_DESKTOP_TOKEN="$TOKEN" \
 node scripts/renderer-driver.mjs --scene sidebar-docking \
-  --backend http://127.0.0.1:8080 \
+  --backend "http://127.0.0.1:$PORT" \
   --backend-records "$ROOT/config/run/serve" \
   --session "$SESSION" \
   --seed-onboarding-complete \
@@ -77,7 +85,7 @@ The base command exited 1 with exactly the three intended failures:
 3 CHECK(S) FAILED
 ```
 
-The final head command exited 0 with `ALL CHECKS PASSED`. Both report:
+The merged-head command exited 0 with `ALL CHECKS PASSED`. Base and head report:
 
 ```text
 renderer diagnostics: consoleEntries=0, consoleErrors=[], networkFailures=[]
@@ -88,7 +96,7 @@ renderer diagnostics: consoleEntries=0, consoleErrors=[], networkFailures=[]
 
 The complete unedited outputs are `before-run.txt` and `after-run.txt`; the full
 geometry, frame metadata, console and network records are the two `*-geometry.json`
-files. `after-build.txt` is the final head build and identity record.
+files. `after-build.txt` is the merged-head build and identity record.
 
 ## Measured layout
 
@@ -106,12 +114,17 @@ question and mock answer. Preference is shown as `collapsed / storedWidth`.
 | Collapsed resize | 800x900 | strip | 56 | 700 | 44 | true / 320 |
 | Real pointer expand | 800x900 | docked | 276 | 480 | 44 | false / 320 |
 | Wide restore | 1380x900 | docked | 320 | 1016 | 44 | false / 320 |
-| Canvas fit-yield | 1023x900 | strip | 56 | 480 | 44 | false / 320 |
+| Canvas fit-yield | 1023x900 | strip | 56 | 658 | 44 | false / 320 |
 | Canvas closed | 1023x900 | docked | 320 | 659 | 44 | false / 320 |
 
 At 800 the invariant is exact: **276 + 480 + 44 = 800**, with
 `scrollWidth=bodyScrollWidth=800`. The 276 value is only a render cap; the stored
 preference remained 320 and the wide frame restored it.
+
+At canvas fit-yield the merged-head tiling is **56 + 658 + 265 + 44 = 1023**
+(sidebar + chat + canvas + rail). The previous table's 480 was not the previous
+JSON's measurement (700); 658 is the current value read from `after-geometry.json`,
+not a carried-forward estimate.
 
 The chord uses CDP `Input.dispatchKeyEvent`; pointer controls use CDP
 `Input.dispatchMouseEvent`. The canvas is opened through the driver's existing
@@ -144,12 +157,13 @@ Head (all are populated, settled, toast-free captures):
 `after-800-expanded-light-on-white.png` is a **derived viewing aid**, not another
 capture: the raw light PNG has translucent glass pixels (alpha 150–255), and the
 composite makes them readable in viewers that show alpha against black. The raw
-light PNG's measured RGB means are 239.42 / 236.04 / 227.83; the driver verified
-DOM `localOperatorLight`, ground `#f2ede3`, and mean luma 236.2.
+light PNG's measured RGB means are 239.45 / 236.08 / 227.87; the driver verified
+DOM `localOperatorLight`, ground `#f2ede3`, and mean luma 236.3.
 
-Every produced frame was viewed. The comment-frozen final pass was re-viewed at
-1023 docked, 800 dark/light and canvas yield; consecutive-frame stability and
-palette assertions are in `after-run.txt`.
+Every produced frame was viewed. All 11 merged-head frames were inspected in a
+contact sheet; 1023 docked, 800 dark/light and canvas yield were also compared
+side by side with the previous head. Consecutive-frame stability and palette
+assertions are in `after-run.txt`.
 
 ## Automated reproduction and checks
 
@@ -163,27 +177,31 @@ legacy request produced 'overlay'
 800px stored-320 case: 'strip' !== 'docked'
 ```
 
-After the change:
+On merged head `b1b252d846dc2202054dc7819ba5a97727721a3e`:
 
 ```text
-node --test scripts/chat-sidebar-layout.test.mjs \
+node --test --test-concurrency=1 scripts/chat-sidebar-layout.test.mjs \
   scripts/chat-pane-floors.test.mjs \
   scripts/chat-sidebar-sections.test.mjs \
   scripts/right-slot-width.test.mjs
 56 tests: 56 pass / 0 fail
 
-pnpm check-types
-check-types:main and check-types:renderer passed
+pnpm exec biome check <the three changed renderer files>
+3 files lint-clean
 
 pnpm lint:scripts
-6 changed scripts lint-clean against origin/main
+6 changed scripts lint-clean against origin/main (2eaf199)
+
+pnpm check-types
+check-types:main and check-types:renderer passed
 ```
 
 ## Scoped aggregate result
 
-The final `pnpm check-changed` completed its job ledger with lint,
-changed-script lint, i18n coverage, TypeScript/release guards and the bytecode
-build passing. Its `test:desktop` leg did **not** return a test verdict: the
+The original-head `pnpm check-changed` (not rerun for this merge) completed its
+job ledger with lint, changed-script lint, i18n coverage, TypeScript/release
+guards and the bytecode build passing. Its `test:desktop` leg did **not** return
+a test verdict: the
 repository memory governor killed it (`rc=137`) at 16.2 GB owned footprint
 against the 9.0 GB process-group budget (concurrency 7). The budget was not
 raised and the run was not called green.
