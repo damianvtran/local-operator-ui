@@ -157,6 +157,10 @@ export function useBrowserChords(
 		const c = latest.current.chrome;
 		const tabId = c.state?.activeTabId;
 		if (tabId == null) return;
+		/* The start/failure page is not a page to control (Q4-3/Q5 U27): main
+		   refuses, and painting its raw sentence in the band is not a hint. The
+		   toolbar menu disables these items; the chords take the same guard. */
+		if (c.state?.navFailure != null || c.state?.url === "about:blank") return;
 		if (
 			c.state?.pageControls?.find?.tabId !== tabId &&
 			findSession.current !== tabId
@@ -208,6 +212,8 @@ export function useBrowserChords(
 				return;
 			}
 			if (projected !== null && intent.startsWith("zoom-")) {
+				if (c.state?.navFailure != null || c.state?.url === "about:blank")
+					return;
 				await c.pageControl(
 					projected,
 					intent === "zoom-in" ? "in" : intent === "zoom-out" ? "out" : "reset",

@@ -1006,7 +1006,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 				setAnnouncement(
 					t("ui.browser.browser_url_bar.address_suggestions_unavailable"),
 				);
-			} else if (suggestions.rows.length > 0) {
+			} else if (suggestions.rows.length > 0 && !suggestionsUnavailable) {
 				setAnnouncement(
 					t("ui.browser.browser_url_bar.address_suggestions_available", {
 						count: suggestions.rows.length,
@@ -1025,6 +1025,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		autocomplete.loading,
 		listNotice,
 		suggestions.rows.length,
+		suggestionsUnavailable,
 	]);
 
 	// THE FOCUS CONTRACT, ON A NONCE (S5). The row is permanently mounted, so a
@@ -1217,6 +1218,11 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					className={cn(
 						"pr-7 pl-8 focus-visible:outline-offset-1!",
 						editing ? "font-mono text-mono-sm" : "text-ellipsis",
+						/* A LONG ADDRESS MUST NOT RUN UNDER THE HINT (Q5-1): the pill
+						   reserves its own trailing run in the field's CONTENT box, so
+						   the text scrolls in the space that remains. Below the narrow
+						   breakpoint the pill is `sr-only` and needs no reservation. */
+						hintShown && !narrow && "pr-[calc(45%+1.75rem)]",
 					)}
 				/>
 				{loading && !editing && (

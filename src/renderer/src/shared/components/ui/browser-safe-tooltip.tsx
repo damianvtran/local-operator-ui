@@ -32,13 +32,13 @@ export const BrowserSafeTooltip: FC<TooltipProps> = (props) => {
 	const viewPresent = useBrowserViewPresent();
 	/* A BOOLEAN, ALWAYS (rounds 3–4, reviewer MAJOR-2): `undefined` flipped the
 	   Radix root uncontrolled↔controlled on every view transition. And a view-based
-	   label must not RESUME when the view goes away, so discard is the default
-	   here; a caller can still pass `discardWhileSuppressed={false}`. */
+	   label must not RESUME when the view goes away, so discard follows the VIEW
+	   alone; a caller's own `suppressed` (drag, rename) keeps the resume default. */
 	return (
 		<Tooltip
 			{...props}
 			suppressed={viewPresent || Boolean(props.suppressed)}
-			discardWhileSuppressed={props.discardWhileSuppressed !== false}
+			discardWhileSuppressed={viewPresent}
 		/>
 	);
 };

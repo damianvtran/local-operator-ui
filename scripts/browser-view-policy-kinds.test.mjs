@@ -78,6 +78,28 @@ dom.window.Element.prototype.getBoundingClientRect = function rect() {
 		},
 	};
 };
+/* The policy's release hold is frame-spaced. Node has no RAF (CI's Node version
+   especially), so a close that measured a reach would throw inside a layout
+   effect instead of releasing; a bounded timer is the same schedule here. */
+const probeFrames = new Set();
+globalThis.requestAnimationFrame = (callback) => {
+	const id = setTimeout(() => {
+		probeFrames.delete(id);
+		callback(performance.now());
+	}, 16);
+	probeFrames.add(id);
+	return id;
+};
+globalThis.cancelAnimationFrame = (id) => {
+	probeFrames.delete(id);
+	clearTimeout(id);
+};
+/** The probe's only timer source. Called after unmount so a failed assertion
+ *  cannot leave a frame-spaced timer (or the React root) holding the process. */
+function clearProbeFrames() {
+	for (const id of probeFrames) clearTimeout(id);
+	probeFrames.clear();
+}
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { act } = await import("react");
 after(() => {
@@ -158,60 +180,69 @@ test("a panel that mounts AFTER its always-mounted wrapper still arms the pause 
 	}));
 	const container = document.createElement("div");
 	document.body.appendChild(container);
-	const view = mod.mount(container);
-	await flush();
-	assert.equal(mod.browserViewSuppressed(), false, "nothing mounted yet");
+	let view;
+	await act(async () => {
+		view = mod.mount(container);
+	});
+	try {
+		await flush();
+		assert.equal(mod.browserViewSuppressed(), false, "nothing mounted yet");
 
-	await act(async () => view.show(true));
-	await flush();
-	assert.equal(
-		mod.browserViewSuppressed(),
-		true,
-		"the panel's arrival is measured; the id sweep names a menu",
-	);
-	assert.ok(
-		mod.suppressedOverlayIds().some((id) => id.startsWith("menu:")),
-		JSON.stringify(mod.suppressedOverlayIds()),
-	);
+		await act(async () => view.show(true));
+		await flush();
+		assert.equal(
+			mod.browserViewSuppressed(),
+			true,
+			"the panel's arrival is measured; the id sweep names a menu",
+		);
+		assert.ok(
+			mod.suppressedOverlayIds().some((id) => id.startsWith("menu:")),
+			JSON.stringify(mod.suppressedOverlayIds()),
+		);
 
-	await act(async () => view.show(false));
-	await flush(8);
-	assert.equal(mod.browserViewSuppressed(), false, "unmount releases");
-	await act(async () => view.show(true));
-	await flush(6);
-	assert.equal(
-		mod.browserViewSuppressed(),
-		true,
-		"positive control: the same panel pauses while a view is registered",
-	);
-	await act(async () => view.show(false));
-	await flush(8);
-	release();
-	await act(async () => view.show(true));
-	await flush(6);
-	assert.equal(
-		mod.browserViewSuppressed(),
-		false,
-		"negative control: no registered view, no pause, whatever the panel does",
-	);
-	// IN-BAND NEGATIVE CONTROL: registered, mounted, and not overlapping.
-	const far = mod.registerBrowserViewRect(() => ({
-		x: 2000,
-		y: 0,
-		width: 300,
-		height: 300,
-	}));
-	await act(async () => view.show(true));
-	await flush(8);
-	assert.equal(
-		mod.browserViewSuppressed(),
-		false,
-		"a mounted panel outside the view rect must not pause",
-	);
-	await act(async () => view.show(false));
-	await flush(6);
-	far();
-	await act(async () => view.unmount());
+		await act(async () => view.show(false));
+		await flush(8);
+		assert.equal(mod.browserViewSuppressed(), false, "unmount releases");
+		await act(async () => view.show(true));
+		await flush(6);
+		assert.equal(
+			mod.browserViewSuppressed(),
+			true,
+			"positive control: the same panel pauses while a view is registered",
+		);
+		await act(async () => view.show(false));
+		await flush(8);
+		release();
+		await act(async () => view.show(true));
+		await flush(6);
+		assert.equal(
+			mod.browserViewSuppressed(),
+			false,
+			"negative control: no registered view, no pause, whatever the panel does",
+		);
+		// IN-BAND NEGATIVE CONTROL: registered, mounted, and not overlapping.
+		const far = mod.registerBrowserViewRect(() => ({
+			x: 2000,
+			y: 0,
+			width: 300,
+			height: 300,
+		}));
+		await act(async () => view.show(true));
+		await flush(8);
+		assert.equal(
+			mod.browserViewSuppressed(),
+			false,
+			"a mounted panel outside the view rect must not pause",
+		);
+		await act(async () => view.show(false));
+		await flush(6);
+		far();
+	} finally {
+		await act(async () => view.unmount());
+		clearProbeFrames();
+		release();
+		container.remove();
+	}
 });
 
 test("every pause-measured primitive hands the panel MOUNT to the hook", () => {

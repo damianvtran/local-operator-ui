@@ -228,6 +228,11 @@ test("choosing Approvals opens the dock and focuses its heading after the menu c
 		document.querySelector('[role="tooltip"]'),
 		"a fresh focus later still opens the label",
 	);
+	/* Drain the tooltip before unmount: Radix's delay/auto-update timers are
+	   global, not window-bound, and a live one can keep the test process alive
+	   after its results are printed. */
+	await act(async () => trigger.blur());
+	await flush(30);
 	await cleanup();
 });
 

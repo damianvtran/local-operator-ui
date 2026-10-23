@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { test } from "node:test";
 import { build } from "esbuild";
@@ -1418,4 +1419,20 @@ test("page-open then chrome-repeat and toolbar repeat preserve first origin and 
 		await act(async () => r.root.unmount());
 		r.finish();
 	}
+});
+
+test("S5: page chords take the same own-state guard as the disabled menu", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/browser/hooks/use-browser-chords.ts",
+		"utf8",
+	);
+	assert.equal(
+		(
+			source.match(
+				/c\.state\?\.navFailure != null \|\| c\.state\?\.url === "about:blank"/g,
+			) ?? []
+		).length,
+		2,
+		"Find and zoom both refuse the start/failure page instead of painting its refusal",
+	);
 });
