@@ -76,7 +76,6 @@ import {
 	RailSection,
 	isTargetRow,
 } from "./team-bridge-rail";
-import { useReportTeamBridgeViewing } from "./team-bridge-viewing";
 import {
 	TeamBridgeScheduleDialog,
 	TeamBridgeScheduledList,
@@ -86,11 +85,16 @@ import {
 	scheduleTeamBridgeDraft,
 	scheduledTargetAfterSuccess,
 } from "./team-bridge-scheduling";
+<<<<<<< HEAD
 import { TeamBridgeThreadPane } from "./team-bridge-thread-pane";
 import {
 	type ThreadTarget,
 	threadTargetFromSearch,
 } from "./team-bridge-thread-read";
+||||||| 34e0b03ff3
+=======
+import { useReportTeamBridgeViewing } from "./team-bridge-viewing";
+>>>>>>> 946bf937fd
 import { useStickToBottom } from "./use-stick-to-bottom";
 import {
 	useCreateTeamBridgeConversation,
