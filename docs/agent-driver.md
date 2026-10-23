@@ -57,6 +57,27 @@ by `scripts/team-new-chat-stale-draft.test.mjs`; a run-owned daemon has no
 authored team for the sidebar to list. Its before/after pair is committed under
 `docs/pr-evidence/team-new-chat-stale-draft/`.
 
+**`--scene team-newchat` photographs the OTHER team New-chat defect
+(2026-10-23): a REPLAYED draft receipt.** The stable team row's
+`draftRequestId` persists across launches, and a daemon that restarted (or a
+draft that expired) replays the id it minted the first time — an id its
+registry no longer serves. The pane streams on `sessionId ?? draft.warmId`, so
+its bridge 404s; the base tree read that as a missing conversation and painted
+"This conversation is no longer on this machine" under a header that says "New
+chat with <team>". It seeds the operator's persisted row (a stable
+`draft:team:<name>` with the request id, no `sessionId`), reloads, types a
+single `C` through CDP's input pipeline, and reports the route, the header, the
+notice, the composer, the row's own state and the id the daemon answered for the
+seeded request. `--expect broken` (the base tree) asserts the notice appeared and
+the row still holds the request id; `--expect fresh` (the fix) asserts no notice,
+the `C` still in an editable box, a re-minted request id, and a first send that
+reaches the transcript with the entered-to-rendered milliseconds reported. It
+needs `--backend`, `--backend-records`, `--team <name>`, `--team-label <label>`,
+`--draft-request-id <uuid>` and `--seed-onboarding-complete`, and the
+precondition is the daemon's own serve log: the receipt was minted, a
+conversation materialised on it, that conversation was deleted and the daemon
+restarted — so the 404 counted beside the frames is a real answer, not a stub.
+
 `--scene none` boots and arms the driver without running a
 scene. `--window-size WxH` sets the window (default 1380x900, the app's own
 default). The scratch tree is kept and its path printed; `--clean` removes it,

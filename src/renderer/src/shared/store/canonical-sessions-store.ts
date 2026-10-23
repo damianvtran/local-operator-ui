@@ -4508,6 +4508,23 @@ type CanonicalSessionsState = {
 	 */
 	restageDraft: (target: ChatTarget, carry?: string) => string;
 	/**
+	 * The missing-session notice's way out: a fresh new chat, carrying the words
+	 * the dead conversation's composer still held.
+	 *
+	 * WHY THIS IS AN ACTION AND NOT THREE CALLS IN THE BUTTON (the operator's
+	 * report, 2026-10-23). The notice's press used to clear the selection with
+	 * `setActiveSession(null)`, which left no draft at all: `chat-page`'s identity
+	 * became undefined, the pane fell to its residue arm, and whatever the reader
+	 * had typed under the dead conversation's key stayed there - the app's own
+	 * text, on disk, addressed by no screen. "A draft follows the user back to the
+	 * new-chat composer, or it is discarded" is a rule about the DRAFT, so it
+	 * lives where drafts and their composer rows already meet (`restageDraft`'s
+	 * move is the same one, and the two share it). A `from` with no text is a
+	 * plain new chat; a new chat that already has text is never overwritten,
+	 * because the box on screen belongs to the user.
+	 */
+	startNewChat: (from?: string | null) => string;
+	/**
 	 * Switch to a draft this store already holds, by key. See the action's own
 	 * comment for why this is not `stageDraft` (UX round 2, U8).
 	 */
@@ -4602,6 +4619,34 @@ type CanonicalSessionsState = {
 	 * silently rewrite the catalogue.
 	 */
 	retireDraftsForSession: (sessionId: string) => void;
+	/**
+	 * Retire a DRAFT's dead warm id, without touching the draft's own intent.
+	 *
+	 * The id `sessions.draft` minted (`ChatDraft.warmId`) is a BRIDGE - a runtime
+	 * entry in a daemon registry - and never a conversation: the pane streams on it
+	 * only while it waits for the first send to create one. A 404 on that bridge
+	 * therefore says the REGISTRY entry is gone (it expired after its idle window, a
+	 * restarted daemon lost it), not that a conversation was lost. What it must
+	 * never do is leave the row holding an id every later read repeats - the
+	 * daemon's receipt replays the SAME mint for the row's `draftRequestId`, so a
+	 * replay would hand the dead id back forever. Clearing `warmId` and re-minting
+	 * the request id makes the next keystroke (or the send that beats it) ask a
+	 * fresh question.
+	 *
+	 * EVERYTHING ELSE SURVIVES, because none of it was a statement about the dead
+	 * runtime: `target`, `model`, `peer`, `cwd` are the user's chosen destination
+	 * for a conversation that has not been created yet, and the composer's words
+	 * live under the draft key, not on this row. The pane keeps a working new chat
+	 * with the box untouched (the operator's report, 2026-10-23).
+	 *
+	 * Scoped to `draft:` rows with NO `sessionId`: a row that has one is a pointer
+	 * to a conversation, and a 404 about THAT is `retireDraftsForSession`'s - the
+	 * two facts are separate so this action can never unbound a conversation the
+	 * pane is actually showing. A row whose warm already moved on is a no-op, so a
+	 * reconnect repainting the same 404 does not re-mint request ids under a draft
+	 * the user has typed into since.
+	 */
+	retireDraftWarm: (warmId: string) => void;
 	/**
 	 * Resolve a held send against the server's own answer (§F2's last bullet,
 	 * UX round 1's U5b).
@@ -5198,6 +5243,29 @@ function restoreRetiredDraftPayload(
 			attachments: payload.attachments,
 			replies: [],
 		});
+}
+
+/**
+ * Move the composer's TEXT from one identity to another, once.
+ *
+ * THE ONE EXPRESSION for a key flip that must not lose what the user typed
+ * (issue #780): the box's value lives under the identity the pane carried, and a
+ * flip to a new identity is a remount that reads the NEW key. `carry` is text the
+ * caller has already decided survives the gesture (a picker's spliced tail);
+ * absent, the box as it stands is carried. A move, never a copy - the source is
+ * cleared, so the old key cannot resurrect the words if it is ever opened again
+ * (`openDraft`). The target is written only when there is something to write, so
+ * a gesture with an empty box does not materialise a row for the new key.
+ */
+function carryComposerText(
+	from: string | null | undefined,
+	to: string,
+	carry?: string,
+): void {
+	const input = useConversationInputStore.getState();
+	const text = carry ?? (from ? input.getCurrentInput(from) : "");
+	if (text) input.setComposerText(to, text);
+	if (from && from !== to) input.setComposerText(from, "");
 }
 
 /**
@@ -7347,10 +7415,18 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			restageDraft: (target, carry) => {
 				const from = get().activeDraftKey;
 				const key = get().stageDraft(target);
-				const input = useConversationInputStore.getState();
-				const text = carry ?? (from ? input.getCurrentInput(from) : "");
-				if (text) input.setComposerText(key, text);
-				if (from && from !== key) input.setComposerText(from, "");
+				// The flip is a remount; `carryComposerText` is the one expression that
+				// moves the box with it (its own note carries the why and the source's
+				// clear).
+				carryComposerText(from, key, carry);
+				return key;
+			},
+			startNewChat: (from) => {
+				// No target: a bare New chat keyed `draft:<uuid>`, which is the same
+				// row the ⌘N shortcut stages - the notice's press is a new chat, not a
+				// re-addressing of the conversation that is gone.
+				const key = get().stageDraft();
+				carryComposerText(from, key);
 				return key;
 			},
 			updateDraft: (key, patch) =>
@@ -7637,6 +7713,59 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				for (const [key, draft] of Object.entries(get().drafts))
 					if (key.startsWith("draft:") && draft.sessionId === sessionId)
 						get().retireDraftSession(key);
+			},
+			retireDraftWarm: (warmId) => {
+				/*
+				 * THE BRIDGE, NOT THE CONVERSATION (the operator's report, 2026-10-23).
+				 * A New chat with a team keeps a STABLE draft key, and its `warmId` is
+				 * adopted from a `sessions.draft` receipt - which the daemon REPLAYS for
+				 * the same `draftRequestId`. After a restart, or once the draft expired,
+				 * that receipt names an id the daemon can no longer serve: the pane's own
+				 * bridge stream 404s, and the 404 must not be read as a missing
+				 * CONVERSATION (the row has no `sessionId`, so it is a new chat, and the
+				 * pane's missing notice is a lie about the screen). That is the session arm
+				 * in `use-canonical-session`'s 404 branch; this action is the draft arm's
+				 * conclusion.
+				 *
+				 * The row is the only place the dead id lives, and it must stop holding
+				 * it: the next read of `streamId` (`sessionId ?? draft.warmId`) would
+				 * otherwise re-open the same dead bridge. The request id is re-minted
+				 * WITH it because the daemon's receipt is keyed on it - a replay would
+				 * hand the same dead id back, which is the half a clear alone cannot
+				 * fix. The row's own intent is untouched: `target`, `model`, `peer`, `cwd`
+				 * say where the NEXT conversation goes, and every composer word is filed
+				 * under the draft key, not here.
+				 *
+				 * ONE ROW SHAPE, ONE OWNER: rows that carry a `sessionId` belong to
+				 * `retireDraftsForSession`, so this action leaves them alone even if the
+				 * two facts ever name the same id. A row whose warm already moved on is a
+				 * no-op, which is what lets a reconnect report the same 404 twice.
+				 */
+				const matches = Object.entries(get().drafts).filter(
+					([key, draft]) =>
+						key.startsWith("draft:") &&
+						draft.warmId === warmId &&
+						!draft.sessionId,
+				);
+				if (matches.length === 0) return;
+				set((state) => {
+					const drafts = { ...state.drafts };
+					for (const [key] of matches) {
+						/*
+						 * Re-read the LIVE row: the filter above ran on an earlier snapshot,
+						 * and a send can have bound the row in between. The same condition is
+						 * asked again so that this write cannot outrun the send it lost to.
+						 */
+						const row = drafts[key];
+						if (!row || row.warmId !== warmId || row.sessionId) continue;
+						drafts[key] = {
+							...row,
+							warmId: undefined,
+							draftRequestId: crypto.randomUUID(),
+						};
+					}
+					return { drafts };
+				});
 			},
 			discardDraft: (key) =>
 				set((state) => {
