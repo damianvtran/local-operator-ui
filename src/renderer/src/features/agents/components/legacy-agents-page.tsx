@@ -7,7 +7,6 @@
  */
 
 import type { AgentDetails } from "@shared/api/local-operator/types";
-import { useLaneLeadingColumn } from "@shared/components/common/chat-layout";
 import { PageHeader } from "@shared/components/common/page-header";
 import {
 	Button,
@@ -55,7 +54,6 @@ type AgentsPageProps = Record<string, never>;
 export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 	// Refresh translated copy without resetting the current selection or action.
 	useI18nLocale();
-	const laneLeadingColumn = useLaneLeadingColumn("surface");
 	const { agentId, navigateToAgent } = useAgentRouteParam();
 	const navigate = useNavigate();
 	const { isAuthenticated } = useRadientAuth(); // Get auth status
@@ -124,23 +122,22 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 	};
 
 	return (
-		<div data-glass-split="" className="flex h-full w-full overflow-hidden">
+		<div
+			data-glass-split=""
+			className="panel-flush flex min-h-0 flex-1 overflow-hidden"
+		>
 			{/* The sidebar itself is width:100% — the 280px lives here, and the
 			    pane must not shrink when the agent list has a long name in it. */}
 			{/*
-			 * The same hand-over as the roster route's, and for the same reason: both
-			 * routes draw `AgentsSidebar` as a leading `surface` column, and marking
-			 * only the one the operator screenshotted is exactly how this defect came
-			 * back a second time (2026-09-27). `chat-layout.tsx` states what the shell
-			 * does with the element, and the ground it is handed on is the column's
-			 * own (`surface`).
+			 * THE ROSTER IS A PANEL: `AgentsSidebar`'s own root paints `surface` from
+			 * y0 and wears `panel-top-pad`, so neither this wrapper nor the shell has
+			 * to reserve a row above it. The page root's `panel-flush` is what lets
+			 * both columns start at y0; the content column pads itself below.
 			 *
-			 * The roster's `border-r` is gone with the roster route's: the boundary
-			 * beside the content is the `surface`-over-`canvas` tone step, and the
-			 * line was the same fence that stopped at the lane's lower edge (see
-			 * `agents-sidebar.tsx`).
+			 * The roster's `border-r` stays gone: the boundary beside the content is
+			 * the `surface`-over-`canvas` tone step (see `agents-sidebar.tsx`).
 			 */}
-			<div ref={laneLeadingColumn} className="h-full w-70 shrink-0">
+			<div className="h-full w-70 shrink-0">
 				<AgentsSidebar
 					selectedAgentId={selectedAgent?.id}
 					onSelectAgent={handleSelectAgent}
@@ -152,7 +149,7 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 			    keeps its scrolling inside the pane instead of the window. */}
 			<div
 				data-glass-region="canvas-content"
-				className="h-full grow overflow-hidden"
+				className="panel-top-pad h-full grow overflow-hidden"
 			>
 				{/* `gap-8`: `PageHeader` no longer ships its own bottom margin. The
 				    header sits in the same measured column as the settings below it,
