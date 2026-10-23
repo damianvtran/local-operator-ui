@@ -1,52 +1,69 @@
-# The composer's active-time reading while a turn runs — the before half
+# The composer's active-time reading while a turn runs — the before/after pair
 
 The operator's report is that the session duration disappears from the composer
-exactly while the agent is working. This set is the **before** half of the pair
-that shows it: the shipped `MessageInput`, in the composer's two states, at nine
-column widths and in both themes, with the readings cluster in the operator's own
-fixture (`reported`) and in the widest fixture (`fullest`).
+exactly while the agent is working. This set is the pair that shows it and the
+fix: the **before** half (base `2f5d8e3239`) is the shipped `MessageInput`, where
+a running turn hides the reading at EVERY width; the **after** half (the fix
+commit) keeps one duration element mounted and decides its visibility from the
+row's own measured free gap. Both halves mount the same fixtures — the
+operator's own row (`reported`) and the widest fixture (`fullest`) — at both the
+shipped 810px composer measure and the operator's dragged 918px one, in both
+themes, idle and running.
 
 The defect, for a reader who has not opened the file: the duration reading's own
-class name is `hidden` whenever `controlsThirdBox` is true, and
+class name was `hidden` whenever `controlsThirdBox` is true, and
 `controlsThirdBox` is `Boolean(canonicalStop?.active) || interruptSlotDrawn`
-(`message-input.tsx`). A running turn therefore hides the reading at EVERY
+(`message-input.tsx`). A running turn therefore hid the reading at EVERY
 width — not only in the narrow band the class's other half
-(`@max-[860px]/chatcol:hidden`) covers. The strip is the only renderer of
-`active_duration_s`, so the number is shown nowhere in the app while it ticks.
+(`@max-[860px]/chatcol:hidden`) covered. The strip is the only renderer of
+`active_duration_s`, so the number was shown nowhere in the app while it ticks.
 
 ## Where the frames came from
 
 One temporary worktree, detached at this branch's base, **`2f5d8e3239`**
 (`.worktrees/cdr-base`), sharing the primary checkout's `node_modules` through
 the same relative symlink. The rig was copied into it from the branch, so both
-halves of the eventual pair are taken by the same rig bytes rather than by two
-trees that each own a story. The copy differs from the base revision's committed
-rig by the `reported` fixture and the comments that introduce it — no expression
-in the probe, the driver's case loop or the harness's existing fixtures changed.
+halves are taken by the same rig bytes rather than by two trees that each own a
+story. The copy differs from the base revision's committed rig by the `reported`
+fixture, the `--measure` option and the probe's additive fields (the duration is
+found by its marker and judged by computed visibility, because the fix wraps it
+where the base tree had the reading in flow) — no layout-measuring expression
+changed, verified by re-running two base cells with the final rig and diffing
+every pre-existing field against the committed numbers: 0 diffs.
 
-The default-measure set is one run:
+The before set is two runs on the base worktree; the after set is the same two
+runs on this worktree, plus two extra columns (820, 840) that bracket the rung
+edge at container 780 (column 828) where the unchanged effort ladder returns:
 
 ```sh
+# before — cwd .worktrees/cdr-base, out …/composer-duration-running/before
 node scripts/composer-readings-geometry.mjs --port=5435 --themes=both \
   --only=reported,fullest \
-  --widths=480,700,798,853,854,860,908,1024,1200 \
-  --out=<this-worktree>/docs/evidence-frames/composer-duration-running/before \
-  --label=before
+  --widths=480,700,798,853,854,860,908,1024,1200 --label=before
+node scripts/composer-readings-geometry.mjs --port=5435 --themes=both \
+  --only=reported,fullest --measure=918 \
+  --widths=700,798,853,854,860,908,1024,1200 --label=before
+
+# after — cwd this worktree, same out but …/after
+node scripts/composer-readings-geometry.mjs --port=5435 --themes=both \
+  --only=reported,fullest \
+  --widths=480,700,798,820,840,853,854,860,908,1024,1200 --label=after
+node scripts/composer-readings-geometry.mjs --port=5435 --themes=both \
+  --only=reported,fullest --measure=918 \
+  --widths=700,798,820,840,853,854,860,908,1024,1200 --label=after
 ```
 
-The rig writes one row-sized crop per case per theme plus `numbers.json` from
-the same DOM; the committed frames are those PNGs converted losslessly enough
-for review with `cwebp -q 88 -m 6`, renamed to `<case>/<theme>.webp` so each
-frame names its own theme (the walker in `scripts/check-evidence.mjs` derives
-the expected ground from that name). The frames themselves are rig output in the
-ignored `docs/evidence-frames/` tree and are not committed; `before/frames.txt`
-lists the 72 paths they occupy.
+Counts: before 136 (72 at the shipped 810 measure + 64 at 918); after 168
+(88 + 80); 304 in all. `before/frames.txt` and `after/frames.txt` name every
+path, and the nine shared widths are cell-for-cell comparable.
 
-72 frames = 2 states (`idle`, `running`) × 2 fixtures (`reported`, `fullest`) ×
-9 widths × 2 themes, plus a second run at the operator's widened measure (`918`,
-below) adding 64 frames = 2 states × 2 fixtures × 8 widths × 2 themes. 136
-frames in all. `localOperatorDark` and `localOperatorLight` are numerically
-identical in every cell, so the tables below list one row per case.
+The rig writes one row-sized crop per case per theme plus `numbers.json` from
+the same DOM; the frames are those PNGs converted with `cwebp -q 88 -m 6`,
+renamed to `<case>/<theme>.webp` so each frame names its own theme (the walker
+in `scripts/check-evidence.mjs` derives the expected ground from that name).
+They are rig output in the ignored `docs/evidence-frames/` tree and are not
+committed. `localOperatorDark` and `localOperatorLight` are numerically
+identical in every cell, so the tables list one row per case.
 
 ## The operator's row
 
@@ -211,8 +228,137 @@ rig copy that measured it is the one the after half will use; the base revision
 is named above so the pair is two named revisions rather than two working-tree
 states.
 
-## What this rig does not see
+## The after half
 
+The fix replaces both class-based sheds with one measured predicate. The reading
+is always mounted when there is a duration to show, laid out OUT OF FLOW
+(`position: absolute; left: calc(100% + 4px); top: 0`, the strip being
+`relative`) and toggled with `invisible` - visibility, never display. The strip
+measures, in full precision, `G = controls.left - last visible non-duration
+reading.right` and `D = the reading's own box`, and shows it when `G >= D + 4`;
+the 4px is the readings' own gap. Nothing else moved: the other three readings'
+ladders, the model's width rules, the spacing and the control box count are the
+shipped ones. The controls group carries `data-lo-composer-controls` and the
+reading carries `data-lo-duration`, so the measurement finds the row's real
+anchors rather than a translated label or a position.
+
+The commands are the two `after` runs above.
+
+### Acceptance
+
+| acceptance | measured | verdict |
+| --- | --- | --- |
+| `reported` running, shipped 810, column 700 | G 107.1, D+4 59.4, spare 47.7 | shown |
+| `reported` running, shipped 810, column 1024 | G 73.3, D+4 59.4, spare 13.9 | shown |
+| `reported` running, operator measure 918, column 1024 | G 181.3, D+4 59.4, spare 121.9 | shown |
+| `fullest` running, shipped 810, column 1024 | G 2.0, D+4 37.7, spare -35.7 | hidden |
+| `fullest` running, operator measure 918, column 1024 | G 73.4, D+4 37.7, spare 35.7 | shown |
+| `fullest` running, shipped 810, column 700 | G 89.9, D+4 37.7, spare 52.2 | shown |
+
+All six hold. The last row is the ladder's own doing, not the fix's: at column
+700 the three value readings are shed, so the row has room for the duration.
+
+### The running matrix, both measures
+
+`D` is the duration's own measured width, `D+4` its fit boundary, `spare` is
+`G - (D + 4)`.
+
+| case | col | G | D | D+4 | spare | duration |
+| --- | --- | --- | --- | --- | --- | --- |
+| reported running (m810) | 480 | 38.9 | 55.4 | 59.4 | -20.5 | hidden |
+| reported running (m810) | 700 | 107.1 | 55.4 | 59.4 | 47.7 | shown |
+| reported running (m810) | 798 | 52.0 | 55.4 | 59.4 | -7.4 | hidden |
+| reported running (m810) | 820 | 74.0 | 55.4 | 59.4 | 14.6 | shown |
+| reported running (m810) | 840 | 56.3 | 55.4 | 59.4 | -3.1 | hidden |
+| reported running (m810) | 853 | 69.3 | 55.4 | 59.4 | 9.9 | shown |
+| reported running (m810) | 854 | 70.3 | 55.4 | 59.4 | 10.9 | shown |
+| reported running (m810) | 860 | 74.3 | 55.4 | 59.4 | 14.9 | shown |
+| reported running (m810) | 908 | 74.3 | 55.4 | 59.4 | 14.9 | shown |
+| reported running (m810) | 1024 | 73.3 | 55.4 | 59.4 | 13.9 | shown |
+| reported running (m810) | 1200 | 73.3 | 55.4 | 59.4 | 13.9 | shown |
+| fullest running (m810) | 480 | 21.7 | 33.7 | 37.7 | -16.0 | hidden |
+| fullest running (m810) | 700 | 89.9 | 33.7 | 37.7 | 52.2 | shown |
+| fullest running (m810) | 798-1200 | 2.0 | 33.7 | 37.7 | -35.7 | hidden |
+| reported running (m918) | 700 | 107.1 | 55.4 | 59.4 | 47.7 | shown |
+| reported running (m918) | 798 | 52.0 | 55.4 | 59.4 | -7.4 | hidden |
+| reported running (m918) | 820 | 74.0 | 55.4 | 59.4 | 14.6 | shown |
+| reported running (m918) | 840 | 56.3 | 55.4 | 59.4 | -3.1 | hidden |
+| reported running (m918) | 853 | 69.3 | 55.4 | 59.4 | 9.9 | shown |
+| reported running (m918) | 854 | 70.3 | 55.4 | 59.4 | 10.9 | shown |
+| reported running (m918) | 860 | 76.3 | 55.4 | 59.4 | 16.9 | shown |
+| reported running (m918) | 908 | 124.3 | 55.4 | 59.4 | 64.9 | shown |
+| reported running (m918) | 1024 | 181.3 | 55.4 | 59.4 | 121.9 | shown |
+| reported running (m918) | 1200 | 181.3 | 55.4 | 59.4 | 121.9 | shown |
+| fullest running (m918) | 700 | 89.9 | 33.7 | 37.7 | 52.2 | shown |
+| fullest running (m918) | 798-860 | 2.0 | 33.7 | 37.7 | -35.7 | hidden |
+| fullest running (m918) | 908 | 16.4 | 33.7 | 37.7 | -21.3 | hidden |
+| fullest running (m918) | 1024 | 73.4 | 33.7 | 37.7 | 35.7 | shown |
+| fullest running (m918) | 1200 | 73.4 | 33.7 | 37.7 | 35.7 | shown |
+
+### Idle
+
+The same rule, same fixtures:
+
+- `idle-reported`, shipped 810: hidden at 700-798 (G 49.3 / 50.3), shown from 820
+  up (G 72.3 at 820, 109.3 at 1024). At 918 it is shown from 820 up as well, and
+  at 908 G is 160.3.
+- `idle-fullest`, shipped 810: shown only at 480 (G 53.7 against 37.7); hidden
+  from 700 up. At 918 it shows from 908 up (G 52.4 at 908, 109.4 at 1024).
+- Note the asymmetry with the BEFORE half's idle cells: see consequence 2 below.
+
+### Two consequences, measured rather than assumed
+
+1. **Anti-reflow, proved by the cells that do not move.** All 68 running cells
+   that exist in both halves are identical in strip width, every reading box,
+   the controls group, the gap, the row box and the line count. The only thing
+   that changed in them is the duration's own box (from 0x0 to a laid-out box,
+   or from absent to present). Drawing the reading cannot reflow the row, so the
+   measurement cannot feed itself.
+2. **Where the reading used to be IN FLOW, the model chip takes the space.** In
+   the idle cells the shipped tree drew the duration in flow, squeezing the
+   model chip; with the reading out of flow the chip expands to its natural
+   width and the measured gap then hides the reading where the chip used it.
+   Measured: `idle-fullest` at 1024, model 81.8 -> 119.5px, G 2.0, duration
+   hidden (it was shown before); at the operator's 918 the same cell has G 109.4
+   and shows it. `idle-reported` is short enough that its chip does not change
+   (102.9 before and after) and keeps the reading at 820 and above at 810, and
+   from 820 at 918. The model is never shrunk to buy the reading back - the
+   design note's own caveat for this cell, measured rather than assumed.
+
+### The shed is a gap, not a column - and the ladder makes it step
+
+The reading sheds at `G < D + 4`: **59.4px for the six-glyph `20m25s`, 37.7px
+for `20h`**, not at a column. Measured at the shipped 810 measure,
+`running-reported` is shown at 700 (47.7 spare), hidden at 798 (-7.4), shown at
+820 (+14.6), hidden at 840 (-3.1), then shown from 853 up (+9.9). The 840 cell
+is the unchanged effort rung returning as the container crosses 780 (column
+828): the row genuinely has less free gap once effort is back, and the same rule
+that shows the reading at 820 hides it at 840. It is a real consequence of
+measuring the row, not a threshold error, and nothing is shed or shortened to
+"correct" it.
+
+### The anchor invariant held at every cell
+
+`strip.right` equals the last visible non-duration reading's right edge in all
+168 after cells - both themes, both measures, every width (`anchorDelta` 0 in
+`after/numbers.json`). The prescribed `left: calc(100% + 4px)` anchor and the
+measured inequality therefore refer to the same position; no inline-left
+fallback was needed.
+
+### What the after half cannot show
+
+- **A transition.** The harness mounts one state: the press that starts a turn,
+  the 500ms grace window and a live recording are not photographed. All three go
+  through the same measured predicate - the reserved slot is inside the marked
+  controls group, so its width is part of G while it is held - but this set does
+  not claim frames for them. `scripts/interrupt-esc-proof.mjs` is where that
+  window's own transition is exercised against the live app.
+- **The 1Hz tick.** `active_duration_s` is banked with `activity_started_at:
+  null`, so the value is stable in every frame; a value that changes width only
+  enlarges D, and D is measured, not assumed.
+- **A focus ring.** Headless Chrome is never focused.
+
+## What this rig does not see
 - **A transition.** It mounts one state; it cannot hold the press that makes a
   turn run, so the frame pair is two stills of the same row, not a recording.
 - **The post-stop grace window** (`data-interrupt-slot`) and the recording
@@ -231,9 +377,16 @@ states.
 
 ## Gate
 
-`node scripts/check-evidence-structure.mjs` (the CI half: no committed frames,
-the manifest and its declarations, the proof artefacts) and
-`node --test --test-concurrency=1 scripts/evidence-manifest.test.mjs` are the
-gates run for this set. The pixel sweep (`pnpm check-evidence`) was **not** run:
-it is the release path's machine-wide-lease sweep, and it needs a frames tree
-seeded from a captured checkout, which this worktree does not have.
+- `node scripts/check-evidence-structure.mjs` -> *"Evidence structure holds: 1492
+  tracked files under docs/evidence/, 237 declared set(s), 0 committed frames, 4
+  named proof artefact(s)."* Run with the frames tree absent (the CI shape). With
+  this worktree's partial frames tree present the same gate refuses - correctly -
+  because the manifest's whole-tree counts describe a seeded checkout, not the one
+  set this session captured.
+- `node --test --test-concurrency=1 scripts/evidence-manifest.test.mjs` -> 54
+  tests, 52 pass, 0 fail, 2 skipped (both frame-tree skips, by design).
+- `pnpm evidence:fold` is a merge-conflict resolver and does not apply outside a
+  merge; the set was declared by hand and the manifest test above reads it.
+- The pixel sweep (`pnpm check-evidence`) was **not** run: it is the release
+  path's machine-wide-lease sweep, and it needs a frames tree seeded from a
+  captured checkout, which this worktree does not have.
