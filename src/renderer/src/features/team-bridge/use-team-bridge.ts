@@ -286,31 +286,6 @@ export function useTeamBridgeUnread(
 	});
 }
 
-/**
- * Refetch what a successful send changes: the thread, the conversation lists
- * (the row may be in the merged list and in its org's list, and both caches
- * must stop claiming stale unread state) and the badge. Shared by the send
- * mutation and the page's optimistic send, which posts straight to the API so
- * a retry is bound to the conversation it was typed in, not to whatever is
- * selected when it runs.
- */
-export async function refreshAfterSend(
-	client: QueryClient,
-	conversationId: string,
-	tenantId?: string,
-): Promise<void> {
-	await client.invalidateQueries({
-		queryKey: teamBridgeKeys.messages(conversationId, tenantId),
-	});
-	// Prefix invalidation: see above.
-	await client.invalidateQueries({
-		queryKey: teamBridgeKeys.conversationsPrefix,
-	});
-	await client.invalidateQueries({
-		queryKey: teamBridgeKeys.unreadPrefix,
-	});
-}
-
 export function useSendTeamBridgeMessage(
 	conversationId: string,
 	tenantId?: string,
@@ -319,7 +294,19 @@ export function useSendTeamBridgeMessage(
 	return useMutation({
 		mutationFn: ({ clientRef, body }) =>
 			TeamBridgeApi.send(conversationId, { clientRef, body, tenantId }),
-		onSuccess: () => refreshAfterSend(client, conversationId, tenantId),
+		onSuccess: async () => {
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.messages(conversationId, tenantId),
+			});
+			// Prefix invalidation: the row may be in the merged list and in its
+			// org's list, and both caches must stop claiming stale unread state.
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.conversationsPrefix,
+			});
+			await client.invalidateQueries({
+				queryKey: teamBridgeKeys.unreadPrefix,
+			});
+		},
 	});
 }
 
