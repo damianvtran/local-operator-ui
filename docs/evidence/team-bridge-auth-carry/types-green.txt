@@ -1,0 +1,4 @@
+Actual output; local worktree path normalized to <worktree>.
+$ pnpm run check-types:main && pnpm run check-types:renderer
+$ tsc --noEmit -p tsconfig.node.json
+$ tsc --noEmit -p tsconfig.app.json
