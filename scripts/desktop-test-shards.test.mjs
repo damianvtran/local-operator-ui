@@ -1,0 +1,289 @@
+import assert from "node:assert/strict";
+import {
+	mkdirSync,
+	mkdtempSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { test } from "node:test";
+import {
+	inventory,
+	loadReceipts,
+	main,
+	partition,
+	plan,
+	receipt,
+	tapSummary,
+	validateFiles,
+	verify,
+} from "./desktop-test-shards.mjs";
+
+// Builtin-only tests. No App/React/Electron import, dependency resolution or test
+// runner invocation. These fixtures prove data contracts, not real-suite PASS.
+const HEAD = "a".repeat(40);
+const CHECKOUT = "b".repeat(40);
+const names = Array.from(
+	{ length: 542 },
+	(_, i) =>
+		`scripts/${i % 11 === 0 ? "i18n/" : ""}case-${String(i).padStart(4, "0")}.test.mjs`,
+);
+const command = (files) =>
+	`node scripts/run-desktop-tests.mjs ${files.join(" ")}`;
+const log =
+	"# tests 120\n# pass 119\n# fail 0\n# cancelled 0\n# skipped 1\n# todo 0\n";
+function fixture(fn) {
+	const root = mkdtempSync(join(tmpdir(), "desktop-shard-data-"));
+	try {
+		const files = names.slice(0, 9);
+		for (const file of files) {
+			mkdirSync(join(root, file, ".."), { recursive: true });
+			writeFileSync(join(root, file), "// data only\n");
+		}
+		writeFileSync(
+			join(root, "package.json"),
+			JSON.stringify({ scripts: { "test:desktop": command(files) } }),
+		);
+		return fn(root, files);
+	} finally {
+		rmSync(root, { recursive: true, force: true });
+	}
+}
+function expected() {
+	const files = inventory(command(names));
+	return {
+		schema: 1,
+		head: HEAD,
+		checkout: CHECKOUT,
+		count: 3,
+		digest: "fixture-digest",
+		total: files.length,
+		files,
+		shards: partition(files),
+	};
+}
+function rows(p) {
+	return [0, 1, 2].map((index) => receipt(p, index, log, 0, 1));
+}
+
+test("literal inventory includes nested names; count-balanced partition is complete, disjoint and permutation invariant", () => {
+	const files = inventory(command(names));
+	assert.equal(files.length, 542);
+	assert.ok(files.includes("scripts/i18n/case-0000.test.mjs"));
+	for (const count of [2, 3]) {
+		const parts = partition(files, count);
+		assert.deepEqual(parts, partition([...files].reverse(), count));
+		assert.deepEqual(parts.flat().sort(), files);
+		assert.equal(new Set(parts.flat()).size, files.length);
+		assert.ok(
+			Math.max(...parts.map((p) => p.length)) -
+				Math.min(...parts.map((p) => p.length)) <=
+				1,
+		);
+	}
+	assert.deepEqual(
+		partition(files).map((p) => p.length),
+		[181, 181, 180],
+	);
+});
+
+test("inventory rejects unsupported syntax instead of guessing shell semantics", () => {
+	for (const value of [
+		undefined,
+		"",
+		"pnpm test",
+		command([]),
+		command(["--flag"]),
+		command(["../x.test.mjs"]),
+		command(["scripts/../x.test.mjs"]),
+		command(["scripts/*.test.mjs"]),
+		command(['"scripts/x.test.mjs"']),
+		command(["scripts/x.test.mjs", "&&", "echo"]),
+		command(["scripts/x.test.mjs", "scripts/x.test.mjs"]),
+	]) {
+		assert.throws(
+			() => inventory(value),
+			/Missing|Unsupported|Unsafe|Duplicate/,
+		);
+	}
+	assert.throws(() => partition(names, 4), /count/);
+	assert.throws(() => partition([], 3), /Empty/);
+});
+
+test("metadata plan checks actual files and rejects missing files, symlinks and wrong head identity", () =>
+	fixture((root, files) => {
+		const p = plan(root, HEAD, CHECKOUT);
+		assert.equal(p.total, 9);
+		assert.equal(p.digest.length, 64);
+		assert.throws(() => plan(root, "short", CHECKOUT), /full/);
+		assert.throws(
+			() => validateFiles(root, ["scripts/missing.test.mjs"]),
+			/missing/,
+		);
+		symlinkSync(join(root, files[0]), join(root, "alias.test.mjs"));
+		assert.throws(() => validateFiles(root, ["alias.test.mjs"]), /symlink/);
+	}));
+
+test("TAP and receipt cannot be emitted after an error, cancellation, empty or truncated summary", () => {
+	const p = expected();
+	assert.equal(tapSummary(log).pass, 119);
+	for (const bad of [
+		"",
+		log + log,
+		log.replace("# fail 0", "# fail 1"),
+		log.replace("# cancelled 0", "# cancelled 1"),
+		log.replace("# pass 119", "# pass 0"),
+		`${log}not ok 3 - failed\n`,
+	]) {
+		assert.throws(() => receipt(p, 0, bad, 0, 1), /TAP|summary/);
+	}
+	assert.throws(() => receipt(p, 0, log, 137, 1), /rc=0/);
+	assert.throws(() => receipt(p, 3, log, 0, 1), /index/);
+});
+
+test("exact three same-head success receipts prove disjoint complete inventory; every mutation fails for its own reason", () => {
+	const p = expected();
+	assert.equal(verify(p, rows(p), "true", "success", "success"), "passed");
+	assert.equal(verify(p, [], "false", "success", "skipped"), "skipped");
+	assert.throws(() => verify(p, [], "", "success", "success"), /Unknown/);
+	assert.throws(
+		() => verify(p, [], "true", "failure", "success"),
+		/Classifier/,
+	);
+	for (const status of ["failure", "cancelled", "skipped", ""])
+		assert.throws(
+			() => verify(p, rows(p), "true", "success", status),
+			/matrix/i,
+		);
+	for (const [mutate, message] of [
+		[(r) => r.pop(), /exactly 3/],
+		[(r) => r.push(r[0]), /exactly 3/],
+		[
+			(r) => {
+				r[1].index = 0;
+			},
+			/duplicate/,
+		],
+		[
+			(r) => {
+				r[1].head = "c".repeat(40);
+			},
+			/head/,
+		],
+		[
+			(r) => {
+				r[1].checkout = "c".repeat(40);
+			},
+			/checkout/,
+		],
+		[
+			(r) => {
+				r[1].digest = "wrong";
+			},
+			/digest/,
+		],
+		[
+			(r) => {
+				r[1].files = [...r[0].files];
+			},
+			/partition/,
+		],
+		[
+			(r) => {
+				r[1].files.pop();
+			},
+			/partition/,
+		],
+		[
+			(r) => {
+				r[1].status = "cancelled";
+			},
+			/Failed/,
+		],
+		[
+			(r) => {
+				r[1].tap.fail = 1;
+			},
+			/TAP/,
+		],
+	]) {
+		const r = rows(p);
+		mutate(r);
+		assert.throws(() => verify(p, r, "true", "success", "success"), message);
+	}
+});
+
+test("CLI rejects unknown flags without entering the real runner", async () => {
+	await assert.rejects(() => main(["plan", "--shell", "echo"]), /Unknown/);
+	await assert.rejects(() => main(["guess"]), /explicit/);
+	await assert.rejects(
+		() => main(["run", "--metadata-package", "unused.json"]),
+		/Unsupported run/,
+	);
+	await assert.rejects(
+		() => main(["verify", "--metadata-git-tree", "unused.txt"]),
+		/Unsupported verify/,
+	);
+});
+
+test("wrong-head receipt is rejected (head mutation oracle)", () => {
+	const p = expected();
+	const r = rows(p);
+	r[1].head = "c".repeat(40);
+	assert.throws(() => verify(p, r, "true", "success", "success"), /head/);
+});
+
+test("artifact directory identity rejects missing, extra, wrong-attempt and extra-file proofs", () => {
+	fixture((root) => {
+		const proofs = join(root, "proofs");
+		mkdirSync(proofs);
+		const p = expected();
+		const r = rows(p);
+		for (let i = 0; i < 3; i++) {
+			const d = join(proofs, `desktop-shard-proof-42-1-${i}`);
+			mkdirSync(d);
+			writeFileSync(join(d, `shard-${i}.json`), JSON.stringify(r[i]));
+		}
+		assert.equal(loadReceipts(proofs, "42", "1").length, 3);
+		assert.throws(() => loadReceipts(proofs, "42", "2"), /three named/);
+		rmSync(join(proofs, "desktop-shard-proof-42-1-2"), { recursive: true });
+		assert.throws(() => loadReceipts(proofs, "42", "1"), /three named/);
+		mkdirSync(join(proofs, "desktop-shard-proof-42-1-2"));
+		writeFileSync(
+			join(proofs, "desktop-shard-proof-42-1-2", "shard-2.json"),
+			JSON.stringify(r[2]),
+		);
+		mkdirSync(join(proofs, "desktop-shard-proof-42-1-extra"));
+		assert.throws(() => loadReceipts(proofs, "42", "1"), /three named/);
+		rmSync(join(proofs, "desktop-shard-proof-42-1-extra"), { recursive: true });
+		writeFileSync(
+			join(proofs, "desktop-shard-proof-42-1-0", "extra.json"),
+			"{}",
+		);
+		assert.throws(() => loadReceipts(proofs, "42", "1"), /extra receipt/);
+	});
+});
+
+test("metadata-only plans and forged metadata receipts cannot claim execution success", () => {
+	const p = expected();
+	const metadata = {
+		...p,
+		mode: "metadata-only",
+		executed: false,
+		metadataOnly: true,
+	};
+	assert.throws(() => receipt(metadata, 0, log, 0, 1), /Metadata-only/);
+	assert.throws(
+		() => verify(metadata, rows(p), "true", "success", "success"),
+		/Metadata-only/,
+	);
+	const r = rows(p);
+	r[0].mode = "metadata-only";
+	r[0].executed = false;
+	assert.throws(
+		() => verify(p, r, "true", "success", "success"),
+		/Metadata-only/,
+	);
+});
