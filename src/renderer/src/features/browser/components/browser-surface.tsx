@@ -37,7 +37,7 @@ import {
 } from "../model/approval-queue-model";
 import { browserBridge } from "../model/browser-projection-store";
 import { browserOverlaySuppressing } from "../model/self-suppression";
-import { isStartPageUrl } from "../model/start-page";
+import { browserOwnStateFor } from "../model/start-page";
 import {
 	type SurfaceScope,
 	scopeFromKey,
@@ -401,11 +401,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	 * own-state — the menu is enabled there, so the chords must be too.
 	 */
 	const navFailure = state?.navFailure ?? null;
-	const onStartPage =
-		activeTab !== null &&
-		isStartPageUrl(activeTab.url) &&
-		!activeTab.loading &&
-		!chrome.pendingUrl;
+	const onStartPage = browserOwnStateFor(activeTab, chrome.pendingUrl);
 	const browserOwnState = onStartPage || navFailure !== null;
 
 	const {
@@ -876,106 +872,6 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					onHandOver={(tab) => setHandOverTab(tab)}
 					onRevokeHandOver={(tabId) => void chrome.revokeHandOver(tabId)}
 				/>
-				{/* THE POPOUT ANCHORS TO THE STRIP, NOT TO THE SURFACE ROOT. It is
-				    `absolute inset-x-0 top-0`, and `top-0` resolves to the containing
-				    block's PADDING box. On the route the root is `panel-flush` (its box
-				    starts at y0, under the macOS drag lane) and its pad is inside that box,
-				    so a root-anchored popout opened at y0 under the lane and the traffic
-				    lights (agent review round 1, F1). This wrapper sits below the pad in
-				    both hosts, so the row paints exactly over the strip it replaces. Being
-				    absolute, it adds nothing to the strip's measured anchor rect. */}
-				{popout && !addressFallback && !onStartPage && (
-					<div
-						className="absolute inset-x-0 top-0 z-30"
-						data-tour-tag="browser-address-popout"
-						onKeyDownCapture={(event) => {
-							// ESCAPE IS THE POPOUT'S, NOT THE INPUT'S (UX U3). Tab order runs
-							// Back, Forward, Reload, Home, site mark, input, ⋯ — five of seven
-							// stops had no Escape route before this. The menu keeps its own
-							// Escape while it is open (it closes only itself).
-							if (event.key !== "Escape" || pageMenuOpenRef.current) return;
-							event.preventDefault();
-							event.stopPropagation();
-							dismissAddress();
-						}}
-						onBlurCapture={(event) => {
-							const next = event.relatedTarget as Node | null;
-							// Focus that lands in the page menu's portal is still INSIDE this
-							// row's chrome; dismissing on it closed the menu the user just
-							// opened (agent review round 1, MAJOR-1 / UX U1).
-							if (next && !event.currentTarget.contains(next)) {
-								if (isPortalledChromeTarget(next)) return;
-								dismissAddress();
-							}
-						}}
-					>
-						<BrowserUrlBar
-							key={popout.nonce}
-							placement="popout"
-							inputRef={addressRef}
-							tabId={state?.activeTabId ?? null}
-							url={state?.url ?? ""}
-							pendingUrl={chrome.pendingUrl}
-							loading={Boolean(state?.loading)}
-							canGoBack={Boolean(state?.canGoBack)}
-							canGoForward={Boolean(state?.canGoForward)}
-							disabled={tabs.length === 0}
-							onNavigate={(url, expectedTabId) =>
-								void chrome.navigate(url, expectedTabId)
-							}
-							onBack={() => void chrome.history("back")}
-							onForward={() => void chrome.history("forward")}
-							onHome={() => void chrome.home()}
-							loadFailure={state?.navFailure ?? null}
-							onReload={() => void chrome.reload()}
-							onStop={() => void chrome.stop()}
-							overlayMode={overlayMode}
-							anchor={anchor}
-							seed={popout.seed}
-							selectOnMount={popout.selectAll}
-							onDismiss={() => dismissAddress()}
-							onCommitted={() => setPopout(null)}
-							menu={
-								<BrowserPageMenu
-									placement="popout"
-									disabled={tabs.length === 0}
-									loading={Boolean(state?.loading)}
-									canGoBack={Boolean(state?.canGoBack)}
-									canGoForward={Boolean(state?.canGoForward)}
-									pageZoom={state?.pageControls?.zoom ?? 1}
-									waitingCount={queue.count}
-									downloadsDir={chrome.state?.transfers?.dir ?? null}
-									onOpenChange={(open) => {
-										pageMenuOpenRef.current = open;
-									}}
-									onCloseAutoFocus={returnFocusToAddress}
-									onAddress={() => raiseAddress({ origin: "chrome" })}
-									onBack={() => void chrome.history("back")}
-									onForward={() => void chrome.history("forward")}
-									onReload={() => void chrome.reload()}
-									onStop={() => void chrome.stop()}
-									onHome={() => void chrome.home()}
-									onFind={() => void openFind("chrome")}
-									onPrint={() => {
-										if (state?.activeTabId != null)
-											void chrome.pageControl(state.activeTabId, "print");
-									}}
-									onResetZoom={() => {
-										if (state?.activeTabId != null)
-											void chrome.pageControl(state.activeTabId, "reset");
-									}}
-									onOpenDownloads={() => void chrome.revealDownloads()}
-									onOpenApprovals={() => setDockOpen((open) => !open)}
-								/>
-							}
-							// Suggestions are one list for the field: persistent history is
-							// session-agnostic, so there is no display scope to pass. The
-							// strip's `tabScope` still governs which TABS are shown.
-							addressHistory={(request) => chrome.addressHistory(request)}
-							onStateChanged={chrome.onStateChanged}
-						/>
-					</div>
-				)}
 			</div>
 			{/* THE PERMANENT ADDRESS ROW (S5, LOH-13). One 37px in-flow band
 			    between the strip and the page: Back, Forward, Reload/Stop, Home, the
@@ -1001,7 +897,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						? t("ui.browser.browser_new_tab.address_placeholder")
 						: undefined
 				}
-				suggestionsUnavailable={onStartPage || navFailure !== null}
+				suggestionsUnavailable={browserOwnState}
 				narrow={rowWidth > 0 && rowWidth < 360}
 				onNavigate={(url, expectedTabId) =>
 					void chrome.navigate(url, expectedTabId)

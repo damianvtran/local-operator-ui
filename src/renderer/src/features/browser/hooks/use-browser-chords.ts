@@ -97,7 +97,7 @@ export function useBrowserChords(
 	sessionId: string | null,
 	address: RefObject<AddressController>,
 	/** The surface's own-state fact, shared with the page menu (see surface). */
-	browserOwnState = false,
+	browserOwnState: boolean,
 ) {
 	const [root, setRoot] = useState<HTMLDivElement | null>(null);
 	const findReturnToPage = useRef(false);
