@@ -757,7 +757,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 			 */
 			data-canvas-shortcuts
 			data-glass-region="pane"
-			className={cn("flex h-full flex-col bg-elevated")}
+			className={cn("panel-top-pad flex h-full flex-col bg-elevated")}
 		>
 			{/*
 			 * One 40px chrome bar: what you are looking at on the left, what you
