@@ -787,6 +787,15 @@ export type CanonicalTranscriptProps = {
 	 * this surface is being fixed to stop showing.
 	 */
 	onReconnect: () => void;
+	/**
+	 * Where the missing notice's way out goes: the ROUTE move, owned by the page
+	 * that holds `navigate` (agent review round 1 / QA round 1, Q1). The store
+	 * action on the button stages the fresh draft and clears the dead selection;
+	 * this lets the address follow, or a reload would re-open the conversation the
+	 * press just left. Optional because the transcript also renders on surfaces
+	 * with no route (stories, the run panel's child reader).
+	 */
+	onStartNewChat?: () => void;
 };
 
 // ---------------------------------------------------------------- rows
@@ -3442,6 +3451,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	labelHoldLate,
 	labelMarked,
 	onReconnect,
+	onStartNewChat,
 }) => {
 	// The pane's own subscription: the notices and status lines below are
 	// translated and the pane must repaint when the locale changes.
@@ -6920,10 +6930,30 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 									variant="outline"
 									size="sm"
 									className="self-start"
+									/*
+									 * THE WORDS THE DEAD CONVERSATION'S BOX HELD FOLLOW THE READER
+									 * (the operator's report, 2026-10-23). Clearing the selection alone
+									 * left no draft at all: the pane fell to its residue arm and the text
+									 * stayed filed under the conversation that is gone - present on disk,
+									 * addressed by nothing on screen. `startNewChat` is the store's own
+									 * answer to that rule (a draft follows the user back, or it is
+									 * discarded), and `conversationId` is the identity this pane's composer
+									 * uses - the same value `composerIdentityFor` answers here, threaded as
+									 * the pane's identity, never recomputed from the draft and session ids.
+									 */
 									onClick={() => {
 										// Read at click time rather than subscribed: this component
 										// must not re-render every time the catalogue does.
-										useCanonicalSessionsStore.getState().setActiveSession(null);
+										useCanonicalSessionsStore
+											.getState()
+											.startNewChat(conversationId);
+										/*
+										 * AND THE ADDRESS FOLLOWS (agent review round 1 / QA round 1,
+										 * Q1): the store has staged the new chat and cleared the dead
+										 * selection, so leaving the route on the dead id would make a
+										 * reload re-open the conversation this press just left.
+										 */
+										onStartNewChat?.();
 									}}
 								>
 									{t("ui.chat.canonical.transcript.start_new_chat")}

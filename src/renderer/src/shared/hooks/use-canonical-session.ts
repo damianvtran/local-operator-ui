@@ -5442,6 +5442,37 @@ export function useCanonicalSessionStream(
 						 * round trip on the latency path (M6).
 						 */
 						if (event.kind === "error" && event.status === 404) {
+							/*
+							 * A DRAFT'S BRIDGE IS NOT A CONVERSATION (the operator's report,
+							 * 2026-10-23). `isSession` is false when `sessionId` is the id a
+							 * `sessions.draft` mint handed this pane (`SessionPanel`'s
+							 * `sessionId ?? draft?.warmId`) - a registry bridge the pane streams on
+							 * only while it waits for the first send, never a conversation it could
+							 * lose. So a 404 here says the REGISTRY entry is gone (the daemon
+							 * restarted, or the draft expired) and nothing about any conversation:
+							 * the row has no `sessionId`, is a new chat, and the missing notice the
+							 * session arm below paints would contradict the header that says "New
+							 * chat with <team>".
+							 *
+							 * The store retires the dead id and re-mints the mint's request id
+							 * (`retireDraftWarm` carries the why): the next keystroke or send asks
+							 * fresh, and a replayed receipt cannot name this id again. The view
+							 * stays on its draft: no `missing`, no `unavailable`, no dropped paint -
+							 * the pane is a working new chat and the composer is untouched. The
+							 * subscription id goes with the closed stream; the effect re-runs on the
+							 * now-id-less stream and returns before opening anything.
+							 */
+							if (!isSession) {
+								if (sessionId)
+									useCanonicalSessionsStore
+										.getState()
+										.retireDraftWarm(sessionId);
+								commitView((current) => ({
+									...current,
+									subscriptionId: null,
+								}));
+								return;
+							}
 							// Its paint goes with it: a later click on the same id would
 							// otherwise paint rows for a transcript that no longer exists,
 							// with nothing to tell the reader they are fiction. Its expansions
@@ -5878,6 +5909,15 @@ export function useCanonicalSessionStream(
 		commitView,
 		sessionId,
 		enabled,
+		/*
+		 * `isSession` rides the deps because the 404 arm reads it: the same id
+		 * shape is a conversation for one pane and a draft's bridge for another,
+		 * and the answer decides whether a 404 is a verdict or a dead runtime. The
+		 * caller's answer is fixed for a mounted pane (`SessionPanel` passes
+		 * whether its own `sessionId` exists), so this adds the re-run the id's own
+		 * change already performs, never a second one.
+		 */
+		isSession,
 		journalOrder,
 		peerDeclarable,
 		peerScopedNow,
