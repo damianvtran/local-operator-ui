@@ -68,8 +68,8 @@ instead of on the bar.
 
 | file | change |
 | --- | --- |
-| `src/renderer/src/features/chat/components/chat-content.tsx` | the chat column's inner surface reserves 8px at its right edge (`pr-2`) while a pane is docked beside it; the column's own box, which the right pane's capacity arithmetic measures against, is untouched |
-| `scripts/chat-pane-floors.test.mjs` | pins the relation: the splitter's band reaches 6px in, the seam gives back 8px, the band is centred, and the inset is gated on `rightPaneDocked` — the test fails on `origin/main` and passes here |
+| `src/renderer/src/features/chat/components/chat-content.tsx` | `rightPaneDocked` — read from the same open-flags the row's dividers are drawn from (`isCanvasOpen && canvasDocked`, `sessionAsksOpen && canvasDocked`, and the four panes) — puts 8px (`pr-2`) on the chat column's inner surface; the column's own box, which the right pane's capacity arithmetic measures against, is untouched |
+| `scripts/chat-pane-floors.test.mjs` | pins the relation (band reach 6 < inset 8, the band centred) and the gate's DEFINITION — the canvas families must carry their open flag, not `canvasDocked` alone — and fails on `origin/main` |
 
 The band's other half could not carry the target instead: the pane beside the
 column hosts a native `WebContentsView`, and a native view paints above all DOM
@@ -77,13 +77,24 @@ column hosts a native `WebContentsView`, and a native view paints above all DOM
 showing. The live half has to be on the chat side, which is why the bar moves off
 it rather than the band moving over.
 
+## With no pane open, nothing moves
+
+The inset is earned by a separator that is actually drawn, and review round 1
+caught the first version of that gate being wrong: `canvasDocked` alone says the
+ROW is wide enough to dock a canvas, which is true with every pane closed, so the
+inset applied to every chat on a wide window. The gate now carries the two canvas
+families' open flags (`isCanvasOpen`, `sessionAsksOpen`), and the undocked arm is
+checked rather than assumed: with the browser panel closed, this tree and
+`origin/main` write **byte-identical frames** (md5 `61a47660…`), and the
+scrollbar's band is 1328–1335 in both.
+
 ## What these frames cannot show
 
 - They are a still pair, not a recording: the drag rows above are the movement.
 - The pane in these runs is on its start page (DOM). With a real page the
-  `WebContentsView` covers the pane's full width — measured here, the view's rect
-  is the slot's own rect (x 760, w 576) — which is what makes the pane-side half
-  of the band unavailable rather than a second target.
+  `WebContentsView` covers the pane's full width — measured in this state, the
+  view's rect is the slot's own rect (x 740, w 596), which is what makes the
+  pane-side half of the band unavailable rather than a second target.
 - The transcript is synthetic (`transcript-rail-fixture.mjs` rows served by a real
   daemon), so the frames are evidence about geometry and hit-testing, not about
   any particular conversation.

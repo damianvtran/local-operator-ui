@@ -1934,15 +1934,20 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const canvasDocked =
 			canvasPaneMode(paneRowWidth || Number.MAX_SAFE_INTEGER) === "docked";
 		/*
-		 * IS A PANE DOCKED BESIDE THIS COLUMN? The five occupants of the right slot
-		 * are mutually exclusive (`claimRightSlot`), and the canvas draws a separator
-		 * only while it DOCKs - so this says "there is a separator on this column's
-		 * right edge", which is what the seam inset below is for. It is read from the
-		 * same flags the row's own `{isPaneOpen && ...}` blocks render from, so a
-		 * sixth occupant cannot be docked without the inset.
+		 * IS A SEPARATOR DRAWN ON THIS COLUMN'S RIGHT EDGE? Read from the SAME
+		 * open-flags and mode pairs the row's own `{... && (` blocks use, which is why
+		 * the two canvas families carry `canvasDocked` as well: the canvas and the ask
+		 * drawer draw their divider only while they DOCK, so `canvasDocked` alone -
+		 * "the row is wide enough to dock" - is true with no pane open at all, and
+		 * gating the inset on it alone insets every chat on a wide window.
+		 *
+		 * THE LIST IS HAND-KEPT, and a sixth occupant has to be added here beside its
+		 * `{... && (` block; `scripts/chat-pane-floors.test.mjs` pins the canvas half,
+		 * which is the one that was missing.
 		 */
 		const rightPaneDocked =
-			canvasDocked ||
+			(isCanvasOpen && canvasDocked) ||
+			(sessionAsksOpen && canvasDocked) ||
 			isRunPanelOpen ||
 			isBrowserPaneOpen ||
 			isConsolePaneOpen ||
