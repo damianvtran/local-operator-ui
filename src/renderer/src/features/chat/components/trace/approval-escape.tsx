@@ -90,10 +90,14 @@ import { errorText, useSessionCommand } from "../../pickers/use-picker-backend";
 /** Which gate the press loosens: the live one, or the saved default. */
 export type ApprovalEscapeTarget = "session" | "all";
 
-/** The effective approval modes the policy line can name. */
-export type ApprovalEscapeMode = "ask" | "auto";
-/** Where the effective mode came from: default, this conversation, or the run. */
-export type ApprovalEscapeProvenance = "global" | "session" | "pin";
+/**
+ * The effective approval modes the policy line can name. `""` is the core's
+ * "not stated" stamp (an ask card, an older runtime, or a payload whose
+ * publisher could not read the policy) and is treated exactly like absence.
+ */
+export type ApprovalEscapeMode = "ask" | "auto" | "";
+/** Where the effective mode came from; `""` is not stated, like the mode. */
+export type ApprovalEscapeProvenance = "global" | "session" | "pin" | "";
 
 /**
  * The card's effective-mode line, or `null` when the backend did not carry the
@@ -136,26 +140,6 @@ export type ApprovalEscapeStatus =
 	| { kind: "default-saved-session-failed"; detail: string }
 	| { kind: "refused"; detail: string };
 
-/** The request each handle sends, as data so a test can pin the route. */
-export type ApprovalEscapeRequest =
-	| {
-			op: "sessions.command";
-			command: "approvals";
-			args: "auto";
-	  }
-	| {
-			op: "settings.edit";
-			key: "tool_approval_mode";
-			value: "auto";
-	  };
-
-export const approvalEscapeRequest = (
-	target: ApprovalEscapeTarget,
-): ApprovalEscapeRequest =>
-	target === "session"
-		? { op: "sessions.command", command: "approvals", args: "auto" }
-		: { op: "settings.edit", key: "tool_approval_mode", value: "auto" };
-
 /** The two doors a press can use; a test substitutes both. */
 export type ApprovalEscapePorts = {
 	runCommand: (command: string, args: string) => Promise<CommandRun>;
@@ -171,27 +155,45 @@ export type ApprovalEscapeOutcome =
 	| { kind: "default-only"; detail: string }
 	| { kind: "unchanged"; detail: string };
 
+/**
+ * `serving.py:_approvals_slash`'s no-gates branch answers with a NOTICE whose
+ * text begins here. The handle did not own the gate tools consult, so nothing
+ * moved; a `notice` alone is therefore not proof of a mode change.
+ */
+const NO_GATE_NOTICE = "exec uses its original headless approval gate";
+
 /** Run `approvals auto` against the live gate and classify the receipt. */
 async function loosenLiveGate(
 	ports: ApprovalEscapePorts,
 ): Promise<{ ok: true } | { ok: false; detail: string }> {
 	try {
 		const run = await ports.runCommand("approvals", "auto");
+		const reported =
+			run.outcome && "text" in run.outcome ? run.outcome.text : run.result.text;
+		const text = reported.trim() || run.result.text;
 		/*
-		 * A `notice` is the runtime's mode-change receipt. A `native_action` is
-		 * the bridge's presentation instruction (the picker), and a `block` is
+		 * A `notice` is NORMALLY the runtime's mode-change receipt, but one
+		 * notice is not: a handle with no gates installed reports "exec uses its
+		 * original headless approval gate…" (the branch above). That sentence
+		 * says the live gate did not move, so it is a refusal here and its text
+		 * is the detail. The runtime's structured `data.ok`, when it is present,
+		 * is the same fact in machine form; an older receipt omits it and the
+		 * sentence remains the fallback.
+		 *
+		 * A `native_action` is the bridge presenting the picker and a `block` is
 		 * anything the owner chose to report without changing the mode; both are
-		 * refusals here because the live gate did not move.
+		 * refusals for the same reason.
 		 */
-		if (run.outcome?.kind === "notice") return { ok: true };
-		return {
-			ok: false,
-			detail:
-				(run.outcome && "text" in run.outcome
-					? run.outcome.text
-					: run.result.text
-				).trim() || run.result.text,
-		};
+		const receiptOk =
+			run.outcome && "data" in run.outcome ? run.outcome.data?.ok : undefined;
+		if (
+			run.outcome?.kind === "notice" &&
+			receiptOk !== false &&
+			!text.startsWith(NO_GATE_NOTICE)
+		) {
+			return { ok: true };
+		}
+		return { ok: false, detail: dropOurFailurePrefix(text) };
 	} catch (error) {
 		return { ok: false, detail: errorText(error) };
 	}
@@ -266,6 +268,16 @@ export const APPROVAL_ESCAPE_COPY = {
 		`Approvals: ${mode} — session override; global ${globalMode}.`,
 	pinnedRun: (mode: string) => `Approvals: ${mode} — this run.`,
 };
+
+/**
+ * The words `useSessionCommand.run` puts in front of a call that never reached
+ * the owner. The status copy adds `Unchanged: ` itself, so that prefix is
+ * removed rather than nested; the transport's own detail survives intact.
+ */
+const FAILURE_PREFIX = `${APPROVAL_ESCAPE_COPY.notChanged}: `;
+
+const dropOurFailurePrefix = (text: string): string =>
+	text.startsWith(FAILURE_PREFIX) ? text.slice(FAILURE_PREFIX.length) : text;
 
 const ESCAPE_LINK =
 	"inline-flex min-h-11 items-center rounded-sm text-meta text-ink-muted underline-offset-2 transition-colors duration-fast ease-out-quart hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:text-ink-disabled disabled:no-underline";
