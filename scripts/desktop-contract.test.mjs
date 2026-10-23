@@ -3610,3 +3610,57 @@ test("team_bridge join adds the caller and notify rides the read route", () => {
 		}),
 	);
 });
+
+/*
+ * The cap the backend moved. A role's instructions are read back truncated at
+ * `MAX_INSTRUCTIONS_CHARS` (`local_operator/agent_profiles.py`), so a contract
+ * that still refused 8,001..10,000 would hide that fix in the one app people
+ * write the field in: the server keeps the body whole and the app cannot save
+ * it. Both write ops are asserted because `profiles.create` states its own
+ * `instructions` field (required, non-empty) rather than reusing the update
+ * shape, so a single literal moved in one place would leave the other behind.
+ */
+test("profile instructions admit 10,000 characters and refuse 10,001, on both write ops", () => {
+	const requestId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+	const create = (instructions) => ({
+		op: "profiles.create",
+		name: "aida",
+		requestId,
+		fields: { description: "Chief of staff", instructions },
+	});
+	const update = (instructions) => ({
+		op: "profiles.update",
+		name: "aida",
+		requestId,
+		fields: { instructions },
+	});
+	for (const [op, build] of [
+		["profiles.create", create],
+		["profiles.update", update],
+	]) {
+		assert.equal(
+			jobsCancelSchema.safeParse(build("x".repeat(10_000))).success,
+			true,
+			`${op} admits 10,000 characters`,
+		);
+		assert.equal(
+			jobsCancelSchema.safeParse(build("x".repeat(10_001))).success,
+			false,
+			`${op} refuses 10,001 characters`,
+		);
+	}
+	// The profile description and the team fields keep their own 8,000 bounds:
+	// this change moves the profile INSTRUCTIONS bound and nothing else.
+	const longDescription = create("brief");
+	longDescription.fields.description = "d".repeat(8001);
+	assert.equal(jobsCancelSchema.safeParse(longDescription).success, false);
+	assert.equal(
+		jobsCancelSchema.safeParse({
+			op: "teams.update",
+			name: "lopdev",
+			requestId,
+			fields: { instructions: "x".repeat(8001) },
+		}).success,
+		false,
+	);
+});
