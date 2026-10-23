@@ -91,6 +91,22 @@ dom.window.matchMedia = () => ({
 });
 URL.createObjectURL = () => "blob:library-test";
 URL.revokeObjectURL = () => {};
+/*
+ * THE CANONICAL STREAM'S TWO TRANSPORT GLOBALS. The trajectory below the asset
+ * subscribes with `useCanonicalSessionStream`, which opens a desktop event
+ * stream; in this harness a no-op `EventSource` and the shared story shim's
+ * `window.electron` satisfy the module's imports without delivering a frame, so
+ * the cases assert MOUNTING and the composer's send, not stream semantics
+ * (those belong to the transcript's own suites).
+ */
+globalThis.EventSource = class {
+	constructor() {
+		this.readyState = 0;
+	}
+	addEventListener() {}
+	removeEventListener() {}
+	close() {}
+};
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 const { after } = await import("node:test");
@@ -118,6 +134,7 @@ const intersect = async (predicate) => {
  * instance (two copies of React make `act` report every update as unwrapped).
  */
 const ENTRY = `
+import "./src/renderer/src/features/chat/components/story-electron-shim";
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -171,6 +188,26 @@ export function mountLibrary(container, nowMs) {
 	return { client, root };
 }
 `;
+/*
+ * The shared composer pulls the theme module into this graph (the strip it
+ * renders reads the store's theme), and that module's only MUI VALUE is
+ * `createTheme`; leaving `@mui/material/styles` external makes Node's ESM
+ * resolver refuse the package's directory import, because the package is
+ * resolved by a bundler in the app. A passthrough factory is enough for the
+ * theme object nothing here renders.
+ */
+const muiStubPath = new URL(
+	`./_library-page-mui-${process.pid}.mjs`,
+	import.meta.url,
+);
+await writeFile(
+	muiStubPath,
+	`export const createTheme = (options) => options;
+	export const ThemeProvider = ({ children }) => children;
+	export const useTheme = () => ({});
+	export const alpha = (colour) => colour;`,
+);
+
 const bundle = await build({
 	stdin: {
 		contents: ENTRY,
@@ -188,8 +225,10 @@ const bundle = await build({
 		"@features": `${process.cwd()}/src/renderer/src/features`,
 		"@features/chat/components/chat-sidebar": `${process.cwd()}/scripts/library-test-stubs/chat-sidebar.ts`,
 		"@shared/components/common/chat-layout": `${process.cwd()}/scripts/library-test-stubs/chat-layout.ts`,
+		"@mui/material/styles": muiStubPath.pathname,
+		"@assets": `${process.cwd()}/src/renderer/src/assets`,
 	},
-	loader: { ".css": "empty" },
+	loader: { ".css": "empty", ".png": "dataurl", ".svg": "dataurl" },
 	write: false,
 });
 const bundlePath = new URL(
@@ -201,6 +240,7 @@ const { mountLibrary, filterAssets, NO_LIBRARY_FILTERS, locale } = await import(
 	bundlePath.href
 );
 await unlink(bundlePath);
+await unlink(muiStubPath);
 
 const NOW = new Date(2026, 9, 18, 12, 0, 0).getTime();
 
@@ -287,6 +327,10 @@ const ANSWER = {
 	failNextPage: false,
 	hang: false,
 	detail: null,
+	/** The path bridge for the live-file case; null keeps it absent. */
+	fileBridge: null,
+	/** The trajectory's durable page for a case; null is an empty page. */
+	history: null,
 	state: "ready",
 	nextCursor: null,
 	allTotal: null,
@@ -380,6 +424,23 @@ const desktopRequest = async (request) => {
 			},
 		};
 	}
+	if (request.op === "sessions.history") {
+		/*
+		 * The trajectory's own read. A case that wants a durable page sets
+		 * `ANSWER.history`; the default is an empty, proven-empty page, which is the
+		 * transcript's own "no rows yet" state rather than a hang.
+		 */
+		return {
+			status: 200,
+			body: {
+				result: {
+					entries: ANSWER.history ?? [],
+					has_more: false,
+					cursor_missing: false,
+				},
+			},
+		};
+	}
 	if (request.op === "library.get") {
 		const row =
 			ANSWER.detail ?? ANSWER.rows.find((item) => item.id === request.id);
@@ -469,6 +530,34 @@ const desktopRequest = async (request) => {
 };
 
 const api = dom.window.api ?? {};
+/*
+ * THE PATH BRIDGE, PER CASE. Absent by default, which is the honest default for
+ * this harness: `useAssetContent` then falls back to the library's content route
+ * exactly as it does in a renderer with no bridge, and every pre-existing case
+ * keeps the bytes it always saw. A case that is ABOUT the live file installs
+ * `ANSWER.fileBridge` and removes it afterwards.
+ */
+api.probeFiles = async (paths) =>
+	ANSWER.fileBridge
+		? paths.map((path) => ({
+				input: path,
+				resolved: path,
+				exists: true,
+				isFile: true,
+				sizeBytes: ANSWER.fileBridge.sizeBytes,
+				mtimeMs: ANSWER.fileBridge.mtimeMs,
+				outsideWorkspace: false,
+			}))
+		: [];
+api.readFileBytes = async () => {
+	if (!ANSWER.fileBridge)
+		return { success: false, code: "unavailable", error: "" };
+	return {
+		success: true,
+		data: new TextEncoder().encode(ANSWER.fileBridge.text),
+		sizeBytes: ANSWER.fileBridge.sizeBytes,
+	};
+};
 api.desktop = {
 	request: desktopRequest,
 	media: async (request) => {
@@ -1007,6 +1096,24 @@ test("a card selects its asset route and the preview renders there", async () =>
 	);
 	const composer = container.querySelector("[data-library-composer] textarea");
 	assert.equal(composer?.getAttribute("placeholder"), "Ask about this asset");
+	/*
+	 * THE BOX IS THE APP'S OWN COMPOSER, not a second text field: the chat
+	 * region and the composer's tour tag are markers only `MessageInput` writes,
+	 * so their presence is what distinguishes the shared control from the
+	 * bespoke textarea this surface used to mount.
+	 */
+	assert.ok(
+		container.querySelector(
+			'[data-library-composer] [data-chat-region="composer"]',
+		),
+		"the Library mounts the shared MessageInput",
+	);
+	assert.ok(
+		container.querySelector(
+			'[data-library-composer] [data-tour-tag="chat-input-textarea"]',
+		),
+		"the shared composer's own box is what renders here",
+	);
 	await act(async () => root.unmount());
 });
 
@@ -1029,6 +1136,15 @@ test("a linked chat is shown and continued with its own session", async () => {
 	await act(async () => card.click());
 	await flush();
 	assert.ok(text(container).includes("Chat about this asset: Asset chat"));
+	/*
+	 * THE PERSISTED LINK IS ENOUGH TO MOUNT THE TRAJECTORY (operator: returning
+	 * to the asset pulls the existing conversation back up). Nothing was lifted
+	 * here - the id came from the row's own `chat.session_id`.
+	 */
+	assert.ok(
+		container.querySelector("[data-library-trajectory]"),
+		"a linked asset mounts its conversation below the asset",
+	);
 
 	const textarea = container.querySelector("[data-library-composer] textarea");
 	assert.ok(textarea);
@@ -1042,7 +1158,7 @@ test("a linked chat is shown and continued with its own session", async () => {
 	});
 	await flush();
 	const send = container.querySelector(
-		'[data-library-composer] button[aria-label="Send"]',
+		'[data-library-composer] button[aria-label="Send message"]',
 	);
 	assert.ok(send);
 	await act(async () => send.click());
@@ -1053,6 +1169,21 @@ test("a linked chat is shown and continued with its own session", async () => {
 		ANSWER.ops.some((op) => op.op === "library.chat.link"),
 		false,
 		"continuing a linked chat does not link it again",
+	);
+	/*
+	 * AND IT STAYS PUT. The old send ended in `openConversation(navigate, id)`,
+	 * which left the Library for `/chat` — the navigation this feature removes.
+	 * The preview is still mounted and the chat route's own element was never
+	 * rendered.
+	 */
+	assert.ok(
+		container.querySelector('[data-library-preview="la_0000000000000013"]'),
+		"the send keeps the asset and its preview on screen",
+	);
+	assert.equal(
+		text(container).includes("chat route"),
+		false,
+		"the send does not navigate to the chat route",
 	);
 	await act(async () => root.unmount());
 });
@@ -1087,7 +1218,7 @@ test("an accepted send survives a link failure and the next send reuses its sess
 	};
 	const send = () =>
 		container.querySelector(
-			'[data-library-composer] button[aria-label="Send"]',
+			'[data-library-composer] button[aria-label="Send message"]',
 		);
 	await type("First message");
 	await act(async () => send().click());
@@ -1165,7 +1296,9 @@ test("a send refusal keeps the draft and writes no link", async () => {
 	await flush(2);
 	await act(async () =>
 		container
-			.querySelector('[data-library-composer] button[aria-label="Send"]')
+			.querySelector(
+				'[data-library-composer] button[aria-label="Send message"]',
+			)
 			.click(),
 	);
 	await flush(8);
@@ -1213,4 +1346,114 @@ after(() => {
 	// jsdom keeps window timers alive; close it so a stray debounce or query
 	// timer cannot hold the node:test process open after every case unmounts.
 	dom.window.close();
+});
+
+test("a path-backed asset reads its live file and says when it moved", async () => {
+	/*
+	 * THE LIVE-FILE DECISION, end to end through the shipped preview: a
+	 * path-backed row is read from the PATH (not the index's digest), and when the
+	 * path's mtime differs from the row's `modified_at` the strip says so instead
+	 * of silently painting newer bytes under the old size.
+	 */
+	ANSWER.rows = [
+		asset("la_0000000000000016", {
+			name: "Live file",
+			kind: "text",
+			derived_name: "live.txt",
+			ref: {
+				type: "path",
+				path: "/tmp/live.txt",
+				display_path: "~/live.txt",
+				digest: null,
+				content_type: "text/plain",
+			},
+			modified_at: 1_700_000_000,
+		}),
+	];
+	ANSWER.ops = [];
+	ANSWER.fileBridge = {
+		text: "rewritten by the agent",
+		sizeBytes: 22,
+		mtimeMs: 1_700_000_000_000 + 60_000,
+	};
+	const { container, root } = await mount();
+	const card = container.querySelector(
+		'[data-library-card-id="la_0000000000000016"] button',
+	);
+	await act(async () => card.click());
+	await flush(6);
+	assert.ok(
+		text(container).includes("rewritten by the agent"),
+		"the viewer paints the file at its path, not the indexed copy",
+	);
+	const live = container.querySelector("[data-library-file-live]");
+	assert.ok(live, "the size shown is the live file's, marked as such");
+	assert.ok(
+		text(live).length > 0 && !text(live).includes("1.2 MB"),
+		"the live size replaces the stale row figure",
+	);
+	await act(async () => root.unmount());
+	ANSWER.fileBridge = null;
+});
+
+test("a linked conversation holds the shared spinner until the stream answers", async () => {
+	/*
+	 * THE LOADING STATE, AND A RECORDED LIMIT OF THIS HARNESS. The link mounts the
+	 * panel (the assertion above), and until the stream answers the well is the
+	 * shared `Spinner` — not a blank panel and not a bespoke skeleton. The durable
+	 * page here is deliberately answered by `sessions.history`: it does NOT paint
+	 * on its own, because the session hook holds hydration until the stream's first
+	 * snapshot, so a request-only mock (this harness, and Storybook's) cannot
+	 * demonstrate a painted transcript. That is why the streaming and long-thread
+	 * Storybook states are reported as blocked rather than faked with a spinner.
+	 */
+	ANSWER.rows = [
+		asset("la_0000000000000017", {
+			name: "Persisted chat",
+			chat: {
+				session_id: "feedface1234",
+				title: "Asset chat",
+				updated_at: 1_700_000_000,
+			},
+		}),
+	];
+	ANSWER.ops = [];
+	ANSWER.history = [
+		{
+			id: "e1",
+			ts: 1_700_000_000,
+			type: "message",
+			payload: { role: "user", content: "what is in this file?" },
+		},
+		{
+			id: "e2",
+			ts: 1_700_000_001,
+			type: "message",
+			payload: { role: "assistant", content: "It is a short note." },
+		},
+	];
+	const { container, root } = await mount();
+	const card = container.querySelector(
+		'[data-library-card-id="la_0000000000000017"] button',
+	);
+	await act(async () => card.click());
+	await flush(10);
+	const trajectory = container.querySelector("[data-library-trajectory]");
+	assert.ok(trajectory, "the linked conversation is mounted");
+	/*
+	 * This harness reports no layout, so the preview's height measurement is 0
+	 * and the trajectory takes its short-panel default (collapsed). The chevron is
+	 * the gesture a reader makes to open it — press it rather than asserting the
+	 * body the default correctly hides.
+	 */
+	const toggle = trajectory.querySelector("button[aria-expanded]");
+	assert.equal(toggle?.getAttribute("aria-expanded"), "false");
+	await act(async () => toggle.click());
+	await flush(4);
+	assert.ok(
+		text(trajectory).includes("Loading"),
+		"the well holds the shared spinner until the stream's first snapshot",
+	);
+	await act(async () => root.unmount());
+	ANSWER.history = null;
 });
