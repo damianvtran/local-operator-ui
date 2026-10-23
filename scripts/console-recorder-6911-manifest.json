@@ -1,0 +1,12 @@
+{
+  "featureBase": "abd3bc060f3fca14d1020fec36db5bc7b409a555",
+  "preparationBase": "2531dd0a72fd1a98b7e11c1fafe784b32469418e",
+  "files": {
+    "scripts/console-pane-render.test.mjs": "3e95bc491eef036fc63a9035334975112143694e6db2e9756164f198feb8225a",
+    "src/renderer/src/features/console/components/console-pane.tsx": "9d26c5f75b974248697d71bc7313113f4a2f414691a58f7d4250ab12e3894dca",
+    "src/renderer/src/shared/store/ui-preferences-store.ts": "ebec931fae40d23fa3fa0e65b7b0f46883b18e30f44426a37ed20285aabe2e69",
+    "scripts/entry-point.mjs": "39a57f401ef0f3f61c9855c0fbb49bbf2fa3c208cd1e2dd32bceaa9fede608f0",
+    "scripts/desktop-test-memory-guard.mjs": "ad52d1f8eed9ef70265ad8c68b25c2ae938768d113b6f5a94e8aa67bfc3e61cc",
+    "scripts/console-pane-record-6911.diag.mjs": "62f6aa2f64636811aef329a069591784ca7f3bf3e439db0b1d9cdb807702e87c"
+  }
+}
