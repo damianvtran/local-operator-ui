@@ -13,9 +13,11 @@ import {
 	inventory,
 	loadReceipts,
 	main,
+	observedRunnerFileCount,
 	partition,
 	plan,
 	receipt,
+	scopeDecision,
 	tapSummary,
 	validateFiles,
 	verify,
@@ -34,6 +36,10 @@ const command = (files) =>
 	`node scripts/run-desktop-tests.mjs ${files.join(" ")}`;
 const log =
 	"# tests 120\n# pass 119\n# fail 0\n# cancelled 0\n# skipped 1\n# todo 0\n";
+function runnerLog(count, summary = log) {
+	return `desktop tests: ${count} ${count === 1 ? "file" : "files"}, concurrency 3 (max clamp 3)\n${summary}`;
+}
+
 function fixture(fn) {
 	const root = mkdtempSync(join(tmpdir(), "desktop-shard-data-"));
 	try {
@@ -65,7 +71,9 @@ function expected() {
 	};
 }
 function rows(p) {
-	return [0, 1, 2].map((index) => receipt(p, index, log, 0, 1));
+	return [0, 1, 2].map((index) =>
+		receipt(p, index, runnerLog(p.shards[index].length), 0, 1),
+	);
 }
 
 test("literal inventory includes nested names; count-balanced partition is complete, disjoint and permutation invariant", () => {
@@ -137,7 +145,10 @@ test("TAP and receipt cannot be emitted after an error, cancellation, empty or t
 		log.replace("# pass 119", "# pass 0"),
 		`${log}not ok 3 - failed\n`,
 	]) {
-		assert.throws(() => receipt(p, 0, bad, 0, 1), /TAP|summary/);
+		assert.throws(
+			() => receipt(p, 0, runnerLog(p.shards[0].length, bad), 0, 1),
+			/TAP|summary/,
+		);
 	}
 	assert.throws(() => receipt(p, 0, log, 137, 1), /rc=0/);
 	assert.throws(() => receipt(p, 3, log, 0, 1), /index/);
@@ -286,4 +297,122 @@ test("metadata-only plans and forged metadata receipts cannot claim execution su
 		() => verify(p, r, "true", "success", "success"),
 		/Metadata-only/,
 	);
+});
+
+test("R1: actual receipt rejects healthy TAP without guarded-runner file-count evidence", () => {
+	const p = expected();
+	assert.throws(() => receipt(p, 0, log, 0, 1), /runner.*count/i);
+});
+
+test("R2: actual exported metadata planner cannot create or verify execution receipts", () =>
+	fixture((root, files) => {
+		const packagePath = join(root, "exported-package.json");
+		writeFileSync(
+			packagePath,
+			JSON.stringify({ scripts: { "test:desktop": command(files) } }),
+		);
+		const treePath = join(root, "exported-tree.txt");
+		writeFileSync(
+			treePath,
+			`${files.map((file) => `100644 blob ${HEAD}\t${file}`).join("\n")}\n`,
+		);
+		const actual = plan(root, HEAD, CHECKOUT);
+		const validRows = rows(actual);
+		for (const overrides of [
+			[packagePath, treePath],
+			[packagePath, undefined],
+			[undefined, treePath],
+		]) {
+			const metadata = plan(root, HEAD, CHECKOUT, ...overrides);
+			assert.throws(
+				() =>
+					receipt(
+						metadata,
+						0,
+						`desktop tests: 3 files, concurrency 3 (max clamp 3)\n${log}`,
+						0,
+						1,
+					),
+				/Metadata-only/,
+			);
+			assert.throws(
+				() => verify(metadata, validRows, "true", "success", "success"),
+				/Metadata-only/,
+			);
+			assert.equal(metadata.mode, "metadata-only");
+			assert.equal(metadata.executed, false);
+			assert.equal(metadata.sourceSha, HEAD);
+			assert.equal(metadata.gitTreeExistence, Boolean(overrides[1]));
+		}
+	}));
+
+test("R1: observed guarded-runner count is persisted and independently required in aggregate", () => {
+	const p = expected();
+	const wanted = p.shards[0].length;
+	const valid = runnerLog(wanted);
+	assert.equal(receipt(p, 0, valid, 0, 1).runnerFileCount, wanted);
+	for (const bad of [
+		log,
+		`# desktop tests: ${wanted} files, concurrency 3\n${log}`,
+		`    desktop tests: ${wanted} files, concurrency 3\n${log}`,
+		runnerLog(0),
+		runnerLog(wanted - 1),
+		runnerLog(wanted + 1),
+		valid + runnerLog(wanted),
+		`desktop tests: many files, concurrency 3\n${log}`,
+	]) {
+		assert.throws(() => receipt(p, 0, bad, 0, 1), /runner.*count/i);
+	}
+	for (const count of [undefined, 0, wanted - 1, wanted + 1]) {
+		const r = rows(p);
+		r[0].runnerFileCount = count;
+		assert.throws(
+			() => verify(p, r, "true", "success", "success"),
+			/runner file count/,
+		);
+	}
+	assert.equal(
+		observedRunnerFileCount("desktop tests: 1 file, concurrency 3\n"),
+		1,
+	);
+	assert.equal(
+		observedRunnerFileCount(
+			"desktop tests: 181 files, no concurrency cap (CI runner: governor stands down, node's default not measurable)\n",
+		),
+		181,
+	);
+});
+
+test("R3/QP2: classifier-result by unit truth table cannot hide stale false output", () => {
+	for (const classifier of [
+		"success",
+		"failure",
+		"cancelled",
+		"skipped",
+		"",
+		undefined,
+	]) {
+		for (const unit of ["true", "false", "", "unknown"]) {
+			// The workflow's always() admission expression schedules a failure
+			// consumer even if a broken classifier left a stale false output.
+			const admitted = unit !== "false" || classifier !== "success";
+			assert.equal(admitted, !(classifier === "success" && unit === "false"));
+			if (classifier !== "success") {
+				assert.equal(admitted, true);
+				assert.throws(
+					() => scopeDecision(unit, classifier, "success"),
+					/Classifier did not succeed/,
+				);
+			} else if (unit === "false") {
+				assert.equal(scopeDecision(unit, classifier, "skipped"), "skipped");
+			} else if (unit === "true") {
+				assert.equal(scopeDecision(unit, classifier, "success"), "selected");
+			} else {
+				assert.throws(
+					() => scopeDecision(unit, classifier, "success"),
+					/Unknown unit/,
+				);
+			}
+		}
+	}
 });
