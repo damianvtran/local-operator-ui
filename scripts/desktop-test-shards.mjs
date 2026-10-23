@@ -112,6 +112,12 @@ export function plan(root, head, checkout, metadataPackage, metadataGitTree) {
 		.digest("hex");
 	return {
 		schema: 1,
+		mode:
+			metadataPackage || metadataGitTree ? "metadata-only" : "checkout-plan",
+		executed: false,
+		sourceSha: head,
+		gitTreeExistence: Boolean(metadataGitTree),
+		...(metadataPackage || metadataGitTree ? { metadataOnly: true } : {}),
 		head,
 		checkout,
 		count: SHARD_COUNT,
@@ -146,6 +152,28 @@ export function tapSummary(text) {
 	return counts;
 }
 
+/** Actual guarded-runner argv cardinality, not the number of nested TAP cases. */
+export function observedRunnerFileCount(text) {
+	const lines = text
+		.split(/\r?\n/)
+		.filter((line) => line.startsWith("desktop tests:"));
+	if (lines.length !== 1)
+		throw new Error("Missing or duplicate guarded-runner file count evidence");
+	const match =
+		/^desktop tests: ([0-9]+) (file|files), (?:concurrency [1-9][0-9]*|no concurrency cap)(?: \([^\r\n]*\))?$/.exec(
+			lines[0],
+		);
+	if (!match) throw new Error("Malformed guarded-runner file count evidence");
+	const count = Number(match[1]);
+	if (
+		!Number.isSafeInteger(count) ||
+		count <= 0 ||
+		(count === 1 ? match[2] !== "file" : match[2] !== "files")
+	)
+		throw new Error("Invalid or zero guarded-runner file count");
+	return count;
+}
+
 export function receipt(expected, index, text, rc, elapsed) {
 	if (expected.metadataOnly || expected.mode === "metadata-only")
 		throw new Error("Metadata-only plan cannot produce execution success");
@@ -153,8 +181,14 @@ export function receipt(expected, index, text, rc, elapsed) {
 		throw new Error("Invalid shard index (expected 0, 1, 2)");
 	if (rc !== 0 || !Number.isFinite(elapsed) || elapsed < 0)
 		throw new Error("Only a completed rc=0 suite may write a success receipt");
+	const runnerFileCount = observedRunnerFileCount(text);
+	if (runnerFileCount !== expected.shards[index].length)
+		throw new Error(
+			`Guarded-runner file count ${runnerFileCount} differs from planned shard length ${expected.shards[index].length}`,
+		);
 	return {
 		schema: 1,
+		runnerFileCount,
 		mode: "execution",
 		executed: true,
 		head: expected.head,
@@ -218,6 +252,14 @@ export function verify(expected, receipts, unit, classifier, workers) {
 			r.elapsed < 0
 		)
 			throw new Error("Failed/cancelled/non-success receipt");
+		if (
+			!Number.isSafeInteger(r.runnerFileCount) ||
+			r.runnerFileCount <= 0 ||
+			r.runnerFileCount !== expected.shards[r.index].length
+		)
+			throw new Error(
+				"Receipt has missing, zero or wrong observed runner file count",
+			);
 		if (JSON.stringify(r.files) !== JSON.stringify(expected.shards[r.index]))
 			throw new Error(
 				"Receipt partition is missing, reordered or overlapping files",
@@ -343,13 +385,6 @@ export async function main(args) {
 		o["metadata-git-tree"],
 	);
 	if (mode === "plan") {
-		if (o["metadata-git-tree"]) {
-			expected.metadataOnly = "pinned-git-tree (not execution)";
-			expected.mode = "metadata-only";
-			expected.executed = false;
-			expected.sourceSha = o.head;
-			expected.gitTreeExistence = true;
-		}
 		const data = `${JSON.stringify(expected, null, 2)}\n`;
 		if (o.output) writeFileSync(o.output, data);
 		else console.log(data.trimEnd());
