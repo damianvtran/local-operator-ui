@@ -1,0 +1,183 @@
+{
+ "audit_id": "pr5-20261023",
+ "date": "2026-10-23",
+ "locale": "fr",
+ "namespace": "ui.chat.asks",
+ "source_commit": "9571f33c537c9ce5d9432f691f969f0b3f86b37a",
+ "requested_commit": "5b10cb570b555752ec714d45a777c93bd5925c38",
+ "head_note": "Requested 5b10cb570 had moved to 9571f33c5; the catalogue diff between them under src/i18n and i18n is empty, so the hashes below are identical at both heads.",
+ "scope": "Fresh full audit of all 10 ui.chat.asks keys (fr): meaning/idiom, glossary and style-guide conformance, register, placeholders/ICU, CLDR plural arms; cross-surface consistency with harness tui.asks/relay.ask.",
+ "status": "changes_requested",
+ "result": "changes_requested",
+ "keys_read": 10,
+ "translator": {
+  "note": "Translator identity is not recorded in the PR commits (2e230df57, 5b10cb570 by bbqben); the coder assembling the ledger row supplies it. This auditor is not it."
+ },
+ "auditors": [
+  {
+   "agent": "task",
+   "model": "anthropic/claude-opus-5-5",
+   "session": "fb125765ab49",
+   "team": "lopdev",
+   "instance": "pr5-20261023-fr",
+   "date": "2026-10-23",
+   "result": "changes_requested",
+   "findings": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 3,
+    "nit": 1
+   },
+   "receipt": "i18n/receipts/pr5-fr.json",
+   "receipt_sha256": "c70e7eff938b7d32dc3681df33dd9605acf5ca61c3dc3f9aa77d527051c28d3f"
+  }
+ ],
+ "model_note": "Served model anthropic/claude-opus-5-5 for the whole pass (skill reading, contract reading, catalogue review, ICU validation and artifacts). No provider fallback occurred.",
+ "independence": "Independent translation audit by the `task` member of team lopdev (session fb125765ab49), delegated by the team manager. This session produced none of the reviewed copy: it did not translate, edit, commit or push any catalogue, context file or ledger row, and wrote only its own receipts and evidence records. No MT, translation API or SDK was used; all linguistic judgement is the auditor's own. ICU parsing and plural rendering ran the worktree's existing intl-messageformat as validation, not as translation.",
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.asks.json",
+   "sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/fr/ui.chat.asks.json",
+   "sha256": "8a3298f89579a97bbb4de70ab27adeaf8f05041121b0eb9438123f4cab4a4fb4"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.asks.context.json",
+   "sha256": "f5e2f62d5630e4873ee3084265c8e487beac4854a690df4e824ce0a6135747ea"
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "~/workspace/repos/lo-stale-ask-dismiss/i18n/glossary.md",
+   "revision": "9969e2907933b1bf87df6c2502332396f36d36ec",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/workspace/repos/lo-stale-ask-dismiss/i18n/style-guides/fr.md",
+   "revision": "9969e2907933b1bf87df6c2502332396f36d36ec",
+   "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "ref": "origin/main",
+   "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+  },
+  "cross_surface": {
+   "repo": "~/workspace/repos/lo-stale-ask-surfaces",
+   "commit": "93f798ddb284bca3e342112a7fca76c60729e83a",
+   "catalogues": [
+    "local_operator/i18n/catalogues/fr/tui.asks.json",
+    "local_operator/i18n/catalogues/fr/relay.ask.json"
+   ],
+   "note": "Unmerged branch at audit time."
+  }
+ },
+ "findings": [
+  {
+   "id": "fr-M1",
+   "severity": "MAJOR",
+   "key": "ui.chat.asks.dismiss.moot.note",
+   "issue": "The note addresses the operator with a second-person imperative (vous-imperative « n’attendez plus »), so it reads as telling the operator to stop waiting for a reply. Per the context sidecar the actor is the agent: dismissing means the agent stops waiting on this ask. The terminal/phone copy for the same English (tui.asks.dismiss.moot_note, relay.ask.dismiss.moot_note) was corrected for exactly this in its own independent audit and names the agent. Root cause is upstream of the translation: the en context sets `tone: \"lowercase fragment, imperative\"` for this key while its `note` says the agent stops waiting, so a translator following the tone line lands on an operator-addressed imperative. Coder should also change that tone line (e.g. 'lowercase fragment naming what the agent stops doing') so a re-translation does not regress.",
+   "current": "n’attendez plus de réponse",
+   "proposed": "l’agent n’attendra plus de réponse"
+  },
+  {
+   "id": "fr-m1",
+   "severity": "MINOR",
+   "key": "ui.chat.asks.context.messages_since",
+   "issue": "Two defects. (1) The many arm renders {count} while one/other render #, so 1 000 000 renders as the unformatted '1000000 de messages' (verified with the repo's intl-messageformat); the fr style guide says '# renders the formatted number'. (2) « message de vous » is a calque of 'from you'; « de votre part » is the idiomatic French. Reachable only at exact multiples of 10⁶ messages, so user impact is negligible; graded MINOR because it breaks a style-guide rule.",
+   "current": "{count, plural, one {# message de vous depuis cette demande (dernier à {time})} many {{count} de messages de vous depuis cette demande (dernier à {time})} other {# messages de vous depuis cette demande (dernier à {time})}}",
+   "proposed": "{count, plural, one {# message de votre part depuis cette demande (dernier à {time})} many {# de messages de votre part depuis cette demande (dernier à {time})} other {# messages de votre part depuis cette demande (dernier à {time})}}"
+  },
+  {
+   "id": "fr-m2",
+   "severity": "MINOR",
+   "key": "ui.chat.asks.dismiss.heading",
+   "issue": "Verb diverges from the terminal/phone surfaces for the same act (« Ignorer cette question », « ignorer… », « Ignorée — … »); the heading's own context says these are 'the same words the terminal and phone surfaces use'. Applies to dismiss.heading, dismiss.trigger, dismiss.receipt.moot and dismiss.receipt.answered_in_chat. The noun « demande » is kept (see fr-n1).",
+   "current": "Écarter cette demande | Écarter… | Écartée — plus nécessaire | Écartée — réglée dans le chat",
+   "proposed": "Ignorer cette demande | Ignorer… | Ignorée — plus nécessaire | Ignorée — réglée dans la conversation"
+  },
+  {
+   "id": "fr-m3",
+   "severity": "MINOR",
+   "key": "ui.chat.asks.dismiss.answered_in_chat.title",
+   "issue": "« dans le chat » is off-corpus for the fr desktop (0 uses; « conversation » is used 183 times) and diverges from the terminal/phone « Répondu dans la conversation ». It also appears in dismiss.receipt.answered_in_chat.",
+   "current": "Répondu dans le chat | Écartée — réglée dans le chat",
+   "proposed": "Répondu dans la conversation | Ignorée — réglée dans la conversation"
+  },
+  {
+   "id": "fr-n1",
+   "severity": "NIT",
+   "key": "ui.chat.asks.dismiss.heading",
+   "issue": "Cross-surface divergence: the terminal/phone heading uses « question » for the ask, the desktop uses « demande ». Kept deliberately: « demande » matches the desktop's own asks panel and rail on the same screen (ui.chat.composer.secret_ask_open « Ouvrir les demandes », ui.shell.rail.ask.aria « Demandes »). Recorded so the two surfaces can converge in one direction; no catalogue change proposed here.",
+   "current": "Écarter cette demande",
+   "proposed": "(no change: keep « demande »)"
+  }
+ ],
+ "proposed_values": {
+  "ui.chat.asks.dismiss.moot.note": "l’agent n’attendra plus de réponse",
+  "ui.chat.asks.context.messages_since": "{count, plural, one {# message de votre part depuis cette demande (dernier à {time})} many {# de messages de votre part depuis cette demande (dernier à {time})} other {# messages de votre part depuis cette demande (dernier à {time})}}",
+  "ui.chat.asks.dismiss.heading": "Ignorer cette demande",
+  "ui.chat.asks.dismiss.trigger": "Ignorer…",
+  "ui.chat.asks.dismiss.receipt.moot": "Ignorée — plus nécessaire",
+  "ui.chat.asks.dismiss.receipt.answered_in_chat": "Ignorée — réglée dans la conversation",
+  "ui.chat.asks.dismiss.answered_in_chat.title": "Répondu dans la conversation"
+ },
+ "validation": {
+  "key_parity": "10/10 keys equal to en",
+  "icu": {
+   "parser": "worktree intl-messageformat (existing node_modules, no install)",
+   "parsed": 10,
+   "errors": [],
+   "plural_arms": [
+    "one",
+    "many",
+    "other"
+   ],
+   "cldr_categories_match": true,
+   "placeholders": [
+    "count",
+    "time"
+   ],
+   "placeholders_match_en": true
+  },
+  "nfc": true,
+  "bidi_controls": 0,
+  "proposed_values_parse": true,
+  "rendered_fit": "Not executed; no rendered-frame or width claim."
+ },
+ "deriveReceiptAudit": {
+  "module_ref": "origin/main",
+  "module_path": "scripts/i18n/ledger-rules.mjs",
+  "module_sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+  "execution": "Imported exact git-show bytes via in-memory data URL; called pure deriveReceiptAudit with actual en/target SHA-256 from disk; exit 0. No assembler or ledger write executed.",
+  "derived": {
+   "agent": "task",
+   "instance": "pr5-20261023-fr",
+   "model": "anthropic/claude-opus-5-5",
+   "result": "changes_requested",
+   "findings": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 3,
+    "nit": 1
+   },
+   "source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+   "target_sha256": "8a3298f89579a97bbb4de70ab27adeaf8f05041121b0eb9438123f4cab4a4fb4",
+   "receipt_sha256": "c70e7eff938b7d32dc3681df33dd9605acf5ca61c3dc3f9aa77d527051c28d3f"
+  }
+ },
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/pr5-fr.json",
+   "sha256": "c70e7eff938b7d32dc3681df33dd9605acf5ca61c3dc3f9aa77d527051c28d3f"
+  }
+ ],
+ "limitations": [
+  "Catalogue-only audit; no build, test, install, browser, render or activation evidence.",
+  "Cross-surface terms come from an unmerged harness branch; if it changes before merge, the alignment proposals should be re-checked.",
+  "Proposed values are the auditor's suggestions; the fix belongs to the coder and needs a fresh audit round on the new target bytes."
+ ]
+}
