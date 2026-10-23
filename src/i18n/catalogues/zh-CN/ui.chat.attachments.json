@@ -6,8 +6,9 @@
 	"ui.chat.attachments.file_unnamed": "附件",
 	"ui.chat.attachments.copy_path": "复制路径",
 	"ui.chat.attachments.path_copied": "路径已复制",
-	"ui.chat.attachments.file_missing_recovery": "原始文件已不在该路径。保存的副本仍保留在附件存储中。",
+	"ui.chat.attachments.file_missing_recovery": "该文件已不在这个路径。",
 	"ui.chat.attachments.file_type_unknown": "文件",
 	"ui.chat.attachments.copy_saved_path": "复制已保存副本的路径",
-	"ui.chat.attachments.saved_path_copied": "已复制保存副本的路径"
+	"ui.chat.attachments.saved_path_copied": "已复制保存副本的路径",
+	"ui.chat.attachments.saved_copy_label": "保存的副本"
 }

@@ -48,6 +48,41 @@ export function middleTruncate(path: string, max = 56): string {
 }
 
 /**
+ * The copy control for one path line, and its polite confirmation.
+ *
+ * Shared by the two rows that can own one - the origin path while it exists, and
+ * the saved copy while the origin does not - so the affordance's size, focus
+ * ring and feedback cannot drift between the two states.
+ */
+const PathCopyControl: FC<{
+	label: string;
+	copied: boolean;
+	onCopy: () => void;
+}> = ({ label, copied, onCopy }) => (
+	<>
+		<button
+			type="button"
+			onClick={onCopy}
+			aria-label={label}
+			title={label}
+			className={cn(
+				"shrink-0 rounded-sm p-0.5 text-ink-dim hover:text-ink",
+				"focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1",
+			)}
+		>
+			{copied ? (
+				<Check aria-hidden="true" className={cn("size-3.5")} />
+			) : (
+				<Copy aria-hidden="true" className={cn("size-3.5")} />
+			)}
+		</button>
+		<output className={cn("sr-only")} aria-live="polite">
+			{copied ? label : ""}
+		</output>
+	</>
+);
+
+/**
  * Whether this machine still has the file at `path`.
  *
  * `null` while unknown - a probe that has not answered, a renderer with no
@@ -174,7 +209,8 @@ export const SentFileCard: FC<{
 						<span
 							className={cn(
 								// Machine voice: a path is a string the OS will be handed, so it is
-								// monospace and selectable rather than prose.
+								// monospace and selectable rather than prose. In the missing state it is
+								// the record of where the file WAS: dimmed, and it owns no control.
 								"select-all truncate font-mono text-meta",
 								missing ? "text-ink-dim" : "text-ink-muted",
 							)}
@@ -184,43 +220,26 @@ export const SentFileCard: FC<{
 						</span>
 						{/*
 						 * THE FULL PATH IS WHAT THE COPY CONTROL COPIES. The visible span is
-						 * middle-truncated in its TEXT, so selecting it would copy the
-						 * ellipsized string - the promise "full path copyable" would be false
-						 * exactly where it matters, on a long path (design round 1, D1). A
-						 * button carries the untruncated value from the record, and its icon
-						 * swaps to a check without moving the row.
+						 * middle-truncated in its TEXT, so selecting it would copy the ellipsized
+						 * string - the promise "full path copyable" would be false exactly where it
+						 * matters, on a long path (design round 1, D1). A button carries the
+						 * untruncated value from the record.
 						 */}
-						{copyTarget && (
-							<>
-								<button
-									type="button"
-									onClick={copyPath}
-									aria-label={copyLabel(copied)}
-									title={copyLabel(copied)}
-									className={cn(
-										"shrink-0 rounded-sm p-0.5 text-ink-dim hover:text-ink",
-										"focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1",
-									)}
-								>
-									{copied ? (
-										<Check aria-hidden="true" className={cn("size-3.5")} />
-									) : (
-										<Copy aria-hidden="true" className={cn("size-3.5")} />
-									)}
-								</button>
-								<output className={cn("sr-only")} aria-live="polite">
-									{copied ? copyLabel(true) : ""}
-								</output>
-							</>
+						{!missing && copyTarget && (
+							<PathCopyControl
+								label={copyLabel(copied)}
+								copied={copied}
+								onCopy={copyPath}
+							/>
 						)}
 					</span>
 				)}
 				{missing && (
 					/*
-					 * TWO BLOCKS, NOT ONE SENTENCE JOINED BY ". ": a full stop plus a space
-					 * is English punctuation, and zh-CN/hi/ur carry their own. The verdict
-					 * and the recovery line are separate block-level spans so no locale
-					 * inherits this one's separator (agent review round 1, m4).
+					 * TWO BLOCKS, NOT ONE SENTENCE JOINED BY ". ": a full stop plus a space is
+					 * English punctuation, and zh-CN/hi/ur carry their own. The verdict and the
+					 * line below it are separate block-level spans so no locale inherits this
+					 * one's separator (agent review round 1, m4).
 					 */
 					<span
 						className={cn("flex flex-col gap-0.5 text-ink-muted text-meta")}
@@ -228,7 +247,26 @@ export const SentFileCard: FC<{
 						<span className={cn("font-medium text-danger")}>
 							{t("ui.chat.attachments.file_missing")}
 						</span>
+						{!document.storedPath && (
+							/*
+							 * NO STORE PATH, NO PROMISE. Saying a saved copy exists when the row
+							 * cannot name or copy one is the dead end design round 2 retained D2
+							 * for; the truthful line stops at where the file is not.
+							 */
+							<span>{t("ui.chat.attachments.file_missing_recovery")}</span>
+						)}
+					</span>
+				)}
+				{missing && document.storedPath && (
+					/*
+					 * THE SAVED COPY'S OWN ROW. It is the action the missing state owes the
+					 * reader: a labelled line naming the retained copy and its full path, with
+					 * the copy control beside it. Borderless and inline - a row, not a card
+					 * (design round 2, D2).
+					 */
+					<span className={cn("flex min-w-0 items-center gap-1 text-meta")}>
 						<span
+							className={cn("shrink-0 text-ink-muted")}
 							title={
 								document.attachment
 									? t("ui.chat.attachments.file_retained", {
@@ -237,8 +275,21 @@ export const SentFileCard: FC<{
 									: undefined
 							}
 						>
-							{t("ui.chat.attachments.file_missing_recovery")}
+							{t("ui.chat.attachments.saved_copy_label")}
 						</span>
+						<span
+							className={cn(
+								"select-all truncate font-mono text-ink-muted text-meta",
+							)}
+							title={document.storedPath}
+						>
+							{middleTruncate(document.storedPath, 40)}
+						</span>
+						<PathCopyControl
+							label={copyLabel(copied)}
+							copied={copied}
+							onCopy={copyPath}
+						/>
 					</span>
 				)}
 			</div>

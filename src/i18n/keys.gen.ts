@@ -1715,6 +1715,7 @@ export type MessageParams = {
 	"ui.chat.attachments.file_unnamed": undefined;
 	"ui.chat.attachments.path_copied": undefined;
 	"ui.chat.attachments.pending_caption": undefined;
+	"ui.chat.attachments.saved_copy_label": undefined;
 	"ui.chat.attachments.saved_path_copied": undefined;
 	"ui.chat.canonical.sound.batch_attachment_unavailable": undefined;
 	"ui.chat.canonical.sound.player_failed": undefined;
