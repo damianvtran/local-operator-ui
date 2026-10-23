@@ -81,7 +81,6 @@ const {
 	askQueueView,
 	askDismissRequest,
 	askResponseSummary,
-	presentAsk,
 	dismissQueuedAsk,
 	createSendLock,
 	desktopRequestSchema,
@@ -145,7 +144,11 @@ test("the dismissal body is the ask id, the flag and the reason — and no epoch
 	// suggest a comparison the route deliberately does not make.
 	assert.equal("epoch" in request, false);
 
-	const answeredInChat = askDismissRequest(openAsk(), SESSION, "answered_in_chat");
+	const answeredInChat = askDismissRequest(
+		openAsk(),
+		SESSION,
+		"answered_in_chat",
+	);
 	assert.equal(answeredInChat.reason, "answered_in_chat");
 });
 
@@ -274,8 +277,12 @@ test("a dismissal posts once and takes the shared one-answer-in-flight lock", as
 	held.release();
 	// A missing address is refused rather than posted to the wrong place.
 	assert.equal(
-		(await dismissQueuedAsk({ taskId: "", reason: "moot", sessionId: SESSION, lock }, async () => undefined))
-			.status,
+		(
+			await dismissQueuedAsk(
+				{ taskId: "", reason: "moot", sessionId: SESSION, lock },
+				async () => undefined,
+			)
+		).status,
 		"refused",
 	);
 });
@@ -357,7 +364,13 @@ test("the card states the conversation's movement, and only above zero", () => {
 test("a landed dismissal keeps its reason on the settled one-line row", () => {
 	const markup = panelMarkup(openAsk({ status: "dismissed" }), {
 		onDismiss: () => undefined,
-		outcomes: { "a-dismiss": { sending: false, refused: null, dismissed: "answered_in_chat" } },
+		outcomes: {
+			"a-dismiss": {
+				sending: false,
+				refused: null,
+				dismissed: "answered_in_chat",
+			},
+		},
 	});
 	assert.equal(markup.includes("Dismissed — settled in chat"), true);
 	// The card itself must offer nothing once the ask is settled.
