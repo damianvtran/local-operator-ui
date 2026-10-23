@@ -22509,7 +22509,7 @@
 			"locale": "fr",
 			"namespace": "ui.chat.attachments",
 			"source_sha256": "ec4220c2402d678bab8d969d5c8298548d40e2fdfd2fa926190f03c008018a54",
-			"target_sha256": "116661f95828638126b890092047ab5fcf8bec4e3d1b9b5c60212008c9c5a4f4",
+			"target_sha256": "75e5d3e14b56807f252a89ec740e236f72b7ca73035959dccaf3ac5c986149f6",
 			"translator": {
 				"agent": "ui-attachments-coder",
 				"model": "radient/auto",
@@ -22520,18 +22520,18 @@
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
 					"date": "2026-10-23",
-					"result": "clean-with-findings",
-					"instance": "i18n-audit-attachments-20261023-fr-r2",
+					"result": "clean",
+					"instance": "i18n-audit-attachments-20261023-fr-r3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 1
+						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-attachments-20261023-fr-r2.json",
-					"receipt_sha256": "ef252d32721d56daf3161567454b10a8567719e3e63c8227ad95581a5b266a39",
-					"scope": "round-2 full independent pass, all 11 keys, at the recorded source/target hashes",
-					"note": "Round-2 independent pass; 1 NIT recorded (saved-copy qualifier), not churned; no BLOCKER/MAJOR."
+					"receipt": "i18n/receipts/i18n-audit-attachments-20261023-fr-r3.json",
+					"receipt_sha256": "9512a6e2595b25d5eef9ff46ad5f95c8375b292f69f6d0e0e1e10c6d2cfd9cb5",
+					"scope": "round-3 re-audit of the three corrected locales, all 11 keys, at the recorded source/target hashes",
+					"note": "Round-3 independent pass after the fr/hi/ur copy corrections; no findings; no BLOCKER/MAJOR."
 				}
 			],
 			"status": "audited",
@@ -22559,6 +22559,30 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "ec4220c2402d678bab8d969d5c8298548d40e2fdfd2fa926190f03c008018a54",
+					"target_sha256": "116661f95828638126b890092047ab5fcf8bec4e3d1b9b5c60212008c9c5a4f4",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-23",
+							"result": "clean-with-findings",
+							"instance": "i18n-audit-attachments-20261023-fr-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 1
+							},
+							"receipt": "i18n/receipts/i18n-audit-attachments-20261023-fr-r2.json",
+							"receipt_sha256": "ef252d32721d56daf3161567454b10a8567719e3e63c8227ad95581a5b266a39",
+							"scope": "round-2 full independent pass, all 11 keys, at the recorded source/target hashes",
+							"note": "Round-2 independent pass; 1 NIT recorded (saved-copy qualifier), not churned; no BLOCKER/MAJOR."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -22566,7 +22590,7 @@
 			"locale": "hi",
 			"namespace": "ui.chat.attachments",
 			"source_sha256": "ec4220c2402d678bab8d969d5c8298548d40e2fdfd2fa926190f03c008018a54",
-			"target_sha256": "5da8b986b66dcbd4968eea212e85d6508a0e9edc2af34298c4732b58caa1df05",
+			"target_sha256": "dbb647f48ca2a041e64e9d48ec55ec7ecca248f787825455e5a0f3a44a1f8850",
 			"translator": {
 				"agent": "ui-attachments-coder",
 				"model": "radient/auto",
@@ -22577,18 +22601,18 @@
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
 					"date": "2026-10-23",
-					"result": "clean-with-findings",
-					"instance": "i18n-audit-attachments-20261023-hi-r2",
+					"result": "clean",
+					"instance": "i18n-audit-attachments-20261023-hi-r3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-attachments-20261023-hi-r2.json",
-					"receipt_sha256": "86f415bbb951f562ad8cb3559025ac1cd910c4987d57ee02da58bc98c4bc236e",
-					"scope": "round-2 full independent pass, all 11 keys, at the recorded source/target hashes",
-					"note": "Round-2 independent pass; 1 MINOR recorded (path term पथ vs shipped पाथ), not churned; no BLOCKER/MAJOR."
+					"receipt": "i18n/receipts/i18n-audit-attachments-20261023-hi-r3.json",
+					"receipt_sha256": "a55e7f0613af0089b3f4672b2aedf233fe37cf14dff231b5c45d09b70c06dec4",
+					"scope": "round-3 re-audit of the three corrected locales, all 11 keys, at the recorded source/target hashes",
+					"note": "Round-3 independent pass after the fr/hi/ur copy corrections; no findings; no BLOCKER/MAJOR."
 				}
 			],
 			"status": "audited",
@@ -22613,6 +22637,30 @@
 							"receipt_sha256": "d1598590d326218d8e50514e8d4ba4f4557b51c03db98a9fa87585abde7d0778",
 							"scope": "full independent pass, all 5 keys, at the recorded source/target hashes",
 							"note": "Independent full pass; 1 MINOR recorded (store term), not churned; no BLOCKER/MAJOR."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ec4220c2402d678bab8d969d5c8298548d40e2fdfd2fa926190f03c008018a54",
+					"target_sha256": "5da8b986b66dcbd4968eea212e85d6508a0e9edc2af34298c4732b58caa1df05",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-23",
+							"result": "clean-with-findings",
+							"instance": "i18n-audit-attachments-20261023-hi-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-attachments-20261023-hi-r2.json",
+							"receipt_sha256": "86f415bbb951f562ad8cb3559025ac1cd910c4987d57ee02da58bc98c4bc236e",
+							"scope": "round-2 full independent pass, all 11 keys, at the recorded source/target hashes",
+							"note": "Round-2 independent pass; 1 MINOR recorded (path term पथ vs shipped पाथ), not churned; no BLOCKER/MAJOR."
 						}
 					],
 					"status": "audited"
@@ -22680,7 +22728,7 @@
 			"locale": "ur",
 			"namespace": "ui.chat.attachments",
 			"source_sha256": "ec4220c2402d678bab8d969d5c8298548d40e2fdfd2fa926190f03c008018a54",
-			"target_sha256": "6506113f6d529102478a5d70ad672018517ab96ba6aa72973ea0a72b898c0c23",
+			"target_sha256": "3f5525ee1205493447aa167d076c75b4a7a5e4de10c9bb42ae9437b259eb9884",
 			"translator": {
 				"agent": "ui-attachments-coder",
 				"model": "radient/auto",
@@ -22691,18 +22739,18 @@
 					"agent": "i18n-auditor",
 					"model": "radient/auto",
 					"date": "2026-10-23",
-					"result": "clean-with-findings",
-					"instance": "i18n-audit-attachments-20261023-ur-r2",
+					"result": "clean",
+					"instance": "i18n-audit-attachments-20261023-ur-r3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/i18n-audit-attachments-20261023-ur-r2.json",
-					"receipt_sha256": "3b05e1c90a003f135b4751fedf765d8cdd2ad79ff2d9a5f1f91ef5ea0db02f1d",
-					"scope": "round-2 full independent pass, all 11 keys, at the recorded source/target hashes",
-					"note": "Round-2 independent pass; 1 MINOR recorded (store term اسٹور vs shipped ذخیرہ), not churned; no BLOCKER/MAJOR."
+					"receipt": "i18n/receipts/i18n-audit-attachments-20261023-ur-r3.json",
+					"receipt_sha256": "bfd6ea829c10a85e2b340d0327932e0da25f67cb184799f955265e5873cc8dbe",
+					"scope": "round-3 re-audit of the three corrected locales, all 11 keys, at the recorded source/target hashes",
+					"note": "Round-3 independent pass after the fr/hi/ur copy corrections; no findings; no BLOCKER/MAJOR."
 				}
 			],
 			"status": "audited",
@@ -22727,6 +22775,30 @@
 							"receipt_sha256": "a808c757eacaac9ef83bbe7a727c255957df64a830927176746f5445bd05da39",
 							"scope": "full independent pass, all 5 keys, at the recorded source/target hashes",
 							"note": "Independent full pass; no findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "ec4220c2402d678bab8d969d5c8298548d40e2fdfd2fa926190f03c008018a54",
+					"target_sha256": "6506113f6d529102478a5d70ad672018517ab96ba6aa72973ea0a72b898c0c23",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "radient/auto",
+							"date": "2026-10-23",
+							"result": "clean-with-findings",
+							"instance": "i18n-audit-attachments-20261023-ur-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/i18n-audit-attachments-20261023-ur-r2.json",
+							"receipt_sha256": "3b05e1c90a003f135b4751fedf765d8cdd2ad79ff2d9a5f1f91ef5ea0db02f1d",
+							"scope": "round-2 full independent pass, all 11 keys, at the recorded source/target hashes",
+							"note": "Round-2 independent pass; 1 MINOR recorded (store term اسٹور vs shipped ذخیرہ), not churned; no BLOCKER/MAJOR."
 						}
 					],
 					"status": "audited"
