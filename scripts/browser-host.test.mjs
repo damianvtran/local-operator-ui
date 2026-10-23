@@ -2803,6 +2803,13 @@ function makeHost(overrides = {}) {
 				};
 			}
 			if (method === "Page.captureScreenshot") return { data: "iVBORw0KGgo=" };
+			// The scoped snapshot asks for the scope's document before it asks for the
+			// scope itself; a fixture that answers `{}` to the first makes every scoped
+			// call fail with "the page has no document to query" — how this surfaced
+			// (the once-grant test drives `snapshot` with a selector).
+			if (method === "DOM.getDocument") return { root: { nodeId: 1 } };
+			if (method === "DOM.querySelector") return { nodeId: 2 };
+			if (method === "DOM.describeNode") return { node: { backendNodeId: 7 } };
 			return {};
 		},
 		calls: [],
@@ -4118,12 +4125,11 @@ test("allow once authorizes one requester document until the next navigation", a
 	await host.dispatch("request_access", owner, "request");
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "once");
 	const opened = await host.dispatch("open", owner, "open");
+	// No `selector`: this test is about the once grant surviving across three
+	// document-scoped verbs, not about scoping (which has its own test). A scoped
+	// snapshot here would need a fixture subtree and would test `ax-compact`.
 	for (const method of ["read", "snapshot", "screenshot"]) {
-		await host.dispatch(
-			method,
-			{ ...owner, tab: opened.tab, selector: "input", text: "synthetic" },
-			method,
-		);
+		await host.dispatch(method, { ...owner, tab: opened.tab }, method);
 	}
 	registry.bumpEpoch(registry.requireSurface(opened.tab).tabId);
 	await assert.rejects(
@@ -4459,19 +4465,39 @@ test("a scoped snapshot resolves the scope first, windows the tree, and names sk
 			name: { value: "Outside" },
 			childIds: [],
 		},
+		{
+			nodeId: "6",
+			backendDOMNodeId: 504,
+			role: { value: "region" },
+			name: { value: "Inner" },
+			childIds: ["7"],
+		},
+		{
+			nodeId: "7",
+			backendDOMNodeId: 505,
+			role: { value: "button" },
+			name: { value: "Inside" },
+			childIds: [],
+		},
 	];
-	// The button sits under the root, OUTSIDE the scope: the scoped read must not
-	// emit it, and — per R1-1 — must not let it take a ref number either.
+	// The button sits under the root, OUTSIDE the scope: the scoped read does not
+	// RENDER it, but — per R1-1 — the whole-tree mint still gives it a ref, so a
+	// remembered `e2` keeps naming this button and can never be re-pointed at the
+	// scope's first node.
 	TREE[0].childIds.push("5");
+	TREE[1].childIds.push("6");
 	const send = async (_contents, method, params) => {
 		calls.push({ method, params });
 		switch (method) {
 			case "DOM.getDocument":
 				return { root: { nodeId: 1 } };
 			case "DOM.querySelector":
-				return { nodeId: 7 };
+				// Two scopes are driven: the form (500) and its frameless
+				// subsections (504), so the skip note can be told apart from a
+				// page-level frame count.
+				return { nodeId: params.selector === "#inner" ? 9 : 7 };
 			case "DOM.describeNode":
-				return { node: { backendNodeId: 500 } };
+				return { node: { backendNodeId: params.nodeId === 9 ? 504 : 500 } };
 			case "Accessibility.enable":
 			case "Accessibility.disable":
 				return {};
@@ -4510,12 +4536,10 @@ test("a scoped snapshot resolves the scope first, windows the tree, and names sk
 		methods.join(","),
 	);
 	assert.equal(out.scoped, true);
-	assert.equal(
-		out.total_lines,
-		4,
-		"the scope's subtree plus the skipped-frames note",
-	);
-	assert.equal(out.returned_lines, 4);
+	// The skip note is a REMARK about the scope, appended after the window: it is
+	// not a tree line, so `total_lines` counts the scope's own lines only.
+	assert.equal(out.total_lines, 5, "form, checkbox, Iframe, Inner, Inside");
+	assert.equal(out.returned_lines, 5);
 	assert.ok(
 		!out.snapshot.includes("Outside"),
 		"a node outside the scope is not rendered",
@@ -4529,6 +4553,18 @@ test("a scoped snapshot resolves the scope first, windows the tree, and names sk
 		!calls.some((call) => call.method === "Runtime.callFunctionOn"),
 		"a scoped read never walks frames",
 	);
+
+	// R2-1: a scope that contains NO frame must not claim one was skipped.
+	const frameless = await FRAMES_ACTIONS.snapshot(ctx, {
+		tab: "ui:1:nonce",
+		selector: "#inner",
+	});
+	assert.equal(frameless.scoped, true);
+	assert.ok(
+		!frameless.snapshot.includes("does not read frames"),
+		frameless.snapshot,
+	);
+	assert.equal(frameless.frames_in_scope, 0);
 
 	// The window is applied to the SCOPED text, after refs are minted, so a ref
 	// read on page 2 names the same element as the full read.

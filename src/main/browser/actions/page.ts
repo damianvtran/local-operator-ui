@@ -165,6 +165,7 @@ export async function snapshot(
 		snapshot: topRendered,
 		refs: topRefs,
 		scoped,
+		framesInScope,
 	} = compactAX(nodes, record.epoch, { rootBackendNodeId });
 	if (rootBackendNodeId !== undefined && !scoped) {
 		// The DOM element exists but contributes no accessible node
@@ -184,15 +185,6 @@ export async function snapshot(
 	if (!scope && nodes.some(isFrameNode)) {
 		const blocks = await frameSnapshots(ctx, record, nodes, refs);
 		if (blocks.length) rendered = [rendered, ...blocks].join("\n");
-	} else if (scope && nodes.some(isFrameNode)) {
-		// A scoped read deliberately does not walk frames, but silence is the
-		// failure this lane exists to kill: a scoped subtree that CONTAINS a frame
-		// host would otherwise read as "this section is one line" (agent review
-		// round 1, R1-2). Say what was skipped and how to get it.
-		const frames = nodes.filter(isFrameNode).length;
-		rendered +=
-			`\n- (a scoped snapshot does not read frames: this page has ${frames} frame` +
-			`${frames === 1 ? "" : "s"}; snapshot without selector= for their contents)`;
 	}
 	record.refs = refs;
 	ctx.registry.touch(record);
@@ -200,16 +192,33 @@ export async function snapshot(
 	// across pages: an agent that pages a form and then clicks a ref it saw two
 	// calls ago clicks the element it read. The numbers are what the footer in
 	// the Python tool renders.
+	// A scoped read deliberately does not walk frames, but silence is the failure
+	// this lane exists to kill: a scoped subtree that CONTAINS a frame host would
+	// otherwise read as "this section is one line" (agent review round 1, R1-2).
+	//
+	// THE COUNT IS THE SCOPE'S OWN (agent review round 2, R2-1): gating on the
+	// page's tree told a caller that a frameless section held a frame it was not
+	// seeing, and — because the note was appended before the window — it also
+	// inflated `total_lines` and could match `search=`. Appending it AFTER the
+	// window keeps it a remark about the scope, not a line of the tree.
+	let note = "";
+	if (scope && framesInScope > 0) {
+		const frames = framesInScope;
+		note =
+			`\n- (a scoped snapshot does not read frames: this section contains ${frames} frame` +
+			`${frames === 1 ? "" : "s"}; snapshot without selector= for their contents)`;
+	}
 	const page = windowSnapshot(rendered, {
 		search: stringParam(params, "search"),
 		start: numberParam(params, "start") ?? 1,
 		limit: numberParam(params, "limit") ?? 0,
 	});
 	return {
-		snapshot: page.text,
+		snapshot: page.text + note,
 		refs: Object.keys(refs).length,
 		epoch: record.epoch,
 		scoped,
+		frames_in_scope: framesInScope,
 		total_lines: page.totalLines,
 		matched_lines: page.matchedLines,
 		returned_lines: page.returnedLines,
