@@ -48,7 +48,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { approvalEscapeRequest, runApprovalEscape, ApprovalEscapeControls, APPROVAL_ESCAPE_COPY } from "./src/renderer/src/features/chat/components/trace/approval-escape";',
+			'export { approvalEscapeRequest, runApprovalEscape, ApprovalEscapeControls, APPROVAL_ESCAPE_COPY, approvalPolicyLine } from "./src/renderer/src/features/chat/components/trace/approval-escape";',
 			'export { QuestionDock } from "./src/renderer/src/features/chat/components/trace/question-dock";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -79,6 +79,7 @@ const {
 	runApprovalEscape,
 	ApprovalEscapeControls,
 	APPROVAL_ESCAPE_COPY,
+	approvalPolicyLine,
 	QuestionDock,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -309,7 +310,8 @@ test("the handles are subordinate text buttons with full names", () => {
 	assert.match(html, /Set auto for all sessions/);
 	// The reserved status slot exists even when empty, so nothing reflows later.
 	assert.match(html, /data-approval-escape-status/);
-	assert.match(html, /min-h-5/);
+	assert.match(html, /min-h-\[2lh\]/);
+	assert.doesNotMatch(html, /min-h-5/);
 	// Muted ink, never the accent/primary fill.
 	assert.match(html, /text-ink-muted/);
 	assert.doesNotMatch(html, /bg-accent/);
@@ -372,15 +374,62 @@ test("the reserved slot carries the confirmation or the refusal", () => {
 	assert.equal(APPROVAL_ESCAPE_COPY.unchanged("x"), "Unchanged: x");
 });
 
+test("the policy line names the effective mode and its provenance", () => {
+	assert.equal(
+		approvalPolicyLine({ mode: "ask", provenance: "global" }),
+		"Approvals: Ask — global default.",
+	);
+	assert.equal(
+		approvalPolicyLine({
+			mode: "ask",
+			provenance: "session",
+			globalMode: "auto",
+		}),
+		"Approvals: Ask — session override; global Auto.",
+	);
+	assert.equal(
+		approvalPolicyLine({ mode: "ask", provenance: "session" }),
+		"Approvals: Ask — session override.",
+	);
+	assert.equal(
+		approvalPolicyLine({ mode: "auto", provenance: "pin" }),
+		"Approvals: Auto — this run.",
+	);
+	// An older backend sends neither field: no line, never a guess.
+	assert.equal(approvalPolicyLine({}), null);
+	assert.equal(approvalPolicyLine({ mode: "ask" }), null);
+	assert.equal(approvalPolicyLine({ provenance: "global" }), null);
+
+	const line = renderControls({
+		policyLine: approvalPolicyLine({
+			mode: "ask",
+			provenance: "session",
+			globalMode: "auto",
+		}),
+	});
+	assert.match(line, /data-approval-policy-line/);
+	assert.match(line, /Approvals: Ask — session override; global Auto\./);
+	// Above the handles, in document order.
+	assert.ok(
+		line.indexOf("Approvals: Ask") < line.indexOf("Set auto for this session"),
+	);
+	assert.doesNotMatch(renderControls({}), /data-approval-policy-line/);
+});
+
 test("the approval card keeps Approve and Deny enabled beside the handles", () => {
 	const html = renderToStaticMarkup(
 		createElement(QuestionDock, {
-			gate: approvalGate(),
+			gate: approvalGate({
+				approval_mode: "ask",
+				approval_provenance: "session",
+				approval_global_mode: "auto",
+			}),
 			sessionId: SESSION,
 			onAnswer: () => {},
 		}),
 	);
 	assert.match(html, /Set auto for this session/);
+	assert.match(html, /Approvals: Ask — session override; global Auto\./);
 	assert.doesNotMatch(
 		buttonOpeningTag(html, "Approve"),
 		/ disabled(?:=""|\s|>)/,
@@ -396,6 +445,7 @@ test("the approval card keeps Approve and Deny enabled beside the handles", () =
 		}),
 	);
 	assert.doesNotMatch(noSession, /Set auto for this session/);
+	assert.doesNotMatch(noSession, /data-approval-policy-line/);
 });
 
 /*

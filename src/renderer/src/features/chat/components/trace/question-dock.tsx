@@ -611,7 +611,14 @@ export const QuestionDock = ({
 						 * these two links; a policy failure never disables Approve or Deny.
 						 * They are absent where there is no session to address.
 						 */}
-						{sessionId ? <ApprovalEscape sessionId={sessionId} /> : null}
+						{sessionId ? (
+							<ApprovalEscape
+								sessionId={sessionId}
+								approvalMode={gate.approval_mode}
+								approvalProvenance={gate.approval_provenance}
+								approvalGlobalMode={gate.approval_global_mode}
+							/>
+						) : null}
 					</>
 				)}
 				<p className="text-ink-dim text-meta">{questionDockHint(gate, held)}</p>

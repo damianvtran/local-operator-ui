@@ -53,9 +53,25 @@
  * underlines), below the Approve/Deny band and never above it, so the two
  * controls the card exists for keep their position. `min-h-11` is the 44px hit
  * target; `flex-wrap` lets the pair take two lines rather than truncating a
- * destination. The status line is a reserved `min-h-5` slot with an `<output>`
- * (implicit `role="status"`) so a confirmation or refusal cannot reflow the card
- * when it lands, and there is no toast to disappear before it is read.
+ * destination. The status line is an `<output>` (implicit `role="status"`) whose
+ * slot reserves `2lh` — two line boxes at the card's own text size — so the
+ * idle, session-saved, refused and short-partial states occupy the same box and
+ * none of them moves the hint when it lands (design round 1, D1: a `min-h-5`
+ * one-line floor let the first two-line refusal grow the card by 14.8px at
+ * 300px). A dictated sentence longer than two lines grows the slot rather than
+ * clipping; there is no truncation.
+ *
+ * ## The policy line
+ *
+ * Above the handles sits one quiet line naming the session's effective mode and
+ * where it came from — `Approvals: Ask — global default.`, `Approvals: Ask —
+ * session override; global Auto.`, `Approvals: Auto — this run.` It is read from
+ * the gate's additively carried `approval_mode` / `approval_provenance` (and
+ * `approval_global_mode` when a session override differs from the default) and
+ * is OMITTED when an older backend sends neither, never inferred from the
+ * pending request: a request can remain answerable after the policy changed, so
+ * a request-derived provenance would be a claim about the wrong moment
+ * (design round 1, D2).
  *
  * THE COPY IS LITERAL ON PURPOSE, following the rest of this surface: the chat
  * trace card is not localized yet, and a new English-only key cannot pass the
@@ -73,6 +89,44 @@ import { errorText, useSessionCommand } from "../../pickers/use-picker-backend";
 
 /** Which gate the press loosens: the live one, or the saved default. */
 export type ApprovalEscapeTarget = "session" | "all";
+
+/** The effective approval modes the policy line can name. */
+export type ApprovalEscapeMode = "ask" | "auto";
+/** Where the effective mode came from: default, this conversation, or the run. */
+export type ApprovalEscapeProvenance = "global" | "session" | "pin";
+
+/**
+ * The card's effective-mode line, or `null` when the backend did not carry the
+ * effective policy. Pure so the test can pin every provenance arm without a
+ * render, and so the connected half has no formatting of its own.
+ */
+export const approvalPolicyLine = ({
+	mode,
+	provenance,
+	globalMode,
+}: {
+	mode?: ApprovalEscapeMode;
+	provenance?: ApprovalEscapeProvenance;
+	globalMode?: ApprovalEscapeMode;
+}): string | null => {
+	if (!mode || !provenance) return null;
+	const word = mode === "auto" ? "Auto" : "Ask";
+	switch (provenance) {
+		case "pin":
+			return APPROVAL_ESCAPE_COPY.pinnedRun(word);
+		case "session":
+			return globalMode
+				? APPROVAL_ESCAPE_COPY.sessionOverrideOf(
+						word,
+						globalMode === "auto" ? "Auto" : "Ask",
+					)
+				: APPROVAL_ESCAPE_COPY.sessionOverride(word);
+		case "global":
+			return APPROVAL_ESCAPE_COPY.globalDefault(word);
+		default:
+			return null;
+	}
+};
 
 /** What a press left on the card. `idle` is the reserved, empty slot. */
 export type ApprovalEscapeStatus =
@@ -205,6 +259,12 @@ export const APPROVAL_ESCAPE_COPY = {
 	unchanged: (detail: string) => `Unchanged: ${detail}`,
 	/** The prefix a transport failure carries, since no backend detail exists. */
 	notChanged: "The mode was not changed",
+	/** The effective-policy line; see `approvalPolicyLine`. */
+	globalDefault: (mode: string) => `Approvals: ${mode} — global default.`,
+	sessionOverride: (mode: string) => `Approvals: ${mode} — session override.`,
+	sessionOverrideOf: (mode: string, globalMode: string) =>
+		`Approvals: ${mode} — session override; global ${globalMode}.`,
+	pinnedRun: (mode: string) => `Approvals: ${mode} — this run.`,
 };
 
 const ESCAPE_LINK =
@@ -233,12 +293,15 @@ const statusText = (status: ApprovalEscapeStatus): string => {
 export const ApprovalEscapeControls = ({
 	busy = false,
 	status = { kind: "idle" },
+	policyLine = null,
 	onSetSession,
 	onSetAll,
 	className,
 }: {
 	busy?: boolean;
 	status?: ApprovalEscapeStatus;
+	/** The effective-mode line; absent on a backend that does not carry it. */
+	policyLine?: string | null;
 	onSetSession: () => void;
 	onSetAll: () => void;
 	className?: string;
@@ -249,6 +312,11 @@ export const ApprovalEscapeControls = ({
 			className={cn("flex flex-col gap-1", className)}
 			data-approval-escape=""
 		>
+			{policyLine ? (
+				<p data-approval-policy-line="" className="text-ink-muted text-meta">
+					{policyLine}
+				</p>
+			) : null}
 			<div className="flex flex-wrap items-center gap-x-4">
 				<button
 					type="button"
@@ -282,7 +350,7 @@ export const ApprovalEscapeControls = ({
 				id={statusId}
 				data-approval-escape-status=""
 				className={cn(
-					"block min-h-5 text-meta",
+					"block min-h-[2lh] text-meta",
 					status.kind === "refused" ||
 						status.kind === "default-saved-session-failed"
 						? "text-danger"
@@ -301,6 +369,9 @@ export const ApprovalEscapeControls = ({
  */
 export const ApprovalEscape = ({
 	sessionId,
+	approvalMode,
+	approvalProvenance,
+	approvalGlobalMode,
 	className,
 }: {
 	/**
@@ -308,6 +379,10 @@ export const ApprovalEscape = ({
 	 * session id has no gate to address, and the dock omits the row there.
 	 */
 	sessionId: string;
+	/** The gate's effective mode/provenance; absent on an older backend. */
+	approvalMode?: ApprovalEscapeMode;
+	approvalProvenance?: ApprovalEscapeProvenance;
+	approvalGlobalMode?: ApprovalEscapeMode;
 	className?: string;
 }) => {
 	const command = useSessionCommand(sessionId);
@@ -369,6 +444,11 @@ export const ApprovalEscape = ({
 
 	return (
 		<ApprovalEscapeControls
+			policyLine={approvalPolicyLine({
+				mode: approvalMode,
+				provenance: approvalProvenance,
+				globalMode: approvalGlobalMode,
+			})}
 			busy={target !== null}
 			status={status}
 			onSetSession={() => void choose("session")}
