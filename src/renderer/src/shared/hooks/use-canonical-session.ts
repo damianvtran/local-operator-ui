@@ -1698,6 +1698,9 @@ function applyPendingSend(
 			entry.id,
 			entry.text,
 			entry.images,
+			// `now` is the fifth positional parameter; the echo's document blocks
+			// follow it, so the client stamp stays where callers already put it.
+			undefined,
 			entry.documents,
 		),
 	);

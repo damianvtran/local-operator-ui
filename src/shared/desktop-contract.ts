@@ -217,7 +217,7 @@ export const DESKTOP_MESSAGE_MAX_CHARS = 200_000;
  * Most images one message-carrying op carries, in IMAGES.
  *
  * Named and exported rather than repeated as a literal because the renderer
- * has to agree with it: `encodeImageAttachments` applies the cap to every
+ * has to agree with it: `encodeAttachments` applies the cap to every
  * send it encodes, and a draft that staged more images than this used to be
  * sliced to the ceiling SILENTLY - a send left with fewer images than the
  * composer showed and nothing named the difference (design round 1 on issue

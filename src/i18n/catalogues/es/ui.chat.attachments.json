@@ -3,5 +3,9 @@
 	"ui.chat.attachments.file_meta": "{type} · {size}",
 	"ui.chat.attachments.file_missing": "Movido o eliminado",
 	"ui.chat.attachments.file_retained": "Todavía se conserva en el almacén de adjuntos ({digest})",
-	"ui.chat.attachments.file_unnamed": "Archivo adjunto"
+	"ui.chat.attachments.file_unnamed": "Archivo adjunto",
+	"ui.chat.attachments.copy_path": "Copiar ruta",
+	"ui.chat.attachments.path_copied": "Ruta copiada",
+	"ui.chat.attachments.file_missing_recovery": "El archivo original ya no está en esta ruta. Todavía hay una copia guardada: pide al agente que la envíe de nuevo por su nombre.",
+	"ui.chat.attachments.file_type_unknown": "Archivo"
 }

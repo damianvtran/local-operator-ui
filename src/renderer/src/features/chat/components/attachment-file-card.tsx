@@ -40,7 +40,9 @@ export function attachmentTypeLabel(name: string, mimeType?: string): string {
 		return extension.toUpperCase().slice(0, 4);
 	}
 	const subtype = mimeType?.split("/")[1]?.split(";")[0]?.trim();
-	return subtype ? subtype.toUpperCase().slice(0, 4) : "FILE";
+	return subtype
+		? subtype.toUpperCase().slice(0, 4)
+		: t("ui.chat.attachments.file_type_unknown");
 }
 /** `PDF · 2.4 MB`, or the type alone while the size is not known yet. */
 export function attachmentMetaLine(

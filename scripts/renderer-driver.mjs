@@ -94,6 +94,12 @@
  *   --attach <absolute-path> (with --scene attach, repeatable) one file the
  *                          paperclip press stages; ONLY the native picker is
  *                          replaced, by the queue in src/main/dev-driver-attach.ts
+ *   --attach-prompt <text> (with --scene attach) the prompt typed and SENT after
+ *                          the files are staged; the run then waits for the
+ *                          daemon's assistant turn and reports the session id,
+ *                          the user row's document blocks and the final text
+ *   --attach-expect-answer <substring>  (with --attach-prompt) a substring the
+ *                          assistant's final text must contain
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
  *                          where a dropped file attaches, or the base tree, where
@@ -398,6 +404,18 @@ function argValues(name) {
  * are the real ones and only the native picker is replaced.
  */
 const ATTACH_PATHS = argValues("--attach");
+/**
+ * A prompt to send AFTER the paperclip stages its files (`--attach-prompt`).
+ *
+ * The staged-chip claim is the picker half; this is the half QA needs to prove
+ * the paperclip reaches an ANSWER: the prompt is typed into the composer's real
+ * field, the real Send control is pressed, and the run waits for the daemon's
+ * own assistant turn. Absent, the scene stops at the staged frame exactly as it
+ * did before.
+ */
+const ATTACH_PROMPT = argValue("--attach-prompt", null);
+/** The substring the assistant's final text must contain (`--attach-expect-answer`). */
+const ATTACH_EXPECT_ANSWER = argValue("--attach-expect-answer", null);
 
 const SCENE = argValue("--scene", "states");
 const OUT_ARG = argValue("--out", null);
@@ -39954,7 +39972,7 @@ function translateYOf(transform) {
  * 2. two files - `dataTransfer.files` is a list, and the defect's shape
  *    (the OS promises a copy) is about a real drag, which can carry several;
  * 3. a non-image file - it must attach exactly as any other path does. What
- *    reaches the MODEL is a different question: `encodeImageAttachments` admits
+ *    reaches the MODEL is a different question: `encodeAttachments` admits
  *    only the four image mimes by extension, for every route, so a `.txt` chip
  *    is carried by the composer and skipped by the encoder on the attach
  *    button's route too. That is pre-existing behaviour of the send, not of the
@@ -40015,6 +40033,16 @@ function translateYOf(transform) {
  * list is read back from the store the app persists.
  */
 async function sceneAttach(cdp) {
+	if (ATTACH_EXPECT_ANSWER !== null && ATTACH_PROMPT === null) {
+		throw new Error(
+			"--attach-expect-answer needs --attach-prompt: the substring is checked against the assistant's answer to a prompt, and no prompt means no answer to check",
+		);
+	}
+	if (ATTACH_PROMPT !== null && !ATTACH_PROMPT.trim()) {
+		throw new Error(
+			"--attach-prompt must not be empty: an empty send would stage the files and never admit them, so the run would claim a send it did not make",
+		);
+	}
 	if (ATTACH_PATHS.length === 0) {
 		throw new Error(
 			"--scene attach needs at least one --attach <absolute-path>: the subject IS the file the paperclip stages, and a run with no queue would photograph an empty composer as a success",
@@ -40147,6 +40175,119 @@ async function sceneAttach(cdp) {
 	);
 	const frame = await captureSettled(cdp, "attach-staged");
 	note("frame", frame.path);
+	if (ATTACH_PROMPT === null) return;
+
+	/*
+	 * THE SEND. The prompt goes in through the composer's own field, then the
+	 * REAL Send control is pressed - not Enter, because the button is the
+	 * gesture a person uses and the one the send-refusal path is wired to.
+	 */
+	await clickAt(cdp, composerField);
+	await cdp.send("Input.insertText", { text: ATTACH_PROMPT });
+	const sent = await verb(cdp, "press", {
+		selector: 'button[aria-label="Send message"]',
+	});
+	check(
+		"the send control was pressed with the prompt in the composer",
+		sent !== null && sent !== undefined,
+		JSON.stringify(sent ?? null).slice(0, 400),
+	);
+	const admitted = await waitForCondition(
+		cdp,
+		`(() => {
+			const log = document.querySelector('[role="log"]');
+			return Boolean(log && log.textContent.includes(${JSON.stringify(ATTACH_PROMPT)}));
+		})()`,
+		60_000,
+	);
+	check(
+		"the prompt reached the transcript",
+		admitted.ok,
+		`after ${admitted.waitedMs ?? "?"}ms`,
+	);
+
+	/*
+	 * THE DAEMON'S OWN RECORD, not the painted echo: a send the plane refused
+	 * still puts text on screen, and the file block only proves the paperclip
+	 * reached the model if the admitted row carries it. Polled because the turn
+	 * is asynchronous; the assistant's answer is the completion signal.
+	 */
+	const deadline = Date.now() + 180_000;
+	let history = null;
+	let userEntry = null;
+	let documents = [];
+	let assistantText = "";
+	while (Date.now() < deadline) {
+		history = await fetchSessionHistory(created.id);
+		const entries = history.body?.result?.entries ?? [];
+		const user = entries.find((entry) => {
+			if (entry?.payload?.role !== "user") return false;
+			const content = Array.isArray(entry.payload.content)
+				? entry.payload.content
+				: [];
+			return content.some(
+				(block) =>
+					typeof block?.text === "string" && block.text.includes(ATTACH_PROMPT),
+			);
+		});
+		if (user) {
+			userEntry = user;
+			documents = (user.payload.content ?? []).filter(
+				(block) =>
+					block &&
+					(block.type === "document" ||
+						(typeof block.filename === "string" &&
+							typeof block.attachment === "string")),
+			);
+		}
+		const answers = entries
+			.filter((entry) => entry?.payload?.role === "assistant")
+			.map((entry) =>
+				(entry.payload.content ?? [])
+					.filter((block) => typeof block?.text === "string")
+					.map((block) => block.text)
+					.join(" "),
+			)
+			.filter((text) => text.trim().length > 0);
+		assistantText = answers.at(-1) ?? "";
+		if (assistantText) break;
+		await wait(1000);
+	}
+	note("session id", created.id);
+	note(
+		"user row",
+		JSON.stringify(userEntry ? userEntry.payload.content : null).slice(0, 2000),
+	);
+	note("document blocks", JSON.stringify(documents));
+	note("assistant final text", assistantText);
+	check(
+		"the daemon admitted the prompt as a user row",
+		userEntry !== null,
+		`history status=${history?.status} entries=${JSON.stringify(history?.body?.result?.entries ?? []).slice(0, 600)}`,
+	);
+	check(
+		"the admitted user row carries the staged file as a document block",
+		documents.length === ATTACH_PATHS.length &&
+			documents.every(
+				(block) =>
+					typeof block.attachment === "string" && block.attachment.length > 0,
+			),
+		`documents=${JSON.stringify(documents)}`,
+	);
+	check(
+		"the assistant turn completed with a final answer",
+		assistantText.trim().length > 0,
+		`assistant text=${JSON.stringify(assistantText).slice(0, 400)}`,
+	);
+	if (ATTACH_EXPECT_ANSWER !== null) {
+		check(
+			"the assistant's final text contains the expected answer",
+			assistantText.includes(ATTACH_EXPECT_ANSWER),
+			`expected substring=${JSON.stringify(ATTACH_EXPECT_ANSWER)} got=${JSON.stringify(assistantText).slice(0, 600)}`,
+		);
+	}
+	const sentFrame = await captureSettled(cdp, "attach-sent");
+	note("frame", sentFrame.path);
 }
 
 async function sceneComposerDrop(cdp) {

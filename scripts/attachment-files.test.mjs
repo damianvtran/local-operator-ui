@@ -171,13 +171,25 @@ test("a missing image is reported rather than skipped", async () => {
 	);
 });
 
-test("a draft past the file ceiling reports the excess instead of slicing it silently", async () => {
+test("a draft past the file ceiling refuses WITHOUT uploading anything", async () => {
+	let uploads = 0;
 	wire.readFile = null;
-	wire.uploadAttachment = async (source) =>
-		uploaded(source.kind === "path" ? source.name : "pasted", "text/plain");
+	wire.uploadAttachment = async (source) => {
+		uploads += 1;
+		return uploaded(
+			source.kind === "path" ? source.name : "pasted",
+			"text/plain",
+		);
+	};
 	const paths = Array.from({ length: 10 }, (_, index) => `/tmp/f${index}.txt`);
 	const result = await encodeAttachments(paths, "");
-	assert.equal(result.files.length, 8);
+	/*
+	 * The refusal is decided by the staged list, so the store must see none of the
+	 * ten files: uploading first and slicing after wrote up to 10 x 32 MB for a
+	 * message that could never be admitted (agent review round 1, m1).
+	 */
+	assert.equal(uploads, 0, "a refused draft writes no bytes into the store");
+	assert.equal(result.files.length, 0);
 	assert.equal(result.fileOverflow, 2);
 	assert.match(
 		fileOverflowRefusal(result.fileOverflow) ?? "",

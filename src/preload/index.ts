@@ -402,7 +402,7 @@ const api = {
 	 *
 	 * WHY THE RENDERER ASKS AT ALL: the composer's attach button already stores a
 	 * real path for everything it adds, and the send reads that path's bytes in main
-	 * (`encodeImageAttachments` -> `api.readFile`). A dropped file expressed as a
+	 * (`encodeAttachments` -> `api.readFile`). A dropped file expressed as a
 	 * data URL instead would be a second kind of attachment - one whose base64 copy
 	 * is written into the persisted draft store, which is where a large image turns
 	 * into a localStorage quota problem the path form simply does not have.

@@ -28,6 +28,7 @@
  */
 
 import {
+	type CanonicalContentBlock,
 	type CanonicalFrontendState,
 	type DesktopHistoryPage,
 	epochMsFromSeconds,
@@ -1103,42 +1104,13 @@ function knownArgs(
 	);
 }
 
-type ContentBlock = {
-	/** Absent on durable rows: the encoder drops pydantic defaults. */
-	type?: string;
-	text?: string;
-	/** Inline base64. Live events always; durable rows only under 1 KiB. */
-	data?: string;
-	/** Attachment-store digest. Durable rows over 1 KiB; on an ARTIFACT block
-	 *  this is a declared field (the local copy), not an encoding detail. */
-	attachment?: string;
-	mime_type?: string;
-	// --- document fields (DocumentContent, attachment contract v1 §2/§5) ---
-	/** The file's display name. A document block is identified by `type`, and
-	 *  legacy rows that predate the discriminator carry `filename` beside
-	 *  `mime_type` and an `attachment` digest. */
-	filename?: string;
-	/** The origin absolute path, display/provenance only. */
-	path?: string;
-	/** Byte size of the original file. */
-	bytes?: number;
-	/** How the turn reached the model; historical metadata only. */
-	injection?: "native" | "extracted" | "reference";
-	// --- output-artifact fields (AttachmentContent) ---
-	/** "image" | "video" | "audio". REQUIRED on an artifact, so it is always
-	 *  present on durable rows (the encoder drops only defaults). */
-	kind?: string;
-	/** MIME of the cached bytes; the artifact's mime_type equivalent. */
-	content_type?: string;
-	/** Provider URL (provenance / re-fetch fallback). */
-	source_url?: string;
-	size_bytes?: number;
-	width?: number;
-	height?: number;
-	duration_s?: number;
-	/** Short display handle. Never a filesystem path. */
-	name?: string;
-};
+/*
+ * The wire block is the SHARED contract type, not a second local spelling: a
+ * document block added there must reach this reducer without being copied by
+ * hand, or the two shapes drift and a durable row loses a field one side knows
+ * (agent review round 1, manager finding).
+ */
+type ContentBlock = CanonicalContentBlock;
 
 /**
  * Whether a content block is an image, on EITHER wire shape.
@@ -7688,14 +7660,20 @@ export function appendPendingUser(
 	id: string,
 	text: string,
 	images: TranscriptImage[],
+	now = Date.now(),
 	/**
 	 * The document blocks the press already knows about (contract v1 §5). The
 	 * composer uploads before admission, so the echo can paint the sent file card
 	 * from the first frame instead of showing a bubble that grows a file when the
 	 * owner's row coalesces onto it.
+	 *
+	 * LAST, after `now`, because `now` was the fourth positional argument every
+	 * existing caller (and six `.mjs` tests) already passed: putting a new
+	 * parameter in front of it made `Date.now()` the echo's stamp under the
+	 * client's timestamp, silently. A new optional parameter belongs where it
+	 * cannot shift an established one (agent review round 1, M3).
 	 */
 	documents: TranscriptDocument[] = EMPTY_DOCUMENTS,
-	now = Date.now(),
 ): TranscriptState {
 	// The owner's row wins over a later echo for the same id: re-echoing would
 	// otherwise overwrite reconciled content with the composer's original text.

@@ -8,10 +8,15 @@
  * the two they are looking at.
  *
  * EXISTENCE IS A CLAIM THIS SURFACE ONLY MAKES WHEN IT CAN (contract §5). A path
- * is probed on this machine; a missing one is stated with the retained copy named,
- * so the row is never a dead chip. A remote conversation's rows make NO claim: the
- * file never lived here, and "moved or deleted" would be false about a machine
- * this app cannot look at.
+ * is probed on this machine; a missing one is stated with a recovery line that
+ * names the saved copy and a next step a person can take now, so the row is never
+ * a dead chip (design round 1, D2). A remote conversation's rows make NO claim,
+ * and neither does a conversation whose placement the catalogue has not stated
+ * yet: "(not remote)" is not "local" (agent review round 1, n3).
+ *
+ * THE PATH IS COPYABLE IN FULL even though the line is middle-truncated: a copy
+ * control hands the RECORD's value to the clipboard, because selecting the
+ * shortened string would copy an ellipsis (design round 1, D1).
  */
 
 import type { TranscriptDocument } from "@features/chat/canonical/transcript-reducer";
@@ -22,8 +27,9 @@ import {
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { Check, Copy } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 /**
  * Shorten a path in the MIDDLE, keeping both ends readable.
@@ -31,10 +37,11 @@ import { useEffect, useState } from "react";
  * The head names the volume/user root and the tail names the file, and the two
  * are what a person checks a path against; the middle is the part they scroll
  * past. CSS cannot middle-truncate, so this is a character budget rather than a
- * measurement - the full path stays in `title` and is selectable, which is the
- * copyable half of the contract's "middle-truncated, full path copyable".
+ * measurement. The FULL value is carried by the copy control beside it - the
+ * visible span's own text is the shortened string, so selecting it is not a
+ * promise this component can keep (design round 1, D1).
  */
-export function middleTruncate(path: string, max = 72): string {
+export function middleTruncate(path: string, max = 56): string {
 	if (path.length <= max) return path;
 	const keep = Math.floor((max - 1) / 2);
 	return `${path.slice(0, keep)}…${path.slice(-keep)}`;
@@ -83,6 +90,14 @@ export const SentFileCard: FC<{
 	 */
 	remote?: boolean;
 	/**
+	 * Whether the catalogue has SAID where the conversation lives yet. Before the
+	 * placement row (or fact) arrives, "not remote" means "unknown", not "local" -
+	 * and probing a not-yet-known peer session would claim "Moved or deleted"
+	 * about a file that exists on the peer (agent review round 1, n3). Unknown
+	 * renders no claim, exactly as §5 asks.
+	 */
+	placementKnown?: boolean;
+	/**
 	 * A story's answer to the existence probe, when there is no `window.api` to
 	 * ask. `undefined` (the live path) means "probe"; `null` means "probed, no
 	 * answer"; the booleans are the two verdicts the card can paint. Kept an
@@ -90,15 +105,32 @@ export const SentFileCard: FC<{
 	 * would leak into every other story running in the same frame.
 	 */
 	existence?: boolean | null;
-}> = ({ document, remote = false, existence }) => {
+}> = ({ document, remote = false, placementKnown = true, existence }) => {
 	useI18nLocale();
 	const filename = document.filename || t("ui.chat.attachments.file_unnamed");
 	const probed = useFileExistence(
 		existence === undefined ? document.path : null,
-		!remote,
+		!remote && placementKnown,
 	);
 	const exists = existence === undefined ? probed : existence;
 	const missing = exists === false;
+	const [copied, setCopied] = useState(false);
+	/*
+	 * Copy the RECORD's path, never the rendered span: the span is truncated for
+	 * layout, and a copy that reproduces the ellipsis is worse than no control
+	 * because it looks like it worked. A rejected clipboard write leaves the
+	 * icon unchanged rather than claiming a copy that did not happen.
+	 */
+	const copyPath = useCallback(async () => {
+		if (!document.path) return;
+		try {
+			await navigator.clipboard.writeText(document.path);
+			setCopied(true);
+			window.setTimeout(() => setCopied(false), 2000);
+		} catch {
+			setCopied(false);
+		}
+	}, [document.path]);
 	return (
 		<div
 			className={cn("flex max-w-[32rem] items-start gap-2.5 py-1")}
@@ -117,28 +149,78 @@ export const SentFileCard: FC<{
 					{attachmentMetaLine(filename, document.mimeType, document.bytes)}
 				</span>
 				{document.path && (
-					<span
-						className={cn(
-							// Machine voice: a path is a string the OS will be handed, so it is
-							// monospace and selectable rather than prose.
-							"select-all truncate font-mono text-ink-muted text-meta",
-						)}
-						title={document.path}
-					>
-						{middleTruncate(document.path)}
+					<span className={cn("flex min-w-0 items-center gap-1")}>
+						<span
+							className={cn(
+								// Machine voice: a path is a string the OS will be handed, so it is
+								// monospace and selectable rather than prose.
+								"select-all truncate font-mono text-ink-muted text-meta",
+							)}
+							title={document.path}
+						>
+							{middleTruncate(document.path)}
+						</span>
+						{/*
+						 * THE FULL PATH IS WHAT THE COPY CONTROL COPIES. The visible span is
+						 * middle-truncated in its TEXT, so selecting it would copy the
+						 * ellipsized string - the promise "full path copyable" would be false
+						 * exactly where it matters, on a long path (design round 1, D1). A
+						 * button carries the untruncated value from the record, and its icon
+						 * swaps to a check without moving the row.
+						 */}
+						<button
+							type="button"
+							onClick={copyPath}
+							aria-label={
+								copied
+									? t("ui.chat.attachments.path_copied")
+									: t("ui.chat.attachments.copy_path")
+							}
+							title={
+								copied
+									? t("ui.chat.attachments.path_copied")
+									: t("ui.chat.attachments.copy_path")
+							}
+							className={cn(
+								"shrink-0 rounded-sm p-0.5 text-ink-dim hover:text-ink",
+								"focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1",
+							)}
+						>
+							{copied ? (
+								<Check aria-hidden="true" className={cn("size-3.5")} />
+							) : (
+								<Copy aria-hidden="true" className={cn("size-3.5")} />
+							)}
+						</button>
+						<output className={cn("sr-only")} aria-live="polite">
+							{copied ? t("ui.chat.attachments.path_copied") : ""}
+						</output>
 					</span>
 				)}
 				{missing && (
-					<span className={cn("text-ink-muted text-meta")}>
+					/*
+					 * TWO BLOCKS, NOT ONE SENTENCE JOINED BY ". ": a full stop plus a space
+					 * is English punctuation, and zh-CN/hi/ur carry their own. The verdict
+					 * and the recovery line are separate block-level spans so no locale
+					 * inherits this one's separator (agent review round 1, m4).
+					 */
+					<span
+						className={cn("flex flex-col gap-0.5 text-ink-muted text-meta")}
+					>
 						<span className={cn("font-medium text-danger")}>
 							{t("ui.chat.attachments.file_missing")}
 						</span>
-						{". "}
-						{document.attachment
-							? t("ui.chat.attachments.file_retained", {
-									digest: document.attachment,
-								})
-							: filename}
+						<span
+							title={
+								document.attachment
+									? t("ui.chat.attachments.file_retained", {
+											digest: document.attachment,
+										})
+									: undefined
+							}
+						>
+							{t("ui.chat.attachments.file_missing_recovery")}
+						</span>
 					</span>
 				)}
 			</div>

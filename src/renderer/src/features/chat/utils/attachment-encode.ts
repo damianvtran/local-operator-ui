@@ -77,9 +77,10 @@ const pathOf = (attachment: string): string =>
  *
  * The image budget is the SAME one as before - 880,000 bytes under the
  * backend's 900,000-byte control frame, images bounded client-side to the 1024px
- * long edge (`bound-image.ts` cites the constants) - and file REFERENCES are
- * weighed by the same `messageBodyBytes` through `messageBudgetRefusal`, since
- * the body carries a digest rather than the bytes (contract §1.2).
+ * long edge (`bound-image.ts` cites the constants). File REFERENCES are bounded
+ * by count and by the wire schema's own caps, not by that image budget: a
+ * reference is a digest and a path, not bytes, so `messageBodyBytes` is not the
+ * place they are weighed.
  */
 export async function encodeAttachments(
 	attachments: string[],
@@ -95,6 +96,24 @@ export async function encodeAttachments(
 		path?: string;
 	}[] = [];
 	const failures: StagedAttachmentFailure[] = [];
+	/*
+	 * THE COUNT BEFORE THE COPIES. A draft with ten staged files must not upload
+	 * ten files (up to 32 MB each) and then refuse because eight is the cap: the
+	 * refusal is already decided by the staged list, so the upload loop is not
+	 * allowed to run for a send that cannot be admitted. Classifying here is the
+	 * same rule the loop applies below - a data-URL image or an image extension
+	 * stays inline, everything else is a file.
+	 */
+	const stagedFiles = attachments.filter((attachment) => {
+		if (IMAGE_DATA_URL.test(attachment)) return false;
+		const ext = attachment.split(".").pop()?.toLowerCase() ?? "";
+		return !IMAGE_MIME_BY_EXT[ext];
+	});
+	const fileOverflow = Math.max(
+		0,
+		stagedFiles.length - DESKTOP_MESSAGE_MAX_FILES,
+	);
+	const uploadFiles = fileOverflow === 0;
 	for (const attachment of attachments) {
 		const dataUrl = IMAGE_DATA_URL.exec(attachment);
 		if (dataUrl) {
@@ -136,6 +155,7 @@ export async function encodeAttachments(
 			failures.push({ name, kind: "remote" });
 			continue;
 		}
+		if (!uploadFiles) continue;
 		const upload = window.api?.uploadAttachment;
 		if (!upload) {
 			failures.push({
@@ -175,7 +195,8 @@ export async function encodeAttachments(
 	 * read the report.
 	 */
 	const overflow = Math.max(0, images.length - DESKTOP_MESSAGE_MAX_IMAGES);
-	const fileOverflow = Math.max(0, files.length - DESKTOP_MESSAGE_MAX_FILES);
+	// `fileOverflow` is the pre-upload count above: a refused draft never
+	// uploaded, so deriving it again from `files` would always read zero.
 	// Bound per image first, then check the TOTAL and step the whole set down
 	// until the message fits. Several individually legal screenshots that do not
 	// collectively fit is the common case, and it is not visible to a per-image
