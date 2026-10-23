@@ -1527,3 +1527,89 @@ export const OptimisticIntegrationFlow: Story = {
 		);
 	},
 };
+
+/**
+ * Real page + picker + create serializer + read projection, with an in-memory
+ * service boundary. No daemon or production write: the visible payload is what
+ * draftCreateInput produced, and its stored labels are fed back uncomposed so
+ * the merged page must resolve the same named/unnamed identity on read.
+ */
+export const OwnChiefCreateReadRoundTrip: Story = {
+	args: OwnChiefServerFallback.args,
+	render: function OwnChiefRoundTrip(args) {
+		const [target, setTarget] = useState<TeamBridgeTarget | null>(args.target);
+		const [created, setCreated] = useState<TeamBridgeConversation | null>(null);
+		const [confirmed, setConfirmed] = useState<TeamBridgeMessage[]>([]);
+		const [wire, setWire] = useState<ReturnType<typeof draftCreateInput>>(null);
+		return (
+			<div className="flex h-full flex-col">
+				<output
+					className="shrink-0 px-3 py-1 text-meta-sm"
+					aria-label="Fixture create payload"
+				>
+					{wire ? JSON.stringify(wire) : "Fixture only: no create yet"}
+				</output>
+				<TeamBridgePageView
+					{...args}
+					target={target}
+					onTarget={setTarget}
+					conversations={created ? [created] : []}
+					messages={confirmed}
+					messageState={created ? "ready" : "idle"}
+					onSend={async (body) => {
+						if (target?.type !== "compose") return;
+						const input = draftCreateInput(target.recipients);
+						if (!input) return;
+						setWire(input);
+						const conversation: TeamBridgeConversation = {
+							...dm,
+							id: "bcv_self_roundtrip",
+							tenant_id: "tnt_1",
+							kind: input.kind,
+							name: "",
+							agent_capable: input.agentCapable,
+							members: [
+								{
+									account_id: self,
+									kind: "human",
+									display_label: "Damian Tran",
+									role: "owner",
+									state: "active",
+								},
+								...input.members.map((member) => ({
+									account_id: member.account_id,
+									kind: member.kind,
+									display_label: member.display_label ?? "",
+									role: "member" as const,
+									state: "invited" as const,
+								})),
+							],
+						};
+						setCreated(conversation);
+						setConfirmed([
+							{
+								id: "bcmsg_self_roundtrip",
+								conversation_id: conversation.id,
+								seq: 1,
+								sender: {
+									account_id: self,
+									kind: "human",
+									display_label: "Damian Tran",
+								},
+								origin: "human",
+								body,
+								created_at: new Date().toISOString(),
+							},
+						]);
+						setTarget({ type: "conversation", id: conversation.id });
+					}}
+				/>
+			</div>
+		);
+	},
+};
+
+export const OwnChiefNamedCreateReadRoundTrip: Story = {
+	render: OwnChiefCreateReadRoundTrip.render,
+	args: { ...OwnChiefNamed.args },
+};
