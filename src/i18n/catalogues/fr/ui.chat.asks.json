@@ -1,12 +1,12 @@
 {
-	"ui.chat.asks.context.messages_since": "{count, plural, one {# message de vous depuis cette demande (dernier à {time})} many {{count} de messages de vous depuis cette demande (dernier à {time})} other {# messages de vous depuis cette demande (dernier à {time})}}",
+	"ui.chat.asks.context.messages_since": "{count, plural, one {# message de votre part depuis cette demande (dernier à {time})} many {# de messages de votre part depuis cette demande (dernier à {time})} other {# messages de votre part depuis cette demande (dernier à {time})}}",
 	"ui.chat.asks.dismiss.answered_in_chat.note": "vous avez déjà répondu dans la conversation",
-	"ui.chat.asks.dismiss.answered_in_chat.title": "Répondu dans le chat",
+	"ui.chat.asks.dismiss.answered_in_chat.title": "Répondu dans la conversation",
 	"ui.chat.asks.dismiss.cancel": "Annuler",
-	"ui.chat.asks.dismiss.heading": "Écarter cette demande",
-	"ui.chat.asks.dismiss.moot.note": "n’attendez plus de réponse",
+	"ui.chat.asks.dismiss.heading": "Ignorer cette demande",
+	"ui.chat.asks.dismiss.moot.note": "l’agent n’attendra plus de réponse",
 	"ui.chat.asks.dismiss.moot.title": "Plus nécessaire",
-	"ui.chat.asks.dismiss.receipt.answered_in_chat": "Écartée — réglée dans le chat",
-	"ui.chat.asks.dismiss.receipt.moot": "Écartée — plus nécessaire",
-	"ui.chat.asks.dismiss.trigger": "Écarter…"
+	"ui.chat.asks.dismiss.receipt.answered_in_chat": "Ignorée — réglée dans la conversation",
+	"ui.chat.asks.dismiss.receipt.moot": "Ignorée — plus nécessaire",
+	"ui.chat.asks.dismiss.trigger": "Ignorer…"
 }

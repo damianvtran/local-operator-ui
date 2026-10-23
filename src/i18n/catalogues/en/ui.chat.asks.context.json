@@ -1,75 +1,75 @@
 {
 	"ui.chat.asks.context.messages_since": {
-		"role": "context line on an open ask card, counting the user's messages since the ask was queued",
-		"tone": "quiet factual aside, sentence case, lowercase parenthetical",
 		"length": "One short clause plus a parenthetical clock reading.",
 		"note": "Renders under the questions on a card whose ask is still open, only when at least one user message arrived after it was queued. The count is the conversation's movement since the question was asked; the parenthetical gives the locale's own short clock time of the latest of those messages. The whole line is omitted when the backend sends no count, which is every runtime older than the dismiss feature.",
 		"placeholders": {
 			"count": "how many user messages arrived since the ask was queued; drives the plural branch and renders as # inside each arm",
 			"time": "the latest of those messages, formatted as the locale's short time (for example 19:36 or 7:36 PM)"
-		}
+		},
+		"role": "context line on an open ask card, counting the user's messages since the ask was queued",
+		"tone": "quiet factual aside, sentence case, lowercase parenthetical"
 	},
 	"ui.chat.asks.dismiss.answered_in_chat.note": {
-		"role": "one-line explanation under the Answered in chat reason button",
-		"tone": "lowercase fragment, no trailing punctuation",
 		"length": "One short clause.",
 		"note": "Subordinate to the reason's title. It says why the ask can be dismissed: the user's reply is already in the conversation, so the agent can take the answer from there.",
-		"placeholders": {}
+		"placeholders": {},
+		"role": "one-line explanation under the Answered in chat reason button",
+		"tone": "lowercase fragment, no trailing punctuation"
 	},
 	"ui.chat.asks.dismiss.answered_in_chat.title": {
-		"role": "second reason button in the ask card's dismissal chooser",
-		"tone": "short noun phrase, sentence case, no trailing punctuation",
 		"length": "Three words.",
 		"note": "Names the case where the conversation already answered the ask. It sits second, under No longer needed; pressing it dismisses the ask and tells the agent to read the answer from the chat.",
-		"placeholders": {}
+		"placeholders": {},
+		"role": "second reason button in the ask card's dismissal chooser",
+		"tone": "short noun phrase, sentence case, no trailing punctuation"
 	},
 	"ui.chat.asks.dismiss.cancel": {
-		"role": "control that closes the dismissal chooser without dismissing",
-		"tone": "verb, sentence case, no trailing punctuation",
 		"length": "One word.",
 		"note": "Returns to the card with the ask untouched; it is not a decline and sends nothing to the agent.",
-		"placeholders": {}
+		"placeholders": {},
+		"role": "control that closes the dismissal chooser without dismissing",
+		"tone": "verb, sentence case, no trailing punctuation"
 	},
 	"ui.chat.asks.dismiss.heading": {
-		"role": "heading of the inline reason chooser on an open ask card",
-		"tone": "short verb phrase, sentence case, no trailing punctuation",
 		"length": "Three words.",
 		"note": "Heads the two reason buttons that put the ask away. The same words the terminal and phone surfaces use, so one act reads one way on every surface.",
-		"placeholders": {}
+		"placeholders": {},
+		"role": "heading of the inline reason chooser on an open ask card",
+		"tone": "short verb phrase, sentence case, no trailing punctuation"
 	},
 	"ui.chat.asks.dismiss.moot.note": {
-		"role": "one-line explanation under the No longer needed reason button",
-		"tone": "lowercase fragment, imperative, no trailing punctuation",
 		"length": "Four words.",
-		"note": "Subordinate to the reason's title. It says what dismissing means for the wait: the agent stops waiting on this ask.",
-		"placeholders": {}
+		"note": "Subordinate to the reason's title. It says what dismissing means for the wait: the agent stops waiting on this ask, so the agent is the subject (\"the agent stops waiting\"), not the operator.",
+		"placeholders": {},
+		"role": "one-line explanation under the No longer needed reason button",
+		"tone": "lowercase fragment naming what the AGENT stops doing; the actor is the agent, never a second-person address to the operator; no trailing punctuation"
 	},
 	"ui.chat.asks.dismiss.moot.title": {
-		"role": "first reason button in the ask card's dismissal chooser",
-		"tone": "short noun phrase, sentence case, no trailing punctuation",
 		"length": "Three words.",
 		"note": "The common case: the ask is stale or the user has moved on. It sits first, above Answered in chat; pressing it dismisses the ask and tells the agent to carry on without it.",
-		"placeholders": {}
+		"placeholders": {},
+		"role": "first reason button in the ask card's dismissal chooser",
+		"tone": "short noun phrase, sentence case, no trailing punctuation"
 	},
 	"ui.chat.asks.dismiss.receipt.answered_in_chat": {
-		"role": "confirmation line after an ask was dismissed as answered in the conversation",
-		"tone": "past-tense statement with a dash, sentence case",
 		"length": "One short sentence.",
 		"note": "Shown on the card and on its settled one-line row. The second half is the operator-facing label the harness uses for this reason (settled in chat), so the receipt and the agent's own notice describe one act the same way.",
-		"placeholders": {}
+		"placeholders": {},
+		"role": "confirmation line after an ask was dismissed as answered in the conversation",
+		"tone": "past-tense statement with a dash, sentence case"
 	},
 	"ui.chat.asks.dismiss.receipt.moot": {
-		"role": "confirmation line after an ask was dismissed as no longer needed",
-		"tone": "past-tense statement with a dash, sentence case",
 		"length": "One short sentence.",
 		"note": "Shown on the card and on its settled one-line row. The second half is the operator-facing label the harness uses for this reason (no longer needed), so the receipt and the agent's own notice describe one act the same way.",
-		"placeholders": {}
+		"placeholders": {},
+		"role": "confirmation line after an ask was dismissed as no longer needed",
+		"tone": "past-tense statement with a dash, sentence case"
 	},
 	"ui.chat.asks.dismiss.trigger": {
-		"role": "button that opens the dismissal chooser on an open ask card",
-		"tone": "verb with an ellipsis, sentence case",
 		"length": "One word plus an ellipsis.",
 		"note": "The ellipsis is load-bearing: the press opens a chooser rather than acting on its own. The button exists only when the backend advertises the dismiss capability.",
-		"placeholders": {}
+		"placeholders": {},
+		"role": "button that opens the dismissal chooser on an open ask card",
+		"tone": "verb with an ellipsis, sentence case"
 	}
 }
