@@ -363,11 +363,25 @@ const modelSelection = z
 	.strict();
 /** What a draft pane's chips record, and what the wire carries. */
 export type DesktopModelSelection = z.infer<typeof modelSelection>;
+/**
+ * Longest `instructions` a profile's create or update accepts, in JS CHARACTERS.
+ *
+ * Mirrors `MAX_INSTRUCTIONS_CHARS` in the backend's `agent_profiles.py`, which
+ * bounds the same field on the read path, in the `agent` tool and in the routes'
+ * pydantic models. It moved from 8,000 to 10,000 because real profiles outgrew
+ * the old bound: a 9,055-character role was cut on read, and this contract then
+ * refused to save it whole — the loss was invisible in the app that writes the
+ * field. Declared once and referenced by both ops below rather than repeated as
+ * a literal, so `profiles.update` and `profiles.create` cannot state it
+ * differently. The profile `description` keeps its own 8,000 bound, and teams
+ * are bounded separately.
+ */
+export const PROFILE_INSTRUCTIONS_MAX_CHARS = 10_000;
 const profileFields = z
 	.object({
 		kind: z.enum(["role", "specialist"]).optional(),
 		description: z.string().max(8000).optional(),
-		instructions: z.string().max(8000).optional(),
+		instructions: z.string().max(PROFILE_INSTRUCTIONS_MAX_CHARS).optional(),
 		tools: z.array(z.string().min(1).max(128)).max(256).optional(),
 		effort: z.string().max(64).optional(),
 		delegate: z.boolean().optional(),
@@ -1237,7 +1251,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			requestId,
 			fields: profileFields.extend({
 				description: z.string().max(8000),
-				instructions: z.string().min(1).max(8000),
+				instructions: z.string().min(1).max(PROFILE_INSTRUCTIONS_MAX_CHARS),
 			}),
 		})
 		.strict(),
