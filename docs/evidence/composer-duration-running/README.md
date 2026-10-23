@@ -53,9 +53,10 @@ node scripts/composer-readings-geometry.mjs --port=5435 --themes=both \
   --widths=700,798,820,840,853,854,860,908,1024,1200 --label=after
 ```
 
-Counts: before 136 (72 at the shipped 810 measure + 64 at 918); after 168
-(88 + 80); 304 in all. `before/frames.txt` and `after/frames.txt` name every
-path, and the nine shared widths are cell-for-cell comparable.
+Counts: before 136 (72 at the shipped 810 measure + 64 at 918); after 170
+(88 + 80 + 2 for the RTL cell, below); 306 in all. `before/frames.txt` and
+`after/frames.txt` name every path, and the nine shared widths are
+cell-for-cell comparable.
 
 The rig writes one row-sized crop per case per theme plus `numbers.json` from
 the same DOM; the frames are those PNGs converted with `cwebp -q 88 -m 6`,
@@ -314,16 +315,20 @@ The same rule, same fixtures:
    that changed in them is the duration's own box (from 0x0 to a laid-out box,
    or from absent to present). Drawing the reading cannot reflow the row, so the
    measurement cannot feed itself.
-2. **Where the reading used to be IN FLOW, the model chip takes the space.** In
-   the idle cells the shipped tree drew the duration in flow, squeezing the
-   model chip; with the reading out of flow the chip expands to its natural
-   width and the measured gap then hides the reading where the chip used it.
-   Measured: `idle-fullest` at 1024, model 81.8 -> 119.5px, G 2.0, duration
-   hidden (it was shown before); at the operator's 918 the same cell has G 109.4
-   and shows it. `idle-reported` is short enough that its chip does not change
-   (102.9 before and after) and keeps the reading at 820 and above at 810, and
-   from 820 at 918. The model is never shrunk to buy the reading back - the
-   design note's own caveat for this cell, measured rather than assumed.
+2. **Where the reading used to be IN FLOW, the model chip takes the space - in
+   half the idle cells, not all of them.** The 24 idle cells that differ from
+   the before half split into two shapes, and the split matters:
+   - **12 are `fullest`** (908/1024/1200 x 2 measures x 2 themes): the shipped
+     tree drew the duration in flow and squeezed the model chip; with the
+     reading out of flow the chip expands to its natural width and the measured
+     gap then hides the reading where the chip used it. Measured at 1024/810:
+     model 81.8 -> 119.5px, G 2.0, duration hidden (shown before); at the
+     operator's 918 the same cell has G 109.4 and shows it.
+   - **12 are `reported`** (same widths/themes/measures): the chip is 102.9px in
+     BOTH halves, so nothing expands; the freed 55.4px + 4px goes to the GAP
+     (G 50.0 -> 109.3 at 1024/810), and the reading still shows at 820 and above.
+   The model is never shrunk to buy the reading back - the design note's own
+   caveat for the `fullest` cells, measured rather than assumed.
 
 ### The shed is a gap, not a column - and the ladder makes it step
 
@@ -337,13 +342,49 @@ that shows the reading at 820 hides it at 840. It is a real consequence of
 measuring the row, not a threshold error, and nothing is shed or shortened to
 "correct" it.
 
-### The anchor invariant held at every cell
+### The anchor invariant held at every cell, in both directions
 
-`strip.right` equals the last visible non-duration reading's right edge in all
-168 after cells - both themes, both measures, every width (`anchorDelta` 0 in
-`after/numbers.json`). The prescribed `left: calc(100% + 4px)` anchor and the
-measured inequality therefore refer to the same position; no inline-left
-fallback was needed.
+`strip` inline-end edge equals the last visible non-duration reading's
+inline-end edge in all 170 after cells - both themes, both measures, every
+width, both directions (`anchorDelta` 0 in `after/numbers.json`, computed as
+`strip.right - last.right` in LTR and `strip.left - last.left` in RTL). The
+anchor (`insetInlineStart: calc(100% + READING_GAP)`) and the measured
+inequality therefore refer to the same position; no inline-left fallback was
+needed.
+
+### RTL (`ur`) - the case a physical rule hides
+
+The first implementation of this fix used physical edges (`controls.left -
+max(right)`, `left: calc(100% + 4px)`). Under `dir="rtl"` - `ur` is a shipped
+locale - the row is mirrored, so the last reading is the LEFTMOST one and the
+free gap ends at the controls' RIGHT edge. A physical rule hid the reading at
+EVERY width in that locale while every LTR frame passed. The fit is now
+direction-aware (`session-duration-fit.ts`, unit-tested for both directions at
+the fit boundary) and the anchor is the logical `insetInlineStart`, which flips
+with the row.
+
+The captured cell is the operator's state in RTL: `running-reported`, measure
+918, column 1024, both themes:
+
+| case | G | D | D+4 | spare | duration | anchorDelta |
+| --- | --- | --- | --- | --- | --- | --- |
+| `reported` running, measure 918, column 1024, `dir=rtl` | 181.3 | 55.4 | 59.4 | 121.9 | shown | 0 |
+
+The cell ALSO exposed a pre-existing row defect, which the review's requested
+cell could not have shown otherwise: the controls group carried a PHYSICAL
+`ml-auto`, so in RTL the row's free space landed on the far side of the group
+and the readings sat 2.0px from it - the first RTL capture measured G 2.0 and
+correctly hid the reading. The row's one live auto margin is now the logical
+`ms-auto`: identical in LTR and mirrored in RTL. The LTR control cell
+(`running-reported`, measure 918, column 1024) was re-run after the change and
+is unchanged (cluster 293.7, G 181.3, duration shown), so the margin move is a
+no-op in LTR. Command:
+
+```sh
+node scripts/composer-readings-geometry.mjs --port=5435 --themes=both \
+  --dir=rtl --only=running-reported --measure=918 --widths=1024 \
+  --out=... --label=after
+```
 
 ### What the after half cannot show
 

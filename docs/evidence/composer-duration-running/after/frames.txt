@@ -124,6 +124,8 @@ running-fullest-w908-m918/localOperatorDark
 running-fullest-w908-m918/localOperatorLight
 running-fullest-w908/localOperatorDark
 running-fullest-w908/localOperatorLight
+running-reported-w1024-m918-rtl/localOperatorDark
+running-reported-w1024-m918-rtl/localOperatorLight
 running-reported-w1024-m918/localOperatorDark
 running-reported-w1024-m918/localOperatorLight
 running-reported-w1024/localOperatorDark

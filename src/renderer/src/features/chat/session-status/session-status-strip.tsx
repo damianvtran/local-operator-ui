@@ -39,6 +39,12 @@ import {
 	formatDuration,
 } from "./session-duration";
 import {
+	READING_GAP,
+	type ReadingDirection,
+	durationFits as gapFitsDuration,
+	inlineGap,
+} from "./session-duration-fit";
+import {
 	bandReadings,
 	effortDisplacementNote,
 	effortDisplay,
@@ -258,19 +264,33 @@ export type SessionStatusStripProps = {
 	 * strip that guessed it from its own props would be a second authority for
 	 * when a Stop is on screen.
 	 *
-	 * WHY IT EXISTS (issue #788). The active-time reading's shed rule is a
-	 * container query, and a container query can see the column narrow but not a
-	 * SIBLING appear. The group is 68px idle (mic + Send) and 104px whenever a
-	 * third box is drawn - the Stop square while a turn runs, the invisible
+	 * WHY IT EXISTS (issue #788). The three width ladders (effort, cost, context)
+	 * are container queries, and a container query can see the column narrow but
+	 * not a SIBLING appear. The group is 68px idle (mic + Send) and 104px whenever
+	 * a third box is drawn - the Stop square while a turn runs, the invisible
 	 * `data-interrupt-slot` through the post-stop grace window, and the recording
-	 * pair, which reserves the same slot. The threshold below was derived against
-	 * the 68px pair, so above its band the reading came back into a row whose
+	 * pair, which reserves the same slot. Their thresholds were derived against
+	 * the 68px pair, so above the band a reading came back into a row whose
 	 * controls had grown by 36px and overran them; and because the composer box is
 	 * capped at `--lo-chat-measure` the row does not grow with the column, so no
-	 * wider band exists that would fit. The reading therefore sheds on the STATE as
-	 * well as the width. See the reading's own comment for the measurements.
+	 * wider band exists that would fit. Those three ladders therefore carry a
+	 * state pair as well as a width.
+	 *
+	 * THE DURATION IS NOT ONE OF ITS READERS ANY MORE. Its fit is measured against
+	 * the row's real free gap (`data-lo-composer-controls`), so this flag is the
+	 * three value ladders' input and only theirs; a running turn is not a reason
+	 * to hide a live number.
 	 */
 	controlsThirdBox?: boolean;
+	/**
+	 * THE ROW'S OTHER HALF, BY CONTRACT. The duration reading's visibility is
+	 * measured against the composer's controls group, which is the strip's own
+	 * sibling inside one row. A surface that renders this strip inside a row is
+	 * contracted to put `data-lo-composer-controls` on that group; without the
+	 * marker the measurement stands down and the reading stays VISIBLE (never
+	 * hidden on a missing anchor), so a forgotten marker degrades to the reading
+	 * being drawn rather than to the defect this change removed.
+	 */
 	/**
 	 * Whether the backend advertises `features.cost_channels` — the gate for the
 	 * published per-channel spend (the cost-channels project's wire object).
@@ -350,16 +370,6 @@ export const READING_BUTTON = cn(
  * that is where the box was authored; what is shared is the box.
  */
 export const READING_LABEL = cn(READING_BOX, "cursor-default text-ink-dim");
-
-/**
- * The gap between readings, in CSS pixels - `gap-x-1` on the strip below.
- *
- * Named rather than repeated because the duration's measured fit compares two
- * boxes ACROSS this gap: the reading is placed one gap past the cluster's last
- * box, so "does it fit" is `gap >= width + READING_GAP`. A literal in the
- * arithmetic and a literal in the class would be two numbers that could drift.
- */
-const READING_GAP = 4;
 
 /**
  * A snapshot that has measured nothing, for a pane that has no snapshot yet.
@@ -1186,10 +1196,12 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	 * identical whether this reading is drawn or not, so a successful measurement
 	 * cannot turn into a failed one by drawing.
 	 *
-	 * `G` is the controls' left edge minus the LAST VISIBLE non-duration reading's
-	 * right edge; `D` is this reading's own box width. It fits when `G >= D + 4`.
-	 * Both come from `getBoundingClientRect` at full precision, from the same DOM
-	 * the reader sees.
+	 * `G` is the free gap between the controls and the LAST VISIBLE non-duration
+	 * reading, in the row's INLINE direction: `controls.left - last.right` in LTR,
+	 * `last.left - controls.right` in RTL. `D` is this reading's own box width. It
+	 * fits when `G >= D + 4`. All three come from `getBoundingClientRect` at full
+	 * precision, from the same DOM the reader sees, and the arithmetic itself lives
+	 * in `session-duration-fit.ts` so both directions are unit-tested.
 	 *
 	 * WHY EVERY RENDER AND A RESIZE OBSERVER. The value ticks at 1Hz and its text
 	 * can change width (a digit, a unit); a reading can be shed by the ladder below
@@ -1217,14 +1229,35 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 		if (!element) return;
 		/*
 		 * The controls group, by the composer's own marker rather than by a
-		 * button's translated label: the group is the row's right anchor, and its
-		 * width is what the third box changes.
+		 * button's translated label: the group is the row's inline-end anchor, and
+		 * its width is what the third box changes.
 		 */
 		const controls = strip.parentElement?.querySelector<HTMLElement>(
 			"[data-lo-composer-controls]",
 		);
-		if (!controls) return;
-		let lastRight: number | null = null;
+		/*
+		 * A MISSING CONTROLS GROUP MEANS "NOT MEASURABLE", NOT "NO ROOM" (QA round
+		 * 1, Q1-2). A parent that renders this strip is contracted to mark the
+		 * group, but a surface that forgets must not silently erase a live number
+		 * at every width - which is the failure this whole change removes. So the
+		 * reading defaults to VISIBLE and the measurement stands down, rather than
+		 * hiding on an absent anchor.
+		 */
+		if (!controls) {
+			setDurationFits(true);
+			return;
+		}
+		/*
+		 * THE DIRECTION IS THE STRIP'S, NOT THE APP'S ASSUMPTION. `ur` is a shipped
+		 * locale, and `dir="rtl"` mirrors the row: the "last" reading is the
+		 * LEFTMOST one and the free gap ends at the controls' RIGHT edge. A
+		 * physical rule hid this reading at every width in that locale while the
+		 * LTR frames passed, which is why the arithmetic lives in
+		 * `session-duration-fit.ts` and is tested in both directions.
+		 */
+		const direction: ReadingDirection =
+			getComputedStyle(strip).direction === "rtl" ? "rtl" : "ltr";
+		let lastEdge: number | null = null;
 		for (const child of strip.children) {
 			if (child === element) continue;
 			/* A shed reading is `display: none`; a hidden one is not the reading
@@ -1232,13 +1265,39 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			if (getComputedStyle(child).visibility === "hidden") continue;
 			const box = child.getBoundingClientRect();
 			if (box.width <= 0.5 || box.height <= 0.5) continue;
-			lastRight =
-				lastRight === null ? box.right : Math.max(lastRight, box.right);
+			/*
+			 * The edge nearest the controls: the reading's right in LTR, its left in
+			 * RTL. Tracked as the inline-end extreme, so the anchor below and this
+			 * loop agree about which reading is "last".
+			 */
+			const edge = direction === "rtl" ? box.left : box.right;
+			lastEdge =
+				lastEdge === null
+					? edge
+					: direction === "rtl"
+						? Math.min(lastEdge, edge)
+						: Math.max(lastEdge, edge);
 		}
-		if (lastRight === null) return;
-		const durationWidth = element.getBoundingClientRect().width;
-		const gap = controls.getBoundingClientRect().left - lastRight;
-		setDurationFits(gap >= durationWidth + READING_GAP);
+		/*
+		 * NO OTHER VISIBLE READING: the strip's own inline-end edge is the anchor.
+		 * It is the same edge the last reading would contribute (the cluster is
+		 * shrink-to-fit), so a one-reading row measures instead of leaving the
+		 * reading hidden by a missing term (QA round 1, Q1-2).
+		 */
+		if (lastEdge === null) {
+			const stripBox = strip.getBoundingClientRect();
+			lastEdge = direction === "rtl" ? stripBox.left : stripBox.right;
+		}
+		const controlBox = controls.getBoundingClientRect();
+		const gap = inlineGap(
+			direction,
+			lastEdge,
+			controlBox.left,
+			controlBox.right,
+		);
+		setDurationFits(
+			gapFitsDuration(gap, element.getBoundingClientRect().width),
+		);
 	}, []);
 	/*
 	 * NO DEPENDENCY ARRAY, deliberately: this runs after every render, which is what
@@ -1840,8 +1899,13 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			 * them apart: its right group ends `… context · cost · duration`, and
 			 * its own drop ladder sheds duration first because it is the one
 			 * reading re-derivable from the transcript (`status_line.py`,
-			 * `_DROP_LADDER[0]`). That ranking still holds here, but the duration
-			 * is no longer a rung on this row's COLUMN ladder. The ladder's other
+			 * `_DROP_LADDER[0]`). THIS ROW DOES NOT APPLY THAT SHED-FIRST RANKING.
+			 * The measured rule alone decides whether the duration is drawn - which
+			 * it can be while effort, cost and context are shed (measured: running,
+			 * column 700), because the row's free gap, not the TUI's priority order,
+			 * is what governs it. Whether the duration SHOULD rank first here is a
+			 * design question this change leaves open (the TUI has its own
+			 * separately scoped running-priority note); it is not re-derived here. The ladder's other
 			 * three rungs (effort, then cost, then context) are container ranges,
 			 * and a range can only answer "how wide is the column". The duration's
 			 * fit depends on three things a container range cannot see: the
@@ -1903,17 +1967,19 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			{duration && (
 				<span
 					data-lo-duration={true}
-					className={cn(
-						/*
-						 * The anchor. `100%` is the strip's own right edge, which is the
-						 * last visible reading's right edge because this element
-						 * contributes no in-flow width - the invariant is checked in
-						 * `docs/evidence/composer-duration-running/` by comparing
-						 * `strip.right` with the last reading's box at every width.
-						 */
-						"absolute top-0 left-[calc(100%+4px)]",
-						!durationFits && "invisible",
-					)}
+					className={cn("absolute top-0", !durationFits && "invisible")}
+					/*
+					 * THE ANCHOR IS LOGICAL, because the row is. `insetInlineStart` is
+					 * `left` in LTR and `right` in RTL, so the reading always hangs one
+					 * reading-gap past the strip's INLINE-END edge - the edge the last
+					 * visible reading ends on in either direction. `top-0` stays physical:
+					 * the block axis is not mirrored. The anchor and the measured gap use
+					 * the same edge by construction; `after/numbers.json` records
+					 * `anchorDelta` per cell (zero in every captured one).
+					 */
+					style={{
+						insetInlineStart: `calc(100% + ${READING_GAP}px)`,
+					}}
 				>
 					<Reading
 						label={`Active time: ${formatDuration(activeSeconds)}. ${DURATION_LABEL_EXPLANATION}`}
