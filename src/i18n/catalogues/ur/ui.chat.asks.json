@@ -9,5 +9,6 @@
 	"ui.chat.asks.dismiss.moot.title": "اب ضرورت نہیں",
 	"ui.chat.asks.dismiss.receipt.answered_in_chat": "ہٹا دیا — چیٹ میں طے ہو گیا",
 	"ui.chat.asks.dismiss.receipt.moot": "ہٹا دیا — اب ضرورت نہیں",
+	"ui.chat.asks.dismiss.refused": "یہ سوال ہٹایا نہیں جا سکا — کچھ نہیں بھیجا گیا۔",
 	"ui.chat.asks.dismiss.trigger": "ہٹائیں…"
 }

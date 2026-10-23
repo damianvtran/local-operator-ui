@@ -72,6 +72,13 @@
 		"role": "confirmation line after an ask was dismissed as no longer needed",
 		"tone": "past-tense statement with a dash, sentence case"
 	},
+	"ui.chat.asks.dismiss.refused": {
+		"length": "Two clauses, one sentence.",
+		"note": "It states the two facts the reader needs: the ask was not dismissed, and nothing was sent, so a retry is safe. When the owner supplied its own refusal sentence, the panel appends it after this one - that sentence is the reason a retry would fail too - but the transport's sentence is never appended.",
+		"placeholders": {},
+		"role": "the first sentence of the refusal band when a dismissal request failed",
+		"tone": "operator's words, sentence case, period; no transport vocabulary"
+	},
 	"ui.chat.asks.dismiss.trigger": {
 		"length": "One word plus an ellipsis.",
 		"note": "The ellipsis is load-bearing: the press opens a chooser rather than acting on its own. The button exists only when the backend advertises the dismiss capability.",

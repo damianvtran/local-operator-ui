@@ -9,5 +9,6 @@
 	"ui.chat.asks.dismiss.moot.title": "Больше не нужно",
 	"ui.chat.asks.dismiss.receipt.answered_in_chat": "Убрано — решено в чате",
 	"ui.chat.asks.dismiss.receipt.moot": "Убрано — больше не нужно",
+	"ui.chat.asks.dismiss.refused": "Не удалось убрать этот запрос — ничего не отправлено.",
 	"ui.chat.asks.dismiss.trigger": "Убрать…"
 }

@@ -69,6 +69,7 @@ import type {
 } from "../../ask-queue";
 import {
 	ASK_CHANGE_WINDOW_HINT,
+	COMPOSER_TEXTAREA_SELECTOR,
 	EMPTY_DRAFT,
 	askAnswerMap,
 	askCellWith,
@@ -1136,12 +1137,44 @@ const AskRow = ({
 	 */
 	const statusDismissReason =
 		status === "dismissed" ? askDismissReason(ask.dismissed_reason) : null;
+	/*
+	 * A REFUSED DISMISSAL SPEAKS THE ACT, NOT THE TRANSPORT (UX round 2, U6). The band
+	 * used to print the transport's own sentence ("Desktop controls could not reach the
+	 * backend process."), which names the machinery rather than what did not happen to
+	 * the ask. The dismissal's band therefore opens with the operator's words - not
+	 * dismissed, nothing sent - and appends the ROUTE's sentence when the owner authored
+	 * one (`askRefusalIsOwner`), because that sentence is the reason a retry would fail
+	 * too. Transport words are never appended: they add no fact the opening does not.
+	 */
+	const dismissalRefusal =
+		outcome?.refused !== undefined && dismissOpen && pressedReason !== null
+			? [
+					t("ui.chat.asks.dismiss.refused"),
+					outcome.refusedByOwner === true ? outcome.refused : null,
+				]
+					.filter((part): part is string => part !== null && part !== "")
+					.join(" ")
+			: null;
 
 	return (
 		<div
 			ref={rowRef}
 			data-lo-ask-row={ask.ask_id}
 			data-lo-ask-status={status}
+			/*
+			 * ESCAPE IS CLAIMED AT THE CARD, NOT AT THE CHOOSER'S WRAPPER (agent review
+			 * round 2, M-B). The chooser's state is card-local, so the card is the scope
+			 * that owns it: with the handler on the wrapper, a reader who clicked another
+			 * control in this same card while the chooser was open let Escape fall through
+			 * to the drawer and lost the whole panel. Only the OPEN chooser claims the key;
+			 * a closed card passes it on unchanged.
+			 */
+			onKeyDown={(event) => {
+				if (!dismissOpen || event.key !== "Escape") return;
+				event.preventDefault();
+				event.stopPropagation();
+				closeDismiss();
+			}}
 			/*
 			 * `border-hairline`, not `border-control`: `border-control` is the contract's
 			 * role for the sole boundary of a CONTROL (3:1 floor) and this is a card -
@@ -1328,7 +1361,7 @@ const AskRow = ({
 			 */}
 			{outcome?.refused ? (
 				<output className="block text-body-sm text-danger">
-					{outcome.refused}
+					{dismissalRefusal ?? outcome.refused}
 				</output>
 			) : null}
 			{outcome?.changed === true ? (
@@ -1546,15 +1579,7 @@ const AskRow = ({
 			 * back`. The claim is cancelled here so the drawer's handler does not also fire.
 			 */}
 			{onDismiss !== undefined && canAnswer ? (
-				<div
-					className="flex flex-col gap-2"
-					onKeyDown={(event) => {
-						if (!dismissOpen || event.key !== "Escape") return;
-						event.preventDefault();
-						event.stopPropagation();
-						closeDismiss();
-					}}
-				>
+				<div className="flex flex-col gap-2">
 					{dismissOpen ? (
 						<>
 							<p className="text-ink-muted text-meta">
@@ -1565,8 +1590,17 @@ const AskRow = ({
 									key={reason}
 									ref={reason === "moot" ? dismissFirstReason : undefined}
 									type="button"
-									disabled={busy}
+									/*
+									 * `aria-disabled`, NOT `disabled` (UX round 2, U2). A native `disabled`
+									 * drops the focused button out of the tab order and the browser resets
+									 * `document.activeElement` to BODY for the whole POST; the reader loses
+									 * their place on the very press that is supposed to keep it. The control
+									 * stays focusable, announces its disabled state, and ignores activation
+									 * in the handler.
+									 */
+									aria-disabled={busy ? true : undefined}
 									onClick={() => {
+										if (busy) return;
 										/*
 										 * THE REASON PRESS LEAVES THE CHOOSER UP (UX round 1, U3/U6): while the
 										 * POST is in flight the pressed row says so, and a refusal keeps the
@@ -1578,7 +1612,8 @@ const AskRow = ({
 									}}
 									data-lo-ask-dismiss-reason={reason}
 									className={cn(
-										"flex w-full min-w-0 flex-col gap-0.5 rounded-md border border-control px-3 py-1.5 text-left hover:bg-sunken disabled:text-ink-dim",
+										"flex w-full min-w-0 flex-col gap-0.5 rounded-md border border-control px-3 py-1.5 text-left hover:bg-sunken",
+										busy && "text-ink-dim",
 										pressedReason === reason && "bg-sunken",
 									)}
 								>
@@ -1792,14 +1827,18 @@ export const AskPanel = ({
 	const panelRef = useRef<HTMLDivElement | null>(null);
 	const prevHeld = useRef<ReadonlySet<string>>(new Set());
 	/*
-	 * FOCUS AFTER A DISMISSAL (UX round 1, U2). A landed dismissal unmounts the card
-	 * under the reader's keyboard, and without a hand-off `document.activeElement` fell
-	 * to BODY - the next Tab restarted at the top of the app, thirteen stops from the
-	 * door it had just used. The rule is the lane's own: land on the NEXT card's first
-	 * control (the card that takes the empty slot), or on the list itself when no card
-	 * is left. Armed at the PRESS with the index the row occupied then, spent in a
-	 * layout effect once the row is actually gone - a refused dismissal leaves the row
-	 * in place, and the arm is then simply never spent.
+	 * FOCUS AFTER A DISMISSAL (UX round 1 U2; round 2 U2 = QA Q-1). A landed dismissal
+	 * unmounts the card under the reader's keyboard, so the hand-off has to land on
+	 * something that SURVIVES the landing. The rule is positional: the NEXT card's first
+	 * control (the card that takes the empty slot); with no card left, the COMPOSER - not
+	 * the panel's list, which is the element the drawer's #864 auto-close removes in the
+	 * very next commit (the single-ask case, and the common one). The list remains the
+	 * fallback only where no composer exists (the fleet pane).
+	 *
+	 * AND IT ONLY MOVES A KEYBOARD THAT LOST ITS PLACE (agent review round 2, M-A): the
+	 * effect fires for a row leaving the panel, not for the reader choosing to type while
+	 * the POST is in flight. If focus is somewhere outside the panel and still connected,
+	 * the arm is dropped and nothing is stolen.
 	 *
 	 * WHY THE INDEX AND NOT THE ID ALONE: the next card is positional. A `nextElement`
 	 * read after unmount would skip a row the reader never saw; the recorded index is
@@ -1811,18 +1850,37 @@ export const AskPanel = ({
 		if (index >= 0) dismissFocus.current = { id: ask.ask_id, index };
 		onDismiss?.(ask, reason);
 	};
+	/*
+	 * A REFUSAL ENDS THE ARM (M-A). The row stays, so the arm would otherwise sit there
+	 * until some LATER, unrelated departure spent it - the probe moved a reader's focus
+	 * out of a textarea into the panel on the next frame that removed the row.
+	 */
+	useEffect(() => {
+		const pending = dismissFocus.current;
+		if (pending === null) return;
+		if (outcomes?.[pending.id]?.refused) dismissFocus.current = null;
+	}, [outcomes]);
 	useLayoutEffect(() => {
 		const pending = dismissFocus.current;
 		const list = panelRef.current;
 		if (pending === null || list === null) return;
 		const cards = [...list.querySelectorAll<HTMLElement>("[data-lo-ask-row]")];
 		if (cards.some((node) => node.dataset.loAskRow === pending.id)) return;
+		const now = document.activeElement;
+		const lost =
+			now === null ||
+			now === document.body ||
+			!now.isConnected ||
+			list.contains(now);
 		dismissFocus.current = null;
+		if (!lost) return;
 		const next = cards[Math.min(pending.index, cards.length - 1)];
 		const target =
 			next?.querySelector<HTMLElement>(
 				"button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled])",
-			) ?? list;
+			) ??
+			document.querySelector<HTMLElement>(COMPOSER_TEXTAREA_SELECTOR) ??
+			list;
 		target.focus({ preventScroll: true });
 	});
 	const active =

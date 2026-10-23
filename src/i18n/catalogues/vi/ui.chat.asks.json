@@ -9,5 +9,6 @@
 	"ui.chat.asks.dismiss.moot.title": "Không còn cần nữa",
 	"ui.chat.asks.dismiss.receipt.answered_in_chat": "Đã bỏ qua — đã giải quyết trong cuộc trò chuyện",
 	"ui.chat.asks.dismiss.receipt.moot": "Đã bỏ qua — không còn cần nữa",
+	"ui.chat.asks.dismiss.refused": "Không thể bỏ qua câu hỏi này — không có gì được gửi đi.",
 	"ui.chat.asks.dismiss.trigger": "Bỏ qua…"
 }
