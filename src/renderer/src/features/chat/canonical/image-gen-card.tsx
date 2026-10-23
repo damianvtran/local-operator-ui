@@ -235,7 +235,13 @@ function GeneratingTile() {
  * `aria-hidden`: the state line beside it is the announcement, exactly as the
  * image tile's comment states.
  */
-const SOUND_TILE_HEIGHT = 56;
+/*
+ * THE COMPACT PLAYER'S OWN HEIGHT. `SoundPlayer`'s control box is `min-h-11`
+ * (44px) in both variants, so a taller loader would make the card shrink 12px
+ * the moment the sound settles. The band and the player must occupy the same
+ * box for the "one object resolving" claim to survive the transition.
+ */
+const SOUND_TILE_HEIGHT = 44;
 const SOUND_TILE_WIDTH = 240;
 const SOUND_TILE_PADDING = 12;
 /** A deterministic envelope: the band's shape, never a claim about the sound. */
@@ -283,7 +289,9 @@ function SoundGeneratingTile({
 								? "animate-pulse-visible bg-ink-muted"
 								: state === "queued"
 									? "bg-ink-disabled"
-									: "bg-ink-muted",
+									: state === "stopped"
+										? "bg-ink-dim"
+										: "bg-ink-muted",
 						)}
 						style={{
 							width: BAR_WIDTH,

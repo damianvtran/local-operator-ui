@@ -132,12 +132,26 @@ const bridge = {
 	audio: true,
 	waveform: "json",
 	thumbnail: "image",
+	/** A waveform request parked until `release` runs (the stale-peaks case). */
+	hangGate: null,
+	release: null,
 };
 globalThis.window.api = {
 	desktop: {
 		media: async (request) => {
 			MEDIA.push(request);
 			if (request.op === "library.waveform") {
+				if (bridge.waveform === "hang") {
+					bridge.hangGate ??= new Promise((resolve) => {
+						bridge.release = resolve;
+					});
+					await bridge.hangGate;
+					return {
+						status: 200,
+						kind: "json",
+						body: { version: 1, bars: 3, peaks: [0.1, 0.8, 0.3] },
+					};
+				}
 				if (bridge.waveform === "404")
 					return { status: 404, kind: "error", detail: "no sidecar" };
 				if (bridge.waveform === "malformed")
@@ -175,7 +189,7 @@ globalThis.window.api = {
 /* ------------------------------------------------------------ the mount */
 
 const { after } = await import("node:test");
-const { act } = await import("react");
+const { act, createElement } = await import("react");
 
 const ENTRY = `
 import { createElement } from "react";
@@ -183,10 +197,25 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LibraryCard } from "./src/renderer/src/features/library/components/library-card";
 import { useAudioEngineStore } from "./src/renderer/src/shared/store/audio-engine-store";
+import { useLibraryWaveform } from "./src/renderer/src/features/library/hooks/use-library-queries";
 
 /** Silence the shared element and stop its clock after a case played. */
 export function stopAudio() {
 	useAudioEngineStore.getState().stop();
+}
+
+/** The hook alone, so a case can switch its asset id under a mounted viewer. */
+export function WaveformProbe({ assetId }) {
+	const peaks = useLibraryWaveform(assetId);
+	return createElement("span", {
+		"data-probe-peaks": peaks ? String(peaks.length) : "none",
+	});
+}
+
+export function mountProbe(container, assetId) {
+	const root = createRoot(container);
+	root.render(createElement(WaveformProbe, { assetId }));
+	return root;
 }
 
 export function mountCard(container, asset, actions) {
@@ -229,7 +258,9 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { mountCard, stopAudio } = await import(bundlePath.href);
+const { mountCard, mountProbe, stopAudio, WaveformProbe } = await import(
+	bundlePath.href
+);
 after(async () => {
 	stopAudio();
 	await unlink(bundlePath);
@@ -492,4 +523,51 @@ test("the well's bytes wait for the viewport latch, exactly as the image thumbna
 		card.container.querySelector("[data-sound-player]") !== null,
 		true,
 	);
+});
+
+test("switching the drawer's asset clears the previous waveform before the answer", async () => {
+	/*
+	 * M1 from review round 1: `LibraryPreview` keeps ONE viewer mounted and
+	 * swaps its asset prop, so the hook's state survived the switch and drew
+	 * A's bars under B's title until B's request answered. The fix seeds the
+	 * new asset's peaks from the cache at the top of the effect; this case
+	 * parks B's request so the FIRST frame is observable.
+	 */
+	const first = asset("la_00000000000000b1");
+	const second = asset("la_00000000000000b2");
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = mountProbe(container, first.id);
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	for (let index = 0; index < 6; index += 1) {
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		});
+	}
+	const probe = () => container.querySelector("[data-probe-peaks]");
+	assert.equal(
+		probe()?.getAttribute("data-probe-peaks"),
+		"3",
+		"the first asset's sidecar is painted",
+	);
+	bridge.waveform = "hang";
+	try {
+		await act(async () => {
+			root.render(createElement(WaveformProbe, { assetId: second.id }));
+		});
+		assert.equal(
+			probe()?.getAttribute("data-probe-peaks"),
+			"none",
+			"the switch clears A's bars before B answers (flat, never stale)",
+		);
+	} finally {
+		bridge.release?.();
+		bridge.release = null;
+		bridge.hangGate = null;
+		bridge.waveform = "json";
+		await act(async () => root.unmount());
+		container.remove();
+	}
 });

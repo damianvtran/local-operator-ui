@@ -78,6 +78,55 @@ test("sounds native preflight: journal mounts audio and Highlights; fixture has 
 		);
 		assert.equal(sidecar.peaks.length, sidecar.bars);
 	}
+	/*
+	 * THE LIBRARY GRID'S NEGATIVE CONTROL: one picture rides the same turn, so
+	 * the grid has an image card that must mount no sound player.
+	 */
+	const image = state.records
+		.filter((row) => row.kind === "tool")
+		.flatMap((row) => row.images)
+		.find((item) => item.kind === "image");
+	assert.ok(image, "the image-gen result mounts its picture");
+	assert.equal(image.attachment, fixture.imageDigest);
+
+	/* The single-sound arm and the empty arm resolve to their own shapes. */
+	const readSession = (sessionId) => {
+		const entries = readFileSync(
+			join(root, "sessions", sessionId, "transcript.jsonl"),
+			"utf8",
+		)
+			.trim()
+			.split("\n")
+			.map((line) => JSON.parse(line));
+		return applyHistoryPage(EMPTY_TRANSCRIPT, { entries, has_more: false });
+	};
+	const single = readSession(fixture.singleSessionId);
+	const singleHighlights = single.records.find(
+		(row) => row.kind === "supplement",
+	);
+	assert.equal(singleHighlights.sounds.length, 1);
+	assert.equal(
+		singleHighlights.sounds[0].attachment,
+		fixture.digest,
+		"reuses the existing 12 s PCM digest, not a second copy",
+	);
+	const empty = readSession(fixture.emptySessionId);
+	const emptyHighlights = empty.records.find(
+		(row) => row.kind === "supplement",
+	);
+	/*
+	 * The reducer KEEPS the record; the ROW's own rule is what paints nothing
+	 * (`supplement-row.test.mjs`'s empty-arm case). This pins the seeded wire
+	 * shape, and the scene asserts the DOM absence.
+	 */
+	assert.deepEqual(emptyHighlights.sounds, []);
+	assert.deepEqual(emptyHighlights.files, []);
+	assert.deepEqual(emptyHighlights.components, []);
+	assert.equal(
+		single.records.find((row) => row.kind === "supplement").sounds[0].title,
+		"Thunderclap",
+	);
+
 	const wav = soundSample();
 	assert.equal(wav.toString("ascii", 0, 4), "RIFF");
 	assert.notEqual(

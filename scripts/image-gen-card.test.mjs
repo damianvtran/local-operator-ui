@@ -2329,6 +2329,12 @@ test("a sound generation waits on a waveform, never on the image rectangle", () 
 		running.includes("animation-delay"),
 		"the pulse is a travelling wave",
 	);
+	// N2 (round 1): the band is the compact player's own 44px box, so the card
+	// does not shrink when the sound settles.
+	assert.ok(
+		running.includes("height: 44px") || running.includes("height:44px"),
+		"the loader is the player's height, not 12px taller",
+	);
 
 	const queued = markupOf({
 		state: "queued",
@@ -2373,6 +2379,15 @@ test("a sound generation waits on a waveform, never on the image rectangle", () 
 		progress: NO_PROGRESS,
 	});
 	assert.ok(stopped.includes('data-sound-loading="stopped"'));
+	/*
+	 * N1 (round 1): a reduced-motion reader gets the running band parked (the
+	 * CSS cap lands on its end keyframe), so RUNNING and STOPPED must differ in
+	 * more than motion. They do, by ink: muted vs dim.
+	 */
+	assert.ok(
+		running.includes("bg-ink-muted") && stopped.includes("bg-ink-dim"),
+		"the parked running frame and the stopped frame differ by ink",
+	);
 	assert.ok(
 		stopped.includes(
 			"provider has no cancellation endpoint; the generation continues and will be charged if it produces audio",

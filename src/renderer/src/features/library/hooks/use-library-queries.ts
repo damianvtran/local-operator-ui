@@ -397,7 +397,20 @@ export function useLibraryWaveform(
 		assetId ? (settledWaveforms.get(assetId) ?? null) : null,
 	);
 	useEffect(() => {
-		if (!assetId || !enabled) return;
+		/*
+		 * RESET ON THE SWITCH, from the cache, BEFORE ANY AWAIT. The drawer
+		 * re-renders one viewer with a new asset id while the mount stays, so
+		 * the previous asset's peaks would survive into the new asset's first
+		 * frames - A's bars under B's title until B's answer lands. Seeding
+		 * from `settledWaveforms` gives B either its own painted envelope (a
+		 * settled hit) or `null` (the honest flat scrubber) on that first frame.
+		 */
+		if (!assetId) {
+			setPeaks(null);
+			return;
+		}
+		setPeaks(settledWaveforms.get(assetId) ?? null);
+		if (!enabled) return;
 		let live = true;
 		requestLibraryPeaks(assetId).then((value) => {
 			if (live) setPeaks(value);
