@@ -233,8 +233,8 @@ test("cold picker commits its tray without probing glyphs or fetching data; clos
 		globalThis.requestAnimationFrame = originalFrame;
 		globalThis.cancelAnimationFrame = originalCancel;
 		globalThis.fetch = originalFetch;
-		delete globalThis.__coldGlyphCache;
-		delete globalThis.__glyphProbeCount;
+		globalThis.__coldGlyphCache = undefined;
+		globalThis.__glyphProbeCount = undefined;
 	}
 });
 
@@ -290,8 +290,8 @@ test("partial support only appends proven cells and does not replace the focused
 		assert.equal(frames.size, 0);
 		globalThis.requestAnimationFrame = originalFrame;
 		globalThis.cancelAnimationFrame = originalCancel;
-		delete globalThis.__coldGlyphCache;
-		delete globalThis.__glyphProbeCount;
+		globalThis.__coldGlyphCache = undefined;
+		globalThis.__glyphProbeCount = undefined;
 	}
 });
 
