@@ -20,7 +20,7 @@ import { Badge, Button } from "@shared/components/ui";
 import { t } from "@shared/i18n";
 import type { WithoutParams } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
-import { Star, Tag, X } from "lucide-react";
+import { Heart, Star, Tag, X } from "lucide-react";
 import type { FC } from "react";
 import type { DesktopLibraryList } from "../../../../../shared/desktop-control-contract";
 import {
@@ -243,7 +243,16 @@ export const LibraryFilterRail: FC<LibraryFilterRailProps> = ({
 							})
 						}
 						icon={
-							row.key === "favorite" || row.key === "highlighted" ? (
+							row.key === "favorite" ? (
+								/*
+								 * THE USER'S FAVOURITE IS A HEART; THE STAR IS THE
+								 * LIBRARIAN'S `highlighted`. Both status rows used to wear
+								 * the star, which is the one-mark-two-meanings defect the
+								 * operator reported on the cards - fixed in the rail too so
+								 * the filter reads like the mark it filters for.
+								 */
+								<Heart size={14} aria-hidden="true" />
+							) : row.key === "highlighted" ? (
 								<Star size={14} aria-hidden="true" />
 							) : undefined
 						}
