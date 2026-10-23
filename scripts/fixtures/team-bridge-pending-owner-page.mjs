@@ -56,7 +56,7 @@ async function until(predicate, label) { for(let i=0;i<150;i++){if(predicate())r
 function deferred() { let resolve;const promise=new Promise(done=>{resolve=done;});return {promise,resolve}; }
 async function mount({ empty = false } = {}) {
  localStorage.clear();
- const fixture = { account: "acct_a", tenant: "org_shared", refuse: true, calls: [], messages: new Map(), createGate: null, postGate: null, empty, generation: "A" };
+ const fixture = { account: "acct_a", tenant: "org_shared", refuse: true, calls: [], messages: new Map(), createGate: null, postGate: null, empty, generation: "A", enabled: true, readOnly: false };
  window.api = { desktop: { request: async (request) => {
   // The fake server captures ownership at dispatch, just as an authenticated
   // request does. A late A reply must not silently become B's server history.
@@ -66,7 +66,7 @@ async function mount({ empty = false } = {}) {
   const ownerKey = JSON.stringify([owner, tenant]);
   fixture.calls.push({ owner, tenant, ...request });
   switch (request.op) {
-   case "team_bridge.status": return reply({ capability: 1, state: "ready", account_id: owner, tenant_id: tenant, surface_state: "D", visibility: { settings: true, inbox: true, account_door: true, onboarding: false }, update_required: false, local: { enabled: true, onboarding: "done", session: "present" }, status: { tenants: [{ tenant_id: "org_shared", tenant_name: "Shared", eligible: true, endpoint: null }, { tenant_id: "org_other", tenant_name: "Other", eligible: true, endpoint: null }] }, consent: null, error: null });
+   case "team_bridge.status": return reply({ capability: 1, state: "ready", read_only: fixture.readOnly, account_id: owner, tenant_id: tenant, surface_state: "D", visibility: { settings: true, inbox: true, account_door: true, onboarding: false }, update_required: false, local: { enabled: fixture.enabled, onboarding: "done", session: "present" }, status: { tenants: [{ tenant_id: "org_shared", tenant_name: "Shared", eligible: true, endpoint: null }, { tenant_id: "org_other", tenant_name: "Other", eligible: true, endpoint: null }] }, consent: null, error: null });
    case "team_bridge.conversations.list": return reply({ conversations: fixture.empty ? [] : [{ ...conversation(), tenant_id: tenant }] });
    case "team_bridge.directory": return reply({ members: ["Peer", "Other peer"].map((name, index) => ({ account_id: `acct_peer_${index}`, display_label: name, role: "member", bridge_enabled: true, bridge_state: "active" })) });
    case "team_bridge.unread": return reply({ total: 0, organizations: [], conversations: [] });
@@ -85,7 +85,7 @@ async function mount({ empty = false } = {}) {
  } } };
  const host = document.createElement("div"); document.body.append(host);
  const root = createRoot(host);
- const client = new ui.QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } } });
+ const client = new ui.QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false, gcTime: 0 } } });
  const frames = [];
  const render = () => root.render(React.createElement(ui.QueryClientProvider, { client }, React.createElement(ui.MemoryRouter, { initialEntries: [empty ? "/team-bridge?tenant=org_shared" : "/team-bridge?tenant=org_shared&conversation=bcv_shared"] }, React.createElement(React.Profiler, {
   id: "owner-boundary",
@@ -117,7 +117,7 @@ async function mount({ empty = false } = {}) {
  };
 }
 async function type(host,body) {const field=host.querySelector("textarea");assert.ok(field);await act(async()=>{Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype,"value").set.call(field,body);field.dispatchEvent(new window.Event("input",{bubbles:true}));});}
-async function send(host) {const button=[...host.querySelectorAll("button")].find(b=>["Send","Send message"].includes(b.getAttribute("aria-label")));assert.ok(button&&!button.disabled);await act(async()=>button.click());}
+async function send(host) {const button=[...host.querySelectorAll("button")].find(b=>["Send","Send message"].includes(b.getAttribute("aria-label")));assert.ok(button&&!button.disabled, JSON.stringify({buttons:[...host.querySelectorAll("button")].map(b=>[b.textContent,b.getAttribute("aria-label"),b.disabled]),field:host.querySelector("textarea")?.value,text:host.textContent}));await act(async()=>button.click());}
 const sends = fixture => fixture.calls.filter(c=>c.op==="team_bridge.messages.send");
 
 export async function mountPendingOwnerPage({ existing = false } = {}) {
@@ -135,7 +135,7 @@ export async function mountPendingOwnerPage({ existing = false } = {}) {
   // Preserve an already-addressed draft across the boundary. Reopening it
   // would hide the exact same-target ownership collision this test exercises.
   for (const name of ["Peer", "Other peer"]) {
-   const option = [...host.querySelectorAll('[role="option"]')].find(node => node.textContent === name);
+   const option = [...host.querySelectorAll('[role="option"]')].find(node => node.textContent.endsWith(name));
    if (option) await act(async () => option.click());
   }
  };
@@ -149,6 +149,33 @@ export async function mountPendingOwnerPage({ existing = false } = {}) {
   readCount: () => fixture.calls.filter(call => ["team_bridge.conversations.list", "team_bridge.messages.list", "team_bridge.unread"].includes(call.op)).length,
   selectedCreatedA: () => ui.teamBridgeViewingConversation() === "created-A",
   changeOwner: app.changeOwner,
+  async setPermission(mode) {
+   fixture.enabled = mode !== "off";
+   fixture.readOnly = mode === "readonly";
+   await act(async () => app.client.invalidateQueries({ queryKey: ui.teamBridgeKeys.status }));
+   await delay();
+  },
+  async openChannel() {
+   const button = host.querySelector('button[aria-label="Create a channel"]');
+   assert.ok(button && !button.disabled);
+   await act(async () => button.click());
+   const field = document.querySelector('[role="dialog"] input');
+   assert.ok(field);
+   await act(async () => {
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set.call(field, "private-channel");
+    field.dispatchEvent(new window.Event("input", { bubbles: true }));
+   });
+  },
+  async submitChannelIfVisible() {
+   const button = [...document.querySelectorAll('[role="dialog"] button')].find(node => node.textContent === "Create");
+   if (button && !button.disabled) await act(async () => button.click());
+   await delay();
+  },
+  async retryIfVisible() {
+   const button = [...host.querySelectorAll("button")].find(node => node.textContent === "Retry");
+   if (button && !button.disabled) await act(async () => button.click());
+   await delay();
+  },
   close: app.close,
   async sendPrivateGroup(body, mode) {
    fixture.refuse = mode === "failed";
