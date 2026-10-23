@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { type CSSProperties, useLayoutEffect } from "react";
+import { type CSSProperties, useLayoutEffect, useState } from "react";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
@@ -8,6 +8,7 @@ import { ChatLayout } from "../../shared/components/common/chat-layout";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeOrganization,
+	type TeamBridgeTarget,
 	asTeamBridgeTenantId,
 	organizationOptions,
 } from "./team-bridge-model";
@@ -1095,6 +1096,14 @@ export const FourMembersThreeInvited: Story = {
  * this story exercises inclusion of that existing endpoint, not designation.
  */
 export const OwnChiefServerFallback: Story = {
+	// Keep the real picker controlled so browser QA can select/remove an agent
+	// and verify that its human owner is never implicitly added to the draft.
+	render: function OwnChiefPicker(args) {
+		const [target, setTarget] = useState<TeamBridgeTarget | null>(args.target);
+		return (
+			<TeamBridgePageView {...args} target={target} onTarget={setTarget} />
+		);
+	},
 	args: {
 		...PersonDraft.args,
 		people: rosterWithChiefs.map((person) =>
@@ -1103,5 +1112,14 @@ export const OwnChiefServerFallback: Story = {
 				: person,
 		),
 		target: { type: "compose", recipients: [] },
+	},
+};
+
+/** The same real picker with the endpoint's own agent name published. */
+export const OwnChiefNamed: Story = {
+	render: OwnChiefServerFallback.render,
+	args: {
+		...OwnChiefServerFallback.args,
+		people: rosterWithChiefs,
 	},
 };
