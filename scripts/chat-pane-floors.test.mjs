@@ -58,6 +58,10 @@ const LAYOUT = "src/renderer/src/features/chat/chat-sidebar-layout.ts";
 // #677 review (D2): the slot's resolver holds the shared width to it and
 // cannot import the component that consumes it.
 const PREFS = "src/renderer/src/shared/store/ui-preferences-store.ts";
+const DIVIDER =
+	"src/renderer/src/shared/components/common/resizable-divider.tsx";
+const SCROLLBARS =
+	"src/renderer/src/shared/components/common/global-scrollbar-styles.tsx";
 
 const read = (file) => readFileSync(file, "utf8");
 
@@ -441,4 +445,110 @@ test("the layout module owns the bands the shell reads", () => {
 			new RegExp(`export const ${name}\\b`),
 			`${name} is no longer exported from \`chat-sidebar-layout.ts\`; the bands and this test read it from there`,
 		);
+});
+
+/* --------------------------- the seam's clearance --------------------------- */
+
+/**
+ * Tailwind's spacing scale, in pixels: one step is 0.25rem at the 16px root the
+ * renderer runs at. The classes are the source - there is no constant to import,
+ * because these two numbers live in class lists rather than in a module - so the
+ * parse is what makes them readable by a test at all.
+ */
+const tailwindPx = (suffix) => Number(suffix) * 4;
+
+/*
+ * The six patterns the two readers below share, named at module scope: they are
+ * literals rather than values, so hoisting is only about not rebuilding them per
+ * call - and a named pattern says what each match is FOR at the site that uses it.
+ */
+const BAND_WIDTH = /"top-0 h-full w-(\d+(?:\.\d+)?) cursor-col-resize"/;
+const BAND_LEFT = /"-left-(\d+(?:\.\d+)?)"/;
+const BAND_RIGHT = /"-right-(\d+(?:\.\d+)?)"/;
+const SEAM_SURFACE =
+	/ref=\{chatContainerRef\}([\s\S]{0,900}?)className=\{cn\(([\s\S]*?)\n\t\t{0,12}\)/;
+const RIGHT_INSET = /pr-(\d+(?:\.\d+)?)/;
+const SCROLLBAR_DECLARATION = /\*::-webkit-scrollbar \{\n\twidth: 8px;/;
+const INSET_GATE = /rightPaneDocked && "pr-/;
+
+/** The separator's vertical hit band: its width and how far it reaches in. */
+const verticalBand = () => {
+	const source = read(DIVIDER);
+	const width = BAND_WIDTH.exec(source);
+	assert.ok(
+		width,
+		"the separator no longer declares its vertical band (`top-0 h-full w-N cursor-col-resize`), so the width the chat column must clear cannot be read",
+	);
+	const left = BAND_LEFT.exec(source);
+	const right = BAND_RIGHT.exec(source);
+	assert.ok(
+		left && right,
+		"the separator no longer declares both vertical offsets (`-left-N`/`-right-N`), so the band is no longer known to be centred and half its width is not its reach",
+	);
+	/*
+	 * The reach is HALF the width only while the band is centred. Asserted rather
+	 * than assumed: an asymmetric band (all of it on one side) is a different
+	 * geometry and would quietly invalidate the clearance below.
+	 */
+	assert.equal(
+		tailwindPx(left[1]),
+		tailwindPx(right[1]),
+		`the separator's vertical band is no longer centred (left ${left[1]} vs right ${right[1]}), so half its width is not the reach the seam inset has to clear`,
+	);
+	return {
+		width: tailwindPx(width[1]),
+		reach: tailwindPx(left[1]),
+	};
+};
+
+/** The chat column's inner surface, and the seam inset it declares. */
+const seamInset = () => {
+	/*
+	 * Bounded and `>`-free, the same window `appliedChatFloor` uses and for the
+	 * same reason: an attribute added between the ref and the class list keeps
+	 * matching, a class list that MOVED to a later element does not.
+	 */
+	const surface = read(CONTENT).match(SEAM_SURFACE);
+	assert.ok(
+		surface && !surface[1].includes(">"),
+		"the chat column's inner surface lost its ref+className={cn(...)} pair, so nothing declares the clearance the separator's band needs",
+	);
+	const inset = RIGHT_INSET.exec(surface[2]);
+	assert.ok(
+		inset,
+		"the chat column's inner surface declares no right inset (`pr-N`); the separator's 6px reach then sits on the transcript's scrollbar, which is the unreachable-scrollbar report of 2026-10-23",
+	);
+	return { inset: tailwindPx(inset[1]), condition: surface[2] };
+};
+
+test("the separator's reach into the chat column is cleared before the scrollbar", () => {
+	const band = verticalBand();
+	const { inset, condition } = seamInset();
+	/*
+	 * THE INVARIANT, and it is the operator's report as arithmetic: the band
+	 * reaches `band.reach` px into the chat column, and the transcript's
+	 * scrollbar is 8px wide (`*::-webkit-scrollbar { width: 8px }`) and sits
+	 * flush against the seam. Anything at or below `band.reach` puts the band on
+	 * top of the bar - a drag that starts on the bar resizes the pane instead of
+	 * scrolling - so the inset must EXCEED the reach, not merely meet it.
+	 */
+	assert.ok(
+		inset > band.reach,
+		`the separator's band reaches ${band.reach}px into the chat column (${band.width}px wide, centred) but the column only gives back ${inset}px: the band covers the transcript's scrollbar again`,
+	);
+	assert.match(
+		read(SCROLLBARS),
+		SCROLLBAR_DECLARATION,
+		"the app's classic scrollbar is no longer declared as 8px in `global-scrollbar-styles.tsx`; the seam inset above was measured against it",
+	);
+	/*
+	 * The inset is CONDITIONAL on a docked pane: with no separator on the edge
+	 * there is nothing to clear, and a permanent inset would move every chat
+	 * surface off the seam for no reason.
+	 */
+	assert.match(
+		condition,
+		INSET_GATE,
+		"the seam inset is no longer gated on `rightPaneDocked`; applied unconditionally it narrows every chat surface when no pane is open",
+	);
 });
