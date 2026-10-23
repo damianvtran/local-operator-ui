@@ -22447,6 +22447,223 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.asks",
+			"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+			"target_sha256": "2eb515012d74e64f74e3e590520e48f16cf53b21c23e75760fcdfcb4a3def465",
+			"translator": {
+				"agent": "coder",
+				"model": "radient/auto",
+				"date": "2026-10-23"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-23",
+					"result": "clean",
+					"instance": "pr5-20261023-r2-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr5-20261023-r2-es.json",
+					"receipt_sha256": "3d14c8384532bf16d319bc1892e53907077fda9d62cd76f3c18bd98f85257ed8",
+					"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
+					"note": "Round 1 raised one MAJOR (moot note addressed the operator) and three findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.asks",
+			"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+			"target_sha256": "4c2c82a3f337aca1c7960be9fc2c501adf22f2fb05db812782c9f630fcb9b800",
+			"translator": {
+				"agent": "coder",
+				"model": "radient/auto",
+				"date": "2026-10-23"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-23",
+					"result": "clean",
+					"instance": "pr5-20261023-r2-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr5-20261023-r2-fr.json",
+					"receipt_sha256": "5f42a459164a0f6f084d21e49882e5aed384412daf8320b8c03a70d457b1385b",
+					"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
+					"note": "Round 1 raised one MAJOR (moot note addressed the operator) and further findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.asks",
+			"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+			"target_sha256": "3b6a8eefee738b42acfbbcb24d39f7c5b5458a20806395474fc16215dd34402b",
+			"translator": {
+				"agent": "coder",
+				"model": "radient/auto",
+				"date": "2026-10-23"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-23",
+					"result": "clean",
+					"instance": "pr5-20261023-r2-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr5-20261023-r2-hi.json",
+					"receipt_sha256": "d949f66e1e17ae4b62c94f58617abc509a00f7b06c7623b922ec2f454d4ead6a",
+					"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
+					"note": "Round 1 raised one MAJOR (moot note addressed the operator) and further findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.asks",
+			"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+			"target_sha256": "5cb3b8945977634ba7717c72918d2fd4b117c14bd762f8dea58b3abb76a4729f",
+			"translator": {
+				"agent": "coder",
+				"model": "radient/auto",
+				"date": "2026-10-23"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-23",
+					"result": "clean",
+					"instance": "pr5-20261023-r2-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr5-20261023-r2-ru.json",
+					"receipt_sha256": "6b9a2df7e61af7168c266bac81053f571f0ca30d5f3f302db87828200c2ce9b0",
+					"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
+					"note": "Round 1 raised one MAJOR (moot note addressed the operator) and further findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.asks",
+			"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+			"target_sha256": "7d86acb011841467a079f01851e8bfd70baa3acd857eb971b7ecdad1670fa57f",
+			"translator": {
+				"agent": "coder",
+				"model": "radient/auto",
+				"date": "2026-10-23"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-23",
+					"result": "clean",
+					"instance": "pr5-20261023-r2-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr5-20261023-r2-ur.json",
+					"receipt_sha256": "971deb2b92cc4c35ea2424e3a1cae651d7aebb41418c0e4dc0b703c6121847e3",
+					"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
+					"note": "Round 1 raised one MAJOR (moot note addressed the operator) and further findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.asks",
+			"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+			"target_sha256": "0ba67ad1f9d2f91aebfcec1d2b40676715be3fd9e9ed94525f5b509d865d099d",
+			"translator": {
+				"agent": "coder",
+				"model": "radient/auto",
+				"date": "2026-10-23"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-23",
+					"result": "clean",
+					"instance": "pr5-20261023-r2-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr5-20261023-r2-vi.json",
+					"receipt_sha256": "9319d779cdfc98db29c44a8ba1ce60b09f4dcd587eb1bc1e81cdc26242531dc2",
+					"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
+					"note": "Round 1 raised one MAJOR (moot note addressed the operator) and further findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.asks",
+			"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+			"target_sha256": "fa7fa2170460f7097b1f53ae629ce60926f99aaeb02e0857eda67dbce79633e6",
+			"translator": {
+				"agent": "coder",
+				"model": "radient/auto",
+				"date": "2026-10-23"
+			},
+			"auditors": [
+				{
+					"agent": "task",
+					"model": "anthropic/claude-opus-5-5",
+					"date": "2026-10-23",
+					"result": "clean",
+					"instance": "pr5-20261023-r2-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/pr5-20261023-r2-zh-cn.json",
+					"receipt_sha256": "c358b1f1f2c715b0f28cc4e8b10d48af04774ec1be7227dd954ba410cf723add",
+					"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
+					"note": "Round 1 raised one MAJOR (moot note addressed the operator) and further findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
