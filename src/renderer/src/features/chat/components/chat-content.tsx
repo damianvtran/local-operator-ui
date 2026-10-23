@@ -113,6 +113,7 @@ import {
 import {
 	CANVAS_PANE_MIN_PX,
 	CHAT_PANE_MIN_PX,
+	CHAT_SEAM_INSET_PX,
 	canvasDockWidth,
 	canvasPaneMode,
 	rightSlotDividerContract,
@@ -2290,41 +2291,29 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					<div
 						ref={chatContainerRef}
 						data-glass-region="canvas"
-						className={cn(
-							"panel-top-pad flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-canvas",
-							/*
-							 * THE SEAM INSET: 8px given back while a pane is docked beside
-							 * this column, and it is a SCROLLBAR clearance rather than spacing.
-							 *
-							 * The separator on this edge carries a 12px hit band centred on
-							 * the seam (`resizable-divider.tsx`: `w-3` at
-							 * `-left-1.5`/`-right-1.5`), so it reaches 6px INTO this column.
-							 * The transcript's scrollbar is 8px wide
-							 * (`global-scrollbar-styles.tsx`) and sat flush against that seam,
-							 * so the band covered 6 of its 8px: a drag started on the bar
-							 * resized the pane instead of scrolling, and 2px was all that was
-							 * left to grab.
-							 *
-							 * The band's other half cannot carry the resize target instead. The
-							 * pane beside this column hosts a native `WebContentsView`, and a
-							 * native view paints above ALL DOM (`browser-view-policy.ts`), so
-							 * the pane-side 6px is dead wherever a page is showing - the live
-							 * half has to be on this side, which is why the bar moves off it.
-							 *
-							 * 8px is the bar's own width and is greater than the band's 6px
-							 * reach, so the two can never trade pixels; the scroller ends 2px
-							 * clear of the band. `scripts/chat-pane-floors.test.mjs` pins the
-							 * relation and fails if the band widens or this inset narrows
-							 * without the other. Removing it re-opens the unreachable-bar
-							 * report (operator, 2026-10-23).
-							 *
-							 * It sits on this inner surface rather than on the column itself
-							 * so the column's own box - the width the right pane's capacity is
-							 * measured against, and the element `chat-pane-floors.test.mjs`
-							 * reads its floor from - is untouched.
-							 */
-							rightPaneDocked && "pr-2",
-						)}
+						/*
+						 * THE SEAM INSET: 8px given back while a separator is drawn on this
+						 * column's right edge, and it is a SCROLLBAR clearance rather than
+						 * spacing. `CHAT_SEAM_INSET_PX` carries the numbers and the reasoning
+						 * (the separator reaches 6px in, the bar is 8px wide and sat flush).
+						 *
+						 * AN INLINE STYLE, not a conditional class, for two reasons. This
+						 * element's class attribute is a literal thumbprint two guards read
+						 * (`lane-leading.test.mjs`: a full-height column wears `panel-top-pad`
+						 * and paints `bg-canvas`, matched as one string), and moving it into a
+						 * `cn(...)` call broke both of that file's cases; and the value is a
+						 * pixel measured against the band's reach, the same class of value
+						 * `PaneSlot` sets inline for its width.
+						 *
+						 * It sits on this inner surface rather than on the column itself so the
+						 * column's own box - the width the right pane's capacity is measured
+						 * against, and the element `chat-pane-floors.test.mjs` reads its floor
+						 * from - is untouched.
+						 */
+						style={
+							rightPaneDocked ? { paddingRight: CHAT_SEAM_INSET_PX } : undefined
+						}
+						className="panel-top-pad flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-canvas"
 					>
 						{/* Chat header */}
 						{/*

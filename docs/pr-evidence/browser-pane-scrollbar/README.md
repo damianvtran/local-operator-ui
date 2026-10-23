@@ -84,9 +84,10 @@ caught the first version of that gate being wrong: `canvasDocked` alone says the
 ROW is wide enough to dock a canvas, which is true with every pane closed, so the
 inset applied to every chat on a wide window. The gate now carries the two canvas
 families' open flags (`isCanvasOpen`, `sessionAsksOpen`), and the undocked arm is
-checked rather than assumed: with the browser panel closed, this tree and
-`origin/main` write **byte-identical frames** (md5 `61a47660…`), and the
-scrollbar's band is 1328–1335 in both.
+checked rather than assumed: with the browser panel closed, the computed
+`padding-right` is 0px, the scrollbar's band is 1328–1335, and `[role=log]` spans
+260–1336 on both trees. The two undocked frames differ in 130 pixels of 4.97 M —
+a 12x17 glyph in the sidebar's own time label, not the seam.
 
 ## What these frames cannot show
 

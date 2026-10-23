@@ -84,6 +84,7 @@ const bundle = await build({
 
 const {
 	CHAT_PANE_MIN_PX,
+	CHAT_SEAM_INSET_PX,
 	CHAT_PANE_WITH_DOCK_MIN_PX,
 	SIDEBAR_COLLAPSED_WIDTH,
 	SIDEBAR_DEFAULT_WIDTH,
@@ -451,9 +452,8 @@ test("the layout module owns the bands the shell reads", () => {
 
 /**
  * Tailwind's spacing scale, in pixels: one step is 0.25rem at the 16px root the
- * renderer runs at. The classes are the source - there is no constant to import,
- * because these numbers live in class lists and expressions rather than in a
- * module - so the parse is what makes them readable by a test at all.
+ * renderer runs at. The band's classes are the source - there is no constant to
+ * import for them - so the parse is what makes them readable by a test at all.
  */
 const tailwindPx = (suffix) => Number(suffix) * 4;
 
@@ -464,18 +464,34 @@ const tailwindPx = (suffix) => Number(suffix) * 4;
 const BAND_WIDTH = /"top-0 h-full w-(\d+(?:\.\d+)?) cursor-col-resize"/;
 const BAND_LEFT = /"-left-(\d+(?:\.\d+)?)"/;
 const BAND_RIGHT = /"-right-(\d+(?:\.\d+)?)"/;
-const RIGHT_INSET = /pr-(\d+(?:\.\d+)?)/;
 const SCROLLBAR_DECLARATION = /\*::-webkit-scrollbar \{\n\twidth: 8px;/;
-/*
- * The chat column's inner surface, in EITHER spelling: a plain class string (the
- * tree before this change) or a `cn(...)` call. Both are matched on purpose -
- * a reader that only understood `cn(...)` would fail on `origin/main` for a
- * structural reason instead of the arithmetic, which is the shape of a test that
- * passes on the wrong head (review round 1, MINOR 2).
- */
-const SEAM_SURFACE =
-	/ref=\{chatContainerRef\}([\s\S]{0,900}?)className=("[^"]*"|\{cn\([\s\S]*?\n\t{0,12}\}\))/;
 const RIGHT_PANE_DOCKED = /const rightPaneDocked =([\s\S]*?);\n/;
+/*
+ * The chat column's inner surface: from its ref to the close of that element's
+ * own opening tag. The slice is the tag rather than a window to `className="`,
+ * because the prose above the attribute legitimately NAMES that attribute and a
+ * lazy window would stop inside the comment (measured: the first draft did).
+ */
+const seamSurface = () => {
+	const source = read(CONTENT);
+	const from = source.indexOf("ref={chatContainerRef}");
+	assert.notEqual(from, -1, "the chat column's inner surface lost its ref");
+	const close = source.indexOf(">", from);
+	assert.notEqual(
+		close,
+		-1,
+		"the chat column's inner surface has no tag close",
+	);
+	const tag = source.slice(from, close);
+	assert.ok(
+		tag.includes('className="panel-top-pad'),
+		"the chat column's inner surface no longer wears its literal `panel-top-pad` class list; `lane-leading.test.mjs` matches that string to keep every full-height column padded off the lane",
+	);
+	return tag;
+};
+/* The inset as the element applies it: a named pixel, conditional on the gate. */
+const SEAM_STYLE =
+	/rightPaneDocked\s*\?\s*\{ paddingRight: CHAT_SEAM_INSET_PX \}\s*: undefined/;
 
 /** The separator's vertical hit band: its width and how far it reaches in. */
 const verticalBand = () => {
@@ -507,59 +523,45 @@ const verticalBand = () => {
 	};
 };
 
-/**
- * The chat column's inner surface and the seam inset it declares, in pixels.
- *
- * ZERO when it declares none, deliberately: the caller's assertion is then the
- * arithmetic one (0 > 6 is false), which is the failure `origin/main` has to
- * produce.
- */
-const seamInset = () => {
-	/*
-	 * Bounded and `>`-free before the class attribute, the same window
-	 * `appliedChatFloor` uses and for the same reason: an attribute added between
-	 * the ref and the class keeps matching, a class list that MOVED to a later
-	 * element does not.
-	 */
-	const surface = read(CONTENT).match(SEAM_SURFACE);
-	assert.ok(
-		surface && !surface[1].includes(">"),
-		"the chat column's inner surface lost its ref+className pair, so nothing declares the clearance the separator's band needs",
-	);
-	const classes = surface[2];
-	const inset = RIGHT_INSET.exec(classes);
-	return { inset: inset ? tailwindPx(inset[1]) : 0, classes };
-};
-
 test("the separator's reach into the chat column is cleared before the scrollbar", () => {
 	const band = verticalBand();
-	const { inset, classes } = seamInset();
 	/*
 	 * THE INVARIANT, and it is the operator's report as arithmetic: the band
 	 * reaches `band.reach` px into the chat column, and the transcript's
 	 * scrollbar is 8px wide (`*::-webkit-scrollbar { width: 8px }`) and sits
 	 * flush against the seam. Anything at or below `band.reach` puts the band on
 	 * top of the bar - a drag that starts on the bar resizes the pane instead of
-	 * scrolling - so the inset must EXCEED the reach, not merely meet it.
+	 * scrolling - so the clearance must EXCEED the reach, not merely meet it.
+	 *
+	 * The number is IMPORTED (`CHAT_SEAM_INSET_PX`, beside `CHAT_PANE_MIN_PX` in
+	 * the layout module), not parsed: a pixel the band is measured against is a
+	 * value, and a value belongs in one place.
 	 */
 	assert.ok(
-		inset > band.reach,
-		`the separator's band reaches ${band.reach}px into the chat column (${band.width}px wide, centred) but the column only gives back ${inset}px: the band covers the transcript's scrollbar again`,
+		Number.isFinite(CHAT_SEAM_INSET_PX),
+		"`CHAT_SEAM_INSET_PX` is no longer exported from `chat-sidebar-layout.ts`; the chat column's seam clearance has no named value, so the band's reach is checked against nothing",
+	);
+	assert.ok(
+		CHAT_SEAM_INSET_PX > band.reach,
+		`the separator's band reaches ${band.reach}px into the chat column (${band.width}px wide, centred) but the column only gives back ${CHAT_SEAM_INSET_PX}px: the band covers the transcript's scrollbar again`,
 	);
 	assert.match(
 		read(SCROLLBARS),
 		SCROLLBAR_DECLARATION,
 		"the app's classic scrollbar is no longer declared as 8px in `global-scrollbar-styles.tsx`; the seam inset above was measured against it",
 	);
+	const surface = seamSurface();
 	/*
 	 * The inset is CONDITIONAL on a separator being drawn: with no pane open there
 	 * is nothing to clear, and an unconditional inset would move every chat
-	 * surface off the seam for no reason.
+	 * surface off the seam for no reason. Round 1 shipped the wrong gate
+	 * (`canvasDocked` alone) and this case plus the gate's own case below are what
+	 * closed it.
 	 */
 	assert.match(
-		classes,
-		/rightPaneDocked && "pr-/,
-		"the seam inset is no longer gated on `rightPaneDocked`; applied unconditionally it narrows every chat surface when no pane is open",
+		surface,
+		SEAM_STYLE,
+		"the chat column's inner surface no longer applies `CHAT_SEAM_INSET_PX` as `rightPaneDocked ? { paddingRight: … } : undefined`; applied unconditionally it narrows every chat surface when no pane is open",
 	);
 });
 
@@ -567,10 +569,11 @@ test("the separator's reach into the chat column is cleared before the scrollbar
  * THE GATE'S DEFINITION, not just its name (review round 1, BLOCKER). Round 1
  * shipped `rightPaneDocked = canvasDocked || ...`, and `canvasDocked` only says
  * the row is WIDE ENOUGH to dock a canvas - so the inset applied with every pane
- * closed, on every window wide enough to dock one. The assertion below reads the
- * definition and requires the two canvas families to carry their OPEN flag, the
+ * closed, on every window wide enough to dock one. The cases below read the
+ * definition and require the two canvas families to carry their OPEN flag, the
  * way the divider blocks themselves do (`{isCanvasOpen && (` around
- * `{canvasDocked && <ResizableDivider`).
+ * `{canvasDocked && <ResizableDivider`), and refuse a bare `canvasDocked`
+ * anywhere else (review round 2's MINOR).
  */
 test("the seam inset is gated on a separator actually being drawn", () => {
 	const definition = read(CONTENT).match(RIGHT_PANE_DOCKED);
@@ -578,27 +581,15 @@ test("the seam inset is gated on a separator actually being drawn", () => {
 		definition,
 		"`rightPaneDocked` is no longer a named constant in `chat-content.tsx`; the seam inset's gate cannot be read",
 	);
+	const flattened = definition[1].replace(/\s+/g, " ");
 	for (const pair of [
 		"isCanvasOpen && canvasDocked",
 		"sessionAsksOpen && canvasDocked",
 	])
 		assert.ok(
-			definition[1].replace(/\s+/g, " ").includes(pair),
+			flattened.includes(pair),
 			`\`rightPaneDocked\` no longer carries \`${pair}\`: \`canvasDocked\` alone means the row is wide enough to dock, which is true with the canvas closed - the inset then applies to every chat on a wide window (review round 1, BLOCKER)`,
 		);
-	/*
-	 * AND NO BARE `canvasDocked` SURVIVES the pairs above (review round 2's MINOR).
-	 * The presence checks alone pass on `canvasDocked || (isCanvasOpen &&
-	 * canvasDocked) || ...`, which is the round-1 defect with the fix bolted on:
-	 * stripping the two correct pairs must leave no reference to the mode flag.
-	 */
-	const stripped = definition[1]
-		.replace(/\(\s*isCanvasOpen && canvasDocked\s*\)/g, "")
-		.replace(/\(\s*sessionAsksOpen && canvasDocked\s*\)/g, "");
-	assert.ok(
-		!/\bcanvasDocked\b/.test(stripped),
-		"`rightPaneDocked` still reads `canvasDocked` outside the canvas families' open pairs; a bare `canvasDocked` is true with every pane closed and insets every chat on a wide window",
-	);
 	for (const flag of [
 		"isRunPanelOpen",
 		"isBrowserPaneOpen",
@@ -609,4 +600,11 @@ test("the seam inset is gated on a separator actually being drawn", () => {
 			definition[1].includes(flag),
 			`\`rightPaneDocked\` dropped \`${flag}\`, so a docked pane no longer earns the inset and its scrollbar goes back under the separator's band`,
 		);
+	const stripped = definition[1]
+		.replace(/\(\s*isCanvasOpen && canvasDocked\s*\)/g, "")
+		.replace(/\(\s*sessionAsksOpen && canvasDocked\s*\)/g, "");
+	assert.ok(
+		!/\bcanvasDocked\b/.test(stripped),
+		"`rightPaneDocked` still reads `canvasDocked` outside the canvas families' open pairs; a bare `canvasDocked` is true with every pane closed and insets every chat on a wide window",
+	);
 });
