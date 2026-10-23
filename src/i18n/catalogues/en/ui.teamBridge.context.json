@@ -390,6 +390,44 @@
 		"placeholders": {},
 		"note": "The honest sentence when the server does not expose a sender label. Do not invent a sender name."
 	},
+	"ui.teamBridge.notify.channel": {
+		"role": "OS notification subtitle fragment naming a channel",
+		"tone": "neutral",
+		"length": "The channel name with its prefix.",
+		"placeholders": {
+			"channel": "the channel's own name, as the rail shows it"
+		},
+		"note": "The '#' prefix is how chat apps mark a channel and matches the rail's channel glyph. Keep the prefix unless the target locale has a different established channel marker; never translate the channel name."
+	},
+	"ui.teamBridge.notify.subtitle": {
+		"role": "OS notification subtitle (macOS) / body lead (Windows, Linux)",
+		"tone": "neutral",
+		"length": "Two short nouns joined by a separator.",
+		"placeholders": {
+			"place": "where the message was posted: a '#channel', 'Direct message', or a group name",
+			"organization": "the organization the conversation belongs to"
+		},
+		"note": "Names where the message is. Keep both parts and the order place-then-organization: two same-named channels in different organizations are the case this line disambiguates. The middle dot is a separator, not punctuation; keep it unless the locale has a conventional equivalent."
+	},
+	"ui.teamBridge.notify.count": {
+		"role": "OS notification body when several messages arrived and no preview could be read",
+		"tone": "neutral",
+		"length": "2-4 words.",
+		"placeholders": {
+			"count": "how many unread messages the conversation now has, always 2 or more in practice"
+		},
+		"note": "Replaces the earlier banner for the same conversation, so it summarises the burst. Do not imply who sent them."
+	},
+	"ui.teamBridge.notify.count_preview": {
+		"role": "OS notification body when several messages arrived, followed by the newest one's text",
+		"tone": "neutral",
+		"length": "A short count, a colon, then the quoted preview.",
+		"placeholders": {
+			"count": "how many unread messages the conversation now has, always 2 or more in practice",
+			"preview": "the newest message's text, already shortened to one line; insert it verbatim"
+		},
+		"note": "The preview is the sender's own words: never translate or reword it, and keep it last so the OS truncates the preview rather than the count."
+	},
 	"ui.teamBridge.people.title": {
 		"role": "rail section heading",
 		"tone": "neutral, sentence-case noun",
@@ -793,6 +831,213 @@
 		"length": "One sentence.",
 		"placeholders": {},
 		"note": "Shown in the main pane when the conversation list failed to load; the retry button lives in the rail on the left. ('left' is the inline-start side; in RTL locales say the side the list is actually on, i.e. right.)"
+	},
+	"ui.teamBridge.reactions.add": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.search": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.categories": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.all": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.frequent": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.tone": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.toneDefault": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.empty": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.failed": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.category0": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.category1": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.category2": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.category3": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.category4": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.category5": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.category6": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.category7": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.category8": {
+		"role": "reaction picker control or status",
+		"tone": "neutral, sentence case",
+		"length": "Short label",
+		"placeholders": {},
+		"note": "Team Bridge message reaction picker. Category labels follow Unicode order; emoji names and keyword data are Unicode/CLDR data, not UI prose."
+	},
+	"ui.teamBridge.reactions.choose": {
+		"role": "emoji picker label",
+		"tone": "neutral",
+		"length": "Short",
+		"placeholders": {},
+		"note": "Accessible picker label or empty search state."
+	},
+	"ui.teamBridge.reactions.noResults": {
+		"role": "emoji picker label",
+		"tone": "neutral",
+		"length": "Short",
+		"placeholders": {},
+		"note": "Accessible picker label or empty search state."
+	},
+	"ui.teamBridge.replies.action": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.title": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.close": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.count": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {
+			"count": "Number of replies"
+		},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.last": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {
+			"time": "Localized clock time"
+		},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.empty": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.placeholder": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.replies.more": {
+		"role": "thread pane action or status",
+		"tone": "plain, concise",
+		"length": "One short line.",
+		"placeholders": {},
+		"note": "Slack-style one-level conversation thread; reply is a message inside the thread, not a channel post."
+	},
+	"ui.teamBridge.actions.label": {
+		"role": "accessible name of the message toolbar",
+		"tone": "neutral, sentence case",
+		"length": "Short label; screen readers announce it as the toolbar's name.",
+		"placeholders": {},
+		"note": "Slack-style hover toolbar on one chat message (react and reply in thread). Names the group of actions for ONE message, not the conversation."
 	},
 	"ui.teamBridge.sender.unknown_person": {
 		"role": "placeholder sender name",

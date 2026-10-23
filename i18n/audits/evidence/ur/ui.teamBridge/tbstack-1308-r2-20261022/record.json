@@ -1,0 +1,180 @@
+{
+ "audit_id": "tbstack-1308-r2-20261022",
+ "date": "2026-10-22",
+ "locale": "ur",
+ "namespace": "ui.teamBridge",
+ "source_commit": "ccc416f47d3a86a5857a603d735a5bb7dcaf7b40",
+ "source_base": "9aa14137de",
+ "round": 2,
+ "prior_audited_head": "36b7a7ad880156fd104be82fed6df61914d02c4b",
+ "scope": "PR #1308 ui.teamBridge at head ccc416f47d3a86a5857a603d735a5bb7dcaf7b40: round-2 delta audit of ur after the remediation commit (parent 36b7a7ad880156fd104be82fed6df61914d02c4b, the r1-audited head). Delta = removal of ui.teamBridge.actions.more (141 -> 140 keys; also removed from en and the en context file) and one changed value, ui.teamBridge.actions.label (r1 F2). Every one of the other 139 ur values is byte-identical to the r1-audited bytes (line-level comparison). Catalogue audit only, not rendered-fit, activation or release approval.",
+ "status": "audited",
+ "translator": {
+  "agent": "translator",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-21",
+  "session": "487a920c0aa1",
+  "job": "2026c477c489"
+ },
+ "delta_translator": {
+  "agent": "coder",
+  "role": "PR implementer, remediation commit",
+  "commit": "ccc416f47d3a86a5857a603d735a5bb7dcaf7b40",
+  "session": null,
+  "job": null,
+  "model": null,
+  "note": "Not recorded in the commit; the coordinator holds the job id.",
+  "keys_removed": [
+   "ui.teamBridge.actions.more"
+  ],
+  "keys_changed": [
+   "ui.teamBridge.actions.label"
+  ]
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-sonnet-5-5",
+   "date": "2026-10-22",
+   "result": "clean",
+   "instance": "tbstack-r2-1308-ur",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/tbstack-r2-1308-ur.json",
+   "receipt_sha256": "5b1a685b3774e07d83a91a4e84d4a0f63fea419acd7f8e20b3936f6b4af9a7e2",
+   "scope": "Team Bridge #1308 round-2 delta at ccc416f47d: ui.teamBridge.actions.more removed (141->140); ur actions.label F2 applied; other values byte-identical to the r1-audited bytes. Catalogue audit only.",
+   "note": "Independent r2 delta audit, 0 findings. Record: i18n/audits/evidence/ur/ui.teamBridge/tbstack-1308-r2-20261022/."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "tbstack-r1-1308-ur",
+   "session": "678669e97293",
+   "job": "c0820d11b867",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 2,
+   "union_keys_verified": 141,
+   "en_sha256": "4d2a67968bcf6f26304373a6a00ba2b7410fdb70bd7604db3e40e13cc08f5ee2",
+   "context_sha256": "acaafc94d150a362dfaf7c90553b250b2704e4a78bb37b9bf25eead51da1464c",
+   "target_sha256": "a950b15cfb0bda53bb32d5fb7083a99b265012adf44f56a9096121dc2d5b694d",
+   "findings": [
+    {
+     "id": "F1",
+     "severity": "MINOR",
+     "key": "ui.teamBridge.actions.more",
+     "current": "مزید اعمال",
+     "proposed": "مزید اقدامات",
+     "note": "Glossary drift inside ui.teamBridge: the audited sibling ui.teamBridge.row.menu renders the same English 'More actions' (for {name}) as '{name} کے مزید اقدامات', and ui.settings integration_row.more_actions_for_name does the same; the new toolbar tooltip switches to اعمال, so one namespace shows two words for one '…' affordance. Grammatical and understandable, hence MINOR."
+    },
+    {
+     "id": "F2",
+     "severity": "NIT",
+     "key": "ui.teamBridge.actions.label",
+     "current": "پیغام کے اعمال",
+     "proposed": "پیغام کے اقدامات",
+     "note": "Follows F1 so the toolbar's accessible name and its own overflow button share one term for 'actions' (both are announced together by screen readers). 'پیغام کے اعمال' is itself idiomatic and matches ui.chat.header.actions 'گفتگو کے اعمال', so NIT; apply only together with F1."
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/tbstack-r1-1308-ur.json",
+    "sha256": "d351d5fd94722656a1251f795a096bbfc277ca486d4f5aacff82587afeb740be"
+   }
+  },
+  {
+   "round": 2,
+   "instance": "tbstack-r2-1308-ur",
+   "session": "49e8f4a105c2",
+   "job": "5da05281d696",
+   "model": "anthropic/claude-sonnet-5-5",
+   "status": "passed",
+   "keys_audited": 1,
+   "union_keys_verified": 140,
+   "en_sha256": "f940f0c6b7bd896e49c691c1afa4cdb21a0c7dcf8179b81e3c9071503f168448",
+   "context_sha256": "2c60cbbbf0164f2a888809eeb8e3eddb11dc6c8bf9bbb2176b3687542acb4843",
+   "target_sha256": "2843dbcd23ea3fcaa98f67d9bfdcb2f49c442688915470fa61c4e1b0f4af66ae",
+   "findings": [],
+   "r1_findings_disposition": [
+    {
+     "id": "F1",
+     "severity": "MINOR",
+     "key": "ui.teamBridge.actions.more",
+     "disposition": "resolved by removal of the key (no longer in en or ur at ccc416f47d)"
+    },
+    {
+     "id": "F2",
+     "severity": "NIT",
+     "key": "ui.teamBridge.actions.label",
+     "disposition": "applied: value is now \"پیغام کے اقدامات\""
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/tbstack-r2-1308-ur.json",
+    "sha256": "5b1a685b3774e07d83a91a4e84d4a0f63fea419acd7f8e20b3936f6b4af9a7e2"
+   }
+  }
+ ],
+ "inherited_receipts": [
+  {
+   "base": "36b7a7ad88",
+   "base_commit": "36b7a7ad880156fd104be82fed6df61914d02c4b",
+   "path": "i18n/receipts/tbstack-r1-1308-ur.json",
+   "sha256": "d351d5fd94722656a1251f795a096bbfc277ca486d4f5aacff82587afeb740be",
+   "instance": "tbstack-r1-1308-ur",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 1
+   },
+   "base_source_sha256": "4d2a67968bcf6f26304373a6a00ba2b7410fdb70bd7604db3e40e13cc08f5ee2",
+   "base_target_sha256": "a950b15cfb0bda53bb32d5fb7083a99b265012adf44f56a9096121dc2d5b694d",
+   "keys_inherited": 139,
+   "unchanged_values_verified": 139
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "f940f0c6b7bd896e49c691c1afa4cdb21a0c7dcf8179b81e3c9071503f168448"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/ur/ui.teamBridge.json",
+   "sha256": "2843dbcd23ea3fcaa98f67d9bfdcb2f49c442688915470fa61c4e1b0f4af66ae"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "2c60cbbbf0164f2a888809eeb8e3eddb11dc6c8bf9bbb2176b3687542acb4843"
+  }
+ },
+ "references": {
+  "core_revision": "91261f530cc485b38793ee8db9958349aa028163",
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ur.md",
+   "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  }
+ },
+ "independence": "Auditor is translation-auditor subagent session 49e8f4a105c2 (job 5da05281d696, label i18n-audit-1308-r2, parent session 687384e07954), a different session from the r1 auditor and from the implementer. The remediation commit ccc416f47d was authored by the PR implementer; its subagent session/job is not recorded in the commit, so translator_session/translator_job are null rather than guessed. Every byte was read with `git show <sha>:<path>` from ~/local-operator-ui; no checkout, worktree or repo file was edited. The ledger is assembled by the coordinator with scripts/i18n/ledger-assemble.mjs, not by the auditor.",
+ "limitations": [
+  "Catalogue audit only. No rendered-fit, screenshot, pseudo-localization, native-bidi, activation or release evidence is claimed.",
+  "Inherited values rest on the r1 receipt and its own inheritance chain; this round re-verified their bytes, not their translation quality.",
+  "Ledger row assembly pending; valid for the target_sha256 above only."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/tbstack-r1-1308-ur.json",
+   "sha256": "d351d5fd94722656a1251f795a096bbfc277ca486d4f5aacff82587afeb740be",
+   "note": "r1 audited the 36b7a7ad88 bytes; superseded by the r2 bytes, kept as history"
+  }
+ ]
+}
