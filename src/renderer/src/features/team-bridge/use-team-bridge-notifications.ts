@@ -203,11 +203,9 @@ async function deliverTeamBridgeBanner(
 				return;
 			}
 			const people = await directoryPeople(client, candidate.tenantId);
-			senderLabel = participantLabel(newest.sender, people, {
-				named: (agent, person) =>
-					t("ui.teamBridge.chief.label", { agent, person }),
-				unnamed: (person) => t("ui.teamBridge.chief.unnamed", { person }),
-			});
+			senderLabel = participantLabel(newest.sender, people, (agent, person) =>
+				t("ui.teamBridge.chief.label", { agent, person }),
+			);
 			preview = teamBridgePreviewText(newest.body);
 		}
 	} catch {
