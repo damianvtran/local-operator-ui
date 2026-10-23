@@ -477,6 +477,14 @@ test("the sender label is the list row's, trimmed, and absent means fallback", (
 		cursors: new Map([["bcv_1", 1]]),
 	});
 	assert.equal(blank.candidates[0].senderLabel, null);
+
+	// The legacy placeholder is not a name: the banner title falls back to the
+	// conversation instead of announcing "Member".
+	const placeholder = plan({
+		conversations: [conversation({ last_sender_label: "Member" })],
+		cursors: new Map([["bcv_1", 1]]),
+	});
+	assert.equal(placeholder.candidates[0].senderLabel, null);
 });
 
 test("an organization the caller cannot name is omitted from the subject", () => {

@@ -106,6 +106,33 @@ export type TeamBridgeConversationList = z.infer<
 	typeof teamBridgeConversationListSchema
 >;
 
+/** Additive reaction summary: no reactor IDs or message bodies are persisted here. */
+export const teamBridgeReactionSchema = z
+	.object({
+		emoji: z.string().min(1),
+		count: z.number().int().positive(),
+		reacted_by_me: z.boolean(),
+		sample_labels: z.array(z.string()).max(3),
+	})
+	.passthrough();
+export type TeamBridgeReaction = z.infer<typeof teamBridgeReactionSchema>;
+export const teamBridgeReactionsSchema = z
+	.object({
+		message_id: id,
+		reactions: z.array(teamBridgeReactionSchema).max(50),
+	})
+	.passthrough();
+
+// History is a forward-compatible read: future server caps must not make a whole page unreadable.
+// Retain today's display bounds by trimming only optional reaction metadata; toggle writes keep
+// their strict response schema above so incompatible mutation responses remain visible failures.
+const historyReactionSchema = teamBridgeReactionSchema.extend({
+	sample_labels: z.array(z.string()).transform((labels) => labels.slice(0, 3)),
+});
+const historyReactionsSchema = z
+	.array(historyReactionSchema)
+	.transform((rows) => rows.slice(0, 50));
+
 /*
  * IMAGE ATTACHMENTS (Team Bridge image-attachments contract §3). A message
  * carries a STRUCTURED list of descriptors; bytes are never inline and never
@@ -181,6 +208,7 @@ export const teamBridgeMessageSchema = z
 		origin: z.enum(["human", "agent", "system"]),
 		agent_label: z.string().optional(),
 		created_at: z.string(),
+		reactions: historyReactionsSchema.optional(),
 		/*
 		 * Threads (agent-server #164). All optional: a hub older than threads
 		 * sends none of them, and a root with no replies omits its rollup, so a
