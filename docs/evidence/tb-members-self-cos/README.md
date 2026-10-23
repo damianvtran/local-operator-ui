@@ -1,3 +1,51 @@
+# Integrated validation — 2026-10-23
+
+Current integration: `838b8057974b3b63ab5b9cdbfbb515118c37b552` merges
+`8036b15ff557a41e0711dfb4ae55e00b7cfd2e4b` and
+`385449887a3b9d0a4b3155e690797eeb90ef827c` (including #1334).
+Fixture head: `4ee8a36203a3ff0a614dedcbe3e7ca7fc08cc8ca`.
+
+All four conflicts were resolved on this branch: ledger, model tests, page and
+stories. Source convergence independently confirmed the original count/self
+changes survive while current naming, optimistic send, threads/reactions and
+padding remain intact. Eight-locale union audit retained all149 keys and both
+predecessor chains; no translations were rewritten by the merger.
+
+Executed under the granted serial slot:
+
+```sh
+node --test scripts/team-bridge-model.test.mjs scripts/team-bridge-threads-model.test.mjs scripts/team-bridge-reactions-model.test.mjs
+node scripts/i18n/generate.mjs --check
+node scripts/i18n/ledger-check.mjs
+git push # normal hooks, no bypass
+```
+
+66/66 scoped tests pass (184.882333ms); generator byte-identical; ledger424
+entries complete/fresh/independently audited. Normal hooks pass changed-file
+lint and serial node/app types. Exact test output: `integrated-tests.txt`.
+
+The new named/unnamed create/read stories use the **real combined React page,
+picker, shared serializer and read-side naming**, but an explicitly in-memory
+service boundary. They are not evidence of backend persistence, consent
+admission, actual recipient wake or delivery. Independent QA actually drove both variants: create payload carried exactly one
+agent (`account_id: acct_self`, `endpoint_id: bep_self`), storing bare
+`Damian Tran` for unnamed or `Aida` for named. Readback headers showed
+“Damian Tran’s chief of staff” and “Aida (Damian Tran)” respectively, and the
+entered message bodies were visible. Human “you” stayed separate; select/remove
+restored the agent option without adding a human chip. The same integrated page
+showed 4 members / 1 active · 3 invited; preview24 retained no invented breakdown.
+Nine new actual frames are bound in `integrated-frames.json`. First/settled count
+frames are byte-identical. The old #1334 dependency is integrated and this
+bounded combined UI naming regression passes; it is not a delivery/wake claim.
+
+---
+
+## Historical standalone validation (before #1334 integration)
+
+The historical dependency holds and duplicated-label frames below describe the
+old standalone branch, not the integrated tree. They are retained, not rewritten
+as if the combined fix had existed at capture time.
+
 # Team Bridge current memberships and own-agent picker
 
 Base: `2f5d8e3239` (`origin/main` at worktree creation). C1 bounded UI bug fix.

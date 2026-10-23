@@ -1,0 +1,71 @@
+{
+  "head": "4ee8a36203a3ff0a614dedcbe3e7ca7fc08cc8ca",
+  "integrated_main": "385449887a3b9d0a4b3155e690797eeb90ef827c",
+  "capture": "Independent QA fe3e28f035f4 browser tool, one cappedStorybook6017; no daemon writes",
+  "boundary": "Actual combined React page/picker/serializer/read projection with explicitly in-memory create/read service boundary; not server persistence/consent/delivery evidence",
+  "geometry": {
+    "viewport_css": [
+      1280,
+      720
+    ],
+    "header": [
+      288,
+      0,
+      992,
+      44
+    ],
+    "status": [
+      454.83,
+      6.05,
+      94.59,
+      31.89
+    ]
+  },
+  "frames": [
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/integrated-qa-count-first.png",
+      "bytes": 114474,
+      "sha256": "8e71bb88c9409cd9f886607ef43efc3504cc69f827d93b335494c2cb28110e14"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/integrated-qa-count-settled.png",
+      "bytes": 114474,
+      "sha256": "8e71bb88c9409cd9f886607ef43efc3504cc69f827d93b335494c2cb28110e14"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/integrated-qa-fallback-restored.png",
+      "bytes": 135686,
+      "sha256": "f61308ad25b4ee9f8f9484d55cc446ab76cd18ad7f6672817706631f1903f6cc"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/integrated-qa-fallback-selected.png",
+      "bytes": 136067,
+      "sha256": "7b20c66c8261331fcf8b7022c700f72b065c57d5ff2e656122bcd558b3f473ad"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/integrated-qa-named-restored.png",
+      "bytes": 133562,
+      "sha256": "37578d9cc310cf0202e7e79ab0a2688dd3602fa78f9baf29f2dda620d9cac549"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/integrated-qa-named-roundtrip.png",
+      "bytes": 137898,
+      "sha256": "354f1c965e2f9e56f2d0d597307f609b6cf7831e33b360a45dfdb8928c28f8b4"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/integrated-qa-named-selected.png",
+      "bytes": 132434,
+      "sha256": "7d94cafd014917956a3aa77c73775612b7a9d862506666a15f853dbcba5b0ddf"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/integrated-qa-preview.png",
+      "bytes": 92952,
+      "sha256": "2120323e442a6d73dd4f37bae4036c58c2929e9cecbf6ac88a7cf2471b70fb9e"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/integrated-qa-unnamed-roundtrip.png",
+      "bytes": 141532,
+      "sha256": "f482a610b347cf9fc6e5f0250bd83ae26d1fc24b7796962967d047d6521840b6"
+    }
+  ]
+}
