@@ -22447,6 +22447,223 @@
 				}
 			],
 			"status": "audited"
+		},
+		{
+			"locale": "es",
+			"namespace": "ui.chat.attachments",
+			"source_sha256": "fddfa41410b39cbf531ccce64247bcc9aec86eb8623f7f0e143b9efca00dd271",
+			"target_sha256": "3664ed8927b094e75cff952a3df3f80dd06be0c30ceca4300f3110cfc222c7f1",
+			"translator": {
+				"agent": "ui-attachments-coder",
+				"model": "radient/auto",
+				"date": "2026-10-23"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-23",
+					"result": "clean",
+					"instance": "i18n-audit-attachments-20261023-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/i18n-audit-attachments-20261023-es.json",
+					"receipt_sha256": "800e077ea6c0b38ddfd639d19ceb336391e37c6f033123da7b1bd0044c32852b",
+					"scope": "full independent pass, all 5 keys, at the recorded source/target hashes",
+					"note": "Independent full pass; no findings."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "fr",
+			"namespace": "ui.chat.attachments",
+			"source_sha256": "fddfa41410b39cbf531ccce64247bcc9aec86eb8623f7f0e143b9efca00dd271",
+			"target_sha256": "33ae82e65ffad26d7eb0a806586689cc4a005c7976a17e44c3209e8e5fad1492",
+			"translator": {
+				"agent": "ui-attachments-coder",
+				"model": "radient/auto",
+				"date": "2026-10-23"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-23",
+					"result": "clean-with-findings",
+					"instance": "i18n-audit-attachments-20261023-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/i18n-audit-attachments-20261023-fr.json",
+					"receipt_sha256": "98a0a6483383ec93ddd8cce99b400766baf8aa5ceb6d6972fcaa3709d44003c4",
+					"scope": "full independent pass, all 5 keys, at the recorded source/target hashes",
+					"note": "Independent full pass; 1 NIT recorded (attachment term consistency), not churned; no BLOCKER/MAJOR."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.attachments",
+			"source_sha256": "fddfa41410b39cbf531ccce64247bcc9aec86eb8623f7f0e143b9efca00dd271",
+			"target_sha256": "c8ae6f4f7c37396d9b09e069ddf083690929f7daf3d65235817005c3002b5022",
+			"translator": {
+				"agent": "ui-attachments-coder",
+				"model": "radient/auto",
+				"date": "2026-10-23"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-23",
+					"result": "clean-with-findings",
+					"instance": "i18n-audit-attachments-20261023-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 1,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/i18n-audit-attachments-20261023-hi.json",
+					"receipt_sha256": "d1598590d326218d8e50514e8d4ba4f4557b51c03db98a9fa87585abde7d0778",
+					"scope": "full independent pass, all 5 keys, at the recorded source/target hashes",
+					"note": "Independent full pass; 1 MINOR recorded (store term), not churned; no BLOCKER/MAJOR."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ru",
+			"namespace": "ui.chat.attachments",
+			"source_sha256": "fddfa41410b39cbf531ccce64247bcc9aec86eb8623f7f0e143b9efca00dd271",
+			"target_sha256": "dfd0d69f66c3fd0c12873cf922d5b5a15953d1d948dadb5ae2a95e50cef6a333",
+			"translator": {
+				"agent": "ui-attachments-coder",
+				"model": "radient/auto",
+				"date": "2026-10-23"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-23",
+					"result": "clean",
+					"instance": "i18n-audit-attachments-20261023-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/i18n-audit-attachments-20261023-ru.json",
+					"receipt_sha256": "51d0bcc6d464bb35c6d841c62b2780bb5888d1de15f50b63e0dfcd1eebfffd29",
+					"scope": "full independent pass, all 5 keys, at the recorded source/target hashes",
+					"note": "Independent full pass; no findings."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "ur",
+			"namespace": "ui.chat.attachments",
+			"source_sha256": "fddfa41410b39cbf531ccce64247bcc9aec86eb8623f7f0e143b9efca00dd271",
+			"target_sha256": "caa1c5745ea215067eba6c3f49407999a4e1be286e640583fe3c4d6ddd2b2db4",
+			"translator": {
+				"agent": "ui-attachments-coder",
+				"model": "radient/auto",
+				"date": "2026-10-23"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-23",
+					"result": "clean",
+					"instance": "i18n-audit-attachments-20261023-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/i18n-audit-attachments-20261023-ur.json",
+					"receipt_sha256": "a808c757eacaac9ef83bbe7a727c255957df64a830927176746f5445bd05da39",
+					"scope": "full independent pass, all 5 keys, at the recorded source/target hashes",
+					"note": "Independent full pass; no findings."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "vi",
+			"namespace": "ui.chat.attachments",
+			"source_sha256": "fddfa41410b39cbf531ccce64247bcc9aec86eb8623f7f0e143b9efca00dd271",
+			"target_sha256": "a570420f7eca629c16324d9a2564e430a8cd6f6bd60d6c0780777dd2cbaa38aa",
+			"translator": {
+				"agent": "ui-attachments-coder",
+				"model": "radient/auto",
+				"date": "2026-10-23"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-23",
+					"result": "clean",
+					"instance": "i18n-audit-attachments-20261023-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/i18n-audit-attachments-20261023-vi.json",
+					"receipt_sha256": "be06e4d494d004af8e4cc458211179b137925dd49a68c9188c83536b400c7298",
+					"scope": "full independent pass, all 5 keys, at the recorded source/target hashes",
+					"note": "Independent full pass; no findings."
+				}
+			],
+			"status": "audited"
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.chat.attachments",
+			"source_sha256": "fddfa41410b39cbf531ccce64247bcc9aec86eb8623f7f0e143b9efca00dd271",
+			"target_sha256": "4663e57dfb3523d34c484a10f4469cb38253b4d1ec802a033896f4c6002bf59b",
+			"translator": {
+				"agent": "ui-attachments-coder",
+				"model": "radient/auto",
+				"date": "2026-10-23"
+			},
+			"auditors": [
+				{
+					"agent": "i18n-auditor",
+					"model": "radient/auto",
+					"date": "2026-10-23",
+					"result": "clean",
+					"instance": "i18n-audit-attachments-20261023-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/i18n-audit-attachments-20261023-zh-cn.json",
+					"receipt_sha256": "b0449098698f24df9df76d6ab9a51516cda3a9555e44344cbd93f9d472caf484",
+					"scope": "full independent pass, all 5 keys, at the recorded source/target hashes",
+					"note": "Independent full pass; no findings."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }
