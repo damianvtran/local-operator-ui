@@ -427,6 +427,7 @@ export const JOB_FLAGS = {
 	"runtime-deps": ["runtime_deps"],
 	"check-types": ["types"],
 	test: ["unit"],
+	"desktop-tests-result": ["unit"],
 	"bytecode-build": ["bytecode"],
 	evidence: ["evidence"],
 	audit: ["audit"],
@@ -530,6 +531,10 @@ export const JOB_COMMANDS = {
  * quietly narrower than it looks.
  */
 export const LOCAL_EXCLUSIONS = {
+	"desktop-tests-result":
+		"CI matrix result aggregation, no local suite execution. The existing test " +
+		"mapping already runs the full inventory once; this job validates the three " +
+		"same-head worker receipts and must not duplicate pnpm test:desktop locally.",
 	audit:
 		"no faithful local spelling. CI reads the critical-severity COUNT out of " +
 		"`pnpm audit --json` and tolerates every other advisory; a bare local " +

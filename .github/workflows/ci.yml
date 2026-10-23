@@ -568,13 +568,23 @@ jobs:
     # UNMEASURED and out of scope here. Nothing else changes: the job still runs
     # the suite once, fails on any red, and the whole-tree count assertions
     # stand.
-    name: Desktop Tests
+    # Three file-count partitions add capacity, not a guaranteed runtime balance.
+    # Every VM retains the existing concurrency/memory/lane protections.
+    name: Desktop Tests shard (${{ matrix.shard }}/3)
     needs: [changes]
     if: >-
       !cancelled() &&
       needs.changes.outputs.unit != 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 50
+
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2]
+    env:
+      DESKTOP_SHARD_INDEX: ${{ matrix.shard }}
+      DESKTOP_REQUESTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
       - name: Checkout code
@@ -603,6 +613,7 @@ jobs:
       # exits, and keeps it a gate - it is NOT dropped, and a red suite still
       # fails this job before the desktop suite starts.
       - name: Run tag dialog tests
+        if: ${{ matrix.shard == 0 }}
         timeout-minutes: 10
         run: pnpm test:tag-dialogs
 
@@ -613,7 +624,7 @@ jobs:
       # dependencies are included; OAuth placeholders deliberately cannot log in.
       - name: Build plain-JS bundle for isolated native QA
         id: qa_bundle
-        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && matrix.shard == 0 }}
         timeout-minutes: 10
         env:
           LOCAL_OPERATOR_UI_NO_BYTECODE: 'true'
@@ -664,7 +675,7 @@ jobs:
           NODE
 
       - name: Upload isolated native QA bundle
-        if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.qa_bundle.outcome == 'success' }}
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && steps.qa_bundle.outcome == 'success' && matrix.shard == 0 }}
         uses: actions/upload-artifact@v4
         with:
           name: ui-qa-bundle-${{ github.event.pull_request.number }}-${{ github.run_id }}
@@ -722,14 +733,19 @@ jobs:
           # while keeping `SUITE_RC=$?` restored the entire original defect
           # (measured: no rc line, no TAP summary, no annotations) and every
           # string pin still matched the body.
+          SUITE_STARTED=$SECONDS
           SUITE_RC=0
-          pnpm test:desktop 2>&1 | tee /tmp/desktop-tests.log || SUITE_RC=$?
+          # Local pnpm test:desktop remains the full inventory; this wrapper
+          # parses that exact command and forwards one partition to its runner.
+          CHECKOUT_SHA=$(git rev-parse HEAD)
+          node scripts/desktop-test-shards.mjs run --head "$DESKTOP_REQUESTED_HEAD" --checkout "$CHECKOUT_SHA" --index "$DESKTOP_SHARD_INDEX" 2>&1 | tee /tmp/desktop-tests.log || SUITE_RC=$?
           # `|| true` so a log with no counts still reaches the guards below
           # instead of tripping errexit on the way - the arms below are what name
           # that case, and they cannot name it from here if grep kills the step.
           PASS=$(grep -E '^# pass ' /tmp/desktop-tests.log | awk '{print $3}' || true)
           FAIL=$(grep -E '^# fail ' /tmp/desktop-tests.log | awk '{print $3}' || true)
           echo "desktop suite: rc=$SUITE_RC pass=$PASS fail=$FAIL"
+          echo "elapsed=$((SECONDS - SUITE_STARTED))" >> "$GITHUB_OUTPUT"
           # WHERE THIS ACTUALLY REACHES A READER, stated rather than implied:
           # everything printed below is written AFTER the suite finishes, so it
           # lands at the very END of the job log (measured: byte 37,747,599 of
@@ -780,6 +796,20 @@ jobs:
             exit 1
           fi
 
+      - name: Record successful shard coverage
+        if: ${{ steps.desktop_suite.outcome == 'success' }}
+        run: |
+          node scripts/desktop-test-shards.mjs receipt --head "$DESKTOP_REQUESTED_HEAD" --checkout "$(git rev-parse HEAD)" --index "$DESKTOP_SHARD_INDEX" --log /tmp/desktop-tests.log --rc 0 --elapsed "${{ steps.desktop_suite.outputs.elapsed }}" --output "$RUNNER_TEMP/shard-$DESKTOP_SHARD_INDEX.json"
+
+      - name: Upload shard coverage receipt
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-shard-proof-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}
+          path: ${{ runner.temp }}/shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 7
+
       # gh's rendered job log can omit the middle of a large run, including
       # its real assertions and TAP summary. Keep the exact single-run tee file
       # independently retrievable on failure; no rerun or environment dump.
@@ -787,7 +817,7 @@ jobs:
         if: ${{ always() && (steps.desktop_suite.outcome == 'failure' || steps.desktop_suite.outcome == 'cancelled') }}
         uses: actions/upload-artifact@v4
         with:
-          name: desktop-suite-log-${{ github.run_id }}-${{ github.run_attempt }}
+          name: desktop-suite-log-${{ github.run_id }}-${{ github.run_attempt }}-shard-${{ matrix.shard }}
           path: /tmp/desktop-tests.log
           if-no-files-found: error
           retention-days: 7
@@ -805,6 +835,44 @@ jobs:
             exit 1
           fi
           echo "Working tree clean after the desktop suite."
+
+  # Keep the required check's display name stable while workers gain a matrix.
+  # A matrix aggregate status alone cannot prove every file ran: three exact,
+  # same-head receipts must reconstruct the inventory without overlap or gaps.
+  desktop-tests-result:
+    name: Desktop Tests
+    needs: [changes, test]
+    if: >-
+      always() &&
+      (needs.changes.outputs.unit != 'false' || needs.changes.result != 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      DESKTOP_REQUESTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+      UNIT_SCOPE: ${{ needs.changes.outputs.unit }}
+      CLASSIFIER_RESULT: ${{ needs.changes.result }}
+      WORKER_RESULT: ${{ needs.test.result }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Reject unsuccessful or unknown classification and workers
+        run: |
+          test "$CLASSIFIER_RESULT" = success
+          test "$UNIT_SCOPE" = true
+          test "$WORKER_RESULT" = success
+      - name: Download this run attempt's shard proofs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-shard-proof-${{ github.run_id }}-${{ github.run_attempt }}-*
+          path: ${{ runner.temp }}/desktop-shard-receipts
+          merge-multiple: false
+      - name: Prove exact complete shard coverage
+        run: |
+          node scripts/desktop-test-shards.mjs verify --head "$DESKTOP_REQUESTED_HEAD" --checkout "$(git rev-parse HEAD)" --unit "$UNIT_SCOPE" --classifier "$CLASSIFIER_RESULT" --workers "$WORKER_RESULT" --run-id "$GITHUB_RUN_ID" --attempt "$GITHUB_RUN_ATTEMPT" --receipts "$RUNNER_TEMP/desktop-shard-receipts"
 
   # The check that would have stopped v0.35.0 at the pull request.
   #
