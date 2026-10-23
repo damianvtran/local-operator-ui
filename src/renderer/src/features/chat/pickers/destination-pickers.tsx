@@ -3834,10 +3834,24 @@ export const RenamePicker: FC<PickerContext> = ({
 				 * pane's single slot, so a reader who dismissed this dialog mid-flight
 				 * and opened another picker must not have that one closed by this rename
 				 * (see `closed`).
+				 *
+				 * AND A NON-SUCCESS HAS TO LAND SOMEWHERE TOO (agent review round 1,
+				 * R1-1). The strip that carries a refusal lives inside the dialog, and
+				 * the footer's busy-state Close does not cancel the command - so a refusal
+				 * that lands after the reader dismissed this dialog would otherwise be
+				 * reported NOWHERE, and the signature of a rename that did not happen is
+				 * silence. Every non-success tone goes out as `showErrorToast(result.text)`:
+				 * the tone's fine print belonged to the strip's styling, while the fact the
+				 * reader needs where they now are is that the name was not stored. That is
+				 * the same call, for the same reason, that `ReloadPicker`'s late failure
+				 * makes (review U6). While the dialog is up the strip carries it, so this
+				 * branch is the only one that speaks.
 				 */
 				if (result.tone === "success") {
 					showSuccessToast(result.text);
 					if (!closed.current) onClose();
+				} else if (closed.current) {
+					showErrorToast(result.text);
 				}
 			}}
 			submitLabel="Rename"
