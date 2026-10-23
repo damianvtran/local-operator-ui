@@ -224,6 +224,65 @@ const VIOLATION = "export const thing = {a:1}\n";
 /** The same file as the repository's formatter would print it: lint-clean. */
 const CLEAN_FILE = "export const thing = { a: 1 };\n";
 
+/**
+ * A local merge's first parent is FEATURE history, not the PR target. Keep an
+ * early script outside the final merge delta: checking HEAD^1 would lose it.
+ * Twenty-nine commits reproduce the reported topology without a large fixture.
+ */
+for (const topology of ["stacked", "main-merged"]) {
+	for (const dirty of [false, true]) {
+		test(`branch merge coverage: ${topology}, early script ${dirty ? "violates" : "clean"}`, () => {
+			const f = fixture();
+			try {
+				const g = (...args) => git(f.worktree, args, { env: f.env });
+				f.commit("feat: early script", () =>
+					writeFileSync(
+						join(f.worktree, "scripts/early.mjs"),
+						dirty ? VIOLATION : CLEAN_FILE,
+					),
+				);
+				for (let index = 1; index < 29; index += 1) {
+					f.commit(`docs: stack ${index}`, () =>
+						writeFileSync(join(f.worktree, "NOTES.md"), `${index}\n`),
+					);
+				}
+				const target = topology === "stacked" ? "side" : "upstream-update";
+				g("checkout", "-q", "-b", target, "origin/main");
+				f.commit("feat: merged script", () =>
+					writeFileSync(join(f.worktree, "scripts/merged.mjs"), CLEAN_FILE),
+				);
+				if (topology === "main-merged") {
+					// Advance the ACTUAL target ref, not a fabricated comparison base.
+					assert.equal(f.push(["origin", "HEAD:refs/heads/main"]).status, 0);
+				}
+				g("checkout", "-q", "feature");
+				g("merge", "--no-ff", "-q", "-m", "Merge target into feature", target);
+				assert.equal(f.install().status, 0);
+				const pushed = f.push(["origin", "HEAD:refs/heads/feature"]);
+				const report = `${pushed.stdout}${pushed.stderr}`;
+				assert.doesNotMatch(report, /Name the first parent/);
+				assert.match(report, /scripts\/early\.mjs/);
+				if (dirty) {
+					assert.notEqual(pushed.status, 0, report);
+					assert.match(report, /FAILED/);
+					assert.equal(
+						git(
+							f.worktree,
+							["ls-remote", "--exit-code", "origin", "refs/heads/feature"],
+							{ env: f.env, allow: true },
+						).status,
+						2,
+					);
+				} else {
+					assert.equal(pushed.status, 0, report);
+				}
+			} finally {
+				f.cleanup();
+			}
+		});
+	}
+}
+
 test("an inert push succeeds through the real dispatcher and the real hook", () => {
 	// THE REGRESSION THIS FILE WAS MISSING. The launcher used to forward git's own
 	// positional arguments (`origin`, the URL) into the gate, whose parser threw on

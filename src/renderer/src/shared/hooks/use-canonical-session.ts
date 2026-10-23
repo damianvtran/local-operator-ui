@@ -5455,6 +5455,23 @@ export function useCanonicalSessionStream(
 								dropPaint(sessionId);
 								forgetTurnCollapseOpen(sessionId);
 								forgetWatchedRun(sessionId);
+								/*
+								 * AND A DRAFT THAT NAMED IT STOPS NAMING IT, BEFORE THE MISSING
+								 * STATE IS COMMITTED (the operator's report, 2026-10-22). A
+								 * staged draft's `sessionId` is a POINTER the pane resolves
+								 * (`panelSessionIdOfView`), not a conversation the user opened -
+								 * so when this host answers 404 the pointer is stale by definition
+								 * and the store owns retiring it (`retireDraftsForSession`). Doing
+								 * it here rather than in a view's effect is what keeps the terminal
+								 * notice off a screen that is supposed to be a NEW chat: the store
+								 * update lands in the same batch as the `missing` commit, so the
+								 * pane re-keys onto the draft and its first frame is a working
+								 * composer instead of "This conversation is gone". A 404 on a
+								 * conversation with no draft row is a no-op.
+								 */
+								useCanonicalSessionsStore
+									.getState()
+									.retireDraftsForSession(sessionId);
 							}
 							commitView((current) => ({
 								...current,

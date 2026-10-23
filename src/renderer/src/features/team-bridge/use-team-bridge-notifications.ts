@@ -33,31 +33,219 @@
  *
  * QUIET WHEN ACTIVE. Main owns that decision: only it can read the real window
  * focus, and a renderer cannot tell focused from occluded on macOS. The watcher
- * therefore always asks on a new seq; main refuses to raise while the user is
- * looking at the app. The cursor advances either way, so leaving the app does
- * not replay a seq the badge already showed.
+ * therefore always asks on a new seq, telling main only whether the page is
+ * showing THIS conversation (`viewing`); main refuses to raise while a focused
+ * window is on it. The cursor advances either way, so leaving the app does not
+ * replay a seq the badge already showed.
+ *
+ * WHAT THE BANNER SAYS (tb-os-notifications). A banner that only said "someone
+ * sent a message" made the person open the app to learn who and what. So for
+ * each candidate the watcher reads the ONE newest message through the existing
+ * history route (`limit: 1`, newest-first by contract) and composes sender /
+ * place / preview (`team-bridge-banner-format.ts`). That read:
+ *  - goes straight through `TeamBridgeApi`, NOT the query cache, so the body
+ *    is held in a local for the length of one call and then dropped;
+ *  - is the signed-in HUMAN's own history read, which the hub answers with
+ *    bodies for a human member (an agent member's history withholds them until
+ *    admitted; this surface never reads as an agent);
+ *  - is never logged, and a failure degrades to the metadata banner rather
+ *    than to silence, so a slow history read cannot cost the notification.
+ *
+ * THE APP'S NOTIFICATION SWITCH. `display.notifications` is the registry's
+ * "Desktop notifications" row (the backend's banners obey it); off means no
+ * Team Bridge banners either. Unknown (no answer, or a backend without the
+ * settings registry) keeps its default, which is on.
  */
 import { useMembershipsQuery } from "@features/agent-hub/hooks/use-memberships-query";
+import { readFlagValue } from "@features/chat/canonical/display-settings";
+import { backendSettingsQueryOptions } from "@features/chat/canonical/use-display-flag";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 import { t } from "@shared/i18n";
-import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+	type QueryClient,
+	useQueries,
+	useQuery,
+	useQueryClient,
+} from "@tanstack/react-query";
 import { useEffect, useMemo, useRef } from "react";
+import type { TeamBridgeDirectoryMember } from "../../../../shared/team-bridge-contract";
+import {
+	type TeamBridgeBannerCopy,
+	type TeamBridgeBannerPlace,
+	teamBridgeBannerText,
+	teamBridgePreviewText,
+} from "./team-bridge-banner-format";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	asTeamBridgeTenantId,
 	organizationOptions,
+	participantLabel,
 } from "./team-bridge-model";
 import {
 	TEAM_BRIDGE_NOTIFY_POLL_MS,
+	type TeamBridgeNotifyCandidate,
 	type TeamBridgeNotifyUnreadRow,
 	planTeamBridgeNotifications,
 	teamBridgeNotifyOrganizations,
 } from "./team-bridge-notify-model";
+import { assertThreadPage } from "./team-bridge-thread-read";
+import { teamBridgeViewingConversation } from "./team-bridge-viewing";
 import {
 	teamBridgeKeys,
 	useTeamBridgeIdentity,
 	useTeamBridgeUnread,
 } from "./use-team-bridge";
+
+/** The registry key of the app's "Desktop notifications" switch. */
+const DESKTOP_NOTIFICATIONS_SETTING = "display.notifications";
+
+/** The catalogue copy `teamBridgeBannerText` composes from, read per banner so
+ * a language change applies to the next one. */
+function bannerCopy(): TeamBridgeBannerCopy {
+	return {
+		untitled: t("ui.teamBridge.list.untitled"),
+		directMessage: t("ui.teamBridge.kind.dm"),
+		group: t("ui.teamBridge.kind.group"),
+		channel: (name) => t("ui.teamBridge.notify.channel", { channel: name }),
+		subtitle: (place, organization) =>
+			t("ui.teamBridge.notify.subtitle", { place, organization }),
+		count: (count) => t("ui.teamBridge.notify.count", { count }),
+		countPreview: (count, preview) =>
+			t("ui.teamBridge.notify.count_preview", { count, preview }),
+		fallback: t("ui.teamBridge.notify.body_fallback"),
+	};
+}
+
+function bannerPlace(
+	candidate: TeamBridgeNotifyCandidate,
+): TeamBridgeBannerPlace {
+	if (candidate.kind === "dm") return { kind: "dm" };
+	return { kind: candidate.kind, name: candidate.name };
+}
+
+/**
+ * The organization's people, for naming a sender the way the rail does.
+ *
+ * Through the SAME cache entry the page's People section reads, so a banner and
+ * the rail never disagree about a name and an open page costs no second read.
+ * A refused or failed directory is an empty list: the sender's own wire label
+ * is then the name, which is still a person's name.
+ */
+async function directoryPeople(
+	client: QueryClient,
+	tenantId: string,
+): Promise<readonly TeamBridgeDirectoryMember[]> {
+	try {
+		const directory = await client.fetchQuery({
+			queryKey: teamBridgeKeys.directory(tenantId),
+			queryFn: () => TeamBridgeApi.directory(tenantId),
+			staleTime: 30_000,
+			retry: false,
+		});
+		return directory.members;
+	} catch {
+		return [];
+	}
+}
+
+/**
+ * Compose and send one banner. Never throws, never logs.
+ *
+ * The newest message is read at notify time (see the module doc for why this
+ * is the safe place for a body). A newest message the reader wrote THEMSELF
+ * means they already answered (on another device, or just now): there is
+ * nothing to tell them, so no banner.
+ */
+async function deliverTeamBridgeBanner(
+	client: QueryClient,
+	candidate: TeamBridgeNotifyCandidate,
+	selfAccountId: string,
+	stillCurrent: () => boolean,
+): Promise<void> {
+	let senderLabel = candidate.senderLabel;
+	let preview: string | null = null;
+	try {
+		// Timeline history excludes replies. Address the candidate's thread and
+		// inclusive sequence cursor directly: one row bounds the read even for an
+		// old, long thread; never page through its private history for a banner.
+		const newest = candidate.threadId
+			? assertThreadPage(
+					await TeamBridgeApi.listReplies(
+						candidate.conversationId,
+						candidate.threadId,
+						{
+							tenantId: candidate.tenantId,
+							afterSeq: candidate.seq,
+							limit: 1,
+						},
+					),
+					{
+						tenantId: candidate.tenantId,
+						conversationId: candidate.conversationId,
+						rootId: candidate.threadId,
+					},
+				).replies.find((reply) => reply.seq === candidate.seq)
+			: (
+					await TeamBridgeApi.listMessages(candidate.conversationId, {
+						tenantId: candidate.tenantId,
+						limit: 1,
+					})
+				).messages[0];
+		if (newest && newest.seq >= candidate.seq) {
+			if (
+				newest.sender.kind === "human" &&
+				newest.sender.account_id === selfAccountId
+			) {
+				return;
+			}
+			const people = await directoryPeople(client, candidate.tenantId);
+			senderLabel = participantLabel(newest.sender, people, (agent, person) =>
+				t("ui.teamBridge.chief.label", { agent, person }),
+			);
+			preview = teamBridgePreviewText(newest.body);
+		}
+	} catch {
+		// Degrade to the metadata banner: a person is still told someone wrote.
+	}
+	const bridge = window.api?.desktop?.teamBridge;
+	if (!bridge) return;
+	const text = teamBridgeBannerText(
+		{
+			senderLabel,
+			conversationName: candidate.conversationName,
+			place: bannerPlace(candidate),
+			organizationName: candidate.organizationName,
+			preview,
+			unreadCount: candidate.unreadCount,
+		},
+		bannerCopy(),
+	);
+	// Fire and forget: a refused banner is not something the user can act on,
+	// and the cursor has already advanced, so a retry would duplicate rather
+	// than repair. The next message is the retry.
+	// Reads above may span a settings change, sign-out or capability disable.
+	// Read the LIVE policy at the last synchronous boundary before IPC, not the
+	// snapshot that started the request. Cursors advance independently.
+	if (!stillCurrent()) return;
+	await bridge
+		.notify({
+			conversationId: candidate.conversationId,
+			// A reply banner names its thread root so the click opens the thread
+			// pane; omitted for a top-level message so the click opens the conversation.
+			...(candidate.threadId ? { threadId: candidate.threadId } : {}),
+			tenantId: candidate.tenantId,
+			seq: candidate.seq,
+			title: text.title,
+			subtitle: text.subtitle,
+			body: text.body,
+			viewing: teamBridgeViewingConversation() === candidate.conversationId,
+		})
+		.catch(() => undefined);
+}
 
 /**
  * Subscribe to Team Bridge unread and raise a banner for each new sequence.
@@ -81,6 +269,31 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 	const active = enabled && available && signedIn;
 	const client = useQueryClient();
 	const memberships = useMembershipsQuery({ enabled: active });
+	/*
+	 * The app's notification switch, through the one shared registry read
+	 * (`backendSettingsQueryOptions`) and gated on the plane advertising it, the
+	 * same arm `useDisplayFlag` applies. Read through a ref at delivery time so a
+	 * toggle takes effect on the next banner without re-planning.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const settingsAdvertised = desktopFeatureEnabled(
+		capabilities.data,
+		"settings",
+	);
+	const settings = useQuery({
+		...backendSettingsQueryOptions(),
+		enabled: active && settingsAdvertised,
+	});
+	const notificationsOff =
+		settingsAdvertised &&
+		readFlagValue(settings.data?.settings, DESKTOP_NOTIFICATIONS_SETTING) ===
+			false;
+	const notificationsOffRef = useRef(notificationsOff);
+	notificationsOffRef.current = notificationsOff;
+	const accountRef = useRef(selfAccountId);
+	accountRef.current = selfAccountId;
+	const activeRef = useRef(active);
+	activeRef.current = active;
 	const membershipsData = memberships.data;
 
 	const accountUnread = useTeamBridgeUnread(active, TEAM_BRIDGE_ALL_SCOPE, {
@@ -254,32 +467,21 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 			if (plan.seeded) {
 				seededOrganizations.current.add(organization.tenant_id);
 			}
+			// The switch is checked AFTER planning on purpose: the cursors still
+			// advance while it is off, so turning it back on does not replay a
+			// backlog of messages the badge already showed.
+			if (notificationsOffRef.current || !selfAccountId) continue;
+			const account = selfAccountId;
 			for (const candidate of plan.candidates) {
-				const bridge = window.api?.desktop?.teamBridge;
-				if (!bridge) continue;
-				const conversationName =
-					candidate.conversationName ?? t("ui.teamBridge.list.untitled");
-				const title = candidate.organizationName
-					? t("ui.teamBridge.notify.title", {
-							conversation: conversationName,
-							organization: candidate.organizationName,
-						})
-					: conversationName;
-				const body = candidate.senderLabel
-					? t("ui.teamBridge.notify.body", { sender: candidate.senderLabel })
-					: t("ui.teamBridge.notify.body_fallback");
-				// Fire and forget: a refused banner is not something the user can act
-				// on, and the cursor has already advanced, so a retry would duplicate
-				// rather than repair. The next message is the retry.
-				void bridge
-					.notify({
-						conversationId: candidate.conversationId,
-						tenantId: candidate.tenantId,
-						seq: candidate.seq,
-						title,
-						body,
-					})
-					.catch(() => undefined);
+				void deliverTeamBridgeBanner(
+					client,
+					candidate,
+					account,
+					() =>
+						accountRef.current === account &&
+						activeRef.current &&
+						!notificationsOffRef.current,
+				);
 			}
 		}
 
@@ -290,5 +492,6 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 		conversations.data,
 		membershipsData,
 		selfAccountId,
+		client,
 	]);
 }

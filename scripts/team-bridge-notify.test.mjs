@@ -289,6 +289,10 @@ test("a newer seq for a member on notify=all is a candidate", () => {
 		conversationName: "Bea",
 		organizationName: "Minerva",
 		senderLabel: null,
+		// The banner formatter's facts (tb-os-notifications): place and count.
+		kind: "dm",
+		name: null,
+		unreadCount: 2,
 	});
 });
 
@@ -473,6 +477,14 @@ test("the sender label is the list row's, trimmed, and absent means fallback", (
 		cursors: new Map([["bcv_1", 1]]),
 	});
 	assert.equal(blank.candidates[0].senderLabel, null);
+
+	// The legacy placeholder is not a name: the banner title falls back to the
+	// conversation instead of announcing "Member".
+	const placeholder = plan({
+		conversations: [conversation({ last_sender_label: "Member" })],
+		cursors: new Map([["bcv_1", 1]]),
+	});
+	assert.equal(placeholder.candidates[0].senderLabel, null);
 });
 
 test("an organization the caller cannot name is omitted from the subject", () => {
@@ -732,6 +744,50 @@ test("load enforces the cursor bound, not only record", () => {
 		store.record("bcv_new", 1);
 		const persisted = JSON.parse(readFileSync(file, "utf8")).cursors;
 		assert.equal(Object.keys(persisted).length, bound);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("reply summary seq/root survive planning, native click and old-root navigation", () => {
+	const stale = plan({
+		conversations: [
+			conversation({ latest_seq: 1, last_thread_root_id: "bcmsg_stale" }),
+		],
+	});
+	assert.equal(stale.candidates.length, 0);
+	assert.equal(
+		stale.cursors.has("bcv_1"),
+		false,
+		"a mismatched summary must not consume the unread seq",
+	);
+	const ready = plan({
+		conversations: [conversation({ last_thread_root_id: "bcmsg_oldroot" })],
+	});
+	const [candidate] = ready.candidates;
+	assert.equal(candidate.threadId, "bcmsg_oldroot");
+	const { dir, file } = tempFile();
+	try {
+		const h = harness({ file });
+		h.notifier.notify(
+			request({
+				conversationId: candidate.conversationId,
+				tenantId: candidate.tenantId,
+				seq: candidate.seq,
+				threadId: candidate.threadId,
+			}),
+		);
+		h.banners[0].emit("click");
+		const target = h.notifier.takePendingOpen();
+		assert.deepEqual(target, {
+			conversationId: "bcv_1",
+			tenantId: "tnt_1",
+			threadId: "bcmsg_oldroot",
+		});
+		assert.equal(
+			limits.teamBridgeOpenPath(target),
+			"/team-bridge?tenant=tnt_1&conversation=bcv_1&thread=bcmsg_oldroot",
+		);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}

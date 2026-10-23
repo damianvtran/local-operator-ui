@@ -213,8 +213,8 @@ test("the lane is an overlay and panels paint from y0", () => {
 	);
 	assert.match(
 		page,
-		/className="flex h-full min-h-0 w-full overflow-hidden bg-canvas"/,
-		"the Team Bridge canvas must reach y0 on its own ground",
+		/className="@container\/bridge relative flex h-full min-h-0 w-full overflow-hidden bg-canvas"/,
+		"the responsive thread container must still occupy the full y0 canvas on its own ground; relative positioning anchors the narrow takeover without offsetting the panel",
 	);
 	assert.match(
 		page,

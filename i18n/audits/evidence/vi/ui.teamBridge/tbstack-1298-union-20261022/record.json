@@ -1,0 +1,148 @@
+{
+ "audit_id": "tbstack-1298-union-20261022",
+ "date": "2026-10-22",
+ "locale": "vi",
+ "namespace": "ui.teamBridge",
+ "source_commit": "dbe16bcd4a91c1a7f65f220ffb8be9b76e4ee4e3",
+ "source_base": "9aa14137dec1562dac0ee72a5f056010d5438432",
+ "merge_parents": {
+  "own_pre_merge": "203bb6bf8c50c5e27e275b8f72ebab9b7a5e7684",
+  "integrated": "9aa14137dec1562dac0ee72a5f056010d5438432"
+ },
+ "scope": "PR #1298 (feat/tb-os-notifications) merged head dbe16bcd4a: union integrity of all 115 vi ui.teamBridge values over parents 203bb6bf8c/9aa14137de; no new or changed values. Terminology checked namespace-wide.",
+ "status": "audited",
+ "translator": {
+  "agent": "translator",
+  "model": "openai/gpt-6.1-sol",
+  "date": "2026-10-21",
+  "session": "b5986259587f"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-opus-5-5",
+   "date": "2026-10-22",
+   "result": "clean",
+   "instance": "tbstack-r1-1298-vi",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/tbstack-r1-1298-vi.json",
+   "receipt_sha256": "83c5b43be04beaf32abe6b7aedeca1f278baf32c84356da02b8ce9e1395b110d",
+   "scope": "Team Bridge stack union at dbe16bcd4a (#1298): 115 values verified equal to their source side and traced to audited snapshots. Catalogue audit, not activation or release approval.",
+   "note": "Union audit; inherits os1298-r1-vi, tbd-sender-r1-vi. Record: i18n/audits/evidence/vi/ui.teamBridge/tbstack-1298-union-20261022/."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "tbstack-r1-1298-vi",
+   "session": "c0d3d761bdad",
+   "job": "cc3ccc31983c",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 115,
+   "keys_substantive": 0,
+   "en_sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
+   "context_sha256": "2dd21f65ef409b6052dc698749b6bd88f40729a1e8a597cf64db9cdf688bd995",
+   "target_sha256": "acd0b3707df1841b458e7837a0c3771616f97935d2c346a506f2849cc02ac217",
+   "findings": [],
+   "receipt": {
+    "path": "i18n/receipts/tbstack-r1-1298-vi.json",
+    "sha256": "83c5b43be04beaf32abe6b7aedeca1f278baf32c84356da02b8ce9e1395b110d"
+   }
+  }
+ ],
+ "inherited_receipts": [
+  {
+   "base": "203bb6bf8c",
+   "reached_via_parent": "203bb6bf8c",
+   "path": "i18n/receipts/os1298-r1-vi.json",
+   "sha256": "a42d4cb0106ed3ec828b4ab898293515a269cfa69af1f828289459d0595d2fbb",
+   "instance": "os1298-r1-vi",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "base_source_sha256": "b43e71da00a30dd44a9e4cd9eb842edcb324611d2725793cda48442e7f00360c",
+   "base_target_sha256": "5300d1f9c8d806cae62e128c07fd98c9f182bfc2e909c56212b2d108965bd944",
+   "keys_inherited": 113,
+   "unchanged_values_verified": 113
+  },
+  {
+   "base": "9aa14137de",
+   "reached_via_parent": "9aa14137de",
+   "path": "i18n/receipts/tbd-sender-r1-vi.json",
+   "sha256": "129595328b3631706971cb678011f957efe4b4a1ce28a64fb41c47e2bb589b5b",
+   "instance": "tbd-sender-r1-vi",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "base_source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
+   "base_target_sha256": "998baa1266abfdd624ec0bb0f37f286bf17873ed1c7603f9d599dfed8e9aa8c3",
+   "keys_inherited": 2,
+   "unchanged_values_verified": 2
+  }
+ ],
+ "union_integrity": {
+  "tool": "scripts/i18n/catalogue-union-parity.mjs",
+  "tool_sha256": "cec426a66faf52c04bfec2f9b602237430560fb34998decd4d28ced0b3e5f065",
+  "result": "PASS (exit 0)",
+  "output": {
+   "path": "tb-os-notifications/union-parity-fr-es-vi.txt (auditor staging; not a repo path)",
+   "sha256": "da66131bee0f6ac29672d1ed1a565a4aaa4820662a84031693cd58e693226aab"
+  },
+  "own_side_only": 4,
+  "integrated_side_only": 2,
+  "shared": 109,
+  "dropped": 0,
+  "shared_altered": 0,
+  "uncovered_by_audited_snapshot": []
+ },
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+   "sha256": "acd0b3707df1841b458e7837a0c3771616f97935d2c346a506f2849cc02ac217"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "2dd21f65ef409b6052dc698749b6bd88f40729a1e8a597cf64db9cdf688bd995"
+  }
+ },
+ "references": {
+  "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/vi.md",
+   "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+  }
+ },
+ "independence": "Translator(s) and auditor are different agents in different sessions: translator/coder vs translation-auditor session c0d3d761bdad. The auditor edited no catalogue and no repo file; every byte was read with git show. The auditor neither translated nor assembled the ledger; ledger rows are for ledger-assemble.mjs.",
+ "limitations": [
+  "Catalogue audit only. No rendered-fit, pseudo-localization, activation or release evidence is claimed; the browser was not used.",
+  "Inherited values rest on their own receipts. This audit re-verified their bytes and audited (en, target) pairing, not their translation quality."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/tbstack-r1-1298-vi.json",
+   "sha256": "83c5b43be04beaf32abe6b7aedeca1f278baf32c84356da02b8ce9e1395b110d"
+  }
+ ]
+}

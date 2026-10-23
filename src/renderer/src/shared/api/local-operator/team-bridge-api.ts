@@ -26,18 +26,39 @@ import {
 	type TeamBridgeNotify,
 	type TeamBridgeReadScope,
 	type TeamBridgeReadState,
+	type TeamBridgeThreadPage,
 	type TeamBridgeUnread,
 	teamBridgeConversationListSchema,
 	teamBridgeConversationSchema,
 	teamBridgeDirectorySchema,
 	teamBridgeIdentitySchema,
 	teamBridgeMessagePageSchema,
+	teamBridgeReactionsSchema,
 	teamBridgeReadStateSchema,
+	teamBridgeThreadPageSchema,
 	teamBridgeUnreadSchema,
 } from "../../../../../shared/team-bridge-contract";
 import { desktopResult } from "./desktop-api";
 
 export const TeamBridgeApi = {
+	async react(
+		conversationId: string,
+		messageId: string,
+		emoji: string,
+		active: boolean,
+		tenantId?: string,
+	) {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.reactions.toggle",
+			conversation_id: conversationId,
+			message_id: messageId,
+			emoji,
+			active,
+			...(tenantId ? { tenant_id: tenantId } : {}),
+		});
+		return teamBridgeReactionsSchema.parse(answer);
+	},
+
 	/**
 	 * The conversation page for one read scope.
 	 *
@@ -110,9 +131,34 @@ export const TeamBridgeApi = {
 		return teamBridgeMessagePageSchema.parse(answer);
 	},
 
+	/** One thread: the root with its rollup and its replies, oldest-first. */
+	async listReplies(
+		conversationId: string,
+		rootId: string,
+		options: { tenantId?: string; limit?: number; afterSeq?: number } = {},
+	): Promise<TeamBridgeThreadPage> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.messages.replies",
+			conversation_id: conversationId,
+			message_id: rootId,
+			...(options.tenantId ? { tenant_id: options.tenantId } : {}),
+			...(options.limit === undefined ? {} : { limit: options.limit }),
+			...(options.afterSeq === undefined
+				? {}
+				: { after_seq: options.afterSeq }),
+		});
+		return teamBridgeThreadPageSchema.parse(answer);
+	},
+
 	async send(
 		conversationId: string,
-		input: { clientRef: string; body: string; tenantId?: string },
+		input: {
+			clientRef: string;
+			body: string;
+			tenantId?: string;
+			/* Set to reply in that root's thread; omitted for a channel-level post. */
+			threadRootId?: string;
+		},
 	): Promise<unknown> {
 		return desktopResult<unknown>({
 			op: "team_bridge.messages.send",
@@ -120,6 +166,7 @@ export const TeamBridgeApi = {
 			client_ref: input.clientRef,
 			body: input.body,
 			...(input.tenantId ? { tenant_id: input.tenantId } : {}),
+			...(input.threadRootId ? { thread_root_id: input.threadRootId } : {}),
 		});
 	},
 

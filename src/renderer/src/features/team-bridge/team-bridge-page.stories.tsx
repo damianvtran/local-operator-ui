@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { type CSSProperties, useLayoutEffect } from "react";
+import { type CSSProperties, useLayoutEffect, useState } from "react";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
@@ -12,6 +12,8 @@ import {
 	organizationOptions,
 } from "./team-bridge-model";
 import { TeamBridgePageView } from "./team-bridge-page";
+import { TeamBridgeThreadPaneView } from "./team-bridge-thread-pane";
+import { threadTargetFromSearch } from "./team-bridge-thread-read";
 
 /**
  * Presentation states for the Team Bridge page.
@@ -963,6 +965,136 @@ export const EmptySections: Story = {
 		target: null,
 		messages: [],
 		messageState: "idle",
+	},
+};
+
+// These boards use the real page and ChatLayout, not a width-only pane mock.
+// The presentation seam prevents Storybook from contacting the operator's hub.
+const threadRoot: TeamBridgeMessage = {
+	...messages[0],
+	conversation_id: channel.id,
+	reply_count: 2,
+	reply_participants: ["Bea", "Ada"],
+	last_reply_at: new Date().toISOString(),
+};
+const threadReply: TeamBridgeMessage = {
+	...messages[1],
+	conversation_id: channel.id,
+	thread_root_id: threadRoot.id,
+};
+const threadTarget = {
+	tenantId: channel.tenant_id,
+	conversationId: channel.id,
+	rootId: threadRoot.id,
+};
+
+export const ThreadSummaryRow: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: [threadRoot],
+	},
+};
+export const ThreadAtMinimumWindow: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: [threadRoot],
+		threadLink: threadTarget,
+		renderThreadPane: (_target, close) => (
+			<TeamBridgeThreadPaneView
+				root={threadRoot}
+				replies={[threadReply]}
+				state="ready"
+				labelFor={(sender) => sender.display_label}
+				onClose={close}
+				onRetry={() => {}}
+				onSend={async () => {}}
+			/>
+		),
+	},
+	render: (args) => (
+		<div className="h-[700px] w-[800px] max-w-full">
+			<TeamBridgePageView {...args} />
+		</div>
+	),
+};
+export const ThreadDeepLinkFlushTop: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: [],
+		// The old root is deliberately NOT present in the timeline page.
+		threadLink: threadTargetFromSearch(
+			new URLSearchParams({
+				tenant: channel.tenant_id,
+				conversation: channel.id,
+				thread: threadRoot.id,
+			}),
+		),
+		renderThreadPane: (_target, close) => (
+			<TeamBridgeThreadPaneView
+				root={threadRoot}
+				replies={[threadReply]}
+				state="ready"
+				labelFor={(sender) => sender.display_label}
+				onClose={close}
+				onRetry={() => {}}
+				onSend={async () => {}}
+			/>
+		),
+	},
+	render: (args) => {
+		useMacChromeSimulation();
+		return (
+			<div
+				className="relative flex h-screen flex-col overflow-hidden"
+				style={{ "--chrome-strip-h": "32px" } as CSSProperties}
+			>
+				<ChatLayout
+					flushTop
+					sidebar={<div className="h-full bg-surface" />}
+					content={
+						<main className="flex min-w-0 grow flex-col overflow-hidden bg-canvas">
+							<TeamBridgePageView {...args} />
+						</main>
+					}
+				/>
+			</div>
+		);
+	},
+};
+
+/** The real visibility observer drives this board's local badge, without a hub
+ * request. In a background/unfocused document it intentionally remains unread;
+ * once the replies intersect an active pane the same onRead seam clears it.
+ */
+export const ThreadReadAcknowledgement: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: [threadRoot],
+		threadLink: threadTarget,
+	},
+	render: (args) => {
+		const [unread, setUnread] = useState(1);
+		return (
+			<TeamBridgePageView
+				{...args}
+				totalUnread={unread}
+				conversations={[{ ...channel, unread_count: unread }]}
+				renderThreadPane={(_target, close) => (
+					<TeamBridgeThreadPaneView
+						root={threadRoot}
+						replies={[threadReply]}
+						state="ready"
+						labelFor={(sender) => sender.display_label}
+						onClose={close}
+						onRetry={() => {}}
+						onSend={async () => {}}
+						onRead={async () => {
+							setUnread(0);
+						}}
+					/>
+				)}
+			/>
+		);
 	},
 };
 

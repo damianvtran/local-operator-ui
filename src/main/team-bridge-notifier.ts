@@ -16,14 +16,24 @@
  * this module only validates, dedupes and delivers them. Sharing the class
  * would make one surface's vocabulary the other's.
  *
- * WHAT THE RENDERER DOES NOT DO. It never fetches a message body for a banner.
- * The body is "<sender label> sent a message" from the list row's own metadata
- * or "New message"; this module persists only the sequence number it was told
- * about, never the text.
+ * WHAT THE BANNER SAYS. Sender as the title, place as the subtitle, and a
+ * short preview of the newest message as the body, composed by the renderer
+ * (`team-bridge-banner-format.ts`) from one history read the signed-in human is
+ * entitled to. This module persists only the sequence number it was told
+ * about, never the text, and never logs a field of the payload.
  *
- * QUIET WHEN ACTIVE. A focused window is already showing the badge and the
- * rail; an OS banner there would interrupt the screen the person is on. Main
- * checks real focus rather than trusting the renderer's report.
+ * ONE BANNER PER CONVERSATION. Every banner for a conversation carries the same
+ * OS identifier (`teamBridgeBannerId`), so macOS (`UNNotificationRequest`'s
+ * identifier) and Windows (the toast `Tag`) REPLACE the delivered one in place
+ * rather than stacking a second; the renderer's count line ("3 new messages")
+ * is what grows. The same id survives an app restart, which the in-memory
+ * `close()` replacement below cannot. A replacement inside `COALESCE_MS` is
+ * silent: a burst should sound once, not once per message.
+ *
+ * QUIET WHEN ACTIVE. A focused window showing THAT conversation is already
+ * painting the message; a banner there interrupts the screen the person is on.
+ * Main checks real focus rather than trusting the renderer's report, and the
+ * renderer contributes only which conversation is on screen (`viewing`).
  */
 
 import { type BrowserWindow, type NativeImage, Notification } from "electron";
@@ -50,7 +60,13 @@ export interface TeamBridgeBanner extends LifetimeNotification {
 }
 
 export type TeamBridgeBannerOptions = {
+	/** Stable per conversation: the OS replaces a delivered banner by it. */
+	id: string;
+	/** Notification Center's thread grouping (macOS) / toast group (Windows). */
+	groupId: string;
 	title: string;
+	/** macOS only; elsewhere it is folded into the body before this point. */
+	subtitle?: string;
 	body: string;
 	silent: boolean;
 	/** The app icon. macOS uses the bundle's own and ignores this field. */
@@ -91,9 +107,61 @@ export type TeamBridgeNotifierOptions = {
 	canNotify?: () => boolean;
 	/** Bring the clicked window forward. Injected from `index.ts`. */
 	present?: (window: BrowserWindow) => void;
+	/** Test seam; production reads `process.platform` (subtitle support). */
+	platform?: NodeJS.Platform;
+	/** Test seam for the coalescing clock. */
+	now?: () => number;
 };
 
 export type TeamBridgeNotifyResult = { shown: boolean };
+
+/**
+ * How close two banners for one conversation must be to count as one burst.
+ *
+ * The watcher polls every 30 s, so messages inside one poll are already one
+ * banner by construction; this covers the poll boundary and a focus-refetch
+ * landing just after a timed poll. Ten seconds is "a few seconds" with margin
+ * for a slow history read, and short enough that a reply minutes later sounds.
+ */
+export const TEAM_BRIDGE_COALESCE_MS = 10_000;
+
+/**
+ * The OS identifier for a conversation's banner.
+ *
+ * Namespaced so it can never collide with the `DesktopNotifier`'s random ids,
+ * and built from the already-validated conversation id (`SAFE_ID`), so it is a
+ * legal `UNNotificationRequest` identifier and toast tag as-is.
+ */
+export function teamBridgeBannerId(conversationId: string): string {
+	return `team-bridge:${conversationId}`;
+}
+
+/**
+ * The text lines one platform can render.
+ *
+ * Electron documents `subtitle` as macOS-only: on Windows and Linux the field
+ * is dropped silently, and a banner without its place would not say whether the
+ * message was a DM or a channel post. There the place leads the body instead,
+ * the same "one shape that degrades on no platform" join `DesktopNotifier.show`
+ * applies to its status line.
+ */
+export function teamBridgeBannerLines(
+	request: Pick<TeamBridgeNotifyRequest, "title" | "subtitle" | "body">,
+	platform: NodeJS.Platform,
+): Pick<TeamBridgeBannerOptions, "title" | "subtitle" | "body"> {
+	if (!request.subtitle) return { title: request.title, body: request.body };
+	if (platform === "darwin") {
+		return {
+			title: request.title,
+			subtitle: request.subtitle,
+			body: request.body,
+		};
+	}
+	return {
+		title: request.title,
+		body: `${request.subtitle} — ${request.body}`,
+	};
+}
 
 /**
  * Whether a banner would interrupt a screen the user is already on.
@@ -108,8 +176,16 @@ function teamBridgeWindowIsQuiet(
 		BrowserWindow,
 		"isDestroyed" | "isVisible" | "isMinimized" | "isFocused"
 	> | null,
+	viewing: boolean | undefined,
 ): boolean {
 	if (!window) return false;
+	/*
+	 * `viewing: false` is the renderer saying the focused window is on some
+	 * OTHER screen (another conversation, a chat session): the person is not
+	 * looking at this message, so focus alone does not silence it. ABSENT keeps
+	 * the original rule (focus is quiet) for a renderer that cannot say.
+	 */
+	if (viewing === false) return false;
 	return (
 		!window.isDestroyed() &&
 		window.isVisible() &&
@@ -121,6 +197,8 @@ function teamBridgeWindowIsQuiet(
 export class TeamBridgeNotifier {
 	/** The live banner per conversation, so a new seq REPLACES it. */
 	private readonly banners = new Map<string, TeamBridgeBanner>();
+	/** When each conversation's live banner was raised, for `COALESCE_MS`. */
+	private readonly raisedAt = new Map<string, number>();
 	/** The banners this process must keep reachable for their clicks to fire. */
 	private readonly lifetime = new NotificationLifetime();
 	private pendingOpen: TeamBridgeOpenTarget | null = null;
@@ -151,13 +229,19 @@ export class TeamBridgeNotifier {
 		}
 		if (this.options.show === "never") return { shown: false };
 		if (!this.canNotify()) return { shown: false };
-		if (teamBridgeWindowIsQuiet(this.options.window())) {
+		if (teamBridgeWindowIsQuiet(this.options.window(), request.viewing)) {
 			return { shown: false };
 		}
 		const previous = this.options.store.notifiedSeq(request.conversationId);
 		if (previous !== undefined && request.seq <= previous) {
 			return { shown: false };
 		}
+		const now = (this.options.now ?? Date.now)();
+		const lastRaised = this.raisedAt.get(request.conversationId);
+		const burst =
+			this.banners.has(request.conversationId) &&
+			lastRaised !== undefined &&
+			now - lastRaised < TEAM_BRIDGE_COALESCE_MS;
 		this.replace(request.conversationId);
 		/*
 		 * NAMED `notification`, NOT `banner`, BECAUSE THE WINDOW-MODE GUARD READS
@@ -169,9 +253,13 @@ export class TeamBridgeNotifier {
 		 * the exemption is one line, and it is spelled.
 		 */
 		const notification = this.createBanner({
-			title: request.title,
-			body: request.body,
-			silent: false,
+			id: teamBridgeBannerId(request.conversationId),
+			groupId: teamBridgeBannerId(request.conversationId),
+			...teamBridgeBannerLines(
+				request,
+				this.options.platform ?? process.platform,
+			),
+			silent: burst,
 			...(this.options.icon ? { icon: this.options.icon } : {}),
 		});
 		/*
@@ -180,17 +268,19 @@ export class TeamBridgeNotifier {
 		 * click emits nothing, and this is the one supported way to attach the
 		 * handler. The extra `close` listener is map bookkeeping, not lifetime.
 		 */
-		this.lifetime.retain(notification, () => {
-			this.banners.delete(request.conversationId);
-			this.open(request);
-		});
-		notification.once("close", () => {
-			if (this.banners.get(request.conversationId) === notification) {
-				this.banners.delete(request.conversationId);
-			}
-		});
+		// Native Notification owns the displayed text until OS dismissal. Our
+		// long-lived click/close handlers need only routing IDs, never preview
+		// text: do not capture the preview-bearing IPC request in these closures.
+		const conversationId = request.conversationId;
+		const target: TeamBridgeOpenTarget = {
+			conversationId,
+			tenantId: request.tenantId,
+			...(request.threadId ? { threadId: request.threadId } : {}),
+		};
+		this.retainTarget(notification, target);
 		notification.show();
 		this.banners.set(request.conversationId, notification);
+		this.raisedAt.set(request.conversationId, now);
 		// Recorded only after `show()`: a banner that failed to exist was never
 		// a thing the user was told about, and advancing first would suppress
 		// the retry forever.
@@ -220,11 +310,24 @@ export class TeamBridgeNotifier {
 		previous.close?.();
 	}
 
-	private open(request: TeamBridgeNotifyRequest): void {
-		const target: TeamBridgeOpenTarget = {
-			conversationId: request.conversationId,
-			tenantId: request.tenantId,
-		};
+	/** Separate scope makes it impossible for handlers to retain the IPC request. */
+	private retainTarget(
+		notification: TeamBridgeBanner,
+		target: TeamBridgeOpenTarget,
+	): void {
+		const conversationId = target.conversationId;
+		this.lifetime.retain(notification, () => {
+			this.banners.delete(conversationId);
+			this.open(target);
+		});
+		notification.once("close", () => {
+			if (this.banners.get(conversationId) === notification) {
+				this.banners.delete(conversationId);
+			}
+		});
+	}
+
+	private open(target: TeamBridgeOpenTarget): void {
 		/*
 		 * ALWAYS PARKED FIRST, THEN SIGNALLED. The signal wakes a loaded renderer,
 		 * but a renderer that is loading or reloading has no listener yet and the

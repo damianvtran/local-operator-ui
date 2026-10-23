@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|mini-view|drafts|stale-team-draft|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -24521,6 +24521,174 @@ async function seedDrafts(cdp, { pendingAll = false } = {}) {
 	})()`);
 	await cdp.send("Page.reload", { ignoreCache: false });
 	await wait(1500);
+}
+
+/**
+ * `--scene stale-team-draft`: the operator's own screen, before and after.
+ *
+ * THE REPORT (2026-10-22): pressing a TEAM in the sidebar to start a new chat
+ * landed on a transcript that said "This conversation is no longer on this
+ * machine" with the composer replaced by "This conversation is gone" - under a
+ * header that said "New chat with <team>". The two halves read different facts:
+ * the header reads `activeDraftKey`, and the pane reads the drafted row's
+ * `sessionId` (`panelSessionIdOfView`). The stable `draft:<kind>:<name>` row is
+ * REUSED by every press for that team, so a row that had already created a
+ * conversation - left behind by a failed message or a quit before the ack -
+ * made every later press resolve it; once it was deleted, the press resolved a
+ * dead id.
+ *
+ * WHAT THIS SEEDS is the exact persisted pair that produces it: `activeDraftKey`
+ * naming the team's stable row, that row carrying `sessionId` and the failure's
+ * own claim, and a tombstone for the id (the conversation was deleted on this
+ * device). A relaunch is the honest way to reach it, because that is what the
+ * store does with the pair - and it is how the operator hit it after their
+ * delete.
+ *
+ * THE PRESS ITSELF IS NOT DRIVEN HERE, and the substitution is named rather than
+ * hidden: the sidebar's team rows come from the backend's authoring list, and a
+ * run-owned daemon has no "minerva-development" team to press. The press's own
+ * rule is the store's (`stageDraft` never reuses a conversation-bound row), and
+ * `scripts/team-new-chat-stale-draft.test.mjs` drives it directly - five cases,
+ * the agent path included.
+ */
+async function sceneStaleTeamDraft(cdp) {
+	/*
+	 * A COMPOSER IS THE POINT. Without a backend the chat route draws its
+	 * capability refusal in place of the whole pane, so a frame would photograph
+	 * the gate rather than the defect.
+	 */
+	if (BACKEND === null) {
+		throw new Error(
+			"--scene stale-team-draft needs --backend <url>: the chat pane's composer (the control the defect replaces) only mounts against a reachable session catalogue",
+		);
+	}
+	const DEAD = "deadbeef0001";
+	const STABLE = "draft:team:minerva-development";
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await cdp.evaluate(`(() => {
+		const read = (key) => { try { return JSON.parse(localStorage.getItem(key) || "null") || {}; } catch { return {}; } };
+		const canonical = read("canonical-sessions-storage");
+		canonical.state = {
+			...(canonical.state || {}),
+			activeSessionId: null,
+			activeDraftKey: ${JSON.stringify(STABLE)},
+			forgotten: { ${JSON.stringify(DEAD)}: { at: 0, title: "An old chat" } },
+			drafts: {
+				...((canonical.state || {}).drafts || {}),
+				[${JSON.stringify(STABLE)}]: {
+					key: ${JSON.stringify(STABLE)},
+					target: { kind: "team", name: "minerva-development" },
+					createRequestId: "req-stale-create-0001",
+					admissionRequestId: "req-stale-admit-0001",
+					sessionId: ${JSON.stringify(DEAD)},
+					pending: false,
+					admissionAttempted: true,
+					submittedText: "Can you pick up where we left off?",
+					submittedRendered: "Can you pick up where we left off?",
+					errorCode: "deadline_exceeded",
+					errorRetry: true,
+					error: "Couldn't confirm your message was sent.",
+				},
+			},
+		};
+		localStorage.setItem("canonical-sessions-storage", JSON.stringify(canonical));
+		const input = read("conversation-input-store");
+		input.state = { ...(input.state || {}), inputByConversation: {} };
+		localStorage.setItem("conversation-input-store", JSON.stringify(input));
+		return true;
+	})()`);
+	await cdp.send("Page.reload", { ignoreCache: false });
+	await wait(1500);
+	await waitForBridge(cdp);
+	const read = () =>
+		cdp.evaluate(`(() => {
+			const canonical = (() => { try { return JSON.parse(localStorage.getItem("canonical-sessions-storage") || "null")?.state ?? null; } catch { return null; } })();
+			const notice = document.getElementById("lo-missing-session-notice");
+			const box = document.querySelector('[data-tour-tag="chat-input-textarea"] textarea');
+			return {
+				text: document.body.innerText,
+				notice: notice === null ? null : (notice.textContent || "").trim(),
+				composer: box === null ? null : { value: box.value, disabled: box.disabled === true, readOnly: box.readOnly === true },
+				storedDraft: canonical?.drafts?.[${JSON.stringify(STABLE)}] ?? null,
+				activeDraftKey: canonical?.activeDraftKey ?? null,
+			};
+		})()`);
+	const screen = await read();
+	note(
+		"the restored screen (header, notice, composer)",
+		JSON.stringify({
+			activeDraftKey: screen.activeDraftKey,
+			notice: screen.notice,
+			composer: screen.composer,
+			sessionId: screen.storedDraft?.sessionId ?? null,
+		}),
+	);
+	check(
+		"the header names the press's own act: a NEW chat with the team",
+		/New chat with minerva-development/.test(screen.text ?? ""),
+		`body: ${JSON.stringify((screen.text ?? "").slice(0, 160))}`,
+	);
+	check(
+		"the terminal 'no longer on this machine' notice is NOT rendered",
+		screen.notice === null,
+		JSON.stringify(screen.notice),
+	);
+	check(
+		"a working composer is on screen, which is what one click must always end with",
+		screen.composer !== null &&
+			screen.composer.disabled === false &&
+			screen.composer.readOnly === false,
+		JSON.stringify(screen.composer),
+	);
+	check(
+		"and the dead pointer was retired before the first paint",
+		screen.storedDraft !== null &&
+			screen.storedDraft.sessionId === undefined &&
+			screen.storedDraft.pending === false,
+		JSON.stringify({
+			sessionId: screen.storedDraft?.sessionId ?? null,
+			pending: screen.storedDraft?.pending ?? null,
+		}),
+	);
+	const frame = await captureSettled(cdp, "stale-team-draft");
+	note("frame", JSON.stringify(frame));
+	/*
+	 * THE CONTROL (design review round 1's D3): the same build, the same daemon,
+	 * and NO seeded draft - the app's own launch state. It answers whether anything
+	 * the after frame shows (the model chip's "Retry", the empty-state prompts)
+	 * belongs to the fix or to a daemon with no resolved model. A pair is only
+	 * evidence if the control shares the environment.
+	 */
+	await cdp.evaluate(`(() => {
+		localStorage.removeItem("canonical-sessions-storage");
+		localStorage.removeItem("conversation-input-store");
+		return true;
+	})()`);
+	await cdp.send("Page.reload", { ignoreCache: false });
+	await wait(1500);
+	await waitForBridge(cdp);
+	const control = await read();
+	note(
+		"the plain-new-chat control (no seeded draft)",
+		JSON.stringify({
+			notice: control.notice,
+			composer: control.composer,
+			sessionId: control.storedDraft?.sessionId ?? null,
+		}),
+	);
+	check(
+		"the control is the app's own new chat: no notice and an editable composer",
+		control.notice === null &&
+			control.composer !== null &&
+			control.composer.disabled === false &&
+			control.composer.readOnly === false,
+		JSON.stringify({ notice: control.notice, composer: control.composer }),
+	);
+	note(
+		"control frame",
+		JSON.stringify(await captureSettled(cdp, "stale-team-draft-control")),
+	);
 }
 
 async function sceneDrafts(cdp) {
@@ -49337,6 +49505,7 @@ async function main() {
 			else if (SCENE === "sidebar-bin-promptness")
 				await sceneSidebarBinPromptness(cdp);
 			else if (SCENE === "drafts") await sceneDrafts(cdp);
+			else if (SCENE === "stale-team-draft") await sceneStaleTeamDraft(cdp);
 			else if (SCENE === "undo-toasts-stacked")
 				await sceneUndoToastsStacked(cdp);
 			/*

@@ -1,0 +1,55 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "tbstack-r1-1298-ur",
+ "session": "678669e97293",
+ "job": "c0820d11b867",
+ "date": "2026-10-22",
+ "locale": "ur",
+ "translator": "translator",
+ "translator_session": "ff57e8cc086b",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 0,
+ "union_keys_verified": 115,
+ "scope": "PR #1298 ui.teamBridge at head dbe16bcd4a91c1a7f65f220ffb8be9b76e4ee4e3: union-integrity audit of all 115 ur values after the stack integration merges (merge dbe16bcd4a = 203bb6bf8c (own audited pre-merge head) + 9aa14137de (#1296)). Every value equals its audited source side (203bb6bf8c (os1298-r1-ur.json), 9aa14137de (tbd-sender-r1-ur.json)); no key dropped, no shared value altered; key set and order equal English (115/115). No key on this head lacks an audited source, so no new translation was audited.",
+ "sha256": {
+  "en": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
+  "ur": "a4c335724f0c629d61316e4e7207cad8bfec713362a2867adc9b5005ad161429",
+  "context": "2dd21f65ef409b6052dc698749b6bd88f40729a1e8a597cf64db9cdf688bd995"
+ },
+ "findings": [],
+ "inherited_receipts": [
+  {
+   "base": "203bb6bf8c",
+   "base_commit": "203bb6bf8c50c5e27e275b8f72ebab9b7a5e7684",
+   "path": "i18n/receipts/os1298-r1-ur.json",
+   "sha256": "c2fc7e510a2f5143361b0d679840a64cbae09dd2d3231d711bccafd68b3da864",
+   "keys_inherited": 113,
+   "base_target_sha256": "2b95d596f1f7ca98bf21645e2d9d4f76dbb1430ee587ce8026477b0d263226a5",
+   "unchanged_values_verified": 113
+  },
+  {
+   "base": "9aa14137de",
+   "base_commit": "9aa14137dec1562dac0ee72a5f056010d5438432",
+   "path": "i18n/receipts/tbd-sender-r1-ur.json",
+   "sha256": "00923f770a8382642b549567afe337c320f1ca0dc9562693cfc9236d08674801",
+   "keys_inherited": 111,
+   "base_target_sha256": "d450e7167746c3e80789b58dbf8f165aa1a2b6581e114fa70a56e353058cc52b",
+   "unchanged_values_verified": 111
+  }
+ ],
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+ },
+ "validation": {
+  "independence": "Auditor is translation-auditor subagent session 678669e97293 (job c0820d11b867, label i18n-audit-hi-ur, parent 687384e07954). all other values were translated and audited in earlier rounds by other sessions. The auditor did not author or edit any catalogue value; all bytes were read with git show from origin refs, never a checkout.",
+  "union_integrity": "Inherited receipts' bytes re-hashed from the source refs equal the ledger receipt_sha256 there, and each source ledger row's target_sha256 equals that ref's ur bytes. Python comparison of every key of the ur catalogue at dbe16bcd4a against the source sides: 0 untraced keys, 0 value mismatches, 0 dropped, 0 keys on which the sources disagree. scripts/i18n/catalogue-union-parity.mjs (origin/main copy, run from scratch with --repo, git-object reads only) over hi, ur, en and en context: --head dbe16bcd4a exit 0, 'RESULT: PASS - no English key lost or changed', value differences [] for all 4 files. The only keys a merge added are ui.teamBridge.sender.unknown_person/unknown_agent from #1296 9aa14137de, byte-equal to its audited row.",
+  "icu": "Read-only structural parity with the repo's @formatjs/icu-messageformat-parser over hi and ur at all 5 stack heads: 'checked 1378 (head,locale,key) triples; problems=0' (exit 0). ",
+  "plurals": "hi/ur use one/other per glossary; no plural selector introduced by the merges.",
+  "typography": "ur file NFC, trailing newline; no U+200B–200F, U+202A–202E, U+2066–2069, U+061C or BOM anywhere in the file. ur values stay in logical order; the render layer isolates them (style guide).",
+  "overflow": "No new visible strings on this head.",
+  "limitations": "No rendered-fit, screenshot, pseudo-localization or native bidi rendering evidence; catalogue audit only."
+ }
+}

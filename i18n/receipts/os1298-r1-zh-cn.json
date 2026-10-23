@@ -1,0 +1,46 @@
+{
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "os1298-r1-zh-cn",
+  "session": "48c1c63e7228",
+  "date": "2026-10-21",
+  "locale": "zh-CN",
+  "translator": "translator",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 4,
+  "scope": "Four-key notification delta: ui.teamBridge.notify.channel, ui.teamBridge.notify.subtitle, ui.teamBridge.notify.count, ui.teamBridge.notify.count_preview. Inherit the base 2e16fb1456 full namespace audit for the other 109 values, all verified unchanged; no new full semantic audit of unchanged copy. Catalogue audit only, not rendered-fit, activation or release approval.",
+  "sha256": {
+    "en": "b43e71da00a30dd44a9e4cd9eb842edcb324611d2725793cda48442e7f00360c",
+    "zh-CN": "c95ccb7d80af06a7ceb76d3673168a59afa8e04bb59017686b9066cfae9fcc44",
+    "context": "c35db92afe5365b3e8263e10ad8f15eeaf48f066a915d136cf01f96dd1c1ccad"
+  },
+  "findings": [],
+  "inherited_receipt": {
+    "base": "2e16fb1456",
+    "path": "i18n/receipts/tbd-r4-zhcn.json",
+    "sha256": "85d1f0e0870d1a20d82e242187fbb7fba745a88189d98965e51010bd0e7125e9",
+    "keys_inherited": 109,
+    "unchanged_values_verified": 109,
+    "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+    "base_target_sha256": "a461bd1121e50a3091f42da7ec75196ff94efa0eecc3e87bd99ea352d3e33672",
+    "full_coverage_receipt": {
+      "path": "i18n/receipts/tbd-r3-zhcn.json",
+      "sha256": "2497e3ff66cc4fec25dfcaf953f37ee8666bce7aff764d8c82bcecb77f0c76eb"
+    }
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  },
+  "validation": {
+    "independence": "This auditor did not translate or edit any catalogue or code. Served model switched from anthropic/claude-opus-5-5 to openai/gpt-6.1-sol before substantive catalogue review; all substantive audit judgments by openai/gpt-6.1-sol.",
+    "semantics": "Natural 新消息 with message classifier 条; other only. No inter-script spaces; full-width preview colon ：.",
+    "icu": "Parsed actual catalogue bytes with @formatjs/icu-messageformat-parser; formatted with intl-messageformat. Exact channel/place/organization/count/preview argument names and types; every CLDR arm; one active pound per arm; zero offset; no extra tokens; preview last and verbatim. Samples: 0, 1, 2, 3, 5, 21, 22, 1.5, 1000000. NFC and no manual bidi controls verified.",
+    "plural_arms_audited": 2,
+    "english_identical_channel": "Valid: #{channel} contains a conventional channel marker and an opaque user-assigned channel name, not untranslated English prose. ICU parses # as a literal outside a plural.",
+    "english_identical_subtitle": "Valid: {place} · {organization} is a language-neutral composition of dynamic names/localized place label, with a separator rather than prose punctuation. Both arguments and place-then-organization logical order exactly match frozen context, including Urdu.",
+    "overflow": "No material fixed-copy expansion identified from catalogue inspection; dynamic names/preview and actual glyph shaping still require rendered checks.",
+    "limitations": "Browser unavailable by task constraint. No screenshots, glyph metrics, visual-fit or native bidi-rendering claim. No catalogue/code edits."
+  }
+}
