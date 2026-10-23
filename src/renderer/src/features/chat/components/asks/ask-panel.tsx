@@ -52,7 +52,14 @@ import { Disclosure } from "@shared/components/ui/disclosure";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Check, Clock, HelpCircle, type LucideIcon, X } from "lucide-react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { t } from "../../../../../../i18n/messages";
 import type {
 	PendingAsk,
@@ -1851,37 +1858,70 @@ export const AskPanel = ({
 		onDismiss?.(ask, reason);
 	};
 	/*
-	 * A REFUSAL ENDS THE ARM (M-A). The row stays, so the arm would otherwise sit there
-	 * until some LATER, unrelated departure spent it - the probe moved a reader's focus
-	 * out of a textarea into the panel on the next frame that removed the row.
+	 * THE HAND-OFF ITSELF, shared by the two moments that can take the focused node
+	 * away. The landing is computed from the cards OTHER than the dismissed one, so the
+	 * same rule answers both "the card is still here" (the response landed, the frame
+	 * has not) and "the card has gone" (the frame landed first): the card that takes
+	 * the slot, else the composer, else the list.
 	 */
-	useEffect(() => {
+	const handOffDismissFocus = useCallback(
+		(pending: { id: string; index: number }) => {
+			const list = panelRef.current;
+			if (list === null) return;
+			const now = document.activeElement;
+			const lost =
+				now === null ||
+				now === document.body ||
+				!now.isConnected ||
+				list.contains(now);
+			dismissFocus.current = null;
+			if (!lost) return;
+			const others = [
+				...list.querySelectorAll<HTMLElement>("[data-lo-ask-row]"),
+			].filter((node) => node.dataset.loAskRow !== pending.id);
+			const next = others[Math.min(pending.index, others.length - 1)];
+			const target =
+				next?.querySelector<HTMLElement>(
+					"button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled])",
+				) ??
+				document.querySelector<HTMLElement>(COMPOSER_TEXTAREA_SELECTOR) ??
+				list;
+			target.focus({ preventScroll: true });
+		},
+		[],
+	);
+	/*
+	 * THE RESPONSE TAKES THE FOCUSED ROW BEFORE THE FRAME DOES (UX round 3, U2). A
+	 * landed dismissal closes the chooser - and unmounts the focused reason - as soon as
+	 * the response arrives, while the card itself waits for the next ask-state frame
+	 * (measured ~1.2 s later). Between the two there was no owner for the keyboard, so
+	 * `document.activeElement` was BODY and anything typed in that window was lost. The
+	 * arm is therefore spent HERE, in a layout effect on the outcome, before the chooser
+	 * closes.
+	 */
+	useLayoutEffect(() => {
 		const pending = dismissFocus.current;
 		if (pending === null) return;
-		if (outcomes?.[pending.id]?.refused) dismissFocus.current = null;
-	}, [outcomes]);
+		const landed = outcomes?.[pending.id];
+		if (landed?.dismissed === undefined || landed.sending === true) return;
+		handOffDismissFocus(pending);
+	}, [outcomes, handOffDismissFocus]);
+	/*
+	 * AND THE FRAME THAT REMOVES THE CARD, for every departure this surface did not
+	 * cause (UX round 3, U9): another surface settling the ask removes the row here
+	 * while this press is still in flight, and the 409 arrives afterwards. The arm is
+	 * deliberately NOT cleared on a refusal for that reason - the `lost` guard above is
+	 * what keeps a stale arm harmless (it moves nothing while the keyboard is somewhere
+	 * connected and outside the panel), and clearing it would leave that race with no
+	 * owner at all.
+	 */
 	useLayoutEffect(() => {
 		const pending = dismissFocus.current;
 		const list = panelRef.current;
 		if (pending === null || list === null) return;
 		const cards = [...list.querySelectorAll<HTMLElement>("[data-lo-ask-row]")];
 		if (cards.some((node) => node.dataset.loAskRow === pending.id)) return;
-		const now = document.activeElement;
-		const lost =
-			now === null ||
-			now === document.body ||
-			!now.isConnected ||
-			list.contains(now);
-		dismissFocus.current = null;
-		if (!lost) return;
-		const next = cards[Math.min(pending.index, cards.length - 1)];
-		const target =
-			next?.querySelector<HTMLElement>(
-				"button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled])",
-			) ??
-			document.querySelector<HTMLElement>(COMPOSER_TEXTAREA_SELECTOR) ??
-			list;
-		target.focus({ preventScroll: true });
+		handOffDismissFocus(pending);
 	});
 	const active =
 		typeof document === "undefined" ? null : document.activeElement;

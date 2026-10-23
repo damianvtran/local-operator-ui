@@ -397,6 +397,170 @@ test("with no composer in reach, the empty panel keeps the keyboard on its list"
 	await rig.unmount();
 });
 
+test("the response hands the keyboard on before the frame removes the card", async () => {
+	const composer = document.createElement("textarea");
+	composer.setAttribute("aria-label", "Message");
+	document.body.append(composer);
+	const asks = [openAsk("a-1")];
+	const rig = await mount(panelElement(asks, { onDismiss: () => undefined }));
+	await act(async () =>
+		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
+	);
+	await act(async () =>
+		rowOf(rig.container, "a-1")
+			.querySelector('[data-lo-ask-dismiss-reason="moot"]')
+			.click(),
+	);
+	await rig.render(
+		panelElement(asks, {
+			onDismiss: () => undefined,
+			outcomes: { "a-1": { sending: true, refused: null } },
+		}),
+	);
+	/*
+	 * THE GAP UX ROUND 3 MEASURED: the response lands, the chooser and the focused
+	 * reason unmount, and the card stays until the next ask-state frame ~1.2 s later.
+	 * Sampled on the response frame, with the card still drawn.
+	 */
+	await rig.render(
+		panelElement(asks, {
+			onDismiss: () => undefined,
+			outcomes: { "a-1": { sending: false, refused: null, dismissed: "moot" } },
+		}),
+	);
+	assert.equal(
+		rowOf(rig.container, "a-1") !== null,
+		true,
+		"the card is still drawn: this is the delayed-frame case",
+	);
+	assert.equal(
+		document.activeElement,
+		composer,
+		"the response hands off at once",
+	);
+	assert.notEqual(document.activeElement, document.body);
+	await rig.render(
+		panelElement([], {
+			onDismiss: () => undefined,
+			outcomes: { "a-1": { sending: false, refused: null, dismissed: "moot" } },
+		}),
+	);
+	assert.equal(document.activeElement, composer);
+	composer.remove();
+	await rig.unmount();
+});
+
+test("the response hands the next card's first control the keyboard, before the frame", async () => {
+	const asks = [openAsk("a-1"), openAsk("a-2", { ask_id: "a-2" })];
+	const rig = await mount(panelElement(asks, { onDismiss: () => undefined }));
+	await act(async () =>
+		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
+	);
+	await act(async () =>
+		rowOf(rig.container, "a-1")
+			.querySelector('[data-lo-ask-dismiss-reason="moot"]')
+			.click(),
+	);
+	await rig.render(
+		panelElement(asks, {
+			onDismiss: () => undefined,
+			outcomes: { "a-1": { sending: false, refused: null, dismissed: "moot" } },
+		}),
+	);
+	const next = rowOf(rig.container, "a-2");
+	assert.equal(next.contains(document.activeElement), true);
+	assert.equal(document.activeElement.tagName, "BUTTON");
+	await rig.unmount();
+});
+
+test("a dismissal that loses the race to another surface still hands off", async () => {
+	const composer = document.createElement("textarea");
+	composer.setAttribute("aria-label", "Message");
+	document.body.append(composer);
+	const asks = [openAsk("a-1")];
+	const rig = await mount(panelElement(asks, { onDismiss: () => undefined }));
+	await act(async () =>
+		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
+	);
+	await act(async () =>
+		rowOf(rig.container, "a-1")
+			.querySelector('[data-lo-ask-dismiss-reason="moot"]')
+			.click(),
+	);
+	// Another surface settles the ask: the row leaves while this press is in flight.
+	await rig.render(
+		panelElement([], {
+			onDismiss: () => undefined,
+			outcomes: { "a-1": { sending: true, refused: null } },
+		}),
+	);
+	assert.equal(document.activeElement, composer, "the departure hands off");
+	// The held request then returns its 409.
+	await rig.render(
+		panelElement([], {
+			onDismiss: () => undefined,
+			outcomes: {
+				"a-1": {
+					sending: false,
+					refused: "already answered by desktop.",
+					refusedByOwner: true,
+				},
+			},
+		}),
+	);
+	assert.equal(
+		document.activeElement,
+		composer,
+		"the late refusal moves nothing",
+	);
+	assert.notEqual(document.activeElement, document.body);
+	composer.remove();
+	await rig.unmount();
+});
+
+test("a refusal that lands before the departure does not lose the keyboard either", async () => {
+	const composer = document.createElement("textarea");
+	composer.setAttribute("aria-label", "Message");
+	document.body.append(composer);
+	const asks = [openAsk("a-1")];
+	const rig = await mount(panelElement(asks, { onDismiss: () => undefined }));
+	await act(async () =>
+		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
+	);
+	await act(async () =>
+		rowOf(rig.container, "a-1")
+			.querySelector('[data-lo-ask-dismiss-reason="moot"]')
+			.click(),
+	);
+	const refused = panelElement(asks, {
+		onDismiss: () => undefined,
+		outcomes: {
+			"a-1": {
+				sending: false,
+				refused: "already answered by desktop.",
+				refusedByOwner: true,
+			},
+		},
+	});
+	await rig.render(refused);
+	// The other surface's frame removes the row after the refusal.
+	await rig.render(
+		panelElement([], {
+			onDismiss: () => undefined,
+			outcomes: {
+				"a-1": {
+					sending: false,
+					refused: "already answered by desktop.",
+					refusedByOwner: true,
+				},
+			},
+		}),
+	);
+	assert.equal(document.activeElement, composer);
+	composer.remove();
+	await rig.unmount();
+});
+
 test("a settled dismissal names its reason and draws no answer frame", async () => {
 	const rig = await mount(
 		panelElement(
