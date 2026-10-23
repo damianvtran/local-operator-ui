@@ -15,6 +15,7 @@ import {
 	TeamBridgeReactionPicker,
 	type TeamBridgeReactionState,
 } from "./team-bridge-reactions";
+import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
 
 /**
  * The ONE hover toolbar on a Team Bridge message row: react, reply in thread,
@@ -97,7 +98,12 @@ export function TeamBridgeMessageToolbar({
 	const [roving, setRoving] = useState(0);
 	const root = useRef<HTMLDivElement>(null);
 	const canReact = reactions !== undefined && !reactions.disabled;
-	const count = (canReact ? 1 : 0) + (onReply ? 1 : 0);
+	/* THE HOLD COVERS THIS ROUTE TOO. `onReply` is the only way into the thread
+	   pane from a row (button, keyboard, or a rig that passes the prop directly),
+	   so it is dropped here rather than trusting every caller to omit it: the
+	   button must not render, not render inert. */
+	const reply = TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD ? onReply : undefined;
+	const count = (canReact ? 1 : 0) + (reply ? 1 : 0);
 	/* The tab stop is CLAMPED to the buttons that exist now: `roving` is the
 	   index focus last rested on, and the list shrinks when the reader loses
 	   an ability (react drops out when the conversation closes). An index past
@@ -134,7 +140,7 @@ export function TeamBridgeMessageToolbar({
 		list[next]?.focus();
 	};
 
-	if (!canReact && !onReply) return null;
+	if (!canReact && !reply) return null;
 	let index = 0;
 	const item = () => {
 		const mine = index++;
@@ -189,11 +195,11 @@ export function TeamBridgeMessageToolbar({
 						</ToolbarButton>
 					</TeamBridgeReactionPicker>
 				)}
-				{onReply && (
+				{reply && (
 					<ToolbarButton
 						{...item()}
 						label={t("ui.teamBridge.replies.action")}
-						onClick={onReply}
+						onClick={reply}
 					>
 						<MessageSquare aria-hidden="true" />
 					</ToolbarButton>
