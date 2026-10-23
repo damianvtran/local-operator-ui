@@ -5097,7 +5097,6 @@ export type MessageParams = {
 	"ui.teamBridge.builtin.humans_topic": undefined;
 	"ui.teamBridge.chief.fallback": undefined;
 	"ui.teamBridge.chief.label": { agent: string; person: string };
-	"ui.teamBridge.chief.unnamed": { person: string };
 	"ui.teamBridge.compose.empty": undefined;
 	"ui.teamBridge.compose.label": undefined;
 	"ui.teamBridge.compose.new": undefined;
@@ -5133,8 +5132,6 @@ export type MessageParams = {
 	"ui.teamBridge.menu.label": undefined;
 	"ui.teamBridge.menu.mute": undefined;
 	"ui.teamBridge.menu.unmute": undefined;
-	"ui.teamBridge.message.failed": undefined;
-	"ui.teamBridge.message.sending": undefined;
 	"ui.teamBridge.nav.label": undefined;
 	"ui.teamBridge.nav.unread": { count: number };
 	"ui.teamBridge.notify.all": undefined;
