@@ -38,7 +38,9 @@ orders of magnitude still separate the pair. The discriminating measurement is
 the per-entry match below.
 
 Matching the rendered badge against each candidate image (LANCZOS round-trip
-to 128 x 128, MSE after compositing on the dialog's ground). The candidates are
+to 128 x 128, MSE after compositing on the dialog's ground). The crop is the
+icon slot at **(312,218)-(440,346)** in the 1024 x 874 capture; the ground is
+**RGB(46,46,46)**, sampled from the dialog panel beside it. The candidates are
 the seven ICNS entries plus 24/48/96 px resamples of the 1024 master:
 
 - Before: **16 px entry, MSE 150.0**; then 24 = 479.8, 32 = 803.7, 48 = 1,171.7,

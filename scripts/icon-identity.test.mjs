@@ -10,7 +10,11 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
-import { stampBundleIcons } from "./after-pack.mjs";
+import {
+	readPlistString,
+	setPlistString,
+	stampBundleIcons,
+} from "./after-pack.mjs";
 
 /*
  * The identity a macOS dialog sees when it resolves this app's icon.
@@ -189,6 +193,26 @@ test("the stamping refuses a bundle whose main icon is not the one it copies", (
 			}),
 		BUILD_ICON_ERROR,
 	);
+});
+
+test("a plist value is written literally, including a dollar sign", () => {
+	// `String.prototype.replace` treats `$&`, `$\`` and friends in a replacement
+	// STRING as tokens. A function replacer keeps the value literal, so an icon
+	// name that ever contains `$` cannot corrupt the plist.
+	const absent = setPlistString(
+		plist("<key>CFBundleName</key><string>Electron Helper</string>"),
+		"CFBundleIconFile",
+		"icon$&.icns",
+	);
+	assert.equal(readPlistString(absent, "CFBundleIconFile"), "icon$&.icns");
+	assert.match(absent, /<string>icon\$&amp;\.icns<\/string>/);
+
+	const present = setPlistString(
+		plist("<key>CFBundleIconFile</key><string>old.icns</string>"),
+		"CFBundleIconFile",
+		"a$`b.icns",
+	);
+	assert.equal(readPlistString(present, "CFBundleIconFile"), "a$`b.icns");
 });
 
 test("a binary plist is refused rather than silently left unstamped", () => {
