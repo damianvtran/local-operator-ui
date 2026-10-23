@@ -1,5 +1,5 @@
 {
-	"ui.chat.asks.context.messages_since": "{count, plural, one {# mensaje tuyo desde que se hizo esta consulta} other {# mensajes tuyos desde que se hizo esta consulta}} (último: {time})",
+	"ui.chat.asks.context.messages_since": "{count, plural, one {# mensaje tuyo desde que se hizo esta consulta (último: {time})} many {{count} de mensajes tuyos desde que se hizo esta consulta (último: {time})} other {# mensajes tuyos desde que se hizo esta consulta (último: {time})}}",
 	"ui.chat.asks.dismiss.answered_in_chat.note": "ya respondiste en la conversación",
 	"ui.chat.asks.dismiss.answered_in_chat.title": "Respondida en el chat",
 	"ui.chat.asks.dismiss.cancel": "Cancelar",
