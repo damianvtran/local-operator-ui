@@ -22,6 +22,8 @@ const DOCUMENT: TranscriptDocument = {
 	filename: "Complete_With_Docusign.pdf",
 	mimeType: "application/pdf",
 	path: "/Users/you/Documents/Complete_With_Docusign.pdf",
+	storedPath:
+		"/Users/you/.local-operator/attachments/0123456789abcdef0123456789abcdef.bin",
 	bytes: 2_411_520,
 	injection: "native",
 };
@@ -48,6 +50,62 @@ export const SentFile: Story = {
  */
 export const MovedOrDeleted: Story = {
 	render: () => <SentFileCard document={DOCUMENT} existence={false} />,
+};
+
+/**
+ * An OLDER row (or a remote one) that carries no store path. The origin path is
+ * gone, so there is nothing usable to copy: the card renders the verdict and the
+ * recovery sentence and NO copy control, rather than a control whose output is a
+ * dead path (design D2 follow-up).
+ */
+export const MovedOrDeletedNoStoredPath: Story = {
+	render: () => (
+		<SentFileCard
+			document={{ ...DOCUMENT, storedPath: null }}
+			existence={false}
+		/>
+	),
+};
+
+/**
+ * The missing state's copy proof: the control must copy the STORE path, not the
+ * origin path that no longer exists, and its feedback must say so. Kept out of
+ * the captured set for the same reason as the long-path proof.
+ */
+export const MovedOrDeletedCopyProof: Story = {
+	render: () => <SentFileCard document={DOCUMENT} existence={false} />,
+	play: async ({ canvasElement }) => {
+		const button = canvasElement.querySelector<HTMLButtonElement>(
+			'button[aria-label="Copy saved copy path"]',
+		);
+		if (!button)
+			throw new Error("the saved-copy copy control is not in this story");
+		let copied = null;
+		const original = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+		Object.defineProperty(navigator, "clipboard", {
+			configurable: true,
+			value: {
+				writeText: async (value: string) => {
+					copied = value;
+				},
+			},
+		});
+		try {
+			button.click();
+			await new Promise((resolve) => setTimeout(resolve, 50));
+		} finally {
+			if (original) Object.defineProperty(navigator, "clipboard", original);
+			else Reflect.deleteProperty(navigator, "clipboard");
+		}
+		if (copied !== DOCUMENT.storedPath)
+			throw new Error(
+				`the missing state copied ${JSON.stringify(copied)}, not the stored path`,
+			);
+		if (copied === DOCUMENT.path)
+			throw new Error("the missing state still copies the dead origin path");
+		if (!canvasElement.textContent?.includes("Saved copy path copied"))
+			throw new Error("the saved-copy confirmation is not announced");
+	},
 };
 
 /**

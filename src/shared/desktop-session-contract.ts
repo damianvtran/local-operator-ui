@@ -1744,6 +1744,9 @@ export type CanonicalContentBlock = {
 	filename?: string;
 	/** The origin absolute path, display/provenance only. */
 	path?: string;
+	/** The attachment store's absolute path (the retained copy), when the row
+	 *  carries one. The missing state copies THIS, never the dead origin path. */
+	stored_path?: string;
 	/** Byte size of the original file. */
 	bytes?: number;
 	/** How the turn reached the model; historical metadata only. */

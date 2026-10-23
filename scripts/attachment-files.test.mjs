@@ -384,9 +384,36 @@ test("a document block maps to the sent-file card's view record, legacy rows inc
 		filename: "report.pdf",
 		mimeType: "application/pdf",
 		path: "/tmp/report.pdf",
+		// The client's FileRef carries no store path; the durable block is what can
+		// name the retained copy, and this row does not.
+		storedPath: null,
 		bytes: 4096,
 		injection: "native",
 	});
+
+	// The owner's row can name the retained copy, which is the value the missing
+	// state copies instead of the dead origin path (design D2 follow-up).
+	const stored = module.extractDocuments(
+		{
+			content: [
+				{
+					type: "document",
+					attachment: DIGEST,
+					filename: "report.pdf",
+					mime_type: "application/pdf",
+					path: "/tmp/report.pdf",
+					stored_path: "/var/attachments/0123456789abcdef0123456789abcdef.bin",
+					bytes: 4096,
+				},
+			],
+		},
+		"row-4",
+	);
+	assert.equal(stored.length, 1);
+	assert.equal(
+		stored[0].storedPath,
+		"/var/attachments/0123456789abcdef0123456789abcdef.bin",
+	);
 
 	// A row written before `type` existed: `filename` + `mime_type` + a digest is
 	// the legacy spelling the core routes to the same block (contract v1 §2).
@@ -406,6 +433,7 @@ test("a document block maps to the sent-file card's view record, legacy rows inc
 	assert.equal(legacy.length, 1);
 	assert.equal(legacy[0].filename, "old.csv");
 	assert.equal(legacy[0].path, null);
+	assert.equal(legacy[0].storedPath, null);
 
 	// Identity is preserved when nothing changed, so a per-token repaint does not
 	// remount every file card.

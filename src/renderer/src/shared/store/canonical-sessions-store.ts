@@ -832,6 +832,9 @@ function documentsOf(files: readonly ChatFile[], recordId: string) {
 		filename: file.name ?? "Attached file",
 		mimeType: file.mime_type ?? "application/octet-stream",
 		path: file.path ?? null,
+		// The client's FileRef carries no store path (contract §1.2), so an echo
+		// paints without one; the owner's durable row supplies it when it lands.
+		storedPath: null,
 		bytes: file.bytes ?? 0,
 	}));
 }

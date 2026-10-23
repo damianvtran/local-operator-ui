@@ -133,6 +133,13 @@ export type TranscriptDocument = {
 	mimeType: string;
 	/** The origin absolute path, display/provenance only. */
 	path: string | null;
+	/**
+	 * The attachment store's absolute path, when the owner's row carries one.
+	 * This is what the missing state copies: the origin path is exactly what is
+	 * gone, so offering it would hand the person a dead string (design round 1,
+	 * D2 follow-up).
+	 */
+	storedPath: string | null;
 	bytes: number;
 	/** How the turn reached the model (historical metadata). */
 	injection?: "native" | "extracted" | "reference";
@@ -1327,6 +1334,10 @@ export function extractDocuments(
 					: (block.name ?? "Attached file"),
 			mimeType: block.mime_type ?? "application/octet-stream",
 			path: typeof block.path === "string" && block.path ? block.path : null,
+			storedPath:
+				typeof block.stored_path === "string" && block.stored_path
+					? block.stored_path
+					: null,
 			bytes: typeof block.bytes === "number" ? block.bytes : 0,
 			...(block.injection ? { injection: block.injection } : {}),
 		});
@@ -1351,6 +1362,7 @@ function sameDocuments(
 			entry.filename === other.filename &&
 			entry.mimeType === other.mimeType &&
 			entry.path === other.path &&
+			entry.storedPath === other.storedPath &&
 			entry.bytes === other.bytes &&
 			entry.injection === other.injection
 		);
