@@ -61,7 +61,12 @@ import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type ThemeName, themes } from "@shared/themes";
-import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
+import {
+	showErrorToast,
+	showInfoToast,
+	showSuccessToast,
+	showWarningToast,
+} from "@shared/utils/toast-manager";
 import {
 	keepPreviousData,
 	useQuery,
@@ -3840,18 +3845,25 @@ export const RenamePicker: FC<PickerContext> = ({
 				 * the footer's busy-state Close does not cancel the command - so a refusal
 				 * that lands after the reader dismissed this dialog would otherwise be
 				 * reported NOWHERE, and the signature of a rename that did not happen is
-				 * silence. Every non-success tone goes out as `showErrorToast(result.text)`:
-				 * the tone's fine print belonged to the strip's styling, while the fact the
-				 * reader needs where they now are is that the name was not stored. That is
-				 * the same call, for the same reason, that `ReloadPicker`'s late failure
-				 * makes (review U6). While the dialog is up the strip carries it, so this
+				 * silence.
+				 *
+				 * THE CARRIER FOLLOWS THE TONE because a warning's colour and a warning's
+				 * de-dupe behaviour are not an error's: `showErrorToast` drops a repeat of
+				 * the same sentence for five seconds, so a warning that rode it could lose
+				 * exactly the retry this branch exists to announce. `info` is a
+				 * `native_action`/`block` receipt - no `_rename_slash` branch returns one
+				 * today, but this branch should not speak for a tone it does not have.
+				 * `ReloadPicker`'s late failure (review U6) is the same carrier decision on
+				 * an error-only path. While the dialog is up the strip carries it, so this
 				 * branch is the only one that speaks.
 				 */
 				if (result.tone === "success") {
 					showSuccessToast(result.text);
 					if (!closed.current) onClose();
 				} else if (closed.current) {
-					showErrorToast(result.text);
+					if (result.tone === "warning") showWarningToast(result.text);
+					else if (result.tone === "error") showErrorToast(result.text);
+					else showInfoToast(result.text);
 				}
 			}}
 			submitLabel="Rename"

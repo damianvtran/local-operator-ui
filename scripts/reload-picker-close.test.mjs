@@ -173,16 +173,21 @@ const RELOAD_FAILURE_LINE =
 let nextAnswer = () => Promise.reject(new Error("no answer installed"));
 /** Every toast the shipped component raised, in order. */
 const toasts = [];
+/** The warning toasts raised - the carrier a `notice`/`warning` refusal takes. */
+const warnings = [];
+/** The info toasts raised - the carrier a `native_action`/`block` receipt takes. */
+const infos = [];
 /** The error toasts raised, for the failure that lands after the dialog is gone. */
 const errors = [];
 
 /*
- * THE TWO SEAMS, AND WHY THEY ARE THE ONLY ONES. `desktopResult` is the transfer
+ * THE SEAMS, AND WHY THEY ARE THE ONLY ONES. `desktopResult` is the transfer
  * itself - faking it is what lets a case choose the backend's answer, and there
- * is no way to drive a failure path without it. `showSuccessToast` is the
- * assertion surface for the receipt's survival past the dialog, and sonner's own
- * observer needs a frame clock this harness would otherwise have to fake twice.
- * Everything else - the picker, its host, its footer, `cn` - is the shipped code.
+ * is no way to drive a failure path without it. The toast functions are the
+ * assertion surfaces for the receipt's survival past the dialog and for the
+ * tone a late refusal takes, and sonner's own observer needs a frame clock this
+ * harness would otherwise have to fake twice. Everything else - the picker, its
+ * host, its footer, `cn` - is the shipped code.
  */
 const stubs = {
 	"@shared/api/local-operator/desktop-api": `
@@ -192,6 +197,8 @@ const stubs = {
 	"@shared/utils/toast-manager": `
 		export * from "${resolve("src/renderer/src/shared/utils/toast-manager.ts")}";
 		export const showSuccessToast = (message) => globalThis.__successToast(message);
+		export const showWarningToast = (message) => globalThis.__warningToast(message);
+		export const showInfoToast = (message) => globalThis.__infoToast(message);
 		export const showErrorToast = (message) => globalThis.__errorToast(message);
 	`,
 	/*
@@ -266,6 +273,14 @@ globalThis.__successToast = (message) => {
 	toasts.push(message);
 	return "toast-id";
 };
+globalThis.__warningToast = (message) => {
+	warnings.push(message);
+	return "toast-id";
+};
+globalThis.__infoToast = (message) => {
+	infos.push(message);
+	return "toast-id";
+};
 globalThis.__errorToast = (message) => {
 	errors.push(message);
 	return "toast-id";
@@ -306,6 +321,8 @@ const pressReload = async ({
 } = {}) => {
 	document.body.innerHTML = "";
 	toasts.length = 0;
+	warnings.length = 0;
+	infos.length = 0;
 	errors.length = 0;
 	let closed = 0;
 	const rebound = [];
@@ -562,6 +579,8 @@ test("a conversation with no title is named by its session id", async () => {
 test("an in-flight failure after the dialog is gone is raised as a toast", async () => {
 	document.body.innerHTML = "";
 	toasts.length = 0;
+	warnings.length = 0;
+	infos.length = 0;
 	errors.length = 0;
 	let fail = null;
 	nextAnswer = () =>
@@ -628,6 +647,8 @@ const mountRename = async (
 ) => {
 	document.body.innerHTML = "";
 	toasts.length = 0;
+	warnings.length = 0;
+	infos.length = 0;
 	errors.length = 0;
 	const requests = [];
 	let closed = 0;
@@ -769,6 +790,8 @@ for (const outcome of [
 			),
 		);
 		assert.deepEqual(toasts, []);
+		assert.deepEqual(warnings, []);
+		assert.deepEqual(errors, []);
 	});
 }
 
@@ -831,6 +854,8 @@ test("rename waits for the owner's response before closing", async (context) => 
 test("a late rename receipt leaves a picker opened after its dismissal up", async (context) => {
 	document.body.innerHTML = "";
 	toasts.length = 0;
+	warnings.length = 0;
+	infos.length = 0;
 	errors.length = 0;
 	const requests = [];
 	let finish = null;
@@ -945,11 +970,16 @@ test("a late rename receipt leaves a picker opened after its dismissal up", asyn
  * it as a toast. The refusal a rename actually meets is `notice` + `warning`
  * ("session is still starting…", `serving.py:8280`), which is the case pinned
  * here: before the fix it left `toasts === []`, `errors === []`, and the one
- * sentence saying the name was not stored in no DOM node.
+ * sentence saying the name was not stored in no DOM node. It lands on the
+ * warning carrier, not the error one (agent review round 2, R2-1): the same
+ * command's other surface reports this tone with `showWarningToast`, and
+ * `showErrorToast` would drop a repeat of the sentence for five seconds.
  */
-test("a warning refusal that lands after dismissal is raised as an error toast", async (context) => {
+test("a warning refusal that lands after dismissal is raised as a warning toast", async (context) => {
 	document.body.innerHTML = "";
 	toasts.length = 0;
+	warnings.length = 0;
+	infos.length = 0;
 	errors.length = 0;
 	const requests = [];
 	let finish = null;
@@ -1022,10 +1052,11 @@ test("a warning refusal that lands after dismissal is raised as an error toast",
 		await Promise.resolve();
 	});
 	assert.deepEqual(
-		errors,
+		warnings,
 		["session is still starting…"],
 		"the refusal sentence is said where the reader still is",
 	);
+	assert.deepEqual(errors, [], "and it is not painted as an error");
 	assert.deepEqual(toasts, [], "and no success is claimed");
 	assert.equal(
 		document.querySelector('[role="dialog"]') === null,
