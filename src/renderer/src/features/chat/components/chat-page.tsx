@@ -2959,11 +2959,17 @@ function SessionPanel({
 		} finally {
 			setAdmitting(false);
 		}
-		if (outcome.status === "failed") {
+		if (outcome.status !== "sent") {
+			/*
+			 * `settleAskOutcome` is the one place that clears the in-flight flag and
+			 * records the sentence: a transport failure carries the owner's words, and
+			 * a `refused` outcome (the lock was taken, or the session id is gone) reached
+			 * nothing so it records neither. Returning without it would leave the card
+			 * disabled for the mount's life.
+			 */
 			settleAskOutcome(taskId, outcome);
 			return;
 		}
-		if (outcome.status === "refused") return;
 		setAskOutcomes((current) => ({
 			...current,
 			[taskId]: { sending: false, refused: null, dismissed: reason },
