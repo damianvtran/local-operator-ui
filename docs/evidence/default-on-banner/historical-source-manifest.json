@@ -1,0 +1,136 @@
+{
+  "source": "19f094810fcc26757efc2bf456f8a4b5437bb984",
+  "method": "Reversible source overlay; original main Settings/Page stories only; no feature story imported. Both parents share pnpm-lock.yaml and existing node_modules. All overlaid source restored and hash-verified after server teardown.",
+  "files": [
+    {
+      "path": "src/i18n/catalogues/en/ui.agentMessages.context.json",
+      "main_sha256": "24707590755f8546d1624939a94f7c719eb2d172b4ad54f5ba5af6b710057adc",
+      "restore_sha256": "16cb7b83431bd14dc73059bdc07d6dde2c8ca19e4fa241232912ae982d6e0c89"
+    },
+    {
+      "path": "src/i18n/catalogues/en/ui.agentMessages.json",
+      "main_sha256": "8dadc34125e9434d3994cff7518f72774bd486ce36edd505d34e21ef4c4f574b",
+      "restore_sha256": "f1de50d192ed3935d5f1eaffae182986653e2fd703c33dd1804f05aa9de3cc71"
+    },
+    {
+      "path": "src/i18n/catalogues/en/ui.agentMessages.settings.context.json",
+      "main_sha256": "0796c27031e5a3b9a600147e67e1341234f6ed0f5adfd3b7c4f7758a5bcff63d",
+      "restore_sha256": "a2ef251885d17fea571c6ff698557b449a01f9d9dba29da435b828920931e10a"
+    },
+    {
+      "path": "src/i18n/catalogues/en/ui.agentMessages.settings.json",
+      "main_sha256": "1fb72465d3c05768918f79164bf1c3f8313160c4d05046a50a52046b2e8c1e3b",
+      "restore_sha256": "dc4d78d84cd84092cc3f67d10dbf733f2ef0bea5eb3011250b39fa78637e6a74"
+    },
+    {
+      "path": "src/i18n/catalogues/es/ui.agentMessages.json",
+      "main_sha256": "7e5e750b59fab4433b09b444999d9918a963eae8175c6eb02140ed46e1b191c6",
+      "restore_sha256": "7ea979b5d9129c3e28ccbb61b8504c8b1f8c298143d926a06db09c903c8585ac"
+    },
+    {
+      "path": "src/i18n/catalogues/es/ui.agentMessages.settings.json",
+      "main_sha256": "b83a0b0f408f9d748257bb7c2307a9517282346ef169b04c6adfe54d4a549f62",
+      "restore_sha256": "cb575a99b94bd78d8e7c4093a6efb1d30a848253ec5fcdd9c15443fd77315874"
+    },
+    {
+      "path": "src/i18n/catalogues/fr/ui.agentMessages.json",
+      "main_sha256": "65dab69ba8726cd865d83237a848b7175f64fc6b2e3bd89e2f1ac91bc35aa37e",
+      "restore_sha256": "2d7622683cca6f9570781fef2c44a9cb29e856b14a2bda24e15dd1a446b4b52f"
+    },
+    {
+      "path": "src/i18n/catalogues/fr/ui.agentMessages.settings.json",
+      "main_sha256": "306e842db2d36589a8b6fb764c3097b7c034cc923819af19b3e3c6fa486d5eb0",
+      "restore_sha256": "cfec9f1377dddb89bb0b69c2f79205a6ba3413120c40e0672f83eed6e66d1643"
+    },
+    {
+      "path": "src/i18n/catalogues/hi/ui.agentMessages.json",
+      "main_sha256": "85d66871d38261f8685edd081f504bce50b7984875f8fb4dc8476c8c4b84fcd4",
+      "restore_sha256": "05737206c87bc76da0305936a36992b436d3d7222057ccad20d6e4d75a752258"
+    },
+    {
+      "path": "src/i18n/catalogues/hi/ui.agentMessages.settings.json",
+      "main_sha256": "a7bbd901ced0ae96c5dc0040e9f8933a6f1c0c7745e48a2643a12d90f96b64c5",
+      "restore_sha256": "aae33bc2bc89c6f9ec59c39d4ba5889233692198bc05bf1a7298cdd4654678bf"
+    },
+    {
+      "path": "src/i18n/catalogues/ru/ui.agentMessages.json",
+      "main_sha256": "0eef4e751346c64024b42f67d9b8c334a1de7f301e335d8913a88d2425b92c23",
+      "restore_sha256": "a1461786b4a3c274bd07ed63f20744f93c99ed824d48c1dfefa64d93f491fd07"
+    },
+    {
+      "path": "src/i18n/catalogues/ru/ui.agentMessages.settings.json",
+      "main_sha256": "7d8efca849197942b2a037f8f7ba52da011bbb568706875aa61a27a2c9037224",
+      "restore_sha256": "928207048eb9f9f4acf6fadd90a21ba67ed7fedf41925dd093317b415367ca8d"
+    },
+    {
+      "path": "src/i18n/catalogues/ur/ui.agentMessages.json",
+      "main_sha256": "3fc28406c6f976c3ce3b6fc2f4db2c491446e18ee1f37ad453a677d113808a0a",
+      "restore_sha256": "a9eac735647610b5a6c5d77a7c773e4650ea5b820a4136e1909f13803f998636"
+    },
+    {
+      "path": "src/i18n/catalogues/ur/ui.agentMessages.settings.json",
+      "main_sha256": "f3196d2cfd19cc1943cac1c319e2e939c427fe98d2dae2d1af4b01bde39ba668",
+      "restore_sha256": "77f9482d2561f379449c12f22a0916263c8341bbb4fac7719c3b00e39b6da779"
+    },
+    {
+      "path": "src/i18n/catalogues/vi/ui.agentMessages.json",
+      "main_sha256": "d67fc9c4dd503ec1e14f4deed61ebb143ff32aa21da9e23d09eaa63c2f75df07",
+      "restore_sha256": "7f741da8d57bbfaecb699b64985d765f41362d249de548f6301ec32731400ed0"
+    },
+    {
+      "path": "src/i18n/catalogues/vi/ui.agentMessages.settings.json",
+      "main_sha256": "eeea2320f5b06e809c9ffce9c477782681bbba01e2c020c49186a8f228d2b151",
+      "restore_sha256": "be07880780612646fb8c53a68960d5ccf9d0d4d9c0e95344f3d50fff59f3ee57"
+    },
+    {
+      "path": "src/i18n/catalogues/zh-CN/ui.agentMessages.json",
+      "main_sha256": "57d8e4846f0727597674cc64676131b0c8231fef378f4b5ad9a34e519a3e8171",
+      "restore_sha256": "7114e27ddbd820f0f9bf55eea5bcc39eb543ae01fa9cdbd9596525fe15c96e4d"
+    },
+    {
+      "path": "src/i18n/catalogues/zh-CN/ui.agentMessages.settings.json",
+      "main_sha256": "29dbb048958de8ecca72abf9a16c4c4fd4ab764e446e3405b28a89cd75fce2e3",
+      "restore_sha256": "42796468af5592e6a09e6df7c76d7ca205e9c2662b343cad1e4fad7fbc81f685"
+    },
+    {
+      "path": "src/i18n/keys.gen.ts",
+      "main_sha256": "ffd2baa5f5279e1ab0e937f0904caec98f31fa9f6fa8ec40553fe7211f2f22da",
+      "restore_sha256": "10ea897c6b7200a18bd434eeed410346cb9689af5152b6b87eb3616f700a22bc"
+    },
+    {
+      "path": "src/renderer/src/features/agent-messages/agent-messages-settings.stories.tsx",
+      "main_sha256": "27386d8122bfd0709eabb6cebad3cbfa6b687fca73faa4e901a7a4a83c082c50",
+      "restore_sha256": "c8dc1eacf5126eeca7cc1e2276a872c4010926b2d4b15a17a258b3e7dec64ce0"
+    },
+    {
+      "path": "src/renderer/src/features/agent-messages/agent-messages-settings.tsx",
+      "main_sha256": "d26b761ef945cec29d82b4ef01d3df76ffcd3ba66737aab2e203ef7873784b78",
+      "restore_sha256": "804616538fe7cc1e1b7f140a7d18f6ada0d45965da4e1778ddb23e5e054d31e3"
+    },
+    {
+      "path": "src/renderer/src/features/team-bridge/team-bridge-page.tsx",
+      "main_sha256": "48162fadce5395cd2e2591967052eec1955b4f52a64e0dd4b214f0c380882b7c",
+      "restore_sha256": "4f4f37c46bc5725201e918fe966f581169bf85064474f5b1281a81063934fd8f"
+    },
+    {
+      "path": "src/renderer/src/shared/api/local-operator/agent-messages-api.ts",
+      "main_sha256": "cf3b172aa19a4b36f1f687e0b9ae344291116d04cbc6adb6ec8904b14f6182a2",
+      "restore_sha256": "b26fa1cdcfb219509ad71b0f6bd7ff64735696dab3f7d921b26c168910ca3cd8"
+    },
+    {
+      "path": "src/renderer/src/shared/store/agent-messages-onboarding-store.ts",
+      "main_sha256": "6df020f6be9f340a7e34601d413b0beb2b04a6fcd6ff98bccfd007f2ff997a0d",
+      "restore_sha256": "b31f8b0df1bd40844ffa290f2dbc1d92526d7b97533e38bd80972cf046a03fba"
+    },
+    {
+      "path": "src/shared/agent-messages-contract.ts",
+      "main_sha256": "82ed909d54bfcc4316a65a6d13180ee18407bed74ca378ac511efdd36b011e1a",
+      "restore_sha256": "227e28c3bd91cb4cd028753486d891b25264f505e800253dba62030f8ae2cace"
+    },
+    {
+      "path": "src/shared/desktop-contract.ts",
+      "main_sha256": "7e112a73adf559dbdb5e5cae00e2a9fa632629a128e0e9ef8f213455df6add7b",
+      "restore_sha256": "568641e4ea0098af2976f34576a11cc22921fc02b14cb586d05cbbe1ddd823d6"
+    }
+  ]
+}
