@@ -1062,24 +1062,96 @@ test("the draft state closes on an unclaimed Escape; a live console keeps the ke
 
 test("the commit record is not empty, so it cannot pass by observing nothing", async () => {
 	/*
-	 * A GUARD ON THE INSTRUMENT, because an assertion that every recorded state lacks a
-	 * string is satisfied by a record of no states at all. This is the smallest case
-	 * that must produce one.
+	 * recordPaint stores DISTINCT TEXT STATES, not one entry per Profiler commit.
+	 * An immediately resolved create can batch updates or repeat the same text;
+	 * neither guarantees two states. Hold the real bridge promise until the DOM
+	 * independently exposes STARTING, then release and observe its final EMPTY
+	 * state. Waiting on the recorder itself would make a disabled recorder fail
+	 * by timeout, hiding the exact anti-vacuity oracle below.
+	 *
+	 * Node22 off-host held/suppressed controls qualified this stimulus: the same
+	 * distinct DOM commits reached the recorder, and suppressing only recordPaint
+	 * failed the named oracle while bridge/DOM progress remained valid. The old
+	 * CI count-one event was not reproduced; this is fixture hardening, not a
+	 * product/scheduler fix or a natural-flake-rate claim.
 	 */
 	resetIntent();
-	installBridge({ create: async ({ setListing }) => setListing([]) });
+	let releaseCreate;
+	let entered = false;
+	let fulfilled = false;
+	let createPromise;
+	const gate = new Promise((resolve) => {
+		releaseCreate = resolve;
+	});
+	const bridge = installBridge({
+		create: async ({ setListing }) => {
+			entered = true;
+			await gate;
+			setListing([]);
+		},
+	});
+	const realCreate = window.api.console.createSurface;
+	window.api.console.createSurface = (...args) => {
+		// Observe fulfilment of the SAME promise the component receives. Callback
+		// return is not promise fulfilment; do not substitute another promise.
+		createPromise = realCreate(...args);
+		createPromise.then(
+			() => {
+				fulfilled = true;
+			},
+			() => {},
+		);
+		return createPromise;
+	};
 	const { root, container } = await mountPane();
 	try {
+		assert.ok(
+			await waitFor(() => EMPTY_STATE.test(container.textContent ?? "")),
+			"initial empty state must settle before the mark",
+		);
 		const mark = paints.length;
 		pressOpenConsole();
-		await waitFor(() => since(mark).length >= 2);
 		assert.ok(
-			since(mark).length >= 2,
-			`the recorder sees commits, saw ${since(mark).length}`,
+			await waitFor(
+				() => entered && STARTING.test(container.textContent ?? ""),
+			),
+			"pending create must commit before release",
+		);
+		const pending = container.textContent ?? "";
+		assert.match(pending, STARTING);
+		assert.doesNotMatch(pending, EMPTY_STATE);
+		releaseCreate();
+		assert.ok(
+			await waitFor(
+				() => fulfilled && EMPTY_STATE.test(container.textContent ?? ""),
+			),
+			"fulfilled create must commit its final empty state",
+		);
+		const final = container.textContent ?? "";
+		assert.match(final, EMPTY_STATE);
+		assert.doesNotMatch(final, STARTING);
+		assert.notEqual(pending, final);
+		assert.equal(
+			bridge.calls.create,
+			1,
+			"one open reaches one real bridge promise",
+		);
+		const states = since(mark);
+		const pendingAt = states.indexOf(pending);
+		const finalAt = states.indexOf(final);
+		assert.ok(
+			pendingAt >= 0 && finalAt > pendingAt,
+			"recorder must retain both causally separated committed states",
 		);
 	} finally {
-		root.unmount();
-		container.remove();
+		releaseCreate();
+		try {
+			if (createPromise) await createPromise;
+		} finally {
+			window.api.console.createSurface = realCreate;
+			root.unmount();
+			container.remove();
+		}
 	}
 });
 

@@ -2261,11 +2261,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					 * transcript scroller now inherit rather than name one, and the
 					 * canonical user bubble carries a note. Each is annotated where it
 					 * sits.
+					 *
+					 * `panel-top-pad` because the chat route is a flush panel route
+					 * (`ChatPage`'s root, design round 1, D1): this column's `canvas`
+					 * ground starts at y0 under the transparent lane, and the pad is
+					 * what moves the header below the OS controls. It is padding, not
+					 * a margin, so the ground stays continuous through the strip.
 					 */}
 					<div
 						ref={chatContainerRef}
 						data-glass-region="canvas"
-						className="flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-canvas"
+						className="panel-top-pad flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-canvas"
 					>
 						{/* Chat header */}
 						{/*
