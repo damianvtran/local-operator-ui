@@ -244,6 +244,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 */
 	const suggestionsEnabled = mode === "popout" && addressHistory !== undefined;
 	const inputEl = useRef<HTMLInputElement | null>(null);
+
 	/**
 	 * False once THIS popout/bar is unmounting. React removes the focused input
 	 * during an unmount, which fires a blur; running the blur handler then would
@@ -427,6 +428,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			t("ui.browser.browser_url_bar.address_suggestions_unavailable"),
 		);
 	}, [hintShown]);
+	const hintPainted = hintShown && !narrow;
 	const suggestions = useMemo(
 		() =>
 			suggestAddresses(autocomplete.entries, query, {
@@ -1148,7 +1150,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 					</Button>
 				</Tooltip>
 			)}
-			<div className="relative min-w-0 grow">
+			<div className="@container/addressfield relative min-w-0 grow">
 				<Tooltip content={siteInfoLabel} side="top">
 					{/* NOT A TAB STOP (round-1 U4): the mark has no action, so it is
 					    described from the field (`aria-describedby`) and keeps its
@@ -1222,12 +1224,11 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						   reserves its own trailing run in the field's CONTENT box, so
 						   the text scrolls in the space that remains. Below the narrow
 						   breakpoint the pill is `sr-only` and needs no reservation. */
-						hintShown &&
-							!narrow &&
-							/* QA measured the wide painted pill at 218 px. Reserve that
-							   plus a 160 px field floor, but never more than the field
-							   can spare; below 360 `narrow` keeps it description-only. */
-							"pr-[min(378px,max(0px,calc(100%-10rem)))]",
+						hintPainted &&
+							/* FIELD width is the gate, not row width (Q5-1): the pill
+							   and its run only exist in a field of at least 342 px; the
+							   clamp keeps a 160 px field floor above that. */
+							"@[342px]/addressfield:pr-[min(378px,max(0px,calc(100%-10rem)))]",
 					)}
 				/>
 				{loading && !editing && (
@@ -1251,7 +1252,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						className={
 							narrow
 								? "sr-only"
-								: "pointer-events-none absolute top-1/2 right-7 max-w-[45%] -translate-y-1/2 truncate rounded-sm bg-elevated px-1 text-meta text-ink-dim"
+								: "hidden pointer-events-none absolute top-1/2 right-7 max-w-[45%] -translate-y-1/2 truncate rounded-sm bg-elevated px-1 text-meta text-ink-dim @[342px]/addressfield:block"
 						}
 						data-tour-tag="browser-address-unavailable"
 					>

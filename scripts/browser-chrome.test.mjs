@@ -4024,18 +4024,37 @@ test("the unavailable sentence is announced and does not name implementation sta
 		1,
 		"exactly one polite live region (Q4-2)",
 	);
+	assert.ok(
+		bar.includes("@container/addressfield relative min-w-0 grow"),
+		"the field, not the row, is the measured container (Q5-1)",
+	);
+	const surfaceSource = readFileSync(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+		"utf8",
+	);
 	assert.match(
-		readFileSync(
-			"src/renderer/src/features/browser/components/browser-surface.tsx",
-			"utf8",
-		),
-		/narrow=\{rowWidth > 0 && rowWidth < 360\}/,
-		"359 is description-only; 360 is the first reserving row (Q5-1)",
+		surfaceSource,
+		/const onStartPage = browserOwnStateFor\(activeTab, chrome\.pendingUrl\)/,
+		"the surface derives own-state from pendingUrl, not the loading flag",
+	);
+	assert.match(
+		surfaceSource,
+		/suggestionsUnavailable=\{browserOwnState\}/,
+		"the field's unavailable copy reads the same own-state fact (Q5 U27)",
+	);
+	const chordsSource = readFileSync(
+		"src/renderer/src/features/browser/hooks/use-browser-chords.ts",
+		"utf8",
+	);
+	assert.match(
+		chordsSource,
+		/browserOwnState: boolean,/,
+		"the chord hook requires the shared fact, with no fail-open default",
 	);
 	assert.match(
 		bar,
-		/!narrow &&[\s\S]{0,260}"pr-\[min\(378px,max\(0px,calc\(100%-10rem\)\)\)\]"/,
-		"the field reserves the measured 218 px pill plus a 160 px floor at/above 360, clamped to the field (Q5-1)",
+		/hintPainted &&[\s\S]{0,300}"@\[342px\]\/addressfield:pr-\[min\(378px,max\(0px,calc\(100%-10rem\)\)\)\]"/,
+		"the 218 px pill and its 160 px floor start at field 342 and are clamped; 359/360/420 sit below it, wide above (Q5-1)",
 	);
 	assert.match(
 		bar,

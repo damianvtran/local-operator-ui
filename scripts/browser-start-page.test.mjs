@@ -116,6 +116,8 @@ const ENTRY = `
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserSurface } from "./src/renderer/src/features/browser/components/browser-surface";
+import { browserOwnStateFor } from "./src/renderer/src/features/browser/model/start-page";
+export { browserOwnStateFor };
 
 /**
  * Mount the surface over a fake bridge.
@@ -314,9 +316,12 @@ const bundle = await build({
 const bundlePath = new URL(`./_start-page-${process.pid}.mjs`, import.meta.url);
 let mount;
 let suppressBrowserView;
+let browserOwnStateFor;
 try {
 	await writeFile(bundlePath, bundle.outputFiles[0].text);
-	({ mount, suppressBrowserView } = await import(bundlePath.href));
+	({ mount, suppressBrowserView, browserOwnStateFor } = await import(
+		bundlePath.href
+	));
 } finally {
 	await unlink(bundlePath).catch(() => {});
 }
@@ -667,4 +672,22 @@ test("the surface reports WHY the view is hidden: its own state page versus a re
 	await act(async () => {
 		handle.unmount();
 	});
+});
+
+test("own-state treats an empty start projection as a page to refuse until a submission is pending", () => {
+	assert.equal(
+		browserOwnStateFor({ url: "" }, null),
+		true,
+		"a fresh empty projection is a start page even if the projection also says loading",
+	);
+	assert.equal(
+		browserOwnStateFor({ url: "about:blank" }, "https://example.com"),
+		false,
+		"a submitted navigation makes the blank tab a page the controls may act on",
+	);
+	assert.equal(
+		browserOwnStateFor({ url: "https://example.com" }, null),
+		false,
+		"a loaded page is never own-state",
+	);
 });
