@@ -194,16 +194,27 @@ const PROBE = `(() => {
 	const attach = items.find((el) => el !== strip && el !== controls) ?? null;
 	const chip = document.querySelector("[data-lo-cwd-chip]");
 	/*
-	 * The DURATION reading, by its accessible name - the one label only it carries.
-	 * A reading is VISIBLE when it has a box at all: the shed is \`display: none\`
-	 * (\`hidden\`), so a shed reading is not laid out and measures 0x0.
+	 * The DURATION reading, by its own marker when the fix is present and by its
+	 * accessible name on the base tree (where it has no marker). A reading is
+	 * VISIBLE when its box exists at all AND its computed visibility is not
+	 * hidden: the fix keeps the reading laid out and toggles visibility, while
+	 * the base tree's shed is a display:none, so both halves answer the same
+	 * question the same way.
 	 */
-	const duration = document.querySelector('[aria-label^="Active time:"]');
+	const durationElement = document.querySelector("[data-lo-duration]");
+	const duration =
+		durationElement ?? document.querySelector('[aria-label^="Active time:"]');
 	const readings = strip
 		? [...strip.children]
 				.filter((el) => el.nodeType === 1)
 				.map((el) => {
-					const label = el.getAttribute("aria-label") ?? "";
+					/* The fix wraps the reading in its positioned element; the base tree
+					   does not, so the label is read off the child when it has one. */
+					const reading =
+						el.getAttribute("aria-label") !== null
+							? el
+							: (el.querySelector("[aria-label]") ?? el);
+					const label = reading.getAttribute("aria-label") ?? "";
 					const kind = label.startsWith("Active time:")
 						? "duration"
 						: label.startsWith("Model:")
@@ -213,14 +224,26 @@ const PROBE = `(() => {
 								: label.startsWith("Context")
 									? "context"
 									: "cost";
+					const box = el.getBoundingClientRect();
 					return {
 						kind,
 						text: (el.textContent ?? "").trim().slice(0, 40),
-						shown: isBox(el),
+						shown:
+							box.width > 0.5 &&
+							box.height > 0.5 &&
+							getComputedStyle(reading).visibility !== "hidden",
 						box: rect(el),
 					};
 				})
 		: [];
+	/* The anchor invariant the duration's absolute placement relies on: the
+	   strip's own right edge is the last visible non-duration reading's. */
+	const nonDurationRight = readings
+		.filter((r) => r.shown && r.kind !== "duration")
+		.map((r) => r.box.right);
+	const lastNonDurationRight = nonDurationRight.length
+		? Math.max(...nonDurationRight)
+		: null;
 	/*
 	 * THE CONTAINER THE SHED QUERY ACTUALLY RESOLVES AGAINST.
 	 *
@@ -316,6 +339,17 @@ const PROBE = `(() => {
 		readingsRight: readings.length
 			? Math.max(...readings.filter((r) => r.shown).map((r) => r.box.right))
 			: null,
+		lastReadingRight: lastNonDurationRight,
+		/* 0 when the strip's right edge is the last reading's, which is the
+		   invariant \`left: calc(100% + 4px)\` assumes. */
+		anchorDelta:
+			stripBox && lastNonDurationRight !== null
+				? round(stripBox.right - lastNonDurationRight)
+				: null,
+		durationVisible:
+			duration !== null &&
+			isBox(duration) &&
+			getComputedStyle(duration).visibility !== "hidden",
 		glyphOverlap:
 			readings.filter((r) => r.shown).length && controlsBox
 				? round(
@@ -324,7 +358,8 @@ const PROBE = `(() => {
 					)
 				: null,
 		readings,
-		durationShown: isBox(duration),
+		durationShown: duration !== null && isBox(duration),
+		durationBox: rect(duration),
 		controlNames: controls
 			? [...controls.querySelectorAll("button")].map(
 					(b) => b.getAttribute("aria-label") ?? "(unnamed)",
@@ -641,7 +676,7 @@ const main = async () => {
 					String(r.row ? r.row.overflow : "?").padStart(8),
 					String(r.gap).padStart(8),
 					String(r.row ? r.row.lines : "?").padStart(8),
-					(r.durationShown ? "yes" : "no").padStart(8),
+					(r.durationVisible ? "yes" : "no").padStart(8),
 					String(r.strip ? r.strip.width : "?").padStart(8),
 					String(r.chip ? r.chip.width : "?").padStart(8),
 					String(r.controls ? r.controls.width : "?").padStart(8),

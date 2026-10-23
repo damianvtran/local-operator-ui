@@ -6322,8 +6322,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		const slotHold = useInterruptSlotHold(Boolean(canonicalStop?.active));
 
 		/*
-		 * THE THIRD BOX IN THE CONTROLS GROUP, named ONCE, because two surfaces ask
-		 * about it and a second copy of the condition is how they drift.
+		 * THE THIRD BOX IN THE CONTROLS GROUP, named ONCE, because the strip's width
+		 * ladders ask about it and a second copy of the condition is how they drift.
 		 *
 		 * The row's right group is `[mic][send]` in the ordinary state and gains a
 		 * THIRD 32px box in two: while a turn runs (`canonicalStop.active` draws the
@@ -6332,19 +6332,28 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * the 500ms window, `isRecording` for as long as a live recording needs a press
 		 * in the box the Stop just left kept off the dictation control.
 		 *
-		 * WHY THE STRIP IS TOLD ABOUT IT (issue #788). The readings cluster's shed
-		 * rule is a container query, and a container query can see a width but not a
-		 * SIBLING: the active-time reading returned at the band's upper edge into a row
-		 * that by then carried 36px more controls, and overran them by ~8px with the
-		 * model name already at its `min-w-14` floor. It did that at EVERY column above
-		 * the band, not just at its edge, because the composer box is capped at
-		 * `--lo-chat-measure` (810 shipped, `styles/index.css`), so the row is 778px at
-		 * every column from 858 up - no width exists at which the running row fits the
-		 * fullest cluster, which is why the fix is the state and not a wider band.
+		 * WHY THE STRIP IS TOLD ABOUT IT (issue #788). Effort, cost and context are
+		 * shed by container-range queries carrying a state pair, because a container
+		 * query can see a width but not a SIBLING: the readings returned at the band's
+		 * upper edge into a row that by then carried 36px more controls, and overran
+		 * them by ~8px with the model name already at its `min-w-14` floor. It did
+		 * that at EVERY column above the band, not just at its edge, because the
+		 * composer box is capped at `--lo-chat-measure` (810 shipped,
+		 * `styles/index.css`), so the row is 778px at every column from 858 up - no
+		 * width exists at which the running row fits the fullest cluster, which is why
+		 * those three rungs are stated on the state rather than on a wider band.
 		 * Measured on both trees by `scripts/composer-readings-geometry.mjs`.
 		 *
+		 * THE DURATION READS THE GROUP ITSELF. It is not on that ladder any more: the
+		 * strip measures this group's left edge at runtime against the reading's own
+		 * box, found by the `data-lo-composer-controls` marker below rather than by
+		 * these terms. A box this predicate never anticipated - the `Starting
+		 * recording` caption, a future control - is therefore accounted for by the
+		 * measurement without teaching this condition about it. The flag remains the
+		 * three width ladders' input, and only theirs.
+		 *
 		 * AND THE SLOT'S OWN JSX READS `interruptSlotDrawn` rather than repeating the
-		 * condition, so a change to when the box is drawn cannot leave the shed
+		 * condition, so a change to when the box is drawn cannot leave a ladder
 		 * behind - the two questions have one answer by construction.
 		 */
 		const interruptSlotDrawn =
@@ -9542,7 +9551,10 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								 * slot is first (see above); it makes the paint [attach][chip]
 								 * [readings][mic][send] out of a DOM whose first child is the cluster.
 								 */}
-								<div className="ml-auto flex order-3 items-center gap-1">
+								<div
+									data-lo-composer-controls={true}
+									className="ml-auto flex order-3 items-center gap-1"
+								>
 									{/*
 									 * THE PRESS IS ANSWERED BEFORE THE RECORDER EXISTS (operator feedback
 									 * via Aida, 2026-10-01). The microphone acquisition is the one part
