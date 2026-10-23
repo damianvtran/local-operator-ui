@@ -107,6 +107,42 @@ function titleOf(row: SwitcherRow): string {
 	return row.title ?? t("ui.command_palette.palette_search.untitled_chat");
 }
 
+/*
+ * THE MENU A CTRL+CLICK RAISES, CAUGHT BEFORE IT LANDS. The row commits on
+ * `pointerdown` and the panel unmounts inside that same event, but Chromium
+ * raises `contextmenu` AFTER it and hit-tests it against whatever the panel was
+ * covering - so the row's own `onContextMenu` cannot run on the commit path, and
+ * on macOS the transcript's Copy menu would open over the conversation the press
+ * just switched to (agent review round 2, R2-1).
+ *
+ * A capture-phase listener on `window` is the one place that still sees the
+ * event: capture on the window runs before the element under the pointer, and
+ * before Radix's composed trigger, whose handler skips a prevented event.
+ * `preventDefault` is the whole action.
+ *
+ * ARMED FOR ONE PRESS, NEVER LONGER: it disarms on the first `contextmenu` it
+ * swallows, on the next `pointerup`, or at the bound below. A guard that outlived
+ * its press would swallow a genuine right-click in the pane the reader has just
+ * switched to, which is a worse trade than one unguarded menu.
+ */
+const PRESS_CONTEXT_MENU_GUARD_MS = 1000;
+
+function guardNextContextMenu(): void {
+	let bound = 0;
+	function disarm(): void {
+		window.clearTimeout(bound);
+		window.removeEventListener("contextmenu", onContextMenu, true);
+		window.removeEventListener("pointerup", disarm, true);
+	}
+	function onContextMenu(event: MouseEvent): void {
+		event.preventDefault();
+		disarm();
+	}
+	bound = window.setTimeout(disarm, PRESS_CONTEXT_MENU_GUARD_MS);
+	window.addEventListener("contextmenu", onContextMenu, true);
+	window.addEventListener("pointerup", disarm, true);
+}
+
 function SwitcherRowButton({
 	row,
 	active,
@@ -136,17 +172,29 @@ function SwitcherRowButton({
 			onPointerDown={(event) => {
 				if (event.button !== 0) return;
 				event.preventDefault();
+				/* Before the commit, because the commit is what unmounts this row: the
+				   menu Chromium raises next lands on whatever was underneath it. */
+				guardNextContextMenu();
 				onCommit();
 			}}
 			/* The pointer must not take the caret either - the panel is up for as long
 			   as Control is held, and a button that stole focus would leave it on a node
 			   that unmounts the moment the row is committed. */
 			onMouseDown={(event) => event.preventDefault()}
-			/* And no OS context menu over a surface that is only up for a held chord. */
+			/* A MENU WHILE THIS ROW IS STILL MOUNTED - a press that does not commit
+			   (button 2, or a right-click that leaves the panel up). The Ctrl+click that
+			   DOES commit unmounts the row inside `pointerdown`, so its `contextmenu`
+			   never reaches here; the window guard armed there holds it
+			   (`guardNextContextMenu`). */
 			onContextMenu={(event) => event.preventDefault()}
-			/* Hovering moves the selection, the palette's own treatment: a press commits
-			   the row under the pointer, so the pointer has to show what that would be. */
-			onPointerEnter={onHover}
+			/* THE POINTER MOVES THE SELECTION ONLY WHEN IT ACTUALLY MOVES, the palette's
+			   own spelling (`onMouseMove`, `command-palette.tsx`): Chromium raises
+			   `pointerover`/`pointerenter` on an element inserted under a STATIONARY
+			   cursor, so an enter handler would replace the opening selection before the
+			   reader touched anything - and here the release IS the commit, so a resting
+			   pointer would open a row nobody chose (design round 2, D6). A real move
+			   still selects, which is what shows the row a press would commit. */
+			onMouseMove={onHover}
 			className={cn(
 				"flex h-9 w-full items-center gap-3 rounded-sm px-2 text-left",
 				/* The active row is a ground step with its own edge, the palette's own
