@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { after, test } from "node:test";
+import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 
@@ -157,11 +158,23 @@ const bundle = await build({
 	alias: {
 		"@shared": `${process.cwd()}/src/renderer/src/shared`,
 	},
+	// EXTERNAL REACT IS THE ACT BOUNDARY: a second bundled React made the outer
+	// `act` a no-op around this root (the LaterPanel warning), and the unflushed
+	// update is what stalled the CI lane. A real file lets the bare imports
+	// resolve to the same React instance the test imports.
+	external: ["react", "react-dom/client"],
 	write: false,
 });
-const mod = await import(
-	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-);
+const bundlePath = `./_browser-view-policy-kinds-${process.pid}.mjs`;
+writeFileSync(bundlePath, bundle.outputFiles[0].text);
+const mod = await import(pathToFileURL(bundlePath).href);
+after(() => {
+	try {
+		unlinkSync(bundlePath);
+	} catch {
+		// Already removed by a failed earlier cleanup.
+	}
+});
 
 const flush = async (frames = 12) => {
 	for (let i = 0; i < frames; i++) {

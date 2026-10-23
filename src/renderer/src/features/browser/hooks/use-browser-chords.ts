@@ -96,11 +96,13 @@ export function useBrowserChords(
 	tabs: BrowserTabView[],
 	sessionId: string | null,
 	address: RefObject<AddressController>,
+	/** The surface's own-state fact, shared with the page menu (see surface). */
+	browserOwnState = false,
 ) {
 	const [root, setRoot] = useState<HTMLDivElement | null>(null);
 	const findReturnToPage = useRef(false);
-	const latest = useRef({ chrome, tabs, sessionId });
-	latest.current = { chrome, tabs, sessionId };
+	const latest = useRef({ chrome, tabs, sessionId, browserOwnState });
+	latest.current = { chrome, tabs, sessionId, browserOwnState };
 	const rootRef = useRef<HTMLDivElement | null>(null);
 	rootRef.current = root;
 	/**
@@ -157,10 +159,10 @@ export function useBrowserChords(
 		const c = latest.current.chrome;
 		const tabId = c.state?.activeTabId;
 		if (tabId == null) return;
-		/* The start/failure page is not a page to control (Q4-3/Q5 U27): main
-		   refuses, and painting its raw sentence in the band is not a hint. The
-		   toolbar menu disables these items; the chords take the same guard. */
-		if (c.state?.navFailure != null || c.state?.url === "about:blank") return;
+		/* The surface's one own-state fact, shared with the disabled menu
+		   (Q4-3/Q5 U27): start and failure pages refuse controls; an empty URL is
+		   start, while `about:blank` during a submitted load is a real page. */
+		if (latest.current.browserOwnState) return;
 		if (
 			c.state?.pageControls?.find?.tabId !== tabId &&
 			findSession.current !== tabId
@@ -212,8 +214,7 @@ export function useBrowserChords(
 				return;
 			}
 			if (projected !== null && intent.startsWith("zoom-")) {
-				if (c.state?.navFailure != null || c.state?.url === "about:blank")
-					return;
+				if (latest.current.browserOwnState) return;
 				await c.pageControl(
 					projected,
 					intent === "zoom-in" ? "in" : intent === "zoom-out" ? "out" : "reset",

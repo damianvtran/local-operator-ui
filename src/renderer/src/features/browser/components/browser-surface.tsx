@@ -393,12 +393,33 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		raise: raiseAddress,
 	};
 
+	/*
+	 * ONE OWN-STATE FACT, TWO CONSUMERS (convergence round). The page menu and the
+	 * chord hook must agree on "this tab has no page to control": a start
+	 * projection (`""` included), a settled `about:blank`, or a failed load. In
+	 * particular `about:blank` while a submitted navigation is loading is NOT
+	 * own-state — the menu is enabled there, so the chords must be too.
+	 */
+	const navFailure = state?.navFailure ?? null;
+	const onStartPage =
+		activeTab !== null &&
+		isStartPageUrl(activeTab.url) &&
+		!activeTab.loading &&
+		!chrome.pendingUrl;
+	const browserOwnState = onStartPage || navFailure !== null;
+
 	const {
 		root: chordRoot,
 		closeTab,
 		findReturnToPage,
 		openFind,
-	} = useBrowserChords(chrome, tabs, hostSessionId, addressController);
+	} = useBrowserChords(
+		chrome,
+		tabs,
+		hostSessionId,
+		addressController,
+		browserOwnState,
+	);
 
 	// The ROW's own band, remeasured on anything that can move it: the child list
 	// is positioned by main from this anchor, and a stale width would paint it
@@ -573,7 +594,6 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	// view has to go away for this panel to be visible at all (design 11.3). That is
 	// the same hide-and-restore lever the overlay policy uses; the id says which
 	// reason applied, so a paused page is never mistaken for a broken one.
-	const navFailure = state?.navFailure ?? null;
 	// WHICH OF THE TWO EXPLANATIONS THE USER GETS WHEN BOTH ARE TRUE.
 	//
 	// A dialog can be open over a tab whose last load failed, and the two states say
@@ -638,11 +658,8 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	// `loading:false` for that tab, so a page the user had just launched was
 	// painted over by the start surface. The note is set synchronously on submit, so
 	// it closes exactly that window.
-	const onStartPage =
-		activeTab !== null &&
-		isStartPageUrl(activeTab.url) &&
-		!activeTab.loading &&
-		!chrome.pendingUrl;
+	// `onStartPage` is derived above with `browserOwnState`, so the row's menu and
+	// the chord hook cannot disagree about which tabs have a page to control.
 	const showingNewTab =
 		onStartPage && navFailure === null && !overlaySuppressing;
 
@@ -659,7 +676,6 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	// is still a start page, and main must keep refusing page controls there
 	// (QA Q3-1: deriving it from the overlay filter turned the own-state refusal
 	// off the moment the ⋯ menu opened).
-	const browserOwnState = onStartPage || navFailure !== null;
 	useEffect(() => {
 		chrome.setViewVisible(
 			!suppressed,
