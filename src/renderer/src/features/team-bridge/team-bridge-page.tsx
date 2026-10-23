@@ -65,7 +65,6 @@ import {
 	RailSection,
 	isTargetRow,
 } from "./team-bridge-rail";
-import { useReportTeamBridgeViewing } from "./team-bridge-viewing";
 import {
 	TeamBridgeScheduleDialog,
 	TeamBridgeScheduledList,
@@ -75,6 +74,7 @@ import {
 	scheduleTeamBridgeDraft,
 	scheduledTargetAfterSuccess,
 } from "./team-bridge-scheduling";
+import { useReportTeamBridgeViewing } from "./team-bridge-viewing";
 import { useStickToBottom } from "./use-stick-to-bottom";
 import {
 	useCreateTeamBridgeConversation,
