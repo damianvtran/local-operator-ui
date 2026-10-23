@@ -384,11 +384,16 @@ export const FleetAskDrawer = ({
 				} finally {
 					setAnswering(false);
 				}
-				if (outcome.status === "failed") {
+				if (outcome.status !== "sent") {
+					/*
+					 * `settle` clears the in-flight flag and records the sentence, for the
+					 * same reasons the session scope's `settleAskOutcome` call does: a
+					 * transport failure carries the owner's words, and a `refused` outcome
+					 * reached nothing and records neither.
+					 */
 					settle(askId, outcome, "Dismissed the ask in");
 					return;
 				}
-				if (outcome.status === "refused") return;
 				setOutcomes((current) => ({
 					...current,
 					[askId]: { sending: false, refused: null, dismissed: reason },
