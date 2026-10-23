@@ -92,6 +92,7 @@ import {
 	planTeamBridgeNotifications,
 	teamBridgeNotifyOrganizations,
 } from "./team-bridge-notify-model";
+import { assertThreadPage } from "./team-bridge-thread-read";
 import { teamBridgeViewingConversation } from "./team-bridge-viewing";
 import {
 	teamBridgeKeys,
@@ -168,11 +169,32 @@ async function deliverTeamBridgeBanner(
 	let senderLabel = candidate.senderLabel;
 	let preview: string | null = null;
 	try {
-		const page = await TeamBridgeApi.listMessages(candidate.conversationId, {
-			tenantId: candidate.tenantId,
-			limit: 1,
-		});
-		const newest = page.messages[0];
+		// Timeline history excludes replies. Address the candidate's thread and
+		// inclusive sequence cursor directly: one row bounds the read even for an
+		// old, long thread; never page through its private history for a banner.
+		const newest = candidate.threadId
+			? assertThreadPage(
+					await TeamBridgeApi.listReplies(
+						candidate.conversationId,
+						candidate.threadId,
+						{
+							tenantId: candidate.tenantId,
+							afterSeq: candidate.seq,
+							limit: 1,
+						},
+					),
+					{
+						tenantId: candidate.tenantId,
+						conversationId: candidate.conversationId,
+						rootId: candidate.threadId,
+					},
+				).replies.find((reply) => reply.seq === candidate.seq)
+			: (
+					await TeamBridgeApi.listMessages(candidate.conversationId, {
+						tenantId: candidate.tenantId,
+						limit: 1,
+					})
+				).messages[0];
 		if (newest && newest.seq >= candidate.seq) {
 			if (
 				newest.sender.kind === "human" &&
