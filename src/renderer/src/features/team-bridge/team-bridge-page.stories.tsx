@@ -127,8 +127,8 @@ const channel: TeamBridgeConversation = {
 	unread_count: 3,
 	muted: false,
 	// What agent-server sends on every row: active + invited (Damian, Bea, Cy).
-	// The header must still read 2 active members, not 3, so this fixture is the
-	// insider branch of `conversationMemberCount` rather than a decorative field.
+	// The header states 3 current members and distinguishes 2 active / 1 invited.
+	// Populated rows are authoritative, rather than a decorative aggregate field.
 	member_count: 3,
 };
 
@@ -1048,5 +1048,60 @@ export const LegacyMemberLabelsAllOrganizations: Story = {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
 		people: [],
 		directories: { [minervaOrganization.tenantId]: rosterWithChiefs.slice(1) },
+	},
+};
+
+/** Production-shaped regression: one active human owner, three invited agents.
+ * No member_count is required to derive the current total from participant rows.
+ */
+export const FourMembersThreeInvited: Story = {
+	args: {
+		organizations: [minervaOrganization],
+		scope: asTeamBridgeTenantId("tnt_1"),
+		conversations: [
+			{
+				...channel,
+				id: "bcv_qa_coordination",
+				name: "qa-coordination",
+				member_count: undefined,
+				members: [
+					{
+						account_id: self,
+						kind: "human",
+						display_label: "Damian Tran",
+						role: "owner",
+						state: "active",
+					},
+					...["Ben Tran", "Sana Ketabchi", "Sherman Tsui"].map(
+						(name, index) => ({
+							account_id: `acct_invited_${index}`,
+							kind: "agent" as const,
+							display_label: name,
+							role: "member" as const,
+							state: "invited" as const,
+						}),
+					),
+				],
+			},
+		],
+		target: { type: "conversation", id: "bcv_qa_coordination" },
+		people: rosterWithChiefs,
+		messages: [],
+	},
+};
+
+/** The server's DisplayAgentName falls back to the person's name when the
+ * endpoint has no agent_name. #1334 owns honest unnamed-CoS composition;
+ * this story exercises inclusion of that existing endpoint, not designation.
+ */
+export const OwnChiefServerFallback: Story = {
+	args: {
+		...PersonDraft.args,
+		people: rosterWithChiefs.map((person) =>
+			person.account_id === self
+				? { ...person, agent: { ...person.agent!, name: person.display_label } }
+				: person,
+		),
+		target: { type: "compose", recipients: [] },
 	},
 };

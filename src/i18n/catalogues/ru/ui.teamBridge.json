@@ -24,6 +24,8 @@
 	"ui.teamBridge.create.confirm": "Создать",
 	"ui.teamBridge.unread.count": "{count, plural, one {{count} непрочитанное} few {{count} непрочитанных} many {{count} непрочитанных} other {{count} непрочитанного}}",
 	"ui.teamBridge.member.count": "{count, plural, one {{count} участник} few {{count} участника} many {{count} участников} other {{count} участника}}",
+	"ui.teamBridge.member.active_count": "{count, plural, one {{count} активный} few {{count} активных} many {{count} активных} other {{count} активного}}",
+	"ui.teamBridge.member.invited_count": "{count, plural, one {{count} приглашённый} few {{count} приглашённых} many {{count} приглашённых} other {{count} приглашённого}}",
 	"ui.teamBridge.group.more": "Ещё",
 	"ui.teamBridge.thread.withheld": "Ожидает, пока агент примет это сообщение.",
 	"ui.teamBridge.composer.error": "Сообщение не отправлено. Повторите попытку.",

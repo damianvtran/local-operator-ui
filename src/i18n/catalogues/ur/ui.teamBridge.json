@@ -24,6 +24,8 @@
 	"ui.teamBridge.create.confirm": "بنائیں",
 	"ui.teamBridge.unread.count": "{count, plural, one {{count} نہ پڑھا گیا} other {{count} نہ پڑھے گئے}}",
 	"ui.teamBridge.member.count": "{count, plural, one {{count} رکن} other {{count} ارکان}}",
+	"ui.teamBridge.member.active_count": "{count, plural, one {{count} فعال} other {{count} فعال}}",
+	"ui.teamBridge.member.invited_count": "{count, plural, one {{count} مدعو} other {{count} مدعو}}",
 	"ui.teamBridge.group.more": "مزید",
 	"ui.teamBridge.thread.withheld": "ایجنٹ کے اس پیغام کو قبول کرنے کا انتظار ہے۔",
 	"ui.teamBridge.composer.error": "آپ کا پیغام نہیں بھیجا گیا۔ دوبارہ کوشش کریں۔",
