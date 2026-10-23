@@ -6920,10 +6920,23 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 									variant="outline"
 									size="sm"
 									className="self-start"
+									/*
+									 * THE WORDS THE DEAD CONVERSATION'S BOX HELD FOLLOW THE READER
+									 * (the operator's report, 2026-10-23). Clearing the selection alone
+									 * left no draft at all: the pane fell to its residue arm and the text
+									 * stayed filed under the conversation that is gone - present on disk,
+									 * addressed by nothing on screen. `startNewChat` is the store's own
+									 * answer to that rule (a draft follows the user back, or it is
+									 * discarded), and `conversationId` is the identity this pane's composer
+									 * uses - the same value `composerIdentityFor` answers here, threaded as
+									 * the pane's identity, never recomputed from the draft and session ids.
+									 */
 									onClick={() => {
 										// Read at click time rather than subscribed: this component
 										// must not re-render every time the catalogue does.
-										useCanonicalSessionsStore.getState().setActiveSession(null);
+										useCanonicalSessionsStore
+											.getState()
+											.startNewChat(conversationId);
 									}}
 								>
 									{t("ui.chat.canonical.transcript.start_new_chat")}
