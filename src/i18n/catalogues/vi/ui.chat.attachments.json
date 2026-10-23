@@ -1,0 +1,7 @@
+{
+	"ui.chat.attachments.pending_caption": "Chưa được gửi",
+	"ui.chat.attachments.file_meta": "{type} · {size}",
+	"ui.chat.attachments.file_missing": "Đã di chuyển hoặc bị xóa",
+	"ui.chat.attachments.file_retained": "Vẫn được lưu trong kho tệp đính kèm ({digest})",
+	"ui.chat.attachments.file_unnamed": "Tệp đính kèm"
+}

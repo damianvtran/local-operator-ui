@@ -12,6 +12,10 @@ import type {
 	BackendUpdateErrorReport,
 	BackendUpdateInfo,
 } from "../main/update-service";
+import type {
+	AttachmentUploadResult,
+	AttachmentUploadSource,
+} from "../shared/attachment-upload";
 import {
 	BACKEND_RECONNECT_CHANNEL,
 	BACKEND_STATUS_CHANNEL,
@@ -423,6 +427,18 @@ const api = {
 	 */
 	readFileBytes: (filePath: string, maxBytes?: number) =>
 		ipcRenderer.invoke("read-file-bytes", filePath, maxBytes),
+	/**
+	 * Upload one composer attachment to the daemon's attachment store.
+	 *
+	 * The bytes never enter this context: main reads the file, posts the
+	 * multipart body, and answers the stored record (attachment contract v1
+	 * §1.1). The composer replaces a non-image chip with this record's digest on
+	 * the wire, and refuses the send when the answer is a failure.
+	 */
+	uploadAttachment: (
+		source: AttachmentUploadSource,
+	): Promise<AttachmentUploadResult> =>
+		ipcRenderer.invoke("upload-attachment", source),
 	/**
 	 * Resolve-and-stat a batch of paths. The answer carries the resolved path,
 	 * which is the Files panel's identity for a file.

@@ -54,7 +54,10 @@ import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	remoteOwnedId,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import {
 	type InternalEpisodeIdentitySnapshot,
 	captureInternalEpisodeIdentity,
@@ -181,6 +184,7 @@ import { QuoteToolkit } from "./quote-toolkit";
 import { RadientCreditsGuidance } from "./radient-credits-guidance";
 import { ensureReachable, jumpToEntry } from "./reveal-record";
 import { SETTLE_MS } from "./scroll-paging";
+import { SentFileCard } from "./sent-file-card";
 import { editTextOf, skillRowOf } from "./skill-row";
 import { SupplementRow } from "./supplement-row";
 import { THREAD_SEARCH_JUMP_MISS_COPY } from "./thread-search-model";
@@ -986,6 +990,17 @@ const UserRow = memo(function UserRow({
 	 */
 	const pictures = record.images.filter(isPictureRef);
 	/*
+	 * Whether this conversation lives on another device. Read from the store
+	 * because the placement fact is not on the transcript row, and a remote
+	 * conversation's file cards make no existence claim (contract v1 §5): the
+	 * path never lived on this machine.
+	 */
+	const remote = useCanonicalSessionsStore((state) =>
+		conversationId
+			? remoteOwnedId(state.sessions, state.placementFacts, conversationId)
+			: false,
+	);
+	/*
 	 * Whether this turn is long enough to need D2's eight-line clamp, MEASURED
 	 * rather than guessed from a character count: the box is clamped first and
 	 * then asked whether it is hiding anything, so a `Show more` can never appear
@@ -1312,6 +1327,17 @@ const UserRow = memo(function UserRow({
 								>
 									{expanded ? "Show less" : "Show more"}
 								</button>
+							)}
+							{(record.documents?.length ?? 0) > 0 && (
+								<div className={cn("mt-2 flex flex-col gap-1")}>
+									{record.documents?.map((document) => (
+										<SentFileCard
+											key={document.id}
+											document={document}
+											remote={remote}
+										/>
+									))}
+								</div>
 							)}
 							{pictures.length > 0 && (
 								<div className={cn("mt-2 flex flex-col gap-2")}>

@@ -59,7 +59,7 @@ const oneUserRow = (text: string): TranscriptState =>
  * registry uses, so the record this cell renders is the one the app paints.
  */
 const onePendingRow = (text: string): TranscriptState =>
-	appendPendingUser(EMPTY_TRANSCRIPT, "req-1", text, [], TS);
+	appendPendingUser(EMPTY_TRANSCRIPT, "req-1", text, [], [], TS);
 
 const Frame = ({
 	transcript,

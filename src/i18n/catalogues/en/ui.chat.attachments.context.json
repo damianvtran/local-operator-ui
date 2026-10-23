@@ -1,0 +1,27 @@
+{
+	"ui.chat.attachments.pending_caption": {
+		"role": "caption under the composer chip row",
+		"tone": "short state phrase, sentence case",
+		"note": "The chips are staged, not sent. States the composer row is pending so a reader cannot mistake it for a sent file card."
+	},
+	"ui.chat.attachments.file_meta": {
+		"role": "type and size line on a file card",
+		"tone": "machine facts, middle dot separator, no sentence",
+		"note": "Preserve the separator and both placeholders. type is a short uppercase extension (PDF, MD); size is a formatted byte count."
+	},
+	"ui.chat.attachments.file_missing": {
+		"role": "existence verdict on a sent file card",
+		"tone": "two-word verdict, sentence case",
+		"note": "Shown when the origin path no longer exists on this machine. The retained-copy line follows it."
+	},
+	"ui.chat.attachments.file_retained": {
+		"role": "retained-copy line under the missing verdict",
+		"tone": "one sentence",
+		"note": "digest is the attachment store content address. Do not translate or shorten the digest placeholder."
+	},
+	"ui.chat.attachments.file_unnamed": {
+		"role": "filename fallback on a file card",
+		"tone": "short noun phrase",
+		"note": "Only when a document block carried no filename."
+	}
+}

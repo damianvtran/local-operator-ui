@@ -12,6 +12,7 @@ export type DesiredTag = { id?: string; name: string };
 
 import { z } from "zod";
 import { agentMessagesBoundarySchema } from "./agent-messages-contract";
+import { DESKTOP_MESSAGE_MAX_FILES } from "./attachment-upload";
 // The sidebar's destination vocabulary is the same list the route validates
 // against, so the request schema below and the renderer's pure model cannot
 // disagree about what an id is.
@@ -167,6 +168,34 @@ const sessionImage = z
 	.object({
 		data_b64: z.string().min(1).max(1_000_000),
 		mime_type: z.enum(["image/png", "image/jpeg", "image/gif", "image/webp"]),
+		/**
+		 * Where the image came from, when it came from disk. Provenance only: the
+		 * daemon carries it to `ImageContent.path` and every provider serializer
+		 * ignores it (attachment contract v1 §1.3). Absent on pasted images, which
+		 * have no path.
+		 */
+		origin_path: z.string().max(4096).optional(),
+	})
+	.strict();
+
+/**
+ * One uploaded file the message references (contract v1 §1.2, `Prompt.files`).
+ *
+ * The BYTES are not here: they live in the daemon's attachment store under
+ * `digest`, and the daemon resolves the reference at admission. Everything
+ * else is display/provenance - the filename a person recognises, the mime the
+ * daemon decided by content, the size, and the origin path - and each is
+ * optional because a reference is still valid without them. A digest that
+ * does not resolve is the daemon's refusal to raise; the UI has already
+ * refused before this body is built.
+ */
+const sessionFile = z
+	.object({
+		digest: z.string().regex(/^[0-9a-f]{32}$/),
+		name: z.string().max(1024).optional(),
+		mime_type: z.string().max(255).optional(),
+		bytes: z.number().int().min(0).optional(),
+		path: z.string().max(4096).optional(),
 	})
 	.strict();
 
@@ -1946,6 +1975,13 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			requestId,
 			text: z.string().max(DESKTOP_MESSAGE_MAX_CHARS),
 			images: z.array(sessionImage).max(DESKTOP_MESSAGE_MAX_IMAGES).optional(),
+			/**
+			 * Uploaded files this message references, bounded to the backend's
+			 * `Prompt.files` ceiling. Absent rather than empty when the send carries
+			 * none, so an older harness's `extra=forbid` sees a legacy body - the same
+			 * rule the optional fields below follow.
+			 */
+			files: z.array(sessionFile).max(DESKTOP_MESSAGE_MAX_FILES).optional(),
 			mode: z.enum(["prompt", "steer"]).optional(),
 			/*
 			 * HOW THE MESSAGE WAS PRODUCED (arch §4.2), and the harness gate is what
@@ -7777,6 +7813,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 					request_id: request.requestId,
 					text: request.text,
 					images: request.images ?? [],
+					...(request.files?.length ? { files: request.files } : {}),
 					mode: request.mode ?? "prompt",
 					/*
 					 * ABSENT, not empty, when the app has nothing to say: an older harness

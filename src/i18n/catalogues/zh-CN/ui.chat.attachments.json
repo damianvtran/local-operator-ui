@@ -1,0 +1,7 @@
+{
+	"ui.chat.attachments.pending_caption": "尚未发送",
+	"ui.chat.attachments.file_meta": "{type} · {size}",
+	"ui.chat.attachments.file_missing": "已移动或删除",
+	"ui.chat.attachments.file_retained": "仍保留在附件存储中（{digest}）",
+	"ui.chat.attachments.file_unnamed": "附件"
+}

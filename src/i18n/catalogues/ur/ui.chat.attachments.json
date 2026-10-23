@@ -1,0 +1,7 @@
+{
+	"ui.chat.attachments.pending_caption": "ابھی نہیں بھیجا گیا",
+	"ui.chat.attachments.file_meta": "{type} · {size}",
+	"ui.chat.attachments.file_missing": "منتقل یا حذف شدہ",
+	"ui.chat.attachments.file_retained": "اب بھی منسلکات کے ذخیرے میں محفوظ ہے ({digest})",
+	"ui.chat.attachments.file_unnamed": "منسلک فائل"
+}
