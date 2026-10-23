@@ -36,6 +36,15 @@ export type ThreadPaneProps = {
 	loadingMore?: boolean;
 	onMore?: () => void;
 	onRead?: (seq: number) => Promise<unknown>;
+	/*
+	 * Lets the pane's rows carry the message toolbar's react and more. There is
+	 * deliberately no `onReply`: threads are one level deep, so a reply (and
+	 * the root, which this pane already is the thread of) never offers
+	 * reply-in-thread.
+	 */
+	reactionContext?: { accountId: string; tenantId: string; disabled?: boolean };
+	/** Story/capture seed only: show the rows' toolbars without hover. */
+	forceToolbar?: boolean;
 };
 
 /** A sibling surface, not a dialog: the channel stays visible beside its thread.
@@ -55,6 +64,8 @@ export function TeamBridgeThreadPaneView({
 	loadingMore = false,
 	onMore,
 	onRead,
+	reactionContext,
+	forceToolbar,
 }: ThreadPaneProps) {
 	useI18nLocale();
 	const pane = useRef<HTMLElement>(null);
@@ -117,7 +128,12 @@ export function TeamBridgeThreadPaneView({
 			</header>
 			<ScrollArea className="min-h-0 flex-1">
 				{root && (
-					<TeamBridgeMessageList messages={[root]} labelFor={labelFor} />
+					<TeamBridgeMessageList
+						messages={[root]}
+						labelFor={labelFor}
+						reactionContext={reactionContext}
+						forceToolbar={forceToolbar}
+					/>
 				)}
 				{/* Pending/error pages cannot assert an empty count from an empty array. */}
 				{(state === "ready" || root?.reply_count !== undefined) && (
@@ -143,7 +159,12 @@ export function TeamBridgeThreadPaneView({
 						{t("ui.teamBridge.replies.empty")}
 					</p>
 				) : (
-					<TeamBridgeMessageList messages={replies} labelFor={labelFor} />
+					<TeamBridgeMessageList
+						messages={replies}
+						labelFor={labelFor}
+						reactionContext={reactionContext}
+						forceToolbar={forceToolbar}
+					/>
 				)}
 				{hasMore && (
 					<Button
@@ -220,12 +241,14 @@ export function TeamBridgeThreadPane({
 	readOnly,
 	labelFor,
 	onClose,
+	reactionContext,
 }: {
 	target: ThreadTarget;
 	initialRoot?: TeamBridgeMessage;
 	readOnly: boolean;
 	labelFor: ThreadPaneProps["labelFor"];
 	onClose: () => void;
+	reactionContext?: ThreadPaneProps["reactionContext"];
 }) {
 	const client = useQueryClient();
 	const { tenantId, conversationId, rootId } = target;
@@ -299,6 +322,7 @@ export function TeamBridgeThreadPane({
 			hasMore={query.hasNextPage}
 			loadingMore={query.isFetchingNextPage}
 			onMore={() => void query.fetchNextPage()}
+			reactionContext={reactionContext}
 		/>
 	);
 }

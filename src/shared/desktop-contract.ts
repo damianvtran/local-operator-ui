@@ -3471,6 +3471,16 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.strict(),
 	z
 		.object({
+			op: z.literal("team_bridge.reactions.toggle"),
+			conversation_id: id,
+			message_id: id,
+			tenant_id: id.optional(),
+			emoji: z.string().min(1),
+			active: z.boolean(),
+		})
+		.strict(),
+	z
+		.object({
 			op: z.literal("team_bridge.messages.send"),
 			conversation_id: id,
 			tenant_id: id.optional(),
@@ -8692,6 +8702,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages${suffix}`,
 				method: "GET",
 			};
+		}
+		case "team_bridge.reactions.toggle": {
+			const path = `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages/${encodeURIComponent(request.message_id)}/reactions/${encodeURIComponent(request.emoji)}`;
+			return request.active
+				? {
+						path,
+						method: "PUT",
+						body: request.tenant_id ? { tenant_id: request.tenant_id } : {},
+					}
+				: {
+						path: `${path}${tenantQuery(request.tenant_id)}`,
+						method: "DELETE",
+					};
 		}
 		case "team_bridge.messages.send":
 			return {
