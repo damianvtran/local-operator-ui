@@ -19,11 +19,24 @@ Control on every platform. Letter matching is case-insensitive; Shift is explici
 | Primary+Shift+T | Existing app, no browser command | reopen-tab / scoped renderer | same | reopen-tab / main → renderer |
 | Primary+1…8 | Existing app, no browser command | tab-N / scoped strip ordinal | same | tab-N / main → renderer |
 | Primary+9 | Existing app, no browser command | tab-9 / last scoped tab | same | tab-9 / main → renderer |
-| Control+Tab / Shift+Tab | Existing app, no browser command | next-tab / prev-tab | same | main → scoped renderer |
+| Control+Tab / Shift+Tab | Session switcher (`docs/session-switcher.md`) | next-tab / prev-tab | same | main → scoped renderer |
 | macOS Command+Shift+] / [ | Existing app, no browser command | next-tab / prev-tab | same | main → scoped renderer |
 | Primary+[ / ] | Existing app chat navigation | back / forward page history | same | main view hook page history |
 | Primary+F | Existing transcript search | Existing behavior; browser find is a2 | same | no browser binding in a1 |
 | App zoom keys | Existing app zoom | Existing app zoom, not page zoom | same | no new page-zoom binding in a1 |
+
+**Focus decides Control+Tab between the two owners.** In one sentence: When
+keyboard focus is inside the in-app browser panel - its tab strip, address
+bar/popout, start page, or the web page itself - Ctrl+Tab and Ctrl+Shift+Tab
+switch browser tabs; everywhere else, the console included, they open the session
+switcher, except while Tab is already claimed for a list: the composer's slash
+list, or the canvas editor's list item it nests. The same sentence is in
+`docs/session-switcher.md`. The predicate is `browserOwnsTabChord(document,
+target)` (`features/browser/hooks/use-browser-chords.ts`), which wraps the same
+`chordOwner` the browser's DOM door reads, so the two surfaces cannot disagree
+about which of them owns the press. The console is why the sentence needed code
+as well: its xterm handler consumed Ctrl+Tab as a plain tab, and now hands it
+back.
 
 No a1 binding changes app zoom, the historical Actual Size Command+O spelling,
 print/palette, transcript search or editable text shortcuts. They are a separate
