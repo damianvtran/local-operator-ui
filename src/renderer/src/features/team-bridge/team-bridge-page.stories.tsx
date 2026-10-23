@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { type CSSProperties, useLayoutEffect } from "react";
+import { type CSSProperties, useLayoutEffect, useRef, useState } from "react";
+import {} from "react";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
@@ -10,10 +11,14 @@ import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeOrganization,
 	asTeamBridgeTenantId,
+	draftCreateInput,
 	organizationOptions,
+	performSend,
 	threadWithPending,
 } from "./team-bridge-model";
 import { TeamBridgePageView } from "./team-bridge-page";
+import { TeamBridgeThreadPaneView } from "./team-bridge-thread-pane";
+import { threadTargetFromSearch } from "./team-bridge-thread-read";
 
 /**
  * Presentation states for the Team Bridge page.
@@ -968,6 +973,136 @@ export const EmptySections: Story = {
 	},
 };
 
+// These boards use the real page and ChatLayout, not a width-only pane mock.
+// The presentation seam prevents Storybook from contacting the operator's hub.
+const threadRoot: TeamBridgeMessage = {
+	...messages[0],
+	conversation_id: channel.id,
+	reply_count: 2,
+	reply_participants: ["Bea", "Ada"],
+	last_reply_at: new Date().toISOString(),
+};
+const threadReply: TeamBridgeMessage = {
+	...messages[1],
+	conversation_id: channel.id,
+	thread_root_id: threadRoot.id,
+};
+const threadTarget = {
+	tenantId: channel.tenant_id,
+	conversationId: channel.id,
+	rootId: threadRoot.id,
+};
+
+export const ThreadSummaryRow: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: [threadRoot],
+	},
+};
+export const ThreadAtMinimumWindow: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: [threadRoot],
+		threadLink: threadTarget,
+		renderThreadPane: (_target, close) => (
+			<TeamBridgeThreadPaneView
+				root={threadRoot}
+				replies={[threadReply]}
+				state="ready"
+				labelFor={(sender) => sender.display_label}
+				onClose={close}
+				onRetry={() => {}}
+				onSend={async () => {}}
+			/>
+		),
+	},
+	render: (args) => (
+		<div className="h-[700px] w-[800px] max-w-full">
+			<TeamBridgePageView {...args} />
+		</div>
+	),
+};
+export const ThreadDeepLinkFlushTop: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: [],
+		// The old root is deliberately NOT present in the timeline page.
+		threadLink: threadTargetFromSearch(
+			new URLSearchParams({
+				tenant: channel.tenant_id,
+				conversation: channel.id,
+				thread: threadRoot.id,
+			}),
+		),
+		renderThreadPane: (_target, close) => (
+			<TeamBridgeThreadPaneView
+				root={threadRoot}
+				replies={[threadReply]}
+				state="ready"
+				labelFor={(sender) => sender.display_label}
+				onClose={close}
+				onRetry={() => {}}
+				onSend={async () => {}}
+			/>
+		),
+	},
+	render: (args) => {
+		useMacChromeSimulation();
+		return (
+			<div
+				className="relative flex h-screen flex-col overflow-hidden"
+				style={{ "--chrome-strip-h": "32px" } as CSSProperties}
+			>
+				<ChatLayout
+					flushTop
+					sidebar={<div className="h-full bg-surface" />}
+					content={
+						<main className="flex min-w-0 grow flex-col overflow-hidden bg-canvas">
+							<TeamBridgePageView {...args} />
+						</main>
+					}
+				/>
+			</div>
+		);
+	},
+};
+
+/** The real visibility observer drives this board's local badge, without a hub
+ * request. In a background/unfocused document it intentionally remains unread;
+ * once the replies intersect an active pane the same onRead seam clears it.
+ */
+export const ThreadReadAcknowledgement: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: [threadRoot],
+		threadLink: threadTarget,
+	},
+	render: (args) => {
+		const [unread, setUnread] = useState(1);
+		return (
+			<TeamBridgePageView
+				{...args}
+				totalUnread={unread}
+				conversations={[{ ...channel, unread_count: unread }]}
+				renderThreadPane={(_target, close) => (
+					<TeamBridgeThreadPaneView
+						root={threadRoot}
+						replies={[threadReply]}
+						state="ready"
+						labelFor={(sender) => sender.display_label}
+						onClose={close}
+						onRetry={() => {}}
+						onSend={async () => {}}
+						onRead={async () => {
+							setUnread(0);
+						}}
+					/>
+				)}
+			/>
+		);
+	},
+};
+
 /*
  * THE LEGACY "Member" LABEL (operator report, 2026-10-22). Production rows
  * written before agent-server #166 carry the hub's placeholder "Member" as the
@@ -1205,5 +1340,148 @@ export const ChiefLabelNamedAgent: Story = {
 	args: {
 		...ChiefLabelUnnamedAgent.args,
 		people: rosterWithChiefs,
+	},
+};
+
+/**
+ * Scripted transport around the real view + performSend. Buttons control only
+ * the fake server's settlement, never the message row: this makes the no-id,
+ * failed, Retry and feed-before-POST windows observable in a browser. It does
+ * not claim coverage of the production query/container glue or a live backend.
+ */
+export const OptimisticIntegrationFlow: Story = {
+	render: (args) => {
+		const [pending, setPending] = useState<PendingSend[]>([]);
+		const [confirmed, setConfirmed] = useState<TeamBridgeMessage[]>([]);
+		const [made, setMade] = useState(false);
+		const [counts, setCounts] = useState({ create: 0, post: 0 });
+		const remembered = useRef(
+			new Map<string, { id: string; tenantId: string | undefined }>(),
+		);
+		const resolveCreate = useRef<(() => void) | null>(null);
+		const post = useRef<{
+			ok: () => void;
+			no: () => void;
+			body: string;
+			ref: string;
+		} | null>(null);
+		const patch = (ref: string, value: Partial<PendingSend>) =>
+			setPending((rows) =>
+				rows.map((row) => (row.clientRef === ref ? { ...row, ...value } : row)),
+			);
+		const run = async (body: string, clientRef: string) => {
+			patch(clientRef, { status: "sending" });
+			const result = await performSend({
+				conversationId: null,
+				tenantId: "tnt_1",
+				draftTenantId: "tnt_1",
+				draftKey: "integration",
+				input: draftCreateInput([
+					{ kind: "human", accountId: "acct_ben", label: "Ben Tran" },
+				]),
+				body,
+				clientRef,
+				remembered: remembered.current,
+				create: () => {
+					setCounts((c) => ({ ...c, create: c.create + 1 }));
+					return new Promise((resolve) => {
+						resolveCreate.current = () => {
+							setMade(true);
+							resolve({ id: benDm.id, tenant_id: "tnt_1" });
+						};
+					});
+				},
+				onCreated: (c) => patch(clientRef, { conversationId: c.id }),
+				post: () => {
+					setCounts((c) => ({ ...c, post: c.post + 1 }));
+					return new Promise((resolve, reject) => {
+						post.current = {
+							ok: () => resolve({ id: "bcmsg_flow" }),
+							no: () => reject(new Error("scripted failure")),
+							body,
+							ref: clientRef,
+						};
+					});
+				},
+			});
+			patch(
+				clientRef,
+				result.ok
+					? { status: "sent", confirmedId: result.confirmedId }
+					: { status: "failed" },
+			);
+		};
+		const feed = () => {
+			if (post.current)
+				setConfirmed([
+					{
+						id: "bcmsg_flow",
+						conversation_id: benDm.id,
+						seq: 1,
+						sender: {
+							account_id: self,
+							kind: "human",
+							display_label: "Damian Tran",
+						},
+						origin: "human",
+						body: post.current.body,
+						created_at: sentAt,
+					},
+				]);
+		};
+		return (
+			<div className="flex h-full flex-col">
+				<div className="flex shrink-0 gap-3 p-2 text-[12px]">
+					<button type="button" onClick={() => resolveCreate.current?.()}>
+						Resolve create
+					</button>
+					<button type="button" onClick={() => post.current?.no()}>
+						Reject POST
+					</button>
+					<button type="button" onClick={feed}>
+						Deliver server copy
+					</button>
+					<button type="button" onClick={() => post.current?.ok()}>
+						Resolve POST
+					</button>
+					<span>
+						Create {counts.create}; POST {counts.post}
+					</span>
+				</div>
+				<TeamBridgePageView
+					{...args}
+					{...slackRail}
+					selfName="Damian Tran"
+					conversations={made ? [benDm] : []}
+					target={{ type: "person", accountId: "acct_ben" }}
+					messageState={made ? "ready" : "idle"}
+					messages={threadWithPending(confirmed, pending, {
+						accountId: self,
+						label: "Damian Tran",
+					})}
+					pendingSends={pending}
+					onSend={(body, ref) => {
+						setPending((rows) => [
+							...rows,
+							{
+								clientRef: ref,
+								body,
+								createdAt: sentAt,
+								tenantId: "tnt_1",
+								conversationId: null,
+								draftKey: "integration",
+								baselineSeq: -1,
+								status: "sending",
+							},
+						]);
+						return run(body, ref);
+					}}
+					onRetrySend={(ref) => {
+						const row = pending.find((r) => r.clientRef === ref);
+						if (row) void run(row.body, ref);
+					}}
+				/>
+			</div>
+		);
 	},
 };

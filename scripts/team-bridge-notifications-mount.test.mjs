@@ -46,7 +46,13 @@ export const fixture = {
 	tenants: {},
 	conversations: { conversations: [] },
 	listGate: null,
-	calls: { identity: 0, conversations: 0, unread: [] },
+	historyGate: null,
+	repliesGate: null,
+	directoryGate: null,
+	messages: { messages: [] },
+	thread: { root: null, replies: [] },
+	directoryMembers: [],
+	calls: { identity: 0, conversations: 0, unread: [], history: [], replies: [], directory: [] },
 	releaseList: null,
 };
 
@@ -54,6 +60,22 @@ const tenantOf = (scope) =>
 	typeof scope === "string" ? scope : scope.tenantId;
 
 export const TeamBridgeApi = {
+	async listMessages(id, options) {
+		fixture.calls.history.push({ id, ...options });
+		if (fixture.historyGate) await fixture.historyGate;
+		return fixture.messages;
+	},
+	async listReplies(id, rootId, options) {
+		fixture.calls.replies.push({ id, rootId, ...options });
+		if (fixture.repliesGate) await fixture.repliesGate;
+		if (fixture.thread instanceof Error) throw fixture.thread;
+		return fixture.thread;
+	},
+	async directory(tenantId) {
+		fixture.calls.directory.push(tenantId);
+		if (fixture.directoryGate) await fixture.directoryGate;
+		return { members: fixture.directoryMembers };
+	},
 	async identity() {
 		fixture.calls.identity += 1;
 		return fixture.identity;
@@ -85,7 +107,7 @@ export function useMembershipsQuery() {
 const bundled = await build({
 	stdin: {
 		contents: `
-			export { useTeamBridgeNotifications } from "./src/renderer/src/features/team-bridge/use-team-bridge-notifications";
+			export { useTeamBridgeNotifications } from "./src/renderer/src/features/team-bridge/use-team-bridge-notifications"; export { teamBridgeOpenPath } from "./src/shared/team-bridge-notify";
 			export { teamBridgeKeys } from "./src/renderer/src/features/team-bridge/use-team-bridge";
 			export { fixture, TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 		`,
@@ -129,6 +151,7 @@ const conversation = (id, tenantId) => ({
 	tenant_id: tenantId,
 	kind: "group",
 	name: `Conversation ${id}`,
+	latest_seq: 1,
 	members: [
 		member("Alice", "human", "active", "acct_alice"),
 		member("Bob", "human", "active", "acct_bob"),
@@ -177,8 +200,21 @@ const mount = async () => {
 	const client = new QueryClient({
 		defaultOptions: { queries: { retry: false, gcTime: 1_000 } },
 	});
+	// Seed actual shared queries, not a replacement policy hook. App settings
+	// writes update this same cache while history/directory can be pending.
+	client.setQueryDefaults(["desktop", "capabilities"], {
+		staleTime: Number.POSITIVE_INFINITY,
+	});
+	client.setQueryData(["desktop", "capabilities"], {
+		desktop_available: true,
+		features: { settings: 1 },
+	});
+	client.setQueryData(["desktop", "settings"], {
+		settings: [{ key: "display.notifications", value: true }],
+	});
+	let enabled = true;
 	const Probe = () => {
-		api.useTeamBridgeNotifications(true);
+		api.useTeamBridgeNotifications(enabled);
 		return null;
 	};
 	const root = createRoot(dom.window.document.getElementById("root"));
@@ -194,6 +230,18 @@ const mount = async () => {
 	return {
 		client,
 		notifications,
+		setEnabled: async (value) => {
+			enabled = value;
+			await act(async () =>
+				root.render(
+					React.createElement(
+						QueryClientProvider,
+						{ client },
+						React.createElement(Probe),
+					),
+				),
+			);
+		},
 		teardown: async () => {
 			await act(async () => root.unmount());
 			client.clear();
@@ -230,8 +278,21 @@ const resetFixture = () => {
 	fixture.tenants = {};
 	fixture.conversations = { conversations: [] };
 	fixture.listGate = null;
+	fixture.historyGate = null;
+	fixture.repliesGate = null;
+	fixture.directoryGate = null;
+	fixture.messages = { messages: [] };
+	fixture.thread = { root: null, replies: [] };
+	fixture.directoryMembers = [];
 	fixture.releaseList = null;
-	fixture.calls = { identity: 0, conversations: 0, unread: [] };
+	fixture.calls = {
+		identity: 0,
+		conversations: 0,
+		unread: [],
+		history: [],
+		replies: [],
+		directory: [],
+	};
 };
 
 test("the mounted hook bounds the fan-out, orders by unread, filters eligibility, seeds per org and tags each row", async () => {
@@ -335,6 +396,13 @@ test("the mounted hook bounds the fan-out, orders by unread, filters eligibility
 		}, "every seeded organization to answer before the second poll");
 		await settle();
 
+		fixture.conversations = {
+			conversations: fixture.conversations.conversations.map((row) =>
+				row.id === "bcv_tnt_01" || row.id === "bcv_tnt_a"
+					? { ...row, latest_seq: 2 }
+					: row,
+			),
+		};
 		fixture.tenants.tnt_01.total = 2;
 		fixture.tenants.tnt_01.conversations = [notifyRow("bcv_tnt_01", 2)];
 		fixture.tenants.tnt_a.total = 2;
@@ -351,6 +419,16 @@ test("the mounted hook bounds the fan-out, orders by unread, filters eligibility
 		await act(async () => {
 			await mounted.client.refetchQueries({
 				queryKey: api.teamBridgeKeys.unreadPrefix,
+			});
+		});
+		assert.equal(
+			mounted.notifications.length,
+			0,
+			"unread seq2 must wait for a matching summary snapshot, not link a stale root",
+		);
+		await act(async () => {
+			await mounted.client.refetchQueries({
+				queryKey: api.teamBridgeKeys.conversationsPrefix,
 			});
 		});
 		await until(
@@ -467,3 +545,323 @@ test("a zero-total org's first message before the conversation list resolves sti
 		await mounted.teardown();
 	}
 });
+
+/** Deferred real transport edges reproduce R1-2 through the mounted hook. */
+for (const transport of ["history", "replies"]) {
+	for (const pending of [transport, "directory"]) {
+		for (const disable of ["setting", "capability", "none"]) {
+			test(`${transport}: a ${disable} change while ${pending} is pending is rechecked before IPC`, async () => {
+				resetFixture();
+				const org = {
+					tenant_id: "tnt_race",
+					tenant_name: "Race Org",
+					unread: 0,
+					eligible: true,
+				};
+				fixture.account = { total: 0, organizations: [org] };
+				fixture.conversations = {
+					conversations: [
+						{
+							...conversation("bcv_race", "tnt_race"),
+							// A new reply is newer than its root-only history row. The
+							// summary placeholder must yield to the tenant directory.
+							...(transport === "replies"
+								? {
+										last_thread_root_id: "bcmsg_root",
+										latest_seq: 2,
+										last_sender_label: "Member",
+									}
+								: {}),
+						},
+					],
+				};
+				fixture.messages = {
+					messages: [
+						{
+							id: "bcmsg_root",
+							seq: 1,
+							sender: {
+								account_id: "acct_bob",
+								kind: "human",
+								display_label: "Bob\n<admin>\u202e\u0085",
+							},
+							body: "fixture **message**",
+							conversation_id: "bcv_race",
+						},
+					],
+				};
+				fixture.thread = {
+					root: fixture.messages.messages[0],
+					replies: [
+						{
+							...fixture.messages.messages[0],
+							id: "bcmsg_reply",
+							seq: 2,
+							thread_root_id: "bcmsg_root",
+							sender: {
+								account_id: "acct_bob",
+								kind: "human",
+								display_label: "Member",
+							},
+							body: "reply **preview**",
+						},
+					],
+				};
+				fixture.directoryMembers = [
+					{
+						account_id: "acct_bob",
+						display_label: "Directory Bob",
+						email: "bob@example.test",
+					},
+				];
+				let release;
+				fixture[`${pending}Gate`] = new Promise((resolve) => {
+					release = resolve;
+				});
+				const mounted = await mount();
+				try {
+					await until(
+						() =>
+							fixture.calls.conversations > 0 &&
+							fixture.calls.unread.includes("account"),
+						"seed reads",
+					);
+					await settle();
+					fixture.account = {
+						total: 1,
+						organizations: [{ ...org, unread: 1 }],
+					};
+					fixture.tenants.tnt_race = {
+						total: 1,
+						conversations: [
+							{
+								...notifyRow("bcv_race", transport === "replies" ? 2 : 1),
+								unread_count: 1,
+								last_read_seq: transport === "replies" ? 1 : 0,
+							},
+						],
+					};
+					await act(async () =>
+						mounted.client.invalidateQueries({
+							queryKey: api.teamBridgeKeys.unreadPrefix,
+						}),
+					);
+					await until(
+						() => fixture.calls[pending].length === 1,
+						`pending ${pending} read`,
+					);
+					assert.equal(mounted.notifications.length, 0);
+					assert.deepEqual(fixture.calls[transport][0], {
+						id: "bcv_race",
+						tenantId: "tnt_race",
+						limit: 1,
+						...(transport === "replies"
+							? { rootId: "bcmsg_root", afterSeq: 2 }
+							: {}),
+					});
+					assert.equal(
+						fixture.calls[transport === "replies" ? "history" : "replies"]
+							.length,
+						0,
+					);
+					if (disable === "setting") {
+						await act(async () =>
+							mounted.client.setQueryData(["desktop", "settings"], {
+								settings: [{ key: "display.notifications", value: false }],
+							}),
+						);
+						await settle();
+					} else if (disable === "capability") {
+						await mounted.setEnabled(false);
+					}
+					await act(async () => release());
+					await settle();
+					assert.equal(
+						mounted.notifications.length,
+						disable === "none" ? 1 : 0,
+						"only the enabled negative control may reach IPC",
+					);
+					if (disable === "none") {
+						assert.deepEqual(fixture.calls.directory, ["tnt_race"]);
+						assert.equal(mounted.notifications[0].title, "Directory Bob");
+						assert.equal(
+							mounted.notifications[0].body,
+							transport === "replies" ? "reply preview" : "fixture message",
+						);
+						assert.equal(mounted.notifications[0].tenantId, "tnt_race");
+						assert.equal(
+							mounted.notifications[0].seq,
+							transport === "replies" ? 2 : 1,
+						);
+						assert.equal(
+							mounted.notifications[0].threadId,
+							transport === "replies" ? "bcmsg_root" : undefined,
+						);
+						assert.equal(
+							api.teamBridgeOpenPath(mounted.notifications[0]),
+							`/team-bridge?tenant=tnt_race&conversation=bcv_race${transport === "replies" ? "&thread=bcmsg_root" : ""}`,
+						);
+					}
+					// Cursors consume silenced seqs; re-enabling must not replay them.
+					await mounted.setEnabled(true);
+					await act(async () =>
+						mounted.client.setQueryData(["desktop", "settings"], {
+							settings: [{ key: "display.notifications", value: true }],
+						}),
+					);
+					await act(async () =>
+						mounted.client.invalidateQueries({
+							queryKey: api.teamBridgeKeys.unreadPrefix,
+						}),
+					);
+					await settle();
+					assert.equal(
+						mounted.notifications.length,
+						disable === "none" ? 1 : 0,
+					);
+				} finally {
+					release();
+					await mounted.teardown();
+				}
+			});
+		}
+	}
+}
+
+// No fallback may reuse a different reply's body or treat unvalidated cross-scope
+// data as a sender. A real failed read still raises the metadata-only banner.
+for (const scenario of [
+	"known",
+	"self",
+	"wrong-root",
+	"wrong-conversation",
+	"wrong-reply-root",
+	"later-seq",
+	"read-failed",
+]) {
+	test(`reply enrichment screens ${scenario} without leaking a preview`, async () => {
+		resetFixture();
+		const root = {
+			id: "bcmsg_root",
+			conversation_id: "bcv_reply",
+			seq: 1,
+			sender: {
+				account_id: "acct_bob",
+				kind: "human",
+				display_label: "Root sender",
+			},
+			body: "Root-only history",
+		};
+		fixture.messages = { messages: [root] };
+		fixture.thread = {
+			root: { ...root },
+			replies: [
+				{
+					...root,
+					id: "bcmsg_reply",
+					seq: 2,
+					thread_root_id: root.id,
+					body: "Private reply **preview**",
+				},
+			],
+		};
+		const reply = fixture.thread.replies[0];
+		if (scenario === "self")
+			reply.sender = { ...reply.sender, account_id: "acct_alice" };
+		if (scenario === "wrong-root") fixture.thread.root.id = "bcmsg_foreign";
+		if (scenario === "wrong-conversation")
+			reply.conversation_id = "bcv_foreign";
+		if (scenario === "wrong-reply-root") reply.thread_root_id = "bcmsg_foreign";
+		if (scenario === "later-seq") reply.seq = 3;
+		if (scenario === "read-failed")
+			fixture.thread = new Error("reply endpoint unavailable");
+		const org = {
+			tenant_id: "tnt_reply",
+			tenant_name: "Reply Org",
+			unread: 0,
+			eligible: true,
+		};
+		fixture.account = { total: 0, organizations: [org] };
+		fixture.conversations = {
+			conversations: [
+				{
+					...conversation("bcv_reply", "tnt_reply"),
+					latest_seq: 2,
+					last_thread_root_id: root.id,
+					last_sender_label: "Member",
+				},
+			],
+		};
+		fixture.directoryMembers = [
+			{
+				account_id: "acct_bob",
+				display_label: "Directory Bob",
+				email: "bob@example.test",
+			},
+		];
+		const mounted = await mount();
+		try {
+			await until(
+				() =>
+					fixture.calls.conversations > 0 &&
+					fixture.calls.unread.includes("account"),
+				"seed reads",
+			);
+			await settle();
+			fixture.account = { total: 1, organizations: [{ ...org, unread: 1 }] };
+			fixture.tenants.tnt_reply = {
+				total: 1,
+				conversations: [
+					{ ...notifyRow("bcv_reply", 2), unread_count: 1, last_read_seq: 1 },
+				],
+			};
+			await act(async () =>
+				mounted.client.invalidateQueries({
+					queryKey: api.teamBridgeKeys.unreadPrefix,
+				}),
+			);
+			if (scenario === "known") {
+				await until(
+					() => mounted.notifications.length === 1,
+					"enriched reply banner",
+				);
+				// Assert the visible symptom before transport bookkeeping, so the old
+				// root-only reader reproduces the lost name/preview directly.
+				assert.equal(mounted.notifications[0].title, "Directory Bob");
+				assert.equal(mounted.notifications[0].body, "Private reply preview");
+			}
+			await until(
+				() => fixture.calls.replies.length === 1,
+				"one bounded reply read",
+			);
+			await settle();
+			assert.deepEqual(fixture.calls.replies, [
+				{
+					id: "bcv_reply",
+					rootId: "bcmsg_root",
+					tenantId: "tnt_reply",
+					afterSeq: 2,
+					limit: 1,
+				},
+			]);
+			assert.equal(fixture.calls.history.length, 0);
+			assert.equal(
+				fixture.calls.directory.length,
+				scenario === "known" ? 1 : 0,
+			);
+			assert.equal(mounted.notifications.length, scenario === "self" ? 0 : 1);
+			if (scenario !== "self") {
+				const banner = mounted.notifications[0];
+				if (scenario !== "known") {
+					assert.equal(banner.title, "Conversation bcv_reply");
+					assert.doesNotMatch(banner.body, /Private reply|Root-only history/);
+				}
+				assert.equal(banner.seq, 2);
+				assert.equal(banner.tenantId, "tnt_reply");
+				assert.equal(banner.threadId, "bcmsg_root");
+			}
+		} finally {
+			await mounted.teardown();
+		}
+	});
+}
