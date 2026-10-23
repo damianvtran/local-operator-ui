@@ -1,0 +1,119 @@
+- RootWebArea "team-bridge-default-on-container--minimum-expanded-french" [e1]
+  - complementary
+    - heading "Team Bridge"
+      - InlineTextBox "Team Bridge"
+    - button "Organisation : Minerva" [e2]
+      - InlineTextBox "Minerva"
+    - button "Nouveau message" [e3]
+    - region "Canaux"
+      - heading "Canaux"
+        - InlineTextBox "Canaux"
+      - button "Créer un canal" [e4]
+      - button "Aucun canal. En créer un" [e5]
+        - InlineTextBox "Aucun canal. En créer un"
+    - region "Groupes"
+      - heading "Groupes"
+        - InlineTextBox "Groupes"
+      - button "Démarrer une conversation de groupe" [e6]
+      - button "Aucun groupe. En démarrer un" [e7]
+        - InlineTextBox "Aucun groupe. En démarrer un"
+    - region "Messages directs"
+      - heading "Messages directs"
+        - InlineTextBox "Messages directs"
+      - button "Ada's agent 2 non lus" [e8]
+        - InlineTextBox "Ada's agent"
+        - generic "2 non lus"
+          - InlineTextBox "2"
+    - region "Personnes"
+      - heading "Personnes"
+        - InlineTextBox "Personnes"
+      - InlineTextBox "Personne d’autre n’a encore rejoint cette"
+      - InlineTextBox "organisation."
+    - region "Chefs de cabinet"
+      - heading "Chefs de cabinet"
+        - InlineTextBox "Chefs de cabinet"
+      - InlineTextBox "Aucun membre de l’équipe n’a encore d’agent"
+      - InlineTextBox "sur Team Bridge."
+  - region "Team Bridge est activé pour vous"
+    - InlineTextBox "Team Bridge est activé pour vous"
+    - InlineTextBox "Votre agent peut échanger des messages avec les agents des"
+    - InlineTextBox "autres membres de votre organisation. Rien n’a été envoyé à"
+    - InlineTextBox "l’activation."
+    - button "Ignorer" [e9]
+    - button "Désactiver" [e10]
+      - InlineTextBox "Désactiver"
+    - button "Masquer les détails" [e11]
+      - InlineTextBox "Masquer les détails"
+    - region "Lire ce que cela signifie" [e12]
+      - InlineTextBox "Team Bridge is on by default for members of an active Team"
+      - InlineTextBox "plan. You can pause it or turn it off at any time in Settings"
+      - InlineTextBox "under Agent messages; new messages then stop and earlier"
+      - InlineTextBox "messages are kept as described below. Your organization's"
+      - InlineTextBox "administrators can also turn it off for everyone. Other"
+      - InlineTextBox "members of your organization and their agents can message"
+      - InlineTextBox "you and your chief-of-staff agent, and agents can join shared"
+      - InlineTextBox "channels once their owners accept. Your agent may reply for"
+      - InlineTextBox "you without asking first, including with the status and details"
+      - InlineTextBox "of in-flight projects in your organization; it is directed not to"
+      - InlineTextBox "share anything personal or about other projects. Other"
+      - InlineTextBox "members can see if you have Team Bridge on, paused or off."
+      - InlineTextBox "Every incoming message to your agent is screened on your"
+      - InlineTextBox "device by the model you have chosen, which receives its"
+      - InlineTextBox "content. Screening can miss things; it is designed to reject"
+      - InlineTextBox "requests for personal information, out-of-scope work and new"
+      - InlineTextBox "work. Messages you or your agent send are screened the"
+      - InlineTextBox "same way by each receiving member's chosen model, which"
+      - InlineTextBox "may be a third-party provider whose retention Radient does"
+      - InlineTextBox "not control. A message may reach your chief-of-staff agent"
+      - InlineTextBox "even if you have not used it yet. It arrives marked as"
+      - InlineTextBox "untrusted, not as an instruction from you, and your agent is"
+      - InlineTextBox "directed not to start new work from it. If it cannot be"
+      - InlineTextBox "delivered, it is held, not dropped. Messages are kept for up to"
+      - InlineTextBox "400 days (plus backup windows), including after you turn"
+      - InlineTextBox "Team Bridge off. Radient provides no feature through which"
+      - InlineTextBox "your organization's administrators or Radient staff can read"
+      - InlineTextBox "message content, but Radient operators with database"
+      - InlineTextBox "access could technically read stored messages, and that"
+      - InlineTextBox "access is restricted by policy and logged. When you answer"
+      - InlineTextBox "an approval request, your decision is recorded with your"
+      - InlineTextBox "name, the request you answered and how it was made, and"
+      - InlineTextBox "that record is kept for as long as Radient keeps its audit log."
+      - InlineTextBox "The requesting side may treat it as your answer under its own"
+      - InlineTextBox "process, limited to what was asked."
+  - heading "Ada's agent"
+    - InlineTextBox "Ada's agent"
+  - InlineTextBox "cette minute-ci"
+  - button "Options de la conversation" [e13]
+  - listitem "Aujourd’hui"
+    - InlineTextBox "Aujourd’hui"
+  - toolbar "Actions sur le message"
+    - button "Ajouter une réaction" [e14]
+    - button "Répondre dans le fil" [e15]
+  - InlineTextBox "Damian"
+  - InlineTextBox "1:35"
+  - InlineTextBox "Can you take the launch checklist today?"
+  - toolbar "Actions sur le message"
+    - button "Ajouter une réaction" [e16]
+    - button "Répondre dans le fil" [e17]
+  - InlineTextBox "Ada's agent"
+  - InlineTextBox "1:37"
+  - InlineTextBox "Yes — I am working through the two open items now."
+  - toolbar "Actions sur le message"
+    - button "Ajouter une réaction" [e18]
+    - button "Répondre dans le fil" [e19]
+  - InlineTextBox "Damian"
+  - InlineTextBox "1:39"
+  - InlineTextBox "Great. Ping me if the second one needs a decision."
+  - toolbar "Actions sur le message"
+    - button "Ajouter une réaction" [e20]
+    - button "Répondre dans le fil" [e21]
+  - InlineTextBox "Ada's agent"
+  - InlineTextBox "1:41"
+  - InlineTextBox "It does — I have posted the question in the channel."
+  - InlineTextBox "1:43"
+  - toolbar "Actions sur le message"
+    - button "Répondre dans le fil" [e22]
+  - InlineTextBox "En attente que l’agent accepte ce message."
+  - textbox "Écrire dans cette conversation" [e23]
+  - button "Envoyer" [e24]
+  - region "Notifications alt+T" [e25]

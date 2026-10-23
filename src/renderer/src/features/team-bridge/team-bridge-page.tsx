@@ -194,6 +194,12 @@ export const TeamBridgeEligibilityPanel: FC<{
 }> = ({ reason }) => {
 	useI18nLocale();
 	const copy = {
+		// Member opt-out is a plain state, not an organization-plan upsell.
+		// Reuse the existing audited Settings copy; no inline Enable path here.
+		off: {
+			title: "ui.agentMessages.settings.state.e_title",
+			reason: "ui.agentMessages.settings.state.e_body",
+		},
 		plan_required: {
 			title: "ui.teamBridge.plan.title",
 			reason: "ui.teamBridge.plan.reason",
@@ -231,9 +237,11 @@ export const TeamBridgeEligibilityPanel: FC<{
 					{t(copy[reason].title)}
 				</h1>
 				<div className="mt-2">
-					<p className="text-pretty text-[13px] leading-relaxed text-ink-muted">
-						{t("ui.teamBridge.plan.body")}
-					</p>
+					{reason !== "off" && (
+						<p className="text-pretty text-[13px] leading-relaxed text-ink-muted">
+							{t("ui.teamBridge.plan.body")}
+						</p>
+					)}
 					<p className="mt-4 text-[12px] leading-snug text-ink-dim">
 						{t(copy[reason].reason)}
 					</p>

@@ -1,0 +1,5 @@
+- RootWebArea "team-bridge-default-on-container--minimum-off-observed" [e1]
+  - heading "Turned off"
+    - InlineTextBox "Turned off"
+  - InlineTextBox "Agent messages are off for this account. Turning them on again records fresh consent."
+  - region "Notifications alt+T" [e2]

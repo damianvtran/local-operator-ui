@@ -1,0 +1,545 @@
+[
+  {
+    "request": {
+      "op": "team_bridge.status",
+      "boundary": "surface_open"
+    },
+    "route": {
+      "path": "/v1/desktop/team-bridge/status?boundary=surface_open",
+      "method": "GET"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "result": {
+          "capability": 1,
+          "consent_account_guard": true,
+          "state": "ready",
+          "account_id": "acct_self",
+          "tenant_id": "tnt_1",
+          "surface_state": "C",
+          "visibility": {
+            "settings": true,
+            "inbox": true,
+            "account_door": true,
+            "onboarding": false
+          },
+          "update_required": false,
+          "local": {
+            "enabled": true,
+            "onboarding": "",
+            "session": ""
+          },
+          "status": {
+            "tenants": [
+              {
+                "tenant_id": "tnt_1",
+                "tenant_name": "Minerva",
+                "eligible": true,
+                "endpoint": {
+                  "id": "bep_db80cde6e82a478abe45da549dc03c72",
+                  "state": "active"
+                }
+              }
+            ]
+          },
+          "consent": {
+            "version": "bridge_consent_v2",
+            "text": "Team Bridge is on by default for members of an active Team plan. You can pause it or turn it off at any time in Settings under Agent messages; new messages then stop and earlier messages are kept as described below. Your organization's administrators can also turn it off for everyone. Other members of your organization and their agents can message you and your chief-of-staff agent, and agents can join shared channels once their owners accept. Your agent may reply for you without asking first, including with the status and details of in-flight projects in your organization; it is directed not to share anything personal or about other projects. Other members can see if you have Team Bridge on, paused or off. Every incoming message to your agent is screened on your device by the model you have chosen, which receives its content. Screening can miss things; it is designed to reject requests for personal information, out-of-scope work and new work. Messages you or your agent send are screened the same way by each receiving member's chosen model, which may be a third-party provider whose retention Radient does not control. A message may reach your chief-of-staff agent even if you have not used it yet. It arrives marked as untrusted, not as an instruction from you, and your agent is directed not to start new work from it. If it cannot be delivered, it is held, not dropped. Messages are kept for up to 400 days (plus backup windows), including after you turn Team Bridge off. Radient provides no feature through which your organization's administrators or Radient staff can read message content, but Radient operators with database access could technically read stored messages, and that access is restricted by policy and logged. When you answer an approval request, your decision is recorded with your name, the request you answered and how it was made, and that record is kept for as long as Radient keeps its audit log. The requesting side may treat it as your answer under its own process, limited to what was asked.",
+            "source": "served"
+          },
+          "error": null,
+          "read_only": false,
+          "default_on": {
+            "in_force": true,
+            "notice_pending": true
+          },
+          "can_receive": true,
+          "can_decide": false
+        }
+      }
+    }
+  },
+  {
+    "request": {
+      "op": "capabilities"
+    },
+    "route": {
+      "path": "/v1/capabilities",
+      "method": "GET"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "result": {
+          "desktop_contract": 1,
+          "desktop_available": true,
+          "desktop_auth": "bearer",
+          "features": {
+            "team_bridge": 1
+          }
+        }
+      }
+    }
+  },
+  {
+    "request": {
+      "op": "agent_messages.settings",
+      "tenant_id": "tnt_1"
+    },
+    "route": {
+      "path": "/v1/desktop/team-bridge/settings?tenant_id=tnt_1",
+      "method": "GET"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "result": {
+          "endpoint": {
+            "id": "bep_db80cde6e82a478abe45da549dc03c72",
+            "tenant_id": "tnt_1",
+            "label": "Beta Member",
+            "state": "active",
+            "consent": {
+              "version": "bridge_consent_v2",
+              "consented_at": "2026-10-18T22:54:53.644474Z",
+              "consented_via": "default_on",
+              "current": true
+            },
+            "created_at": "2026-10-18T22:54:53.644474Z",
+            "updated_at": "2026-10-18T22:54:53.644474Z"
+          },
+          "settings": {
+            "tenant_id": "tnt_1",
+            "eligible": true,
+            "consent_version": "bridge_consent_v2",
+            "consent_required": false
+          },
+          "default_on": true
+        }
+      }
+    }
+  },
+  {
+    "request": {
+      "op": "team_bridge.unread",
+      "scope": "account"
+    },
+    "route": {
+      "path": "/v1/desktop/team-bridge/unread?scope=account",
+      "method": "GET"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "result": {
+          "total": 0,
+          "organizations": [
+            {
+              "tenant_id": "tnt_1",
+              "tenant_name": "Minerva",
+              "unread": 0
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "request": {
+      "op": "team_bridge.conversations.list",
+      "scope": "account"
+    },
+    "route": {
+      "path": "/v1/desktop/team-bridge/conversations?scope=account",
+      "method": "GET"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "result": {
+          "conversations": [
+            {
+              "id": "bcv_dm_1",
+              "tenant_id": "tnt_1",
+              "kind": "dm",
+              "name": "",
+              "visibility": "private",
+              "agent_capable": true,
+              "status": "open",
+              "created_by": "acct_self",
+              "last_message_at": "2026-10-23T05:41:19.069Z",
+              "latest_seq": 4,
+              "members": [
+                {
+                  "account_id": "acct_self",
+                  "kind": "human",
+                  "display_label": "Damian",
+                  "role": "owner",
+                  "state": "active"
+                },
+                {
+                  "account_id": "acct_agent",
+                  "kind": "agent",
+                  "display_label": "Ada's agent",
+                  "role": "member",
+                  "state": "active",
+                  "joined_seq": 2
+                }
+              ],
+              "last_read_seq": 2,
+              "unread_count": 2,
+              "muted": false
+            }
+          ],
+          "has_more": false
+        }
+      }
+    }
+  },
+  {
+    "request": {
+      "op": "team_bridge.directory",
+      "tenant_id": "tnt_1"
+    },
+    "route": {
+      "path": "/v1/desktop/team-bridge/directory?tenant_id=tnt_1",
+      "method": "GET"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "result": {
+          "tenant_id": "tnt_1",
+          "members": []
+        }
+      }
+    }
+  },
+  {
+    "request": {
+      "op": "team_bridge.conversations.list",
+      "tenant_id": "tnt_1"
+    },
+    "route": {
+      "path": "/v1/desktop/team-bridge/conversations?tenant_id=tnt_1",
+      "method": "GET"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "result": {
+          "conversations": [
+            {
+              "id": "bcv_dm_1",
+              "tenant_id": "tnt_1",
+              "kind": "dm",
+              "name": "",
+              "visibility": "private",
+              "agent_capable": true,
+              "status": "open",
+              "created_by": "acct_self",
+              "last_message_at": "2026-10-23T05:41:19.069Z",
+              "latest_seq": 4,
+              "members": [
+                {
+                  "account_id": "acct_self",
+                  "kind": "human",
+                  "display_label": "Damian",
+                  "role": "owner",
+                  "state": "active"
+                },
+                {
+                  "account_id": "acct_agent",
+                  "kind": "agent",
+                  "display_label": "Ada's agent",
+                  "role": "member",
+                  "state": "active",
+                  "joined_seq": 2
+                }
+              ],
+              "last_read_seq": 2,
+              "unread_count": 2,
+              "muted": false
+            }
+          ],
+          "has_more": false
+        }
+      }
+    }
+  },
+  {
+    "request": {
+      "op": "team_bridge.messages.list",
+      "conversation_id": "bcv_dm_1",
+      "tenant_id": "tnt_1"
+    },
+    "route": {
+      "path": "/v1/desktop/team-bridge/conversations/bcv_dm_1/messages?tenant_id=tnt_1",
+      "method": "GET"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "result": {
+          "messages": [
+            {
+              "id": "bcmsg_1",
+              "conversation_id": "bcv_dm_1",
+              "seq": 1,
+              "sender": {
+                "account_id": "acct_self",
+                "kind": "human",
+                "display_label": "Damian"
+              },
+              "body": "Can you take the launch checklist today?",
+              "origin": "human",
+              "created_at": "2026-10-23T05:29:19.069Z"
+            },
+            {
+              "id": "bcmsg_2",
+              "conversation_id": "bcv_dm_1",
+              "seq": 2,
+              "sender": {
+                "account_id": "acct_agent",
+                "kind": "agent",
+                "display_label": "Ada's agent"
+              },
+              "body": "Yes \u2014 I am working through the two open items now.",
+              "body_hash": "hash-2",
+              "origin": "agent",
+              "created_at": "2026-10-23T05:31:19.070Z"
+            },
+            {
+              "id": "bcmsg_3",
+              "conversation_id": "bcv_dm_1",
+              "seq": 3,
+              "sender": {
+                "account_id": "acct_self",
+                "kind": "human",
+                "display_label": "Damian"
+              },
+              "body": "Great. Ping me if the second one needs a decision.",
+              "origin": "human",
+              "created_at": "2026-10-23T05:33:19.070Z"
+            },
+            {
+              "id": "bcmsg_4",
+              "conversation_id": "bcv_dm_1",
+              "seq": 4,
+              "sender": {
+                "account_id": "acct_agent",
+                "kind": "agent",
+                "display_label": "Ada's agent"
+              },
+              "body": "It does \u2014 I have posted the question in the channel.",
+              "body_hash": "hash-4",
+              "origin": "agent",
+              "created_at": "2026-10-23T05:35:19.070Z"
+            },
+            {
+              "id": "bcmsg_5",
+              "conversation_id": "bcv_dm_1",
+              "seq": 5,
+              "sender": {
+                "account_id": "acct_agent",
+                "kind": "agent",
+                "display_label": "Ada's agent"
+              },
+              "body": null,
+              "body_hash": "hash-5",
+              "origin": "agent",
+              "created_at": "2026-10-23T05:37:19.070Z"
+            }
+          ],
+          "has_more": false
+        }
+      }
+    }
+  },
+  {
+    "request": {
+      "op": "team_bridge.read",
+      "conversation_id": "bcv_dm_1",
+      "tenant_id": "tnt_1",
+      "seq": 5
+    },
+    "route": {
+      "path": "/v1/desktop/team-bridge/conversations/bcv_dm_1/read",
+      "method": "POST",
+      "body": {
+        "tenant_id": "tnt_1",
+        "seq": 5
+      }
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "result": {
+          "conversation_id": "bcv_dm_1",
+          "last_read_seq": 4,
+          "unread_count": 0,
+          "muted": false
+        }
+      }
+    }
+  },
+  {
+    "request": {
+      "op": "team_bridge.conversations.list",
+      "tenant_id": "tnt_1"
+    },
+    "route": {
+      "path": "/v1/desktop/team-bridge/conversations?tenant_id=tnt_1",
+      "method": "GET"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "result": {
+          "conversations": [
+            {
+              "id": "bcv_dm_1",
+              "tenant_id": "tnt_1",
+              "kind": "dm",
+              "name": "",
+              "visibility": "private",
+              "agent_capable": true,
+              "status": "open",
+              "created_by": "acct_self",
+              "last_message_at": "2026-10-23T05:41:19.069Z",
+              "latest_seq": 4,
+              "members": [
+                {
+                  "account_id": "acct_self",
+                  "kind": "human",
+                  "display_label": "Damian",
+                  "role": "owner",
+                  "state": "active"
+                },
+                {
+                  "account_id": "acct_agent",
+                  "kind": "agent",
+                  "display_label": "Ada's agent",
+                  "role": "member",
+                  "state": "active",
+                  "joined_seq": 2
+                }
+              ],
+              "last_read_seq": 2,
+              "unread_count": 2,
+              "muted": false
+            }
+          ],
+          "has_more": false
+        }
+      }
+    }
+  },
+  {
+    "request": {
+      "op": "agent_messages.settings.put",
+      "expected_account_id": "acct_self",
+      "tenant_id": "tnt_1",
+      "state": "disabled"
+    },
+    "route": {
+      "path": "/v1/desktop/team-bridge/settings",
+      "method": "PUT",
+      "body": {
+        "expected_account_id": "acct_self",
+        "tenant_id": "tnt_1",
+        "state": "disabled"
+      }
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "result": {
+          "endpoint": {
+            "id": "bep_db80cde6e82a478abe45da549dc03c72",
+            "tenant_id": "tnt_1",
+            "label": "Beta Member",
+            "state": "disabled",
+            "consent": {
+              "version": "bridge_consent_v2",
+              "consented_at": "2026-10-18T22:54:53.644474Z",
+              "consented_via": "default_on",
+              "current": true
+            },
+            "created_at": "2026-10-18T22:54:53.644474Z",
+            "updated_at": "2026-10-18T22:54:53.644474Z"
+          },
+          "settings": {
+            "tenant_id": "tnt_1",
+            "eligible": true,
+            "consent_version": "bridge_consent_v2",
+            "consent_required": true
+          },
+          "default_on": true
+        }
+      }
+    }
+  },
+  {
+    "request": {
+      "op": "team_bridge.status",
+      "boundary": "surface_open"
+    },
+    "route": {
+      "path": "/v1/desktop/team-bridge/status?boundary=surface_open",
+      "method": "GET"
+    },
+    "response": {
+      "status": 200,
+      "body": {
+        "result": {
+          "capability": 1,
+          "consent_account_guard": true,
+          "state": "ready",
+          "account_id": "acct_self",
+          "tenant_id": "tnt_1",
+          "surface_state": "E",
+          "visibility": {
+            "settings": true,
+            "inbox": false,
+            "account_door": false,
+            "onboarding": false
+          },
+          "update_required": false,
+          "local": {
+            "enabled": false,
+            "onboarding": "",
+            "session": ""
+          },
+          "status": {
+            "tenants": [
+              {
+                "tenant_id": "tnt_1",
+                "tenant_name": "Minerva",
+                "eligible": true,
+                "endpoint": {
+                  "id": "bep_db80cde6e82a478abe45da549dc03c72",
+                  "state": "disabled"
+                }
+              }
+            ]
+          },
+          "consent": {
+            "version": "bridge_consent_v2",
+            "text": "Team Bridge is on by default for members of an active Team plan. You can pause it or turn it off at any time in Settings under Agent messages; new messages then stop and earlier messages are kept as described below. Your organization's administrators can also turn it off for everyone. Other members of your organization and their agents can message you and your chief-of-staff agent, and agents can join shared channels once their owners accept. Your agent may reply for you without asking first, including with the status and details of in-flight projects in your organization; it is directed not to share anything personal or about other projects. Other members can see if you have Team Bridge on, paused or off. Every incoming message to your agent is screened on your device by the model you have chosen, which receives its content. Screening can miss things; it is designed to reject requests for personal information, out-of-scope work and new work. Messages you or your agent send are screened the same way by each receiving member's chosen model, which may be a third-party provider whose retention Radient does not control. A message may reach your chief-of-staff agent even if you have not used it yet. It arrives marked as untrusted, not as an instruction from you, and your agent is directed not to start new work from it. If it cannot be delivered, it is held, not dropped. Messages are kept for up to 400 days (plus backup windows), including after you turn Team Bridge off. Radient provides no feature through which your organization's administrators or Radient staff can read message content, but Radient operators with database access could technically read stored messages, and that access is restricted by policy and logged. When you answer an approval request, your decision is recorded with your name, the request you answered and how it was made, and that record is kept for as long as Radient keeps its audit log. The requesting side may treat it as your answer under its own process, limited to what was asked.",
+            "source": "served"
+          },
+          "error": null,
+          "read_only": false,
+          "default_on": {
+            "in_force": true,
+            "notice_pending": true
+          },
+          "can_receive": false,
+          "can_decide": false
+        }
+      }
+    }
+  }
+]

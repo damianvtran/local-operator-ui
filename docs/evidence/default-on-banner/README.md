@@ -1,5 +1,7 @@
 # Default-on Team Bridge — rendered evidence
 
+**Follow-up:** [D1/D2 full-container RED → GREEN remediation](D1-remediation.md) supersedes the earlier post-off verification limitation; earlier artifacts and preparation notes below remain historical records.
+
 PR #1333, integration/evidence capture on 2026-10-23. **Browser-rendered Storybook evidence, not native Electron or live-hub QA.** The real browser tool drove one background tab and a single Storybook server on port 6013. Every frame was inspected, including the five contact sheets below. No screenshots came from jsdom, an HTML mockup, a scripted browser engine or Electron.
 
 ## Frame storage correction (CI remediation)
