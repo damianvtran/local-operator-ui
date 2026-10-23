@@ -14,6 +14,7 @@ import { withOriginGate } from "./actions/gate";
 import * as geometryActions from "./actions/geometry";
 import * as inputActions from "./actions/input";
 import * as pageActions from "./actions/page";
+import * as queryActions from "./actions/query";
 import * as tabActions from "./actions/tabs";
 import * as uploadActions from "./actions/upload";
 import { collectAddressHistory, mergeAddressHistory } from "./address-history";
@@ -617,6 +618,8 @@ export class BrowserHost implements BrowserActionContext {
 				return geometryActions.hitTest(this, params);
 			case "ancestors":
 				return geometryActions.ancestors(this, params);
+			case "query":
+				return queryActions.query(this, params);
 			case "snapshot":
 				return pageActions.snapshot(this, params);
 			case "scroll":
