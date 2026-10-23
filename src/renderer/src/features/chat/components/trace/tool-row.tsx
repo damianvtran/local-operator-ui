@@ -931,13 +931,20 @@ export const ToolRow = ({
 					// reader scans for the result the quietest thing on a finished turn.
 					// The live/settled difference is the working line and the missing
 					// duration (§E7), not a dimmer summary.
-					"min-w-0 flex-1 font-mono text-ink-muted text-mono-sm",
 					/*
-					 * WRAP INSTEAD OF TRUNCATE on the rows that ask for it (see the prop): a
-					 * receipt's last token is the ask id, and the ellipsis ate it. `break-words`
-					 * keeps one long token from overflowing the row.
+					 * TWO WHOLE STRINGS, not a base plus a token (UX round 2 on #1112, U4):
+					 * the default must stay BYTE-IDENTICAL to what it was before this prop
+					 * existed - `tool-row.test.mjs` pins the rendered `min-w-0 flex-1
+					 * truncate` order, and a conditional token appended after the base
+					 * moved `truncate` behind `font-mono`, which that test read as "the
+					 * summary no longer truncates first" (CI, shard 2/3).
+					 * WRAP INSTEAD OF TRUNCATE on the rows that ask for it: a receipt's last
+					 * token is the ask id, and the ellipsis ate it. `break-words` keeps one
+					 * long token from overflowing the row.
 					 */
-					summaryWrap ? "break-words whitespace-normal" : "truncate",
+					summaryWrap
+						? "min-w-0 flex-1 break-words whitespace-normal font-mono text-ink-muted text-mono-sm"
+						: "min-w-0 flex-1 truncate font-mono text-ink-muted text-mono-sm",
 				)}
 				// The name beside it has carried a `title` since it became truncatable;
 				// this cell truncates too, and at 390px the summary is the half that
