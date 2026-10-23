@@ -19153,8 +19153,25 @@
 				"job": "a7380f37ab56",
 				"remediation_job": "b4390a98f09f"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-22",
+					"result": "clean-with-findings",
+					"instance": "tbstack-r1-1314m-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1314m-fr.json",
+					"receipt_sha256": "b25dec001b1fad7f23d3ce7f131df4484e6edd9a82a7eb19ab088869ec7a92dc",
+					"note": "Independent main-merge union audit. Existing fr/es attachment plural NIT remains rejected as unreachable (count 2–4)."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
@@ -19892,8 +19909,25 @@
 				"session": "87a8efad496d",
 				"job": "cc64f5dc3c0c"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-22",
+					"result": "clean-with-findings",
+					"instance": "tbstack-r1-1314m-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 1
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1314m-es.json",
+					"receipt_sha256": "7465f59e43d0ccad7dde135e8d8c59e990d6edaa8fedd59dc659a9963ba36ea2",
+					"note": "Independent main-merge union audit. Existing fr/es attachment plural NIT remains rejected as unreachable (count 2–4)."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
@@ -20257,8 +20291,25 @@
 				"session": "d04f0e3ee24c",
 				"job": "bba1cb60d6a5"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "tbstack-r1-1314m-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1314m-zh-cn.json",
+					"receipt_sha256": "2c43f8d9e416276ebb76b3f4d25bf0eaca6995efb21511ead65321a35f0f2dba",
+					"note": "Independent main-merge union audit; no findings."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
@@ -20906,8 +20957,25 @@
 				"job": "764e8ee192fe",
 				"remediation_job": "78daa414c10d"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "tbstack-r1-1314m-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1314m-ru.json",
+					"receipt_sha256": "620a6d7584ec15b8401207f18b60e36d1a1e9a191717f7ff188b843389e8f4c8",
+					"note": "Independent main-merge union audit; no findings."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
@@ -21218,8 +21286,25 @@
 				"session": "632a8fd68227",
 				"job": "4ca9e8a81d54"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "tbstack-r1-1314m-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1314m-hi.json",
+					"receipt_sha256": "382e449159498777e6b3eed7ca801fa6c5b4bf9df0674927586543076646d8b0",
+					"note": "Independent main-merge union audit; no findings."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
@@ -21530,8 +21615,25 @@
 				"session": "8e5edb2e9750",
 				"job": "39c1864c0110"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "tbstack-r1-1314m-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1314m-ur.json",
+					"receipt_sha256": "68f17b4e1fed9db04526d20291e69f3abf296273616150592d34c78cc5188549",
+					"note": "Independent main-merge union audit; no findings."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
@@ -21842,8 +21944,25 @@
 				"session": "8c0c0af95212",
 				"job": "e5d5efa8017f"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "tbstack-r1-1314m-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1314m-vi.json",
+					"receipt_sha256": "1f66038df15a394ee2eb272daa82143709762232ed52e38fc170bf85b2068272",
+					"note": "Independent main-merge union audit; no findings."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",

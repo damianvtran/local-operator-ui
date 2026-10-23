@@ -1,0 +1,120 @@
+{
+ "auditor": "translation-auditor",
+ "model": "openai/gpt-6.1-sol",
+ "instance": "tbstack-r1-1314m-es",
+ "session": "5cbc583203b9",
+ "job": "163c5616675a",
+ "parent_session": "687384e07954",
+ "date": "2026-10-22",
+ "locale": "es",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "result": "clean-with-findings",
+ "keys_audited": 178,
+ "keys_substantive": 4,
+ "source_head": "7a2e6371736c327e28c2e57d45d9a5a5d5304360",
+ "merge_parents": [
+  "95e9b273a2bef3487cfa5718fbde99a66cc31f23",
+  "6dac4f5baa8e26da07370d244240e7acb8238e1f"
+ ],
+ "scope": "PR #1314 local head 7a2e6371736c327e28c2e57d45d9a5a5d5304360: ui.teamBridge es; 178 keys read side-by-side (reused identical observations across heads). Exact parent union for English/context/target; substantive four OS-banner key audit plus inherited terminology and ICU/CLDR checks. Existing feature linguistic authority inherited from hash-verified receipts; no fresh full re-audit or rendered-fit claim.",
+ "sha256": {
+  "en": "d27275edddf911b66c28f71051c318ca939a968b462937c6ca3809b8ae7f34cc",
+  "es": "e6aa45ed725fa7fecac64ca1e56977361a6c0b1e67e2e4e96e2e1125db76123b",
+  "context": "e10643d988fdb11fe2f76ba9408a85bbd1a19d006c1940e4144364612e0916c8"
+ },
+ "findings": [
+  {
+   "id": "TBS1314-ES-N1",
+   "severity": "NIT",
+   "key": "ui.teamBridge.attachments.failed_count",
+   "current": "{count, plural, one {No se puede enviar # imagen.} other {No se pueden enviar # imágenes.}}",
+   "proposed": "{count, plural, one {No se puede enviar # imagen.} many {No se pueden enviar # de imágenes.} other {No se pueden enviar # imágenes.}}",
+   "note": "Inherited from TBS1314-ES-N1, ATT-ES-R3-01; still present in bytes, with prior rejection for unreachable many preserved. Not reopened as a runtime defect.",
+   "inherited_ids": [
+    "TBS1314-ES-N1",
+    "ATT-ES-R3-01"
+   ],
+   "reason": "Missing CLDR many branch is inherited unchanged; source passes only 2–4 failed images, so that branch is unreachable and the issue remains a non-blocking NIT, not a runtime defect.",
+   "prior_disposition": "rejected as unreachable (task-supplied disposition); independently verified count domain from source, not an MR-comment fetch."
+  }
+ ],
+ "inherited_receipts": [
+  {
+   "parent": "95e9b273a2bef3487cfa5718fbde99a66cc31f23",
+   "path": "i18n/receipts/tbstack-r1-1314-es.json",
+   "sha256": "d05e810d40cb929285f25070cbf94dc5960a8279e60366d735be4a40a39e427a",
+   "instance": "tbstack-r1-1314-es",
+   "result": "clean-with-findings",
+   "keys_verified_unchanged": 174,
+   "source_sha256": "9da45f3026229bfd8c10f0a09dbc6e52b0d7f82a4c8a20af8feb77ef4c83931c",
+   "target_sha256": "eababe1ff4f0443a4d3b60fb882a7e4a4db1a19b8867a64dd9ea26007c64534b",
+   "context_sha256": "5a18898b0ee57a11b3b67e796f0203248b4371a7e66b8ed11c5eebcc42ad0d13"
+  },
+  {
+   "parent": "6dac4f5baa8e26da07370d244240e7acb8238e1f",
+   "path": "i18n/receipts/tbstack-r1-1309m-es.json",
+   "staged_at": "/Users/damian/workspace/tb-i18n-audit/tbstack-mainmerge/1309/i18n/receipts/tbstack-r1-1309m-es.json",
+   "sha256": "dbd6d08199dcd99d466c9725f6374241dc621ab847d30f10ceeb02bd59313197",
+   "instance": "tbstack-r1-1309m-es",
+   "result": "clean",
+   "keys_verified_unchanged": 144,
+   "source_sha256": "b027df099c805e7121cc74c80411959c6ea178abe7a6b9a9fd6b9cb35524e510",
+   "target_sha256": "43a19903125fda6373a30520d7bb7c9bac2558ce6ffd5ee97749286f5285a551",
+   "context_sha256": "7062ca8351d00aba9c040eeae2a1d5f1cee83f6c4dd3dbcaab6da60c2aa5bd5b"
+  }
+ ],
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+ },
+ "independence": "Independent translation-auditor child audit-stackm-fr-es-vi; produced none of the reviewed copy. Read Git objects only; no repository edits, builds, tests, installs, worktrees or pushes. Pure receipt derivation and catalogue parsing are validation, not app test/render evidence.",
+ "model_note": "Session began on anthropic/claude-opus-5-5 for required skill reading; announced quota fallback to openai/gpt-6.1-sol before repository-contract and catalogue audit work. All linguistic review, comparisons, ICU validation and artifacts in this pass used openai/gpt-6.1-sol.",
+ "validation": {
+  "union": {
+   "own": 174,
+   "integrated": 144,
+   "shared": 140,
+   "own_only": 34,
+   "integrated_only": 4,
+   "head": 178,
+   "dropped": 0,
+   "altered": 0,
+   "conflicts": 0,
+   "extra": 0
+  },
+  "context_union": {
+   "own": 174,
+   "integrated": 144,
+   "shared": 140,
+   "own_only": 34,
+   "integrated_only": 4,
+   "head": 178,
+   "dropped": 0,
+   "altered": 0,
+   "conflicts": 0,
+   "extra": 0
+  },
+  "icu": {
+   "parsed": 178,
+   "plural_messages": 9,
+   "categories": [
+    "one",
+    "many",
+    "other"
+   ],
+   "errors": [],
+   "missing": [
+    {
+     "key": "ui.teamBridge.attachments.failed_count",
+     "missing": [
+      "many"
+     ]
+    }
+   ]
+  },
+  "nfc": true,
+  "bidi_controls": 0,
+  "rendered_fit": "Not executed; OS-controlled banner/preview truncation is not a fit guarantee."
+ }
+}

@@ -1,0 +1,60 @@
+{
+ "auditor": "translation-auditor",
+ "model": "openai/gpt-6.1-sol",
+ "instance": "tbstack-r1-1314m-hi",
+ "session": "a0d4a2558d92",
+ "job": "64b71b9bb8d3",
+ "task_label": "audit-stackm-hi-ur",
+ "model_history": [
+  "anthropic/claude-opus-5-5",
+  "openai/gpt-6.1-sol"
+ ],
+ "model_provenance": "Opus read required skill only; harness switched to gpt-6.1-sol for quota exhaustion before catalogue audit. All catalogue review and receipt creation performed by gpt-6.1-sol. Exact job id supplied by parent coordinator after initial artifact creation.",
+ "date": "2026-10-22",
+ "locale": "hi",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 178,
+ "union_keys_verified": 178,
+ "scope": "PR #1314 local head 7a2e6371736c327e28c2e57d45d9a5a5d5304360: all 178 ui.teamBridge hi keys read beside English; exact parent union 95e9b273a2 + 6dac4f5baa8e26da07370d244240e7acb8238e1f for en/context/target; four OS banner keys substantively reviewed with thread/reaction/schedule/attachment vocabulary where present.",
+ "sha256": {
+  "en": "d27275edddf911b66c28f71051c318ca939a968b462937c6ca3809b8ae7f34cc",
+  "hi": "5b76445c1f4b4ae8b27250a8188fa8d12b9d233de918d10c2abcac7882dadd09",
+  "context": "e10643d988fdb11fe2f76ba9408a85bbd1a19d006c1940e4144364612e0916c8"
+ },
+ "findings": [],
+ "inherited_receipts": [
+  {
+   "commit": "95e9b273a2bef3487cfa5718fbde99a66cc31f23",
+   "path": "i18n/receipts/tbstack-r1-1314-hi.json",
+   "read_from": "git:95e9b273a2:i18n/receipts/tbstack-r1-1314-hi.json",
+   "receipt_sha256": "b01453143f4fb43ba081ee03812602bcd2ad0323c1ed000dc913037cd7c0d8e5",
+   "status": "passed",
+   "findings": []
+  },
+  {
+   "commit": "6dac4f5baa8e26da07370d244240e7acb8238e1f",
+   "path": "i18n/receipts/tbstack-r1-1309m-hi.json",
+   "read_from": "../1309/i18n/receipts/tbstack-r1-1309m-hi.json",
+   "receipt_sha256": "54b198ecdebb3d6330ad435875063c1ea8264e0521db12c0febbf029d66dc47b",
+   "status": "passed",
+   "findings": []
+  }
+ ],
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+ },
+ "validation": {
+  "union": "Exact JSON key/value union for English, context and target; zero dropped, altered, conflicting shared or extra values. Both parents independently compared, not inferred from merge ancestry.",
+  "icu": "Installed @formatjs/icu-messageformat-parser: 932 (head,locale,key) pairs checked; zero structural differences. Branch-by-branch argument names/types/multiplicity, pound nodes, offsets, skeletons and markup preserved; natural target argument reordering permitted.",
+  "plurals": "Runtime Intl.PluralRules: hi=one/other (one includes 0 and 1); ur=one/other. All source arms retained, count/# used in every corresponding arm, including banner preview and attachment failures.",
+  "banner": "Read all four notify.channel/subtitle/count/count_preview values and English contexts. # channel prefix unchanged; place-middle-dot-organization logical order retained; count/# retained in each branch, preview last; accurate neutral burst summary, no invented sender. Message=संदेश/پیغام agrees with thread, compose.new, scheduling and attachment-adjacent copy.",
+  "terminology": "Hindi: बातचीत conversation; संदेश message; थ्रेड thread; जवाब reply; प्रतिक्रिया reaction; ड्राफ़्ट draft; शेड्यूल schedule; तस्वीर image. Polite आप/करें/हटाएँ, no T/V drift.",
+  "typography": "NFC, final newline; no U+200B–200F, U+202A–202E, U+2066–2069, U+061C or BOM in actual target bytes.",
+  "rtl": "Not applicable: Hindi LTR.",
+  "overflow": "Four inherited banner templates have no material static expansion over English; dynamic names and previews remain variable. Longer existing action/error copy reviewed against context (accessible labels or wrap-permitted prose). No new material overflow finding. No pixels/cell-width or rendered-fit measurements claimed.",
+  "inherited_dispositions": "Direct inherited hi/ur receipts clean; no still-present inherited minor/nit omitted.",
+  "limitations": "Read-only git-object catalogue audit; no repo edits, builds, tests, installs, worktrees, push, screenshot, pseudo-localization or native bidi rendering. Not activation/release approval."
+ }
+}

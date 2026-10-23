@@ -1,0 +1,169 @@
+{
+ "audit_id": "tbstack-1314m-union-20261022",
+ "date": "2026-10-22",
+ "locale": "ur",
+ "namespace": "ui.teamBridge",
+ "source_commit": "7a2e6371736c327e28c2e57d45d9a5a5d5304360",
+ "status": "audited",
+ "scope": "PR #1314 local head 7a2e6371736c327e28c2e57d45d9a5a5d5304360: all 178 ui.teamBridge ur keys read beside English; exact parent union 95e9b273a2 + 6dac4f5baa8e26da07370d244240e7acb8238e1f for en/context/target; four OS banner keys substantively reviewed with thread/reaction/schedule/attachment vocabulary where present.",
+ "translator": {
+  "agent": "translator",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-21",
+  "session": "8e5edb2e9750",
+  "job": "39c1864c0110"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "openai/gpt-6.1-sol",
+   "date": "2026-10-22",
+   "result": "clean",
+   "instance": "tbstack-r1-1314m-ur",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/tbstack-r1-1314m-ur.json",
+   "receipt_sha256": "68f17b4e1fed9db04526d20291e69f3abf296273616150592d34c78cc5188549"
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "tbstack-r1-1314m-ur",
+   "session": "a0d4a2558d92",
+   "job": "64b71b9bb8d3",
+   "task_label": "audit-stackm-hi-ur",
+   "model": "openai/gpt-6.1-sol",
+   "model_history": [
+    "anthropic/claude-opus-5-5",
+    "openai/gpt-6.1-sol"
+   ],
+   "status": "passed",
+   "keys_audited": 178,
+   "union_keys_verified": 178,
+   "en_sha256": "d27275edddf911b66c28f71051c318ca939a968b462937c6ca3809b8ae7f34cc",
+   "target_sha256": "6296391c69bf9433bb7cd31b04a7d373ca941837b3cc4b4ae77aa445f64249a4",
+   "context_sha256": "e10643d988fdb11fe2f76ba9408a85bbd1a19d006c1940e4144364612e0916c8",
+   "findings": []
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "d27275edddf911b66c28f71051c318ca939a968b462937c6ca3809b8ae7f34cc"
+  },
+  "ur": {
+   "path": "src/i18n/catalogues/ur/ui.teamBridge.json",
+   "sha256": "6296391c69bf9433bb7cd31b04a7d373ca941837b3cc4b4ae77aa445f64249a4"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "e10643d988fdb11fe2f76ba9408a85bbd1a19d006c1940e4144364612e0916c8"
+  }
+ },
+ "union_evidence": {
+  "parents": [
+   {
+    "commit": "95e9b273a2bef3487cfa5718fbde99a66cc31f23",
+    "keys": 174,
+    "files": {
+     "en": {
+      "sha256": "9da45f3026229bfd8c10f0a09dbc6e52b0d7f82a4c8a20af8feb77ef4c83931c",
+      "unchanged_values": 174
+     },
+     "ur": {
+      "sha256": "a8b1dfc9ba8767a507a8a45360c6559491ccbf9fe681621f9b56a19cc1a0d4d1",
+      "unchanged_values": 174
+     },
+     "context": {
+      "sha256": "5a18898b0ee57a11b3b67e796f0203248b4371a7e66b8ed11c5eebcc42ad0d13",
+      "unchanged_values": 174
+     }
+    }
+   },
+   {
+    "commit": "6dac4f5baa8e26da07370d244240e7acb8238e1f",
+    "keys": 144,
+    "files": {
+     "en": {
+      "sha256": "b027df099c805e7121cc74c80411959c6ea178abe7a6b9a9fd6b9cb35524e510",
+      "unchanged_values": 144
+     },
+     "ur": {
+      "sha256": "be7bfbeb9c7a2b4a458592241d6ffd01e4f3fd8bb73ab6847014a0e594173ce5",
+      "unchanged_values": 144
+     },
+     "context": {
+      "sha256": "7062ca8351d00aba9c040eeae2a1d5f1cee83f6c4dd3dbcaab6da60c2aa5bd5b",
+      "unchanged_values": 144
+     }
+    }
+   }
+  ],
+  "shared_conflicts": 0,
+  "dropped": 0,
+  "altered": 0,
+  "extra": 0
+ },
+ "inherited_receipts": [
+  {
+   "commit": "95e9b273a2bef3487cfa5718fbde99a66cc31f23",
+   "path": "i18n/receipts/tbstack-r1-1314-ur.json",
+   "read_from": "git:95e9b273a2:i18n/receipts/tbstack-r1-1314-ur.json",
+   "receipt_sha256": "9d73c09c6f09b5683dd2b848965e21a193d3b9472df1c9cc2d2ed6e080124b32",
+   "status": "passed",
+   "findings": []
+  },
+  {
+   "commit": "6dac4f5baa8e26da07370d244240e7acb8238e1f",
+   "path": "i18n/receipts/tbstack-r1-1309m-ur.json",
+   "read_from": "../1309/i18n/receipts/tbstack-r1-1309m-ur.json",
+   "receipt_sha256": "95f5a387d94d84f0ba06caac24f03a508781296bbf4aa5b9cfa126eaf5582180",
+   "status": "passed",
+   "findings": []
+  }
+ ],
+ "inherited_trace": "28 historical receipt nodes recursively rehashed against recorded child receipt hashes and exact source/target/context git bytes. Some archived receipts read from supplied external precedents because the audited base predates receipt addition. Legacy receipt prose-only inheritance was not recursively expanded.",
+ "validation": {
+  "union": "Exact JSON key/value union for English, context and target; zero dropped, altered, conflicting shared or extra values. Both parents independently compared, not inferred from merge ancestry.",
+  "icu": "Installed @formatjs/icu-messageformat-parser: 932 (head,locale,key) pairs checked; zero structural differences. Branch-by-branch argument names/types/multiplicity, pound nodes, offsets, skeletons and markup preserved; natural target argument reordering permitted.",
+  "plurals": "Runtime Intl.PluralRules: hi=one/other (one includes 0 and 1); ur=one/other. All source arms retained, count/# used in every corresponding arm, including banner preview and attachment failures.",
+  "banner": "Read all four notify.channel/subtitle/count/count_preview values and English contexts. # channel prefix unchanged; place-middle-dot-organization logical order retained; count/# retained in each branch, preview last; accurate neutral burst summary, no invented sender. Message=संदेश/پیغام agrees with thread, compose.new, scheduling and attachment-adjacent copy.",
+  "terminology": "Urdu: گفتگو conversation; پیغام message (پیغامات plural); تھریڈ thread; جواب reply (جوابات plural); ردعمل reaction; مسودہ draft; شیڈول schedule; تصویر image (تصاویر plural). Polite آپ/کریں/دیں, no T/V drift.",
+  "typography": "NFC, final newline; no U+200B–200F, U+202A–202E, U+2066–2069, U+061C or BOM in actual target bytes.",
+  "rtl": "Logical storage order verified; no manual bidi controls. Latin Team Bridge/Local Operator/Enter/Shift+Enter/qa-coordination intact where present; banner #channel, place · organization, colon before final preview and embedded numbers/zone/name arguments not visually reversed in storage. Native OS banner mixed-direction rendering remains unverified; no rendered-fit claim.",
+  "overflow": "Four inherited banner templates have no material static expansion over English; dynamic names and previews remain variable. Longer existing action/error copy reviewed against context (accessible labels or wrap-permitted prose). No new material overflow finding. No pixels/cell-width or rendered-fit measurements claimed.",
+  "inherited_dispositions": "Direct inherited hi/ur receipts clean; no still-present inherited minor/nit omitted.",
+  "limitations": "Read-only git-object catalogue audit; no repo edits, builds, tests, installs, worktrees, push, screenshot, pseudo-localization or native bidi rendering. Not activation/release approval."
+ },
+ "independence": "Read-only independent translation-auditor session a0d4a2558d92, job 64b71b9bb8d3 (exact id supplied by parent coordinator); translator ledger identities copied for attribution, not accepted as validation. No catalogue authored or edited.",
+ "references": {
+  "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "hi": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+  "ur": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+ },
+ "receipt_verification": {
+  "method": "git show 7a2e6371736c327e28c2e57d45d9a5a5d5304360:scripts/i18n/ledger-rules.mjs, imported in memory; deriveReceiptAudit against actual git-show SHA256s",
+  "exit": 0,
+  "derived": {
+   "agent": "translation-auditor",
+   "instance": "tbstack-r1-1314m-ur",
+   "model": "openai/gpt-6.1-sol",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "source_sha256": "d27275edddf911b66c28f71051c318ca939a968b462937c6ca3809b8ae7f34cc",
+   "target_sha256": "6296391c69bf9433bb7cd31b04a7d373ca941837b3cc4b4ae77aa445f64249a4",
+   "receipt_sha256": "68f17b4e1fed9db04526d20291e69f3abf296273616150592d34c78cc5188549"
+  }
+ }
+}
