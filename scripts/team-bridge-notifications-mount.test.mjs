@@ -76,10 +76,10 @@ export const TeamBridgeApi = {
 		if (fixture.directoryGate) await fixture.directoryGate;
 		return { members: fixture.directoryMembers };
 	},
-	async identity() {
-		fixture.calls.identity += 1;
-		return fixture.identity;
-	},
+	async status() {
+ fixture.calls.identity += 1;
+ return {account_id: fixture.identity, state: "ready", local: {enabled: true}, read_only: false};
+ },
 	async listConversations() {
 		fixture.calls.conversations += 1;
 		if (fixture.listGate) await fixture.listGate;

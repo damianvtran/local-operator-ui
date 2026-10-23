@@ -49,6 +49,7 @@ const bundle = await build({
 	stdin: {
 		contents: `export {TeamBridgePage} from './src/renderer/src/features/team-bridge/team-bridge-page';
  export {teamBridgeKeys} from './src/renderer/src/features/team-bridge/use-team-bridge';
+ export {t} from './src/renderer/src/shared/i18n';
  export {teamBridgeViewingConversation} from './src/renderer/src/features/team-bridge/team-bridge-viewing';
  export {QueryClient,QueryClientProvider} from '@tanstack/react-query';
  export {MemoryRouter} from 'react-router-dom';`,
@@ -189,10 +190,13 @@ async function mount({ empty = false } = {}) {
 		messages: new Map(),
 		createGate: null,
 		postGate: null,
+		repliesGate: null,
+		refuseReplies: false,
 		empty,
 		generation: "A",
 		enabled: true,
 		readOnly: false,
+		ownerGuard: 1,
 	};
 	window.api = {
 		desktop: {
@@ -205,6 +209,12 @@ async function mount({ empty = false } = {}) {
 				const ownerKey = JSON.stringify([owner, tenant]);
 				fixture.calls.push({ owner, tenant, ...request });
 				switch (request.op) {
+					case "capabilities":
+						return reply({
+							features: {
+								team_bridge_conversation_owner_guard: fixture.ownerGuard,
+							},
+						});
 					case "team_bridge.status":
 						return reply({
 							capability: 1,
@@ -267,6 +277,26 @@ async function mount({ empty = false } = {}) {
 							messages: fixture.messages.get(ownerKey) ?? [],
 							has_more: false,
 						});
+					case "team_bridge.messages.replies": {
+						if (fixture.repliesGate) await fixture.repliesGate.promise;
+						if (fixture.refuseReplies)
+							return { status: 404, body: { detail: "not found" } };
+						const root = fixture.messages.get(ownerKey)?.[0];
+						return reply({
+							root,
+							replies: [
+								{
+									...root,
+									id: "reply-1",
+									seq: 2,
+									thread_root_id: root.id,
+									body:
+										owner === "acct_a" ? "A PRIVATE CACHED REPLY" : "B reply",
+								},
+							],
+							has_more: false,
+						});
+					}
 					case "team_bridge.conversations.create":
 						if (fixture.createGate) await fixture.createGate.promise;
 						return reply({
@@ -308,8 +338,10 @@ async function mount({ empty = false } = {}) {
 	const root = createRoot(host);
 	const client = new ui.QueryClient({
 		defaultOptions: {
-			queries: { retry: false, gcTime: 0 },
-			mutations: { retry: false, gcTime: 0 },
+			queries: { retry: false, gcTime: 600_000 },
+			// Production retains reads for ten minutes and retries mutations once.
+			// Only the retry delay is shortened, never the retry/admission policy.
+			mutations: { retry: 1, retryDelay: 20, gcTime: 600_000 },
 		},
 	});
 	const frames = [];
@@ -400,6 +432,12 @@ async function mount({ empty = false } = {}) {
 		},
 		async close() {
 			await act(async () => root.unmount());
+			fixture.createGate?.resolve();
+			fixture.postGate?.resolve();
+			fixture.repliesGate?.resolve();
+			await act(async () => new Promise((resolve) => setTimeout(resolve, 60)));
+			for (const mutation of client.getMutationCache().getAll())
+				mutation.destroy();
 			client.clear();
 			host.remove();
 		},
@@ -460,6 +498,90 @@ export async function mountPendingOwnerPage({ existing = false } = {}) {
 	};
 	return {
 		openAddressedGroup: composeGroup,
+		setOwnerGuard: (version) => {
+			fixture.ownerGuard = version;
+		},
+		async submitDraft() {
+			await send(host);
+			await act(async () => new Promise((resolve) => setTimeout(resolve, 100)));
+		},
+		async seedThread() {
+			for (const owner of ["acct_a", "acct_b"])
+				fixture.messages.set(JSON.stringify([owner, "org_shared"]), [
+					{
+						id: "root-1",
+						conversation_id: "bcv_shared",
+						seq: 1,
+						sender: person("acct_a"),
+						body: "Shared root",
+						origin: "human",
+						created_at: now,
+						reply_count: 1,
+					},
+				]);
+			await act(async () =>
+				app.client.invalidateQueries({
+					queryKey: ui.teamBridgeKeys.messages("bcv_shared", "org_shared"),
+				}),
+			);
+			await until(
+				() => host.querySelector('[data-message-id="root-1"]'),
+				"shared thread root",
+			);
+		},
+		async openThread() {
+			await until(
+				() => host.querySelector('[data-message-id="root-1"]'),
+				"current owner root admitted",
+			);
+			const button = host.querySelector(
+				`[data-message-id="root-1"] button[aria-label="${ui.t("ui.teamBridge.replies.action")}"]`,
+			);
+			assert.ok(button, "actual reply-in-thread control");
+			await act(async () => button.click());
+			await delay();
+		},
+		threadDraft: () =>
+			host
+				.querySelector("[data-thread-close]")
+				?.closest("aside")
+				?.querySelector("textarea")?.value ?? "",
+		async typeThread(body) {
+			const pane = host.querySelector("[data-thread-close]")?.closest("aside");
+			assert.ok(pane);
+			await until(
+				() =>
+					pane.querySelector("textarea") &&
+					!pane.querySelector("textarea").disabled,
+				"ready thread composer",
+			);
+			await type(pane, body);
+		},
+		async sendThreadHeld(body) {
+			fixture.postGate = deferred();
+			fixture.refuse = true;
+			const pane = host.querySelector("[data-thread-close]")?.closest("aside");
+			assert.ok(pane);
+			await type(pane, body);
+			await send(pane);
+			await until(() => sends(fixture).length === 1, "first thread POST");
+		},
+		async failHeldPost() {
+			const gate = fixture.postGate;
+			fixture.postGate = null;
+			fixture.refuse = true;
+			await act(async () => gate.resolve());
+			await act(async () => new Promise((resolve) => setTimeout(resolve, 100)));
+		},
+		holdReplies() {
+			fixture.repliesGate = deferred();
+		},
+		async refuseHeldReplies() {
+			fixture.refuseReplies = true;
+			fixture.repliesGate?.resolve();
+			fixture.repliesGate = null;
+			await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+		},
 		async seedConfirmed(body) {
 			fixture.messages.set(JSON.stringify([fixture.account, fixture.tenant]), [
 				{
@@ -603,6 +725,7 @@ export async function mountPendingOwnerPage({ existing = false } = {}) {
 			await delay();
 		},
 		async retry() {
+			const expectedPosts = sends(fixture).length + 1;
 			fixture.refuse = false;
 			const button = [...host.querySelectorAll("button")].find(
 				(node) => node.textContent === "Retry",
@@ -610,7 +733,7 @@ export async function mountPendingOwnerPage({ existing = false } = {}) {
 			assert.ok(button, "real failed-row retry");
 			await act(async () => button.click());
 			await until(
-				() => sends(fixture).length === 2,
+				() => sends(fixture).length === expectedPosts,
 				"same-owner retry dispatch",
 			);
 			await delay();

@@ -3674,3 +3674,88 @@ test("team_bridge threads: replies maps to the replies route and send carries th
 	});
 	assert.equal("thread_root_id" in plain.body, false);
 });
+
+// Owner guard metadata is local runtime authority, not a hub member body field.
+for (const [op, fields, location] of [
+	["conversations.create", { kind: "group", members: [] }, "body"],
+	[
+		"messages.send",
+		{ conversation_id: "conv", client_ref: "ref", body: "private" },
+		"body",
+	],
+	["conversations.join", { conversation_id: "conv" }, "body"],
+	["conversations.notify", { conversation_id: "conv", notify: "mute" }, "body"],
+	["read", { conversation_id: "conv", seq: 1 }, "body"],
+	[
+		"conversations.consent",
+		{
+			conversation_id: "conv",
+			account_id: "member",
+			decision: "accept",
+			consent_version: "1",
+		},
+		"body",
+	],
+	[
+		"conversations.lifecycle",
+		{ conversation_id: "conv", action: "archive" },
+		"query",
+	],
+	[
+		"conversations.lifecycle",
+		{ conversation_id: "conv", action: "unarchive" },
+		"query",
+	],
+	[
+		"conversations.lifecycle",
+		{ conversation_id: "conv", action: "leave" },
+		"query",
+	],
+	[
+		"conversations.lifecycle",
+		{ conversation_id: "conv", action: "join" },
+		"body",
+	],
+	[
+		"conversations.members.add",
+		{
+			conversation_id: "conv",
+			members: [{ account_id: "member", kind: "human", display_label: "Peer" }],
+		},
+		"query",
+	],
+	[
+		"conversations.members.remove",
+		{ conversation_id: "conv", account_id: "member" },
+		"query",
+	],
+]) {
+	test(`conversation owner guard ${op} ${fields.action ?? ""} uses ${location} with explicit target tenant`, () => {
+		const input = {
+			op: `team_bridge.${op}`,
+			...fields,
+			expected_account_id: "captured-A",
+			tenant_id: "other-org",
+		};
+		const parsed = desktopRequestSchema.parse(input);
+		const route = jobsCancelEndpoint(parsed);
+		const authority =
+			location === "body"
+				? route.body
+				: Object.fromEntries(new URL(route.path, "http://local").searchParams);
+		assert.equal(authority.expected_account_id, "captured-A");
+		assert.equal(authority.tenant_id, "other-org");
+		if (op === "conversations.members.add")
+			assert.deepEqual(route.body, fields.members);
+		assert.equal(
+			desktopRequestSchema.safeParse({ ...input, tenant_id: undefined })
+				.success,
+			false,
+		);
+		assert.equal(
+			desktopRequestSchema.safeParse({ ...input, expected_account_id: "" })
+				.success,
+			false,
+		);
+	});
+}

@@ -75,6 +75,8 @@ const bundle = await build({
 			export { TeamBridgePageView, TeamBridgePreviewBanner } from "./src/renderer/src/features/team-bridge/team-bridge-page";
 			export { TeamBridgeConversationMenu } from "./src/renderer/src/features/team-bridge/team-bridge-conversation-menu";
 			export { notifyMutationOptions, teamBridgeKeys } from "./src/renderer/src/features/team-bridge/use-team-bridge";
+ export { readForBridgeOwner } from "./src/renderer/src/features/team-bridge/team-bridge-owner";
+ export { bindBridgeMutation } from "./src/renderer/src/features/team-bridge/team-bridge-mutation";
 		`,
 		resolveDir: ROOT,
 		sourcefile: "team-bridge-channels.mjs",
@@ -107,7 +109,7 @@ process.on("exit", () => {
 
 const { createElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");
-const { QueryClient } = await import("@tanstack/react-query");
+const { QueryClient, MutationObserver } = await import("@tanstack/react-query");
 const ui = await import(modulePath.href);
 
 const selfMember = {
@@ -288,10 +290,18 @@ test("the notify options restore both cached pages when the write is refused", a
 	const row = conversation({ id: "bcv_2", notify: "all", muted: false });
 	const sibling = conversation({ id: "bcv_3" });
 	const page = { conversations: [row, sibling], has_more: true };
-	const orgKey = ui.teamBridgeKeys.conversations("tnt_1");
-	const allKey = ui.teamBridgeKeys.conversations("all");
+	const orgKey = ui.teamBridgeKeys.conversations("tnt_1", "acct_self");
+	const allKey = ui.teamBridgeKeys.conversations("all", "acct_self");
+	client.setQueryData(ui.teamBridgeKeys.status, {
+		account_id: "acct_self",
+		state: "ready",
+		local: { enabled: true },
+		read_only: false,
+	});
 	client.setQueryData(orgKey, structuredClone(page));
 	client.setQueryData(allKey, structuredClone(page));
+	const foreignKey = ui.teamBridgeKeys.conversations("all", "acct_other");
+	client.setQueryData(foreignKey, structuredClone(page));
 	// The claim under test is the snapshot restore, not the settle-time re-read.
 	client.invalidateQueries = async () => {};
 
@@ -306,6 +316,7 @@ test("the notify options restore both cached pages when the write is refused", a
 	assert.equal(client.getQueryData(orgKey).conversations[0].muted, true);
 	assert.equal(client.getQueryData(allKey).conversations[0].notify, "mute");
 	assert.equal(client.getQueryData(orgKey).conversations[1].notify, undefined);
+	assert.deepEqual(client.getQueryData(foreignKey), page);
 
 	options.onError(new Error("refused"), variables, context);
 	// Both scope-keyed pages must be back exactly as they were: the snapshot is
@@ -315,4 +326,140 @@ test("the notify options restore both cached pages when the write is refused", a
 	assert.deepEqual(client.getQueryData(allKey), page);
 	await options.onSettled();
 	client.clear();
+});
+
+for (const returnToOwner of [false, true]) {
+	test(`delayed cached read is not admitted after ${returnToOwner ? "A-B-A" : "A-B"} owner transition`, async () => {
+		const client = new QueryClient({
+			defaultOptions: {
+				queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+			},
+		});
+		const ready = (account_id) => ({
+			account_id,
+			state: "ready",
+			local: { enabled: true },
+			read_only: false,
+		});
+		client.setQueryData(ui.teamBridgeKeys.status, ready("A"));
+		let release;
+		const held = new Promise((resolve) => {
+			release = resolve;
+		});
+		const key = ui.teamBridgeKeys.messages("shared", "tenant", "A");
+		const read = client.fetchQuery({
+			queryKey: key,
+			queryFn: () => ui.readForBridgeOwner(client, "A", () => held),
+		});
+		client.setQueryData(ui.teamBridgeKeys.status, ready("B"));
+		if (returnToOwner)
+			client.setQueryData(ui.teamBridgeKeys.status, ready("A"));
+		release({ messages: [{ body: "late private body" }] });
+		await assert.rejects(read, /owner changed|authority changed/);
+		assert.equal(client.getQueryData(key), undefined);
+		client.clear();
+	});
+}
+
+test("stale notify retry and rollback cannot dispatch or change the next owner's cache", async () => {
+	const client = new QueryClient({
+		defaultOptions: {
+			queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
+		},
+	});
+	const ready = (account_id) => ({
+		account_id,
+		state: "ready",
+		local: { enabled: true },
+		read_only: false,
+	});
+	client.setQueryData(ui.teamBridgeKeys.status, ready("A"));
+	const key = ui.teamBridgeKeys.conversations("all", "B");
+	const page = { conversations: [conversation({ id: "same", notify: "all" })] };
+	client.setQueryData(key, page);
+	const options = ui.notifyMutationOptions(client);
+	client.setQueryData(ui.teamBridgeKeys.status, ready("B"));
+	const variables = {
+		conversationId: "same",
+		tenantId: "tnt_1",
+		notify: "mute",
+	};
+	assert.throws(() => options.mutationFn(variables), /authority changed/);
+	options.onError(new Error("late refusal"), variables, {
+		snapshots: [[key, { conversations: [] }]],
+	});
+	assert.deepEqual(client.getQueryData(key), page);
+	client.clear();
+});
+
+test("real mutation retry keeps its invocation target after observer options change", async () => {
+	const client = new QueryClient();
+	let selected = {
+		accountId: "A",
+		tenantId: "tenant-original",
+		conversationId: "original",
+	};
+	let release;
+	let started;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const entered = new Promise((resolve) => {
+		started = resolve;
+	});
+	const calls = [];
+	let captures = 0;
+	const options = () => ({
+		retry: 1,
+		retryDelay: 1,
+		gcTime: 600_000,
+		mutationFn: async ({ input, target }) => {
+			calls.push({ input, target });
+			if (calls.length === 1) {
+				started();
+				await gate;
+				throw new Error("retryable refusal");
+			}
+			return "accepted";
+		},
+	});
+	const observer = new MutationObserver(client, options());
+	const unsubscribe = observer.subscribe(() => {});
+	try {
+		const result = observer.getCurrentResult();
+		const bound = ui.bindBridgeMutation(
+			{ ...result, mutateAsync: observer.mutate.bind(observer) },
+			() => {
+				captures++;
+				return selected;
+			},
+		);
+		const promise = bound.mutateAsync({ body: "private original body" });
+		await entered;
+		selected = {
+			accountId: "A",
+			tenantId: "tenant-next",
+			conversationId: "next",
+		};
+		observer.setOptions(options());
+		release();
+		assert.equal(await promise, "accepted");
+		assert.equal(captures, 1);
+		assert.equal(calls.length, 2);
+		for (const call of calls) {
+			assert.deepEqual(call.target, {
+				accountId: "A",
+				tenantId: "tenant-original",
+				conversationId: "original",
+			});
+			assert.equal(call.input.body, "private original body");
+		}
+	} finally {
+		unsubscribe();
+		// Production's retained mutation TTL must not keep this Node lane alive.
+		// Cache removal alone does not destroy TanStack's mutation GC timer.
+		for (const mutation of client.getMutationCache().getAll())
+			mutation.destroy();
+		client.clear();
+	}
 });

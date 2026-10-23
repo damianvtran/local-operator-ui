@@ -237,9 +237,13 @@ const MessageRowView: FC<MessageRowProps> = ({
 					failed ? "text-danger" : "text-ink-dim",
 				)}
 			>
-				{failed ? (
+				{failed || pending.status === "unconfirmed" ? (
 					<>
-						<span role="alert">{t("ui.teamBridge.message.failed")}</span>
+						{/* Unknown delivery is neither failure nor ongoing dispatch. Keep
+                         the body and existing explicit recovery action, without a verdict. */}
+						{failed && (
+							<span role="alert">{t("ui.teamBridge.message.failed")}</span>
+						)}
 						<Button
 							variant="link"
 							size="sm"

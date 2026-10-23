@@ -10,7 +10,14 @@ import {
 	useQueryClient,
 } from "@tanstack/react-query";
 import { ArrowUp, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import { manageThreadFocus } from "./team-bridge-thread-focus";
@@ -21,7 +28,15 @@ import {
 } from "./team-bridge-thread-read";
 import { teamBridgeKeys, useMarkTeamBridgeRead } from "./use-team-bridge";
 
+import { readForBridgeOwner, useBridgeOwner } from "./team-bridge-owner";
+import {
+	TeamBridgeThreadDrafts,
+	type ThreadDraft,
+} from "./team-bridge-thread-drafts";
+
 export type ThreadPaneProps = {
+	draftJournal?: ThreadDraft;
+	isCurrent?: () => boolean;
 	root: TeamBridgeMessage | null;
 	replies: readonly TeamBridgeMessage[];
 	state: "loading" | "error" | "ready";
@@ -66,6 +81,8 @@ export function TeamBridgeThreadPaneView({
 	onRead,
 	reactionContext,
 	forceToolbar,
+	draftJournal,
+	isCurrent = () => true,
 }: ThreadPaneProps) {
 	useI18nLocale();
 	const pane = useRef<HTMLElement>(null);
@@ -79,31 +96,42 @@ export function TeamBridgeThreadPaneView({
 		if (!pane.current || state !== "ready" || !onRead) return;
 		return observeDisplayedThreadReplies(pane.current, replies, onRead);
 	}, [replies, state, onRead]);
-	const [draft, setDraft] = useState("");
+	const [draft, setDraftState] = useState(draftJournal?.body ?? "");
+	const setDraft = (body: string) => {
+		if (draftJournal) draftJournal.body = body;
+		setDraftState(body);
+	};
 	const [sending, setSending] = useState(false);
 	const [failed, setFailed] = useState(false);
-	const pending = useRef<{ body: string; clientRef: string } | null>(null);
+	const pending = useRef<{ body: string; clientRef: string } | null>(
+		draftJournal?.pending ?? null,
+	);
 	const lock = useRef(false);
 	const submit = async () => {
 		const body = draft.trim();
-		if (!body || lock.current || readOnly || state !== "ready") return;
+		if (!isCurrent() || !body || lock.current || readOnly || state !== "ready")
+			return;
 		const entry =
 			pending.current?.body === body
 				? pending.current
 				: { body, clientRef: crypto.randomUUID() };
 		pending.current = entry;
+		if (draftJournal) draftJournal.pending = entry;
 		lock.current = true;
 		setSending(true);
 		setFailed(false);
 		try {
 			await onSend(body, entry.clientRef);
+			if (!isCurrent()) return;
 			pending.current = null;
-			setDraft((current) => (current.trim() === body ? "" : current));
+			if (draftJournal) draftJournal.pending = null;
+			if ((draftJournal?.body ?? draft).trim() === body) setDraft("");
 		} catch {
+			if (!isCurrent()) return;
 			setFailed(true);
 		} finally {
 			lock.current = false;
-			setSending(false);
+			if (isCurrent()) setSending(false);
 		}
 	};
 	return (
@@ -252,6 +280,16 @@ export function TeamBridgeThreadPane({
 }) {
 	const client = useQueryClient();
 	const { tenantId, conversationId, rootId } = target;
+	const owner = useBridgeOwner(reactionContext?.accountId);
+	const drafts = useContext(TeamBridgeThreadDrafts);
+	const draftKey = JSON.stringify([
+		owner.accountId,
+		tenantId,
+		conversationId,
+		rootId,
+	]);
+	if (drafts && !drafts.has(draftKey))
+		drafts.set(draftKey, { body: "", pending: null });
 	const read = useMarkTeamBridgeRead(conversationId, tenantId);
 	// Observer recreation (paging/refetch) must not turn a successful read into a
 	// second mutation loop. This ref belongs to the keyed tenant/conversation/root.
@@ -269,17 +307,22 @@ export function TeamBridgeThreadPane({
 		},
 		[read.mutateAsync],
 	);
-	const key = [
-		...teamBridgeKeys.all,
-		"replies",
+	const key = teamBridgeKeys.replies(
 		tenantId,
 		conversationId,
 		rootId,
-	] as const;
+		owner.accountId,
+	);
 	const query = useInfiniteQuery({
 		queryKey: key,
 		initialPageParam: undefined as number | undefined,
-		queryFn: ({ pageParam }) => loadThreadPage(target, pageParam),
+		queryFn: async ({ pageParam }) => {
+			if (!owner.isReadCurrent())
+				throw new Error("Team Bridge read owner changed");
+			return readForBridgeOwner(client, owner.accountId, () =>
+				loadThreadPage(target, pageParam),
+			);
+		},
 		getNextPageParam: (page) =>
 			page.has_more ? page.next_after_seq : undefined,
 		refetchInterval: 8_000,
@@ -289,14 +332,17 @@ export function TeamBridgeThreadPane({
 		[query.data],
 	);
 	const send = useMutation({
-		mutationFn: ({ body, clientRef }: { body: string; clientRef: string }) =>
-			TeamBridgeApi.send(conversationId, {
+		mutationFn: ({ body, clientRef }: { body: string; clientRef: string }) => {
+			owner.assertCurrent();
+			return TeamBridgeApi.send(conversationId, {
 				body,
 				clientRef,
 				tenantId,
 				threadRootId: rootId,
-			}),
+			});
+		},
 		onSuccess: async () => {
+			if (!owner.isCurrent()) return;
 			await Promise.all([
 				client.invalidateQueries({ queryKey: key }),
 				client.invalidateQueries({
@@ -310,6 +356,8 @@ export function TeamBridgeThreadPane({
 	});
 	return (
 		<TeamBridgeThreadPaneView
+			draftJournal={drafts?.get(draftKey)}
+			isCurrent={owner.isCurrent}
 			root={query.data?.pages[0]?.root ?? initialRoot ?? null}
 			replies={replies}
 			state={query.isPending ? "loading" : query.isError ? "error" : "ready"}

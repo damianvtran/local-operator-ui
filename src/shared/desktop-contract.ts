@@ -3369,6 +3369,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("team_bridge.conversations.create"),
+			expected_account_id: id.optional(),
 			tenant_id: id.optional(),
 			kind: z.enum(["dm", "group", "channel"]),
 			name: z.string().min(1).max(128).optional(),
@@ -3392,6 +3393,8 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("team_bridge.conversations.lifecycle"),
+			expected_account_id: id.optional(),
+			tenant_id: id.optional(),
 			conversation_id: id,
 			action: z.enum(["archive", "unarchive", "join", "leave"]),
 		})
@@ -3410,6 +3413,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("team_bridge.conversations.join"),
+			expected_account_id: id.optional(),
 			conversation_id: id,
 			tenant_id: id.optional(),
 		})
@@ -3417,6 +3421,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("team_bridge.conversations.notify"),
+			expected_account_id: id.optional(),
 			conversation_id: id,
 			tenant_id: id.optional(),
 			notify: z.enum(["all", "mention", "mute"]),
@@ -3425,6 +3430,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("team_bridge.conversations.members.add"),
+			expected_account_id: id.optional(),
 			conversation_id: id,
 			tenant_id: id.optional(),
 			members: z
@@ -3445,6 +3451,8 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("team_bridge.conversations.members.remove"),
+			expected_account_id: id.optional(),
+			tenant_id: id.optional(),
 			conversation_id: id,
 			account_id: id,
 		})
@@ -3452,6 +3460,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("team_bridge.conversations.consent"),
+			expected_account_id: id.optional(),
 			conversation_id: id,
 			account_id: id,
 			decision: z.enum(["accept", "decline"]),
@@ -3482,6 +3491,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("team_bridge.messages.send"),
+			expected_account_id: id.optional(),
 			conversation_id: id,
 			tenant_id: id.optional(),
 			client_ref: id,
@@ -3508,6 +3518,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z
 		.object({
 			op: z.literal("team_bridge.read"),
+			expected_account_id: id.optional(),
 			conversation_id: id,
 			tenant_id: id.optional(),
 			seq: z.number().int().nonnegative().optional(),
@@ -4138,6 +4149,21 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
  */
 export const desktopRequestSchema = desktopRequestUnion.superRefine(
 	(request, ctx) => {
+		// Guarded conversation writes never fall back to the token's default org.
+		// Legacy callers remain compatible; the new renderer requires the capability.
+		if (
+			request.op.startsWith("team_bridge.") &&
+			"expected_account_id" in request &&
+			request.expected_account_id &&
+			(!("tenant_id" in request) || !request.tenant_id)
+		) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ["tenant_id"],
+				message: "Guarded conversation writes require an explicit tenant",
+			});
+			return;
+		}
 		if (
 			request.op === "hub.skillPull" ||
 			request.op === "hub.skillSubscribe" ||
@@ -7027,6 +7053,18 @@ function harnessImportBody(
 }
 
 /** A query suffix that is empty when no tenant was selected, never `?tenant_id=`. */
+/** Bodyless and list-body mutations carry the same captured owner in their query. */
+function conversationOwnerQuery(request: {
+	tenant_id?: string;
+	expected_account_id?: string;
+}): string {
+	const query = new URLSearchParams();
+	if (request.tenant_id) query.set("tenant_id", request.tenant_id);
+	if (request.expected_account_id)
+		query.set("expected_account_id", request.expected_account_id);
+	return query.size ? `?${query.toString()}` : "";
+}
+
 function tenantQuery(tenantId: string | undefined): string {
 	return tenantId === undefined
 		? ""
@@ -8626,6 +8664,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: "/v1/desktop/team-bridge/conversations",
 				method: "POST",
 				body: {
+					...(request.expected_account_id
+						? { expected_account_id: request.expected_account_id }
+						: {}),
 					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
 					kind: request.kind,
 					...(request.name ? { name: request.name } : {}),
@@ -8639,15 +8680,33 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "team_bridge.conversations.lifecycle":
 			return {
-				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/${request.action}`,
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/${request.action}${request.action === "join" ? "" : conversationOwnerQuery(request)}`,
 				method: "POST",
+				...(request.action === "join" &&
+				(request.tenant_id || request.expected_account_id)
+					? {
+							body: {
+								...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+								...(request.expected_account_id
+									? { expected_account_id: request.expected_account_id }
+									: {}),
+							},
+						}
+					: {}),
 			};
 		case "team_bridge.conversations.join":
 			return {
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/join`,
 				method: "POST",
-				...(request.tenant_id
-					? { body: { tenant_id: request.tenant_id } }
+				...(request.tenant_id || request.expected_account_id
+					? {
+							body: {
+								...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+								...(request.expected_account_id
+									? { expected_account_id: request.expected_account_id }
+									: {}),
+							},
+						}
 					: {}),
 			};
 		case "team_bridge.conversations.notify":
@@ -8657,6 +8716,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/read`,
 				method: "POST",
 				body: {
+					...(request.expected_account_id
+						? { expected_account_id: request.expected_account_id }
+						: {}),
 					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
 					notify: request.notify,
 				},
@@ -8667,6 +8729,8 @@ export function desktopEndpoint(request: DesktopRequest): {
 			   both in an object, as this op used to, guaranteed a 422. */
 			const query = new URLSearchParams();
 			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
+			if (request.expected_account_id)
+				query.set("expected_account_id", request.expected_account_id);
 			const suffix = query.size > 0 ? `?${query.toString()}` : "";
 			return {
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/members${suffix}`,
@@ -8676,7 +8740,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 		}
 		case "team_bridge.conversations.members.remove":
 			return {
-				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/members/${encodeURIComponent(request.account_id)}`,
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/members/${encodeURIComponent(request.account_id)}${conversationOwnerQuery(request)}`,
 				method: "DELETE",
 			};
 		case "team_bridge.conversations.consent":
@@ -8684,6 +8748,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/members/${encodeURIComponent(request.account_id)}/consent`,
 				method: "POST",
 				body: {
+					...(request.expected_account_id
+						? { expected_account_id: request.expected_account_id }
+						: {}),
 					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
 					decision: request.decision,
 					consent_version: request.consent_version,
@@ -8721,6 +8788,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages`,
 				method: "POST",
 				body: {
+					...(request.expected_account_id
+						? { expected_account_id: request.expected_account_id }
+						: {}),
 					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
 					client_ref: request.client_ref,
 					body: request.body,
@@ -8748,6 +8818,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/read`,
 				method: "POST",
 				body: {
+					...(request.expected_account_id
+						? { expected_account_id: request.expected_account_id }
+						: {}),
 					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
 					...(request.seq === undefined ? {} : { seq: request.seq }),
 					...(request.muted === undefined ? {} : { muted: request.muted }),

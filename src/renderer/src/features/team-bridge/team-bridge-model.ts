@@ -191,11 +191,12 @@ export function withNotificationPreference(
 	page: TeamBridgeConversationList,
 	conversationId: string,
 	notify: TeamBridgeNotify,
+	tenantId?: string,
 ): TeamBridgeConversationList {
 	return {
 		...page,
 		conversations: page.conversations.map((row) =>
-			row.id === conversationId
+			row.id === conversationId && (!tenantId || row.tenant_id === tenantId)
 				? { ...row, notify, muted: notify === "mute" }
 				: row,
 		),
@@ -1386,7 +1387,7 @@ export type PendingSend = {
 	/** Newest confirmed seq in the thread when sent; -1 for a new thread. */
 	baselineSeq: number;
 	/** `sent`: the POST answered; the copy has not shown up in a read yet. */
-	status: "sending" | "sent" | "failed";
+	status: "sending" | "sent" | "failed" | "unconfirmed";
 	/** The id the POST answered with, when it did. */
 	confirmedId?: string;
 	/** When the POST answered (ms); a read that lands after it holds the copy. */
