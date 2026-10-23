@@ -72,6 +72,7 @@ import {
 	EMPTY_DRAFT,
 	askAnswerMap,
 	askCellWith,
+	askDismissReason,
 	askOtherSeed,
 	askPanelHalves,
 	askQuestionIsAnswered,
@@ -877,25 +878,55 @@ const AskRow = ({
 	 * THE DISMISS CHOOSER, card-local for the change form's reason (design §10):
 	 * the intent belongs to ONE ask, and closing the drawer or settling another ask
 	 * must not leave a half-chosen reason on the next card. `open` is the trigger's
-	 * own state; the reason press posts immediately and closes it.
+	 * own state. THE REASON PRESS DOES NOT CLOSE IT (UX round 1, U6): the press is
+	 * what the card reports on while it is in flight, and a refusal has to keep the
+	 * chosen reason on screen - closing here was the state the refusal then had no
+	 * door back into.
 	 */
 	const [dismissOpen, setDismissOpen] = useState(false);
+	const [pressedReason, setPressedReason] = useState<AskDismissReason | null>(
+		null,
+	);
 	const dismissTrigger = useRef<HTMLButtonElement | null>(null);
 	const dismissFirstReason = useRef<HTMLButtonElement | null>(null);
+	const armTriggerFocus = useRef(false);
+	const dismissSending = outcome?.sending === true;
 	/*
 	 * FOCUS FOLLOWS THE CONTROL THAT REPLACED THE PRESS (the same contract the
-	 * panel's other swaps keep): opening the chooser lands on its first reason, and
-	 * Cancel returns to the trigger. The press that OPENS a chooser is the only one
-	 * that moves focus on its own; a reason press settles the card and the row's
-	 * own collapse decides where the keyboard lands.
+	 * panel's other swaps keep): opening the chooser lands on its first reason.
 	 */
 	useEffect(() => {
 		if (dismissOpen) dismissFirstReason.current?.focus();
 	}, [dismissOpen]);
+	/*
+	 * CANCEL AND ESCAPE RETURN THE KEYBOARD TO THE TRIGGER THEY RE-MOUNT (UX round 1,
+	 * U2). The ref is null in the handler that closes the chooser - the trigger only
+	 * exists on the NEXT commit - so the move is ARMED there and spent in a layout
+	 * effect after the trigger is in the DOM, the same shape this card's `Change
+	 * answer` press uses. The first cut called `focus()` in the handler and
+	 * measured a no-op (`document.activeElement` stayed on the body).
+	 */
 	const closeDismiss = () => {
+		armTriggerFocus.current = true;
+		setPressedReason(null);
 		setDismissOpen(false);
-		dismissTrigger.current?.focus();
 	};
+	useLayoutEffect(() => {
+		if (dismissOpen || !armTriggerFocus.current) return;
+		armTriggerFocus.current = false;
+		dismissTrigger.current?.focus();
+	}, [dismissOpen]);
+	/*
+	 * A DISMISSAL THAT LANDED ENDS THE CHOOSER. The card usually folds on the same
+	 * frame (the wire publishes rows only while the queue is non-empty), but a second
+	 * ask can keep it published, and a chooser left open over a settled row would
+	 * offer two reasons for an act already done.
+	 */
+	useEffect(() => {
+		if (outcome?.dismissed === undefined) return;
+		setDismissOpen(false);
+		setPressedReason(null);
+	}, [outcome?.dismissed]);
 	const [changeDraft, setChangeDraft] = useState<AskDraft>(EMPTY_DRAFT);
 	/*
 	 * THE OWNER'S OWN REFUSAL CLOSES THE DOOR (design round 1, D1 = UX round 1, U1).
@@ -1096,6 +1127,15 @@ const AskRow = ({
 	};
 	/** Which question's `Other` field the user's own press just asked to focus. */
 	const focusOtherRef = useRef<string | null>(null);
+	/*
+	 * THE REASON A SETTLED DISMISSAL CARRIES (UX round 1, U1; harness PR-4c adds the
+	 * key). PR-4c publishes `dismissed_reason` on the row; an older wire omits it, and
+	 * the status contract's own no-reply sentence stands in. Narrowed through the same
+	 * reader the request body uses, so a value this app cannot name is never printed
+	 * as a reason.
+	 */
+	const statusDismissReason =
+		status === "dismissed" ? askDismissReason(ask.dismissed_reason) : null;
 
 	return (
 		<div
@@ -1138,7 +1178,9 @@ const AskRow = ({
 				/>
 				<span className="min-w-0 flex-1 text-ink text-xs">
 					{urgent ? <span className="sr-only">Urgent. </span> : null}
-					{askStatusText(ask, nowMs)}
+					{statusDismissReason === null
+						? askStatusText(ask, nowMs)
+						: dismissReceipt(statusDismissReason)}
 				</span>
 				{/*
 				 * THE ID MOVED INTO A TITLE (design round 1, D6). It is the string a
@@ -1163,8 +1205,15 @@ const AskRow = ({
 			 * drawing both would print one answer twice on one card - once as prose
 			 * and once as a ticked row. The measured frame is what settled that; the
 			 * rule is about this pair rather than a preference.
+			 *
+			 * AND IT IS NOT DRAWN FOR A DISMISSAL (agent review round 1, M1). A dismissed
+			 * ask carries its questions but no answers, so this frame printed each
+			 * question beside `No answer given` - a receipt that reads as a partial
+			 * answer, and the harness refuses the same shape in `asks/render.py`
+			 * (`response_text`: a dismissed ask never goes through the report). The
+			 * status line above is the whole receipt.
 			 */}
-			{!canAnswer && !changingNow ? (
+			{!canAnswer && !changingNow && status !== "dismissed" ? (
 				<div className="flex flex-col gap-1.5">
 					{askSettledAnswers(ask).map((entry) => {
 						/*
@@ -1309,7 +1358,16 @@ const AskRow = ({
 					</span>
 				</p>
 			) : null}
-			{outcome?.dismissed !== undefined ? (
+			{/*
+			 * THE RECEIPT FOR A DISMISSAL THAT LANDED, the `changed` line's sibling - and
+			 * SKIPPED WHEN THE STATUS LINE ALREADY SAYS IT (agent review round 1, N1): the
+			 * wire (PR-4c) carries `dismissed_reason` on the settled row, so the status line
+			 * and this line printed one sentence twice on the mount that dismissed. The
+			 * line survives for the frame where the local outcome is ahead of the wire, and
+			 * for an older wire that cannot name the reason at all.
+			 */}
+			{outcome?.dismissed !== undefined &&
+			outcome.dismissed !== statusDismissReason ? (
 				/*
 				 * THE RECEIPT FOR A DISMISSAL THAT LANDED, the `changed` line's sibling and
 				 * for its reason: the wire folds the ask to `dismissed` with no marker for
@@ -1327,7 +1385,7 @@ const AskRow = ({
 					<span className="text-ink">{dismissReceipt(outcome.dismissed)}</span>
 				</p>
 			) : null}
-			{canAnswer || canDecline ? (
+			{(canAnswer || canDecline) && !dismissOpen ? (
 				<div className="flex items-center gap-2">
 					<button
 						type="button"
@@ -1475,12 +1533,31 @@ const AskRow = ({
 			 * reader is on, and a modal would dim the question they are deciding about.
 			 * Its two rows carry the harness surfaces' vocabulary and order (the phone
 			 * sheet, PR #2841): the reason leads, the one-line note says what it means.
+			 *
+			 * AND IT TAKES THE ACTION ROW'S PLACE WHILE IT IS OPEN (design round 1, D1).
+			 * Drawing it UNDER a still-armed `Send answer` put two accent-loud, opposite
+			 * actions 28.5px apart, with the one the reader had just opened the quieter of
+			 * the two; a misclick sent the answer they had stepped away from. One live
+			 * intent at a time, and `Cancel` returns the row.
+			 *
+			 * ESCAPE CLOSES ONLY THE CHOOSER (UX round 1, U7): the drawer claims Escape as
+			 * "put this overlay away", which is right one level up, but the transient step
+			 * inside it answers the key first — the sibling TUI does the same with `esc
+			 * back`. The claim is cancelled here so the drawer's handler does not also fire.
 			 */}
 			{onDismiss !== undefined && canAnswer ? (
-				<div className="flex flex-col gap-2">
+				<div
+					className="flex flex-col gap-2"
+					onKeyDown={(event) => {
+						if (!dismissOpen || event.key !== "Escape") return;
+						event.preventDefault();
+						event.stopPropagation();
+						closeDismiss();
+					}}
+				>
 					{dismissOpen ? (
 						<>
-							<p className="text-ink text-xs">
+							<p className="text-ink-muted text-meta">
 								{t("ui.chat.asks.dismiss.heading")}
 							</p>
 							{DISMISS_REASONS.map((reason) => (
@@ -1490,16 +1567,36 @@ const AskRow = ({
 									type="button"
 									disabled={busy}
 									onClick={() => {
-										setDismissOpen(false);
+										/*
+										 * THE REASON PRESS LEAVES THE CHOOSER UP (UX round 1, U3/U6): while the
+										 * POST is in flight the pressed row says so, and a refusal keeps the
+										 * choice on screen instead of collapsing the door the reader must
+										 * re-open and re-pick.
+										 */
+										setPressedReason(reason);
 										onDismiss(ask, reason);
 									}}
-									className="flex w-full flex-col gap-0.5 rounded-md border border-control px-3 py-1.5 text-left hover:bg-sunken disabled:text-ink-dim"
+									data-lo-ask-dismiss-reason={reason}
+									className={cn(
+										"flex w-full min-w-0 flex-col gap-0.5 rounded-md border border-control px-3 py-1.5 text-left hover:bg-sunken disabled:text-ink-dim",
+										pressedReason === reason && "bg-sunken",
+									)}
 								>
-									<span className="text-ink text-sm">
-										{dismissReasonTitle(reason)}
+									<span className="flex min-w-0 items-center gap-1.5 text-ink text-sm">
+										{pressedReason === reason ? (
+											<Check
+												aria-hidden="true"
+												className="size-3.5 shrink-0 text-ink-muted"
+											/>
+										) : null}
+										<span className="min-w-0 break-words">
+											{dismissReasonTitle(reason)}
+										</span>
 									</span>
-									<span className="text-ink-muted text-meta">
-										{dismissReasonNote(reason)}
+									<span className="truncate text-ink-muted text-meta">
+										{dismissSending && pressedReason === reason
+											? t("ui.chat.asks.dismiss.in_flight")
+											: dismissReasonNote(reason)}
 									</span>
 								</button>
 							))}
@@ -1694,6 +1791,40 @@ export const AskPanel = ({
 	 */
 	const panelRef = useRef<HTMLDivElement | null>(null);
 	const prevHeld = useRef<ReadonlySet<string>>(new Set());
+	/*
+	 * FOCUS AFTER A DISMISSAL (UX round 1, U2). A landed dismissal unmounts the card
+	 * under the reader's keyboard, and without a hand-off `document.activeElement` fell
+	 * to BODY - the next Tab restarted at the top of the app, thirteen stops from the
+	 * door it had just used. The rule is the lane's own: land on the NEXT card's first
+	 * control (the card that takes the empty slot), or on the list itself when no card
+	 * is left. Armed at the PRESS with the index the row occupied then, spent in a
+	 * layout effect once the row is actually gone - a refused dismissal leaves the row
+	 * in place, and the arm is then simply never spent.
+	 *
+	 * WHY THE INDEX AND NOT THE ID ALONE: the next card is positional. A `nextElement`
+	 * read after unmount would skip a row the reader never saw; the recorded index is
+	 * where the removed card was, and it clamps to the list length for the last card.
+	 */
+	const dismissFocus = useRef<{ id: string; index: number } | null>(null);
+	const dismissAsk = (ask: PendingAsk, reason: AskDismissReason) => {
+		const index = view.rows.findIndex((row) => row.ask.ask_id === ask.ask_id);
+		if (index >= 0) dismissFocus.current = { id: ask.ask_id, index };
+		onDismiss?.(ask, reason);
+	};
+	useLayoutEffect(() => {
+		const pending = dismissFocus.current;
+		const list = panelRef.current;
+		if (pending === null || list === null) return;
+		const cards = [...list.querySelectorAll<HTMLElement>("[data-lo-ask-row]")];
+		if (cards.some((node) => node.dataset.loAskRow === pending.id)) return;
+		dismissFocus.current = null;
+		const next = cards[Math.min(pending.index, cards.length - 1)];
+		const target =
+			next?.querySelector<HTMLElement>(
+				"button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled])",
+			) ?? list;
+		target.focus({ preventScroll: true });
+	});
 	const active =
 		typeof document === "undefined" ? null : document.activeElement;
 	const focusedRow =
@@ -1863,7 +1994,7 @@ export const AskPanel = ({
 			onAnswer={onAnswer}
 			onDecline={onDecline}
 			onRevise={onRevise}
-			onDismiss={onDismiss}
+			onDismiss={onDismiss === undefined ? undefined : dismissAsk}
 			conversationOf={conversationOf}
 		/>
 	);
@@ -1961,7 +2092,15 @@ export const AskPanel = ({
 							 */
 							<span className="min-w-0 text-danger text-meta">{refusal}</span>
 						)}
-						{dismissal === undefined ? null : (
+						{dismissal === undefined ||
+						askDismissReason(presentation.ask.dismissed_reason) !==
+							null ? null : (
+							/*
+							 * ONE RECEIPT (agent review round 1, N1). The local outcome is the only
+							 * source on an older wire; harness PR-4c puts the reason on the ROW, and
+							 * then the card's own status line states it - printing this line as well
+							 * made the sentence appear twice on the mount that dismissed.
+							 */
 							<span className="min-w-0 text-ink-muted text-meta">
 								{dismissReceipt(dismissal)}
 							</span>
@@ -2076,6 +2215,7 @@ export const AskPanel = ({
 		<div
 			ref={panelRef}
 			data-lo-ask-panel="open"
+			tabIndex={-1}
 			className={cn("flex w-full flex-col gap-2", className)}
 		>
 			{view.rows.length > 0 ? filterControl : null}

@@ -239,6 +239,14 @@ export type ToolRowProps = {
 	 * state of the same hold: static, textless, dim - see the cell below.
 	 */
 	summaryHold?: boolean;
+	/**
+	 * Let the summary WRAP instead of truncating. Default false, because a row's
+	 * object is a glance and one line is the glance; a RECEIPT whose sentence ends
+	 * in the ask id is the exception — truncated at a narrow width it lost exactly
+	 * the token that tells two receipts apart (UX round 1, U1), so that row asks
+	 * for its whole sentence at the cost of a second line.
+	 */
+	summaryWrap?: boolean;
 	outcome: ToolRowOutcome;
 	/**
 	 * How a `send` call's delivery ended, when the result stated it
@@ -825,6 +833,7 @@ export const ToolRow = ({
 	summary,
 	summaryFallback = null,
 	summaryHold = false,
+	summaryWrap = false,
 	outcome,
 	deliveryState = null,
 	durationS,
@@ -922,7 +931,13 @@ export const ToolRow = ({
 					// reader scans for the result the quietest thing on a finished turn.
 					// The live/settled difference is the working line and the missing
 					// duration (§E7), not a dimmer summary.
-					"min-w-0 flex-1 truncate font-mono text-ink-muted text-mono-sm",
+					"min-w-0 flex-1 font-mono text-ink-muted text-mono-sm",
+					/*
+					 * WRAP INSTEAD OF TRUNCATE on the rows that ask for it (see the prop): a
+					 * receipt's last token is the ask id, and the ellipsis ate it. `break-words`
+					 * keeps one long token from overflowing the row.
+					 */
+					summaryWrap ? "break-words whitespace-normal" : "truncate",
 				)}
 				// The name beside it has carried a `title` since it became truncatable;
 				// this cell truncates too, and at 390px the summary is the half that

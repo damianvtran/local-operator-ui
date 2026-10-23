@@ -842,6 +842,16 @@ export type PendingAsk = {
 	 */
 	user_messages_since?: number | null;
 	last_user_message_at?: number | null;
+	/**
+	 * WHEN a dismissed ask was put away, and WHY (harness PR-4c, SA-D8). Optional and
+	 * absent on every wire this app could read before that release, INCLUDING the one
+	 * #2833 ships: a dismissal written by an older build carries neither key, and the
+	 * surfaces read absence as the contract's own "no reply was sent" rather than as a
+	 * reason. `dismissed_reason` is the wire's own vocabulary (`moot` |
+	 * `answered_in_chat`), narrowed at the reader (`askDismissReason`).
+	 */
+	dismissed_at?: number | null;
+	dismissed_reason?: string | null;
 	questions: PendingAskQuestion[];
 	/**
 	 * The answers, keyed by question id; each a LIST because a question may be
