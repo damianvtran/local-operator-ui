@@ -19151,8 +19151,25 @@
 				"session": "a0f0f5c8888a",
 				"date": "2026-10-21"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "tbstack-r1-1304m-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1304m-fr.json",
+					"receipt_sha256": "96946ca7fea27373abbc8c43470f78c8d7deb509f54e5213d6bee43b5c7d6442",
+					"scope": "PR #1304 local merge 12dddf52f7: ui.teamBridge fr, 123 keys read side-by-side against English. Union integrity over audited 119-key own side e3c24e98eb and 115-key main side de047d49e3: 111 shared, 8 own-only, 4 main-only; no dropped or changed value. Substantive contextual review of the four OS-banner keys; namespace-wide thread/reply/message terminology and all-value ICU checks."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
@@ -19767,8 +19784,25 @@
 				"session": "b2e9b9cc0c61",
 				"date": "2026-10-21"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "tbstack-r1-1304m-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1304m-es.json",
+					"receipt_sha256": "0da6f4f0cc6e22a00e14ae72395bd98e483e64613da4334ef208bb5cbbbf70ab",
+					"scope": "PR #1304 local merge 12dddf52f7: ui.teamBridge es, 123 keys read side-by-side against English. Union integrity over audited 119-key own side e3c24e98eb and 115-key main side de047d49e3: 111 shared, 8 own-only, 4 main-only; no dropped or changed value. Substantive contextual review of the four OS-banner keys; namespace-wide thread/reply/message terminology and all-value ICU checks."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
@@ -20009,8 +20043,25 @@
 				"session": "c1afa2d66bea",
 				"date": "2026-10-21"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "tbstack-r1-1304m-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1304m-zh-cn.json",
+					"receipt_sha256": "1ac603c3d789f59a00d230851bbd6833fa8ff649f4dc0ba1142beae7065128d2",
+					"scope": "PR #1304 integration merge 12dddf52f7 (e3c24e98eb + de047d49e3): 123 keys read side by side; all 123 English/target/context values verified as the unchanged union of audited sides (119 from #1304 plus 4 OS-banner keys from #1298). Fresh substantive review of the 4 OS-banner keys, contextual comparison with 8 replies.* keys, whole-namespace thread/reply/message/reaction terminology, and ICU integrity of every value. Catalogue-only, not rendered-fit/activation/release."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
@@ -20534,8 +20585,25 @@
 				"session": "ccb542b6a341",
 				"date": "2026-10-21"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "tbstack-r1-1304m-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1304m-ru.json",
+					"receipt_sha256": "17942312ad3740fc3607e1aeadfacb770e5195846779d29d4754731f5addd36a",
+					"scope": "PR #1304 integration merge 12dddf52f7 (e3c24e98eb + de047d49e3): 123 keys read side by side; all 123 English/target/context values verified as the unchanged union of audited sides (119 from #1304 plus 4 OS-banner keys from #1298). Fresh substantive review of the 4 OS-banner keys, contextual comparison with 8 replies.* keys, whole-namespace thread/reply/message/reaction terminology, and ICU integrity of every value. Catalogue-only, not rendered-fit/activation/release."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
@@ -20723,8 +20791,25 @@
 				"session": "551f380c804b",
 				"date": "2026-10-21"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "tbstack-r1-1304m-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1304m-hi.json",
+					"receipt_sha256": "fbae54137366e7c00767d62c2fcd282773c1c6fbe961bb765ba7ffe4de746b40",
+					"scope": "PR #1304 merged head 12dddf52f78bd30704b48a8c856f2b69e1bef6e3: all 123 hi keys read beside English; union integrity against e3c24e98eb (119 keys) and de047d49e3 (115 keys); substantive contextual review of the 4 inherited #1298 notify.channel/subtitle/count/count_preview keys, the 8 replies keys and namespace-wide thread/reply/message terminology; full ICU structural parity. No reaction keys exist in this namespace."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
@@ -20912,8 +20997,25 @@
 				"session": "ff57e8cc086b",
 				"date": "2026-10-21"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "tbstack-r1-1304m-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1304m-ur.json",
+					"receipt_sha256": "e35be7e2f4d86eb4213e6d21a6082e20c27f2cf32f32e0b4119080ba5babf83f",
+					"scope": "PR #1304 merged head 12dddf52f78bd30704b48a8c856f2b69e1bef6e3: all 123 ur keys read beside English; union integrity against e3c24e98eb (119 keys) and de047d49e3 (115 keys); substantive contextual review of the 4 inherited #1298 notify.channel/subtitle/count/count_preview keys, the 8 replies keys and namespace-wide thread/reply/message terminology; full ICU structural parity. No reaction keys exist in this namespace."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
@@ -21101,8 +21203,25 @@
 				"session": "b5986259587f",
 				"date": "2026-10-21"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6.1-sol",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "tbstack-r1-1304m-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/tbstack-r1-1304m-vi.json",
+					"receipt_sha256": "2702bad0d4221dc0be25f646097250c4f6852f7521ed6623888a5e598b49c7db",
+					"scope": "PR #1304 local merge 12dddf52f7: ui.teamBridge vi, 123 keys read side-by-side against English. Union integrity over audited 119-key own side e3c24e98eb and 115-key main side de047d49e3: 111 shared, 8 own-only, 4 main-only; no dropped or changed value. Substantive contextual review of the four OS-banner keys; namespace-wide thread/reply/message terminology and all-value ICU checks."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
