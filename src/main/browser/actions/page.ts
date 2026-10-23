@@ -8,6 +8,7 @@ import {
 	compactAX,
 	windowSnapshot,
 } from "../vendor/driver/ax-compact";
+import { locatorSuggestions } from "../vendor/driver/ax-locator";
 import {
 	CDP_DEADLINE_MS,
 	SCRIPTING_DEADLINE_MS,
@@ -651,12 +652,68 @@ export async function nodeIdForSelector(
 		},
 	);
 	if (!queried?.nodeId) {
+		// The miss names the elements that DO exist (measured: nine CSS guesses,
+		// each a whole tool call, each answering only "element not found").
 		throw new BrowserHostError(
 			"element_not_found",
 			`selector ${selector} matched nothing`,
+			{ candidates: await missCandidates(ctx, view, selector) },
 		);
 	}
 	return queried.nodeId;
+}
+
+/** The page's accessibility tree for a read that needs it (locators,
+ *  candidates). Enable → read → disable, the documented window `snapshot` uses.
+ *
+ *  What serializes two commands on ONE tab is the host's per-tab command lane
+ *  (`host.ts` → `registry.lane`, `busy` set in `registry.ts`), NOT `CdpPool`:
+ *  `cdp.ts`'s `send` calls `debugger.sendCommand` immediately with no per-target
+ *  lock. Naming the wrong mechanism is how a future reader trusts a lock that
+ *  does not exist — the extension needed an explicit queue for this exact hazard
+ *  (`commands/ax-tree.ts`) (agent review round 1, R1-2; the claim moved here
+ *  with the helper and was corrected in place).
+ *
+ *  TOP-FRAME ONLY, and that is MEASURED, not promised (agent review round 1,
+ *  R1-1): driven against the built app on 2026-10-23 over `iframe#pay-frame`
+ *  (same site, port 8766) holding a button named "Pay now", `click
+ *  text="Pay now"` answered `element_not_found` while `snapshot` showed the
+ *  frame's contents through its own sessions. A locator therefore cannot land
+ *  in a frame, cannot bypass `assertFrameNotDenied`, and cannot mis-report
+ *  `frame_origin`; frames stay reachable through the explicit `>>>` hop.
+ *
+ *  Lives here rather than in `input.ts` because both the locator resolver and
+ *  the miss diagnostics need it, and `page.ts` is what `input.ts` imports (the
+ *  reverse would be a cycle). */
+export async function readAccessibilityTree(
+	ctx: BrowserActionContext,
+	contents: import("../electron-types").DriveableView["webContents"],
+): Promise<AXNode[]> {
+	await ctx.cdp.send(contents, "Accessibility.enable", {});
+	try {
+		const tree = await ctx.cdp.send<{ nodes?: AXNode[] }>(
+			contents,
+			"Accessibility.getFullAXTree",
+			{},
+		);
+		return Array.isArray(tree?.nodes) ? tree.nodes : [];
+	} finally {
+		await ctx.cdp.send(contents, "Accessibility.disable", {}).catch(() => {});
+	}
+}
+
+/** The closest real elements for a selector that matched nothing, in the shape
+ *  the tool renders (`role`, `name`, `locator`). Best-effort: a tree read that
+ *  fails must not replace the caller's own error. */
+async function missCandidates(
+	ctx: BrowserActionContext,
+	view: import("../electron-types").DriveableView,
+	selector: string,
+): Promise<Array<{ role: string; name: string; locator: string }>> {
+	const nodes = await readAccessibilityTree(ctx, view.webContents).catch(
+		() => [],
+	);
+	return locatorSuggestions(nodes, selector);
 }
 
 /** A CSS selector's element, named by the id the ACCESSIBILITY tree uses.
