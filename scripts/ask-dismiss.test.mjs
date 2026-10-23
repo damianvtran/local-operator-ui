@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { unlink, writeFile } from "node:fs/promises";
+import { readFile, unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -37,6 +37,7 @@ const bundle = await build({
 			'export { askQueueView, askDismissRequest, askResponseSummary, presentAsk } from "./src/renderer/src/features/chat/ask-queue";',
 			'export { dismissQueuedAsk, createSendLock } from "./src/renderer/src/features/chat/ask-answer";',
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";',
+			'export { desktopFeatureEnabled } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -85,11 +86,20 @@ const {
 	createSendLock,
 	desktopRequestSchema,
 	desktopEndpoint,
+	desktopFeatureEnabled,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
 /* The wire's session id shape: 12 lowercase hex digits (`sessionIdPattern`). */
 const SESSION = "0f9c1e2d3a4b";
+/*
+ * Source pins for the two gate sites (agent review M2), at module scope so the lint's
+ * per-call regex rule stays quiet.
+ */
+const DISMISS_GATE =
+	/desktopFeatureEnabled\(\s*capabilities\.data,\s*"ask_dismiss",?\s*\)/;
+const SESSION_DOOR =
+	/onDismissAsk: desktopFeatureEnabled\([\s\S]{0,120}?\? \(taskId: string, reason: AskDismissReason\) =>/;
 const NOW = 1_700_000_000_000;
 
 function openAsk(overrides = {}) {
@@ -409,4 +419,82 @@ test("a relay refusal is drawn inline on the card, not swallowed", () => {
 		},
 	});
 	assert.equal(markup.includes(sentence), true);
+});
+
+test("both dismiss gate sites read features.ask_dismiss, and the helper fails closed", async () => {
+	/*
+	 * Agent review M2. The panel's own test proves "no prop, no button"; the gap was
+	 * the two containers that RESOLVE the prop from the negotiated capabilities. They
+	 * share one predicate, so this exercises it against the three capability shapes
+	 * that matter and pins the expression at both sites (the chat page cannot be
+	 * mounted in a node test - the repo pins its call site by source for the same
+	 * reason, `ask-open-render.test.mjs`).
+	 */
+	const caps = (features, available = true) => ({
+		desktop_available: available,
+		features,
+	});
+	assert.equal(
+		desktopFeatureEnabled(caps({ ask_dismiss: 1 }), "ask_dismiss"),
+		true,
+	);
+	assert.equal(desktopFeatureEnabled(caps({}), "ask_dismiss"), false);
+	assert.equal(desktopFeatureEnabled(null, "ask_dismiss"), false);
+	assert.equal(
+		desktopFeatureEnabled(caps({ ask_dismiss: 1 }, false), "ask_dismiss"),
+		false,
+		"an unpaired backend offers nothing, whatever its feature list says",
+	);
+	const chat = await readFile(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+		"utf8",
+	);
+	const fleet = await readFile(
+		"src/renderer/src/features/chat/components/asks/fleet-ask-drawer.tsx",
+		"utf8",
+	);
+	assert.match(
+		chat,
+		DISMISS_GATE,
+		"the session drawer resolves the capability",
+	);
+	assert.match(fleet, DISMISS_GATE, "the fleet pane resolves the capability");
+	assert.equal(
+		fleet.includes("onDismiss={dismissEnabled ? onDismiss : undefined}"),
+		true,
+		"the fleet pane passes the door only when enabled",
+	);
+	assert.match(
+		chat,
+		SESSION_DOOR,
+		"the session drawer passes the door only when enabled",
+	);
+});
+
+test("a send that throws is a FAILURE carrying the request, and the lock is free again", async () => {
+	/*
+	 * Agent review M3. The refusal path (lock taken, no session) and the success path
+	 * were pinned; the transport failure was correct by reading only. It is the one
+	 * outcome that must not invent a sentence: the error is what the panel turns into
+	 * the route's words (`askRefusalSentence`), and it must carry the request so the
+	 * caller can say what was attempted. A lock left held after a throw would disable
+	 * every later press in the mount.
+	 */
+	const lock = createSendLock();
+	const outcome = await dismissQueuedAsk(
+		{
+			taskId: "a-dismiss",
+			reason: "moot",
+			sessionId: SESSION,
+			lock,
+		},
+		async () => {
+			throw new Error("boom");
+		},
+	);
+	assert.equal(outcome.status, "failed");
+	assert.equal(outcome.request.dismiss, true);
+	assert.equal(outcome.request.askId, "a-dismiss");
+	assert.equal(outcome.error.message, "boom");
+	assert.equal(lock.held, false, "the lock is released on the failure path");
 });

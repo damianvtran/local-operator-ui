@@ -1710,6 +1710,7 @@ export type MessageParams = {
 	"ui.chat.asks.dismiss.answered_in_chat.title": undefined;
 	"ui.chat.asks.dismiss.cancel": undefined;
 	"ui.chat.asks.dismiss.heading": undefined;
+	"ui.chat.asks.dismiss.in_flight": undefined;
 	"ui.chat.asks.dismiss.moot.note": undefined;
 	"ui.chat.asks.dismiss.moot.title": undefined;
 	"ui.chat.asks.dismiss.receipt.answered_in_chat": undefined;

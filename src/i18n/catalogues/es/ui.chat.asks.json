@@ -1,9 +1,10 @@
 {
-	"ui.chat.asks.context.messages_since": "{count, plural, one {# mensaje tuyo desde que se hizo esta consulta (último: {time})} many {# de mensajes tuyos desde que se hizo esta consulta (último: {time})} other {# mensajes tuyos desde que se hizo esta consulta (último: {time})}}",
+	"ui.chat.asks.context.messages_since": "{count, plural, one {# mensaje tuyo desde que se hizo esta consulta (último mensaje: {time})} many {# de mensajes tuyos desde que se hizo esta consulta (último mensaje: {time})} other {# mensajes tuyos desde que se hizo esta consulta (último mensaje: {time})}}",
 	"ui.chat.asks.dismiss.answered_in_chat.note": "ya respondiste en la conversación",
 	"ui.chat.asks.dismiss.answered_in_chat.title": "Respondida en la conversación",
 	"ui.chat.asks.dismiss.cancel": "Cancelar",
 	"ui.chat.asks.dismiss.heading": "Descartar esta consulta",
+	"ui.chat.asks.dismiss.in_flight": "Descartando…",
 	"ui.chat.asks.dismiss.moot.note": "el agente dejará de esperar respuesta",
 	"ui.chat.asks.dismiss.moot.title": "Ya no hace falta",
 	"ui.chat.asks.dismiss.receipt.answered_in_chat": "Descartada — resuelta en la conversación",

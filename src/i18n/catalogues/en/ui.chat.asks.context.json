@@ -1,7 +1,7 @@
 {
 	"ui.chat.asks.context.messages_since": {
 		"length": "One short clause plus a parenthetical clock reading.",
-		"note": "Renders under the questions on a card whose ask is still open, only when at least one user message arrived after it was queued. The count is the conversation's movement since the question was asked; the parenthetical gives the locale's own short clock time of the latest of those messages. The whole line is omitted when the backend sends no count, which is every runtime older than the dismiss feature.",
+		"note": "The parenthetical names what it stamps: the stamp is the LAST MESSAGE from you, not the ask and not the wait (design round 1, D4; the noun is present so the absolute time cannot be read as either). The count stays the lead because the sentence opens with it.",
 		"placeholders": {
 			"count": "how many user messages arrived since the ask was queued; drives the plural branch and renders as # inside each arm",
 			"time": "the latest of those messages, formatted as the locale's short time (for example 19:36 or 7:36 PM)"
@@ -36,6 +36,13 @@
 		"placeholders": {},
 		"role": "heading of the inline reason chooser on an open ask card",
 		"tone": "short verb phrase, sentence case, no trailing punctuation"
+	},
+	"ui.chat.asks.dismiss.in_flight": {
+		"length": "One word plus an ellipsis.",
+		"note": "Replaces the reason's own note on the pressed row for the life of the request, so the reader sees what is being sent. It says the ACT is happening, not that it succeeded: a refusal must not have claimed anything landed. English uses the gerund of the trigger's verb.",
+		"placeholders": {},
+		"role": "the line under the chosen reason while the dismissal request is in flight",
+		"tone": "present participle fragment, no trailing punctuation beyond the ellipsis"
 	},
 	"ui.chat.asks.dismiss.moot.note": {
 		"length": "Four words.",

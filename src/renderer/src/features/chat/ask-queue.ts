@@ -2375,6 +2375,18 @@ export const askDeclineRequest = (
 export type AskDismissReason = "answered_in_chat" | "moot";
 
 /**
+ * The wire's dismissal reason, narrowed: `answered_in_chat` | `moot`, or null.
+ *
+ * ONE reader for the two directions the value travels (the request body this app
+ * composes, and the settled row harness PR-4c publishes): a string the enum does not
+ * name is not a reason this surface can print, and guessing the nearest one would be
+ * the app inventing what the operator chose. `null` says "cannot say", which every
+ * caller renders as the contract's own no-reason sentence.
+ */
+export const askDismissReason = (value: unknown): AskDismissReason | null =>
+	value === "moot" || value === "answered_in_chat" ? value : null;
+
+/**
  * The `sessions.answer` body for a dismissal: put an OPEN ask away without
  * answering it (`{ask_id, dismiss: true, reason?}`).
  *

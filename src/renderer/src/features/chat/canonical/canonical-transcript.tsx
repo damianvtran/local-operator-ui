@@ -2812,6 +2812,12 @@ const AskReceiptRow = memo(function AskReceiptRow({
 					toolName="ask"
 					verbless
 					summary={summary}
+					/*
+					 * THE DISMISSED SENTENCE WRAPS (UX round 1, U1): it ends in the ask id, and a
+					 * truncated receipt at 1024px read `… no longer needed — …`, losing the one
+					 * token that tells two dismissals in one turn apart.
+					 */
+					summaryWrap={record.status === "dismissed"}
 					outcome="receipt"
 					durationS={null}
 				/>
