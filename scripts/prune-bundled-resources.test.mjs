@@ -83,6 +83,20 @@ function makePackagedApp(
 		"Resources",
 	);
 	mkdirSync(resources, { recursive: true });
+	// The main bundle's icon is what `afterPack` stamps into every helper, so
+	// the fixture carries the same two facts a packed build does: an
+	// `CFBundleIconFile` naming `icon.icns`, and that file under Resources.
+	// Without them the icon step refuses the bundle before the prune this file
+	// exercises ever runs.
+	writeFileSync(
+		join(appOutDir, "Local Operator.app", "Contents", "Info.plist"),
+		`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict><key>CFBundleIconFile</key><string>icon.icns</string></dict></plist>
+`,
+		"utf8",
+	);
+	writeFileSync(join(resources, "icon.icns"), "fixture icon");
 	for (const name of trees) {
 		mkdirSync(join(resources, name, "lib", "python3.12"), { recursive: true });
 		mkdirSync(join(resources, name, "bin"), { recursive: true });
