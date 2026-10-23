@@ -20,6 +20,7 @@
  * jsdom has no layout; nothing here claims geometry (the Storybook frames do).
  */
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
@@ -134,7 +135,15 @@ const allowlistFixture = JSON.parse(
 	readFileSync("scripts/fixtures/agent-messages-allowlist.json", "utf8"),
 );
 // The runtime serves the FULL v2 text; the banner must show it byte-for-byte.
-const V2_TEXT = `${statusFixture.consent.text}\n\nSecond paragraph, kept as served.`;
+const v2Consent = JSON.parse(
+	readFileSync("scripts/fixtures/team-bridge-consent-v2.json", "utf8"),
+);
+const V2_TEXT = v2Consent.text;
+assert.equal(Buffer.byteLength(V2_TEXT), 2035);
+assert.equal(
+	createHash("sha256").update(V2_TEXT).digest("hex"),
+	"dba2eb359f299a07d65676f2a088124903fb280196b54488c7913da4f9517f7d",
+);
 
 after(() => {
 	dom.window.close();
