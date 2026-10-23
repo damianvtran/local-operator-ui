@@ -10,6 +10,7 @@ import {
 	type PendingSend,
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeOrganization,
+	type TeamBridgeTarget,
 	asTeamBridgeTenantId,
 	draftCreateInput,
 	organizationOptions,
@@ -134,8 +135,8 @@ const channel: TeamBridgeConversation = {
 	unread_count: 3,
 	muted: false,
 	// What agent-server sends on every row: active + invited (Damian, Bea, Cy).
-	// The header must still read 2 active members, not 3, so this fixture is the
-	// insider branch of `conversationMemberCount` rather than a decorative field.
+	// The header states 3 current members and distinguishes 2 active / 1 invited.
+	// Populated rows are authoritative, rather than a decorative aggregate field.
 	member_count: 3,
 };
 
@@ -1157,6 +1158,78 @@ export const LegacyMemberLabelsAllOrganizations: Story = {
 	},
 };
 
+/** Production-shaped regression: one active human owner, three invited agents.
+ * No member_count is required to derive the current total from participant rows.
+ */
+export const FourMembersThreeInvited: Story = {
+	args: {
+		organizations: [minervaOrganization],
+		scope: asTeamBridgeTenantId("tnt_1"),
+		conversations: [
+			{
+				...channel,
+				id: "bcv_qa_coordination",
+				name: "qa-coordination",
+				member_count: undefined,
+				members: [
+					{
+						account_id: self,
+						kind: "human",
+						display_label: "Damian Tran",
+						role: "owner",
+						state: "active",
+					},
+					...["Ben Tran", "Sana Ketabchi", "Sherman Tsui"].map(
+						(name, index) => ({
+							account_id: `acct_invited_${index}`,
+							kind: "agent" as const,
+							display_label: name,
+							role: "member" as const,
+							state: "invited" as const,
+						}),
+					),
+				],
+			},
+		],
+		target: { type: "conversation", id: "bcv_qa_coordination" },
+		people: rosterWithChiefs,
+		messages: [],
+	},
+};
+
+/** The server's DisplayAgentName falls back to the person's name when the
+ * endpoint has no agent_name. #1334 owns honest unnamed-CoS composition;
+ * this story exercises inclusion of that existing endpoint, not designation.
+ */
+export const OwnChiefServerFallback: Story = {
+	// Keep the real picker controlled so browser QA can select/remove an agent
+	// and verify that its human owner is never implicitly added to the draft.
+	render: function OwnChiefPicker(args) {
+		const [target, setTarget] = useState<TeamBridgeTarget | null>(args.target);
+		return (
+			<TeamBridgePageView {...args} target={target} onTarget={setTarget} />
+		);
+	},
+	args: {
+		...PersonDraft.args,
+		people: rosterWithChiefs.map((person) =>
+			person.account_id === self && person.agent
+				? { ...person, agent: { ...person.agent, name: person.display_label } }
+				: person,
+		),
+		target: { type: "compose", recipients: [] },
+	},
+};
+
+/** The same real picker with the endpoint's own agent name published. */
+export const OwnChiefNamed: Story = {
+	render: OwnChiefServerFallback.render,
+	args: {
+		...OwnChiefServerFallback.args,
+		people: rosterWithChiefs,
+	},
+};
+
 /*
  * TEAM BRIDGE: OPTIMISTIC SEND, SPARSE THREAD, CHIEF-OF-STAFF LABEL
  * (operator report after v0.39.9). Fixtures are hand-written; the pending rows
@@ -1453,4 +1526,90 @@ export const OptimisticIntegrationFlow: Story = {
 			</div>
 		);
 	},
+};
+
+/**
+ * Real page + picker + create serializer + read projection, with an in-memory
+ * service boundary. No daemon or production write: the visible payload is what
+ * draftCreateInput produced, and its stored labels are fed back uncomposed so
+ * the merged page must resolve the same named/unnamed identity on read.
+ */
+export const OwnChiefCreateReadRoundTrip: Story = {
+	args: OwnChiefServerFallback.args,
+	render: function OwnChiefRoundTrip(args) {
+		const [target, setTarget] = useState<TeamBridgeTarget | null>(args.target);
+		const [created, setCreated] = useState<TeamBridgeConversation | null>(null);
+		const [confirmed, setConfirmed] = useState<TeamBridgeMessage[]>([]);
+		const [wire, setWire] = useState<ReturnType<typeof draftCreateInput>>(null);
+		return (
+			<div className="flex h-full flex-col">
+				<output
+					className="shrink-0 px-3 py-1 text-meta-sm"
+					aria-label="Fixture create payload"
+				>
+					{wire ? JSON.stringify(wire) : "Fixture only: no create yet"}
+				</output>
+				<TeamBridgePageView
+					{...args}
+					target={target}
+					onTarget={setTarget}
+					conversations={created ? [created] : []}
+					messages={confirmed}
+					messageState={created ? "ready" : "idle"}
+					onSend={async (body) => {
+						if (target?.type !== "compose") return;
+						const input = draftCreateInput(target.recipients);
+						if (!input) return;
+						setWire(input);
+						const conversation: TeamBridgeConversation = {
+							...dm,
+							id: "bcv_self_roundtrip",
+							tenant_id: "tnt_1",
+							kind: input.kind,
+							name: "",
+							agent_capable: input.agentCapable,
+							members: [
+								{
+									account_id: self,
+									kind: "human",
+									display_label: "Damian Tran",
+									role: "owner",
+									state: "active",
+								},
+								...input.members.map((member) => ({
+									account_id: member.account_id,
+									kind: member.kind,
+									display_label: member.display_label ?? "",
+									role: "member" as const,
+									state: "invited" as const,
+								})),
+							],
+						};
+						setCreated(conversation);
+						setConfirmed([
+							{
+								id: "bcmsg_self_roundtrip",
+								conversation_id: conversation.id,
+								seq: 1,
+								sender: {
+									account_id: self,
+									kind: "human",
+									display_label: "Damian Tran",
+								},
+								origin: "human",
+								body,
+								created_at: new Date().toISOString(),
+							},
+						]);
+						setTarget({ type: "conversation", id: conversation.id });
+					}}
+				/>
+			</div>
+		);
+	},
+};
+
+export const OwnChiefNamedCreateReadRoundTrip: Story = {
+	render: OwnChiefCreateReadRoundTrip.render,
+	args: { ...OwnChiefNamed.args },
 };

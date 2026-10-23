@@ -223,22 +223,36 @@ export function notifyFailureIsVisible(
 /**
  * The count the thread header states.
  *
- * Insiders keep the live member array and count its ACTIVE rows: the server's
- * `member_count` also includes invitees (agent-server counts active + invited),
- * so preferring it for an insider would make the header disagree with both the
- * avatars beside it and the previous UI's number. A discoverable non-member has
- * no `members` rows at all — membership is the fact the preview withholds — so
- * `member_count` is the only metadata there, and its invited-inclusive total is
- * the honest number the preview can state.
+ * Current membership includes active AND invited identities, not historical
+ * left/removed rows. The populated participant array is authoritative; a
+ * discoverable preview withholds it and instead supplies `member_count`.
+ * This is presentation only: an invitation never grants active-member access.
  */
 export function conversationMemberCount(
 	conversation: Pick<TeamBridgeConversation, "member_count" | "members">,
 ): number {
 	if (conversation.members.length > 0) {
-		return conversation.members.filter((member) => member.state === "active")
-			.length;
+		const { active, invited } = conversationMembershipCounts(conversation);
+		return active + invited;
 	}
 	return conversation.member_count ?? 0;
+}
+
+/**
+ * The known membership states, kept separate so the header never presents
+ * invited agents as active. A preview has no participant rows, so it cannot
+ * claim either breakdown from its aggregate count alone.
+ */
+export function conversationMembershipCounts(
+	conversation: Pick<TeamBridgeConversation, "members">,
+): { active: number; invited: number } {
+	let active = 0;
+	let invited = 0;
+	for (const member of conversation.members) {
+		if (member.state === "active") active += 1;
+		if (member.state === "invited") invited += 1;
+	}
+	return { active, invited };
 }
 
 /**
@@ -691,10 +705,10 @@ export function personInitial(displayLabel: string): string {
  * caller through the `chief.label` catalogue key ("{agent} ({person})"), so a
  * locale may reorder or re-punctuate it.
  *
- * WHO IS LISTED. Every OTHER person whose agent is enrolled and not disabled.
- * The reader's own chief of staff is excluded: talking to your own agent is
- * the chat surface's job, and a bridge DM with yourself would be a second,
- * screened path to the same session.
+ * WHO IS LISTED. Every person whose agent is enrolled and not disabled,
+ * including the reader. Human and agent are distinct Bridge entities even
+ * when they share an account id; the human row's "you" marker must not hide
+ * its agent. Endpoint presence/state remains the gate, never a display name.
  */
 export type TeamBridgeChiefOfStaff = {
 	person: TeamBridgeDirectoryMember;
@@ -705,11 +719,10 @@ export type TeamBridgeChiefOfStaff = {
 
 export function chiefsOfStaff(
 	people: readonly TeamBridgeDirectoryMember[],
-	selfAccountId?: string,
+	_selfAccountId?: string,
 ): TeamBridgeChiefOfStaff[] {
 	const chiefs: TeamBridgeChiefOfStaff[] = [];
 	for (const person of people) {
-		if (selfAccountId && person.account_id === selfAccountId) continue;
 		const agent = person.agent;
 		if (!agent || agent.state === "disabled") continue;
 		chiefs.push({

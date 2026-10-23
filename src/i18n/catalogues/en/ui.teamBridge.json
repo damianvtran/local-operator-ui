@@ -24,6 +24,8 @@
 	"ui.teamBridge.create.confirm": "Create",
 	"ui.teamBridge.unread.count": "{count, plural, one {{count} unread} other {{count} unread}}",
 	"ui.teamBridge.member.count": "{count, plural, one {{count} member} other {{count} members}}",
+	"ui.teamBridge.member.active_count": "{count, plural, one {{count} active} other {{count} active}}",
+	"ui.teamBridge.member.invited_count": "{count, plural, one {{count} invited} other {{count} invited}}",
 	"ui.teamBridge.group.more": "More",
 	"ui.teamBridge.thread.withheld": "Waiting for the agent to admit this message.",
 	"ui.teamBridge.composer.error": "Your message was not sent. Try again.",

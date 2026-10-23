@@ -35,6 +35,7 @@ import {
 	chiefsOfStaff,
 	composeChiefLabel,
 	conversationMemberCount,
+	conversationMembershipCounts,
 	conversationOrganizationName,
 	conversationTitle,
 	directoryFailureKind,
@@ -525,6 +526,9 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	// `selected` already resolves a one-recipient draft to its existing DM
 	// (`targetConversation`), so the view and the container agree on it.
 	const shown = selected;
+	const membershipCounts = shown
+		? conversationMembershipCounts(shown)
+		: { active: 0, invited: 0 };
 	const threadIsOpen = Boolean(
 		threadSelection &&
 			shown &&
@@ -924,10 +928,23 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 									</span>
 								)}
 								{shown && shown.kind !== "dm" && (
-									<span className="shrink-0 text-meta-sm text-ink-dim">
+									<span className="flex shrink-0 flex-col text-meta-sm text-ink-dim">
 										{t("ui.teamBridge.member.count", {
 											count: conversationMemberCount(shown),
 										})}
+										{/* A current invitation is membership, not active access. Never
+										    infer this breakdown from preview-only aggregate metadata. */}
+										{membershipCounts.invited > 0 && (
+											<span className="text-ink-muted">
+												{t("ui.teamBridge.member.active_count", {
+													count: membershipCounts.active,
+												})}{" "}
+												<span aria-hidden="true">·</span>{" "}
+												{t("ui.teamBridge.member.invited_count", {
+													count: membershipCounts.invited,
+												})}
+											</span>
+										)}
 									</span>
 								)}
 								{shown?.last_message_at && shown.latest_seq > 0 && (

@@ -298,9 +298,8 @@ test("a preview header counts member_count when it has no member rows", () => {
 				],
 			}),
 		),
-		// member_count counts active + invited; the insider header counts the
-		// active rows only (the avatar strip filters the same state).
-		2,
+		// Current memberships include invitations; this is not an active-access count.
+		3,
 	);
 });
 
@@ -586,7 +585,7 @@ test("person and agent DMs with the same owner never resolve to each other", () 
 	assert.equal(model.dmWithAgent([humanDm], "acct_ben"), null);
 });
 
-test("chiefs of staff exclude the reader and disabled agents", () => {
+test("chiefs of staff include the reader’s distinct agent and exclude disabled agents", () => {
 	const row = (id, agent) => ({
 		account_id: id,
 		display_label: id,
@@ -612,6 +611,7 @@ test("chiefs of staff exclude the reader and disabled agents", () => {
 			chief.paused,
 		]),
 		[
+			["acct_self", "Aida", false],
 			["acct_ben", "Aida", false],
 			["acct_sana", "Juno", true],
 		],
@@ -884,7 +884,7 @@ test("railSections: built-ins lead in fixed order; groups and DMs keep the calle
 	);
 });
 
-test("recipientCandidates offers reachable people and chiefs, never the reader or bridge-off people", () => {
+test("recipientCandidates offers the reader’s chief, not their human or bridge-off people", () => {
 	const people = [
 		person("acct_self", { endpoint_id: "e0", name: "Aida", state: "active" }),
 		person("acct_ben", { endpoint_id: "e1", name: "Aida", state: "active" }),
@@ -893,9 +893,14 @@ test("recipientCandidates offers reachable people and chiefs, never the reader o
 	const out = model.recipientCandidates(people, "acct_self", chiefCopy);
 	assert.deepEqual(
 		out.map((row) => `${row.kind}:${row.accountId}:${row.label}`),
-		["human:acct_ben:acct_ben", "agent:acct_ben:Aida (acct_ben)"],
+		[
+			"human:acct_ben:acct_ben",
+			"agent:acct_self:Aida (acct_self)",
+			"agent:acct_ben:Aida (acct_ben)",
+		],
 	);
-	assert.equal(out[1].endpointId, "e1");
+	assert.equal(out[1].endpointId, "e0");
+	assert.equal(out[2].endpointId, "e1");
 });
 
 // ---------------------------------------------------------------------------
@@ -1016,6 +1021,85 @@ test("different drafts never share a remembered conversation", async () => {
 	await model.sendFirstMessage({ ...base, draftKey: "B" });
 	assert.equal(rig.calls.create, 2);
 	assert.equal(rig.remembered.has("A"), true);
+});
+
+// Production regression: document member_count is absent; wire member rows are
+// enough to state current membership, without granting invitees active access.
+test("one active owner and three invited agents count as four current members", () => {
+	const members = [
+		member("Damian", "human", "active", "acct_self"),
+		...["Ben", "Sana", "Sherman"].map((name) =>
+			member(name, "agent", "invited"),
+		),
+		member("Former", "human", "left"),
+		member("Removed", "agent", "removed"),
+	];
+	assert.equal(
+		model.conversationMemberCount(conversation({ kind: "channel", members })),
+		4,
+	);
+	assert.deepEqual(model.conversationMembershipCounts({ members }), {
+		active: 1,
+		invited: 3,
+	});
+	// A populated participant list is authoritative even if aggregate metadata is stale.
+	assert.equal(
+		model.conversationMemberCount(conversation({ members, member_count: 99 })),
+		4,
+	);
+	assert.equal(
+		model.conversationMemberCount(
+			conversation({ members: [], member_count: undefined }),
+		),
+		0,
+	);
+});
+
+test("self chief remains offerable with named, empty, or server owner-fallback names", () => {
+	for (const name of ["Aida", "", "Damian"]) {
+		const self = {
+			...person("acct_self", { endpoint_id: "ep_self", name, state: "active" }),
+			display_label: "Damian",
+		};
+		const candidates = model.recipientCandidates(
+			[self],
+			"acct_self",
+			chiefCopy,
+		);
+		assert.equal(model.personRowState(self, "acct_self"), "self");
+		assert.equal(candidates.length, 1);
+		assert.equal(candidates[0].kind, "agent");
+		assert.equal(candidates[0].endpointId, "ep_self");
+		// Integrated #1334 uses one shared composition rule: absent/owner-name
+		// fallback describes a chief of staff rather than repeating the human.
+		assert.equal(
+			candidates[0].label,
+			name === "Aida" ? "Aida (Damian)" : "Damian's chief of staff",
+		);
+		const human = { kind: "human", accountId: "acct_self", label: "Damian" };
+		assert.notEqual(
+			model.recipientKey(candidates[0]),
+			model.recipientKey(human),
+		);
+		assert.equal(model.recipientKey(candidates[0]), "agent:acct_self");
+		assert.deepEqual(model.recipientMemberInput(candidates[0]), {
+			account_id: "acct_self",
+			kind: "agent",
+			endpoint_id: "ep_self",
+			// Store a name, never the localized composed picker label (#1334).
+			display_label: name === "Aida" ? "Aida" : "Damian",
+		});
+		// Adding the agent does not add a human recipient; the server owns creator membership.
+		const input = model.draftCreateInput(candidates);
+		assert.equal(input.members.length, 1);
+		assert.equal(input.members[0].kind, "agent");
+		assert.equal(input.agentCapable, true);
+		assert.equal(input.kind, "dm");
+		assert.deepEqual(
+			model.draftCreateInput([human, candidates[0]]).members.map((m) => m.kind),
+			["human", "agent"],
+		);
+	}
 });
 
 // ---------------------------------------------------------------------------

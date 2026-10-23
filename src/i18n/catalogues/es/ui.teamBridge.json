@@ -24,6 +24,8 @@
 	"ui.teamBridge.create.confirm": "Crear",
 	"ui.teamBridge.unread.count": "{count, plural, one {{count} sin leer} many {{count} sin leer} other {{count} sin leer}}",
 	"ui.teamBridge.member.count": "{count, plural, one {{count} miembro} many {{count} de miembros} other {{count} miembros}}",
+	"ui.teamBridge.member.active_count": "{count, plural, one {{count} activo} many {{count} activos} other {{count} activos}}",
+	"ui.teamBridge.member.invited_count": "{count, plural, one {{count} invitado} many {{count} invitados} other {{count} invitados}}",
 	"ui.teamBridge.group.more": "Más",
 	"ui.teamBridge.thread.withheld": "Esperando a que el agente acepte este mensaje.",
 	"ui.teamBridge.composer.error": "No se envió tu mensaje. Inténtalo de nuevo.",

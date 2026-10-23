@@ -19143,8 +19143,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "6fb4a8079bdf4e42486cd8893d75f3bd195003ac8a9a172bfa7c10002929133d",
-			"target_sha256": "74744a92729426026ace8625363f736764d7909910ded59cd78b32b3df9aacc4",
+			"source_sha256": "0fff5c550038b812664839b528d0ceed08741d5510db3fa608e77d1bd911699d",
+			"target_sha256": "763d17180deb8ffde2b4b1042c89ddb041c619fd6783d9e57180a75890235655",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19158,17 +19158,17 @@
 					"model": "openai/gpt-6-astra",
 					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "tb1334-main-union-fr",
+					"instance": "tb1336-main-union-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1334-main-union-fr.json",
-					"receipt_sha256": "2155c3f67a870c61a6252679d591cb9485730c51520edc882e4aa85f2d441a58",
-					"scope": "Independent exact union validation against both approved parents, including raw per-key bytes, English/context/target key-value union and ICU placeholders. Inherits predecessor semantic audits; NOT a fresh full semantic or visual audit.",
-					"note": "Union validation only; inherited semantic audits. Evidence: i18n/audits/evidence/fr/ui.teamBridge/tb1334-main-union/record.json"
+					"receipt": "i18n/receipts/tb1336-main-union-fr.json",
+					"receipt_sha256": "f234ccd20e3a512f23a2b1b85bc672fda85e23ddc9c874255b73eaf7ba1f91b0",
+					"scope": "Exact approved-parent union149keys; semantic coverage inherited; no rendered/runtime claim",
+					"note": "Independent617ed8792e53 union audit of8036b15+38544988; both predecessor histories retained"
 				}
 			],
 			"status": "audited",
@@ -19552,6 +19552,54 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "39e6b0c8b1695dc7033bfa532459ef15038fa069451ce34309df833cf9a0169a",
+					"target_sha256": "dc0ed04054470125268cd5dcdef86940d7c56ef5c461a66a2fdf6ddca89c5027",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tb-members-r1-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb-members-r1-fr.json",
+							"receipt_sha256": "25f3840ee2ac282e74fb382528aea7f1625bc1bb2c6c3010c0fae5eb0041365a",
+							"scope": "Two new membership-status count keys; 115 unchanged values inherit audited base coverage",
+							"note": "Source-only independent audit f4444b5af1c0; translator27f1d03fa5e4; same fallback model, distinct agents; no rendered-fit claim"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6fb4a8079bdf4e42486cd8893d75f3bd195003ac8a9a172bfa7c10002929133d",
+					"target_sha256": "74744a92729426026ace8625363f736764d7909910ded59cd78b32b3df9aacc4",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "tb1334-main-union-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1334-main-union-fr.json",
+							"receipt_sha256": "2155c3f67a870c61a6252679d591cb9485730c51520edc882e4aa85f2d441a58",
+							"scope": "Independent exact union validation against both approved parents, including raw per-key bytes, English/context/target key-value union and ICU placeholders. Inherits predecessor semantic audits; NOT a fresh full semantic or visual audit.",
+							"note": "Union validation only; inherited semantic audits. Evidence: i18n/audits/evidence/fr/ui.teamBridge/tb1334-main-union/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -19908,8 +19956,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "6fb4a8079bdf4e42486cd8893d75f3bd195003ac8a9a172bfa7c10002929133d",
-			"target_sha256": "f4c72dc4ed97e207bf30a28b1a7b4c3bb03120a8b16fb781c9677a2f004174b5",
+			"source_sha256": "0fff5c550038b812664839b528d0ceed08741d5510db3fa608e77d1bd911699d",
+			"target_sha256": "a44cceb2e407489d6df772062e41ff23a75dfea36b31dcfaecc6d4ac0abc35f8",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -19923,17 +19971,17 @@
 					"model": "openai/gpt-6-astra",
 					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "tb1334-main-union-es",
+					"instance": "tb1336-main-union-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1334-main-union-es.json",
-					"receipt_sha256": "aee32c2e3dfe1cea1e7fd5d46fa3abb30ca36371427d6c3a615df09184662ef3",
-					"scope": "Independent exact union validation against both approved parents, including raw per-key bytes, English/context/target key-value union and ICU placeholders. Inherits predecessor semantic audits; NOT a fresh full semantic or visual audit.",
-					"note": "Union validation only; inherited semantic audits. Evidence: i18n/audits/evidence/es/ui.teamBridge/tb1334-main-union/record.json"
+					"receipt": "i18n/receipts/tb1336-main-union-es.json",
+					"receipt_sha256": "f57b0c0882b7ffb5944d6f4923886487df1755c27909d98b543d0637d94f9e21",
+					"scope": "Exact approved-parent union149keys; semantic coverage inherited; no rendered/runtime claim",
+					"note": "Independent617ed8792e53 union audit of8036b15+38544988; both predecessor histories retained"
 				}
 			],
 			"status": "audited",
@@ -20293,14 +20341,62 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "39e6b0c8b1695dc7033bfa532459ef15038fa069451ce34309df833cf9a0169a",
+					"target_sha256": "455bf8dd4c0d476aecefceadd4f4f4b2bc02ab5e1ee1f6c47a391e9e8730a788",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tb-members-r1-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb-members-r1-es.json",
+							"receipt_sha256": "ab3fa555ad2bb6d3184706d4bcc66ee9d596028aa2d023b17f6174b3ddc870f5",
+							"scope": "Two new membership-status count keys; 115 unchanged values inherit audited base coverage",
+							"note": "Source-only independent audit f4444b5af1c0; translator27f1d03fa5e4; same fallback model, distinct agents; no rendered-fit claim"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6fb4a8079bdf4e42486cd8893d75f3bd195003ac8a9a172bfa7c10002929133d",
+					"target_sha256": "f4c72dc4ed97e207bf30a28b1a7b4c3bb03120a8b16fb781c9677a2f004174b5",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "tb1334-main-union-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1334-main-union-es.json",
+							"receipt_sha256": "aee32c2e3dfe1cea1e7fd5d46fa3abb30ca36371427d6c3a615df09184662ef3",
+							"scope": "Independent exact union validation against both approved parents, including raw per-key bytes, English/context/target key-value union and ICU placeholders. Inherits predecessor semantic audits; NOT a fresh full semantic or visual audit.",
+							"note": "Union validation only; inherited semantic audits. Evidence: i18n/audits/evidence/es/ui.teamBridge/tb1334-main-union/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "6fb4a8079bdf4e42486cd8893d75f3bd195003ac8a9a172bfa7c10002929133d",
-			"target_sha256": "55ad34af117ed499aa6b3becb0ad79cd8e7d81a6c66ef8d51642a94bbfc6e55e",
+			"source_sha256": "0fff5c550038b812664839b528d0ceed08741d5510db3fa608e77d1bd911699d",
+			"target_sha256": "a265767b70fa23956734d6a72b2364830a529062e536f19686d10ee9a6f37370",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -20314,17 +20410,17 @@
 					"model": "openai/gpt-6-astra",
 					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "tb1334-main-union-zh-cn",
+					"instance": "tb1336-main-union-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1334-main-union-zh-cn.json",
-					"receipt_sha256": "00e7500750c2705e67c5cf027f399927d5ec3858bc2114f580703632b1b509a5",
-					"scope": "Independent exact union validation against both approved parents, including raw per-key bytes, English/context/target key-value union and ICU placeholders. Inherits predecessor semantic audits; NOT a fresh full semantic or visual audit.",
-					"note": "Union validation only; inherited semantic audits. Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/tb1334-main-union/record.json"
+					"receipt": "i18n/receipts/tb1336-main-union-zh-cn.json",
+					"receipt_sha256": "66fda78ca47f5596eed1686d0b5efe4f928bbaf09c1886fe90473ca0a44a4720",
+					"scope": "Exact approved-parent union149keys; semantic coverage inherited; no rendered/runtime claim",
+					"note": "Independent617ed8792e53 union audit of8036b15+38544988; both predecessor histories retained"
 				}
 			],
 			"status": "audited",
@@ -20684,6 +20780,54 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "39e6b0c8b1695dc7033bfa532459ef15038fa069451ce34309df833cf9a0169a",
+					"target_sha256": "e0a68bf85fb8d172c4d57ede4a4d6857cdddd7f8f89146c8300027462e72be89",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tb-members-r2-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb-members-r2-zh-cn.json",
+							"receipt_sha256": "292da66cb1599a699fb74cb353a32227b1c403412c067e952a8d25a4c18e29df",
+							"scope": "Two new membership-status count keys; 115 unchanged values inherit audited base coverage",
+							"note": "Source-only independent audit f4444b5af1c0; translator27f1d03fa5e4; same fallback model, distinct agents; no rendered-fit claim"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6fb4a8079bdf4e42486cd8893d75f3bd195003ac8a9a172bfa7c10002929133d",
+					"target_sha256": "55ad34af117ed499aa6b3becb0ad79cd8e7d81a6c66ef8d51642a94bbfc6e55e",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "tb1334-main-union-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1334-main-union-zh-cn.json",
+							"receipt_sha256": "00e7500750c2705e67c5cf027f399927d5ec3858bc2114f580703632b1b509a5",
+							"scope": "Independent exact union validation against both approved parents, including raw per-key bytes, English/context/target key-value union and ICU placeholders. Inherits predecessor semantic audits; NOT a fresh full semantic or visual audit.",
+							"note": "Union validation only; inherited semantic audits. Evidence: i18n/audits/evidence/zh-CN/ui.teamBridge/tb1334-main-union/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -20973,8 +21117,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "6fb4a8079bdf4e42486cd8893d75f3bd195003ac8a9a172bfa7c10002929133d",
-			"target_sha256": "9c8db004f739ebe58baad15b94abf122a6d9accc1995930730ffd28ec6264ba6",
+			"source_sha256": "0fff5c550038b812664839b528d0ceed08741d5510db3fa608e77d1bd911699d",
+			"target_sha256": "aa3f13a562b3fd8937611b2e880cd7c39eaf4bf625ccbb6272380a146677a1c0",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -20989,17 +21133,17 @@
 					"model": "openai/gpt-6-astra",
 					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "tb1334-main-union-ru",
+					"instance": "tb1336-main-union-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1334-main-union-ru.json",
-					"receipt_sha256": "b7d4b56f6f1a000a4e22a2f217107b118f2d2b846aef6685a1e78820a32093b9",
-					"scope": "Independent exact union validation against both approved parents, including raw per-key bytes, English/context/target key-value union and ICU placeholders. Inherits predecessor semantic audits; NOT a fresh full semantic or visual audit.",
-					"note": "Union validation only; inherited semantic audits. Evidence: i18n/audits/evidence/ru/ui.teamBridge/tb1334-main-union/record.json"
+					"receipt": "i18n/receipts/tb1336-main-union-ru.json",
+					"receipt_sha256": "87420b5d8b598d2f69f3cd6b85bdea564e9bd275131e6ae9ffa44b5b5ad29ca9",
+					"scope": "Exact approved-parent union149keys; semantic coverage inherited; no rendered/runtime claim",
+					"note": "Independent617ed8792e53 union audit of8036b15+38544988; both predecessor histories retained"
 				}
 			],
 			"status": "audited",
@@ -21337,14 +21481,62 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "39e6b0c8b1695dc7033bfa532459ef15038fa069451ce34309df833cf9a0169a",
+					"target_sha256": "ddd80240d55f3dce070c0ee0f12d1264740ab745b7fda47dc356974a773b8cf7",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tb-members-r1-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb-members-r1-ru.json",
+							"receipt_sha256": "f4faf1cdab28a0f720fd99fa6e6d0d4ed45ba8915e1f4f8acf90db0c8980a0ab",
+							"scope": "Two new membership-status count keys; 115 unchanged values inherit audited base coverage",
+							"note": "Source-only independent audit f4444b5af1c0; translator27f1d03fa5e4; same fallback model, distinct agents; no rendered-fit claim"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6fb4a8079bdf4e42486cd8893d75f3bd195003ac8a9a172bfa7c10002929133d",
+					"target_sha256": "9c8db004f739ebe58baad15b94abf122a6d9accc1995930730ffd28ec6264ba6",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "tb1334-main-union-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1334-main-union-ru.json",
+							"receipt_sha256": "b7d4b56f6f1a000a4e22a2f217107b118f2d2b846aef6685a1e78820a32093b9",
+							"scope": "Independent exact union validation against both approved parents, including raw per-key bytes, English/context/target key-value union and ICU placeholders. Inherits predecessor semantic audits; NOT a fresh full semantic or visual audit.",
+							"note": "Union validation only; inherited semantic audits. Evidence: i18n/audits/evidence/ru/ui.teamBridge/tb1334-main-union/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "6fb4a8079bdf4e42486cd8893d75f3bd195003ac8a9a172bfa7c10002929133d",
-			"target_sha256": "efc01803f5dd396b07d5bd3d9105ae6e9e89d60403b4f09d8e479ce5dcfd3850",
+			"source_sha256": "0fff5c550038b812664839b528d0ceed08741d5510db3fa608e77d1bd911699d",
+			"target_sha256": "8d5f632f420b519edaa1cc06f6d262da193a667d501b7294917174da25658fb8",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -21358,17 +21550,17 @@
 					"model": "openai/gpt-6-astra",
 					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "tb1334-main-union-hi",
+					"instance": "tb1336-main-union-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1334-main-union-hi.json",
-					"receipt_sha256": "8e5997dd609a86514d3fc27045ee05952282e1c056fd5ebdfeb95e0776a599ef",
-					"scope": "Independent exact union validation against both approved parents, including raw per-key bytes, English/context/target key-value union and ICU placeholders. Inherits predecessor semantic audits; NOT a fresh full semantic or visual audit.",
-					"note": "Union validation only; inherited semantic audits. Evidence: i18n/audits/evidence/hi/ui.teamBridge/tb1334-main-union/record.json"
+					"receipt": "i18n/receipts/tb1336-main-union-hi.json",
+					"receipt_sha256": "1efb997a412b6e1f25e38fa0c1bfa6f7ab752a4fc4dfd8c9e049a6017d5d60c6",
+					"scope": "Exact approved-parent union149keys; semantic coverage inherited; no rendered/runtime claim",
+					"note": "Independent617ed8792e53 union audit of8036b15+38544988; both predecessor histories retained"
 				}
 			],
 			"status": "audited",
@@ -21675,14 +21867,62 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "39e6b0c8b1695dc7033bfa532459ef15038fa069451ce34309df833cf9a0169a",
+					"target_sha256": "5690aa375d67465cc61daeb5a3c046a90e63c38db51610edce83f6595361a176",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tb-members-r1-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb-members-r1-hi.json",
+							"receipt_sha256": "01f339445ae55ae9e9440bc6aaef89ebdfa4a1f48104d31febb2adf4278d6be8",
+							"scope": "Two new membership-status count keys; 115 unchanged values inherit audited base coverage",
+							"note": "Source-only independent audit f4444b5af1c0; translator27f1d03fa5e4; same fallback model, distinct agents; no rendered-fit claim"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6fb4a8079bdf4e42486cd8893d75f3bd195003ac8a9a172bfa7c10002929133d",
+					"target_sha256": "efc01803f5dd396b07d5bd3d9105ae6e9e89d60403b4f09d8e479ce5dcfd3850",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "tb1334-main-union-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1334-main-union-hi.json",
+							"receipt_sha256": "8e5997dd609a86514d3fc27045ee05952282e1c056fd5ebdfeb95e0776a599ef",
+							"scope": "Independent exact union validation against both approved parents, including raw per-key bytes, English/context/target key-value union and ICU placeholders. Inherits predecessor semantic audits; NOT a fresh full semantic or visual audit.",
+							"note": "Union validation only; inherited semantic audits. Evidence: i18n/audits/evidence/hi/ui.teamBridge/tb1334-main-union/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "6fb4a8079bdf4e42486cd8893d75f3bd195003ac8a9a172bfa7c10002929133d",
-			"target_sha256": "790592368476657954054d8dcc77062e9e0379380a86506ac31889f3953ed8ef",
+			"source_sha256": "0fff5c550038b812664839b528d0ceed08741d5510db3fa608e77d1bd911699d",
+			"target_sha256": "41633f64a427793c1be7076d526521bc8026b6096158750a91360b3a1049b30b",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -21696,17 +21936,17 @@
 					"model": "openai/gpt-6-astra",
 					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "tb1334-main-union-ur",
+					"instance": "tb1336-main-union-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1334-main-union-ur.json",
-					"receipt_sha256": "25e25fc87bf7c8b2f2fc2b3f417151e89dbdd27aae9c5cf27ef447d061b69a48",
-					"scope": "Independent exact union validation against both approved parents, including raw per-key bytes, English/context/target key-value union and ICU placeholders. Inherits predecessor semantic audits; NOT a fresh full semantic or visual audit.",
-					"note": "Union validation only; inherited semantic audits. Evidence: i18n/audits/evidence/ur/ui.teamBridge/tb1334-main-union/record.json"
+					"receipt": "i18n/receipts/tb1336-main-union-ur.json",
+					"receipt_sha256": "b9a48bfa912e8acde7c71a96e2689fe110adbe0e82c7405c71d41bb069b4dcb9",
+					"scope": "Exact approved-parent union149keys; semantic coverage inherited; no rendered/runtime claim",
+					"note": "Independent617ed8792e53 union audit of8036b15+38544988; both predecessor histories retained"
 				}
 			],
 			"status": "audited",
@@ -22013,14 +22253,62 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "39e6b0c8b1695dc7033bfa532459ef15038fa069451ce34309df833cf9a0169a",
+					"target_sha256": "a60dd35958242308e904e3cb9cffe81b0578c057e1622a110137dd02c45a7f66",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tb-members-r1-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb-members-r1-ur.json",
+							"receipt_sha256": "c7825677bcefb126b6c1778a5b4e316aea04d5623011be9b31614c299b95c2f9",
+							"scope": "Two new membership-status count keys; 115 unchanged values inherit audited base coverage",
+							"note": "Source-only independent audit f4444b5af1c0; translator27f1d03fa5e4; same fallback model, distinct agents; no rendered-fit claim"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6fb4a8079bdf4e42486cd8893d75f3bd195003ac8a9a172bfa7c10002929133d",
+					"target_sha256": "790592368476657954054d8dcc77062e9e0379380a86506ac31889f3953ed8ef",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "tb1334-main-union-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1334-main-union-ur.json",
+							"receipt_sha256": "25e25fc87bf7c8b2f2fc2b3f417151e89dbdd27aae9c5cf27ef447d061b69a48",
+							"scope": "Independent exact union validation against both approved parents, including raw per-key bytes, English/context/target key-value union and ICU placeholders. Inherits predecessor semantic audits; NOT a fresh full semantic or visual audit.",
+							"note": "Union validation only; inherited semantic audits. Evidence: i18n/audits/evidence/ur/ui.teamBridge/tb1334-main-union/record.json"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "6fb4a8079bdf4e42486cd8893d75f3bd195003ac8a9a172bfa7c10002929133d",
-			"target_sha256": "460e07c1a36926e9f6bd7b53c263cb6291343f0d317bce2c6b4c658920c8b46a",
+			"source_sha256": "0fff5c550038b812664839b528d0ceed08741d5510db3fa608e77d1bd911699d",
+			"target_sha256": "7fd08daf760afdfc949c33f11dbfcd0e7e798a607caa107a41227154b0d17273",
 			"translator": {
 				"agent": "translator",
 				"model": "anthropic/claude-opus-5-5",
@@ -22035,17 +22323,17 @@
 					"model": "openai/gpt-6-astra",
 					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "tb1334-main-union-vi",
+					"instance": "tb1336-main-union-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tb1334-main-union-vi.json",
-					"receipt_sha256": "5547592f2e3850253e37b2f044a71aa656c39d85e04f7b733cb57ee60ddfebb3",
-					"scope": "Independent exact union validation against both approved parents, including raw per-key bytes, English/context/target key-value union and ICU placeholders. Inherits predecessor semantic audits; NOT a fresh full semantic or visual audit.",
-					"note": "Union validation only; inherited semantic audits. Evidence: i18n/audits/evidence/vi/ui.teamBridge/tb1334-main-union/record.json"
+					"receipt": "i18n/receipts/tb1336-main-union-vi.json",
+					"receipt_sha256": "be2fbd4946e652383b714d779c607ea0b746d94883a420e1f903aefc32641771",
+					"scope": "Exact approved-parent union149keys; semantic coverage inherited; no rendered/runtime claim",
+					"note": "Independent617ed8792e53 union audit of8036b15+38544988; both predecessor histories retained"
 				}
 			],
 			"status": "audited",
@@ -22380,6 +22668,54 @@
 							"receipt": "i18n/receipts/tbstack-r1-1308m-vi.json",
 							"receipt_sha256": "68c9c3c0deb1aa4285e0197b1f36a771c853463a47008f4884c11007222ca94c",
 							"note": "Independent main-merge union audit; no findings."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "39e6b0c8b1695dc7033bfa532459ef15038fa069451ce34309df833cf9a0169a",
+					"target_sha256": "54d53404501555813444d753a63b60c438941e32007e9ec0c33d74e9d550060c",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tb-members-r1-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb-members-r1-vi.json",
+							"receipt_sha256": "2b264ffb1ddfd8e8cc499f0dd51445df958132dc465c435a8fc8d9f3b42d50ba",
+							"scope": "Two new membership-status count keys; 115 unchanged values inherit audited base coverage",
+							"note": "Source-only independent audit f4444b5af1c0; translator27f1d03fa5e4; same fallback model, distinct agents; no rendered-fit claim"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "6fb4a8079bdf4e42486cd8893d75f3bd195003ac8a9a172bfa7c10002929133d",
+					"target_sha256": "460e07c1a36926e9f6bd7b53c263cb6291343f0d317bce2c6b4c658920c8b46a",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "openai/gpt-6-astra",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "tb1334-main-union-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tb1334-main-union-vi.json",
+							"receipt_sha256": "5547592f2e3850253e37b2f044a71aa656c39d85e04f7b733cb57ee60ddfebb3",
+							"scope": "Independent exact union validation against both approved parents, including raw per-key bytes, English/context/target key-value union and ICU placeholders. Inherits predecessor semantic audits; NOT a fresh full semantic or visual audit.",
+							"note": "Union validation only; inherited semantic audits. Evidence: i18n/audits/evidence/vi/ui.teamBridge/tb1334-main-union/record.json"
 						}
 					],
 					"status": "audited"

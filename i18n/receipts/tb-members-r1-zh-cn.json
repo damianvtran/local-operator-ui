@@ -1,0 +1,69 @@
+{
+  "auditor": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "tb-members-r1-zh-cn",
+  "session": "f4444b5af1c0",
+  "date": "2026-10-22",
+  "locale": "zh-CN",
+  "translator": "translator",
+  "translator_delta": {
+    "agent": "tb-members-translator",
+    "instance": "27f1d03fa5e4",
+    "model": "openai/gpt-6.1-sol"
+  },
+  "namespace": "ui.teamBridge",
+  "status": "changes_requested",
+  "keys_audited": 2,
+  "scope": "Exactly two added keys: ui.teamBridge.member.active_count and ui.teamBridge.member.invited_count plus English context; 115 unchanged existing values inherited from audited base. Source-only semantic, ICU/plural, placeholder, NFC and manual-bidi audit; no runtime-formatting or rendered-fit claim.",
+  "source_base": "2f5d8e3239705187906da7c16249b4308fd67758",
+  "sha256": {
+    "en": "39e6b0c8b1695dc7033bfa532459ef15038fa069451ce34309df833cf9a0169a",
+    "zh-CN": "f38febf9aef115dd184e5ab1bc9f1d5e1cd18d05b9e57724c9298a54e81fb47c",
+    "context": "1d22efba74ab8e4a71ee974a099b893c37300927b6b511e569e29bb47a815d47"
+  },
+  "findings": [
+    {
+      "id": "L1",
+      "severity": "MAJOR",
+      "key": "ui.teamBridge.member.active_count",
+      "message": "名活跃成员 describes behavioral activity rather than active membership status.",
+      "amended_copy": "{count, plural, other {{count}名已加入成员}}"
+    }
+  ],
+  "guidance": {
+    "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "manifest_sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+  },
+  "independence": "Reviewer instance f4444b5af1c0 did not author/edit catalogue values; translator is distinct agent instance, both actual served model openai/gpt-6.1-sol (not different-model evidence).",
+  "fallback": "Initial anthropic/claude-opus-5-5 replaced by openai/gpt-6.1-sol before substantive audit.",
+  "inherited_coverage": {
+    "source_sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
+    "target_sha256": "d9a3e678698c7e69fcb32650c027aa466a51711258ee6ac6ac9a67f709af1ac5",
+    "auditors": [
+      {
+        "agent": "translation-auditor",
+        "model": "anthropic/claude-opus-5-5",
+        "date": "2026-10-22",
+        "result": "clean",
+        "instance": "tbstack-r1-1298-zh-cn",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 0
+        },
+        "receipt": "i18n/receipts/tbstack-r1-1298-zh-cn.json",
+        "receipt_sha256": "41d021ee730fb47021db88ef31e9a4f3dedd0e833bd2d5c925edda6e1ba6833d",
+        "scope": "ui.teamBridge union integrity after #1296 re-integration (#1298 dbe16bcd4a)"
+      }
+    ]
+  }
+}
