@@ -503,6 +503,37 @@ test("darwin: Ctrl+C WITH A SELECTION is still the interrupt", async () => {
 	restore();
 });
 
+/*
+ * THE CHORD THE TERMINAL USED TO EAT (review round 1's F4, QA's Q1). xterm maps a Tab to
+ * `\t`, so Ctrl+Tab only ever sent a shell a plain tab; the terminal consumed the press
+ * before the app's document listener saw it, and the switcher could not be opened from the
+ * one pane whose job is text entry. `false` is the handler saying "not mine, leave it to
+ * the page", which is the only shape that lets the chord reach the app at all.
+ */
+test("Ctrl+Tab is handed back to the page, while a plain Tab stays the shell's", async () => {
+	installClipboard();
+	const { root, terminal } = await mountMirror();
+	try {
+		assert.equal(
+			terminal.pressKey({ key: "Tab", ctrlKey: true }),
+			false,
+			"Ctrl+Tab is the switcher's, not the shell's - `false` hands it to the page, which is the only way it reaches the app's listener",
+		);
+		assert.equal(
+			terminal.pressKey({ key: "Tab", ctrlKey: true, shiftKey: true }),
+			false,
+			"and so is Ctrl+Shift+Tab",
+		);
+		assert.equal(
+			terminal.pressKey({ key: "Tab" }),
+			true,
+			"a plain Tab is still the shell's: it is completion, not a shortcut",
+		);
+	} finally {
+		root.unmount();
+	}
+});
+
 test("linux: Ctrl+C copies when there is a selection, and interrupts when there is not", async () => {
 	// The other half of the platform gate: on Linux and Windows Ctrl+C really is BOTH, so
 	// the selection is what decides — the behaviour the first version implemented on every

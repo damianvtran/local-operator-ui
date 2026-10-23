@@ -20,11 +20,25 @@ browser. Code: `src/renderer/src/features/session-switcher/`. Tests:
 | release `Control` | commit the selected row |
 | `Escape` | cancel, commit nothing |
 | window blur, or the document going hidden | cancel, commit nothing |
-| a click on a row | commit that row |
+| a press on a row | commit that row |
 
 The chord is the **physical Control key on every platform**, macOS included:
 `Cmd+Tab` never reaches this window (the OS application switcher owns it), so a
 macOS user holds Control. Cmd, Alt and a bare Tab are all refused.
+
+**Escape cancels whatever else is held**, because a run only exists while Control
+is, so every real Escape during one carries Control too. It is claimed on the
+window in the capture phase (`preventDefault` and `stopPropagation`), which is
+what keeps it away from the chat pane's Esc-to-interrupt: pressing Escape to
+leave the switcher never stops the running turn behind it. Cmd+Escape and
+Alt+Escape are refused (they are other surfaces' gestures), and so is an Escape
+that is cancelling an IME's candidate string.
+
+**A press that reports Control up ends the run too**, cancelling and never
+committing. The run is normally ended by Control's keyup, and that release can go
+missing (an OS shortcut taken mid-hold, a keyup delivered while a native view held
+focus); without this rule the overlay stayed up owning the keyboard, and the next
+stray release somewhere else committed a row nobody chose.
 
 **The backtick alias was checked before it was bound**: no main-process accelerator, no
 browser chord (`shared/browser-chord.ts`), and the assignable grammar cannot
@@ -33,10 +47,11 @@ and the console.
 
 ## The focus rule
 
-**When keyboard focus is inside the in-app browser panel — its tab strip,
-address bar/popout, start page, or the web page itself — Ctrl+Tab and
-Ctrl+Shift+Tab switch browser tabs; everywhere else they open the session
-switcher.**
+**When keyboard focus is inside the in-app browser panel - its tab strip,
+address bar/popout, start page, or the web page itself - Ctrl+Tab and
+Ctrl+Shift+Tab switch browser tabs; everywhere else, the console included, they
+open the session switcher, except while Tab is already claimed for a list: the
+composer's slash list, or the canvas editor's list item it nests.**
 
 It is one exported predicate, `browserOwnsTabChord(document, target)` in
 `features/browser/hooks/use-browser-chords.ts`, wrapping the browser's own owner
@@ -62,6 +77,14 @@ Electron rather than of this code:
   renderer, and the Control release reaches it too — this surface never moves
   focus).
 
+The console is the branch that needed code rather than a sentence: xterm maps a
+tab to `\t`, so `Ctrl+Tab` only ever sent a shell a plain tab. Its own key handler
+(`console-mirror.tsx`) now hands the chord back to the page, and also hands plain
+Tab back while a run is open (see the lost-release rule above). Plain Tab stays
+the shell's. The two lists that keep Tab are ones a popup or an editor owns on
+purpose, and both claim it with `preventDefault`, which is the guard the switcher
+already reads.
+
 ## The rows
 
 - **A conversation on screen is row 0**, then up to four more: the most recent
@@ -69,7 +92,11 @@ Electron rather than of this code:
   reads (`conversationRecents`, written only by `use-conversation-recents.ts`).
   Five rows in total.
 - **With nothing on screen** (a new draft with no session, Settings, the browser
-  route) the five most recent conversations are the whole list.
+  route) the five most recent conversations are the whole list. "On screen" is the
+  route's answer, not the store's: `/chat` routes read the displayed session, the
+  same gate `app.tsx` uses, because `activeSessionId` survives a navigation away
+  from the chat and would otherwise make the conversation you just left row 0 - and
+  the first press would step past it while nothing could take you back to it.
 - **Archived and dead entries are skipped** by the palette's own join
   (`chatRecentsOfRow`), so an archived conversation — or one whose id outlived
   it — costs no slot, and the next eligible conversation fills it.
@@ -106,6 +133,25 @@ stays where the reader left it, Control's keyUp still lands on the document, and
 a pointer press on a row commits without the button ever taking focus. It
 registers itself with `useSuppressBrowserView` like every other overlay, because
 a native browser view paints above all DOM.
+
+Two things the pointer and a screen reader get, since the keyboard never enters
+the panel:
+
+- **Hovering a row moves the selection to it** - the palette's treatment, because
+a press on a row commits the row it is over, so the pointer has to show which one
+that would be.
+- **The selection is announced**: a polite live region (`output`, off-screen)
+speaks the row's name and its position ("2 / 5") on the opening press and on
+every step. It is mounted while the panel is closed and starts empty, because a
+live region announces a change - a node that arrives with its text already in it
+is silent.
+
+A row's press commits on `pointerdown`, not on `click`: the overlay only exists
+while Control is held, so on macOS every press on a row is a Ctrl+click, which
+Chromium turns into `contextmenu` with no `click` at all. Rows also swallow that
+context menu, so the OS menu never opens over a surface that is up for a held
+chord. The panel is the palette's own width and inset (`w-160`, 8 px), so two long
+titles that share a prefix stay distinguishable in both lists.
 
 ## Not in the keymap registry
 

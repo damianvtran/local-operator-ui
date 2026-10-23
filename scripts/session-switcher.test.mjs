@@ -57,7 +57,9 @@ const bundle = await build({
 		contents: [
 			'export { buildSwitcherRows, stepSwitcherCursor, initialSwitcherCursor, commitSessionId, switcherPress, SESSION_SWITCHER_ROW_CAP, SESSION_SWITCHER_REVEAL_MS } from "./src/renderer/src/features/session-switcher/session-switcher-model";',
 			'export { browserOwnsTabChord, registerBrowserChordRoot } from "./src/renderer/src/features/browser/hooks/use-browser-chords";',
+			'export { interruptEscapeApplies } from "./src/renderer/src/features/chat/hooks/use-interrupt-on-escape";',
 			'export { SessionSwitcher } from "./src/renderer/src/features/session-switcher/components/session-switcher";',
+			'export { sessionSwitcherRunOpen } from "./src/renderer/src/features/session-switcher/use-session-switcher-keys";',
 			'export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";',
 			'export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { suppressBrowserView } from "./src/renderer/src/shared/browser-view-policy";',
@@ -129,7 +131,9 @@ const {
 	SESSION_SWITCHER_REVEAL_MS,
 	browserOwnsTabChord,
 	registerBrowserChordRoot,
+	interruptEscapeApplies,
 	SessionSwitcher,
+	sessionSwitcherRunOpen,
 	useCanonicalSessionsStore,
 	useUiPreferencesStore,
 	suppressBrowserView,
@@ -484,9 +488,12 @@ async function mountSwitcher({
 	sessions = [],
 	recents = [],
 	displayed = null,
+	/** The route the switcher is asked from: only a chat route has a conversation
+	 * on screen (review round 1's F2). */
+	route = "/chat/abc",
 }) {
 	const dom = new JSDOM("<!doctype html><html><body></body></html>", {
-		url: "http://127.0.0.1:1/#/chat/abc",
+		url: `http://127.0.0.1:1/#${route}`,
 		pretendToBeVisual: true,
 	});
 	const installed = [];
@@ -537,7 +544,7 @@ async function mountSwitcher({
 		root.render(
 			h(
 				MemoryRouter,
-				null,
+				{ initialEntries: [route] },
 				h(QueryClientProvider, { client }, h(SessionSwitcher)),
 			),
 		);
@@ -570,16 +577,39 @@ async function mountSwitcher({
 			await new Promise((resolve) => setTimeout(resolve, ms));
 		});
 	};
+	/*
+	 * A POINTER EVENT AND THE EVENT jsdom LACKS. jsdom implements no `PointerEvent`
+	 * (checked at `typeof window.PointerEvent`, v27), so these are `MouseEvent`s
+	 * dispatched under the pointer type names - which is all a listener matches on,
+	 * and it carries the `button`, `ctrlKey` and `relatedTarget` the handlers read.
+	 */
+	const pointer = async (type, target, init = {}) => {
+		let event = null;
+		await act(async () => {
+			event = new dom.window.MouseEvent(type, {
+				bubbles: true,
+				cancelable: true,
+				...init,
+			});
+			target.dispatchEvent(event);
+		});
+		return event;
+	};
 
 	const mounted = {
 		dom,
 		act,
 		key,
 		keyup,
+		pointer,
 		wait,
 		opened: () => globalThis.__opened,
 		/* The overlay portals to `document.body`, so the panel is found there. */
 		panel: () => dom.window.document.querySelector('[role="dialog"]'),
+		/* The polite live region that speaks the selection (review round 1's F6). */
+		status: () =>
+			dom.window.document.querySelector("[data-session-switcher-announcement]")
+				?.textContent ?? "",
 		rows: () => [
 			...dom.window.document.querySelectorAll('[role="dialog"] button'),
 		],
@@ -676,21 +706,316 @@ test("auto-repeat is swallowed and does not step", async () => {
 	}
 });
 
-test("Escape cancels without committing", async () => {
-	const { key, keyup, opened, panel, wait, unmount } = await mountSwitcher({
+test("the console's reader says whether a run is open, and says so only while one is", async () => {
+	/*
+	 * THE FLAG THE TERMINAL READS (review round 1's F4). `console-mirror.tsx` hands plain
+	 * Tab back to the page while this is true, because a run that lost Control's keyup
+	 * can only end on a press the terminal lets through. The console side of that branch
+	 * is `console-mirror.test.mjs`; this is the half that has to be true for it.
+	 */
+	const { key, keyup, panel, wait, unmount } = await mountSwitcher({
 		sessions: ["current", "previous"],
 		recents: ["current", "previous"],
 		displayed: "current",
 	});
 	try {
+		assert.equal(sessionSwitcherRunOpen(), false, "nothing open yet");
+		await key(CTRL_TAB);
+		assert.equal(sessionSwitcherRunOpen(), true, "a run exists from the press");
+		await wait(REVEAL_WAIT_MS);
+		assert.notEqual(panel(), null);
+		await keyup({ key: "Control", ctrlKey: false });
+		assert.equal(sessionSwitcherRunOpen(), false, "and dies with the release");
+	} finally {
+		await unmount();
+	}
+});
+
+test("Escape cancels without committing, and Control is still held when it is pressed", async () => {
+	const { dom, act, key, keyup, opened, panel, wait, unmount } =
+		await mountSwitcher({
+			sessions: ["current", "previous"],
+			recents: ["current", "previous"],
+			displayed: "current",
+		});
+	try {
 		await key(CTRL_TAB);
 		await wait(REVEAL_WAIT_MS);
 		assert.notEqual(panel(), null);
-		await key({ key: "Escape" });
+		/*
+		 * CONTROL IS DOWN. A run only exists while it is, so this is the shape the
+		 * keyboard can actually produce during one - the round-1 review (F1) measured
+		 * that the old test sent an Escape no keyboard sends here, and that the real
+		 * shape fell through to the chord path and committed.
+		 */
+		let claimed = null;
+		await act(async () => {
+			const event = new dom.window.KeyboardEvent("keydown", {
+				bubbles: true,
+				cancelable: true,
+				key: "Escape",
+				ctrlKey: true,
+			});
+			dom.window.document.dispatchEvent(event);
+			claimed = event.defaultPrevented;
+		});
+		assert.equal(claimed, true, "Escape is claimed, not merely answered");
 		assert.equal(panel(), null, "Escape closes it");
 		/* The Control release that follows must not resurrect the run. */
 		await keyup({ key: "Control", ctrlKey: false });
 		assert.deepEqual(opened(), []);
+	} finally {
+		await unmount();
+	}
+});
+
+test("Escape during a run never reaches the chat pane's Esc-to-interrupt", async () => {
+	const { dom, act, key, keyup, opened, panel, wait, unmount } =
+		await mountSwitcher({
+			sessions: ["current", "previous"],
+			recents: ["current", "previous"],
+			displayed: "current",
+		});
+	/* The interrupt hook's own binding: `window`, bubble phase. A listener with the
+	 * same shape is the stand-in for it, which is what makes this the real path and
+	 * not a restatement of it. */
+	const interruptSaw = [];
+	const interruptStandIn = (event) => {
+		if (event.key === "Escape") interruptSaw.push(event.defaultPrevented);
+	};
+	dom.window.addEventListener("keydown", interruptStandIn);
+	try {
+		await key(CTRL_TAB);
+		await wait(REVEAL_WAIT_MS);
+		let pressed = null;
+		await act(async () => {
+			pressed = new dom.window.KeyboardEvent("keydown", {
+				bubbles: true,
+				cancelable: true,
+				key: "Escape",
+				ctrlKey: true,
+			});
+			dom.window.document.dispatchEvent(pressed);
+		});
+		assert.deepEqual(
+			interruptSaw,
+			[],
+			"the capture-phase claim stops the press before chat's listener",
+		);
+		/*
+		 * AND THE PREDICATE AGREES even if it ever runs first: the claim is readable on
+		 * the event, which is what `dispatchInterruptOnEscape` re-checks in its
+		 * microtask. The unclaimed twin is the positive control - a busy turn WOULD be
+		 * interrupted by an Escape nobody claimed, so the false below is the claim's
+		 * doing and not a broken predicate.
+		 */
+		const busyTurn = {
+			sessionId: "current",
+			turnAlive: true,
+			available: true,
+		};
+		assert.equal(interruptEscapeApplies(pressed, busyTurn), false);
+		const unclaimed = new dom.window.KeyboardEvent("keydown", {
+			key: "Escape",
+			ctrlKey: true,
+		});
+		assert.equal(
+			interruptEscapeApplies(unclaimed, busyTurn),
+			true,
+			"an unclaimed Escape during a busy turn is the interrupt's",
+		);
+		await keyup({ key: "Control", ctrlKey: false });
+		assert.deepEqual(opened(), []);
+	} finally {
+		dom.window.removeEventListener("keydown", interruptStandIn);
+		await unmount();
+	}
+});
+
+/* ------------------------------------------------------------------ *
+ * A run that lost Control, and the route that decides what is current
+ * ------------------------------------------------------------------ */
+
+test("a press reporting Control up ends the run, and never commits", async () => {
+	const { key, keyup, pointer, opened, panel, wait, dom, unmount } =
+		await mountSwitcher({
+			sessions: ["current", "previous", "older"],
+			recents: ["current", "previous", "older"],
+			displayed: "current",
+		});
+	try {
+		await key(CTRL_TAB);
+		await wait(REVEAL_WAIT_MS);
+		assert.notEqual(panel(), null);
+		/* The shape of a lost Control keyup: a key that reports the modifier up. */
+		await key({ key: "a", ctrlKey: false });
+		assert.equal(panel(), null, "a press with Control up ends the run");
+		await keyup({ key: "Control", ctrlKey: false });
+		assert.deepEqual(opened(), [], "and commits nothing");
+	} finally {
+		await unmount();
+	}
+});
+
+test("a key release reporting Control up ends the run too", async () => {
+	const { key, keyup, opened, panel, wait, unmount } = await mountSwitcher({
+		sessions: ["current", "previous", "older"],
+		recents: ["current", "previous", "older"],
+		displayed: "current",
+	});
+	try {
+		await key(CTRL_TAB);
+		await wait(REVEAL_WAIT_MS);
+		await keyup({ key: "a", ctrlKey: false });
+		assert.equal(panel(), null);
+		await keyup({ key: "Control", ctrlKey: false });
+		assert.deepEqual(opened(), []);
+	} finally {
+		await unmount();
+	}
+});
+
+test("a pointer press away from the rows ends the run, and a press on a row commits it", async () => {
+	const { key, keyup, pointer, opened, panel, rows, wait, dom, unmount } =
+		await mountSwitcher({
+			sessions: ["current", "previous", "older"],
+			recents: ["current", "previous", "older"],
+			displayed: "current",
+		});
+	try {
+		await key(CTRL_TAB);
+		await wait(REVEAL_WAIT_MS);
+		assert.notEqual(panel(), null);
+		/* Control up, press nowhere near the panel: nothing a release could commit. */
+		await pointer("pointerdown", dom.window.document.body);
+		assert.equal(panel(), null);
+		await keyup({ key: "Control", ctrlKey: false });
+		assert.deepEqual(opened(), []);
+
+		/*
+		 * AND A PRESS ON A ROW IS A CHOICE. It commits on `pointerdown`, because on
+		 * macOS the overlay only exists while Control is held, so every press here is
+		 * a Ctrl+click - which Chromium turns into `contextmenu` with no `click` at
+		 * all (review round 1's F5).
+		 */
+		await key(CTRL_TAB);
+		await wait(REVEAL_WAIT_MS);
+		const row = rows()[1];
+		await pointer("pointerdown", row, { button: 0 });
+		assert.deepEqual(opened(), ["previous"], "the row that was pressed");
+		assert.equal(panel(), null);
+	} finally {
+		await unmount();
+	}
+});
+
+test("a row swallows the context menu a macOS Ctrl+click raises", async () => {
+	const { key, keyup, pointer, panel, rows, wait, unmount } =
+		await mountSwitcher({
+			sessions: ["current", "previous"],
+			recents: ["current", "previous"],
+			displayed: "current",
+		});
+	try {
+		await key(CTRL_TAB);
+		await wait(REVEAL_WAIT_MS);
+		const event = await pointer("contextmenu", rows()[1]);
+		assert.equal(event.defaultPrevented, true);
+		/* Still up: a context menu is not a commit. */
+		assert.notEqual(panel(), null);
+		await keyup({ key: "Control", ctrlKey: false });
+	} finally {
+		await unmount();
+	}
+});
+
+test("hovering a row moves the selection to it, and the release commits that row", async () => {
+	const { key, keyup, pointer, opened, active, rows, wait, dom, unmount } =
+		await mountSwitcher({
+			sessions: ["current", "previous", "older"],
+			recents: ["current", "previous", "older"],
+			displayed: "current",
+		});
+	try {
+		await key(CTRL_TAB);
+		await wait(REVEAL_WAIT_MS);
+		assert.equal(active().dataset.sessionId, "previous");
+		await pointer("pointerover", rows()[2], {
+			relatedTarget: dom.window.document.body,
+		});
+		assert.equal(active().dataset.sessionId, "older", "the pointer moved it");
+		await keyup({ key: "Control", ctrlKey: false });
+		assert.deepEqual(opened(), ["older"]);
+	} finally {
+		await unmount();
+	}
+});
+
+test("the selection is announced with its position, on open and on every step", async () => {
+	const { key, keyup, status, rows, wait, unmount } = await mountSwitcher({
+		sessions: ["current", "previous", "older"],
+		recents: ["current", "previous", "older"],
+		displayed: "current",
+	});
+	try {
+		assert.equal(status(), "", "nothing to say while the panel is closed");
+		await key(CTRL_TAB);
+		await wait(REVEAL_WAIT_MS);
+		assert.equal(status(), "title previous, 2 / 3");
+		await key(CTRL_TAB);
+		assert.equal(status(), "title older, 3 / 3");
+		assert.equal(rows().length, 3);
+		await keyup({ key: "Control", ctrlKey: false });
+	} finally {
+		await unmount();
+	}
+});
+
+test("on a route with no conversation on screen the ring is the whole list and row 0 is the first press", async () => {
+	const { key, keyup, opened, active, panel, wait, unmount } =
+		await mountSwitcher({
+			sessions: ["current", "previous", "older", "fourth", "fifth"],
+			recents: ["current", "previous", "older", "fourth", "fifth"],
+			/* The store still holds the conversation that was left; the route is what
+			 * decides it is not on screen (review round 1's F2). */
+			displayed: "current",
+			route: "/settings",
+		});
+	try {
+		await key(CTRL_TAB);
+		await wait(REVEAL_WAIT_MS);
+		assert.notEqual(panel(), null);
+		assert.equal(
+			active().dataset.sessionId,
+			"current",
+			"the first press lands on row 0 when nothing is on screen",
+		);
+		await keyup({ key: "Control", ctrlKey: false });
+		assert.deepEqual(
+			opened(),
+			["current"],
+			"and releasing it goes back to the conversation that was left",
+		);
+	} finally {
+		await unmount();
+	}
+});
+
+test("on a chat route the conversation on screen is current: stepping back to it commits nothing", async () => {
+	const { key, keyup, opened, active, wait, unmount } = await mountSwitcher({
+		sessions: ["current", "previous", "older"],
+		recents: ["current", "previous", "older"],
+		displayed: "current",
+		route: "/chat/current",
+	});
+	try {
+		await key(CTRL_TAB);
+		await wait(REVEAL_WAIT_MS);
+		assert.equal(active().dataset.sessionId, "previous");
+		await key({ key: "Tab", ctrlKey: true, shiftKey: true });
+		assert.equal(active().dataset.sessionId, "current");
+		await keyup({ key: "Control", ctrlKey: false });
+		assert.deepEqual(opened(), [], "a release on the current row is a no-op");
 	} finally {
 		await unmount();
 	}
@@ -719,7 +1044,7 @@ test("losing the window cancels without committing", async () => {
 });
 
 test("fewer than two rows is no overlay and no navigation, but the press is still swallowed", async () => {
-	const { key, keyup, opened, panel, dom, act, unmount } = await mountSwitcher({
+	const { keyup, opened, panel, dom, act, unmount } = await mountSwitcher({
 		sessions: ["only"],
 		recents: ["only"],
 		displayed: "only",
@@ -739,7 +1064,6 @@ test("fewer than two rows is no overlay and no navigation, but the press is stil
 		assert.equal(panel(), null);
 		await keyup({ key: "Control", ctrlKey: false });
 		assert.deepEqual(opened(), []);
-		void key;
 	} finally {
 		await unmount();
 	}
