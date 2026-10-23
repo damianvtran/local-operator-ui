@@ -18,7 +18,7 @@ bounded by the diff and the escape hatch is a sentence rather than a silent flag
 
 | Leg | Command | Scope |
 | --- | --- | --- |
-| Lint, `scripts/` | `node scripts/check-scripts-lint.mjs --since <base>` | the `scripts/` files this change touches |
+| Lint, `scripts/` | `node scripts/check-scripts-lint.mjs --branch --since <base>` | the `scripts/` files this change touches |
 | Lint, `src/` and `bin/` | `node_modules/.bin/biome check --reporter=json <files>` | the changed files themselves |
 | Types | `node_modules/.bin/tsc --noEmit -p tsconfig.node.json`, then `tsconfig.app.json` | the whole project — see below |
 
@@ -64,7 +64,7 @@ than judged:
 
 One deliberate asymmetry, said rather than discovered: **the `scripts/` leg ADDS
 files instead of substituting them.** It is `scripts/check-scripts-lint.mjs`, the
-repository's worktree-scoped ratchet — the same spelling `pnpm lint:scripts` runs —
+repository's worktree-scoped ratchet — the same checker `pnpm lint:scripts` runs —
 so it also lints *untracked* scripts. Those can only add files to the check, never
 remove one: they can refuse about a file you have not committed, and can never
 pass about a file you are pushing.
@@ -81,6 +81,23 @@ anyway, deliberately: TypeScript has no per-file mode, so this leg costs the tre
 It therefore runs only when a diff touches a TypeScript file, and its two projects
 run **serially** — two concurrent `tsc` processes are what the memory budget on
 this host cannot absorb.
+
+## Branch comparisons versus synthetic CI merges
+
+The hook invokes the scripts ratchet with `--branch --since <base>`. The base is
+still the caller's target (`origin/main` by default, or an explicit stacked PR
+target via the gate's `--since`). The ratchet resolves that target and compares
+from `git merge-base <base> HEAD`, including **all** changed scripts plus staged,
+unstaged and untracked scripts. It never substitutes `HEAD^1`: a local merge's
+first parent can contain the feature's entire earlier history, so a first-parent
+diff would miss real violations. Invalid refs and merge-base failures still fail
+closed; branch context is not a bypass of file selection or Biome.
+
+Without `--branch`, the ratchet retains its strict synthetic-merge CI contract:
+Actions builds a merge whose first parent is the target, so a frozen payload
+base older than that parent is refused. CI continues to name `HEAD^1`; a local
+feature branch merging main or another stack is a different graph context, not
+an excuse to repoint the target or skip lint.
 
 ## What the hook deliberately does NOT run
 
@@ -154,7 +171,7 @@ is indistinguishable from "the gate ran and passed" in every log that follows.
 Run the equivalent legs **by hand** and record that you did, in the PR:
 
 ```sh
-node scripts/check-scripts-lint.mjs --since "$(git merge-base origin/main HEAD)"
+node scripts/check-scripts-lint.mjs --branch --since origin/main
 node_modules/.bin/biome check <changed files>
 node_modules/.bin/tsc --noEmit -p tsconfig.node.json
 node_modules/.bin/tsc --noEmit -p tsconfig.app.json
