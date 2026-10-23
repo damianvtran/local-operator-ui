@@ -8,7 +8,7 @@ import { formatRelativeTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ArrowUp, Bot, Hash, Plus, Users } from "lucide-react";
-import type { FC } from "react";
+import type { FC, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type {
@@ -63,6 +63,11 @@ import {
 	RailSection,
 	isTargetRow,
 } from "./team-bridge-rail";
+import { TeamBridgeThreadPane } from "./team-bridge-thread-pane";
+import {
+	type ThreadTarget,
+	threadTargetFromSearch,
+} from "./team-bridge-thread-read";
 import { useReportTeamBridgeViewing } from "./team-bridge-viewing";
 import {
 	useCreateTeamBridgeConversation,
@@ -270,6 +275,10 @@ export function relative(iso: string, locale: string): string {
 }
 
 export type TeamBridgePageViewProps = {
+	/** Presentation-only fixtures can render pane states without dispatching live queries. */
+	renderThreadPane?: (target: ThreadTarget, close: () => void) => ReactNode;
+	threadLink?: ThreadTarget | null;
+	onCloseThread?: () => void;
 	listState: "loading" | "error" | "ready";
 	messageState: "idle" | "loading" | "error" | "ready";
 	conversations: TeamBridgeConversation[];
@@ -334,6 +343,9 @@ export type TeamBridgePageViewProps = {
 };
 
 export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
+	renderThreadPane,
+	threadLink,
+	onCloseThread,
 	listState,
 	messageState,
 	conversations,
@@ -373,6 +385,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 }) => {
 	const locale = useI18nLocale();
 	const [draft, setDraft] = useState(initialDraft);
+	// Thread identity is checked against the current selection before mounting.
+	const [threadSelection, setThreadSelection] = useState<ThreadTarget | null>(
+		threadLink ?? null,
+	);
+	useEffect(() => {
+		if (threadLink) setThreadSelection(threadLink);
+	}, [threadLink]);
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
 	const identityKnown = selfAccountId !== undefined;
 
@@ -484,6 +503,14 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	// `selected` already resolves a one-recipient draft to its existing DM
 	// (`targetConversation`), so the view and the container agree on it.
 	const shown = selected;
+	const threadIsOpen = Boolean(
+		threadSelection &&
+			shown &&
+			threadSelection.conversationId === shown.id &&
+			threadSelection.tenantId === shown.tenant_id &&
+			!previewSelected &&
+			!selectedOrganizationUnknown,
+	);
 	// A focused window is quiet only for the conversation actually on screen.
 	useReportTeamBridgeViewing(shown?.id);
 	const canCompose =
@@ -494,6 +521,16 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			(target?.type === "compose" && composeRecipients.length > 0) ||
 			((target?.type === "person" || target?.type === "chief") &&
 				draftPerson !== null));
+	/* One reaction context for the timeline AND the thread pane, so a reply can
+	   be reacted to under exactly the rules its root is. */
+	const reactionContext =
+		selfAccountId && selected
+			? {
+					accountId: selfAccountId,
+					tenantId: selected.tenant_id,
+					disabled: !canCompose || selected.status !== "open",
+				}
+			: undefined;
 
 	// The retry's idempotency key: a failed send is retried with the SAME
 	// `client_ref`, so an ambiguous failure (request landed, answer lost) cannot
@@ -577,7 +614,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	return (
 		<div
 			data-glass-region="canvas"
-			className="flex h-full min-h-0 w-full overflow-hidden bg-canvas"
+			className="panel-flush @container/bridge relative flex min-h-0 flex-1 w-full overflow-hidden bg-canvas"
 		>
 			<aside
 				data-glass-region="page-sidebar"
@@ -587,7 +624,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				   Agents, Library) and the one `rowCurrent`'s fill is tuned against:
 				   on the canvas ground the selected row measured 1.06:1 on `paper`
 				   (design round 1, D2). */
-				className="flex w-72 shrink-0 flex-col bg-surface pt-[var(--panel-top-pad,0px)]"
+				className="panel-top-pad flex w-72 shrink-0 flex-col bg-surface"
 			>
 				<h1 className="sr-only">{t("ui.teamBridge.page.title")}</h1>
 				<header className="flex h-11 shrink-0 items-center gap-2 px-3">
@@ -807,7 +844,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 
 			{/* The ONE ground split: the rail inherits the page canvas, the thread
 			    carries the surface — two regions read apart without a rule. */}
-			<section className="flex min-w-0 flex-1 flex-col bg-surface pt-[var(--panel-top-pad,0px)]">
+			<section
+				className={cn(
+					"panel-top-pad flex min-w-0 flex-1 flex-col bg-surface",
+					threadIsOpen && "@max-[1024px]/bridge:invisible",
+				)}
+			>
 				{target === null ? (
 					<div className="flex flex-1 items-center justify-center px-6">
 						{listState === "loading" ? (
@@ -998,6 +1040,15 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										labelFor={(sender) =>
 											labelFor(sender, shown?.tenant_id ?? "")
 										}
+										reactionContext={reactionContext}
+										onReply={(message) => {
+											if (shown)
+												setThreadSelection({
+													tenantId: shown.tenant_id,
+													conversationId: shown.id,
+													rootId: message.id,
+												});
+										}}
 									/>
 								)}
 							</div>
@@ -1102,6 +1153,42 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					</>
 				)}
 			</section>
+			{/* Threads: a ground-separated sibling; no rail or compose routing changes. */}
+			{threadSelection &&
+				shown &&
+				threadSelection.conversationId === shown.id &&
+				threadSelection.tenantId === shown.tenant_id &&
+				!previewSelected &&
+				!selectedOrganizationUnknown && (
+					/* At the supported 800px minimum a second flex column leaves only
+					   152px for the timeline. Take over its whole region below 1024px,
+					   rather than shrinking either reading measure. The 288px rail stays. */
+					<div className="absolute inset-y-0 right-0 left-72 z-20 min-w-0 @min-[1024px]/bridge:static @min-[1024px]/bridge:w-[min(26rem,45%)] @min-[1024px]/bridge:min-w-72 @min-[1024px]/bridge:shrink-0">
+						{renderThreadPane ? (
+							renderThreadPane(threadSelection, () => {
+								setThreadSelection(null);
+								onCloseThread?.();
+							})
+						) : (
+							<TeamBridgeThreadPane
+								key={`${threadSelection.tenantId}:${threadSelection.conversationId}:${threadSelection.rootId}`}
+								target={threadSelection}
+								initialRoot={messages.find(
+									(message) => message.id === threadSelection.rootId,
+								)}
+								labelFor={(sender) =>
+									labelFor(sender, threadSelection.tenantId)
+								}
+								readOnly={readOnly}
+								reactionContext={reactionContext}
+								onClose={() => {
+									setThreadSelection(null);
+									onCloseThread?.();
+								}}
+							/>
+						)}
+					</div>
+				)}
 		</div>
 	);
 };
@@ -1175,6 +1262,10 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	const [searchParams, setSearchParams] = useSearchParams();
 	const requestedConversation = searchParams.get("conversation");
 	const requestedTenant = searchParams.get("tenant");
+	const requestedRoot = searchParams.get("thread");
+	const [threadLink, setThreadLink] = useState<ThreadTarget | null>(() =>
+		threadTargetFromSearch(searchParams),
+	);
 	const [scope, setScope] = useState<TeamBridgeScope>(() =>
 		requestedTenant
 			? asTeamBridgeTenantId(requestedTenant)
@@ -1248,15 +1339,25 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		scopeChosen.current = true;
 		setScope(asTeamBridgeTenantId(requestedTenant));
 		setTarget({ type: "conversation", id: requestedConversation });
+		setThreadLink(
+			threadTargetFromSearch(
+				new URLSearchParams({
+					tenant: requestedTenant,
+					conversation: requestedConversation,
+					...(requestedRoot ? { thread: requestedRoot } : {}),
+				}),
+			),
+		);
 		setChannelFormOpen(false);
 		setSearchParams({}, { replace: true });
-	}, [requestedConversation, requestedTenant, setSearchParams]);
+	}, [requestedConversation, requestedTenant, requestedRoot, setSearchParams]);
 
 	// A conversation id and a person both belong to one organization; a scope
 	// change clears the target so a stale thread is never shown under a new title.
 	const changeScope = (next: TeamBridgeScope) => {
 		scopeChosen.current = true;
 		setScope(next);
+		setThreadLink(null);
 		setTarget(null);
 		setChannelFormOpen(false);
 	};
@@ -1466,6 +1567,8 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	return (
 		<>
 			<TeamBridgePageView
+				threadLink={threadLink}
+				onCloseThread={() => setThreadLink(null)}
 				listState={
 					list.isPending || (mergedView && organizationsPending)
 						? "loading"
@@ -1506,6 +1609,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 					});
 				}}
 				onTarget={(next) => {
+					setThreadLink(null);
 					setChannelFormOpen(false);
 					setTarget(next);
 				}}
