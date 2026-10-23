@@ -42,6 +42,10 @@ import {
 } from "./address-overlay";
 import { ApprovalStore } from "./approvals";
 import {
+	APPROVALS_OVERLAY_S6A_ENV,
+	ApprovalsOverlayController,
+} from "./approvals-overlay";
+import {
 	browserChromeOwnsChord,
 	browserPageOwnsChord,
 	createBrowserChordRouter,
@@ -242,6 +246,14 @@ export interface StartBrowserHostOptions {
 		 * and the product never writes to the dev-driver's event stream.
 		 */
 		product?: boolean;
+		documentUrl: string;
+	};
+	/**
+	 * S6a's inert approvals card. Absent means off: no controller, no child, no
+	 * product path. The document URL is the app's trusted packaged sibling.
+	 */
+	approvalsOverlay?: {
+		enabled: boolean;
 		documentUrl: string;
 	};
 	log: (message: string) => void;
@@ -840,6 +852,24 @@ async function initializeBrowserHost(
 					})
 				: null;
 
+		/*
+		 * S6a's card child. It reads the registry's post-layout snapshot for the
+		 * same reason the address overlay does: the snapshot is the only trusted
+		 * statement of the page's rectangle and presentation. It is declared before
+		 * the registry so the observer can call it, and before `approvals` so the
+		 * store's change hook can push the live count into it.
+		 */
+		const approvalsOverlay =
+			options.approvalsOverlay?.enabled === true &&
+			process.env[APPROVALS_OVERLAY_S6A_ENV] === "1"
+				? new ApprovalsOverlayController({
+						window: options.window,
+						documentUrl: options.approvalsOverlay.documentUrl,
+						opaque: process.platform !== "darwin",
+						log,
+					})
+				: null;
+
 		/**
 		 * The tab-restore file (design 7.2): the hand-over of session state between two
 		 * runs of the app.
@@ -943,7 +973,10 @@ async function initializeBrowserHost(
 			},
 			releaseTab,
 			notifyChanged,
-			(snapshot) => addressOverlay?.onLayout(snapshot),
+			(snapshot) => {
+				addressOverlay?.onLayout(snapshot);
+				approvalsOverlay?.onLayout(snapshot);
+			},
 		);
 		registryForDownloads = registry;
 		rollback.add(async () => {
@@ -956,6 +989,7 @@ async function initializeBrowserHost(
 		// this FIRST: the overlay's webContents must be closed before the pages it
 		// sits above are destroyed, or a teardown can call into a destroyed view.
 		rollback.add(() => addressOverlay?.dispose("startup-rollback"));
+		rollback.add(() => approvalsOverlay?.dispose("startup-rollback"));
 
 		/**
 		 * Release everything one tab holds: its child view, its debugger session and
@@ -1029,9 +1063,14 @@ async function initializeBrowserHost(
 				// the renderer is exactly what may be behind another window, which is the
 				// case the banner exists for (design 9.2).
 				consentNotifier.announce(approvals.pendingEntries());
+				// S6a's card is auto-presented from the same live queue the shield
+				// counts. It is unfocused and has no decision path; this is the only
+				// producer of its visibility.
+				approvalsOverlay?.setPending(approvals.pendingEntries().length);
 			},
 			log,
 		});
+		approvalsOverlay?.setPending(approvals.pendingEntries().length);
 
 		const profileDir = browserStoragePath(browserSession) ?? "";
 		const facts = {
@@ -1458,6 +1497,7 @@ async function initializeBrowserHost(
 				// The overlay child goes before the page views: its webContents is a
 				// child of the same window, and disposal is idempotent with rollback.
 				addressOverlay?.dispose("host-stop");
+				approvalsOverlay?.dispose("host-stop");
 				registry.destroyAll();
 				await Promise.allSettled([...releases]);
 				await cdp.close();
