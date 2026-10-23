@@ -143,7 +143,12 @@ export function setPlistString(text, key, value) {
 		`(<key>${escapeRegExp(escapeXml(key))}</key>\\s*<string>)[^<]*(</string>)`,
 	);
 	if (pattern.test(text)) {
-		return text.replace(pattern, `$1${escapeXml(value)}$2`);
+		// A function replacer, not a replacement string: a `$` in the value
+		// would otherwise be read as a replacement token and corrupt the plist.
+		return text.replace(
+			pattern,
+			(_match, open, close) => `${open}${escapeXml(value)}${close}`,
+		);
 	}
 	const close = text.lastIndexOf("</dict>");
 	if (close === -1) {
