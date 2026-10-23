@@ -278,6 +278,7 @@
     "afterSign": "scripts/notarize.js",
     "afterPack": "scripts/after-pack.mjs",
     "mac": {
+      "icon": "build/icon.icns",
       "extraResources": [
         {
           "from": "resources/python",

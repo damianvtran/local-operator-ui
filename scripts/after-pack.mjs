@@ -2,8 +2,8 @@
 /**
  * The `afterPack` hook: keep only the runtime resource trees this build can run
  * (the bundled `uv`, on every platform, and the interpreter seed on macOS,
- * where it ships), and - on macOS - refuse to ship a legacy resource alias
- * beside the private seed.
+ * where it ships), give every nested helper bundle the app's icon on macOS, and
+ * - on macOS - refuse to ship a legacy resource alias beside the private seed.
  *
  * Why the alias refusal is a build failure rather than a nicety: the seed is
  * inert data that nothing executes from the `.app`, but an incumbent install's
@@ -23,7 +23,14 @@
  * missing `packager.appInfo` is a programming error rather than a build
  * condition, and defaulting here would guess the bundle's name.
  */
-import { lstatSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import {
+	copyFileSync,
+	existsSync,
+	lstatSync,
+	mkdirSync,
+	readdirSync,
+} from "node:fs";
 import { join } from "node:path";
 import { LEGACY_RESOURCE_NAMES } from "./bundled-runtime-layout.mjs";
 import { prepareConsoleNative } from "./console-pack.mjs";
@@ -40,6 +47,107 @@ import pruneAfterPack from "./prune-bundled-resources.mjs";
  */
 const LEGACY_PYTHON_RESOURCE_NAMES = LEGACY_RESOURCE_NAMES;
 
+/**
+ * Give every nested helper bundle the app's own icon, on macOS.
+ *
+ * WHY THIS EXISTS. macOS resolves an app's icon from its bundle: the icon named
+ * by `CFBundleIconFile` in `Contents/Info.plist`, under `Contents/Resources`.
+ * Electron's helper bundles ship with neither key nor file - they are generic
+ * helpers whose display name comes from the helper's own plist - so a dialog
+ * that attributes a request to a helper has nothing to draw and falls back to a
+ * generic mark. The 1Password CLI-access prompt is one such dialog: it reads
+ * `CFBundleIconFile` from the bundle it resolved, then loads the named file.
+ * The helper bundles are inside our app and are named after it, so they must
+ * carry the same icon as the app rather than the generic placeholder.
+ *
+ * WHY `afterPack` AND NOT `extraResources`: electron-builder creates the
+ * helpers itself, after the resource copy lists are applied, and it signs them
+ * immediately after this hook. Writing the plist key and the icns here means
+ * both are inside the code seal; writing them at install time would invalidate
+ * the signature, and writing them after signing would be the same violation in
+ * the opposite order.
+ *
+ * The source is the icon electron-builder just placed in the main bundle, so
+ * there is exactly one copy of the artwork in the build. `build.mac.icon` is
+ * explicit in `package.json`; if that ever stops producing `icon.icns`, this
+ * throws instead of shipping helpers with a stale or absent icon.
+ */
+export function stampBundleIcons({ appOutDir, productFilename, platform }) {
+	if (platform !== "darwin") return { stamped: [] };
+
+	const appDir = join(appOutDir, `${productFilename}.app`);
+	const mainPlist = join(appDir, "Contents", "Info.plist");
+	const source = join(appDir, "Contents", "Resources", "icon.icns");
+	if (!existsSync(source)) {
+		throw new Error(
+			`The packed app has no ${source}. build.mac.icon in package.json must name an .icns that electron-builder copies into Contents/Resources; the helper bundles are stamped from it.`,
+		);
+	}
+
+	let mainIcon;
+	try {
+		mainIcon = execFileSync(
+			"/usr/bin/plutil",
+			["-extract", "CFBundleIconFile", "raw", "-o", "-", mainPlist],
+			{ encoding: "utf8" },
+		).trim();
+	} catch {
+		throw new Error(
+			`The packed app's Info.plist carries no CFBundleIconFile (${mainPlist}). build.mac.icon must be set explicitly so the bundle, and every helper stamped from it, has an icon.`,
+		);
+	}
+	if (mainIcon !== "icon.icns") {
+		throw new Error(
+			`The packed app's CFBundleIconFile is ${JSON.stringify(mainIcon)}, not "icon.icns". The helper stamping below copies Contents/Resources/icon.icns and records that name; make the two agree rather than shipping helpers that point at a file the app does not carry.`,
+		);
+	}
+
+	const frameworks = join(appDir, "Contents", "Frameworks");
+	if (!existsSync(frameworks)) return { stamped: [] };
+
+	const stamped = [];
+	for (const entry of readdirSync(frameworks)) {
+		if (!entry.endsWith(".app")) continue;
+		const bundle = join(frameworks, entry);
+		const plist = join(bundle, "Contents", "Info.plist");
+		if (!existsSync(plist)) continue;
+
+		const helperResources = join(bundle, "Contents", "Resources");
+		mkdirSync(helperResources, { recursive: true });
+		copyFileSync(source, join(helperResources, "icon.icns"));
+
+		// -replace fails when the key is absent and -insert fails when it is
+		// present, so ask the plist which one applies instead of assuming every
+		// Electron helper keeps the same shape.
+		let hasIconKey = true;
+		try {
+			execFileSync(
+				"/usr/bin/plutil",
+				["-extract", "CFBundleIconFile", "raw", "-o", "-", plist],
+				{ stdio: "pipe" },
+			);
+		} catch {
+			hasIconKey = false;
+		}
+		execFileSync(
+			"/usr/bin/plutil",
+			[
+				hasIconKey ? "-replace" : "-insert",
+				"CFBundleIconFile",
+				"-string",
+				"icon.icns",
+				plist,
+			],
+			{ stdio: "pipe" },
+		);
+		stamped.push(entry);
+	}
+	return { stamped };
+}
+
+/**
+ * See the hook's module comment for why this runs before signing.
+ */
 export default async function afterPack(context) {
 	const productFilename = context.packager?.appInfo?.productFilename;
 	if (productFilename == null) {
@@ -68,6 +176,17 @@ export default async function afterPack(context) {
 		platform: context.electronPlatformName ?? process.platform,
 		log: (line) => console.log(line),
 	});
+
+	const stamped = stampBundleIcons({
+		appOutDir: context.appOutDir,
+		productFilename,
+		platform: context.electronPlatformName ?? process.platform,
+	});
+	if (stamped.stamped.length > 0) {
+		console.log(
+			`Stamped the app icon into helper bundle(s): ${stamped.stamped.join(", ")}`,
+		);
+	}
 
 	const pruned = await pruneAfterPack(context);
 
