@@ -665,6 +665,14 @@ const IDENTICAL_OK = new Map([
 		"Placeholders and brackets only ({conversation} ({organization})); the notification title is assembled from already-translated parts.",
 	],
 	[
+		"ui.teamBridge.notify.channel",
+		"Opaque channel name with the conventional # marker; no prose to translate. Independently validated for all seven locales in os1298-r1 receipts.",
+	],
+	[
+		"ui.teamBridge.notify.subtitle",
+		"Language-neutral place and organization composition; both values remain verbatim and place-first order is required for disambiguation. Independently validated in os1298-r1 receipts.",
+	],
+	[
 		"ui.teamBridge.member.agent",
 		"French cognate: « agent » has the same spelling.",
 	],

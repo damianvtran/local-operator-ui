@@ -6,12 +6,18 @@ import { Bot, UserRound } from "lucide-react";
 import type { FC } from "react";
 import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
+import { TeamBridgeMessageToolbar } from "./team-bridge-message-toolbar";
 import {
 	type PendingSend,
 	type ThreadItem,
 	pendingMark,
 	threadItems,
 } from "./team-bridge-model";
+import {
+	TeamBridgeReactionChips,
+	useTeamBridgeReactionState,
+} from "./team-bridge-reactions";
+import { threadSummary } from "./team-bridge-threads-model";
 
 /**
  * The thread, drawn the way Slack and Discord draw a channel, not a messenger.
@@ -58,7 +64,19 @@ export const TeamBridgeMessageList: FC<{
 	 */
 	pendingSends?: readonly PendingSend[];
 	onRetrySend?: (clientRef: string) => void;
-}> = ({ messages, labelFor, pendingSends = [], onRetrySend }) => {
+	reactionContext?: ReactionContext;
+	onReply?: (message: TeamBridgeMessage) => void;
+	/** Story/capture seed only: show every row's toolbar without hover. */
+	forceToolbar?: boolean;
+}> = ({
+	messages,
+	labelFor,
+	pendingSends = [],
+	onRetrySend,
+	reactionContext,
+	onReply,
+	forceToolbar,
+}) => {
 	const locale = useI18nLocale();
 	const items = threadItems(messages, new Date());
 	return (
@@ -78,6 +96,9 @@ export const TeamBridgeMessageList: FC<{
 						pending={pendingMark(item.message, pendingSends)}
 						onRetrySend={onRetrySend}
 						locale={locale}
+						reactionContext={reactionContext}
+						onReply={onReply}
+						forceToolbar={forceToolbar}
 					/>
 				),
 			)}
@@ -115,6 +136,17 @@ const DayDivider: FC<{
 	);
 };
 
+type ReactionContext = {
+	accountId: string;
+	tenantId: string;
+	disabled?: boolean;
+};
+
+/*
+ * A row with reactions keys its reaction state on the account (the parent's
+ * `key` on this component), so a pending projection from one account can never
+ * render under another after a switch.
+ */
 const MessageRow: FC<{
 	message: TeamBridgeMessage;
 	continuation: boolean;
@@ -122,14 +154,60 @@ const MessageRow: FC<{
 	locale: string;
 	pending?: PendingSend | null;
 	onRetrySend?: (clientRef: string) => void;
-}> = ({
+	reactionContext?: ReactionContext;
+	onReply?: (message: TeamBridgeMessage) => void;
+	forceToolbar?: boolean;
+}> = ({ reactionContext, ...props }) =>
+	reactionContext && !props.pending && props.message.body !== null ? (
+		<ReactableMessageRow
+			key={`${reactionContext.accountId}:${props.message.id}`}
+			reactionContext={reactionContext}
+			{...props}
+		/>
+	) : (
+		<MessageRowView {...props} />
+	);
+
+const ReactableMessageRow: FC<
+	Omit<MessageRowProps, "reactions"> & { reactionContext: ReactionContext }
+> = ({ reactionContext, ...props }) => {
+	const reactions = useTeamBridgeReactionState({
+		conversationId: props.message.conversation_id,
+		messageId: props.message.id,
+		...reactionContext,
+		reactions: props.message.reactions,
+	});
+	return <MessageRowView {...props} reactions={reactions} />;
+};
+
+type MessageRowProps = {
+	pending?: PendingSend | null;
+	onRetrySend?: (clientRef: string) => void;
+	message: TeamBridgeMessage;
+	continuation: boolean;
+	label: string | null;
+	locale: string;
+	reactions?: ReturnType<typeof useTeamBridgeReactionState>;
+	onReply?: (message: TeamBridgeMessage) => void;
+	forceToolbar?: boolean;
+};
+
+const MessageRowView: FC<MessageRowProps> = ({
 	message,
 	continuation,
 	label: known,
 	locale,
+	reactions,
+	onReply,
+	forceToolbar,
 	pending = null,
 	onRetrySend,
 }) => {
+	const summary = threadSummary(message);
+	/* One-level threads: only a timeline root can open a thread. */
+	// Local UUID rows have no server message id: neither reactions nor replies
+	// may reach the server until reconciliation replaces the row.
+	const canReply = !pending && onReply !== undefined && !message.thread_root_id;
 	const agent = message.sender.kind === "agent";
 	const label =
 		known ??
@@ -181,8 +259,9 @@ const MessageRow: FC<{
 	return (
 		<li
 			data-pending={pending ? pending.status : undefined}
+			data-message-id={message.id}
 			className={cn(
-				"group/message flex gap-3 px-5 transition-colors duration-fast ease-out-quart hover:bg-row-hover",
+				"group/message relative flex gap-3 px-5 transition-colors duration-fast ease-out-quart hover:bg-row-hover",
 				continuation ? "py-0.5" : "mt-2 pt-1.5 pb-0.5",
 			)}
 		>
@@ -229,6 +308,13 @@ const MessageRow: FC<{
 				)}
 			</div>
 			<div className="min-w-0 flex-1">
+				{/* First in the column so it floats beside the first line; see
+				    `team-bridge-message-toolbar.tsx` for why one toolbar exists. */}
+				<TeamBridgeMessageToolbar
+					reactions={reactions}
+					onReply={canReply ? () => onReply(message) : undefined}
+					forceVisible={forceToolbar}
+				/>
 				{!continuation && (
 					<div className="flex items-baseline gap-2">
 						<span
@@ -274,6 +360,40 @@ const MessageRow: FC<{
 				{/* Under the body, not in the header: a continuation row has no
 				    header, and a failed row must always carry its Retry. */}
 				{state}
+				{reactions && <TeamBridgeReactionChips state={reactions} />}
+				{!pending && onReply && summary.count > 0 && (
+					<button
+						type="button"
+						onClick={() => onReply(message)}
+						className="mt-1 flex items-center gap-2 rounded-md py-1 text-[12px] text-accent hover:bg-row-hover"
+					>
+						<span aria-hidden="true" className="flex gap-0.5">
+							{summary.participants.map((name, index) => (
+								<span
+									key={`${index}:${name}`}
+									// Initials are ink, not plates: the summary button already owns
+									// the row-hover state, so nesting a ladder fill loses its edge.
+									className="flex size-5 items-center justify-center text-[10px] text-ink-muted"
+								>
+									{name.trim().charAt(0).toUpperCase()}
+								</span>
+							))}
+						</span>
+						{t("ui.teamBridge.replies.count", { count: summary.count })}
+						{summary.lastReply && (
+							<span className="text-ink-dim">
+								·{" "}
+								{t("ui.teamBridge.replies.last", {
+									time: formatTime(
+										summary.lastReply,
+										{ hour: "numeric", minute: "2-digit" },
+										locale,
+									),
+								})}
+							</span>
+						)}
+					</button>
+				)}
 			</div>
 		</li>
 	);

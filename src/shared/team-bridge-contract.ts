@@ -75,6 +75,8 @@ export const teamBridgeConversationSchema = z
 		 * server that does not publish this label falls back to "New message".
 		 */
 		last_sender_label: z.string().min(1).max(64).optional(),
+		/* Latest activity root, for reply notification clicks; absent on a channel post. */
+		last_thread_root_id: id.optional(),
 		/*
 		 * A BUILT-IN CHANNEL'S IDENTITY (agent-server, built-in channels slice).
 		 * Every eligible organization has two server-provisioned channels whose
@@ -104,6 +106,33 @@ export type TeamBridgeConversationList = z.infer<
 	typeof teamBridgeConversationListSchema
 >;
 
+/** Additive reaction summary: no reactor IDs or message bodies are persisted here. */
+export const teamBridgeReactionSchema = z
+	.object({
+		emoji: z.string().min(1),
+		count: z.number().int().positive(),
+		reacted_by_me: z.boolean(),
+		sample_labels: z.array(z.string()).max(3),
+	})
+	.passthrough();
+export type TeamBridgeReaction = z.infer<typeof teamBridgeReactionSchema>;
+export const teamBridgeReactionsSchema = z
+	.object({
+		message_id: id,
+		reactions: z.array(teamBridgeReactionSchema).max(50),
+	})
+	.passthrough();
+
+// History is a forward-compatible read: future server caps must not make a whole page unreadable.
+// Retain today's display bounds by trimming only optional reaction metadata; toggle writes keep
+// their strict response schema above so incompatible mutation responses remain visible failures.
+const historyReactionSchema = teamBridgeReactionSchema.extend({
+	sample_labels: z.array(z.string()).transform((labels) => labels.slice(0, 3)),
+});
+const historyReactionsSchema = z
+	.array(historyReactionSchema)
+	.transform((rows) => rows.slice(0, 50));
+
 export const teamBridgeMessageSchema = z
 	.object({
 		id,
@@ -121,9 +150,37 @@ export const teamBridgeMessageSchema = z
 		origin: z.enum(["human", "agent", "system"]),
 		agent_label: z.string().optional(),
 		created_at: z.string(),
+		reactions: historyReactionsSchema.optional(),
+		/*
+		 * Threads (agent-server #164). All optional: a hub older than threads
+		 * sends none of them, and a root with no replies omits its rollup, so a
+		 * message parses whether or not the server knows about threads.
+		 * `thread_root_id` marks a REPLY (it never appears on the timeline page,
+		 * which excludes replies); the rollup sits on a ROOT.
+		 */
+		thread_root_id: id.optional(),
+		reply_count: z.number().int().nonnegative().optional(),
+		last_reply_at: z.string().optional(),
+		/* Up to three distinct repliers' display labels — a facepile, not a roster. */
+		reply_participants: z.array(z.string()).optional(),
 	})
 	.passthrough();
 export type TeamBridgeMessage = z.infer<typeof teamBridgeMessageSchema>;
+
+/*
+ * One thread: the root (with its rollup) and its replies OLDEST-first — a
+ * thread reads top-down, unlike the newest-first timeline page.
+ * `next_after_seq` is the inclusive cursor for the next page.
+ */
+export const teamBridgeThreadPageSchema = z
+	.object({
+		root: teamBridgeMessageSchema,
+		replies: z.array(teamBridgeMessageSchema),
+		next_after_seq: z.number().int().nonnegative().optional(),
+		has_more: z.boolean().optional(),
+	})
+	.passthrough();
+export type TeamBridgeThreadPage = z.infer<typeof teamBridgeThreadPageSchema>;
 
 export const teamBridgeMessagePageSchema = z
 	.object({
