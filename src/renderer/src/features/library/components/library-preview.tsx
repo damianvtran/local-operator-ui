@@ -32,10 +32,10 @@ import {
 	Download,
 	ExternalLink,
 	FolderOpen,
+	Heart,
 	Lock,
 	LockOpen,
 	Maximize2,
-	Star,
 	X,
 } from "lucide-react";
 import type { FC } from "react";
@@ -320,11 +320,20 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 		}
 	};
 
-	const toggleFlag = async (field: "favorite" | "locked") => {
+	/*
+	 * ONE DOOR PER WRITE. The favourite press goes through the page's
+	 * `onToggleFavorite`, the same callback the card menu uses, so the
+	 * double-press guard and the one mutation live in one place - a second
+	 * `update.mutateAsync` here (which is how this button originally worked) made
+	 * a press that bypassed the guard and wrote twice when the row had already
+	 * been painted optimistically. `locked` has no card-menu twin, so it keeps
+	 * the local mutation above.
+	 */
+	const toggleLocked = async () => {
 		try {
 			await update.mutateAsync({
 				id: asset.id,
-				fields: { [field]: !asset[field] },
+				fields: { locked: !asset.locked },
 			});
 		} catch (error) {
 			showErrorToast(
@@ -414,9 +423,9 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 										? t("ui.library.menu.unfavorite")
 										: t("ui.library.menu.favorite")
 								}
-								onClick={() => void toggleFlag("favorite")}
+								onClick={onToggleFavorite}
 							>
-								<Star
+								<Heart
 									aria-hidden="true"
 									className={
 										asset.favorite ? "fill-current text-accent" : undefined
@@ -440,7 +449,7 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 										? t("ui.library.preview.unlock")
 										: t("ui.library.preview.lock")
 								}
-								onClick={() => void toggleFlag("locked")}
+								onClick={() => void toggleLocked()}
 							>
 								{asset.locked ? (
 									<Lock aria-hidden="true" className="text-accent" />
