@@ -1,3 +1,4 @@
+import { sessionSwitcherRunOpen } from "@features/session-switcher/use-session-switcher-keys";
 import { subscribeLocale, t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -359,6 +360,27 @@ export const ConsoleMirror: FC<ConsoleMirrorProps> = ({
 		};
 		term.attachCustomKeyEventHandler((event) => {
 			if (event.type !== "keydown") return true;
+			/*
+			 * CTRL+TAB AND CTRL+SHIFT+TAB ARE THE SWITCHER'S, HERE TOO (review F4, QA
+			 * Q1). xterm maps a tab to `\t`, so `Ctrl+Tab` only ever sent the shell a
+			 * plain tab - nothing of value is lost by handing the chord back - and it
+			 * was the one surface where the doc's "everywhere else they open the
+			 * switcher" was false: the terminal consumed the press before the app's
+			 * document listener saw it, so the overlay opened from every pane but this
+			 * one. Plain Tab stays the shell's, which is why this branch names the
+			 * modifier rather than the key alone.
+			 *
+			 * A RUN THAT IS ALREADY OPEN takes plain Tab as well: a run exists while
+			 * Control is held, so a Tab without it means Control's release went missing,
+			 * and the switcher's own lost-release rule (any press reporting Control up
+			 * ends the run) cannot fire from a key this terminal never lets through.
+			 * Only while a run is open - a shell keeps its completion key otherwise.
+			 *
+			 * The exceptions the focus rule names are untouched: the composer's slash
+			 * list and the canvas editor's list are not this terminal.
+			 */
+			if (event.key === "Tab" && (event.ctrlKey || sessionSwitcherRunOpen()))
+				return false;
 			/*
 			 * TAB AND ESCAPE BELONG TO THE APP ON A RECORDING (U1). A live shell owns
 			 * them (its programs read Tab and Esc), but an ended one has no program to
