@@ -1098,8 +1098,8 @@ export const OwnChiefServerFallback: Story = {
 	args: {
 		...PersonDraft.args,
 		people: rosterWithChiefs.map((person) =>
-			person.account_id === self
-				? { ...person, agent: { ...person.agent!, name: person.display_label } }
+			person.account_id === self && person.agent
+				? { ...person, agent: { ...person.agent, name: person.display_label } }
 				: person,
 		),
 		target: { type: "compose", recipients: [] },
