@@ -634,7 +634,7 @@ export const Approval: Story = {
 	render: () => (
 		<Frame
 			asked="Clean the build output before rebuilding."
-			height={440}
+			height={500}
 			pending={gate({
 				kind: "approval",
 				// The live wire's own shape for a shell call: the tool's name as
@@ -661,13 +661,42 @@ export const ApprovalAnswerInFlight: Story = {
 	render: () => (
 		<Frame
 			asked="Clean the build output before rebuilding."
-			height={440}
+			height={500}
 			answering={true}
 			pending={gate({
 				kind: "approval",
 				title: "bash",
 				detail: "run: rm -rf ./dist",
 				options: [],
+			})}
+		/>
+	),
+};
+
+/**
+ * The approval card when the effective mode is a SESSION OVERRIDE of a
+ * different global default: this conversation asks, the machine does not.
+ *
+ * The line above the handles is the one D2 asked for — the person deciding
+ * between the two destinations can see that this conversation's `ask` outranks
+ * the machine's `auto` before acting, rather than inferring it from the
+ * confirmation afterwards. The gate fields are additive: this story is the only
+ * fixture that sets them, and the `Approval` frame shows the no-line state an
+ * older backend still produces.
+ */
+export const ApprovalSessionOverride: Story = {
+	render: () => (
+		<Frame
+			asked="Clean the build output before rebuilding."
+			height={500}
+			pending={gate({
+				kind: "approval",
+				title: "bash",
+				detail: "run: rm -rf ./dist",
+				options: [],
+				approval_mode: "ask",
+				approval_provenance: "session",
+				approval_global_mode: "auto",
 			})}
 		/>
 	),
@@ -685,7 +714,7 @@ export const ApprovalNarrow: Story = {
 	render: () => (
 		<Frame
 			asked="Clean the build output before rebuilding."
-			height={520}
+			height={640}
 			width="300px"
 			pending={gate({
 				kind: "approval",
@@ -708,50 +737,78 @@ export const ApprovalNarrow: Story = {
  * answer pair is judged. The refusal's detail is a fixture sentence — in the
  * app it is the backend's own detail, prefixed `Unchanged: `.
  */
-export const ApprovalEscapeStates: Story = {
-	render: () => {
-		const states: Array<{
-			label: string;
-			status: ApprovalEscapeStatus;
-			busy?: boolean;
-		}> = [
-			{ label: "Idle (reserved slot)", status: { kind: "idle" } },
-			{ label: "Session mode saved", status: { kind: "session-saved" } },
-			{ label: "Default saved", status: { kind: "default-saved" } },
-			{
-				label: "Default saved; this conversation did not follow",
-				status: {
-					kind: "default-saved-session-failed",
-					detail: "this session needs operator authority",
-				},
-			},
-			{
-				label: "Refused",
-				status: {
-					kind: "refused",
-					detail: "this install has no operator anchor",
-				},
-			},
-			{
-				label: "A policy call is in flight",
-				status: { kind: "idle" },
-				busy: true,
-			},
-		];
-		return (
-			<div className="flex flex-col gap-6 bg-surface p-6">
-				{states.map((state) => (
-					<section key={state.label} className="flex flex-col gap-2">
-						<p className="text-ink-dim text-meta">{state.label}</p>
-						<ApprovalEscapeControls
-							status={state.status}
-							busy={state.busy}
-							onSetSession={() => {}}
-							onSetAll={() => {}}
-						/>
-					</section>
-				))}
-			</div>
-		);
+const ESCAPE_STATES: Array<{
+	label: string;
+	status: ApprovalEscapeStatus;
+	busy?: boolean;
+}> = [
+	{ label: "Idle (reserved slot)", status: { kind: "idle" } },
+	{ label: "Session mode saved", status: { kind: "session-saved" } },
+	{ label: "Default saved", status: { kind: "default-saved" } },
+	{
+		label: "Default saved; this conversation did not follow",
+		status: {
+			kind: "default-saved-session-failed",
+			detail: "this session needs operator authority",
+		},
 	},
+	{
+		label: "Refused",
+		status: {
+			kind: "refused",
+			detail: "this install has no operator anchor",
+		},
+	},
+	{
+		label: "A policy call is in flight",
+		status: { kind: "idle" },
+		busy: true,
+	},
+];
+
+export const ApprovalEscapeStates: Story = {
+	render: () => (
+		<div className="flex flex-col gap-6 bg-surface p-6">
+			{ESCAPE_STATES.map((state) => (
+				<section key={state.label} className="flex flex-col gap-2">
+					<p className="text-ink-dim text-meta">{state.label}</p>
+					<ApprovalEscapeControls
+						status={state.status}
+						busy={state.busy}
+						onSetSession={() => {}}
+						onSetAll={() => {}}
+					/>
+				</section>
+			))}
+		</div>
+	),
+};
+
+/**
+ * The same states at the card's own content measure (218px at a 300px pane),
+ * which is where the D1 reflow was measured. The status box must be the SAME
+ * height in every state whose sentence fits the reserved two lines; the
+ * dictated default/partial sentences are longer and grow the slot rather than
+ * being clipped, which this frame makes visible.
+ */
+export const ApprovalEscapeNarrowStates: Story = {
+	render: () => (
+		<div className="flex flex-col gap-6 bg-surface p-6">
+			{ESCAPE_STATES.map((state) => (
+				<section
+					key={state.label}
+					className="flex flex-col gap-2"
+					style={{ width: 218 }}
+				>
+					<p className="text-ink-dim text-meta">{state.label}</p>
+					<ApprovalEscapeControls
+						status={state.status}
+						busy={state.busy}
+						onSetSession={() => {}}
+						onSetAll={() => {}}
+					/>
+				</section>
+			))}
+		</div>
+	),
 };

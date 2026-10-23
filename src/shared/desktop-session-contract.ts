@@ -631,6 +631,33 @@ export type PendingDesktopGate = {
 	 */
 	persist?: boolean;
 	/**
+	 * The session's EFFECTIVE approval mode, for the approval card's policy line.
+	 *
+	 * ADDITIVE and OPTIONAL: a backend older than the effective-policy contract
+	 * omits it, and the card then draws no line rather than guessing from the
+	 * pending request. The request can outlive a policy change, so the provenance
+	 * describes the session's current policy (as stamped by the runtime), not a
+	 * reading derived from this question.
+	 */
+	approval_mode?: "ask" | "auto";
+	/**
+	 * Where `approval_mode` came from: the machine default (`global`), this
+	 * conversation's own recorded choice (`session`), or the run's `--yolo` pin
+	 * (`pin`). Optional for the same version-skew reason as `approval_mode`; the
+	 * card omits its line when either field is absent.
+	 */
+	approval_provenance?: "global" | "session" | "pin";
+	/**
+	 * The machine default (`tool_approval_mode`) when it differs from an effective
+	 * `session` override, so the card can name what the conversation overrides
+	 * (`Approvals: Ask — session override; global Auto.`).
+	 *
+	 * ADDITIVE and OPTIONAL: a backend that publishes provenance without the
+	 * default omits it, and the line then says `session override.` without
+	 * inventing a comparison. It is never read as the effective mode.
+	 */
+	approval_global_mode?: "ask" | "auto";
+	/**
 	 * The session's display name, for the notification banner only.
 	 *
 	 * ADDITIVE and OPTIONAL: absent on any backend older than the composed
