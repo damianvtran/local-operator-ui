@@ -2865,3 +2865,23 @@ only strips it for `@me` and `@copilot`), preferring the owner set recorded in
 `gh api repos/damianvtran/local-operator-ui/collaborators`, since a handle without
 write access is silently ignored by an approval rule. Tagging a person in a
 *comment* is what says the PR is waiting on them, so neither is done casually.
+
+
+### Desktop CI capacity partitions
+
+The `test` job uses three deterministic file-count partitions of the explicit
+`package.json` `test:desktop` inventory. Local `pnpm test:desktop` still runs the
+whole inventory once through the existing guarded runner. CI delegates each
+partition to that same runner with the same concurrency, memory and lane guards;
+three workers are extra capacity, not measured runtime balancing, a hung-lane
+cure, or a memory-leak fix. The 50-minute cap and cancellation policy do not change.
+Tag-dialog tests and the existing native QA bundle are owned by shard 0 only.
+
+The stable required result remains **Desktop Tests** (`desktop-tests-result`).
+It consumes all three same-head/checkout/inventory receipts, rejects missing,
+failed or cancelled work, and reconstructs the disjoint complete file inventory.
+An explicit false unit scope skips the workers/result; unknown classification or
+failed workers cannot become a green aggregate. The result is a CI-only local
+exclusion because `check-changed` already runs the full desktop command once;
+adding a second local suite command would duplicate the most expensive gate.
+Queue demand rises by two runners and no completion-time guarantee is implied.
