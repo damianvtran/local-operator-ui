@@ -888,6 +888,22 @@ export const Scope: Story = {
 		}),
 };
 export const ListView: Story = { render: () => page({ view: "list" }) };
+
+/*
+ * THE FAVOURITE MARK AT REST, IN BOTH VIEWS (operator: a persisted heart, not a
+ * star - the top-left badge already means `highlighted`). Two of the four rows
+ * are favourited, so one frame shows the mark and its absence side by side; the
+ * mark is not a control, so there is no gesture to play.
+ */
+const FAVORITE_ROWS: DesktopLibraryAsset[] = ROWS.slice(0, 4).map(
+	(row, index) => ({ ...row, favorite: index < 2 }),
+);
+export const CardsFavourited: Story = {
+	render: () => page({ rows: FAVORITE_ROWS }),
+};
+export const RowsFavourited: Story = {
+	render: () => page({ rows: FAVORITE_ROWS, view: "list" }),
+};
 export const Preview: Story = {
 	render: () =>
 		page({ route: "/library/assets/la_0000000000000023", view: "list" }),
@@ -1285,6 +1301,27 @@ export const InShellFullView: Story = {
 		page({
 			shell: true,
 			route: "/library/assets/la_0000000000000023?full=1",
+		}),
+};
+/*
+ * THE EXPANDED VIEW'S WIDTH, WITHOUT A CONVERSATION. The spreadsheet is the
+ * operator's own complaint ("the viewer does not use the available width"):
+ * content-sized columns with a horizontal scroller, in the full-view route.
+ * `InShellFullView` above is the same route for a markdown file, where the
+ * editor takes the `fill` measure instead of Canvas's 640px reading column.
+ *
+ * THE CONVERSATION-BEARING STATES ARE NOT HERE, DELIBERATELY. Populated,
+ * streaming, long-scrolled and pending-question frames need the canonical
+ * stream's first `snapshot` frame (the transcript holds hydration until it
+ * arrives), and this Storybook desktop mock answers REQUESTS only. A story built
+ * from the spinner would look like evidence of a painted transcript while being
+ * none, so those four states are reported as blocked rather than shipped.
+ */
+export const InShellFullViewSpreadsheet: Story = {
+	render: () =>
+		page({
+			shell: true,
+			route: "/library/assets/la_0000000000000025?full=1",
 		}),
 };
 export const InShellPptx: Story = {

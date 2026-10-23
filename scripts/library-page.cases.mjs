@@ -331,6 +331,10 @@ const ANSWER = {
 	fileBridge: null,
 	/** The trajectory's durable page for a case; null is an empty page. */
 	history: null,
+	/** Every request the page made, for assertions about the wire. */
+	requests: [],
+	/** A gate the `library.update` answer waits on, so a case can see the paint first. */
+	updateGate: null,
 	state: "ready",
 	nextCursor: null,
 	allTotal: null,
@@ -344,6 +348,7 @@ const ANSWER = {
 };
 
 const desktopRequest = async (request) => {
+	ANSWER.requests.push(request);
 	ANSWER.ops.push(request);
 	if (request.op === "capabilities") {
 		return {
@@ -357,6 +362,21 @@ const desktopRequest = async (request) => {
 				},
 			},
 		};
+	}
+	if (request.op === "library.update") {
+		/*
+		 * The write lands on the STORED rows, so the refetch a case triggers
+		 * afterwards answers with the patched field - that is what "persists
+		 * after a refetch" has to mean here.
+		 */
+		if (ANSWER.updateGate) await ANSWER.updateGate;
+		const patch = (row) =>
+			row.id === request.id ? { ...row, ...request.fields } : row;
+		ANSWER.rows = ANSWER.rows.map(patch);
+		if (ANSWER.detail) ANSWER.detail = patch(ANSWER.detail);
+		const row = ANSWER.rows.find((item) => item.id === request.id);
+		if (!row) return { status: 404, body: { detail: "not found" } };
+		return { status: 200, body: { result: row } };
 	}
 	if (request.op === "library.list") {
 		/*
@@ -390,7 +410,7 @@ const desktopRequest = async (request) => {
 		const scoped = filterAssets(ANSWER.rows, {
 			...NO_LIBRARY_FILTERS,
 			scope: request.scope === "final" ? "final" : "all",
-		});
+		}).filter((row) => (request.favorite ? row.favorite : true));
 		const tally = (key) =>
 			scoped.reduce((acc, row) => {
 				acc[row[key]] = (acc[row[key]] ?? 0) + 1;
@@ -1456,4 +1476,109 @@ test("a linked conversation holds the shared spinner until the stream answers", 
 	);
 	await act(async () => root.unmount());
 	ANSWER.history = null;
+});
+
+test("favourite paints at the press, survives a refetch, and filters the list", async () => {
+	/*
+	 * THE OPERATOR'S FAVOURITE FEEDBACK (heart, not a star): pressing it must
+	 * read as a toggle rather than a round-trip, a second press while the first
+	 * is in flight must write nothing, the field must survive the refetch the
+	 * filter causes, and the Favorites rail row must ask the wire for
+	 * `favorite: true` and show the marked row.
+	 */
+	ANSWER.rows = [
+		asset("la_0000000000000021", { name: "Heart me" }),
+		asset("la_0000000000000022", { name: "Left out" }),
+	];
+	ANSWER.ops = [];
+	ANSWER.requests = [];
+	Object.defineProperty(dom.window, "innerWidth", {
+		configurable: true,
+		value: 1380,
+	});
+	const original = dom.window.Element.prototype.getBoundingClientRect;
+	// The rail case's scoped width shim: the dock and rail read a real rect.
+	dom.window.Element.prototype.getBoundingClientRect = function () {
+		if (this.hasAttribute?.("data-glass-split")) {
+			return {
+				width: 1380,
+				height: 900,
+				top: 0,
+				left: 0,
+				right: 1380,
+				bottom: 900,
+				x: 0,
+				y: 0,
+				toJSON: () => ({}),
+			};
+		}
+		return original.call(this);
+	};
+	try {
+		const { container, root } = await mount();
+		const cardOf = (id) =>
+			container.querySelector(`[data-library-card-id="${id}"]`);
+		await act(async () =>
+			cardOf("la_0000000000000021")?.querySelector("button")?.click(),
+		);
+		await flush(8);
+
+		/*
+		 * THE WRITE IS HELD so the optimistic paint is observable: if the heart
+		 * were only drawn from the server's answer, this assertion could not pass
+		 * before the gate is released.
+		 */
+		let releaseUpdate = () => {};
+		ANSWER.updateGate = new Promise((resolve) => {
+			releaseUpdate = resolve;
+		});
+		const favourite = container.querySelector(
+			'[data-library-preview] [aria-label="Favorite"]',
+		);
+		assert.ok(favourite, "the preview's favourite control is mounted");
+		await act(async () => favourite.click());
+		await flush(2);
+		assert.ok(
+			cardOf("la_0000000000000021")?.querySelector(
+				"[data-library-favorite-mark]",
+			),
+			"the card's heart paints before the write answers",
+		);
+		// A second press is the same write, not a second one.
+		await act(async () => favourite.click());
+		releaseUpdate();
+		ANSWER.updateGate = null;
+		await flush(10);
+		const updates = ANSWER.requests.filter((op) => op.op === "library.update");
+		assert.equal(updates.length, 1, "one press, one write");
+		assert.equal(updates[0].fields.favorite, true);
+
+		/* The refetch the filter causes must answer with the persisted field. */
+		const favorites = [...container.querySelectorAll("button")].find((node) =>
+			node.textContent?.includes("Favorites"),
+		);
+		assert.ok(favorites, "the rail's Favorites row is reachable");
+		await act(async () => favorites.click());
+		await flush(10);
+		assert.ok(
+			ANSWER.requests.some(
+				(op) => op.op === "library.list" && op.favorite === true,
+			),
+			"the filter asks the wire for `favorite: true`",
+		);
+		assert.ok(
+			cardOf("la_0000000000000021")?.querySelector(
+				"[data-library-favorite-mark]",
+			),
+			"the marked row is still marked after the refetch",
+		);
+		assert.equal(
+			cardOf("la_0000000000000022"),
+			null,
+			"the unmarked row is filtered out",
+		);
+		await act(async () => root.unmount());
+	} finally {
+		dom.window.Element.prototype.getBoundingClientRect = original;
+	}
 });
