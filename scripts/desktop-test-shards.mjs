@@ -20,6 +20,7 @@ import {
 import { constants } from "node:os";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryPoint } from "./entry-point.mjs";
 
 export const SHARD_COUNT = 3;
 const RUNNER = "scripts/run-desktop-tests.mjs";
@@ -455,10 +456,7 @@ export async function main(args) {
 	}
 }
 
-if (
-	process.argv[1] &&
-	resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-) {
+if (isEntryPoint(import.meta.url)) {
 	try {
 		process.exitCode = await main(process.argv.slice(2));
 	} catch (error) {
