@@ -1,0 +1,51 @@
+{
+  "auditor": "reviewer",
+  "model": "openai/gpt-6-astra",
+  "instance": "tb1336-main-union-es",
+  "session": "f4444b5af1c0",
+  "job": "617ed8792e53",
+  "date": "2026-10-23",
+  "locale": "es",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 149,
+  "keys_substantive": 0,
+  "scope": "Exact two-parent union integrity:117 branch keys+147 main keys,115 shared =>149;34 parent-exclusive keys mechanically checked for ICU placeholders/plural arms/NFC/no manual bidi. No semantic retranslation; inherits both audited predecessor chains.",
+  "sha256": {
+    "en": "0fff5c550038b812664839b528d0ceed08741d5510db3fa608e77d1bd911699d",
+    "es": "a44cceb2e407489d6df772062e41ff23a75dfea36b31dcfaecc6d4ac0abc35f8",
+    "context": "41ccb3d12ce28f72c2b0b462f7ed8c581b9fa43225968928874853801a520413"
+  },
+  "parents": [
+    "8036b15ff557a41e0711dfb4ae55e00b7cfd2e4b",
+    "385449887a3b9d0a4b3155e690797eeb90ef827c"
+  ],
+  "inherited_receipts": [
+    {
+      "parent": "8036b15ff557a41e0711dfb4ae55e00b7cfd2e4b",
+      "path": "i18n/receipts/tb-members-r1-es.json",
+      "sha256": "ab3fa555ad2bb6d3184706d4bcc66ee9d596028aa2d023b17f6174b3ddc870f5"
+    },
+    {
+      "parent": "385449887a3b9d0a4b3155e690797eeb90ef827c",
+      "path": "i18n/receipts/tb1334-main-union-es.json",
+      "sha256": "aee32c2e3dfe1cea1e7fd5d46fa3abb30ca36371427d6c3a615df09184662ef3"
+    }
+  ],
+  "validation": {
+    "branch_keys": 117,
+    "main_keys": 147,
+    "shared_keys": 115,
+    "union_keys": 149,
+    "shared_unequal": 0,
+    "dropped_or_changed": 0,
+    "extra": 0,
+    "all_catalogue_and_context_keysets_equal": true
+  },
+  "findings": [],
+  "limits": "Read-only union source audit; no full semantic reaudit, runtime ICU, tests/build/generation/hooks, rendered fit or activation claim. Reviewer authored no translations; original semantic models/provenance remain immutable.",
+  "receipt": {
+    "path": "i18n/receipts/tb1336-main-union-es.json",
+    "sha256": "f57b0c0882b7ffb5944d6f4923886487df1755c27909d98b543d0637d94f9e21"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "auditor": "reviewer",
+  "model": "openai/gpt-6-astra",
+  "instance": "tb1336-main-union-ur",
+  "session": "f4444b5af1c0",
+  "job": "617ed8792e53",
+  "date": "2026-10-23",
+  "locale": "ur",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 149,
+  "keys_substantive": 0,
+  "scope": "Exact two-parent union integrity:117 branch keys+147 main keys,115 shared =>149;34 parent-exclusive keys mechanically checked for ICU placeholders/plural arms/NFC/no manual bidi. No semantic retranslation; inherits both audited predecessor chains.",
+  "sha256": {
+    "en": "0fff5c550038b812664839b528d0ceed08741d5510db3fa608e77d1bd911699d",
+    "ur": "41633f64a427793c1be7076d526521bc8026b6096158750a91360b3a1049b30b",
+    "context": "41ccb3d12ce28f72c2b0b462f7ed8c581b9fa43225968928874853801a520413"
+  },
+  "parents": [
+    "8036b15ff557a41e0711dfb4ae55e00b7cfd2e4b",
+    "385449887a3b9d0a4b3155e690797eeb90ef827c"
+  ],
+  "inherited_receipts": [
+    {
+      "parent": "8036b15ff557a41e0711dfb4ae55e00b7cfd2e4b",
+      "path": "i18n/receipts/tb-members-r1-ur.json",
+      "sha256": "c7825677bcefb126b6c1778a5b4e316aea04d5623011be9b31614c299b95c2f9"
+    },
+    {
+      "parent": "385449887a3b9d0a4b3155e690797eeb90ef827c",
+      "path": "i18n/receipts/tb1334-main-union-ur.json",
+      "sha256": "25e25fc87bf7c8b2f2fc2b3f417151e89dbdd27aae9c5cf27ef447d061b69a48"
+    }
+  ],
+  "validation": {
+    "branch_keys": 117,
+    "main_keys": 147,
+    "shared_keys": 115,
+    "union_keys": 149,
+    "shared_unequal": 0,
+    "dropped_or_changed": 0,
+    "extra": 0,
+    "all_catalogue_and_context_keysets_equal": true
+  },
+  "findings": [],
+  "limits": "Read-only union source audit; no full semantic reaudit, runtime ICU, tests/build/generation/hooks, rendered fit or activation claim. Reviewer authored no translations; original semantic models/provenance remain immutable.",
+  "receipt": {
+    "path": "i18n/receipts/tb1336-main-union-ur.json",
+    "sha256": "b9a48bfa912e8acde7c71a96e2689fe110adbe0e82c7405c71d41bb069b4dcb9"
+  }
+}

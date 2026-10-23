@@ -6322,8 +6322,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		const slotHold = useInterruptSlotHold(Boolean(canonicalStop?.active));
 
 		/*
-		 * THE THIRD BOX IN THE CONTROLS GROUP, named ONCE, because two surfaces ask
-		 * about it and a second copy of the condition is how they drift.
+		 * THE THIRD BOX IN THE CONTROLS GROUP, named ONCE, because the strip's width
+		 * ladders ask about it and a second copy of the condition is how they drift.
 		 *
 		 * The row's right group is `[mic][send]` in the ordinary state and gains a
 		 * THIRD 32px box in two: while a turn runs (`canonicalStop.active` draws the
@@ -6332,19 +6332,28 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * the 500ms window, `isRecording` for as long as a live recording needs a press
 		 * in the box the Stop just left kept off the dictation control.
 		 *
-		 * WHY THE STRIP IS TOLD ABOUT IT (issue #788). The readings cluster's shed
-		 * rule is a container query, and a container query can see a width but not a
-		 * SIBLING: the active-time reading returned at the band's upper edge into a row
-		 * that by then carried 36px more controls, and overran them by ~8px with the
-		 * model name already at its `min-w-14` floor. It did that at EVERY column above
-		 * the band, not just at its edge, because the composer box is capped at
-		 * `--lo-chat-measure` (810 shipped, `styles/index.css`), so the row is 778px at
-		 * every column from 858 up - no width exists at which the running row fits the
-		 * fullest cluster, which is why the fix is the state and not a wider band.
+		 * WHY THE STRIP IS TOLD ABOUT IT (issue #788). Effort, cost and context are
+		 * shed by container-range queries carrying a state pair, because a container
+		 * query can see a width but not a SIBLING: the readings returned at the band's
+		 * upper edge into a row that by then carried 36px more controls, and overran
+		 * them by ~8px with the model name already at its `min-w-14` floor. It did
+		 * that at EVERY column above the band, not just at its edge, because the
+		 * composer box is capped at `--lo-chat-measure` (810 shipped,
+		 * `styles/index.css`), so the row is 778px at every column from 858 up - no
+		 * width exists at which the running row fits the fullest cluster, which is why
+		 * those three rungs are stated on the state rather than on a wider band.
 		 * Measured on both trees by `scripts/composer-readings-geometry.mjs`.
 		 *
+		 * THE DURATION READS THE GROUP ITSELF. It is not on that ladder any more: the
+		 * strip measures this group's left edge at runtime against the reading's own
+		 * box, found by the `data-lo-composer-controls` marker below rather than by
+		 * these terms. A box this predicate never anticipated - the `Starting
+		 * recording` caption, a future control - is therefore accounted for by the
+		 * measurement without teaching this condition about it. The flag remains the
+		 * three width ladders' input, and only theirs.
+		 *
 		 * AND THE SLOT'S OWN JSX READS `interruptSlotDrawn` rather than repeating the
-		 * condition, so a change to when the box is drawn cannot leave the shed
+		 * condition, so a change to when the box is drawn cannot leave a ladder
 		 * behind - the two questions have one answer by construction.
 		 */
 		const interruptSlotDrawn =
@@ -9318,7 +9327,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						 *
 						 * `justify-between` cannot express this — with three children it
 						 * centres the middle one, which is the opposite of what the row needs — so
-						 * the row uses `ml-auto` instead, on the controls group, which is the one
+						 * the row uses `ms-auto` instead, on the controls group, which is the one
 						 * child that always renders.
 						 *
 						 * That "always renders" is not a nicety, it is the round-1 blocker. The
@@ -9528,9 +9537,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 
 								{/* Right side: microphone, send or stop button.
 								 *
-								 * `ml-auto` is the row's ONE live auto margin, at EVERY width, and it is
-								 * here rather than on the readings on purpose (design round 1.5, D7):
-								 * this group cannot return `null`, so the row's right-justification
+								 * `ms-auto` is the row's ONE live auto margin, at EVERY width, and it
+								 * is here rather than on the readings on purpose (design round 1.5,
+								 * D7): this group cannot return `null`, so the row's justification
 								 * does not depend on whether a cluster that can vanish happens to be
 								 * rendering. Below 750px of column it separates this group from the
 								 * attached line above it; above, it holds the free space between the
@@ -9538,11 +9547,22 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								 * immediately after the working-directory chip. A second live auto
 								 * margin would share that space evenly and float the controls mid-row.
 								 *
+								 * LOGICAL, not physical (`ms-auto`, not `ml-auto`): in an RTL row
+								 * (`ur` is a shipped locale) a physical left margin puts the free
+								 * space on the far side of this group, so the readings sit flush
+								 * against the controls and the duration measurement correctly finds
+								 * no gap. `margin-inline-start` is the same margin in LTR and the
+								 * mirrored one in RTL, which keeps this row's one live auto margin
+								 * doing its job in both directions.
+								 *
 								 * `order-3` above the threshold is only needed because the strip's DOM
 								 * slot is first (see above); it makes the paint [attach][chip]
 								 * [readings][mic][send] out of a DOM whose first child is the cluster.
 								 */}
-								<div className="ml-auto flex order-3 items-center gap-1">
+								<div
+									data-lo-composer-controls={true}
+									className="ms-auto flex order-3 items-center gap-1"
+								>
 									{/*
 									 * THE PRESS IS ANSWERED BEFORE THE RECORDER EXISTS (operator feedback
 									 * via Aida, 2026-10-01). The microphone acquisition is the one part
@@ -9555,8 +9575,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 									 * IT LIVES IN THIS ROW, NOT UNDER THE FIELD (design round 1, D2): a
 									 * line of its own grew the card on the press. This row is 32px in
 									 * every state, so an ~18px child cannot make it taller - and the line
-									 * is added to the LEFT of a group this row right-anchors with
-									 * `ml-auto`, so the mic and send controls keep the x they had: the
+									 * is added to the INLINE-START of a group this row anchors with
+									 * `ms-auto`, so the mic and send controls keep the x they had: the
 									 * free space between the readings and this group is what pays.
 									 *
 									 * ONE INDETERMINATE ELEMENT ON THIS SURFACE (branding § 5's
@@ -9740,7 +9760,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 									 * between dictation and Send, which the operator reported as a
 									 * defect of its own ("the dictation control should sit beside
 									 * Send"). Both cannot hold: the right cluster is right-justified
-									 * (`ml-auto`), so the dictation control sits exactly one
+									 * (`ms-auto`), so the dictation control sits exactly one
 									 * control-plus-gap - the Stop's own 32px plus the row's 4px -
 									 * further from Send while the Stop is rendered than with it gone,
 									 * and an idle row whose dictation control sits BESIDE Send is the

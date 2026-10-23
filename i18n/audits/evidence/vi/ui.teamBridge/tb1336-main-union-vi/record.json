@@ -1,0 +1,51 @@
+{
+  "auditor": "reviewer",
+  "model": "openai/gpt-6-astra",
+  "instance": "tb1336-main-union-vi",
+  "session": "f4444b5af1c0",
+  "job": "617ed8792e53",
+  "date": "2026-10-23",
+  "locale": "vi",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 149,
+  "keys_substantive": 0,
+  "scope": "Exact two-parent union integrity:117 branch keys+147 main keys,115 shared =>149;34 parent-exclusive keys mechanically checked for ICU placeholders/plural arms/NFC/no manual bidi. No semantic retranslation; inherits both audited predecessor chains.",
+  "sha256": {
+    "en": "0fff5c550038b812664839b528d0ceed08741d5510db3fa608e77d1bd911699d",
+    "vi": "7fd08daf760afdfc949c33f11dbfcd0e7e798a607caa107a41227154b0d17273",
+    "context": "41ccb3d12ce28f72c2b0b462f7ed8c581b9fa43225968928874853801a520413"
+  },
+  "parents": [
+    "8036b15ff557a41e0711dfb4ae55e00b7cfd2e4b",
+    "385449887a3b9d0a4b3155e690797eeb90ef827c"
+  ],
+  "inherited_receipts": [
+    {
+      "parent": "8036b15ff557a41e0711dfb4ae55e00b7cfd2e4b",
+      "path": "i18n/receipts/tb-members-r1-vi.json",
+      "sha256": "2b264ffb1ddfd8e8cc499f0dd51445df958132dc465c435a8fc8d9f3b42d50ba"
+    },
+    {
+      "parent": "385449887a3b9d0a4b3155e690797eeb90ef827c",
+      "path": "i18n/receipts/tb1334-main-union-vi.json",
+      "sha256": "5547592f2e3850253e37b2f044a71aa656c39d85e04f7b733cb57ee60ddfebb3"
+    }
+  ],
+  "validation": {
+    "branch_keys": 117,
+    "main_keys": 147,
+    "shared_keys": 115,
+    "union_keys": 149,
+    "shared_unequal": 0,
+    "dropped_or_changed": 0,
+    "extra": 0,
+    "all_catalogue_and_context_keysets_equal": true
+  },
+  "findings": [],
+  "limits": "Read-only union source audit; no full semantic reaudit, runtime ICU, tests/build/generation/hooks, rendered fit or activation claim. Reviewer authored no translations; original semantic models/provenance remain immutable.",
+  "receipt": {
+    "path": "i18n/receipts/tb1336-main-union-vi.json",
+    "sha256": "be2fbd4946e652383b714d779c607ea0b746d94883a420e1f903aefc32641771"
+  }
+}

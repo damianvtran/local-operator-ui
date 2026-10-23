@@ -35,6 +35,7 @@ import { PeersCatalogueSync } from "@features/mesh/peers-catalogue";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
 import { ConnectProviderDialog } from "@features/providers/connect-provider-dialog";
+import { SessionSwitcher } from "@features/session-switcher/components/session-switcher";
 import { LanguageDialog } from "@features/settings/components/language-dialog";
 import { useTeamBridgeNotifications } from "@features/team-bridge/use-team-bridge-notifications";
 import {
@@ -796,6 +797,15 @@ const App: FC = () => {
 				 */}
 				<div className="flex min-h-0 flex-1 overflow-hidden">
 					{isCommandPaletteOpen && <CommandPalette />}
+					{/*
+					 * The Ctrl+Tab recent-session switcher. Mounted UNCONDITIONALLY beside the
+					 * palette rather than gated on its own open state: the keyboard listener is what
+					 * opens it, so a component that unmounted while closed would have nothing to
+					 * listen with (the palette's own hook lives out here for the same reason). It
+					 * renders null until a run paints, and answers to every route the window can
+					 * show.
+					 */}
+					<SessionSwitcher />
 
 					{/*
 					 * The shell's presenter for the machine panels, so `/info`, `/usage` and
@@ -900,11 +910,19 @@ const App: FC = () => {
 
 					<ChatLayout
 						sidebar={<SidebarNavigation />}
-						flushTop={pathname.startsWith("/team-bridge")}
 						content={
+							/*
+							 * ORDINARY ROUTE CONTENT GETS THE STRIP'S PAD ONCE, HERE.
+							 *
+							 * `--panel-top-pad` is the content column's statement of the
+							 * OS controls' reach (set on every route by `ChatLayout`). A
+							 * page that is a full-height panel cancels this with
+							 * `panel-flush` and pads its own columns; every other page
+							 * inherits one inset and adds none of its own.
+							 */
 							<main
 								data-glass-region="canvas-backing"
-								className="flex grow flex-col overflow-hidden"
+								className="panel-top-pad flex grow flex-col overflow-hidden"
 							>
 								{/*
 								 * THE NON-CHAT ROUTES' DRAG BAND, WHERE THE LANE IS NOT.
