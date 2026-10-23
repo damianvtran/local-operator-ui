@@ -110,7 +110,7 @@ export function TeamBridgeThreadPaneView({
 		<aside
 			ref={pane}
 			aria-label={t("ui.teamBridge.replies.title")}
-			className="flex h-full min-h-0 w-full min-w-0 shrink-0 flex-col bg-canvas pt-[var(--panel-top-pad,0px)]"
+			className="panel-top-pad flex h-full min-h-0 w-full min-w-0 shrink-0 flex-col bg-canvas"
 		>
 			<header className="flex h-11 shrink-0 items-center justify-between px-5">
 				<h2 className="font-semibold text-[15px] text-ink">

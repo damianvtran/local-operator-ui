@@ -6,7 +6,6 @@ import { ProviderGrid } from "@features/providers/provider-grid";
 import { useProviderStatus } from "@features/providers/use-provider-status";
 import { pairingCardCopy } from "@shared/api/local-operator/backend-error";
 import type { ConfigUpdate } from "@shared/api/local-operator/types";
-import { useLaneLeadingColumn } from "@shared/components/common/chat-layout";
 import { EditableField } from "@shared/components/common/editable-field";
 import { PageHeader } from "@shared/components/common/page-header";
 import { RadientMark } from "@shared/components/common/radient-mark";
@@ -343,7 +342,6 @@ export const SettingsPage: FC = () => {
 	 * subscription is the point, and the t() calls below read the store directly.
 	 */
 	useI18nLocale();
-	const laneLeadingColumn = useLaneLeadingColumn("surface");
 	const glass = useWindowGlass();
 	const showAgentReasoning = useUiPreferencesStore(
 		(state) => state.showAgentReasoning,
@@ -1062,7 +1060,8 @@ export const SettingsPage: FC = () => {
 		<div
 			data-glass-region="canvas"
 			data-glass-split=""
-			className="flex h-full w-full overflow-hidden bg-canvas"
+			/* A full-height panel: `canvas` from y0, columns pad themselves. */
+			className="panel-flush flex min-h-0 flex-1 overflow-hidden bg-canvas"
 		>
 			{/*
 			 * No edge on this wrapper any more. The rail is `surface` (see
@@ -1092,20 +1091,11 @@ export const SettingsPage: FC = () => {
 			 */}
 			<div
 				/*
-				 * The shell puts this rail's ground behind the window's top strip: the
-				 * rail is a leading column standing on `surface`, and nothing a route
-				 * renders can reach y0 itself (the column is inside two clipped
-				 * ancestors), so the lane above the shell's columns paints this
-				 * column's own ground across its width — without the hand-over the lane
-				 * would paint the CONTENT ground across the rail (the operator's report
-				 * of 2026-09-26, and again of 2026-09-27).
-				 *
-				 * The width is NOT restated there: the shell measures this element, which
-				 * is what keeps the two-width rule below (48px under 1040, 220 at and
-				 * above it) a single decision, and the ground is named once, here —
-				 * `chat-layout.tsx` states the contract.
+				 * The rail's own `surface` reaches y0 now: `SettingsSidebar` pads its
+				 * first row below the strip instead of the shell reserving a row above
+				 * it. The width stays the single two-width decision below (48px under
+				 * 1040, 220 at and above it).
 				 */
-				ref={laneLeadingColumn}
 				className="w-12 shrink-0 overflow-y-auto min-[1040px]:w-55"
 			>
 				<SettingsSidebar
@@ -1120,7 +1110,13 @@ export const SettingsPage: FC = () => {
 				data-settings-content
 				data-glass-region="canvas-content"
 				data-tour-tag="settings-general-section"
-				className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8"
+				/*
+				 * `panel-scroll`: the pad sits OUTSIDE the scroller (as a margin),
+				 * so the scroll region's clip is the panel's content edge. A
+				 * `padding-top` on the scroller itself clips at its padding box and
+				 * would let scrolled text paint through the strip.
+				 */
+				className="panel-scroll flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 md:p-8"
 			>
 				{/*
 				 * One measured column, centred, rather than two.

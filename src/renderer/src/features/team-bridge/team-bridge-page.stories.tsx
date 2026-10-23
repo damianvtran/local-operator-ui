@@ -606,46 +606,9 @@ export const FlushToTheWindowTop: Story = {
 				style={{ "--chrome-strip-h": "32px" } as CSSProperties}
 			>
 				<ChatLayout
-					flushTop
-					sidebar={<div className="h-full bg-surface" />}
+					sidebar={<div className="panel-top-pad h-full bg-surface" />}
 					content={
-						<main className="flex min-w-0 grow flex-col overflow-hidden bg-canvas">
-							<TeamBridgePageView
-								listState="ready"
-								messageState="ready"
-								conversations={[channel, group, dm]}
-								target={{ type: "conversation", id: channel.id }}
-								messages={messages}
-								organizations={[minervaOrganization, northwindOrganization]}
-								scope={asTeamBridgeTenantId("tnt_1")}
-								totalUnread={3}
-								selfAccountId={self}
-								onTarget={() => {}}
-								onSend={() => undefined}
-								onNewChannel={() => {}}
-								onScopeChange={() => {}}
-							/>
-						</main>
-					}
-				/>
-			</div>
-		);
-	},
-};
-
-/** The pre-fix shape, kept as the comparison frame: the lane reserves 32px and the page starts below it. */
-export const LaneReservedComparison: Story = {
-	render: () => {
-		useMacChromeSimulation();
-		return (
-			<div
-				className="relative flex h-screen flex-col overflow-hidden"
-				style={{ "--chrome-strip-h": "32px" } as CSSProperties}
-			>
-				<ChatLayout
-					sidebar={<div className="h-full bg-surface" />}
-					content={
-						<main className="flex min-w-0 grow flex-col overflow-hidden bg-canvas">
+						<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas">
 							<TeamBridgePageView
 								listState="ready"
 								messageState="ready"
@@ -1017,7 +980,14 @@ export const ThreadAtMinimumWindow: Story = {
 		</div>
 	),
 };
-export const ThreadDeepLinkFlushTop: Story = {
+
+/**
+ * A deep link opens the thread on the route's first paint. The simulated `<main>`
+ * carries the shell's own `panel-top-pad` (app.tsx spells it unconditionally now
+ * that the per-route `flushTop` opt-in is gone); the route root's `panel-flush`
+ * cancels it, so the panels still paint from y0 and pad their own first row.
+ */
+export const ThreadDeepLinkFromSearch: Story = {
 	args: {
 		target: { type: "conversation", id: channel.id },
 		messages: [],
@@ -1049,10 +1019,9 @@ export const ThreadDeepLinkFlushTop: Story = {
 				style={{ "--chrome-strip-h": "32px" } as CSSProperties}
 			>
 				<ChatLayout
-					flushTop
-					sidebar={<div className="h-full bg-surface" />}
+					sidebar={<div className="panel-top-pad h-full bg-surface" />}
 					content={
-						<main className="flex min-w-0 grow flex-col overflow-hidden bg-canvas">
+						<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas">
 							<TeamBridgePageView {...args} />
 						</main>
 					}
