@@ -73,6 +73,27 @@ const icnsTypes = {
 	1024: "ic10", // 1024x1024
 };
 
+/*
+ * The order these chunks are written in is load-bearing, and it is not the order
+ * macOS reads them in.
+ *
+ * ICNS is keyed by chunk type, so AppKit and `iconutil` find the size they want
+ * wherever it sits. 1Password's own ICNS reader (its `index.node` carries the
+ * parser, the `CFBundleIconFile` lookup and its `Contents/Resources` join) takes
+ * the FIRST chunk in the file and draws it in the 128 px slot of its "1Password
+ * Access Requested" dialog. With the ascending order this file used to be
+ * written in, that first chunk was the 16x16 `icp4`: the dialog rendered a
+ * smooth 8x enlargement of it, which is the blurred mark the operator reported.
+ * Measured on 1Password 8.12.40 (2026-10-23) with the same bytes reordered: the
+ * 16-first file reproduced the blur, the 1024-first file rendered sharp.
+ *
+ * So write the largest representation first and descend. Every consumer that
+ * reads by type is unaffected, and the one that reads by position gets the art
+ * at its best. `scripts/icon-identity.test.mjs` pins the first chunk to `ic10`
+ * so a future regeneration cannot quietly restore the old order.
+ */
+const ICNS_WRITE_ORDER = [1024, 512, 256, 128, 64, 32, 16];
+
 // Generate icons
 const generateIcons = async () => {
 	console.log(`Generating icons from ${sourceImage}...`);
@@ -151,8 +172,10 @@ const generateIcons = async () => {
 		// Create a map of icon types and their data
 		const icnsMap = {};
 
-		// Add each size to the ICNS map
-		for (const [size, type] of Object.entries(icnsTypes)) {
+		// Add each size to the ICNS map, largest first. See the comment on
+		// ICNS_WRITE_ORDER above: the first chunk is the one 1Password draws.
+		for (const size of ICNS_WRITE_ORDER) {
+			const type = icnsTypes[size];
 			if (icnsPngBuffers[size]) {
 				icnsMap[type] = icnsPngBuffers[size];
 			}
