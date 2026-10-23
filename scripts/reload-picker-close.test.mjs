@@ -772,6 +772,129 @@ test("rename waits for the owner's response before closing", async (context) => 
 	assert.deepEqual(toasts, ["renamed to New name"]);
 });
 
+/*
+ * AND A RECEIPT THAT LANDS AFTER A DISMISSAL MUST NOT CLOSE THE NEXT DIALOG.
+ *
+ * The pane's owner holds ONE picker in a single slot - `closePicker` is
+ * `setPicker(null)` (`slash-dispatch.ts`) - so a reader who dismisses the rename
+ * dialog while the command is in flight and then opens another picker mounts the
+ * second one in the SAME slot. The picker awaited the command and called
+ * `onClose()` on success without asking whether it was still the dialog on
+ * screen, so a rename's late receipt dismissed the picker the reader had just
+ * opened, which had nothing to do with the rename.
+ *
+ * The host below models that slot rather than counting calls: "closed" only
+ * means something if opening the next dialog is what a stray close takes down.
+ */
+test("a late rename receipt leaves a picker opened after its dismissal up", async (context) => {
+	document.body.innerHTML = "";
+	toasts.length = 0;
+	errors.length = 0;
+	const requests = [];
+	let finish = null;
+	nextAnswer = (request) => {
+		requests.push(request);
+		assert.equal(request.op, "sessions.command");
+		assert.equal(request.command, "rename");
+		assert.equal(request.args, "New name");
+		return new Promise((resolve) => {
+			finish = () =>
+				resolve({
+					result: {
+						kind: "notice",
+						style: "info",
+						text: "renamed to New name",
+					},
+				});
+		});
+	};
+
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	context.after(async () => {
+		await act(async () => root.unmount());
+	});
+	/*
+	 * The slot's own setter, captured per render, so the case opens the other
+	 * picker exactly the way the dispatcher would: by replacing what the slot
+	 * holds, not by mounting a second dialog beside the first.
+	 */
+	const slot = { open: () => undefined };
+	const Host = () => {
+		const [picker, setPicker] = React.useState("rename");
+		slot.open = () => setPicker("other");
+		if (picker === "rename") {
+			return React.createElement(RenamePicker, {
+				sessionId: "session-1",
+				action: { args: "", data: {} },
+				canonical: { frontend: { conversation_title: "Old name" } },
+				onClose: () => setPicker(null),
+			});
+		}
+		if (picker === "other") {
+			return React.createElement(
+				"div",
+				{ id: "other-picker", role: "dialog" },
+				"other",
+			);
+		}
+		return null;
+	};
+	await act(async () => root.render(React.createElement(Host)));
+	const input = document.querySelector('input:not([aria-hidden="true"])');
+	assert.ok(input);
+	assert.equal(
+		input.value,
+		"Old name",
+		"edit the rename field, not the host search",
+	);
+	const setter = Object.getOwnPropertyDescriptor(
+		DOM.window.HTMLInputElement.prototype,
+		"value",
+	).set;
+	await act(async () => {
+		setter.call(input, "New name");
+		input.dispatchEvent(new DOM.window.Event("input", { bubbles: true }));
+	});
+	await act(async () => {
+		buttonByText("Rename").click();
+	});
+	assert.equal(requests.length, 1, "the command has reached the transport");
+	assert.ok(finish, "and its answer has not landed yet");
+	/*
+	 * The reader dismisses the dialog MID-FLIGHT through the footer control that
+	 * exists for exactly this state (`Close` while busy, design D3): closing does
+	 * not cancel the operation the owner is already performing.
+	 */
+	await act(async () => {
+		buttonByText("Close").click();
+	});
+	assert.equal(
+		document.querySelector('[role="dialog"]') === null,
+		true,
+		"the dismissed dialog is really gone",
+	);
+	await act(async () => {
+		slot.open();
+	});
+	assert.ok(document.querySelector("#other-picker"), "the next picker is up");
+	await act(async () => {
+		finish();
+		await Promise.resolve();
+		await Promise.resolve();
+	});
+	assert.ok(
+		document.querySelector("#other-picker"),
+		"the late receipt leaves the picker the reader opened where it is",
+	);
+	assert.deepEqual(
+		toasts,
+		["renamed to New name"],
+		"and it still lands - the receipt survives the dialog that carried it",
+	);
+});
+
 test("an unchanged rename closes without a request or a success toast", async (context) => {
 	const run = await mountRename(
 		context,
