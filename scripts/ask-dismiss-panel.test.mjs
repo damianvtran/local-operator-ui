@@ -233,6 +233,7 @@ test("the chooser is the only live intent, says what is in flight, and survives 
 				"a-1": {
 					sending: false,
 					refused: "already answered by desktop.",
+					refusedByOwner: true,
 				},
 			},
 		}),
@@ -241,6 +242,13 @@ test("the chooser is the only live intent, says what is in flight, and survives 
 	assert.equal(
 		afterRefusal.textContent.includes("already answered by desktop."),
 		true,
+	);
+	assert.equal(
+		afterRefusal.textContent.includes(
+			"Couldn't dismiss this ask — nothing was sent.",
+		),
+		true,
+		"the band says what did not happen before the route's reason",
 	);
 	assert.equal(
 		buttonWithText(afterRefusal, "Cancel") !== undefined,
@@ -328,7 +336,14 @@ test("a landed dismissal hands the keyboard to the next card, or to the list", a
 	);
 	assert.equal(document.activeElement.tagName, "BUTTON");
 
-	// The last card: focus lands on the list, never on the body.
+	/*
+	 * The last card: the composer takes it, not the list. The list is the element the
+	 * drawer's #864 auto-close removes in the NEXT commit (QA round 2, Q-1), so landing
+	 * there loses the keyboard to BODY one frame later - which is what the reader saw.
+	 */
+	const composer = document.createElement("textarea");
+	composer.setAttribute("aria-label", "Message");
+	document.body.append(composer);
 	await act(async () =>
 		buttonWithText(rowOf(rig.container, "a-2"), "Dismiss…").click(),
 	);
@@ -348,8 +363,36 @@ test("a landed dismissal hands the keyboard to the next card, or to the list", a
 	);
 	assert.equal(
 		document.activeElement,
+		composer,
+		"the composer takes the keyboard when no card is left",
+	);
+	composer.remove();
+	await rig.unmount();
+});
+
+test("with no composer in reach, the empty panel keeps the keyboard on its list", async () => {
+	const asks = [openAsk("a-1")];
+	const rig = await mount(panelElement(asks, { onDismiss: () => undefined }));
+	await act(async () =>
+		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
+	);
+	await act(async () =>
+		rowOf(rig.container, "a-1")
+			.querySelector('[data-lo-ask-dismiss-reason="moot"]')
+			.click(),
+	);
+	await rig.render(
+		panelElement([], {
+			onDismiss: () => undefined,
+			outcomes: {
+				"a-1": { sending: false, refused: null, dismissed: "moot" },
+			},
+		}),
+	);
+	assert.equal(
+		document.activeElement,
 		rig.container.querySelector("[data-lo-ask-panel]"),
-		"the list itself takes the keyboard when no card is left",
+		"the fleet pane, which has no composer, lands on the list",
 	);
 	await rig.unmount();
 });
@@ -411,5 +454,194 @@ test("a settled dismissal names its reason and draws no answer frame", async () 
 		1,
 		"the status line is the receipt",
 	);
+	await rig.unmount();
+});
+
+test("a single-ask dismissal keeps the keyboard through the panel's unmount", async () => {
+	const composer = document.createElement("textarea");
+	composer.setAttribute("aria-label", "Message");
+	document.body.append(composer);
+	const asks = [openAsk("a-1")];
+	const rig = await mount(panelElement(asks, { onDismiss: () => undefined }));
+	await act(async () =>
+		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
+	);
+	const reason = rowOf(rig.container, "a-1").querySelector(
+		'[data-lo-ask-dismiss-reason="moot"]',
+	);
+	await act(async () => reason.click());
+	// In flight: the pressed control keeps focus (aria-disabled, not disabled).
+	await rig.render(
+		panelElement(asks, {
+			onDismiss: () => undefined,
+			outcomes: { "a-1": { sending: true, refused: null } },
+		}),
+	);
+	assert.equal(
+		document.activeElement,
+		rowOf(rig.container, "a-1").querySelector(
+			'[data-lo-ask-dismiss-reason="moot"]',
+		),
+		"the pressed reason keeps focus while the POST is in flight",
+	);
+	assert.equal(document.activeElement.getAttribute("aria-disabled"), "true");
+	assert.equal(
+		document.activeElement.hasAttribute("disabled"),
+		false,
+		"not a native disabled: that is what drops the element out of focus",
+	);
+	assert.notEqual(document.activeElement, document.body);
+	// The frame that empties the queue: the composer is handed the keyboard before
+	// the panel can unmount, and the unmount below must not take it away.
+	await rig.render(
+		panelElement([], {
+			onDismiss: () => undefined,
+			outcomes: {
+				"a-1": { sending: false, refused: null, dismissed: "moot" },
+			},
+		}),
+	);
+	assert.equal(document.activeElement, composer);
+	await rig.unmount();
+	assert.equal(
+		document.activeElement,
+		composer,
+		"the panel's unmount leaves the keyboard where it landed, not on the body",
+	);
+	composer.remove();
+});
+
+test("a refusal drops the hand-off, so a later departure cannot steal focus", async () => {
+	const composer = document.createElement("textarea");
+	composer.setAttribute("aria-label", "Message");
+	document.body.append(composer);
+	const asks = [openAsk("a-1"), openAsk("a-2")];
+	const rig = await mount(panelElement(asks, { onDismiss: () => undefined }));
+	await act(async () =>
+		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
+	);
+	await act(async () =>
+		rowOf(rig.container, "a-1")
+			.querySelector('[data-lo-ask-dismiss-reason="moot"]')
+			.click(),
+	);
+	await rig.render(
+		panelElement(asks, {
+			onDismiss: () => undefined,
+			outcomes: {
+				"a-1": {
+					sending: false,
+					refused: "already answered by desktop.",
+					refusedByOwner: true,
+				},
+			},
+		}),
+	);
+	const band = rowOf(rig.container, "a-1").querySelector("output");
+	assert.equal(
+		band.textContent,
+		"Couldn't dismiss this ask — nothing was sent. already answered by desktop.",
+	);
+	// The reader gives up and goes back to the composer; the row then leaves for
+	// another surface's answer. Focus must not be pulled back into the panel.
+	composer.focus();
+	await rig.render(
+		panelElement([asks[1]], {
+			onDismiss: () => undefined,
+			outcomes: {
+				"a-1": {
+					sending: false,
+					refused: "already answered by desktop.",
+					refusedByOwner: true,
+				},
+			},
+		}),
+	);
+	assert.equal(document.activeElement, composer);
+	composer.remove();
+	await rig.unmount();
+});
+
+test("a transport refusal says what did not happen without repeating the wire", async () => {
+	const asks = [openAsk("a-1")];
+	const rig = await mount(panelElement(asks, { onDismiss: () => undefined }));
+	await act(async () =>
+		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
+	);
+	await act(async () =>
+		rowOf(rig.container, "a-1")
+			.querySelector('[data-lo-ask-dismiss-reason="moot"]')
+			.click(),
+	);
+	await rig.render(
+		panelElement(asks, {
+			onDismiss: () => undefined,
+			outcomes: {
+				"a-1": {
+					sending: false,
+					refused: "Desktop controls could not reach the backend process.",
+				},
+			},
+		}),
+	);
+	const band = rowOf(rig.container, "a-1").querySelector("output");
+	assert.equal(
+		band.textContent,
+		"Couldn't dismiss this ask — nothing was sent.",
+	);
+	await rig.unmount();
+});
+
+test("escape is claimed at the card, so a click elsewhere in it does not lose the panel", async () => {
+	const asks = [openAsk("a-1")];
+	const rig = await mount(panelElement(asks, { onDismiss: () => undefined }));
+	await act(async () =>
+		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…").click(),
+	);
+	const option = rowOf(rig.container, "a-1").querySelector(
+		"button[data-ask-option]",
+	);
+	assert.ok(option, "the card still holds another control");
+	await act(async () => option.focus());
+	const key = new KeyboardEvent("keydown", {
+		key: "Escape",
+		bubbles: true,
+		cancelable: true,
+	});
+	act(() => {
+		option.dispatchEvent(key);
+	});
+	assert.equal(key.defaultPrevented, true);
+	assert.equal(
+		rowOf(rig.container, "a-1").querySelector("[data-lo-ask-dismiss-reason]"),
+		null,
+	);
+	assert.equal(
+		buttonWithText(rowOf(rig.container, "a-1"), "Dismiss…") !== undefined,
+		true,
+	);
+	await rig.unmount();
+});
+
+test("an unknown dismissed_reason falls back to the no-reply sentence", async () => {
+	const rig = await mount(
+		panelElement(
+			[
+				openAsk("a-1", {
+					status: "dismissed",
+					dismissed_reason: "not-a-reason",
+				}),
+			],
+			{ onDismiss: () => undefined },
+		),
+	);
+	const disclosure = rig.container.querySelector(
+		'[data-lo-ask-panel] button[aria-expanded="false"]',
+	);
+	assert.ok(disclosure);
+	await act(async () => disclosure.click());
+	const text = rig.container.querySelector("[data-lo-ask-panel]").textContent;
+	assert.equal(text.includes("Dismissed — no reply was sent"), true);
+	assert.equal(text.includes("no longer needed"), false);
 	await rig.unmount();
 });

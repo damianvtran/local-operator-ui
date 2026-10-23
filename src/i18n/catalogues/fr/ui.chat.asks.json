@@ -9,5 +9,6 @@
 	"ui.chat.asks.dismiss.moot.title": "Plus nécessaire",
 	"ui.chat.asks.dismiss.receipt.answered_in_chat": "Ignorée — réglée dans la conversation",
 	"ui.chat.asks.dismiss.receipt.moot": "Ignorée — plus nécessaire",
+	"ui.chat.asks.dismiss.refused": "Impossible d’ignorer cette demande : rien n’a été envoyé.",
 	"ui.chat.asks.dismiss.trigger": "Ignorer…"
 }

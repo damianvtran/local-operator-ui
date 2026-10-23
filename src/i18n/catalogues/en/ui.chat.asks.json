@@ -9,5 +9,6 @@
 	"ui.chat.asks.dismiss.moot.title": "No longer needed",
 	"ui.chat.asks.dismiss.receipt.answered_in_chat": "Dismissed — settled in chat",
 	"ui.chat.asks.dismiss.receipt.moot": "Dismissed — no longer needed",
+	"ui.chat.asks.dismiss.refused": "Couldn't dismiss this ask — nothing was sent.",
 	"ui.chat.asks.dismiss.trigger": "Dismiss…"
 }

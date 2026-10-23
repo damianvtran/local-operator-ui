@@ -1715,6 +1715,7 @@ export type MessageParams = {
 	"ui.chat.asks.dismiss.moot.title": undefined;
 	"ui.chat.asks.dismiss.receipt.answered_in_chat": undefined;
 	"ui.chat.asks.dismiss.receipt.moot": undefined;
+	"ui.chat.asks.dismiss.refused": undefined;
 	"ui.chat.asks.dismiss.trigger": undefined;
 	"ui.chat.canonical.sound.batch_attachment_unavailable": undefined;
 	"ui.chat.canonical.sound.player_failed": undefined;

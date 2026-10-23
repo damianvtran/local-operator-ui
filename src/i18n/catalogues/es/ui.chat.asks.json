@@ -9,5 +9,6 @@
 	"ui.chat.asks.dismiss.moot.title": "Ya no hace falta",
 	"ui.chat.asks.dismiss.receipt.answered_in_chat": "Descartada — resuelta en la conversación",
 	"ui.chat.asks.dismiss.receipt.moot": "Descartada — ya no hace falta",
+	"ui.chat.asks.dismiss.refused": "No se pudo descartar esta consulta: no se envió nada.",
 	"ui.chat.asks.dismiss.trigger": "Descartar…"
 }

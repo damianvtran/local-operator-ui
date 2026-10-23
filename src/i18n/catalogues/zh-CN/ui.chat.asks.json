@@ -9,5 +9,6 @@
 	"ui.chat.asks.dismiss.moot.title": "不再需要",
 	"ui.chat.asks.dismiss.receipt.answered_in_chat": "已关闭——已在对话中解决",
 	"ui.chat.asks.dismiss.receipt.moot": "已关闭——不再需要",
+	"ui.chat.asks.dismiss.refused": "无法关闭此请求——未发送任何内容。",
 	"ui.chat.asks.dismiss.trigger": "关闭……"
 }
