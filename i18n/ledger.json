@@ -22451,8 +22451,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
-			"target_sha256": "2eb515012d74e64f74e3e590520e48f16cf53b21c23e75760fcdfcb4a3def465",
+			"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
+			"target_sha256": "cc81bdcf675bdd88627b3e8fe940020da669727371308814d5222ba0dbbb3bac",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -22464,20 +22464,46 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "pr5-20261023-r2-es",
+					"instance": "pr5-20261023-r3-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr5-20261023-r2-es.json",
-					"receipt_sha256": "3d14c8384532bf16d319bc1892e53907077fda9d62cd76f3c18bd98f85257ed8",
-					"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
-					"note": "Round 1 raised one MAJOR (moot note addressed the operator) and three findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+					"receipt": "i18n/receipts/pr5-20261023-r3-es.json",
+					"receipt_sha256": "e2dc5efa83b4e58dbc2f18aac6c2926c7232fe939e309bb7d5a5c28a1528ca85",
+					"scope": "independent round-3 re-read of the remediation delta (in_flight + messages_since) across all 10 keys at b47b4dd8a",
+					"note": "Round 2 was clean at 1dcafbba5; remediation round 1 changed two keys, re-audited here. Copy authored by the implementing coder, audited independently."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+					"target_sha256": "2eb515012d74e64f74e3e590520e48f16cf53b21c23e75760fcdfcb4a3def465",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "pr5-20261023-r2-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr5-20261023-r2-es.json",
+							"receipt_sha256": "3d14c8384532bf16d319bc1892e53907077fda9d62cd76f3c18bd98f85257ed8",
+							"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
+							"note": "Round 1 raised one MAJOR (moot note addressed the operator) and three findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -22513,8 +22539,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
-			"target_sha256": "3b6a8eefee738b42acfbbcb24d39f7c5b5458a20806395474fc16215dd34402b",
+			"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
+			"target_sha256": "1297fc5473edeb3d02614d67fa27c2c8f4879715bb50e2e9c4635e4976c89a41",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -22526,26 +22552,52 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "pr5-20261023-r2-hi",
+					"instance": "pr5-20261023-r3-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr5-20261023-r2-hi.json",
-					"receipt_sha256": "d949f66e1e17ae4b62c94f58617abc509a00f7b06c7623b922ec2f454d4ead6a",
-					"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
-					"note": "Round 1 raised one MAJOR (moot note addressed the operator) and further findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+					"receipt": "i18n/receipts/pr5-20261023-r3-hi.json",
+					"receipt_sha256": "018b5dfb9289f087b1d32e3e55944ae88d34044eb2911b36e3db592cbb97c1b4",
+					"scope": "independent round-3 re-read of the remediation delta (in_flight + messages_since) across all 10 keys at b47b4dd8a",
+					"note": "Round 2 was clean at 1dcafbba5; remediation round 1 changed two keys, re-audited here. Copy authored by the implementing coder, audited independently."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+					"target_sha256": "3b6a8eefee738b42acfbbcb24d39f7c5b5458a20806395474fc16215dd34402b",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "pr5-20261023-r2-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr5-20261023-r2-hi.json",
+							"receipt_sha256": "d949f66e1e17ae4b62c94f58617abc509a00f7b06c7623b922ec2f454d4ead6a",
+							"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
+							"note": "Round 1 raised one MAJOR (moot note addressed the operator) and further findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
-			"target_sha256": "5cb3b8945977634ba7717c72918d2fd4b117c14bd762f8dea58b3abb76a4729f",
+			"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
+			"target_sha256": "f308224414b791a12c1da184054e1057795a748e257e8d57dead7d691d5fcaef",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -22556,27 +22608,53 @@
 					"agent": "task",
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-23",
-					"result": "clean",
-					"instance": "pr5-20261023-r2-ru",
+					"result": "clean-with-findings",
+					"instance": "pr5-20261023-r3-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/pr5-20261023-r2-ru.json",
-					"receipt_sha256": "6b9a2df7e61af7168c266bac81053f571f0ca30d5f3f302db87828200c2ce9b0",
-					"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
-					"note": "Round 1 raised one MAJOR (moot note addressed the operator) and further findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+					"receipt": "i18n/receipts/pr5-20261023-r3-ru.json",
+					"receipt_sha256": "f0285c249ce34d152617c65370e6323ccc8bb4c11be7337e38899e42bedc7229",
+					"scope": "independent round-3 re-read of the remediation delta (in_flight + messages_since) across all 10 keys at b47b4dd8a",
+					"note": "Round 2 was clean at 1dcafbba5; remediation round 1 changed two keys, re-audited here. Copy authored by the implementing coder, audited independently."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+					"target_sha256": "5cb3b8945977634ba7717c72918d2fd4b117c14bd762f8dea58b3abb76a4729f",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "pr5-20261023-r2-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr5-20261023-r2-ru.json",
+							"receipt_sha256": "6b9a2df7e61af7168c266bac81053f571f0ca30d5f3f302db87828200c2ce9b0",
+							"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
+							"note": "Round 1 raised one MAJOR (moot note addressed the operator) and further findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
-			"target_sha256": "7d86acb011841467a079f01851e8bfd70baa3acd857eb971b7ecdad1670fa57f",
+			"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
+			"target_sha256": "e86144a3e95643820762add97903ec423e17bb889c3c3974318670fee66a4eb9",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -22588,26 +22666,52 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "pr5-20261023-r2-ur",
+					"instance": "pr5-20261023-r3-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr5-20261023-r2-ur.json",
-					"receipt_sha256": "971deb2b92cc4c35ea2424e3a1cae651d7aebb41418c0e4dc0b703c6121847e3",
-					"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
-					"note": "Round 1 raised one MAJOR (moot note addressed the operator) and further findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+					"receipt": "i18n/receipts/pr5-20261023-r3-ur.json",
+					"receipt_sha256": "dcd02d903dddee603edda22e9cb8dc762071423901863f6e66099578b9f7e433",
+					"scope": "independent round-3 re-read of the remediation delta (in_flight + messages_since) across all 10 keys at b47b4dd8a",
+					"note": "Round 2 was clean at 1dcafbba5; remediation round 1 changed two keys, re-audited here. Copy authored by the implementing coder, audited independently."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+					"target_sha256": "7d86acb011841467a079f01851e8bfd70baa3acd857eb971b7ecdad1670fa57f",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "pr5-20261023-r2-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr5-20261023-r2-ur.json",
+							"receipt_sha256": "971deb2b92cc4c35ea2424e3a1cae651d7aebb41418c0e4dc0b703c6121847e3",
+							"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
+							"note": "Round 1 raised one MAJOR (moot note addressed the operator) and further findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
-			"target_sha256": "0ba67ad1f9d2f91aebfcec1d2b40676715be3fd9e9ed94525f5b509d865d099d",
+			"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
+			"target_sha256": "baaca7870e4ef1c067c06fe81a1d50d2c49e19d2df5a8a490b68739677108123",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -22619,26 +22723,52 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "pr5-20261023-r2-vi",
+					"instance": "pr5-20261023-r3-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr5-20261023-r2-vi.json",
-					"receipt_sha256": "9319d779cdfc98db29c44a8ba1ce60b09f4dcd587eb1bc1e81cdc26242531dc2",
-					"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
-					"note": "Round 1 raised one MAJOR (moot note addressed the operator) and further findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+					"receipt": "i18n/receipts/pr5-20261023-r3-vi.json",
+					"receipt_sha256": "6c9a8ad07ee9d80b56195baa371a1a3f648b690b1dea8227258f3e70e84f30f5",
+					"scope": "independent round-3 re-read of the remediation delta (in_flight + messages_since) across all 10 keys at b47b4dd8a",
+					"note": "Round 2 was clean at 1dcafbba5; remediation round 1 changed two keys, re-audited here. Copy authored by the implementing coder, audited independently."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+					"target_sha256": "0ba67ad1f9d2f91aebfcec1d2b40676715be3fd9e9ed94525f5b509d865d099d",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "pr5-20261023-r2-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr5-20261023-r2-vi.json",
+							"receipt_sha256": "9319d779cdfc98db29c44a8ba1ce60b09f4dcd587eb1bc1e81cdc26242531dc2",
+							"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
+							"note": "Round 1 raised one MAJOR (moot note addressed the operator) and further findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
-			"target_sha256": "fa7fa2170460f7097b1f53ae629ce60926f99aaeb02e0857eda67dbce79633e6",
+			"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
+			"target_sha256": "d0ecc3cc3dbbb837fda8a3ab0a84dec2f9764d29771dc5a7c44e71092b244de7",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -22650,20 +22780,46 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "pr5-20261023-r2-zh-cn",
+					"instance": "pr5-20261023-r3-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr5-20261023-r2-zh-cn.json",
-					"receipt_sha256": "c358b1f1f2c715b0f28cc4e8b10d48af04774ec1be7227dd954ba410cf723add",
-					"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
-					"note": "Round 1 raised one MAJOR (moot note addressed the operator) and further findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+					"receipt": "i18n/receipts/pr5-20261023-r3-zh-cn.json",
+					"receipt_sha256": "cfeb97a5d4c411658e2ce05b9d6155488fde01abb0f458ac1c57fa6bd78e2384",
+					"scope": "independent round-3 re-read of the remediation delta (in_flight + messages_since) across all 10 keys at b47b4dd8a",
+					"note": "Round 2 was clean at 1dcafbba5; remediation round 1 changed two keys, re-audited here. Copy authored by the implementing coder, audited independently."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+					"target_sha256": "fa7fa2170460f7097b1f53ae629ce60926f99aaeb02e0857eda67dbce79633e6",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "pr5-20261023-r2-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr5-20261023-r2-zh-cn.json",
+							"receipt_sha256": "c358b1f1f2c715b0f28cc4e8b10d48af04774ec1be7227dd954ba410cf723add",
+							"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
+							"note": "Round 1 raised one MAJOR (moot note addressed the operator) and further findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		}
 	]
 }
