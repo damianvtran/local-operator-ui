@@ -16,6 +16,17 @@
  * function's docstring for the rule in one sentence. Listener order never decides
  * anything: if the browser's own door runs first it preventDefaults and this
  * handler stops; if this one runs first the predicate bails.
+ *
+ * ESCAPE IS THE ONE CLAIM MADE IN THE CAPTURE PHASE, and it is claimed rather
+ * than merely answered. A run only exists while Control is held, so every real
+ * Escape during one carries `ctrlKey: true`; the app's Esc-to-interrupt
+ * (`use-interrupt-on-escape.ts`) reads no modifiers, sits on `window` in the
+ * BUBBLE phase, and would otherwise stop the running turn of the conversation
+ * the reader is cancelling their way out of. Claiming Escape on `window` in the
+ * CAPTURE phase - the first stop on the path, ahead of every Radix layer's
+ * document-capture listener - with `preventDefault` and `stopPropagation` means
+ * no layer below ever sees that press, while the interrupt's own deferred
+ * `defaultPrevented` read agrees if it ever runs first.
  */
 
 import { browserOwnsTabChord } from "@features/browser/hooks/use-browser-chords";
@@ -34,7 +45,7 @@ import {
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
 	SESSION_SWITCHER_REVEAL_MS,
 	type SwitcherRow,
@@ -70,13 +81,44 @@ type SwitcherRun = {
 
 const CLOSED: SessionSwitcherView = { visible: false, rows: [], cursor: null };
 
+/**
+ * Whether a run is open right now, for the surfaces that answer a key BEFORE the
+ * document does.
+ *
+ * THAT IS THE CONSOLE, and it is the only reason this is a module-level reader
+ * rather than React state: xterm's custom key handler (`console-mirror.tsx`)
+ * decides whether Tab reaches the page at all, so a run that lost Control's
+ * keyup has to be able to take a plain Tab there to end itself - a run the
+ * terminal keeps the key from is a run nothing can close. A component cannot be
+ * asked from inside a third-party terminal's DOM handler, and threading this
+ * through context would make the console depend on being a child of the
+ * switcher.
+ */
+let runOpen = false;
+
+/** Read {@link runOpen} for a surface that consumes a key before the document. */
+export function sessionSwitcherRunOpen(): boolean {
+	return runOpen;
+}
+
 export function useSessionSwitcherKeys(): SessionSwitcherView & {
 	/** Commit a row the pointer chose; `null` is a no-op close. */
 	commitAt: (index: number | null) => void;
+	/** Move the selection to a row the pointer is over; the release then commits it. */
+	hoverAt: (index: number) => void;
 } {
 	const navigate = useNavigate();
 	const navigateRef = useRef(navigate);
 	navigateRef.current = navigate;
+
+	/*
+	 * THE ROUTE, read at press time through a ref for the reason `navigateRef`
+	 * exists: the listener that opens a run is registered once, and a value it
+	 * closed over would answer with the render it was born in.
+	 */
+	const { pathname } = useLocation();
+	const pathnameRef = useRef(pathname);
+	pathnameRef.current = pathname;
 
 	const capabilities = useDesktopCapabilities();
 	const archiveEnabled = desktopFeatureEnabled(
@@ -109,6 +151,7 @@ export function useSessionSwitcherKeys(): SessionSwitcherView & {
 			revealTimer.current = null;
 		}
 		run.current = null;
+		runOpen = false;
 		setView(CLOSED);
 	}, []);
 
@@ -131,14 +174,25 @@ export function useSessionSwitcherKeys(): SessionSwitcherView & {
 		 */
 		const openRun = (delta: 1 | -1): boolean => {
 			const sessions = useCanonicalSessionsStore.getState();
-			const displayed =
-				panelSessionIdOfView(
-					sessions.activeDraftKey,
-					sessions.activeDraftKey
-						? sessions.drafts[sessions.activeDraftKey]?.sessionId
-						: undefined,
-					sessions.activeSessionId,
-				) || null;
+			/*
+			 * ONLY A CHAT ROUTE HAS A CONVERSATION ON SCREEN. `activeSessionId` survives
+			 * a navigation away from the chat (Settings reads it on purpose, and nothing
+			 * clears it), so reading it unconditionally made the conversation the reader
+			 * had just left row 0 and "current" on Settings and on the browser route:
+			 * the first press stepped past it, and stepping back to it was a no-op that
+			 * could never take them back. The gate is the app's own
+			 * (`app.tsx`: `pathname.startsWith("/chat") ? displayedSessionId : null`).
+			 */
+			const onChatRoute = pathnameRef.current.startsWith("/chat");
+			const displayed = onChatRoute
+				? panelSessionIdOfView(
+						sessions.activeDraftKey,
+						sessions.activeDraftKey
+							? sessions.drafts[sessions.activeDraftKey]?.sessionId
+							: undefined,
+						sessions.activeSessionId,
+					) || null
+				: null;
 			const rows = buildSwitcherRows({
 				sessions: sessions.sessions,
 				recents: parseConversationRecents(
@@ -154,6 +208,7 @@ export function useSessionSwitcherKeys(): SessionSwitcherView & {
 			 * move focus out of the composer for a gesture that does nothing else.
 			 */
 			if (rows.length < 2) return false;
+			runOpen = true;
 			run.current = {
 				rows,
 				cursor: stepSwitcherCursor(
@@ -179,20 +234,21 @@ export function useSessionSwitcherKeys(): SessionSwitcherView & {
 		};
 
 		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.defaultPrevented) return;
-			if (
-				run.current !== null &&
-				event.key === "Escape" &&
-				!event.metaKey &&
-				!event.ctrlKey &&
-				!event.altKey
-			) {
-				/* Escape cancels and never commits. It is swallowed so the surface
-				 * beneath (a chat pane, the drawer) does not also act on it. */
-				event.preventDefault();
+			/*
+			 * A RUN THAT LOST CONTROL'S KEYUP ENDS ON THE NEXT KEY THAT SAYS CONTROL IS
+			 * UP. The run is ended by Control's release, and a release can go missing (an
+			 * OS shortcut taken mid-hold, a keyup delivered while a native view held
+			 * focus); without this the overlay stayed up and owned the keyboard, and the
+			 * next stray release somewhere else committed a row nobody chose. It cancels
+			 * rather than commits: a press with Control up is not a choice of row. Asked
+			 * BEFORE the `defaultPrevented` guard, because a surface claiming this press
+			 * (a dialog's Escape, a list's Tab) is still evidence that Control is up.
+			 */
+			if (run.current !== null && !event.ctrlKey) {
 				close();
 				return;
 			}
+			if (event.defaultPrevented) return;
 			/* THE FOCUS RULE, asked once for every key this surface answers. True means
 			 * the keyboard is the browser panel's and Ctrl+Tab/Shift+Tab are its own tab
 			 * chords - including Ctrl+`, so a press from inside the panel never paints
@@ -229,15 +285,64 @@ export function useSessionSwitcherKeys(): SessionSwitcherView & {
 		};
 
 		/*
+		 * ESCAPE CANCELS, WHATEVER CONTROL IS DOING, AND IT IS CLAIMED FIRST.
+		 *
+		 * A run only exists while Control is held - the release is the commit - so a
+		 * real Escape during one always carries `ctrlKey: true`, which is exactly what
+		 * the old bubble-phase branch refused. The press then fell through to chat's
+		 * Esc-to-interrupt on `window` (bubble, no modifier test) and STOPPED THE
+		 * RUNNING TURN of the conversation the reader was cancelling their way out of,
+		 * before committing the switch anyway.
+		 *
+		 * So it is answered here, on `window` in the CAPTURE phase - the first stop on
+		 * the path, ahead of the document-capture listeners every Radix layer uses -
+		 * and CLAIMED: `preventDefault` so the interrupt's deferred read of
+		 * `defaultPrevented` refuses it too, `stopPropagation` so nothing beneath sees
+		 * the press at all. Ctrl and Shift are allowed (Control is held by definition
+		 * here); Cmd and Alt are somebody else's gesture and are left alone, as is an
+		 * Escape that is cancelling an IME's candidate string.
+		 */
+		const onEscapeKeyDown = (event: KeyboardEvent) => {
+			if (event.key !== "Escape" || run.current === null) return;
+			if (event.metaKey || event.altKey || event.isComposing) return;
+			event.preventDefault();
+			event.stopPropagation();
+			close();
+		};
+
+		/*
 		 * COMMIT ON RELEASE. Control's own keyUp, not Tab's: the gesture is "hold
 		 * Control, tap Tab as far as you want, let go", which is the muscle memory the
 		 * OS switchers taught. Focus never moves into this overlay, so the keyUp lands
 		 * on the document whatever had the caret.
 		 */
 		const onKeyUp = (event: KeyboardEvent) => {
-			if (event.key !== "Control") return;
 			if (run.current === null) return;
-			commitAt(run.current.cursor);
+			if (event.key === "Control") {
+				commitAt(run.current.cursor);
+				return;
+			}
+			/* The same lost-release rule as the keydown above, on the other half of a
+			 * press: a key released with Control up ends the run instead of leaving it
+			 * holding the keyboard. */
+			if (!event.ctrlKey) close();
+		};
+
+		/*
+		 * AND ON THE POINTER, for the case the keyboard listeners cannot see: Control
+		 * let go while the window was in the background, then a press inside the app.
+		 * A press ON A ROW is excluded - that is the pointer choosing that row, and the
+		 * row's own handler commits it - so only a press somewhere else, with Control
+		 * reported up, cancels.
+		 */
+		const onPointerDown = (event: PointerEvent) => {
+			if (run.current === null || event.ctrlKey) return;
+			if (
+				event.target instanceof Element &&
+				event.target.closest("[data-session-id]")
+			)
+				return;
+			close();
 		};
 
 		/* An abandoned run never commits: losing the window or hiding the document is
@@ -249,13 +354,17 @@ export function useSessionSwitcherKeys(): SessionSwitcherView & {
 			if (document.visibilityState !== "visible") onBlur();
 		};
 
+		window.addEventListener("keydown", onEscapeKeyDown, { capture: true });
 		document.addEventListener("keydown", onKeyDown);
 		document.addEventListener("keyup", onKeyUp);
+		document.addEventListener("pointerdown", onPointerDown);
 		window.addEventListener("blur", onBlur);
 		document.addEventListener("visibilitychange", onVisibilityChange);
 		return () => {
+			window.removeEventListener("keydown", onEscapeKeyDown, { capture: true });
 			document.removeEventListener("keydown", onKeyDown);
 			document.removeEventListener("keyup", onKeyUp);
+			document.removeEventListener("pointerdown", onPointerDown);
 			window.removeEventListener("blur", onBlur);
 			document.removeEventListener("visibilitychange", onVisibilityChange);
 			/* A run left behind by an unmount must not keep a timer alive. */
@@ -264,8 +373,24 @@ export function useSessionSwitcherKeys(): SessionSwitcherView & {
 				revealTimer.current = null;
 			}
 			run.current = null;
+			runOpen = false;
 		};
 	}, [close, commitAt, publish]);
 
-	return { ...view, commitAt };
+	/*
+	 * THE POINTER MOVES THE SELECTION, the palette's own treatment: a row that a
+	 * press commits must show what that press would commit, and hovering is how the
+	 * other list in this app says so.
+	 */
+	const hoverAt = useCallback(
+		(index: number) => {
+			const current = run.current;
+			if (current === null || current.cursor === index) return;
+			current.cursor = index;
+			publish();
+		},
+		[publish],
+	);
+
+	return { ...view, commitAt, hoverAt };
 }

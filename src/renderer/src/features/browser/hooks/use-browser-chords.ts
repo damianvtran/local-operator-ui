@@ -48,10 +48,17 @@ export function registerBrowserChordRoot(root: HTMLDivElement): () => void {
  * Whether the keyboard is inside the in-app browser panel, i.e. whether Ctrl+Tab
  * and Ctrl+Shift+Tab are the BROWSER's tab chords rather than the app's.
  *
- * THE RULE, in one sentence: when keyboard focus is inside the in-app browser
+ * THE RULE, in one sentence. When keyboard focus is inside the in-app browser
  * panel - its tab strip, address bar/popout, start page, or the web page itself -
- * Ctrl+Tab and Ctrl+Shift+Tab switch browser tabs; everywhere else they open the
- * session switcher. (docs/session-switcher.md carries the same sentence.)
+ * Ctrl+Tab and Ctrl+Shift+Tab switch browser tabs; everywhere else, the console
+ * included, they open the session switcher, except while Tab is already claimed
+ * for a list: the composer's slash list, or the canvas editor's list item it
+ * nests. (docs/session-switcher.md carries the same sentence.)
+ *
+ * The console half is code, not a sentence: its xterm key handler hands the chord
+ * back to the page (`console-mirror.tsx`), because xterm otherwise consumes it as
+ * a plain tab before this predicate is ever asked. The two lists claim Tab with
+ * `preventDefault` on a press they own, which the switcher's own listener reads.
  *
  * It wraps `chordOwner`, which is the arbitration the browser's own DOM door
  * already does, so the two surfaces cannot disagree: if the browser would take
