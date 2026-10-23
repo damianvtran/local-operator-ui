@@ -19143,8 +19143,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
-			"target_sha256": "34102388ecbf62c4e4153359730ffec9925879b99b1aeda7d493530d5bdb4049",
+			"source_sha256": "39e6b0c8b1695dc7033bfa532459ef15038fa069451ce34309df833cf9a0169a",
+			"target_sha256": "dc0ed04054470125268cd5dcdef86940d7c56ef5c461a66a2fdf6ddca89c5027",
 			"translator": {
 				"agent": "translator",
 				"model": "openai/gpt-6.1-sol",
@@ -19153,20 +19153,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "tbstack-r1-1298-fr",
+					"instance": "tb-members-r1-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbstack-r1-1298-fr.json",
-					"receipt_sha256": "c7939a354a53840baf015aa629bdb68cef5b4da09a12e44799c8b42a32a0bd6c",
-					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1298 dbe16bcd4a)"
+					"receipt": "i18n/receipts/tb-members-r1-fr.json",
+					"receipt_sha256": "25f3840ee2ac282e74fb382528aea7f1625bc1bb2c6c3010c0fae5eb0041365a",
+					"scope": "Two new membership-status count keys; 115 unchanged values inherit audited base coverage",
+					"note": "Source-only independent audit f4444b5af1c0; translator27f1d03fa5e4; same fallback model, distinct agents; no rendered-fit claim"
 				}
 			],
 			"status": "audited",
@@ -19347,6 +19348,29 @@
 							"receipt_sha256": "bab4b302a8a0685aff261ec4b595f00ee734176ea9c752960b23f0a3a12dcf8c",
 							"scope": "PR #1296 sender placeholder: 2-key delta (sender.unknown_person, sender.unknown_agent); other 109 values byte-identical to the audited prior row",
 							"note": "Independent reviewer delta audit, 0 findings. Prior full coverage superseded on this row; catalogue audit only, no rendered-fit or activation claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
+					"target_sha256": "34102388ecbf62c4e4153359730ffec9925879b99b1aeda7d493530d5bdb4049",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbstack-r1-1298-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1298-fr.json",
+							"receipt_sha256": "c7939a354a53840baf015aa629bdb68cef5b4da09a12e44799c8b42a32a0bd6c",
+							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1298 dbe16bcd4a)"
 						}
 					],
 					"status": "audited"
@@ -19706,8 +19730,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
-			"target_sha256": "b6f0f8ba2e15bf7dea10c574e50353fc6af2a5ef6c5c5f3efa15f6733360eb5e",
+			"source_sha256": "39e6b0c8b1695dc7033bfa532459ef15038fa069451ce34309df833cf9a0169a",
+			"target_sha256": "455bf8dd4c0d476aecefceadd4f4f4b2bc02ab5e1ee1f6c47a391e9e8730a788",
 			"translator": {
 				"agent": "translator",
 				"model": "openai/gpt-6.1-sol",
@@ -19716,20 +19740,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "tbstack-r1-1298-es",
+					"instance": "tb-members-r1-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbstack-r1-1298-es.json",
-					"receipt_sha256": "9b8d79d48a36b5a7d4ee7b1d1fc00e934f8d52a44c89e6d29b2c834b4a926f2a",
-					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1298 dbe16bcd4a)"
+					"receipt": "i18n/receipts/tb-members-r1-es.json",
+					"receipt_sha256": "ab3fa555ad2bb6d3184706d4bcc66ee9d596028aa2d023b17f6174b3ddc870f5",
+					"scope": "Two new membership-status count keys; 115 unchanged values inherit audited base coverage",
+					"note": "Source-only independent audit f4444b5af1c0; translator27f1d03fa5e4; same fallback model, distinct agents; no rendered-fit claim"
 				}
 			],
 			"status": "audited",
@@ -19889,14 +19914,37 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
+					"target_sha256": "b6f0f8ba2e15bf7dea10c574e50353fc6af2a5ef6c5c5f3efa15f6733360eb5e",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbstack-r1-1298-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1298-es.json",
+							"receipt_sha256": "9b8d79d48a36b5a7d4ee7b1d1fc00e934f8d52a44c89e6d29b2c834b4a926f2a",
+							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1298 dbe16bcd4a)"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
-			"target_sha256": "d9a3e678698c7e69fcb32650c027aa466a51711258ee6ac6ac9a67f709af1ac5",
+			"source_sha256": "39e6b0c8b1695dc7033bfa532459ef15038fa069451ce34309df833cf9a0169a",
+			"target_sha256": "e0a68bf85fb8d172c4d57ede4a4d6857cdddd7f8f89146c8300027462e72be89",
 			"translator": {
 				"agent": "translator",
 				"model": "openai/gpt-6.1-sol",
@@ -19905,20 +19953,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "tbstack-r1-1298-zh-cn",
+					"instance": "tb-members-r2-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbstack-r1-1298-zh-cn.json",
-					"receipt_sha256": "41d021ee730fb47021db88ef31e9a4f3dedd0e833bd2d5c925edda6e1ba6833d",
-					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1298 dbe16bcd4a)"
+					"receipt": "i18n/receipts/tb-members-r2-zh-cn.json",
+					"receipt_sha256": "292da66cb1599a699fb74cb353a32227b1c403412c067e952a8d25a4c18e29df",
+					"scope": "Two new membership-status count keys; 115 unchanged values inherit audited base coverage",
+					"note": "Source-only independent audit f4444b5af1c0; translator27f1d03fa5e4; same fallback model, distinct agents; no rendered-fit claim"
 				}
 			],
 			"status": "audited",
@@ -20075,6 +20124,29 @@
 							"receipt_sha256": "474f0b573354241171940bb43e50cf1a89c93e4667300fe35c0e7bcad0ab0f82",
 							"scope": "PR #1296 sender placeholder: 2-key delta (sender.unknown_person, sender.unknown_agent); other 109 values byte-identical to the audited prior row",
 							"note": "Independent reviewer delta audit, 0 findings. Prior full coverage superseded on this row; catalogue audit only, no rendered-fit or activation claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
+					"target_sha256": "d9a3e678698c7e69fcb32650c027aa466a51711258ee6ac6ac9a67f709af1ac5",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbstack-r1-1298-zh-cn",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1298-zh-cn.json",
+							"receipt_sha256": "41d021ee730fb47021db88ef31e9a4f3dedd0e833bd2d5c925edda6e1ba6833d",
+							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1298 dbe16bcd4a)"
 						}
 					],
 					"status": "audited"
@@ -20367,8 +20439,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
-			"target_sha256": "df463fc9d2800eb9e455a934b4876a2f2b077d070f3a2b6530eda9f50b8c005a",
+			"source_sha256": "39e6b0c8b1695dc7033bfa532459ef15038fa069451ce34309df833cf9a0169a",
+			"target_sha256": "ddd80240d55f3dce070c0ee0f12d1264740ab745b7fda47dc356974a773b8cf7",
 			"translator": {
 				"agent": "translator",
 				"model": "openai/gpt-6.1-sol",
@@ -20377,20 +20449,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "tbstack-r1-1298-ru",
+					"instance": "tb-members-r1-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbstack-r1-1298-ru.json",
-					"receipt_sha256": "80e5718db27cceb8107fef74bf825591b00956a40b71cb6103a53f79d0c409ea",
-					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1298 dbe16bcd4a)"
+					"receipt": "i18n/receipts/tb-members-r1-ru.json",
+					"receipt_sha256": "f4faf1cdab28a0f720fd99fa6e6d0d4ed45ba8915e1f4f8acf90db0c8980a0ab",
+					"scope": "Two new membership-status count keys; 115 unchanged values inherit audited base coverage",
+					"note": "Source-only independent audit f4444b5af1c0; translator27f1d03fa5e4; same fallback model, distinct agents; no rendered-fit claim"
 				}
 			],
 			"status": "audited",
@@ -20497,14 +20570,37 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
+					"target_sha256": "df463fc9d2800eb9e455a934b4876a2f2b077d070f3a2b6530eda9f50b8c005a",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbstack-r1-1298-ru",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1298-ru.json",
+							"receipt_sha256": "80e5718db27cceb8107fef74bf825591b00956a40b71cb6103a53f79d0c409ea",
+							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1298 dbe16bcd4a)"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "hi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
-			"target_sha256": "08f0d22365098e9a43a9ca68eefd99652fce3fb2b21964d27cb4dbb030281e9d",
+			"source_sha256": "39e6b0c8b1695dc7033bfa532459ef15038fa069451ce34309df833cf9a0169a",
+			"target_sha256": "5690aa375d67465cc61daeb5a3c046a90e63c38db51610edce83f6595361a176",
 			"translator": {
 				"agent": "translator",
 				"model": "openai/gpt-6.1-sol",
@@ -20513,20 +20609,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "tbstack-r1-1298-hi",
+					"instance": "tb-members-r1-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbstack-r1-1298-hi.json",
-					"receipt_sha256": "db794312e3b54cc2d1692989c7c8eda134d056a04eff63fb0b9df2e487822e1c",
-					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1298 dbe16bcd4a)"
+					"receipt": "i18n/receipts/tb-members-r1-hi.json",
+					"receipt_sha256": "01f339445ae55ae9e9440bc6aaef89ebdfa4a1f48104d31febb2adf4278d6be8",
+					"scope": "Two new membership-status count keys; 115 unchanged values inherit audited base coverage",
+					"note": "Source-only independent audit f4444b5af1c0; translator27f1d03fa5e4; same fallback model, distinct agents; no rendered-fit claim"
 				}
 			],
 			"status": "audited",
@@ -20633,14 +20730,37 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
+					"target_sha256": "08f0d22365098e9a43a9ca68eefd99652fce3fb2b21964d27cb4dbb030281e9d",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbstack-r1-1298-hi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1298-hi.json",
+							"receipt_sha256": "db794312e3b54cc2d1692989c7c8eda134d056a04eff63fb0b9df2e487822e1c",
+							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1298 dbe16bcd4a)"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ur",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
-			"target_sha256": "a4c335724f0c629d61316e4e7207cad8bfec713362a2867adc9b5005ad161429",
+			"source_sha256": "39e6b0c8b1695dc7033bfa532459ef15038fa069451ce34309df833cf9a0169a",
+			"target_sha256": "a60dd35958242308e904e3cb9cffe81b0578c057e1622a110137dd02c45a7f66",
 			"translator": {
 				"agent": "translator",
 				"model": "openai/gpt-6.1-sol",
@@ -20649,20 +20769,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "tbstack-r1-1298-ur",
+					"instance": "tb-members-r1-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbstack-r1-1298-ur.json",
-					"receipt_sha256": "bdc04bf2a752038e98652806d036fd8f23dcaee2540840d85312c59c515b0f46",
-					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1298 dbe16bcd4a)"
+					"receipt": "i18n/receipts/tb-members-r1-ur.json",
+					"receipt_sha256": "c7825677bcefb126b6c1778a5b4e316aea04d5623011be9b31614c299b95c2f9",
+					"scope": "Two new membership-status count keys; 115 unchanged values inherit audited base coverage",
+					"note": "Source-only independent audit f4444b5af1c0; translator27f1d03fa5e4; same fallback model, distinct agents; no rendered-fit claim"
 				}
 			],
 			"status": "audited",
@@ -20769,14 +20890,37 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
+					"target_sha256": "a4c335724f0c629d61316e4e7207cad8bfec713362a2867adc9b5005ad161429",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbstack-r1-1298-ur",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1298-ur.json",
+							"receipt_sha256": "bdc04bf2a752038e98652806d036fd8f23dcaee2540840d85312c59c515b0f46",
+							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1298 dbe16bcd4a)"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "vi",
 			"namespace": "ui.teamBridge",
-			"source_sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
-			"target_sha256": "acd0b3707df1841b458e7837a0c3771616f97935d2c346a506f2849cc02ac217",
+			"source_sha256": "39e6b0c8b1695dc7033bfa532459ef15038fa069451ce34309df833cf9a0169a",
+			"target_sha256": "54d53404501555813444d753a63b60c438941e32007e9ec0c33d74e9d550060c",
 			"translator": {
 				"agent": "translator",
 				"model": "openai/gpt-6.1-sol",
@@ -20785,20 +20929,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "anthropic/claude-opus-5-5",
+					"agent": "reviewer",
+					"model": "openai/gpt-6.1-sol",
 					"date": "2026-10-22",
 					"result": "clean",
-					"instance": "tbstack-r1-1298-vi",
+					"instance": "tb-members-r1-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/tbstack-r1-1298-vi.json",
-					"receipt_sha256": "83c5b43be04beaf32abe6b7aedeca1f278baf32c84356da02b8ce9e1395b110d",
-					"scope": "ui.teamBridge union integrity after #1296 re-integration (#1298 dbe16bcd4a)"
+					"receipt": "i18n/receipts/tb-members-r1-vi.json",
+					"receipt_sha256": "2b264ffb1ddfd8e8cc499f0dd51445df958132dc465c435a8fc8d9f3b42d50ba",
+					"scope": "Two new membership-status count keys; 115 unchanged values inherit audited base coverage",
+					"note": "Source-only independent audit f4444b5af1c0; translator27f1d03fa5e4; same fallback model, distinct agents; no rendered-fit claim"
 				}
 			],
 			"status": "audited",
@@ -20902,6 +21047,29 @@
 							"receipt_sha256": "129595328b3631706971cb678011f957efe4b4a1ce28a64fb41c47e2bb589b5b",
 							"scope": "PR #1296 sender placeholder: 2-key delta (sender.unknown_person, sender.unknown_agent); other 109 values byte-identical to the audited prior row",
 							"note": "Independent reviewer delta audit, 0 findings. Prior full coverage superseded on this row; catalogue audit only, no rendered-fit or activation claim."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
+					"target_sha256": "acd0b3707df1841b458e7837a0c3771616f97935d2c346a506f2849cc02ac217",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-22",
+							"result": "clean",
+							"instance": "tbstack-r1-1298-vi",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/tbstack-r1-1298-vi.json",
+							"receipt_sha256": "83c5b43be04beaf32abe6b7aedeca1f278baf32c84356da02b8ce9e1395b110d",
+							"scope": "ui.teamBridge union integrity after #1296 re-integration (#1298 dbe16bcd4a)"
 						}
 					],
 					"status": "audited"

@@ -24,6 +24,8 @@
 	"ui.teamBridge.create.confirm": "बनाएँ",
 	"ui.teamBridge.unread.count": "{count, plural, one {{count} अपठित} other {{count} अपठित}}",
 	"ui.teamBridge.member.count": "{count, plural, one {{count} सदस्य} other {{count} सदस्य}}",
+	"ui.teamBridge.member.active_count": "{count, plural, one {{count} सक्रिय} other {{count} सक्रिय}}",
+	"ui.teamBridge.member.invited_count": "{count, plural, one {{count} आमंत्रित} other {{count} आमंत्रित}}",
 	"ui.teamBridge.group.more": "और",
 	"ui.teamBridge.thread.withheld": "एजेंट के इस संदेश को स्वीकार करने का इंतज़ार है।",
 	"ui.teamBridge.composer.error": "आपका संदेश नहीं भेजा गया। फिर कोशिश करें।",

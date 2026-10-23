@@ -180,6 +180,24 @@
 		},
 		"note": "Sits beside the conversation title. Plural forms matter."
 	},
+	"ui.teamBridge.member.active_count": {
+		"role": "active membership status count in the thread header",
+		"tone": "neutral, compact lowercase status fragment",
+		"length": "Short; shares one line with total member count and the other status count.",
+		"placeholders": {
+			"count": "number of members with active membership status; a nonnegative integer"
+		},
+		"note": "Shown in a summary such as \"4 members · 1 active · 3 invited\". Counts active membership records, not permissions, roles, or online presence. Keep the count and status together; the header supplies separators. Use idiomatic grammatical agreement and every required locale plural category."
+	},
+	"ui.teamBridge.member.invited_count": {
+		"role": "invited membership status count in the thread header",
+		"tone": "neutral, compact lowercase status fragment",
+		"length": "Short; shares one line with total member count and the other status count.",
+		"placeholders": {
+			"count": "number of members with invited membership status; a nonnegative integer"
+		},
+		"note": "Shown in a summary such as \"4 members · 1 active · 3 invited\". Counts invited membership records, not permissions, roles, or online presence. Keep the count and status together; the header supplies separators. Use idiomatic grammatical agreement and every required locale plural category."
+	},
 	"ui.teamBridge.group.more": {
 		"role": "sidebar overflow group label",
 		"tone": "neutral",

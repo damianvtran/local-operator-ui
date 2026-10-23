@@ -1,0 +1,68 @@
+{
+  "auditor": "reviewer",
+  "model": "openai/gpt-6.1-sol",
+  "instance": "tb-members-r1-ur",
+  "session": "f4444b5af1c0",
+  "date": "2026-10-22",
+  "locale": "ur",
+  "translator": "translator",
+  "translator_delta": {
+    "agent": "tb-members-translator",
+    "instance": "27f1d03fa5e4",
+    "model": "openai/gpt-6.1-sol"
+  },
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 2,
+  "scope": "Exactly two added keys: ui.teamBridge.member.active_count and ui.teamBridge.member.invited_count plus English context; 115 unchanged existing values inherited from audited base. Source-only semantic, ICU/plural, placeholder, NFC and manual-bidi audit; no runtime-formatting or rendered-fit claim.",
+  "source_base": "2f5d8e3239705187906da7c16249b4308fd67758",
+  "sha256": {
+    "en": "39e6b0c8b1695dc7033bfa532459ef15038fa069451ce34309df833cf9a0169a",
+    "ur": "a60dd35958242308e904e3cb9cffe81b0578c057e1622a110137dd02c45a7f66",
+    "context": "1d22efba74ab8e4a71ee974a099b893c37300927b6b511e569e29bb47a815d47"
+  },
+  "findings": [],
+  "guidance": {
+    "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style": {
+      "path": "~/local-operator/i18n/style-guides/ur.md",
+      "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+    },
+    "manifest_sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+  },
+  "independence": "Reviewer instance f4444b5af1c0 did not author/edit catalogue values; translator is distinct agent instance, both actual served model openai/gpt-6.1-sol (not different-model evidence).",
+  "fallback": "Initial anthropic/claude-opus-5-5 replaced by openai/gpt-6.1-sol before substantive audit.",
+  "inherited_coverage": {
+    "source_sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
+    "target_sha256": "a4c335724f0c629d61316e4e7207cad8bfec713362a2867adc9b5005ad161429",
+    "auditors": [
+      {
+        "agent": "translation-auditor",
+        "model": "anthropic/claude-opus-5-5",
+        "date": "2026-10-22",
+        "result": "clean",
+        "instance": "tbstack-r1-1298-ur",
+        "findings": {
+          "blocker": 0,
+          "major": 0,
+          "minor": 0,
+          "nit": 0
+        },
+        "receipt": "i18n/receipts/tbstack-r1-1298-ur.json",
+        "receipt_sha256": "bdc04bf2a752038e98652806d036fd8f23dcaee2540840d85312c59c515b0f46",
+        "scope": "ui.teamBridge union integrity after #1296 re-integration (#1298 dbe16bcd4a)"
+      }
+    ]
+  },
+  "receipt": {
+    "path": "i18n/receipts/tb-members-r1-ur.json",
+    "sha256": "c7825677bcefb126b6c1778a5b4e316aea04d5623011be9b31614c299b95c2f9"
+  },
+  "source_path": "src/i18n/catalogues/en/ui.teamBridge.json",
+  "context_path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+  "target_path": "src/i18n/catalogues/ur/ui.teamBridge.json"
+}
