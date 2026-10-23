@@ -1,0 +1,88 @@
+{
+  "capture": "browser tool, existing one capped Storybook on127.0.0.1:6017",
+  "baseline": "2f5d8e3239 model/page + same regression story data",
+  "after": "2babb573ac model/page + controlled picker story additions",
+  "combined_naming_dependency": "PR1334 not integrated; fallback duplication explicitly remains",
+  "frames": [
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/after-count-settled.png",
+      "bytes": 114474,
+      "sha256": "8e71bb88c9409cd9f886607ef43efc3504cc69f827d93b335494c2cb28110e14"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/after-count.png",
+      "bytes": 114474,
+      "sha256": "8e71bb88c9409cd9f886607ef43efc3504cc69f827d93b335494c2cb28110e14"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/after-self-fallback-dependency-pending.png",
+      "bytes": 134670,
+      "sha256": "8d0594679cfb3ec712e83adf90bb63fadc44b60fca210717a19471610f443c1f"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/after-self-named-options.png",
+      "bytes": 133562,
+      "sha256": "37578d9cc310cf0202e7e79ab0a2688dd3602fa78f9baf29f2dda620d9cac549"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/after-self-named-selected.png",
+      "bytes": 132434,
+      "sha256": "7d94cafd014917956a3aa77c73775612b7a9d862506666a15f853dbcba5b0ddf"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/before-count.png",
+      "bytes": 105948,
+      "sha256": "47f323e086c387881f1ac9eb9b355d7d031aae3f630377a4f5abc1c55ca1dc30"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/before-self-picker.png",
+      "bytes": 123940,
+      "sha256": "3b466109c4877a88a59e8d6a87ef34eda8468929cea2a6addd1dfa3b1c18c346"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/qa-count.png",
+      "bytes": 114474,
+      "sha256": "8e71bb88c9409cd9f886607ef43efc3504cc69f827d93b335494c2cb28110e14"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/qa-empty.png",
+      "bytes": 69417,
+      "sha256": "24e2f497dd25dfd3211b0658dc30d9ec4291ecceb49599d5d214867dd656f45a"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/qa-error.png",
+      "bytes": 65952,
+      "sha256": "ea17b5bb7432450bb777f03c300badb83680ef949f4869ab7d4205af2e557420"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/qa-fallback-picker.png",
+      "bytes": 134670,
+      "sha256": "8d0594679cfb3ec712e83adf90bb63fadc44b60fca210717a19471610f443c1f"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/qa-loading.png",
+      "bytes": 48715,
+      "sha256": "73974feb3f31095cb72a7f6675a3bd270e316053dabfebfd65247ea9a47fb714"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/qa-named-picker.png",
+      "bytes": 133562,
+      "sha256": "37578d9cc310cf0202e7e79ab0a2688dd3602fa78f9baf29f2dda620d9cac549"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/qa-named-restored.png",
+      "bytes": 133562,
+      "sha256": "37578d9cc310cf0202e7e79ab0a2688dd3602fa78f9baf29f2dda620d9cac549"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/qa-named-selected.png",
+      "bytes": 132434,
+      "sha256": "7d94cafd014917956a3aa77c73775612b7a9d862506666a15f853dbcba5b0ddf"
+    },
+    {
+      "path": "docs/evidence-frames/tb-members-self-cos/qa-preview.png",
+      "bytes": 92952,
+      "sha256": "2120323e442a6d73dd4f37bae4036c58c2929e9cecbf6ac88a7cf2471b70fb9e"
+    }
+  ]
+}

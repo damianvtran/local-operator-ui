@@ -62,9 +62,32 @@ stale aggregate avoidance, self endpoint with own name / empty name / owner-name
 fallback, unchanged human-self marker, kind-qualified keys, explicit endpoint
 serialization, and self-agent selection not adding a self-human recipient.
 
-## Validation still pending
+## Rendered validation on the granted serial slot
 
-Heavy pre-push/typechecks, independent code/QA/design review and real rendered
-before/after captures wait for the integration parent's shared validation slot.
-Source-only tests are not rendered or end-to-end proof. New stories:
-`FourMembersThreeInvited` and `OwnChiefServerFallback` on `TeamBridgePage`.
+Normal pre-push hooks passed (changed-file script/src lint and both serial
+TypeScript projects). The hook initially caught a story non-null assertion;
+an explicit endpoint guard fixed it without bypass.
+
+One capped Storybook dev server on 127.0.0.1:6017 served real React components.
+No install, desktop launch or substitute browser was used. The browser tool
+captured the baseline by temporarily restoring **only** model/page to base
+`2f5d8e3239`, keeping identical production-shaped story data. Then both files
+were restored exactly to committed head `2babb573ac` (verified with git diff).
+
+Observed before: 1 member; self endpoint absent from rail and picker.
+Observed after: 4 members, 1 active · 3 invited; named self endpoint offered as
+Aida (Damian Tran), selected into exactly one agent chip while human remains
+Damian Tran (you). The controlled story enables real select/remove transitions.
+Header geometry: 1280×720 CSS viewport; rail 288px; thread header 992×44px.
+Two consecutive count frames have identical SHA-256: no observed settle reflow.
+
+**Dependency still open:** fallback-name endpoint is now offered, but renders
+Damian Tran (Damian Tran) on this branch alone. This captured limitation is not
+called fixed; #1334 must land first and a combined naming regression must pass
+before the full user request is considered integrated. No combined-tree claim.
+
+Frames are retained under ignored `docs/evidence-frames/tb-members-self-cos/`,
+not committed binaries. `frames.json` binds actual filenames/bytes/hash. Source
+and locale reviews are independent; QA independently exercised the running
+stories. Review comments record their actual bounds. English rendered coverage
+is not an all-locale layout or real backend delivery claim.
