@@ -1,0 +1,40 @@
+{
+  "auditor": "translation-auditor",
+  "model": "openai/gpt-6-astra",
+  "instance": "f39d0c2ada5e-landed-1314-fr",
+  "session": "f39d0c2ada5e",
+  "job": "396a37b6695e",
+  "parent_session": "687384e07954",
+  "date": "2026-10-22",
+  "locale": "fr",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "source_head": "b2ad9e3265261299d7059866b5df134204d69cb1",
+  "sha256": {
+    "en": "cfd8ffd72a69c143c996691f0434051968cf0411c885c65bd22cfaf118846b53",
+    "fr": "4c14fab3c733cb12546786693f2372b01e14006299649abf11b4fb80f0e4c627",
+    "context": "2175d3b0a1d8a68ed794039e4151d58e53a99e48965af3e3df776cacb3cbafaa"
+  },
+  "keys_read": 199,
+  "keys_substantive": 21,
+  "scope": "Landing-union-only audit; inherited keys read for combined context and hash/value continuity, not claimed as a fresh full linguistic audit. Identical shared values reused across the two heads.",
+  "findings": [
+    {
+      "id": "TBS1314-FR-N1",
+      "severity": "NIT",
+      "key": "ui.teamBridge.attachments.failed_count",
+      "current": "{count, plural, one {# image ne peut pas être envoyée.} other {# images ne peuvent pas être envoyées.}}",
+      "proposed": "{count, plural, one {# image ne peut pas être envoyée.} many {# d’images ne peuvent pas être envoyées.} other {# images ne peuvent pas être envoyées.}}",
+      "note": "Inherited from TBS1314-FR-N1, ATT-FR-R3-01; still present in bytes, with prior rejection for unreachable many preserved. Not reopened as a runtime defect.",
+      "inherited_ids": [
+        "TBS1314-FR-N1",
+        "ATT-FR-R3-01"
+      ],
+      "reason": "Missing CLDR many branch is inherited unchanged; source passes only 2–4 failed images, so that branch is unreachable and the issue remains a non-blocking NIT, not a runtime defect.",
+      "prior_disposition": "Rejected as unreachable (inherited receipt/task disposition; no fresh MR-comment fetch). Source at this head independently confirms only 2–4 failed images; retained, not reopened."
+    }
+  ],
+  "record": "i18n/audits/evidence/fr/ui.teamBridge/tbstack-landed-1314-20261022/record.json",
+  "native_fit": "unverified"
+}
