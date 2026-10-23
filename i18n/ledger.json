@@ -22508,8 +22508,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.asks",
-			"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
-			"target_sha256": "4c2c82a3f337aca1c7960be9fc2c501adf22f2fb05db812782c9f630fcb9b800",
+			"source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
+			"target_sha256": "dca9ae6d9d4c629d5bdc9c7efa1b3170ff50e670873c097eb6398b66be1e17b6",
 			"translator": {
 				"agent": "coder",
 				"model": "radient/auto",
@@ -22521,20 +22521,46 @@
 					"model": "anthropic/claude-opus-5-5",
 					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "pr5-20261023-r2-fr",
+					"instance": "pr5-20261023-r4-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/pr5-20261023-r2-fr.json",
-					"receipt_sha256": "5f42a459164a0f6f084d21e49882e5aed384412daf8320b8c03a70d457b1385b",
-					"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
-					"note": "Round 1 raised one MAJOR (moot note addressed the operator) and further findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+					"receipt": "i18n/receipts/pr5-20261023-r4-fr.json",
+					"receipt_sha256": "2f3a9d354340adef85a7a4e8491a7390009e549dea594b6f4b7194fe4fa19262",
+					"scope": "fr-only round-4 delta check at dfb45ee7d: the in_flight value changed from « Fermeture en cours… » to « En cours… »; the other 10 keys are byte-identical to the round-3 audit",
+					"note": "Round 3 passed with one MINOR on this key (fr-r3-m1); the fix is re-read here and clean. Copy authored by the implementing coder, audited independently."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+					"target_sha256": "4c2c82a3f337aca1c7960be9fc2c501adf22f2fb05db812782c9f630fcb9b800",
+					"auditors": [
+						{
+							"agent": "task",
+							"model": "anthropic/claude-opus-5-5",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "pr5-20261023-r2-fr",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/pr5-20261023-r2-fr.json",
+							"receipt_sha256": "5f42a459164a0f6f084d21e49882e5aed384412daf8320b8c03a70d457b1385b",
+							"scope": "full independent round-2 re-read of all 10 keys at 7ecde120d, every round-1 finding verified",
+							"note": "Round 1 raised one MAJOR (moot note addressed the operator) and further findings; all fixed in 4cecb7a2a. Copy authored by the implementing coder, audited independently."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
