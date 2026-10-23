@@ -23,13 +23,14 @@
  * missing `packager.appInfo` is a programming error rather than a build
  * condition, and defaulting here would guess the bundle's name.
  */
-import { execFileSync } from "node:child_process";
 import {
 	copyFileSync,
 	existsSync,
 	lstatSync,
 	mkdirSync,
+	readFileSync,
 	readdirSync,
+	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
 import { LEGACY_RESOURCE_NAMES } from "./bundled-runtime-layout.mjs";
@@ -68,12 +69,91 @@ const LEGACY_PYTHON_RESOURCE_NAMES = LEGACY_RESOURCE_NAMES;
  * the opposite order.
  *
  * The source is the icon electron-builder just placed in the main bundle, so
- * there is exactly one copy of the artwork in the build. `build.mac.icon` is
- * explicit in `package.json`; if that ever stops producing `icon.icns`, this
+ * every helper is stamped from the one artwork the build carries. `build.mac.icon`
+ * is explicit in `package.json`; if that ever stops producing `icon.icns`, this
  * throws instead of shipping helpers with a stale or absent icon.
+ *
+ * WHY THE PLIST IS EDITED IN JAVASCRIPT RATHER THAN WITH `plutil`. `afterPack`
+ * itself only ever runs on macOS, but `scripts/icon-identity.test.mjs` runs in
+ * the ubuntu `Desktop Tests` job, where `/usr/bin/plutil` does not exist. A test
+ * that cannot run on the runner is not coverage, and a bare `catch` around the
+ * tool would turn "plutil is missing" into "this bundle has no icon" - a false
+ * diagnosis of the exact class this change fixes. The plists electron-builder
+ * writes are XML, so a small keyed read/write over the text is portable and
+ * fails closed on a binary plist instead of guessing.
  */
+const XML_ESCAPES = {
+	"&": "&amp;",
+	"<": "&lt;",
+	">": "&gt;",
+	'"': "&quot;",
+	"'": "&apos;",
+};
+
+function escapeXml(value) {
+	return String(value).replace(
+		/[&<>"']/g,
+		(character) => XML_ESCAPES[character],
+	);
+}
+
+function unescapeXml(value) {
+	return value.replace(/&(amp|lt|gt|quot|apos);/g, (_, entity) => {
+		return { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" }[entity];
+	});
+}
+
+function escapeRegExp(value) {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * A macOS property list this hook can edit: XML, not the binary form.
+ *
+ * Electron-builder writes XML here, and every generated helper does too. A
+ * binary plist would make the keyed read/write below silently see "no key" and
+ * stamp nothing, so it is a named failure rather than a fall-through.
+ */
+export function assertXmlPlist(text, path) {
+	if (text.startsWith("bplist")) {
+		throw new Error(
+			`${path} is a binary property list. This hook edits the XML plists electron-builder writes; teach it the binary form before shipping a bundle whose helper cannot be stamped.`,
+		);
+	}
+	if (!text.includes("<plist")) {
+		throw new Error(`${path} does not look like an XML property list.`);
+	}
+}
+
+/** The string value for `key` in an XML plist, or null when the key is absent. */
+export function readPlistString(text, key) {
+	const pattern = new RegExp(
+		`<key>${escapeRegExp(escapeXml(key))}</key>\\s*<string>([^<]*)</string>`,
+	);
+	const match = pattern.exec(text);
+	return match ? unescapeXml(match[1]) : null;
+}
+
+/**
+ * Return `text` with `key` set to `value`, replacing the existing entry or
+ * inserting one before the plist's final `</dict>`.
+ */
+export function setPlistString(text, key, value) {
+	const pattern = new RegExp(
+		`(<key>${escapeRegExp(escapeXml(key))}</key>\\s*<string>)[^<]*(</string>)`,
+	);
+	if (pattern.test(text)) {
+		return text.replace(pattern, `$1${escapeXml(value)}$2`);
+	}
+	const close = text.lastIndexOf("</dict>");
+	if (close === -1) {
+		throw new Error(`Cannot find the closing </dict> to insert ${key}.`);
+	}
+	return `${text.slice(0, close)}\t<key>${escapeXml(key)}</key>\n\t<string>${escapeXml(value)}</string>\n${text.slice(close)}`;
+}
+
 export function stampBundleIcons({ appOutDir, productFilename, platform }) {
-	if (platform !== "darwin") return { stamped: [] };
+	if (platform !== "darwin" && platform !== "mas") return { stamped: [] };
 
 	const appDir = join(appOutDir, `${productFilename}.app`);
 	const mainPlist = join(appDir, "Contents", "Info.plist");
@@ -84,14 +164,10 @@ export function stampBundleIcons({ appOutDir, productFilename, platform }) {
 		);
 	}
 
-	let mainIcon;
-	try {
-		mainIcon = execFileSync(
-			"/usr/bin/plutil",
-			["-extract", "CFBundleIconFile", "raw", "-o", "-", mainPlist],
-			{ encoding: "utf8" },
-		).trim();
-	} catch {
+	const mainText = readFileSync(mainPlist, "utf8");
+	assertXmlPlist(mainText, mainPlist);
+	const mainIcon = readPlistString(mainText, "CFBundleIconFile");
+	if (mainIcon === null) {
 		throw new Error(
 			`The packed app's Info.plist carries no CFBundleIconFile (${mainPlist}). build.mac.icon must be set explicitly so the bundle, and every helper stamped from it, has an icon.`,
 		);
@@ -103,7 +179,11 @@ export function stampBundleIcons({ appOutDir, productFilename, platform }) {
 	}
 
 	const frameworks = join(appDir, "Contents", "Frameworks");
-	if (!existsSync(frameworks)) return { stamped: [] };
+	if (!existsSync(frameworks)) {
+		throw new Error(
+			`The packed app has no ${frameworks}. A macOS Electron app carries its helper bundles there; refusing to report success for a bundle that has none.`,
+		);
+	}
 
 	const stamped = [];
 	for (const entry of readdirSync(frameworks)) {
@@ -116,31 +196,18 @@ export function stampBundleIcons({ appOutDir, productFilename, platform }) {
 		mkdirSync(helperResources, { recursive: true });
 		copyFileSync(source, join(helperResources, "icon.icns"));
 
-		// -replace fails when the key is absent and -insert fails when it is
-		// present, so ask the plist which one applies instead of assuming every
-		// Electron helper keeps the same shape.
-		let hasIconKey = true;
-		try {
-			execFileSync(
-				"/usr/bin/plutil",
-				["-extract", "CFBundleIconFile", "raw", "-o", "-", plist],
-				{ stdio: "pipe" },
-			);
-		} catch {
-			hasIconKey = false;
-		}
-		execFileSync(
-			"/usr/bin/plutil",
-			[
-				hasIconKey ? "-replace" : "-insert",
-				"CFBundleIconFile",
-				"-string",
-				"icon.icns",
-				plist,
-			],
-			{ stdio: "pipe" },
+		const plistText = readFileSync(plist, "utf8");
+		assertXmlPlist(plistText, plist);
+		writeFileSync(
+			plist,
+			setPlistString(plistText, "CFBundleIconFile", "icon.icns"),
 		);
 		stamped.push(entry);
+	}
+	if (stamped.length === 0) {
+		throw new Error(
+			`No nested helper .app bundles were found under ${frameworks}. A macOS Electron app carries at least one; refusing to report success for a bundle whose helpers were not stamped.`,
+		);
 	}
 	return { stamped };
 }
