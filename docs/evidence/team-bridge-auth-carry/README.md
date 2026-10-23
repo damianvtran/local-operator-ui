@@ -51,24 +51,59 @@ The initial candidate run exposed a fixture that looked for B's rail before admi
 The corresponding actual logs are retained alongside this document, with only the local worktree path normalized. Independent code/design review, current-head CI and paired-runtime/real-hub evidence remain separate gates. No merge, release, feature hold removal, production write, credential access or native Electron run is implied by this document.
 
 
+## CI evidence-placement remediation
+
+CI run `40005090718` exposed an authoring error: I force-added 13 PNGs under
+`docs/evidence/`, where the repository explicitly prohibits tracked frames.
+Evidence Structure job `120592713124` rejected those exact paths. The job named
+Type Checking (`120592713008`) **passed both TypeScript compiler legs**, then
+failed `test-validate-release` → `entry-point.test.mjs` because the same evidence
+checker exited 1 in its physical-CLI smoke test. Neither failure is classified
+as a TypeScript flake or hidden behind the earlier local typecheck success.
+
+The images are preserved, not discarded: all 1,485,984 bytes are retained in the
+author-owned durable archive with unchanged SHA256 values, and the original published
+`7a98aca230f22ec2d18fa16742eb2c1883e0ea32` blobs remain immutable citations.
+`artifact-provenance.json` is the tracked per-image index. The dedicated artifact manifest retains all 13 images without adding them to
+the shared gallery. The shared gallery manifest and its counts remain unchanged;
+no whole-gallery census or pixel sweep is claimed. Production source, holds and the actual-auth/runtime/rendered proof are unchanged.
+A third CI failure (`120592713384`) also exposed the old static account-key pin in
+`picker-feedback.test.mjs`: it looked for the key definition in the former module
+and used a fixed character window for commissioning. The pin now checks the
+canonical authority definition/import/reexport and a brace-balanced function
+body, including revoke-before-first-await and clear → cancel → invalidate ordering.
+Its callers remain pinned; no guard or product behavior is relaxed.
+
+GitHub reported the PR actually CONFLICTING with main `952eefbe291e047525fe2e3660d72f746fb5c5df`,
+not merely behind it. The one-batch remediation therefore includes that already
+reviewed ICNS mainline by a normal merge (no rebase/history rewrite). Its only
+conflict is `package.json`'s test inventory: resolution retains the complete main
+object, including mac.icon and its registered icon test, plus the carrier's one
+auth-lane entry. ICNS files are verified byte-identical to main, and all production
+privacy/hold source is byte-identical to approved `7a98`; only the stated static
+test pin and evidence metadata need convergence review.
+
 ## Actual browser frames and geometry
 
 One existing Storybook server, one owned browser-tool tab, actual Page/auth hooks,
 real `commissionAccountRead` and shipped singleton; controlled preload only.
 Nine full source frames (2560×1440) and four explicitly cropped comparison pairs
-are retained here. The captures were actually opened and visually inspected.
+are retained byte-for-byte in the author session’s durable `scratchpad://durable-evidence/team-bridge-auth-carry/` archive.
+The tracked `artifact-provenance.json` records each SHA256, byte size, dimensions,
+local path and immutable reviewed-commit GitHub blob link. The captures were
+actually opened and visually inspected; relocation is not a new capture.
 
-- `a-populated-draft.png`: observed A, A private history, original A typed draft.
-- `b-status-pending-first.png` / `b-status-pending-settled.png`: observed auth B,
+- [`a-populated-draft.png`](https://github.com/damianvtran/local-operator-ui/blob/7a98aca230f22ec2d18fa16742eb2c1883e0ea32/docs/evidence/team-bridge-auth-carry/a-populated-draft.png): observed A, A private history, original A typed draft.
+- [`b-status-pending-first.png`](https://github.com/damianvtran/local-operator-ui/blob/7a98aca230f22ec2d18fa16742eb2c1883e0ea32/docs/evidence/team-bridge-auth-carry/b-status-pending-first.png) / [`b-status-pending-settled.png`](https://github.com/damianvtran/local-operator-ui/blob/7a98aca230f22ec2d18fa16742eb2c1883e0ea32/docs/evidence/team-bridge-auth-carry/b-status-pending-settled.png): observed auth B,
   held Team Bridge status, existing checking cue, no A history or draft. Their
   only pixel change is the loading spinner (bbox in `frame-metrics.json`).
-- `b-history-refused-first.png`: the B page really committed its conversation
+- [`b-history-refused-first.png`](https://github.com/damianvtran/local-operator-ui/blob/7a98aca230f22ec2d18fa16742eb2c1883e0ea32/docs/evidence/team-bridge-auth-carry/b-history-refused-first.png): the B page really committed its conversation
   and history error with an empty composer; no A body. **The later capture,
-  `b-history-poll-later.png`, is the next inherited poll's loading state, not a
+  [`b-history-poll-later.png`](https://github.com/damianvtran/local-operator-ui/blob/7a98aca230f22ec2d18fa16742eb2c1883e0ea32/docs/evidence/team-bridge-auth-carry/b-history-poll-later.png), is the next inherited poll's loading state, not a
   stable settled error.** No stability claim is made across that state change.
-- `b-populated-first.png` / `b-populated-settled.png`: admitted B history, no A
+- [`b-populated-first.png`](https://github.com/damianvtran/local-operator-ui/blob/7a98aca230f22ec2d18fa16742eb2c1883e0ea32/docs/evidence/team-bridge-auth-carry/b-populated-first.png) / [`b-populated-settled.png`](https://github.com/damianvtran/local-operator-ui/blob/7a98aca230f22ec2d18fa16742eb2c1883e0ea32/docs/evidence/team-bridge-auth-carry/b-populated-settled.png): admitted B history, no A
   text; only a one-pixel difference at the rail decoration.
-- `a-return-draft-first.png` / `a-return-draft-settled.png`: actual auth return
+- [`a-return-draft-first.png`](https://github.com/damianvtran/local-operator-ui/blob/7a98aca230f22ec2d18fa16742eb2c1883e0ea32/docs/evidence/team-bridge-auth-carry/a-return-draft-first.png) / [`a-return-draft-settled.png`](https://github.com/damianvtran/local-operator-ui/blob/7a98aca230f22ec2d18fa16742eb2c1883e0ea32/docs/evidence/team-bridge-auth-carry/a-return-draft-settled.png): actual auth return
   restores A history and the exact A draft; the pair is pixel-identical.
 
 The empty B composer and restored A composer have the same measured CSS rect:
