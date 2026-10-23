@@ -282,7 +282,7 @@ export type SessionStatusStripProps = {
 	 * to hide a live number.
 	 */
 	controlsThirdBox?: boolean;
-	/**
+	/*
 	 * THE ROW'S OTHER HALF, BY CONTRACT. The duration reading's visibility is
 	 * measured against the composer's controls group, which is the strip's own
 	 * sibling inside one row. A surface that renders this strip inside a row is
@@ -1395,8 +1395,9 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				//
 				// `relative` is the containing block for the duration reading, which
 				// is out of flow (see the measured-fit note above): the reading is
-				// anchored one gap past the strip's own right edge, which is the last
-				// visible reading's edge because the duration contributes no width.
+				// anchored one gap past the strip's INLINE-END edge (its right in
+				// LTR, its left in RTL), which is the last visible reading's edge
+				// because the duration contributes no in-flow width.
 				"relative -mx-1.5 flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5",
 				/*
 				 * Where the cluster sits in the composer's button row.
@@ -1919,19 +1920,22 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			 *
 			 * WHY IT IS OUT OF FLOW. This reading is always mounted when there is
 			 * a duration to show, positioned absolutely one gap past the strip's
-			 * right edge (`left: calc(100% + 4px)`, the same 4px as `gap-x-1`),
-			 * and hidden with `invisible` - visibility, never display - when it
-			 * does not fit. Out of flow in BOTH states, so drawing it cannot
+			 * INLINE-END edge (`insetInlineStart: calc(100% + 4px)`, the same 4px
+			 * as `gap-x-1`; that is `left` in LTR and `right` in RTL), and hidden
+			 * with `invisible` - visibility, never display - when it does not
+			 * fit. Out of flow in BOTH states, so drawing it cannot
 			 * reflow the row, cannot shrink the model, and cannot feed its own
 			 * measurement: a successful measurement cannot turn into a failed one
 			 * by drawing. That is the property the old in-flow ladder did not need
 			 * because it never measured, and the one an in-flow rule could not have
 			 * (show -> reflow -> no longer fits -> hide would oscillate).
 			 *
-			 * THE MEASUREMENT, in full precision, is `G >= D + 4`: G is the
-			 * controls group's left edge minus the LAST VISIBLE non-duration
-			 * reading's right edge, D is this reading's own box. Both are read off
-			 * the rendered DOM in a layout effect that runs on every render (the
+			 * THE MEASUREMENT, in full precision, is `G >= D + 4`: G is the free
+			 * gap between the controls group and the LAST VISIBLE non-duration
+			 * reading in the row's INLINE direction (`inlineGap(direction, ...)`:
+			 * `controls.left - last.right` in LTR, `last.left - controls.right` in
+			 * RTL), D is this reading's own box. Both are read off the rendered
+			 * DOM in a layout effect that runs on every render (the
 			 * value ticks at 1Hz and a digit can change the width), with a
 			 * ResizeObserver on the row, the strip, the controls and this reading
 			 * for what a render cannot see: the dragged measure, a sibling

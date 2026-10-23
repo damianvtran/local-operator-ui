@@ -233,11 +233,13 @@ states.
 
 The fix replaces both class-based sheds with one measured predicate. The reading
 is always mounted when there is a duration to show, laid out OUT OF FLOW
-(`position: absolute; left: calc(100% + 4px); top: 0`, the strip being
-`relative`) and toggled with `invisible` - visibility, never display. The strip
-measures, in full precision, `G = controls.left - last visible non-duration
-reading.right` and `D = the reading's own box`, and shows it when `G >= D + 4`;
-the 4px is the readings' own gap. Nothing else moved: the other three readings'
+(`position: absolute; top: 0; inset-inline-start: calc(100% + 4px)`, the strip
+being `relative` - `inset-inline-start` is `left` in LTR and `right` in RTL) and
+toggled with `invisible` - visibility, never display. The strip measures, in
+full precision, the row's inline gap `G = inlineGap(direction, lastEdge,
+controlsLeft, controlsRight)` - `controls.left - last.right` in LTR,
+`last.left - controls.right` in RTL - and `D = the reading's own box`, and shows
+it when `G >= D + 4`; the 4px is the readings' own gap. Nothing else moved: the other three readings'
 ladders, the model's width rules, the spacing and the control box count are the
 shipped ones. The controls group carries `data-lo-composer-controls` and the
 reading carries `data-lo-duration`, so the measurement finds the row's real

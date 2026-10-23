@@ -1363,12 +1363,50 @@ test("the duration's fit arithmetic is pure, and reads the row's own direction",
 	 * `width + gap` fits, a hair less does not. The comparison is on the gap, so
 	 * the direction's only job is producing it correctly.
 	 */
-	for (const direction of ["ltr", "rtl"]) {
-		const width = 55.4;
-		const exact = 55.4 + READING_GAP;
-		assert.equal(durationFits(exact, width), true, direction);
-		assert.equal(durationFits(exact - 0.1, width), false, direction);
-		assert.equal(durationFits(exact + 0.1, width), true, direction);
+	const boundaries = [
+		// LTR: the gap runs from the last reading's right edge to the controls' left.
+		{
+			direction: "ltr",
+			lastEdge: 500,
+			controlsLeft: 559,
+			controlsRight: 663,
+			width: 55,
+		},
+		// RTL: mirrored - from the last reading's left edge to the controls' right.
+		{
+			direction: "rtl",
+			lastEdge: 500,
+			controlsLeft: 441,
+			controlsRight: 441,
+			width: 55,
+		},
+	];
+	for (const {
+		direction,
+		lastEdge,
+		controlsLeft,
+		controlsRight,
+		width,
+	} of boundaries) {
+		// The gap is computed FROM that direction's own edges, so the loop exercises
+		// two different arithmetic paths rather than the same one twice.
+		const exact = inlineGap(direction, lastEdge, controlsLeft, controlsRight);
+		assert.equal(exact, width + READING_GAP, direction);
+		assert.equal(
+			durationFits(exact, width),
+			true,
+			`${direction} at the boundary`,
+		);
+		assert.equal(
+			durationFits(exact - 0.1, width),
+			false,
+			`${direction} a hair short`,
+		);
+		assert.equal(
+			durationFits(exact + 0.1, width),
+			true,
+			`${direction} a hair clear`,
+		);
 	}
 });
 
