@@ -1,0 +1,44 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbr-r2-ru",
+  "session": "9ce148816b9d",
+  "date": "2026-10-21",
+  "locale": "ru",
+  "translator": "translator",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 1,
+  "scope": "Round-2 remediation delta: ui.teamBridge.reactions.toneDefault (RU-R1-1) plus regression check that the other 128 values equal the round-1 audited bytes. Inherits round-1 tbr-r1-ru for the other 19 reaction keys and, through it, the base 2e16fb1456 audit for the 109 unchanged values. Catalogue audit only, not rendered-fit, activation or release approval.",
+  "sha256": {
+    "en": "69f741a64df96b85b00e2f389bcda35bbbcc7cc023c4e2f31c997ef64fc0b50c",
+    "ru": "b28277add70b106ff212a3a3e86bc71926f5bab00cc69e3ae49eed02164fbf3b",
+    "context": "ad0eef37d14411e02b07a083f3873518362734fefd8caa930cf4196728b2ef84"
+  },
+  "findings": [],
+  "remediation": {
+    "finding": "RU-R1-1",
+    "previous": "Стандартный оттенок",
+    "current": "По умолчанию",
+    "disposition": "fixed"
+  },
+  "inherited_receipt": {
+    "round": 1,
+    "path": "i18n/receipts/tbr-r1-ru.json",
+    "sha256": "a5b9d2a9ea910a88765bc302405267552f911144218d5e7200e4af27a07d9aac",
+    "target_sha256": "040a806abf8a6ac1734a6c0aa67b48cdce9a9806eb0d381fbac9b6bb2728a86b",
+    "values_unchanged_verified": 128
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+  },
+  "validation": {
+    "independence": "This auditor did not translate or edit any catalogue or code; repo access was read-only (no stage, commit, stash or checkout). Auditor session 9ce148816b9d differs from the round-1 auditor session 1eb2dfffb7df and from the translator. All work ran as anthropic/claude-opus-5-5; no model switch or fallback was observed. No scratch file written besides this receipt.",
+    "semantics": "Read the new value in its render role in team-bridge-emoji-picker.tsx: it is the visible first <option value={0}> of the skin-tone <select aria-label={reactions.tone}>, whose other options are 👍 with modifiers U+1F3FB-1F3FF. «По умолчанию» is accurate for the untoned default option, is the exact string used for standalone 'Default' in ru (ui.common.models.default, ui.providers.provider_grid.default) and matches the round-1 proposal byte for byte. It reads naturally and is sentence case per the style guide. It sits fine beside the unchanged paired label reactions.tone «Оттенок кожи», which supplies 'skin tone' to assistive tech and is confirmed byte-identical to round 1. Considered: a closed select shows only «По умолчанию» with no visible 'skin tone' cue. The 👍 options make the meaning clear on open, and round 1 already weighed this, so it is not a finding.",
+    "icu": "Ran node with @formatjs/icu-messageformat-parser 3.5.21 (resolved from the repo node_modules) on the actual ru and en toneDefault bytes: each parses to a single literal element, with 0 arguments. In python: JSON parse with a duplicate-key check found no duplicates; 129 en = 129 ru keys in identical order; the file equals its NFC normalization; no U+200E/200F/202A-202E/2066-2069/061C; trailing newline present.",
+    "byte_delta": "In python, replaced the single current line '\\t\"ui.teamBridge.reactions.toneDefault\": \"По умолчанию\",' (occurs exactly once) with the round-1 value «Стандартный оттенок»; sha256 of the result = 040a806abf8a6ac1734a6c0aa67b48cdce9a9806eb0d381fbac9b6bb2728a86b, equal to the round-1 target hash. The current file therefore differs from the round-1 audited bytes only in this value, and the other 128 values (including reactions.tone) are unchanged.",
+    "overflow": "Static code points only: en 17 ('Default skin tone') → ru 12 («По умолчанию»), down from 19 in round 1. That is shorter than the source in the narrow h-7 12px select, so this value raises no overflow concern. No rendered-fit claim.",
+    "limitations": "Browser unavailable by task constraint. No screenshots, glyph metrics, visual-fit or native bidi-rendering claim. No catalogue/code edits."
+  }
+}
