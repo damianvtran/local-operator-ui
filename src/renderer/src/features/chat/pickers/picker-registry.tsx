@@ -36,6 +36,7 @@ import {
 	ContextView,
 	CopyPicker,
 	CredentialPicker,
+	type DraftPickerSession,
 	EffortPicker,
 	FailoversView,
 	FastPicker,
@@ -171,6 +172,30 @@ export type DestinationEntry =
 			 * palette's route-does-this-need-a-chat question answered the same.
 			 */
 			draftIdentity?: ChatTarget["kind"];
+			/**
+			 * This picker's pick is carried by a DRAFT pane's OWN selection (issue
+			 * #1265): on a pane with no conversation it presents the same dialog a
+			 * session gets, and its pick is resolved through `sessions.preview` for
+			 * this pane and recorded on the draft row, ready for `sessions.create`.
+			 *
+			 * A SIBLING OF `draftIdentity` AND NOT A WIDENING OF IT, because the two
+			 * routes carry different things: `draftIdentity` STAGES a target the pane
+			 * has no picker for (the sidebar's "New chat with <team>"), while this one
+			 * has the picker and it writes the pane's selection — the field
+			 * `DraftSelectionTarget.model` and the pickers' shared `useDraftPick`
+			 * already own. `/fast` is its first row, and the reason it needed one is
+			 * the row's own: the model and effort dialogs are opened from the strip's
+			 * chips, which a draft already paints, while the fast dial has no chip —
+			 * the typed `/fast` IS its only door, and on a draft it used to be refused.
+			 *
+			 * READ BY `draftSelectionRoute` (`slash-dispatch.ts`), the one rule the
+			 * dispatcher's gate and its presenter both ask. The predicate itself does
+			 * NOT change: the destination still addresses a conversation in the
+			 * ordinary sense, which is what keeps the palette's route question and the
+			 * composer's copy answered the same. It only answers when the pane HAS a
+			 * draft to carry the pick — no preview answered, no capability, no route.
+			 */
+			draftSelection?: true;
 	  } & ArgsBehavior)
 	| ({
 			kind: "machine-panel";
@@ -388,7 +413,18 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 		component: EffortPicker,
 		inline: { source: "effort", nameThenMessage: false, runs: true },
 	},
-	"session.fast": { kind: "picker", component: FastPicker },
+	"session.fast": {
+		kind: "picker",
+		component: FastPicker,
+		/*
+		 * The dial is the model's, and the model is the pane's own selection: on a
+		 * new chat there is no session for `/fast` to command, so the pick is
+		 * resolved for the first turn and born with it (issue #1265). The row
+		 * declares the draft route because the typed command is this dial's ONLY
+		 * door — unlike `/model` and `/effort`, it has no strip chip to open it.
+		 */
+		draftSelection: true,
+	},
 	"session.goal": { kind: "picker", component: GoalPicker },
 	"session.loop": { kind: "picker", component: LoopPicker },
 	"session.aside": { kind: "aside" },
@@ -653,6 +689,44 @@ export function destinationNeedsSession(
 	 */
 	if (entry.kind === "machine-panel" || entry.kind === "aida") return false;
 	return !(entry.kind === "picker" && entry.sessionless === true);
+}
+
+/**
+ * The pane's own selection, when THIS row's pick is that selection's to carry.
+ *
+ * ONE RULE, TWO CALLERS, and that is the whole reason it is a function: the
+ * dispatcher's refusal gate asks it to decide whether `/fast` may open on a
+ * pane with no conversation, and the presenter asks it again to decide whether
+ * the dialog it mounts gets the pane. Two copies of the same three conditions
+ * is how a gate would exempt a row whose presenter then dropped the context —
+ * a dialog whose pick resolves against nothing and falls back to a session
+ * command, which is the defect (issue #1265) this route exists to remove.
+ *
+ * It lives beside `destinationNeedsSession` rather than in the dispatcher
+ * because it is a fact about the TABLE (does this row's pick travel a draft's
+ * selection?) crossed with the dispatcher's own rule about arguments, and "this
+ * row" is the table's question. The args half is the dispatcher's:
+ *
+ *   - the row does not declare `draftSelection` (every row but `/fast` today);
+ *   - the pane has no draft context (`draftPickable` off, or the preview has not
+ *     answered yet — `chat-page.tsx` hands it only once a pick can be honoured),
+ *     so the ordinary refusal is the honest answer;
+ *   - the command was typed WITH an argument. An argument form is the owner's
+ *     path (`/fast on` posts to a session today), and the draft's pick must not
+ *     swallow it: this dialog has no argument reading, so a bare word here would
+ *     be dropped in silence. `/fast` alone is the door; the same limit `/model
+ *     <name>` has on a draft today.
+ */
+export function draftSelectionRoute(
+	destination: string | undefined,
+	args: string,
+	draft: DraftPickerSession | undefined,
+): DraftPickerSession | undefined {
+	if (!draft || args.trim() !== "") return undefined;
+	const entry = destination ? DESTINATIONS[destination] : undefined;
+	if (entry?.kind !== "picker" || entry.draftSelection !== true)
+		return undefined;
+	return draft;
 }
 
 /**

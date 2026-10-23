@@ -342,8 +342,8 @@ const importRequestFields = {
 /**
  * The model a NEW conversation will be born on, picked on the draft pane.
  *
- * Deliberately the same three fields, in the same spelling, that the canonical
- * frontend state publishes for a session's model (`CanonicalModel` in
+ * Deliberately the same fields, in the same spelling, that the canonical frontend
+ * state publishes for a session's model (`CanonicalModel` in
  * `desktop-session-contract.ts`): the draft's chips and the session's chips are
  * two readings of one fact, and a second spelling here would be the place the
  * two came to disagree. `reasoning_effort` is `null` for "no rung chosen",
@@ -359,6 +359,40 @@ const modelSelection = z
 		provider: z.string().min(1).max(128),
 		model_id: z.string().min(1).max(512),
 		reasoning_effort: z.string().min(1).max(64).nullable(),
+		/*
+		 * The FAST dial the conversation is born on (issue #1265), when the pane's
+		 * `/fast` picker asked for one.
+		 *
+		 * OPTIONAL, so the three orders a request can carry stay distinguishable:
+		 * an absent key is "nobody asked" - the body every caller sent before this
+		 * field existed - `true` asks for the tier, and `false` is the user picking
+		 * `Off` (the spec's own default, so it moves no byte on a backend that
+		 * carries the field). It is not DERIVED from the resolved spec here: a
+		 * renderer that copied the resolved dial onto every draft would assert a
+		 * choice nobody made, and the authority for "may this model be served
+		 * fast" is the backend's own `supports_fast_mode` clamp, which refuses
+		 * `true` with a 422.
+		 *
+		 * THIS IS THE RENDERER HALF OF A TWO-REPO CHANGE, and the backend half is
+		 * not in `local-operator` yet: its `DraftModel`
+		 * (`server/routes/desktop_sessions.py`) still carries only `provider`,
+		 * `model_id` and `reasoning_effort`, and that module's `Input` is
+		 * `extra="forbid"` - measured against the field: a `sessions.preview` body
+		 * with `fast_mode` on it answers `422 {"detail": "The request has invalid
+		 * fields."}`. So a draft pick on today's backend is REFUSED OUT LOUD by
+		 * `FastPicker`'s catch and nothing is recorded on the pane, which is the
+		 * honest reading of "this build cannot do it yet" rather than a dial the
+		 * first turn would never get. The field stays declared here because the
+		 * draft route's own round trip is the one the backend must answer, and a
+		 * renderer that had to be rewritten for it would be the second spelling
+		 * this contract exists to prevent.
+		 *
+		 * `null` is accepted because a backend that carries the field spells "no
+		 * choice" that way (`fast_mode: bool | None`, the spelling this contract's
+		 * `null` mirrors), and the two spellings must mean one thing to every
+		 * reader.
+		 */
+		fast_mode: z.boolean().nullable().optional(),
 	})
 	.strict();
 /** What a draft pane's chips record, and what the wire carries. */
