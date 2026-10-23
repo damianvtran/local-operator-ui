@@ -166,7 +166,10 @@ const PANEL_COLUMNS = [
 		path: "src/renderer/src/features/team-bridge/team-bridge-page.tsx",
 		classes: [
 			'className="panel-top-pad flex w-72 shrink-0 flex-col bg-surface"',
-			'className="panel-top-pad flex min-w-0 flex-1 flex-col bg-surface"',
+			// The thread column is built through `cn()` since main's narrow takeover
+			// (`@max-[1024px]/bridge:invisible`) landed, so the pin is the quoted
+			// class string rather than a whole `className="…"` attribute.
+			'"panel-top-pad flex min-w-0 flex-1 flex-col bg-surface"',
 		],
 	},
 ];
@@ -213,8 +216,13 @@ test("the panel root utility is the only way a route reaches y0", () => {
 		},
 		{
 			path: "src/renderer/src/features/team-bridge/team-bridge-page.tsx",
+			// `@container/bridge relative` is main's: the container query is what the
+			// narrow takeover keys on, and `relative` anchors it WITHOUT offsetting
+			// the panel. It rides on this PR's root contract (`panel-flush` cancels
+			// the shell pad, `flex-1` keeps the bottom strip), so the pin is the
+			// merged class string - re-read from the markup, never restored.
 			literal:
-				'className="panel-flush flex min-h-0 flex-1 w-full overflow-hidden bg-canvas"',
+				'className="panel-flush @container/bridge relative flex min-h-0 flex-1 w-full overflow-hidden bg-canvas"',
 		},
 		{
 			path: BROWSER_SURFACE,

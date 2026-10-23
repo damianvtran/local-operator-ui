@@ -30,6 +30,7 @@ import {
 	conversationOrganizationName,
 	conversationTitle,
 	notificationPreference,
+	storedLabel,
 } from "./team-bridge-model";
 
 /** The watcher's cadence. One number, so the hook and the tests agree. */
@@ -72,6 +73,7 @@ export type TeamBridgeNotifyUnreadRow = {
  * the tenant id is not a human label and is never substituted.
  */
 export type TeamBridgeNotifyCandidate = {
+	threadId?: string;
 	conversationId: string;
 	tenantId: string;
 	seq: number;
@@ -182,7 +184,10 @@ export function teamBridgeNotificationSubject(
 	return {
 		conversationName: conversationTitle(conversation, selfAccountId),
 		organizationName: conversationOrganizationName(conversation, organizations),
-		senderLabel: conversation.last_sender_label?.trim() || null,
+		// The list row's label is the degraded-banner title (the message read that
+		// names the sender can fail, and a thread reply is invisible to it), so the
+		// legacy "Member" placeholder is dropped here exactly as the rail drops it.
+		senderLabel: storedLabel(conversation.last_sender_label ?? ""),
 	};
 }
 
@@ -276,12 +281,18 @@ export function planTeamBridgeNotifications(
 		 * next poll ask the same question again, when the metadata is there.
 		 */
 		if (conversation === undefined) continue;
+		// Badge and summary are separate reads. Never pair one snapshot's seq with
+		// another's root id (or advance past a reply before its root metadata arrives).
+		if (conversation.latest_seq !== row.latest_seq) continue;
 		cursors.set(row.conversation_id, row.latest_seq);
 		if (!shouldNotifyTeamBridge(conversation, input.selfAccountId)) continue;
 		if (input.quiet) continue;
 
 		candidates.push({
 			conversationId: conversation.id,
+			...(conversation.last_thread_root_id
+				? { threadId: conversation.last_thread_root_id }
+				: {}),
 			// The org the unread row was READ in, not a second derivation from the
 			// list row: the click must land in the organization whose unread the
 			// watcher actually saw.
