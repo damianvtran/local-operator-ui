@@ -58,6 +58,7 @@ async function rig({
 	pane = false,
 	sessionId = "a",
 	platform = "MacIntel",
+	ownState = false,
 } = {}) {
 	const dom = new JSDOM(
 		'<div id="mount"></div><button id="chat">Chat</button><input id="chat-editor" aria-label="Chat editor">',
@@ -183,7 +184,7 @@ async function rig({
 			closeTab,
 			openFind,
 			findReturnToPage,
-		} = useBrowserChords(chrome, tabs, sessionId, address);
+		} = useBrowserChords(chrome, tabs, sessionId, address, ownState);
 		closeFromStrip = closeTab;
 		returnRef = findReturnToPage;
 		const surface = React.createElement(
@@ -1421,18 +1422,55 @@ test("page-open then chrome-repeat and toolbar repeat preserve first origin and 
 	}
 });
 
-test("S5: page chords take the same own-state guard as the disabled menu", () => {
-	const source = readFileSync(
+test("S5: chords share the menu's own-state in both directions", async () => {
+	const blocked = await rig({ ownState: true });
+	try {
+		await blocked.focus("toolbar");
+		await blocked.key("f", { metaKey: true });
+		await blocked.key("=", { metaKey: true });
+		assert.equal(
+			blocked.events.filter((e) => e[0] === "page-control").length,
+			0,
+			"a start/failure page refuses Find and zoom, like the disabled menu",
+		);
+	} finally {
+		blocked.finish();
+	}
+
+	// `about:blank` while a submitted navigation is loading is NOT own-state:
+	// the menu is enabled, so the same chord must reach main.
+	const loading = await rig({ ownState: false });
+	try {
+		await loading.focus("toolbar");
+		await loading.key("f", { metaKey: true });
+		assert.ok(
+			loading.events.some((e) => e[0] === "page-control" && e[2] === "open"),
+			"the loading blank page still opens Find",
+		);
+	} finally {
+		loading.finish();
+	}
+});
+
+test("S5: the surface hands the chords the same own-state as the menu", () => {
+	const surface = readFileSync(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+		"utf8",
+	);
+	const chords = readFileSync(
 		"src/renderer/src/features/browser/hooks/use-browser-chords.ts",
 		"utf8",
 	);
+	assert.match(surface, /browserOwnState,\s*\);/, "the surface passes it in");
+	assert.match(
+		surface,
+		/canControlPage=\{!browserOwnState && activeTab !== null\}/,
+		"the menu reads the same fact",
+	);
 	assert.equal(
-		(
-			source.match(
-				/c\.state\?\.navFailure != null \|\| c\.state\?\.url === "about:blank"/g,
-			) ?? []
-		).length,
+		(chords.match(/if \(latest\.current\.browserOwnState\) return;/g) ?? [])
+			.length,
 		2,
-		"Find and zoom both refuse the start/failure page instead of painting its refusal",
+		"Find and zoom both take the shared guard",
 	);
 });

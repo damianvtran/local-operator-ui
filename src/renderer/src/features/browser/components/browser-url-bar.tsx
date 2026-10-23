@@ -1012,7 +1012,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						count: suggestions.rows.length,
 					}),
 				);
-			} else if (!autocomplete.loading) {
+			} else if (!autocomplete.loading && !suggestionsUnavailable) {
 				setAnnouncement(listNotice);
 			}
 		} else if (!listVisible && wasListOpen.current) {
@@ -1222,7 +1222,12 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 						   reserves its own trailing run in the field's CONTENT box, so
 						   the text scrolls in the space that remains. Below the narrow
 						   breakpoint the pill is `sr-only` and needs no reservation. */
-						hintShown && !narrow && "pr-[calc(45%+1.75rem)]",
+						hintShown &&
+							!narrow &&
+							/* QA measured the wide painted pill at 218 px. Reserve that
+							   plus a 160 px field floor, but never more than the field
+							   can spare; below 360 `narrow` keeps it description-only. */
+							"pr-[min(378px,max(0px,calc(100%-10rem)))]",
 					)}
 				/>
 				{loading && !editing && (

@@ -4025,9 +4025,22 @@ test("the unavailable sentence is announced and does not name implementation sta
 		"exactly one polite live region (Q4-2)",
 	);
 	assert.match(
+		readFileSync(
+			"src/renderer/src/features/browser/components/browser-surface.tsx",
+			"utf8",
+		),
+		/narrow=\{rowWidth > 0 && rowWidth < 360\}/,
+		"359 is description-only; 360 is the first reserving row (Q5-1)",
+	);
+	assert.match(
 		bar,
-		/pr-\[calc\(45%\+1\.75rem\)\]/,
-		"the field reserves the hint's trailing run (Q5-1)",
+		/!narrow &&[\s\S]{0,260}"pr-\[min\(378px,max\(0px,calc\(100%-10rem\)\)\)\]"/,
+		"the field reserves the measured 218 px pill plus a 160 px floor at/above 360, clamped to the field (Q5-1)",
+	);
+	assert.match(
+		bar,
+		/else if \(!autocomplete\.loading && !suggestionsUnavailable\)/,
+		"the empty-list fallthrough is silent while the field says unavailable (U25)",
 	);
 	assert.match(
 		bar,

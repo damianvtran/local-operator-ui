@@ -2055,6 +2055,33 @@ test("discard opt-in stays closed on lift, and BrowserSafeTooltip opts in by def
 		const original = console.error;
 		console.error = (...args) => warns.push(args.join(" "));
 		try {
+			// A caller's own `suppressed` is not a view discard (U29): with no
+			// browser view, suppress then lift and a FRESH focus opens the label.
+			const caller = (suppressed) =>
+				React.createElement(
+					BrowserSafeTooltip,
+					{ content: "caller", suppressed },
+					React.createElement(
+						"button",
+						{ id: "tooltip-caller", type: "button" },
+						"c",
+					),
+				);
+			await api.render(caller(true));
+			await frames(2);
+			act(() => api.$("#tooltip-caller").focus());
+			await frames(20);
+			assert.equal(api.$('[role="tooltip"]'), null, "caller suppression hides");
+			await api.render(caller(false));
+			await frames(2);
+			act(() => api.$("#tooltip-caller").blur());
+			act(() => api.$("#tooltip-caller").focus());
+			await frames(20);
+			assert.ok(
+				api.$('[role="tooltip"]'),
+				"caller suppression resumes by default",
+			);
+
 			const el = (suppressed) =>
 				React.createElement(
 					TooltipProvider,
