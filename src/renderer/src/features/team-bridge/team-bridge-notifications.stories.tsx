@@ -149,8 +149,25 @@ function createFixture(scenario: Scenario) {
 				return ok({
 					settings: [{ key: "display.notifications", value: enabled }],
 				});
-			case "agent_messages.status":
-				return ok({ account_id: "acct_self" });
+			case "team_bridge.status":
+				return ok({
+					capability: 1,
+					account_id: "acct_self",
+					tenant_id: tenant,
+					state: "ready",
+					surface_state: "D",
+					visibility: {
+						settings: true,
+						inbox: true,
+						account_door: true,
+						onboarding: false,
+					},
+					update_required: false,
+					local: { enabled: true, onboarding: "done", session: "present" },
+					status: null,
+					consent: null,
+					error: null,
+				});
 			case "team_bridge.conversations.list":
 				return ok({ conversations: [conversation] });
 			case "team_bridge.unread":
@@ -304,10 +321,10 @@ function Watcher({ fixture }: { fixture: Fixture }) {
 		if (
 			fetching === 0 &&
 			fixture.client.getQueryData(
-				teamBridgeKeys.unread(TEAM_BRIDGE_ALL_SCOPE),
+				teamBridgeKeys.unread(TEAM_BRIDGE_ALL_SCOPE, "acct_self"),
 			) &&
 			fixture.client.getQueryData(
-				teamBridgeKeys.conversations(TEAM_BRIDGE_ALL_SCOPE),
+				teamBridgeKeys.conversations(TEAM_BRIDGE_ALL_SCOPE, "acct_self"),
 			)
 		)
 			fixture.seeded();

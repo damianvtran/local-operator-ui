@@ -96,7 +96,7 @@ import { assertThreadPage } from "./team-bridge-thread-read";
 import { teamBridgeViewingConversation } from "./team-bridge-viewing";
 import {
 	teamBridgeKeys,
-	useTeamBridgeIdentity,
+	useTeamBridgeStatus,
 	useTeamBridgeUnread,
 } from "./use-team-bridge";
 
@@ -135,14 +135,20 @@ function bannerPlace(
  * A refused or failed directory is an empty list: the sender's own wire label
  * is then the name, which is still a person's name.
  */
+import { readForBridgeOwner } from "./team-bridge-owner";
+
 async function directoryPeople(
 	client: QueryClient,
 	tenantId: string,
+	accountId: string,
 ): Promise<readonly TeamBridgeDirectoryMember[]> {
 	try {
 		const directory = await client.fetchQuery({
-			queryKey: teamBridgeKeys.directory(tenantId),
-			queryFn: () => TeamBridgeApi.directory(tenantId),
+			queryKey: teamBridgeKeys.directory(tenantId, accountId),
+			queryFn: () =>
+				readForBridgeOwner(client, accountId, () =>
+					TeamBridgeApi.directory(tenantId),
+				),
 			staleTime: 30_000,
 			retry: false,
 		});
@@ -166,6 +172,7 @@ async function deliverTeamBridgeBanner(
 	selfAccountId: string,
 	stillCurrent: () => boolean,
 ): Promise<void> {
+	if (!stillCurrent()) return;
 	let senderLabel = candidate.senderLabel;
 	let preview: string | null = null;
 	try {
@@ -202,7 +209,12 @@ async function deliverTeamBridgeBanner(
 			) {
 				return;
 			}
-			const people = await directoryPeople(client, candidate.tenantId);
+			if (!stillCurrent()) return;
+			const people = await directoryPeople(
+				client,
+				candidate.tenantId,
+				selfAccountId,
+			);
 			senderLabel = participantLabel(newest.sender, people, {
 				named: (agent, person) =>
 					t("ui.teamBridge.chief.label", { agent, person }),
@@ -265,10 +277,16 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 	 * two routes only to discard every candidate at the IPC line.
 	 */
 	const available = Boolean(window.api?.desktop?.teamBridge);
-	const identity = useTeamBridgeIdentity(enabled && available);
-	const selfAccountId = identity.data ?? undefined;
+	const status = useTeamBridgeStatus(enabled && available);
+	const selfAccountId = status.data?.account_id ?? undefined;
 	const signedIn = Boolean(selfAccountId);
-	const active = enabled && available && signedIn;
+	const active =
+		enabled &&
+		available &&
+		signedIn &&
+		status.data?.state === "ready" &&
+		status.data.local.enabled &&
+		!status.data.read_only;
 	const client = useQueryClient();
 	const memberships = useMembershipsQuery({ enabled: active });
 	/*
@@ -296,9 +314,16 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 	accountRef.current = selfAccountId;
 	const activeRef = useRef(active);
 	activeRef.current = active;
+	useEffect(() => {
+		activeRef.current = active;
+		return () => {
+			activeRef.current = false;
+		};
+	}, [active]);
 	const membershipsData = memberships.data;
 
 	const accountUnread = useTeamBridgeUnread(active, TEAM_BRIDGE_ALL_SCOPE, {
+		accountId: selfAccountId,
 		refetchInterval: TEAM_BRIDGE_NOTIFY_POLL_MS,
 		refetchIntervalInBackground: true,
 	});
@@ -315,8 +340,11 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 		queries: notificationOrganizations.map((organization) => {
 			const tenantId = asTeamBridgeTenantId(organization.tenant_id);
 			return {
-				queryKey: teamBridgeKeys.unread(tenantId),
-				queryFn: () => TeamBridgeApi.unread({ tenantId }),
+				queryKey: teamBridgeKeys.unread(tenantId, selfAccountId),
+				queryFn: () =>
+					readForBridgeOwner(client, selfAccountId, () =>
+						TeamBridgeApi.unread({ tenantId }),
+					),
 				enabled: active,
 				staleTime: TEAM_BRIDGE_NOTIFY_POLL_MS,
 				refetchInterval: TEAM_BRIDGE_NOTIFY_POLL_MS,
@@ -349,8 +377,14 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 	 * policy or a conversation's title from an unread row alone.
 	 */
 	const conversations = useQuery({
-		queryKey: teamBridgeKeys.conversations(TEAM_BRIDGE_ALL_SCOPE),
-		queryFn: () => TeamBridgeApi.listConversations("account"),
+		queryKey: teamBridgeKeys.conversations(
+			TEAM_BRIDGE_ALL_SCOPE,
+			selfAccountId,
+		),
+		queryFn: () =>
+			readForBridgeOwner(client, selfAccountId, () =>
+				TeamBridgeApi.listConversations("account"),
+			),
 		enabled: active,
 		staleTime: TEAM_BRIDGE_NOTIFY_POLL_MS,
 		refetchInterval: TEAM_BRIDGE_NOTIFY_POLL_MS,
@@ -474,6 +508,9 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 			// backlog of messages the badge already showed.
 			if (notificationsOffRef.current || !selfAccountId) continue;
 			const account = selfAccountId;
+			// Equality of the captured status snapshot also fences A→B→A: an old
+			// request cannot become live again merely because its account returned.
+			const authority = client.getQueryData(teamBridgeKeys.status);
 			for (const candidate of plan.candidates) {
 				void deliverTeamBridgeBanner(
 					client,
@@ -481,6 +518,9 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 					account,
 					() =>
 						accountRef.current === account &&
+						client.getQueryData(teamBridgeKeys.status) === authority &&
+						client.getQueryData<{ account_id?: string }>(teamBridgeKeys.status)
+							?.account_id === account &&
 						activeRef.current &&
 						!notificationsOffRef.current,
 				);

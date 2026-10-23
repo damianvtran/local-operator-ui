@@ -9,12 +9,22 @@ import { Tooltip } from "@shared/components/ui/tooltip";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { QueryClientContext } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
-import { type ReactElement, useEffect, useId, useRef, useState } from "react";
+import {
+	type ReactElement,
+	useContext,
+	useEffect,
+	useId,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import type { TeamBridgeReaction } from "../../../../shared/team-bridge-contract";
 import { EMOJI_ENTRIES, toggleReaction } from "./team-bridge-emoji-model";
 import { TeamBridgeEmojiPicker } from "./team-bridge-emoji-picker";
 import { canRenderEmoji } from "./team-bridge-emoji-support";
+import { bridgeOwnerCurrent } from "./team-bridge-owner";
 import { useReactionPreferences } from "./team-bridge-reaction-preferences";
 
 // A stable empty snapshot matters: a new [] default on every render retriggers
@@ -56,6 +66,20 @@ export function useTeamBridgeReactionState({
 	disabled = false,
 	toggle = TeamBridgeApi.react,
 }: Omit<Props, "defaultOpen">) {
+	const client = useContext(QueryClientContext);
+	const mounted = useRef(true);
+	useLayoutEffect(() => {
+		mounted.current = true;
+		return () => {
+			mounted.current = false;
+		};
+	}, []);
+	// Standalone presentational stories supply a fake toggle, never real transport.
+	const isCurrent = () =>
+		mounted.current &&
+		(client
+			? bridgeOwnerCurrent(client, accountId)
+			: toggle !== TeamBridgeApi.react);
 	const [rows, setRows] = useState(reactions);
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState(false);
@@ -65,7 +89,7 @@ export function useTeamBridgeReactionState({
 		if (!busy.current) setRows(reactions);
 	}, [reactions]);
 	const choose = async (emoji: string) => {
-		if (busy.current || disabled) return;
+		if (!isCurrent() || busy.current || disabled) return;
 		const previous = rows;
 		const active = !rows.some((r) => r.emoji === emoji && r.reacted_by_me);
 		busy.current = true;
@@ -80,14 +104,16 @@ export function useTeamBridgeReactionState({
 				active,
 				tenantId,
 			);
+			if (!isCurrent()) return;
 			setRows(answer.reactions);
 			if (active) record(accountId, emoji);
 		} catch {
+			if (!isCurrent()) return;
 			setRows(previous);
 			setError(true);
 		} finally {
 			busy.current = false;
-			setPending(false);
+			if (isCurrent()) setPending(false);
 		}
 	};
 	return {

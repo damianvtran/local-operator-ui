@@ -272,6 +272,13 @@ test("old-root pane load, visible-reply read clears badge, and late old-target r
 	const client = new mod.QueryClient({
 		defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
 	});
+	client.setQueryData(["team-bridge", "status"], {
+		account_id: "acct_reader",
+		tenant_id: "tenant_a",
+		state: "ready",
+		local: { enabled: true },
+		read_only: false,
+	});
 	const app = mod.createRoot(dom.window.document.getElementById("app"));
 	const target = {
 		tenantId: "tenant_a",
@@ -340,7 +347,12 @@ test("old-root pane load, visible-reply read clears badge, and late old-target r
 			"actually displayed reply acknowledges seq2 for this follower",
 		);
 		assert.deepEqual(calls, [
-			{ conversationId: root.conversation_id, tenantId: "tenant_a", seq: 2 },
+			{
+				conversationId: root.conversation_id,
+				tenantId: "tenant_a",
+				seq: 2,
+				expectedAccountId: "acct_reader",
+			},
 		]);
 		const oldObserver = observers.at(-1);
 		api.listReplies = () =>
@@ -380,6 +392,8 @@ test("old-root pane load, visible-reply read clears badge, and late old-target r
 		);
 	} finally {
 		await mod.act(async () => app.unmount());
+		for (const mutation of client.getMutationCache().getAll())
+			mutation.destroy();
 		client.clear();
 		api.markRead = originalRead;
 		api.listReplies = originalReplies;

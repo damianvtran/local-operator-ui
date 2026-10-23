@@ -14,8 +14,8 @@ function OwnerProof() {
 		() =>
 			new QueryClient({
 				defaultOptions: {
-					queries: { retry: false, gcTime: 0 },
-					mutations: { retry: false, gcTime: 0 },
+					queries: { retry: false, gcTime: 600_000 },
+					mutations: { retry: 1, gcTime: 600_000 },
 				},
 			}),
 	);
@@ -25,6 +25,12 @@ function OwnerProof() {
 		enabled: true,
 		readOnly: false,
 		hold: false,
+		rejectHeld: false,
+		thread: false,
+		holdCreate: false,
+		releaseCreate: null as (() => void) | null,
+		refuseReplies: false,
+		created: 0,
 		release: null as (() => void) | null,
 		calls: [] as {
 			owner: string;
@@ -72,6 +78,20 @@ function OwnerProof() {
 			muted: false,
 		});
 		const reply = (result: unknown) => ({ status: 200, body: { result } });
+		const root = {
+			id: "fixture-root",
+			conversation_id: "bcv_shared",
+			seq: 1,
+			sender: {
+				account_id: "acct_a",
+				kind: "human",
+				display_label: "Account A",
+			},
+			body: "Shared thread root",
+			origin: "human",
+			created_at: "2026-10-23T12:00:00Z",
+			reply_count: 1,
+		};
 		window.api.desktop = {
 			...prior,
 			request: (async (request: {
@@ -83,6 +103,10 @@ function OwnerProof() {
 				const owner = fixture.account;
 				fixture.calls.push({ owner, ...request });
 				switch (request.op) {
+					case "capabilities":
+						return reply({
+							features: { team_bridge_conversation_owner_guard: 1 },
+						});
 					case "team_bridge.status":
 						return reply({
 							capability: 1,
@@ -119,18 +143,62 @@ function OwnerProof() {
 					case "team_bridge.conversations.list":
 						return reply({ conversations: [conversation()] });
 					case "team_bridge.directory":
-						return reply({ members: [] });
+						return reply({
+							members: ["Peer", "Other peer"].map((name, index) => ({
+								account_id: `acct_peer_${index}`,
+								display_label: name,
+								role: "member",
+								bridge_enabled: true,
+								bridge_state: "active",
+							})),
+						});
 					case "team_bridge.unread":
 						return reply({ total: 0, organizations: [], conversations: [] });
 					case "team_bridge.messages.list":
-						return reply({ messages: [], has_more: false });
-					case "team_bridge.conversations.create":
-						return reply(conversation(`created_${owner}`));
+						return reply({
+							messages: fixture.thread ? [root] : [],
+							has_more: false,
+						});
+					case "team_bridge.messages.replies":
+						if (fixture.refuseReplies)
+							return {
+								status: 404,
+								body: { detail: "Fixture refused thread admission" },
+							};
+						return reply({
+							root,
+							replies: [
+								{
+									...root,
+									id: "fixture-reply",
+									seq: 2,
+									thread_root_id: root.id,
+									body:
+										owner === "acct_a"
+											? "A PRIVATE CACHED REPLY"
+											: "B admitted reply",
+								},
+							],
+							has_more: false,
+						});
+					case "team_bridge.conversations.create": {
+						const id = `created_${owner}_${++fixture.created}`;
+						if (fixture.holdCreate)
+							await new Promise<void>((resolve) => {
+								fixture.releaseCreate = resolve;
+							});
+						return reply(conversation(id));
+					}
 					case "team_bridge.messages.send":
 						if (fixture.hold) {
 							await new Promise<void>((resolve) => {
 								fixture.release = resolve;
 							});
+							if (fixture.rejectHeld)
+								return {
+									status: 503,
+									body: { detail: "Fixture refused held POST" },
+								};
 							return reply({ id: `posted_${owner}` });
 						}
 						return {
@@ -155,6 +223,7 @@ function OwnerProof() {
 		setReady(true);
 		return () => {
 			fixture.release?.();
+			fixture.releaseCreate?.();
 			window.api.desktop = prior;
 			client.clear();
 		};
@@ -224,6 +293,58 @@ function OwnerProof() {
 					>
 						Toggle opt-out
 					</button>
+					<button
+						type="button"
+						onClick={() => {
+							fixture.thread = true;
+							void client.invalidateQueries({ queryKey: teamBridgeKeys.all });
+							update((value) => value + 1);
+						}}
+					>
+						Thread fixture
+					</button>
+					<button
+						type="button"
+						onClick={() => {
+							fixture.refuseReplies = !fixture.refuseReplies;
+							update((value) => value + 1);
+						}}
+					>
+						Toggle refused thread read
+					</button>
+					<button
+						type="button"
+						onClick={() => {
+							fixture.holdCreate = true;
+							update((value) => value + 1);
+						}}
+					>
+						Hold next create
+					</button>
+					<button
+						type="button"
+						onClick={() => {
+							fixture.releaseCreate?.();
+							fixture.releaseCreate = null;
+							fixture.holdCreate = false;
+							update((value) => value + 1);
+						}}
+					>
+						Release create
+					</button>
+					<button
+						type="button"
+						onClick={() => {
+							fixture.rejectHeld = true;
+							fixture.release?.();
+							fixture.release = null;
+							fixture.hold = false;
+							update((value) => value + 1);
+						}}
+					>
+						Reject held POST
+					</button>
+					<span>Groups created: {fixture.created}</span>
 					<span>
 						POST receipts:{" "}
 						{fixture.calls

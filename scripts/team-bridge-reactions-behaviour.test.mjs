@@ -64,7 +64,14 @@ const bundle = await build({
 	write: false,
 	jsx: "automatic",
 	alias: { "@shared": "./src/renderer/src/shared" },
-	external: ["react", "react-dom", "react-dom/client", "react/jsx-runtime"],
+	// The real query provider and hooks must share one context, just like React.
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/client",
+		"react/jsx-runtime",
+		"@tanstack/react-query",
+	],
 	plugins: [
 		{
 			name: "external-boundaries",
@@ -224,6 +231,10 @@ test("busy toggle ignores polls, disables second input, and restores snapshot on
 
 test("account-keyed message-list mount cannot inherit a previous account's pending projection", async () => {
 	const m = mount();
+	const { QueryClient, QueryClientProvider } = await import(
+		"@tanstack/react-query"
+	);
+	const client = new QueryClient();
 	let resolve;
 	globalThis.__reactionApi = () =>
 		new Promise((yes) => {
@@ -239,37 +250,52 @@ test("account-keyed message-list mount cannot inherit a previous account's pendi
 		created_at: "2026-10-21",
 		reactions: [reaction],
 	};
-	const render = (accountId) =>
-		m.root.render(
-			h(TeamBridgeMessageList, {
-				messages: [message],
-				labelFor: () => "Ada",
-				reactionContext: { accountId, tenantId: "tnt_1" },
-			}),
-		);
-	await act(() => render("a"));
-	await click(m.host.querySelector("button[aria-pressed]"));
-	assert.equal(
-		visibleText(m.host.querySelector("button[aria-pressed]")),
-		"👍3",
-	);
-	await act(() => render("b"));
-	assert.equal(
-		visibleText(m.host.querySelector("button[aria-pressed]")),
-		"👍2",
-	);
-	await act(async () => {
-		resolve({
-			message_id: message.id,
-			reactions: [{ ...reaction, count: 3, reacted_by_me: true }],
+	const render = (accountId) => {
+		client.setQueryData(["team-bridge", "status"], {
+			account_id: accountId,
+			state: "ready",
+			local: { enabled: true },
+			read_only: false,
 		});
-		await Promise.resolve();
-	});
-	assert.equal(
-		visibleText(m.host.querySelector("button[aria-pressed]")),
-		"👍2",
-	);
-	await m.close();
+		m.root.render(
+			h(
+				QueryClientProvider,
+				{ client },
+				h(TeamBridgeMessageList, {
+					messages: [message],
+					labelFor: () => "Ada",
+					reactionContext: { accountId, tenantId: "tnt_1" },
+				}),
+			),
+		);
+	};
+	try {
+		await act(() => render("a"));
+		await click(m.host.querySelector("button[aria-pressed]"));
+		assert.equal(
+			visibleText(m.host.querySelector("button[aria-pressed]")),
+			"👍3",
+		);
+		await act(() => render("b"));
+		assert.equal(
+			visibleText(m.host.querySelector("button[aria-pressed]")),
+			"👍2",
+		);
+		await act(async () => {
+			resolve({
+				message_id: message.id,
+				reactions: [{ ...reaction, count: 3, reacted_by_me: true }],
+			});
+			await Promise.resolve();
+		});
+		assert.equal(
+			visibleText(m.host.querySelector("button[aria-pressed]")),
+			"👍2",
+		);
+	} finally {
+		await m.close();
+		client.clear();
+	}
 });
 
 test("disabled picker never selects or closes; exact toned grid pick survives a different preference", async () => {

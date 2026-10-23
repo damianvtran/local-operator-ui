@@ -68,40 +68,21 @@ import {
  * scope that could have shown the row (the merged list and the org list), and
  * the badge aggregate is one cache shared by the sidebar and the page.
  */
-const ROOT = ["team-bridge"] as const;
+import { teamBridgeKeys } from "./team-bridge-keys";
+import {
+	bridgeOwnerCurrent,
+	readForBridgeOwner,
+	useBridgeOwner,
+} from "./team-bridge-owner";
+export { teamBridgeKeys } from "./team-bridge-keys";
+import {
+	type CapturedBridgeMutation,
+	bindBridgeMutation,
+} from "./team-bridge-mutation";
 
-// Admission belongs to an account as well as a tenant. Append the owner so
-// existing invalidation prefixes still work, without exposing another account's
-// cached private rows while its own request is pending or refused.
-const readOwner = (accountId?: string) =>
-	accountId ? ["account", accountId] : [];
-
-export const teamBridgeKeys = {
-	all: ROOT,
-	conversations: (scope: TeamBridgeScope, accountId?: string) =>
-		[...ROOT, "conversations", scope, ...readOwner(accountId)] as const,
-	conversationsPrefix: [...ROOT, "conversations"] as const,
-	messages: (conversationId: string, tenantId?: string, accountId?: string) =>
-		[
-			...ROOT,
-			"messages",
-			tenantId ?? "unknown-tenant",
-			conversationId,
-			...readOwner(accountId),
-		] as const,
-	unread: (scope: TeamBridgeScope, accountId?: string) =>
-		[...ROOT, "unread", scope, ...readOwner(accountId)] as const,
-	unreadPrefix: [...ROOT, "unread"] as const,
-	/*
-	 * The People section's two reads. The directory is keyed by TENANT (the
-	 * section only exists for one organization), so switching scope refetches
-	 * into a different key and a previous organization's roster is never shown
-	 * under the new title. The status read is one key: the platform state does
-	 * not vary by scope.
-	 */
-	directory: (tenantId: string, accountId?: string) =>
-		[...ROOT, "directory", tenantId, ...readOwner(accountId)] as const,
-	status: [...ROOT, "status"] as const,
+type BridgeWriteTarget = ReturnType<typeof useBridgeOwner> & {
+	conversationId: string;
+	tenantId?: string;
 };
 
 /** Map the UI scope onto the wire's read scope (the only place the sentinel is translated). */
@@ -127,9 +108,13 @@ export function useTeamBridgeConversations(
 	enabled = true,
 	accountId?: string,
 ): UseQueryResult<TeamBridgeConversationList> {
+	const client = useQueryClient();
 	return useQuery({
 		queryKey: teamBridgeKeys.conversations(scope, accountId),
-		queryFn: () => TeamBridgeApi.listConversations(readScope(scope)),
+		queryFn: () =>
+			readForBridgeOwner(client, accountId, () =>
+				TeamBridgeApi.listConversations(readScope(scope)),
+			),
 		enabled,
 		staleTime: 15_000,
 		refetchOnWindowFocus: true,
@@ -142,6 +127,7 @@ export function useTeamBridgeMessages(
 	enabled = true,
 	accountId?: string,
 ): UseQueryResult<TeamBridgeMessagePage> {
+	const client = useQueryClient();
 	return useQuery({
 		queryKey: teamBridgeKeys.messages(
 			conversationId ?? "none",
@@ -149,7 +135,9 @@ export function useTeamBridgeMessages(
 			accountId,
 		),
 		queryFn: () =>
-			TeamBridgeApi.listMessages(conversationId as string, { tenantId }),
+			readForBridgeOwner(client, accountId, () =>
+				TeamBridgeApi.listMessages(conversationId as string, { tenantId }),
+			),
 		enabled: enabled && Boolean(conversationId),
 		staleTime: 5_000,
 		/* A conversation needs to feel live: without a poll an incoming message
@@ -167,8 +155,9 @@ export function useTeamBridgeIdentity(
 	enabled = true,
 ): UseQueryResult<string | null> {
 	return useQuery({
-		queryKey: [...teamBridgeKeys.all, "identity"] as const,
-		queryFn: () => TeamBridgeApi.identity(),
+		queryKey: teamBridgeKeys.status,
+		queryFn: () => TeamBridgeApi.status("surface_open"),
+		select: (status) => status.account_id ?? null,
 		enabled,
 		staleTime: 5 * 60_000,
 		retry: 1,
@@ -189,9 +178,13 @@ export function useTeamBridgeDirectory(
 	enabled = true,
 	accountId?: string,
 ): UseQueryResult<TeamBridgeDirectory> {
+	const client = useQueryClient();
 	return useQuery({
 		queryKey: teamBridgeKeys.directory(tenantId ?? "none", accountId),
-		queryFn: () => TeamBridgeApi.directory(tenantId as string),
+		queryFn: () =>
+			readForBridgeOwner(client, accountId, () =>
+				TeamBridgeApi.directory(tenantId as string),
+			),
 		enabled: enabled && Boolean(tenantId),
 		staleTime: 30_000,
 		refetchOnWindowFocus: true,
@@ -219,10 +212,14 @@ export function useTeamBridgeDirectories(
 	enabled = true,
 	accountId?: string,
 ): Readonly<Record<string, readonly TeamBridgeDirectoryMember[]>> {
+	const client = useQueryClient();
 	return useQueries({
 		queries: tenantIds.map((tenantId) => ({
 			queryKey: teamBridgeKeys.directory(tenantId, accountId),
-			queryFn: () => TeamBridgeApi.directory(tenantId),
+			queryFn: () =>
+				readForBridgeOwner(client, accountId, () =>
+					TeamBridgeApi.directory(tenantId),
+				),
 			enabled,
 			staleTime: 30_000,
 			refetchOnWindowFocus: true,
@@ -249,10 +246,13 @@ export function useTeamBridgeDirectories(
  * error state, and a status read that cannot answer must not invent an
  * ineligible verdict.
  */
-export function useTeamBridgeStatus(): UseQueryResult<AgentMessagesStatus> {
+export function useTeamBridgeStatus(
+	enabled = true,
+): UseQueryResult<AgentMessagesStatus> {
 	return useQuery({
 		queryKey: teamBridgeKeys.status,
 		queryFn: () => TeamBridgeApi.status("surface_open"),
+		enabled,
 		staleTime: 60_000,
 		refetchOnWindowFocus: true,
 		retry: 1,
@@ -290,9 +290,13 @@ export function useTeamBridgeUnread(
 		refetchIntervalInBackground?: boolean;
 	} = {},
 ): UseQueryResult<TeamBridgeUnread> {
+	const client = useQueryClient();
 	return useQuery({
 		queryKey: teamBridgeKeys.unread(scope, options.accountId),
-		queryFn: () => TeamBridgeApi.unread(readScope(scope)),
+		queryFn: () =>
+			readForBridgeOwner(client, options.accountId, () =>
+				TeamBridgeApi.unread(readScope(scope)),
+			),
 		enabled,
 		staleTime: 30_000,
 		refetchInterval: options.refetchInterval ?? badgeInterval(),
@@ -340,13 +344,35 @@ export function useSendTeamBridgeMessage(
 	tenantId?: string,
 ): UseMutationResult<unknown, Error, { clientRef: string; body: string }> {
 	const client = useQueryClient();
-	return useMutation({
-		mutationFn: ({ clientRef, body }) =>
-			TeamBridgeApi.send(conversationId, { clientRef, body, tenantId }),
-		onSuccess: () => refreshAfterSend(client, conversationId, tenantId),
+	const owner = useBridgeOwner();
+	type Input = { clientRef: string; body: string };
+	const mutation = useMutation<
+		unknown,
+		Error,
+		CapturedBridgeMutation<Input, BridgeWriteTarget>
+	>({
+		mutationFn: ({ input, target }) => {
+			target.assertCurrent();
+			return TeamBridgeApi.send(target.conversationId, {
+				...input,
+				tenantId: target.tenantId,
+				expectedAccountId: target.accountId,
+			});
+		},
+		onSuccess: (_data, { target }) =>
+			refreshAfterSend(
+				client,
+				target.conversationId,
+				target.tenantId,
+				target.isCurrent,
+			),
 	});
+	return bindBridgeMutation(mutation, () => ({
+		...owner,
+		conversationId,
+		tenantId,
+	}));
 }
-
 /**
  * Join a discoverable channel (or accept an invitation).
  *
@@ -361,22 +387,34 @@ export function useJoinTeamBridgeConversation(
 	tenantId?: string,
 ): UseMutationResult<unknown, Error, void> {
 	const client = useQueryClient();
-	return useMutation({
-		mutationFn: () => TeamBridgeApi.join(conversationId, tenantId),
-		onSuccess: async () => {
-			await client.invalidateQueries({
-				queryKey: teamBridgeKeys.conversationsPrefix,
-			});
-			await client.invalidateQueries({
-				queryKey: teamBridgeKeys.messages(conversationId, tenantId),
-			});
-			await client.invalidateQueries({
-				queryKey: teamBridgeKeys.unreadPrefix,
-			});
+	const owner = useBridgeOwner();
+	const mutation = useMutation<
+		unknown,
+		Error,
+		CapturedBridgeMutation<void, BridgeWriteTarget>
+	>({
+		mutationFn: ({ target }) => {
+			target.assertCurrent();
+			return TeamBridgeApi.join(
+				target.conversationId,
+				target.tenantId,
+				target.accountId,
+			);
 		},
+		onSuccess: (_data, { target }) =>
+			refreshAfterSend(
+				client,
+				target.conversationId,
+				target.tenantId,
+				target.isCurrent,
+			),
 	});
+	return bindBridgeMutation(mutation, () => ({
+		...owner,
+		conversationId,
+		tenantId,
+	}));
 }
-
 /** The rollback snapshot carried from `onMutate` to `onError`. */
 export type TeamBridgeNotifyMutationContext = {
 	snapshots: Array<[QueryKey, TeamBridgeConversationList | undefined]>;
@@ -410,40 +448,65 @@ export type TeamBridgeNotifyMutationVariables = {
  */
 export function notifyMutationOptions(
 	client: QueryClient,
+	isCurrent?: () => boolean,
 ): UseMutationOptions<
 	TeamBridgeReadState,
 	Error,
 	TeamBridgeNotifyMutationVariables,
 	TeamBridgeNotifyMutationContext
 > {
+	const accountId =
+		client.getQueryData<AgentMessagesStatus>(teamBridgeKeys.status)
+			?.account_id ?? undefined;
+	const current = () =>
+		bridgeOwnerCurrent(client, accountId) && (isCurrent?.() ?? true);
+	const check = () => {
+		if (!current()) throw new Error("Team Bridge write authority changed");
+	};
+	const owned = {
+		queryKey: teamBridgeKeys.conversationsPrefix,
+		predicate: (query: { queryKey: QueryKey }) =>
+			query.queryKey.at(-1) === accountId &&
+			query.queryKey.at(-2) === "account",
+	};
 	return {
-		mutationFn: ({ conversationId, notify, tenantId }) =>
-			TeamBridgeApi.setNotify(conversationId, notify, tenantId),
-		onMutate: async ({ conversationId, notify }) => {
-			await client.cancelQueries({
-				queryKey: teamBridgeKeys.conversationsPrefix,
-			});
-			const snapshots = client.getQueriesData<TeamBridgeConversationList>({
-				queryKey: teamBridgeKeys.conversationsPrefix,
-			});
-			client.setQueriesData<TeamBridgeConversationList>(
-				{ queryKey: teamBridgeKeys.conversationsPrefix },
-				(current) =>
-					current === undefined
-						? current
-						: withNotificationPreference(current, conversationId, notify),
+		mutationFn: ({ conversationId, notify, tenantId }) => {
+			check();
+			return TeamBridgeApi.setNotify(
+				conversationId,
+				notify,
+				tenantId,
+				accountId,
+			);
+		},
+		onMutate: async ({ conversationId, notify, tenantId }) => {
+			check();
+			await client.cancelQueries(owned);
+			check();
+			const snapshots =
+				client.getQueriesData<TeamBridgeConversationList>(owned);
+			client.setQueriesData<TeamBridgeConversationList>(owned, (current) =>
+				current === undefined
+					? current
+					: withNotificationPreference(
+							current,
+							conversationId,
+							notify,
+							tenantId,
+						),
 			);
 			return { snapshots };
 		},
 		onError: (_error, _variables, context) => {
+			if (!current()) return;
 			for (const [key, data] of context?.snapshots ?? []) {
 				client.setQueryData(key, data);
 			}
 		},
 		onSettled: async () => {
-			await client.invalidateQueries({
-				queryKey: teamBridgeKeys.conversationsPrefix,
-			});
+			if (!current()) return;
+			await client.invalidateQueries(owned);
+			if (!current()) return;
 			await client.invalidateQueries({
 				queryKey: teamBridgeKeys.unreadPrefix,
 			});
@@ -467,7 +530,8 @@ export function useSetTeamBridgeNotify(): UseMutationResult<
 	TeamBridgeNotifyMutationVariables
 > {
 	const client = useQueryClient();
-	return useMutation(notifyMutationOptions(client));
+	const owner = useBridgeOwner();
+	return useMutation(notifyMutationOptions(client, owner.isCurrent));
 }
 
 export function useMarkTeamBridgeRead(
@@ -475,20 +539,35 @@ export function useMarkTeamBridgeRead(
 	tenantId?: string,
 ): UseMutationResult<TeamBridgeReadState, Error, { seq: number }> {
 	const client = useQueryClient();
-	return useMutation({
-		mutationFn: ({ seq }) =>
-			TeamBridgeApi.markRead(conversationId, { seq, tenantId }),
-		onSuccess: async () => {
+	const owner = useBridgeOwner();
+	const mutation = useMutation<
+		TeamBridgeReadState,
+		Error,
+		CapturedBridgeMutation<{ seq: number }, BridgeWriteTarget>
+	>({
+		mutationFn: ({ input, target }) => {
+			target.assertCurrent();
+			return TeamBridgeApi.markRead(target.conversationId, {
+				...input,
+				tenantId: target.tenantId,
+				expectedAccountId: target.accountId,
+			});
+		},
+		onSuccess: async (_data, { target }) => {
+			if (!target.isCurrent()) return;
 			await client.invalidateQueries({
 				queryKey: teamBridgeKeys.conversationsPrefix,
 			});
-			await client.invalidateQueries({
-				queryKey: teamBridgeKeys.unreadPrefix,
-			});
+			if (!target.isCurrent()) return;
+			await client.invalidateQueries({ queryKey: teamBridgeKeys.unreadPrefix });
 		},
 	});
+	return bindBridgeMutation(mutation, () => ({
+		...owner,
+		conversationId,
+		tenantId,
+	}));
 }
-
 export function useCreateTeamBridgeConversation(
 	tenantId?: string,
 	isCurrent: () => boolean = () => true,
@@ -498,18 +577,35 @@ export function useCreateTeamBridgeConversation(
 	Parameters<typeof TeamBridgeApi.startConversation>[0]
 > {
 	const client = useQueryClient();
-	return useMutation({
-		mutationFn: (input) => {
-			if (!isCurrent()) throw new Error("Team Bridge write authority changed");
-			return TeamBridgeApi.startConversation({ ...input, tenantId });
+	const owner = useBridgeOwner();
+	type Input = Parameters<typeof TeamBridgeApi.startConversation>[0];
+	const mutation = useMutation<
+		unknown,
+		Error,
+		CapturedBridgeMutation<Input, BridgeWriteTarget>
+	>({
+		mutationFn: ({ input, target }) => {
+			target.assertCurrent();
+			if (!target.isCurrent())
+				throw new Error("Team Bridge write authority changed");
+			return TeamBridgeApi.startConversation({
+				...input,
+				tenantId: target.tenantId,
+				expectedAccountId: target.accountId,
+			});
 		},
-		onSuccess: async () => {
-			// The caller's continuation runs AFTER this hook. Guard here too or
-			// a stale create refreshes another account before that caller can stop it.
-			if (!isCurrent()) return;
+		onSuccess: async (_data, { target }) => {
+			// Save the returned receipt even if stale; only effects need current authority.
+			if (!target.isCurrent()) return;
 			await client.invalidateQueries({
 				queryKey: teamBridgeKeys.conversationsPrefix,
 			});
 		},
 	});
+	return bindBridgeMutation(mutation, () => ({
+		...owner,
+		conversationId: "",
+		tenantId,
+		isCurrent: () => owner.isCurrent() && isCurrent(),
+	}));
 }

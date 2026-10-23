@@ -78,6 +78,10 @@ import {
 	RailSection,
 	isTargetRow,
 } from "./team-bridge-rail";
+import {
+	TeamBridgeThreadDrafts,
+	type ThreadDraft,
+} from "./team-bridge-thread-drafts";
 import { TeamBridgeThreadPane } from "./team-bridge-thread-pane";
 import {
 	type ThreadTarget,
@@ -1350,6 +1354,15 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	// Never retain executable retry closures: a new epoch must recheck authority.
 	const drafts = useRef(new Map<string, string>());
 	const retainedPending = useRef(new Map<string, PendingSend[]>());
+	const threadDrafts = useRef(new Map<string, ThreadDraft>());
+	// Late create receipts are inert owner-scoped data. Keeping them does not
+	// authorize a continuation; only a new explicit send by that owner can use one.
+	const createdReceipts = useRef(
+		new Map<
+			string,
+			Map<string, { id: string; tenantId: string | undefined }>
+		>(),
+	);
 	const draftOwner = JSON.stringify([
 		status.data?.account_id,
 		status.data?.tenant_id,
@@ -1370,16 +1383,19 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		canWriteBridge(status.data),
 	]);
 	return (
-		<TeamBridgeOwnedPage
-			key={owner}
-			status={status}
-			scope={scope}
-			setScope={setScope}
-			scopeChosen={scopeChosen}
-			drafts={drafts.current}
-			draftOwner={draftOwner}
-			retainedPending={retainedPending.current}
-		/>
+		<TeamBridgeThreadDrafts.Provider value={threadDrafts.current}>
+			<TeamBridgeOwnedPage
+				key={owner}
+				status={status}
+				scope={scope}
+				setScope={setScope}
+				scopeChosen={scopeChosen}
+				drafts={drafts.current}
+				draftOwner={draftOwner}
+				retainedPending={retainedPending.current}
+				createdReceipts={createdReceipts.current}
+			/>
+		</TeamBridgeThreadDrafts.Provider>
 	);
 };
 
@@ -1391,6 +1407,10 @@ const TeamBridgeOwnedPage: FC<{
 	drafts: Map<string, string>;
 	draftOwner: string;
 	retainedPending: Map<string, PendingSend[]>;
+	createdReceipts: Map<
+		string,
+		Map<string, { id: string; tenantId: string | undefined }>
+	>;
 }> = ({
 	status,
 	scope,
@@ -1399,6 +1419,7 @@ const TeamBridgeOwnedPage: FC<{
 	drafts,
 	draftOwner,
 	retainedPending,
+	createdReceipts,
 }) => {
 	/*
 	 * A banner click lands here with `?tenant=…&conversation=…`. The parameters
@@ -1652,9 +1673,11 @@ const TeamBridgeOwnedPage: FC<{
 	 * remembered id instead, so a group draft creates at most one group however
 	 * many times the post is retried. A ref, not state: nothing renders from it.
 	 */
-	const createdForDraft = useRef(
-		new Map<string, { id: string; tenantId: string | undefined }>(),
-	);
+	const ownerReceipts =
+		createdReceipts.get(draftOwner) ??
+		new Map<string, { id: string; tenantId: string | undefined }>();
+	createdReceipts.set(draftOwner, ownerReceipts);
+	const createdForDraft = { current: ownerReceipts };
 	/*
 	 * The target the reader is looking at NOW, for an async send to compare
 	 * against after it resolves (review round 1, R1-6): the closure's `target`
@@ -1675,7 +1698,7 @@ const TeamBridgeOwnedPage: FC<{
 			...row,
 			// The previous epoch cannot acknowledge or continue this request. Keep
 			// its body/ref for this owner without pretending it is still sending.
-			status: row.status === "sending" ? "failed" : row.status,
+			status: row.status === "sending" ? "unconfirmed" : row.status,
 		})),
 	);
 	const setPending = (update: (rows: PendingSend[]) => PendingSend[]) =>
@@ -1752,10 +1775,9 @@ const TeamBridgeOwnedPage: FC<{
 				remembered: createdForDraft.current,
 				create: async (createInput) => {
 					const created = await create.mutateAsync(createInput);
-					// Guard BEFORE sendFirstMessage remembers/coalesces the result,
-					// not merely after its create-and-post sequence has completed.
-					if (!isCurrentOwner())
-						throw new Error("Team Bridge write authority changed");
+					// The helper records this receipt before its separately fenced POST.
+					// Never discard a successful GROUP create simply because its owner left;
+					// retrying that owner's restored draft must reuse this exact conversation.
 					return created as { id?: string; tenant_id?: string };
 				},
 				// Straight to the API rather than a mutation hook bound to the
@@ -1764,7 +1786,10 @@ const TeamBridgeOwnedPage: FC<{
 				post: (id, message) => {
 					if (!isCurrentOwner())
 						throw new Error("Team Bridge write authority changed");
-					return TeamBridgeApi.send(id, message);
+					return TeamBridgeApi.send(id, {
+						...message,
+						expectedAccountId: selfAccountId,
+					});
 				},
 				// Adopt the created conversation the moment it exists, so a copy
 				// arriving before the POST resolves is matched to it.
@@ -1873,7 +1898,7 @@ const TeamBridgeOwnedPage: FC<{
 	);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: advance the cursor only when the conversation or its newest seq changes.
 	useEffect(() => {
-		if (selected === null || newest === undefined) return;
+		if (!isCurrentOwner() || selected === null || newest === undefined) return;
 		if (newest <= selected.last_read_seq) return;
 		markRead.mutate({ seq: newest });
 	}, [selected?.id, newest]);
@@ -1884,6 +1909,7 @@ const TeamBridgeOwnedPage: FC<{
 				key={composerKey}
 				initialDraft={drafts.get(composerKey) ?? ""}
 				onDraftChange={(body) => {
+					if (!isCurrentOwner()) return;
 					if (body) drafts.set(composerKey, body);
 					else drafts.delete(composerKey);
 				}}
@@ -1925,9 +1951,11 @@ const TeamBridgeOwnedPage: FC<{
 				joining={join.isPending}
 				joinFailed={join.isError}
 				notifyFailed={notifyFailureIsVisible(notify, selected?.id ?? null)}
-				onJoin={() => join.mutate()}
+				onJoin={() => {
+					if (isCurrentOwner()) join.mutate();
+				}}
 				onNotifyChange={(next) => {
-					if (selected === null) return;
+					if (!isCurrentOwner() || selected === null) return;
 					notify.mutate({
 						conversationId: selected.id,
 						tenantId: selected.tenant_id,
