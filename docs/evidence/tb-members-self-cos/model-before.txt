@@ -1,0 +1,176 @@
+✔ a DM is named for the other person, not for the reader (0.64275ms)
+✔ an agent DM is named for the agent's own label (0.070833ms)
+✔ a channel's own name wins over its members (0.06525ms)
+✔ an unnamed group caps its member list (0.076625ms)
+✔ no members means no title (0.0565ms)
+✔ the sidebar total counts only unmuted conversations (0.086334ms)
+✔ the server total is used when it is present (0.064458ms)
+✔ messages render oldest first even when the page arrives reversed (0.337666ms)
+✔ a purged history keeps its seq gaps (0.069ms)
+✔ notifications are quiet while the window is visible (0.109292ms)
+✔ only an explicit discoverable non-member is a preview (0.072834ms)
+✔ the notification register falls back to the legacy muted flag (0.060958ms)
+✔ the row's quiet bell follows notify, not only the old flag (0.046959ms)
+✔ the immediate mute toggle returns to all, not the previous level (0.039875ms)
+✔ the optimistic patch moves notify and muted together, on one row (0.096125ms)
+✔ the preference menu lists loud, mentions, mute in that order (0.056666ms)
+✔ a late notify refusal only shows under the conversation it belongs to (0.036458ms)
+✖ a preview header counts member_count when it has no member rows (0.441292ms)
+✔ a thread groups same-sender runs within five minutes and divides days (0.836875ms)
+✔ an unparseable time never glues two messages into one run (0.065375ms)
+✔ a draft's first send makes a DM for one recipient and a group for more (0.127ms)
+✔ a participant is named from the live directory, not the stored label (0.0895ms)
+✔ the legacy stored label "Member" is a placeholder, never a name (0.04225ms)
+✔ the reader's own messages resolve from the signed-in identity (0.034667ms)
+✔ person and agent DMs with the same owner never resolve to each other (0.125792ms)
+✖ chiefs of staff include the reader’s distinct agent and exclude disabled agents (0.393125ms)
+✔ a person or chief target resolves its DM once it exists, a compose never does (0.086584ms)
+✔ a one-recipient draft resolves to the existing DM; a group draft never does (0.054833ms)
+✔ R1-1: a DM with someone who left the org is listed, and the reader's own row claims nothing (0.103667ms)
+✔ R1-1: agent DMs are painted by the chief's row; an owner without a chief leaves them listed (0.067834ms)
+✔ R1-5: an agent-to-agent DM never resolves from a chief's row (0.037958ms)
+✔ railSections: built-ins lead in fixed order; groups and DMs keep the caller's order (0.084458ms)
+✖ recipientCandidates offers the reader’s chief, not their human or bridge-off people (0.169167ms)
+✔ R1-2: a retried group send after a failed post creates ONE group and reuses the client_ref (0.289792ms)
+✔ a failed create remembers nothing, so the retry creates (0.087959ms)
+✔ a create response without an id is a failure, not a post to nowhere (0.051917ms)
+✔ different drafts never share a remembered conversation (0.33175ms)
+✖ one active owner and three invited agents count as four current members (0.097291ms)
+✖ self chief remains offerable with named, empty, or server owner-fallback names (0.099916ms)
+ℹ tests 39
+ℹ suites 0
+ℹ pass 34
+ℹ fail 5
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 344.677041
+
+✖ failing tests:
+
+test at scripts/team-bridge-model.test.mjs:277:1
+✖ a preview header counts member_count when it has no member rows (0.441292ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  2 !== 3
+  
+      at TestContext.<anonymous> (file:///Users/damian/local-operator-ui/.worktrees/tb-members-self-cos/scripts/team-bridge-model.test.mjs:284:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 2,
+    expected: 3,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/team-bridge-model.test.mjs:582:1
+✖ chiefs of staff include the reader’s distinct agent and exclude disabled agents (0.393125ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      [
+  -     'acct_self',
+  -     'Aida',
+  -     false
+  -   ],
+  -   [
+        'acct_ben',
+        'Aida',
+        false
+      ],
+      [
+  
+      at TestContext.<anonymous> (file:///Users/damian/local-operator-ui/.worktrees/tb-members-self-cos/scripts/team-bridge-model.test.mjs:601:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ [ 'acct_ben', 'Aida', false ], [ 'acct_sana', 'Juno', true ] ],
+    expected: [ [ 'acct_self', 'Aida', false ], [ 'acct_ben', 'Aida', false ], [ 'acct_sana', 'Juno', true ] ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/team-bridge-model.test.mjs:881:1
+✖ recipientCandidates offers the reader’s chief, not their human or bridge-off people (0.169167ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    [
+      'human:acct_ben:acct_ben',
+  -   'agent:acct_self:Aida (acct_self)',
+      'agent:acct_ben:Aida (acct_ben)'
+    ]
+  
+      at TestContext.<anonymous> (file:///Users/damian/local-operator-ui/.worktrees/tb-members-self-cos/scripts/team-bridge-model.test.mjs:892:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'human:acct_ben:acct_ben', 'agent:acct_ben:Aida (acct_ben)' ],
+    expected: [ 'human:acct_ben:acct_ben', 'agent:acct_self:Aida (acct_self)', 'agent:acct_ben:Aida (acct_ben)' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/team-bridge-model.test.mjs:1026:1
+✖ one active owner and three invited agents count as four current members (0.097291ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 4
+  
+      at TestContext.<anonymous> (file:///Users/damian/local-operator-ui/.worktrees/tb-members-self-cos/scripts/team-bridge-model.test.mjs:1033:9)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 4,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/team-bridge-model.test.mjs:1039:1
+✖ self chief remains offerable with named, empty, or server owner-fallback names (0.099916ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///Users/damian/local-operator-ui/.worktrees/tb-members-self-cos/scripts/team-bridge-model.test.mjs:1044:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

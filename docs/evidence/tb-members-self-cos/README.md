@@ -36,8 +36,11 @@ On the current base, owner-name fallbacks can still compose twice; honest
 "Damian's chief of staff" rendering is not independently fixed here.
 
 A configured endpoint does not prove a designated/wake-enabled session. The
-integration parent's read-only runtime finding was `team_bridge.session` absent;
-this slice does not designate one or modify runtime/production data.
+integration parent's initial read-only runtime finding was `team_bridge.session`
+absent. Aida subsequently reported that manual designation plus cache expiry
+produced `agent_name='Aida'` after 320 seconds, with endpoint label unchanged;
+no restart was needed. That does not prove recipient wake or cross-user delivery.
+This UI slice does not designate a session or modify runtime/production data.
 
 No merge, release, feature flags, issues, reviewer requests or tags authorized.
 
@@ -52,7 +55,7 @@ node --test scripts/team-bridge-model.test.mjs
 Budget: one process tree, 1 GB, 120 seconds. Before: **34 pass / 5 fail**,
 including expected four members versus actual one, and expected one self-agent
 candidate versus actual zero. After: **39 pass / 0 fail**, 145.119375 ms.
-Complete actual output: `model-before.log`, `model-after.log`.
+Complete actual output: `model-before.txt`, `model-after.txt`.
 
 Assertions cover four current memberships (no aggregate), left/removed exclusion,
 stale aggregate avoidance, self endpoint with own name / empty name / owner-name
