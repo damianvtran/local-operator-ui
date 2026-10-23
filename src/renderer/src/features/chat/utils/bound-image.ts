@@ -152,6 +152,7 @@ async function reEncode(
 	originalBytes: number,
 	maxEdge: number,
 	quality: number,
+	edgeIsHard = false,
 ): Promise<WireImage | null> {
 	const longest = Math.max(bitmap.width, bitmap.height);
 	const scale = longest > maxEdge ? maxEdge / longest : 1;
@@ -220,6 +221,18 @@ async function reEncode(
 	// docstring already claims: "a candidate is kept only when it is smaller than
 	// what it replaces".
 	if (!best) return null;
+	// `edgeIsHard` (opt-in, Team Bridge only): the edge is a CONTRACT there,
+	// not an optimisation - manager decision D3 bounds every uploaded image to
+	// 1024 px, and a recipient's client renders and stores what was sent. So an
+	// over-edge original is never returned just because its downscale did not
+	// shrink the bytes (an incompressible or noisy PNG; QA round 1, Q1). Bytes
+	// are <= 1 MiB IN PRACTICE, not by construction: the PNG rung is capped at
+	// IMAGE_MAX_BYTES but the JPEG fallback is not (a 1024 px q85 JPEG lands
+	// well under it). The HARD byte limit is the capability cap the upload
+	// path refuses over (`prepareImageForUpload`, then the hub's 413). Chat
+	// keeps the never-grow rule above unchanged.
+	if (edgeIsHard && scale < 1)
+		return { data_b64: toBase64(best.bytes), mime_type: best.mime_type };
 	if (bestBytes >= originalBytes) return original;
 	return { data_b64: toBase64(best.bytes), mime_type: best.mime_type };
 }
@@ -237,11 +250,18 @@ export async function boundImageForWire(
 	image: WireImage,
 	maxEdge: number = IMAGE_MAX_EDGE,
 	quality: number = IMAGE_JPEG_QUALITY,
+	options: { edgeIsHard?: boolean } = {},
 ): Promise<WireImage> {
 	const decoded = await decodeForWire(image);
 	if (!decoded) return image;
 	try {
-		return await boundDecodedImage(image, decoded, maxEdge, quality);
+		return await boundDecodedImage(
+			image,
+			decoded,
+			maxEdge,
+			quality,
+			options.edgeIsHard ?? false,
+		);
 	} finally {
 		decoded.close();
 	}
@@ -286,6 +306,7 @@ async function boundDecodedImage(
 	bitmap: ImageBitmap,
 	maxEdge: number,
 	quality: number,
+	edgeIsHard = false,
 ): Promise<WireImage> {
 	const originalBytes = base64ByteLength(image.data_b64);
 	try {
@@ -299,7 +320,14 @@ async function boundDecodedImage(
 		)
 			return image;
 		return (
-			(await reEncode(bitmap, image, originalBytes, maxEdge, quality)) ?? image
+			(await reEncode(
+				bitmap,
+				image,
+				originalBytes,
+				maxEdge,
+				quality,
+				edgeIsHard,
+			)) ?? image
 		);
 	} catch {
 		return image;

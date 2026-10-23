@@ -1,0 +1,77 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "fallback": null,
+ "model_provenance": "Served model id as reported by this auditor’s runtime (anthropic/claude-opus-5-5); no fallback reported.",
+ "instance": "att-r1-es",
+ "session": "f5b05da4cf25",
+ "job": "e56145b2fcf2",
+ "date": "2026-10-21",
+ "locale": "es",
+ "translator": "coder",
+ "translator_model": "anthropic/claude-opus-5-5",
+ "translator_session": "03594b2dcc02",
+ "translator_job": "bc0c4b952eaa",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 23,
+ "scope": "PR #1314 head cf1d7c616c (unchanged since launch), 23-key image-attachment delta. git diff 5005cfe8b6..cf1d7c616c of en adds 31 keys: 23 ui.teamBridge.attachments.* {add,strip,position,in_message,open,remove,retry,uploading,limit,unsupported,error_type,error_size,error_invalid,error_rate,error_quota,error_offline,error_upload,expired_staged,expired,unavailable,retry_load,send_blocked,remove_all} plus 8 ui.teamBridge.replies.* that arrive with the #1304 merge (8913528e50) and are out of scope. No pre-existing en value changed and none was removed. Inside 715c864171..cf1d7c616c the attachment changes are: 22 keys present at 715c864171; remove_all added at b8aad1066b; at 0906d747e5 the en value of attachments.unsupported changed (“Only the text was pasted.” dropped) and its context note changed, and all 23 es values were added. 4a9e3aa91a, c60c7bd239 and cf1d7c616c touch no attachment key. The 138 base values were verified byte-unchanged against 5005cfe8b6 and are inherited from tbh-r1-es. The 8 replies values are byte-identical to 8913528e50 and inherited from threads1304-r2-es. Catalogue audit only: not rendered fit, activation or release.",
+ "sha256": {
+  "en": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+  "es": "cf5d345b07f1425343eb091cab1959f258695532177ad5f473036231a730eebb",
+  "context": "8a84800e3d2d52aae3c44393b8fe79bcc567f2ca5d8660a2d260f889cc487902"
+ },
+ "findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.teamBridge.attachments.retry_load",
+   "current": "Volver a intentar",
+   "proposed": "Reintentar",
+   "note": "Glossary drift inside ui.teamBridge: the namespace already maps “Try again” to “Reintentar” (ui.teamBridge.list.retry), and the attachment chip’s own retry button in this feature is “Reintentar {label}”. So the same action reads two ways a few pixels apart in one message view; “Reintentar” is also shorter in the 144 px placeholder tile."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.teamBridge.attachments.remove",
+   "also_keys": [
+    "ui.teamBridge.attachments.retry"
+   ],
+   "current": "Quitar {label}  /  Reintentar {label}",
+   "proposed": "Quitar: {label}  /  Reintentar: {label} (or have the call site pass a lowercased label)",
+   "note": "The call site passes the rendered attachments.position string as {label}, so the visible title tooltip reads “Quitar Imagen 1 de 2”, a common noun capitalised mid-sentence, which breaks the locale’s sentence-case rule. A colon turns it into a label–value pair, where the capital is correct. The root cause is the composition in team-bridge-attachments.tsx (EN has the same shape), so this is a nit, not a translation error."
+  }
+ ],
+ "inherited_receipt": {
+  "base": "5005cfe8b6",
+  "path": "i18n/receipts/tbh-r1-es.json",
+  "sha256": "3da7b99f0f97255ffdaf4c81901ed300326e4c22898d7559e436a420a708923f",
+  "keys_inherited": 138,
+  "base_source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+  "base_target_sha256": "055492d0493b4bad648830f5d5cc6c57ef5db2588aa8178fdc189b39d6f6eae7",
+  "unchanged_values_verified": 138,
+  "status": "passed"
+ },
+ "merged_in_receipt": {
+  "stack": "#1304 (8913528e50), out of scope",
+  "path": "i18n/receipts/threads1304-r2-es.json",
+  "sha256": "2831beb0151b16b5bc03c0d471d376ebd09b286fc43d2f30df1d31902ab97ceb",
+  "keys_inherited": 8,
+  "source_sha256": "7de891f2cf03b7563747c440847c853f1c1356aa0a50480ec28eae347e6581e9",
+  "target_sha256": "a3e8880949b8b30e84c566e3ae602def5e1ecd909e887bb0fa7cf087795509be",
+  "unchanged_values_verified": 8
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39",
+  "AGENTS": "a259e3cff9de9675176c0f6b03490526762735540e59f4d8255d0e99920a717f",
+  "audit_contract": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+ },
+ "validation": {
+  "independence": "Auditor session f5b05da4cf25 (job e56145b2fcf2, translation-auditor) is distinct from translator session 03594b2dcc02 (job bc0c4b952eaa, the implementing coder agent). I read all 23 values from the working-tree bytes, which are byte-identical to HEAD cf1d7c616c, alongside en and the context sidecar. I took none of the translator’s claims on trust and edited no catalogue or code.",
+  "semantics": "I judged each key in its real UI role, read from team-bridge-attachments.tsx (composer chip li aria-label “{position}. {reason}”, remove/retry icon buttons with aria-label and title, the strip ul aria-label, the role=status/alert notice line at 12px, the add icon button whose title is swapped for the limit text when full, the sent-message placeholder tile w-36 with the retry_load link, the in_message group aria-label, and the open thumbnail button), team-bridge-page.tsx and team-bridge-thread-pane.tsx (send_blocked) and team-bridge-scheduled.tsx (remove_all ghost sm Button in the reschedule dialog). Address is tú throughout (Puedes, Usa, Espera, Tienes, Envía, Vuelve, Quítala, Quita) and action labels are infinitives (Añadir, Abrir, Quitar, Reintentar), all in sentence case. Glossary: remove → Quitar, matching compose.remove “Quitar a {name}” and the app-wide “Quitar adjunto”, not Eliminar, because the image leaves the message and nothing is deleted. Upload → subir, add → Añadir (22 uses app-wide, no Agregar), file → archivo, expired → caducada (matching Caducado/caducado app-wide), unavailable → no disponible. Retry in a sentence is “vuelve a intentarlo”, matching schedule.failed and cancel_failed. In send_blocked, “retry” is rendered “vuelve a subir”, which is accurate because that retry re-uploads. unsupported matches the CHANGED en at 0906d747e5 and does not keep the dropped “Only the text was pasted.”. error_offline renders “isn’t reachable” as “no está disponible”, an idiomatic UI rendering of an unanswered local service (context note), and “cuando lo esté” is a correct predicative pronoun. expired_staged and error_quota keep the “retry” path and the uncertainty (“si aún se muestra”). The only drift is retry_load (see finding).",
+  "icu": "All 23 values parse with @formatjs/icu-messageformat-parser, and each argument set equals en: {index}+{count} in position and open, {label} in remove and retry, plural {count} in in_message, plural {max} in limit, and none elsewhere. The plurals use exactly the CLDR es arms one/many/other, with no few, and one # in every arm. Formatted with intl-messageformat in es: in_message 0 → “0 imágenes”, 1 → “1 imagen”, 2 → “2 imágenes”, 10 → “10 imágenes”, 1000000 → “1.000.000 de imágenes”, 1500000 → “1.500.000 imágenes”. limit 1 → “Puedes adjuntar hasta 1 imagen por mensaje.”, 1000000 → “…hasta 1.000.000 de imágenes por mensaje.”. Composed remove → “Quitar Imagen 1 de 2”. The file has 169 keys in en order, with nothing missing or extra.",
+  "plural_arms_audited": 6,
+  "typography": "The raw file is NFC, with no U+200E/F, U+202A–E, U+2066–9 or U+061C. The ellipsis in uploading is a real U+2026. There are no ASCII quotes or apostrophes, no space before : ; ? !, no leading or trailing whitespace, no hyphen-for-dash or en dash, and no value identical to English. Format names PNG, JPEG, WebP, GIF and the product name Local Operator are kept verbatim. No string is a whole question, so no ¿…? is needed.",
+  "overflow": "Visible short labels: retry_load (17 vs 9) is a wrapping text link in a 144px, text-center, 12px placeholder tile, so it fits; adopting the MINOR proposal brings it to 10. remove_all “Quitar imágenes” (15 vs 13) is a whitespace-nowrap ghost sm Button in a flex-col and fits. expired (15 vs 13) and unavailable (20 vs 17) are tile captions that may wrap. add, remove, retry, open, strip and in_message are aria-label/title only. limit (174 vs 113 across arms; one arm ≈ 58) and the error/notice sentences sit in the full-width 12px status paragraph, which wraps. None is materially at risk at catalogue level, and no rendered check was performed.",
+  "limitations": "No browser was used for this catalogue audit: no screenshots, glyph metrics or visual-fit claim. No catalogue or code edits, no git operations and no ledger assembly."
+ }
+}

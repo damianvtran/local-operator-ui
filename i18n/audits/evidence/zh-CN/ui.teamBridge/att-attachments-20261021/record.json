@@ -1,0 +1,115 @@
+{
+ "audit_id": "att-attachments-20261021",
+ "date": "2026-10-21",
+ "locale": "zh-CN",
+ "namespace": "ui.teamBridge",
+ "source_commit": "cf1d7c616ca36bd48c0bf160d64a08514b7c2b08",
+ "source_base": "5005cfe8b6",
+ "scope": "23 ui.teamBridge.attachments.* keys introduced by 715c864171/b8aad1066b (en) and 0906d747e5 (zh-CN; en unsupported shortened), per git diff 5005cfe8b6..cf1d7c616c of en filtered to attachments. The other 146 values (8 replies.* from #1304 at 8913528, 138 from #1309 at 5005cfe) are out of scope and verified byte-unchanged.",
+ "status": "audited",
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "session": "bc0c4b952eaa",
+  "commit": "0906d747e5",
+  "date": "2026-10-21"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-opus-5-5",
+   "date": "2026-10-21",
+   "result": "clean-with-findings",
+   "instance": "att-r1-zh-cn",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 4,
+    "nit": 1
+   },
+   "receipt": "i18n/receipts/att-r1-zh-cn.json",
+   "receipt_sha256": "41e2204a1dee73226bfff2716a3445f0c40b45d6fea26c9903a07732cb3efe5c",
+   "scope": "Team Bridge image attachments: 23-key attachments.* delta independently audited at head cf1d7c616c; non-attachment values inherited unchanged from the merged #1304/#1309 stacks (out of scope). Catalogue audit only, not rendered-fit, activation or release approval.",
+   "note": "Round 1: ATT-ZH-01..04 MINOR (position drops 图片 + CJK spacing; error_type/offline Latin spacing + bare format list; expired_staged retry condition; remove_all lacks 所有), ATT-ZH-05 NIT (uploading single …). No rendered-fit claim."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "att-r1-zh-cn",
+   "session": "366e5a448425",
+   "job": "57c07e3808ab",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 23,
+   "target_sha256": "941547bb3bd80e153820fbd9c6a2ba680f626e2f908e629240a8a9ace3bf13d0",
+   "findings": [
+    {
+     "id": "ATT-ZH-01",
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.position"
+    },
+    {
+     "id": "ATT-ZH-02",
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.error_type"
+    },
+    {
+     "id": "ATT-ZH-03",
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.expired_staged"
+    },
+    {
+     "id": "ATT-ZH-04",
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.remove_all"
+    },
+    {
+     "id": "ATT-ZH-05",
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.uploading"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/att-r1-zh-cn.json",
+    "sha256": "41e2204a1dee73226bfff2716a3445f0c40b45d6fea26c9903a07732cb3efe5c"
+   }
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/zh-CN/ui.teamBridge.json",
+   "sha256": "941547bb3bd80e153820fbd9c6a2ba680f626e2f908e629240a8a9ace3bf13d0"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "8a84800e3d2d52aae3c44393b8fe79bcc567f2ca5d8660a2d260f889cc487902"
+  }
+ },
+ "references": {
+  "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+   "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  }
+ },
+ "independence": "Translator (coder job bc0c4b952eaa) and auditor (translation-auditor session 366e5a448425, job 57c07e3808ab) are different agents in different sessions; the auditor never edited catalogues and did not run ledger-assemble.",
+ "limitations": [
+  "Browser not used; no rendered-fit, screenshots, glyph metrics, pseudo-localization or activation evidence claimed.",
+  "Minor/nit findings are open pending the coder's remediation disposition; a round 2 delta audit applies if values change."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/att-r1-zh-cn.json",
+   "sha256": "41e2204a1dee73226bfff2716a3445f0c40b45d6fea26c9903a07732cb3efe5c"
+  }
+ ]
+}

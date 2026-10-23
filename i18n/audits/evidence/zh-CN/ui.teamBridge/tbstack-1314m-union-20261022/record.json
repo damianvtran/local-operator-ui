@@ -1,0 +1,147 @@
+{
+ "audit_id": "tbstack-1314m-union-20261022",
+ "date": "2026-10-22",
+ "locale": "zh-CN",
+ "namespace": "ui.teamBridge",
+ "source_commit": "7a2e6371736c327e28c2e57d45d9a5a5d5304360",
+ "source_base": "6dac4f5baa8e26da07370d244240e7acb8238e1f",
+ "scope": "PR #1314, 7a2e6371736c327e28c2e57d45d9a5a5d5304360: 178-key exact two-parent English/target/context union verified; all 178 keys read side by side, 4 new-to-feature OS-banner keys substantively audited against thread/reaction/scheduling/attachment terminology where present. Other values traced to actual inherited audited receipts. Catalogue-only; no rendered-fit, activation or release claim.",
+ "status": "audited",
+ "translator": {
+  "agent": "translator",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-21",
+  "session": "d04f0e3ee24c",
+  "job": "bba1cb60d6a5"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "openai/gpt-6.1-sol",
+   "instance": "tbstack-r1-1314m-zh-cn",
+   "date": "2026-10-22",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/tbstack-r1-1314m-zh-cn.json",
+   "receipt_sha256": "2c43f8d9e416276ebb76b3f4d25bf0eaca6995efb21511ead65321a35f0f2dba",
+   "scope": "PR #1314, 7a2e6371736c327e28c2e57d45d9a5a5d5304360: 178-key exact two-parent English/target/context union verified; all 178 keys read side by side, 4 new-to-feature OS-banner keys substantively audited against thread/reaction/scheduling/attachment terminology where present. Other values traced to actual inherited audited receipts. Catalogue-only; no rendered-fit, activation or release claim."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "tbstack-r1-1314m-zh-cn",
+   "session": "c3f4ad19c4ad",
+   "job": "5ddd51d10a50",
+   "model": "openai/gpt-6.1-sol",
+   "model_note": "Host-announced fallback sequence: anthropic/claude-opus-5-5 → anthropic/claude-sonnet-5-5 → openai/gpt-6.1-sol (provider quota). Substantive catalogue review, receipts and final verification completed under openai/gpt-6.1-sol.",
+   "status": "passed",
+   "keys_audited": 4,
+   "keys_read": 178,
+   "en_sha256": "d27275edddf911b66c28f71051c318ca939a968b462937c6ca3809b8ae7f34cc",
+   "context_sha256": "e10643d988fdb11fe2f76ba9408a85bbd1a19d006c1940e4144364612e0916c8",
+   "target_sha256": "7a2c17230262e8de457fa572e4ef8a085801e3ccd7931986ae827a7fc10ecb35",
+   "findings": [],
+   "receipt": {
+    "path": "i18n/receipts/tbstack-r1-1314m-zh-cn.json",
+    "sha256": "2c43f8d9e416276ebb76b3f4d25bf0eaca6995efb21511ead65321a35f0f2dba"
+   }
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "d27275edddf911b66c28f71051c318ca939a968b462937c6ca3809b8ae7f34cc"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/zh-CN/ui.teamBridge.json",
+   "sha256": "7a2c17230262e8de457fa572e4ef8a085801e3ccd7931986ae827a7fc10ecb35"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "e10643d988fdb11fe2f76ba9408a85bbd1a19d006c1940e4144364612e0916c8"
+  }
+ },
+ "inherited_receipts": [
+  {
+   "base": "95e9b273a2bef3487cfa5718fbde99a66cc31f23",
+   "path": "i18n/receipts/tbstack-r1-1314-zh-cn.json",
+   "sha256": "2baed9fec680a4caf65222168742c8648d7be56ccc3dccab7947e6bf295f3b16",
+   "instance": "tbstack-r1-1314-zh-cn",
+   "keys_inherited": 174,
+   "unchanged_values_verified": 174,
+   "base_en_sha256": "9da45f3026229bfd8c10f0a09dbc6e52b0d7f82a4c8a20af8feb77ef4c83931c",
+   "base_target_sha256": "6b3884974055801e53dbb00acc20c54aaf450bfec21a37dc1a5393f42e478f24",
+   "base_context_sha256": "5a18898b0ee57a11b3b67e796f0203248b4371a7e66b8ed11c5eebcc42ad0d13",
+   "location": "git ledger audited parent",
+   "findings": []
+  },
+  {
+   "base": "6dac4f5baa8e26da07370d244240e7acb8238e1f",
+   "path": "i18n/receipts/tbstack-r1-1309m-zh-cn.json",
+   "sha256": "03235a1c63a3b23e2c4be4e67e672194636ad7f4a2fe810ae4ff0e2d3aa482de",
+   "instance": "tbstack-r1-1309m-zh-cn",
+   "keys_inherited": 4,
+   "unchanged_values_verified": 144,
+   "base_en_sha256": "b027df099c805e7121cc74c80411959c6ea178abe7a6b9a9fd6b9cb35524e510",
+   "base_target_sha256": "aa501e32d7a34a49c116e0256dd330fdaf7cd1a04e11316f6028ae512baeda3f",
+   "base_context_sha256": "7062ca8351d00aba9c040eeae2a1d5f1cee83f6c4dd3dbcaab6da60c2aa5bd5b",
+   "location": "external freshly audited parent",
+   "findings": []
+  }
+ ],
+ "union_integrity": {
+  "merge": {
+   "head": "7a2e6371736c327e28c2e57d45d9a5a5d5304360",
+   "parents": [
+    "95e9b273a2bef3487cfa5718fbde99a66cc31f23",
+    "6dac4f5baa8e26da07370d244240e7acb8238e1f"
+   ]
+  },
+  "files": [
+   {
+    "file": "src/i18n/catalogues/en/ui.teamBridge.json",
+    "head_keys": 178,
+    "left_keys": 174,
+    "right_keys": 144,
+    "dropped": 0,
+    "changed": 0
+   },
+   {
+    "file": "src/i18n/catalogues/zh-CN/ui.teamBridge.json",
+    "head_keys": 178,
+    "left_keys": 174,
+    "right_keys": 144,
+    "dropped": 0,
+    "changed": 0
+   },
+   {
+    "file": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+    "head_keys": 178,
+    "left_keys": 174,
+    "right_keys": 144,
+    "dropped": 0,
+    "changed": 0
+   }
+  ],
+  "keys_dropped": 0,
+  "shared_keys_altered": 0,
+  "keys_unsourced": []
+ },
+ "independence": "Read-only independent translation-auditor session c3f4ad19c4ad, job 5ddd51d10a50; no translation/catalogue/source edits. Translator identity preserved from parent ledger, never invented. All assertions checked against git objects, not translator summaries.",
+ "limitations": [
+  "No repo writes, builds, tests, installs, worktrees, pushes or browser/render execution. Prior feature namespace audits inherited after exact source/context/target comparison, not falsely represented as fresh full semantic re-audits.",
+  "New banner literals are shorter in character count (#条新消息 vs # new messages); CJK display width differs, so this is not rendered-fit proof. Dynamic channel/place/organization and preview lengths require rendered OS-banner checks."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/tbstack-r1-1314m-zh-cn.json",
+   "sha256": "2c43f8d9e416276ebb76b3f4d25bf0eaca6995efb21511ead65321a35f0f2dba"
+  }
+ ]
+}

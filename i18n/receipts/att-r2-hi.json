@@ -1,0 +1,98 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "att-r2-hi",
+ "session": "12aab7b684ab",
+ "job": "d8717b64c01a",
+ "date": "2026-10-21",
+ "locale": "hi",
+ "translator": "coder",
+ "translator_session": "03594b2dcc02",
+ "translator_job": "bc0c4b952eaa",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 24,
+ "scope": "Round-2 delta audit of #1314: git diff cf1d7c616c..8cf05961d6 -- src/i18n/catalogues (hi: 24 values changed/added — add, error_invalid, error_offline, error_quota, error_rate, error_size, error_type, error_upload, expired, expired_staged, expired_staged_retry, in_message, limit, open, position, preview_unavailable, remove, remove_all, retry, send_blocked, strip, unavailable, unsupported, uploading). Includes the changed en attachments.expired_staged and new en attachments.expired_staged_retry / attachments.preview_unavailable with their context notes. Every round-1 finding of att-r1-hi re-verified against the bytes. The other 147 hi values are byte-identical to cf1d7c616c (line-level diff shows only these keys plus schedule.discard_attempt gaining a trailing comma, value unchanged) and stay covered by att-r1-hi and its inherited receipts. PR head 8cf05961d6 re-checked via gh. Catalogue audit only, not rendered-fit/activation/release.",
+ "source_head": "8cf05961d64322fe64ebccd6282069c7f52f12f3",
+ "source_base": "cf1d7c616ca36bd48c0bf160d64a08514b7c2b08",
+ "sha256": {
+  "en": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+  "hi": "3189d728113b51462c092b51d8ff41d26c1c26fd8e96e661179dfd3630f794b1",
+  "context": "09acfc1ecfb2533c8c340eb706b74b4f3ee68f367ad1bc60e41c06b549ca4f1a"
+ },
+ "findings": [
+  {
+   "id": "ATT-HI-R2-01",
+   "severity": "MINOR",
+   "key": "ui.teamBridge.attachments.preview_unavailable",
+   "current": "पूर्वावलोकन उपलब्ध नहीं",
+   "proposed": "प्रीव्यू उपलब्ध नहीं",
+   "note": "Glossary drift on 'preview': ui.teamBridge's only other preview strings use प्रीव्यू (preview.chip, preview.banner), as do 20 hi values overall including the nearest surfaces (ui.chat.composer_media.preview_failed for composer attachments, ui.canvas.files.tooLarge, ui.library.preview.*), against 8 पूर्वावलोकन; the hi style guide prefers the living English loan over Sanskritised forms. Same length class, tooltip/screen-reader only."
+  }
+ ],
+ "round1_dispositions": [
+  {
+   "finding": "r1 MINOR #1 (no id)",
+   "severity": "MINOR",
+   "keys": "image glossary (20 keys)",
+   "verified": "applied: every proposed value byte-equal to the receipt's proposal except expired_staged (superseded by D1 rewrite); no इमेज left in ui.teamBridge; in_message/limit now inflect तस्वीर/तस्वीरें"
+  },
+  {
+   "finding": "r1 MINOR #2 (no id)",
+   "severity": "MINOR",
+   "keys": "position/open",
+   "verified": "applied with the finding #1 term: 'कुल {count} में से तस्वीर {index}' / '… खोलें' (proposal text said इमेज; the तस्वीर form is the consistent combination of findings #1 and #2)"
+  },
+  {
+   "finding": "r1 MINOR #3 (no id)",
+   "severity": "MINOR",
+   "keys": "retry/send_blocked",
+   "verified": "applied: '{label} के लिए फिर कोशिश करें'; send_blocked 'भेजने से पहले त्रुटि वाली तस्वीरें हटाएँ या उनके लिए फिर कोशिश करें।'"
+  },
+  {
+   "finding": "r1 MINOR #4 (no id)",
+   "severity": "MINOR",
+   "keys": "remove/error_quota/remove_all",
+   "verified": "applied: no -ाएं forms remain in ui.teamBridge (हटाएँ everywhere)"
+  },
+  {
+   "finding": "r1 NIT #5 (no id)",
+   "severity": "NIT",
+   "keys": "error_invalid",
+   "verified": "applied: 'ख़राब' with nukta"
+  },
+  {
+   "finding": "r1 NIT #6 (no id)",
+   "severity": "NIT",
+   "keys": "remove_all",
+   "verified": "applied: 'सभी तस्वीरें हटाएँ'"
+  },
+  {
+   "finding": "r1 NIT #7 (no id)",
+   "severity": "NIT",
+   "keys": "error_quota",
+   "verified": "applied: 'आपकी बहुत ज़्यादा तस्वीरें …'"
+  }
+ ],
+ "inherited_receipt": {
+  "path": "i18n/receipts/att-r1-hi.json",
+  "sha256": "81f022991c2c2d6ddd7fc82194a9f278e1049f8c403b56a6f0075a03a0000653",
+  "base": "cf1d7c616c",
+  "target_sha256": "81800a16e68bad3511726b517d74cc7648daf3696c76409e33dd7a8a30bfa78d",
+  "keys_inherited": 147,
+  "unchanged_values_verified": true
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+ },
+ "validation": {
+  "independence": "Auditor session 12aab7b684ab (job d8717b64c01a, translation-auditor, served model anthropic/claude-opus-5-5 per this session's selected_model record) is a new instance, distinct from translator coder session 03594b2dcc02 (job bc0c4b952eaa, remediation commits 1ffc748e68/cedfe88fc6) and from the round-1 auditor session cd828f39c889. Values read from working-tree bytes at 8cf05961d6 (equal to git show 8cf05961d6); translator/remediation summaries were checked, not relied on. No catalogue or code edits, no git operations, no ledger-assemble.",
+  "semantics": "New/changed keys: expired_staged 'यह तस्वीर अब भेजने के लिए तैयार नहीं है। इसे हटाएँ और फिर से जोड़ें।' matches the new en (जोड़ें = add); expired_staged_retry '… फिर कोशिश करें या इसे हटाएँ।' uses the settled retry/remove pair; preview_unavailable 'पूर्वावलोकन उपलब्ध नहीं' drifts from the namespace's प्रीव्यू (ATT-HI-R2-01). आप imperatives with -ाएँ, danda, nukta kept.",
+  "icu": "Parsed all 25 attachments.* values in en and hi with @formatjs/icu-messageformat-parser: argument names/types identical (0 mismatches); the 3 new/changed keys are argument-free in en and hi. in_message/limit plural arms unchanged in structure and now inflect (1 तस्वीर / 2 तस्वीरें). Formatted with intl-messageformat: position(2,3)/open/remove composed strings render as recorded in the round-1 dispositions.",
+  "typography": "Changed values NFC, no bidi controls, no ASCII apostrophe or '...', no doubled/edge spaces. Danda । ends sentences; ख़राब with nukta; no -ाएं spellings remain in the file.",
+  "overflow": "expired_staged/expired_staged_retry render in the 12 px wrapping status/alert line under the composer and in the chip's sr-only description; preview_unavailable is a title tooltip plus a hidden aria-describedby node (team-bridge-attachments.tsx:128-132, 761-763, 786-788): no fixed-width visible surface, so no fit risk.",
+  "rtl": "Not applicable (hi is LTR).",
+  "limitations": "Browser not used; no rendered-fit, screenshots, glyph metrics, pseudo-localization or activation claim."
+ }
+}

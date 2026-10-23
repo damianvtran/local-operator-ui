@@ -133,6 +133,64 @@ const historyReactionsSchema = z
 	.array(historyReactionSchema)
 	.transform((rows) => rows.slice(0, 50));
 
+/*
+ * IMAGE ATTACHMENTS (Team Bridge image-attachments contract §3). A message
+ * carries a STRUCTURED list of descriptors; bytes are never inline and never
+ * a URL. The renderer fetches each picture through main's bearer relay
+ * (`team_bridge.attachment` in `main/desktop-media.ts`), so nothing here is
+ * a fetchable address and a hostile body cannot point the app anywhere: the
+ * Markdown `img` renderer stays alt-only (`team-bridge-markdown.tsx`).
+ *
+ * `state` is optional because a hub that binds attachments only ever shows
+ * bound ones to a human; `expired`/`deleted` are the retention sweeper's
+ * terminal states (manager decision D2: the descriptor survives so the bubble
+ * can say "Image expired" instead of silently shrinking). Any OTHER state is
+ * treated as withheld by the renderer - fail closed, never fetched - so an
+ * additive server state cannot accidentally become a fetch.
+ */
+const attachmentId = z
+	.string()
+	.min(1)
+	.max(128)
+	.regex(/^[a-zA-Z0-9_-]+$/);
+export const teamBridgeAttachmentSchema = z
+	.object({
+		id: attachmentId,
+		mime: z.string().max(64),
+		size: z.number().int().nonnegative(),
+		width: z.number().int().nonnegative(),
+		height: z.number().int().nonnegative(),
+		sha256: z.string().max(128).optional(),
+		state: z.string().max(32).optional(),
+		expires_at: z.string().optional(),
+	})
+	.passthrough();
+export type TeamBridgeAttachment = z.infer<typeof teamBridgeAttachmentSchema>;
+
+/** The upload answer: `201 {attachment}` - a STAGED id the send then binds. */
+export const teamBridgeAttachmentUploadSchema = z
+	.object({ attachment: teamBridgeAttachmentSchema })
+	.passthrough();
+
+/*
+ * The capability block on the hub's status (`status.attachments`). Present only
+ * when the server has the store wired (D6: no deploy flag), so ABSENCE is the
+ * old-server signal: the composer hides every attach affordance, because an old
+ * hub answers an unknown `attachment_ids` field with a 400 (strict decoding).
+ */
+export const teamBridgeAttachmentCapabilitySchema = z
+	.object({
+		enabled: z.boolean(),
+		max_count: z.number().int().positive().max(16),
+		max_bytes: z.number().int().positive(),
+		max_pixels: z.number().int().positive().optional(),
+		mime_types: z.array(z.string()),
+	})
+	.passthrough();
+export type TeamBridgeAttachmentCapability = z.infer<
+	typeof teamBridgeAttachmentCapabilitySchema
+>;
+
 export const teamBridgeMessageSchema = z
 	.object({
 		id,
@@ -163,6 +221,8 @@ export const teamBridgeMessageSchema = z
 		last_reply_at: z.string().optional(),
 		/* Up to three distinct repliers' display labels — a facepile, not a roster. */
 		reply_participants: z.array(z.string()).optional(),
+		/* Image attachments, send order. Absent on text-only messages and old hubs. */
+		attachments: z.array(teamBridgeAttachmentSchema).max(16).optional(),
 	})
 	.passthrough();
 export type TeamBridgeMessage = z.infer<typeof teamBridgeMessageSchema>;
@@ -426,16 +486,43 @@ export type TeamBridgeMemberInput = {
 
 /** Server-owned delivery intent; bodies here are explicit user-authored work,
  * never a desktop inbound-body cache. Terminal rows are absent from list. */
-export const teamBridgeScheduledMessageSchema = z.object({
-	id: id,
-	tenant_id: id,
-	conversation_id: id,
-	body: z.string(),
-	send_at: z.string().datetime({ offset: true }),
-	status: z.enum(["scheduled", "sending"]),
-	created_at: z.string().datetime({ offset: true }),
-});
-export type TeamBridgeScheduledMessage = z.infer<
+export const teamBridgeScheduledMessageSchema = z
+	.object({
+		id: id,
+		tenant_id: id,
+		conversation_id: id,
+		body: z.string(),
+		send_at: z.string().datetime({ offset: true }),
+		status: z.enum(["scheduled", "sending"]),
+		created_at: z.string().datetime({ offset: true }),
+		/* Reserved images; descriptors only (not bound to a message, so no bytes). */
+		attachments: z.array(teamBridgeAttachmentSchema).max(16).optional(),
+		/*
+		 * The S2 hub's first shape: reserved ids only. A newer hub sends
+		 * `attachments` descriptors beside them (manager decision, round 1); the
+		 * descriptors win when present, otherwise each id becomes an id-only
+		 * descriptor (no size/geometry), which the scheduled tile draws as
+		 * "Preview unavailable" or as this session's in-memory preview. Edits keep
+		 * and remove by id either way, so both hub versions behave the same.
+		 */
+		attachment_ids: z.array(attachmentId).max(16).optional(),
+	})
+	.transform(({ attachment_ids, ...row }) =>
+		row.attachments !== undefined || !attachment_ids?.length
+			? row
+			: {
+					...row,
+					attachments: attachment_ids.map((attachmentRef) => ({
+						id: attachmentRef,
+						mime: "",
+						size: 0,
+						width: 0,
+						height: 0,
+						state: "reserved",
+					})),
+				},
+	);
+export type TeamBridgeScheduledMessage = z.output<
 	typeof teamBridgeScheduledMessageSchema
 >;
 export const teamBridgeScheduledListSchema = z.object({

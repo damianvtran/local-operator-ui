@@ -4,6 +4,7 @@ import { cn } from "@shared/lib/utils";
 import { Bot, UserRound } from "lucide-react";
 import type { FC } from "react";
 import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
+import { TeamBridgeMessageAttachments } from "./team-bridge-attachments";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
 import { TeamBridgeMessageToolbar } from "./team-bridge-message-toolbar";
 import { type ThreadItem, threadItems } from "./team-bridge-model";
@@ -55,7 +56,24 @@ export const TeamBridgeMessageList: FC<{
 	onReply?: (message: TeamBridgeMessage) => void;
 	/** Story/capture seed only: show every row's toolbar without hover. */
 	forceToolbar?: boolean;
-}> = ({ messages, labelFor, reactionContext, onReply, forceToolbar }) => {
+	/*
+	 * The organization the messages belong to: an image fetch is member-gated
+	 * per tenant on the hub, so the tenant travels with the request. Omitted by
+	 * callers with no images to fetch (and then images render as unavailable
+	 * rather than guessing a tenant).
+	 */
+	tenantId?: string;
+	/* `compact`: the thread pane's narrow column (see `boxFor`). */
+	density?: "regular" | "compact";
+}> = ({
+	messages,
+	labelFor,
+	reactionContext,
+	onReply,
+	forceToolbar,
+	tenantId,
+	density,
+}) => {
 	const locale = useI18nLocale();
 	const items = threadItems(messages, new Date());
 	return (
@@ -73,6 +91,8 @@ export const TeamBridgeMessageList: FC<{
 						reactionContext={reactionContext}
 						onReply={onReply}
 						forceToolbar={forceToolbar}
+						tenantId={tenantId}
+						density={density}
 					/>
 				),
 			)}
@@ -129,6 +149,8 @@ const MessageRow: FC<{
 	reactionContext?: ReactionContext;
 	onReply?: (message: TeamBridgeMessage) => void;
 	forceToolbar?: boolean;
+	tenantId?: string;
+	density?: "regular" | "compact";
 }> = ({ reactionContext, ...props }) =>
 	reactionContext && props.message.body !== null ? (
 		<ReactableMessageRow
@@ -160,6 +182,8 @@ type MessageRowProps = {
 	reactions?: ReturnType<typeof useTeamBridgeReactionState>;
 	onReply?: (message: TeamBridgeMessage) => void;
 	forceToolbar?: boolean;
+	tenantId?: string;
+	density?: "regular" | "compact";
 };
 
 const MessageRowView: FC<MessageRowProps> = ({
@@ -170,6 +194,8 @@ const MessageRowView: FC<MessageRowProps> = ({
 	reactions,
 	onReply,
 	forceToolbar,
+	tenantId,
+	density,
 }) => {
 	const summary = threadSummary(message);
 	/* One-level threads: only a timeline root can open a thread. */
@@ -276,10 +302,20 @@ const MessageRowView: FC<MessageRowProps> = ({
 					<p className="text-[14px] text-ink-dim italic">
 						{t("ui.teamBridge.thread.withheld")}
 					</p>
-				) : (
+				) : message.body.trim() === "" &&
+					(message.attachments?.length ?? 0) > 0 ? null : (
+					/* An image-only message has an empty body: no empty prose block. */
 					<TeamBridgeMarkdown className="team-bridge-message-body text-[14px] text-ink">
 						{message.body}
 					</TeamBridgeMarkdown>
+				)}
+				{/* Images come ONLY from the structured list, never from the body. */}
+				{(message.attachments?.length ?? 0) > 0 && (
+					<TeamBridgeMessageAttachments
+						message={message}
+						tenantId={tenantId ?? null}
+						density={density}
+					/>
 				)}
 				{reactions && <TeamBridgeReactionChips state={reactions} />}
 				{onReply && summary.count > 0 && (

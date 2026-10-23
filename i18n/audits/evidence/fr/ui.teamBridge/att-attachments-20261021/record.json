@@ -1,0 +1,108 @@
+{
+  "audit_id": "att-attachments-20261021",
+  "date": "2026-10-21",
+  "locale": "fr",
+  "namespace": "ui.teamBridge",
+  "source_commit": "cf1d7c616ca36bd48c0bf160d64a08514b7c2b08",
+  "source_base": "5005cfe8b6",
+  "scope": "23 ui.teamBridge.attachments.* keys introduced by 715c864171/b8aad1066b (en) and 0906d747e5 (fr; en unsupported shortened), per git diff 5005cfe8b6..cf1d7c616c of en filtered to attachments. The other 146 values (8 replies.* from #1304 at 8913528, 138 from #1309 at 5005cfe) are out of scope and verified byte-unchanged.",
+  "status": "audited",
+  "translator": {
+    "agent": "coder",
+    "model": "anthropic/claude-opus-5-5",
+    "session": "bc0c4b952eaa",
+    "commit": "0906d747e5",
+    "date": "2026-10-21"
+  },
+  "auditors": [
+    {
+      "agent": "translation-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "date": "2026-10-21",
+      "result": "clean-with-findings",
+      "instance": "att-r1-fr",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 3,
+        "nit": 1
+      },
+      "receipt": "i18n/receipts/att-r1-fr.json",
+      "receipt_sha256": "39df265b9409774901916d375b69fccd737dd819a69f1255832a8052f2217de9",
+      "scope": "Team Bridge image attachments: 23-key attachments.* delta independently audited at head cf1d7c616c; non-attachment values inherited unchanged from the merged #1304/#1309 stacks (out of scope). Catalogue audit only, not rendered-fit, activation or release approval.",
+      "note": "Round 1: ATT-FR-01..03 MINOR (U+202F before colon in remove/retry; upload rendered as « envoyer »; retry drift « renvoyez » in send_blocked), ATT-FR-04 NIT (error_type « Utilisez PNG »). No rendered-fit claim."
+    }
+  ],
+  "audit_rounds": [
+    {
+      "round": 1,
+      "instance": "att-r1-fr",
+      "session": "4177e47d05b0",
+      "model": "anthropic/claude-opus-5-5",
+      "status": "passed",
+      "keys_audited": 23,
+      "target_sha256": "a5b8b5ddbbc1523366b5daeaa2817b30aa8a53cb9a3f656c19ddc92fe518a8e4",
+      "findings": [
+        {
+          "id": "ATT-FR-01",
+          "severity": "MINOR",
+          "key": "ui.teamBridge.attachments.remove"
+        },
+        {
+          "id": "ATT-FR-02",
+          "severity": "MINOR",
+          "key": "ui.teamBridge.attachments.error_upload"
+        },
+        {
+          "id": "ATT-FR-03",
+          "severity": "MINOR",
+          "key": "ui.teamBridge.attachments.send_blocked"
+        },
+        {
+          "id": "ATT-FR-04",
+          "severity": "NIT",
+          "key": "ui.teamBridge.attachments.error_type"
+        }
+      ],
+      "receipt": {
+        "path": "i18n/receipts/att-r1-fr.json",
+        "sha256": "39df265b9409774901916d375b69fccd737dd819a69f1255832a8052f2217de9"
+      }
+    }
+  ],
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+      "sha256": "a5b8b5ddbbc1523366b5daeaa2817b30aa8a53cb9a3f656c19ddc92fe518a8e4"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "8a84800e3d2d52aae3c44393b8fe79bcc567f2ca5d8660a2d260f889cc487902"
+    }
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    }
+  },
+  "independence": "Translator (coder job bc0c4b952eaa) and auditor (translation-auditor session 4177e47d05b0) are different agents in different sessions; the auditor never edited catalogues and did not run ledger-assemble.",
+  "limitations": [
+    "Browser not used; no rendered-fit, screenshots, glyph metrics, pseudo-localization or activation evidence claimed.",
+    "Minor/nit findings are open pending the coder's remediation disposition; a round 2 delta audit applies if values change."
+  ],
+  "retained_rounds": [
+    {
+      "path": "i18n/receipts/att-r1-fr.json",
+      "sha256": "39df265b9409774901916d375b69fccd737dd819a69f1255832a8052f2217de9"
+    }
+  ]
+}

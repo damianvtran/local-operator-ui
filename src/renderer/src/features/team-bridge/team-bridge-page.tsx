@@ -12,11 +12,22 @@ import type { FC, ReactNode } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type {
+	TeamBridgeAttachmentCapability,
 	TeamBridgeConversation,
 	TeamBridgeDirectoryMember,
 	TeamBridgeMessage,
 	TeamBridgeNotify,
 } from "../../../../shared/team-bridge-contract";
+import {
+	TeamBridgeAttachButton,
+	TeamBridgeAttachmentStrip,
+	attachmentPasteHandlers,
+} from "./team-bridge-attachments";
+import {
+	attachmentCapability,
+	isAttachmentNotFound,
+	sendAttachmentIds,
+} from "./team-bridge-attachments-model";
 import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
 import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
@@ -94,6 +105,7 @@ import {
 	useTeamBridgeStatus,
 	useTeamBridgeUnread,
 } from "./use-team-bridge";
+import { useTeamBridgeAttachments } from "./use-team-bridge-attachments";
 import { useTeamBridgeDrafts } from "./use-team-bridge-drafts";
 
 /**
@@ -347,7 +359,25 @@ export type TeamBridgePageViewProps = {
 	 * Send `body`. For a target with no conversation yet the container creates
 	 * it first; the view does not know or care which.
 	 */
-	onSend: (body: string, clientRef: string) => Promise<unknown> | undefined;
+	onSend: (
+		body: string,
+		clientRef: string,
+		attachments?: {
+			/* Ids already staged in the selected conversation. */
+			ids: readonly string[];
+			/* Stage held images into a just-created conversation; throws on failure. */
+			stageHeld?: (
+				conversationId: string,
+				tenantId: string | undefined,
+			) => Promise<string[]>;
+		},
+	) => Promise<unknown> | undefined;
+	/*
+	 * The hub's image capability (`status.attachments`), or null/absent when it
+	 * has none: every attach affordance is then hidden and a pasted image gets
+	 * the "not supported" note instead of a chip.
+	 */
+	attachmentCapability?: TeamBridgeAttachmentCapability | null;
 	/** Open the channel form (Channels' "+" and its empty line). */
 	onSchedule?: (
 		body: string,
@@ -355,6 +385,13 @@ export type TeamBridgePageViewProps = {
 		sendAt: string,
 		conversationId: string | undefined,
 		onCreated: (id: string) => void,
+		attachments?: {
+			ids: readonly string[];
+			stageHeld?: (
+				conversationId: string,
+				tenantId: string,
+			) => Promise<string[]>;
+		},
 	) => Promise<unknown>;
 	onNewChannel: () => void;
 	onRetry?: () => void;
@@ -399,6 +436,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onTarget,
 	onSend,
 	onSchedule,
+	attachmentCapability: imageCapability = null,
 	onNewChannel,
 	onRetry,
 	onScopeChange,
@@ -432,6 +470,47 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		!scheduling;
 
 	const { body: draft, setBody: setDraft } = draftState;
+	/*
+	 * The composer's staged images. Keyed to the same draft identity as the
+	 * text, so switching conversations swaps both together; uploads go straight
+	 * to an existing conversation and are HELD in memory for a draft whose
+	 * conversation the first send will create.
+	 *
+	 * The conversation is the RESOLVED one (`targetConversation`, the same
+	 * resolution the pane and the send use), not just a `conversation` target:
+	 * a People/Chiefs row or a one-recipient To: draft whose DM already exists
+	 * IS that DM, and treating it as "no conversation yet" held its images
+	 * while the send posted the text alone (review round 1, R1-01).
+	 */
+	const resolvedForImages = targetConversation(
+		target,
+		conversations,
+		selfAccountId,
+	);
+	const images = useTeamBridgeAttachments({
+		scopeKey: `${draftTenant}|${target ? draftTargetKey(target) : ""}`,
+		accountId: selfAccountId,
+		tenantId:
+			resolvedForImages?.tenant_id ??
+			(draftTenant === TEAM_BRIDGE_ALL_SCOPE ? undefined : draftTenant),
+		conversationId:
+			resolvedForImages?.id ?? draftState.current?.conversationId ?? null,
+		capability: imageCapability,
+		persisted: draftState.current?.attachments,
+		onPersist: (next) => {
+			/*
+			 * While a send or schedule is in flight its idempotency key is already
+			 * on the wire, and staging held images INSIDE that request must not
+			 * rotate it, or the settled request can no longer clear its own draft
+			 * (review round 1, R1-02).
+			 */
+			draftState.setAttachments(next, { keepClientRef: writing.current });
+		},
+	});
+	const [imagesBlocked, setImagesBlocked] = useState(false);
+	/* Text OR at least one staged image; image-only messages are allowed. */
+	const hasContent = Boolean(draft.trim()) || images.count > 0;
+	const imagesSettled = !images.busy && !images.blocked;
 	const selectTarget = (next: TeamBridgeTarget) => {
 		setQuickView(null);
 		onTarget(next);
@@ -599,6 +678,21 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				}
 			: undefined;
 
+	/*
+	 * Records which ids a send/schedule actually put on the wire: the staged
+	 * ids taken at submit, or (for held images) what the upload inside the
+	 * request bound. Settle paths clear only these.
+	 */
+	const carriedIds = (staged: readonly string[]) => {
+		let bound: readonly string[] = staged;
+		return {
+			ids: () => bound,
+			stageHeld: async (conversationId: string, tenant: string | undefined) => {
+				bound = await images.uploadHeld(conversationId, tenant);
+				return [...bound];
+			},
+		};
+	};
 	// Capture the original entry and scope: navigation while a request is in
 	// flight must not clear the next target's text, even if it is identical.
 	// Opens at the newest message and follows new ones while the reader is at
@@ -617,8 +711,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	});
 	const submit = () => {
 		const body = draft.trim();
+		if (images.blocked) {
+			setImagesBlocked(true);
+			return;
+		}
 		if (
-			!body ||
+			!hasContent ||
+			images.busy ||
 			sending ||
 			scheduling ||
 			writing.current ||
@@ -631,14 +730,40 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		const clientRef = draftState.current?.clientRef ?? crypto.randomUUID();
 		const entryKey = draftTargetKey(target);
 		if (!draftState.update({ clientRef })) return;
+		setImagesBlocked(false);
+		const sentIds = images.readyIds();
+		/*
+		 * Exactly the ids THIS request carried. Paste and drop stay live while a
+		 * send is in flight, so re-reading the strip on settle would clear an
+		 * image added mid-send as "sent" when it never left (review round 2,
+		 * R2-01). Held images report their bound ids through the wrapper.
+		 */
+		const carried = carriedIds(sentIds);
+		// Fenced BEFORE the call: held images stage inside it (R1-02).
+		writing.current = true;
 		// The author's own send lands in view when it arrives (F9).
 		timeline.pin();
-		const result = onSend(body, clientRef);
+		const result = onSend(body, clientRef, {
+			ids: sentIds,
+			...(images.held ? { stageHeld: carried.stageHeld } : {}),
+		});
+		if (!(result instanceof Promise)) writing.current = false;
 		if (result instanceof Promise) {
-			writing.current = true;
 			void result
-				.then(() => draftState.clearSent(entryKey, body, clientRef))
-				.catch(() => {})
+				.then(() => {
+					const bound = carried.ids();
+					// Chips first (still fenced by `writing`, so the key holds), then the
+					// draft entry, which by then carries no bound ids (R1-02).
+					images.clearSent(bound);
+					draftState.clearSent(entryKey, body, clientRef, bound);
+				})
+				.catch((error) => {
+					// The hub's uniform 404 for a staged id that no longer binds (72 h
+					// TTL, or bound elsewhere): the chips flip to "expired" so the
+					// author re-adds or removes them; the text is kept.
+					if (carried.ids().length > 0 && isAttachmentNotFound(error))
+						images.markExpired(carried.ids());
+				})
 				.finally(() => {
 					writing.current = false;
 				});
@@ -650,7 +775,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			!onSchedule ||
 			writing.current ||
 			draftState.current?.createUncertain ||
-			!draft.trim() ||
+			!hasContent ||
+			!imagesSettled ||
 			!canCompose ||
 			sending ||
 			scheduling
@@ -680,6 +806,10 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		setScheduling(true);
 		setScheduledSuccess(false);
 		setScheduleFailed(false);
+		const scheduledIds = images.readyIds();
+		// The schedule's own reserved set, not the strip at settle (R2-01); the
+		// 404 path below expires only these too (R3-02).
+		const carried = carriedIds(scheduledIds);
 		try {
 			await onSchedule(
 				body,
@@ -697,11 +827,20 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					)
 						throw new Error("draft persistence unavailable");
 				},
+				{
+					ids: scheduledIds,
+					...(images.held ? { stageHeld: carried.stageHeld } : {}),
+				},
 			);
-			draftState.clearSent(entryKey, body, clientRef);
+			const reserved = carried.ids();
+			// Same order as send: chips, then the entry (R1-02).
+			images.clearSent(reserved);
+			draftState.clearSent(entryKey, body, clientRef, reserved);
 			setScheduledSuccess(true);
 		} catch (error) {
 			setScheduleFailed(true);
+			if (carried.ids().length > 0 && isAttachmentNotFound(error))
+				images.markExpired(carried.ids());
 			// A definitive client refusal cannot have created a group. A lost response
 			// can: require a deliberate Groups check before another create attempt.
 			const status = (error as { status?: number | null })?.status;
@@ -754,7 +893,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					hasDraft={draftState.entries.some(
 						({ entry, tenantId }) =>
 							tenantId === conversation.tenant_id &&
-							Boolean(entry.body.trim()) &&
+							(Boolean(entry.body.trim()) ||
+								(entry.attachments?.length ?? 0) > 0) &&
 							targetConversation(entry.target, [conversation], selfAccountId)
 								?.id === conversation.id,
 					)}
@@ -1105,6 +1245,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						{draftState.entries.filter(
 							({ entry }) =>
 								entry.body.trim() ||
+								(entry.attachments?.length ?? 0) > 0 ||
 								(entry.target.type === "compose" &&
 									entry.target.recipients.length > 0),
 						).length === 0 && (
@@ -1116,6 +1257,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 							.filter(
 								({ entry }) =>
 									entry.body.trim() ||
+									(entry.attachments?.length ?? 0) > 0 ||
 									(entry.target.type === "compose" &&
 										entry.target.recipients.length > 0),
 							)
@@ -1330,6 +1472,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								) : (
 									<TeamBridgeMessageList
 										messages={messages}
+										tenantId={shown?.tenant_id}
 										labelFor={(sender) =>
 											labelFor(sender, shown?.tenant_id ?? "")
 										}
@@ -1398,11 +1541,22 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											{t("ui.teamBridge.composer.error")}
 										</p>
 									)}
+									{/* A hub that cannot take images is already explained by the strip's
+									   unsupported note; this alert is only for error-marked chips (R2-02). */}
+									{imagesBlocked && images.blocked && !images.unsupported && (
+										<p
+											role="alert"
+											className="px-2 pb-1 text-[12px] text-danger"
+										>
+											{t("ui.teamBridge.attachments.send_blocked")}
+										</p>
+									)}
 									<div
 										className={cn(
 											"rounded-xl bg-elevated transition-colors duration-fast ease-out-quart",
 											"has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-solid",
 										)}
+										{...(canCompose ? attachmentPasteHandlers(images) : {})}
 									>
 										{heldAttempt && (
 											<TeamBridgeHeldAttempt
@@ -1433,6 +1587,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 												}}
 											/>
 										)}
+										<TeamBridgeAttachmentStrip state={images} />
 										<textarea
 											value={draft}
 											onChange={(event) => setDraft(event.target.value)}
@@ -1477,12 +1632,16 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											<span
 												className={cn(
 													"min-w-0 flex-1 truncate pl-1.5 text-meta-sm text-ink-dim transition-opacity duration-fast",
-													draft.trim() ? "opacity-100" : "opacity-0",
+													hasContent ? "opacity-100" : "opacity-0",
 												)}
-												aria-hidden={!draft.trim()}
+												aria-hidden={!hasContent}
 											>
 												{t("ui.teamBridge.composer.hint")}
 											</span>
+											<TeamBridgeAttachButton
+												state={images}
+												disabled={!canCompose || sending || scheduling}
+											/>
 											{onSchedule && (
 												<Button
 													variant="ghost"
@@ -1498,7 +1657,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 													disabled={
 														Boolean(draftState.current?.sendAt) ||
 														Boolean(draftState.current?.createUncertain) ||
-														!draft.trim() ||
+														!hasContent ||
+														!imagesSettled ||
 														sending ||
 														scheduling ||
 														!canCompose
@@ -1523,7 +1683,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 												disabled={
 													Boolean(draftState.current?.sendAt) ||
 													Boolean(draftState.current?.createUncertain) ||
-													!draft.trim() ||
+													!hasContent ||
+													images.busy ||
 													sending ||
 													scheduling ||
 													!canCompose
@@ -1579,6 +1740,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 								}
 								readOnly={readOnly}
 								reactionContext={reactionContext}
+								accountId={selfAccountId}
+								attachmentCapability={imageCapability}
 								onClose={() => {
 									setThreadSelection(null);
 									onCloseThread?.();
@@ -1893,8 +2056,29 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	const targetRef = useRef(target);
 	targetRef.current = target;
 
-	const sendBody = async (body: string, clientRef: string) => {
-		if (selected !== null) return send.mutateAsync({ clientRef, body });
+	const sendBody = async (
+		body: string,
+		clientRef: string,
+		attachments?: {
+			ids: readonly string[];
+			stageHeld?: (
+				conversationId: string,
+				tenantId: string | undefined,
+			) => Promise<string[]>;
+		},
+	) => {
+		if (selected !== null)
+			return send.mutateAsync({
+				clientRef,
+				body,
+				// Held images stage into the selected conversation FIRST; a failed
+				// upload throws here, so the text never posts alone (R1-01).
+				attachmentIds: await sendAttachmentIds(
+					attachments,
+					selected.id,
+					selected.tenant_id,
+				),
+			});
 		const recipients = draftRecipients();
 		const input = draftCreateInput(recipients);
 		if (input === null) return undefined;
@@ -1920,8 +2104,18 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 					}>,
 				// Straight to the API rather than the selected conversation's
 				// mutation hook: that hook is bound to the conversation selected at
-				// RENDER time, which a just-created row is not yet.
-				post: (id, message) => TeamBridgeApi.send(id, message),
+				// RENDER time, which a just-created row is not yet. Held images are
+				// staged INTO the new conversation first; a failed upload throws so
+				// the message is never posted text-only behind the author's back.
+				post: async (id, message) =>
+					TeamBridgeApi.send(id, {
+						...message,
+						attachmentIds: await sendAttachmentIds(
+							attachments,
+							id,
+							message.tenantId,
+						),
+					}),
 			});
 			/*
 			 * Move to the new group only if the reader is STILL on the draft that
@@ -1947,6 +2141,13 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		sendAt: string,
 		conversationId: string | undefined,
 		onCreated: (id: string) => void,
+		attachments?: {
+			ids: readonly string[];
+			stageHeld?: (
+				conversationId: string,
+				tenantId: string,
+			) => Promise<string[]>;
+		},
 	) => {
 		if (readOnly || (mergedView && !selected) || target === null)
 			throw new Error("schedule requires organization");
@@ -1958,6 +2159,8 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			body,
 			clientRef,
 			sendAt,
+			attachmentIds: attachments?.ids,
+			stageHeld: attachments?.stageHeld,
 			remembered: createdForDraft.current,
 			onCreated,
 			onScheduled: (id) => {
@@ -2049,6 +2252,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 					setTarget(next);
 				}}
 				onSend={sendBody}
+				attachmentCapability={attachmentCapability(status.data)}
 				onSchedule={
 					scope === TEAM_BRIDGE_ALL_SCOPE && !selected
 						? undefined

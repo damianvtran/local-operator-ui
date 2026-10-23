@@ -289,11 +289,20 @@ export function useTeamBridgeUnread(
 export function useSendTeamBridgeMessage(
 	conversationId: string,
 	tenantId?: string,
-): UseMutationResult<unknown, Error, { clientRef: string; body: string }> {
+): UseMutationResult<
+	unknown,
+	Error,
+	{ clientRef: string; body: string; attachmentIds?: readonly string[] }
+> {
 	const client = useQueryClient();
 	return useMutation({
-		mutationFn: ({ clientRef, body }) =>
-			TeamBridgeApi.send(conversationId, { clientRef, body, tenantId }),
+		mutationFn: ({ clientRef, body, attachmentIds }) =>
+			TeamBridgeApi.send(conversationId, {
+				clientRef,
+				body,
+				tenantId,
+				attachmentIds,
+			}),
 		onSuccess: async () => {
 			await client.invalidateQueries({
 				queryKey: teamBridgeKeys.messages(conversationId, tenantId),

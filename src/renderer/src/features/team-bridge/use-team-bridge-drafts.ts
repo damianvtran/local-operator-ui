@@ -4,6 +4,7 @@ import {
 	browserDraftStorage,
 	draftAccountEpoch,
 } from "../../shared/store/team-bridge-draft-account";
+import type { DraftAttachment } from "./team-bridge-attachments-model";
 import {
 	type TeamBridgeDraft,
 	type TeamBridgeDrafts,
@@ -150,14 +151,62 @@ export function useTeamBridgeDrafts(
 				: {}),
 		});
 
-	const clearSent = (entryKey: string, sentBody: string, clientRef: string) => {
+	/*
+	 * Images change what a client_ref means: the hub's replay check compares
+	 * (body_hash, attachments_hash), so reusing a key for a different image set
+	 * would be refused as a conflict. Same rule as `setBody`: a fresh key, except
+	 * while an uncertain schedule holds its original one.
+	 */
+	const setAttachments = (
+		next: DraftAttachment[],
+		options: { keepClientRef?: boolean } = {},
+	) => {
+		// Read the STORED entry, not this render's `current`: uploads settle
+		// asynchronously, after renders that predate the send's key.
+		const stored = targetKey ? load()[targetKey] : undefined;
+		// Clearing images on an entry that no longer exists (a confirmed send
+		// just deleted it) must not recreate it: `update` would rebuild the
+		// entry from this render's body and resurrect the sent text.
+		if (!stored && next.length === 0) return true;
+		const before = (stored?.attachments ?? []).map((row) => row.id).join(",");
+		const after = next.map((row) => row.id).join(",");
+		return update({
+			attachments: next.length > 0 ? next : undefined,
+			/*
+			 * `keepClientRef`: a send/schedule is in flight and its key is already
+			 * on the wire. Images it stages are PART of that request, so rotating
+			 * here would orphan the request from its own draft (R1-02).
+			 */
+			...(before !== after && !stored?.sendAt && !options.keepClientRef
+				? { clientRef: crypto.randomUUID() }
+				: {}),
+		});
+	};
+
+	const clearSent = (
+		entryKey: string,
+		sentBody: string,
+		clientRef: string,
+		sentAttachmentIds: readonly string[] = [],
+	) => {
 		if (!authorized()) return;
 		const entry = load()[entryKey];
 		if (entry?.clientRef !== clientRef) return;
-		if (entry.body.trim() === sentBody) write(entryKey, null);
+		// Images the hub just bound are gone from the staging set either way: a
+		// bound id can never bind again, so leaving it would guarantee a 404.
+		const sent = new Set(sentAttachmentIds);
+		const remaining = (entry.attachments ?? []).filter(
+			(row) => !sent.has(row.id),
+		);
+		if (entry.body.trim() === sentBody && remaining.length === 0)
+			write(entryKey, null);
 		else
 			write(entryKey, {
 				...entry,
+				// An image added mid-send keeps the entry alive, but the text that
+				// DID go out must not come back with it (R2-01).
+				body: entry.body.trim() === sentBody ? "" : entry.body,
+				attachments: remaining.length > 0 ? remaining : undefined,
 				sendAt: undefined,
 				clientRef: crypto.randomUUID(),
 			});
@@ -209,6 +258,7 @@ export function useTeamBridgeDrafts(
 		current,
 		body,
 		setBody,
+		setAttachments,
 		update,
 		clearSent,
 		storageFailed,

@@ -1,0 +1,72 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "att-r1-ru",
+  "session": "562d30c4b655",
+  "job": "b56e1ae2d95e",
+  "date": "2026-10-21",
+  "locale": "ru",
+  "translator": "coder",
+  "translator_session": "03594b2dcc02",
+  "translator_job": "bc0c4b952eaa",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 23,
+  "scope": "23-key image-attachment delta (ui.teamBridge.attachments.*): git diff 5005cfe8b6..cf1d7c616c of en adds 31 keys, changes 0, removes 0; the 8 replies.* keys are #1304 (out of scope, ru byte-equal to 8913528 = threads1304-r2-ru target) and the 23 attachments.* keys are this audit. Within 715c864171..cf1d7c616c the en attachment changes are: attachments.unsupported reworded (0906d747e5, 'Only the text was pasted.' dropped), attachments.remove_all added (b8aad1066b), send_blocked comma-only; schedule.held/discard_attempt arrive via the #1309 merge (out of scope). ru for all 23 added at 0906d747e5. Base 138 values verified byte-unchanged versus 5005cfe8b6 and inherited; catalogue audit only, not rendered-fit/activation/release.",
+  "sha256": {
+    "en": "de78ff4b0cf8aca9ddb5eda9687ee2a806e11f0bae32f005609579108360848f",
+    "ru": "33a931af827ba2d475c46ad82f96e2a851d0686d0e788350db8e1baa99ac0a8d",
+    "context": "8a84800e3d2d52aae3c44393b8fe79bcc567f2ca5d8660a2d260f889cc487902"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.teamBridge.attachments.expired_staged",
+      "current": "Это изображение больше нельзя отправить. Удалите его или повторите попытку, если превью ещё отображается.",
+      "proposed": "Это изображение больше не готово к отправке. Удалите его или повторите попытку, если миниатюра ещё видна.",
+      "note": "en says 'no longer ready to send', which leaves retry open; 'больше нельзя отправить' is absolute and then contradicts the retry it offers. «превью» is also a colloquial anglicism: the locale uses «Предпросмотр» for preview (ui.teamBridge.preview.chip, ui.projects.*), and the object here is the 64-px composer thumbnail (size-16 chip), for which «миниатюра» is the native term."
+    },
+    {
+      "severity": "NIT",
+      "key": "ui.teamBridge.attachments.error_quota",
+      "current": "Слишком много изображений ожидают отправки. Отправьте или удалите часть из них и повторите попытку.",
+      "proposed": "Слишком много изображений ожидает отправки. Отправьте или удалите часть из них и повторите попытку.",
+      "note": "With a quantifier subject «много + gen. pl.» and an inanimate noun the normative predicate is singular («ожидает»); plural reads slightly translated."
+    }
+  ],
+  "inherited_receipt": {
+    "base": "5005cfe8b6",
+    "path": "i18n/receipts/tbh-r2-ru.json",
+    "sha256": "e685510a0eb4a2f0a2fc4e73381fab14c7627f32570a6973c7c6c07a72360b3f",
+    "keys_inherited": 138,
+    "base_source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+    "base_target_sha256": "69aea2ec18b548942bb3e2b30c5c7747861b5ddf27aa4eb341bee7b92d126887",
+    "full_coverage_receipt": {
+      "path": "i18n/receipts/tbd-r1-ru.json",
+      "sha256": "b6dbfd1c67fe7909d9099a3adc7eaf46abcc38c90f9a95d7268ae365e7ad1c11"
+    },
+    "unchanged_values_verified": 138
+  },
+  "merged_in_receipt": {
+    "base": "8913528e50",
+    "path": "i18n/receipts/threads1304-r2-ru.json",
+    "sha256": "c79c71db3039c72a00c12d1c3cc66bb45127bb1a80626f8f4de79810b29bdbeb",
+    "keys_inherited": 8,
+    "base_source_sha256": "7de891f2cf03b7563747c440847c853f1c1356aa0a50480ec28eae347e6581e9",
+    "base_target_sha256": "984e7b1feb92af43af29952a1f5839818c8ab4552bc5901fd97ace26b586ab5f",
+    "unchanged_values_verified": 8,
+    "note": "ui.teamBridge.replies.* from PR #1304, out of scope here; values byte-equal to 8913528 ru."
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+  },
+  "validation": {
+    "independence": "Auditor session 562d30c4b655 (job b56e1ae2d95e, translation-auditor) is distinct from translator session 03594b2dcc02 (job bc0c4b952eaa resumed from 7b1161ee751e, coder agent that authored 0906d747e5); read-only audit, no catalogue/code edited, staged or committed; only this receipt and its record written.",
+    "semantics": "All 23 values read against en, the context sidecar and their real UI role in team-bridge-attachments.tsx, team-bridge-page.tsx, team-bridge-thread-pane.tsx and team-bridge-scheduled.tsx (icon-button aria-label/title for add and the limit tooltip when full; ul aria-label strip/in_message; positional alt label composed into 'Удалить: Изображение 1 из 2' / 'Повторить: …' on 20-px corner buttons; Spinner label; role=status/alert notice line at 12 px; 144×96 placeholder tile text plus 'Повторить' link; reschedule-dialog ghost sm Button remove_all). unsupported matches the reworded en (no 'only text pasted' clause). Terminology: изображение throughout (no drift to картинка/вложение within the namespace); Удалить for remove matches ui.chat.composer_media.remove_attachment and every attachments.* sentence; «Повторите попытку»/«Повторить» match composer.error, list.retry; организация matches scope.*; Local Operator and PNG/JPEG/WebP/GIF kept Latin per glossary. вы-register lowercase, imperative instructions, infinitive actions, impersonal error forms per ru style guide. 138 base keys byte-equal to 5005cfe8b6; key sets and order identical to en (169/169).",
+    "icu": "Parsed en and ru for all 23 keys with @formatjs/icu-messageformat-parser from repo node_modules: argument sets identical (0 mismatches; {index},{count},{label} plain, {count}/{max} plural). Both plurals carry one/few/many/other. intl-messageformat ru: in_message 1 изображение, 2/3/4/22 изображения, 0/5/11/12/14/25 изображений, 21 изображение, 1,5 изображения; limit 'не более 1 изображения', '2 изображений', '5 изображений', '21 изображения', '1,5 изображения' (genitive after «не более» correct in every branch); open 'Открыть изображение 2 из 3'.",
+    "typography": "All 23 values NFC; no U+200E/F, U+202A–E, U+2066–9, U+061C; no value identical to en; Latin only in kept names (Local Operator, PNG, JPEG, WebP, GIF); real ellipsis U+2026 in uploading; ё used (повреждён, истёк, ещё); no straight quotes, no space before : ; ! ?; file LF, no BOM, trailing newline.",
+    "overflow": "Short labels sit in aria-label/title or wrap-free text with ample room: remove_all 'Удалить изображения' (19 vs en 13) in a whitespace-nowrap sm ghost Button in a dialog column — acceptable; expired 'Срок хранения изображения истёк' (31 vs 13) wraps to two lines inside the 144-px-wide text-center 12-px placeholder tile, within its 96-px height; notice/alert copy (error_*, limit, expired_staged up to 110 chars) is paragraph text that wraps. No material width risk found; not rendered.",
+    "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, visual-fit, pseudo-localization or rendered bidi claim. No catalogue/code edits."
+  }
+}

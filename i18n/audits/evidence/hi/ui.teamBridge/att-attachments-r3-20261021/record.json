@@ -1,0 +1,206 @@
+{
+ "audit_id": "att-attachments-r3-20261021",
+ "date": "2026-10-21",
+ "locale": "hi",
+ "namespace": "ui.teamBridge",
+ "source_commit": "b787a8458fb1c44a7e479949155c6e32240d6e79",
+ "source_base": "8cf05961d64322fe64ebccd6282069c7f52f12f3",
+ "scope": "Round-3 delta of #1314 (8cf05961d6..b787a8458f): 2 hi value(s) changed/added (failed_count, preview_unavailable): the new en attachments.failed_count (design D13) and the applied round-2 finding ATT-HI-R2-01. The other 170 values are byte-unchanged and inherited from att-r2-hi.",
+ "status": "audited",
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-21",
+  "session": "03594b2dcc02",
+  "job": "5084d4f46f6c",
+  "commit": "b787a8458f"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-opus-5-5",
+   "date": "2026-10-21",
+   "result": "clean",
+   "instance": "att-r3-hi",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/att-r3-hi.json",
+   "receipt_sha256": "fe1e39e87fc29a74670841768e588052737ec222297f38b7507d66f30ce7b8fd",
+   "scope": "Team Bridge image attachments round 3: remediation delta (2 key(s)) independently audited at head b787a8458f; round-2 ATT-HI-R2-01 verified applied. Catalogue audit only, not rendered-fit, activation or release approval.",
+   "note": "Round 3: no findings. Round-2 ATT-HI-R2-01 verified applied. No rendered-fit claim."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "att-r1-hi",
+   "session": "cd828f39c889",
+   "job": "316d26b2b034",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 23,
+   "target_sha256": "81800a16e68bad3511726b517d74cc7648daf3696c76409e33dd7a8a30bfa78d",
+   "findings": [
+    {
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.add"
+    },
+    {
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.position"
+    },
+    {
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.retry"
+    },
+    {
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.remove"
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.error_invalid"
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.remove_all"
+    },
+    {
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.error_quota"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/att-r1-hi.json",
+    "sha256": "81f022991c2c2d6ddd7fc82194a9f278e1049f8c403b56a6f0075a03a0000653"
+   }
+  },
+  {
+   "round": 2,
+   "instance": "att-r2-hi",
+   "session": "12aab7b684ab",
+   "job": "d8717b64c01a",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 24,
+   "target_sha256": "3189d728113b51462c092b51d8ff41d26c1c26fd8e96e661179dfd3630f794b1",
+   "findings": [
+    {
+     "id": "ATT-HI-R2-01",
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.preview_unavailable"
+    }
+   ],
+   "round1_dispositions": [
+    {
+     "finding": "r1 MINOR #1 (no id)",
+     "keys": "image glossary (20 keys)",
+     "verified": "applied: every proposed value byte-equal to the receipt's proposal except expired_staged (superseded by D1 rewrite); no इमेज left in ui.teamBridge; in_message/limit now inflect तस्वीर/तस्वीरें"
+    },
+    {
+     "finding": "r1 MINOR #2 (no id)",
+     "keys": "position/open",
+     "verified": "applied with the finding #1 term: 'कुल {count} में से तस्वीर {index}' / '… खोलें' (proposal text said इमेज; the तस्वीर form is the consistent combination of findings #1 and #2)"
+    },
+    {
+     "finding": "r1 MINOR #3 (no id)",
+     "keys": "retry/send_blocked",
+     "verified": "applied: '{label} के लिए फिर कोशिश करें'; send_blocked 'भेजने से पहले त्रुटि वाली तस्वीरें हटाएँ या उनके लिए फिर कोशिश करें।'"
+    },
+    {
+     "finding": "r1 MINOR #4 (no id)",
+     "keys": "remove/error_quota/remove_all",
+     "verified": "applied: no -ाएं forms remain in ui.teamBridge (हटाएँ everywhere)"
+    },
+    {
+     "finding": "r1 NIT #5 (no id)",
+     "keys": "error_invalid",
+     "verified": "applied: 'ख़राब' with nukta"
+    },
+    {
+     "finding": "r1 NIT #6 (no id)",
+     "keys": "remove_all",
+     "verified": "applied: 'सभी तस्वीरें हटाएँ'"
+    },
+    {
+     "finding": "r1 NIT #7 (no id)",
+     "keys": "error_quota",
+     "verified": "applied: 'आपकी बहुत ज़्यादा तस्वीरें …'"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/att-r2-hi.json",
+    "sha256": "f6e3bae43c1fb792e25c9d24d9412b7cec756ec3aa0bceed0c6dcaaa92244a58"
+   }
+  },
+  {
+   "round": 3,
+   "instance": "att-r3-hi",
+   "session": "57c37248b1be",
+   "job": "8d68b2c4680c",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 2,
+   "target_sha256": "9ad93c48a0e90a7ce640c3db8d1ee1910df73720778f96ba631dc53ddcfd22f3",
+   "findings": [],
+   "round2_dispositions": [
+    {
+     "finding": "ATT-HI-R2-01",
+     "keys": "preview_unavailable",
+     "verified": "applied verbatim: current bytes equal the round-2 proposal 'प्रीव्यू उपलब्ध नहीं' (string equality against hi at b787a8458f)"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/att-r3-hi.json",
+    "sha256": "fe1e39e87fc29a74670841768e588052737ec222297f38b7507d66f30ce7b8fd"
+   }
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "f982d8a6e7300cee8f36605ae4779eea8c5ec0ebffdd741ca0fc806c8ee807af"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+   "sha256": "9ad93c48a0e90a7ce640c3db8d1ee1910df73720778f96ba631dc53ddcfd22f3"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "53d21a0cbcb9a35d6ea280dec60aa55225d995e21a87d92ed5cb5f7ff82bcf38"
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/hi.md",
+   "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  }
+ },
+ "independence": "Translator (coder session 03594b2dcc02, job 5084d4f46f6c, commit b787a8458f) and round-3 auditor (translation-auditor session 57c37248b1be, job 8d68b2c4680c) are different agents in different sessions; the round-3 auditor is also distinct from the round-2 auditor session 12aab7b684ab and the round-1 auditor sessions. The auditor never edited catalogues, ran no git operations and did not run ledger-assemble.",
+ "limitations": [
+  "Browser not used; no rendered-fit, screenshots, glyph metrics, pseudo-localization or activation evidence claimed.",
+  "Round 3 covers the b787a8458f delta only; unchanged values rely on att-r2/att-r1 and their inherited receipts."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/att-r1-hi.json",
+   "sha256": "81f022991c2c2d6ddd7fc82194a9f278e1049f8c403b56a6f0075a03a0000653"
+  },
+  {
+   "path": "i18n/receipts/att-r2-hi.json",
+   "sha256": "f6e3bae43c1fb792e25c9d24d9412b7cec756ec3aa0bceed0c6dcaaa92244a58"
+  },
+  {
+   "path": "i18n/receipts/att-r3-hi.json",
+   "sha256": "fe1e39e87fc29a74670841768e588052737ec222297f38b7507d66f30ce7b8fd"
+  }
+ ]
+}

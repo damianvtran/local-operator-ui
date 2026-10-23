@@ -421,6 +421,16 @@ const teamFields = z
 	})
 	.strict();
 const chains = z.record(z.array(z.string().max(1024)).max(100));
+/*
+ * Team Bridge staged-attachment ids on a send or schedule. Four is the hub's
+ * per-message cap (D3) and is enforced here too so a renderer bug is refused
+ * before it costs a round trip; duplicates are refused because the hub binds
+ * each id exactly once and a repeated id would be a guaranteed 404.
+ */
+const teamBridgeAttachmentIds = z
+	.array(id)
+	.max(4)
+	.refine((ids) => new Set(ids).size === ids.length, "Duplicate attachment");
 // Mirrors ScheduleUnit in the renderer's api/local-operator/types.ts and the
 // backend's ScheduleUnit enum. Enumerated rather than free text so the value
 // cannot become a path or query fragment on its way to the server.
@@ -3485,10 +3495,12 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			conversation_id: id,
 			tenant_id: id.optional(),
 			client_ref: id,
-			body: z.string().min(1),
+			/* Empty only with `attachment_ids` (image-only); enforced in the refine below. */
+			body: z.string(),
 			agent_label: z.string().min(1).max(64).optional(),
 			/* Reply in this root message's thread; the hub validates the root. */
 			thread_root_id: id.optional(),
+			attachment_ids: teamBridgeAttachmentIds.optional(),
 		})
 		.strict(),
 	/*
@@ -3514,8 +3526,9 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			tenant_id: id,
 			conversation_id: id,
 			client_ref: id,
-			body: z.string().min(1),
+			body: z.string(),
 			send_at: z.string().datetime({ offset: true }),
+			attachment_ids: teamBridgeAttachmentIds.optional(),
 		})
 		.strict(),
 	z
@@ -3523,8 +3536,23 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			op: z.literal("team_bridge.scheduled.update"),
 			tenant_id: id,
 			scheduled_id: id,
-			body: z.string().min(1).optional(),
+			body: z.string().optional(),
 			send_at: z.string().datetime({ offset: true }).optional(),
+			/* The WHOLE new set when present (`[]` removes every image); absent keeps it. */
+			attachment_ids: teamBridgeAttachmentIds.optional(),
+		})
+		.strict(),
+	/*
+	 * Discard one STAGED upload (a chip the author removed before sending). JSON,
+	 * not the media relay: there are no bytes either way. Idempotent 204 on the
+	 * hub, so a retry after a lost answer is harmless.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.attachments.delete"),
+			tenant_id: id,
+			conversation_id: id,
+			attachment_id: id,
 		})
 		.strict(),
 	z
@@ -4167,6 +4195,30 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
  */
 export const desktopRequestSchema = desktopRequestUnion.superRefine(
 	(request, ctx) => {
+		/*
+		 * Image-only messages: an empty body is legal only when images carry the
+		 * message (contract §3, "body may be empty iff attachment_ids non-empty").
+		 * A PATCH that omits `body` keeps the stored one, so only an explicit
+		 * empty body needs a non-empty set beside it.
+		 */
+		if (
+			request.op === "team_bridge.messages.send" ||
+			request.op === "team_bridge.scheduled.create" ||
+			(request.op === "team_bridge.scheduled.update" &&
+				request.body !== undefined)
+		) {
+			if (
+				request.body?.trim() === "" &&
+				(request.attachment_ids?.length ?? 0) === 0
+			) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "A message needs text or an image",
+					path: ["body"],
+				});
+				return;
+			}
+		}
 		if (
 			request.op === "hub.skillPull" ||
 			request.op === "hub.skillSubscribe" ||
@@ -6373,6 +6425,24 @@ export type DesktopMediaRequest =
 	 */
 	| { op: "library.content"; assetId: string; download?: boolean }
 	| { op: "library.thumbnail"; assetId: string; width?: number }
+	/*
+	 * TEAM BRIDGE IMAGE ATTACHMENTS. Upload stages one bounded image (raw bytes,
+	 * no filename or type: the hub sniffs); the read fetches one BOUND image by
+	 * its message, member-gated on the hub. Main validates every id and refuses a
+	 * non-png/jpeg answer (`main/desktop-media.ts`).
+	 */
+	| {
+			op: "team_bridge.attachment.upload";
+			tenantId: string;
+			conversationId: string;
+	  }
+	| {
+			op: "team_bridge.attachment";
+			tenantId: string;
+			conversationId: string;
+			messageId: string;
+			attachmentId: string;
+	  }
 	/*
 	 * One supplement component's assembled HTML document (turn-supplements memo
 	 * §2.7, lane U-b), as `{ html }` JSON from
@@ -8757,6 +8827,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.thread_root_id
 						? { thread_root_id: request.thread_root_id }
 						: {}),
+					...(request.attachment_ids?.length
+						? { attachment_ids: request.attachment_ids }
+						: {}),
 				},
 			};
 		case "team_bridge.scheduled.list":
@@ -8774,6 +8847,9 @@ export function desktopEndpoint(request: DesktopRequest): {
 					client_ref: request.client_ref,
 					body: request.body,
 					send_at: request.send_at,
+					...(request.attachment_ids?.length
+						? { attachment_ids: request.attachment_ids }
+						: {}),
 				},
 			};
 		case "team_bridge.scheduled.update":
@@ -8785,7 +8861,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.send_at === undefined
 						? {}
 						: { send_at: request.send_at }),
+					// `[]` is meaningful here (remove every image), so only absence is omitted.
+					...(request.attachment_ids === undefined
+						? {}
+						: { attachment_ids: request.attachment_ids }),
 				},
+			};
+		case "team_bridge.attachments.delete":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/attachments/${encodeURIComponent(request.attachment_id)}?${new URLSearchParams({ tenant_id: request.tenant_id })}`,
+				method: "DELETE",
 			};
 		case "team_bridge.scheduled.cancel":
 			return {
