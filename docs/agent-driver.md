@@ -44,6 +44,19 @@ new-chat` drives the app-wide `⌘N` with a real CDP key chord
 plus the two presses that are deliberately not it (`⌘⇧N`, a bare `n`); without,
 the gate — the same press changing nothing, because the shortcut takes the New
 chat row's own `session_catalogue` gate and a driver run has no backend.
+**`--scene stale-team-draft` photographs the team New-chat defect (2026-10-22):**
+a page whose header says "New chat with <team>" while the body says the
+conversation is gone. It seeds the persisted pair that produces it — the team's
+stable `draft:team:<name>` row carrying the `sessionId` its create wrote,
+`activeDraftKey` naming that row, and a tombstone for the id — then reloads and
+asserts the three things one click must end with: no missing-session notice, an
+editable composer, and the dead pointer retired before the first paint. It needs
+`--backend`, because the composer it measures replaces the capability refusal a
+backend-less run paints. The press itself is the store's own rule and is driven
+by `scripts/team-new-chat-stale-draft.test.mjs`; a run-owned daemon has no
+authored team for the sidebar to list. Its before/after pair is committed under
+`docs/pr-evidence/team-new-chat-stale-draft/`.
+
 `--scene none` boots and arms the driver without running a
 scene. `--window-size WxH` sets the window (default 1380x900, the app's own
 default). The scratch tree is kept and its path printed; `--clean` removes it,

@@ -400,6 +400,71 @@ test("a ready surface, an unasked boundary or no answer yet is eligible", () => 
 });
 
 // ---------------------------------------------------------------------------
+// View: the thread pane's sender names (review round 4, M1)
+// ---------------------------------------------------------------------------
+
+/*
+ * The page's `labelFor` is tenant-scoped and nullable (the "Member" placeholder
+ * fix, #1296): `labelFor(sender, tenantId)` is `null` when nothing names the
+ * sender. The thread pane was handed that function directly, which compiled
+ * and rendered every pane sender as "Unknown person". The page now passes
+ * `(sender) => labelFor(sender, thread.tenantId)`. This renders the REAL page
+ * with a thread open and a directory that names the sender, so a regression
+ * shows up as the unknown label here, not in a user's pane.
+ */
+test("a thread pane names its sender from the directory, and only an unnamed one reads as unknown", async () => {
+	const { QueryClient, QueryClientProvider } = await import(
+		"@tanstack/react-query"
+	);
+	const dm = conversation();
+	// The legacy hub label "Member" must be resolved from the directory.
+	const rootMessage = (accountId) => ({
+		id: "bmsg_pane_root",
+		conversation_id: dm.id,
+		seq: 1,
+		sender: { account_id: accountId, kind: "human", display_label: "Member" },
+		body: "Thread root body",
+		origin: "human",
+		created_at: "2026-10-19T10:00:00Z",
+		reply_count: 1,
+	});
+	const render = (accountId) =>
+		renderToStaticMarkup(
+			createElement(
+				QueryClientProvider,
+				{ client: new QueryClient() },
+				createElement(
+					TeamBridgePageView,
+					viewProps({
+						selectedConversation: dm,
+						messages: [rootMessage(accountId)],
+						messageState: "ready",
+						// The MERGED view looks the roster up BY TENANT; a single-
+						// organization view ignores the tenant, so only this shape
+						// can tell a pane that passes the tenant from one that does not.
+						scope: "all",
+						directories: { tnt_1: [person({ display_label: "Bea" })] },
+						threadLink: {
+							tenantId: dm.tenant_id,
+							conversationId: dm.id,
+							rootId: "bmsg_pane_root",
+						},
+					}),
+				),
+			),
+		);
+	const pane = (html) => html.slice(html.indexOf('aria-label="Thread"'));
+	const known = pane(render("acct_bea"));
+	assert.match(known, /Thread root body/, "the pane rendered the root");
+	assert.match(visible(known), /Bea/);
+	assert.doesNotMatch(visible(known), /Unknown person/);
+	// Negative control: a sender the directory does not name IS unknown, so
+	// the assertion above cannot pass by never resolving anything.
+	const unnamed = pane(render("acct_nobody"));
+	assert.match(visible(unnamed), /Unknown person/);
+});
+
+// ---------------------------------------------------------------------------
 // View: the People section
 // ---------------------------------------------------------------------------
 
