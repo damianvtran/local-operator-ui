@@ -230,6 +230,26 @@ export type DesktopFeature =
 	/** Route presence only; dynamic organization eligibility is backend-owned. */
 	| "team_bridge"
 	| "team_bridge_conversations"
+	/**
+	 * The thread/replies plane: a message's thread pane and the reply-in-thread
+	 * affordance that opens it.
+	 *
+	 * ITS OWN KEY rather than a `team_bridge_conversations` bump, on the rule
+	 * this union states in several places: the conversation page must keep
+	 * serving every daemon that has it, while the thread surface has to be
+	 * ASKED about separately because a daemon can serve conversations without
+	 * serving threads.
+	 *
+	 * AND THE ANSWER IS NOT ENOUGH HERE. The UI holds this surface closed in
+	 * the build itself (`team-bridge-thread-gate.ts`): the runtime advertising
+	 * the route is not clearance for the cache/retry isolation defects the
+	 * thread paths inherited from #1304, because the backend cannot know which
+	 * client build is talking to it. The key is asked anyway - the capability
+	 * half is the plumbing the feature returns on - but absent, `unknown`,
+	 * `below-version` and `unpaired` all leave the surface hidden, and so does
+	 * `enabled` until the constant is flipped.
+	 */
+	| "team_bridge_threads"
 	| "auth"
 	| "settings"
 	| "commands"

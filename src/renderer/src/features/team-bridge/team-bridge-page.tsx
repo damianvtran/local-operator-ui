@@ -1,4 +1,9 @@
 import { useMembershipsQuery } from "@features/agent-hub/hooks/use-memberships-query";
+import {
+	type DesktopFeatureState,
+	desktopFeatureState,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
@@ -63,6 +68,10 @@ import {
 	RailSection,
 	isTargetRow,
 } from "./team-bridge-rail";
+import {
+	TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD,
+	teamBridgeThreadsAvailable,
+} from "./team-bridge-thread-gate";
 import { TeamBridgeThreadPane } from "./team-bridge-thread-pane";
 import {
 	type ThreadTarget,
@@ -106,6 +115,17 @@ import {
  * THE VIEW IS PURE. `TeamBridgePageView` takes its state as props; the
  * container below is the only place that knows about queries, which is what
  * lets the stories render every state without a backend.
+ *
+ * THE THREAD SURFACE IS HELD CLOSED IN THIS BUILD. The pane and the
+ * reply-in-thread affordance mount only when `teamBridgeThreadsAvailable` says
+ * so, which requires BOTH the shipped-in-this-build constant and a
+ * `team_bridge_threads` capability answer of exactly `enabled`. The reason and
+ * the fail-closed rule live in `team-bridge-thread-gate.ts`; the short version
+ * is that the thread cache/retry paths inherit the #1304 cross-account
+ * isolation defects, so a runtime advertising the route is not clearance to
+ * run them. `unknown` (no answer yet, or the read failed), `below-version` and
+ * `unpaired` hide the surface too - never infer `enabled` from the absence of
+ * an error.
  *
  * LAYOUT. Panels run the full height of the window and are separated by
  * ground (`canvas` rail, `surface` thread), never by a rule; the top inset is
@@ -305,6 +325,13 @@ export type TeamBridgePageViewProps = {
 	notifyFailed?: boolean;
 	onJoin?: () => void;
 	onNotifyChange?: (notify: TeamBridgeNotify) => void;
+	/**
+	 * The `team_bridge_threads` capability answer, computed by the container from
+	 * `useDesktopCapabilities()`. Defaults to `unknown` so a caller that has not
+	 * asked - a story, a test, a mount without a capabilities provider - gets the
+	 * held, fail-closed surface rather than an assumed one.
+	 */
+	threadsCapabilityState?: DesktopFeatureState;
 	/** Story/test seed only: opens the header menu so its rows are visible. */
 	defaultMenuOpen?: boolean;
 	/** Story/test seed only: the page's real draft is user-owned state. */
@@ -364,6 +391,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	notifyFailed = false,
 	onJoin,
 	onNotifyChange,
+	threadsCapabilityState = "unknown",
 	defaultMenuOpen = false,
 	initialDraft = "",
 	people = [],
@@ -384,14 +412,18 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onRetryMemberships,
 }) => {
 	const locale = useI18nLocale();
+	/* THE HOLD. Both halves must agree before any thread state exists, so a deep
+	   link or a reply handler cannot leave a selection behind that a later
+	   render would mount. See `team-bridge-thread-gate.ts`. */
+	const threadsAvailable = teamBridgeThreadsAvailable(threadsCapabilityState);
 	const [draft, setDraft] = useState(initialDraft);
 	// Thread identity is checked against the current selection before mounting.
 	const [threadSelection, setThreadSelection] = useState<ThreadTarget | null>(
-		threadLink ?? null,
+		threadsAvailable ? (threadLink ?? null) : null,
 	);
 	useEffect(() => {
-		if (threadLink) setThreadSelection(threadLink);
-	}, [threadLink]);
+		if (threadsAvailable && threadLink) setThreadSelection(threadLink);
+	}, [threadLink, threadsAvailable]);
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
 	const identityKnown = selfAccountId !== undefined;
 
@@ -504,7 +536,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	// (`targetConversation`), so the view and the container agree on it.
 	const shown = selected;
 	const threadIsOpen = Boolean(
-		threadSelection &&
+		threadsAvailable &&
+			threadSelection &&
 			shown &&
 			threadSelection.conversationId === shown.id &&
 			threadSelection.tenantId === shown.tenant_id &&
@@ -513,6 +546,16 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	);
 	// A focused window is quiet only for the conversation actually on screen.
 	useReportTeamBridgeViewing(shown?.id);
+	/* The reply route: only ever handed to the timeline while the hold permits
+	   it (see the `onReply` site), never mounted from stale state. */
+	const openThreadFor = (message: TeamBridgeMessage) => {
+		if (!shown) return;
+		setThreadSelection({
+			tenantId: shown.tenant_id,
+			conversationId: shown.id,
+			rootId: message.id,
+		});
+	};
 	const canCompose =
 		!readOnly &&
 		!previewSelected &&
@@ -1041,14 +1084,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											labelFor(sender, shown?.tenant_id ?? "")
 										}
 										reactionContext={reactionContext}
-										onReply={(message) => {
-											if (shown)
-												setThreadSelection({
-													tenantId: shown.tenant_id,
-													conversationId: shown.id,
-													rootId: message.id,
-												});
-										}}
+										/* HIDDEN, not inert, while the thread surface is held: the toolbar's
+										   reply button and the "N replies" summary are both rendered from this
+										   prop, and a visible Reply that opens nothing is the dead end the
+										   fail-closed rule forbids. */
+										onReply={threadsAvailable ? openThreadFor : undefined}
 									/>
 								)}
 							</div>
@@ -1153,8 +1193,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					</>
 				)}
 			</section>
-			{/* Threads: a ground-separated sibling; no rail or compose routing changes. */}
-			{threadSelection &&
+			{/* Threads: a ground-separated sibling; no rail or compose routing changes.
+			    THE HOLD IS THE FIRST TERM: `threadsAvailable` is false in this
+			    build whatever the runtime advertises, so no selection - deep link,
+			    reply click, story fixture - can mount the pane. */}
+			{threadsAvailable &&
+				threadSelection &&
 				shown &&
 				threadSelection.conversationId === shown.id &&
 				threadSelection.tenantId === shown.tenant_id &&
@@ -1264,7 +1308,13 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	const requestedTenant = searchParams.get("tenant");
 	const requestedRoot = searchParams.get("thread");
 	const [threadLink, setThreadLink] = useState<ThreadTarget | null>(() =>
-		threadTargetFromSearch(searchParams),
+		/* THE HOLD: a `?thread=` deep link (a notification click, a shared link)
+		   must not become a thread target in this build. The conversation still
+		   opens - that is the click's other half - and no selection is left
+		   behind for a later render to mount. */
+		TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD
+			? threadTargetFromSearch(searchParams)
+			: null,
 	);
 	const [scope, setScope] = useState<TeamBridgeScope>(() =>
 		requestedTenant
@@ -1280,6 +1330,14 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	const readsEnabled = !gatePending && eligibility === null;
 	const selfAccountId = status.data?.account_id ?? undefined;
 	const readOnly = status.data?.read_only === true;
+	/*
+	 * THE THREAD CAPABILITY, ASKED AND THEN HELD. The key is read here so the
+	 * plumbing the feature returns on exists and is exercised; the build's own
+	 * hold (`team-bridge-thread-gate.ts`) is what keeps the surface closed
+	 * whatever this answers. An absent or failed capabilities read answers
+	 * `unknown`, which the view treats as hidden.
+	 */
+	const capabilities = useDesktopCapabilities();
 	// The hub's status `tenants[]` is the switcher's and the merged filter's
 	// authoritative source; memberships only label it (and stand in when the
 	// status has no tenant list). Filtering by memberships alone dropped every
@@ -1340,13 +1398,15 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		setScope(asTeamBridgeTenantId(requestedTenant));
 		setTarget({ type: "conversation", id: requestedConversation });
 		setThreadLink(
-			threadTargetFromSearch(
-				new URLSearchParams({
-					tenant: requestedTenant,
-					conversation: requestedConversation,
-					...(requestedRoot ? { thread: requestedRoot } : {}),
-				}),
-			),
+			TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD
+				? threadTargetFromSearch(
+						new URLSearchParams({
+							tenant: requestedTenant,
+							conversation: requestedConversation,
+							...(requestedRoot ? { thread: requestedRoot } : {}),
+						}),
+					)
+				: null,
 		);
 		setChannelFormOpen(false);
 		setSearchParams({}, { replace: true });
@@ -1568,6 +1628,10 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		<>
 			<TeamBridgePageView
 				threadLink={threadLink}
+				threadsCapabilityState={desktopFeatureState(
+					capabilities.data,
+					"team_bridge_threads",
+				)}
 				onCloseThread={() => setThreadLink(null)}
 				listState={
 					list.isPending || (mergedView && organizationsPending)

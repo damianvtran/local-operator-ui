@@ -464,7 +464,7 @@ const named = (scope, name) =>
 		(b) => b.getAttribute("aria-label") === name,
 	);
 
-test("a row renders exactly one toolbar, holding react and reply", async () => {
+test("a row renders exactly one toolbar, holding react only while the thread surface is held", async () => {
 	const m = mount();
 	await renderList(m);
 	const toolbars = m.host.querySelectorAll('[role="toolbar"]');
@@ -472,12 +472,10 @@ test("a row renders exactly one toolbar, holding react and reply", async () => {
 	const labels = [...toolbars[0].querySelectorAll("button")].map((b) =>
 		b.getAttribute("aria-label"),
 	);
-	assert.deepEqual(labels, [
-		"ui.teamBridge.reactions.add",
-		"ui.teamBridge.replies.action",
-	]);
+	// THE HOLD removes reply-in-thread from every row: react is all that is left.
+	assert.deepEqual(labels, ["ui.teamBridge.reactions.add"]);
 	// No "More" menu (review round 3, M4/F1; design D12): it could only repeat
-	// the two buttons beside it.
+	// the buttons beside it.
 	assert.equal(named(m.host, "ui.teamBridge.actions.more").length, 0);
 	assert.equal(toolbars[0].querySelector('[aria-haspopup="menu"]'), null);
 	// The name comes from the shared Tooltip, not the native `title` (D13).
@@ -487,9 +485,8 @@ test("a row renders exactly one toolbar, holding react and reply", async () => {
 		toolbars[0].getAttribute("aria-label"),
 		"ui.teamBridge.actions.label",
 	);
-	// The old separate affordances are gone: one reply-in-thread control on the
-	// row (the summary is a different label), and no reaction pill outside it.
-	assert.equal(named(m.host, "ui.teamBridge.replies.action").length, 1);
+	// The held affordance must not render, and no reaction pill lives outside it.
+	assert.equal(named(m.host, "ui.teamBridge.replies.action").length, 0);
 	assert.equal(m.host.querySelector('[data-reaction-layout="toolbar"]'), null);
 	// Borderless, no shadow, 28px hit targets (>= 24), ghost buttons.
 	assert.equal(CHROME_EDGE.test(toolbars[0].className), false);
@@ -498,7 +495,7 @@ test("a row renders exactly one toolbar, holding react and reply", async () => {
 	await m.close();
 });
 
-test("keyboard focus reveals the toolbar; one tab stop and arrows rove", async () => {
+test("keyboard focus reveals the toolbar; its single button is the tab stop", async () => {
 	const m = mount();
 	await renderList(m);
 	const toolbar = m.host.querySelector('[role="toolbar"]');
@@ -508,9 +505,11 @@ test("keyboard focus reveals the toolbar; one tab stop and arrows rove", async (
 	);
 	assert.ok(toolbar.className.includes("group-hover/message:opacity-100"));
 	const buttons = [...toolbar.querySelectorAll("button")];
+	// ONE BUTTON while the thread surface is held, so the roving stop has
+	// nowhere to move. The two-button rove is covered again when the hold lifts.
 	assert.deepEqual(
 		buttons.map((b) => b.tabIndex),
-		[0, -1],
+		[0],
 		"one tab stop: the row's Tab lands on the toolbar once",
 	);
 	await act(() => buttons[0].focus());
@@ -520,19 +519,11 @@ test("keyboard focus reveals the toolbar; one tab stop and arrows rove", async (
 				new KeyboardEvent("keydown", { key: k, bubbles: true }),
 			),
 		);
-	await key("ArrowRight");
-	assert.equal(document.activeElement, buttons[1]);
-	assert.deepEqual(
-		buttons.map((b) => b.tabIndex),
-		[-1, 0],
-		"the roving stop follows focus",
-	);
-	await key("End");
-	assert.equal(document.activeElement, buttons[1]);
-	await key("ArrowRight");
-	assert.equal(document.activeElement, buttons[1], "bounded, not wrapping");
-	await key("Home");
-	assert.equal(document.activeElement, buttons[0]);
+	for (const k of ["ArrowRight", "End", "Home"]) {
+		await key(k);
+		assert.equal(document.activeElement, buttons[0], `${k} stays bounded`);
+		assert.equal(buttons[0].tabIndex, 0, "the stop never leaves the toolbar");
+	}
 	await m.close();
 });
 
@@ -556,47 +547,40 @@ test("thread replies get react, never reply-in-thread", async () => {
 	await m.close();
 });
 
-test("the tab stop is clamped when the button list shrinks (review round 3, M3)", async () => {
+test("the toolbar keeps one tab stop, and disappears when react is lost (review round 3, M3)", async () => {
 	const m = mount();
 	await renderList(m);
-	const reply = () => named(m.host, "ui.teamBridge.replies.action")[0];
-	await act(() => reply().focus());
-	assert.equal(reply().tabIndex, 0, "focus last rested on the second button");
-	// The reader loses the ability to react (the conversation closed): the
-	// list shrinks to ONE button, while `roving` still points at index 1.
-	await renderList(m, {
-		reactionContext: { accountId: "a", tenantId: "tnt_1", disabled: true },
-	});
 	const buttons = [...m.host.querySelectorAll('[role="toolbar"] button')];
-	assert.equal(buttons.length, 1);
 	assert.deepEqual(
 		buttons.map((b) => b.tabIndex),
 		[0],
 		"the toolbar always keeps exactly one tab stop",
 	);
+	// The reader loses the ability to react (the conversation closed). With the
+	// reply button held there is nothing left, so the toolbar is ABSENT rather
+	// than present with no tab stop - the M3 defect cannot recur in this shape.
+	await renderList(m, {
+		reactionContext: { accountId: "a", tenantId: "tnt_1", disabled: true },
+	});
+	assert.equal(m.host.querySelector('[role="toolbar"]'), null);
 	await m.close();
 });
 
-test("choosing Reply in thread leaves focus where the pane put it (review round 3, F1)", async () => {
-	// The hand-off defect lived in the removed More menu: Radix returned focus
-	// to its trigger AFTER the pane focused its close button. The direct button
-	// must not take focus back either, so this models the pane (an element that
-	// focuses itself synchronously when the reply opens it).
-	const pane = document.createElement("button");
-	pane.setAttribute("data-thread-close", "");
-	document.body.append(pane);
+test("the held row offers no Reply in thread control, so no focus hand-off exists (review round 3, F1)", async () => {
+	// The F1 defect is unreachable while the hold is on: the control itself is
+	// not rendered, even when the caller passes an `onReply`. The hand-off test
+	// returns with the feature.
 	const m = mount();
-	await renderList(m, { onReply: () => pane.focus() });
-	await click(named(m.host, "ui.teamBridge.replies.action")[0]);
-	assert.equal(document.activeElement, pane, "focus stays in the pane");
-	pane.remove();
+	await renderList(m, {
+		onReply: () => assert.fail("the held row must not expose a reply route"),
+	});
+	assert.equal(named(m.host, "ui.teamBridge.replies.action").length, 0);
 	await m.close();
 });
 
-test("the thread pane's rows carry react and never reply-in-thread, with no overlap-prone second affordance (review round 3, M1)", async () => {
-	// Rendered through the real pane, which is what the CI-less story guard
-	// used to be the only check of: a regression where the pane starts passing
-	// `onReply` is caught here.
+test("the held thread pane renders nothing, even when mounted directly (review round 3, M1)", async () => {
+	// The view's own wrapper is the hold's front door: a story or rig that
+	// imports `TeamBridgeThreadPaneView` cannot render the unsafe body.
 	const m = mount();
 	await act(() =>
 		m.root.render(
@@ -614,20 +598,9 @@ test("the thread pane's rows carry react and never reply-in-thread, with no over
 			}),
 		),
 	);
-	const toolbars = m.host.querySelectorAll('[role="toolbar"]');
-	assert.equal(toolbars.length, 2, "one per row: the root and the reply");
-	for (const toolbar of toolbars)
-		assert.deepEqual(
-			[...toolbar.querySelectorAll("button")].map((b) =>
-				b.getAttribute("aria-label"),
-			),
-			["ui.teamBridge.reactions.add"],
-		);
+	assert.equal(m.host.querySelector('[role="toolbar"]'), null);
 	assert.equal(named(m.host, "ui.teamBridge.replies.action").length, 0);
-	assert.equal(
-		m.host.querySelectorAll('[data-reaction-layout="toolbar"]').length,
-		0,
-	);
+	assert.equal(m.host.textContent, "", "no pane body may render");
 	await m.close();
 });
 
