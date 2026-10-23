@@ -114,9 +114,11 @@ the queue is read only when the dev-driver bridge is armed.
 paperclip reaches an answer.** The prompt is typed into the composer's real field
 and the real `Send message` control is pressed; the run then waits for the
 daemon's own transcript (not the painted echo) to carry the prompt as a user row.
-It reports the session id, the row's `document` block(s) and the assistant's
-final text, and asserts that each staged file arrived as a document block and
-that the assistant turn completed. `--attach-expect-answer "<substring>"` adds a
+It waits for the turn to SETTLE - the snapshot's `streaming` and
+`last_turn_outcome`, not the first assistant row with text, which a tool-using
+turn can emit mid-turn - then reports the session id, the row's `document`
+block(s) and the settled final text, and asserts that each staged file arrived
+as a document block and that the assistant turn completed. `--attach-expect-answer "<substring>"` adds a
 substring check on that final text. This path needs a daemon that serves
 `POST /v1/desktop/attachments` **and** a provider that can answer; a daemon
 without either is refused by the send, and the scene reports that refusal rather
