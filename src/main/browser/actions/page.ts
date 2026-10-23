@@ -136,6 +136,14 @@ export async function snapshot(
 ): Promise<Record<string, unknown>> {
 	const record = ctx.registry.requireSurface(params.tab);
 	const contents = record.view.webContents;
+	// The scope is resolved BEFORE the a11y read, and the order is the contract:
+	// a selector that matches nothing must fail as a typed element_not_found
+	// naming the selector, without paying for a whole tree first (agent review
+	// round 1, R1-3 — the comment claimed this order while the read came first).
+	const scope = stringParam(params, "selector");
+	const rootBackendNodeId = scope
+		? await backendNodeIdForSelector(ctx, record.view, scope)
+		: undefined;
 	// Enabling the a11y domain for the read window is documented CDP hygiene: a
 	// bare `getFullAXTree` on a freshly attached target can return a degraded tree
 	// on some Chromium builds.
@@ -153,14 +161,6 @@ export async function snapshot(
 		// disable, and a failed disable must not replace the read's outcome.
 		await ctx.cdp.send(contents, "Accessibility.disable", {}).catch(() => {});
 	}
-	// The scope is resolved BEFORE the a11y read, and the order is the contract:
-	// a selector that matches nothing must fail as a typed element_not_found
-	// naming the selector, not after paying for a whole tree and returning an
-	// empty one that reads like an empty section.
-	const scope = stringParam(params, "selector");
-	const rootBackendNodeId = scope
-		? await backendNodeIdForSelector(ctx, record.view, scope)
-		: undefined;
 	const {
 		snapshot: topRendered,
 		refs: topRefs,
@@ -184,6 +184,15 @@ export async function snapshot(
 	if (!scope && nodes.some(isFrameNode)) {
 		const blocks = await frameSnapshots(ctx, record, nodes, refs);
 		if (blocks.length) rendered = [rendered, ...blocks].join("\n");
+	} else if (scope && nodes.some(isFrameNode)) {
+		// A scoped read deliberately does not walk frames, but silence is the
+		// failure this lane exists to kill: a scoped subtree that CONTAINS a frame
+		// host would otherwise read as "this section is one line" (agent review
+		// round 1, R1-2). Say what was skipped and how to get it.
+		const frames = nodes.filter(isFrameNode).length;
+		rendered +=
+			`\n- (a scoped snapshot does not read frames: this page has ${frames} frame` +
+			`${frames === 1 ? "" : "s"}; snapshot without selector= for their contents)`;
 	}
 	record.refs = refs;
 	ctx.registry.touch(record);
