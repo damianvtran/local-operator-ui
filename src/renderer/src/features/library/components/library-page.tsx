@@ -478,6 +478,20 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 					onSettled: () => {
 						favoriteWrites.current.delete(asset.id);
 					},
+					/*
+					 * A REFUSAL MUST SAY SO, because the optimistic paint has just
+					 * been rolled back and the heart's disappearance is otherwise the
+					 * only trace. The toast lives HERE rather than in the mutation's
+					 * `onError` so it is reported once (the hook is shared with the
+					 * inline edits, which own their own error copy).
+					 */
+					onError: (error) => {
+						showErrorToast(
+							error instanceof Error && error.message
+								? error.message
+								: t("ui.library.preview.not_saved"),
+						);
+					},
 				},
 			);
 		},

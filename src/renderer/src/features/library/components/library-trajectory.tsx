@@ -35,6 +35,7 @@
  *   conversation at its newest row.
  */
 
+import { effectiveGate } from "@features/chat/ask-queue";
 import { CanonicalTranscript } from "@features/chat/canonical/canonical-transcript";
 import {
 	desktopFeatureEnabled,
@@ -115,7 +116,13 @@ export const LibraryTrajectory: FC<LibraryTrajectoryProps> = ({
 	 */
 	const frontend = canonical.frontend ?? canonical.heldFrontend;
 	const streaming = frontend?.streaming === true;
-	const gate = canonical.frontend?.pending_gate ?? null;
+	/*
+	 * THE SAME DERIVATION THE CHAT PAGE USES, not the raw field: a frame whose
+	 * ask mirror is suppressed must not present a question this surface has no
+	 * way to answer, and the one consumer of the gate must read the one answer.
+	 * Read through the hold for the same reason `streaming` is.
+	 */
+	const gate = effectiveGate(canonical.frontend ?? canonical.heldFrontend);
 	const previousStreaming = useRef(streaming);
 	useEffect(() => {
 		if (previousStreaming.current !== streaming) {

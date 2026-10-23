@@ -99,7 +99,14 @@ export function useLibraryFileWatch(
 		if (inflight.current) return;
 		inflight.current = true;
 		try {
-			const [answer] = await window.api.probeFiles([path]);
+			/*
+			 * `fresh`: the answer cache serves a positive stat for 30 s, which is
+			 * right for a chip and wrong for a watcher - see `probeFiles`'s own
+			 * parameter. Without it a 2 s poll could report a change 29 s late.
+			 */
+			const [answer] = await window.api.probeFiles([path], undefined, {
+				fresh: true,
+			});
 			if (!answer) return;
 			/*
 			 * A probe that could not LOOK (`error`) is not "the file is gone":

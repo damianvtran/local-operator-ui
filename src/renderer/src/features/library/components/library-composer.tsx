@@ -31,13 +31,16 @@
  * EXISTING flow: `sessions.create` when the asset has no chat yet, then
  * `sessions.message` with the asset reference appended and any image encoded by
  * the shared `attachment-encode` helper, then the link write for a NEW
- * association only. It does NOT go through the canonical store's
- * `admitChatDraft`, so there is no renderer-side optimistic echo, no store-held
- * claim on a failed send, and no `steer` mode for a message typed mid-turn: the
- * user's own row reaches the trajectory when the backend's stream delivers it.
- * The store path (echo at the press, retry/discard controls, steer) is the
- * follow-up; wiring it here would duplicate the chat page's admission
- * machinery on a surface that has no draft pane to hold the claim.
+ * association only. A message typed while the linked conversation is streaming
+ * is sent with `mode: "steer"`, so it joins the running turn instead of
+ * queueing behind it (the chat page's own rule).
+ *
+ * What it does NOT do is go through the canonical store's `admitChatDraft`: there
+ * is no renderer-side optimistic echo and no store-held claim on a failed send,
+ * so the user's own row reaches the trajectory when the backend's stream
+ * delivers it. That is the gap the store path closes (echo at the press, the
+ * retry/discard controls), and wiring it here would duplicate the chat page's
+ * admission machinery on a surface that has no draft pane to hold the claim.
  *
  * MEDIA IS ATTACHED WHERE THE WIRE CAN CARRY IT. `sessions.message`'s `images`
  * field takes base64 bytes, so an image asset rides inside the prompt through
@@ -67,7 +70,6 @@ import { Button } from "@shared/components/ui";
 import { useSessionSnapshot } from "@shared/hooks/use-session-snapshot";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { Link2, X } from "lucide-react";
@@ -96,6 +98,12 @@ type LibraryComposerProps = {
 	 * linked row arrives from the query.
 	 */
 	onSessionChange: (assetId: string, sessionId: string) => void;
+	/**
+	 * Leave for `/chat`. The link-failed row's control is the page's own
+	 * `openConversationFor`: `onSessionChange` only writes the preview's lifted
+	 * id, so a press that used it navigated nowhere.
+	 */
+	onOpenChat: (sessionId: string) => void;
 	/**
 	 * Whether the linked-chat row renders. The preview passes false while the
 	 * trajectory is mounted: its header already names the conversation and carries
@@ -157,6 +165,7 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 	focusSignal,
 	onSessionChange,
 	showLinkedRow,
+	onOpenChat,
 	refreshSignal = 0,
 	streaming: liveStreaming,
 }) => {
@@ -169,6 +178,15 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 	 * copy of its code: `useSessionSnapshot` is that read, shared.
 	 */
 	const { frontend, refresh } = useSessionSnapshot();
+	/*
+	 * THE RE-ENTRY GUARD IS A REF, and it is set BEFORE the first await. React
+	 * state is a render behind, so a second Enter in the same tick read
+	 * `sending === false` and ran the whole send again - a second
+	 * `sessions.create` when the asset had no chat yet, which split one question
+	 * into two conversations. The ref is synchronous; `sending` stays for the
+	 * paint.
+	 */
+	const sendingRef = useRef(false);
 	const [sending, setSending] = useState(false);
 	/*
 	 * THE ACCEPTED SEND IS THE COMMIT POINT. A created session whose link write
@@ -235,7 +253,8 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 		onEchoPainted,
 	) => {
 		const text = content.trim();
-		if (!text) return false;
+		if (!text || sendingRef.current) return false;
+		sendingRef.current = true;
 		setSending(true);
 		const streaming = liveStreaming ?? frontend?.streaming === true;
 		let target: string | null = sessionId;
@@ -349,6 +368,7 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 			);
 			return false;
 		} finally {
+			sendingRef.current = false;
 			setSending(false);
 		}
 	};
@@ -374,7 +394,7 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 					<Button
 						variant="ghost"
 						size="sm"
-						onClick={() => onSessionChange(asset.id, pendingSessionId)}
+						onClick={() => onOpenChat(pendingSessionId)}
 					>
 						{t("ui.library.composer.open_chat")}
 					</Button>
@@ -407,9 +427,15 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 					</Button>
 				</div>
 			)}
-			<div
-				className={cn("min-w-0", sending && "pointer-events-none opacity-60")}
-			>
+			{/*
+			 * NO HOST-SIDE DIMMING. `sending` used to dim and disable this whole
+			 * block with `opacity-60` — the "disabled changes colour, never opacity"
+			 * rule broken on a surface that also has a real affordance: the
+			 * composer's own send lock owns the disabled colour and the pending
+			 * sentence. The wrapper carries layout only; the ref guard above is what
+			 * refuses a second press.
+			 */}
+			<div className="min-w-0" data-sending={sending ? "" : undefined}>
 				<MessageInput
 					ref={inputRef}
 					conversationId={draftKey}
