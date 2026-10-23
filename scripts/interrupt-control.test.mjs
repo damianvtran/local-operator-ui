@@ -187,19 +187,21 @@ const HOOK_SOURCE = readFileSync(
  * content out of this subtree - everything between the two anchors belongs to
  * the composer row.
  *
- * ANCHORED ON THE CLASS'S FIRST TWO TOKENS (code review round 1, N2; rebased
- * after the redesign). The prefix used to include `gap-1`, so changing the
- * row's own gap made `indexOf` return -1 and the slice start at the top of the
- * file: four tests then failed with messages that blamed the controls (`the
- * row lost one of its controls`, `the dictation control carries no
- * rung-dependent size`) instead of the one thing that had moved. `ml-auto flex`
- * is the pair the row's own comments call load-bearing - the one live auto
- * margin and the flex box - while everything after it (the redesign's
- * `order-3`, `items-center`, the gap) is read out of the slice below. So a gap
- * or order change fails where its value is asked for, and a class change that
- * removes the anchor fails here, by name.
+ * ANCHORED ON THE ROW'S STABLE MARKER (code review round 1, N2; rebased after
+ * the redesign; re-anchored in round 2). The prefix used to be the class's
+ * first two tokens, so a legitimate layout change moved `indexOf` to -1, the
+ * slice started at the top of the file, and four tests failed with messages
+ * that blamed the controls (`the row lost one of its controls`, `the dictation
+ * control carries no rung-dependent size`) instead of the one thing that had
+ * moved - which is exactly what happened when the row's auto margin became
+ * logical (`ml-auto` -> `ms-auto`). `data-lo-composer-controls` is the marker
+ * the strip's own measured fit finds the group by, so it is the row's stable
+ * identity rather than a styling choice; everything after it (the class list,
+ * `order-3`, `items-center`, the gap) is read out of the slice below. A class
+ * change fails where its value is asked for, and removing the marker fails
+ * here, by name.
  */
-const ROW_START = ROW_SOURCE.indexOf('className="ml-auto flex');
+const ROW_START = ROW_SOURCE.indexOf("data-lo-composer-controls={true}");
 assert.ok(
 	ROW_START > -1,
 	"the composer's right-hand cluster is not where the row's own class says it is: the tests below read their geometry out of that slice, so find it before assuming a control moved",
@@ -234,13 +236,15 @@ assert.match(
  * the cluster's class to the end of the file finds some OTHER `gap-*` in the row's
  * descendants the moment the row stops declaring one, which is the same defect as
  * anchoring the slice on the literal - it answers a question nobody asked. The
- * row's class is the first thing in the slice, so it is the only thing read here.
+ * slice starts at the group's `data-lo-composer-controls` marker (round 2), so
+ * the FIRST `className` in it is the group's own class; nothing between the
+ * marker and the class carries one.
  */
 const ROW_CLASS = (() => {
-	const match = /^className="([^"]*)"/.exec(ROW);
+	const match = /className="([^"]*)"/.exec(ROW);
 	assert.ok(
 		match,
-		"the composer's row does not open with a `className`: its own class is where this file reads the gap from",
+		"the composer's controls group carries no `className`: its own class is where this file reads the gap from",
 	);
 	return match[1];
 })();
