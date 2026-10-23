@@ -30,6 +30,7 @@ import {
 	conversationOrganizationName,
 	conversationTitle,
 	notificationPreference,
+	storedLabel,
 } from "./team-bridge-model";
 
 /** The watcher's cadence. One number, so the hook and the tests agree. */
@@ -183,7 +184,8 @@ export function teamBridgeNotificationSubject(
 	return {
 		conversationName: conversationTitle(conversation, selfAccountId),
 		organizationName: conversationOrganizationName(conversation, organizations),
-		senderLabel: conversation.last_sender_label?.trim() || null,
+		// Match the reviewed reply-banner fallback: legacy Member is not a name.
+		senderLabel: storedLabel(conversation.last_sender_label ?? ""),
 	};
 }
 
