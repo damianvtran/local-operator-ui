@@ -32,19 +32,24 @@ import {
 	Download,
 	ExternalLink,
 	FolderOpen,
+	Heart,
 	Lock,
 	LockOpen,
 	Maximize2,
-	Star,
 	X,
 } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-contract";
 import {
+	isPathBacked,
+	useLibraryFileWatch,
+} from "../hooks/use-library-file-watch";
+import {
 	useAssignLibraryTags,
 	useLibraryTagMutations,
 	useLibraryTags,
+	useUnlinkAssetChat,
 	useUpdateLibraryAsset,
 } from "../hooks/use-library-queries";
 import { saveAssetCopy } from "../library-download";
@@ -57,6 +62,7 @@ import {
 import { LibraryAssetMenu } from "./library-asset-menu";
 import { LibraryComposer } from "./library-composer";
 import { KindGlyph } from "./library-glyph";
+import { LibraryTrajectory } from "./library-trajectory";
 import { LibraryViewer } from "./library-viewers";
 
 export type LibraryPreviewFocus = "metadata" | "tags";
@@ -195,6 +201,48 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 	 */
 	const [compact, setCompact] = useState(false);
 	const [detailsOpen, setDetailsOpen] = useState(false);
+	/*
+	 * THE CONVERSATION THE PANEL IS SHOWING, keyed by ASSET for the same reason
+	 * the composer's recovery map is: this preview is not remounted on a selection
+	 * change, so a single id would paint A's trajectory over B. The linked row's
+	 * own id wins when it is present (`asset.chat.session_id`); this map carries
+	 * the id from the moment a send creates it until the asset query has re-read
+	 * the row — and keeps it when the link write failed, because the message
+	 * landed either way.
+	 */
+	const [liveSessions, setLiveSessions] = useState<Record<string, string>>({});
+	/*
+	 * COLLAPSE IS PER ASSET AND PER MOUNT, deliberately: it is a reading
+	 * preference for the asset on screen, not a durable setting, and a remount
+	 * (dock to expanded view) is a fresh look at the same asset.
+	 *
+	 * BELOW 700px OF PANEL HEIGHT IT DEFAULTS TO COLLAPSED. The same measurement
+	 * that compacts the metadata (`compact`) is the guard the bounded trajectory
+	 * needs: a 38% well with a 10rem floor plus the composer is more than a short
+	 * panel has, and the viewer — the asset the reader came for — is the flex
+	 * child that would be squeezed to zero. Collapsed, the header still names the
+	 * conversation and the chevron still opens it, so the choice is one press away
+	 * rather than unavailable. An explicit press wins over the default.
+	 */
+	const [collapsedTrajectories, setCollapsedTrajectories] = useState<
+		Record<string, boolean>
+	>({});
+	/*
+	 * THE SETTLE'S OWN CLOCK. The watch hook re-probes on this; the trajectory
+	 * bumps it when a streaming turn finishes, which is when the agent's write to
+	 * the file it was asked about has most likely just happened.
+	 */
+	const [refreshTick, setRefreshTick] = useState(0);
+	/* The trajectory's live turn reading, handed to the composer so a mid-turn
+	 * send steers; keyed by session id, which is the identity both sides share. */
+	const [streamingBySession, setStreamingBySession] = useState<
+		Record<string, boolean>
+	>({});
+	const file = useLibraryFileWatch(asset, refreshTick);
+	const unlink = useUnlinkAssetChat();
+	const chatSessionId =
+		asset.chat?.session_id ?? liveSessions[asset.id] ?? null;
+	const trajectoryCollapsed = collapsedTrajectories[asset.id] ?? compact;
 	useLayoutEffect(() => {
 		const node = rootRef.current;
 		if (!node) return;
@@ -272,11 +320,20 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 		}
 	};
 
-	const toggleFlag = async (field: "favorite" | "locked") => {
+	/*
+	 * ONE DOOR PER WRITE. The favourite press goes through the page's
+	 * `onToggleFavorite`, the same callback the card menu uses, so the
+	 * double-press guard and the one mutation live in one place - a second
+	 * `update.mutateAsync` here (which is how this button originally worked) made
+	 * a press that bypassed the guard and wrote twice when the row had already
+	 * been painted optimistically. `locked` has no card-menu twin, so it keeps
+	 * the local mutation above.
+	 */
+	const toggleLocked = async () => {
 		try {
 			await update.mutateAsync({
 				id: asset.id,
-				fields: { [field]: !asset[field] },
+				fields: { locked: !asset.locked },
 			});
 		} catch (error) {
 			showErrorToast(
@@ -366,9 +423,9 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 										? t("ui.library.menu.unfavorite")
 										: t("ui.library.menu.favorite")
 								}
-								onClick={() => void toggleFlag("favorite")}
+								onClick={onToggleFavorite}
 							>
-								<Star
+								<Heart
 									aria-hidden="true"
 									className={
 										asset.favorite ? "fill-current text-accent" : undefined
@@ -392,7 +449,7 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 										? t("ui.library.preview.unlock")
 										: t("ui.library.preview.lock")
 								}
-								onClick={() => void toggleFlag("locked")}
+								onClick={() => void toggleLocked()}
 							>
 								{asset.locked ? (
 									<Lock aria-hidden="true" className="text-accent" />
@@ -437,7 +494,24 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 					<Badge variant="neutral">
 						{t(originGroupLabelKey(asset.origin_group))}
 					</Badge>
-					<span>{formatBytes(asset.size_bytes)}</span>
+					{/*
+					 * THE SIZE IS THE FILE'S, NOT THE INDEX'S, WHEN THE TWO DISAGREE. The
+					 * listing row is a snapshot; a path-backed asset can have been rewritten
+					 * since, and a preview painting the new bytes over the old size is a quiet
+					 * correction. `data-library-file-live` marks the reading as the live
+					 * file's (the cases assert it), so the difference is visible rather than
+					 * silent. Digest-only assets have no path to watch and keep the row's
+					 * figure.
+					 */}
+					{isPathBacked(asset) &&
+					file.mtimeMs !== null &&
+					Math.floor(file.mtimeMs / 1000) !== Math.floor(asset.modified_at) ? (
+						<span data-library-file-live="">
+							{formatBytes(file.sizeBytes ?? asset.size_bytes)}
+						</span>
+					) : (
+						<span>{formatBytes(asset.size_bytes)}</span>
+					)}
 					{asset.width && asset.height ? (
 						<span>
 							{asset.width}×{asset.height}
@@ -562,14 +636,73 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 				<LibraryViewer
 					asset={asset}
 					dense={compact}
+					expanded={standalone}
+					revision={file.revision}
+					mtimeMs={file.mtimeMs}
 					mediaSiblings={mediaSiblings}
 				/>
 			</div>
+			{/*
+			 * THE TRAJECTORY, BETWEEN THE VIEWER AND THE COMPOSER (operator). It is
+			 * mounted when the asset has a linked conversation OR a send created one
+			 * this mount; otherwise it renders nothing and the composer sits at the
+			 * foot alone. Bounded by its own `basis`/`max-h` so it can never squeeze
+			 * the viewer out of usable height, and grounded in `canvas` against the
+			 * `surface` panel — a tone step, never a rule between the two.
+			 */}
+			{chatSessionId && (
+				<LibraryTrajectory
+					sessionId={chatSessionId}
+					/*
+					 * A session created by a send has no row title yet; the id is the
+					 * honest name until the link write's refetch arrives, and the
+					 * header swaps to the real title in that same update.
+					 */
+					title={asset.chat?.title ?? chatSessionId}
+					collapsed={trajectoryCollapsed}
+					onToggleCollapsed={() =>
+						setCollapsedTrajectories((previous) => ({
+							...previous,
+							[asset.id]: !trajectoryCollapsed,
+						}))
+					}
+					onOpenChat={() => onOpenConversation(chatSessionId)}
+					onUnlink={() => {
+						/*
+						 * The mutation only clears the asset's link; the LIFTED id that
+						 * mounted this panel lives in `liveSessions`, so it has to go too
+						 * or the trajectory outlives the association it was showing.
+						 */
+						setLiveSessions((previous) => {
+							const next = { ...previous };
+							delete next[asset.id];
+							return next;
+						});
+						unlink.mutate({ id: asset.id });
+					}}
+					onTurnSettled={() => setRefreshTick((value) => value + 1)}
+					onStreamingChange={(streaming) =>
+						setStreamingBySession((previous) => ({
+							...previous,
+							[chatSessionId]: streaming,
+						}))
+					}
+				/>
+			)}
 			<div className="shrink-0">
 				<LibraryComposer
 					asset={asset}
 					focusSignal={composerFocusSignal}
-					compact={compact}
+					showLinkedRow={!chatSessionId}
+					onOpenChat={onOpenConversation}
+					refreshSignal={refreshTick}
+					streaming={chatSessionId ? streamingBySession[chatSessionId] : false}
+					onSessionChange={(assetId, sessionId) =>
+						setLiveSessions((previous) => ({
+							...previous,
+							[assetId]: sessionId,
+						}))
+					}
 				/>
 			</div>
 		</div>
