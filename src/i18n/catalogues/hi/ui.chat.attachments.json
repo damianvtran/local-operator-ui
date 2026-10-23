@@ -6,6 +6,8 @@
 	"ui.chat.attachments.file_unnamed": "अनुलग्नक फ़ाइल",
 	"ui.chat.attachments.copy_path": "पथ कॉपी करें",
 	"ui.chat.attachments.path_copied": "पथ कॉपी हो गया",
-	"ui.chat.attachments.file_missing_recovery": "मूल फ़ाइल अब इस पथ पर नहीं है। सहेजी गई प्रति अभी भी उपलब्ध है — एजेंट से उसे नाम से दोबारा भेजने के लिए कहें।",
-	"ui.chat.attachments.file_type_unknown": "फ़ाइल"
+	"ui.chat.attachments.file_missing_recovery": "मूल फ़ाइल अब इस पथ पर नहीं है। सहेजी गई प्रति अभी भी अनुलग्नक स्टोर में रखी है।",
+	"ui.chat.attachments.file_type_unknown": "फ़ाइल",
+	"ui.chat.attachments.copy_saved_path": "सहेजी गई प्रति का पथ कॉपी करें",
+	"ui.chat.attachments.saved_path_copied": "सहेजी गई प्रति का पथ कॉपी हो गया"
 }

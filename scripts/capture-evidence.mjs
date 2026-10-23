@@ -5606,6 +5606,9 @@ export const STORIES = [
 	["chat-sent-file-card--sent-file-long-path", 1024, 240],
 	["chat-sent-file-card--placement-unknown-no-claim", 1024, 240],
 	["chat-sent-file-card--moved-or-deleted", 1024, 240],
+	/* An older row with no store path: no copy control at all, rather than one
+	   that copies the dead origin path (design D2 follow-up). */
+	["chat-sent-file-card--moved-or-deleted-no-stored-path", 1024, 240],
 	["chat-canonical-user-card-measure--file-attachment", 1024, 620],
 
 	/* THE NOTICE A FAILED SEND LEAVES - the six states the operator's own screen

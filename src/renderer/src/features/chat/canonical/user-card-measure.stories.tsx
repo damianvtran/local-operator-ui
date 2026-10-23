@@ -190,6 +190,8 @@ const FILED: TranscriptRecord[] = [
 				filename: "Complete_With_Docusign.pdf",
 				mimeType: "application/pdf",
 				path: "/Users/you/Documents/Complete_With_Docusign.pdf",
+				storedPath:
+					"/Users/you/.local-operator/attachments/0123456789abcdef0123456789abcdef.bin",
 				bytes: 2_411_520,
 				injection: "native",
 			},

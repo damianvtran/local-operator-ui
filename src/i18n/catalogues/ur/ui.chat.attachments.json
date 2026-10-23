@@ -6,6 +6,8 @@
 	"ui.chat.attachments.file_unnamed": "منسلک فائل",
 	"ui.chat.attachments.copy_path": "راستہ نقل کریں",
 	"ui.chat.attachments.path_copied": "راستہ نقل ہو گیا",
-	"ui.chat.attachments.file_missing_recovery": "اصل فائل اب اس راستے پر موجود نہیں ہے۔ محفوظ شدہ نقل اب بھی دستیاب ہے — ایجنٹ سے اسے نام سے دوبارہ بھیجنے کو کہیں۔",
-	"ui.chat.attachments.file_type_unknown": "فائل"
+	"ui.chat.attachments.file_missing_recovery": "اصل فائل اب اس راستے پر موجود نہیں ہے۔ محفوظ شدہ نقل اب بھی منسلکات اسٹور میں رکھی گئی ہے۔",
+	"ui.chat.attachments.file_type_unknown": "فائل",
+	"ui.chat.attachments.copy_saved_path": "محفوظ شدہ نقل کا راستہ نقل کریں",
+	"ui.chat.attachments.saved_path_copied": "محفوظ شدہ نقل کا راستہ نقل ہو گیا"
 }

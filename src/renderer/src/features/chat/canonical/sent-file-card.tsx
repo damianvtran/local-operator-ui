@@ -116,21 +116,42 @@ export const SentFileCard: FC<{
 	const missing = exists === false;
 	const [copied, setCopied] = useState(false);
 	/*
+	 * WHICH PATH THE COPY CONTROL IS FOR. The origin path is the right value while
+	 * it exists; once it is gone, copying it would hand the person a dead string
+	 * that looks like recovery (design round 1, D2). The store's path is the
+	 * retained copy, so the missing arm copies THAT and re-labels the control; an
+	 * older row without a store path renders no copy control at all rather than a
+	 * control that copies nothing usable.
+	 */
+	const copyTarget = missing ? document.storedPath : document.path;
+	const copyLabel = (done: boolean): string =>
+		missing
+			? t(
+					done
+						? "ui.chat.attachments.saved_path_copied"
+						: "ui.chat.attachments.copy_saved_path",
+				)
+			: t(
+					done
+						? "ui.chat.attachments.path_copied"
+						: "ui.chat.attachments.copy_path",
+				);
+	/*
 	 * Copy the RECORD's path, never the rendered span: the span is truncated for
 	 * layout, and a copy that reproduces the ellipsis is worse than no control
 	 * because it looks like it worked. A rejected clipboard write leaves the
 	 * icon unchanged rather than claiming a copy that did not happen.
 	 */
 	const copyPath = useCallback(async () => {
-		if (!document.path) return;
+		if (!copyTarget) return;
 		try {
-			await navigator.clipboard.writeText(document.path);
+			await navigator.clipboard.writeText(copyTarget);
 			setCopied(true);
 			window.setTimeout(() => setCopied(false), 2000);
 		} catch {
 			setCopied(false);
 		}
-	}, [document.path]);
+	}, [copyTarget]);
 	return (
 		<div
 			className={cn("flex max-w-[32rem] items-start gap-2.5 py-1")}
@@ -154,7 +175,8 @@ export const SentFileCard: FC<{
 							className={cn(
 								// Machine voice: a path is a string the OS will be handed, so it is
 								// monospace and selectable rather than prose.
-								"select-all truncate font-mono text-ink-muted text-meta",
+								"select-all truncate font-mono text-meta",
+								missing ? "text-ink-dim" : "text-ink-muted",
 							)}
 							title={document.path}
 						>
@@ -168,33 +190,29 @@ export const SentFileCard: FC<{
 						 * button carries the untruncated value from the record, and its icon
 						 * swaps to a check without moving the row.
 						 */}
-						<button
-							type="button"
-							onClick={copyPath}
-							aria-label={
-								copied
-									? t("ui.chat.attachments.path_copied")
-									: t("ui.chat.attachments.copy_path")
-							}
-							title={
-								copied
-									? t("ui.chat.attachments.path_copied")
-									: t("ui.chat.attachments.copy_path")
-							}
-							className={cn(
-								"shrink-0 rounded-sm p-0.5 text-ink-dim hover:text-ink",
-								"focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1",
-							)}
-						>
-							{copied ? (
-								<Check aria-hidden="true" className={cn("size-3.5")} />
-							) : (
-								<Copy aria-hidden="true" className={cn("size-3.5")} />
-							)}
-						</button>
-						<output className={cn("sr-only")} aria-live="polite">
-							{copied ? t("ui.chat.attachments.path_copied") : ""}
-						</output>
+						{copyTarget && (
+							<>
+								<button
+									type="button"
+									onClick={copyPath}
+									aria-label={copyLabel(copied)}
+									title={copyLabel(copied)}
+									className={cn(
+										"shrink-0 rounded-sm p-0.5 text-ink-dim hover:text-ink",
+										"focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1",
+									)}
+								>
+									{copied ? (
+										<Check aria-hidden="true" className={cn("size-3.5")} />
+									) : (
+										<Copy aria-hidden="true" className={cn("size-3.5")} />
+									)}
+								</button>
+								<output className={cn("sr-only")} aria-live="polite">
+									{copied ? copyLabel(true) : ""}
+								</output>
+							</>
+						)}
 					</span>
 				)}
 				{missing && (

@@ -6,6 +6,8 @@
 	"ui.chat.attachments.file_unnamed": "Tệp đính kèm",
 	"ui.chat.attachments.copy_path": "Sao chép đường dẫn",
 	"ui.chat.attachments.path_copied": "Đã sao chép đường dẫn",
-	"ui.chat.attachments.file_missing_recovery": "Tệp gốc không còn ở đường dẫn này. Bản sao đã lưu vẫn còn — hãy yêu cầu tác nhân gửi lại theo tên.",
-	"ui.chat.attachments.file_type_unknown": "Tệp"
+	"ui.chat.attachments.file_missing_recovery": "Tệp gốc không còn ở đường dẫn này. Bản sao đã lưu vẫn được giữ trong kho tệp đính kèm.",
+	"ui.chat.attachments.file_type_unknown": "Tệp",
+	"ui.chat.attachments.copy_saved_path": "Sao chép đường dẫn bản sao đã lưu",
+	"ui.chat.attachments.saved_path_copied": "Đã sao chép đường dẫn bản sao đã lưu"
 }
