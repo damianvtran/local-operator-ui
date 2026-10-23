@@ -195,7 +195,7 @@ const RECENT_PATH_TRUNCATES_AT = 42;
  * WHAT REPLACES D7's PROPERTY, since the observable D7 named was real. Three
  * things are unchanged and checkable in the DOM: the chip's LEFT edge is
  * invariant (it is the row's second item, after the attach button), the
- * `ml-auto` mic/send group is pinned to the row's right edge, and the row's
+ * `ms-auto` mic/send group is pinned to the row's inline-end edge, and the row's
  * total demand never grows. What moves on a path change in a live row is the
  * readings cluster - the chip's own right-hand neighbour, 2px after it (its
  * `marginLeft` is -6px against the row's 8px `gap-x-2`, which is what the rig
@@ -945,7 +945,16 @@ export const DirectoryIndicator = forwardRef<
 						className={cn(CHIP_BOX, "cursor-default text-ink-dim")}
 					>
 						<FolderOpen aria-hidden="true" className={cn("size-4 shrink-0")} />
-						<span className={cn(CHIP_LABEL)}>Working directory:</span>
+						<span className={cn(CHIP_LABEL)}>
+							{/*
+							 * The label is a Latin fallback phrase inside a row whose direction
+							 * can be RTL. Isolation with `dir="auto"` gives the run its own
+							 * base direction, so the trailing colon stays attached to the
+							 * phrase instead of moving to the visual left (design review
+							 * round 1, D1).
+							 */}
+							<bdi dir="auto">Working directory:</bdi>
+						</span>
 						<span
 							className={cn("min-w-0 truncate", PATH_TYPE, CHIP_TEXT_AT_FLOOR)}
 						>
@@ -1132,7 +1141,10 @@ export const DirectoryIndicator = forwardRef<
 									 * the tooltip. The escalation is still there, on the surface that has room
 									 * for it: the tooltip and the live region (`pendingText`).
 									 */}
-									{pending ? "Moving session:" : "Working directory:"}
+									{/* Isolated for the same reason as the read-only label above (D1). */}
+									<bdi dir="auto">
+										{pending ? "Moving session:" : "Working directory:"}
+									</bdi>
 								</span>
 								<span
 									ref={pathRef}

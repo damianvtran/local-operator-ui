@@ -10,8 +10,8 @@
  *
  * WHAT A NODE MAY SAY is the plan's §5 node contract: a title, ONE stat line, and -
  * for the states that mean something - the state in words. Colour is never the only
- * channel (WCAG 1.4.1): the three states that are not the ordinary case take a hue
- * AND a word, exactly as `chat-session-status.tsx` already does for sessions.
+ * channel (WCAG 1.4.1): a state that is not the ordinary case takes a hue AND a
+ * word, exactly as `chat-session-status.tsx` already does for sessions.
  *
  * ## Slice 2: the node became a CONTAINER, and the chips are why
  *
@@ -80,15 +80,25 @@ import type { MeshSessionRow } from "./mesh-types";
  * `#38c96a` against `success` `#57c785` measure ΔE00 5.07 apart on `localOperatorDark`
  * and 2.22 on `localOperatorLight`, the same green to the eye - so a graph whose own
  * device and whose healthy nodes are those two has no status channel left. `reached`
- * is therefore the quiet case, `not-attempted` and `unknown` take no hue at all (an
- * app's own limit and an absent read are neither of them the device's failure), and
- * `unanswered` is the one probe result that earns `warning`.
+ * is therefore the quiet case, `not-attempted`, `unknown`, `no-endpoint` and
+ * `not-a-member` take no hue at all (an app's own limit, an absent read, an
+ * unpublished address and a membership fact are none of them the device's failure),
+ * and the four OBSERVED transport failures (`unanswered`, `relay-down`,
+ * `handshake-refused`, `address-unreachable`) earn `warning` - told apart by word
+ * and glyph, never by a second hue.
  */
 const REACH_STRIPE: Record<DeviceReach, string> = {
 	self: "border-l-hairline",
 	// `border-control` is already the node's edge, so the resting stripe takes the
 	// decorative hairline rather than a second, louder line.
 	reached: "border-l-hairline",
+	// The four OBSERVED transport failures take amber; the word on the state line
+	// tells them apart, so colour is never the only channel and no extra hue is spent.
+	"relay-down": "border-l-warning",
+	"handshake-refused": "border-l-warning",
+	"address-unreachable": "border-l-warning",
+	"no-endpoint": "border-l-hairline",
+	"not-a-member": "border-l-hairline",
 	unanswered: "border-l-warning",
 	"not-attempted": "border-l-hairline",
 	unknown: "border-l-hairline",
@@ -116,6 +126,8 @@ function nodeStripe(device: MeshDevice): string {
 const STATE_RING: Record<DeviceState, string | null> = {
 	self: "ring-2 ring-accent",
 	reachable: null,
+	relay_down: null,
+	handshake_refused: null,
 	unreachable: null,
 	suspect: null,
 };

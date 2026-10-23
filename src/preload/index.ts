@@ -19,6 +19,10 @@ import {
 	type DaemonStatusSnapshot,
 } from "../shared/backend-status";
 import type {
+	AddressHistoryRequest,
+	AddressHistoryResponse,
+} from "../shared/browser-address-history";
+import type {
 	HumanTabAction,
 	HumanTabActionOutcome,
 } from "../shared/browser-tab-action";
@@ -50,6 +54,10 @@ import {
 	isMiniViewSummonedPayload,
 } from "../shared/mini-view";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
+import type {
+	TeamBridgeNotifyRequest,
+	TeamBridgeOpenTarget,
+} from "../shared/team-bridge-notify";
 import {
 	type WebauthnRequestPayload,
 	type WebauthnSettledOutcome,
@@ -124,6 +132,26 @@ const api = {
 		releaseWatchHeartbeat: (args: { sessionId: string }) =>
 			ipcRenderer.invoke("desktop-watch-release", args),
 		closeWindow: () => ipcRenderer.invoke("desktop-close-window"),
+		/**
+		 * Team Bridge banners: the renderer composes the two display strings from
+		 * conversation metadata; main validates, dedupes and delivers them. A click
+		 * wakes `onOpen`, which carries no payload: the target stays parked in main
+		 * until the renderer pulls it via `pendingOpen`, so a click that lands while
+		 * the renderer is loading is delivered on the next pull rather than dropped.
+		 */
+		teamBridge: {
+			notify: (input: TeamBridgeNotifyRequest): Promise<{ shown: boolean }> =>
+				ipcRenderer.invoke("team-bridge:notify", input),
+			onOpen: (callback: () => void) => {
+				const handler = () => callback();
+				ipcRenderer.on("team-bridge:open", handler);
+				return () => {
+					ipcRenderer.removeListener("team-bridge:open", handler);
+				};
+			},
+			pendingOpen: (): Promise<TeamBridgeOpenTarget | null> =>
+				ipcRenderer.invoke("team-bridge:pending-open"),
+		},
 		/**
 		 * The conversation main launched this window to show, read from THIS
 		 * process's argv (`webPreferences.additionalArguments`, set only when the
@@ -399,8 +427,8 @@ const api = {
 	 * Resolve-and-stat a batch of paths. The answer carries the resolved path,
 	 * which is the Files panel's identity for a file.
 	 */
-	probeFiles: (paths: string[], cwd?: string) =>
-		ipcRenderer.invoke("probe-files", paths, cwd),
+	probeFiles: (paths: string[], cwd?: string, options?: { fresh?: boolean }) =>
+		ipcRenderer.invoke("probe-files", paths, cwd, options),
 	/**
 	 * One directory's listable entries, for a picker that offers rows from the
 	 * filesystem. One level per call; deepening is the caller asking again for the
@@ -877,6 +905,21 @@ const api = {
 			return () => ipcRenderer.removeListener("browser-chord", listener);
 		},
 		state: (): Promise<unknown> => ipcRenderer.invoke("browser-state"),
+		/** S4b's product popout. `project` carries display data and the strip's own
+		 * measured anchor, never a destination or a child rectangle; `onEvent`
+		 * receives a validated `{type:"commit",seq,index}` or a main-decided
+		 * `{type:"dismiss",reason}`. */
+		addressOverlay: {
+			project: (payload: unknown): Promise<unknown> =>
+				ipcRenderer.invoke("browser-address-overlay-project", payload),
+			onEvent: (callback: (event: unknown) => void) => {
+				const listener = (_event: unknown, payload: unknown) =>
+					callback(payload);
+				ipcRenderer.on("browser-address-overlay-event", listener);
+				return () =>
+					ipcRenderer.removeListener("browser-address-overlay-event", listener);
+			},
+		},
 		/** `sessionId` attributes the tab to the conversation it was opened from
 		 * (design R1); `null` is a tab that belongs to no conversation, which is what
 		 * the route and a draft pane open. Main validates it rather than trusting it. */
@@ -899,8 +942,12 @@ const api = {
 			ipcRenderer.invoke("browser-close-tabs", intent),
 		activateTab: (tabId: number): Promise<unknown> =>
 			ipcRenderer.invoke("browser-activate-tab", tabId),
-		navigate: (url: string): Promise<unknown> =>
-			ipcRenderer.invoke("browser-navigate", url),
+		addressHistory: (
+			request: AddressHistoryRequest,
+		): Promise<AddressHistoryResponse> =>
+			ipcRenderer.invoke("browser-address-history", request),
+		navigate: (url: string, expectedTabId?: number): Promise<unknown> =>
+			ipcRenderer.invoke("browser-navigate", url, expectedTabId),
 		home: (): Promise<unknown> => ipcRenderer.invoke("browser-home"),
 		reload: (hard = false): Promise<unknown> =>
 			ipcRenderer.invoke("browser-reload", hard),
@@ -910,8 +957,8 @@ const api = {
 		setContentRect: (
 			rect: { x: number; y: number; width: number; height: number } | null,
 		): Promise<unknown> => ipcRenderer.invoke("browser-set-content-rect", rect),
-		setViewVisible: (visible: boolean): Promise<unknown> =>
-			ipcRenderer.invoke("browser-set-visible", visible),
+		setViewVisible: (visible: boolean, ownPage = false): Promise<unknown> =>
+			ipcRenderer.invoke("browser-set-visible", visible, ownPage),
 		handOver: (tabId: number, sessionId: string): Promise<unknown> =>
 			ipcRenderer.invoke("browser-hand-over", tabId, sessionId),
 		revokeHandOver: (tabId: number): Promise<unknown> =>

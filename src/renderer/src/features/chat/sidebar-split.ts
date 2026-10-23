@@ -472,7 +472,9 @@ export {
 	clampRegion,
 	dragTarget,
 	growSign,
+	inlineDragDelta,
 	keyboardTarget,
+	swapHorizontalKey,
 } from "@shared/components/common/resizable-divider-geometry";
 export type {
 	DividerSide,

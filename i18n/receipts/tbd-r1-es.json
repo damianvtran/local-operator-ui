@@ -1,0 +1,43 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "tbd-r1-es",
+  "locale": "es",
+  "namespaces": {
+    "ui.teamBridge": {
+      "status": "passed",
+      "keys_audited": 93,
+      "sha256": {
+        "en": "e91f2bf2629014cb458bb30d2c92cf5083644d8709317527c50b84909274a22c",
+        "es": "5b1bb5df0ad84c50b0290317356d9cc3b3583bf0ee08db750b4215e8778157d5"
+      },
+      "findings": [
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.nav.unread",
+          "note": "Adds a 'many' plural category with no English counterpart (one/many/other versus one/other). Spanish CLDR selects 'many' at exact million multiples, the branch ('Team Bridge, {count} de mensajes sin leer') is correct Spanish, and the same extension already appears in es/ui.schedules.json, so this is recorded for source-structure parity only; no change required."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.unread.count",
+          "note": "Same structural extension as nav.unread: an added 'many' branch ('{count} de mensajes sin leer') with no English counterpart. Correct Spanish for million-scale counts and consistent with the repository's Spanish catalogue convention; no change required."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.member.count",
+          "note": "Same structural extension as nav.unread: an added 'many' branch ('{count} de miembros') with no English counterpart. Correct Spanish and consistent with es/ui.schedules.json; no change required."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.group.more_unread",
+          "note": "Same structural extension as nav.unread: an added 'many' branch ('Más destinos, # de mensajes sin leer') with no English counterpart. The '#' placeholder is preserved and the branch is correct Spanish; no change required."
+        },
+        {
+          "severity": "NIT",
+          "key": "ui.teamBridge.people.empty",
+          "note": "'Nadie más se ha unido todavía a esta organización.' is grammatical, but placing 'todavía' between the participle and the prepositional phrase reads slightly awkward; the idiomatic order is 'Todavía no se ha unido nadie más a esta organización.' Meaning and register are otherwise correct."
+        }
+      ]
+    }
+  }
+}

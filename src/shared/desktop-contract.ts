@@ -12,10 +12,18 @@ export type DesiredTag = { id?: string; name: string };
 
 import { z } from "zod";
 import { agentMessagesBoundarySchema } from "./agent-messages-contract";
+// The sidebar's destination vocabulary is the same list the route validates
+// against, so the request schema below and the renderer's pure model cannot
+// disagree about what an id is.
+import { SIDEBAR_DESTINATION_IDS } from "./desktop-control-contract";
 // The feed's frame family lives beside the session stream's, so the two cannot
 // drift into disagreeing about the envelope they deliberately share.
 import type { DesktopFeedFrame } from "./desktop-session-contract";
 import { appendJournalOrderIds } from "./journal-order-query";
+import type {
+	TeamBridgeNotifyRequest,
+	TeamBridgeOpenTarget,
+} from "./team-bridge-notify";
 
 const id = z
 	.string()
@@ -1119,7 +1127,32 @@ export function projectTagRule(tag: string): string | null {
 	return null;
 }
 
-const hubItemKind = z.enum(["agent", "team"]);
+/*
+ * The kinds the updates surface addresses. `skill` joined the same channel in
+ * core PR #2713, so the renderer's kind list and core's `Kind` are one list; a
+ * value here that core refuses would be a 422 a user could not tell from a bug.
+ */
+const hubItemKind = z.enum(["agent", "team", "skill"]);
+
+/*
+ * The sidebar customisation resource's wire schema (design contract § 2, § 4).
+ *
+ * `SIDEBAR_DESTINATION_IDS` is the one allow-list shared with the control DTOs
+ * and the renderer's pure model, so an id this schema accepts is an id the route
+ * accepts and the drag layer can name. `max(...)` rather than a pin to nine is
+ * deliberate: a legitimate write may carry FEWER ids (the route fills the rest
+ * from the default, and the design contract says so explicitly), while a list
+ * longer than the vocabulary is a different class of bug. What must never reach
+ * the wire is an id outside the list; duplicates are possible in the type but
+ * are refused by the route and removed by the client's sanitiser.
+ */
+const sidebarDestinationId = z.enum(SIDEBAR_DESTINATION_IDS);
+const sidebarLayoutSchema = z
+	.object({
+		visible: z.array(sidebarDestinationId).max(SIDEBAR_DESTINATION_IDS.length),
+		more: z.array(sidebarDestinationId).max(SIDEBAR_DESTINATION_IDS.length),
+	})
+	.strict();
 
 const desktopRequestUnion = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("capabilities") }).strict(),
@@ -1239,6 +1272,36 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			subscribe: z.boolean().optional(),
 			autoPush: z.boolean().optional(),
 			confirmPublicEgress: z.boolean().optional(),
+		})
+		.strict(),
+	/*
+	 * Membership without content: link a remote skill and subscribe to future
+	 * revisions, writing NO managed copy. Same identity fields as the pull and
+	 * none of its install policy -- a subscribe is subscribe-on/auto-push-off by
+	 * definition, and core never rewrites an existing link's policy from it.
+	 */
+	z
+		.object({
+			op: z.literal("hub.skillSubscribe"),
+			requestId,
+			hubId: id,
+			hubSource: z.string().min(1).max(2048),
+			visibility: z.enum(["public", "org"]),
+			tenantId: id.nullable(),
+			localAlias: profileName,
+		})
+		.strict(),
+	/*
+	 * Drop the managed copy while KEEPING the link, alias reservation, policy and
+	 * subscription. Deliberately addressed by `linkId` rather than by remote
+	 * identity: the copy belongs to one local link, and a re-resolution here could
+	 * name a different one after an alias/policy edit.
+	 */
+	z
+		.object({
+			op: z.literal("hub.skillUnpull"),
+			requestId,
+			linkId: z.string().min(1).max(256),
 		})
 		.strict(),
 	z
@@ -2707,6 +2770,13 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 */
 			boundary: z.enum(["next_safe", "at_entry"]).optional(),
 			entryId: z.string().max(128).optional(),
+			/*
+			 * WHETHER THE CHILD SHOULD NAME ITSELF WITH A TAG. Optional and absent
+			 * on every released body: a renderer only sends it after the backend
+			 * advertises `session_tags_auto_tag` (`chat-auto-tag.ts`), because
+			 * `Fork` inherits `extra="forbid"` and an older core would answer 422.
+			 */
+			autoTag: z.boolean().optional(),
 		})
 		.strict(),
 	z
@@ -3326,6 +3396,32 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			action: z.enum(["archive", "unarchive", "join", "leave"]),
 		})
 		.strict(),
+	/*
+	 * Self-join and the notification preference are their own ops rather than
+	 * `lifecycle` actions: the tenant is part of the request (a merge-view row
+	 * can name a channel the caller has not joined, and the default tenant
+	 * would be the wrong organization), and `notify` is a value, not an
+	 * action. The join route is the conversation domain's existing
+	 * `POST .../join`; the tenant travels in its body for the same reason the
+	 * create/send/read bodies carry one. The notify op rides the READ route's
+	 * `notify` field (agent-server #148's shape): it sends no `seq`, so the
+	 * cursor cannot move as a side effect of choosing a notification level.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.join"),
+			conversation_id: id,
+			tenant_id: id.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.conversations.notify"),
+			conversation_id: id,
+			tenant_id: id.optional(),
+			notify: z.enum(["all", "mention", "mute"]),
+		})
+		.strict(),
 	z
 		.object({
 			op: z.literal("team_bridge.conversations.members.add"),
@@ -3375,12 +3471,38 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.strict(),
 	z
 		.object({
+			op: z.literal("team_bridge.reactions.toggle"),
+			conversation_id: id,
+			message_id: id,
+			tenant_id: id.optional(),
+			emoji: z.string().min(1),
+			active: z.boolean(),
+		})
+		.strict(),
+	z
+		.object({
 			op: z.literal("team_bridge.messages.send"),
 			conversation_id: id,
 			tenant_id: id.optional(),
 			client_ref: id,
 			body: z.string().min(1),
 			agent_label: z.string().min(1).max(64).optional(),
+			/* Reply in this root message's thread; the hub validates the root. */
+			thread_root_id: id.optional(),
+		})
+		.strict(),
+	/*
+	 * One thread (root + replies, oldest-first) under the history gate. Paging
+	 * runs FORWARD with an inclusive `after_seq`, because a thread reads top-down.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.messages.replies"),
+			conversation_id: id,
+			message_id: id,
+			tenant_id: id.optional(),
+			limit: z.number().int().min(1).max(100).optional(),
+			after_seq: z.number().int().nonnegative().optional(),
 		})
 		.strict(),
 	z
@@ -3398,6 +3520,34 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			/* The account aggregate: one read across every active membership. */
 			scope: z.literal("account").optional(),
 			tenant_id: id.optional(),
+		})
+		.strict(),
+	/*
+	 * The directory and the eligibility read (Team Bridge directory slice).
+	 *
+	 * `directory` is TENANT-SCOPED BY CONSTRUCTION: `tenant_id` is required, so
+	 * the renderer can never ask for "everyone in every organization" through
+	 * this op and there is no server-default tenant to resolve. That mirrors the
+	 * tenant-scoped read rule above (a read names one organization or the
+	 * account, never neither) while keeping the whole-account directory off the
+	 * wire: the rail's People section only exists for a selected organization.
+	 *
+	 * `status` is the existing bridge status payload under this namespace's own
+	 * op name. The boundary is optional because a page open is the only context
+	 * this surface reads from; when it is present it is the same enum the
+	 * `agent_messages.status` route validates, so the two spellings cannot
+	 * drift.
+	 */
+	z
+		.object({
+			op: z.literal("team_bridge.directory"),
+			tenant_id: id,
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.status"),
+			boundary: agentMessagesBoundarySchema.optional(),
 		})
 		.strict(),
 	z.object({ op: z.literal("settings.list") }).strict(),
@@ -3948,6 +4098,27 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			action: z.enum(["status", "open", "pause", "resume", "run"]).optional(),
 		})
 		.strict(),
+	/*
+	 * THE SIDEBAR LAYOUT RESOURCE (design contract § 2, § 4). One read and one
+	 * write, mirroring the two HTTP verbs: the resource is a single document, and
+	 * a patch vocabulary over a nine-entry ordered list would have to invent
+	 * operations for moves the client already knows how to compute.
+	 *
+	 * The write carries the WHOLE layout rather than a delta because the route
+	 * normalises and persists a complete document (last writer wins, atomic file
+	 * replace). Sending the full list is also what makes an optimistic write
+	 * self-describing on the retry path: the body a retry replays is the layout
+	 * the user saw, not a move that could be applied twice.
+	 */
+	z
+		.object({ op: z.literal("sidebar_layout.get") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("sidebar_layout.set"),
+			layout: sidebarLayoutSchema,
+		})
+		.strict(),
 ]);
 
 /**
@@ -3967,7 +4138,11 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
  */
 export const desktopRequestSchema = desktopRequestUnion.superRefine(
 	(request, ctx) => {
-		if (request.op === "hub.skillPull" || request.op === "hub.skillPublish") {
+		if (
+			request.op === "hub.skillPull" ||
+			request.op === "hub.skillSubscribe" ||
+			request.op === "hub.skillPublish"
+		) {
 			if (
 				(request.visibility === "public" && request.tenantId !== null) ||
 				(request.visibility === "org" && !request.tenantId)
@@ -5600,6 +5775,8 @@ const HUB_WRITE_OPS: ReadonlySet<string> = new Set([
 	"hub.push",
 	"hub.skillPublish",
 	"hub.skillPull",
+	"hub.skillSubscribe",
+	"hub.skillUnpull",
 	"hub.check",
 	"hub.applyAll",
 ]);
@@ -5611,6 +5788,8 @@ function hubWriteDeadlineMs(op: string): number | null {
 		case "hub.push":
 		case "hub.skillPublish":
 		case "hub.skillPull":
+		case "hub.skillSubscribe":
+		case "hub.skillUnpull":
 			return HUB_ITEM_WRITE_DEADLINE_MS;
 		case "hub.check":
 			return HUB_CHECK_DEADLINE_MS;
@@ -5753,7 +5932,10 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"team_bridge.conversations.list",
 	"team_bridge.conversations.get",
 	"team_bridge.messages.list",
+	"team_bridge.messages.replies",
 	"team_bridge.unread",
+	"team_bridge.directory",
+	"team_bridge.status",
 	"accounts.list",
 	"analytics.get",
 	"analytics.models",
@@ -6163,6 +6345,15 @@ export type DesktopMediaRequest =
 	| { op: "library.content"; assetId: string; download?: boolean }
 	| { op: "library.thumbnail"; assetId: string; width?: number }
 	/*
+	 * A Library audio asset's PRE-RENDER peaks, as the same `{version, bars,
+	 * peaks}` JSON a generated sound's attachment waveform route serves. Audio
+	 * assets that came from a session carry the sidecar the producer wrote; a
+	 * path-backed import has none and the route answers 404, which the card and
+	 * the drawer draw as the player's honest flat scrubber rather than a
+	 * synthesized shape.
+	 */
+	| { op: "library.waveform"; assetId: string }
+	/*
 	 * One supplement component's assembled HTML document (turn-supplements memo
 	 * §2.7, lane U-b), as `{ html }` JSON from
 	 * `/v1/desktop/sessions/{id}/supplements/{digest}/document`.
@@ -6242,6 +6433,21 @@ export type DesktopAPI = {
 	releaseWatchHeartbeat?: (args: {
 		sessionId: string;
 	}) => Promise<DesktopResponse>;
+	/**
+	 * Team Bridge banners. Optional like every Electron-only member: browser
+	 * development and Storybook mount the same renderer without a preload, and
+	 * the watcher must simply not exist there.
+	 *
+	 * `notify` is the renderer's composed display strings + the seq they belong
+	 * to; main validates and dedupes. `onOpen` is a payload-free wake-up: the
+	 * target stays parked in main until `pendingOpen` pulls it, so a click into a
+	 * loading or reloading renderer is not lost.
+	 */
+	teamBridge?: {
+		notify: (input: TeamBridgeNotifyRequest) => Promise<{ shown: boolean }>;
+		onOpen: (callback: () => void) => () => void;
+		pendingOpen: () => Promise<TeamBridgeOpenTarget | null>;
+	};
 	/** Notification click -> open this conversation. Never answers a gate. */
 	/**
 	 * A notification click, with the conversation it names and - when the banner was
@@ -7024,6 +7230,28 @@ export function desktopEndpoint(request: DesktopRequest): {
 					...(request.confirmPublicEgress !== undefined
 						? { confirm_public_egress: request.confirmPublicEgress }
 						: {}),
+				},
+			};
+		case "hub.skillSubscribe":
+			return {
+				path: "/v1/desktop/hub/skills/subscribe",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					hub_id: request.hubId,
+					hub_source: request.hubSource,
+					visibility: request.visibility,
+					tenant_id: request.tenantId,
+					local_alias: request.localAlias,
+				},
+			};
+		case "hub.skillUnpull":
+			return {
+				path: "/v1/desktop/hub/skills/unpull",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					link_id: request.linkId,
 				},
 			};
 		case "hub.skillPublish":
@@ -8151,6 +8379,12 @@ export function desktopEndpoint(request: DesktopRequest): {
 					 * `next_safe` fork sends no `entry_id` key at all.
 					 */
 					entry_id: request.entryId,
+					/*
+					 * Absent unless the capability gate admitted it; `undefined` is
+					 * dropped by `JSON.stringify`, so a released client's body stays
+					 * byte-identical and this key is the only difference.
+					 */
+					auto_tag: request.autoTag,
 				},
 			};
 		case "sessions.stop":
@@ -8417,6 +8651,25 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/${request.action}`,
 				method: "POST",
 			};
+		case "team_bridge.conversations.join":
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/join`,
+				method: "POST",
+				...(request.tenant_id
+					? { body: { tenant_id: request.tenant_id } }
+					: {}),
+			};
+		case "team_bridge.conversations.notify":
+			return {
+				/* The read route's notify field (agent-server #148); no `seq`, so
+				   this write cannot advance the cursor. */
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/read`,
+				method: "POST",
+				body: {
+					...(request.tenant_id ? { tenant_id: request.tenant_id } : {}),
+					notify: request.notify,
+				},
+			};
 		case "team_bridge.conversations.members.add": {
 			/* The route's body IS the member array and `tenant_id` is a query
 			   parameter (ConversationMemberIn list + tenant_id query). Wrapping
@@ -8459,6 +8712,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
+		case "team_bridge.reactions.toggle": {
+			const path = `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages/${encodeURIComponent(request.message_id)}/reactions/${encodeURIComponent(request.emoji)}`;
+			return request.active
+				? {
+						path,
+						method: "PUT",
+						body: request.tenant_id ? { tenant_id: request.tenant_id } : {},
+					}
+				: {
+						path: `${path}${tenantQuery(request.tenant_id)}`,
+						method: "DELETE",
+					};
+		}
 		case "team_bridge.messages.send":
 			return {
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages`,
@@ -8468,8 +8734,24 @@ export function desktopEndpoint(request: DesktopRequest): {
 					client_ref: request.client_ref,
 					body: request.body,
 					...(request.agent_label ? { agent_label: request.agent_label } : {}),
+					...(request.thread_root_id
+						? { thread_root_id: request.thread_root_id }
+						: {}),
 				},
 			};
+		case "team_bridge.messages.replies": {
+			const query = new URLSearchParams();
+			if (request.tenant_id) query.set("tenant_id", request.tenant_id);
+			if (request.limit !== undefined)
+				query.set("limit", String(request.limit));
+			if (request.after_seq !== undefined)
+				query.set("after_seq", String(request.after_seq));
+			const suffix = query.size > 0 ? `?${query.toString()}` : "";
+			return {
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/messages/${encodeURIComponent(request.message_id)}/replies${suffix}`,
+				method: "GET",
+			};
+		}
 		case "team_bridge.read":
 			return {
 				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/read`,
@@ -8487,6 +8769,36 @@ export function desktopEndpoint(request: DesktopRequest): {
 			const suffix = query.size > 0 ? `?${query.toString()}` : "";
 			return {
 				path: `/v1/desktop/team-bridge/unread${suffix}`,
+				method: "GET",
+			};
+		}
+		/*
+		 * The directory route is the LOCAL daemon's (`GET
+		 * /v1/desktop/team-bridge/directory`, local-operator #2712), which validates
+		 * `tenant_id` and forwards to the hub's `/v1/messaging/directory` itself.
+		 * The desktop transport sends every op to the daemon, so the hub path is not
+		 * reachable from here; addressing it directly made every directory read a
+		 * 404. `tenant_id` is encoded as a query value, so a crafted id can never
+		 * compose a second parameter or a path segment.
+		 */
+		case "team_bridge.directory":
+			return {
+				path: `/v1/desktop/team-bridge/directory?tenant_id=${encodeURIComponent(request.tenant_id)}`,
+				method: "GET",
+			};
+		/*
+		 * The same status route `agent_messages.status` reads, under the bridge
+		 * namespace. `boundary` is optional here (the page opens the surface but a
+		 * future caller may only need the platform state), so an absent boundary
+		 * sends no query at all rather than the literal `undefined` the sibling
+		 * op would emit for a missing value.
+		 */
+		case "team_bridge.status": {
+			const query = new URLSearchParams();
+			if (request.boundary) query.set("boundary", request.boundary);
+			const suffix = query.size > 0 ? `?${query.toString()}` : "";
+			return {
+				path: `/v1/desktop/team-bridge/status${suffix}`,
 				method: "GET",
 			};
 		}
@@ -8805,6 +9117,22 @@ export function desktopEndpoint(request: DesktopRequest): {
 					path: request.path,
 					ttl_s: request.ttlS,
 				},
+			};
+		/*
+		 * The sidebar customisation resource (design contract § 4). A GET/PUT pair
+		 * on one route, with the layout in an envelope rather than as the bare body:
+		 * the route answers `{layout}` and accepts `{layout}`, so a future field
+		 * beside it is additive instead of a breaking shape change. The PUT sends
+		 * the stored ids verbatim - the client owns the order, the route owns
+		 * validation and the default fill - so nothing is re-sorted in transit.
+		 */
+		case "sidebar_layout.get":
+			return { path: "/v1/desktop/sidebar-layout", method: "GET" };
+		case "sidebar_layout.set":
+			return {
+				path: "/v1/desktop/sidebar-layout",
+				method: "PUT",
+				body: { layout: request.layout },
 			};
 	}
 }
@@ -9240,7 +9568,32 @@ export type DesktopToolCallStats = {
  * `/session` reads this and not a second `analytics.get` — a differing query
  * path would give a second aggregate.
  */
+/** Channel ledger rows are separate from the inference-only Cost stat. */
+export type DesktopSessionChannelRow = {
+	channel: string;
+	provider: string;
+	billing_basis: string;
+	cost_source: string;
+	units: number;
+	amount_micro: number | null;
+	calls: number;
+	known_calls: number;
+};
+
 export type DesktopSessionReport = {
+	/** Additive payment provenance; absent on older producers. */
+	channels?: DesktopSessionChannelRow[];
+	/** Subtree-only payment provenance, matching descendants_aggregate. */
+	descendants_by_basis?: Array<{
+		billing_basis: string;
+		aggregate: DesktopUsageAggregate;
+	}>;
+	by_model_basis?: Array<{
+		provider: string;
+		model_id: string;
+		billing_basis: string;
+		aggregate: DesktopUsageAggregate;
+	}>;
 	session_id: string;
 	/** `false` = the ledger could not be read. Nothing on the panel is then trustworthy. */
 	available: boolean;
@@ -9297,7 +9650,35 @@ export type DesktopInfoSessionLine = {
 	heartbeat_age_s: number;
 	rss_bytes: number | null;
 	footprint_bytes: number | null;
+	/**
+	 * ABSOLUTE epoch seconds — the transcript file's mtime, never an age. The
+	 * CLI's own table subtracts it (`time.time() - row["last_activity_s"]`), and
+	 * the desktop panel must do the same; formatting the stamp as a duration
+	 * renders a 56-year age (this panel's `20747d 4h ago`, the terminal's
+	 * `497932h`) on every stopped session.
+	 */
 	last_activity_s: number | null;
+	/*
+	 * The stop record the core adds with its session-exit work, declared here in
+	 * parallel. All three are OPTIONAL: an older backend sends none of them. The
+	 * core's no-record spelling is `stopped_at_s: null` with `stop_reason: ""` —
+	 * an empty token, not a null one — so the panel treats both as "nothing was
+	 * recorded" and prints no stop claim at all.
+	 */
+	/** When the session stopped, ABSOLUTE epoch seconds like `last_activity_s`. */
+	stopped_at_s?: number | null;
+	/**
+	 * The core's stop token (e.g. `idle-exit`), printed after a `reason:` label.
+	 * `""` when no stop was recorded — the core's own spelling, which the panel
+	 * reads exactly like an absent field.
+	 */
+	stop_reason?: string;
+	/**
+	 * The core's own flag for that stop. Carried so the contract matches the
+	 * wire whole; no row copy reads it, because the reason already names the
+	 * cause and a second sentence about the same stop would be a second claim.
+	 */
+	stop_requested?: boolean | null;
 	pending: string | null;
 	busy: boolean;
 	detached: boolean;

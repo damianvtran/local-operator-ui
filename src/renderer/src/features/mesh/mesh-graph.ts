@@ -49,7 +49,10 @@ import { deviceReach, reachWords } from "./mesh-reach";
 import {
 	type NetworkMember,
 	type NetworkTopology,
+	type PeerAttempt,
+	type PeerLinkState,
 	type PeerList,
+	type PeerRelayState,
 	type PeerRow,
 	deviceLabel,
 	networkLabel,
@@ -64,9 +67,23 @@ import {
  * `self` outranks everything (this device is always reachable from itself, and the
  * question the colour answers for it is "which one am I"); `suspect` outranks
  * reachability because a suspected identity is a security fact about the member
- * record; then unreachable, then reachable.
+ * record; then `relay_down` / `handshake_refused`, which are the wire's observed
+ * transport verdicts; then `unreachable` for every negative the wire could not
+ * classify further; then reachable.
+ *
+ * `relay_down` AND `unreachable` ARE NOT SYNONYMS. A refused TCP connection proves
+ * the host is up and nothing is listening on that port; a timeout proves nothing
+ * answered on that address; a closed handshake proves the peer's process is there
+ * but will not admit this device. They call for different operator actions, and the
+ * old union had only one amber bucket for all three.
  */
-export type DeviceState = "self" | "suspect" | "unreachable" | "reachable";
+export type DeviceState =
+	| "self"
+	| "suspect"
+	| "relay_down"
+	| "handshake_refused"
+	| "unreachable"
+	| "reachable";
 
 export type Membership = {
 	networkId: string;
@@ -107,6 +124,23 @@ export type MeshDevice = {
 	 * name it. NEVER defaulted to `0` - see this file's header.
 	 */
 	sessionCount: number | null;
+	/**
+	 * The peer row's observed link verdict, or `null` when no peer row named this
+	 * device. A normalised row always carries one (`unreachable_legacy` when the
+	 * backend predates the field), which is how a surface can tell "the old boolean
+	 * said no" from "no read named it" without guessing.
+	 */
+	linkState: PeerLinkState | null;
+	/** The backend's derived relay reading; `null` when it sent none. */
+	remoteRelay: PeerRelayState | null;
+	/**
+	 * The per-address evidence behind `linkState`, or `null` when the backend sent
+	 * no attempts vocabulary. An empty array is evidence of nothing dialled; `null`
+	 * is evidence of nothing REPORTED. The renderer treats both as "no evidence"
+	 * and falls back to the older single sentence, but the distinction is preserved
+	 * so a future surface can tell the two apart.
+	 */
+	attempts: PeerAttempt[] | null;
 };
 
 export type MeshNetwork = {
@@ -161,10 +195,23 @@ function stateOf(
 	selfId: string | null,
 	suspect: boolean,
 	reachable: boolean,
+	linkState: PeerLinkState | null,
 ): DeviceState {
 	if (selfId !== null && id === selfId) return "self";
 	if (suspect) return "suspect";
-	return reachable ? "reachable" : "unreachable";
+	if (reachable) return "reachable";
+	/*
+	 * ONLY A NEGATIVE VERDICT CAN REFINE THE STATE. `reachable` is the aggregate across
+	 * every shared network and every membership, and a positive answer from any of them
+	 * outranks a peer-row negative (the existing join rule). Once nothing answered, the
+	 * wire's own transport verdict may say WHY: relay down and handshake refused keep
+	 * their own states; `address_unreachable`, `not_attempted`, `no_endpoint`,
+	 * `not_a_member` and `unreachable_legacy` share `unreachable`, because the app has
+	 * no separate action for them and must not invent one.
+	 */
+	if (linkState === "relay_down") return "relay_down";
+	if (linkState === "handshake_refused") return "handshake_refused";
+	return "unreachable";
 }
 
 /** Epoch seconds, or `null` - a member's stamp and a peer's stamp are the same kind. */
@@ -235,19 +282,34 @@ export function meshGraph(input: {
 		.map(([id, list]) => {
 			const peer = peerByDevice.get(id);
 			const anyMemberReachable = list.some((entry) => entry.member.reachable);
-			const peerSaysReachable = peer ? peer.reachable : null;
 			/*
-			 * The JOIN, stated once: unreachable only when nothing said otherwise.
-			 * Every membership is consulted, and the peer row - which is the
-			 * collapsed, per-device answer - can only ever confirm reachability.
+			 * A POSITIVE VERDICT CONFIRMS LIKE A POSITIVE BOOLEAN. The peers-read boolean and
+			 * its `link_state` are two readings of one link, and a backend that sends
+			 * `link_state: reachable` has observed an answer - the same confirmatory fact the
+			 * boolean carries. Neither can WITHDRAW reachability a membership reported; both
+			 * can add it.
 			 */
-			const reachable = anyMemberReachable || peerSaysReachable === true;
+			const peerSaysReachable = peer
+				? peer.reachable || peer.link_state === "reachable"
+				: null;
+			/*
+			 * A per-device peer answer overrides cached membership reachability.
+			 * Otherwise a network read from before link loss would keep both
+			 * conversation surfaces claiming a disconnected device is reachable.
+			 */
+			const reachable = peerSaysReachable ?? anyMemberReachable;
 			const suspect = list.some((entry) => entry.member.suspect);
 			const named = list.find((entry) => text(entry.member.name));
 			return {
 				id,
 				label: deviceLabel({ device_id: id, name: text(named?.member.name) }),
-				state: stateOf(id, selfDeviceId, suspect, reachable),
+				state: stateOf(
+					id,
+					selfDeviceId,
+					suspect,
+					reachable,
+					peer?.link_state ?? null,
+				),
 				memberships: list.map((entry) => ({
 					networkId: entry.networkId,
 					networkName: entry.networkName,
@@ -272,6 +334,9 @@ export function meshGraph(input: {
 					...new Set(list.flatMap((entry) => strings(entry.member.endpoints))),
 				],
 				sessionCount: peer ? peer.session_count : null,
+				linkState: peer?.link_state ?? null,
+				remoteRelay: peer?.remote_relay ?? null,
+				attempts: peer?.attempts ?? null,
 			};
 		})
 		.sort(byLabel);
@@ -405,13 +470,15 @@ function statLine(device: MeshDevice, nowSeconds: number): string {
 					});
 		case "suspect":
 			return t("ui.mesh.mesh_graph.identity_suspect");
+		case "relay_down":
+		case "handshake_refused":
 		case "unreachable":
 			/*
 			 * THE WORD COMES FROM THE REACH MODEL, which is what stops this sentence telling the
-			 * reader that a machine failed when it was never asked (design round's D2). It used to
-			 * say `unreachable`, which the relay's own join cannot support: three different
-			 * `false` cases arrive as one boolean, so `unreachable` here named a state the wire
-			 * never published. `mesh-reach.ts` owns the classification and its debt note.
+			 * reader that a machine failed when it was never asked (design round's D2). The three
+			 * observed transport failures keep their own words now: `relay not running`,
+			 * `handshake refused` and `no answer` are different operator actions, and a derived
+			 * (legacy) state may never borrow one of the specific two.
 			 */
 			return reachWords(deviceReach(device));
 		default: {
@@ -463,8 +530,10 @@ export function deviceStatLine(device: MeshDevice, nowSeconds: number): string {
  * IT COUNTS BY REACH, NOT BY `state` (design round's D3). Counting
  * `state === "unreachable"` printed `2 unreachable` over a canvas where one of the
  * two had never been dialled - the node's own conflation one layer up, in the tab's
- * single-sentence answer. `no answer` and `not asked` are counted apart now, so a
- * device nobody asked is never filed under a failure.
+ * single-sentence answer. `no answer` and `not asked` are counted apart now, and so
+ * are `relay not running` and `handshake refused` (mesh link resilience): a mixed
+ * failure never collapses into one `unreachable` count, because the operator's next
+ * action differs. A device nobody asked is never filed under a failure.
  *
  * AND THE COUNTS ARE A CENSUS NOW, NOT A SELECTION (UX review round 1, U4). The
  * sentence used to read `2 no answer · 1 not asked · 1 suspected` over six devices:
@@ -490,6 +559,15 @@ export function meshSummary(graph: MeshGraph): string {
 	const reaches = graph.devices.map((device) => deviceReach(device));
 	const suspected = graph.devices.filter((device) => device.suspect).length;
 	const reached = reaches.filter((reach) => reach === "reached").length;
+	const relayDown = reaches.filter((reach) => reach === "relay-down").length;
+	const handshakeRefused = reaches.filter(
+		(reach) => reach === "handshake-refused",
+	).length;
+	const addressUnreachable = reaches.filter(
+		(reach) => reach === "address-unreachable",
+	).length;
+	const noEndpoint = reaches.filter((reach) => reach === "no-endpoint").length;
+	const notAMember = reaches.filter((reach) => reach === "not-a-member").length;
 	const unanswered = reaches.filter((reach) => reach === "unanswered").length;
 	const notAsked = reaches.filter((reach) => reach === "not-attempted").length;
 	const unknown = reaches.filter((reach) => reach === "unknown").length;
@@ -497,6 +575,37 @@ export function meshSummary(graph: MeshGraph): string {
 		parts.push(t("ui.mesh.mesh_graph.suspected_count", { count: suspected }));
 	if (reached)
 		parts.push(t("ui.mesh.mesh_graph.reached_count", { count: reached }));
+	/*
+	 * EVERY OBSERVED FAILURE IS NAMED APART (mesh link resilience). They all count as
+	 * "not reached", but folding them into one `unreachable` would put the tab's own
+	 * summary back to the conflation the panel now separates - a relay that is not
+	 * running is an action on the peer, a closed handshake is an action on the
+	 * membership, an unanswered address is an action on the route, and `no_endpoint` /
+	 * `not_a_member` are not transport failures at all. Each class is counted once, so
+	 * the census still adds up.
+	 */
+	if (relayDown)
+		parts.push(t("ui.mesh.mesh_graph.relay_down_count", { count: relayDown }));
+	if (handshakeRefused)
+		parts.push(
+			t("ui.mesh.mesh_graph.handshake_refused_count", {
+				count: handshakeRefused,
+			}),
+		);
+	if (addressUnreachable)
+		parts.push(
+			t("ui.mesh.mesh_graph.address_unreachable_count", {
+				count: addressUnreachable,
+			}),
+		);
+	if (noEndpoint)
+		parts.push(
+			t("ui.mesh.mesh_graph.no_endpoint_count", { count: noEndpoint }),
+		);
+	if (notAMember)
+		parts.push(
+			t("ui.mesh.mesh_graph.not_a_member_count", { count: notAMember }),
+		);
 	if (unanswered)
 		parts.push(t("ui.mesh.mesh_graph.no_answer_count", { count: unanswered }));
 	if (notAsked)

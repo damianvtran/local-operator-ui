@@ -56,6 +56,15 @@ globalThis.localStorage = {
 const ROOT = process.cwd();
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
 const SOURCE = (relative) => readFileSync(relative, "utf8");
+/**
+ * The grip's and the menu's copy now lives in the sidebar's English catalogue:
+ * each source pin below anchors on the KEY the component renders and reads the
+ * sentence from the message map, so the copy stays asserted without pinning a
+ * literal into the component.
+ */
+const SIDEBAR_COPY = JSON.parse(
+	readFileSync("src/i18n/catalogues/en/ui.chat.sidebar.json", "utf8"),
+);
 
 const bundle = await build({
 	stdin: {
@@ -617,13 +626,28 @@ test("the move is a row control: a menu, a chord, and a live region", () => {
 	// The two items, each with its own boundary state, its own write and its own
 	// cap. The window runs back to the item's opening tag, so the assertion is
 	// about THAT item rather than about the menu.
-	for (const [label, step, cap] of [
+	for (const [key, label, step, cap] of [
 		// The JOINED sibling, not the handler's spelling: the item renders caps
 		// through `KeyboardShortcut`, which splits on `+` (D1).
-		["Move conversation up", -1, "chatPinMoveCapJoined(-1, isMac)"],
-		["Move conversation down", 1, "chatPinMoveCapJoined(1, isMac)"],
+		[
+			"ui.chat.sidebar.row_menu.move_up",
+			"Move conversation up",
+			-1,
+			"chatPinMoveCapJoined(-1, isMac)",
+		],
+		[
+			"ui.chat.sidebar.row_menu.move_down",
+			"Move conversation down",
+			1,
+			"chatPinMoveCapJoined(1, isMac)",
+		],
 	]) {
-		const at = source.indexOf(`<span>${label}</span>`);
+		assert.equal(
+			SIDEBAR_COPY[key],
+			label,
+			`${label} is not the message the row menu renders`,
+		);
+		const at = source.indexOf(`<span>{t("${key}")}</span>`);
 		assert.notEqual(at, -1, `${label} is not in the row menu`);
 		const item = source.slice(
 			source.lastIndexOf("<ContextMenuItem", at),
@@ -707,8 +731,13 @@ test("the move is a row control: a menu, a chord, and a live region", () => {
 			"if (!groups) return rows.map((row) => sessionRow(row));",
 		),
 	);
-	assert.ok(grouping.includes("bucket.rows.map((row) => sessionRow(row))"));
-	// LOH-11 deliberately spends one metadata slot before the unchanged Move pair.
+	// Grouped rows are non-nested and opt into the tag-drag cursor; ungrouped
+	// rows above retain the default renderer without advertising tag dragging.
+	assert.ok(
+		grouping.includes("bucket.rows.map((row) => sessionRow(row, false, true))"),
+	);
+	// Sidebar tags v3 removes Move to tag… (the anchored Tags… picker now owns
+	// that act), while retaining Remove all tags and the pinned Move pair.
 	// Read only shipped menu markup so a comment cannot satisfy the item budget.
 	const code = source.replace(/\/\*[\s\S]*?\*\//g, "");
 	const menuStart = code.indexOf("<ContextMenuContent");
@@ -716,8 +745,10 @@ test("the move is a row control: a menu, a chord, and a live region", () => {
 		menuStart,
 		code.indexOf("</ContextMenuContent>", menuStart),
 	);
-	assert.equal(menu.split("<ContextMenuItem").length - 1, 10);
+	assert.equal(menu.split("<ContextMenuItem").length - 1, 9);
 	assert.equal(menu.split('t("ui.chat.tags.menu")').length - 1, 1);
+	assert.equal(menu.split('t("ui.chat.tags.remove_all",').length - 1, 1);
+	assert.ok(!menu.includes('t("ui.chat.tags.move_menu")'));
 	const tagsGate = menu.indexOf("{tagsAvailable && (");
 	const tagsLabel = menu.indexOf('t("ui.chat.tags.menu")');
 	assert.ok(tagsGate >= 0 && tagsGate < tagsLabel);
@@ -860,7 +891,7 @@ test("the grip is a drag handle: pointer-only, hover-revealed, and one write per
 	assert.match(source, /ref=\{pinnedSectionRef\}/);
 	assert.match(
 		source,
-		/className="pointer-events-none absolute right-1 left-1 h-0\.5 rounded-full bg-accent"/,
+		/className="pointer-events-none absolute start-1 end-1 h-0\.5 rounded-full bg-accent"/,
 	);
 	// The auto-scroll loop is armed with the drag and reaped with it.
 	assert.match(source, /requestAnimationFrame\(/);
@@ -949,9 +980,13 @@ test("round 1's fixes are where they are written", () => {
 		false,
 		"a width break on the container query is back on a class list",
 	);
+	assert.equal(
+		SIDEBAR_COPY["ui.chat.sidebar.pins.drag_title"],
+		"Drag to reorder · Esc cancels",
+	);
 	assert.match(
 		source,
-		/aria-hidden="true"[\s\S]{0,120}?title="Drag to reorder · Esc cancels"/,
+		/aria-hidden="true"[\s\S]{0,120}?title=\{t\("ui\.chat\.sidebar\.pins\.drag_title"\)\}/,
 	);
 	const grip = source.slice(
 		source.indexOf("data-session-pin-grip"),

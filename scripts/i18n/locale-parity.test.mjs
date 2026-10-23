@@ -66,6 +66,13 @@ const IDENTICAL_OK = new Map([
 		"French technical term kept English by the French style guide (token).",
 	],
 	[
+		"ui.browser.browser_url_bar.address_suggestions_label_mixed",
+		// French uses « Suggestions » for this list heading, the same word as the
+		// English source. The other six targets differ; this is a cognate, not a
+		// skipped string. The key is named here so the exemption is reviewable.
+		"French cognate: « Suggestions » has the same spelling",
+	],
+	[
 		"ui.settings.configuration.settings_page.version",
 		"French cognate: « version » has the same spelling.",
 	],
@@ -605,6 +612,93 @@ const IDENTICAL_OK = new Map([
 	[
 		"ui.settings.account.radient_account_section.email",
 		"Vietnamese uses the standard loanword «Email» for the address field; every diacritic alternative is unidiomatic.",
+	],
+	// --- ui.library category/filter nouns. The es and fr translations of the
+	// file-kind labels are the same words as English because they are cognates or
+	// settled loanwords, not because a translator left the source in place: the
+	// surrounding ui.library prose in both locales is translated. Each entry is a
+	// claim a reviewer can check against the target language, not a silencer.
+	[
+		"ui.library.category.code",
+		"French cognate: « code » has the same spelling.",
+	],
+	[
+		"ui.library.category.documents",
+		"French cognate: « documents » has the same spelling.",
+	],
+	[
+		"ui.library.category.images",
+		"French cognate: « images » has the same spelling.",
+	],
+	[
+		"ui.library.category.video",
+		// es writes the unaccented « video » (Latin American usage; Spain accents
+		// « vídeo »). The identical value is the es spelling, not an English copy,
+		// and the accent variant is a regional preference rather than a correction.
+		"es spelling of the noun (Latin American usage; Spain writes « vídeo »).",
+	],
+	[
+		"ui.library.filter.source",
+		"French cognate: « source » has the same spelling.",
+	],
+	[
+		"ui.library.preview.description",
+		"French cognate: « description » has the same spelling.",
+	],
+	// --- ui.teamBridge. The feature name is a product name; the placeholder and
+	// the example account id carry no prose. One entry covers every locale that
+	// keeps the value identical.
+	[
+		"ui.teamBridge.page.title",
+		"Product name (Team Bridge), preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.teamBridge.nav.label",
+		"Product name (Team Bridge), preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.teamBridge.chief.label",
+		"Placeholders and brackets only ({agent} ({person})); both names are inserted verbatim. Locales with full-width brackets (zh-CN) differ, the rest are identical by design.",
+	],
+	[
+		"ui.teamBridge.notify.title",
+		"Placeholders and brackets only ({conversation} ({organization})); the notification title is assembled from already-translated parts.",
+	],
+	[
+		"ui.teamBridge.notify.channel",
+		"Opaque channel name with the conventional # marker; no prose to translate. Independently validated for all seven locales in os1298-r1 receipts.",
+	],
+	[
+		"ui.teamBridge.notify.subtitle",
+		"Language-neutral place and organization composition; both values remain verbatim and place-first order is required for disambiguation. Independently validated in os1298-r1 receipts.",
+	],
+	[
+		"ui.teamBridge.member.agent",
+		"French cognate: « agent » has the same spelling.",
+	],
+	[
+		"ui.teamBridge.create.member_agent",
+		"French cognate: « agent » has the same spelling.",
+	],
+	[
+		"ui.teamBridge.notify.mention",
+		"French cognate: « mentions » has the same spelling.",
+	],
+	[
+		"ui.agentMessages.settings.allowlist.kind_agent",
+		"French cognate: « agent » has the same spelling.",
+	],
+	// --- ui.shell / ui.command_palette. "Agent Hub" is the product surface's
+	// established name; ur keeps the Latin proper name (the programme glossary
+	// already does this for `hub.skills.public_hub`), so the value is correctly
+	// identical to English rather than a stub.
+	[
+		"ui.command_palette.use_palette_sources.agent_hub",
+		"Product name (Agent Hub), preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.shell.sidebar_navigation.agent_hub",
+		"Product name (Agent Hub), preserved verbatim by the programme glossary.",
 	],
 ]);
 

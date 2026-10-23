@@ -10,23 +10,86 @@ import {
 	browserChordIntent,
 } from "../../../../../shared/browser-chord";
 import {
-	browserViewSuppressed,
 	subscribeBrowserView,
+	suppressedOverlayIdsSnapshot,
 } from "../../../shared/browser-view-policy";
+import { chordPlatform } from "../../../shared/navigation-gesture";
 import { browserBridge } from "../model/browser-projection-store";
+import { browserOverlaySuppressing } from "../model/self-suppression";
 import { chordTarget } from "../model/tab-index-model";
 import type { BrowserChrome, BrowserTabView } from "./use-browser-chrome";
 
-const MAC_PLATFORM = /Mac|iPhone|iPad/;
 const STANDALONE_BROWSER_ROUTE = /^#\/browser(?:[/?]|$)/;
 
 // A document can mount more than one scoped browser. Resolve ONE owner before
 // consuming an event or a main-process broadcast; a global listener per surface
 // without this arbitration would create two tabs for one physical press.
 const chordRoots = new Set<HTMLDivElement>();
+
+/**
+ * Stand a browser surface up as a chord root, and hand back its disposer.
+ *
+ * The registry is a module-level Set rather than render state, so the ONE
+ * question every other surface has to ask it - "is the browser the keyboard
+ * owner right now?" - is answerable without a component: this export is what
+ * `scripts/session-switcher.test.mjs` registers a root with, and the hook below
+ * is its only other caller. Extracted rather than duplicated because the
+ * alternative is a second, drifted copy of the ownership rule in whatever
+ * surface needs the answer next.
+ */
+export function registerBrowserChordRoot(root: HTMLDivElement): () => void {
+	chordRoots.add(root);
+	return () => {
+		chordRoots.delete(root);
+	};
+}
+
+/**
+ * Whether the keyboard is inside the in-app browser panel, i.e. whether Ctrl+Tab
+ * and Ctrl+Shift+Tab are the BROWSER's tab chords rather than the app's.
+ *
+ * THE RULE, in one sentence. When keyboard focus is inside the in-app browser
+ * panel - its tab strip, address bar/popout, start page, or the web page itself -
+ * Ctrl+Tab and Ctrl+Shift+Tab switch browser tabs; everywhere else, the console
+ * included, they open the session switcher, except while Tab is already claimed
+ * for a list: the composer's slash list, or the canvas editor's list item it
+ * nests. (docs/session-switcher.md carries the same sentence.)
+ *
+ * The console half is code, not a sentence: its xterm key handler hands the chord
+ * back to the page (`console-mirror.tsx`), because xterm otherwise consumes it as
+ * a plain tab before this predicate is ever asked. The two lists claim Tab with
+ * `preventDefault` on a press they own, which the switcher's own listener reads.
+ *
+ * It wraps `chordOwner`, which is the arbitration the browser's own DOM door
+ * already does, so the two surfaces cannot disagree: if the browser would take
+ * the press, it says so here, and the switcher stays out of the way. This
+ * function is the ARBITER and not a hint - the switcher checks it on both keys
+ * and bails on true. `event.defaultPrevented` is not part of the decision: the
+ * press has to be claimed by one door or the other regardless of which listener
+ * happens to run first.
+ *
+ * A press that reaches a NATIVE `WebContentsView` never arrives in this DOM at
+ * all - the view's own `before-input-event` hook in main answers it - so the
+ * page case this returns false for is a pane whose focus is logical (the strip,
+ * the start page) and never the driven page itself.
+ */
+export function browserOwnsTabChord(
+	document: Document,
+	target?: Node | null,
+): boolean {
+	return chordOwner(document, target ?? document.activeElement) !== null;
+}
+
 const reportedFocus = new WeakMap<Document, boolean>();
 function availableRoots(document: Document): HTMLDivElement[] {
-	if (browserViewSuppressed()) return [];
+	// THE VIEW BEING HIDDEN IS NOT THE SAME FACT AS AN OVERLAY COVERING THE
+	// BROWSER (S4a). The surface registers its own start page and load-failure
+	// panel in this registry so the native view stops painting over their DOM;
+	// those two states are still the browser, and their keyboard belongs to it.
+	// `browserOverlaySuppressing` filters exactly those self-registrations (the
+	// one list lives in the model module, shared with the surface). Only a real
+	// overlay - dialog, menu, picker - takes the chords away.
+	if (browserOverlaySuppressing(suppressedOverlayIdsSnapshot())) return [];
 	return [...chordRoots].filter((root) => {
 		if (
 			root.ownerDocument !== document ||
@@ -73,11 +136,23 @@ function chordOwner(
  * focus. The DOM door also answers scripted KeyboardEvents (which never pass
  * Electron's hook). It claims the event before app navigation bubbles to window.
  * Commands are queued, not debounced: legitimate rapid tab cycling is retained. */
+/**
+ * The address surface's own door. S4b removed the always-mounted input, so a
+ * `RefObject<HTMLInputElement>` is null at rest and every `focusAddress()` was a
+ * silent no-op (design §4). The handle raises the popout instead; when the
+ * active tab is the start page the surface focuses that page's own field.
+ */
+export interface AddressController {
+	raise: (options?: { origin?: "page" | "chrome"; seed?: string }) => void;
+	/** Lower without restoring focus (a new tab's start page takes it). */
+	close: () => void;
+}
+
 export function useBrowserChords(
 	chrome: BrowserChrome,
 	tabs: BrowserTabView[],
 	sessionId: string | null,
-	address: RefObject<HTMLInputElement>,
+	address: RefObject<AddressController>,
 ) {
 	const [root, setRoot] = useState<HTMLDivElement | null>(null);
 	const findReturnToPage = useRef(false);
@@ -159,7 +234,7 @@ export function useBrowserChords(
 		const api = browserBridge();
 		if (!api) return;
 		const document = root.ownerDocument;
-		chordRoots.add(root);
+		const releaseChordRoot = registerBrowserChordRoot(root);
 		let alive = true;
 		let chain = Promise.resolve();
 		let cursor: number | null =
@@ -169,10 +244,6 @@ export function useBrowserChords(
 			if (!force && reportedFocus.get(document) === focused) return;
 			reportedFocus.set(document, focused);
 			void api.setChordFocus(focused).catch(() => {});
-		};
-		const focusAddress = () => {
-			address.current?.focus();
-			address.current?.select();
 		};
 		const projectionDropped = async (tabId: number): Promise<void> => {
 			for (let waited = 0; waited < 1000; waited += 5) {
@@ -201,12 +272,15 @@ export function useBrowserChords(
 				return;
 			}
 			if (intent === "focus-address") {
-				focusAddress();
+				address.current?.raise({ origin });
 				return;
 			}
 			if (intent === "new-tab") {
 				await c.newTab(current.sessionId);
-				focusAddress();
+				// The new tab IS its start page, whose own field autofocuses on mount.
+				// Raising the popout here would paint over the strip the start page
+				// lives under and leave a second, emptier address field on screen.
+				address.current?.close();
 				return;
 			}
 			if (intent === "reopen-tab") {
@@ -234,7 +308,8 @@ export function useBrowserChords(
 					// waits for the projection (a bound, not a debounce: it ends the
 					// moment the tab leaves the list), so rapid presses stay ordered.
 					if (closed) await projectionDropped(id);
-					if (replaced) focusAddress();
+					// A replacement blank tab is a start page; its own field takes focus.
+					if (replaced) address.current?.close();
 				}
 			} else {
 				const target = chordTarget(current.tabs, cursor, intent);
@@ -257,9 +332,11 @@ export function useBrowserChords(
 				chordOwner(document, event.target) !== root
 			)
 				return;
-			const platform = MAC_PLATFORM.test(navigator.platform)
-				? "darwin"
-				: "linux";
+			// `chordPlatform()` already answers the QUESTION ("mac" | "linux"); the
+			// intent model names the same fact "darwin". Deriving darwin from
+			// truthiness read every non-Mac host as mac, so a Linux user lost Ctrl+L/F/T/
+			// R/W and the digits (agent review round 2, MAJOR-3).
+			const platform = chordPlatform() === "mac" ? "darwin" : "linux";
 			const intent = browserChordIntent(
 				{
 					type: "keyDown",
@@ -276,7 +353,53 @@ export function useBrowserChords(
 				},
 				platform,
 			);
-			if (!intent) return;
+			if (!intent) {
+				/*
+				 * THE PRINTABLE-KEY SEED (design §4, entry 2). A single character typed
+				 * while the browser's own root owns focus — and the target is not
+				 * editable — opens the popout with that character. This must NEVER run
+				 * for a key that reached the driven page: that is a separate native
+				 * view with no DOM target here. Space/Enter on a real control are
+				 * activations, and a modifier combination is not typing.
+				 */
+				// CODE POINTS, not UTF-16 units (nit round 1, NIT-2): `event.key.length`
+				// is 2 for every astral character, so an emoji or a CJK character
+				// outside the BMP could not seed the field. A spread counts the
+				// character the user actually pressed.
+				if (
+					[...event.key].length !== 1 ||
+					event.metaKey ||
+					event.ctrlKey ||
+					event.altKey ||
+					event.repeat ||
+					event.isComposing
+				)
+					return;
+				if (event.key === " ") {
+					// Space activates a focused button/tab; only text fields take it as
+					// a character, and those are excluded below.
+					const focused = event.target;
+					if (
+						focused instanceof Element &&
+						focused.closest("button, [role=tab], [role=menuitem], a[href]")
+					)
+						return;
+				}
+				const target = event.target;
+				if (target instanceof Element) {
+					if (
+						target.closest(
+							'input, textarea, [contenteditable="true"], [contenteditable=""], [role=menu], [role=dialog], [role=combobox]',
+						)
+					)
+						return;
+				} else if (!(target instanceof Node)) return;
+				event.preventDefault();
+				event.stopPropagation();
+				report(true, true);
+				address.current?.raise({ origin: "chrome", seed: event.key });
+				return;
+			}
 			event.preventDefault();
 			event.stopPropagation();
 			// Main clears its report on restart/teardown; a real accepted DOM press
@@ -351,7 +474,7 @@ export function useBrowserChords(
 		});
 		return () => {
 			alive = false;
-			chordRoots.delete(root);
+			releaseChordRoot();
 			reconcile(); // removing hidden B must not clear the still-focused A
 			unsubscribe();
 			stopPolicy();

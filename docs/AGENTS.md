@@ -26,6 +26,11 @@ input, a menu or a popover.
   `data-lo-sidebar-edge-cues` on the panel's scroller; the shared scroll-driven
   mask in `styles/index.css` dissolves content under the top spacing instead of
   clipping it against a hard boundary.
+- **The padded box is the grounded box.** The element that wears
+  `panel-top-pad` must be the same box that paints the panel's ground. A padded
+  wrapper with no ground of its own is the inset band the rule forbids, and a
+  content column inside a grounded, `panel-flush` ancestor needs no ground of
+  its own.
 - **Keep the composer/panel footer outside the scroller.** The scroll container
   ends above it; content never paints underneath it.
 - **Narrow windows replace, they do not overlay.** When the detail rail cannot

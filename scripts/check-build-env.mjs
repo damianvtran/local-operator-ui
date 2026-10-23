@@ -459,6 +459,9 @@ export const PACKAGER_COMMANDS = new Set([
 	"create",
 	"dedupe",
 	"deploy",
+	// npm deprecate only changes registry metadata; it never runs package scripts.
+	// Without this native command, containment is misreported as a missing script.
+	"deprecate",
 	"dist-tag",
 	"doctor",
 	"edit",

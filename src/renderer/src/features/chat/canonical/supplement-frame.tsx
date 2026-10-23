@@ -49,6 +49,8 @@
  * timeout must not tear down another's.
  */
 
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supplementMountUrl } from "../../../../../shared/supplement-frame-url";
 import {
@@ -138,6 +140,7 @@ export function SupplementFrame({
 	onHeightChange,
 	className,
 }: SupplementFrameProps) {
+	useI18nLocale();
 	const reserved = clampedHeightHint(component);
 	const [height, setHeight] = useState(reserved);
 	const [failed, setFailed] = useState(false);
@@ -490,7 +493,7 @@ export function SupplementFrame({
 					documentFailed ? "document" : failedReasonRef.current
 				}
 			>
-				Couldn't render this graphic
+				{t("ui.chat.canonical.supplement.frame.failed")}
 				{/*
 				 * `· Retry`, the row's own `supplements.restart` arm (memo §2.8 pins
 				 * it where the job is settled; round-1 D2/U4). Absent handler, absent
@@ -507,7 +510,7 @@ export function SupplementFrame({
 							data-supplement-frame-retry=""
 							onClick={() => onRetry()}
 						>
-							Retry
+							{t("ui.common.actions.retry")}
 						</button>
 					</>
 				)}
@@ -556,10 +559,16 @@ export function SupplementFrame({
 					 * empty hole again. The fill is the low-intensity placeholder under
 					 * it; both leave with the first rendered resize (round-1 D4).
 					 */
-					<span
-						aria-hidden="true"
-						className="pointer-events-none absolute inset-0 animate-shimmer bg-elevated/40 bg-gradient-to-r from-transparent via-elevated/60 to-transparent bg-[length:200%_100%] bg-[position:-200%_50%] bg-no-repeat"
-					/>
+					<>
+						{/* Announce the wait without repainting the signed-off shimmer. */}
+						<output className="sr-only">
+							{t("ui.chat.canonical.supplement.frame.loading")}
+						</output>
+						<span
+							aria-hidden="true"
+							className="pointer-events-none absolute inset-0 animate-shimmer bg-elevated/40 bg-gradient-to-r from-transparent via-elevated/60 to-transparent bg-[length:200%_100%] bg-[position:-200%_50%] bg-no-repeat"
+						/>
+					</>
 				)}
 			</div>
 			{/*
@@ -569,10 +578,14 @@ export function SupplementFrame({
 			 */}
 			<span
 				className="block truncate text-ink-muted text-meta"
-				title={`Source: ${component.source}`}
+				title={t("ui.chat.canonical.supplement.frame.source", {
+					name: component.source,
+				})}
 				data-supplement-source=""
 			>
-				Source: {displayText(component.source)}
+				{t("ui.chat.canonical.supplement.frame.source", {
+					name: displayText(component.source),
+				})}
 			</span>
 		</div>
 	);

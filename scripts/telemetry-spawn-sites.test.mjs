@@ -251,6 +251,30 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/browser-native-determination.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless for the post-merge S4b native determination; the build carries the live PostHog key, so this launch needs the telemetry switch",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/browser-chrome-s4b-probe.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to measure S4b's product chrome; the build carries the live PostHog key, so this unguarded product path needs the telemetry switch",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/browser-address-overlay-probe.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to drive S1's native child; the build carries the live PostHog key, so this launch needs the same switch every app rig has",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
 		"scripts/renderer-driver.mjs",
 		"spawn",
 		1,
@@ -305,6 +329,16 @@ const APP_SPAWN_SITES = [
 		/withTelemetryOff\(env\);/,
 	),
 	guarded(
+		"scripts/console-ended-proof.mjs",
+		"spawn",
+		/* #2, not #1: the `lop serve` daemon is spawned first; the app's own spawn is
+		 * the second and is the one this table exists to check. */
+		2,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the BUILT app twice over one quit on a scratch profile, so this rig is two chances to report a rig run as a product user",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
 		"scripts/browser-file-transfer-proof.mjs",
 		"spawn",
 		1,
@@ -343,6 +377,22 @@ const APP_SPAWN_SITES = [
 		/(?:\{|,)\s*env\s*,/,
 		"boots the app headless to measure the environment it hands the backend it spawns",
 		/withTelemetryOff\(env\);/,
+	),
+	guarded(
+		"scripts/browser-url-autocomplete-proof.mjs",
+		"spawn",
+		1,
+		/env,\s*detached:/,
+		"boots the built app headless against local fixture sites to exercise the address bar's local autocomplete with real input and real keys",
+		/const env = withTelemetryOff\(\s*withNotificationsOff\(\{/,
+	),
+	guarded(
+		"scripts/browser-tab-menu-turn-proof.mjs",
+		"spawn",
+		1,
+		/env:\s*spawnEnv,/,
+		"boots the built app headless against an isolated backend to open the tab-actions menu over a real running turn",
+		/withTelemetryOff\(spawnEnv\);/,
 	),
 	guarded(
 		"scripts/interrupt-esc-proof.mjs",

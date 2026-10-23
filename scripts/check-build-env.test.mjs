@@ -389,6 +389,29 @@ test("every command form that builds or packs is classified, and nothing else is
 	);
 });
 
+test("npm deprecate is registry metadata, while unknown npm scripts still fail closed", () => {
+	const context = {
+		scriptBody: () => null,
+		unresolved: [],
+		binaryExists: () => false,
+	};
+	const classify = (line) =>
+		commandSegments(line).map((tokens) => buildInvocation(tokens, context));
+	assert.deepEqual(
+		classify("npm deprecate example@1.0.0 'Use the safe version'"),
+		[null],
+	);
+	assert.deepEqual(
+		context.unresolved,
+		[],
+		"native registry commands do not resolve through package scripts",
+	);
+	assert.deepEqual(classify("npm nosuchscript"), [null]);
+	assert.equal(context.unresolved.length, 1);
+	assert.equal(context.unresolved[0].reason, "missing-script");
+	assert.equal(context.unresolved[0].invocation, "npm nosuchscript");
+});
+
 test("a workflow that builds nowhere fails rather than passing vacuously", () => {
 	const fixture = tree({
 		workflows: {

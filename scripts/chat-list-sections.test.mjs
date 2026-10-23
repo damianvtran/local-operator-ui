@@ -402,7 +402,7 @@ test("a row prints its relative time, and a running row does not", () => {
 	);
 	assert.match(
 		sidebar,
-		/!isRunningRow\(row\) && relativeTime\(row, listNow, view\.basis\)/,
+		/!isRunningRow\(row\)\s*&&\s*relativeTime\(row, listNow, view\.basis\)/,
 		"a running row's time is `now`, which the spinner already says",
 	);
 	/*
@@ -425,4 +425,16 @@ test("the basis is threaded from the view to the call sites, never defaulted", (
 	 */
 	assert.match(sidebar, /sectionRows\(pagedRows, listNow, view\.basis\)/);
 	assert.match(sidebar, /view\.basis !== DEFAULT_SIDEBAR_VIEW\.basis/);
+});
+
+test("waiting is Running even when the conversation last moved long ago", () => {
+	const waiting = row({
+		updated_at: (NOW - 30 * DAY) / 1000,
+		status: {
+			code: "waiting",
+			label: "Waiting on 2 jobs · 1 subagent running",
+		},
+	});
+	assert.equal(isRunningRow(waiting), true);
+	assert.equal(sectionOf(waiting, NOW, ACTIVE), "running");
 });

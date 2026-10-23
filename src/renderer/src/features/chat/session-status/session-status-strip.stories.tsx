@@ -1,3 +1,10 @@
+import {
+	estimatedSpend,
+	legacySpend,
+	mixedSpend,
+	paygoSpend,
+	subscriptionSpend,
+} from "./spend-basis-fixtures";
 /**
  * The session status strip in every state it can honestly be in.
  *
@@ -463,6 +470,165 @@ export const EffortStates: Story = {
 			</Frame>
 		</div>
 	),
+};
+
+/**
+ * The level the conversation CHOSE is not the level now serving (operator
+ * report, 2026-10-21: a remote session set to `Max` read `High` after a send,
+ * with nothing saying why). The chip still names the level IN FORCE, which is
+ * its job; the backend's `effort_displacement.note` adds the reason. A warning
+ * mark on the chip, with the sentence first in the tooltip and in the
+ * accessible name. The first frame is the control: same in-force level, no
+ * displacement, an unchanged chip. 960px wide because the effort chip yields
+ * below a 750px column (`@max-[750px]/chatcol:hidden`).
+ */
+const SONNET_HIGH = {
+	...GPT_5,
+	provider: "anthropic",
+	model_id: "claude-sonnet-5-5",
+	display_name: "Claude Sonnet 5.5",
+	reasoning_effort: "high",
+	reasoning_efforts: ["low", "medium", "high", "max"],
+};
+const DISPLACED = {
+	chosen: "max",
+	effective: "high",
+	selected: "acme/flash-1",
+	serving: "anthropic/claude-sonnet-5-5",
+	note: "Effort: high on anthropic/claude-sonnet-5-5; max resumes on acme/flash-1.",
+};
+// The selected model carries its catalog name, so the frame shows the note
+// with both models' display names rather than their raw slugs.
+const FLASH_MAX = {
+	...SONNET_HIGH,
+	provider: "acme",
+	model_id: "flash-1",
+	display_name: "Acme Flash",
+	reasoning_effort: "max",
+};
+const displacedFrontend = state({
+	selected_model: FLASH_MAX,
+	effective_model: SONNET_HIGH,
+	effort_displacement: DISPLACED,
+	context_tokens: 13_591,
+	context_window: 200_000,
+	cumulative_parent_cost: 0.31,
+	cost_knowledge: "exact",
+});
+
+export const EffortDisplaced: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4 bg-canvas p-2">
+			<Frame
+				width={960}
+				label="Control: the chosen level is the level in force, so no mark"
+			>
+				<SessionStatusStrip
+					frontend={state({
+						effective_model: SONNET_HIGH,
+						effort_displacement: {},
+						context_tokens: 13_591,
+						context_window: 200_000,
+						cumulative_parent_cost: 0.31,
+						cost_knowledge: "exact",
+					})}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+			<Frame
+				width={960}
+				label="Displaced: chose Max, a fallback serves at High; the chip says so"
+			>
+				<SessionStatusStrip
+					frontend={displacedFrontend}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+		</div>
+	),
+};
+
+/** The displaced chip's tooltip, opened by keyboard focus. */
+/**
+ * A narrow composer that still draws the effort chip (it yields below a
+ * 750px content box, `@max-[750px]/chatcol:hidden`): the mark must not push the
+ * readings off the row or truncate the level itself.
+ */
+export const EffortDisplacedNarrow: Story = {
+	render: () => (
+		<div className="flex flex-col gap-4 bg-canvas p-2">
+			<Frame
+				width={800}
+				label="Displaced at 800px outer / 766px content: the chip fits"
+			>
+				<SessionStatusStrip
+					frontend={displacedFrontend}
+					onCommand={() => undefined}
+				/>
+			</Frame>
+		</div>
+	),
+	play: async ({ canvasElement }) => {
+		const box = canvasElement.querySelector<HTMLElement>(
+			'[class*="@container/chatcol"]',
+		);
+		const chip = canvasElement.querySelector<HTMLElement>(
+			'[aria-label^="Reasoning effort:"]',
+		);
+		if (!box || !chip)
+			throw new Error("Narrow evidence lacks its container or effort chip");
+		const css = getComputedStyle(box);
+		const content =
+			box.getBoundingClientRect().width -
+			Number.parseFloat(css.paddingLeft) -
+			Number.parseFloat(css.paddingRight) -
+			Number.parseFloat(css.borderLeftWidth) -
+			Number.parseFloat(css.borderRightWidth);
+		if (
+			content <= 750 ||
+			chip.getBoundingClientRect().width <= 0 ||
+			!chip.querySelector("svg")
+		)
+			throw new Error(`Effort mark hidden at ${content}px content width`);
+		if (box.scrollWidth > box.clientWidth)
+			throw new Error("Narrow composer overflows horizontally");
+		const label = canvasElement.querySelector("p");
+		if (label)
+			label.textContent = `Measured: ${content}px content; effort mark visible; no horizontal overflow`;
+	},
+};
+
+export const EffortDisplacedTooltip: Story = {
+	render: () => {
+		const Focused: FC<{ frontend: CanonicalFrontendState }> = ({
+			frontend,
+		}) => {
+			const host = useRef<HTMLDivElement>(null);
+			useEffect(() => {
+				const effort = Array.from(
+					host.current?.querySelectorAll("button") ?? [],
+				).find((button) =>
+					button.getAttribute("aria-label")?.startsWith("Reasoning effort"),
+				);
+				(effort as HTMLButtonElement | undefined)?.focus();
+			}, []);
+			return (
+				<div ref={host}>
+					<SessionStatusStrip frontend={frontend} onCommand={() => undefined} />
+				</div>
+			);
+		};
+		return (
+			<div className="flex min-h-[320px] flex-col justify-end bg-canvas p-2">
+				<Frame
+					width={960}
+					label="The reason, first after the value, in the backend's own words"
+				>
+					<Focused frontend={displacedFrontend} />
+				</Frame>
+			</div>
+		);
+	},
 };
 
 /**
@@ -2219,6 +2385,54 @@ export const ChannelsZeroStates: Story = {
 					onCommand={() => undefined}
 					costChannels={true}
 				/>
+			</Frame>
+		</div>
+	),
+};
+
+// All spend surfaces use the same four additive-wire compatibility cases.
+export const PaymentSubscription: Story = {
+	render: () => (
+		<div className="flex min-h-[600px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend override={{ spend_channels: subscriptionSpend }} />
+			</Frame>
+		</div>
+	),
+};
+export const PaymentMixedSameTurn: Story = {
+	render: () => (
+		<div className="flex min-h-[600px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend override={{ spend_channels: mixedSpend }} />
+			</Frame>
+		</div>
+	),
+};
+export const PaymentPaygo: Story = {
+	render: () => (
+		<div className="flex min-h-[600px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend override={{ spend_channels: paygoSpend }} />
+			</Frame>
+		</div>
+	),
+};
+export const PaymentLegacyUntracked: Story = {
+	render: () => (
+		<div className="flex min-h-[600px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend override={{ spend_channels: legacySpend }} />
+			</Frame>
+		</div>
+	),
+};
+
+export const PaymentEstimated: Story = {
+	render: () => (
+		<div className="flex min-h-[600px] flex-col justify-end bg-canvas p-2">
+			<Frame width={900}>
+				<FocusedSpend override={{ spend_channels: estimatedSpend }} />
 			</Frame>
 		</div>
 	),

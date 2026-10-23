@@ -24,7 +24,6 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
-import { useLaneLeadingColumn } from "@shared/components/common/chat-layout";
 import { PageHeader } from "@shared/components/common/page-header";
 import { Spinner } from "@shared/components/common/spinner";
 import {
@@ -173,7 +172,18 @@ function useViewportWidth() {
 	return width;
 }
 
-/** The Librarian's compact status row, inside the reserved 40px header track. */
+/**
+ * The Librarian's compact status row, inside the reserved 40px header track.
+ *
+ * THE 40px IS A FLOOR, NOT A FIXED HEIGHT. The row wraps (`flex-wrap`) because
+ * a translation can outgrow one line — ru's "Упорядочить"/"Открыть" pair plus
+ * the unorganized count is 604px of content in a 536px track at the preview-dock
+ * width — and a fixed `h-10` with `overflow-hidden` silently clipped the lower
+ * 9.4px of both 28px buttons, leaving only 18.6px hit-testable. `min-h-10` lets
+ * the wrapped second line grow the row (and the header, whose 136px is also a
+ * floor), so nothing is drawn outside its own box; the track's reserved height
+ * while the status loads is unchanged because one line still fills 40px.
+ */
 const LibrarianRow: FC<{ enabled: boolean; nowMs: number }> = ({
 	enabled,
 	nowMs,
@@ -194,7 +204,7 @@ const LibrarianRow: FC<{ enabled: boolean; nowMs: number }> = ({
 		librarian.unorganized ?? librarian.library?.unorganized ?? null;
 	return (
 		<div
-			className="flex h-10 shrink-0 flex-wrap items-center gap-x-3 gap-y-1 overflow-hidden text-meta text-ink-muted"
+			className="flex min-h-10 shrink-0 flex-wrap items-center gap-x-3 gap-y-1 overflow-hidden text-meta text-ink-muted"
 			data-library-librarian=""
 		>
 			<span className="font-medium text-ink">
@@ -264,11 +274,22 @@ const LibrarianRow: FC<{ enabled: boolean; nowMs: number }> = ({
 	);
 };
 
+/**
+ * The Librarian status row's age, as a localized fragment.
+ *
+ * Deliberately NOT `relativeTime`: this row has always started at the hour unit
+ * (a run under an hour old reads "0h", not "just now"), and it renders in the
+ * 40px header track where the shorter ladder is the contract. The thresholds,
+ * the `Math.max(0, …)` clamp and the rounding are untouched; only the words are
+ * translated now (`ui.library.time.hours_h_ago` / `days_d_ago`).
+ */
 function relative(seconds: number, nowMs: number): string {
 	const delta = Math.max(0, nowMs - seconds * 1000);
 	const hours = Math.floor(delta / 3_600_000);
-	if (hours < 24) return `${hours}h ago`;
-	return `${Math.floor(hours / 24)}d ago`;
+	if (hours < 24) return t("ui.library.time.hours_h_ago", { hours });
+	return t("ui.library.time.days_d_ago", {
+		days: Math.floor(hours / 24),
+	});
 }
 
 /** A stale id: the route exists, the row does not (design spec §8). */
@@ -288,7 +309,6 @@ const UnavailableAsset: FC<{ onBack: () => void }> = ({ onBack }) => (
 
 export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 	useI18nLocale();
-	const laneLeadingColumn = useLaneLeadingColumn("surface");
 	const navigate = useNavigate();
 	const location = useLocation();
 	const params = useParams<{ assetId?: string }>();
@@ -381,6 +401,17 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 
 	const lastPage = listing.data?.pages.at(-1);
 	const total = lastPage?.total ?? 0;
+	/*
+	 * The siblings the media viewer's full-screen lightbox walks: the current
+	 * listing's images and clips, in display order. Display order is the page's,
+	 * not the lightbox's — the strip has to read the way the grid does — and the
+	 * filter drops every kind the lightbox cannot show rather than letting it
+	 * walk onto a document.
+	 */
+	const mediaSiblings = useMemo(
+		() => rows.filter((row) => row.kind === "image" || row.kind === "video"),
+		[rows],
+	);
 	const selectedFromList = rows.find((row) => row.id === selectedId) ?? null;
 	const selected = detail.data ?? selectedFromList;
 	/*
@@ -428,9 +459,41 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 		},
 		[goToAsset],
 	);
+	/*
+	 * ONE PRESS PER ASSET UNTIL ITS WRITE SETTLES. The menu item and the preview
+	 * heart both land here, and a double press used to compute the toggle from
+	 * the SAME stale `asset.favorite` twice - two writes of the same value, and
+	 * with an optimistic row the second press could be read as a flip back. The
+	 * guard is per asset id rather than one global flag, because two cards are
+	 * two independent toggles.
+	 */
+	const favoriteWrites = useRef(new Set<string>());
 	const toggleFavorite = useCallback(
 		(asset: DesktopLibraryAsset) => {
-			update.mutate({ id: asset.id, fields: { favorite: !asset.favorite } });
+			if (favoriteWrites.current.has(asset.id)) return;
+			favoriteWrites.current.add(asset.id);
+			update.mutate(
+				{ id: asset.id, fields: { favorite: !asset.favorite } },
+				{
+					onSettled: () => {
+						favoriteWrites.current.delete(asset.id);
+					},
+					/*
+					 * A REFUSAL MUST SAY SO, because the optimistic paint has just
+					 * been rolled back and the heart's disappearance is otherwise the
+					 * only trace. The toast lives HERE rather than in the mutation's
+					 * `onError` so it is reported once (the hook is shared with the
+					 * inline edits, which own their own error copy).
+					 */
+					onError: (error) => {
+						showErrorToast(
+							error instanceof Error && error.message
+								? error.message
+								: t("ui.library.preview.not_saved"),
+						);
+					},
+				},
+			);
 		},
 		[update],
 	);
@@ -470,6 +533,15 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
 			const target = event.target as HTMLElement | null;
+			/*
+			 * A MODAL OWNS ITS KEYS. The preview's media lightbox parks focus inside
+			 * its dialog and Radix handles Escape there; this page's Escape would
+			 * otherwise also run `goBack()` and dismiss the preview underneath the
+			 * overlay (measured in the media-lightbox story: Escape closed the
+			 * viewer AND navigated back to the grid). Page shortcuts resume as soon
+			 * as focus is back on the page.
+			 */
+			if (target?.closest('[role="dialog"]')) return;
 			const typing =
 				target?.tagName === "INPUT" ||
 				target?.tagName === "TEXTAREA" ||
@@ -666,9 +738,16 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 	return (
 		<div
 			ref={workspaceRef}
+			data-library-page=""
 			data-glass-region="canvas"
 			data-glass-split=""
-			className="flex h-full min-h-0 overflow-hidden bg-canvas"
+			/*
+			 * A FULL-HEIGHT PANEL: the page owns `canvas` from y0 and its columns
+			 * each pad their own content (`panel-top-pad`). `panel-flush` cancels
+			 * the shell's ordinary-content pad; `flex-1` is what gives the box the
+			 * 32px back at the bottom, which is the pair the utility's note states.
+			 */
+			className="panel-flush flex min-h-0 flex-1 overflow-hidden bg-canvas"
 		>
 			{/*
 			 * THE RAIL RUNS THE FULL PAGE HEIGHT, as the first column of a
@@ -680,11 +759,10 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 			 */}
 			{railVisible && !standalone && (
 				<aside
-					ref={laneLeadingColumn}
 					data-library-rail=""
 					data-glass-region="page-sidebar"
 					aria-label={t("ui.library.page.filters")}
-					className="flex h-full w-48 shrink-0 flex-col overflow-hidden bg-surface"
+					className="panel-top-pad flex h-full w-48 shrink-0 flex-col overflow-hidden bg-surface"
 				>
 					{rail}
 				</aside>
@@ -692,7 +770,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 			{!standalone && (
 				<div
 					data-glass-region="canvas-content"
-					className="flex min-w-0 flex-1 flex-col"
+					className="panel-top-pad flex min-w-0 flex-1 flex-col"
 				>
 					{/*
 					 * THE HEADER SIZES TO ITS CONTENT, with the design's 136px as a FLOOR.
@@ -1001,7 +1079,12 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 
 			{dockEligible && selected && (
 				<aside
-					className="flex h-full w-[448px] shrink-0 bg-surface"
+					/*
+					 * THE DOCK IS A PANEL: its `surface` starts at y0 and its header and
+					 * scroller begin below the strip. This is the aside the operator's
+					 * screenshot caught beginning 32px down.
+					 */
+					className="panel-top-pad flex h-full w-[448px] shrink-0 bg-surface"
 					aria-label={t("ui.library.page.preview")}
 				>
 					<LibraryPreview
@@ -1015,12 +1098,21 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 						composerFocusSignal={composerFocusSignal}
 						focusRequest={focusRequest}
 						onExpand={openFullView}
+						mediaSiblings={mediaSiblings}
 					/>
 				</aside>
 			)}
 			{standalone && (
 				<div
-					className="min-w-0 flex-1"
+					/*
+					 * `bg-surface` HERE, on the padded box, and not only on
+					 * `LibraryPreview`'s root: the pad is inside this wrapper, so the
+					 * preview's own ground begins at y32 and a groundless wrapper let the
+					 * page root's `canvas` show through the strip as a band (design round
+					 * 1, D2). The panel that owns the pad owns the ground, which also
+					 * grounds the spinner and `UnavailableAsset` arms.
+					 */
+					className="panel-top-pad min-w-0 flex-1 bg-surface"
 					aria-label={t("ui.library.page.preview")}
 				>
 					{selectedMissing ? (
@@ -1036,6 +1128,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 							onToggleFavorite={() => toggleFavorite(selected)}
 							composerFocusSignal={composerFocusSignal}
 							focusRequest={focusRequest}
+							mediaSiblings={mediaSiblings}
 							standalone
 						/>
 					) : (
@@ -1046,7 +1139,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 				</div>
 			)}
 			{!standalone && !selected && dockEligible && (
-				<div className="hidden h-full w-[448px] shrink-0 items-start justify-center bg-surface p-8 lg:flex">
+				<div className="panel-top-pad hidden h-full w-[448px] shrink-0 items-start justify-center bg-surface p-8 lg:flex">
 					<p className="max-w-60 text-center text-body-sm text-ink-dim">
 						{t("ui.library.page.select_asset")}
 					</p>

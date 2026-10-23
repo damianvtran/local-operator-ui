@@ -327,6 +327,9 @@ const NO_PANES = {
 	isAskDrawerOpen: false,
 	askDrawerScope: "session",
 	askDrawerEvictedPane: null,
+	/* The liveness projection the pane publishes: a reset must not leave one cell's
+	   running terminal lighting the next cell's item. */
+	consoleLiveSurface: null,
 };
 const details = () => deriveRunDetails(fixtures.settled());
 
@@ -463,7 +466,10 @@ test("aria-pressed follows each of the six store flags, one at a time", async ()
 			["isCodeReviewPaneOpen", "code"],
 		]) {
 			reset(api);
-			await api.render(rail());
+			/* The console item's lit state follows LIVENESS, not the pane flag
+			   (operator report, 2026-10-21), so the cell that opens it must say a
+			   process is running - the prop chat-content derives from the pane. */
+			await api.render(rail(id === "console" ? { consoleLiveCount: 1 } : {}));
 			assert.deepEqual(api.pressed(), [], "nothing is lit with the slot empty");
 			api.store({ [flag]: true });
 			assert.deepEqual(api.pressed(), [id], `${flag} lights ${id} and only it`);
@@ -474,6 +480,81 @@ test("aria-pressed follows each of the six store flags, one at a time", async ()
 				);
 			}
 		}
+	});
+});
+
+test("the console item follows liveness, and an open history pane still toggles closed (U5)", async () => {
+	/*
+	 * THE OPERATOR'S REPORT (2026-10-21) AND ITS UX ROUND-1 CORRECTION (U5).
+	 *
+	 * Open on restored history: the item must NOT look active ("0 live"), and the
+	 * press is the pane's TOGGLE - it closes the pane the user is reading, because a
+	 * rail item is a door. The create-on-open rule belongs to the CLOSED state: a
+	 * press that opens an empty/history pane files `requestConsoleOpen`, and the pane
+	 * creates. A live console keeps the lit paint and the same close.
+	 */
+	await mount(async (api) => {
+		reset(api);
+		api.store({ isConsolePaneOpen: true, consoleLiveSurface: null });
+		await api.render(rail({ consoleLiveCount: 0 }));
+		assert.deepEqual(
+			api.pressed(),
+			[],
+			"an open pane with no running surface is not the active console",
+		);
+		// THE TOOLTIP FOLLOWS THE PRESS (m-5): the pane is drawn, so the act is close
+		// even though the item is unlit.
+		act(() => api.item("console").focus());
+		await frames(30);
+		assert.match(
+			api.$('[role="tooltip"]')?.textContent ?? "",
+			/Close console/,
+			"an open history pane's tooltip says close, not open",
+		);
+		await api.click(api.item("console"));
+		let state = useUiPreferencesStore.getState();
+		assert.equal(
+			state.isConsolePaneOpen,
+			false,
+			"the unlit item on an open history pane is the toggle that closes it",
+		);
+		assert.equal(
+			state.consoleOpenIntent,
+			null,
+			"closing is not a request for a new terminal",
+		);
+
+		// A CLOSED pane's press is the open that may create.
+		reset(api);
+		api.store({ isConsolePaneOpen: false, consoleLiveSurface: null });
+		await api.render(rail({ consoleLiveCount: 0 }));
+		await api.click(api.item("console"));
+		state = useUiPreferencesStore.getState();
+		assert.equal(state.isConsolePaneOpen, true, "a closed item opens the pane");
+		assert.equal(
+			state.consoleOpenIntent,
+			"session-1",
+			"and asks the pane for a terminal",
+		);
+
+		// And the live case is the lit toggle it always was.
+		reset(api);
+		api.store({
+			isConsolePaneOpen: true,
+			consoleLiveSurface: { sessionId: "session-1", count: 1 },
+		});
+		await api.render(rail({ consoleLiveCount: 1 }));
+		assert.deepEqual(
+			api.pressed(),
+			["console"],
+			"a running console is the active one",
+		);
+		await api.click(api.item("console"));
+		assert.equal(
+			useUiPreferencesStore.getState().isConsolePaneOpen,
+			false,
+			"the lit item is still the way to put a live console away",
+		);
 	});
 });
 
@@ -492,6 +573,9 @@ test("pressing an item claims the slot: the others are cleared, and a second pre
 			[],
 			"the lit item is also the way to close",
 		);
+		// The console's active treatment is liveness, so this door is judged in the
+		// state it is meant to be lit in: an open pane with a running surface.
+		await api.render(rail({ consoleLiveCount: 1 }));
 		await api.click(api.item("console"));
 		assert.deepEqual(api.pressed(), ["console"]);
 		assert.equal(
@@ -627,7 +711,6 @@ test("a claimed pane the route cannot draw lights NOTHING (the drawable-aware se
 		for (const [flag, id] of [
 			["isRunPanelOpen", "run"],
 			["isBrowserPaneOpen", "browser"],
-			["isConsolePaneOpen", "console"],
 			["isCanvasOpen", "canvas"],
 			["isCodeReviewPaneOpen", "code"],
 		]) {
@@ -636,6 +719,20 @@ test("a claimed pane the route cannot draw lights NOTHING (the drawable-aware se
 			await api.render(rail({ runDetails: null, sessionId: null }));
 			assert.deepEqual(api.pressed(), [id], `${flag} on a mounted draft`);
 		}
+		/*
+		 * THE CONSOLE IS THE EXCEPTION HERE, and it follows its own rule: the item is
+		 * active only while a terminal is RUNNING (operator report, 2026-10-21), and a
+		 * draft has no conversation to run one in. The pane still draws its notice; the
+		 * door just does not claim a live console.
+		 */
+		reset(api, DRAFT);
+		api.store({ isConsolePaneOpen: true });
+		await api.render(rail({ runDetails: null, sessionId: null }));
+		assert.deepEqual(
+			api.pressed(),
+			[],
+			"a draft has no live console, so the console door is not the active one",
+		);
 		reset(api, DRAFT);
 		api.store({ isAskDrawerOpen: true, askDrawerScope: "session" });
 		await api.render(rail({ runDetails: null, sessionId: null }));
@@ -690,7 +787,11 @@ test("a door pressed on a draft opens its pane, and the console files no open re
 			null,
 			"no conversation, so no console is requested",
 		);
-		assert.deepEqual(api.pressed(), ["console"]);
+		assert.deepEqual(
+			api.pressed(),
+			[],
+			"a draft has no live terminal, so the console item is not the active one",
+		);
 		for (const [id, flag] of [
 			["run", "isRunPanelOpen"],
 			["code", "isCodeReviewPaneOpen"],
@@ -2851,8 +2952,13 @@ test("the lit bar is clear of the focus ring, flush with the rail's leading edge
 		"src/renderer/src/shared/components/navigation/panel-rail-item.tsx",
 	);
 	assert.ok(
-		item.includes("before:-left-[6px]"),
-		"the bar is 6px outside the 32px control - the item is centred in the 44px rail, so the gutter is 6px a side - and its 2px width therefore starts ON the rail's leading edge",
+		item.includes("before:-start-[6px]"),
+		"the bar is 6px outside the 32px control - the item is centred in the 44px rail, so the gutter is 6px a side - and its 2px width therefore starts ON the rail's leading (inline-start) edge in either writing direction",
+	);
+	assert.ok(
+		!item.includes("before:-left-[6px]") &&
+			!item.includes("before:-right-[6px]"),
+		"the bar must be anchored to the rail's inline-start edge, not a physical side: in RTL the rail stands at the window's left and the content boundary is its right edge",
 	);
 	assert.ok(
 		!item.includes("before:-left-[6.5px]"),
@@ -2868,7 +2974,7 @@ test("the count badge is the small mark anchored to the corner (D4)", () => {
 	const rail = read(
 		"src/renderer/src/shared/components/navigation/panel-rail.tsx",
 	);
-	assert.match(rail, /absolute -top-0\.5 -right-0\.5 flex/);
+	assert.match(rail, /absolute -top-0\.5 -end-0\.5 flex/);
 	assert.ok(
 		rail.includes("text-meta-sm"),
 		"the type token, not a literal size",

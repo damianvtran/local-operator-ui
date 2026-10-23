@@ -943,6 +943,21 @@ export async function probeFiles(
 	home: string,
 	deps: ProbeDeps = fsProbeDeps,
 	cache: ProbeFileCache = sharedProbeCache,
+	/**
+	 * Ignore a CACHED answer for this call — and only ignore it: the fresh answer
+	 * is still remembered, so every other caller keeps the damping the cache
+	 * exists for.
+	 *
+	 * WHY IT EXISTS. `PROBE_POSITIVE_TTL_MS` is 30 s, which is right for a chip
+	 * that asks whose file it is and wrong for a viewer watching a file an agent
+	 * is rewriting: a 2 s poll that reads a cached mtime every time reported a
+	 * change 21-29 s after the write (QA round 1, Q1). The alternative - a
+	 * shorter TTL - would spend a stat per chip per burst on the Files panel to
+	 * fix a latency only the watcher has. So the watcher opts out of the LOOKUP
+	 * and nothing else changes for anyone: the default is `false` and every
+	 * existing call keeps its bytes.
+	 */
+	fresh = false,
 ): Promise<ProbedFile[]> {
 	const inputs = asked.slice(0, MAX_PROBE_PATHS);
 
@@ -976,8 +991,10 @@ export async function probeFiles(
 	for (const [key, unit] of units) {
 		const entry = cache.get(key);
 		if (entry === undefined) continue;
-		if (now - entry.at < entry.ttlMs) unit.facts = entry;
-		else cache.delete(key);
+		if (now - entry.at < entry.ttlMs) {
+			// A fresh call declines the LOOKUP, never the remembering below.
+			if (!fresh) unit.facts = entry;
+		} else cache.delete(key);
 	}
 
 	/* Everything the cache did not answer goes through the bounded pool. */

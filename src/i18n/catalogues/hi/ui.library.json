@@ -150,5 +150,11 @@
 	"ui.library.composer.message_sent_link_failed": "संदेश भेजा गया। चैट का लिंक नहीं बन सका।",
 	"ui.library.composer.retry_link": "लिंक फिर बनाएँ",
 	"ui.library.preview.pptx_text": "टेक्स्ट",
-	"ui.library.preview.pptx_no_text": "इस स्लाइड में निकालने योग्य टेक्स्ट नहीं है।"
+	"ui.library.preview.pptx_no_text": "इस स्लाइड में निकालने योग्य टेक्स्ट नहीं है।",
+	"ui.library.time.just_now": "अभी-अभी",
+	"ui.library.time.minutes_m_ago": "{minutes, plural, one {{minutes, number, ::group-off} मिनट पहले} other {{minutes, number, ::group-off} मिनट पहले}}",
+	"ui.library.time.hours_h_ago": "{hours, plural, one {{hours, number, ::group-off} घंटे पहले} other {{hours, number, ::group-off} घंटे पहले}}",
+	"ui.library.time.days_d_ago": "{days, plural, one {{days, number, ::group-off} दिन पहले} other {{days, number, ::group-off} दिन पहले}}",
+	"ui.library.time.months_mo_ago": "{months, plural, one {{months, number, ::group-off} माह पहले} other {{months, number, ::group-off} माह पहले}}",
+	"ui.library.time.years_y_ago": "{years, plural, one {{years, number, ::group-off} वर्ष पहले} other {{years, number, ::group-off} वर्ष पहले}}"
 }

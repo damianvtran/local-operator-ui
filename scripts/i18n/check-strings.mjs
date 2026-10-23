@@ -25,10 +25,18 @@
  *
  * THE RATCHET, mirroring `local-operator/scripts/i18n/check.py`:
  *
+ *   - EVERY finding fails. There is no advisory scope: a ratchet that reports
+ *     a breach without failing on it is a gate in name only (this file shipped
+ *     that way once, and the operator measured it).
  *   - `i18n/baseline.json` carries per-file counts that may only stay equal or
  *     go down. `--init` writes it once (the capture of the tree as it stands);
- *     `--update <paths>` lowers entries (and refuses to raise them); a file
- *     with no entry starts at 0.
+ *     `--update <paths>` lowers entries and refuses to raise them.
+ *   - A file with counted literals and NO baseline entry FAILS. Every new file
+ *     would otherwise arrive exempt — "absent from the baseline" is the
+ *     default state of a file anyone adds — so an absent entry can only mean
+ *     "nobody recorded a ceiling for this file"; the fix is a reviewed
+ *     `--init --force` capture, not silence. (A zero-literal file needs no
+ *     entry; `--init` prunes those.)
  *   - `i18n/allowlist.json` exempts a file (or a directory prefix ending in
  *     `/`) with a REQUIRED reason; no globs (a glob silently spans
  *     directories; a directory is written as one, visibly).
@@ -38,11 +46,8 @@
  *     "within the call's first through last line" rule, translated: a JSX
  *     attribute cannot carry a comment of its own, so its enclosing element is
  *     the span that reads naturally (the fixture beside this file pins both).
- *   - ENFORCEMENT IS SCOPED (RFC §9: P1 ships ADVISORY). Findings inside the
- *     enforced prefixes fail; everything else prints as `advisory:` and does
- *     not. The shipped default covers the code this program owns — the i18n
- *     core and this tooling; extraction slices activate their area by adding
- *     its prefix to `enforced` in a reviewed change.
+ *   - Those two exemptions are the whole exemption surface: there is no scope
+ *     list, no glob, and no severity that reports a breach without blocking it.
  *
  * THE COMPILER API, and why this file is the only place it is touched: this
  * repository's `typescript` is the native TS 7, whose programmatic surface is
@@ -69,22 +74,19 @@ export const BASELINE = join(REPO, "i18n", "baseline.json");
 export const ALLOWLIST = join(REPO, "i18n", "allowlist.json");
 
 /**
- * The scanned corpus, repo-relative. `scripts/i18n/` is scanned because it is
- * inside the enforced scope: the tooling must not grow user-visible prose of
- * its own. `scripts/i18n/fixtures/` is EXCLUDED — those files exist to be
+ * The scanned corpus, repo-relative. `scripts/i18n/` is scanned because the
+ * tooling must not grow user-visible prose of its own.
+ * `scripts/i18n/fixtures/` is EXCLUDED — those files exist to be
  * flagged by the tests, and they live outside the scan for exactly that
  * reason (the exclusion is asserted by `check-strings.test.mjs`).
  */
 export const SCAN_ROOTS = ["src", "scripts/i18n"];
 const SCAN_EXCLUDED = ["scripts/i18n/fixtures/"];
 
-/** Fallback enforcement scope when the baseline carries no `enforced` field. */
-export const DEFAULT_ENFORCED = ["src/i18n/", "scripts/i18n/"];
-
 export const BASELINE_NOTE =
-	"enforced = blocking scope (path prefixes or exact paths); findings elsewhere are " +
-	"advisory (report-only) until the area's extraction slice adds its prefix. " +
-	"files = per-file literal ceilings (shrink-only; new files start at 0). " +
+	"per-file literal ceilings (shrink-only). A file with counted literals and no " +
+	"entry FAILS; a zero-literal file carries no entry and --init prunes it. " +
+	"Add or raise an entry only through a reviewed `--init --force` capture. " +
 	"See scripts/i18n/check-strings.mjs.";
 
 /** The copy-bearing attributes the RFC's inventory measured. */
@@ -312,64 +314,58 @@ export function allowlistReason(rel, entries) {
 	return undefined;
 }
 
-/** The baseline object; a missing or damaged file reads as empty (fail closed). */
+/**
+ * The baseline object; a missing or damaged file reads as empty (fail closed —
+ * every counted file then has no recorded ceiling, and every one fails).
+ *
+ * Schema 1 is still accepted, but its `enforced` field is IGNORED: enforcement
+ * is global now, and a scope list left in an older baseline must not resurrect
+ * a report-only mode. Its ceilings still apply.
+ */
 export function loadBaseline(path) {
 	let data = {};
 	try {
 		data = JSON.parse(readFileSync(path, "utf8"));
 	} catch {
-		// Missing or damaged: the DEFAULT_ENFORCED fallback below is fail-closed.
+		// Missing or damaged: `files: {}` below fails every counted file.
 	}
 	if (typeof data !== "object" || data === null) data = {};
 	const files = data.files;
-	const enforced = data.enforced;
 	return {
-		schema: data.schema ?? 1,
+		schema: Number.isInteger(data.schema) ? data.schema : 1,
 		note: typeof data.note === "string" ? data.note : BASELINE_NOTE,
-		enforced: Array.isArray(enforced)
-			? enforced.map(String)
-			: [...DEFAULT_ENFORCED],
+		/*
+		 * A malformed ceiling is DROPPED, never coerced. `Number("twelve")` is
+		 * NaN, and `ratchetFindings` only fails when `count > ceiling` — false
+		 * for NaN — so coercion would silently exempt the file it was meant to
+		 * hold to. Dropping the entry makes the file unrecorded, which fails
+		 * closed, the same way the reader already treats a damaged FILE as
+		 * empty rather than as an unlimited one.
+		 */
 		files:
 			typeof files === "object" && files !== null
 				? Object.fromEntries(
-						Object.entries(files).map(([key, value]) => [key, Number(value)]),
+						Object.entries(files).flatMap(([key, value]) =>
+							Number.isInteger(value) && value >= 0 ? [[key, value]] : [],
+						),
 					)
 				: {},
 	};
 }
 
-export function saveBaseline(path, files, enforced, note) {
-	/*
-	 * Rendered line-by-line rather than JSON.stringify'd, because the repo's
-	 * formatter (biome) COLLAPSES a short array onto one line and this file is
-	 * read by humans in review — the two must agree or every re-init produces
-	 * a re-format. Reproduce biome's decision for the sizes this file carries:
-	 * `enforced` inline while it fits the 80-column line, one per line after.
-	 */
+/**
+ * Write the baseline as schema 2: `{ schema, note, files }`, one sorted entry
+ * per line.
+ *
+ * Rendered by hand rather than JSON.stringify'd, because the repo's formatter
+ * (biome) re-formats a stringified dump — key order, indentation, short arrays
+ * collapsed onto one line — and this file is read by humans in review, so the
+ * writer and the formatter must agree or every re-init churns the file. The
+ * per-line `files` object below is the shape biome already leaves alone.
+ */
+export function saveBaseline(path, files, note) {
 	const sorted = Object.keys(files).sort();
-	const lines = ["{", '\t"schema": 1,', `\t"note": ${JSON.stringify(note)},`];
-	const inlineEnforced = enforced
-		.map((entry) => JSON.stringify(entry))
-		.join(", ");
-	const inlineLine = `\t"enforced": [${inlineEnforced}],`;
-	if (inlineLine.length <= 80) {
-		lines.push(inlineLine);
-	} else {
-		/*
-		 * NO trailing comma on the last entry: this is strict JSON, and a trailing
-		 * comma makes JSON.parse reject the whole file - `loadBaseline` then reads
-		 * it as EMPTY, which silently drops both the ceilings and any enforced
-		 * prefix beyond the defaults. The one-prefix baseline never reached this
-		 * branch (it fit the 80-column inline form); the first slice that adds a
-		 * second prefix does, so the comma rule is load-bearing here.
-		 */
-		lines.push('\t"enforced": [');
-		enforced.forEach((entry, index) => {
-			const comma = index < enforced.length - 1 ? "," : "";
-			lines.push(`\t\t${JSON.stringify(entry)}${comma}`);
-		});
-		lines.push("\t],");
-	}
+	const lines = ["{", '\t"schema": 2,', `\t"note": ${JSON.stringify(note)},`];
 	if (sorted.length === 0) {
 		lines.push('\t"files": {}');
 	} else {
@@ -382,17 +378,6 @@ export function saveBaseline(path, files, enforced, note) {
 	}
 	lines.push("}");
 	writeFileSync(path, `${lines.join("\n")}\n`);
-}
-
-export function inEnforcedScope(rel, enforced) {
-	for (const entry of enforced) {
-		if (entry.endsWith("/")) {
-			if (rel.startsWith(entry)) return true;
-		} else if (rel === entry) {
-			return true;
-		}
-	}
-	return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -480,7 +465,10 @@ export function countsOf(scanned, allowlist) {
 
 /**
  * The counted files that exceed — or are missing from — their ceiling.
- * A file with no recorded ceiling starts at 0 (the core's rule).
+ *
+ * A missing entry is a FAILURE, not an implicit ceiling of 0: "absent" is the
+ * default state of every file anyone adds, so reading it as exempt would make
+ * every new file silent — the defect this rule exists to close.
  */
 export function ratchetFindings(counts, files) {
 	const out = [];
@@ -525,15 +513,8 @@ export function runCheck({
 		const scanned = scanSnapshot(snapshot, repo, { extraScan });
 		const counts = countsOf(scanned, entries);
 		const loaded = baseline ?? loadBaseline(baselinePath);
-		const over = ratchetFindings(counts, loaded.files);
-		const failures = [];
-		const advisories = [];
-		for (const finding of over) {
-			if (inEnforcedScope(finding.path, loaded.enforced))
-				failures.push(finding);
-			else advisories.push(finding);
-		}
-		return { scanned, counts, failures, advisories, baseline: loaded };
+		const failures = ratchetFindings(counts, loaded.files);
+		return { scanned, counts, failures, baseline: loaded };
 	} finally {
 		api.close();
 	}
@@ -541,9 +522,68 @@ export function runCheck({
 
 function findingLine(finding) {
 	if (finding.ceiling === null) {
-		return `${finding.path}: ${finding.count} literal(s) — not in baseline.json; a file with no recorded ceiling starts at 0`;
+		return `${finding.path}: ${finding.count} literal(s) — not in baseline.json; a file with no recorded ceiling fails`;
 	}
 	return `${finding.path}: ${finding.count} literal(s) against a ceiling of ${finding.ceiling}`;
+}
+
+/**
+ * The remedy sentence printed after a failed check.
+ *
+ * The two failure shapes have different remedies, and naming both at once
+ * misdirects: a ceiling breach means the file gained literals that must be
+ * extracted, while `--init --force` exists for a file with NO recorded entry
+ * (and rewrites the whole baseline, recording the literal the breach just
+ * added). So the capture clause is only printed when a missing entry is
+ * actually among the failures.
+ */
+export function failureSummary(failures) {
+	const missingEntry = failures.some((finding) => finding.ceiling === null);
+	return `check-strings.mjs: FAILED — ${failures.length} finding(s). Extract the string, add \`i18n: ignore <reason>\`, or (for a file-level exemption) record it in i18n/allowlist.json with a reason.${
+		missingEntry
+			? " A file with no recorded ceiling is fixed by a reviewed `--init --force` capture."
+			: ""
+	}`;
+}
+
+/**
+ * The review-visible diff between the old ceilings and a capture, as lines.
+ *
+ * `--init --force` exists for a scanner-coverage change, and a capture that
+ * printed only totals would let a RAISE pass review as a number nobody can
+ * diff. Listing every added / raised / lowered / pruned entry is what makes a
+ * raise an explicit, reviewable baseline edit rather than a silent one.
+ */
+function captureSummary(previous, counts) {
+	const added = [];
+	const raised = [];
+	const lowered = [];
+	const pruned = [];
+	for (const rel of Object.keys(counts).sort()) {
+		const next = counts[rel];
+		if (!Object.prototype.hasOwnProperty.call(previous, rel)) {
+			added.push(`${rel}: ${next}`);
+			continue;
+		}
+		const before = previous[rel];
+		if (next > before) raised.push(`${rel}: ${before} -> ${next}`);
+		else if (next < before) lowered.push(`${rel}: ${before} -> ${next}`);
+	}
+	for (const rel of Object.keys(previous).sort()) {
+		if (!Object.prototype.hasOwnProperty.call(counts, rel)) {
+			pruned.push(`${rel}: ${previous[rel]} -> 0`);
+		}
+	}
+	const lines = [];
+	const section = (label, entries) => {
+		lines.push(`${label} ${entries.length}:`);
+		for (const entry of entries) lines.push(`  ${entry}`);
+	};
+	section("added", added);
+	section("raised", raised);
+	section("lowered", lowered);
+	section("pruned", pruned);
+	return lines;
 }
 
 export function main(
@@ -597,12 +637,15 @@ export function main(
 		try {
 			const counts = countsOf(scanSnapshot(snapshot, REPO), entries);
 			const preserved = loadBaseline(baselinePath);
-			saveBaseline(baselinePath, counts, preserved.enforced, preserved.note);
+			saveBaseline(baselinePath, counts, BASELINE_NOTE);
 			const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
 			process.stdout.write(
-				`check-strings.mjs --init: baseline written: ${Object.keys(counts).length} file(s), ` +
-					`${total} literal(s); enforced: ${preserved.enforced.join(", ") || "none"}\n`,
+				`check-strings.mjs --init: baseline written: ${Object.keys(counts).length} ` +
+					`file(s), ${total} literal(s)\n`,
 			);
+			for (const line of captureSummary(preserved.files, counts)) {
+				process.stdout.write(`${line}\n`);
+			}
 			return 0;
 		} finally {
 			api.close();
@@ -638,7 +681,7 @@ export function main(
 				if (previous === undefined) {
 					if (next > 0) {
 						process.stdout.write(
-							`check-strings.mjs --update: ${rel} has ${next} literal(s) with no recorded ceiling — a file with no recorded ceiling starts at 0: extract, pragma, or allowlist instead of recording one.\n`,
+							`check-strings.mjs --update: ${rel} has ${next} literal(s) with no recorded ceiling — a file with no recorded ceiling fails: extract, pragma, or allowlist instead of recording one.\n`,
 						);
 						return 1;
 					}
@@ -653,7 +696,7 @@ export function main(
 				if (next > 0) files[rel] = next;
 				else delete files[rel];
 			}
-			saveBaseline(baselinePath, files, loaded.enforced, loaded.note);
+			saveBaseline(baselinePath, files, loaded.note);
 			process.stdout.write(
 				`check-strings.mjs --update: baseline now ${Object.keys(files).length} file(s)\n`,
 			);
@@ -663,10 +706,7 @@ export function main(
 		}
 	}
 
-	const { scanned, counts, failures, advisories } = runCheck();
-	for (const advisory of advisories) {
-		process.stdout.write(`advisory: ${findingLine(advisory)}\n`);
-	}
+	const { scanned, counts, failures } = runCheck();
 	for (const failure of failures) {
 		process.stdout.write(`${findingLine(failure)}\n`);
 		const details = scanned.get(failure.path) ?? [];
@@ -677,19 +717,12 @@ export function main(
 		}
 	}
 	if (failures.length > 0) {
-		process.stdout.write(
-			`check-strings.mjs: FAILED — ${failures.length} finding(s) in the enforced scope (${advisories.length} advisory finding(s) outside it). Extract the string, add \`i18n: ignore <reason>\`, or (for a file-level exemption) record it in i18n/allowlist.json with a reason.\n`,
-		);
+		process.stdout.write(`${failureSummary(failures)}\n`);
 		return 1;
 	}
 	const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
-	const suffix =
-		advisories.length > 0
-			? `; ${advisories.length} advisory finding(s) (report-only until activated)`
-			: "";
 	process.stdout.write(
-		`check-strings.mjs: ok — ${scanned.size} file(s) scanned, ${total} literal(s) at or ` +
-			`below the baseline${suffix}\n`,
+		`check-strings.mjs: ok — ${scanned.size} file(s) scanned, ${total} literal(s) at or below the baseline\n`,
 	);
 	return 0;
 }

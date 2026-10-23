@@ -1,0 +1,29 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "8708b6f95296",
+  "instance_derivation": "sha256('877cbcdfaf60:es')[:12] from session 877cbcdfaf60",
+  "locale": "es",
+  "status": "passed",
+  "namespace": "ui.console",
+  "date": "2026-10-22",
+  "scope": "Independent full pass over all 63 ui.console keys at the current bytes: read en/ui.console.json and en/ui.console.context.json, console-states.tsx (ended banner) and console-pane.tsx (tab strip), the core glossary and locale style guides, and docs/I18N.md; checked accuracy, register, glossary consistency, placeholder/ICU integrity, CLDR plurals, ur RTL and cell widths. No catalogue, ledger or code changes.",
+  "sha256": {
+    "en": "70587d7052f6129b3f56420f78427a588f64ce79a500e39c00d8a3a6d923aa52",
+    "target": "3b5e618f8a04f1cbff46ca93ea380c1612c50ba33f8a826550f2745d4e45d091"
+  },
+  "findings": [
+    {
+      "severity": "MINOR",
+      "key": "ui.console.capacity.full",
+      "issue": "\" · sin plazas libres\" is 20 cells against 7 in English (+186%) and is appended to the width-critical header summary, so at the narrow step the at-limit alarm is the text the truncating span drops first.",
+      "suggestion": " · completo (11 cells)"
+    },
+    {
+      "severity": "MINOR",
+      "key": "ui.console.cleanup.label",
+      "issue": "\"Eliminar\" is the es catalogue's term for \"Delete\" (ui.agents.dialogs.delete.confirm, ui.chat.dialogs.delete_action), while \"Clear\" is \"Borrar\" (ui.agents.dialogs.clear.confirm, ui.common.forms.editable_field.clear); using \"Eliminar\" for Clear throughout ui.console (cleanup.label, dismiss_history, dismiss.body, dismiss.title, dismiss.confirm, tab.clear_label, tab.clear_label_retained) makes the cleanup control read as deleting terminals.",
+      "suggestion": "Borrar terminales de agentes finalizadas, and align the family on \"Borrar\" for the clear action while keeping \"eliminar\" for deleting the retained output (e.g. \"Borrar terminal y eliminar la salida conservada\")."
+    }
+  ]
+}

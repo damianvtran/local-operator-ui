@@ -3302,3 +3302,186 @@ export const DelegatingRowMinimum: Story = {
 		await sleep(300);
 	},
 };
+
+/** A parked wait is still Running; its hourglass must not borrow busy's motion. */
+export const WaitingRow: Story = {
+	render: () => {
+		fixtures();
+		roster = [
+			wireRow(
+				"b4c5d6e7f809",
+				"Wait for the validation jobs",
+				1_760_003_600,
+				{ code: "waiting", label: "Waiting on 2 jobs · 1 subagent running" },
+				1,
+			),
+		];
+		return <Page sidebarWidth={360} />;
+	},
+	play: async () => {
+		await catalogueSettled(1);
+		const row = screen.getByRole("button", {
+			name: /Waiting on 2 jobs · 1 subagent running.*Wait for the validation jobs/,
+		});
+		if (
+			row.closest("[data-chat-section]")?.getAttribute("data-chat-section") !==
+			"running"
+		)
+			throw new Error("Waiting row must remain under Running");
+		if (
+			!row.querySelector(".lucide-hourglass") ||
+			row.querySelector(".animate-spin")
+		)
+			throw new Error("Waiting row must draw a static hourglass");
+	},
+};
+
+/** Exercise the same settlement seam as the ambient peer read, including a stale reachable row. */
+export const RemoteLinkDown: Story = {
+	render: () => {
+		fixtures();
+		roster = [
+			wireRow("c5d6e7f8091a", "Local comparison", 1_760_003_600, OPEN, 1),
+		];
+		return <Page sidebarWidth={360} />;
+	},
+	play: async () => {
+		await catalogueSettled(1);
+		const store = useCanonicalSessionsStore.getState();
+		const at = store.beginAnswer();
+		store.settlePeerCatalogue(
+			[
+				{
+					session_id: "d6e7f8091a2b",
+					title: "Remote validation",
+					locality: "remote",
+					owner_device: "synthetic-peer",
+					owner_device_name: "Test peer",
+					reachable: true,
+					updated_at: Date.now() / 1000,
+					status: { code: "idle", label: "Idle" },
+				},
+			],
+			at,
+			{
+				"synthetic-peer": {
+					reachable: false,
+					last_seen_at: Date.now() / 1000 - 240,
+					reason: "relay timeout",
+					at,
+				},
+			},
+		);
+		await sleep(100);
+		const row = screen.getByRole("button", {
+			name: /link down · last seen .*ago.*Remote validation/,
+		});
+		if (
+			!row.querySelector(".lucide-wifi-off") ||
+			!row.textContent?.includes("last seen")
+		)
+			throw new Error(
+				"Remote row must expose link loss and last contact visibly and accessibly",
+			);
+	},
+};
+
+/** The backend's remote delegating row uses the same three-bead state as a local row. */
+export const RemoteDelegating: Story = {
+	render: () => {
+		fixtures();
+		roster = [
+			wireRow("e7f8091a2b3c", "Local comparison", 1_760_003_600, OPEN, 1),
+		];
+		return <Page sidebarWidth={360} />;
+	},
+	play: async () => {
+		await catalogueSettled(1);
+		const store = useCanonicalSessionsStore.getState();
+		store.settlePeerCatalogue(
+			[
+				{
+					session_id: "f8091a2b3c4d",
+					title: "Remote delegated validation",
+					locality: "remote",
+					owner_device: "synthetic-delegating-peer",
+					owner_device_name: "Test peer",
+					reachable: true,
+					updated_at: Date.now() / 1000,
+					status: { code: "delegating", label: "1 subagent running" },
+					subagents_running: 1,
+					subagents_queued: 0,
+				},
+			],
+			store.beginAnswer(),
+		);
+		await sleep(100);
+		const row = screen.getByRole("button", {
+			name: /1 subagent running.*Remote delegated validation/,
+		});
+		if (
+			row.closest("[data-chat-section]")?.getAttribute("data-chat-section") !==
+			"running"
+		)
+			throw new Error("Remote delegating row must remain under Running");
+		if (
+			!row.querySelector('svg[viewBox="0 0 24 24"] circle[cx="12"][cy="6.8"]')
+		)
+			throw new Error(
+				"Remote delegating row must render the three-bead SubagentRunningMark",
+			);
+	},
+};
+
+/**
+ * Same row, four device facts: the shipped legacy symptom, the relay's grace,
+ * its escalation and its recovery. No arbitrary UI timer: the ambient peer
+ * catalogue owns the verdict, exactly as in production (core #2755).
+ */
+const remotePresenceStory = (
+	state: "legacy" | "reconnecting" | "down" | "recovered",
+): Story => ({
+	render: () => {
+		fixtures();
+		roster = [
+			wireRow("a1b2c3d4e5f6", "Local comparison", 1_760_003_600, OPEN, 1),
+		];
+		return <Page sidebarWidth={360} />;
+	},
+	play: async () => {
+		await catalogueSettled(1);
+		const store = useCanonicalSessionsStore.getState();
+		const at = store.beginAnswer();
+		store.settlePeerCatalogue(
+			[
+				{
+					session_id: "b2c3d4e5f6a1",
+					title: "Remote validation",
+					locality: "remote",
+					owner_device: "synthetic-presence-peer",
+					owner_device_name: "Test peer",
+					reachable: true,
+					updated_at: Date.now() / 1000,
+					status: { code: "idle", label: "Idle" },
+				},
+			],
+			at,
+			{
+				"synthetic-presence-peer": {
+					reachable: state === "recovered",
+					last_seen_at: state === "legacy" ? null : Date.now() / 1000 - 180,
+					reason: state === "recovered" ? null : "relay timeout",
+					redial_state:
+						state === "reconnecting" || state === "down" ? state : null,
+					at,
+				},
+			},
+		);
+		await sleep(100);
+	},
+});
+
+export const RemotePresenceBefore = remotePresenceStory("legacy");
+export const RemotePresenceReconnecting = remotePresenceStory("reconnecting");
+export const RemotePresenceDown = remotePresenceStory("down");
+export const RemotePresenceRecovered = remotePresenceStory("recovered");

@@ -99,6 +99,14 @@ const LIBRARY_FILTER_RAIL =
 const LIBRARY_PAGE =
 	"src/renderer/src/features/library/components/library-page.tsx";
 const read = (relative) => readFileSync(join(ROOT, relative), "utf8");
+/**
+ * The sidebar nav's accessible name comes from the English catalogue now: the
+ * ground below is found by the key the nav renders AND the message a reader
+ * hears, so a renamed key cannot leave this table reading an unrelated element.
+ */
+const SIDEBAR_COPY = JSON.parse(
+	read("src/i18n/catalogues/en/ui.chat.sidebar.json"),
+);
 
 /*
  * React stays out of this bundle and so does every package: `packages:
@@ -368,7 +376,15 @@ const carriesGround = (classes) => classes.includes("bg-row-selected");
 const rowStyle = literalOf(SIDEBAR, "rowStyle");
 const rowBoxStyle = literalOf(SIDEBAR, "rowBoxStyle");
 const rowCurrent = literalOf(SIDEBAR, "rowCurrent");
+const TEAM_BRIDGE_PAGE =
+	"src/renderer/src/features/team-bridge/team-bridge-page.tsx";
+const TEAM_BRIDGE_RAIL =
+	"src/renderer/src/features/team-bridge/team-bridge-rail.tsx";
+/** The rail's own row base, as the module spells it (stubbed into its `cn`). */
+const ROW = literalOf(TEAM_BRIDGE_RAIL, "ROW");
+
 const rowDragging = literalOf(SIDEBAR, "rowDragging");
+const rowDraggingMark = literalOf(SIDEBAR, "rowDraggingMark");
 
 /*
  * The current row's mark, and which elements carry it.
@@ -395,13 +411,17 @@ const CURRENT = [
 		 * predicate is declared once now (review round 1, A7) and the row reads the
 		 * name, so the element to resolve is the one carrying `rowStyle`.
 		 */
-		expression: () => expressionBefore(SIDEBAR, '"min-w-0 grow text-left"'),
+		expression: () => expressionBefore(SIDEBAR, '"min-w-0 grow text-start"'),
 		stubs: {
 			revealArmed: true,
 			rowStyle,
 			rowCurrent,
 			nested: false,
 			current: true,
+			// Grouped, current, but not held: cursor opt-in must coexist with selection.
+			tagDraggable: true,
+			rowTagDrag: { armedId: null },
+			row: { session_id: "synthetic-current-row" },
 		},
 		ground: true,
 	},
@@ -786,6 +806,25 @@ test("the mark is colour plus weight, and neither one can move the row", () => {
 	);
 });
 
+test("the grouped current conversation keeps selection while its cursor is held", () => {
+	const site = CURRENT.find(
+		(entry) => entry.what === "the selected conversation",
+	);
+	assert.ok(site, "the selected conversation must remain in CURRENT");
+	const idle = merged(site.file, site.expression(), site.stubs).split(/\s+/);
+	assert.ok(idle.includes("cursor-grab"));
+	const held = merged(site.file, site.expression(), {
+		...site.stubs,
+		rowTagDrag: { armedId: "synthetic-current-row" },
+	}).split(/\s+/);
+	assert.ok(held.includes("cursor-grabbing"));
+	assert.ok(!held.includes("cursor-grab"));
+	assert.ok(
+		carriesGround(held),
+		"the held cursor must not replace the current-row ground",
+	);
+});
+
 test("every current-row element keeps the ground under the pointer", () => {
 	for (const site of CURRENT) {
 		const classes = merged(site.file, site.expression(), site.stubs);
@@ -982,7 +1021,11 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// renders in the menu's portal, so it can never sit inside the current row
 				// and no `CURRENT` entry can or should resolve it. The refusal still has to
 				// LOOK like a refusal, which is why the pair is kept.
-				"hover:bg-transparent": 3,
+				// PLUS ONE (sidebar tags v3): the remote Tags… refusal carries the
+				// same reset. It is a ContextMenuItem in the portalled row menu,
+				// not an element inside a current conversation row; it cannot
+				// override rowCurrent and needs no CURRENT-table expression.
+				"hover:bg-transparent": 4,
 				// The New chat row's disabled reset: it paints NOTHING, which is why no
 				// expression has to resolve it. The bulk read receipt carries no reset of
 				// its own: it is the shared `Button` primitive now, whose disabled styling
@@ -1386,9 +1429,22 @@ const ROW_STATE_GROUNDS = [
 	{
 		what: "the chat sidebar's list panel",
 		rowFile: SIDEBAR,
-		expression: () => expressionBefore(SIDEBAR, '"min-w-0 grow text-left"'),
-		stubs: { rowStyle, rowCurrent, nested: false, current: true },
-		ground: () => literalClassAt(SIDEBAR, 'aria-label="Chats"', "after"),
+		expression: () => expressionBefore(SIDEBAR, '"min-w-0 grow text-start"'),
+		stubs: {
+			rowStyle,
+			rowCurrent,
+			nested: false,
+			current: true,
+			tagDraggable: true,
+			rowTagDrag: { armedId: null },
+			row: { session_id: "synthetic-current-row" },
+		},
+		ground: () =>
+			literalClassAt(
+				SIDEBAR,
+				'aria-label={t("ui.chat.sidebar.nav.chats")}',
+				"after",
+			),
 		groundFile: SIDEBAR,
 	},
 	{
@@ -1410,11 +1466,23 @@ const ROW_STATE_GROUNDS = [
 		 * only element that can carry it for the pair.
 		 */
 		expression: () => expressionBefore(APP_RAIL, "rowState,"),
-		stubs: { expanded: true, rowState: rowCurrent },
+		/*
+		 * THE HELD BRANCH IS PART OF THE SAME EXPRESSION (sidebar customisation,
+		 * design D2): a row being dragged wears `rowDragging` plus
+		 * `rowDraggingMark` on the same `<li>`, so the call site paints one of the
+		 * row roles in either state and both are resolved here.
+		 */
+		stubs: {
+			expanded: true,
+			rowState: rowCurrent,
+			held: true,
+			rowDragging,
+			rowDraggingMark,
+		},
 		ground: () =>
 			literalClassAt(
 				APP_RAIL,
-				"flex h-10 shrink-0 items-center gap-1 pr-2 pl-4",
+				"flex h-10 shrink-0 items-center gap-1 pe-2 ps-4",
 				"before",
 			),
 		groundFile: APP_RAIL,
@@ -1448,6 +1516,31 @@ const ROW_STATE_GROUNDS = [
 		stubs: { isSelected: true, rowCurrent },
 		ground: () => literalClassAt(AGENTS_SIDEBAR, "<SidebarHeader", "before"),
 		groundFile: AGENTS_SIDEBAR,
+	},
+	{
+		/*
+		 * The Team Bridge rail's conversation rows (and, by the same `selected ?
+		 * rowCurrent` shape, its person and chief-of-staff rows). The rows live in
+		 * the rail module and the ground on the page's `<aside>`, which is why the
+		 * ground is read from a different file than the row. Design round 1 (D2)
+		 * measured the selected row at 1.06:1 on `paper` while the aside had no
+		 * ground of its own; this entry is what keeps it on `surface`.
+		 */
+		what: "the Team Bridge rail",
+		rowFile: TEAM_BRIDGE_RAIL,
+		expression: () =>
+			expressionAfter(
+				TEAM_BRIDGE_RAIL,
+				"data-conversation-id={conversation.id}",
+			),
+		stubs: { ROW, selected: true, unread: 0, organizationName: "", rowCurrent },
+		ground: () =>
+			literalClassAt(
+				TEAM_BRIDGE_PAGE,
+				'data-glass-region="page-sidebar"',
+				"after",
+			),
+		groundFile: TEAM_BRIDGE_PAGE,
 	},
 	{
 		what: "the agents page's roster row",
@@ -1585,6 +1678,12 @@ test("every call site that paints a row state is painted on `surface`", () => {
 		`${painters.length} file(s) in the tree paint or name \`rowCurrent\` and ${named.length} are named in ROW_STATE_GROUNDS. A surface that paints the role has to have its ground asserted here; one that only names it in prose belongs in neither list, which is why the read excludes comments: ${JSON.stringify(painters)} vs ${JSON.stringify(named)}`,
 	);
 
+	assert.equal(
+		SIDEBAR_COPY["ui.chat.sidebar.nav.chats"],
+		"Chats",
+		"the sidebar's nav announces something other than `Chats`; the ground below is read from the element that name finds",
+	);
+
 	for (const entry of ROW_STATE_GROUNDS) {
 		const row = merged(entry.rowFile, entry.expression(), entry.stubs);
 		assert.ok(
@@ -1687,7 +1786,7 @@ test("settings current-page cue occupies the gutter without changing accessible 
 	assert.match(rail, /aria-label=\{labelled \? undefined : section\.label\}/);
 	assert.match(
 		rail,
-		/isActive && \(\s*<span\s+aria-hidden="true"\s+className="absolute left-1 top-1\/2 size-1 -translate-y-1\/2 rounded-full bg-accent"/,
+		/isActive && \(\s*<span\s+aria-hidden="true"\s+className="absolute start-1 top-1\/2 size-1 -translate-y-1\/2 rounded-full bg-accent"/,
 	);
 	assert.match(rail, /isActive \? "text-accent" : "text-ink-dim"/);
 	assert.match(rail, /<Tooltip content=\{section\.label\} side="right">/);
@@ -1739,8 +1838,10 @@ test("the settings rail's group lists carry no ground of their own", () => {
  */
 const ACCOUNT_ROW =
 	"src/renderer/src/shared/components/navigation/user-profile-sidebar.tsx";
-const TEAM_BRIDGE_PAGE =
-	"src/renderer/src/features/team-bridge/team-bridge-page.tsx";
+const TEAM_BRIDGE_MESSAGES =
+	"src/renderer/src/features/team-bridge/team-bridge-message-list.tsx";
+const TEAM_BRIDGE_COMPOSE =
+	"src/renderer/src/features/team-bridge/team-bridge-compose-bar.tsx";
 const TEAM_BUBBLE =
 	"src/renderer/src/features/chat/components/team-avatar-bubble.tsx";
 
@@ -2245,24 +2346,27 @@ const PLATES_INSIDE_ROW_STATES = [
 		fact: "object-cover",
 	},
 	{
-		what: "the browser tab strip's notch",
-		file: BROWSER_TABS,
+		/*
+		 * The Team Bridge thread's sender avatar. A message row takes `rowHover`
+		 * under the pointer, and `sunken` can sit on that rung, so the square
+		 * plate wears `border-control` to stay a shape on every palette. (The
+		 * merged list's organization chip this entry used to name is gone: the
+		 * Slack-style rail states the organization as a plain second line with
+		 * no plate of its own.)
+		 */
+		what: "the Team Bridge thread's sender avatar",
+		file: TEAM_BRIDGE_MESSAGES,
 		element: "span",
-		ground: "bg-elevated",
-		edge: false,
-		fact: "-bottom-px",
+		ground: "bg-sunken",
+		edge: true,
 	},
 	{
-		/*
-		 * The merged Team Bridge list's organization chip. `elevated` against
-		 * `rowHover` measures ΔE00 0.00 on `arcade`, so the fill alone is no
-		 * boundary on that palette; `border-control` is what keeps the chip
-		 * readable when the row under it is hovered or selected.
-		 */
-		what: "the merged list's organization chip",
-		file: TEAM_BRIDGE_PAGE,
+		/* The To: suggestion list's person initial; same reason, the option takes
+		   `rowHover` when it is the active descendant. */
+		what: "the Team Bridge compose suggestion's initial",
+		file: TEAM_BRIDGE_COMPOSE,
 		element: "span",
-		ground: "bg-elevated",
+		ground: "bg-sunken",
 		edge: true,
 	},
 	{
