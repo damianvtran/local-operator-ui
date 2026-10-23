@@ -3521,6 +3521,13 @@ function SessionPanel({
 	// See chat-title.ts for the TUI precedent both rules follow.
 	const title = resolveChatTitle({
 		draftKey,
+		/*
+		 * AND THE CONVERSATION THE ROW ALREADY CREATED, so the header stops calling
+		 * it a new chat (the operator's report, 2026-10-22: the header said
+		 * "New chat with <team>" over a pane showing - or reporting gone - a
+		 * conversation). `resolveChatTitle` states the rule.
+		 */
+		draftSessionId: draft?.sessionId,
 		draftTarget: loadedTargetDisplay,
 		liveTitle: canonical.frontend?.conversation_title,
 		// The row's own name, or - for a conversation this window has deleted - the
