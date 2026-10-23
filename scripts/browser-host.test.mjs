@@ -7415,6 +7415,7 @@ test("/health carries the capabilities this build serves", async () => {
 		"styles",
 		"hit_test",
 		"ancestors",
+		"query",
 		"download",
 		"upload",
 	]);
