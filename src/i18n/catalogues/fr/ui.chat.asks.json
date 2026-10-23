@@ -4,7 +4,7 @@
 	"ui.chat.asks.dismiss.answered_in_chat.title": "Répondu dans la conversation",
 	"ui.chat.asks.dismiss.cancel": "Annuler",
 	"ui.chat.asks.dismiss.heading": "Ignorer cette demande",
-	"ui.chat.asks.dismiss.in_flight": "Fermeture en cours…",
+	"ui.chat.asks.dismiss.in_flight": "En cours…",
 	"ui.chat.asks.dismiss.moot.note": "l’agent n’attendra plus de réponse",
 	"ui.chat.asks.dismiss.moot.title": "Plus nécessaire",
 	"ui.chat.asks.dismiss.receipt.answered_in_chat": "Ignorée — réglée dans la conversation",
