@@ -1,0 +1,49 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbr-r1-vi",
+  "session": "326f7079c3e5",
+  "date": "2026-10-21",
+  "locale": "vi",
+  "translator": "translator",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 20,
+  "scope": "Twenty-key reaction-picker delta: ui.teamBridge.reactions.* (add, search, categories, all, frequent, tone, toneDefault, empty, failed, category0-category8, choose, noResults). Inherit the base 2e16fb1456 full namespace audit for the other 109 values, all verified unchanged; no new full semantic audit of unchanged copy. Catalogue audit only, not rendered-fit, activation or release approval.",
+  "sha256": {
+    "en": "69f741a64df96b85b00e2f389bcda35bbbcc7cc023c4e2f31c997ef64fc0b50c",
+    "vi": "09e61647b0db2e6f42881846bec65daa96cb49d23698886bb870d89ecf72d49f",
+    "context": "ad0eef37d14411e02b07a083f3873518362734fefd8caa930cf4196728b2ef84"
+  },
+  "findings": [
+    {
+      "id": "VI-R1-1",
+      "severity": "NIT",
+      "key": "ui.teamBridge.reactions.toneDefault",
+      "current": "Màu da mặc định",
+      "proposed": "Tông màu da mặc định",
+      "note": "The select's aria-label (reactions.tone) says «Tông màu da» but its first visible option says «Màu da»; the same English term 'skin tone' should map to one rendering in the same control. The proposed 20 code points (en 17) sit in an auto-width 12px select in a 320px row, so they should fit, but this is a static estimate only. The current text is accurate and acceptable if a rendered check shows the select is tight."
+    }
+  ],
+  "inherited_receipt": {
+    "base": "2e16fb1456",
+    "path": "i18n/receipts/tbd-r2-vi.json",
+    "sha256": "b06b33c45ad38222050412836b2f095a369eab4905066f0e96b9443045851bd8",
+    "keys_inherited": 109,
+    "unchanged_values_verified": 109,
+    "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+    "base_target_sha256": "71339f089127558ebe551d701ab8fbb394322a61bb44843002310cb294195fdc"
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+  },
+  "validation": {
+    "independence": "This auditor did not translate or edit any catalogue or code, and did not stage, commit, stash or check out anything in the worktree. Only scratchpad files were written. Served as anthropic/claude-opus-5-5 throughout; no model switch or fallback was noticed.",
+    "semantics": "Read all 20 vi values against English, the context sidecar, and the rendering in team-bridge-emoji-picker.tsx and team-bridge-reactions.tsx. Terms: reaction → «cảm xúc» (Facebook/Messenger vi usage); emoji → «biểu tượng cảm xúc» (CLDR vi characterLabels 'emoji'). Phrasing matches existing vi precedents: «Tìm X» (Tìm tệp, Tìm phiên), «Không tìm thấy X» (Không tìm thấy tác nhân), «Không … được X. Hãy thử lại.» (ui.teamBridge.create.error, ui.teamBridge.composer.error), «Chọn X» (Chọn phiên), «Danh mục», «mặc định». Group names compared with CLDR vi characterLabels (fetched from cldr-json): people «người», body «cơ thể», activities «hoạt động», objects «đồ vật», flags «cờ», travel/place «du lịch»/«địa điểm» all match. The vi copy uses «và» for English 'and' (CLDR uses «hoặc»), «thiên nhiên» (CLDR «tự nhiên»), «thức uống» (CLDR «đồ uống») and «Biểu tượng» for Symbols (CLDR «ký hiệu»). These are accurate, idiomatic and, as far as recalled, match the iOS vi emoji-keyboard labels; that is not verified on a device. «Thường dùng» and «Tông màu da» are natural. Sentence case throughout; no «bạn»; no «!»; «Hãy thử lại» follows the namespace pattern; no open-syllable oa/uy tone-placement cases.",
+    "icu": "node with node_modules/@formatjs/icu-messageformat-parser parse() on each of the 20 vi values and their English sources: every value is a single literal node with zero arguments, matching English's zero. Key-set diff en vs vi: 129/129, none missing or extra; raw key lines 129, the 20 delta keys each appear once (no duplicates). The other 109 flattened values are byte-identical to git show 2e16fb1456:src/i18n/catalogues/vi/ui.teamBridge.json (109 equal, 0 differ). That base blob hashes to 71339f08…; base en blob 92f6c40f…; base receipt blob and worktree file both b06b33c4…. Whole file and each value are NFC; no U+200E/200F/202A–202E/2066–2069/061C; no leading/trailing whitespace; no BOM; trailing newline present. The target was re-hashed at start and before writing this receipt: 09e61647… both times.",
+    "terminology": "Within the 20: «biểu tượng cảm xúc» is used for emoji in search, categories, all, empty, noResults and choose; «cảm xúc» for reaction in add and failed — no drift. One drift: tone «Tông màu da» vs toneDefault «Màu da mặc định» (VI-R1-1, NIT). «cảm xúc» also means 'emotion' in category0 «Mặt cười và cảm xúc»; this is the standard Unicode group gloss, shown as a tab tooltip, and not confusing in context. empty and noResults are identical, as their English is.",
+    "overflow": "Static code-point lengths (vi/en). Visible strings: search placeholder 22/12 (w-80 input with px-3; likely fits); frequent 11/15 (shorter); toneDefault 15/17 (shorter); noResults 33/14 (wrapping <p className=p-4> in a 320px panel, no truncation; rendered check advised); failed 36/39 (shorter). aria/title-only: add 12/12, categories 27/16, all 25/9, tone 11/9, choose 23/15, empty 33/14, category0–8 19/19, 15/15, 23/18, 18/14, 19/17, 9/10, 6/7, 10/7, 2/5 (native title tooltips have no width budget). No rendered fit claim.",
+    "limitations": "Browser unavailable by task constraint. No screenshots, glyph metrics, visual-fit or native bidi-rendering claim. No catalogue/code edits."
+  }
+}
