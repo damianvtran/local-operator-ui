@@ -41,7 +41,11 @@ Story ids captured (light and dark unless noted):
   play, which stubs `navigator.clipboard.writeText` and asserts the full record
   value byte-for-byte)
 - `chat-sent-file-card--placement-unknown-no-claim`
-- `chat-sent-file-card--moved-or-deleted`
+- `chat-sent-file-card--moved-or-deleted` (the row carries a store path, so the
+  missing state's copy control copies the SAVED copy's path, labelled
+  "Copy saved copy path")
+- `chat-sent-file-card--moved-or-deleted-no-stored-path` (an older/remote row
+  with no store path: no copy control at all, never a control for the dead path)
 - `chat-canonical-user-card-measure--file-attachment`
 
 ## Before state
@@ -83,3 +87,7 @@ about a send.
 - **The answer path** (`--attach-prompt` / `--attach-expect-answer`) needs that
   route plus a provider that can answer. The scene refuses rather than reporting
   a staged-only pass when the send cannot be admitted.
+
+The missing state's recovery sentence names only what is true: the original file
+is gone from that path and the attachment store still keeps a saved copy. It does
+not promise that the agent can resend it — the card cannot make that happen.
