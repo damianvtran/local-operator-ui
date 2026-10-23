@@ -20,14 +20,25 @@
  * is the sentence a person reads.
  */
 
+import { isDesktopRefusalCode } from "../../../../../shared/desktop-contract";
+
 /**
- * A refused transcription, carrying the two things the copy needs.
+ * A refused transcription, carrying the three things the copy and the retry
+ * policy need.
  *
  * `Error.message` keeps the server's own `detail` verbatim so the console and
  * any future log reader still sees it; `status` is carried separately because the
  * refusal's own status is evidence the body cannot supply - the Radient
  * out-of-credits refusal is an HTTP 402 whose message this app does not own the
  * wording of.
+ *
+ * `code` is the third: a media refusal the DESKTOP PLANE composed rather than one
+ * the daemon answered ("this app holds no token", "the server did not answer")
+ * arrives on the same wire and with a status of its own, so the code travels
+ * beside it. Without it a pairing fact wearing a 503 would be read as a temporary
+ * server fault and retried twice before the sentence that names the real fix
+ * (#1087 review: `isTransientTranscriptionFailure` must never retry what the
+ * plane refused).
  *
  * Typed as a class rather than a shape so a caller cannot mistake an unrelated
  * `Error` for one of these: the mapper below reads `status` only from this type
@@ -37,10 +48,14 @@ export class TranscriptionRequestError extends Error {
 	/** The HTTP status the relay saw, or null when nothing answered. */
 	readonly status: number | null;
 
-	constructor(status: number | null, detail: string) {
+	/** The pairing/link refusal this was, when the desktop plane wrote it. */
+	readonly code?: string;
+
+	constructor(status: number | null, detail: string, code?: string) {
 		super(detail);
 		this.name = "TranscriptionRequestError";
 		this.status = status;
+		this.code = code;
 	}
 }
 
@@ -59,7 +74,10 @@ export class TranscriptionRequestError extends Error {
  *    re-sign-in rather than a retry.
  * 3. The provider's out-of-credits family, named after the provider when its own
  *    error text names one, and pointing at the destination that text gives.
- * 4. Anything else - the reason inside the server's message, then an action.
+ * 4. The transient class (`isTransientTranscriptionFailure`) - a 5xx, or a
+ *    gateway status that names no refusal: the only failure a person fixes by
+ *    doing the same thing again, and the one the client has already retried.
+ * 5. Anything else - the reason inside the server's message, then an action.
  *
  * WHY THE BODY FAMILIES ARE ORDERED THIS WAY, stated because a body can match
  * both ("Unauthorized: no credits remaining"): the credits family names a cause
@@ -75,6 +93,31 @@ export function transcriptionFailureMessage(error: unknown): string {
 
 	const detail = error instanceof Error ? error.message : "";
 	const flat = flatten(detail);
+	/*
+	 * THE FAULT THAT IS NOBODY'S DECISION (#1087). A 502 from the relay is the
+	 * daemon saying it could not finish the request at the upstream hop, and the
+	 * body it relays carries that hop's own status. The operator's case was a 500
+	 * from the billing-account check - a fault that clears on its own - and it
+	 * reached the reader as `Dictation failed: transcription failed upstream.
+	 * Upstream responded 500: {"error":"failed to check billing account"...`,
+	 * clipped mid-JSON, with "report it with the app's log" as the action: a
+	 * transient fault wearing a permanent refusal's clothes.
+	 *
+	 * The client retries this class (`createTranscriptionWithRetry`), so by the
+	 * time this sentence is on screen the retries are spent, and the two things
+	 * left to say are that the fault was temporary and that trying again is the
+	 * action.
+	 *
+	 * IT IS ASKED BEFORE THE EMPTY-BODY FALLBACK because a 5xx that sent no words
+	 * still names its own class: "the server gave no reason" would send a reader
+	 * with a temporary fault to the log instead of back to the control. It sits
+	 * AFTER the two refusal families because those are DIAGNOSES and this is the
+	 * absence of one: a 502 that wraps `insufficient_quota` is a refusal the
+	 * gateway happened to carry, and telling that reader to try again would be the
+	 * original defect with a friendlier word. `isTransientTranscriptionFailure`
+	 * re-checks them for the same reason - it is what the client's retry loop asks.
+	 */
+	if (isTransientTranscriptionFailure(error)) return UPSTREAM_TEMPORARY;
 	if (flat === "") return NO_REASON;
 	if (OUT_OF_CREDITS.test(flat)) {
 		const provider = upstreamProvider(flat);
@@ -114,6 +157,70 @@ export function transcriptionFailureMessage(error: unknown): string {
 	const end = reason.endsWith("…") ? " " : ". ";
 	return `Dictation failed: ${reason.replace(TRAILING_FULL_STOP, "")}${end}${UNKNOWN_ACTION}`;
 }
+
+/**
+ * Whether a failed transcription is worth sending again exactly as it stands.
+ *
+ * The audio is still here, so a retry costs a request and nothing of the user's:
+ * `TranscriptionApi.createTranscriptionWithRetry` re-sends the same take, and the
+ * composer keeps it for a manual retry once the automatic ones are spent. Before
+ * #1087 nothing retried: a transient upstream 500 arrived as a permanent-looking
+ * refusal and the take sat in state with no control that could reach it, so the
+ * user's only route was to record again.
+ *
+ * It answers TRUE for a 5xx the daemon or the upstream hop produced. The daemon
+ * documents the split (`stt/errors.py`, `failure_status_and_detail`): 502 is "the
+ * upstream call failed" - a provider fault, a Radient edge rejection, or a
+ * transport failure that never reached the upstream - 402 is a credit/quota
+ * decision, and 500 is left for its own internal faults. A 503/504 is the same
+ * class one hop out (the desktop relay's own transport refusal carries a CODE and
+ * is excluded above; a bare gateway 503 is time-fixable). The upstream's own 5xx
+ * also reaches the client INSIDE the body (`Upstream responded 500: ...`) when it
+ * rides a different carrier, which is the second half of the answer.
+ *
+ * It answers FALSE first, and deliberately, for every REFUSAL: a decision does
+ * not become temporary by riding a gateway status. Four shapes say so - a refusal
+ * the desktop plane composed (its `code`), the 402/401/403 statuses, the two body
+ * families above, and the daemon's own 4xx wordings relayed through a 502 (`The
+ * transcription request was refused upstream (HTTP 400)`, `Upstream responded
+ * 403: ...`, `refused the request (403)`). Retrying those spends the reader's
+ * time and the account's rate limit on a request that cannot start working.
+ */
+export function isTransientTranscriptionFailure(error: unknown): boolean {
+	/*
+	 * A TRANSPORT REFUSAL IS NOT A SERVER FAULT. The desktop plane composes these
+	 * itself (`desktop-api.ts` -> `mediaError`): no credential, a refused
+	 * credential, a plane that does not accept controls, or a server that did not
+	 * answer. They carry statuses that overlap the gateway class (503 above all),
+	 * and retrying them cannot fix the pairing they name.
+	 */
+	if (!(error instanceof TranscriptionRequestError)) return false;
+	if (isDesktopRefusalCode(error.code)) return false;
+	const status = error.status;
+	if (status === 402 || status === 401 || status === 403) return false;
+	const flat = flatten(error.message);
+	if (OUT_OF_CREDITS.test(flat) || REFUSED_SIGN_IN.test(flat)) return false;
+	if (UPSTREAM_REFUSAL.test(flat)) return false;
+	if (status !== null && status >= 500 && status <= 599) return true;
+	return UPSTREAM_FAILURE.test(flat);
+}
+
+/**
+ * What a TRANSIENT fault says, and the only sentence in the set whose action is
+ * a retry.
+ *
+ * The class is the one failure a person can fix by doing the same thing again,
+ * so the sentence names the fault as temporary and then names the action - a
+ * retry, which the composer hands back as a control on the retained take. It says
+ * "the transcription service" rather than the upstream hop because the retried
+ * class includes the daemon's own 5xx (`stt/errors.py` leaves 500 for its internal
+ * faults); naming a hop the failure may not have reached would be a diagnosis the
+ * app cannot make. It does not quote the body either: the truncated JSON that used
+ * to stand here was the diagnostic, and it read as a refusal. That body still
+ * reaches the console and the app's log on `error.message`.
+ */
+const UPSTREAM_TEMPORARY =
+	"Dictation failed: the transcription service had a temporary fault. Try again.";
 
 /**
  * The reason's own opening capital, lowered into the family's shape.
@@ -192,6 +299,23 @@ const SIGN_IN_REFUSED =
  */
 const TRANSCRIPTION_ACCOUNT_OUT_OF_CREDITS =
 	"Dictation failed: the account behind dictation is out of credits. If it's yours, top it up.";
+
+/** A 5xx the upstream itself answered, relayed in the daemon's own clause. */
+const UPSTREAM_FAILURE = /upstream\s+(?:responded|returned)\s+5\d\d/i;
+
+/**
+ * The daemon's wordings for a 4xx REFUSAL from the upstream hop.
+ *
+ * Three spellings, one per route through `stt/errors.py`: the legacy route's
+ * `refused upstream (HTTP 400)`, the direct-provider rungs' `refused the request
+ * (403)` / `refused the API key stored for it (HTTP 401)`, and the trailing
+ * clause's `Upstream responded 403: ...`. Matched narrowly rather than as "any
+ * 4xx in the text" because a provider's JSON error body can carry numbers of its
+ * own, and a false positive here would refuse to retry a fault that would have
+ * cleared.
+ */
+const UPSTREAM_REFUSAL =
+	/refused upstream\s*\(HTTP\s*4\d\d\)|upstream\s+(?:responded|returned)\s+4\d\d|\((?:HTTP\s*)?4\d\d\)/i;
 
 /**
  * Nothing to quote, and no cause worth guessing at.

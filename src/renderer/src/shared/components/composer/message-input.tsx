@@ -110,6 +110,7 @@ import {
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import {
 	EMPTY_TRANSCRIPTION_MESSAGE,
+	isTransientTranscriptionFailure,
 	transcriptionFailureMessage,
 } from "@shared/api/local-operator/transcription-failure";
 import type { AgentDetails } from "@shared/api/local-operator/types";
@@ -1998,6 +1999,38 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		const [isPreparing, setIsPreparing] = useState(false);
 		const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
 		const [isTranscribing, setIsTranscribing] = useState(false);
+		/*
+		 * THE TAKE THAT OUTLIVED ITS FAILURE (#1087).
+		 *
+		 * A take lands in `audioBlob` and is sent once; the effect below sends a take
+		 * once per (blob, nudge) pair, so a failed attempt used to leave the recording
+		 * sitting in state with nothing able to reach it - the user's speech, kept but
+		 * unreachable, and the only way back was to record again. `dictationFailure`
+		 * holds the sentence that offers the SAME bytes back when the failure is one
+		 * time can fix, and `dictationRetry` is the nudge that re-arms that one
+		 * effect: a retry is the first attempt's own path, never a second send path
+		 * beside it.
+		 *
+		 * Both are cleared when the take is retired - a new recording, a success - so
+		 * the offer cannot outlive the recording it describes.
+		 */
+		const [dictationFailure, setDictationFailure] = useState<string | null>(
+			null,
+		);
+		const [dictationRetry, setDictationRetry] = useState(0);
+		/*
+		 * WHAT HAS ALREADY BEEN SENT, and why it is a ref rather than a dependency.
+		 * `handleSendAudio` is re-created whenever the text writer's identity moves
+		 * (`appendTranscriptText` -> `appendToDraft` -> `handleChange`), which happens
+		 * on renders this composer does not control. The auto-send effect lists it
+		 * because the send IS that callback's, so identity churn alone used to re-fire
+		 * a send whose take was still in state. Measured on the #1087 rig: one failed
+		 * dictation produced TWO full retry bursts 115 ms apart - six upstream attempts
+		 * where three were owed - and the second burst hid the retained-take offer for
+		 * as long as it ran. A take is therefore sent once per (blob, nudge) PAIR,
+		 * which is what the effect's trigger actually means.
+		 */
+		const sentTakeRef = useRef<{ blob: Blob; attempt: number } | null>(null);
 		/*
 		 * The hint Enter's refusal shows (UX round 3 U13). A countdown, not a toggle,
 		 * so it cannot outlive the moment it explains.
@@ -6770,6 +6803,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						const completeAudioBlob = new Blob(audioChunksRef.current, {
 							type: "audio/webm",
 						});
+						// A new take supersedes any offer to resend the last one.
+						setDictationFailure(null);
 						setAudioBlob(completeAudioBlob);
 						// Stop all tracks on the stream to release the microphone
 						for (const track of stream.getTracks()) {
@@ -6902,12 +6937,26 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 
 			try {
 				setIsTranscribing(true);
-				const response = await TranscriptionApi.createTranscription(
+				const response = await TranscriptionApi.createTranscriptionWithRetry(
 					apiConfig.baseUrl,
 					{
 						file: new File([audioBlob], "recording.webm", {
 							type: "audio/webm",
 						}),
+					},
+					{
+						/*
+						 * THE RETRY IS WRITTEN DOWN WHERE SUPPORT LOOKS (#1087). The app's
+						 * own log is the artifact support asks for, and "the hop was tried
+						 * three times" is the one fact that separates a transient fault
+						 * from a refusal when the two wear the same sentence.
+						 */
+						onRetry: ({ attempt, total, delayMs, error }) => {
+							console.warn(
+								`Transcription attempt ${attempt}/${total} failed with a transient upstream fault; retrying in ${delayMs} ms.`,
+								error,
+							);
+						},
 					},
 				);
 				if (response.result?.text) {
@@ -6931,6 +6980,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					 */
 					showInfoToast(EMPTY_TRANSCRIPTION_MESSAGE);
 				}
+				// The take landed: nothing is left to offer back.
+				setDictationFailure(null);
 				setAudioBlob(null); // Clear the blob after sending
 			} catch (error) {
 				// The raw server message stays on the console; the toast names the
@@ -6938,18 +6989,59 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				// `transcriptionFailureMessage`), because "please try again" cannot
 				// fix an account with no credits or a refused sign-in.
 				console.error("Error transcribing audio:", error);
+				/*
+				 * THE TAKE STAYS WHEN TIME COULD FIX IT (#1087). A transient upstream
+				 * fault - the one class `isTransientTranscriptionFailure` names, and the
+				 * one the client has just retried - is the failure where sending the same
+				 * bytes again is an action a person can take, so the recording is offered
+				 * back rather than left in a state nothing can reach. A refusal keeps the
+				 * old behaviour: re-sending a decision cannot change it, and offering to
+				 * would be the "try again" lie this copy exists to delete.
+				 */
+				setDictationFailure(
+					isTransientTranscriptionFailure(error)
+						? transcriptionFailureMessage(error)
+						: null,
+				);
 				showErrorToast(transcriptionFailureMessage(error));
 			} finally {
 				setIsTranscribing(false);
 			}
 		}, [audioBlob, appendTranscriptText]);
 
-		// Automatically send audio for transcription when audioBlob is set
+		/**
+		 * Send the kept take again.
+		 *
+		 * The bump is what re-arms the auto-send effect below, so a retry rides the
+		 * same path the first attempt took - one owner of "a take is being sent"
+		 * (`isTranscribing`), one place that retires it. The offer is withdrawn in the
+		 * same commit, so a second press cannot queue a send nothing asked for.
+		 */
+		const retryDictation = useCallback(() => {
+			setDictationFailure(null);
+			setDictationRetry((attempt) => attempt + 1);
+		}, []);
+
+		/*
+		 * One effect owns every attempt. `dictationRetry` is a TRIGGER rather than an
+		 * input - it exists so the kept take can be sent again without a second send
+		 * path - and the ref above is what keeps the callback's identity churn from
+		 * being a second trigger: the send fires once per (blob, nudge) pair.
+		 */
 		useEffect(() => {
-			if (audioBlob) {
-				handleSendAudio();
+			if (!audioBlob) {
+				sentTakeRef.current = null;
+				return;
 			}
-		}, [audioBlob, handleSendAudio]);
+			if (
+				sentTakeRef.current?.blob === audioBlob &&
+				sentTakeRef.current.attempt === dictationRetry
+			) {
+				return;
+			}
+			sentTakeRef.current = { blob: audioBlob, attempt: dictationRetry };
+			handleSendAudio();
+		}, [audioBlob, dictationRetry, handleSendAudio]);
 
 		/*
 		 * THE DICTATION CHORD ASKS THE BOX TO BE ON SCREEN (agent review round 1,
@@ -9303,6 +9395,36 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 									{t("ui.chat.composer.processing_audio")}
 								</span>
 								<WaveformAnimation />
+							</div>
+						)}
+						{/*
+						 * THE OFFER, in the slot the transcribing row vacates (#1087).
+						 *
+						 * The toast names the fault and the action; this row exists because a
+						 * toast cannot carry the control those words point at, and the take it
+						 * would spend is already in hand - one press, no re-recording. It is a
+						 * row rather than a toast action because a toast dismisses and the
+						 * take does not: the offer has to last as long as the recording does.
+						 *
+						 * It renders only once the attempts are spent (`!isTranscribing`), so
+						 * the row never appears while a send is still in flight.
+						 */}
+						{dictationFailure !== null && !isTranscribing && (
+							<div
+								data-dictation-retry=""
+								className="mt-1 flex items-center gap-2 px-2 [min-height:1.5rem]"
+							>
+								<span className="font-medium text-body-sm text-ink-muted">
+									{dictationFailure}
+								</span>
+								<Button
+									type="button"
+									variant="link"
+									size="sm"
+									onClick={retryDictation}
+								>
+									{t("ui.common.actions.retry")}
+								</Button>
 							</div>
 						)}
 						{/*

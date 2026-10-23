@@ -441,12 +441,28 @@ export const InlineEdit: FC<InlineEditProps> = ({
 
 		try {
 			setIsTranscribing(true);
-			const response = await TranscriptionApi.createTranscription(
+			/*
+			 * THE SAME RETRY THE COMPOSER TAKES (#1087). The canvas's dictation is a
+			 * second surface over the same relay, and the sentence both surfaces show is
+			 * chosen once (`transcriptionFailureMessage`); leaving this call on the
+			 * single-attempt path would have made that shared sentence's "temporary"
+			 * claim true on one surface and not the other. The take is re-sent from the
+			 * bytes already in hand, so nothing is re-recorded here either.
+			 */
+			const response = await TranscriptionApi.createTranscriptionWithRetry(
 				apiConfig.baseUrl,
 				{
 					file: new File([audioBlob], "recording.webm", {
 						type: "audio/webm",
 					}),
+				},
+				{
+					onRetry: ({ attempt, total, delayMs, error }) => {
+						console.warn(
+							`Transcription attempt ${attempt}/${total} failed with a transient upstream fault; retrying in ${delayMs} ms.`,
+							error,
+						);
+					},
 				},
 			);
 			if (response.result?.text) {
