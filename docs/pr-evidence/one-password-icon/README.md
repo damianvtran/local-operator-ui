@@ -39,8 +39,11 @@ the per-entry match below.
 
 Matching the rendered badge against each candidate image (LANCZOS round-trip
 to 128 x 128, MSE after compositing on the dialog's ground). The crop is the
-icon slot at **(312,218)-(440,346)** in the 1024 x 874 capture; the ground is
-**RGB(46,46,46)**, sampled from the dialog panel beside it. The candidates are
+icon slot at **(312,218)-(440,346)** in the 1024 x 874 capture; the compositing
+background for the icon's transparent corners is **RGB(46,46,46)**. (The flat
+dialog panel beside the slot is **RGB(72,71,71)**; the same ranking holds at that
+ground, and the after badge sits at 3.3 MSE there. 46 is quoted because it is the
+value the listed absolute numbers reproduce.) The candidates are
 the seven ICNS entries plus 24/48/96 px resamples of the 1024 master:
 
 - Before: **16 px entry, MSE 150.0**; then 24 = 479.8, 32 = 803.7, 48 = 1,171.7,
