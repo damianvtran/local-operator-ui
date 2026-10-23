@@ -734,6 +734,22 @@ rule:
   the dirty-suppression half is covered against the shipped module by
   `scripts/canvas-file-freshness.test.mjs`.
 
+- **`mesh-tab`** — the Mesh tab's device census against a live daemon, and the
+  one scene that reads its expectation from the DAEMON rather than from a
+  fixture. `--mesh-expect tombstones` is the base tree, which drew every member
+  id as a device node, so a revoked membership (`active: false`, a tombstone the
+  relay keeps for audit) appeared as a peer that had not answered;
+  `--mesh-expect collapsed` is the fixed tree, which draws only devices with an
+  active membership and carries the revoked memberships in one inspectable
+  count. The scene asks `/v1/desktop/networks` for the same rows the app renders,
+  derives the live ids and the tombstone ids, and refuses to run on a mesh with
+  no revoked membership: a pair photographed on a clean mesh would not be
+  evidence about this defect. It captures the canvas and the list in the
+  `--theme` this run claims, then opens the revoked count with a real press and
+  photographs the audit rows. What it cannot prove: that a tombstone was created
+  through this UI (the daemon's fixture predates the run), and that the relay's
+  90-day retention pruned anything.
+
 - **It is isolated from the operator's state, not from the network.** The run
   reaches no backend — the scratch `.env` points the app at a port the script
   verified dead, and the run asserts the app holds no connection to the URL the
