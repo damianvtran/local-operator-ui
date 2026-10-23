@@ -118,9 +118,15 @@ export const DefaultOnBanner: FC<DefaultOnBannerProps> = ({
 						</Button>
 					</div>
 					{expanded && (
-						<div
+						<section
 							id={detailsId}
-							className="rounded-md bg-sunken p-3"
+							// At the native minimum the full disclosure is taller than the
+							// thread pane. Scroll only its text, keeping dismiss/opt-out
+							// actions and the composer reachable. The named page container
+							// limits this to narrow Bridge panes; approved desktop geometry
+							// and Settings' own scrolling remain unchanged (design D2).
+							className="rounded-md bg-sunken p-3 @max-[1024px]/bridge:max-h-[35dvh] @max-[1024px]/bridge:overflow-y-auto focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+							aria-label={t("ui.agentMessages.banner.read")}
 							data-agent-messages-banner-consent=""
 						>
 							{consentText ? (
@@ -132,7 +138,7 @@ export const DefaultOnBanner: FC<DefaultOnBannerProps> = ({
 									{t("ui.agentMessages.banner.consent_unavailable")}
 								</p>
 							)}
-						</div>
+						</section>
 					)}
 					{failure && (
 						<p role="alert" className="text-body-sm text-ink">

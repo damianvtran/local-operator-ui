@@ -1,0 +1,28 @@
+{
+  "source": "browser styles before narrow cap, real flex shell",
+  "layout_box": [
+    0,
+    0,
+    800,
+    600
+  ],
+  "banner": [
+    312,
+    4,
+    464,
+    809.5
+  ],
+  "consent": [
+    347,
+    137,
+    416,
+    667.5
+  ],
+  "consent_overflow_y": "visible",
+  "composer": [
+    304,
+    861.5,
+    480,
+    40
+  ]
+}

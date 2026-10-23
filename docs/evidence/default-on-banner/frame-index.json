@@ -438,6 +438,198 @@
       "sha256": "0cc4b222e997483dec3db244468e5417fe963ddcddc174da6f38b2934914c36b",
       "bytes": 198472,
       "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-v1-light-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d1-desktop-expanded-dark-initial.png",
+      "sha256": "ff74f985892a0f91a1eeda787cceed5faef8d80f1f8aca349cbf436fb1ca6bd3",
+      "bytes": 396809,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d1-desktop-expanded-dark-settled.png",
+      "sha256": "ff74f985892a0f91a1eeda787cceed5faef8d80f1f8aca349cbf436fb1ca6bd3",
+      "bytes": 396809,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d1-desktop-expanded-light-initial.png",
+      "sha256": "362034ef3c8496b0064bbda0155544c61bd8a94eb3ca252db3ed73a14b668de9",
+      "bytes": 394280,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d1-desktop-expanded-light-settled.png",
+      "sha256": "362034ef3c8496b0064bbda0155544c61bd8a94eb3ca252db3ed73a14b668de9",
+      "bytes": 394280,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d1-green-off-dark-initial.png",
+      "sha256": "115679bb8e8bb0705b0a039c90a22c3db7cf087f0d21d5b251138fadf9982e53",
+      "bytes": 30459,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d1-green-off-dark-settled.png",
+      "sha256": "115679bb8e8bb0705b0a039c90a22c3db7cf087f0d21d5b251138fadf9982e53",
+      "bytes": 30459,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d1-green-off-light-initial.png",
+      "sha256": "a7d95de52db231ea8ab866bb0d94a9f2d5d3c2fa606fd764119955af3a0bb9ec",
+      "bytes": 29131,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d1-green-off-light-settled.png",
+      "sha256": "a7d95de52db231ea8ab866bb0d94a9f2d5d3c2fa606fd764119955af3a0bb9ec",
+      "bytes": 29131,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d1-red-off-light.png",
+      "sha256": "67370eaeb6aff118692651a32378526cb416da071fe57a083d99d749ea6a23eb",
+      "bytes": 153945,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-contact.jpg",
+      "sha256": "eca054a649f1d25f8a244c55a69e94c95fbab503a3e3eea4966f7eb319757292",
+      "bytes": 184011,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-disclosure-end-dark-initial.png",
+      "sha256": "dc7b112b9ed8c380d7810fc995da3b0d94487e79271bb5fb01f7e3a573dc178a",
+      "bytes": 246281,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-disclosure-end-dark-settled.png",
+      "sha256": "dc7b112b9ed8c380d7810fc995da3b0d94487e79271bb5fb01f7e3a573dc178a",
+      "bytes": 246281,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-disclosure-end-light-initial.png",
+      "sha256": "0c8b5c1c4dc375c523a85883849ab8218dd155e0a1fef2699bc282825f19f624",
+      "bytes": 245763,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-disclosure-end-light-settled.png",
+      "sha256": "0c8b5c1c4dc375c523a85883849ab8218dd155e0a1fef2699bc282825f19f624",
+      "bytes": 245763,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-dark-initial.png",
+      "sha256": "2101ae8596b045b72176247698a6718f803a64d1981e99e74bee400c3759b315",
+      "bytes": 242353,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-dark-settled.png",
+      "sha256": "2101ae8596b045b72176247698a6718f803a64d1981e99e74bee400c3759b315",
+      "bytes": 242353,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-french-dark-initial.png",
+      "sha256": "d99dc92a9afcf340872db0150250c9b38990fdf3a7ae58f4343dfe3b8c25884e",
+      "bytes": 255577,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-french-dark-settled.png",
+      "sha256": "d99dc92a9afcf340872db0150250c9b38990fdf3a7ae58f4343dfe3b8c25884e",
+      "bytes": 255577,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-french-light-initial.png",
+      "sha256": "83799d80b13c8f32bb01908334b0a0f5e75bad3bdf0d3e51452f399f539b3e14",
+      "bytes": 254693,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-french-light-settled.png",
+      "sha256": "83799d80b13c8f32bb01908334b0a0f5e75bad3bdf0d3e51452f399f539b3e14",
+      "bytes": 254693,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-light-initial.png",
+      "sha256": "6ae1c915be72de5af2378a7dac87cf5e110cbc327dccda8189585f1bf9692ef5",
+      "bytes": 242016,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-light-settled.png",
+      "sha256": "6ae1c915be72de5af2378a7dac87cf5e110cbc327dccda8189585f1bf9692ef5",
+      "bytes": 242016,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-urdu-dark-initial.png",
+      "sha256": "fbe3cd4bcb9e55b8ec29cb3e5e922fe0ba16310a45d992fc454b9d677dadbd53",
+      "bytes": 246443,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-urdu-dark-settled.png",
+      "sha256": "fbe3cd4bcb9e55b8ec29cb3e5e922fe0ba16310a45d992fc454b9d677dadbd53",
+      "bytes": 246443,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-urdu-light-initial.png",
+      "sha256": "7434f20b187b5c5d748a4c91e76ffe14106db57e055104ee02eb58905a839726",
+      "bytes": 245327,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-urdu-light-settled.png",
+      "sha256": "7434f20b187b5c5d748a4c91e76ffe14106db57e055104ee02eb58905a839726",
+      "bytes": 245327,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-off-observed-dark-initial.png",
+      "sha256": "517370517ca44d090a72b608fd1e450d126befc9809a7fd15b4aa17115ebff67",
+      "bytes": 30574,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-off-observed-dark-settled.png",
+      "sha256": "517370517ca44d090a72b608fd1e450d126befc9809a7fd15b4aa17115ebff67",
+      "bytes": 30574,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-off-observed-light-initial.png",
+      "sha256": "c2113cf022507536eacdea194409488f83484fa6085efcbfa154a21f9ac252e9",
+      "bytes": 29256,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-off-observed-light-settled.png",
+      "sha256": "c2113cf022507536eacdea194409488f83484fa6085efcbfa154a21f9ac252e9",
+      "bytes": 29256,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-red-minimum-expanded-light-settled.png",
+      "sha256": "63da8b8206946e2f8b44c1fc573c4a29c918548658f7a8a33ec01acd2c3fe997",
+      "bytes": 340471,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d1-final-contact.jpg",
+      "sha256": "e58b4ed9f5c64857d840dbbacb9e5cc35f330318990aa7bb05da6097573cbc27",
+      "bytes": 164357,
+      "source": "D1/D2 browser follow-up; ignored local artifact, no published URL claimed"
     }
   ]
 }

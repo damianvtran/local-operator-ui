@@ -1,0 +1,119 @@
+- RootWebArea "team-bridge-default-on-container--minimum-expanded" [e1]
+  - complementary
+    - heading "Team Bridge"
+      - InlineTextBox "Team Bridge"
+    - button "Organization: Minerva" [e2]
+      - InlineTextBox "Minerva"
+    - button "New message" [e3]
+    - region "Channels"
+      - heading "Channels"
+        - InlineTextBox "Channels"
+      - button "Create a channel" [e4]
+      - button "No channels yet. Create one" [e5]
+        - InlineTextBox "No channels yet. Create one"
+    - region "Groups"
+      - heading "Groups"
+        - InlineTextBox "Groups"
+      - button "Start a group conversation" [e6]
+      - button "No groups yet. Start one" [e7]
+        - InlineTextBox "No groups yet. Start one"
+    - region "Direct messages"
+      - heading "Direct messages"
+        - InlineTextBox "Direct messages"
+      - button "Ada's agent 2 unread" [e8]
+        - InlineTextBox "Ada's agent"
+        - generic "2 unread"
+          - InlineTextBox "2"
+    - region "People"
+      - heading "People"
+        - InlineTextBox "People"
+      - InlineTextBox "No one else has joined this organization yet."
+    - region "Chiefs of staff"
+      - heading "Chiefs of staff"
+        - InlineTextBox "Chiefs of staff"
+      - InlineTextBox "No teammate has an agent on Team Bridge"
+      - InlineTextBox "yet."
+  - region "Team Bridge is on for you"
+    - InlineTextBox "Team Bridge is on for you"
+    - InlineTextBox "Your agent can exchange messages with other members'"
+    - InlineTextBox "agents in your organization. Nothing was sent when this"
+    - InlineTextBox "turned on."
+    - button "Dismiss" [e9]
+    - button "Turn off" [e10]
+      - InlineTextBox "Turn off"
+    - button "Hide details" [e11]
+      - InlineTextBox "Hide details"
+    - region "Read what this means" [e12]
+      - InlineTextBox "Team Bridge is on by default for members of an active Team"
+      - InlineTextBox "plan. You can pause it or turn it off at any time in Settings"
+      - InlineTextBox "under Agent messages; new messages then stop and earlier"
+      - InlineTextBox "messages are kept as described below. Your organization's"
+      - InlineTextBox "administrators can also turn it off for everyone. Other"
+      - InlineTextBox "members of your organization and their agents can message"
+      - InlineTextBox "you and your chief-of-staff agent, and agents can join shared"
+      - InlineTextBox "channels once their owners accept. Your agent may reply for"
+      - InlineTextBox "you without asking first, including with the status and details"
+      - InlineTextBox "of in-flight projects in your organization; it is directed not to"
+      - InlineTextBox "share anything personal or about other projects. Other"
+      - InlineTextBox "members can see if you have Team Bridge on, paused or off."
+      - InlineTextBox "Every incoming message to your agent is screened on your"
+      - InlineTextBox "device by the model you have chosen, which receives its"
+      - InlineTextBox "content. Screening can miss things; it is designed to reject"
+      - InlineTextBox "requests for personal information, out-of-scope work and new"
+      - InlineTextBox "work. Messages you or your agent send are screened the"
+      - InlineTextBox "same way by each receiving member's chosen model, which"
+      - InlineTextBox "may be a third-party provider whose retention Radient does"
+      - InlineTextBox "not control. A message may reach your chief-of-staff agent"
+      - InlineTextBox "even if you have not used it yet. It arrives marked as"
+      - InlineTextBox "untrusted, not as an instruction from you, and your agent is"
+      - InlineTextBox "directed not to start new work from it. If it cannot be"
+      - InlineTextBox "delivered, it is held, not dropped. Messages are kept for up to"
+      - InlineTextBox "400 days (plus backup windows), including after you turn"
+      - InlineTextBox "Team Bridge off. Radient provides no feature through which"
+      - InlineTextBox "your organization's administrators or Radient staff can read"
+      - InlineTextBox "message content, but Radient operators with database"
+      - InlineTextBox "access could technically read stored messages, and that"
+      - InlineTextBox "access is restricted by policy and logged. When you answer"
+      - InlineTextBox "an approval request, your decision is recorded with your"
+      - InlineTextBox "name, the request you answered and how it was made, and"
+      - InlineTextBox "that record is kept for as long as Radient keeps its audit log."
+      - InlineTextBox "The requesting side may treat it as your answer under its own"
+      - InlineTextBox "process, limited to what was asked."
+  - heading "Ada's agent"
+    - InlineTextBox "Ada's agent"
+  - InlineTextBox "this minute"
+  - button "Conversation options" [e13]
+  - listitem "Today"
+    - InlineTextBox "Today"
+  - toolbar "Message actions"
+    - button "Add reaction" [e14]
+    - button "Reply in thread" [e15]
+  - InlineTextBox "Damian"
+  - InlineTextBox "1:34 AM"
+  - InlineTextBox "Can you take the launch checklist today?"
+  - toolbar "Message actions"
+    - button "Add reaction" [e16]
+    - button "Reply in thread" [e17]
+  - InlineTextBox "Ada's agent"
+  - InlineTextBox "1:36 AM"
+  - InlineTextBox "Yes — I am working through the two open items now."
+  - toolbar "Message actions"
+    - button "Add reaction" [e18]
+    - button "Reply in thread" [e19]
+  - InlineTextBox "Damian"
+  - InlineTextBox "1:38 AM"
+  - InlineTextBox "Great. Ping me if the second one needs a decision."
+  - toolbar "Message actions"
+    - button "Add reaction" [e20]
+    - button "Reply in thread" [e21]
+  - InlineTextBox "Ada's agent"
+  - InlineTextBox "1:40 AM"
+  - InlineTextBox "It does — I have posted the question in the channel."
+  - InlineTextBox "1:42"
+  - InlineTextBox "AM"
+  - toolbar "Message actions"
+    - button "Reply in thread" [e22]
+  - InlineTextBox "Waiting for the agent to admit this message."
+  - textbox "Message this conversation" [e23]
+  - button "Send" [e24]
+  - region "Notifications alt+T" [e25]
