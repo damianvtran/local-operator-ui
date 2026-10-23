@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
+import { inventory } from "./desktop-test-shards.mjs";
 
 /*
  * Every `scripts/*.test.mjs` runs somewhere CI runs, or says why not.
@@ -54,11 +55,7 @@ const EXEMPT = {
 
 test("every scripts/*.test.mjs is run by test:desktop or exempt with a reason", () => {
 	const pkg = JSON.parse(readFileSync("package.json", "utf8"));
-	const listed = new Set(
-		(
-			pkg.scripts["test:desktop"].match(/scripts\/[\w.-]+\.test\.mjs/g) ?? []
-		).map((path) => path.replace(/\\/g, "/")),
-	);
+	const listed = new Set(inventory(pkg.scripts["test:desktop"]));
 	const files = readdirSync("scripts")
 		.filter((name) => name.endsWith(".test.mjs"))
 		.map((name) => `scripts/${name}`)
