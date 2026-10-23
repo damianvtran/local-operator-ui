@@ -822,7 +822,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			 * `browser-pane.tsx` column already pads from y0, so `h-full` is right
 			 * and a second pad here would double it. Both hosts stay `relative` so
 			 * the surface's own absolutes never escape to an unrelated ancestor; the
-			 * address popout anchors to the strip wrapper below, not to this root.
+			 * permanent address row owns its own in-flow placement below the strip.
 			 */
 			className={
 				isRoutePage
