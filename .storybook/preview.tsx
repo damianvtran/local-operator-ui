@@ -341,6 +341,52 @@ const LocaleFrame = ({
 	return <>{children}</>;
 };
 
+/**
+ * THE CHROME FRAME: one story arg that puts the document in a platform's chrome
+ * geometry, so a shell frame can be captured at the macOS lane the product
+ * actually ships instead of at `--chrome-strip-h: 0`.
+ *
+ * WHY IT IS AN ARG AND NOT A STORY DECORATOR. The lane, the sidebar pad and the
+ * route body are shell decisions; a story that wants the 32px strip must not
+ * re-spell the attributes the app's `main.tsx` writes. This is the one writer
+ * in Storybook, and it writes exactly the four facts `useWindowChrome` writes
+ * (mode, platform, leading, trailing) plus fullscreen=false. The CSS derives
+ * `--chrome-strip-h: 32px` from that pair, so the frame measures the same
+ * variable the window does.
+ *
+ * DRIVEN BY `?args=chrome:mac32`; `native` clears the attributes so every
+ * existing story keeps the geometry it had before this existed.
+ */
+const CHROME_ATTRS = [
+	"chromeMode",
+	"chromePlatform",
+	"chromeLeading",
+	"chromeTrailing",
+	"chromeFullscreen",
+] as const;
+
+const ChromeFrame = ({
+	chrome,
+	children,
+}: {
+	chrome: string;
+	children: ReactNode;
+}) => {
+	useLayoutEffect(() => {
+		const root = document.documentElement;
+		if (chrome !== "mac32") return;
+		root.dataset.chromeMode = "integrated";
+		root.dataset.chromePlatform = "mac";
+		root.dataset.chromeLeading = "false";
+		root.dataset.chromeTrailing = "false";
+		root.dataset.chromeFullscreen = "false";
+		return () => {
+			for (const name of CHROME_ATTRS) delete root.dataset[name];
+		};
+	}, [chrome]);
+	return <>{children}</>;
+};
+
 const preview: Preview = {
 	parameters: {
 		controls: {
@@ -362,8 +408,14 @@ const preview: Preview = {
 		theme: { control: { type: "select" }, options: THEME_IDS },
 		locale: { control: { type: "select" }, options: LOCALE_IDS },
 		glass: { control: { type: "select" }, options: ["off", "on"] },
+		chrome: { control: { type: "select" }, options: ["native", "mac32"] },
 	},
-	args: { theme: DEFAULT_THEME, locale: DEFAULT_LOCALE, glass: "off" },
+	args: {
+		theme: DEFAULT_THEME,
+		locale: DEFAULT_LOCALE,
+		glass: "off",
+		chrome: "native",
+	},
 	decorators: [
 		(Story, context) => {
 			const queryClient = queryClientFor(context.id);
@@ -371,6 +423,7 @@ const preview: Preview = {
 			const locale =
 				(context.args.locale as string | undefined) ?? DEFAULT_LOCALE;
 			const glass = context.args.glass === "on";
+			const chrome = (context.args.chrome as string | undefined) ?? "native";
 			const storyOwnsGlass = Boolean(context.parameters?.glass) && !glass;
 			const muiTheme = getTheme(theme).theme;
 
@@ -400,7 +453,9 @@ const preview: Preview = {
 										>
 											<ThemeFrame theme={theme}>
 												<LocaleFrame locale={locale}>
-													<Story />
+													<ChromeFrame chrome={chrome}>
+														<Story />
+													</ChromeFrame>
 												</LocaleFrame>
 											</ThemeFrame>
 										</GlassFrame>
