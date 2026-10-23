@@ -43,6 +43,8 @@ writeFileSync(
 export const fixture = {
 	identity: "acct_alice",
 	account: { total: 0, organizations: [] },
+ accountGate: null,
+ accountError: false,
 	tenants: {},
 	conversations: { conversations: [] },
 	listGate: null,
@@ -130,9 +132,37 @@ writeFileSync(mountPath, bundled.outputFiles[0].text);
 const api = await import(pathToFileURL(mountPath.pathname).href);
 const { fixture } = api;
 
+// The nav regression uses the production API parser and controlled preload,
+// not the notification policy fixture's API replacement. Share React/Query
+// instances with the actual mounted provider, and retain normal cleanup.
+const navMountPath = new URL(
+	`./_team-bridge-nav-mount-${process.pid}.mjs`,
+	import.meta.url,
+);
+const navBundle = await build({
+	stdin: {
+		contents:
+			'export { useTeamBridgeNavItem } from "./src/renderer/src/features/team-bridge/team-bridge-nav";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	packages: "external",
+	write: false,
+	tsconfig: "tsconfig.app.json",
+	alias: {
+		"@shared": `${process.cwd()}/src/renderer/src/shared`,
+		"@features": `${process.cwd()}/src/renderer/src/features`,
+	},
+});
+writeFileSync(navMountPath, navBundle.outputFiles[0].text);
+const navApi = await import(navMountPath.href);
+
 after(() => {
 	try {
 		unlinkSync(mountPath);
+		unlinkSync(navMountPath);
 	} catch {
 		/* already gone */
 	}
@@ -171,7 +201,7 @@ const notifyRow = (conversationId, latestSeq) => ({
 	muted: false,
 });
 
-const mount = async () => {
+const mount = async ({ nav = false } = {}) => {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		pretendToBeVisual: true,
 		url: "http://localhost/",
@@ -196,6 +226,50 @@ const mount = async () => {
 			},
 		},
 	};
+	if (nav)
+		dom.window.api.desktop.request = async (request) => {
+			if (request.op === "team_bridge.status")
+				return {
+					status: 200,
+					body: {
+						result: {
+							capability: 1,
+							state: "ready",
+							account_id: fixture.identity,
+							tenant_id: "tnt_nav",
+							surface_state: "D",
+							visibility: {
+								settings: true,
+								inbox: true,
+								account_door: true,
+								onboarding: false,
+							},
+							update_required: false,
+							local: { enabled: true, onboarding: "done", session: "present" },
+							status: null,
+							consent: null,
+							error: null,
+						},
+					},
+				};
+			assert.equal(
+				request.op,
+				"team_bridge.unread",
+				"only actual nav reads reach this preload",
+			);
+			assert.equal(
+				request.scope,
+				"account",
+				"nav preserves the existing account aggregate",
+			);
+			fixture.calls.unread.push(request.scope);
+			const answer = fixture.account;
+			const refused = fixture.accountError;
+			if (fixture.accountGate) await fixture.accountGate;
+			return refused
+				? { status: 503, body: { detail: "Controlled nav read refusal" } }
+				: { status: 200, body: { result: answer } };
+		};
 	const { createRoot } = await import("react-dom/client");
 	const client = new QueryClient({
 		defaultOptions: { queries: { retry: false, gcTime: 1_000 } },
@@ -213,10 +287,33 @@ const mount = async () => {
 		settings: [{ key: "display.notifications", value: true }],
 	});
 	let enabled = true;
-	const Probe = () => {
+	const frames = [];
+	const NotificationProbe = () => {
 		api.useTeamBridgeNotifications(enabled);
 		return null;
 	};
+	// Mount the shipped sidebar hook and its real query hooks. Only the API
+	// boundary above is a fixture; neither the descriptor nor badge is reimplemented.
+	const NavProbe = () => {
+		const item = navApi.useTeamBridgeNavItem(enabled);
+		return React.createElement(
+			React.Profiler,
+			{
+				id: "real-nav-owner",
+				onRender: () =>
+					frames.push({
+						account: client.getQueryData(api.teamBridgeKeys.status)?.account_id,
+						attention: item?.attention ?? null,
+					}),
+			},
+			React.createElement(
+				"output",
+				{ "data-nav-attention": item?.attention },
+				item ? String(item.attention) : "hidden",
+			),
+		);
+	};
+	const Probe = nav ? NavProbe : NotificationProbe;
 	const root = createRoot(dom.window.document.getElementById("root"));
 	await act(async () => {
 		root.render(
@@ -230,6 +327,19 @@ const mount = async () => {
 	return {
 		client,
 		notifications,
+		frames,
+		attention: () => dom.window.document.querySelector("output")?.textContent,
+		async observeOwner(accountId) {
+			fixture.identity = accountId;
+			await act(async () =>
+				client.setQueryData(api.teamBridgeKeys.status, {
+					account_id: accountId,
+					state: "ready",
+					local: { enabled: true },
+					read_only: false,
+				}),
+			);
+		},
 		setEnabled: async (value) => {
 			enabled = value;
 			await act(async () =>
@@ -275,6 +385,8 @@ const settle = () =>
 const resetFixture = () => {
 	fixture.identity = "acct_alice";
 	fixture.account = { total: 0, organizations: [] };
+	fixture.accountGate = null;
+	fixture.accountError = false;
 	fixture.tenants = {};
 	fixture.conversations = { conversations: [] };
 	fixture.listGate = null;
@@ -865,3 +977,151 @@ for (const scenario of [
 		}
 	});
 }
+
+// SEC-R2-1: d5 omitted accountId at the actual sidebar caller. A helper-only
+// unread test missed it: the fail-closed reader refused before the API boundary.
+test("real sidebar nav dispatches one owned aggregate and shows its unread total", async () => {
+	resetFixture();
+	fixture.account = { total: 7, organizations: [] };
+	const mounted = await mount({ nav: true });
+	try {
+		await until(() => mounted.attention() === "7", "actual nav badge seven");
+		assert.deepEqual(fixture.calls.unread, ["account"]);
+		assert.equal(
+			mounted.client.getQueryData(
+				api.teamBridgeKeys.unread("all", "acct_alice"),
+			).total,
+			7,
+		);
+		assert.equal(
+			mounted.client.getQueryData(api.teamBridgeKeys.unread("all")),
+			undefined,
+		);
+		await mounted.setEnabled(false);
+		assert.equal(mounted.attention(), "hidden");
+		assert.deepEqual(fixture.calls.unread, ["account"]);
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+test("real nav switches away from a warm A badge and never falls back to unowned data", async () => {
+	resetFixture();
+	fixture.account = { total: 7, organizations: [] };
+	const mounted = await mount({ nav: true });
+	let release;
+	try {
+		await until(() => mounted.attention() === "7", "A badge seven");
+		fixture.account = { total: 2, organizations: [] };
+		fixture.accountGate = new Promise((resolve) => {
+			release = resolve;
+		});
+		await mounted.observeOwner("acct_bob");
+		await until(
+			() => fixture.calls.unread.length === 2,
+			"B owned aggregate dispatch",
+		);
+		assert.equal(mounted.attention(), "0");
+		assert.ok(
+			mounted.frames
+				.filter((frame) => frame.account === "acct_bob")
+				.every((frame) => frame.attention !== 7),
+		);
+		await act(async () => release());
+		await until(() => mounted.attention() === "2", "B badge two");
+		await mounted.observeOwner(null);
+		await act(async () =>
+			mounted.client.setQueryData(api.teamBridgeKeys.unread("all"), {
+				total: 999,
+				organizations: [],
+			}),
+		);
+		await settle();
+		assert.equal(mounted.attention(), "0");
+		assert.equal(fixture.calls.unread.length, 2);
+		assert.ok(
+			mounted.frames
+				.filter((frame) => frame.account == null)
+				.every((frame) => frame.attention === 0),
+		);
+	} finally {
+		release?.();
+		await mounted.teardown();
+	}
+});
+
+test("real nav rejects A's late aggregate after B owns the sidebar", async () => {
+	resetFixture();
+	fixture.account = { total: 7, organizations: [] };
+	let release;
+	fixture.accountGate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const mounted = await mount({ nav: true });
+	try {
+		await until(
+			() => fixture.calls.unread.length === 1,
+			"held A aggregate dispatch",
+		);
+		fixture.account = { total: 2, organizations: [] };
+		fixture.accountGate = null;
+		await mounted.observeOwner("acct_bob");
+		await until(() => mounted.attention() === "2", "B aggregate admitted");
+		await act(async () => release());
+		await until(
+			() =>
+				mounted.client.getQueryState(
+					api.teamBridgeKeys.unread("all", "acct_alice"),
+				)?.fetchStatus === "idle",
+			"old A read settled/refused",
+		);
+		assert.equal(mounted.attention(), "2");
+		assert.equal(
+			mounted.client.getQueryData(
+				api.teamBridgeKeys.unread("all", "acct_alice"),
+			),
+			undefined,
+		);
+		assert.equal(fixture.calls.unread.length, 2);
+		assert.ok(
+			mounted.frames
+				.filter((frame) => frame.account === "acct_bob")
+				.every((frame) => frame.attention !== 7),
+		);
+	} finally {
+		release?.();
+		await mounted.teardown();
+	}
+});
+
+test("real nav keeps a refused B aggregate empty until B's own read succeeds", async () => {
+	resetFixture();
+	fixture.account = { total: 7, organizations: [] };
+	const mounted = await mount({ nav: true });
+	try {
+		await until(() => mounted.attention() === "7", "admitted A count");
+		fixture.account = { total: 2, organizations: [] };
+		fixture.accountError = true;
+		await mounted.observeOwner("acct_bob");
+		const key = api.teamBridgeKeys.unread("all", "acct_bob");
+		await until(
+			() => mounted.client.getQueryState(key)?.status === "error",
+			"B read refused including its normal retry",
+		);
+		assert.equal(mounted.attention(), "0");
+		assert.ok(
+			mounted.frames
+				.filter((frame) => frame.account === "acct_bob")
+				.every((frame) => frame.attention !== 7),
+		);
+		fixture.accountError = false;
+		await act(async () => mounted.client.invalidateQueries({ queryKey: key }));
+		await until(
+			() => mounted.attention() === "2",
+			"B count from admitted B response",
+		);
+	} finally {
+		fixture.accountError = false;
+		await mounted.teardown();
+	}
+});
