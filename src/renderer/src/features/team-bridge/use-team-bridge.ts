@@ -70,19 +70,27 @@ import {
  */
 const ROOT = ["team-bridge"] as const;
 
+// Admission belongs to an account as well as a tenant. Append the owner so
+// existing invalidation prefixes still work, without exposing another account's
+// cached private rows while its own request is pending or refused.
+const readOwner = (accountId?: string) =>
+	accountId ? ["account", accountId] : [];
+
 export const teamBridgeKeys = {
 	all: ROOT,
-	conversations: (scope: TeamBridgeScope) =>
-		[...ROOT, "conversations", scope] as const,
+	conversations: (scope: TeamBridgeScope, accountId?: string) =>
+		[...ROOT, "conversations", scope, ...readOwner(accountId)] as const,
 	conversationsPrefix: [...ROOT, "conversations"] as const,
-	messages: (conversationId: string, tenantId?: string) =>
+	messages: (conversationId: string, tenantId?: string, accountId?: string) =>
 		[
 			...ROOT,
 			"messages",
 			tenantId ?? "unknown-tenant",
 			conversationId,
+			...readOwner(accountId),
 		] as const,
-	unread: (scope: TeamBridgeScope) => [...ROOT, "unread", scope] as const,
+	unread: (scope: TeamBridgeScope, accountId?: string) =>
+		[...ROOT, "unread", scope, ...readOwner(accountId)] as const,
 	unreadPrefix: [...ROOT, "unread"] as const,
 	/*
 	 * The People section's two reads. The directory is keyed by TENANT (the
@@ -91,7 +99,8 @@ export const teamBridgeKeys = {
 	 * under the new title. The status read is one key: the platform state does
 	 * not vary by scope.
 	 */
-	directory: (tenantId: string) => [...ROOT, "directory", tenantId] as const,
+	directory: (tenantId: string, accountId?: string) =>
+		[...ROOT, "directory", tenantId, ...readOwner(accountId)] as const,
 	status: [...ROOT, "status"] as const,
 };
 
@@ -116,9 +125,10 @@ function badgeInterval(): number {
 export function useTeamBridgeConversations(
 	scope: TeamBridgeScope,
 	enabled = true,
+	accountId?: string,
 ): UseQueryResult<TeamBridgeConversationList> {
 	return useQuery({
-		queryKey: teamBridgeKeys.conversations(scope),
+		queryKey: teamBridgeKeys.conversations(scope, accountId),
 		queryFn: () => TeamBridgeApi.listConversations(readScope(scope)),
 		enabled,
 		staleTime: 15_000,
@@ -130,9 +140,14 @@ export function useTeamBridgeMessages(
 	conversationId: string | null,
 	tenantId?: string,
 	enabled = true,
+	accountId?: string,
 ): UseQueryResult<TeamBridgeMessagePage> {
 	return useQuery({
-		queryKey: teamBridgeKeys.messages(conversationId ?? "none", tenantId),
+		queryKey: teamBridgeKeys.messages(
+			conversationId ?? "none",
+			tenantId,
+			accountId,
+		),
 		queryFn: () =>
 			TeamBridgeApi.listMessages(conversationId as string, { tenantId }),
 		enabled: enabled && Boolean(conversationId),
@@ -172,9 +187,10 @@ export function useTeamBridgeIdentity(
 export function useTeamBridgeDirectory(
 	tenantId: string | null,
 	enabled = true,
+	accountId?: string,
 ): UseQueryResult<TeamBridgeDirectory> {
 	return useQuery({
-		queryKey: teamBridgeKeys.directory(tenantId ?? "none"),
+		queryKey: teamBridgeKeys.directory(tenantId ?? "none", accountId),
 		queryFn: () => TeamBridgeApi.directory(tenantId as string),
 		enabled: enabled && Boolean(tenantId),
 		staleTime: 30_000,
@@ -201,10 +217,11 @@ export function useTeamBridgeDirectory(
 export function useTeamBridgeDirectories(
 	tenantIds: readonly string[],
 	enabled = true,
+	accountId?: string,
 ): Readonly<Record<string, readonly TeamBridgeDirectoryMember[]>> {
 	return useQueries({
 		queries: tenantIds.map((tenantId) => ({
-			queryKey: teamBridgeKeys.directory(tenantId),
+			queryKey: teamBridgeKeys.directory(tenantId, accountId),
 			queryFn: () => TeamBridgeApi.directory(tenantId),
 			enabled,
 			staleTime: 30_000,
@@ -258,6 +275,7 @@ export function useTeamBridgeUnread(
 	enabled: boolean,
 	scope: TeamBridgeScope = TEAM_BRIDGE_ALL_SCOPE,
 	options: {
+		accountId?: string;
 		/**
 		 * Override the badge's own cadence. The notification watcher asks for 30 s
 		 * so a banner arrives on the order of a message rather than a badge
@@ -273,7 +291,7 @@ export function useTeamBridgeUnread(
 	} = {},
 ): UseQueryResult<TeamBridgeUnread> {
 	return useQuery({
-		queryKey: teamBridgeKeys.unread(scope),
+		queryKey: teamBridgeKeys.unread(scope, options.accountId),
 		queryFn: () => TeamBridgeApi.unread(readScope(scope)),
 		enabled,
 		staleTime: 30_000,

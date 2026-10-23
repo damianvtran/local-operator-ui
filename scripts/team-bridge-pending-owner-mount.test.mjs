@@ -108,6 +108,25 @@ for (const boundary of ["account", "tenant"]) {
 	}
 }
 
+test("cached confirmed history requires the current account's own admission", async () => {
+	const page = await mountPendingOwnerPage({ existing: true });
+	try {
+		await page.seedConfirmed("A admitted confirmed private body");
+		await page.changeOwner("account");
+		await page.selectExisting();
+		assert.equal(
+			page.text().includes("A admitted confirmed private body"),
+			false,
+		);
+		assert.equal(
+			page.foreignFrames("A admitted confirmed private body").length,
+			0,
+		);
+	} finally {
+		await page.close();
+	}
+});
+
 for (const permission of ["off", "readonly"]) {
 	for (const action of ["create", "retry", "dialog"]) {
 		test(`${permission} revocation fences pending ${action}`, async () => {
