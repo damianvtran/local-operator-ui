@@ -42303,10 +42303,40 @@ async function sceneRouteTops(cdp) {
 			const laneStops = [
 				...gradient.matchAll(/(rgba?\\([^)]*\\))\\s+([0-9.]+)px/g),
 			].map((match) => ({ colour: match[1], stop: Number(match[2]) }));
+			/*
+			 * THE REAL GROUND AT y8, from the element stack rather than the lane's
+			 * gradient: the lane is transparent now, so what a reader sees in the
+			 * strip is whichever panel is behind it. The body, html and #app are
+			 * SKIPPED deliberately - they paint the window's fallback canvas, and
+			 * accepting them would let a hole read as a panel. A probe therefore
+			 * answers only when a panel owns that pixel, which is the contract.
+			 */
+			const groundAt = (x) => {
+				for (const el of document.elementsFromPoint(x, 8)) {
+					if (el === document.body || el === document.documentElement || el.id === "app") continue;
+					const bg = getComputedStyle(el).backgroundColor;
+					if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") {
+						return { x: Math.round(x), bg, tag: el.tagName.toLowerCase() };
+					}
+				}
+				return { x: Math.round(x), bg: null, tag: null };
+			};
+			const sidebar = box(document.querySelector("[data-sidebar-shell]") || document.querySelector("[data-sidebar-strip]"));
+			const stripX = [4, window.innerWidth - 4, window.innerWidth / 2];
+			if (sidebar) stripX.push(sidebar.left + sidebar.width / 2);
+			if (leading) stripX.push(leading.left + leading.width / 2);
+			const settingsRailEl = document.querySelector('nav[aria-label="Settings sections"]');
+			if (settingsRailEl) {
+				const r = settingsRailEl.getBoundingClientRect();
+				stripX.push(r.left + r.width / 2);
+			}
+			const stripGrounds = [...new Set(stripX.map((x) => Math.round(x)))].map(groundAt);
 			return {
 				platform: document.documentElement.getAttribute("data-chrome-platform"),
 				mode: document.documentElement.getAttribute("data-chrome-mode"),
 				viewport: { width: window.innerWidth, height: window.innerHeight },
+				routeFlush: ownRoot ? getComputedStyle(ownRoot).marginTop : null,
+				stripGrounds,
 				lane: box(lane),
 				laneDisplay: lane ? getComputedStyle(lane).display : null,
 				laneStops,
@@ -42377,157 +42407,78 @@ async function sceneRouteTops(cdp) {
 		laneDrawn;
 
 	if (macIntegrated) {
-		for (const [, path, reading] of readings) {
-			check(
-				`${path}: the route's own first box starts on the lane's bottom edge (${laneBottom}px)`,
-				reading.route !== null &&
-					Math.abs(reading.route.top - laneBottom) < 0.5,
-				`the route's first box is at y ${reading.route === null ? "(absent)" : reading.route.top} against a lane that ends at ${laneBottom}`,
-				`route y ${reading.route === null ? "(absent)" : reading.route.top}, sidebar y ${reading.sidebar === null ? "(none)" : reading.sidebar.top}, settings rail y ${reading.settingsRail === null ? "(none)" : reading.settingsRail.top}, settings content y ${reading.settingsContent === null ? "(none)" : reading.settingsContent.top}`,
-			);
-		}
 		/*
-		 * THE LANE CARRIES EVERY GROUND BESIDE IT, and since 2026-09-27 that means
-		 * each column's OWN rung rather than an assumed `surface`. On the rail that
-		 * rung is `surface` again (it held `elevated` from 2026-09-27 to 2026-09-30,
-		 * and gave it up when the split it required was reported as mismatched
-		 * blocks inside the rail), so on this tree the lane paints the sidebar's
-		 * width in `surface`, the rail's width in `surface` too, then `canvas` - and
-		 * the two agent rosters have always been `surface`. The rule is what is
-		 * asserted rather than today's value: the rail is INSIDE the clipped content
-		 * column and cannot paint above its own top edge, so the lane is the only
-		 * thing that can carry its ground to y0, and the check below fails if the lane
-		 * paints anything but the rung the column is actually standing on. The
-		 * operator reported the band half of this twice (2026-09-26, and again
-		 * 2026-09-27 as still true).
-		 *
-		 * THE RULES ARE GONE, and this is where the half a source test cannot see it
-		 * is refused: no stop in the lane's resolved gradient may paint the hairline
-		 * role on any route. The operator's first sentence - "the right border doesn't
-		 * go all the way up ... either make it extend all the way up or remove the
-		 * right border" - is answered with the removal on every column, because each
-		 * boundary those rules drew is a tone step now, and a rule could only ever
-		 * begin at the lane's lower edge (nothing a route renders reaches y0), which
-		 * is the half-drawn edge being reported.
-		 *
-		 * THE SUBJECT IS DERIVED, NOT LOOKED UP BY THE HANDLE THE FIX ADDS. Asking the
-		 * page for the marker would make this guard pass on the unfixed tree - the
-		 * marker is not there, every reading comes back null, and a check with nothing
-		 * to check is a check that cannot fail (measured on the base tree: all six
-		 * routes "passed" as routes with no leading column). The rule is derived
-		 * instead, from the layout on both trees: a full-height column on a column rung
-		 * of the ladder at the route's own left edge. The registration and the rung it
-		 * was handed are then asked for separately, so a column nobody handed over - or
-		 * one handed over on a stale rung - fails by name rather than quietly becoming
-		 * "no column here".
-		 *
-		 * The control is the routes that draw no such column (chat, schedules, agent
-		 * hub, projects, browser): there the band stays exactly the app sidebar's width,
-		 * which is what keeps this from being a rule that quietly widens every route's
-		 * band.
+		 * THE PANEL CONTRACT, IN THE RUNNING APP. The lane is a transparent overlay,
+		 * so there is no gradient left to read: what has to be true is that the
+		 * route's own box reaches y0 when it is a panel (its computed margin-top is
+		 * the negative `panel-flush`) or begins on the strip's edge when it is an
+		 * ordinary page, and that every probe at y8 across the window is a panel's
+		 * own ground. `stripGrounds` walks the element stack and skips html/body/#app,
+		 * so the window's fallback canvas cannot stand in for a panel.
 		 */
 		for (const [, path, reading] of readings) {
-			if (!reading.lane || reading.laneDisplay === "none") continue;
-			const laneLeft = reading.lane.left;
-			/*
-			 * The lane's colour at an x in lane coordinates, read off the RESOLVED
-			 * stop list: each stop owns its colour from its own position to the next
-			 * stop's, which is what makes a sample either side of an edge a claim about
-			 * the ground CHANGING there rather than about a single stop existing.
-			 */
-			const laneColourAt = (x) => {
-				let colour = reading.laneStops[0]?.colour ?? null;
-				for (const stop of reading.laneStops) {
-					if (x >= stop.stop) colour = stop.colour;
-				}
-				return colour;
-			};
-			const sidebarEdge = reading.sidebar
-				? reading.sidebar.left + reading.sidebar.width - laneLeft
-				: null;
 			check(
-				`${path}: no rule is painted in the lane`,
-				reading.laneStops.every(
-					(stop) => stop.colour !== reading.hairlineGround,
-				),
-				`the lane's stops are ${reading.laneStops.map((s) => `${s.colour} ${s.stop}px`).join(", ")} against the hairline role's ${reading.hairlineGround}`,
+				`${path}: the route's own first box starts at y0 (panel) or the strip's edge (ordinary page)`,
+				reading.route !== null &&
+					(Math.abs(reading.route.top) < 0.5 ||
+						Math.abs(reading.route.top - laneBottom) < 0.5),
+				`the route's first box is at y ${reading.route === null ? "(absent)" : reading.route.top}; lane ends at ${laneBottom}; route margin-top ${reading.routeFlush}`,
+				`route y ${reading.route === null ? "(absent)" : reading.route.top}, sidebar y ${reading.sidebar === null ? "(none)" : reading.sidebar.top}, settings rail y ${reading.settingsRail === null ? "(none)" : reading.settingsRail.top}, settings content y ${reading.settingsContent === null ? "(none)" : reading.settingsContent.top}`,
+			);
+			check(
+				`${path}: the route root declares which side of the lane it is on`,
+				reading.routeFlush !== null &&
+					(Number.parseFloat(reading.routeFlush) < -0.5 ||
+						Math.abs(reading.route.top - laneBottom) < 0.5),
+				`route margin-top ${reading.routeFlush}: a panel root must cancel the shell's pad with \`panel-flush\`, and an ordinary page must start on the strip's edge`,
+			);
+			check(
+				`${path}: every probe at y8 is a panel's own ground`,
+				reading.stripGrounds.length > 0 &&
+					reading.stripGrounds.every((probe) =>
+						[
+							reading.surfaceGround,
+							reading.canvasGround,
+							reading.elevatedGround,
+						].includes(probe.bg),
+					),
+				`the y8 probes read ${reading.stripGrounds.map((p) => `${p.x}px=${p.bg ?? "NOTHING"}<${p.tag ?? "-"}>`).join(", ")} against surface ${reading.surfaceGround}, canvas ${reading.canvasGround}, elevated ${reading.elevatedGround}`,
+			);
+			check(
+				`${path}: the window's left edge in the strip belongs to the sidebar's surface`,
+				reading.stripGrounds[0]?.bg === reading.surfaceGround,
+				`x${reading.stripGrounds[0]?.x} reads ${reading.stripGrounds[0]?.bg}`,
 			);
 			if (reading.leadingColumn) {
 				const column = reading.leadingColumn;
-				const edge = column.left + column.width;
-				const laneEdge = edge - laneLeft;
+				const mid = column.left + column.width / 2;
 				check(
-					`${path}: the route's leading column is handed to the shell`,
-					reading.registeredColumn !== null &&
-						Math.abs(reading.registeredColumn.left - column.left) < 0.5,
-					`the column at x ${column.left} is ${reading.registeredColumn === null ? "not registered at all" : `registered at x ${reading.registeredColumn.left}`}`,
-				);
-				check(
-					`${path}: the shell is handed the rung the column is painted in`,
-					reading.markerGround !== null &&
-						reading.markerGround === reading.leadingColumnGround,
-					`the marker says ${JSON.stringify(reading.markerValue)} (${reading.markerGround}) against a column painted ${reading.leadingColumnGround}`,
-				);
-				/*
-				 * SENTENCE ONE OF THE REPORT, IN THE RUNNING APP: "the right border
-				 * doesn't go all the way up ... either make it extend all the way up or
-				 * remove the right border" - answered with removal on every column.
-				 * Both elements are read because the rule lived on a different level per
-				 * route (the settings rail's wrapper, the rosters' own boxes), and this
-				 * check has to fail on the before tree for all three - which it does:
-				 * on `origin/main` the settings rail's wrapper and the rosters' boxes each
-				 * compute a 1px border-right-WIDTH here. (The width, not the style:
-				 * Tailwind's preflight leaves `border-right-style: solid` on every box, so
-				 * the style reads `solid` whether or not a rule is drawn, and only the
-				 * width separates 1px of rule from 0px of none.)
-				 */
-				check(
-					`${path}: neither the column nor its hand-over draws a right rule`,
-					reading.leadingColumnRule === "0px" &&
-						reading.registeredRule === "0px",
-					`column border-right-width ${reading.leadingColumnRule}, registered border-right-width ${reading.registeredRule} - a rule here can only begin at the lane's lower edge (y 32), not at y0`,
-				);
-				check(
-					`${path}: the lane carries the column's own ground across its width`,
+					`${path}: the route's leading column paints its own ground through the strip`,
 					reading.leadingColumnGround !== null &&
-						laneColourAt((laneEdge + (column.left - laneLeft)) / 2) ===
-							reading.leadingColumnGround,
-					`mid-column the lane paints ${laneColourAt((laneEdge + (column.left - laneLeft)) / 2)} against the column's own ${reading.leadingColumnGround}`,
+						reading.stripGrounds.some(
+							(probe) =>
+								Math.abs(probe.x - mid) <= 1 &&
+								probe.bg === reading.leadingColumnGround,
+						),
+					`at x${Math.round(mid)} the strip reads ${JSON.stringify(reading.stripGrounds.filter((p) => Math.abs(p.x - mid) <= 1))} against the column's ${reading.leadingColumnGround} - a leading column that stops at y32 is the operator's original report`,
 				);
 				check(
-					`${path}: the lane's canvas resumes at the column's right edge (${edge}px)`,
-					laneColourAt(laneEdge - 1) === reading.leadingColumnGround &&
-						laneColourAt(laneEdge + 1) === reading.canvasGround,
-					`left of the edge ${laneColourAt(laneEdge - 1)}, right of it ${laneColourAt(laneEdge + 1)}, against the column's ${reading.leadingColumnGround} and canvas ${reading.canvasGround}`,
-				);
-				if (sidebarEdge !== null) {
-					check(
-						`${path}: the surface band still starts at the app sidebar's own edge (${sidebarEdge}px from the lane's left)`,
-						laneColourAt(sidebarEdge - 1) === reading.surfaceGround,
-						`the lane paints ${laneColourAt(sidebarEdge - 1)} just left of the sidebar's edge, against the surface role's ${reading.surfaceGround}`,
-					);
-				}
-			} else if (sidebarEdge !== null) {
-				check(
-					`${path}: with no leading column the surface band stops at the app sidebar's own edge (${sidebarEdge}px from the lane's left)`,
-					laneColourAt(sidebarEdge - 1) === reading.surfaceGround &&
-						laneColourAt(sidebarEdge + 1) === reading.canvasGround,
-					`left of the edge ${laneColourAt(sidebarEdge - 1)}, right of it ${laneColourAt(sidebarEdge + 1)}`,
+					`${path}: the column draws no right rule`,
+					reading.leadingColumnRule === "0px",
+					`column border-right-width ${reading.leadingColumnRule} - the boundary beside it is a tone step now`,
 				);
 			}
 		}
 		/*
-		 * The app sidebar is the control for the same number, WHERE IT EXISTS to be
-		 * read: `[data-sidebar-shell]` is the docked column's marker, so at 800 - where
-		 * the dock collapses to the 56px strip - the filter below skips this check rather
-		 * than comparing a box that is not there. On every route at 1380 the sidebar's
-		 * first row sat on the lane's bottom before the report and must still, or the fix
-		 * moved the one column that was never wrong.
+		 * THE APP SIDEBAR IS THE CONTROL, and under the panel contract its own top
+		 * is y0: it paints `surface` through the strip and pads its first row below
+		 * it. The old reading compared it to the lane's bottom edge, which is the
+		 * reserved row this pass removes.
 		 */
 		for (const [, path, reading] of readings.filter(([, , r]) => r.sidebar)) {
 			check(
-				`${path}: the app sidebar still starts on the lane's bottom edge (${laneBottom}px)`,
-				Math.abs(reading.sidebar.top - laneBottom) < 0.5,
+				`${path}: the app sidebar starts at y0, not below the strip`,
+				Math.abs(reading.sidebar.top) < 0.5,
 				`the sidebar's own top is ${reading.sidebar.top}`,
 			);
 		}
