@@ -68,6 +68,7 @@ import {
 	type ThreadTarget,
 	threadTargetFromSearch,
 } from "./team-bridge-thread-read";
+import { useReportTeamBridgeViewing } from "./team-bridge-viewing";
 import {
 	useCreateTeamBridgeConversation,
 	useJoinTeamBridgeConversation,
@@ -510,6 +511,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			!previewSelected &&
 			!selectedOrganizationUnknown,
 	);
+	// A focused window is quiet only for the conversation actually on screen.
+	useReportTeamBridgeViewing(shown?.id);
 	const canCompose =
 		!readOnly &&
 		!previewSelected &&
