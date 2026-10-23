@@ -1,11 +1,13 @@
+import { Button } from "@shared/components/ui/button";
 import { formatDate, formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Bot, UserRound } from "lucide-react";
+import { Bot, MessageSquare, UserRound } from "lucide-react";
 import type { FC } from "react";
 import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
 import { type ThreadItem, threadItems } from "./team-bridge-model";
+import { threadSummary } from "./team-bridge-threads-model";
 
 /**
  * The thread, drawn the way Slack and Discord draw a channel, not a messenger.
@@ -45,7 +47,8 @@ import { type ThreadItem, threadItems } from "./team-bridge-model";
 export const TeamBridgeMessageList: FC<{
 	messages: readonly TeamBridgeMessage[];
 	labelFor: (sender: TeamBridgeMessage["sender"]) => string | null;
-}> = ({ messages, labelFor }) => {
+	onReply?: (message: TeamBridgeMessage) => void;
+}> = ({ messages, labelFor, onReply }) => {
 	const locale = useI18nLocale();
 	const items = threadItems(messages, new Date());
 	return (
@@ -60,6 +63,7 @@ export const TeamBridgeMessageList: FC<{
 						continuation={item.continuation}
 						label={labelFor(item.message.sender)}
 						locale={locale}
+						onReply={onReply}
 					/>
 				),
 			)}
@@ -102,7 +106,9 @@ const MessageRow: FC<{
 	continuation: boolean;
 	label: string | null;
 	locale: string;
-}> = ({ message, continuation, label: known, locale }) => {
+	onReply?: (message: TeamBridgeMessage) => void;
+}> = ({ message, continuation, label: known, locale, onReply }) => {
+	const summary = threadSummary(message);
 	const agent = message.sender.kind === "agent";
 	const label =
 		known ??
@@ -119,8 +125,9 @@ const MessageRow: FC<{
 		: "";
 	return (
 		<li
+			data-message-id={message.id}
 			className={cn(
-				"group/message flex gap-3 px-5 transition-colors duration-fast ease-out-quart hover:bg-row-hover",
+				"group/message relative flex gap-3 px-5 transition-colors duration-fast ease-out-quart hover:bg-row-hover",
 				continuation ? "py-0.5" : "mt-2 pt-1.5 pb-0.5",
 			)}
 		>
@@ -166,6 +173,22 @@ const MessageRow: FC<{
 					</span>
 				)}
 			</div>
+			{onReply && !message.thread_root_id && (
+				/* A row hover can equal any ladder ground on some palette. Like the
+				   sibling hover tools, use a ghost control whose ink/focus outline is
+				   the affordance, not a new filled plate needing its own boundary. */
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon-sm"
+					aria-label={t("ui.teamBridge.replies.action")}
+					title={t("ui.teamBridge.replies.action")}
+					onClick={() => onReply(message)}
+					className="absolute right-4 top-0 opacity-0 focus-visible:opacity-100 group-hover/message:opacity-100"
+				>
+					<MessageSquare size={16} />
+				</Button>
+			)}
 			<div className="min-w-0 flex-1">
 				{!continuation && (
 					<div className="flex items-baseline gap-2">
@@ -201,6 +224,39 @@ const MessageRow: FC<{
 					<TeamBridgeMarkdown className="team-bridge-message-body text-[14px] text-ink">
 						{message.body}
 					</TeamBridgeMarkdown>
+				)}
+				{onReply && summary.count > 0 && (
+					<button
+						type="button"
+						onClick={() => onReply(message)}
+						className="mt-1 flex items-center gap-2 rounded-md py-1 text-[12px] text-accent hover:bg-row-hover"
+					>
+						<span aria-hidden="true" className="flex gap-0.5">
+							{summary.participants.map((name, index) => (
+								<span
+									key={`${index}:${name}`}
+									// Initials are ink, not plates: the summary button already owns
+									// the row-hover state, so nesting a ladder fill loses its edge.
+									className="flex size-5 items-center justify-center text-[10px] text-ink-muted"
+								>
+									{name.trim().charAt(0).toUpperCase()}
+								</span>
+							))}
+						</span>
+						{t("ui.teamBridge.replies.count", { count: summary.count })}
+						{summary.lastReply && (
+							<span className="text-ink-dim">
+								·{" "}
+								{t("ui.teamBridge.replies.last", {
+									time: formatTime(
+										summary.lastReply,
+										{ hour: "numeric", minute: "2-digit" },
+										locale,
+									),
+								})}
+							</span>
+						)}
+					</button>
 				)}
 			</div>
 		</li>

@@ -1,0 +1,103 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "fallback": null,
+  "model_provenance": "Current served model reported by runtime; no fallback reported for this PR #1304 audit. Prior PR #1298 model metadata is not reused.",
+  "instance": "threads1304-r1-fr",
+  "session": "48c1c63e7228",
+  "date": "2026-10-21",
+  "locale": "fr",
+  "translator": "translator",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 8,
+  "scope": "PR #1304 eight-key delta: replies.{action,title,close,count,last,empty,placeholder,more}, each prefixed ui.teamBridge.; inherited genuine base 2e16fb1456 audit for the other 109 values, verified unchanged. No full semantic re-audit of unchanged copy. Read actual English/target/context and rendered call-site roles in tb-threads only; no catalogue/code edits.",
+  "sha256": {
+    "en": "7de891f2cf03b7563747c440847c853f1c1356aa0a50480ec28eae347e6581e9",
+    "fr": "e350ae291f5210a92fa20c986f0987e2ebde3453c3824b1499aeb72a042bcae8",
+    "context": "7c3c9e52a1a159b3e661ac2101fa57bbe1a1ed324d566b09eda403e96c8dfd8f"
+  },
+  "findings": [],
+  "inherited_receipt": {
+    "base": "2e16fb1456",
+    "path": "i18n/receipts/tbd-r3-fr.json",
+    "sha256": "fe0341dd78a19bfe03e02625f56ec08e77aab77f27123a57b00e3cd4a045fbcd",
+    "keys_inherited": 109,
+    "unchanged_values_verified": 109,
+    "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+    "base_target_sha256": "b28cfcd21792bd85822daffe240797f932dbf2c6fa9e11b1917c1c20759438fb",
+    "status": "passed"
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39",
+    "AGENTS": "a259e3cff9de9675176c0f6b03490526762735540e59f4d8255d0e99920a717f",
+    "audit_contract": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+  },
+  "validation": {
+    "independence": "Auditor did not produce translations and did not edit code or catalogues; independently read all eight target values and every plural arm beside frozen source/context.",
+    "semantic_register_terminology": "fil de discussion / fil names the subthread, distinct from conversation in the enclosing pane; response noun réponse consistent with répondre. Infinitive actions and vous imperative Lancez fit locale register; curly apostrophe retained. French one/many/other including de réponses is grammatical.",
+    "mechanical": "Actual @formatjs/icu-messageformat-parser AST and intl-messageformat formatting executed successfully. count is cardinal plural, offset zero, exact locale CLDR arm set, one active pound in every arm, no extra arguments/tags/styles. last has exactly one plain time argument, unchanged and last. Other six values parse only as literals. All eight values NFC, no prohibited bidi controls.",
+    "plural_arms_audited": 3,
+    "format_samples_count": [
+      0,
+      1,
+      2,
+      3,
+      5,
+      11,
+      21,
+      22,
+      25,
+      1.5,
+      1000000
+    ],
+    "time_sample": "10:30 AM inserted verbatim as argument test only, not a recommendation to hardcode this format.",
+    "fit_risks": [
+      {
+        "key": "ui.teamBridge.replies.action",
+        "current": "Répondre dans le fil",
+        "source_fixed_codepoints": 15,
+        "target_fixed_codepoints": 20,
+        "disposition": "Rendered check required; not an observed overflow defect."
+      },
+      {
+        "key": "ui.teamBridge.replies.title",
+        "current": "Fil de discussion",
+        "source_fixed_codepoints": 6,
+        "target_fixed_codepoints": 17,
+        "disposition": "Rendered check required; not an observed overflow defect."
+      },
+      {
+        "key": "ui.teamBridge.replies.last",
+        "current": "dernière réponse à {time}",
+        "source_fixed_codepoints": 11,
+        "target_fixed_codepoints": 19,
+        "disposition": "Rendered check required; not an observed overflow defect."
+      },
+      {
+        "key": "ui.teamBridge.replies.empty",
+        "current": "Aucune réponse pour l’instant. Lancez le fil.",
+        "source_fixed_codepoints": 33,
+        "target_fixed_codepoints": 45,
+        "disposition": "Rendered check required; not an observed overflow defect."
+      },
+      {
+        "key": "ui.teamBridge.replies.placeholder",
+        "current": "Répondre dans le fil",
+        "source_fixed_codepoints": 15,
+        "target_fixed_codepoints": 20,
+        "disposition": "Rendered check required; not an observed overflow defect."
+      },
+      {
+        "key": "ui.teamBridge.replies.more",
+        "current": "Charger plus de réponses",
+        "source_fixed_codepoints": 17,
+        "target_fixed_codepoints": 24,
+        "disposition": "Rendered check required; not an observed overflow defect."
+      }
+    ],
+    "fit_scope": "Static expansion screen uses code points, not glyph widths: flags >=25% and >=3 code-point expansion. Not a universal fit guarantee; CJK, Hindi and Urdu shaping require rendering. Action is icon tooltip/aria label; close is icon aria label, not a fixed visible text button. Title/empty/more/placeholder are in min-w-72 thread pane; count/last share summary row with avatars. Prioritize fr/vi title and vi empty/last, fr last/more; all fit risks above require rendered checks.",
+    "limitations": "Browser unavailable by instruction: no rendered frame, screenshot, geometry, overflow or native RTL/bidi fit claim; no activation/release approval."
+  }
+}

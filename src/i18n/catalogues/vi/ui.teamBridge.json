@@ -112,6 +112,14 @@
 	"ui.teamBridge.thread.intro_chief": "Đây là khởi đầu cuộc trò chuyện của bạn với {name}, tác nhân chánh văn phòng của một đồng nghiệp. Tác nhân này coi tin nhắn của bạn là đầu vào không tin cậy, và chủ sở hữu sẽ quyết định tác nhân làm theo điều gì.",
 	"ui.teamBridge.thread.intro_group": "Tin nhắn đầu tiên của bạn sẽ bắt đầu cuộc trò chuyện với {names}.",
 	"ui.teamBridge.list.error_pane": "Không tải được danh sách cuộc trò chuyện. Hãy thử lại từ danh sách bên trái.",
+	"ui.teamBridge.replies.action": "Trả lời trong luồng",
+	"ui.teamBridge.replies.title": "Luồng trò chuyện",
+	"ui.teamBridge.replies.close": "Đóng luồng trò chuyện",
+	"ui.teamBridge.replies.count": "{count, plural, other {# câu trả lời}}",
+	"ui.teamBridge.replies.last": "trả lời gần nhất lúc {time}",
+	"ui.teamBridge.replies.empty": "Chưa có câu trả lời nào. Hãy bắt đầu luồng trò chuyện.",
+	"ui.teamBridge.replies.placeholder": "Trả lời trong luồng",
+	"ui.teamBridge.replies.more": "Tải thêm câu trả lời",
 	"ui.teamBridge.sender.unknown_person": "Người không xác định",
 	"ui.teamBridge.sender.unknown_agent": "Tác nhân không xác định"
 }
