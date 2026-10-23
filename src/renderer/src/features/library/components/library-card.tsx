@@ -21,7 +21,7 @@ import { Badge, Button } from "@shared/components/ui";
 import { useEverInView } from "@shared/hooks/use-ever-in-view";
 import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
-import { LoaderCircle, MessagesSquare, Star } from "lucide-react";
+import { Heart, LoaderCircle, MessagesSquare, Star } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useRef } from "react";
 import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-contract";
@@ -108,6 +108,30 @@ const HighlightMark: FC = () => (
 		title={t("ui.library.card.highlighted")}
 	>
 		<Star size={12} aria-hidden="true" className="fill-current text-accent" />
+	</span>
+);
+
+/**
+ * THE AT-REST FAVOURITE MARK, AND WHY IT IS A HEART RATHER THAN A STAR.
+ *
+ * The top-left badge this card already draws is a STAR for `highlighted` — the
+ * librarian's own signal, not the user's. A favourite painted with the same
+ * glyph in the same corner would be two meanings wearing one mark, which is the
+ * defect the operator reported. The heart is the user's own press (the preview's
+ * toggle and the card menu write `favorite`), shown at rest in the card's
+ * trailing corner so a filter can be verified by looking, not by opening.
+ *
+ * It is NOT a control: the press lives in the menu and the preview, one door
+ * each, and a third hit target on a card whose body is a select button is how a
+ * tile ends up with two presses for one pixel.
+ */
+const FavoriteMark: FC = () => (
+	<span
+		className="flex size-5 shrink-0 items-center justify-center rounded-full bg-elevated"
+		title={t("ui.library.menu.favorite")}
+		data-library-favorite-mark=""
+	>
+		<Heart size={12} aria-hidden="true" className="fill-current text-accent" />
 	</span>
 );
 
@@ -226,13 +250,16 @@ export const LibraryCard: FC<
 			)}
 			<div className="flex items-center justify-between gap-2 pt-1">
 				<OriginBadge group={asset.origin_group} />
-				{asset.session_count > 1 && (
-					<span className="text-meta text-ink-dim">
-						{t("ui.library.card.conversations", {
-							count: asset.session_count,
-						})}
-					</span>
-				)}
+				<div className="flex items-center gap-2">
+					{asset.session_count > 1 && (
+						<span className="text-meta text-ink-dim">
+							{t("ui.library.card.conversations", {
+								count: asset.session_count,
+							})}
+						</span>
+					)}
+					{asset.favorite && <FavoriteMark />}
+				</div>
 			</div>
 		</div>
 	);
@@ -323,6 +350,7 @@ export const LibraryRow: FC<
 				<span>{asset.kind}</span>
 				<span>{formatBytes(asset.size_bytes)}</span>
 				<OriginBadge group={asset.origin_group} />
+				{asset.favorite && <FavoriteMark />}
 			</div>
 		</button>
 		<LibraryAssetMenu
