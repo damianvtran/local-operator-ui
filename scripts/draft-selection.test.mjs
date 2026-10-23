@@ -158,6 +158,11 @@ const PICKED = {
 	reasoning_effort: null,
 };
 const PICKED_RUNG = { ...PICKED, reasoning_effort: "high" };
+/**
+ * The same pick with the FAST dial on (issue #1265): the third field the draft's
+ * selection can carry, recorded by `FastPicker`'s draft branch.
+ */
+const PICKED_FAST = { ...PICKED, fast_mode: true };
 
 /** The canonical state `sessions.preview` answers with, for whatever was asked. */
 const frame = (model) => ({
@@ -224,8 +229,25 @@ test("the query key carries the selection, so the pane cannot keep the previous 
 	const none = draftPreviewKey(base);
 	const picked = draftPreviewKey({ ...base, model: PICKED });
 	const rung = draftPreviewKey({ ...base, model: PICKED_RUNG });
+	const fast = draftPreviewKey({ ...base, model: PICKED_FAST });
+	const dialOff = draftPreviewKey({
+		...base,
+		model: { ...PICKED, fast_mode: false },
+	});
 	assert.notDeepEqual(none, picked);
 	assert.notDeepEqual(picked, rung, "a rung is part of what is being asked");
+	/*
+	 * The dial too (issue #1265): `sessions.preview` publishes the fast state the
+	 * body asked for (`_preview_birth_model`), so a pick on the same model must not
+	 * reuse the entry whose snapshot says the dial is off — the mark would stay on
+	 * the old state and the pick would look like it did nothing.
+	 */
+	assert.notDeepEqual(picked, fast, "the dial is part of what is being asked");
+	assert.notDeepEqual(
+		picked,
+		dialOff,
+		"`off` is a choice, not the absence of one",
+	);
 	// The same selection is the same entry: the picker's re-read and the pane's
 	// reading must be ONE cache entry, which is what makes them one answer.
 	assert.deepEqual(picked, draftPreviewKey({ ...base, model: { ...PICKED } }));
@@ -251,6 +273,10 @@ test("an unpicked draft asks with no model field at all", () => {
 		null,
 		null,
 		null,
+		null,
+		// The fast dial (issue #1265) is a slot of its own, because the preview's
+		// identity publishes the dial the body asked for. `null` here is "nobody
+		// asked", the same absence an unpicked pane's request body carries.
 		null,
 	]);
 });
@@ -282,6 +308,83 @@ test("a selection is read off the spec, and a blank rung is no rung", () => {
 	assert.deepEqual(effortLadder(SPEC), ["minimal", "low", "medium", "high"]);
 	assert.deepEqual(effortLadder({ ...SPEC, reasoning_efforts: [] }), []);
 	assert.deepEqual(effortLadder(null), []);
+});
+
+/* ---- the fast dial rides the selection (issue #1265) ---------------------- */
+
+/*
+ * The draft half of the fix, driven through the SHIPPED store actions: the
+ * picker's `select` is `setDraftModel` (`chat-page.tsx` hands it the pane), and
+ * `admitChatDraft` is the send that performs the create. So recording
+ * `{...selection, fast_mode: true}` and sending it are the two legs the dialog
+ * depends on, and both are asserted on the projected WIRE rather than on the
+ * store's memory of them.
+ */
+test("a fast pick rides the create, and a pane that never picked one sends no dial", async () => {
+	const store = useCanonicalSessionsStore.getState();
+	calls.length = 0;
+	reply = (request) =>
+		request.op === "sessions.create"
+			? { result: { session_id: "abcdef123456", binding: { kind: "none" } } }
+			: { result: {} };
+
+	const key = store.stageDraft();
+	// What FastPicker's draft branch records: the pane's selection, dial on.
+	store.setDraftModel(key, PICKED_FAST);
+	await admitChatDraft(key, {
+		text: "hello",
+		attachments: [],
+		images: [],
+		mode: "prompt",
+		cwd: CWD,
+	});
+	const create = wire().find((call) => call.path === "/v1/desktop/sessions");
+	assert.deepEqual(create?.body.model, PICKED_FAST);
+	assert.equal(
+		create?.body.model.fast_mode,
+		true,
+		"the dial has to reach sessions.create, or the conversation is born standard",
+	);
+
+	// A pane whose model was picked but whose dial was never touched still omits
+	// the key: `false` would be a tier choice the user never made.
+	calls.length = 0;
+	const plainKey = store.stageDraft();
+	store.setDraftModel(plainKey, PICKED);
+	await admitChatDraft(plainKey, {
+		text: "hello",
+		attachments: [],
+		images: [],
+		mode: "prompt",
+		cwd: CWD,
+	});
+	const plainCreate = wire().find(
+		(call) => call.path === "/v1/desktop/sessions",
+	);
+	assert.deepEqual(plainCreate?.body.model, PICKED);
+	assert.ok(
+		!("fast_mode" in plainCreate.body.model),
+		"an untouched dial must be absent, never `false`",
+	);
+});
+
+test("a draft's preview resolves the dial it was asked for", async () => {
+	calls.length = 0;
+	reply = () => ({ result: { frontend: frame({ ...SPEC, fast_mode: true }) } });
+	const resolved = await fetchDraftPreview({
+		cwd: CWD,
+		model: PICKED_FAST,
+	});
+	const preview = lastWire();
+	assert.equal(preview.path, "/v1/desktop/sessions/preview");
+	assert.equal(preview.body.model.fast_mode, true);
+	/*
+	 * The reading the picker paints comes back off the RESOLUTION, not off the
+	 * request: `draftFastReading` reads `fastModeState` of the resolved identity,
+	 * which is also the spec the strip's chip badges. A model that reports no tier
+	 * answers `null` there, and the pick is refused rather than claimed.
+	 */
+	assert.equal(bandReadings(resolved.snapshot, null).identity.fast_mode, true);
 });
 
 /* ---- the first turn is created on the selection --------------------------- */
@@ -640,8 +743,9 @@ test("each picker routes a draft's pick through one resolver, and never through 
 		"utf8",
 	);
 
-	// One resolver, mounted by both pickers.
-	assert.equal([...picker.matchAll(/useDraftPick\(draft, note\)/g)].length, 2);
+	// One resolver, mounted by all three draft-capable pickers: the model and effort
+	// dialogs the strip's chips open, and `/fast` (issue #1265).
+	assert.equal([...picker.matchAll(/useDraftPick\(draft, note\)/g)].length, 3);
 	// Resolved by the backend BEFORE it is recorded: the strip must never paint a
 	// choice the backend refused, and the readings must be the resolved ones.
 	const resolve = picker.slice(
@@ -744,6 +848,41 @@ test("each picker routes a draft's pick through one resolver, and never through 
 	// checkbox to change it with.
 	assert.match(picker, /\{!draft && \(/);
 	assert.match(picker, /Picks here also set the default for new sessions/);
+
+	/*
+	 * THE FAST DIAL'S DRAFT BRANCH (issue #1265), pinned as the shape it has to
+	 * keep. The defect was that this picker had NO branch: `onPick` always ran
+	 * `command.run("fast", value)` on a session id the pane does not have, and the
+	 * dispatcher refused the row before it could be opened. Three facts make the
+	 * branch correct, and each is a line a later edit would have to delete first:
+	 *   - the pick goes through the shared resolver, never the session command;
+	 *   - it names the model the pane is SHOWING when the pane never picked one,
+	 *     so a first message on the configured default can still be born fast;
+	 *   - the backend's own resolution has to show the dial applied before the
+	 *     pane records it (the `applied` gate), which is what stops an older
+	 *     backend's silent drop from becoming a claim on the draft row.
+	 */
+	assert.match(picker, /function dialSelection\(/);
+	assert.match(
+		picker,
+		/const selection = dialSelection\(draftPick\.selection, draftIdentity\)/,
+		"a dial pick names the model the pane shows, even when the pane picked none",
+	);
+	assert.match(
+		picker,
+		/onPick=\{\(value\) =>\s*draft \? draftFast\(value\) : void command\.run\("fast", value\)\s*\}/,
+		"draft mode must not post /fast to a session that does not exist",
+	);
+	assert.ok(
+		resolve.indexOf("reading.applied") > 0 &&
+			resolve.indexOf("reading.applied") <
+				resolve.indexOf("draft.select(chosen)"),
+		"a resolution that does not show the pick applied must be refused BEFORE it is recorded",
+	);
+	// The premium acknowledgement is the session picker's rule and it stays on a
+	// draft, where `native_action`'s own flag cannot be asked for.
+	assert.match(picker, /const premium = Boolean\(/);
+	assert.match(picker, /premium_acknowledgement/);
 });
 
 /* ---- 3b. a model pick may not silently discard the chosen effort rung ------ */
@@ -937,6 +1076,27 @@ test("create and preview accept the same selection shape, and refuse anything el
 			desktopRequestSchema.safeParse({ op, requestId: UUID, cwd: CWD }).success,
 			true,
 		);
+		// The fast dial (issue #1265) is optional and boolean; both orders are
+		// expressible, and `null` is the backend's own spelling of "no choice".
+		assert.equal(
+			desktopRequestSchema.safeParse({
+				op,
+				requestId: UUID,
+				cwd: CWD,
+				model: PICKED_FAST,
+			}).success,
+			true,
+			`${op} must accept a fast pick`,
+		);
+		assert.equal(
+			desktopRequestSchema.safeParse({
+				op,
+				requestId: UUID,
+				cwd: CWD,
+				model: { ...PICKED, fast_mode: null },
+			}).success,
+			true,
+		);
 		// Closed and typed: a bare string, a missing half or a smuggled field is not
 		// a request this vocabulary can describe.
 		for (const model of [
@@ -945,6 +1105,10 @@ test("create and preview accept the same selection shape, and refuse anything el
 			{ provider: "", model_id: "x", reasoning_effort: null },
 			{ ...PICKED, reasoning_effort: undefined },
 			{ ...PICKED, temperature: 0.5 },
+			// The dial is a boolean and nothing else: `/fast on` is a COMMAND word,
+			// not a value this wire carries, and a string here would be a body whose
+			// meaning only the sender knows.
+			{ ...PICKED, fast_mode: "on" },
 		]) {
 			assert.equal(
 				desktopRequestSchema.safeParse({

@@ -132,7 +132,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { desktopRequestSchema } from "./src/shared/desktop-contract";',
-			'export { DESTINATIONS, destinationNeedsSession, draftStageForSource } from "./src/renderer/src/features/chat/pickers/picker-registry";',
+			'export { DESTINATIONS, destinationNeedsSession, draftSelectionRoute, draftStageForSource } from "./src/renderer/src/features/chat/pickers/picker-registry";',
 			'export { argumentEmptyCopy, entitySessionId } from "./src/renderer/src/features/chat/components/slash-contract";',
 			'export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";',
 			'export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";',
@@ -177,6 +177,7 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 let desktopRequestSchema;
 let DESTINATIONS;
 let destinationNeedsSession;
+let draftSelectionRoute;
 let draftStageForSource;
 let argumentEmptyCopy;
 let entitySessionId;
@@ -187,6 +188,7 @@ try {
 		desktopRequestSchema,
 		DESTINATIONS,
 		destinationNeedsSession,
+		draftSelectionRoute,
 		draftStageForSource,
 		argumentEmptyCopy,
 		entitySessionId,
@@ -261,6 +263,67 @@ test("the team and agent rows are declared draft-answerable in the registry", ()
 	assert.equal(draftStageForSource("model"), undefined);
 	assert.equal(draftStageForSource("mcp"), undefined);
 	assert.equal(draftStageForSource(undefined), undefined);
+});
+
+test("the fast row's pick is carried by a draft's own selection (issue #1265)", () => {
+	/*
+	 * The ROW's opt-in, and the dispatcher's rule read off it. A dial is a property
+	 * of the model a conversation is born on, so on a pane with no session the pick
+	 * cannot travel the command path; it travels the pane's selection. `/fast` is
+	 * the first row to declare that, and the typed command is its only door (the
+	 * model and effort dialogs have chips; this one has none), which is why the same
+	 * shared `useDraftPick` resolver the two chips reach is the one it reaches.
+	 */
+	assert.equal(DESTINATIONS["session.fast"].draftSelection, true);
+	for (const [destination, entry] of Object.entries(DESTINATIONS)) {
+		if (entry.kind !== "picker" || destination === "session.fast") continue;
+		assert.equal(
+			entry.draftSelection,
+			undefined,
+			`${destination} must not claim a draft selection route`,
+		);
+	}
+	/*
+	 * THE PREDICATE IS UNCHANGED, as `draftIdentity`'s rows keep it: `/fast` still
+	 * addresses a conversation in the ordinary sense, which is what the palette's
+	 * "does this need a chat" routing and the composer's pane clause read. Only the
+	 * ROW says a draft may carry the pick.
+	 */
+	assert.equal(destinationNeedsSession("session.fast"), true);
+	const draft = { target: { cwd: "/tmp/example" }, select: () => undefined };
+	/*
+	 * Three conditions, and each one is a way the route must answer "no":
+	 */
+	assert.equal(draftSelectionRoute("session.fast", "", draft), draft);
+	for (const args of ["on", "off", " on "]) {
+		assert.equal(
+			draftSelectionRoute("session.fast", args, draft),
+			undefined,
+			`\`/fast ${args}\` is the owner's argument form, not the draft's pick`,
+		);
+	}
+	assert.equal(
+		draftSelectionRoute("session.fast", "", undefined),
+		undefined,
+		"no draft context (no preview answered, or no capability) means the ordinary refusal",
+	);
+	for (const destination of [
+		"session.model",
+		"session.effort",
+		"session.team",
+		"session.agent",
+		"help",
+		"theme",
+		"info",
+		"usage",
+		undefined,
+	]) {
+		assert.equal(
+			draftSelectionRoute(destination, "", draft),
+			undefined,
+			`${destination} must not be handed the pane's selection`,
+		);
+	}
 });
 
 test("the composer's entity session is gated on the wire's own pattern, not sessionStatus", () => {

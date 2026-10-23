@@ -45,13 +45,27 @@ export type DraftSelectionTarget = {
 /**
  * The readings a DRAFT pane can open a picker for.
  *
- * Two, and not the context reading: nothing has been measured before the first
+ * Three, and not the context reading: nothing has been measured before the first
  * turn, so there is no breakdown to show and no control to offer (R19/R21 of the
  * design). Named by destination rather than by command, because a chip has no
  * command line: the names are the ones `DESTINATIONS` already routes on, so one
  * table still answers "which adapter presents this".
+ *
+ * `/fast` is the one member with no chip to open it (issue #1265): the typed
+ * command is its only door, which is why its row also carries the dispatcher's
+ * `draftSelection` route. The type is the same either way, because the picker
+ * and the pane's selection do not care which door mounted the dialog.
  */
-export type DraftPickerDestination = "session.model" | "session.effort";
+export type DraftPickerDestination =
+	| "session.model"
+	| "session.effort"
+	/*
+	 * `/fast` (issue #1265): the same two-mode shape as the other two, because the
+	 * dial is a property of the model the conversation will be born on and a new
+	 * chat has no session to command. Its pick is a third reading of the one
+	 * `DraftPickerSession` - see `FastPicker`'s draft branch.
+	 */
+	| "session.fast";
 
 /**
  * The one identity string for a selection, in the spelling the picker's rows and
@@ -110,6 +124,15 @@ export function draftPreviewKey(target: DraftSelectionTarget) {
 		target.target?.name ?? null,
 		selectionSelector(target.model),
 		target.model?.reasoning_effort ?? null,
+		/*
+		 * The dial too, and for the reason the model and the rung are here: the
+		 * preview's answer depends on it. Without this key a fast pick re-read the
+		 * SAME cache entry the pane had before the pick - the entry whose snapshot
+		 * says the dial is off - so a confirmed pick would resolve to the reading it
+		 * just replaced: the picker's mark would stay on the old state and the pick
+		 * would look like it did nothing.
+		 */
+		target.model?.fast_mode ?? null,
 	] as const;
 }
 

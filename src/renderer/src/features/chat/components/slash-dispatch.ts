@@ -107,6 +107,7 @@ import type {
 import {
 	DESTINATIONS,
 	destinationNeedsSession,
+	draftSelectionRoute,
 } from "../pickers/picker-registry";
 import { isNativeAction } from "../pickers/use-picker-backend";
 import type { Message } from "../types/message";
@@ -140,10 +141,11 @@ type SlashDispatchOptions = {
 	 * session yet.
 	 *
 	 * Present only where the backend can select for a draft. It is what the two
-	 * chips that CAN open on a draft open: `/model` and `/effort` are commands that
-	 * need a session to address, so a draft's pick cannot travel the command path
-	 * at all — it travels this one, into the SAME pickers, reading and writing the
-	 * pane's selection instead of a session's.
+	 * chips that CAN open on a draft open (`/model` and `/effort`), and — since
+	 * issue #1265 — what the typed `/fast` is presented with, because that dial has
+	 * no chip and its command would otherwise have no owner to address. All three
+	 * travel the draft route into the SAME pickers, reading and writing the pane's
+	 * selection instead of a session's.
 	 */
 	draftPicker?: DraftPickerSession;
 	/**
@@ -256,6 +258,26 @@ function draftPickerSpec(
 		destination,
 		execution: "native",
 	};
+}
+
+/**
+ * The `data` a SESSIONLESS presentation of a picker has to carry, because the
+ * owner's round trip that would have supplied it cannot happen.
+ *
+ * `native_action` builds `premium_pricing=True` for `fast` unconditionally
+ * (`local_operator/server/utils/desktop_commands.py`), and a SESSION's picker
+ * reads it off that answer to decide whether the premium acknowledgement gates
+ * the `On` row. A draft pane has no owner frame to ask and no session to
+ * command, so the same constant is stated here instead: without it a draft would
+ * offer `On` with nothing acknowledging its price, which is the one thing the
+ * session's picker refuses to do (issue #1265).
+ *
+ * One function for the two doors that present a picker without a session (the
+ * typed command and `openDraftPicker`), so a row cannot gain the flag through
+ * one of them and lose it through the other.
+ */
+function sessionlessActionData(destination: string): Record<string, unknown> {
+	return destination === "session.fast" ? { premium_pricing: true } : {};
 }
 
 /**
@@ -1112,6 +1134,11 @@ export function useSlashDispatch({
 				spec: SlashCommandMeta,
 				commandArgs: string,
 			) => {
+				const carriedDraft = draftSelectionRoute(
+					spec.destination,
+					commandArgs,
+					draftPicker,
+				);
 				invoker.current =
 					document.activeElement instanceof HTMLElement
 						? document.activeElement
@@ -1125,7 +1152,9 @@ export function useSlashDispatch({
 						session_id: "",
 						args: commandArgs,
 						fields: [],
-						data: {},
+						// The premium gate a session's answer would have carried; see
+						// `sessionlessActionData`.
+						data: sessionlessActionData(spec.destination),
 					},
 					spec: draftPickerSpec(spec.destination, commandsQuery.data),
 					sessionId: "",
@@ -1135,6 +1164,16 @@ export function useSlashDispatch({
 					note,
 					dispatch: (invocation) => void dispatch(invocation),
 					rebind,
+					/*
+					 * THE DRAFT SELECTION ROUTE's presenter half (issue #1265): the
+					 * pane's own selection, so the dialog's pick resolves through
+					 * `sessions.preview` and records on the draft row instead of
+					 * addressing a session this pane does not have. Absent for the
+					 * sessionless rows, which read no selection at all — and the SAME
+					 * rule the gate above asked, so a row that passed the refusal can
+					 * never be presented without the context it passed for.
+					 */
+					...(carriedDraft ? { draft: carriedDraft } : {}),
 				});
 			};
 
@@ -1192,6 +1231,17 @@ export function useSlashDispatch({
 				const chartForm =
 					draftKind === "team" &&
 					(args === "chart" || args.startsWith("chart "));
+				/*
+				 * THE DRAFT SELECTION ROUTE's gate half (issue #1265): the pane's own
+				 * selection, when this row's pick is carried by it. Asked BEFORE the
+				 * refusal and again by the presenter below — one rule, see
+				 * `draftSelectionRoute`.
+				 */
+				const carriedDraft = draftSelectionRoute(
+					spec.destination,
+					args,
+					draftPicker,
+				);
 				if (destinationNeedsSession(spec.destination)) {
 					/*
 					 * THE REFUSAL SITS FIRST, AND THE DRAFT EXEMPTION NESTS INSIDE IT
@@ -1205,7 +1255,7 @@ export function useSlashDispatch({
 					 * chart` (the one form the draft route must not read as a name)
 					 * stays unexempted and refuses like any other ineligible row.
 					 */
-					if (!(draftKind && !chartForm)) {
+					if (!(draftKind && !chartForm) && !carriedDraft) {
 						note(
 							`/${spec.name} needs an open conversation. Start one first.`,
 							true,
@@ -1593,6 +1643,13 @@ export function useSlashDispatch({
 			 * somewhere the page is no longer reading.
 			 */
 			noteAsideRefusal,
+			/*
+			 * The pane's own selection, read by `draftSelectionRoute` from BOTH sides of
+			 * the gate (issue #1265): the refusal exemption and the presenter must see
+			 * the same value, or a stale `dispatch` would exempt `/fast` and then mount
+			 * it without the context it was exempted for.
+			 */
+			draftPicker,
 		],
 	);
 
@@ -1662,7 +1719,7 @@ export function useSlashDispatch({
 					session_id: "",
 					args: "",
 					fields: [],
-					data: {},
+					data: sessionlessActionData(destination),
 				},
 				spec: draftPickerSpec(destination, commandsQuery.data),
 				sessionId: "",
