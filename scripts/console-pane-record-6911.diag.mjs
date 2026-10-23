@@ -35,7 +35,7 @@
 
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { writeFileSync, rmSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -194,7 +194,6 @@ const harnessPath = join(
 	`lo-console-pane-render-harness-${process.pid}.mjs`,
 );
 writeFileSync(harnessPath, bundle.outputFiles[0].text);
-process.on("exit", () => rmSync(harnessPath, { force: true }));
 const harness = await import(pathToFileURL(harnessPath).href);
 
 /**
