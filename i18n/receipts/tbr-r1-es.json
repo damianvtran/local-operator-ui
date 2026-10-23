@@ -1,0 +1,44 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbr-r1-es",
+  "session": "63cab91fb774",
+  "date": "2026-10-21",
+  "locale": "es",
+  "translator": "translator",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 20,
+  "scope": "Twenty-key reaction-picker delta: ui.teamBridge.reactions.* (add, search, categories, all, frequent, tone, toneDefault, empty, failed, category0-category8, choose, noResults). Inherit the base 2e16fb1456 full namespace audit for the other 109 values, all verified unchanged; no new full semantic audit of unchanged copy. Catalogue audit only, not rendered-fit, activation or release approval.",
+  "sha256": {
+    "en": "69f741a64df96b85b00e2f389bcda35bbbcc7cc023c4e2f31c997ef64fc0b50c",
+    "es": "68a6f14e7ca6227b15d4bee9e39a12309f515da4a744f3746eece61c4a531e3a",
+    "context": "ad0eef37d14411e02b07a083f3873518362734fefd8caa930cf4196728b2ef84"
+  },
+  "findings": [],
+  "inherited_receipt": {
+    "base": "2e16fb1456",
+    "path": "i18n/receipts/tbd-r4-es.json",
+    "sha256": "b06e9c976f832eeeba013442147c81173bf6c15122f9031e3c58c563edc58782",
+    "keys_inherited": 109,
+    "unchanged_values_verified": 109,
+    "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+    "base_target_sha256": "83f83edf103c94c8f6cdbb4c678853fbcfb1d23a207adc9143dfb6497eea0bdd",
+    "full_coverage_receipt": {
+      "path": "i18n/receipts/tbd-r3-es.json",
+      "sha256": "7c165e92377f3ba2f46dc0699521908fbc71326fd9c6c7330401afdab135381c"
+    }
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+  },
+  "validation": {
+    "independence": "This auditor did not translate or edit any catalogue, receipt or code file, and staged, committed or checked out nothing. Served as anthropic/claude-opus-5-5 for the whole audit; no model switch or fallback observed. The translator ran the same model family, but this is a separate agent session (63cab91fb774) with no access to the translator's reasoning. Every judgment was made against the catalogue bytes.",
+    "semantics": "Read all 20 es values side by side with the en source and frozen context, and confirmed each render site in team-bridge-emoji-picker.tsx and team-bridge-reactions.tsx. Address form is tú throughout (Inténtalo, Elige), matching the style guide and the locale. Phrasing matches the locale's existing patterns: Añadir … (25 uses, no agregar), Buscar … (Buscar archivos/etiquetas/ajustes), No se pudo/pudieron … Inténtalo de nuevo., Predeterminado, and No se encontraron … (same construction as ui.settings.imports.empty_sessions). toneDefault 'Tono predeterminado' drops 'de piel', which is a sound tightening: the option sits inside a select labelled 'Tono de piel' and the other options are toned glyphs. Sentence case, no '!', no space before punctuation, final period on the one full-sentence value (failed), as in the English. reactions.empty is referenced only in keys.gen.ts and not rendered by the reviewed components; its value matches noResults.",
+    "icu": "Ran node with @formatjs/icu-messageformat-parser parse() on all 20 delta values from the catalogue bytes: each parsed to a single literal node with zero arguments, and no {, }, < or > appears. English has no placeholders. All 20 values are NFC (v === v.normalize('NFC')) and contain no U+200E/200F/202A-202E/2066-2069/061C. Key parity is 129/129 en/es, nothing missing or extra. A node comparison against `git show 2e16fb1456:src/i18n/catalogues/es/ui.teamBridge.json` (sha256 83f83edf… verified) found 109/109 base values byte-identical and exactly 20 new keys.",
+    "terminology": "emoji/emojis is used consistently (singular in 'Elige un emoji', plural elsewhere), matching the CLDR es label 'Emojis'. reacción is used consistently. No glossary §1/§2 terms are involved. Category labels were compared with CLDR 48.2.0 es characterLabels (fetched from the cldr-misc-full package via jsDelivr). Exact matches: Animales y naturaleza, Comida y bebida, Actividades, Objetos, Símbolos, Banderas. CLDR has no separate Smileys & Emotion or People & Body label (it combines them as 'Emoticonos y personas'), so 'Caras y emociones' and 'Personas y cuerpo' are accurate free renderings. CLDR travel_places is 'Viajes y destinos'; 'Viajes y lugares' is the literal, accurate rendering of the Unicode group name and is not a defect.",
+    "overflow": "Static code-point comparison only (en→es): add 12→15, search 12→13, categories 16→20, all 9→16, frequent 15→21, tone 9→12, toneDefault 17→19, empty/noResults 14→24, failed 39→51, category0 19→17, category1 15→17, category2 18→21, category3 14→15, category4 17→16, category5 10→11, category6 7→7, category7 7→8, category8 5→8, choose 15→14. Values that are only aria-labels or titles have no visual budget. The two visible narrow items share one justify-between flex row inside a w-80 popover: frequent (12px span, 21 cp) and toneDefault (12px select option, 19 cp). They are the only plausible fit risk and should get a rendered check. A shorter fallback 'Frecuentes' exists if needed. noResults sits in a p-4 panel and failed in a flex-wrap row, so both can wrap. No overflow defect claimed.",
+    "limitations": "Browser unavailable by task constraint. No screenshots, glyph metrics, visual-fit or native bidi-rendering claim. No catalogue/code edits."
+  }
+}
