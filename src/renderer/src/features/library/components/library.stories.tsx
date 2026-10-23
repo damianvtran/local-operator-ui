@@ -2,10 +2,11 @@
  * The Library tab: the catalogue states, the grid/list, the selected preview,
  * the composer and a real multi-slide PPTX.
  *
- * WHAT STANDS IN FOR THE BACKEND: `window.api.desktop.request` and
- * `.media` - the two bridges the shipped page uses. The page, the query layer,
- * the cards, the preview, the PPTX renderer and the composer all run for real;
- * a story that starts issuing an op the fixture does not know fails loudly.
+ * WHAT STANDS IN FOR THE BACKEND: `window.api.desktop.request`, `.media` and
+ * `.stream` - the three bridges the shipped page uses. The page, the query
+ * layer, the cards, the preview, the trajectory, the PPTX renderer and the
+ * composer all run for real; a story that starts issuing an op the fixture does
+ * not know fails loudly.
  *
  * THE PPTX FIXTURE IS A REAL FILE (`scripts/fixtures/library/sample.pptx`,
  * four slides, generated with python-pptx). The media stub serves its bytes,
@@ -1202,7 +1203,18 @@ export const PreviewLinkedChat: Story = {
 		page({
 			route: "/library/assets/la_0000000000000023",
 			linkedChat: true,
+			// A linked chat that paints nothing waits forever on the stream mock;
+			// this one answers with the populated snapshot and its play waits for a
+			// row (review round 2, F12).
+			trajectory: "populated",
 		}),
+	play: async () => {
+		await waitFor(() =>
+			expect(document.body.textContent).toContain(
+				"Which invoices are still open for March?",
+			),
+		);
+	},
 };
 
 /*
@@ -1650,7 +1662,15 @@ export const InShellPreviewLinkedChat: Story = {
 			shell: true,
 			route: "/library/assets/la_0000000000000023",
 			linkedChat: true,
+			trajectory: "populated",
 		}),
+	play: async () => {
+		await waitFor(() =>
+			expect(document.body.textContent).toContain(
+				"Which invoices are still open for March?",
+			),
+		);
+	},
 };
 
 /*

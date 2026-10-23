@@ -457,10 +457,21 @@ test("a fresh ask ignores a cached answer and still remembers its own", async ()
 	const cache = new Map();
 	const ask = (fresh) =>
 		probeFiles(["/notes/plan.md"], undefined, "/home", deps, cache, fresh);
+	/*
+	 * The DEFAULT call — no sixth argument at all — is what every existing caller
+	 * makes, and it must keep the cache. Its own call rather than `ask(false)`,
+	 * so the default is pinned rather than a caller passing `false`.
+	 */
+	const defaultAsk = () =>
+		probeFiles(["/notes/plan.md"], undefined, "/home", deps, cache);
 
-	const first = await ask(false);
+	const first = await defaultAsk();
 	assert.equal(stats, 1);
-	assert.deepEqual(await ask(false), first, "the default path keeps the cache");
+	assert.deepEqual(
+		await defaultAsk(),
+		first,
+		"the default path keeps the cache",
+	);
 	assert.equal(stats, 1);
 
 	const fresh = await ask(true);
@@ -471,7 +482,7 @@ test("a fresh ask ignores a cached answer and still remembers its own", async ()
 		"it reads the file again",
 	);
 	assert.deepEqual(
-		await ask(false),
+		await defaultAsk(),
 		fresh,
 		"the fresh answer was REMEMBERED for the next ordinary caller",
 	);

@@ -337,6 +337,10 @@ const ANSWER = {
 	updateGate: null,
 	/** Frames the stream bridge emits on subscribe; null keeps the EventSource path. */
 	stream: null,
+	/** Every options object the page passed to `probeFiles`, in order. */
+	probeAsks: [],
+	/** A gate the `sessions.create` answer waits on, for a double-press case. */
+	createGate: null,
 	state: "ready",
 	nextCursor: null,
 	allTotal: null,
@@ -526,6 +530,7 @@ const desktopRequest = async (request) => {
 		return { status: 200, body: { result: [tag("t1", "finance")] } };
 	}
 	if (request.op === "sessions.create") {
+		if (ANSWER.createGate) await ANSWER.createGate;
 		return {
 			status: 200,
 			body: {
@@ -583,8 +588,15 @@ const api = dom.window.api ?? {};
  * keeps the bytes it always saw. A case that is ABOUT the live file installs
  * `ANSWER.fileBridge` and removes it afterwards.
  */
-api.probeFiles = async (paths) =>
-	ANSWER.fileBridge
+api.probeFiles = async (paths, _cwd, options) => {
+	/*
+	 * THE CALL'S OPTIONS ARE PART OF THE CONTRACT (review round 2, F8). The
+	 * watcher must ask `{ fresh: true }` or a 2 s poll is answered from the 30 s
+	 * answer cache; recording them here is what makes dropping the flag fail a
+	 * test instead of quietly restoring the latency.
+	 */
+	ANSWER.probeAsks.push(options);
+	return ANSWER.fileBridge
 		? paths.map((path) => ({
 				input: path,
 				resolved: path,
@@ -595,6 +607,7 @@ api.probeFiles = async (paths) =>
 				outsideWorkspace: false,
 			}))
 		: [];
+};
 api.readFileBytes = async () => {
 	if (!ANSWER.fileBridge)
 		return { success: false, code: "unavailable", error: "" };
@@ -624,7 +637,7 @@ api.desktop = {
  * subscription has.
  */
 api.desktop.stream = {
-	subscribe: (args, onEvent) => {
+	subscribe: (_args, onEvent) => {
 		const streamId = "library-case-stream";
 		const frames = ANSWER.stream;
 		if (frames) {
@@ -1439,6 +1452,12 @@ test("a path-backed asset reads its live file and says when it moved", async () 
 		}),
 	];
 	ANSWER.ops = [];
+	/*
+	 * Fresh call log for THIS case: another case's markdown preview probes through
+	 * `probeLocalFile`, which passes no options, and the `every(... fresh)` check
+	 * below is about the watcher's calls, not the whole suite's.
+	 */
+	ANSWER.probeAsks = [];
 	ANSWER.fileBridge = {
 		text: "rewritten by the agent",
 		sizeBytes: 22,
@@ -1458,7 +1477,7 @@ test("a path-backed asset reads its live file and says when it moved", async () 
 	assert.equal(
 		text(live()),
 		"22 B",
-		"the strip reports the live file's own size, not the 1.2 MB row figure",
+		"the strip reports the live file's own size, not the row's 2.0 KB figure",
 	);
 	/*
 	 * AND A SECOND WRITE IS SEEN BY THE POLL, not just by the mount. The bridge's
@@ -1483,6 +1502,17 @@ test("a path-backed asset reads its live file and says when it moved", async () 
 	assert.ok(
 		text(container).includes("rewritten once more"),
 		"the viewer re-read the path after the mtime moved",
+	);
+	/*
+	 * EVERY PROBE THE WATCHER MADE WAS A FRESH ONE (F8). A cached probe would have
+	 * answered the old mtime and this case would have failed above; this assertion
+	 * names the mechanism, so a later edit that drops the flag fails here rather
+	 * than only as a latency regression QA has to re-measure.
+	 */
+	assert.ok(ANSWER.probeAsks.length > 0, "the watcher probed at all");
+	assert.ok(
+		ANSWER.probeAsks.every((options) => options?.fresh === true),
+		"every watched probe passes { fresh: true }",
 	);
 	await act(async () => root.unmount());
 	ANSWER.fileBridge = null;
@@ -1706,6 +1736,113 @@ const streamSnapshot = (sessionId, entries, patch = {}) => [
 		},
 	},
 ];
+
+test("a double press sends once and creates one session", async () => {
+	/*
+	 * REVIEW ROUND 2, F7 (the regression for F1). The send is HELD at
+	 * `sessions.create`, so both presses happen inside the same in-flight window:
+	 * the ref guard must refuse the second synchronously, and the wire most see
+	 * exactly one create, one message and one link. Without the guard the second
+	 * press ran the whole path and created a second conversation.
+	 */
+	ANSWER.rows = [asset("la_0000000000000019", { name: "One press only" })];
+	ANSWER.ops = [];
+	ANSWER.requests = [];
+	ANSWER.linkFails = 0;
+	sessionStorage.removeItem("library-filters");
+	let releaseCreate = () => {};
+	ANSWER.createGate = new Promise((resolve) => {
+		releaseCreate = resolve;
+	});
+	const { container, root } = await mount();
+	await act(async () =>
+		container
+			.querySelector('[data-library-card-id="la_0000000000000019"] button')
+			?.click(),
+	);
+	await flush(6);
+	const textarea = container.querySelector("[data-library-composer] textarea");
+	await act(async () => {
+		const setter = Object.getOwnPropertyDescriptor(
+			dom.window.HTMLTextAreaElement.prototype,
+			"value",
+		).set;
+		setter.call(textarea, "One question, two presses");
+		textarea.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+	});
+	await flush(2);
+	const send = container.querySelector(
+		'[data-library-composer] button[aria-label="Send message"]',
+	);
+	assert.ok(send);
+	// Both presses land before the create answers.
+	await act(async () => {
+		send.click();
+		send.click();
+	});
+	releaseCreate();
+	ANSWER.createGate = null;
+	await flush(10);
+	const count = (op) =>
+		ANSWER.requests.filter((request) => request.op === op).length;
+	assert.equal(count("sessions.create"), 1, "one press, one session");
+	assert.equal(count("sessions.message"), 1, "one press, one message");
+	assert.equal(count("library.chat.link"), 1, "one press, one link");
+	await act(async () => root.unmount());
+});
+
+test("the link-failed row's Open chat navigates to the conversation", async () => {
+	/*
+	 * REVIEW ROUND 2, F7 (the regression for F2). The control used to call
+	 * `onSessionChange`, which only wrote the preview's lifted id: the press
+	 * navigated nowhere. The harness has a `/chat/:agentId` route that renders
+	 * "chat route", so a real `navigate` is observable here.
+	 */
+	ANSWER.rows = [asset("la_0000000000000020", { name: "Link refused" })];
+	ANSWER.ops = [];
+	ANSWER.requests = [];
+	ANSWER.linkFails = 1;
+	sessionStorage.removeItem("library-filters");
+	const { container, root } = await mount();
+	await act(async () =>
+		container
+			.querySelector('[data-library-card-id="la_0000000000000020"] button')
+			?.click(),
+	);
+	await flush(6);
+	const textarea = container.querySelector("[data-library-composer] textarea");
+	await act(async () => {
+		const setter = Object.getOwnPropertyDescriptor(
+			dom.window.HTMLTextAreaElement.prototype,
+			"value",
+		).set;
+		setter.call(textarea, "Sends, then the link is refused");
+		textarea.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+	});
+	await flush(2);
+	await act(async () =>
+		container
+			.querySelector(
+				'[data-library-composer] button[aria-label="Send message"]',
+			)
+			?.click(),
+	);
+	await flush(10);
+	const row = container.querySelector("[data-library-link-failed]");
+	assert.ok(row, "the partial success row is up");
+	const open = [...row.querySelectorAll("button")].find((button) =>
+		button.textContent?.includes("Open chat"),
+	);
+	assert.ok(open, "the row offers Open chat");
+	await act(async () => open.click());
+	await flush(4);
+	assert.ok(
+		text(container).includes("chat route"),
+		"the press navigates to the conversation route",
+	);
+	await act(async () => root.unmount());
+	ANSWER.linkFails = 0;
+});
 
 test("a stream snapshot paints the persisted conversation below the asset", async () => {
 	ANSWER.rows = [
