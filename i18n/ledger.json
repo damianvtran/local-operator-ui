@@ -19153,8 +19153,25 @@
 				"job": "a7380f37ab56",
 				"remediation_job": "b4390a98f09f"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6-astra",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "f39d0c2ada5e-landed-1309-fr",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/f39d0c2ada5e-landed-1309-fr.json",
+					"receipt_sha256": "6aa43dfb328f98beb7ff3dbd7d87fae55cf454998e7abec03e6adb48c15936f6",
+					"scope": "Landing-union-only audit; inherited keys read for combined context and hash/value continuity, not claimed as a fresh full linguistic audit. Identical shared values reused across the two heads."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
@@ -19963,8 +19980,25 @@
 				"session": "87a8efad496d",
 				"job": "cc64f5dc3c0c"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6-astra",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "f39d0c2ada5e-landed-1309-es",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/f39d0c2ada5e-landed-1309-es.json",
+					"receipt_sha256": "785d2d0e1e250ba1b35de9a66988a5d15692d9b9dd172c3d0bf67e7d435be8ac",
+					"scope": "Landing-union-only audit; inherited keys read for combined context and hash/value continuity, not claimed as a fresh full linguistic audit. Identical shared values reused across the two heads."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
@@ -20399,8 +20433,25 @@
 				"session": "d04f0e3ee24c",
 				"job": "bba1cb60d6a5"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6-astra",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "055fbd3ce084-landed-1309-zh-cn",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/055fbd3ce084-landed-1309-zh-cn.json",
+					"receipt_sha256": "c5c4ff8b63f1bb50ee0a496f1793d2d83779fe0313b4f37957e1b86855f4a1e1",
+					"scope": "Landing union only, PR #1309 at 6631ee87aaa036a387493e51b6ce3716a8a8aad3: 173 English/target keys read side by side; 29 new-to-branch keys substantively reviewed in scheduling/attachment/thread context. Unchanged inherited values traced to audited receipts. Catalogue-only, not native-fit, activation or release approval."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "0694bc18d6400d88ea4e84e2d3585a76c55dbfc913da7e53dbed7457e4f0bea2",
@@ -21119,8 +21170,25 @@
 				"job": "764e8ee192fe",
 				"remediation_job": "78daa414c10d"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6-astra",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "055fbd3ce084-landed-1309-ru",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/055fbd3ce084-landed-1309-ru.json",
+					"receipt_sha256": "331fbf1d59b043d83c88b3f772237340326d3a504e32f8fc21c5fa86066d5228",
+					"scope": "Landing union only, PR #1309 at 6631ee87aaa036a387493e51b6ce3716a8a8aad3: 173 English/target keys read side by side; 29 new-to-branch keys substantively reviewed in scheduling/attachment/thread context. Unchanged inherited values traced to audited receipts. Catalogue-only, not native-fit, activation or release approval."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
@@ -21533,8 +21601,25 @@
 				"session": "632a8fd68227",
 				"job": "4ca9e8a81d54"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6-astra",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "ec3e15580372-landed-1309-hi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/ec3e15580372-landed-1309-hi.json",
+					"receipt_sha256": "a727a53936fa1ac7379d5f62053245609200414c53ccc13b91732aaf44bf5b5c",
+					"scope": "Landing union only, PR #1309 at 6631ee87aaa036a387493e51b6ce3716a8a8aad3; 29 newly joined keys substantively audited with unchanged namespace context (173 keys read); not a new full-surface/native-fit approval."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
@@ -21916,8 +22001,25 @@
 				"session": "8e5edb2e9750",
 				"job": "39c1864c0110"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6-astra",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "ec3e15580372-landed-1309-ur",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/ec3e15580372-landed-1309-ur.json",
+					"receipt_sha256": "d8f2dc8c84ec4991f6174f459d35662c4ab1f86fb772dcc318038827abf512f3",
+					"scope": "Landing union only, PR #1309 at 6631ee87aaa036a387493e51b6ce3716a8a8aad3; 29 newly joined keys substantively audited with unchanged namespace context (173 keys read); not a new full-surface/native-fit approval."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
@@ -22299,8 +22401,25 @@
 				"session": "8c0c0af95212",
 				"job": "e5d5efa8017f"
 			},
-			"auditors": [],
-			"status": "pending",
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openai/gpt-6-astra",
+					"date": "2026-10-22",
+					"result": "clean",
+					"instance": "f39d0c2ada5e-landed-1309-vi",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/f39d0c2ada5e-landed-1309-vi.json",
+					"receipt_sha256": "1d408a966590ae4a9adeea9f8e389a9db4fd8a4bfdd33d0e03f7d3c985737e7f",
+					"scope": "Landing-union-only audit; inherited keys read for combined context and hash/value continuity, not claimed as a fresh full linguistic audit. Identical shared values reused across the two heads."
+				}
+			],
+			"status": "audited",
 			"superseded": [
 				{
 					"source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
