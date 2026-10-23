@@ -3783,14 +3783,19 @@ export const RenamePicker: FC<PickerContext> = ({
 	 * `closed` is set at unmount, the only moment the dialog is definitively gone -
 	 * the same latch `ReloadPicker` keeps for a failure that lands after its
 	 * dialog is gone (review U6).
+	 *
+	 * ARMED AT SETUP, not only disarmed at unmount: StrictMode's development
+	 * mount/unmount/mount runs this cleanup and then mounts the SAME instance in
+	 * the same slot, so a latch that only ever closed would keep a dev build's
+	 * dialog from ever closing on success.
 	 */
 	const closed = useRef(false);
-	useEffect(
-		() => () => {
+	useEffect(() => {
+		closed.current = false;
+		return () => {
 			closed.current = true;
-		},
-		[],
-	);
+		};
+	}, []);
 	const command = useSessionCommand(sessionId);
 	return (
 		<PickerHost
