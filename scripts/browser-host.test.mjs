@@ -4422,6 +4422,91 @@ test("read runs in an isolated world, and snapshot refs carry the tab's epoch", 
 	assert.equal(registry.requireSurface(opened.tab).refs.e1.epoch, snap.epoch);
 });
 
+/* R1-3: the locator route in `actions/input.ts` had no test at this layer. This
+ * drives the same stubbed CDP the extension's `input-locator.test.mjs` does and
+ * pins the two things only the app host can get wrong: the backend-id push and
+ * the `resolved` shape, and a miss that is typed with candidates. */
+test("a locator click pushes the matched backend id and reports what it resolved", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const calls = [];
+	const send = async (_contents, method, params) => {
+		calls.push({ method, params });
+		switch (method) {
+			case "Accessibility.enable":
+			case "Accessibility.disable":
+				return {};
+			case "Accessibility.getFullAXTree":
+				return {
+					nodes: [
+						{
+							nodeId: "1",
+							role: { value: "RootWebArea" },
+							name: { value: "" },
+							childIds: ["2"],
+						},
+						{
+							nodeId: "2",
+							backendDOMNodeId: 41,
+							role: { value: "checkbox" },
+							name: { value: "Active" },
+							properties: [{ name: "checked", value: { value: "true" } }],
+							childIds: [],
+						},
+					],
+				};
+			case "DOM.getDocument":
+				return { root: { nodeId: 1 } };
+			case "DOM.pushNodesByBackendIdsToFrontend":
+				return { nodeIds: [77] };
+			case "DOM.scrollIntoViewIfNeeded":
+			case "Runtime.callFunctionOn":
+				return {};
+			case "DOM.resolveNode":
+				return { object: { objectId: "object:1" } };
+			default:
+				return {};
+		}
+	};
+	const record = {
+		epoch: 1,
+		refs: {},
+		view: {
+			webContents: {
+				getURL: () => "https://approved.example/",
+				getTitle: () => "Create App",
+				isDestroyed: () => false,
+				on: () => undefined,
+				removeListener: () => undefined,
+			},
+		},
+	};
+	const ctx = {
+		cdp: { send },
+		registry: { requireSurface: () => record, touch: () => {} },
+	};
+
+	const out = await FRAMES_ACTIONS.click(ctx, {
+		tab: "ui:1:nonce",
+		selector: 'role=checkbox[name="Active"]',
+	});
+
+	assert.deepEqual(
+		calls.find((call) => call.method === "DOM.pushNodesByBackendIdsToFrontend")
+			.params,
+		{ backendNodeIds: [41] },
+	);
+	assert.ok(
+		!calls.some((call) => call.method === "DOM.querySelector"),
+		"a locator never reaches the CSS path",
+	);
+	assert.deepEqual(out.resolved, {
+		by: "locator",
+		role: "checkbox",
+		name: "Active",
+		matched: 1,
+	});
+});
+
 /* R1-4: the host path this lane added had no test at this layer. These pin the
  * three decisions that only exist in `page.ts`: the scope is resolved BEFORE the
  * a11y read, a scoped read is windowed by the shared driver, and a scoped read

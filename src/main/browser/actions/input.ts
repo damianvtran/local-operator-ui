@@ -3,6 +3,12 @@ import { BrowserHostError } from "../errors";
 import { sleep } from "../policy/adapter";
 import type { TabRecord } from "../registry";
 import { settle } from "../settle";
+import type { AXNode } from "../vendor/driver/ax-compact";
+import {
+	locatorSuggestions,
+	parseLocator,
+	resolveLocator,
+} from "../vendor/driver/ax-locator";
 import { type BrowserActionContext, stringParam } from "./context";
 import {
 	CONTENTEDITABLE_SELECTOR,
@@ -198,6 +204,13 @@ const SNAPSHOT_REF = /^e\d+$/;
 export interface ResolvedNode {
 	nodeId: number;
 	objectId: string;
+	/** How the target was named, when the caller should be told what the host
+	 * actually resolved (locators only: a ref and a CSS selector already name
+	 * the element to the caller, and their result copy is pinned). */
+	resolvedBy?: "locator";
+	role?: string;
+	name?: string;
+	matched?: number;
 	/** The child session the node lives in; absent for the page's own session
 	 * (which includes a same-site frame's in-process document). */
 	sessionId?: string;
@@ -208,8 +221,50 @@ export interface ResolvedNode {
 /** Results carry the frame's origin whenever the target is not in the top
  * document: approval is per top-level origin, so the agent and the transcript
  * must see when the text went to a third-party frame (ARCH-1, consent). */
+function resolvedFields(node: ResolvedNode): Record<string, unknown> {
+	return node.resolvedBy === "locator"
+		? {
+				resolved: {
+					by: "locator",
+					role: node.role ?? "",
+					name: node.name ?? "",
+					matched: node.matched ?? 1,
+				},
+			}
+		: {};
+}
+
 function frameFields(node: ResolvedNode): Record<string, unknown> {
 	return node.frame ? { frame_origin: node.frame.origin ?? "" } : {};
+}
+
+/** The page's accessibility tree for a locator resolution.
+ *
+ * Enable → read → disable, exactly the documented CDP window `snapshot` uses.
+ * What serializes two commands on ONE tab is the host's per-tab command lane
+ * (`host.ts` → `registry.lane`, whose `busy` flag is set in `registry.ts`), NOT
+ * `CdpPool`: `cdp.ts`'s `send` calls `debugger.sendCommand` immediately with no
+ * per-target lock (agent review round 1, R1-2 — naming the wrong mechanism is
+ * how a future reader trusts a lock that does not exist; the extension needed an
+ * explicit queue for this exact hazard, `commands/ax-tree.ts`).
+ */
+async function readAccessibilityTree(
+	ctx: BrowserActionContext,
+	contents: DriveableView["webContents"],
+): Promise<AXNode[]> {
+	await ctx.cdp.send(contents, "Accessibility.enable", {});
+	try {
+		const tree = await ctx.cdp.send<{ nodes?: AXNode[] }>(
+			contents,
+			"Accessibility.getFullAXTree",
+			{},
+		);
+		return Array.isArray(tree?.nodes) ? tree.nodes : [];
+	} finally {
+		// Bounded and catch-all: a view that died between enable and read needs no
+		// disable, and a failed disable must not replace the read's outcome.
+		await ctx.cdp.send(contents, "Accessibility.disable", {}).catch(() => {});
+	}
 }
 
 /**
@@ -261,6 +316,57 @@ export async function resolveNode(
 			throw new BrowserHostError("element_not_found", "snapshot ref is stale");
 		}
 		return finishTop(ctx, contents, target, pushedId, ref.frameOrigin);
+	}
+
+	// Accessibility locators are resolved BEFORE the CSS path: `role=`,
+	// `label=` and `text=` are not valid CSS, so parsing first cannot shadow a
+	// selector, and the framework-generated-id case never reaches
+	// `DOM.querySelector` at all.
+	//
+	// TOP DOCUMENT ONLY, and that is a MEASURED property rather than a promise
+	// (agent review round 1, R1-1). `Accessibility.getFullAXTree` on the page's
+	// session returns the ROOT frame's tree: driven against the built app on
+	// 2026-10-23 over `iframe#pay-frame` (same site, port 8766) holding a button
+	// named "Pay now", `click text="Pay now"` answered `element_not_found` while
+	// `snapshot` showed the frame's contents through its own sessions. So a
+	// locator cannot land in a frame, cannot bypass `assertFrameNotDenied`, and
+	// cannot mis-report `frame_origin`. A caller that needs a frame keeps the
+	// explicit `>>>` hop syntax, which the CSS path below serves.
+	const locator = parseLocator(target);
+	if (locator) {
+		const nodes = await readAccessibilityTree(ctx, contents);
+		const hit = resolveLocator(nodes, locator);
+		if (!hit) {
+			// The measured loop: nine CSS guesses, each a whole tool call, each
+			// answering only "element not found". Candidates turn one wrong guess
+			// into one correction.
+			throw new BrowserHostError(
+				"element_not_found",
+				`no element matches ${target}`,
+				{ candidates: locatorSuggestions(nodes, target), matched: 0 },
+			);
+		}
+		await ctx.cdp.send(contents, "DOM.getDocument", { depth: 0 });
+		const pushed = await ctx.cdp.send<{ nodeIds?: number[] }>(
+			contents,
+			"DOM.pushNodesByBackendIdsToFrontend",
+			{ backendNodeIds: [hit.backendNodeId] },
+		);
+		const nodeId = pushed?.nodeIds?.[0];
+		if (nodeId === undefined) {
+			throw new BrowserHostError(
+				"element_not_found",
+				`${target} is no longer in the document`,
+			);
+		}
+		const resolved = await finishTop(ctx, contents, target, nodeId);
+		return {
+			...resolved,
+			resolvedBy: "locator",
+			role: hit.role,
+			name: hit.name,
+			matched: hit.matched,
+		};
 	}
 
 	const hops = parseFrameHops(target);
@@ -528,6 +634,7 @@ export async function click(
 	return {
 		navigated: navigationSeen || after.url !== before,
 		...frameFields(node),
+		...resolvedFields(node),
 		...after,
 	};
 }
@@ -545,7 +652,12 @@ export async function type(
 	const typed = await typeInto(ctx, contents, node, text, target);
 	if (typed) {
 		ctx.registry.touch(record);
-		return { ...typed, ...frameFields(node), ...pageOf(record.view) };
+		return {
+			...typed,
+			...frameFields(node),
+			...resolvedFields(node),
+			...pageOf(record.view),
+		};
 	}
 	// Nothing on this node can hold typed text. If it is an iframe ELEMENT, the
 	// field the agent means is inside it: descend to the focused editable or the
