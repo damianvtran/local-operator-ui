@@ -1028,6 +1028,79 @@ test("the press's own pointerup disarms the context menu guard", async () => {
 	}
 });
 
+/*
+ * PREVENTING IS NOT ENOUGH ON ITS OWN (agent review round 3, R3-1). Radix's
+ * composed trigger skips a prevented event, but the page's plain `onContextMenu`
+ * handlers open their own menu without checking - `sidebar-navigation.tsx`,
+ * `chat-tag-header.tsx` and the canvas files view among them. A narrow window
+ * puts the panel over those elements, so the guard has to stop the event, not
+ * only cancel it.
+ */
+test("a committing press's context menu never reaches a plain handler underneath", async () => {
+	const { key, keyup, pointer, opened, panel, rows, wait, dom, unmount } =
+		await mountSwitcher({
+			sessions: ["current", "previous"],
+			recents: ["current", "previous"],
+			displayed: "current",
+		});
+	try {
+		/* The covered page from the event's side: a handler that prevents and
+		 * opens its own menu without asking, the shape of the non-Radix menus. */
+		const underneath = dom.window.document.createElement("div");
+		dom.window.document.body.append(underneath);
+		let plainMenus = 0;
+		underneath.addEventListener("contextmenu", (event) => {
+			event.preventDefault();
+			plainMenus += 1;
+		});
+
+		await key(CTRL_TAB);
+		await wait(REVEAL_WAIT_MS);
+		await pointer("pointerdown", rows()[1], { button: 0 });
+		assert.deepEqual(opened(), ["previous"], "the press commits its row");
+		assert.equal(panel(), null, "and takes the row that would have answered");
+		/* The menu Chromium raises next, hit-tested at the element underneath. */
+		const menu = await pointer("contextmenu", underneath);
+		assert.equal(menu.defaultPrevented, true, "the press still owns its menu");
+		assert.equal(plainMenus, 0, "and no handler underneath ran");
+		/* One press, one guard: the next right-click is the page's again. Its own
+		 * handler prevents it, so the count - not `defaultPrevented` - is the tell. */
+		await pointer("contextmenu", underneath);
+		assert.equal(plainMenus, 1, "the later menu is the page's own");
+		await keyup({ key: "Control", ctrlKey: false });
+	} finally {
+		await unmount();
+	}
+});
+
+/*
+ * AND THE BOUND IS A WAY OUT TOO (agent review round 3, R3-N1). A press dragged
+ * out of the window raises no `pointerup` here and no menu either, so the timer
+ * is the only thing that can end the guard.
+ */
+test("the context menu guard disarms at its bound", async () => {
+	const { key, keyup, pointer, panel, rows, wait, dom, unmount } =
+		await mountSwitcher({
+			sessions: ["current", "previous"],
+			recents: ["current", "previous"],
+			displayed: "current",
+		});
+	try {
+		await key(CTRL_TAB);
+		await wait(REVEAL_WAIT_MS);
+		await pointer("pointerdown", rows()[1], { button: 0 });
+		assert.equal(panel(), null);
+		/* Past the guard's 1000 ms (`PRESS_CONTEXT_MENU_GUARD_MS`), with neither a
+		 * menu nor a `pointerup` to disarm it first. */
+		await wait(1100);
+		const later = await pointer("contextmenu", dom.window.document.body);
+		assert.equal(later.defaultPrevented, false, "the bound ended the guard");
+		await keyup({ key: "Control", ctrlKey: false });
+	} finally {
+		await unmount();
+	}
+});
+
 test("a resting pointer leaves the opening selection alone, and a moving one takes it", async () => {
 	const { key, keyup, pointer, opened, active, rows, wait, dom, unmount } =
 		await mountSwitcher({
