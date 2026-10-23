@@ -1,0 +1,73 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-sonnet-5-5",
+ "instance": "tbstack-r2-1308-zh-cn",
+ "session": "49e8f4a105c2",
+ "job": "5da05281d696",
+ "date": "2026-10-22",
+ "locale": "zh-CN",
+ "translator": "coder",
+ "translator_session": null,
+ "translator_job": null,
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 0,
+ "union_keys_verified": 140,
+ "scope": "PR #1308 ui.teamBridge at head ccc416f47d3a86a5857a603d735a5bb7dcaf7b40: round-2 delta audit of zh-CN after the remediation commit (parent 36b7a7ad880156fd104be82fed6df61914d02c4b, the r1-audited head). Delta = removal of ui.teamBridge.actions.more (141 -> 140 keys; also removed from en and the en context file); no zh-CN value changed. Every one of the other 140 zh-CN values is byte-identical to the r1-audited bytes (line-level comparison). Catalogue audit only, not rendered-fit, activation or release approval.",
+ "sha256": {
+  "en": "f940f0c6b7bd896e49c691c1afa4cdb21a0c7dcf8179b81e3c9071503f168448",
+  "zh-CN": "c358b9a8f3b728ddb7e9a4de0c70a708b619fb69833d2047daeb36f7ec69799e",
+  "context": "2c60cbbbf0164f2a888809eeb8e3eddb11dc6c8bf9bbb2176b3687542acb4843"
+ },
+ "findings": [],
+ "inherited_receipts": [
+  {
+   "base": "36b7a7ad88",
+   "base_commit": "36b7a7ad880156fd104be82fed6df61914d02c4b",
+   "path": "i18n/receipts/tbstack-r1-1308-zh-cn.json",
+   "sha256": "70e4e095642c9ce6efc4b42b81e43fbcb5623a1e48c0fc8c64ef585663479b15",
+   "instance": "tbstack-r1-1308-zh-cn",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "base_source_sha256": "4d2a67968bcf6f26304373a6a00ba2b7410fdb70bd7604db3e40e13cc08f5ee2",
+   "base_target_sha256": "4553af7d93530765caadceb7b0ad20a3ea2195ac4a4805893043cf5cf80200eb",
+   "keys_inherited": 140,
+   "unchanged_values_verified": 140
+  }
+ ],
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+ },
+ "validation": {
+  "independence": "Auditor is translation-auditor subagent session 49e8f4a105c2 (job 5da05281d696, label i18n-audit-1308-r2, parent session 687384e07954), a different session from the r1 auditor and from the implementer. The remediation commit ccc416f47d was authored by the PR implementer; its subagent session/job is not recorded in the commit, so translator_session/translator_job are null rather than guessed. Every byte was read with `git show <sha>:<path>` from ~/local-operator-ui; no checkout, worktree or repo file was edited. The ledger is assembled by the coordinator with scripts/i18n/ledger-assemble.mjs, not by the auditor.",
+  "model_note": "The session started on anthropic/claude-opus-5-5 and was switched by the harness to anthropic/claude-sonnet-5-5 (quota fallback) mid-task; the model recorded in this receipt is the one that wrote and hash-checked it.",
+  "delta": "git diff 36b7a7ad88..ccc416f47d -- src/i18n i18n (excluding keys.gen.ts) touches exactly 9 files: en/ui.teamBridge.json (-1 line, ui.teamBridge.actions.more), en/ui.teamBridge.context.json (-ui.teamBridge.actions.more row, ui.teamBridge.actions.label note), and the 7 locale catalogues (-1 line each; ur also ui.teamBridge.actions.label). Nothing under i18n/ changed. keys.gen.ts: one line removed (ui.teamBridge.actions.more). en note for ui.teamBridge.actions.label: '(react, reply in thread, more)' -> '(react and reply in thread)'. Accurate: team-bridge-message-toolbar.tsx now renders exactly the react button (ui.teamBridge.reactions.add) and the reply-in-thread button (ui.teamBridge.replies.action); the 'ONE message, not the conversation' disambiguation is retained, so translators are not misled.",
+  "byte_identity": "Python: the zh-CN file at ccc416f47d equals the file at 36b7a7ad88 with the ui.teamBridge.actions.more line deleted (line-for-line equality, tabs/newline preserved); key list and order equal en's 140 keys. The r1 receipt's recorded en/target/context hashes equal the sha256 of the blobs at 36b7a7ad88. The re-hashed reference glossary and style guide equal r1's reference_sha256.",
+  "icu": "@formatjs/icu-messageformat-parser (from ~/local-operator-ui/node_modules, read-only), all 7 non-English locales at ccc416f47d: 'checked 980 (locale,key) pairs; problems=0' - argument names/types/select arms equal en for every key, plural categories within each locale's CLDR set, key set and order equal en. No placeholder or markup token was in the removed or changed keys (both plain literals; context placeholders {}).",
+  "plurals": "zh-CN: unchanged; the removed and changed keys carry no plural.",
+  "typography": "zh-CN ui.teamBridge.json at ccc416f47d: NFC=True, BOM=False, trailing newline=True, Cf/Cc characters=[], NBSP=False.",
+  "overflow": "No string was added or lengthened; a removal cannot create overflow.",
+  "semantics": "Pure removal of ui.teamBridge.actions.more: no value of this locale changed, so no wording, idiom, register or glossary judgement is open. Remaining 'actions' strings (ui.teamBridge.actions.label and row.menu) were not touched and keep the terminology r1 recorded. Dangling-reference check: git grep of ui.teamBridge.actions.more at ccc416f47d finds one hit, scripts/team-bridge-reactions-behaviour.test.mjs:481, which asserts the key is NOT rendered; keys.gen.ts lost its entry; no component calls t() on it.",
+  "limitations": [
+   "Catalogue audit only. No rendered-fit, screenshot, pseudo-localization, native-bidi, activation or release evidence is claimed.",
+   "Inherited values rest on the r1 receipt and its own inheritance chain; this round re-verified their bytes, not their translation quality."
+  ]
+ },
+ "union_integrity": {
+  "method": "Not a merge round: single remediation commit on the r1-audited head. Line-level comparison of the 140 surviving values against the r1-audited bytes.",
+  "head": "ccc416f47d3a86a5857a603d735a5bb7dcaf7b40",
+  "parent": "36b7a7ad880156fd104be82fed6df61914d02c4b",
+  "keys_merged": 140,
+  "keys_dropped": 1,
+  "keys_dropped_names": [
+   "ui.teamBridge.actions.more"
+  ],
+  "shared_keys_altered": 0
+ }
+}
