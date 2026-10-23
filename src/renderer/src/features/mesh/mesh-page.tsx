@@ -80,6 +80,7 @@ import {
 import type { MeshGraph } from "./mesh-graph";
 import { meshSummary } from "./mesh-graph";
 import { MeshList } from "./mesh-list";
+import { MeshRevoked } from "./mesh-revoked";
 import { deviceSessionTotal } from "./mesh-sessions";
 import {
 	type MeshReads,
@@ -470,6 +471,7 @@ export const MeshSurface: FC<{
 									<button
 										key={option}
 										type="button"
+										data-mesh-presentation={option}
 										aria-pressed={presentation === option}
 										disabled={state.kind !== "ready"}
 										onClick={() => setPresentation(option)}
@@ -598,13 +600,22 @@ export const MeshSurface: FC<{
 					 */}
 					<div className="flex min-h-[22rem] flex-1 gap-4">
 						<div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-							<p
+							{/*
+							 * THE CENSUS AND THE REVOKED COUNT ARE ONE LINE. The count is not a
+							 * second sentence beside the census: it continues it, as the lane and the
+							 * list heading continue their device counts, and it is the one control
+							 * that opens the audit rows. A `<div>` rather than a `<p>` because the
+							 * shared disclosure is block-level markup a paragraph may not contain -
+							 * the band is a sentence, not a paragraph element.
+							 */}
+							<div
 								id={summaryId}
 								className="text-meta text-ink-muted"
 								data-mesh-summary=""
 							>
-								{summary}
-							</p>
+								<span>{summary}</span>
+								<MeshRevoked revoked={graph.revoked} />
+							</div>
 							{staleError && (
 								<Alert variant="warning">
 									<p>{staleError}</p>
@@ -1040,10 +1051,15 @@ export const MeshPage: FC<{ initialPresentation?: Presentation }> = ({
 		return graph.networks
 			.filter((network) => {
 				if (!device) return true;
-				const membership = device.memberships.find(
+				/*
+				 * A network the device is not a LIVE member of is offered: `meshGraph`
+				 * carries only live memberships, so a revoked one is absent here and the
+				 * invite can be issued again (admission is two-sided, so the presence of a
+				 * tombstone never implied one).
+				 */
+				return !device.memberships.some(
 					(candidate) => candidate.networkId === network.id,
 				);
-				return !membership || !membership.active;
 			})
 			.map((network) => ({ id: network.id, label: network.label }));
 	}, [graph, inviteAsk]);
