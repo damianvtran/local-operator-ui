@@ -802,14 +802,19 @@ const AskRow = ({
 	/*
 	 * CHANGING THE INTERFACE LANGUAGE RE-RENDERS THE FORMATTED TIME, which is why
 	 * the locale is read through the hook rather than at module scope: a stored
-	 * formatter would keep the old locale's clock until the next mount.
+	 * formatter would keep the old locale's clock until the next mount. Memoised on
+	 * the pair, because the card re-renders on the countdown's tick and a fresh
+	 * formatter per second is work the tick did not ask for.
 	 */
-	const lastUserMessageTime =
-		lastUserMessageAt === null
-			? null
-			: new Intl.DateTimeFormat(locale, { timeStyle: "short" }).format(
-					new Date(lastUserMessageAt),
-				);
+	const lastUserMessageTime = useMemo(
+		() =>
+			lastUserMessageAt === null
+				? null
+				: new Intl.DateTimeFormat(locale, { timeStyle: "short" }).format(
+						new Date(lastUserMessageAt),
+					),
+		[locale, lastUserMessageAt],
+	);
 	const conversation =
 		conversationOf === undefined ? null : conversationOf(presentation);
 	const setDraft = useMemo(
