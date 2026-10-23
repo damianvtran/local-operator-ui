@@ -9,8 +9,8 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, Bot, Hash, Plus, Users } from "lucide-react";
-import type { FC, ReactNode } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import type { Dispatch, FC, ReactNode, SetStateAction } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type {
 	TeamBridgeConversation,
@@ -78,6 +78,7 @@ import {
 import { useReportTeamBridgeViewing } from "./team-bridge-viewing";
 import {
 	refreshAfterSend,
+	teamBridgeKeys,
 	useCreateTeamBridgeConversation,
 	useJoinTeamBridgeConversation,
 	useMarkTeamBridgeRead,
@@ -329,6 +330,8 @@ export type TeamBridgePageViewProps = {
 	defaultMenuOpen?: boolean;
 	/** Story/test seed only: the page's real draft is user-owned state. */
 	initialDraft?: string;
+	/** Page-lifetime, owner-scoped retention; never a cross-account fallback. */
+	onDraftChange?: (draft: string) => void;
 	/** The organization's directory: People and Chiefs of staff both read it. */
 	people?: readonly TeamBridgeDirectoryMember[];
 	/**
@@ -388,6 +391,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onNotifyChange,
 	defaultMenuOpen = false,
 	initialDraft = "",
+	onDraftChange,
 	people = [],
 	directories,
 	selfName,
@@ -406,7 +410,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onRetryMemberships,
 }) => {
 	const locale = useI18nLocale();
-	const [draft, setDraft] = useState(initialDraft);
+	const [draft, setDraftState] = useState(initialDraft);
+	const setDraft = (next: string) => {
+		setDraftState(next);
+		onDraftChange?.(next);
+	};
 	// Thread identity is checked against the current selection before mounting.
 	const [threadSelection, setThreadSelection] = useState<ThreadTarget | null>(
 		threadLink ?? null,
@@ -1279,7 +1287,83 @@ export const TeamBridgePreviewBanner: FC<{
  * Reading a thread marks it read at the newest seq the reader has been shown;
  * the server applies `$max`, so a re-render cannot move the cursor backwards.
  */
+function canWriteBridge(
+	status: ReturnType<typeof useTeamBridgeStatus>["data"],
+) {
+	return Boolean(
+		status?.account_id &&
+			status.tenant_id &&
+			status.state === "ready" &&
+			status.local.enabled &&
+			!status.read_only &&
+			teamBridgeEligibility(status) === null,
+	);
+}
+
 export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
+	const status = useTeamBridgeStatus();
+	const [searchParams] = useSearchParams();
+	const requestedTenant = searchParams.get("tenant");
+	const [scope, setScope] = useState<TeamBridgeScope>(() =>
+		requestedTenant
+			? asTeamBridgeTenantId(requestedTenant)
+			: TEAM_BRIDGE_ALL_SCOPE,
+	);
+	const scopeChosen = useRef(Boolean(requestedTenant));
+	// Retain private DATA for a returning owner, only within this mounted page.
+	// Never retain executable retry closures: a new epoch must recheck authority.
+	const drafts = useRef(new Map<string, string>());
+	const retainedPending = useRef(new Map<string, PendingSend[]>());
+	const draftOwner = JSON.stringify([
+		status.data?.account_id,
+		status.data?.tenant_id,
+		scope,
+	]);
+	/*
+	 * Optimistic projections, retry closures and create coalescing all belong
+	 * to ONE authority lifetime. A keyed container replaces them in the
+	 * identity-changing commit, not an effect after another account has painted.
+	 * Ordinary polls keep this key, preserving legitimate failed-send retries.
+	 * Losing resolved status/write authority ends the lifetime even if the same
+	 * account later returns; an old asynchronous request cannot revive it.
+	 */
+	const owner = JSON.stringify([
+		status.data?.account_id,
+		status.data?.tenant_id,
+		scope,
+		canWriteBridge(status.data),
+	]);
+	return (
+		<TeamBridgeOwnedPage
+			key={owner}
+			status={status}
+			scope={scope}
+			setScope={setScope}
+			scopeChosen={scopeChosen}
+			drafts={drafts.current}
+			draftOwner={draftOwner}
+			retainedPending={retainedPending.current}
+		/>
+	);
+};
+
+const TeamBridgeOwnedPage: FC<{
+	status: ReturnType<typeof useTeamBridgeStatus>;
+	scope: TeamBridgeScope;
+	setScope: Dispatch<SetStateAction<TeamBridgeScope>>;
+	scopeChosen: { current: boolean };
+	drafts: Map<string, string>;
+	draftOwner: string;
+	retainedPending: Map<string, PendingSend[]>;
+}> = ({
+	status,
+	scope,
+	setScope,
+	scopeChosen,
+	drafts,
+	draftOwner,
+	retainedPending,
+}) => {
 	/*
 	 * A banner click lands here with `?tenant=…&conversation=…`. The parameters
 	 * seed the FIRST render so the clicked conversation wins over the landing
@@ -1292,20 +1376,34 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	const [threadLink, setThreadLink] = useState<ThreadTarget | null>(() =>
 		threadTargetFromSearch(searchParams),
 	);
-	const [scope, setScope] = useState<TeamBridgeScope>(() =>
-		requestedTenant
-			? asTeamBridgeTenantId(requestedTenant)
-			: TEAM_BRIDGE_ALL_SCOPE,
-	);
-	const scopeChosen = useRef(Boolean(requestedTenant));
 	// THE GATE IS THE FIRST READ (round-1 U-6): until it answers, every other
 	// read is disabled, so an ineligible account issues no refused requests.
-	const status = useTeamBridgeStatus();
 	const eligibility = status.data ? teamBridgeEligibility(status.data) : null;
 	const gatePending = status.isPending;
 	const readsEnabled = !gatePending && eligibility === null;
 	const selfAccountId = status.data?.account_id ?? undefined;
-	const readOnly = status.data?.read_only === true;
+	const readOnly = !canWriteBridge(status.data);
+	const client = useQueryClient();
+	const mounted = useRef(true);
+	useLayoutEffect(() => {
+		mounted.current = true;
+		return () => {
+			mounted.current = false;
+		};
+	}, []);
+	// Consult the live cache too: a reply may land after status changes but
+	// before React commits the replacement owner. Unmount alone is not a fence.
+	const isCurrentOwner = () => {
+		const current = client.getQueryData<NonNullable<typeof status.data>>(
+			teamBridgeKeys.status,
+		);
+		return (
+			mounted.current &&
+			canWriteBridge(current) &&
+			current?.account_id === status.data?.account_id &&
+			current?.tenant_id === status.data?.tenant_id
+		);
+	};
 	// The hub's status `tenants[]` is the switcher's and the merged filter's
 	// authoritative source; memberships only label it (and stand in when the
 	// status has no tenant list). Filtering by memberships alone dropped every
@@ -1376,7 +1474,14 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		);
 		setChannelFormOpen(false);
 		setSearchParams({}, { replace: true });
-	}, [requestedConversation, requestedTenant, requestedRoot, setSearchParams]);
+	}, [
+		requestedConversation,
+		requestedTenant,
+		requestedRoot,
+		setSearchParams,
+		scopeChosen,
+		setScope,
+	]);
 
 	// A conversation id and a person both belong to one organization; a scope
 	// change clears the target so a stale thread is never shown under a new title.
@@ -1396,7 +1501,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		setScope((current) =>
 			preferredScope(organizations, current, scopeChosen.current),
 		);
-	}, [organizations]);
+	}, [organizations, scopeChosen.current, setScope]);
 
 	const visibleConversations = useMemo(
 		() => visibleConversationRows(conversations, scope, organizations),
@@ -1429,6 +1534,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	);
 	const create = useCreateTeamBridgeConversation(
 		mergedView ? undefined : scope,
+		isCurrentOwner,
 	);
 	const markRead = useMarkTeamBridgeRead(
 		selected?.id ?? "",
@@ -1495,7 +1601,6 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	 * resolves to its DM once the list refetches, and keeping it keeps the
 	 * person's row highlighted.
 	 */
-	const client = useQueryClient();
 	/*
 	 * THE CONVERSATION A DRAFT ALREADY CREATED, keyed by the draft's identity
 	 * (review round 1, R1-2). A first send is two writes: create, then post.
@@ -1524,7 +1629,20 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	 * repeats the SAME request with the SAME key and the same remembered
 	 * conversation, whatever is selected by then.
 	 */
-	const [pending, setPending] = useState<PendingSend[]>([]);
+	const [pending, setPendingState] = useState<PendingSend[]>(() =>
+		(retainedPending.get(draftOwner) ?? []).map((row) => ({
+			...row,
+			// The previous epoch cannot acknowledge or continue this request. Keep
+			// its body/ref for this owner without pretending it is still sending.
+			status: row.status === "sending" ? "failed" : row.status,
+		})),
+	);
+	const setPending = (update: (rows: PendingSend[]) => PendingSend[]) =>
+		setPendingState((rows) => {
+			const next = update(rows);
+			retainedPending.set(draftOwner, next);
+			return next;
+		});
 	const attempts = useRef(new Map<string, () => Promise<void>>());
 	const patchPending = (clientRef: string, patch: Partial<PendingSend>) =>
 		setPending((rows) =>
@@ -1544,23 +1662,30 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			.join(",")}`;
 	};
 	const screenDraftKey = selected === null ? draftKeyOf() : null;
+	const composerKey = JSON.stringify([draftOwner, selected?.tenant_id, target]);
 	const confirmed = messages.data?.messages ?? [];
 	const threadPending = pendingForThread(
-		pending,
+		pending.filter(
+			(row) =>
+				row.tenantId ===
+				(selected?.tenant_id ?? (mergedView ? undefined : scope)),
+		),
 		selected?.id ?? null,
 		screenDraftKey,
 	);
 
 	const sendBody = async (body: string, clientRef: string) => {
+		if (!isCurrentOwner()) return;
 		const recipients = selected === null ? draftRecipients() : [];
 		const input = selected === null ? draftCreateInput(recipients) : null;
 		if (selected === null && input === null) return undefined;
 		const draftKey = selected === null ? draftKeyOf() : null;
 		const startedOn = target;
-		const conversationId = selected?.id ?? null;
+		const restored = threadPending.find((row) => row.clientRef === clientRef);
+		const conversationId = restored?.conversationId ?? selected?.id ?? null;
 		const tenantId = selected?.tenant_id ?? (mergedView ? undefined : scope);
 		setPending((rows) => [
-			...rows,
+			...rows.filter((row) => row.clientRef !== clientRef),
 			{
 				clientRef,
 				body,
@@ -1573,6 +1698,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			},
 		]);
 		const attempt = async () => {
+			if (!isCurrentOwner()) return;
 			patchPending(clientRef, { status: "sending" });
 			const outcome = await performSend({
 				conversationId,
@@ -1583,23 +1709,32 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				body,
 				clientRef,
 				remembered: createdForDraft.current,
-				create: (createInput) =>
-					create.mutateAsync(createInput) as Promise<{
-						id?: string;
-						tenant_id?: string;
-					}>,
+				create: async (createInput) => {
+					const created = await create.mutateAsync(createInput);
+					// Guard BEFORE sendFirstMessage remembers/coalesces the result,
+					// not merely after its create-and-post sequence has completed.
+					if (!isCurrentOwner())
+						throw new Error("Team Bridge write authority changed");
+					return created as { id?: string; tenant_id?: string };
+				},
 				// Straight to the API rather than a mutation hook bound to the
 				// conversation selected at RENDER time (a just-created row is not
 				// selected yet).
-				post: (id, message) => TeamBridgeApi.send(id, message),
+				post: (id, message) => {
+					if (!isCurrentOwner())
+						throw new Error("Team Bridge write authority changed");
+					return TeamBridgeApi.send(id, message);
+				},
 				// Adopt the created conversation the moment it exists, so a copy
 				// arriving before the POST resolves is matched to it.
 				onCreated: (created) =>
+					isCurrentOwner() &&
 					patchPending(clientRef, {
 						conversationId: created.id,
 						tenantId: created.tenantId,
 					}),
 			});
+			if (!isCurrentOwner()) return;
 			if (!outcome.ok) {
 				patchPending(clientRef, { status: "failed" });
 				return;
@@ -1622,8 +1757,13 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			// The message is sent. A failed refresh is the next poll's to repeat,
 			// never a reason to show the message as unsent.
 			try {
-				await refreshAfterSend(client, outcome.id, outcome.tenantId);
-				if (conversationId === null) await list.refetch();
+				await refreshAfterSend(
+					client,
+					outcome.id,
+					outcome.tenantId,
+					isCurrentOwner,
+				);
+				if (isCurrentOwner() && conversationId === null) await list.refetch();
 			} catch {
 				return;
 			}
@@ -1632,7 +1772,16 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		return attempt();
 	};
 	const retrySend = (clientRef: string) => {
-		void attempts.current.get(clientRef)?.();
+		if (!isCurrentOwner()) return;
+		const attempt = attempts.current.get(clientRef);
+		if (attempt) {
+			void attempt();
+			return;
+		}
+		// A returning owner's retained row is data, not the old owner's closure.
+		// Rebind only the visible owner/tenant's row, preserving idempotency.
+		const restored = threadPending.find((row) => row.clientRef === clientRef);
+		if (restored) void sendBody(restored.body, restored.clientRef);
 	};
 
 	// A refusal belongs to the conversation it happened in.
@@ -1691,6 +1840,12 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	return (
 		<>
 			<TeamBridgePageView
+				key={composerKey}
+				initialDraft={drafts.get(composerKey) ?? ""}
+				onDraftChange={(body) => {
+					if (body) drafts.set(composerKey, body);
+					else drafts.delete(composerKey);
+				}}
 				threadLink={threadLink}
 				onCloseThread={() => setThreadLink(null)}
 				listState={
@@ -1776,14 +1931,18 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				}}
 			/>
 			<TeamBridgeCreateDialog
-				open={channelFormOpen}
+				open={
+					channelFormOpen && !readOnly && !gatePending && eligibility === null
+				}
 				candidates={channelCandidates}
 				pending={create.isPending}
 				error={create.isError ? t("ui.teamBridge.create.error") : undefined}
 				onClose={() => setChannelFormOpen(false)}
 				onCreate={(input) => {
+					if (!isCurrentOwner()) return;
 					create.mutate(input, {
 						onSuccess: (created) => {
+							if (!isCurrentOwner()) return;
 							setChannelFormOpen(false);
 							const conversation = created as { id?: string };
 							if (conversation.id)

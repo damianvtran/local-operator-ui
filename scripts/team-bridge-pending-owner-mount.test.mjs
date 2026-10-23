@@ -59,8 +59,53 @@ for (const boundary of ["account", "tenant"]) {
 			await page.changeOwner(boundary);
 			assert.equal(page.text().includes("A existing private body"), false);
 			assert.equal(page.foreignFrames("A existing private body").length, 0);
-		} finally { await page.close(); }
+		} finally {
+			await page.close();
+		}
 	});
+}
+
+for (const boundary of ["account", "tenant"]) {
+	test(`unsent text stays private and restores only for its original ${boundary}`, async () => {
+		const page = await mountPendingOwnerPage({ existing: true });
+		try {
+			await page.typeDraft("A private unsent text");
+			await page.changeOwner(boundary);
+			await page.selectExisting();
+			assert.equal(page.draft(), "");
+			assert.equal(page.foreignFrames("A private unsent text").length, 0);
+			await page.typeDraft("B private unsent text");
+			await page.changeOwner("return");
+			await page.selectExisting();
+			assert.equal(page.draft(), "A private unsent text");
+			assert.equal(page.posts().length, 0);
+		} finally {
+			await page.close();
+		}
+	});
+}
+
+for (const boundary of ["account", "tenant"]) {
+	for (const phase of ["create", "post", "failed"]) {
+		test(`original ${boundary} retains ${phase} body after switch and late completion`, async () => {
+			const page = await mountPendingOwnerPage();
+			try {
+				await page.sendPrivateGroup("A retained private body", phase);
+				const postsBefore = page.posts().length;
+				await page.changeOwner(boundary);
+				if (phase !== "failed") await page.release(phase);
+				assert.equal(page.text().includes("A retained private body"), false);
+				assert.equal(page.foreignFrames("A retained private body").length, 0);
+				assert.equal(page.posts().length, postsBefore);
+				await page.changeOwner("return");
+				await page.openAddressedGroup();
+				assert.equal(page.text().includes("A retained private body"), true);
+				assert.equal(page.posts().length, postsBefore);
+			} finally {
+				await page.close();
+			}
+		});
+	}
 }
 
 for (const permission of ["off", "readonly"]) {
@@ -69,7 +114,11 @@ for (const permission of ["off", "readonly"]) {
 			const page = await mountPendingOwnerPage();
 			try {
 				if (action === "dialog") await page.openChannel();
-				else await page.sendPrivateGroup("A private authority body", action === "create" ? "create" : "failed");
+				else
+					await page.sendPrivateGroup(
+						"A private authority body",
+						action === "create" ? "create" : "failed",
+					);
 				await page.setPermission(permission);
 				const postsBefore = page.posts().length;
 				const createsBefore = page.creates().length;
@@ -80,7 +129,9 @@ for (const permission of ["off", "readonly"]) {
 				assert.equal(page.posts().length, postsBefore);
 				assert.equal(page.creates().length, createsBefore);
 				assert.equal(page.readCount(), readsBefore);
-			} finally { await page.close(); }
+			} finally {
+				await page.close();
+			}
 		});
 	}
 }
@@ -91,7 +142,9 @@ test("active owner can still create a channel", async () => {
 		await page.openChannel();
 		await page.submitChannelIfVisible();
 		assert.equal(page.creates().length, 1);
-	} finally { await page.close(); }
+	} finally {
+		await page.close();
+	}
 });
 
 test("same-owner rerender and retry reuse the created group and client reference", async () => {
