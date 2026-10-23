@@ -97,6 +97,26 @@ function makePackagedApp(
 		"utf8",
 	);
 	writeFileSync(join(resources, "icon.icns"), "fixture icon");
+	// A real macOS bundle carries its Electron helpers beside Resources, and
+	// `afterPack` stamps each one. The fixture carries one so the hook reaches
+	// the prune this file exercises; a bundle with none is a build failure.
+	const helper = join(
+		appOutDir,
+		"Local Operator.app",
+		"Contents",
+		"Frameworks",
+		"Local Operator Helper.app",
+		"Contents",
+	);
+	mkdirSync(helper, { recursive: true });
+	writeFileSync(
+		join(helper, "Info.plist"),
+		`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict><key>CFBundleName</key><string>Electron Helper</string></dict></plist>
+`,
+		"utf8",
+	);
 	for (const name of trees) {
 		mkdirSync(join(resources, name, "lib", "python3.12"), { recursive: true });
 		mkdirSync(join(resources, name, "bin"), { recursive: true });

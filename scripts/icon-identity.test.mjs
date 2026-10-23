@@ -163,6 +163,11 @@ test("every nested helper bundle is stamped with the app's icon", () => {
 			"utf8",
 		);
 		assert.match(plistText, ICON_PLIST_ENTRY);
+		assert.equal(
+			plistText.match(/<key>CFBundleIconFile<\/key>/g)?.length,
+			1,
+			"a stale CFBundleIconFile must be replaced, not duplicated",
+		);
 	}
 	assert.ok(!existsSync(join(frameworks, "notes.txt", "Contents")));
 });
@@ -183,6 +188,48 @@ test("the stamping refuses a bundle whose main icon is not the one it copies", (
 				platform: "darwin",
 			}),
 		BUILD_ICON_ERROR,
+	);
+});
+
+test("a binary plist is refused rather than silently left unstamped", () => {
+	const out = tempDir("lop-icon-afterpack-binary-");
+	const app = join(out, "Local Operator.app");
+	mkdirSync(join(app, "Contents", "Resources"), { recursive: true });
+	mkdirSync(join(app, "Contents", "Frameworks"), { recursive: true });
+	writeFileSync(join(app, "Contents", "Resources", "icon.icns"), "icon");
+	writeFileSync(
+		join(app, "Contents", "Info.plist"),
+		"bplist00not-an-xml-plist",
+	);
+	assert.throws(
+		() =>
+			stampBundleIcons({
+				appOutDir: out,
+				productFilename: "Local Operator",
+				platform: "darwin",
+			}),
+		/binary property list/,
+	);
+});
+
+test("a bundle with no helper bundles is refused rather than reported clean", () => {
+	const out = tempDir("lop-icon-afterpack-empty-");
+	const app = join(out, "Local Operator.app");
+	mkdirSync(join(app, "Contents", "Resources"), { recursive: true });
+	mkdirSync(join(app, "Contents", "Frameworks"), { recursive: true });
+	writeFileSync(join(app, "Contents", "Resources", "icon.icns"), "icon");
+	writeFileSync(
+		join(app, "Contents", "Info.plist"),
+		plist("<key>CFBundleIconFile</key><string>icon.icns</string>"),
+	);
+	assert.throws(
+		() =>
+			stampBundleIcons({
+				appOutDir: out,
+				productFilename: "Local Operator",
+				platform: "darwin",
+			}),
+		/No nested helper/,
 	);
 });
 
