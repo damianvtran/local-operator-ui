@@ -3596,8 +3596,10 @@ export const ApprovalsPicker: FC<PickerContext> = ({
 				await command.run("approvals", value);
 				return;
 			}
-			// Default scope writes the typed settings key and leaves the current
-			// session's mode alone, exactly as `/approvals default` does.
+			// Default scope writes the typed settings key. The saved default applies
+			// to live conversations that follow it; a conversation with its own
+			// explicit choice keeps it — the result sentence says both, rather than
+			// asserting this session was left unchanged.
 			await settingsOp.perform(
 				() =>
 					desktopResult<{ key: string; value: unknown }>({
@@ -3607,7 +3609,7 @@ export const ApprovalsPicker: FC<PickerContext> = ({
 					}),
 				(row) => ({
 					tone: "success",
-					text: `Default approvals for new sessions: ${String(row?.value ?? value)}. This session is unchanged.`,
+					text: `Default approvals for all sessions that follow it: ${String(row?.value ?? value)}. This session follows it unless it has its own choice.`,
 				}),
 				"The default was not saved",
 			);
@@ -3631,7 +3633,10 @@ export const ApprovalsPicker: FC<PickerContext> = ({
 					onChange={setScope}
 					options={[
 						{ value: "session", label: "This session" },
-						{ value: "default", label: "Default for new sessions" },
+						{
+							value: "default",
+							label: "Default for all sessions that follow it",
+						},
 					]}
 				/>
 			}
