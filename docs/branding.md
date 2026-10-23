@@ -514,6 +514,12 @@ a menu or a popover.
     in the Library dock disappears at the dock's content edge, not at y0. When
     the panel's ROOT is the scroller, `panel-scroll` states the same contract
     as a margin plus the matching height.
+  - The element that wears `panel-top-pad` is the element that paints the
+    panel's ground. A padded wrapper that owns no ground is the inset band this
+    rule exists to forbid, not a clearance: the padding is invisible only when
+    it sits inside the surface it belongs to. A content column nested inside a
+    grounded, `panel-flush` ancestor needs no ground of its own — and must not
+    take one, which would put a second tone step inside a single panel.
 - **Chrome controls are borderless too.** A grouped segmented control (for example the Library grid/list toggle) may keep one shared `border-control` boundary around the group; the edge belongs to the group affordance, not to each button. Search, sort and filter chrome takes the `elevated` ground on a `surface` panel and the shared accent focus ring; no resting stroke. Reserve `border-control` for a form field or an actual boundary a ground cannot express, never as decoration on a toolbar control.
 - **A scrolling panel fades at its top edge.** `data-lo-sidebar-edge-cues` on
   the scroller uses the shared scroll-driven mask: content dissolves under the

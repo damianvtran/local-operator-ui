@@ -100,6 +100,9 @@ export const OVERLAY_KIND_CLASS = {
 	"command-palette": "pause-modal",
 	onboarding: "pause-modal",
 	lightbox: "pause-modal",
+	// Upstream's full-window session switcher still registers by its own id;
+	// the S5 kind table is where that id is classified (main e9c6c1de73).
+	"session-switcher": "pause-modal",
 	// anchored, interactive, user-opened: the box is the painted panel
 	menu: "pause-measured",
 	popover: "pause-measured",
