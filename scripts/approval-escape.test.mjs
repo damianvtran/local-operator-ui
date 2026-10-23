@@ -48,7 +48,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { approvalEscapeRequest, runApprovalEscape, ApprovalEscapeControls, APPROVAL_ESCAPE_COPY, approvalPolicyLine } from "./src/renderer/src/features/chat/components/trace/approval-escape";',
+			'export { runApprovalEscape, ApprovalEscapeControls, APPROVAL_ESCAPE_COPY, approvalPolicyLine } from "./src/renderer/src/features/chat/components/trace/approval-escape";',
 			'export { QuestionDock } from "./src/renderer/src/features/chat/components/trace/question-dock";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -75,7 +75,6 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const { createElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");
 const {
-	approvalEscapeRequest,
 	runApprovalEscape,
 	ApprovalEscapeControls,
 	APPROVAL_ESCAPE_COPY,
@@ -116,22 +115,18 @@ const renderControls = (props) =>
 		}),
 	);
 
-test("the two handles send different routes, and neither answers the gate", () => {
-	assert.deepEqual(approvalEscapeRequest("session"), {
-		op: "sessions.command",
-		command: "approvals",
-		args: "auto",
-	});
-	assert.deepEqual(approvalEscapeRequest("all"), {
-		op: "settings.edit",
-		key: "tool_approval_mode",
-		value: "auto",
-	});
-	for (const target of ["session", "all"]) {
-		const request = approvalEscapeRequest(target);
-		assert.notEqual(request.op, "sessions.answer");
-		assert.notEqual(request.op, "approval_answer");
-	}
+/*
+ * NO ANSWER DOOR EXISTS. `ApprovalEscapePorts` has only `runCommand` and
+ * `editDefault`, and the call-order test below pins the exact command. This
+ * source assertion is the belt to that structural brace: a future edit that
+ * imported the answer path would name it here first.
+ */
+test("the escape hatch never reaches the answer op", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/chat/components/trace/approval-escape.tsx",
+		"utf8",
+	);
+	assert.doesNotMatch(source, /sessions\.answer|approval_answer/);
 });
 
 test("the session handle runs `approvals auto` and nothing else", async () => {
@@ -210,10 +205,48 @@ test("a session refusal keeps the backend's detail and never claims a save", asy
 		}),
 		editDefault: async () => ({ key: "tool_approval_mode", value: "auto" }),
 	});
+	// ONE prefix: the status adds "Unchanged: ", so the caller's own prefix is
+	// dropped here and the transport's detail survives intact.
 	assert.deepEqual(unreachable, {
 		kind: "unchanged",
+		detail: "Desktop controls could not reach the backend process.",
+	});
+});
+
+test("a no-gates notice is a refusal, not a mode change", async () => {
+	const sentence =
+		"exec uses its original headless approval gate (non-TTY requests deny); launch with --control for supervisor approval controls";
+	const outcome = await runApprovalEscape("session", {
+		runCommand: async () => ({
+			outcome: { kind: "notice", text: sentence, style: "warning", data: {} },
+			result: { tone: "warning", text: sentence },
+		}),
+		editDefault: async () => {
+			throw new Error("the session handle must not write the default");
+		},
+	});
+	assert.deepEqual(outcome, { kind: "unchanged", detail: sentence });
+
+	// The core's structured outcome is the same fact when it is present: a
+	// notice carrying `ok: false` did not move the gate, whatever its prose.
+	const structured = await runApprovalEscape("session", {
+		runCommand: async () => ({
+			outcome: {
+				kind: "notice",
+				text: "tool approvals: auto — every tool runs without asking (this session)",
+				style: "warning",
+				data: { ok: false },
+			},
+			result: { tone: "warning", text: "unused" },
+		}),
+		editDefault: async () => {
+			throw new Error("the session handle must not write the default");
+		},
+	});
+	assert.deepEqual(structured, {
+		kind: "unchanged",
 		detail:
-			"The mode was not changed: Desktop controls could not reach the backend process.",
+			"tool approvals: auto — every tool runs without asking (this session)",
 	});
 });
 
@@ -299,8 +332,7 @@ test("a saved default with a refused live command reports the half that did not 
 	});
 	assert.deepEqual(unreachable, {
 		kind: "default-only",
-		detail:
-			"The mode was not changed: Desktop controls could not reach the backend process.",
+		detail: "Desktop controls could not reach the backend process.",
 	});
 });
 
@@ -399,6 +431,9 @@ test("the policy line names the effective mode and its provenance", () => {
 	assert.equal(approvalPolicyLine({}), null);
 	assert.equal(approvalPolicyLine({ mode: "ask" }), null);
 	assert.equal(approvalPolicyLine({ provenance: "global" }), null);
+	// The core's not-stated stamp (`""`) is absence, not a mode named "Ask".
+	assert.equal(approvalPolicyLine({ mode: "", provenance: "" }), null);
+	assert.equal(approvalPolicyLine({ mode: "", provenance: "global" }), null);
 
 	const line = renderControls({
 		policyLine: approvalPolicyLine({
@@ -446,6 +481,22 @@ test("the approval card keeps Approve and Deny enabled beside the handles", () =
 	);
 	assert.doesNotMatch(noSession, /Set auto for this session/);
 	assert.doesNotMatch(noSession, /data-approval-policy-line/);
+
+	// The same omission for a gate that CARRIES the fields with the core's
+	// not-stated `""`: an empty mode is not a policy to name.
+	const notStated = renderToStaticMarkup(
+		createElement(QuestionDock, {
+			gate: approvalGate({
+				approval_mode: "",
+				approval_provenance: "",
+				approval_global_mode: "",
+			}),
+			sessionId: SESSION,
+			onAnswer: () => {},
+		}),
+	);
+	assert.match(notStated, /Set auto for this session/);
+	assert.doesNotMatch(notStated, /data-approval-policy-line/);
 });
 
 /*
