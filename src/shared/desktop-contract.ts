@@ -6345,6 +6345,15 @@ export type DesktopMediaRequest =
 	| { op: "library.content"; assetId: string; download?: boolean }
 	| { op: "library.thumbnail"; assetId: string; width?: number }
 	/*
+	 * A Library audio asset's PRE-RENDER peaks, as the same `{version, bars,
+	 * peaks}` JSON a generated sound's attachment waveform route serves. Audio
+	 * assets that came from a session carry the sidecar the producer wrote; a
+	 * path-backed import has none and the route answers 404, which the card and
+	 * the drawer draw as the player's honest flat scrubber rather than a
+	 * synthesized shape.
+	 */
+	| { op: "library.waveform"; assetId: string }
+	/*
 	 * One supplement component's assembled HTML document (turn-supplements memo
 	 * §2.7, lane U-b), as `{ html }` JSON from
 	 * `/v1/desktop/sessions/{id}/supplements/{digest}/document`.

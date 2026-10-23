@@ -218,11 +218,14 @@ const runningView = (
 	progress: ImageGenProgress,
 	/** The material noun the line names; image unless a story says otherwise. */
 	material: ImageGenMaterial = "image",
+	/** A batch's live count/note, for the many-sounds stories. */
+	batchProgress?: { total: number; note: string | null },
 ): ImageGenCardView => ({
 	state: "running",
 	material,
 	startedAtMs: Date.now() - 12_000,
 	progress,
+	...(batchProgress ? { batchProgress } : {}),
 	// The interim's account slot: the `MidWalkFailure` story below carries the
 	// live note through the real record path; these mounts exercise the
 	// progress slots, where no frame states one.
@@ -332,6 +335,7 @@ export const ProgressFields: Story = {
 			<ImageGenCard
 				view={{
 					state: "queued",
+					material: "image",
 					composing: false,
 					argumentBytes: 1900,
 					queuePosition: 2,
@@ -936,6 +940,108 @@ export const SoundStopWarning: Story = {
 				)}
 				scope={null}
 				actions={{ onCancel: noop }}
+			/>
+		</CardFrame>
+	),
+};
+
+/*
+ * THE SOUND LOADER'S FOUR STATES (operator requirement, 2026-10-23). A sound
+ * generation waits on a WAVEFORM made of the player's own bars, not the image
+ * card's 3:2 rectangle. The states differ by construction: queued is at rest at
+ * disabled ink, running pulses (one indefinite element), failed collapses to
+ * the base line, stopped rests at muted ink with the honest billing sentence
+ * under the line. None of them draws a fraction: no vendor exposes one.
+ */
+export const SoundLoaderQueued: Story = {
+	name: "Sound loader / queued",
+	render: () => (
+		<CardFrame>
+			<ImageGenCard
+				scope={null}
+				view={imageGenCardView(
+					genTool({
+						id: "story-sound-q",
+						toolName: "generate_sound_effect",
+						phase: "queued",
+					}),
+				)}
+			/>
+		</CardFrame>
+	),
+};
+
+export const SoundLoaderRunning: Story = {
+	name: "Sound loader / running",
+	render: () => (
+		<CardFrame>
+			<ImageGenCard
+				scope={null}
+				view={runningView(
+					{ fraction: null, logs: [], queuePosition: null },
+					"voiceover",
+				)}
+			/>
+		</CardFrame>
+	),
+};
+
+/** A fourteen-item batch: the card names the latest item, never a completion
+ * count it cannot know; the loader stays indeterminate. */
+export const SoundLoaderBatch: Story = {
+	name: "Sound loader / batch of 14",
+	render: () => (
+		<CardFrame>
+			<ImageGenCard
+				scope={null}
+				view={runningView(
+					{ fraction: null, logs: [], queuePosition: null },
+					"sound-effect",
+					{
+						total: 14,
+						note: "Latest update: Storm swell 3 (item 3 of 14).",
+					},
+				)}
+			/>
+		</CardFrame>
+	),
+};
+
+export const SoundLoaderFailed: Story = {
+	name: "Sound loader / failed",
+	render: () => (
+		<CardFrame>
+			<ImageGenCard
+				scope={null}
+				view={imageGenCardView(
+					genTool({
+						id: "story-sound-f",
+						toolName: "generate_sound_effect",
+						isError: true,
+						output: "The sound effect could not be generated.",
+						details: canonical({
+							stage: "failed",
+							error: "The sound effect could not be generated.",
+						}),
+					}),
+				)}
+			/>
+		</CardFrame>
+	),
+};
+
+export const SoundLoaderStopped: Story = {
+	name: "Sound loader / stopped, may be billed",
+	render: () => (
+		<CardFrame>
+			<ImageGenCard
+				scope={null}
+				view={{
+					state: "cancelled",
+					material: "sound-effect",
+					generating: true,
+					message: "Stopped by the operator.",
+				}}
 			/>
 		</CardFrame>
 	),
