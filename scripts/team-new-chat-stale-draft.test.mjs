@@ -773,6 +773,47 @@ test("the missing notice's press lands on a new chat carrying the whole box, onc
 });
 
 /*
+ * THE ROW WHOSE WORDS ARE STILL WAITING TO BE ADOPTED (agent review round 2,
+ * R2-2). `returnInFlight` folds `currentInput` and then deletes the source row,
+ * so a row holding only `pendingText` - a returned payload that landed in the
+ * same turn as the 404, or one whose adoption a masked capture skipped - would
+ * be deleted with its words still in it. The press adopts first, exactly as the
+ * retired-draft path does.
+ */
+test("a row still holding pendingText is adopted before the press deletes it", () => {
+	reset();
+	store.setState({
+		activeSessionId: DEAD,
+		activeDraftKey: null,
+		drafts: {},
+	});
+	useConversationInputStore.setState({
+		inputByConversation: {
+			[DEAD]: {
+				currentInput: "",
+				pendingText: "words still waiting to be adopted",
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+			},
+		},
+	});
+	const key = store.getState().startNewChat(DEAD);
+	const moved = useConversationInputStore.getState().inputByConversation[key];
+	assert.equal(
+		moved?.pendingText,
+		"words still waiting to be adopted",
+		"the un-adopted words must follow the reader, not be deleted with the row",
+	);
+	assert.equal(
+		useConversationInputStore.getState().inputByConversation[DEAD],
+		undefined,
+		"and the adopted row is still a move, not a copy",
+	);
+});
+
+/*
  * THE HOOK'S HALF, PINNED AT THE SOURCE. `useCanonicalSessionStream` cannot be
  * bundled here (it is React and a live stream), and the property that matters is
  * an ORDER: for a draft's bridge the 404 arm must return before the session
