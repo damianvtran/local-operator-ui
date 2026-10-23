@@ -52,6 +52,7 @@ export function checkRow(row, head) {
 		row.pgid <= 1
 	)
 		throw new Error("missing process identity");
+	if (row.cleanupErrors?.length) throw new Error("cleanup operation failed");
 	const s = row.summary;
 	if (
 		!s ||
@@ -148,6 +149,88 @@ export function checkRow(row, head) {
 	return "suppression rejected by exact recorder oracle";
 }
 
+/** Attach rejection handling at creation, not after waiting for child close. */
+export function handledTask(task, errors, label) {
+	let pending;
+	try {
+		pending = typeof task === "function" ? task() : task;
+	} catch (error) {
+		pending = Promise.reject(error);
+	}
+	return Promise.resolve(pending).then(
+		(value) => ({ ok: true, value }),
+		(error) => {
+			errors.push(`${label}:${error?.name ?? "Error"}`);
+			return { ok: false };
+		},
+	);
+}
+
+/** Pure/injected orchestration: observations can NEVER bypass mandatory reap.
+ * All operations share the remaining five-second grace; errors remain failure
+ * evidence even if physical settlement subsequently succeeds. Deletion is last.
+ */
+export async function cleanupOwned(ops, errors, budgetMs = 5000) {
+	const deadline = Date.now() + Math.max(0, budgetMs);
+	async function attempt(label, action) {
+		const task = handledTask(action, errors, label);
+		let timer;
+		const expired = new Promise((resolve) => {
+			timer = setTimeout(
+				() => {
+					errors.push(`${label}:deadline`);
+					resolve({ ok: false });
+				},
+				Math.max(0, deadline - Date.now()),
+			);
+		});
+		try {
+			return await Promise.race([task, expired]);
+		} finally {
+			clearTimeout(timer);
+		}
+	}
+	let observed,
+		waited,
+		removed = false;
+	try {
+		await attempt("stop", ops.stop);
+		await attempt("observations", async () => {
+			const values = await Promise.all(ops.tasks());
+			if (values.some((value) => value?.ok === false))
+				throw new Error("observation rejected");
+		});
+	} finally {
+		// Nested unconditional paths also cover synchronous observer/stop failures.
+		try {
+			await attempt("mandatory-reap", async () => {
+				if ((await ops.reap()) === false) throw new Error("reap unverified");
+			});
+		} finally {
+			try {
+				observed = await attempt("settlement", ops.settled);
+			} finally {
+				waited = await attempt("wait", ops.waited);
+			}
+		}
+	}
+	const settled =
+		observed?.ok === true &&
+		observed.value === true &&
+		waited?.ok === true &&
+		waited.value === true;
+	if (settled) {
+		const deletion = await attempt("remove-owned", ops.remove);
+		removed = deletion.ok;
+	}
+	return {
+		settled,
+		removed,
+		clean: settled && removed && errors.length === 0,
+		errors,
+	};
+}
+
 function owned(pgid, leaderPid) {
 	const rows = [];
 	let blind = false;
@@ -215,8 +298,9 @@ async function one(mode, root, out, head, pgid) {
 	let timerKill = Promise.resolve(),
 		hardKill = Promise.resolve();
 	const caseDeadline = Date.now() + 20000;
-	let sampling = Promise.resolve();
-	let tripKill = Promise.resolve();
+	const cleanupErrors = [];
+	let sampling = Promise.resolve({ ok: true });
+	let tripKill = Promise.resolve({ ok: true });
 	let closed;
 	try {
 		const env = {
@@ -252,6 +336,7 @@ async function one(mode, root, out, head, pgid) {
 				resolveClose();
 			});
 		});
+		closed = handledTask(closed, cleanupErrors, "child-close");
 		for (const stream of [child.stdout, child.stderr])
 			stream.on("data", (chunk) => {
 				if (Buffer.byteLength(row.output) + chunk.length > CAP) {
@@ -261,31 +346,49 @@ async function one(mode, root, out, head, pgid) {
 			});
 		timer = setTimeout(() => {
 			row.timedOut = true;
-			timerKill = reap(child.pid, pgid, "SIGTERM");
+			timerKill = handledTask(
+				() => reap(child.pid, pgid, "SIGTERM"),
+				cleanupErrors,
+				"timer-kill",
+			);
 		}, 15000);
 		watchdog = createMemoryWatchdog({
 			leaderPid: child.pid,
 			budgetBytes: RAM,
 			intervalMs: 500,
 			sample: () => {
-				const reading = owned(pgid, child.pid);
-				for (const member of reading.members)
-					if (
-						!row.membersSeen.some(
-							(m) => m.pid === member.pid && m.lstart === member.lstart,
-						)
-					)
-						row.membersSeen.push({
-							pid: member.pid,
-							ppid: member.ppid,
-							pgid: member.pgid,
-							lstart: member.lstart,
-						});
-				if (row.membersSeen.length > 256)
-					throw new Error("process evidence bound");
-				return (sampling = Promise.resolve(reading));
+				sampling = handledTask(
+					() => {
+						const reading = owned(pgid, child.pid);
+						for (const member of reading.members)
+							if (
+								!row.membersSeen.some(
+									(m) => m.pid === member.pid && m.lstart === member.lstart,
+								)
+							)
+								row.membersSeen.push({
+									pid: member.pid,
+									ppid: member.ppid,
+									pgid: member.pgid,
+									lstart: member.lstart,
+								});
+						if (row.membersSeen.length > 256)
+							throw new Error("process evidence bound");
+
+						if (reading.blind) row.blind = true;
+						return reading;
+					},
+					cleanupErrors,
+					"sampling",
+				);
+				return sampling.then((result) => (result.ok ? result.value : null));
 			},
-			kill: () => (tripKill = reap(child.pid, pgid, "SIGKILL")),
+			kill: () =>
+				(tripKill = handledTask(
+					() => reap(child.pid, pgid, "SIGKILL"),
+					cleanupErrors,
+					"memory-kill",
+				)),
 			onTrip: () => {
 				row.breached = true;
 			},
@@ -298,7 +401,11 @@ async function one(mode, root, out, head, pgid) {
 		watchdog.start();
 		const killer = setTimeout(() => {
 			row.timedOut = true;
-			hardKill = reap(child.pid, pgid, "SIGKILL");
+			hardKill = handledTask(
+				() => reap(child.pid, pgid, "SIGKILL"),
+				cleanupErrors,
+				"hard-kill",
+			);
 		}, 19000);
 		try {
 			await closed;
@@ -306,60 +413,80 @@ async function one(mode, root, out, head, pgid) {
 			clearTimeout(killer);
 		}
 	} finally {
-		clearTimeout(timer);
-		watchdog?.stop();
-		await sampling;
-		await tripKill;
-		await timerKill;
-		await hardKill;
-		if (!child?.pid) {
-			rmSync(temp, { recursive: true, force: true });
-			throw new Error("spawn failed before child ownership");
-		}
-		const end = Math.min(Date.now() + 5000, caseDeadline);
-		await reap(child.pid, pgid, "SIGTERM");
-		while (
-			Date.now() < end &&
-			owned(pgid, child.pid).members.some((r) => existsSync(`/proc/${r.pid}`))
-		) {
-			await reap(child.pid, pgid, "SIGKILL");
-			await new Promise((r) => setTimeout(r, 25));
-		}
-		const final = owned(pgid, child.pid);
-		row.cleaned = !final.blind && final.members.length === 0;
-		if (closed) await closed;
-		if (row.cleaned) rmSync(temp, { recursive: true, force: true });
-		const summaries = row.output
-			.split("\n")
-			.filter((l) => l.startsWith('# {"diagnostic":"console-recorder-6911"'))
-			.map((l) => JSON.parse(l.slice(2)));
-		if (summaries.length === 1) row.summary = summaries[0];
-		row.selected = row.output
-			.split("\n")
-			.filter((l) => l === `# Subtest: ${TITLE}`).length;
-		row.elapsedMs = 20000 - Math.max(0, caseDeadline - Date.now());
-		if (Date.now() > caseDeadline) row.timedOut = true;
-		const artifact = {
-			...row,
-			output: row.output
+		const cleanup = await cleanupOwned(
+			{
+				stop: () => {
+					try {
+						clearTimeout(timer);
+					} finally {
+						watchdog?.stop();
+					}
+				},
+				tasks: () => [sampling, tripKill, timerKill, hardKill],
+				reap: () => (child?.pid ? reap(child.pid, pgid, "SIGTERM") : true),
+				settled: async () => {
+					if (!child?.pid) return true;
+					const end = Math.min(Date.now() + 5000, caseDeadline);
+					while (Date.now() < end) {
+						const reading = owned(pgid, child.pid);
+						if (reading.blind) throw new Error("unreadable process ownership");
+						if (!reading.members.length) return true;
+						await reap(child.pid, pgid, "SIGKILL");
+						await new Promise((resolve) => setTimeout(resolve, 25));
+					}
+					const final = owned(pgid, child.pid);
+					return !final.blind && final.members.length === 0;
+				},
+				waited: async () => {
+					if (!child?.pid) return true;
+					const result = await closed;
+					return result?.ok === true && row.reaped === true;
+				},
+				remove: () => rmSync(temp, { recursive: true, force: true }),
+			},
+			cleanupErrors,
+			Math.max(0, Math.min(5000, caseDeadline - Date.now())),
+		);
+		row.cleanupErrors = cleanup.errors;
+		row.membersSettled = cleanup.settled;
+		row.filesRemoved = cleanup.removed;
+		row.cleaned = cleanup.clean;
+		try {
+			const summaries = row.output
 				.split("\n")
-				.filter(
-					(line) =>
-						line.includes(TITLE) ||
-						line.includes("the recorder sees commits, saw") ||
-						line.includes(
-							"recorder must retain both causally separated committed states",
-						),
-				)
-				.join("\n"),
-		};
-		const encoded = JSON.stringify(artifact, null, 2);
-		if (Buffer.byteLength(encoded) > CAP)
-			throw new Error("artifact exceeds 256KiB");
-		writeFileSync(join(out, `${mode}.json`), encoded);
-		if (!row.cleaned) {
-			process.kill(-pgid, "SIGKILL");
-			throw new Error("owned group cleanup failed");
+				.filter((l) => l.startsWith('# {"diagnostic":"console-recorder-6911"'))
+				.map((l) => JSON.parse(l.slice(2)));
+			if (summaries.length === 1) row.summary = summaries[0];
+			row.selected = row.output
+				.split("\n")
+				.filter((l) => l === `# Subtest: ${TITLE}`).length;
+			row.elapsedMs = 20000 - Math.max(0, caseDeadline - Date.now());
+			if (Date.now() > caseDeadline) row.timedOut = true;
+			const artifact = {
+				...row,
+				output: row.output
+					.split("\n")
+					.filter(
+						(line) =>
+							line.includes(TITLE) ||
+							line.includes("the recorder sees commits, saw") ||
+							line.includes(
+								"recorder must retain both causally separated committed states",
+							),
+					)
+					.join("\n"),
+			};
+			const encoded = JSON.stringify(artifact, null, 2);
+			if (Buffer.byteLength(encoded) > CAP)
+				throw new Error("artifact exceeds 256KiB");
+			writeFileSync(join(out, `${mode}.json`), encoded);
+		} finally {
+			if (!cleanup.settled) {
+				// Known GNU-timeout PG validated before spawn, still containing
+				// this controller: never exit early leaving inherited children.
+				process.kill(-pgid, "SIGKILL");
+				throw new Error("owned group settlement unproved");
+			}
 		}
 	}
 	return { ...row, verdict: checkRow(row, head) };
