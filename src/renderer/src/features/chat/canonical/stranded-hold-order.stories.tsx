@@ -203,6 +203,7 @@ const afterFold = (
 		SEND_ID,
 		FIXTURE.send.text,
 		[],
+		[],
 		Math.round(FIXTURE.send.ts * 1000),
 	);
 	state = foldExchange(state, windows.exchange);

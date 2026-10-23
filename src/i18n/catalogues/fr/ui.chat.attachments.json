@@ -1,0 +1,7 @@
+{
+	"ui.chat.attachments.pending_caption": "Pas encore envoyé",
+	"ui.chat.attachments.file_meta": "{type} · {size}",
+	"ui.chat.attachments.file_missing": "Déplacé ou supprimé",
+	"ui.chat.attachments.file_retained": "Toujours conservé dans le stockage des pièces jointes ({digest})",
+	"ui.chat.attachments.file_unnamed": "Fichier joint"
+}

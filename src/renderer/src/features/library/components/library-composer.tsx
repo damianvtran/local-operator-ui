@@ -51,8 +51,9 @@
  * through `images`.
  */
 
-import { encodeImageAttachments } from "@features/chat/utils/attachment-encode";
+import { encodeAttachments } from "@features/chat/utils/attachment-encode";
 import {
+	fileOverflowRefusal,
 	imageOverflowRefusal,
 	unreadableAttachmentRefusal,
 } from "@features/chat/utils/attachment-read";
@@ -260,10 +261,11 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 		let target: string | null = sessionId;
 		try {
 			const extra = imageAttachment(asset, image.bytes, image.mimeType);
-			const { images, unreadable, overflow } = await encodeImageAttachments(
-				extra ? [...attachments, extra] : attachments,
-				content,
-			);
+			const { images, files, failures, overflow, fileOverflow } =
+				await encodeAttachments(
+					extra ? [...attachments, extra] : attachments,
+					content,
+				);
 			/*
 			 * The encoder's two refusals are this surface's own "put the text back"
 			 * answer (`false`), reported with the same authored sentences the chat
@@ -271,7 +273,7 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 			 * attachment could not be read, or did not fit the transport, must not
 			 * leave as a different message than the one the user assembled.
 			 */
-			const unreadableRefusal = unreadableAttachmentRefusal(unreadable);
+			const unreadableRefusal = unreadableAttachmentRefusal(failures);
 			if (unreadableRefusal) {
 				showErrorToast(unreadableRefusal);
 				return false;
@@ -279,6 +281,11 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 			const overflowRefusal = imageOverflowRefusal(overflow);
 			if (overflowRefusal) {
 				showErrorToast(overflowRefusal);
+				return false;
+			}
+			const fileOverflowMessage = fileOverflowRefusal(fileOverflow);
+			if (fileOverflowMessage) {
+				showErrorToast(fileOverflowMessage);
 				return false;
 			}
 			if (!target) {
@@ -304,6 +311,7 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 				text: `${text}\n\n${assetReference(asset)}`,
 			};
 			if (images.length > 0) body.images = images;
+			if (files.length > 0) body.files = files;
 			/*
 			 * A MESSAGE TYPED MID-TURN STEERS IT. The wire op takes a `mode`, and the
 			 * chat page's rule is the one this follows: a turn that is running is

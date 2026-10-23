@@ -53,6 +53,7 @@ import {
 	EMPTY_TRANSCRIPT,
 	RECONCILE_TAIL_ENTRIES,
 	RECONCILE_TAIL_MAX_ENTRIES,
+	type TranscriptDocument,
 	type TranscriptImage,
 	type TranscriptState,
 	appendLocalNote,
@@ -1603,6 +1604,13 @@ export type PendingSend = {
 	text: string;
 	images: TranscriptImage[];
 	/**
+	 * The document blocks the press uploaded. Carried with the entry for the same
+	 * reason `images` is: the row is painted from this entry on every mount, so a
+	 * row that lost its files on a remount would show a message short of what was
+	 * sent (contract v1 §5).
+	 */
+	documents: TranscriptDocument[];
+	/**
 	 * THE CLAIM'S OUTCOME IS KNOWN, and the entry is kept only to keep painting the
 	 * row (design review round 1's D1/D2, extended by what the re-shoot measured).
 	 * The server's complete read answered the claim NO (`resolveHeldFromServer`),
@@ -1685,7 +1693,13 @@ function applyPendingSend(
 	entry: PendingSend,
 ): void {
 	target((state) =>
-		appendPendingUser(state, entry.id, entry.text, entry.images),
+		appendPendingUser(
+			state,
+			entry.id,
+			entry.text,
+			entry.images,
+			entry.documents,
+		),
 	);
 	if (!entry.painted) {
 		entry.painted = true;
@@ -1757,6 +1771,8 @@ export function paintPendingSend(
 		id: string;
 		text: string;
 		images: TranscriptImage[];
+		/** Files the press already uploaded; absent means none. */
+		documents?: TranscriptDocument[];
 		onPainted?: () => void;
 		/** Only `resynthesisePendingSend`'s resolved arm passes this; see `settled`. */
 		settled?: boolean;
@@ -1785,6 +1801,7 @@ export function paintPendingSend(
 		id: send.id,
 		text: send.text,
 		images: send.images,
+		documents: send.documents ?? [],
 		onPainted: send.onPainted,
 		settled: send.settled,
 		submittedAt: send.submittedAt,

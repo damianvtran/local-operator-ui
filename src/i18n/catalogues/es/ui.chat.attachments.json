@@ -1,0 +1,7 @@
+{
+	"ui.chat.attachments.pending_caption": "Aún no enviado",
+	"ui.chat.attachments.file_meta": "{type} · {size}",
+	"ui.chat.attachments.file_missing": "Movido o eliminado",
+	"ui.chat.attachments.file_retained": "Todavía se conserva en el almacén de adjuntos ({digest})",
+	"ui.chat.attachments.file_unnamed": "Archivo adjunto"
+}

@@ -674,6 +674,15 @@ export type ChatDraft = {
 	submittedText?: string;
 	submittedAttachments?: string[];
 	submittedImages?: ChatImage[];
+	/**
+	 * The uploaded file references the FIRST attempt of this message carried.
+	 *
+	 * Pinned beside `submittedImages` for the receipt rule: a replay must send the
+	 * bytes the first attempt hashed, and re-running the upload would at best
+	 * re-derive the same digests and at worst fail because the file moved after
+	 * the press. Absent on every draft that had no files.
+	 */
+	submittedFiles?: ChatFile[];
 	submittedMode?: "prompt" | "steer";
 	/**
 	 * The provenance the FIRST attempt of the current message carried (arch
@@ -789,7 +798,43 @@ export type ChatDraft = {
 export type ChatImage = {
 	data_b64: string;
 	mime_type: "image/png" | "image/jpeg" | "image/gif" | "image/webp";
+	/** Origin path when the image was read from disk (contract v1 §1.3). */
+	origin_path?: string;
 };
+
+/**
+ * One uploaded file a message references (contract v1 §1.2).
+ *
+ * The digest is the attachment store's content address; everything else is
+ * display/provenance and is optional on the wire because a reference without a
+ * name still resolves. Declared beside `ChatImage` because the two are the
+ * payload's halves and every caller passes both.
+ */
+export type ChatFile = {
+	digest: string;
+	name?: string;
+	mime_type?: string;
+	bytes?: number;
+	path?: string;
+};
+
+/**
+ * The echo's view of the files a press uploaded.
+ *
+ * The id shape matches `extractDocuments`'s (`${recordId}:doc:${n}`), so the
+ * optimistic row and the owner's durable row coalesce onto the same keys rather
+ * than remounting every file card when the send is confirmed.
+ */
+function documentsOf(files: readonly ChatFile[], recordId: string) {
+	return files.map((file, index) => ({
+		id: `${recordId}:doc:${index}`,
+		attachment: file.digest,
+		filename: file.name ?? "Attached file",
+		mimeType: file.mime_type ?? "application/octet-stream",
+		path: file.path ?? null,
+		bytes: file.bytes ?? 0,
+	}));
+}
 
 /**
  * Shown when a send failed with nothing user-facing to say - a runtime
@@ -2284,6 +2329,7 @@ export function resynthesisePendingSend(
 			id: resolved.recordId,
 			text: resolved.text,
 			images: [],
+			documents: documentsOf(draft.submittedFiles ?? [], resolved.recordId),
 			settled: true,
 			submittedAt: draft.submittedAt,
 		});
@@ -2314,6 +2360,7 @@ export function resynthesisePendingSend(
 			attachment: null,
 			mimeType: image.mime_type,
 		})),
+		documents: documentsOf(draft.submittedFiles ?? [], id),
 	});
 	return true;
 }
@@ -2512,6 +2559,12 @@ export async function admitChatDraft(
 		text: string;
 		attachments: string[];
 		images: ChatImage[];
+		/**
+		 * Uploaded files this message references. Already stored - the daemon
+		 * resolves the digests and refuses a missing one (contract v1 §1.2); the
+		 * composer refused earlier if any file could not be uploaded.
+		 */
+		files?: ChatFile[];
 		mode: "prompt" | "steer";
 		cwd: string;
 		/**
@@ -2651,6 +2704,9 @@ export async function admitChatDraft(
 	const images = replay
 		? (previous?.submittedImages ?? input.images)
 		: input.images;
+	const files = replay
+		? (previous?.submittedFiles ?? input.files)
+		: input.files;
 	const mode = replay ? (previous?.submittedMode ?? input.mode) : input.mode;
 	/*
 	 * THE SAME PINNING RULE GOVERNS `input_mode`, FOR THE SAME REASON: it is part
@@ -2707,6 +2763,7 @@ export async function admitChatDraft(
 		submittedText: text,
 		submittedAttachments: input.attachments,
 		submittedImages: images,
+		submittedFiles: files,
 		submittedMode: mode,
 		submittedInputMode: inputMode,
 		submittedInputPath: inputPath,
@@ -2764,6 +2821,7 @@ export async function admitChatDraft(
 				attachment: null,
 				mimeType: image.mime_type,
 			})),
+			documents: documentsOf(files ?? [], admissionRequestId),
 			onPainted: onEchoPainted,
 		});
 	/*
@@ -2933,6 +2991,7 @@ export async function admitChatDraft(
 			requestId: admissionRequestId,
 			text: rendered,
 			images: images.length ? images : undefined,
+			...(files?.length ? { files } : {}),
 			mode,
 			inputMode,
 			inputPath,

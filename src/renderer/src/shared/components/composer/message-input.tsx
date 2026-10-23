@@ -538,6 +538,12 @@ const EMPTY_RECORDING_PROBE: {
  * Props for the MessageInput component
  */
 export type MessageInputProps = {
+	/**
+	 * Sizes for the staged attachment chips, by path. Nothing in the app sets it:
+	 * the live composer's cards probe `probeFiles`, and this exists for the
+	 * Storybook frames, where there is no preload bridge to probe with.
+	 */
+	attachmentByteSizes?: Readonly<Record<string, number>>;
 	onSendMessage: (
 		content: string,
 		attachments: string[],
@@ -1860,6 +1866,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			onCredentialsStored,
 			onDictationStateChange,
 			placeholderOverride,
+			attachmentByteSizes,
 		},
 		ref,
 	) => {
@@ -8715,11 +8722,10 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								)}
 								{attachments.length > 0 && (
 									<AttachmentsPreview
-										attachments={attachments.map((a) => a.path)}
-										onRemoveAttachment={(index) =>
-											handleRemoveAttachment(attachments[index].id)
-										}
+										attachments={attachments}
+										onRemoveAttachment={handleRemoveAttachment}
 										disabled={isInputDisabled || isRecording || isTranscribing}
+										byteSizes={attachmentByteSizes}
 									/>
 								)}
 							</div>
