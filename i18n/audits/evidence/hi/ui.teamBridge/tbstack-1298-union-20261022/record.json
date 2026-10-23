@@ -1,0 +1,119 @@
+{
+ "audit_id": "tbstack-1298-union-20261022",
+ "date": "2026-10-22",
+ "locale": "hi",
+ "namespace": "ui.teamBridge",
+ "source_commit": "dbe16bcd4a91c1a7f65f220ffb8be9b76e4ee4e3",
+ "source_base": "9aa14137de",
+ "scope": "PR #1298 ui.teamBridge at head dbe16bcd4a91c1a7f65f220ffb8be9b76e4ee4e3: union-integrity audit of all 115 hi values after the stack integration merges (merge dbe16bcd4a = 203bb6bf8c (own audited pre-merge head) + 9aa14137de (#1296)). Every value equals its audited source side (203bb6bf8c (os1298-r1-hi.json), 9aa14137de (tbd-sender-r1-hi.json)); no key dropped, no shared value altered; key set and order equal English (115/115). No key on this head lacks an audited source, so no new translation was audited.",
+ "status": "audited",
+ "translator": {
+  "agent": "translator",
+  "model": "openai/gpt-6.1-sol",
+  "session": "551f380c804b",
+  "date": "2026-10-21"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-opus-5-5",
+   "date": "2026-10-22",
+   "result": "clean",
+   "instance": "tbstack-r1-1298-hi",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/tbstack-r1-1298-hi.json",
+   "receipt_sha256": "db794312e3b54cc2d1692989c7c8eda134d056a04eff63fb0b9df2e487822e1c",
+   "scope": "Team Bridge stack integration: union of audited sides at dbe16bcd4a verified value-for-value (115 keys). Catalogue audit only, not rendered-fit, activation or release approval.",
+   "note": "Independent union audit. Record: i18n/audits/evidence/hi/ui.teamBridge/tbstack-1298-union-20261022/."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "tbstack-r1-1298-hi",
+   "session": "678669e97293",
+   "job": "c0820d11b867",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 0,
+   "union_keys_verified": 115,
+   "en_sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333",
+   "context_sha256": "2dd21f65ef409b6052dc698749b6bd88f40729a1e8a597cf64db9cdf688bd995",
+   "target_sha256": "08f0d22365098e9a43a9ca68eefd99652fce3fb2b21964d27cb4dbb030281e9d",
+   "findings": [],
+   "receipt": {
+    "path": "i18n/receipts/tbstack-r1-1298-hi.json",
+    "sha256": "db794312e3b54cc2d1692989c7c8eda134d056a04eff63fb0b9df2e487822e1c"
+   }
+  }
+ ],
+ "inherited_receipts": [
+  {
+   "base": "203bb6bf8c",
+   "base_commit": "203bb6bf8c50c5e27e275b8f72ebab9b7a5e7684",
+   "path": "i18n/receipts/os1298-r1-hi.json",
+   "sha256": "ef1e46a39b2c68104343c197bb49022832c670b75c0f75bc949fbe9e56dd4f35",
+   "keys_inherited": 113,
+   "base_target_sha256": "5f10434788076f0d29e0ea5372f5ab63bba3c99da9ab1085d4e570f653dde968",
+   "unchanged_values_verified": 113
+  },
+  {
+   "base": "9aa14137de",
+   "base_commit": "9aa14137dec1562dac0ee72a5f056010d5438432",
+   "path": "i18n/receipts/tbd-sender-r1-hi.json",
+   "sha256": "1f188f9cee7eb3e9902398bcaf3622519c588da569424ecb2d9e3d772e7b99f3",
+   "keys_inherited": 111,
+   "base_target_sha256": "4c98c32e473622f9aee3e1241e4b5b4b5085411e18c9d92f7e30a2fdc0ef5b4b",
+   "unchanged_values_verified": 111
+  }
+ ],
+ "union_evidence": {
+  "merges": "merge dbe16bcd4a = 203bb6bf8c (own audited pre-merge head) + 9aa14137de (#1296)",
+  "catalogue_union_parity": [
+   "$ node <scratch copy of origin/main:scripts/i18n/catalogue-union-parity.mjs> --repo ~/local-operator-ui --pr 1298 --head dbe16bcd4a --old-head 203bb6bf8c --base 9aa14137de --file src/i18n/catalogues/hi/ui.teamBridge.json --file src/i18n/catalogues/ur/ui.teamBridge.json --file src/i18n/catalogues/en/ui.teamBridge.json --file src/i18n/catalogues/en/ui.teamBridge.context.json\nPR #1298  catalogue union parity\n  base   : 9aa14137de\n  PR pre-merge : 203bb6bf8c\n  merged head  : dbe16bcd4a\nfile src/i18n/catalogues/hi/ui.teamBridge.json\n  base   keys : 111\n  PR     keys : 113\n  merged keys : 115\n  union  keys : 115 (expected, base ∪ PR)\n  missing from base : []\n  missing from PR   : []\n  value differences : []\nfile src/i18n/catalogues/ur/ui.teamBridge.json\n  base   keys : 111\n  PR     keys : 113\n  merged keys : 115\n  union  keys : 115 (expected, base ∪ PR)\n  missing from base : []\n  missing from PR   : []\n  value differences : []\nfile src/i18n/catalogues/en/ui.teamBridge.json\n  base   keys : 111\n  PR     keys : 113\n  merged keys : 115\n  union  keys : 115 (expected, base ∪ PR)\n  missing from base : []\n  missing from PR   : []\n  value differences : []\nfile src/i18n/catalogues/en/ui.teamBridge.context.json\n  base   keys : 111\n  PR     keys : 113\n  merged keys : 115\n  union  keys : 115 (expected, base ∪ PR)\n  missing from base : []\n  missing from PR   : []\n  value differences : []\nRESULT: PASS - no English key lost or changed\nexit=0\n"
+  ],
+  "icu_parity": "checked 1378 (head,locale,key) triples; problems=0 (read-only @formatjs/icu-messageformat-parser check over hi/ur at dbe16bcd4a, b5b80ea4b4, 36b7a7ad88, 3751b6750b, bbf4d1c0cc; exit 0)"
+ },
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "b8236cf905c6083ca9b2450611d0083c8a96d990c6c548e4091d0b99266bd333"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+   "sha256": "08f0d22365098e9a43a9ca68eefd99652fce3fb2b21964d27cb4dbb030281e9d"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "2dd21f65ef409b6052dc698749b6bd88f40729a1e8a597cf64db9cdf688bd995"
+  }
+ },
+ "references": {
+  "core_revision": "91261f530cc485b38793ee8db9958349aa028163",
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/hi.md",
+   "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  }
+ },
+ "independence": "Auditor is translation-auditor subagent session 678669e97293 (job c0820d11b867, label i18n-audit-hi-ur, parent 687384e07954). all other values were translated and audited in earlier rounds by other sessions. The auditor did not author or edit any catalogue value; all bytes were read with git show from origin refs, never a checkout. The coordinator assembles ledger rows with scripts/i18n/ledger-assemble.mjs; the auditor wrote only these scratch files.",
+ "limitations": [
+  "No rendered-fit, screenshot or pseudo-localization evidence recorded in this audit.",
+  "No activation or release evidence claimed.",
+  "Ledger row assembly pending; valid for the target_sha256 above only."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/tbstack-r1-1298-hi.json",
+   "sha256": "db794312e3b54cc2d1692989c7c8eda134d056a04eff63fb0b9df2e487822e1c"
+  }
+ ]
+}
