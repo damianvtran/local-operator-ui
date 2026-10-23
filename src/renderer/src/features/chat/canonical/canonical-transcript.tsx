@@ -2797,7 +2797,15 @@ const AskReceiptRow = memo(function AskReceiptRow({
 			</MessageContainer>
 		);
 	const summary = askResponseSummary(record);
-	if (record.questions.length === 0)
+	/*
+	 * A DISMISSAL HAS NO ANSWER FRAME, and the harness says so in its own words
+	 * (`asks/render.py::response_text`: a dismissed ask "NEVER" goes through the
+	 * report, because the report renders the absence as an empty answer). The row
+	 * still carries the ask's questions, so without this arm an expanded dismissal
+	 * would print each question beside `No answer given` — a receipt that reads as
+	 * a partial answer. The sentence IS the receipt.
+	 */
+	if (record.questions.length === 0 || record.status === "dismissed")
 		return (
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
 				<ToolLedgerRow
