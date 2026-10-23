@@ -1,9 +1,9 @@
 {
   "source_repo": "damianvtran/local-operator",
-  "source_ref": "83a80deadc8e47c0851dc33e40e3497fd0da142c",
+  "source_ref": "65ec4d821edac7be5da829a504a1f07f8d597702",
   "proto_version": 1,
   "app_proto_version": 1,
-  "inputs_sha256": "c5a81f684d1403638b6f64a37f0ca9ea1578fc78b77945a8569c9057a034d61d",
+  "inputs_sha256": "83d28e6a6a97104b60389f5f3c2dde0c421cfdaa9b19034ae51cab63ac3b935d",
   "generator": "scripts/sync-vendored.mjs",
   "patches": [
     {
