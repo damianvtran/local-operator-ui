@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|mini-view|drafts|stale-team-draft|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|sidebar-docking|mini-view|drafts|stale-team-draft|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -278,6 +278,7 @@ import { withNotificationsOff } from "./notifications-off.mjs";
  * interpreter, so a new one has to say so there as well as here.
  */
 import { pythonChildEnv } from "./python-child-env.mjs";
+import { sceneSidebarDocking } from "./sidebar-docking-scene.mjs";
 import {
 	prepareSidebarLayoutScene,
 	sceneSidebarLayout,
@@ -11363,13 +11364,13 @@ async function sceneQuestionDock(cdp) {
  * A reader should run it at the four widths §I is written about:
  *
  *     --scene floors --window-size 1380x900   # docked: row 1120, canvas at its 560 cap
- *     --scene floors --window-size 1024x673   # the sidebar's dock threshold: dock 284 < 400 -> overlay
- *     --scene floors --window-size 960x673    # strip: row 904, dock 424 -> docked
- *     --scene floors --window-size 800x600    # strip: row 744, dock 264 -> overlay
+ *     --scene floors --window-size 1024x673   # canvas fit-yield: strip, canvas overlays
+ *     --scene floors --window-size 960x673    # canvas fit-yield: strip, canvas docks
+ *     --scene floors --window-size 800x600    # expanded dock capped to 276, canvas overlays
  *
- * The four are the two bands of `resolveSidebarLayout` crossed with the two canvas
- * modes, and the assertions below are written about the RULES rather than about the
- * sizes so the same scene is honest at any width a reviewer passes.
+ * The four exercise the independent canvas fit-yield and both canvas modes.
+ * Sidebar docking itself follows the persisted preference at every width (#1077);
+ * only a render-only cap changes the drawn width at 800.
  */
 async function sceneFloors(cdp) {
 	const facts = await factsOf(cdp);
@@ -16964,11 +16965,11 @@ async function scenePinnedReorder(cdp) {
 	const PINNED_IDS = ["p000", "p005", "p010"];
 	const PINNED_QUERY = "Chat 00";
 	/*
-	 * 240 / 260 / 280 / 320 (round 2, design D8): 260 is the panel's DEFAULT width and the
-	 * overlay sheet's fixed width, so it is the state nearly every reader gets and the one
-	 * the shed rule actually decides; the other three bracket it - 240 is a step BELOW the
-	 * default, 280 a panel widened past it, 320 the clamp's own maximum (the clamp is
-	 * 220..320, `chat-sidebar-layout.ts`). Before this the set photographed 240/280/320 and
+	 * 240 / 260 / 280 / 320 (round 2, design D8): 260 is the panel's DEFAULT width,
+	 * so it is the state nearly every reader gets and the one the shed rule actually
+	 * decides; the other three bracket it - 240 is a step BELOW the default, 280 a
+	 * panel widened past it, 320 the clamp's own maximum (the clamp is 220..320,
+	 * `chat-sidebar-layout.ts`). Before this the set photographed 240/280/320 and
 	 * the README called 280 "the default", which is not a width the app opens at.
 	 */
 	/*
@@ -35127,58 +35128,10 @@ async function sceneHitZones(cdp) {
 	}
 
 	/*
-	 * The sidebar sheet, where the window is narrow enough for the sidebar to BE
-	 * the sheet (`SIDEBAR_DOCK_MIN_PX`). `⌘B` opens it through the app's own
-	 * handler - the same control the strip's expand button calls - so no selector
-	 * here guesses at a button whose label changes with state.
+	 * The sidebar's narrow overlay sheet was removed with #1077. Dock and strip
+	 * hit-testing now lives in the focused `sidebar-docking` scene, which presses
+	 * the same chord and pointer controls at 1023 and 800px through CDP.
 	 */
-	if (await cdp.evaluate("window.innerWidth < 1024")) {
-		await pressChord(cdp, {
-			key: "b",
-			code: "KeyB",
-			virtualKeyCode: 66,
-			modifiers: MODIFIER.meta,
-		});
-		const sheetUp = await waitForCondition(
-			cdp,
-			`Boolean(document.querySelector('[data-sidebar-sheet]'))`,
-			10_000,
-		);
-		check(
-			"[sidebar-sheet] the sidebar toggle opened the sheet",
-			sheetUp.ok,
-			`after ${sheetUp.waitedMs}ms`,
-		);
-		if (sheetUp.ok) {
-			const frame = await captureSettled(cdp, "hit-zones-sidebar-sheet-dark");
-			note("frame sidebar-sheet", JSON.stringify(frame));
-			surfaces.push(
-				checkHitZones(
-					"sidebar-sheet",
-					await readHitZones(cdp, {
-						surface: "sidebar-sheet",
-						root: "[data-sidebar-sheet]",
-						controls: HIT_ZONE_CONTROLS,
-					}),
-				),
-			);
-			await pressChord(cdp, {
-				key: "Escape",
-				code: "Escape",
-				virtualKeyCode: 27,
-			});
-			await waitForCondition(
-				cdp,
-				`!document.querySelector('[data-sidebar-sheet]')`,
-				10_000,
-			);
-		}
-	} else {
-		note(
-			"sidebar-sheet not exercised",
-			`the sidebar is docked above SIDEBAR_DOCK_MIN_PX (1024) at this width (${chrome.viewport.width}), so there is no sheet here to probe - run this scene at a narrower --window-size for it`,
-		);
-	}
 
 	/*
 	 * The non-chat routes' drag band, on /settings — and its two jobs are per
@@ -47062,12 +47015,15 @@ async function sceneHubLinks(cdp, app) {
 	);
 	await captureSettled(cdp, `hub-links-${size}-${theme}-collapsed`);
 	/*
-	 * The roster affordance is asserted only where the sidebar DOCKED: below the
-	 * 1024px threshold it is a sheet, so its marks are legitimately absent (the
-	 * same reason the later sidebar-mark block is gated). The collapsed FRAME is
-	 * still captured at every width - the panel state is what it is for.
+	 * The roster affordance is asserted whenever the user's preference has the
+	 * sidebar docked. A collapsed preference hides those rows at ANY width; the
+	 * old 1024px viewport gate is gone with #1077.
 	 */
-	if (WINDOW_WIDTH >= 1024) {
+	if (
+		await cdp.evaluate(
+			`document.querySelector('[data-sidebar-shell], [data-sidebar-strip]')?.getBoundingClientRect().width > 56`,
+		)
+	) {
 		const collapsedMarks = await cdp.evaluate(`(() => {
 			const marks = Array.from(document.querySelectorAll('[data-hub-mark]')).map((m) =>
 				m.getAttribute('data-hub-mark'),
@@ -47630,16 +47586,16 @@ async function sceneHubLinks(cdp, app) {
 	 * draws one mark per linked row and the AGGREGATE mark for a multi-origin item.
 	 * The stub gives `reviewer` two origins (aggregate) and `coder` one (quiet).
 	 *
-	 * BELOW THE DOCK THRESHOLD the sidebar is a SHEET, not a dock (`SIDEBAR_DOCK_MIN_PX`
-	 * = 1024, `chat-sidebar-layout.ts`), so it is closed by default and its rows -
-	 * and their marks - are legitimately not in the DOM. The marks are a docked-
-	 * sidebar surface, so a narrow run NOTES that and skips the block rather than
-	 * asserting a state the layout does not have; the narrow frames are of the PANEL.
+	 * A COLLAPSED PREFERENCE hides those rows at any window width, so the actual
+	 * rendered sidebar decides whether this block applies. Width alone no longer
+	 * decides docking (#1077).
 	 */
-	const WIDE_ENOUGH_TO_DOCK = WINDOW_WIDTH >= 1024;
-	if (!WIDE_ENOUGH_TO_DOCK) {
+	const sidebarDocked = await cdp.evaluate(
+		`document.querySelector('[data-sidebar-shell], [data-sidebar-strip]')?.getBoundingClientRect().width > 56`,
+	);
+	if (!sidebarDocked) {
 		note(
-			"sidebar marks skipped: the sidebar is a sheet below the 1024px dock threshold",
+			"sidebar marks skipped: the user's collapsed preference is drawing the strip",
 			`window width ${WINDOW_WIDTH}`,
 		);
 		return;
@@ -49269,6 +49225,14 @@ async function main() {
 		}
 	}
 	if (SCENE === "sidebar-layout") await prepareSidebarLayoutScene();
+	if (
+		SCENE === "sidebar-docking" &&
+		(BACKEND === null || BACKEND_RECORDS === null || SESSION === null)
+	) {
+		throw new Error(
+			"--scene sidebar-docking needs --backend, --backend-records and --session <id>: the evidence must show the named populated synthetic conversation, never an offline/empty chat or whichever row happens to sort first, and the record proves the daemon is this run's isolated fixture",
+		);
+	}
 	if (SCENE === "mini-view" && BACKEND !== null && BACKEND_RECORDS === null) {
 		throw new Error(
 			"--scene mini-view with --backend needs --backend-records: the app admits only a daemon a serve record describes, and the live send walks that daemon's own routes through the record the run linked",
@@ -49416,6 +49380,23 @@ async function main() {
 			else if (SCENE === "connection-drop") await sceneConnectionDrop(cdp);
 			else if (SCENE === "row-space") await sceneRowSpace(cdp);
 			else if (SCENE === "sidebar-bottom") await sceneSidebarBottom(cdp);
+			else if (SCENE === "sidebar-docking")
+				await sceneSidebarDocking({
+					cdp,
+					verb,
+					capture: captureSettled,
+					check,
+					note,
+					wait,
+					waitForCondition,
+					factsOf,
+					require,
+					clickAt,
+					pressChord,
+					sidebarModifier:
+						process.platform === "darwin" ? MODIFIER.meta : MODIFIER.ctrl,
+					session: SESSION,
+				});
 			else if (SCENE === "sidebar-layout")
 				await sceneSidebarLayout({
 					cdp,
