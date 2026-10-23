@@ -37,9 +37,9 @@ import {
 	Ellipsis,
 	FolderOpen,
 	Hash,
+	Heart,
 	MessagesSquare,
 	Pencil,
-	Star,
 	Tags,
 } from "lucide-react";
 import type { FC } from "react";
@@ -159,7 +159,9 @@ export const LibraryAssetMenu: FC<LibraryAssetMenuProps> = ({
 				)}
 				<DropdownMenuSeparator />
 				<DropdownMenuItem onSelect={onToggleFavorite}>
-					<Star
+					{/* The user's favourite is a HEART; the star is reserved for the
+					    librarian's `highlighted` (see the card's own marks). */}
+					<Heart
 						aria-hidden="true"
 						className={asset.favorite ? "fill-current text-accent" : undefined}
 					/>

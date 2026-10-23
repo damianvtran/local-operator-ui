@@ -1,0 +1,40 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbr-r1-ur",
+  "session": "64c4f844baf2",
+  "date": "2026-10-21",
+  "locale": "ur",
+  "translator": "translator",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 20,
+  "scope": "Twenty-key reaction-picker delta: ui.teamBridge.reactions.* (add, search, categories, all, frequent, tone, toneDefault, empty, failed, category0-category8, choose, noResults). Inherit the base 2e16fb1456 full namespace audit for the other 109 values, all verified unchanged; no new full semantic audit of unchanged copy. Catalogue audit only, not rendered-fit, activation or release approval.",
+  "sha256": {
+    "en": "69f741a64df96b85b00e2f389bcda35bbbcc7cc023c4e2f31c997ef64fc0b50c",
+    "ur": "77d765ae4b8f42788b843dc3b6efe9f9359e4f0408e66b05ff16b7ea6b2c1ab3",
+    "context": "ad0eef37d14411e02b07a083f3873518362734fefd8caa930cf4196728b2ef84"
+  },
+  "findings": [],
+  "inherited_receipt": {
+    "base": "2e16fb1456",
+    "path": "i18n/receipts/tbd-r3-ur.json",
+    "sha256": "84aef64e4d8e735ad57713e54ec6f5b514ad89ba3d02b387e44a67c68b26a0a4",
+    "keys_inherited": 109,
+    "unchanged_values_verified": 109,
+    "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+    "base_target_sha256": "76bfaa1fa565994bbeeb8c76450042111a405525442a1ba2e0a956e1ba2e5397"
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  },
+  "validation": {
+    "independence": "This auditor did not translate or edit any catalogue or code; repo was read-only (shasum, git show, node reads, grep). Served as anthropic/claude-opus-5-5 throughout; no model switch or fallback noticed. Same model family as the translator, but a separate session that did not produce the strings.",
+    "semantics": "Read all 20 values against the English source, the context sidecar and the render sites in team-bridge-emoji-picker.tsx (search as aria-label and placeholder; categories/all/category0-8 as aria-label and title; frequent as heading and row aria-label; tone/toneDefault as select aria-label and first option; noResults as visible empty text; choose as grid aria-label) and team-bridge-reactions.tsx (add as icon-button aria-label; failed in role=alert). reactions.empty appears only in keys.gen.ts and is not rendered; it is byte-identical to noResults. Register: آپ-form respectful imperatives (شامل کریں، تلاش کریں، منتخب کریں، دوبارہ کوشش کریں), no تم/تو, no '!', no padding honorifics. The phrasing matches locale precedent: 'فائلیں تلاش کریں' (search), 'کوئی ایجنٹ نہیں ملا' / 'کوئی اثاثہ نہیں ملا' (No … found), 'اثاثہ محفوظ نہیں ہو سکا۔' and 34 x 'دوبارہ کوشش کریں' (failed), 'ڈیفالٹ' (Default), 'زمرے' (categories). Gender agreement checked: ردعمل (masc.) takes ہو سکا, and ایموجی takes masculine ملا in both empty and noResults. toneDefault 'ڈیفالٹ رنگت' leaves out 'skin', which the adjacent 'جلد کی رنگت' select label supplies; it is accurate and suits the narrow option. The group names were compared with the CLDR 46 ur characterLabels (cldr-misc-full@46.0.0 via jsDelivr). travel_places 'سفر اور مقامات', flags 'پرچم' and symbols 'علامات' match exactly. activities 'سرگرمیاں' is the plural of CLDR 'سرگرمی' and matches the English plural. objects 'اشیاء' is native Urdu where CLDR uses the transliterated 'آبجیکٹس'; animals 'جانور اور فطرت' and food 'کھانا اور مشروبات' are everyday-register variants of CLDR 'حیوانات و فطرت' and 'غذا اور مشروب'; smileys 'اسمائلیز' is a common spelling variant of CLDR 'اسمالیز'. All are acceptable under the style guide's everyday educated register, so none is a finding.",
+    "icu": "Ran a node script (scratchpad audit-ur.mjs) that loads @formatjs/icu-messageformat-parser from the worktree's node_modules and runs parse() on each of the 20 ur values: every value gives exactly 1 AST node of literal type, with 0 argument/plural/select/tag nodes. English has no placeholders (context placeholders {} for all 20). No {, }, #, < or > in any value. Whole-catalogue mechanics: identical 129-key sets and key order vs English; 20 delta keys = exactly the scoped list; 109 base keys byte-identical to git show 2e16fb1456:src/i18n/catalogues/ur/ui.teamBridge.json (0 changed). All 20 values are NFC; no U+200E/200F/202A-202E/2066-2069/061C, U+200B-200D or NBSP; no Arabic-only letters (U+064A/0643/0647/0649), harakat, Arabic-Indic or Extended digits, Hindi danda, Latin letters/digits or Latin punctuation; no leading/trailing or doubled whitespace. File has no BOM, no CRLF and a trailing newline.",
+    "terminology": "emoji is ایموجی in all 7 occurrences (search, categories, all, empty, noResults, choose); reaction is ردعمل in both (add, failed); skin-tone رنگت in tone and toneDefault; category زمرے matches the existing locale usage. No glossary §2 term occurs in the delta. Urdu full stop ۔ (U+06D4) closes both sentences of 'failed', mirroring the English periods; no other terminal punctuation, also as in English. RTL: there are no embedded Latin runs or direction-sensitive tokens, so no bidi island concerns.",
+    "overflow": "Static code-point lengths only (en→ur): add 12→15, search 12→16, categories 16→14, all 9→11, frequent 15→22, tone 9→11, toneDefault 17→11, empty 14→20, failed 39→42, category0 19→18, category1 15→11, category2 18→14, category3 14→17, category4 17→14, category5 10→8, category6 7→5, category7 7→6, category8 5→4, choose 15→17, noResults 14→20. Visible strings only: frequent (+7, 12px heading over the frequent row) and noResults (+6, empty-state text) are the largest expansions. Both are prose-width surfaces rather than fixed-width labels, so a rendered check is advisable but no defect is claimed. toneDefault, in the narrow select, is shorter than the English. The rest are aria-labels/tooltips, or inline alert text within +3.",
+    "limitations": "Browser unavailable by task constraint. No screenshots, glyph metrics, visual-fit or native bidi-rendering claim. No catalogue/code edits."
+  }
+}

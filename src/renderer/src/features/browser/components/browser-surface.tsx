@@ -886,7 +886,23 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			// `outline-none` exactly when "focus is moved there programmatically and a
 			// ring would be noise". Every focusable CHILD keeps its own ring.
 			tabIndex={-1}
-			className="relative flex h-full min-h-0 flex-col bg-elevated outline-none!"
+			/*
+			 * THE ROUTE HOST IS A FULL-HEIGHT PANEL and the pane host is not. On the
+			 * route the pane's ground reaches y0 (`panel-flush` cancels the shell's
+			 * ordinary-content pad) and, being ONE column, the root is also its own
+			 * `panel-top-pad`: flush pads nothing, so without the pad the tab strip,
+			 * `+`, approvals and page menu sat at y≈4-36 under the drag lane and the
+			 * traffic lights (agent review round 1, F1). In the slot the enclosing
+			 * `browser-pane.tsx` column already pads from y0, so `h-full` is right
+			 * and a second pad here would double it. Both hosts stay `relative` so
+			 * the surface's own absolutes never escape to an unrelated ancestor; the
+			 * address popout anchors to the strip wrapper below, not to this root.
+			 */
+			className={
+				isRoutePage
+					? "panel-flush panel-top-pad relative flex min-h-0 flex-1 flex-col bg-elevated outline-none!"
+					: "relative flex h-full min-h-0 flex-col bg-elevated outline-none!"
+			}
 			/* The pane ground of the Browser ROUTE (inside the pane slot the enclosing
 			   `pane` region already owns the alpha and this one is cleared as nested).
 			   `data-glass-split` only on the route host: nothing may paint beneath the
@@ -901,7 +917,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			    round 2, A-2), and discarding it here would leave the one caller that needs
 			    the answer with nothing to read. Every other chrome call stays fired-and-
 			    forgotten, which is what `void` says. */}
-			<div ref={stripRef}>
+			<div ref={stripRef} className="relative">
 				<BrowserTabStrip
 					tabPanelId={tabPanelId}
 					tabs={tabs}
@@ -1055,6 +1071,106 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						</>
 					}
 				/>
+				{/* THE POPOUT ANCHORS TO THE STRIP, NOT TO THE SURFACE ROOT. It is
+				    `absolute inset-x-0 top-0`, and `top-0` resolves to the containing
+				    block's PADDING box. On the route the root is `panel-flush` (its box
+				    starts at y0, under the macOS drag lane) and its pad is inside that box,
+				    so a root-anchored popout opened at y0 under the lane and the traffic
+				    lights (agent review round 1, F1). This wrapper sits below the pad in
+				    both hosts, so the row paints exactly over the strip it replaces. Being
+				    absolute, it adds nothing to the strip's measured anchor rect. */}
+				{popout && !addressFallback && !onStartPage && (
+					<div
+						className="absolute inset-x-0 top-0 z-30"
+						data-tour-tag="browser-address-popout"
+						onKeyDownCapture={(event) => {
+							// ESCAPE IS THE POPOUT'S, NOT THE INPUT'S (UX U3). Tab order runs
+							// Back, Forward, Reload, Home, site mark, input, ⋯ — five of seven
+							// stops had no Escape route before this. The menu keeps its own
+							// Escape while it is open (it closes only itself).
+							if (event.key !== "Escape" || pageMenuOpenRef.current) return;
+							event.preventDefault();
+							event.stopPropagation();
+							dismissAddress();
+						}}
+						onBlurCapture={(event) => {
+							const next = event.relatedTarget as Node | null;
+							// Focus that lands in the page menu's portal is still INSIDE this
+							// row's chrome; dismissing on it closed the menu the user just
+							// opened (agent review round 1, MAJOR-1 / UX U1).
+							if (next && !event.currentTarget.contains(next)) {
+								if (isPortalledChromeTarget(next)) return;
+								dismissAddress();
+							}
+						}}
+					>
+						<BrowserUrlBar
+							key={popout.nonce}
+							placement="popout"
+							inputRef={addressRef}
+							tabId={state?.activeTabId ?? null}
+							url={state?.url ?? ""}
+							pendingUrl={chrome.pendingUrl}
+							loading={Boolean(state?.loading)}
+							canGoBack={Boolean(state?.canGoBack)}
+							canGoForward={Boolean(state?.canGoForward)}
+							disabled={tabs.length === 0}
+							onNavigate={(url, expectedTabId) =>
+								void chrome.navigate(url, expectedTabId)
+							}
+							onBack={() => void chrome.history("back")}
+							onForward={() => void chrome.history("forward")}
+							onHome={() => void chrome.home()}
+							loadFailure={state?.navFailure ?? null}
+							onReload={() => void chrome.reload()}
+							onStop={() => void chrome.stop()}
+							overlayMode={overlayMode}
+							anchor={anchor}
+							seed={popout.seed}
+							selectOnMount={popout.selectAll}
+							onDismiss={() => dismissAddress()}
+							onCommitted={() => setPopout(null)}
+							menu={
+								<BrowserPageMenu
+									placement="popout"
+									disabled={tabs.length === 0}
+									loading={Boolean(state?.loading)}
+									canGoBack={Boolean(state?.canGoBack)}
+									canGoForward={Boolean(state?.canGoForward)}
+									pageZoom={state?.pageControls?.zoom ?? 1}
+									waitingCount={queue.count}
+									downloadsDir={chrome.state?.transfers?.dir ?? null}
+									onOpenChange={(open) => {
+										pageMenuOpenRef.current = open;
+									}}
+									onCloseAutoFocus={returnFocusToAddress}
+									onAddress={() => raiseAddress({ origin: "chrome" })}
+									onBack={() => void chrome.history("back")}
+									onForward={() => void chrome.history("forward")}
+									onReload={() => void chrome.reload()}
+									onStop={() => void chrome.stop()}
+									onHome={() => void chrome.home()}
+									onFind={() => void openFind("chrome")}
+									onPrint={() => {
+										if (state?.activeTabId != null)
+											void chrome.pageControl(state.activeTabId, "print");
+									}}
+									onResetZoom={() => {
+										if (state?.activeTabId != null)
+											void chrome.pageControl(state.activeTabId, "reset");
+									}}
+									onOpenDownloads={() => void chrome.revealDownloads()}
+									onOpenApprovals={() => setDockOpen((open) => !open)}
+								/>
+							}
+							// Suggestions are one list for the field: persistent history is
+							// session-agnostic, so there is no display scope to pass. The
+							// strip's `tabScope` still governs which TABS are shown.
+							addressHistory={(request) => chrome.addressHistory(request)}
+							onStateChanged={chrome.onStateChanged}
+						/>
+					</div>
+				)}
 			</div>
 			{/* TIER 2 (design §6): the popout failed its focus contract twice, so the
 			    same component re-mounts in the flow. One 41px shift, then stable; no
@@ -1083,98 +1199,6 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					overlayMode="suspend"
 					anchor={null}
 				/>
-			)}
-			{popout && !addressFallback && !onStartPage && (
-				<div
-					className="absolute inset-x-0 top-0 z-30"
-					data-tour-tag="browser-address-popout"
-					onKeyDownCapture={(event) => {
-						// ESCAPE IS THE POPOUT'S, NOT THE INPUT'S (UX U3). Tab order runs
-						// Back, Forward, Reload, Home, site mark, input, ⋯ — five of seven
-						// stops had no Escape route before this. The menu keeps its own
-						// Escape while it is open (it closes only itself).
-						if (event.key !== "Escape" || pageMenuOpenRef.current) return;
-						event.preventDefault();
-						event.stopPropagation();
-						dismissAddress();
-					}}
-					onBlurCapture={(event) => {
-						const next = event.relatedTarget as Node | null;
-						// Focus that lands in the page menu's portal is still INSIDE this
-						// row's chrome; dismissing on it closed the menu the user just
-						// opened (agent review round 1, MAJOR-1 / UX U1).
-						if (next && !event.currentTarget.contains(next)) {
-							if (isPortalledChromeTarget(next)) return;
-							dismissAddress();
-						}
-					}}
-				>
-					<BrowserUrlBar
-						key={popout.nonce}
-						placement="popout"
-						inputRef={addressRef}
-						tabId={state?.activeTabId ?? null}
-						url={state?.url ?? ""}
-						pendingUrl={chrome.pendingUrl}
-						loading={Boolean(state?.loading)}
-						canGoBack={Boolean(state?.canGoBack)}
-						canGoForward={Boolean(state?.canGoForward)}
-						disabled={tabs.length === 0}
-						onNavigate={(url, expectedTabId) =>
-							void chrome.navigate(url, expectedTabId)
-						}
-						onBack={() => void chrome.history("back")}
-						onForward={() => void chrome.history("forward")}
-						onHome={() => void chrome.home()}
-						loadFailure={state?.navFailure ?? null}
-						onReload={() => void chrome.reload()}
-						onStop={() => void chrome.stop()}
-						overlayMode={overlayMode}
-						anchor={anchor}
-						seed={popout.seed}
-						selectOnMount={popout.selectAll}
-						onDismiss={() => dismissAddress()}
-						onCommitted={() => setPopout(null)}
-						menu={
-							<BrowserPageMenu
-								placement="popout"
-								disabled={tabs.length === 0}
-								loading={Boolean(state?.loading)}
-								canGoBack={Boolean(state?.canGoBack)}
-								canGoForward={Boolean(state?.canGoForward)}
-								pageZoom={state?.pageControls?.zoom ?? 1}
-								waitingCount={queue.count}
-								downloadsDir={chrome.state?.transfers?.dir ?? null}
-								onOpenChange={(open) => {
-									pageMenuOpenRef.current = open;
-								}}
-								onCloseAutoFocus={returnFocusToAddress}
-								onAddress={() => raiseAddress({ origin: "chrome" })}
-								onBack={() => void chrome.history("back")}
-								onForward={() => void chrome.history("forward")}
-								onReload={() => void chrome.reload()}
-								onStop={() => void chrome.stop()}
-								onHome={() => void chrome.home()}
-								onFind={() => void openFind("chrome")}
-								onPrint={() => {
-									if (state?.activeTabId != null)
-										void chrome.pageControl(state.activeTabId, "print");
-								}}
-								onResetZoom={() => {
-									if (state?.activeTabId != null)
-										void chrome.pageControl(state.activeTabId, "reset");
-								}}
-								onOpenDownloads={() => void chrome.revealDownloads()}
-								onOpenApprovals={() => setDockOpen((open) => !open)}
-							/>
-						}
-						// Suggestions are one list for the field: persistent history is
-						// session-agnostic, so there is no display scope to pass. The
-						// strip's `tabScope` still governs which TABS are shown.
-						addressHistory={(request) => chrome.addressHistory(request)}
-						onStateChanged={chrome.onStateChanged}
-					/>
-				</div>
 			)}
 			<BrowserFindRow chrome={chrome} returnToPage={findReturnToPage} />
 			{state?.pageControls?.notice && (

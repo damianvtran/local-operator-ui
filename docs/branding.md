@@ -484,13 +484,42 @@ a menu or a popover.
 
 - **No panel carries a border.** Separation is the ground ladder
   (`canvas` → `surface` → `elevated`, or `sunken` for a well) plus spacing. A
-  1px rule over a tone step is a second, redundant mark; it also cannot reach
-  the top through the shell's clipped columns. `border-control` remains the
-  boundary of an input, select, checkbox or outlined button, never a panel edge.
-- **A panel runs edge-to-edge to the top of the content area**, under the
-  title-bar lane. A route-owned leading column hands itself to the shell
-  (`useLaneLeadingColumn("surface")`) so the lane carries the same ground above
-  it; the panel content must not begin below a header that spans the rail.
+  1px rule over a tone step is a second, redundant mark. `border-control`
+  remains the boundary of an input, select, checkbox or outlined button, never
+  a panel edge.
+- **Full-height panels extend through the titlebar strip; no top inset on the
+  panel; the scroll region clips and fades under it.** A panel that owns its
+  ground (the app sidebar, a route's leading rail, the Library filter rail, the
+  asset-details dock, the right-slot panes and canvas tabs, the panel rail,
+  Team Bridge's columns) starts at y0 and paints its own ground through the
+  traffic lights' band. Its first content row is padded by
+  `--panel-top-pad` — the shell publishes `var(--chrome-strip-h)` on the
+  content column for every route, so no route needs its own inset and none may
+  compute one.
+  - The mechanism is two utilities in `styles/index.css`, defined once:
+    `panel-flush` on a route root that owns the whole window height (it cancels
+    the shell's ordinary-content pad) and `panel-top-pad` on a full-height
+    panel column (it pushes the column's first row below the strip while the
+    panel's ground keeps y0). A simple page that is not a panel needs neither:
+    the shell pads it once on `<main>`.
+  - The titlebar lane is a single transparent overlay for every route. It
+    reserves no height and paints no ground; there is no route opt-in, and
+    no gradient mirror of the columns. Only the drag surface and
+    `data-slot-edge` remain on it.
+  - **A scroll region must clip at the panel's content edge, so its pad sits
+    outside the scroller.** A scroll container's own `padding-top` clips at
+    its padding box, which lets scrolled text paint through the strip; the
+    panel pads, the scroller begins at y32, and the existing top fade
+    (`data-lo-sidebar-edge-cues`) stays on the scroller. A file name scrolling
+    in the Library dock disappears at the dock's content edge, not at y0. When
+    the panel's ROOT is the scroller, `panel-scroll` states the same contract
+    as a margin plus the matching height.
+  - The element that wears `panel-top-pad` is the element that paints the
+    panel's ground. A padded wrapper that owns no ground is the inset band this
+    rule exists to forbid, not a clearance: the padding is invisible only when
+    it sits inside the surface it belongs to. A content column nested inside a
+    grounded, `panel-flush` ancestor needs no ground of its own — and must not
+    take one, which would put a second tone step inside a single panel.
 - **Chrome controls are borderless too.** A grouped segmented control (for example the Library grid/list toggle) may keep one shared `border-control` boundary around the group; the edge belongs to the group affordance, not to each button. Search, sort and filter chrome takes the `elevated` ground on a `surface` panel and the shared accent focus ring; no resting stroke. Reserve `border-control` for a form field or an actual boundary a ground cannot express, never as decoration on a toolbar control.
 - **A scrolling panel fades at its top edge.** `data-lo-sidebar-edge-cues` on
   the scroller uses the shared scroll-driven mask: content dissolves under the
@@ -503,11 +532,13 @@ a menu or a popover.
   the content and filter rail step aside. The filter rail collapses into its
   sheet below 1200px. A panel never floats over another panel's content.
 
-The Library filter rail is the reference: a full-height `bg-surface` column
-with `data-lo-sidebar-edge-cues`, no right rule, and a preview dock separated
-by the `surface` ground. `scripts/lane-leading.test.mjs` enforces the leading
-column hand-over and the absence of route-column right rules; agent-facing
-detail is in `docs/AGENTS.md`.
+The Library route is the reference: a flush `bg-canvas` page root, a
+full-height `bg-surface` filter rail and `bg-surface` asset-details dock, both
+padded by the shared utility, with `data-lo-sidebar-edge-cues` on the scrollers
+and no right rule. `scripts/lane-leading.test.mjs` enforces the panel inventory
+and the absence of route-column right rules; `scripts/panel-top-inset.test.mjs`
+enforces that no route computes its own titlebar inset; agent-facing detail is
+in `docs/AGENTS.md`.
 
 ### Accent
 

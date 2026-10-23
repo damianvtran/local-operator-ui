@@ -427,8 +427,8 @@ const api = {
 	 * Resolve-and-stat a batch of paths. The answer carries the resolved path,
 	 * which is the Files panel's identity for a file.
 	 */
-	probeFiles: (paths: string[], cwd?: string) =>
-		ipcRenderer.invoke("probe-files", paths, cwd),
+	probeFiles: (paths: string[], cwd?: string, options?: { fresh?: boolean }) =>
+		ipcRenderer.invoke("probe-files", paths, cwd, options),
 	/**
 	 * One directory's listable entries, for a picker that offers rows from the
 	 * filesystem. One level per call; deepening is the caller asking again for the

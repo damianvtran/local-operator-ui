@@ -23,6 +23,7 @@ import { WysiwygMarkdownEditor } from "@features/chat/components/canvas/wysiwyg-
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { Button } from "@shared/components/ui";
 import { t } from "@shared/i18n";
+import { cn } from "@shared/lib/utils";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { Download, LoaderCircle, Maximize2 } from "lucide-react";
 import type { FC } from "react";
@@ -31,6 +32,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import * as XLSX from "xlsx";
 import type { DesktopLibraryAsset } from "../../../../../shared/desktop-control-contract";
+import { isPathBacked } from "../hooks/use-library-file-watch";
 import { useLibraryBytes, useObjectUrl } from "../hooks/use-library-queries";
 import { saveAssetCopy } from "../library-download";
 import { libraryMarkdownDocument } from "../library-markdown";
@@ -168,6 +170,88 @@ export const VIDEO_CONTROL_BAND_PX = 72;
  * the picture above the band opens the viewer. The expand control in the corner
  * stays as the keyboard and first-run affordance, painted above the target.
  */
+/**
+ * The asset's bytes, from the LIVE PATH when it has one.
+ *
+ * WHY THE PATH AND NOT THE CONTENT ROUTE. A path-backed asset is a file on this
+ * machine, and the Library is a window onto it, not a copy: an agent that just
+ * rewrote the file must appear in the preview. The content route answers from
+ * the index's digest, which cannot see that write. Reading the path means the
+ * viewer's own bytes and the freshness probe are looking at the same file.
+ *
+ * `revision` is the probe's own key: it moves when the mtime moves, and this
+ * hook re-reads under it. A digest-only asset has no path to read and keeps the
+ * library's bytes unchanged.
+ */
+function useAssetContent(asset: DesktopLibraryAsset, revision: number) {
+	const path = isPathBacked(asset) ? asset.ref.path : null;
+	/*
+	 * Both hooks are called unconditionally; the route read is simply disabled
+	 * for a path-backed row, which is what keeps a single call order across the
+	 * asset switch (a conditional hook would be a remount of the whole viewer).
+	 */
+	/*
+	 * THE ROUTED READ IS THE FALLBACK, NOT THE OLD PATH. The bridge refuses a file
+	 * over its own byte cap and can fail on a permission or a broken mount; the
+	 * library route can still answer from the digest, so a viewer that used to
+	 * load must not turn into a failure because the path read was tried first.
+	 * The route read is enabled from the start when there is no path, and from the
+	 * moment the path read fails.
+	 */
+	const [pathFailed, setPathFailed] = useState(false);
+	const routed = useLibraryBytes(asset.id, "content", !path || pathFailed);
+	const [fromPath, setFromPath] = useState<{
+		bytes: Uint8Array | null;
+		mimeType: string;
+		error: string | null;
+		loading: boolean;
+	}>({ bytes: null, mimeType: "", error: null, loading: Boolean(path) });
+	const contentType = asset.ref.content_type;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: revision is the re-read trigger, not a value the body reads.
+	useEffect(() => {
+		if (!path) return;
+		if (!window.api?.readFileBytes) {
+			// No bridge is the same answer as a failed read: take the routed bytes
+			// rather than a failure the route could have avoided.
+			setPathFailed(true);
+			setFromPath({
+				bytes: null,
+				mimeType: "",
+				error: t("ui.library.preview.could_not_load"),
+				loading: false,
+			});
+			return;
+		}
+		let cancelled = false;
+		// A new revision (or a new path) gets the live read another chance.
+		setPathFailed(false);
+		setFromPath((previous) => ({ ...previous, loading: true }));
+		void window.api.readFileBytes(path).then((answer) => {
+			if (cancelled) return;
+			if (!answer.success) setPathFailed(true);
+			setFromPath(
+				answer.success
+					? {
+							bytes: answer.data,
+							mimeType: contentType || "",
+							error: null,
+							loading: false,
+						}
+					: {
+							bytes: null,
+							mimeType: "",
+							error: answer.error,
+							loading: false,
+						},
+			);
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [path, revision, contentType]);
+	return path && !pathFailed ? fromPath : routed;
+}
+
 const MediaViewer: FC<{
 	asset: DesktopLibraryAsset;
 	/**
@@ -175,12 +259,12 @@ const MediaViewer: FC<{
 	 * page. The lightbox's set; omitted means this asset stands alone.
 	 */
 	mediaSiblings?: readonly DesktopLibraryAsset[];
-}> = ({ asset, mediaSiblings }) => {
-	const { bytes, mimeType, error, loading } = useLibraryBytes(
-		asset.id,
-		"content",
-		true,
-	);
+	/** The freshness probe's key; see `useAssetContent`. */
+	revision: number;
+	/** Full-view mode: audio uses the width it is given. */
+	expanded: boolean;
+}> = ({ asset, mediaSiblings, revision, expanded }) => {
+	const { bytes, mimeType, error, loading } = useAssetContent(asset, revision);
 	const source = useObjectUrl(bytes, mimeType || asset.ref.content_type);
 	const imageTriggerRef = useRef<HTMLButtonElement>(null);
 	const videoTriggerRef = useRef<HTMLButtonElement>(null);
@@ -350,7 +434,11 @@ const MediaViewer: FC<{
 			return (
 				<div className="flex flex-1 flex-col items-center justify-center gap-3 p-6">
 					<KindGlyph kind="audio" size={32} className="text-ink-dim" />
-					<audio src={source} controls className="w-full max-w-100">
+					<audio
+						src={source}
+						controls
+						className={cn("w-full", expanded ? undefined : "max-w-100")}
+					>
 						<track kind="captions" />
 					</audio>
 				</div>
@@ -416,12 +504,11 @@ const MediaViewer: FC<{
 };
 
 /** PDF and HTML: an iframe over the asset's own bytes. */
-const FrameViewer: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
-	const { bytes, mimeType, error, loading } = useLibraryBytes(
-		asset.id,
-		"content",
-		true,
-	);
+const FrameViewer: FC<{ asset: DesktopLibraryAsset; revision: number }> = ({
+	asset,
+	revision,
+}) => {
+	const { bytes, mimeType, error, loading } = useAssetContent(asset, revision);
 	const source = useObjectUrl(bytes, mimeType || asset.ref.content_type);
 	if (loading) return <Loading />;
 	if (error || !source)
@@ -456,15 +543,28 @@ const FrameViewer: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
 const MarkdownAssetView: FC<{
 	asset: DesktopLibraryAsset;
 	text: string;
-}> = ({ asset, text }) => {
+	/** Full-view mode: the editor uses the width, not a reading column. */
+	expanded: boolean;
+	/** The freshness probe's key; a moved mtime rebuilds the document. */
+	revision: number;
+	/** The watch's mtime, once it has answered. */
+	mtimeMs: number | null;
+}> = ({ asset, text, expanded, revision, mtimeMs }) => {
 	const local =
 		asset.ref.type === "path" && Boolean(asset.ref.path) && asset.exists;
 	const path = asset.ref.path;
 	const [probe, setProbe] = useState<
 		{ state: "pending" } | { state: "done"; mtimeMs: number | null }
 	>({ state: "pending" });
+	/*
+	 * The watch has already probed the path; this one answers only while the
+	 * watch's first answer is outstanding (and for a story that mounts the view
+	 * without the preview's watcher). Re-probed on `revision` so an edit's new
+	 * text lands with the mtime that belongs to it.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: revision is the re-probe trigger, not a value the body reads.
 	useEffect(() => {
-		if (!local || !path) return;
+		if (!local || !path || mtimeMs !== null) return;
 		let cancelled = false;
 		void probeLocalFile(path).then((answer) => {
 			if (!cancelled) {
@@ -474,12 +574,15 @@ const MarkdownAssetView: FC<{
 		return () => {
 			cancelled = true;
 		};
-	}, [local, path]);
+	}, [local, path, revision, mtimeMs]);
+	const readMtimeMs =
+		mtimeMs ?? (probe.state === "done" ? probe.mtimeMs : null);
 	const document = useMemo<CanvasDocument | null>(() => {
-		if (!local || !path || probe.state !== "done") return null;
-		return libraryMarkdownDocument(asset, text, probe.mtimeMs);
-	}, [asset, local, path, probe, text]);
-	if (local && probe.state === "pending") {
+		if (!local || !path) return null;
+		if (mtimeMs === null && probe.state !== "done") return null;
+		return libraryMarkdownDocument(asset, text, readMtimeMs);
+	}, [asset, local, path, probe, text, mtimeMs, readMtimeMs]);
+	if (local && document === null) {
 		return (
 			<div className="flex min-h-0 flex-1 items-center justify-center">
 				<Loading label={t("ui.library.preview.checking_file")} />
@@ -494,8 +597,15 @@ const MarkdownAssetView: FC<{
 			>
 				{/* The centered reading column is Library chrome; the shared editor
 				    inside it is untouched, so Canvas keeps the same component and
-				    save semantics. */}
-				<div className="mx-auto flex w-full max-w-[760px] flex-col gap-4 px-6 py-8">
+				    save semantics. Expanded, the wrapper gives up its cap AND the
+				    editor takes `measure="fill"`: the 640px cap that component
+				    carries for the Canvas would otherwise still narrow the file. */}
+				<div
+					className={cn(
+						"mx-auto flex w-full flex-col gap-4 px-6 py-8",
+						expanded ? "max-w-none" : "max-w-[760px]",
+					)}
+				>
 					{/*
 					 * THE BODY OWNS THE TITLE. A markdown document's first block is
 					 * usually its H1, so a second heading here would repeat it. This
@@ -505,14 +615,19 @@ const MarkdownAssetView: FC<{
 					<p className="text-meta text-ink-dim">
 						{t("ui.library.preview.breadcrumb", { name: document.title })}
 					</p>
-					<WysiwygMarkdownEditor document={document} />
+					<WysiwygMarkdownEditor
+						document={document}
+						measure={expanded ? "fill" : "reading"}
+					/>
 				</div>
 			</div>
 		);
 	}
 	return (
 		<div data-lo-pane-edge-cues className="min-h-0 flex-1 overflow-y-auto p-5">
-			<div className="mx-auto max-w-[720px]">
+			<div
+				className={cn("mx-auto", expanded ? "max-w-[980px]" : "max-w-[720px]")}
+			>
 				<p className="mb-4 text-meta text-ink-muted">
 					{t("ui.library.preview.read_only_markdown")}
 				</p>
@@ -524,20 +639,43 @@ const MarkdownAssetView: FC<{
 	);
 };
 
-/** Markdown, plain text and code, decoded from the content bytes. */ /** Markdown, plain text and code, decoded from the content bytes. */
-const TextViewer: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
-	const { bytes, error, loading } = useLibraryBytes(asset.id, "content", true);
+/** Markdown, plain text and code, decoded from the content bytes. */
+const TextViewer: FC<{
+	asset: DesktopLibraryAsset;
+	expanded: boolean;
+	revision: number;
+	mtimeMs: number | null;
+}> = ({ asset, expanded, revision, mtimeMs }) => {
+	const { bytes, error, loading } = useAssetContent(asset, revision);
 	if (loading) return <Loading />;
 	if (error || !bytes)
 		return <Failure detail={error || "The bytes were empty."} asset={asset} />;
 	const text = new TextDecoder("utf-8", { fatal: false }).decode(bytes);
 	if (asset.kind === "markdown") {
-		return <MarkdownAssetView asset={asset} text={text} />;
+		return (
+			<MarkdownAssetView
+				asset={asset}
+				text={text}
+				expanded={expanded}
+				revision={revision}
+				mtimeMs={mtimeMs}
+			/>
+		);
 	}
+	/*
+	 * FULL WIDTH, AND THE KIND'S OWN WRAPPING. Prose wraps; code does not — a
+	 * wrapped line in a code viewer is a line the reader can no longer count, so
+	 * it keeps `pre` and scrolls sideways instead.
+	 */
 	return (
 		<pre
 			data-lo-pane-edge-cues
-			className="min-h-0 flex-1 overflow-auto p-4 font-mono text-mono-sm whitespace-pre-wrap break-words text-ink"
+			className={cn(
+				"min-h-0 w-full flex-1 overflow-auto p-4 font-mono text-mono-sm text-ink",
+				asset.kind === "code"
+					? "whitespace-pre"
+					: "whitespace-pre-wrap break-words",
+			)}
 		>
 			{text}
 		</pre>
@@ -545,8 +683,11 @@ const TextViewer: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
 };
 
 /** Spreadsheets: a read-only table from the first sheet (CSV/XLSX/ODS). */
-const SpreadsheetViewer: FC<{ asset: DesktopLibraryAsset }> = ({ asset }) => {
-	const { bytes, error, loading } = useLibraryBytes(asset.id, "content", true);
+const SpreadsheetViewer: FC<{
+	asset: DesktopLibraryAsset;
+	revision: number;
+}> = ({ asset, revision }) => {
+	const { bytes, error, loading } = useAssetContent(asset, revision);
 	if (loading) return <Loading />;
 	if (error || !bytes)
 		return <Failure detail={error || "The bytes were empty."} asset={asset} />;
@@ -588,7 +729,15 @@ const SpreadsheetTable: FC<{
 	const truncated = sheets.rows.length > MAX_ROWS;
 	return (
 		<div data-lo-pane-edge-cues className="min-h-0 flex-1 overflow-auto p-2">
-			<table className="w-full border-collapse text-meta">
+			{/*
+			 * CONTENT-SIZED COLUMNS, AND THE PANE SCROLLS. A `w-full` table with a
+			 * `max-w-60 truncate` on every cell squeezed forty columns into the pane
+			 * and hid the text behind ellipses (operator: the spreadsheet did not use
+			 * the space it had). `w-max min-w-full` lets each column take its
+			 * content's width — never narrower than the pane — and the wrapper's
+			 * horizontal scroll is where a wide sheet belongs.
+			 */}
+			<table className="w-max min-w-full border-collapse text-meta">
 				<thead>
 					<tr>
 						<th
@@ -640,7 +789,7 @@ const SpreadsheetTable: FC<{
 								<td
 									// biome-ignore lint/suspicious/noArrayIndexKey: a cell is its column index.
 									key={cellIndex}
-									className="max-w-60 truncate border-b border-hairline px-2 py-1 font-mono text-ink"
+									className="whitespace-nowrap border-b border-hairline px-2 py-1 font-mono text-ink"
 								>
 									{String(cell ?? "")}
 								</td>
@@ -665,39 +814,81 @@ const SpreadsheetTable: FC<{
 export const LibraryViewer: FC<{
 	asset: DesktopLibraryAsset;
 	dense?: boolean;
+	/**
+	 * The standalone/full-view route: the reader asked for the whole workspace, so
+	 * every kind is allowed to use it. The 448px dock keeps the narrower measures.
+	 */
+	expanded?: boolean;
+	/** The freshness probe's revision; see `useAssetContent`. */
+	revision?: number;
+	/** The watched path's mtime, once the freshness probe has answered. */
+	mtimeMs?: number | null;
 	/** The listing's media rows, in display order: the lightbox's set. */
 	mediaSiblings?: readonly DesktopLibraryAsset[];
-}> = ({ asset, dense = false, mediaSiblings }) => {
+}> = ({
+	asset,
+	dense = false,
+	expanded = false,
+	revision = 0,
+	mtimeMs = null,
+	mediaSiblings,
+}) => {
 	if (asset.kind === "pptx") {
-		return <PptxPreview asset={asset} dense={dense} />;
+		return (
+			<PptxPreview
+				asset={asset}
+				dense={dense}
+				expanded={expanded}
+				revision={revision}
+			/>
+		);
 	}
 	if (
 		asset.kind === "image" ||
 		asset.kind === "audio" ||
 		asset.kind === "video"
 	)
-		return <MediaViewer asset={asset} mediaSiblings={mediaSiblings} />;
+		return (
+			<MediaViewer
+				asset={asset}
+				mediaSiblings={mediaSiblings}
+				revision={revision}
+				expanded={expanded}
+			/>
+		);
 	if (asset.kind === "pdf" || asset.kind === "html")
-		return <FrameViewer asset={asset} />;
+		return <FrameViewer asset={asset} revision={revision} />;
 	if (
 		asset.kind === "markdown" ||
 		asset.kind === "text" ||
 		asset.kind === "code"
 	)
-		return <TextViewer asset={asset} />;
-	if (asset.kind === "spreadsheet") return <SpreadsheetViewer asset={asset} />;
+		return (
+			<TextViewer
+				asset={asset}
+				expanded={expanded}
+				revision={revision}
+				mtimeMs={mtimeMs}
+			/>
+		);
+	if (asset.kind === "spreadsheet")
+		return <SpreadsheetViewer asset={asset} revision={revision} />;
 	if (asset.kind === "docx") return <Unsupported asset={asset} />;
 	return <Unsupported asset={asset} />;
 };
 
 /** PPTX needs its bytes before the viewer can exist; this owns that fetch. */
-const PptxPreview: FC<{ asset: DesktopLibraryAsset; dense?: boolean }> = ({
-	asset,
-	dense = false,
-}) => {
-	const { bytes, error, loading } = useLibraryBytes(asset.id, "content", true);
+const PptxPreview: FC<{
+	asset: DesktopLibraryAsset;
+	dense?: boolean;
+	expanded: boolean;
+	revision: number;
+}> = ({ asset, dense = false, expanded, revision }) => {
+	const { bytes, error, loading } = useAssetContent(asset, revision);
 	if (loading) return <Loading label={t("ui.library.preview.pptx_opening")} />;
 	if (error || !bytes)
 		return <Failure detail={error || "The bytes were empty."} asset={asset} />;
-	return <PptxViewer asset={asset} bytes={bytes} dense={dense} />;
+	return (
+		<PptxViewer asset={asset} bytes={bytes} dense={dense} expanded={expanded} />
+	);
 };

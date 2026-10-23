@@ -179,6 +179,19 @@ type WysiwygMarkdownEditorProps = {
 	 * picker carries the same affordance for the same reason.
 	 */
 	initialFormatMenuOpen?: boolean;
+	/**
+	 * THE LINE MEASURE, chosen by the HOST because only the host knows how much
+	 * width the pane actually has.
+	 *
+	 * `reading` (the default and every Canvas mount) keeps the 640px column the
+	 * comment on the container argues for: dragged wide, 14px body text across a
+	 * 1200px panel is ~140 characters a line. `fill` is for a surface whose reader
+	 * asked to use the width it was given — the Library's expanded view — where the
+	 * panel IS the document and an editor floating in a third of it reads as an
+	 * unfinished column. The host's wrapper must agree: a `max-w` on the wrapper
+	 * would still narrow a `fill` editor (the double cap the Library had).
+	 */
+	measure?: "reading" | "fill";
 };
 
 /**
@@ -399,6 +412,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	conversationId,
 	agentId,
 	initialFormatMenuOpen = false,
+	measure = "reading",
 }) => {
 	/*
 	 * A REMOUNT MUST SHOW THE RETAINED DRAFT, not the file's bytes. The buffer
@@ -2076,7 +2090,10 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				 * measured always is. 640px lands at roughly 80.
 				 */}
 				<div
-					className={cn("relative mx-auto w-full max-w-160")}
+					className={cn(
+						"relative mx-auto w-full",
+						measure === "fill" ? "max-w-none" : "max-w-160",
+					)}
 					ref={relativeContainerRef}
 				>
 					<div
@@ -2263,7 +2280,8 @@ const arePropsEqual = (
 	// Check if conversationId or agentId changed
 	if (
 		prevProps.conversationId !== nextProps.conversationId ||
-		prevProps.agentId !== nextProps.agentId
+		prevProps.agentId !== nextProps.agentId ||
+		prevProps.measure !== nextProps.measure
 	) {
 		return false;
 	}

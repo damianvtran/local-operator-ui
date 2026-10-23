@@ -464,7 +464,11 @@ declare global {
 			 * Resolve and stat a batch of paths, returning the RESOLVED path each one
 			 * maps to. That resolved path is the Files panel's identity for a file.
 			 */
-			probeFiles: (paths: string[], cwd?: string) => Promise<ProbedFile[]>;
+			probeFiles: (
+				paths: string[],
+				cwd?: string,
+				options?: { fresh?: boolean },
+			) => Promise<ProbedFile[]>;
 			/**
 			 * One directory's listable entries, sorted by name, at most
 			 * `DIRECTORY_ENTRY_LIMIT` of them per call.

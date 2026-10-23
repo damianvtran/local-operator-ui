@@ -1,0 +1,64 @@
+{
+ "auditor": "translation-auditor",
+ "translator": "translator",
+ "translator_session": "24b08487a6fd",
+ "model": "openai/gpt-6.1-sol",
+ "instance": "tbstack-r1-1304m-hi",
+ "session": "58cc48ff55aa",
+ "job": null,
+ "task_label": "i18n-1304m-hi-ur",
+ "model_history": [
+  "anthropic/claude-opus-5-5",
+  "anthropic/claude-sonnet-5-5",
+  "openai/gpt-6.1-sol"
+ ],
+ "date": "2026-10-22",
+ "locale": "hi",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 123,
+ "union_keys_verified": 123,
+ "scope": "PR #1304 merged head 12dddf52f78bd30704b48a8c856f2b69e1bef6e3: all 123 hi keys read beside English; union integrity against e3c24e98eb (119 keys) and de047d49e3 (115 keys); substantive contextual review of the 4 inherited #1298 notify.channel/subtitle/count/count_preview keys, the 8 replies keys and namespace-wide thread/reply/message terminology; full ICU structural parity. No reaction keys exist in this namespace.",
+ "sha256": {
+  "en": "281cb8adcc75e5bb4fcebf5c9112ab260bcf8ed2fbcf6bbcd6d04bfc3cfff41c",
+  "hi": "f46bebeb999478c221abb0d5ec85ebd448bb3f53b788f9cc862363657b09e3f6",
+  "context": "f5cf60d75f5e8b8ecc378174bc9f9e5e158b14afb80cda504e1b61e921b5cafd"
+ },
+ "findings": [],
+ "inherited_receipts": [
+  {
+   "base": "e3c24e98eb",
+   "base_commit": "e3c24e98ebeba1b3ddcf1751c1ea68a30acf2d50",
+   "path": "i18n/receipts/tbstack-r1-1304-hi.json",
+   "sha256": "1b8c443d814ec607043f84e93120d6925042eeca93e6e455b41584b0dfc17711",
+   "keys_inherited": 119,
+   "base_target_sha256": "e5078e51f30aa90830f788c547d5bf750060e94626e2b32f2390a24309a92e15",
+   "unchanged_values_verified": 119
+  },
+  {
+   "base": "de047d49e3",
+   "base_commit": "de047d49e3818abdfc0cc8e64c0b6d59f5e4af40",
+   "path": "i18n/receipts/tbstack-r1-1298-hi.json",
+   "sha256": "db794312e3b54cc2d1692989c7c8eda134d056a04eff63fb0b9df2e487822e1c",
+   "keys_inherited": 115,
+   "base_target_sha256": "08f0d22365098e9a43a9ca68eefd99652fce3fb2b21964d27cb4dbb030281e9d",
+   "unchanged_values_verified": 115
+  }
+ ],
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+ },
+ "validation": {
+  "independence": "Independent translation-auditor, task label i18n-1304m-hi-ur, session 58cc48ff55aa; runtime job id not exposed (job=null). This auditor did not author or edit any catalogue. All repo source bytes read via git show; only small audit artifacts written outside the repository. Model fallback history recorded explicitly.",
+  "union_integrity": "Repo branch parity script run read-only with --repo: both locale runs exit 0, missing keys=[], value differences=[]. Separate Python comparison: en/hi/ur union=123, zero mismatches, zero dropped keys, zero untraced keys and zero conflicting shared values; key order equals English. All source receipts rehashed from source refs against their ledger rows and source/target bytes.",
+  "icu": "hi pluralCategories=one,other\nur pluralCategories=one,other\nchecked 246 (locale,key) pairs; structural problems=0; arguments, ICU arms, pound nodes, offsets, skeletons and markup retained branch-by-branch\nexit=0",
+  "plurals": "hi and ur require one/other, both present for every plural; count appears in each source-corresponding arm. notify.count and count_preview retain # in both arms; preview remains last in each arm.",
+  "typography": "NFC and trailing newline; no U+200B–200F, U+202A–202E, U+2066–2069, U+061C or BOM in either target.",
+  "terminology": "thread=थ्रेड; reply=जवाब; message=संदेश (direct message=सीधा संदेश), no conflicting alternative spelling. Polite आप/करें register retained.",
+  "new_copy": "All four inherited OS banner keys are accurate and idiomatic in context: channel and subtitle preserve source tokens, separator and logical ordering; count and preview distinguish singular/plural and keep count and preview. Same message term as the existing banner body, compose.new and thread pane; no new translator-attributed claim accepted without byte verification.",
+  "rtl": "Not applicable (Hindi is LTR).",
+  "overflow": "The four added templates have no material text expansion over English; dynamic names/preview retain the source truncation exposure. Existing labels read for terminology/register; no new material-overflow finding. No rendered-fit claim.",
+  "limitations": "No builds, installs, test suites, screenshots, pseudo-localization or native RTL rendering performed. Source audit only; not activation or release approval."
+ }
+}

@@ -24,7 +24,6 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
-import { useLaneLeadingColumn } from "@shared/components/common/chat-layout";
 import { PageHeader } from "@shared/components/common/page-header";
 import { Spinner } from "@shared/components/common/spinner";
 import {
@@ -310,7 +309,6 @@ const UnavailableAsset: FC<{ onBack: () => void }> = ({ onBack }) => (
 
 export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 	useI18nLocale();
-	const laneLeadingColumn = useLaneLeadingColumn("surface");
 	const navigate = useNavigate();
 	const location = useLocation();
 	const params = useParams<{ assetId?: string }>();
@@ -461,9 +459,41 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 		},
 		[goToAsset],
 	);
+	/*
+	 * ONE PRESS PER ASSET UNTIL ITS WRITE SETTLES. The menu item and the preview
+	 * heart both land here, and a double press used to compute the toggle from
+	 * the SAME stale `asset.favorite` twice - two writes of the same value, and
+	 * with an optimistic row the second press could be read as a flip back. The
+	 * guard is per asset id rather than one global flag, because two cards are
+	 * two independent toggles.
+	 */
+	const favoriteWrites = useRef(new Set<string>());
 	const toggleFavorite = useCallback(
 		(asset: DesktopLibraryAsset) => {
-			update.mutate({ id: asset.id, fields: { favorite: !asset.favorite } });
+			if (favoriteWrites.current.has(asset.id)) return;
+			favoriteWrites.current.add(asset.id);
+			update.mutate(
+				{ id: asset.id, fields: { favorite: !asset.favorite } },
+				{
+					onSettled: () => {
+						favoriteWrites.current.delete(asset.id);
+					},
+					/*
+					 * A REFUSAL MUST SAY SO, because the optimistic paint has just
+					 * been rolled back and the heart's disappearance is otherwise the
+					 * only trace. The toast lives HERE rather than in the mutation's
+					 * `onError` so it is reported once (the hook is shared with the
+					 * inline edits, which own their own error copy).
+					 */
+					onError: (error) => {
+						showErrorToast(
+							error instanceof Error && error.message
+								? error.message
+								: t("ui.library.preview.not_saved"),
+						);
+					},
+				},
+			);
 		},
 		[update],
 	);
@@ -708,9 +738,16 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 	return (
 		<div
 			ref={workspaceRef}
+			data-library-page=""
 			data-glass-region="canvas"
 			data-glass-split=""
-			className="flex h-full min-h-0 overflow-hidden bg-canvas"
+			/*
+			 * A FULL-HEIGHT PANEL: the page owns `canvas` from y0 and its columns
+			 * each pad their own content (`panel-top-pad`). `panel-flush` cancels
+			 * the shell's ordinary-content pad; `flex-1` is what gives the box the
+			 * 32px back at the bottom, which is the pair the utility's note states.
+			 */
+			className="panel-flush flex min-h-0 flex-1 overflow-hidden bg-canvas"
 		>
 			{/*
 			 * THE RAIL RUNS THE FULL PAGE HEIGHT, as the first column of a
@@ -722,11 +759,10 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 			 */}
 			{railVisible && !standalone && (
 				<aside
-					ref={laneLeadingColumn}
 					data-library-rail=""
 					data-glass-region="page-sidebar"
 					aria-label={t("ui.library.page.filters")}
-					className="flex h-full w-48 shrink-0 flex-col overflow-hidden bg-surface"
+					className="panel-top-pad flex h-full w-48 shrink-0 flex-col overflow-hidden bg-surface"
 				>
 					{rail}
 				</aside>
@@ -734,7 +770,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 			{!standalone && (
 				<div
 					data-glass-region="canvas-content"
-					className="flex min-w-0 flex-1 flex-col"
+					className="panel-top-pad flex min-w-0 flex-1 flex-col"
 				>
 					{/*
 					 * THE HEADER SIZES TO ITS CONTENT, with the design's 136px as a FLOOR.
@@ -1043,7 +1079,12 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 
 			{dockEligible && selected && (
 				<aside
-					className="flex h-full w-[448px] shrink-0 bg-surface"
+					/*
+					 * THE DOCK IS A PANEL: its `surface` starts at y0 and its header and
+					 * scroller begin below the strip. This is the aside the operator's
+					 * screenshot caught beginning 32px down.
+					 */
+					className="panel-top-pad flex h-full w-[448px] shrink-0 bg-surface"
 					aria-label={t("ui.library.page.preview")}
 				>
 					<LibraryPreview
@@ -1063,7 +1104,15 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 			)}
 			{standalone && (
 				<div
-					className="min-w-0 flex-1"
+					/*
+					 * `bg-surface` HERE, on the padded box, and not only on
+					 * `LibraryPreview`'s root: the pad is inside this wrapper, so the
+					 * preview's own ground begins at y32 and a groundless wrapper let the
+					 * page root's `canvas` show through the strip as a band (design round
+					 * 1, D2). The panel that owns the pad owns the ground, which also
+					 * grounds the spinner and `UnavailableAsset` arms.
+					 */
+					className="panel-top-pad min-w-0 flex-1 bg-surface"
 					aria-label={t("ui.library.page.preview")}
 				>
 					{selectedMissing ? (
@@ -1090,7 +1139,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 				</div>
 			)}
 			{!standalone && !selected && dockEligible && (
-				<div className="hidden h-full w-[448px] shrink-0 items-start justify-center bg-surface p-8 lg:flex">
+				<div className="panel-top-pad hidden h-full w-[448px] shrink-0 items-start justify-center bg-surface p-8 lg:flex">
 					<p className="max-w-60 text-center text-body-sm text-ink-dim">
 						{t("ui.library.page.select_asset")}
 					</p>

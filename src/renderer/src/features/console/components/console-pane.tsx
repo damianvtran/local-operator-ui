@@ -911,7 +911,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 		return (
 			<div
 				data-glass-region="pane"
-				className={cn("flex h-full flex-col bg-elevated")}
+				className={cn("panel-top-pad flex h-full flex-col bg-elevated")}
 			>
 				{/* The slot's bar at the slot's height and with no ground of its own, so
 				    the pane reads as one surface and the bar does not move between a
@@ -1205,7 +1205,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				 * summary switches to a compact spelling and the title yields below
 				 * 420px rather than overprinting or spilling the Close control.
 				 */
-				"relative flex h-full flex-col bg-elevated @container/consolepane",
+				"panel-top-pad relative flex h-full flex-col bg-elevated @container/consolepane",
 			)}
 			data-glass-region="pane"
 			data-tour-tag="console-pane"

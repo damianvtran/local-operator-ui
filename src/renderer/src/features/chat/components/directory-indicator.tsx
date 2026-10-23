@@ -195,7 +195,7 @@ const RECENT_PATH_TRUNCATES_AT = 42;
  * WHAT REPLACES D7's PROPERTY, since the observable D7 named was real. Three
  * things are unchanged and checkable in the DOM: the chip's LEFT edge is
  * invariant (it is the row's second item, after the attach button), the
- * `ml-auto` mic/send group is pinned to the row's right edge, and the row's
+ * `ms-auto` mic/send group is pinned to the row's inline-end edge, and the row's
  * total demand never grows. What moves on a path change in a live row is the
  * readings cluster - the chip's own right-hand neighbour, 2px after it (its
  * `marginLeft` is -6px against the row's 8px `gap-x-2`, which is what the rig

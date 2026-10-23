@@ -48,6 +48,18 @@ type PptxViewerProps = {
 	onOpenExternal?: () => void;
 	/** The preview's short layout: the slide wins over the thumbnail rail. */
 	dense?: boolean;
+	/**
+	 * The standalone/full-view route.
+	 *
+	 * WHY IT CHANGES THE FIT. Contain-to-box (`max-h-full max-w-full`) letterboxes
+	 * a 16:9 slide inside a wide pane: the width is pinned by the pane's HEIGHT, so
+	 * most of the width the reader just asked for sits empty on both sides. That is
+	 * the right rule in the 448px dock, where the pane is the constraint in both
+	 * directions. Expanded, the slide fits the WIDTH and the pane scrolls
+	 * vertically for its height — the same choice a slide deck makes on a wide
+	 * screen.
+	 */
+	expanded?: boolean;
 };
 
 type PptxState =
@@ -60,6 +72,7 @@ export const PptxViewer: FC<PptxViewerProps> = ({
 	bytes,
 	onOpenExternal,
 	dense = false,
+	expanded = false,
 }) => {
 	const rendererRef = useRef<PptxRenderer | null>(null);
 	const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -257,7 +270,10 @@ export const PptxViewer: FC<PptxViewerProps> = ({
 			<div className="flex min-h-0 flex-1 flex-col gap-2">
 				<div
 					data-pptx-slide=""
-					className="flex min-h-[120px] min-w-0 flex-1 flex-col items-center justify-center rounded-md bg-canvas p-2"
+					className={cn(
+						"flex min-h-[120px] min-w-0 flex-1 flex-col items-center rounded-md bg-canvas p-2",
+						expanded ? "justify-start overflow-y-auto" : "justify-center",
+					)}
 				>
 					{state.phase === "loading" ? (
 						<div className="flex w-60 flex-col items-center gap-2">
@@ -274,7 +290,10 @@ export const PptxViewer: FC<PptxViewerProps> = ({
 					) : (
 						<canvas
 							ref={canvasRef}
-							className="max-h-full max-w-full rounded-xs bg-surface"
+							className={cn(
+								"rounded-xs bg-surface",
+								expanded ? "h-auto max-w-full w-full" : "max-h-full max-w-full",
+							)}
 							aria-label={t("ui.library.preview.slide_of", {
 								index: String(slide + 1),
 								count: String(slideCount),

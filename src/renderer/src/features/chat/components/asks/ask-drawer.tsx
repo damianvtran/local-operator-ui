@@ -973,7 +973,7 @@ export const AskDrawer = ({
 			data-glass-region="pane"
 			data-ask-drawer={scope}
 			tabIndex={-1}
-			className={cn("flex h-full flex-col bg-elevated")}
+			className={cn("panel-top-pad flex h-full flex-col bg-elevated")}
 			/*
 			 * Esc closes rather than declines (see the module note). Claimed with
 			 * `preventDefault` so the app-wide interrupt ladder does not also treat it as

@@ -3162,12 +3162,31 @@ app
 		 */
 		ipcMain.handle(
 			"probe-files",
-			async (event, paths: unknown, cwd?: string): Promise<ProbedFile[]> => {
+			async (
+				event,
+				paths: unknown,
+				cwd?: string,
+				options?: { fresh?: boolean },
+			): Promise<ProbedFile[]> => {
 				authorizeLocalFileSender(event, "probe files");
 				const asked = Array.isArray(paths)
 					? paths.filter((path): path is string => typeof path === "string")
 					: [];
-				return await probeFiles(asked, cwd, app.getPath("home"));
+				/*
+				 * `fresh` is the watcher's opt-out of the answer cache (see
+				 * `probeFiles`); it is read as a strict boolean because the option
+				 * arrives over IPC, and anything else is the default - a caller
+				 * cannot turn caching off for everyone by sending garbage.
+				 */
+				const fresh = options?.fresh === true;
+				return await probeFiles(
+					asked,
+					cwd,
+					app.getPath("home"),
+					undefined,
+					undefined,
+					fresh,
+				);
 			},
 		);
 

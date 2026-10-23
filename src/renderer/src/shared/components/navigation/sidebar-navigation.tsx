@@ -365,12 +365,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	const rtl = useTextDirection() === "rtl";
 	const navigate = useNavigate();
 	const currentView = useCurrentView();
-	const {
-		expanded,
-		mode,
-		onCollapse,
-		chromePadTop = false,
-	} = useSidebarFrame();
+	const { expanded, mode, onCollapse } = useSidebarFrame();
 	const openCommandPalette = useUiPreferencesStore(
 		(state) => state.openCommandPalette,
 	);
@@ -2317,8 +2312,13 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			<div
 				data-sidebar-strip=""
 				data-glass-region="sidebar"
-				data-chrome-pad-top={chromePadTop ? "" : undefined}
-				className="group/sidebar flex h-full min-h-0 flex-col items-center bg-surface"
+				/*
+				 * The sidebar is a full-height panel: `surface` from y0 and its first
+				 * row below the strip, through the one panel utility. It used to be
+				 * conditional on the shell route opting into `flushTop`, which is the
+				 * opt-in the panel contract removed.
+				 */
+				className="panel-top-pad group/sidebar flex h-full min-h-0 flex-col items-center bg-surface"
 			>
 				<StripFeedKeeper />
 				<div className="flex h-10 shrink-0 items-center justify-center">
@@ -2415,8 +2415,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		<div
 			data-sidebar-shell=""
 			data-glass-region="sidebar"
-			data-chrome-pad-top={chromePadTop ? "" : undefined}
-			className="group/sidebar flex h-full min-h-0 flex-col overflow-hidden bg-surface"
+			className="panel-top-pad group/sidebar flex h-full min-h-0 flex-col overflow-hidden bg-surface"
 		>
 			{/*
 			 * The brand row, 40px, square with the top row beside it.

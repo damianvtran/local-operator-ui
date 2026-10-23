@@ -3610,3 +3610,67 @@ test("team_bridge join adds the caller and notify rides the read route", () => {
 		}),
 	);
 });
+
+test("team_bridge threads: replies maps to the replies route and send carries thread_root_id", () => {
+	/*
+	 * Threads (agent-server #164, local-operator #2757). The replies op reads
+	 * one thread FORWARD (inclusive after_seq), and the send op forwards
+	 * thread_root_id only when set, so a channel-level post's body is byte-for-
+	 * byte what it was before threads and an older runtime never sees the key.
+	 */
+	const replies = jobsCancelEndpoint(
+		jobsCancelSchema.parse({
+			op: "team_bridge.messages.replies",
+			conversation_id: "bcv_abc12345",
+			message_id: "bcmsg_root0001",
+			tenant_id: "tnt_2",
+			limit: 50,
+			after_seq: 7,
+		}),
+	);
+	assert.equal(replies.method, "GET");
+	assert.equal(
+		replies.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/messages/bcmsg_root0001/replies?tenant_id=tnt_2&limit=50&after_seq=7",
+	);
+	const bare = jobsCancelEndpoint({
+		op: "team_bridge.messages.replies",
+		conversation_id: "bcv_abc12345",
+		message_id: "bcmsg_root0001",
+	});
+	assert.equal(
+		bare.path,
+		"/v1/desktop/team-bridge/conversations/bcv_abc12345/messages/bcmsg_root0001/replies",
+	);
+	// The union is strict: a timeline cursor is not a thread cursor.
+	assert.throws(() =>
+		jobsCancelSchema.parse({
+			op: "team_bridge.messages.replies",
+			conversation_id: "bcv_abc12345",
+			message_id: "bcmsg_root0001",
+			before_seq: 3,
+		}),
+	);
+
+	const reply = jobsCancelEndpoint(
+		jobsCancelSchema.parse({
+			op: "team_bridge.messages.send",
+			conversation_id: "bcv_abc12345",
+			client_ref: "ref-1",
+			body: "on it",
+			thread_root_id: "bcmsg_root0001",
+		}),
+	);
+	assert.deepEqual(reply.body, {
+		client_ref: "ref-1",
+		body: "on it",
+		thread_root_id: "bcmsg_root0001",
+	});
+	const plain = jobsCancelEndpoint({
+		op: "team_bridge.messages.send",
+		conversation_id: "bcv_abc12345",
+		client_ref: "ref-2",
+		body: "hi",
+	});
+	assert.equal("thread_root_id" in plain.body, false);
+});
