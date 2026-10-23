@@ -69,6 +69,13 @@ scan whenever the list is touched. One class is deliberately not on it:
 punctuation keys (unrepresentable in the canonical grammar — `⌘+`/`⌘-`/`⌘0`
 cannot be captured by construction).
 
+One fixed chord is outside this rule by construction rather than by exemption:
+`Ctrl+Tab` / `Ctrl+Shift+Tab` opens the recent-session switcher
+(`docs/session-switcher.md`), and it belongs to no registry binding because the
+grammar cannot spell `tab` at all and no binding in this registry can commit on a
+modifier's keyUp. It needs no `RESERVED_CHORDS` row for the same reason: capture
+can never produce it.
+
 The canvas editors' save/open chords (`⌘S`, `⌘O`) and the focused row's move
 (`⌘⇧↑`/`⌘⇧↓`) ARE on it, and the reason is a phase-order fact the first draft
 got wrong (agent review round 1's F1 = QA's Q1, measured): their listeners sit
