@@ -416,3 +416,63 @@ test("R3/QP2: classifier-result by unit truth table cannot hide stale false outp
 		}
 	}
 });
+
+// Verbatim runner stdout (Actions timestamps stripped only), existing job
+// 120100649015 lines544–546. These are startup-format data, not a suite run.
+const actualProductionPreamble =
+	"desktop tests: 541 files, concurrency 3 (CI runner: governor stands down, node default for 4 cores)\ndesktop tests: memory bound 7.8 GB for the test process group (max(8192 MB floor, 25% of 15983 MB RAM), capped at 50%); sampled every 2s on max(footprint, rss)\ndesktop tests: per-lane bound 25 min (default, above the 18.7-minute healthy CI suite that bounds every lane it runs — a stall in a lane first seen late can still outrun the job cap); sampled every 5s over the suite's process group";
+
+test("R4: actual three-line production preamble accepts healthy TAP and preserves bad-count rejection", () => {
+	const files = Array.from(
+		{ length: 1623 },
+		(_, i) => `scripts/data-${i}.test.mjs`,
+	);
+	const p = {
+		...expected(),
+		files,
+		total: files.length,
+		shards: partition(files),
+	};
+	const productionLog = `${actualProductionPreamble}\n${log}`;
+	assert.equal(receipt(p, 0, productionLog, 0, 1).runnerFileCount, 541);
+	const noCap = productionLog.replace(
+		"541 files, concurrency 3 (CI runner: governor stands down, node default for 4 cores)",
+		"541 files, no concurrency cap (CI runner: governor stands down, node's default not measurable)",
+	);
+	assert.equal(receipt(p, 0, noCap, 0, 1).runnerFileCount, 541);
+	const offDiagnostics =
+		"desktop tests: WARNING — memory watchdog OFF (LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB=off); a runaway test process will NOT be killed\ndesktop tests: WARNING — per-lane bound OFF (LOCAL_OPERATOR_UI_LANE_BOUND_MS=off); a lane that never settles will NOT be killed and named, and the run can still be cancelled unreadably";
+	assert.equal(
+		receipt(p, 0, `${productionLog}${offDiagnostics}\n`, 0, 1).runnerFileCount,
+		541,
+	);
+	const diagnostics = actualProductionPreamble.split("\n").slice(1).join("\n");
+	for (const evidence of [
+		"",
+		"# desktop tests: 541 files, concurrency 3",
+		"    desktop tests: 541 files, concurrency 3",
+		"desktop tests: many files, concurrency 3",
+		"desktop tests: files, concurrency 3",
+		"desktop tests: 541 filez, concurrency 3",
+		"desktop tests: 0 files, concurrency 3",
+		"desktop tests: 540 files, concurrency 3",
+		"desktop tests: 542 files, concurrency 3",
+		"desktop tests: 541 files, concurrency 3\ndesktop tests: 541 files, concurrency 3",
+	]) {
+		assert.throws(
+			() => receipt(p, 0, `${evidence}\n${diagnostics}\n${log}`, 0, 1),
+			/runner.*count/i,
+		);
+	}
+	assert.throws(
+		() =>
+			receipt(
+				p,
+				0,
+				`${productionLog}desktop tests: many files, concurrency 3\n`,
+				0,
+				1,
+			),
+		/duplicate.*count/,
+	);
+});
