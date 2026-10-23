@@ -3774,6 +3774,23 @@ export const RenamePicker: FC<PickerContext> = ({
 	 * first render's, which is exactly the mount-time seed.
 	 */
 	const [openedWith] = useState(name);
+	/*
+	 * WHETHER THIS DIALOG IS STILL THE ONE ON SCREEN. The submit below reports
+	 * its outcome to an owner that renders ONE picker at a time (`closePicker` is
+	 * `setPicker(null)`, `slash-dispatch.ts`), so a reader can dismiss this dialog
+	 * while the rename is in flight and open another in the same slot; a success
+	 * that then called `onClose()` would dismiss the picker they had just opened.
+	 * `closed` is set at unmount, the only moment the dialog is definitively gone -
+	 * the same latch `ReloadPicker` keeps for a failure that lands after its
+	 * dialog is gone (review U6).
+	 */
+	const closed = useRef(false);
+	useEffect(
+		() => () => {
+			closed.current = true;
+		},
+		[],
+	);
 	const command = useSessionCommand(sessionId);
 	return (
 		<PickerHost
@@ -3801,9 +3818,21 @@ export const RenamePicker: FC<PickerContext> = ({
 					return;
 				}
 				const { result } = await command.run("rename", next);
+				/*
+				 * SUCCESS ENDS THE DIALOG, and the receipt becomes a toast: closing is
+				 * otherwise the end of the one confirmation a rename ever prints.
+				 * Failure, warning and a "needs more input" answer keep the dialog and
+				 * its inline reason; an unchanged submit closed above without a write.
+				 *
+				 * THE CLOSE BELONGS TO THE DIALOG THAT IS STILL THERE. The receipt is
+				 * unconditional - it has to survive the dialog - but `onClose` names the
+				 * pane's single slot, so a reader who dismissed this dialog mid-flight
+				 * and opened another picker must not have that one closed by this rename
+				 * (see `closed`).
+				 */
 				if (result.tone === "success") {
 					showSuccessToast(result.text);
-					onClose();
+					if (!closed.current) onClose();
 				}
 			}}
 			submitLabel="Rename"
