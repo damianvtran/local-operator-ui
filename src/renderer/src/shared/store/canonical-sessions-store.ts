@@ -4508,20 +4508,32 @@ type CanonicalSessionsState = {
 	 */
 	restageDraft: (target: ChatTarget, carry?: string) => string;
 	/**
-	 * The missing-session notice's way out: a fresh new chat, carrying the words
-	 * the dead conversation's composer still held.
+	 * The missing-session notice's way out: a fresh new chat, carrying the box the
+	 * dead conversation still held.
 	 *
-	 * WHY THIS IS AN ACTION AND NOT THREE CALLS IN THE BUTTON (the operator's
+	 * WHY THIS IS AN ACTION AND NOT STORE CALLS IN THE BUTTON (the operator's
 	 * report, 2026-10-23). The notice's press used to clear the selection with
 	 * `setActiveSession(null)`, which left no draft at all: `chat-page`'s identity
 	 * became undefined, the pane fell to its residue arm, and whatever the reader
 	 * had typed under the dead conversation's key stayed there - the app's own
 	 * text, on disk, addressed by no screen. "A draft follows the user back to the
 	 * new-chat composer, or it is discarded" is a rule about the DRAFT, so it
-	 * lives where drafts and their composer rows already meet (`restageDraft`'s
-	 * move is the same one, and the two share it). A `from` with no text is a
-	 * plain new chat; a new chat that already has text is never overwritten,
-	 * because the box on screen belongs to the user.
+	 * lives where drafts and their composer rows already meet.
+	 *
+	 * THE MOVE IS THE WHOLE-ROW ONE (`returnInFlight`), not the text-only flip
+	 * `restageDraft` performs (agent review round 1, R1-1): the box holds chips as
+	 * well as words (`inputByConversation[key].attachments`), and a reader whose
+	 * file followed them to a dead conversation would lose it while the words came
+	 * home. The same primitive carries the retired-draft payload, so "the user's
+	 * payload" answers with one list everywhere. It is a MOVE: the source row is
+	 * deleted, which is what clears the old key.
+	 *
+	 * AND IT CLEARS THE SELECTION (QA round 1, Q1). Staging alone left
+	 * `activeSessionId` (and the route) naming the dead conversation, so a reload
+	 * re-opened it over an empty box while the carried words sat in a draft nothing
+	 * addressed. The state this leaves is the one `openDraft`/⌘N leave - a staged
+	 * draft and no selected conversation - so a relaunch restores the draft the
+	 * press created.
 	 */
 	startNewChat: (from?: string | null) => string;
 	/**
@@ -5256,6 +5268,12 @@ function restoreRetiredDraftPayload(
  * cleared, so the old key cannot resurrect the words if it is ever opened again
  * (`openDraft`). The target is written only when there is something to write, so
  * a gesture with an empty box does not materialise a row for the new key.
+ *
+ * TEXT ONLY, deliberately: this is the picker/re-stage flip, where the caller
+ * hands over words and the box follows the same draft. A gesture that promises
+ * the whole box - the missing notice's way out - uses the store's own
+ * whole-row move (`returnInFlight`, see `startNewChat`) rather than growing a
+ * second payload rule here (agent review round 1, R1-1).
  */
 function carryComposerText(
 	from: string | null | undefined,
@@ -7426,7 +7444,23 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				// row the ⌘N shortcut stages - the notice's press is a new chat, not a
 				// re-addressing of the conversation that is gone.
 				const key = get().stageDraft();
-				carryComposerText(from, key);
+				/*
+				 * THE SELECTION GOES WITH IT (QA round 1, Q1). `stageDraft` deliberately
+				 * leaves `activeSessionId` at the conversation the reader came from - a
+				 * press while browsing keeps the sidebar's place - but here that
+				 * conversation is GONE, and a reload of its route re-opens it over an empty
+				 * box while the carried payload waits in a draft nothing addresses. The
+				 * pair written here is the one `openDraft` leaves: a staged draft and no
+				 * selected conversation.
+				 */
+				set({ activeSessionId: null, validatingSessionId: null });
+				// The whole box, not only its words (R1-1): `returnInFlight` folds text,
+				// chips and quotes into the target and deletes the source row, which is
+				// both the move and the old key's clear. The composer adopts the returned
+				// text on mount (`pendingText`), so the words are in the box on the new
+				// pane's first frame.
+				if (from)
+					useConversationInputStore.getState().returnInFlight(from, key);
 				return key;
 			},
 			updateDraft: (key, patch) =>

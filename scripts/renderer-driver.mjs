@@ -49176,11 +49176,12 @@ async function main() {
 	if (
 		SCENE === "team-newchat" &&
 		(argValue("--team", null) === null ||
-			argValue("--draft-request-id", null) === null ||
-			argValue("--expect", null) === null)
+			argValue("--expect", null) === null ||
+			(argValue("--expect", null) !== "carry" &&
+				argValue("--draft-request-id", null) === null))
 	) {
 		throw new Error(
-			"--scene team-newchat needs --team <name>, --draft-request-id <uuid> and --expect <broken|fresh>: the seed is the operator's persisted shape, and both halves have to be named rather than inferred",
+			"--scene team-newchat needs --team <name> and --expect <broken|fresh|immediate|carry>; the draft halves also need --draft-request-id <uuid> (the receipt whose replay names the dead id), while carry drives a genuinely missing conversation and has no receipt",
 		);
 	}
 	if (
@@ -49497,6 +49498,12 @@ async function main() {
 					cdp,
 					verb,
 					capture: captureSettled,
+					/*
+					 * The UN-SETTLED capture too: the window between the bridge's
+					 * answer and the settled pane can only be held by a frame that does
+					 * not wait for two identical screenshots (design round 1, D2).
+					 */
+					captureRaw: capture,
 					check,
 					note,
 					wait,
