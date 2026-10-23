@@ -92,6 +92,7 @@ import {
 	planTeamBridgeNotifications,
 	teamBridgeNotifyOrganizations,
 } from "./team-bridge-notify-model";
+import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
 import { assertThreadPage } from "./team-bridge-thread-read";
 import { teamBridgeViewingConversation } from "./team-bridge-viewing";
 import {
@@ -168,25 +169,32 @@ async function deliverTeamBridgeBanner(
 ): Promise<void> {
 	let senderLabel = candidate.senderLabel;
 	let preview: string | null = null;
+	/*
+	 * NO THREAD READ WHILE THE HOLD IS ON. A reply banner would otherwise address
+	 * `listReplies` for its preview, which is one of the thread paths carrying
+	 * the reported #1304 cross-account isolation defects. Treated as an ordinary
+	 * message instead: the timeline read below excludes replies, so a held reply
+	 * banner degrades to its metadata (or is skipped) rather than touching the
+	 * thread cache, and the click target carries no thread root either.
+	 */
+	const threadId = TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD
+		? candidate.threadId
+		: undefined;
 	try {
 		// Timeline history excludes replies. Address the candidate's thread and
 		// inclusive sequence cursor directly: one row bounds the read even for an
 		// old, long thread; never page through its private history for a banner.
-		const newest = candidate.threadId
+		const newest = threadId
 			? assertThreadPage(
-					await TeamBridgeApi.listReplies(
-						candidate.conversationId,
-						candidate.threadId,
-						{
-							tenantId: candidate.tenantId,
-							afterSeq: candidate.seq,
-							limit: 1,
-						},
-					),
+					await TeamBridgeApi.listReplies(candidate.conversationId, threadId, {
+						tenantId: candidate.tenantId,
+						afterSeq: candidate.seq,
+						limit: 1,
+					}),
 					{
 						tenantId: candidate.tenantId,
 						conversationId: candidate.conversationId,
-						rootId: candidate.threadId,
+						rootId: threadId,
 					},
 				).replies.find((reply) => reply.seq === candidate.seq)
 			: (
@@ -203,11 +211,9 @@ async function deliverTeamBridgeBanner(
 				return;
 			}
 			const people = await directoryPeople(client, candidate.tenantId);
-			senderLabel = participantLabel(newest.sender, people, {
-				named: (agent, person) =>
-					t("ui.teamBridge.chief.label", { agent, person }),
-				unnamed: (person) => t("ui.teamBridge.chief.unnamed", { person }),
-			});
+			senderLabel = participantLabel(newest.sender, people, (agent, person) =>
+				t("ui.teamBridge.chief.label", { agent, person }),
+			);
 			preview = teamBridgePreviewText(newest.body);
 		}
 	} catch {
@@ -237,8 +243,9 @@ async function deliverTeamBridgeBanner(
 		.notify({
 			conversationId: candidate.conversationId,
 			// A reply banner names its thread root so the click opens the thread
-			// pane; omitted for a top-level message so the click opens the conversation.
-			...(candidate.threadId ? { threadId: candidate.threadId } : {}),
+			// pane; omitted for a top-level message, and omitted entirely while the
+			// hold is on (see `threadId` above).
+			...(threadId ? { threadId } : {}),
 			tenantId: candidate.tenantId,
 			seq: candidate.seq,
 			title: text.title,
