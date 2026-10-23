@@ -285,16 +285,16 @@ const frontendState = ({
 	last_usage: null,
 });
 
-const openFrame = (seq, gap = false) => ({
-	session_id: SESSION,
+const openFrame = (seq, gap = false, id = SESSION) => ({
+	session_id: id,
 	epoch: BRIDGE_EPOCH,
 	seq,
 	type: "open",
 	payload: { subscription_id: `sub-${seq}`, gap, watch_ttl_seconds: 45 },
 });
 
-const snapshotFrame = (seq, ownerSequence = 1, jobs = []) => ({
-	session_id: SESSION,
+const snapshotFrame = (seq, ownerSequence = 1, jobs = [], id = SESSION) => ({
+	session_id: id,
 	epoch: BRIDGE_EPOCH,
 	seq,
 	type: "snapshot",
@@ -304,7 +304,7 @@ const snapshotFrame = (seq, ownerSequence = 1, jobs = []) => ({
 			epoch: OWNER_EPOCH,
 			sequence: ownerSequence,
 			live_cursor: null,
-			snapshot: frontendState({ sequence: ownerSequence, jobs }),
+			snapshot: frontendState({ sequence: ownerSequence, jobs, sessionId: id }),
 		},
 		history: { entries: [], has_more: false, cursor_missing: false },
 		cold: false,
@@ -402,14 +402,26 @@ async function pump() {
 /** Mount the shipped hook, deliver `frames`, and hand back its handle. */
 async function mount(
 	frames = [],
-	{ paintSend = false, snapshotJobs = [] } = {},
+	{
+		paintSend = false,
+		snapshotJobs = [],
+		/*
+		 * THE DRAFT PANE'S OWN ANSWER (agent review round 1, R1-2): the hook's
+		 * third argument is the caller's "is that id a SESSION's?", and a draft's
+		 * bridge is the case the parameter exists for. Passed here so the 404 arm
+		 * can be exercised on the shape it guards, not only on a session.
+		 */
+		sessionId = SESSION,
+		isSession = true,
+		drafts = {},
+	} = {},
 ) {
 	subscriptions.length = 0;
 	requests.length = 0;
 	rafQueue = [];
 	useCanonicalSessionsStore.setState({
 		activeSessionId: null,
-		drafts: {},
+		drafts,
 		sessions: [],
 	});
 	if (paintSend) {
@@ -428,14 +440,14 @@ async function mount(
 	const runtime = makeRuntime();
 	let handle = null;
 	runtime.render = () => {
-		handle = useCanonicalSessionStream(SESSION, true);
+		handle = useCanonicalSessionStream(sessionId, true, isSession);
 		return handle;
 	};
 	runtime.rerender();
 	assert.equal(subscriptions.length, 1, "the panel subscribes on mount");
 	let seq = 1;
-	deliver(openFrame(seq++));
-	deliver(snapshotFrame(seq++, 1, snapshotJobs));
+	deliver(openFrame(seq++, false, sessionId));
+	deliver(snapshotFrame(seq++, 1, snapshotJobs, sessionId));
 	await pump();
 	for (const frame of frames) deliver(frame);
 	await pump();
@@ -632,6 +644,62 @@ test("a reload press that ends in a failed stream says so", async () => {
 		"the band owns the failure sentence rather than silently reverting",
 	);
 	assert.equal(view().missing, true, "404 is the session-gone terminal state");
+});
+
+/*
+ * THE SAME 404, ON THE OTHER CALLER'S ANSWER (agent review round 1, R1-2).
+ *
+ * `isSession` is the only fact that can tell a conversation's id from a DRAFT's
+ * bridge (`sessions.draft`'s minted id, which the pane streams on while it waits
+ * for the first send). A 404 on the bridge says the daemon's registry entry is
+ * gone - not that a conversation was lost - so the hook must retire the warm and
+ * commit NOTHING terminal, while the session arm above must keep painting the
+ * missing state. This is the case a regression in the wiring fails; the source
+ * order pin in `team-new-chat-stale-draft.test.mjs` cannot, because it passes
+ * even if the store action did nothing.
+ */
+test("a draft's bridge 404 retires the warm and commits no missing state", async () => {
+	const WARM = "c0ffee123456";
+	const KEY = "draft:team:minervadev";
+	const BEFORE = "11111111-2222-4333-8444-555555555555";
+	const view = await mount([], {
+		sessionId: WARM,
+		isSession: false,
+		drafts: {
+			[KEY]: {
+				key: KEY,
+				target: { kind: "team", name: "minervadev" },
+				createRequestId: "aaaaaaaa-1111-4222-8333-444444444444",
+				admissionRequestId: "bbbbbbbb-1111-4222-8333-444444444444",
+				draftRequestId: BEFORE,
+				warmId: WARM,
+			},
+		},
+	});
+	deliverEvent({ kind: "error", status: 404, detail: "not found" });
+	await pump();
+	assert.equal(
+		view().missing,
+		false,
+		"a draft's bridge 404 is not a conversation verdict: no missing state",
+	);
+	assert.notEqual(
+		view().status,
+		"unavailable",
+		"and not the terminal status the session arm paints",
+	);
+	const row = useCanonicalSessionsStore.getState().drafts[KEY];
+	assert.equal(row?.warmId, undefined, "the dead warm id was retired");
+	assert.notEqual(
+		row?.draftRequestId,
+		BEFORE,
+		"and the mint's request id was re-minted, so its receipt cannot replay the dead id",
+	);
+	assert.equal(
+		row?.target?.name,
+		"minervadev",
+		"the draft's own destination survived the verdict",
+	);
 });
 
 test("reload re-arms the stream, acknowledges the press, and the snapshot clears both", async () => {
