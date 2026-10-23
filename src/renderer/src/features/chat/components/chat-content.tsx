@@ -200,6 +200,14 @@ type ChatContentProps = {
 	 */
 	renameSessionId?: string;
 	onOpenOptions: () => void;
+	/**
+	 * The missing notice's way out, threaded from the page that owns `navigate`
+	 * (agent review round 1 / QA round 1, Q1). The transcript stages the fresh
+	 * draft through the store; this moves the ADDRESS with it. Optional because the
+	 * transcript also renders on surfaces with no route (stories, the run panel's
+	 * child reader), where there is nothing to navigate.
+	 */
+	onStartNewChat?: () => void;
 	isOptionsSidebarOpen: boolean;
 	onCloseOptions: () => void;
 	agentId: string;
@@ -864,6 +872,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		deviceHold,
 		renameSessionId,
 		onOpenOptions,
+		onStartNewChat,
 		isOptionsSidebarOpen,
 		onCloseOptions,
 		agentId,
@@ -2631,6 +2640,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										labelHoldLate={canonical.view.labelHoldLate}
 										labelMarked={canonical.view.labelMarked}
 										onReconnect={canonical.view.retry}
+										onStartNewChat={onStartNewChat}
 										// The two states a notification click paints before the
 										// owner answers: the rows may be this window's memory of
 										// the conversation rather than the owner's, or the

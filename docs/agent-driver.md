@@ -57,26 +57,37 @@ by `scripts/team-new-chat-stale-draft.test.mjs`; a run-owned daemon has no
 authored team for the sidebar to list. Its before/after pair is committed under
 `docs/pr-evidence/team-new-chat-stale-draft/`.
 
-**`--scene team-newchat` photographs the OTHER team New-chat defect
-(2026-10-23): a REPLAYED draft receipt.** The stable team row's
-`draftRequestId` persists across launches, and a daemon that restarted (or a
-draft that expired) replays the id it minted the first time — an id its
+**`--scene team-newchat` photographs TWO team New-chat defects, in four
+modes.** (2026-10-23). *Draft modes:* a REPLAYED draft receipt. The stable team
+row's `draftRequestId` persists across launches, and a daemon that restarted (or
+a draft that expired) replays the id it minted the first time — an id its
 registry no longer serves. The pane streams on `sessionId ?? draft.warmId`, so
 its bridge 404s; the base tree read that as a missing conversation and painted
 "This conversation is no longer on this machine" under a header that says "New
-chat with <team>". It seeds the operator's persisted row (a stable
-`draft:team:<name>` with the request id, no `sessionId`), reloads, types a
-single `C` through CDP's input pipeline, and reports the route, the header, the
-notice, the composer, the row's own state and the id the daemon answered for the
-seeded request. `--expect broken` (the base tree) asserts the notice appeared and
-the row still holds the request id; `--expect fresh` (the fix) asserts no notice,
-the `C` still in an editable box, a re-minted request id, and a first send that
+chat with <team>". The scene seeds the operator's persisted row (a stable
+`draft:team:<name>` with the request id, no `sessionId`), reloads, types a single
+`C` through CDP's input pipeline, and reports the route, the header, the notice,
+the composer, the row's own state and the id the daemon answered for the seeded
+request. `--expect broken` (the base tree) asserts the notice appeared, the row
+still holds the request id, and an in-page probe catches the notice being painted
+and the box refused; `--expect fresh` (the fix) asserts no notice, the `C` still
+in an editable box with the caret, a re-minted request id, and a first send that
 reaches the transcript with the entered-to-rendered milliseconds reported. It
-needs `--backend`, `--backend-records`, `--team <name>`, `--team-label <label>`,
-`--draft-request-id <uuid>` and `--seed-onboarding-complete`, and the
-precondition is the daemon's own serve log: the receipt was minted, a
-conversation materialised on it, that conversation was deleted and the daemon
-restarted — so the 404 counted beside the frames is a real answer, not a stub.
+also installs the probe over the 404 → retire → next-mint window (DOM mutations,
+animation frames and the store's own persisted writes) and holds the first frame
+after the answer beside the settled one, so "no notice" is a statement about the
+window rather than about one screenshot. `--expect immediate` races a send into
+that window and reports the outcome. *Carry mode:* `--expect carry` drives a
+GENUINELY missing conversation (a real route to a 12-hex id the daemon does not
+serve) whose composer holds text and a chip, presses the notice's own
+**Start a new chat** (keyboard first, pointer fallback, both reported), and reads
+back the new chat's route, composer, caret, chip and the dead identity's row;
+then it reloads to prove the way out survives and sends the carried text once.
+The draft modes need `--backend`, `--backend-records`, `--team <name>`,
+`--draft-request-id <uuid>` and `--seed-onboarding-complete`; `carry` needs the
+same except the receipt, and the daemon's 404 in the draft modes must be real:
+the precondition minted the receipt, materialised a conversation on it, deleted
+that conversation and restarted the daemon.
 
 `--scene none` boots and arms the driver without running a
 scene. `--window-size WxH` sets the window (default 1380x900, the app's own

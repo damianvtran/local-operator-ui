@@ -712,7 +712,7 @@ test("a row that points at a conversation is not retireDraftWarm's to touch", ()
 	assert.equal(row.warmId, WARM_DEAD, "and its warm is left where it was");
 });
 
-test("the missing notice's press lands on a new chat carrying the box, once", () => {
+test("the missing notice's press lands on a new chat carrying the whole box, once", () => {
 	reset();
 	store.setState({
 		activeSessionId: DEAD,
@@ -726,7 +726,7 @@ test("the missing notice's press lands on a new chat carrying the box, once", ()
 				submittedMessages: [],
 				currentHistoryIndex: null,
 				replies: [],
-				attachments: [],
+				attachments: [{ id: "chip-1", path: "/tmp/report.pdf" }],
 			},
 		},
 	});
@@ -737,21 +737,39 @@ test("the missing notice's press lands on a new chat carrying the box, once", ()
 		"a plain new chat, the same row the shortcut stages",
 	);
 	assert.equal(store.getState().activeDraftKey, key);
+	/*
+	 * THE WHOLE-ROW MOVE (agent review round 1, R1-1): `returnInFlight` folds the
+	 * payload into `pendingText`/`attachments` for the composer to adopt, so the
+	 * claim is the *row*, not `currentInput` - the retired-draft path's own
+	 * convention.
+	 */
+	const moved = useConversationInputStore.getState().inputByConversation[key];
 	assert.equal(
-		useConversationInputStore.getState().getCurrentInput(key),
+		moved?.pendingText,
 		"the words the dead conversation was holding",
-		"the box follows the reader instead of being orphaned under the dead id",
+		"the words follow the reader instead of being orphaned under the dead id",
+	);
+	assert.deepEqual(
+		moved?.attachments.map((chip) => chip.path),
+		["/tmp/report.pdf"],
+		"and so does the chip: a file must not stay filed under a conversation that is gone",
 	);
 	assert.equal(
-		useConversationInputStore.getState().getCurrentInput(DEAD),
-		"",
-		"a move, not a copy: the old key cannot resurrect the words",
+		useConversationInputStore.getState().inputByConversation[DEAD],
+		undefined,
+		"a move, not a copy: the old key is gone, so nothing can resurrect it",
 	);
 	assert.equal(
 		store.getState().drafts[key].target,
 		undefined,
 		"no destination is guessed from the conversation that is gone",
 	);
+	/*
+	 * AND THE SELECTION IS CLEARED (QA round 1, Q1): a route or a relaunch that
+	 * still names the dead conversation must not re-open it over an empty box.
+	 */
+	assert.equal(store.getState().activeSessionId, null);
+	assert.equal(store.getState().validatingSessionId, null);
 });
 
 /*
