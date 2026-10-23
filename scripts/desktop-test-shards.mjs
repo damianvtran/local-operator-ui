@@ -154,9 +154,20 @@ export function tapSummary(text) {
 
 /** Actual guarded-runner argv cardinality, not the number of nested TAP cases. */
 export function observedRunnerFileCount(text) {
-	const lines = text
-		.split(/\r?\n/)
-		.filter((line) => line.startsWith("desktop tests:"));
+	const lines = text.split(/\r?\n/).filter((line) => {
+		// The real runner shares this prefix across count, memory, lane and
+		// warning lines. Only cardinality candidates belong to uniqueness.
+		// Keep malformed counts as candidates so they cannot hide beside a
+		// good count; nested TAP comments and indentation are not evidence.
+		return (
+			!/^desktop tests: (?:memory bound\b|per-lane bound\b|WARNING\b)/u.test(
+				line,
+			) &&
+			/^desktop tests:\s*(?:[+-]?\d|.*\b(?:files?|concurrency|cap)\b)/.test(
+				line,
+			)
+		);
+	});
 	if (lines.length !== 1)
 		throw new Error("Missing or duplicate guarded-runner file count evidence");
 	const match =
