@@ -5173,6 +5173,14 @@ export type MessageParams = {
 	"ui.teamBridge.preview.join_error": undefined;
 	"ui.teamBridge.read_only.composer": undefined;
 	"ui.teamBridge.read_only.note": undefined;
+	"ui.teamBridge.replies.action": undefined;
+	"ui.teamBridge.replies.close": undefined;
+	"ui.teamBridge.replies.count": { count: number };
+	"ui.teamBridge.replies.empty": undefined;
+	"ui.teamBridge.replies.last": { time: string };
+	"ui.teamBridge.replies.more": undefined;
+	"ui.teamBridge.replies.placeholder": undefined;
+	"ui.teamBridge.replies.title": undefined;
 	"ui.teamBridge.row.menu": { name: string };
 	"ui.teamBridge.row.start_group": undefined;
 	"ui.teamBridge.scope.all": undefined;

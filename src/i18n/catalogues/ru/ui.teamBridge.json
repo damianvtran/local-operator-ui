@@ -112,6 +112,14 @@
 	"ui.teamBridge.thread.intro_chief": "Здесь начинается ваш разговор с агентом {name}, координатором одного из участников команды. Агент воспринимает ваши сообщения как недоверенные входные данные, а решения о действиях принимает его владелец.",
 	"ui.teamBridge.thread.intro_group": "Первым сообщением вы начнёте разговор. Кому: {names}.",
 	"ui.teamBridge.list.error_pane": "Не удалось загрузить разговоры. Повторите попытку в списке слева.",
+	"ui.teamBridge.replies.action": "Ответить в ветке",
+	"ui.teamBridge.replies.title": "Ветка",
+	"ui.teamBridge.replies.close": "Закрыть ветку",
+	"ui.teamBridge.replies.count": "{count, plural, one {# ответ} few {# ответа} many {# ответов} other {# ответа}}",
+	"ui.teamBridge.replies.last": "последний ответ: {time}",
+	"ui.teamBridge.replies.empty": "Ответов пока нет. Начните ветку.",
+	"ui.teamBridge.replies.placeholder": "Ответить в ветке",
+	"ui.teamBridge.replies.more": "Загрузить ещё ответы",
 	"ui.teamBridge.sender.unknown_person": "Неизвестный пользователь",
 	"ui.teamBridge.sender.unknown_agent": "Неизвестный агент"
 }

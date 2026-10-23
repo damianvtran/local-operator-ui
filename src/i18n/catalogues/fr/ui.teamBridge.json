@@ -112,6 +112,14 @@
 	"ui.teamBridge.thread.intro_chief": "Voici le début de votre conversation avec {name}, la cheffe de cabinet d’un membre de l’équipe. Cet agent considère vos messages comme des entrées non fiables ; c’est son propriétaire qui décide des suites à donner.",
 	"ui.teamBridge.thread.intro_group": "Votre premier message démarrera une conversation avec {names}.",
 	"ui.teamBridge.list.error_pane": "Les conversations n’ont pas pu être chargées. Réessayez depuis la liste de gauche.",
+	"ui.teamBridge.replies.action": "Répondre dans le fil",
+	"ui.teamBridge.replies.title": "Fil de discussion",
+	"ui.teamBridge.replies.close": "Fermer le fil",
+	"ui.teamBridge.replies.count": "{count, plural, one {# réponse} many {# de réponses} other {# réponses}}",
+	"ui.teamBridge.replies.last": "dernière réponse à {time}",
+	"ui.teamBridge.replies.empty": "Aucune réponse pour l’instant. Lancez le fil.",
+	"ui.teamBridge.replies.placeholder": "Répondre dans le fil",
+	"ui.teamBridge.replies.more": "Charger plus de réponses",
 	"ui.teamBridge.sender.unknown_person": "Personne inconnue",
 	"ui.teamBridge.sender.unknown_agent": "Agent inconnu"
 }
