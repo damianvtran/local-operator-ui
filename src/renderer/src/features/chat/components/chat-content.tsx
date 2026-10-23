@@ -2720,6 +2720,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									key={gate.request_id}
 									className={CHAT_MEASURE}
 									gate={gate}
+									sessionId={sessionId}
 									onAnswer={canonical.onAnswer}
 									/*
 									 * The secret field's own door, forwarded untouched like `onAnswer`:
