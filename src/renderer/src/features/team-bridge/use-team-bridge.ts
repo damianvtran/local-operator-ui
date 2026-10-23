@@ -298,14 +298,20 @@ export async function refreshAfterSend(
 	client: QueryClient,
 	conversationId: string,
 	tenantId?: string,
+	isCurrent: () => boolean = () => true,
 ): Promise<void> {
+	// Each invalidation awaits a read; ownership can change between them. A
+	// stale write must not refresh the next account's shared feed prefixes.
+	if (!isCurrent()) return;
 	await client.invalidateQueries({
 		queryKey: teamBridgeKeys.messages(conversationId, tenantId),
 	});
 	// Prefix invalidation: see above.
+	if (!isCurrent()) return;
 	await client.invalidateQueries({
 		queryKey: teamBridgeKeys.conversationsPrefix,
 	});
+	if (!isCurrent()) return;
 	await client.invalidateQueries({
 		queryKey: teamBridgeKeys.unreadPrefix,
 	});
@@ -467,6 +473,7 @@ export function useMarkTeamBridgeRead(
 
 export function useCreateTeamBridgeConversation(
 	tenantId?: string,
+	isCurrent: () => boolean = () => true,
 ): UseMutationResult<
 	unknown,
 	Error,
@@ -474,9 +481,14 @@ export function useCreateTeamBridgeConversation(
 > {
 	const client = useQueryClient();
 	return useMutation({
-		mutationFn: (input) =>
-			TeamBridgeApi.startConversation({ ...input, tenantId }),
+		mutationFn: (input) => {
+			if (!isCurrent()) throw new Error("Team Bridge write authority changed");
+			return TeamBridgeApi.startConversation({ ...input, tenantId });
+		},
 		onSuccess: async () => {
+			// The caller's continuation runs AFTER this hook. Guard here too or
+			// a stale create refreshes another account before that caller can stop it.
+			if (!isCurrent()) return;
 			await client.invalidateQueries({
 				queryKey: teamBridgeKeys.conversationsPrefix,
 			});
