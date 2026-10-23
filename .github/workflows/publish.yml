@@ -38,8 +38,8 @@ env:
   # the same build over it on the x64 pass while the arm64 pass still fit.
   # The ceiling is a headroom statement, not an allocation: 4 GB sits inside
   # the ~7 GB macOS runner and leaves the heap enough room for the one build
-  # that needs it, on every platform (the value is ignored where a smaller
-  # runner cannot use it).
+  # that needs it; every runner in this matrix has at least 7 GB, so the
+  # ceiling is a headroom statement rather than an allocation.
   NODE_OPTIONS: '--max-old-space-size=4096'
 
 permissions:
