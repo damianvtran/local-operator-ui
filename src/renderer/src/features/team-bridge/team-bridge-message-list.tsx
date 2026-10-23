@@ -1,12 +1,16 @@
-import { Button } from "@shared/components/ui/button";
 import { formatDate, formatTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { Bot, MessageSquare, UserRound } from "lucide-react";
+import { Bot, UserRound } from "lucide-react";
 import type { FC } from "react";
 import type { TeamBridgeMessage } from "../../../../shared/team-bridge-contract";
 import { TeamBridgeMarkdown } from "./team-bridge-markdown";
+import { TeamBridgeMessageToolbar } from "./team-bridge-message-toolbar";
 import { type ThreadItem, threadItems } from "./team-bridge-model";
+import {
+	TeamBridgeReactionChips,
+	useTeamBridgeReactionState,
+} from "./team-bridge-reactions";
 import { threadSummary } from "./team-bridge-threads-model";
 
 /**
@@ -47,8 +51,11 @@ import { threadSummary } from "./team-bridge-threads-model";
 export const TeamBridgeMessageList: FC<{
 	messages: readonly TeamBridgeMessage[];
 	labelFor: (sender: TeamBridgeMessage["sender"]) => string | null;
+	reactionContext?: ReactionContext;
 	onReply?: (message: TeamBridgeMessage) => void;
-}> = ({ messages, labelFor, onReply }) => {
+	/** Story/capture seed only: show every row's toolbar without hover. */
+	forceToolbar?: boolean;
+}> = ({ messages, labelFor, reactionContext, onReply, forceToolbar }) => {
 	const locale = useI18nLocale();
 	const items = threadItems(messages, new Date());
 	return (
@@ -63,7 +70,9 @@ export const TeamBridgeMessageList: FC<{
 						continuation={item.continuation}
 						label={labelFor(item.message.sender)}
 						locale={locale}
+						reactionContext={reactionContext}
 						onReply={onReply}
+						forceToolbar={forceToolbar}
 					/>
 				),
 			)}
@@ -101,14 +110,70 @@ const DayDivider: FC<{
 	);
 };
 
+type ReactionContext = {
+	accountId: string;
+	tenantId: string;
+	disabled?: boolean;
+};
+
+/*
+ * A row with reactions keys its reaction state on the account (the parent's
+ * `key` on this component), so a pending projection from one account can never
+ * render under another after a switch.
+ */
 const MessageRow: FC<{
 	message: TeamBridgeMessage;
 	continuation: boolean;
 	label: string | null;
 	locale: string;
+	reactionContext?: ReactionContext;
 	onReply?: (message: TeamBridgeMessage) => void;
-}> = ({ message, continuation, label: known, locale, onReply }) => {
+	forceToolbar?: boolean;
+}> = ({ reactionContext, ...props }) =>
+	reactionContext && props.message.body !== null ? (
+		<ReactableMessageRow
+			key={`${reactionContext.accountId}:${props.message.id}`}
+			reactionContext={reactionContext}
+			{...props}
+		/>
+	) : (
+		<MessageRowView {...props} />
+	);
+
+const ReactableMessageRow: FC<
+	Omit<MessageRowProps, "reactions"> & { reactionContext: ReactionContext }
+> = ({ reactionContext, ...props }) => {
+	const reactions = useTeamBridgeReactionState({
+		conversationId: props.message.conversation_id,
+		messageId: props.message.id,
+		...reactionContext,
+		reactions: props.message.reactions,
+	});
+	return <MessageRowView {...props} reactions={reactions} />;
+};
+
+type MessageRowProps = {
+	message: TeamBridgeMessage;
+	continuation: boolean;
+	label: string | null;
+	locale: string;
+	reactions?: ReturnType<typeof useTeamBridgeReactionState>;
+	onReply?: (message: TeamBridgeMessage) => void;
+	forceToolbar?: boolean;
+};
+
+const MessageRowView: FC<MessageRowProps> = ({
+	message,
+	continuation,
+	label: known,
+	locale,
+	reactions,
+	onReply,
+	forceToolbar,
+}) => {
 	const summary = threadSummary(message);
+	/* One-level threads: only a timeline root can open a thread. */
+	const canReply = onReply !== undefined && !message.thread_root_id;
 	const agent = message.sender.kind === "agent";
 	const label =
 		known ??
@@ -173,23 +238,14 @@ const MessageRow: FC<{
 					</span>
 				)}
 			</div>
-			{onReply && !message.thread_root_id && (
-				/* A row hover can equal any ladder ground on some palette. Like the
-				   sibling hover tools, use a ghost control whose ink/focus outline is
-				   the affordance, not a new filled plate needing its own boundary. */
-				<Button
-					type="button"
-					variant="ghost"
-					size="icon-sm"
-					aria-label={t("ui.teamBridge.replies.action")}
-					title={t("ui.teamBridge.replies.action")}
-					onClick={() => onReply(message)}
-					className="absolute right-4 top-0 opacity-0 focus-visible:opacity-100 group-hover/message:opacity-100"
-				>
-					<MessageSquare size={16} />
-				</Button>
-			)}
 			<div className="min-w-0 flex-1">
+				{/* First in the column so it floats beside the first line; see
+				    `team-bridge-message-toolbar.tsx` for why one toolbar exists. */}
+				<TeamBridgeMessageToolbar
+					reactions={reactions}
+					onReply={canReply ? () => onReply(message) : undefined}
+					forceVisible={forceToolbar}
+				/>
 				{!continuation && (
 					<div className="flex items-baseline gap-2">
 						<span
@@ -225,6 +281,7 @@ const MessageRow: FC<{
 						{message.body}
 					</TeamBridgeMarkdown>
 				)}
+				{reactions && <TeamBridgeReactionChips state={reactions} />}
 				{onReply && summary.count > 0 && (
 					<button
 						type="button"

@@ -1,0 +1,53 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbr-r1-ru",
+  "session": "1eb2dfffb7df",
+  "date": "2026-10-21",
+  "locale": "ru",
+  "translator": "translator",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 20,
+  "scope": "Twenty-key reaction-picker delta: ui.teamBridge.reactions.* (add, search, categories, all, frequent, tone, toneDefault, empty, failed, category0-category8, choose, noResults). Inherit the base 2e16fb1456 full namespace audit for the other 109 values, all verified unchanged; no new full semantic audit of unchanged copy. Catalogue audit only, not rendered-fit, activation or release approval.",
+  "sha256": {
+    "en": "69f741a64df96b85b00e2f389bcda35bbbcc7cc023c4e2f31c997ef64fc0b50c",
+    "ru": "040a806abf8a6ac1734a6c0aa67b48cdce9a9806eb0d381fbac9b6bb2728a86b",
+    "context": "ad0eef37d14411e02b07a083f3873518362734fefd8caa930cf4196728b2ef84"
+  },
+  "findings": [
+    {
+      "id": "RU-R1-1",
+      "severity": "MINOR",
+      "key": "ui.teamBridge.reactions.toneDefault",
+      "current": "Стандартный оттенок",
+      "proposed": "По умолчанию",
+      "note": "Every other ru UI 'Default' renders as «По умолчанию» (ui.common.models.default, ui.providers.provider_grid.default, ui.projects.project_sort.default_as_listed), and this is the visible first option of a narrow select whose siblings are bare toned 👍 glyphs: «Стандартный оттенок» is 19 code points against the English 17, and «По умолчанию» is 12. The select's aria-label «Оттенок кожи» already supplies 'skin tone'."
+    }
+  ],
+  "inherited_receipt": {
+    "base": "2e16fb1456",
+    "path": "i18n/receipts/tbd-r3-ru.json",
+    "sha256": "7a53ac8b7187dd88eaeca49cc456ba89ee53fc72f441fa894b6fc204fee39445",
+    "keys_inherited": 109,
+    "unchanged_values_verified": 109,
+    "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+    "base_target_sha256": "cd1c54f380c8e15c394e7dbec468cae2ed1c54073464f841072cdede69702cce",
+    "full_coverage_receipt": {
+      "path": "i18n/receipts/tbd-r2-ru.json",
+      "sha256": "d838cecd8a8ff57145572a51a1a796d8f393aae90e0334d39408856de2be78b0"
+    }
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+  },
+  "validation": {
+    "independence": "This auditor did not translate or edit any catalogue or code; repo access was read-only (no stage, commit, stash or checkout). All work ran as anthropic/claude-opus-5-5; no model switch or fallback was observed. Only scratch file written besides this receipt: tbr-ru-check.cjs in the auditor scratchpad.",
+    "semantics": "Read all 20 values against the English and against their render roles in team-bridge-emoji-picker.tsx and team-bridge-reactions.tsx (add aria-label; search aria-label+placeholder; categories tablist; all tab; frequent heading+row label; tone select aria-label; toneDefault first option; noResults visible empty text; empty has no renderer reference found; failed role=alert span; category0-8 title+aria-label; choose grid aria-label). Accurate and idiomatic; uses the вы form («Выберите эмодзи», «Повторите попытку»), infinitive action label («Добавить реакцию»), and sentence case with no «!» or «Пожалуйста». Patterns match existing ru UI copy: «Поиск …» (Поиск моделей/настроек), «… не найдены» (Сессии для {source} не найдены), «Не удалось сохранить …» + «Повторите попытку.» (create.error, preview.join_error). Group names were checked against the CLDR v48 Characters:Category chart (ru): животные и природа, еда и напитки, путешествия и места, символы, флаги, занятия all match. «Предметы» (CLDR «объекты») and «Люди и части тела» (CLDR «люди»/«тело») are established, natural Russian picker labels, so no finding. One MINOR: toneDefault «Стандартный» drifts from the locale-wide «По умолчанию».",
+    "icu": "Ran node with @formatjs/icu-messageformat-parser (resolved from the worktree's node_modules) on the actual ru and en bytes for all 20 keys: 0 non-literal elements in ru and in en for every key; no braces. In the same run, NFC was checked with String.normalize('NFC') equality and no U+200E/200F/202A-202E/2066-2069/061C were found. File ends with a trailing newline. Python key-set parity: 129 en = 129 ru; the 20 new keys are absent from the base; 109/109 base ru values are byte-identical in the current file, and 109/109 en source values are unchanged since 2e16fb1456.",
+    "terminology": "The emoji term is «эмодзи» (indeclinable) in all 7 uses within the delta and is consistent with category0 «Смайлики…» as a group name; reaction = «реакция» (add, failed). empty and noResults are identical («Эмодзи не найдены»). No glossary §1/§2 term is involved; the style guide's вы, infinitive-action, sentence-case and no-«!» rules are met. Drift: 'Default' → «Стандартный» here vs «По умолчанию» elsewhere (RU-R1-1).",
+    "overflow": "Static code-point comparison, en→ru: add 12→16 (aria-label only); search 12→12; categories 16→16; all 9→10; frequent 15→18 (visible 12px heading, +20%); tone 9→12 (aria-label); toneDefault 17→19 (visible, narrow select; see RU-R1-1); empty/noResults 14→17 (visible); failed 39→48 (inline alert, +23%, may wrap); category0-8 within -30%..+14% (tooltip/aria-label only); choose 15→15. No maxCells budget in the context sidecar for these keys. frequent, noResults and failed should get a rendered check; no observed overflow claimed.",
+    "limitations": "Browser unavailable by task constraint. No screenshots, glyph metrics, visual-fit or native bidi-rendering claim. No catalogue/code edits."
+  }
+}
