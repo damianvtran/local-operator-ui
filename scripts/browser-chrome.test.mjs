@@ -4026,6 +4026,16 @@ test("the unavailable sentence is announced and does not name implementation sta
 	);
 	assert.match(
 		bar,
+		/pr-\[calc\(45%\+1\.75rem\)\]/,
+		"the field reserves the hint's trailing run (Q5-1)",
+	);
+	assert.match(
+		bar,
+		/suggestions\.rows\.length > 0 && !suggestionsUnavailable/,
+		"no 'suggestions available' announcement while the field says unavailable (U25)",
+	);
+	assert.match(
+		bar,
 		/if \(!hintShown\) return;\s*setAnnouncement\(\s*t\(/,
 		"the sentence reaches the existing status region on the transition (U18/U21)",
 	);
