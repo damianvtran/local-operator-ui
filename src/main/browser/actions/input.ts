@@ -3,7 +3,6 @@ import { BrowserHostError } from "../errors";
 import { sleep } from "../policy/adapter";
 import type { TabRecord } from "../registry";
 import { settle } from "../settle";
-import type { AXNode } from "../vendor/driver/ax-compact";
 import {
 	locatorSuggestions,
 	parseLocator,
@@ -29,7 +28,7 @@ import {
 	sendIn,
 } from "./frames";
 import { pageOf } from "./gate";
-import { nodeIdForSelector } from "./page";
+import { nodeIdForSelector, readAccessibilityTree } from "./page";
 
 /**
  * The interaction actions: `click` and `type`.
@@ -236,35 +235,6 @@ function resolvedFields(node: ResolvedNode): Record<string, unknown> {
 
 function frameFields(node: ResolvedNode): Record<string, unknown> {
 	return node.frame ? { frame_origin: node.frame.origin ?? "" } : {};
-}
-
-/** The page's accessibility tree for a locator resolution.
- *
- * Enable → read → disable, exactly the documented CDP window `snapshot` uses.
- * What serializes two commands on ONE tab is the host's per-tab command lane
- * (`host.ts` → `registry.lane`, whose `busy` flag is set in `registry.ts`), NOT
- * `CdpPool`: `cdp.ts`'s `send` calls `debugger.sendCommand` immediately with no
- * per-target lock (agent review round 1, R1-2 — naming the wrong mechanism is
- * how a future reader trusts a lock that does not exist; the extension needed an
- * explicit queue for this exact hazard, `commands/ax-tree.ts`).
- */
-async function readAccessibilityTree(
-	ctx: BrowserActionContext,
-	contents: DriveableView["webContents"],
-): Promise<AXNode[]> {
-	await ctx.cdp.send(contents, "Accessibility.enable", {});
-	try {
-		const tree = await ctx.cdp.send<{ nodes?: AXNode[] }>(
-			contents,
-			"Accessibility.getFullAXTree",
-			{},
-		);
-		return Array.isArray(tree?.nodes) ? tree.nodes : [];
-	} finally {
-		// Bounded and catch-all: a view that died between enable and read needs no
-		// disable, and a failed disable must not replace the read's outcome.
-		await ctx.cdp.send(contents, "Accessibility.disable", {}).catch(() => {});
-	}
 }
 
 /**

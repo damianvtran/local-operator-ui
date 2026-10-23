@@ -49,7 +49,14 @@ test("a changed driver changes the derived text (the check has bite)", async () 
 				"",
 			].join("\n"),
 		);
-		const { text } = await renderSources({ driver });
+		// Every driver file the generator reads must exist beside the one under
+		// test: the bundle carries two modules now, and a fake that supplied only
+		// the geometry file would fail for the wrong reason.
+		writeFileSync(
+			join(dir, "element-query.ts"),
+			"export const queryElements = (selector, limit) => ({ count: 0 });\n",
+		);
+		const { text } = await renderSources({ driverDir: dir });
 		assert.notEqual(
 			text,
 			readFileSync(OUTPUT_PATH, "utf8"),

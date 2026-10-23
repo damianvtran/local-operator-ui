@@ -3199,6 +3199,38 @@ test("a document round trip cannot return the unapproved document's text", async
 	);
 });
 
+test("a query is document-scoped: a navigation it did not cause discards it", async () => {
+	// Agent review round 2 on the query slice: `query` was in NEITHER action set,
+	// so it skipped document authorization and the per-tab lane. Same round-trip
+	// shape as the read above — the answer must not be described as coming from a
+	// document the call did not enter on.
+	const { host, registry } = makeHost();
+	const params = {
+		url: "https://approved.example/",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	const record = registry.requireSurface(opened.tab);
+	record.view.webContents.executeJavaScriptInIsolatedWorld = async () => {
+		record.view.webContents.url = "https://forbidden.example/";
+		registry.bumpEpoch(record.tabId);
+		record.view.webContents.url = "https://approved.example/";
+		return { count: 1, matches: [{ tag: "input", id: "secret" }] };
+	};
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"query",
+				{ ...params, tab: opened.tab, selector: "input" },
+				"q1",
+			),
+		(error) =>
+			error.code === "origin_not_allowed" && error.data.reason === "changed",
+	);
+});
+
 /**
  * Make the fixture's field HOLD what `Input.insertText` sent, so a `type` the
  * fixture drives is read back honestly. These tests are about navigation and the
@@ -4505,6 +4537,70 @@ test("a locator click pushes the matched backend id and reports what it resolved
 		name: "Active",
 		matched: 1,
 	});
+});
+
+/* The diagnostics half: a selector that matches nothing names the elements that
+ * DO exist, with the locator for each — the measured loop (nine CSS guesses, each
+ * a whole tool call) is what this turns into one correction. */
+test("a CSS miss carries candidates from the accessibility tree", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const send = async (_contents, method) => {
+		switch (method) {
+			case "DOM.getDocument":
+				return { root: { nodeId: 1 } };
+			case "DOM.querySelector":
+				return { nodeId: 0 };
+			case "Accessibility.enable":
+			case "Accessibility.disable":
+				return {};
+			case "Accessibility.getFullAXTree":
+				return {
+					nodes: [
+						{
+							nodeId: "1",
+							role: { value: "checkbox" },
+							name: { value: "Active" },
+							backendDOMNodeId: 5,
+						},
+					],
+				};
+			default:
+				return {};
+		}
+	};
+	const record = {
+		epoch: 1,
+		refs: {},
+		view: {
+			webContents: {
+				getURL: () => "https://approved.example/",
+				getTitle: () => "Create App",
+				isDestroyed: () => false,
+			},
+		},
+	};
+	const ctx = {
+		cdp: { send },
+		registry: { requireSurface: () => record, touch: () => {} },
+	};
+
+	await assert.rejects(
+		() =>
+			FRAMES_ACTIONS.click(ctx, {
+				tab: "ui:1:nonce",
+				selector: "#hook_active",
+			}),
+		(error) => {
+			assert.equal(error.code, "element_not_found");
+			assert.ok(
+				Array.isArray(error.data?.candidates),
+				JSON.stringify(error.data),
+			);
+			assert.ok(error.data.candidates.some((entry) => entry.name === "Active"));
+			assert.match(error.data.candidates[0].locator, /^role=/);
+			return true;
+		},
+	);
 });
 
 /* R1-4: the host path this lane added had no test at this layer. These pin the
@@ -7415,6 +7511,7 @@ test("/health carries the capabilities this build serves", async () => {
 		"styles",
 		"hit_test",
 		"ancestors",
+		"query",
 		"download",
 		"upload",
 	]);
