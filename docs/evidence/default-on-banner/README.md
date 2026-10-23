@@ -2,6 +2,10 @@
 
 PR #1333, integration/evidence capture on 2026-10-23. **Browser-rendered Storybook evidence, not native Electron or live-hub QA.** The real browser tool drove one background tab and a single Storybook server on port 6013. Every frame was inspected, including the five contact sheets below. No screenshots came from jsdom, an HTML mockup, a scripted browser engine or Electron.
 
+## Frame storage correction (CI remediation)
+
+Image bytes live locally in **`docs/evidence-frames/default-on-banner/`**, ignored as required by the repository evidence runbook. They are not tracked in the current tree. `frame-index.json` records all 73 filenames, byte counts, SHA-256 hashes and accessible historical raw URLs at reviewed head `2df48707a9`; migration verified every byte. The historical URL is an old-head artifact, not a claim that the current branch tracks frames. Geometry, snapshots, source manifest and this README remain tracked here. No gate was suppressed. The previous forced image commit caused both Evidence Structure and the entry-point release-script test to fail; both share this one cause.
+
 ## Source and setup
 
 - After: code head `4558eb9a36` (merge `4abc6fc42d`, integrating main `19f094810fcc26757efc2bf456f8a4b5437bb984`), plus the story-only change giving the Settings board a real `h-dvh overflow-y-auto` scroll container. Production banner/settings/page code did not change during capture.
@@ -37,14 +41,14 @@ Use `localOperatorDark` for dark. Surfaces: `settings`, `page`. States: `pending
 
 | Surface | Light | Dark |
 |---|---|---|
-| Settings: pending, expanded, dismissed, off, failure, v1, loading | [light sheet](contact-settings-light.jpg) | [dark sheet](contact-settings-dark.jpg) |
-| Team Bridge page: same seven states | [light sheet](contact-page-light.jpg) | [dark sheet](contact-page-dark.jpg) |
+| Settings: pending, expanded, dismissed, off, failure, v1, loading | [light sheet](https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/contact-settings-light.jpg) | [dark sheet](https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/contact-settings-dark.jpg) |
+| Team Bridge page: same seven states | [light sheet](https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/contact-page-light.jpg) | [dark sheet](https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/contact-page-dark.jpg) |
 
 Individual full-resolution files are available beside the sheets, particularly [expanded Settings](settings-expanded-light-settled.png), [expanded Page](page-expanded-light-settled.png), [Settings off](settings-off-light-settled.png), and [Page off](page-off-light-settled.png).
 
 ### Genuine historical source frames
 
-[Viewed historical sheet](contact-historical-main.jpg), with both themes for each:
+[Viewed historical sheet](https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/contact-historical-main.jpg), with both themes for each:
 
 | Surface | Real main story id | Artifact prefix |
 |---|---|---|

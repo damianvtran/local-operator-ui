@@ -732,7 +732,9 @@ const ShellLibrary: FC<{ nowMs: number; route?: string }> = ({
 			content={
 				<main
 					data-glass-region="canvas-backing"
-					className="flex min-w-0 grow flex-col overflow-hidden"
+					/* The app's own `<main>` carries this; a story that draws the shell
+					   must carry it too, or `panel-flush` cancels a pad that is absent. */
+					className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden"
 				>
 					<RouteTo path={route}>
 						<LibraryPage nowMs={nowMs} />

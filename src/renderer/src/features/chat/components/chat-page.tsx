@@ -5012,8 +5012,29 @@ export function ChatPage() {
 	// a second copy of the expression that computes it.
 	const id = panelSessionIdOfView(draftKey, draft?.sessionId, active);
 	const identity = panelIdentityFor(draftKey, id);
+	// The route-level sentence, when one shows; see the `role="alert"` note below.
+	const routeSentence =
+		routeError ||
+		(error && !stripSpeaksConnection && !coveredByCompatibilityBanner
+			? error
+			: null);
 	return (
-		<div className={cn("flex h-full min-h-0 flex-col")}>
+		/*
+		 * THE CHAT ROUTE IS A PANEL ROUTE (design round 1, D1).
+		 *
+		 * Every column on this route owns a ground that has to reach the window's
+		 * top edge: the conversation (`canvas`), whichever pane holds the right
+		 * slot (`elevated`) and the shell's 44px rail host. As an ordinary page
+		 * the route sat under `<main>`'s shell pad, so the whole row began at y32
+		 * and each slot occupant's own `panel-top-pad` padded a SECOND time - a
+		 * band in the strip above the dock and its first row 32px lower than the
+		 * conversation's. `panel-flush` cancels the shell pad, so the row starts
+		 * at y0 and the one pad each column wears is the only one: the
+		 * conversation column pads itself in `chat-content.tsx`, the occupants
+		 * already do. `flex-1` rather than `h-full`, as on every flush root: the
+		 * negative margin is absorbed by the grow, so the bottom 32px are not lost.
+		 */
+		<div className="panel-flush flex min-h-0 flex-1 flex-col">
 			{/*
 			 * ONE sentence above the panel: a legacy route that names no
 			 * conversation, or a store failure the composer does not own. A
@@ -5032,11 +5053,19 @@ export function ChatPage() {
 			 * sentence is the same incident the banner is stating, so this half stands
 			 * down to it as well.
 			 */}
-			{(routeError ||
-				(error && !stripSpeaksConnection && !coveredByCompatibilityBanner)) && (
-				<p role="alert" className={cn("px-4 py-2 text-body-sm text-danger")}>
-					{routeError || error}
-				</p>
+			{routeSentence && (
+				/*
+				 * `panel-top-pad` on a wrapper: the root is flush, so this sentence -
+				 * the route's first row whenever it shows - would otherwise sit under
+				 * the drag lane and the traffic lights. The pad is the wrapper's so the
+				 * sentence keeps its own `py-2`. The `New chat` arm below is reached
+				 * only beneath this sentence (see its note), so it needs no pad.
+				 */
+				<div className="panel-top-pad">
+					<p role="alert" className={cn("px-4 py-2 text-body-sm text-danger")}>
+						{routeSentence}
+					</p>
+				</div>
 			)}
 			{!enabled ? (
 				/*
@@ -5091,7 +5120,20 @@ export function ChatPage() {
 					)}
 				</div>
 			) : identity ? (
-				<div className={cn("min-h-0 flex-1")}>
+				<div
+					className={cn(
+						"min-h-0 flex-1",
+						/*
+						 * ONE PAD PER ROW. With the sentence above it this row starts below
+						 * the strip, so the columns inside it (the conversation, the slot's
+						 * pane) must not pad for the strip again: the sentence's wrapper
+						 * already consumed it. Zeroing the shell's published number here is
+						 * what keeps `panel-top-pad` meaning "the strip that is still above
+						 * me" rather than a second 32px band under the sentence.
+						 */
+						routeSentence && "[--panel-top-pad:0px]",
+					)}
+				>
 					<SessionPanel
 						key={identity}
 						identity={identity}

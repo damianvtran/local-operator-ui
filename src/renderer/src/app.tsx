@@ -900,11 +900,19 @@ const App: FC = () => {
 
 					<ChatLayout
 						sidebar={<SidebarNavigation />}
-						flushTop={pathname.startsWith("/team-bridge")}
 						content={
+							/*
+							 * ORDINARY ROUTE CONTENT GETS THE STRIP'S PAD ONCE, HERE.
+							 *
+							 * `--panel-top-pad` is the content column's statement of the
+							 * OS controls' reach (set on every route by `ChatLayout`). A
+							 * page that is a full-height panel cancels this with
+							 * `panel-flush` and pads its own columns; every other page
+							 * inherits one inset and adds none of its own.
+							 */
 							<main
 								data-glass-region="canvas-backing"
-								className="flex grow flex-col overflow-hidden"
+								className="panel-top-pad flex grow flex-col overflow-hidden"
 							>
 								{/*
 								 * THE NON-CHAT ROUTES' DRAG BAND, WHERE THE LANE IS NOT.

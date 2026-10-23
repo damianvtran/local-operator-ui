@@ -726,7 +726,7 @@ export const RunPanel = ({
 			 * this tone meeting the lane at y32.
 			 */
 			data-glass-region="pane"
-			className={cn("flex h-full flex-col bg-elevated")}
+			className={cn("panel-top-pad flex h-full flex-col bg-elevated")}
 		>
 			{/*
 			 * NO GROUND OF ITS OWN. It was `bg-sunken`, which made this pane's icon row a
