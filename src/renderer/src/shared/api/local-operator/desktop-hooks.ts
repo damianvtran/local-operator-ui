@@ -250,6 +250,19 @@ export type DesktopFeature =
 	 * `enabled` until the constant is flipped.
 	 */
 	| "team_bridge_threads"
+	/**
+	 * The reaction plane: a message's reaction chips, the toolbar's react button
+	 * and the emoji picker behind it.
+	 *
+	 * ITS OWN KEY because the shipped runtime serves no reaction path at all (the
+	 * OpenAPI schema carries none; a reaction GET answers 404), while the
+	 * conversation page around it works. The key is SCAFFOLDING for the return:
+	 * the build holds reactions closed regardless
+	 * (`TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD`), because the old reaction
+	 * path is not reviewed for account/retry safety and a backend advertising a
+	 * capability must never wake it up. See `team-bridge-reaction-gate.ts`.
+	 */
+	| "team_bridge_reactions"
 	| "auth"
 	| "settings"
 	| "commands"

@@ -11,6 +11,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-reaction-gate";
 import {
 	TeamBridgeReactionPicker,
 	type TeamBridgeReactionState,
@@ -97,7 +98,13 @@ export function TeamBridgeMessageToolbar({
 	const [pickerOpen, setPickerOpen] = useState(false);
 	const [roving, setRoving] = useState(0);
 	const root = useRef<HTMLDivElement>(null);
-	const canReact = reactions !== undefined && !reactions.disabled;
+	/* THE REACTIONS HOLD COVERS THE TOOLBAR CONTROL TOO. The picker is guarded
+	   itself, but a counted-but-absent button would leave the roving tab stop
+	   pointing at nothing, so the control is dropped here as well. */
+	const canReact =
+		TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD &&
+		reactions !== undefined &&
+		!reactions.disabled;
 	/* THE HOLD COVERS THIS ROUTE TOO. `onReply` is the only way into the thread
 	   pane from a row (button, keyboard, or a rig that passes the prop directly),
 	   so it is dropped here rather than trusting every caller to omit it: the
