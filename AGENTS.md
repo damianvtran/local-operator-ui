@@ -78,15 +78,22 @@ These are rules with their reason, not a checklist. A surface that understands
 why will get the next case right where a checklist would not name it.
 
 - **A panel is full-height and starts at y0, including under the invisible
-  titlebar.** A route whose panels own their top padding takes the shell's
-  `flushTop` mode; the lane is then an absolute drag overlay, and the route
-  must not also receive the shell's reserved row. Never inset a panel or give
+  titlebar.** The mechanism is two utilities in `styles/index.css`:
+  `panel-flush` on a route root that owns the whole window height, and
+  `panel-top-pad` on a full-height panel column. The lane is a single
+  transparent overlay that reserves no height, so there is no route opt-in and
+  no per-route inset to compute. Never inset a panel or give
   it a top margin to clear the traffic lights. The clearance is **padding inside the panel**, so the panel's own
   ground reaches the window edge while its content starts below the controls.
   The difference is visible in one direction only: padding is invisible, an
   offset panel is a band. This was reported three times (the Library sidebar,
   the canvas right bar, and Team Bridge) and each time the bug was the same
   relocation — the space existed, but outside the surface that should own it.
+  **The element that wears `panel-top-pad` must be the same box that paints the
+  panel's ground.** A padded wrapper with no ground of its own is exactly the
+  band this rule forbids; a content column inside a grounded, `panel-flush`
+  ancestor needs no ground of its own, and adding one there is a second tone
+  step where the panel already has one.
 - **Separate panels by ground value, never by a line.** A rule between two
   panels is a second mark over a tone step; the tone step already tells the
   eye where one ends. The operator has asked for the border's removal three
