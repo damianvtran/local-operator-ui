@@ -4,7 +4,7 @@
 	"ui.chat.asks.dismiss.answered_in_chat.title": "चैट में जवाब दिया गया",
 	"ui.chat.asks.dismiss.cancel": "रद्द करें",
 	"ui.chat.asks.dismiss.heading": "यह सवाल हटाएँ",
-	"ui.chat.asks.dismiss.moot.note": "और इंतज़ार न करें",
+	"ui.chat.asks.dismiss.moot.note": "एजेंट अब जवाब का इंतज़ार नहीं करेगा",
 	"ui.chat.asks.dismiss.moot.title": "अब ज़रूरत नहीं",
 	"ui.chat.asks.dismiss.receipt.answered_in_chat": "हटाया गया — चैट में तय हो गया",
 	"ui.chat.asks.dismiss.receipt.moot": "हटाया गया — अब ज़रूरत नहीं",
