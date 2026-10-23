@@ -10,7 +10,15 @@ import { cn } from "@shared/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, Bot, Hash, Plus, Users } from "lucide-react";
 import type { Dispatch, FC, ReactNode, SetStateAction } from "react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+	useSyncExternalStore,
+} from "react";
 import { useSearchParams } from "react-router-dom";
 import type {
 	TeamBridgeConversation,
@@ -1301,7 +1309,35 @@ function canWriteBridge(
 }
 
 export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
-	const status = useTeamBridgeStatus();
+	const statusQuery = useTeamBridgeStatus();
+	const client = useQueryClient();
+	const subscribeStatus = useCallback(
+		(notify: () => void) =>
+			client.getQueryCache().subscribe((event) => {
+				if (
+					event.query.queryKey[0] === "team-bridge" &&
+					event.query.queryKey[1] === "status"
+				)
+					notify();
+			}),
+		[client],
+	);
+	const readStatus = () =>
+		client.getQueryData<NonNullable<typeof statusQuery.data>>(
+			teamBridgeKeys.status,
+		);
+	// Query observers batch notifications. An unrelated history read can commit
+	// in that interval with yesterday's status props; React's external-store
+	// consistency check prevents that old owner's private frame from committing.
+	const liveStatus = useSyncExternalStore(
+		subscribeStatus,
+		readStatus,
+		readStatus,
+	);
+	const status = {
+		data: liveStatus,
+		isPending: statusQuery.isPending || !liveStatus,
+	};
 	const [searchParams] = useSearchParams();
 	const requestedTenant = searchParams.get("tenant");
 	const [scope, setScope] = useState<TeamBridgeScope>(() =>
@@ -1348,7 +1384,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 };
 
 const TeamBridgeOwnedPage: FC<{
-	status: ReturnType<typeof useTeamBridgeStatus>;
+	status: Pick<ReturnType<typeof useTeamBridgeStatus>, "data" | "isPending">;
 	scope: TeamBridgeScope;
 	setScope: Dispatch<SetStateAction<TeamBridgeScope>>;
 	scopeChosen: { current: boolean };
@@ -1412,7 +1448,9 @@ const TeamBridgeOwnedPage: FC<{
 	// sidebar badge spends. Per-org counts are joined from that payload, never
 	// fetched per org.
 	const memberships = useMembershipsQuery({ enabled: readsEnabled });
-	const unread = useTeamBridgeUnread(readsEnabled, TEAM_BRIDGE_ALL_SCOPE);
+	const unread = useTeamBridgeUnread(readsEnabled, TEAM_BRIDGE_ALL_SCOPE, {
+		accountId: selfAccountId,
+	});
 	const hubTenants = hubTenantList(status.data);
 	const organizations = useMemo(
 		() =>
@@ -1425,10 +1463,11 @@ const TeamBridgeOwnedPage: FC<{
 	);
 	const { pending: organizationsPending, failed: organizationsFailed } =
 		organizationsReadState(hubTenants, memberships);
-	const list = useTeamBridgeConversations(scope, readsEnabled);
+	const list = useTeamBridgeConversations(scope, readsEnabled, selfAccountId);
 	const directory = useTeamBridgeDirectory(
 		scope === TEAM_BRIDGE_ALL_SCOPE ? null : scope,
 		readsEnabled,
+		selfAccountId,
 	);
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
 	// Names only (see `useTeamBridgeDirectories`): the merged view lists no
@@ -1438,6 +1477,7 @@ const TeamBridgeOwnedPage: FC<{
 			? organizations.map((organization) => organization.tenantId)
 			: [],
 		readsEnabled,
+		selfAccountId,
 	);
 	// The reader's own name for their own messages; `user` is null until the
 	// account read answers, never the user store's placeholder name.
@@ -1531,6 +1571,7 @@ const TeamBridgeOwnedPage: FC<{
 		previewSelected ? null : (selected?.id ?? null),
 		selected?.tenant_id,
 		readsEnabled,
+		selfAccountId,
 	);
 	const create = useCreateTeamBridgeConversation(
 		mergedView ? undefined : scope,

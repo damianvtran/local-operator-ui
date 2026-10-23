@@ -39,6 +39,7 @@ const SIDEBAR = /chat\/components\/chat-sidebar$/;
 const AUTH = /use-radient-auth$/;
 const MEMBERSHIPS = /use-memberships-query$/;
 const ANY = /.*/;
+const OWNER_SOURCE = /(?:team-bridge-page\.tsx|use-team-bridge\.ts)$/;
 const role = readFileSync(
 	"src/renderer/src/features/chat/components/chat-sidebar.tsx",
 	"utf8",
@@ -64,6 +65,47 @@ const bundle = await build({
 		{
 			name: "unrelated-boundaries",
 			setup(b) {
+				// Mutation controls compile a changed copy in memory; the production
+				// checkout and other workers never see an intentionally unsafe source.
+				const mutation = process.env.TEAM_BRIDGE_OWNER_MUTATION;
+				if (mutation) {
+					const mutations = {
+						"owner-key": [
+							"team-bridge-page.tsx",
+							"key={owner}",
+							'key="mutation-unowned"',
+						],
+						authority: [
+							"team-bridge-page.tsx",
+							"const isCurrentOwner = () => {",
+							"const isCurrentOwner = () => { return true;",
+						],
+						"cache-key": ["use-team-bridge.ts", "...readOwner(accountId)", ""],
+						"hook-refresh": [
+							"use-team-bridge.ts",
+							"if (!isCurrent()) return;",
+							"",
+						],
+						retention: [
+							"team-bridge-page.tsx",
+							"retainedPending.get(draftOwner)",
+							"undefined",
+						],
+					};
+					assert.ok(mutations[mutation], `unknown mutation ${mutation}`);
+					const [file, anchor, replacement] = mutations[mutation];
+					b.onLoad({ filter: OWNER_SOURCE }, ({ path }) => {
+						let contents = readFileSync(path, "utf8");
+						if (path.endsWith(`/${file}`)) {
+							assert.ok(
+								contents.includes(anchor),
+								`mutation ${mutation} anchor exists`,
+							);
+							contents = contents.replaceAll(anchor, replacement);
+						}
+						return { contents, loader: path.endsWith(".tsx") ? "tsx" : "ts" };
+					});
+				}
 				b.onResolve({ filter: SIDEBAR }, () => ({
 					path: "sidebar",
 					namespace: "fixture",
@@ -346,6 +388,14 @@ async function mount({ empty = false } = {}) {
 					client.invalidateQueries({ queryKey: ui.teamBridgeKeys.status }),
 				);
 			}
+			if (boundary !== "unresolved")
+				await until(
+					() =>
+						empty
+							? host.textContent.includes("Peer")
+							: host.textContent.includes("Shared thread"),
+					"new owner's admitted page reads",
+				);
 			await delay();
 		},
 		async close() {
@@ -410,6 +460,28 @@ export async function mountPendingOwnerPage({ existing = false } = {}) {
 	};
 	return {
 		openAddressedGroup: composeGroup,
+		async seedConfirmed(body) {
+			fixture.messages.set(JSON.stringify([fixture.account, fixture.tenant]), [
+				{
+					id: "confirmed-private-A",
+					conversation_id: "bcv_shared",
+					seq: 1,
+					sender: person("acct_a"),
+					body,
+					origin: "human",
+					created_at: now,
+				},
+			]);
+			await act(async () =>
+				app.client.invalidateQueries({
+					queryKey: ui.teamBridgeKeys.messages("bcv_shared", "org_shared"),
+				}),
+			);
+			await until(
+				() => host.textContent.includes(body),
+				"real confirmed private history rendered",
+			);
+		},
 		text: () => host.textContent,
 		draft: () => host.querySelector("textarea")?.value ?? "",
 		typeDraft: (body) => type(host, body),
