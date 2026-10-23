@@ -2052,6 +2052,27 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 * pre-judge that, it renders the owner's refusal.
 			 */
 			revise: z.boolean().optional(),
+			/**
+			 * PUT AN OPEN ASK AWAY instead of answering it (harness PR #2833, SA-D5).
+			 *
+			 * A modifier on the SAME `{ask_id}` body rather than a fourth op: a dismissal
+			 * is the same epoch-free queued-ask door an answer is, addressed by an id that
+			 * outlives any owner. Only `true` selects the shape — `false` is the same
+			 * statement as omitting it — and the shape rules below refuse it beside
+			 * answers/decline/revise, because no single body may answer and dismiss one ask.
+			 *
+			 * GATED ON `features.ask_dismiss` at the surface that offers the control: the
+			 * backend's `Answer` is `extra="forbid"`, so an older daemon answers 422 to this
+			 * field rather than ignoring it.
+			 */
+			dismiss: z.boolean().optional(),
+			/**
+			 * Why the operator put it away: `answered_in_chat` (the conversation already
+			 * answered it) or `moot` (no longer needed). Optional; the ask log records
+			 * `moot` when absent. Refused without `dismiss: true` — the same no-op rule
+			 * `revise` follows above.
+			 */
+			reason: z.enum(["answered_in_chat", "moot"]).optional(),
 		})
 		/*
 		 * A PLAIN `ZodObject`, with the mutual-exclusion rules on the UNION below.
@@ -4334,7 +4355,32 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 				 * carries neither answers nor a decline is malformed rather than merely
 				 * empty, and the two together are contradictory rather than redundant.
 				 */
-				if (request.decline !== true && !request.answers)
+				/*
+				 * THE FOURTH SHAPE (harness PR #2833, SA-D5): an id and nothing else. It
+				 * returns before the answer-shape rules, because a dismissal has no answers
+				 * to require — and the fields it cannot honour are refused in words, the
+				 * backend's own `Answer.one_answer` rule restated at the client boundary.
+				 */
+				if (request.dismiss === true) {
+					if (
+						request.answers !== undefined ||
+						request.decline === true ||
+						request.revise === true
+					)
+						ctx.addIssue({
+							code: z.ZodIssueCode.custom,
+							message: "A dismissal carries no answers, decline or revise",
+							path: ["dismiss"],
+						});
+					return;
+				}
+				if (request.reason !== undefined)
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: "A reason applies to a dismissal",
+						path: ["reason"],
+					});
+				else if (request.decline !== true && !request.answers)
 					ctx.addIssue({
 						code: z.ZodIssueCode.custom,
 						message: "A queued-ask answer needs answers or decline",
@@ -4393,6 +4439,23 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 					code: z.ZodIssueCode.custom,
 					message: "revise applies to a queued ask",
 					path: ["revise"],
+				});
+			if (request.dismiss !== undefined)
+				/*
+				 * A dismissal is addressed by `ask_id` alone, so on the gate shape the
+				 * field names no ask it could put away — refused rather than ignored, the
+				 * same rule `revise` just took.
+				 */
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "dismiss applies to a queued ask",
+					path: ["dismiss"],
+				});
+			if (request.reason !== undefined)
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "reason applies to a queued ask",
+					path: ["reason"],
 				});
 			return;
 		}
@@ -7787,6 +7850,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 						 * asserting an intent it does not have.
 						 */
 						...(request.revise === true ? { revise: true } : {}),
+						/*
+						 * The dismissal modifier and its reason, on the same absent-when-not-
+						 * asked-for rule: an older harness refuses the field outright
+						 * (`extra="forbid"`), so an ordinary answer must not carry it.
+						 */
+						...(request.dismiss === true
+							? {
+									dismiss: true,
+									...(request.reason !== undefined
+										? { reason: request.reason }
+										: {}),
+								}
+							: {}),
 					},
 				};
 			return {

@@ -49,14 +49,17 @@
 
 import { Badge } from "@shared/components/ui/badge";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Check, Clock, HelpCircle, type LucideIcon, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { t } from "../../../../../../i18n/messages";
 import type {
 	PendingAsk,
 	PendingAskQuestion,
 } from "../../../../../../shared/desktop-session-contract";
 import type {
+	AskDismissReason,
 	AskDraft,
 	AskOther,
 	AskOutcome,
@@ -117,6 +120,34 @@ const settledStatusVariant = (
 ): "success" | "warning" | "neutral" =>
 	status === "answered" ? "success" : status === "late" ? "warning" : "neutral";
 
+/**
+ * The reason chooser's copy, and the receipt each reason earns: ONE table, so the
+ * label a reader chooses and the label the receipt reports cannot drift.
+ *
+ * Word for word the harness surfaces' vocabulary (the phone sheet's two rows in
+ * PR #2841, and `asks/render.py`'s `DISMISS_REASON_LABELS` for the receipt half).
+ * `moot` leads: it is the common case and the phone's own order.
+ */
+const DISMISS_REASONS: readonly AskDismissReason[] = [
+	"moot",
+	"answered_in_chat",
+];
+
+const dismissReasonTitle = (reason: AskDismissReason): string =>
+	reason === "moot"
+		? t("ui.chat.asks.dismiss.moot.title")
+		: t("ui.chat.asks.dismiss.answered_in_chat.title");
+
+const dismissReasonNote = (reason: AskDismissReason): string =>
+	reason === "moot"
+		? t("ui.chat.asks.dismiss.moot.note")
+		: t("ui.chat.asks.dismiss.answered_in_chat.note");
+
+const dismissReceipt = (reason: AskDismissReason): string =>
+	reason === "moot"
+		? t("ui.chat.asks.dismiss.receipt.moot")
+		: t("ui.chat.asks.dismiss.receipt.answered_in_chat");
+
 export type AskPanelProps = {
 	view: AskQueueView;
 	/** Answer one ask from a completed draft. */
@@ -134,16 +165,22 @@ export type AskPanelProps = {
 	 * §10 rules out would creep back in.
 	 */
 	onRevise?: (ask: PendingAsk, answers: Record<string, string[]>) => void;
-	/*
-	 * There is deliberately NO dismiss door. Design §5.0/§5.2 puts one in scope
-	 * ("view-only removal of a timed-out ask"), but the desktop plane has no route
-	 * for it: the bridge exposes `ask_respond` (with `decline`) and nothing that
-	 * maps to the runtime's `ask_dismiss`, so a Dismiss button here would be a
-	 * control that can never work - the dead-affordance defect this codebase
-	 * refuses elsewhere (`ask-options.tsx`'s own note on the inert `<ul>`). A
-	 * timed-out ask is read-only and collapsed into the settled half instead (D10,
-	 * D11), and dismissal lands when the route does.
+	/**
+	 * PUT AN OPEN ASK AWAY without answering it (harness PR #2833, SA-D5).
+	 *
+	 * Present only where the backend advertises `features.ask_dismiss` — the
+	 * caller resolves that key and leaves this prop undefined otherwise, so an
+	 * older daemon draws no button at all. That gate is load-bearing rather than
+	 * stylistic: the backend's `Answer` is `extra="forbid"`, so a body carrying
+	 * `dismiss` is a 422 there, and a control whose only outcome is a refusal is
+	 * the dead affordance this panel refuses elsewhere (`ask-options.tsx`'s own
+	 * note on the inert `<ul>`).
+	 *
+	 * The reason is the operator's own word, sent to the owner so the agent knows
+	 * whether the conversation already answered the ask or the ask is simply
+	 * moot. It is not inferred here: the two values are the wire's vocabulary.
 	 */
+	onDismiss?: (ask: PendingAsk, reason: AskDismissReason) => void;
 	/** An answer is in flight from any surface: every control is disabled. */
 	answering?: boolean;
 	/**
@@ -725,6 +762,7 @@ const AskRow = ({
 	onAnswer,
 	onDecline,
 	onRevise,
+	onDismiss,
 	conversationOf,
 }: {
 	presentation: AskPresentation;
@@ -736,10 +774,42 @@ const AskRow = ({
 	onAnswer: AskPanelProps["onAnswer"];
 	onDecline: AskPanelProps["onDecline"];
 	onRevise?: AskPanelProps["onRevise"];
+	onDismiss?: AskPanelProps["onDismiss"];
 	conversationOf?: AskPanelProps["conversationOf"];
 }) => {
 	const { ask, status, waiting, canAnswer, canDecline, delivering } =
 		presentation;
+	/*
+	 * THE CARD'S CONTEXT LINE (SA-D7's manager override; harness PR #2833). Read
+	 * as a PAIR: a count without its stamp is a shape the queue does not publish,
+	 * and the line names both facts (`3 messages from you since this was asked
+	 * (last 19:36)`). An older runtime sends neither key, so the line is absent
+	 * rather than zero — see `PendingAsk.user_messages_since`.
+	 */
+	const messagesSince =
+		typeof ask.user_messages_since === "number" &&
+		Number.isFinite(ask.user_messages_since) &&
+		ask.user_messages_since > 0
+			? ask.user_messages_since
+			: 0;
+	const lastUserMessageAt =
+		typeof ask.last_user_message_at === "number" &&
+		Number.isFinite(ask.last_user_message_at) &&
+		ask.last_user_message_at > 0
+			? ask.last_user_message_at
+			: null;
+	const locale = useI18nLocale();
+	/*
+	 * CHANGING THE INTERFACE LANGUAGE RE-RENDERS THE FORMATTED TIME, which is why
+	 * the locale is read through the hook rather than at module scope: a stored
+	 * formatter would keep the old locale's clock until the next mount.
+	 */
+	const lastUserMessageTime =
+		lastUserMessageAt === null
+			? null
+			: new Intl.DateTimeFormat(locale, { timeStyle: "short" }).format(
+					new Date(lastUserMessageAt),
+				);
 	const conversation =
 		conversationOf === undefined ? null : conversationOf(presentation);
 	const setDraft = useMemo(
@@ -798,6 +868,29 @@ const AskRow = ({
 	 * on both doors — the backend substitutes the key name either way.
 	 */
 	const [changing, setChanging] = useState(false);
+	/*
+	 * THE DISMISS CHOOSER, card-local for the change form's reason (design §10):
+	 * the intent belongs to ONE ask, and closing the drawer or settling another ask
+	 * must not leave a half-chosen reason on the next card. `open` is the trigger's
+	 * own state; the reason press posts immediately and closes it.
+	 */
+	const [dismissOpen, setDismissOpen] = useState(false);
+	const dismissTrigger = useRef<HTMLButtonElement | null>(null);
+	const dismissFirstReason = useRef<HTMLButtonElement | null>(null);
+	/*
+	 * FOCUS FOLLOWS THE CONTROL THAT REPLACED THE PRESS (the same contract the
+	 * panel's other swaps keep): opening the chooser lands on its first reason, and
+	 * Cancel returns to the trigger. The press that OPENS a chooser is the only one
+	 * that moves focus on its own; a reason press settles the card and the row's
+	 * own collapse decides where the keyboard lands.
+	 */
+	useEffect(() => {
+		if (dismissOpen) dismissFirstReason.current?.focus();
+	}, [dismissOpen]);
+	const closeDismiss = () => {
+		setDismissOpen(false);
+		dismissTrigger.current?.focus();
+	};
 	const [changeDraft, setChangeDraft] = useState<AskDraft>(EMPTY_DRAFT);
 	/*
 	 * THE OWNER'S OWN REFUSAL CLOSES THE DOOR (design round 1, D1 = UX round 1, U1).
@@ -1146,6 +1239,26 @@ const AskRow = ({
 					))
 				: null}
 			{/*
+			 * THE CONTEXT LINE (SA-D7's manager override; harness PR #2833). It sits
+			 * under the question because it is about the conversation's movement since
+			 * the question was asked, and it renders ONLY for an ask the agent is still
+			 * waiting on: on a settled row it would describe a wait that is over.
+			 *
+			 * THE COUNT AND THE STAMP ARE ONE FACT, so the line needs both: a count
+			 * without a time is a shape the queue does not publish, and an older runtime
+			 * publishes neither. `Intl.DateTimeFormat` with `timeStyle: "short"` is the
+			 * locale's own clock, so `19:36` does not become `7:36 PM` in a locale that
+			 * writes it the other way.
+			 */}
+			{messagesSince > 0 && lastUserMessageTime !== null && waiting ? (
+				<p data-lo-ask-context="" className="text-ink-muted text-meta">
+					{t("ui.chat.asks.context.messages_since", {
+						count: messagesSince,
+						time: lastUserMessageTime,
+					})}
+				</p>
+			) : null}
+			{/*
 			 * The refusal is the panel's own line rather than a toast: it belongs to the
 			 * ask on screen, and every refusal in this feature's copy contract is a
 			 * sentence about what did NOT happen, which is a state a toast loses the
@@ -1189,6 +1302,24 @@ const AskRow = ({
 					<span className="text-ink">
 						Changed — the agent has not been handed it yet.
 					</span>
+				</p>
+			) : null}
+			{outcome?.dismissed !== undefined ? (
+				/*
+				 * THE RECEIPT FOR A DISMISSAL THAT LANDED, the `changed` line's sibling and
+				 * for its reason: the wire folds the ask to `dismissed` with no marker for
+				 * WHICH reason a surface sent, so the card says what the operator chose
+				 * rather than only what the backend recorded. The collapsed row carries the
+				 * same sentence (see `collapsedRow`), because this card unmounts when the
+				 * fold files the ask under Settled.
+				 */
+				<p className="flex items-start gap-1.5 text-xs">
+					<Check
+						aria-hidden="true"
+						size={14}
+						className="mt-0.5 shrink-0 text-success"
+					/>
+					<span className="text-ink">{dismissReceipt(outcome.dismissed)}</span>
 				</p>
 			) : null}
 			{canAnswer || canDecline ? (
@@ -1329,6 +1460,65 @@ const AskRow = ({
 					)}
 				</div>
 			) : null}
+			{/*
+			 * THE DISMISS DOOR (harness PR #2833, SA-D5), on an OPEN ask only and only
+			 * where the caller resolved `features.ask_dismiss` — see
+			 * `AskPanelProps.onDismiss`. `canAnswer` is the same live-arm predicate the
+			 * answer controls read, so a lapsed or settled ask never offers it (D10).
+			 *
+			 * THE CHOOSER IS INLINE, not a dialog: the card is already the surface the
+			 * reader is on, and a modal would dim the question they are deciding about.
+			 * Its two rows carry the harness surfaces' vocabulary and order (the phone
+			 * sheet, PR #2841): the reason leads, the one-line note says what it means.
+			 */}
+			{onDismiss !== undefined && canAnswer ? (
+				<div className="flex flex-col gap-2">
+					{dismissOpen ? (
+						<>
+							<p className="text-ink text-xs">
+								{t("ui.chat.asks.dismiss.heading")}
+							</p>
+							{DISMISS_REASONS.map((reason) => (
+								<button
+									key={reason}
+									ref={reason === "moot" ? dismissFirstReason : undefined}
+									type="button"
+									disabled={busy}
+									onClick={() => {
+										setDismissOpen(false);
+										onDismiss(ask, reason);
+									}}
+									className="flex w-full flex-col gap-0.5 rounded-md border border-control px-3 py-1.5 text-left hover:bg-sunken disabled:text-ink-dim"
+								>
+									<span className="text-ink text-sm">
+										{dismissReasonTitle(reason)}
+									</span>
+									<span className="text-ink-muted text-meta">
+										{dismissReasonNote(reason)}
+									</span>
+								</button>
+							))}
+							<button
+								type="button"
+								onClick={closeDismiss}
+								className="self-start rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken hover:text-ink"
+							>
+								{t("ui.chat.asks.dismiss.cancel")}
+							</button>
+						</>
+					) : (
+						<button
+							ref={dismissTrigger}
+							type="button"
+							disabled={busy}
+							onClick={() => setDismissOpen(true)}
+							className="self-start rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken hover:text-ink disabled:text-ink-dim"
+						>
+							{t("ui.chat.asks.dismiss.trigger")}
+						</button>
+					)}
+				</div>
+			) : null}
 		</div>
 	);
 };
@@ -1353,6 +1543,7 @@ export const AskPanel = ({
 	onAnswer,
 	onDecline,
 	onRevise,
+	onDismiss,
 	answering = false,
 	outcomes,
 	nowMs,
@@ -1667,6 +1858,7 @@ export const AskPanel = ({
 			onAnswer={onAnswer}
 			onDecline={onDecline}
 			onRevise={onRevise}
+			onDismiss={onDismiss}
 			conversationOf={conversationOf}
 		/>
 	);
@@ -1708,6 +1900,15 @@ export const AskPanel = ({
 		 * the refusal itself ("a silent no-op would be the worse failure").
 		 */
 		const refusal = outcomes?.[presentation.ask.ask_id]?.refused ?? null;
+		/*
+		 * THE DISMISSAL'S RECEIPT, ON THE ONE-LINE ROW (harness PR #2833). A
+		 * dismissal folds the ask into the settled half, so the card that carried the
+		 * chooser is normally collapsed by the next frame — this is where the reader
+		 * can still see WHICH reason they gave. No mark: the chip already says
+		 * `Dismissed`, and a second success glyph on a one-line row would compete with
+		 * it (the same restraint the refusal line takes).
+		 */
+		const dismissal = outcomes?.[presentation.ask.ask_id]?.dismissed;
 		return (
 			<Disclosure
 				key={presentation.ask.ask_id}
@@ -1754,6 +1955,11 @@ export const AskPanel = ({
 							 * surfaces.
 							 */
 							<span className="min-w-0 text-danger text-meta">{refusal}</span>
+						)}
+						{dismissal === undefined ? null : (
+							<span className="min-w-0 text-ink-muted text-meta">
+								{dismissReceipt(dismissal)}
+							</span>
 						)}
 					</span>
 				}
