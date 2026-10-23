@@ -2803,6 +2803,13 @@ function makeHost(overrides = {}) {
 				};
 			}
 			if (method === "Page.captureScreenshot") return { data: "iVBORw0KGgo=" };
+			// The scoped snapshot asks for the scope's document before it asks for the
+			// scope itself; a fixture that answers `{}` to the first makes every scoped
+			// call fail with "the page has no document to query" — how this surfaced
+			// (the once-grant test drives `snapshot` with a selector).
+			if (method === "DOM.getDocument") return { root: { nodeId: 1 } };
+			if (method === "DOM.querySelector") return { nodeId: 2 };
+			if (method === "DOM.describeNode") return { node: { backendNodeId: 7 } };
 			return {};
 		},
 		calls: [],
@@ -4118,12 +4125,11 @@ test("allow once authorizes one requester document until the next navigation", a
 	await host.dispatch("request_access", owner, "request");
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "once");
 	const opened = await host.dispatch("open", owner, "open");
+	// No `selector`: this test is about the once grant surviving across three
+	// document-scoped verbs, not about scoping (which has its own test). A scoped
+	// snapshot here would need a fixture subtree and would test `ax-compact`.
 	for (const method of ["read", "snapshot", "screenshot"]) {
-		await host.dispatch(
-			method,
-			{ ...owner, tab: opened.tab, selector: "input", text: "synthetic" },
-			method,
-		);
+		await host.dispatch(method, { ...owner, tab: opened.tab }, method);
 	}
 	registry.bumpEpoch(registry.requireSurface(opened.tab).tabId);
 	await assert.rejects(
@@ -4414,6 +4420,162 @@ test("read runs in an isolated world, and snapshot refs carry the tab's epoch", 
 	assert.equal(snap.refs, 1);
 	assert.match(snap.snapshot, /button "Submit" \[e1\]/);
 	assert.equal(registry.requireSurface(opened.tab).refs.e1.epoch, snap.epoch);
+});
+
+/* R1-4: the host path this lane added had no test at this layer. These pin the
+ * three decisions that only exist in `page.ts`: the scope is resolved BEFORE the
+ * a11y read, a scoped read is windowed by the shared driver, and a scoped read
+ * whose page contains frames SAYS so instead of silently dropping them. */
+test("a scoped snapshot resolves the scope first, windows the tree, and names skipped frames", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const calls = [];
+	const TREE = [
+		{
+			nodeId: "1",
+			role: { value: "RootWebArea" },
+			name: { value: "" },
+			childIds: ["2"],
+		},
+		{
+			nodeId: "2",
+			backendDOMNodeId: 500,
+			role: { value: "form" },
+			name: { value: "" },
+			childIds: ["3", "4"],
+		},
+		{
+			nodeId: "3",
+			backendDOMNodeId: 501,
+			role: { value: "checkbox" },
+			name: { value: "Active" },
+			properties: [{ name: "checked", value: { value: "true" } }],
+			childIds: [],
+		},
+		{
+			nodeId: "4",
+			backendDOMNodeId: 502,
+			role: { value: "Iframe" },
+			name: { value: "Payment" },
+			childIds: [],
+		},
+		{
+			nodeId: "5",
+			backendDOMNodeId: 503,
+			role: { value: "button" },
+			name: { value: "Outside" },
+			childIds: [],
+		},
+		{
+			nodeId: "6",
+			backendDOMNodeId: 504,
+			role: { value: "region" },
+			name: { value: "Inner" },
+			childIds: ["7"],
+		},
+		{
+			nodeId: "7",
+			backendDOMNodeId: 505,
+			role: { value: "button" },
+			name: { value: "Inside" },
+			childIds: [],
+		},
+	];
+	// The button sits under the root, OUTSIDE the scope: the scoped read does not
+	// RENDER it, but — per R1-1 — the whole-tree mint still gives it a ref, so a
+	// remembered `e2` keeps naming this button and can never be re-pointed at the
+	// scope's first node.
+	TREE[0].childIds.push("5");
+	TREE[1].childIds.push("6");
+	const send = async (_contents, method, params) => {
+		calls.push({ method, params });
+		switch (method) {
+			case "DOM.getDocument":
+				return { root: { nodeId: 1 } };
+			case "DOM.querySelector":
+				// Two scopes are driven: the form (500) and its frameless
+				// subsections (504), so the skip note can be told apart from a
+				// page-level frame count.
+				return { nodeId: params.selector === "#inner" ? 9 : 7 };
+			case "DOM.describeNode":
+				return { node: { backendNodeId: params.nodeId === 9 ? 504 : 500 } };
+			case "Accessibility.enable":
+			case "Accessibility.disable":
+				return {};
+			case "Accessibility.getFullAXTree":
+				return { nodes: TREE };
+			default:
+				return {};
+		}
+	};
+	const record = {
+		epoch: 4,
+		refs: {},
+		view: {
+			webContents: {
+				getURL: () => "https://approved.example/",
+				getTitle: () => "Create App",
+				isDestroyed: () => false,
+			},
+		},
+	};
+	const ctx = {
+		cdp: { send },
+		registry: { requireSurface: () => record, touch: () => {} },
+	};
+
+	const out = await FRAMES_ACTIONS.snapshot(ctx, {
+		tab: "ui:1:nonce",
+		selector: "#new_app",
+	});
+
+	const methods = calls.map((call) => call.method);
+	// R1-3: the selector is resolved before any a11y command crosses.
+	assert.ok(
+		methods.indexOf("DOM.querySelector") <
+			methods.indexOf("Accessibility.enable"),
+		methods.join(","),
+	);
+	assert.equal(out.scoped, true);
+	// The skip note is a REMARK about the scope, appended after the window: it is
+	// not a tree line, so `total_lines` counts the scope's own lines only.
+	assert.equal(out.total_lines, 5, "form, checkbox, Iframe, Inner, Inside");
+	assert.equal(out.returned_lines, 5);
+	assert.ok(
+		!out.snapshot.includes("Outside"),
+		"a node outside the scope is not rendered",
+	);
+	assert.ok(
+		out.snapshot.includes("skipped") ||
+			out.snapshot.includes("does not read frames"),
+		out.snapshot,
+	);
+	assert.ok(
+		!calls.some((call) => call.method === "Runtime.callFunctionOn"),
+		"a scoped read never walks frames",
+	);
+
+	// R2-1: a scope that contains NO frame must not claim one was skipped.
+	const frameless = await FRAMES_ACTIONS.snapshot(ctx, {
+		tab: "ui:1:nonce",
+		selector: "#inner",
+	});
+	assert.equal(frameless.scoped, true);
+	assert.ok(
+		!frameless.snapshot.includes("does not read frames"),
+		frameless.snapshot,
+	);
+	assert.equal(frameless.frames_in_scope, 0);
+
+	// The window is applied to the SCOPED text, after refs are minted, so a ref
+	// read on page 2 names the same element as the full read.
+	const page2 = await FRAMES_ACTIONS.snapshot(ctx, {
+		tab: "ui:1:nonce",
+		selector: "#new_app",
+		start: 2,
+		limit: 1,
+	});
+	assert.equal(page2.returned_lines, 1);
+	assert.equal(page2.snapshot.split("\n")[0], out.snapshot.split("\n")[1]);
 });
 
 test("the structured reads run the vendored page functions in read's isolated world", async () => {
@@ -8415,7 +8577,15 @@ class FramePage {
 			case "DOM.describeNode": {
 				const node = this.nodeIn(sessionId, params.nodeId);
 				if (!node?.frame)
-					return { node: { nodeName: node?.nodeName ?? "INPUT" } };
+					return {
+						node: {
+							nodeName: node?.nodeName ?? "INPUT",
+							// The scoped snapshot translates a frontend node id into the
+							// BACKEND id the a11y tree indexes by; a fake that omitted it
+							// would make every scoped read fail as "no backend node id".
+							backendNodeId: node?.backendNodeId,
+						},
+					};
 				if (node.frame.inProcess) {
 					return {
 						node: {
