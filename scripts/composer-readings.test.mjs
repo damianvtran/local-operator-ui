@@ -789,18 +789,29 @@ test("the row right-justifies its controls whether or not the readings render", 
 		"the strip must render once; a second render is a second layout to keep in step",
 	);
 
-	// THE BLOCKER: the auto margin is on the group that always renders. `ml-auto`
-	// alone - not `ml-auto` plus a threshold override that hands it to a child
-	// which can return `null`. Three ordinary states null the cluster (no
+	// THE BLOCKER: the auto margin is on the group that always renders. `ms-auto`
+	// alone - not an auto margin plus a threshold override that hands it to a
+	// child which can return `null`. Three ordinary states null the cluster (no
 	// `frontend` yet, nothing known, the error boundary's empty fallback), and in
 	// those states a margin owned by the cluster leaves the row with NONE: the
 	// controls sat flush against the directory chip (round 1, BLOCKER 1).
+	//
+	// AND IT IS LOGICAL (`ms-`, not `ml-`): in an RTL row a physical left margin
+	// puts the row's free space on the far side of this group, where the readings
+	// sit flush against it - measured in the RTL evidence cell as G 2.0 and a
+	// hidden duration before this was fixed.
 	assert.ok(
-		controlsClasses.includes("ml-auto"),
+		controlsClasses.includes("ms-auto"),
 		"the controls group must carry the row's auto margin",
 	);
 	assert.ok(
-		!controlsClasses.some((c) => c.includes("chatcol:ml-")),
+		!controlsClasses.some((c) => c === "ml-auto"),
+		"the margin must be logical; a physical left margin breaks the RTL row's justification",
+	);
+	assert.ok(
+		!controlsClasses.some(
+			(c) => c.includes("chatcol:ml-") || c.includes("chatcol:ms-"),
+		),
 		"the controls' margin must not be conditional on the cluster's presence",
 	);
 	assert.ok(
@@ -906,7 +917,13 @@ test("the inline layout is a PAIRING, and neither half works alone", () => {
 	// painted sequence [attach][chip] [readings] [mic][send] out of a DOM whose
 	// first child is the cluster.
 	assert.match(strip, /"order-2 flex-nowrap"/);
-	assert.match(composer, /className="ml-auto flex order-3 items-center gap-1"/);
+	// The group's one live auto margin is LOGICAL (`ms-auto`, not `ml-auto`): a
+	// physical left margin puts the free space on the far side of the group in an
+	// RTL row, which the RTL evidence cell measures as a 2px gap and a hidden
+	// duration. `margin-inline-start` is the same margin in LTR and the mirrored
+	// one in RTL.
+	assert.match(composer, /className="ms-auto flex order-3 items-center gap-1"/);
+	assert.doesNotMatch(composer, /className="ml-auto flex order-3/);
 
 	// And the left group holds its width. Without this the chip's own `shrink-0`
 	// (which makes the NAME truncate first) let the group close around it, and the
@@ -1308,6 +1325,53 @@ test("the shed's state comes from the row's own third-box predicate, computed on
 	);
 });
 
+test("the duration's fit arithmetic is pure, and reads the row's own direction", async () => {
+	const { READING_GAP, inlineGap, durationFits } = await import(
+		"../src/renderer/src/features/chat/session-status/session-duration-fit.ts"
+	);
+
+	/*
+	 * THE GAP IS ONE NUMBER. The strip draws it with `gap-x-1` and the anchor and
+	 * the comparison cross it; this pins the pair so a change to one is a failing
+	 * test rather than a 4px silent drift.
+	 */
+	assert.equal(READING_GAP, 4, "gap-x-1 is 4px");
+	const strip = readFileSync(
+		"src/renderer/src/features/chat/session-status/session-status-strip.tsx",
+		"utf8",
+	);
+	assert.match(
+		strip,
+		/gap-x-1/,
+		"the strip's own gap class is the visual twin",
+	);
+
+	/*
+	 * LTR: the last reading is the rightmost, so the gap runs from its right edge
+	 * to the controls' left edge. RTL: the row is mirrored, so "last" is the
+	 * leftmost reading and the gap ends at the controls' RIGHT edge - the case the
+	 * first implementation got wrong, hiding the reading at every width in `ur`.
+	 */
+	assert.equal(inlineGap("ltr", 500, 620, 724), 120);
+	assert.equal(inlineGap("ltr", 620, 620, 724), 0);
+	assert.equal(inlineGap("rtl", 500, 396, 500), 0);
+	assert.equal(inlineGap("rtl", 500, 396, 380), 120);
+	assert.equal(inlineGap("rtl", 180, 396, 380), -200);
+
+	/*
+	 * THE FIT BOUNDARY, in both directions and at the real value: exactly
+	 * `width + gap` fits, a hair less does not. The comparison is on the gap, so
+	 * the direction's only job is producing it correctly.
+	 */
+	for (const direction of ["ltr", "rtl"]) {
+		const width = 55.4;
+		const exact = 55.4 + READING_GAP;
+		assert.equal(durationFits(exact, width), true, direction);
+		assert.equal(durationFits(exact - 0.1, width), false, direction);
+		assert.equal(durationFits(exact + 0.1, width), true, direction);
+	}
+});
+
 test("the duration's visibility is measured from the row, not declared from a breakpoint or a state", () => {
 	const strip = readFileSync(
 		"src/renderer/src/features/chat/session-status/session-status-strip.tsx",
@@ -1342,18 +1406,44 @@ test("the duration's visibility is measured from the row, not declared from a br
 	assert.match(strip, /document\.fonts\?\.ready\.then\(measureDurationFit\)/);
 
 	/*
-	 * THE TWO NUMBERS, in full precision: the marked group's left edge minus the
-	 * last visible non-duration reading's right edge, against this reading's own
-	 * box plus the readings' gap. The gap constant is the same 4px the class
-	 * draws, named rather than repeated.
+	 * THE DIRECTION IS RESOLVED FROM THE STRIP, and the arithmetic itself is the
+	 * pure module's: the last reading's inline-end edge, the controls' box, and
+	 * this reading's own width.
 	 */
-	assert.match(strip, /controls\.getBoundingClientRect\(\)\.left - lastRight/);
-	assert.match(strip, /gap >= durationWidth \+ READING_GAP/);
-	assert.match(strip, /const READING_GAP = 4;/);
+	assert.match(
+		strip,
+		/getComputedStyle\(strip\)\.direction === "rtl" \? "rtl" : "ltr"/,
+	);
+	assert.match(strip, /const gap = inlineGap\(/);
+	assert.match(
+		strip,
+		/gapFitsDuration\(gap, element\.getBoundingClientRect\(\)\.width\)/,
+	);
+	assert.match(strip, /durationFits as gapFitsDuration/);
 
-	// The reading itself is the measured element: one marker, one anchor.
-	assert.match(strip, /data-lo-duration=\{true\}/);
-	assert.match(strip, /"absolute top-0 left-\[calc\(100%\+4px\)\]"/);
+	/*
+	 * THE TWO FALLBACKS (QA round 1, Q1-2): a missing controls group leaves the
+	 * reading VISIBLE rather than hidden forever, and a row with no other visible
+	 * reading anchors on the strip's own inline-end edge instead of standing down.
+	 */
+	assert.match(
+		strip,
+		/if \(!controls\) \{\s*\n\s*setDurationFits\(true\);\s*\n\s*return;\s*\n\s*\}/,
+	);
+	assert.match(
+		strip,
+		/lastEdge = direction === "rtl" \? stripBox\.left : stripBox\.right;/,
+	);
+
+	/*
+	 * THE ANCHOR IS LOGICAL. `insetInlineStart` flips with the direction; a
+	 * physical `left` would put the reading on the wrong side in `ur`.
+	 */
+	assert.match(
+		strip,
+		/insetInlineStart: `calc\(100% \+ \$\{READING_GAP\}px\)`/,
+	);
+	assert.doesNotMatch(strip, /left-\[calc\(100%\+4px\)\]/);
 });
 
 test("a running session renders the duration reading; only the measurement may hide it", () => {

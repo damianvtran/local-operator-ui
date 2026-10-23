@@ -77,6 +77,14 @@ const PORT = Number(flag("port") ?? 5431);
  * a widened capture can never overwrite or be mistaken for a default-810 one.
  */
 const MEASURE = flag("measure") ?? null;
+/*
+ * THE ROW'S DIRECTION, for the locale case. `dir="rtl"` mirrors which edge the
+ * duration's anchor and gap are measured from, and a physical rule passes every
+ * LTR frame while hiding the reading in `ur`. `--dir=rtl` names the harness's
+ * direction and the case id carries the suffix, so the two directions can never
+ * overwrite each other's numbers.
+ */
+const DIR = flag("dir") === "rtl" ? "rtl" : null;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
@@ -179,6 +187,9 @@ const PROBE = `(() => {
 		return out;
 	};
 	const strip = document.querySelector("[data-lo-session-strip]");
+	/* The row's inline direction, resolved the way the strip's own measurement
+	   resolves it: \`dir="rtl"\` mirrors which edge is "last". */
+	const direction = strip ? getComputedStyle(strip).direction : "ltr";
 	const row = strip ? strip.parentElement : null;
 	const items = row ? dissolve(row) : [];
 	/*
@@ -241,8 +252,14 @@ const PROBE = `(() => {
 	const nonDurationRight = readings
 		.filter((r) => r.shown && r.kind !== "duration")
 		.map((r) => r.box.right);
+	const nonDurationLeft = readings
+		.filter((r) => r.shown && r.kind !== "duration")
+		.map((r) => r.box.left);
 	const lastNonDurationRight = nonDurationRight.length
 		? Math.max(...nonDurationRight)
+		: null;
+	const lastNonDurationLeft = nonDurationLeft.length
+		? Math.min(...nonDurationLeft)
 		: null;
 	/*
 	 * THE CONTAINER THE SHED QUERY ACTUALLY RESOLVES AGAINST.
@@ -284,7 +301,13 @@ const PROBE = `(() => {
 	 * client box.
 	 */
 	const gap =
-		stripBox && controlsBox ? round(controlsBox.left - stripBox.right) : null;
+		stripBox && controlsBox
+			? round(
+					direction === "rtl"
+						? stripBox.left - controlsBox.right
+						: controlsBox.left - stripBox.right,
+				)
+			: null;
 	return {
 		containerBox: rect(document.querySelector("[data-lo-geometry-column]")),
 		queryContainer,
@@ -336,15 +359,25 @@ const PROBE = `(() => {
 		 * rightmost READING box against the controls' left edge: \`glyphOverlap > 0\`
 		 * means the last reading's own box is inside the controls group.
 		 */
+		direction,
 		readingsRight: readings.length
 			? Math.max(...readings.filter((r) => r.shown).map((r) => r.box.right))
 			: null,
+		readingsLeft: readings.length
+			? Math.min(...readings.filter((r) => r.shown).map((r) => r.box.left))
+			: null,
 		lastReadingRight: lastNonDurationRight,
-		/* 0 when the strip's right edge is the last reading's, which is the
-		   invariant \`left: calc(100% + 4px)\` assumes. */
+		lastReadingLeft: lastNonDurationLeft,
+		/* 0 when the strip's inline-END edge is the last reading's, which is the
+		   invariant \`insetInlineStart: calc(100% + 4px)\` assumes: the strip's right
+		   in LTR, its left in RTL. */
 		anchorDelta:
-			stripBox && lastNonDurationRight !== null
-				? round(stripBox.right - lastNonDurationRight)
+			stripBox && lastNonDurationRight !== null && lastNonDurationLeft !== null
+				? round(
+						direction === "rtl"
+							? stripBox.left - lastNonDurationLeft
+							: stripBox.right - lastNonDurationRight,
+					)
 				: null,
 		durationVisible:
 			duration !== null &&
@@ -353,8 +386,14 @@ const PROBE = `(() => {
 		glyphOverlap:
 			readings.filter((r) => r.shown).length && controlsBox
 				? round(
-						Math.max(...readings.filter((r) => r.shown).map((r) => r.box.right)) -
-							controlsBox.left,
+						direction === "rtl"
+							? controlsBox.right -
+									Math.min(
+										...readings.filter((r) => r.shown).map((r) => r.box.left),
+									)
+							: Math.max(
+									...readings.filter((r) => r.shown).map((r) => r.box.right),
+								) - controlsBox.left,
 					)
 				: null,
 		readings,
@@ -555,9 +594,9 @@ const main = async () => {
 	for (const state of STATES) {
 		for (const readings of READING_FIXTURES) {
 			for (const width of WIDTHS) {
-				const id = `${state}-${readings}-w${width}${MEASURE ? `-m${MEASURE}` : ""}`;
+				const id = `${state}-${readings}-w${width}${MEASURE ? `-m${MEASURE}` : ""}${DIR ? `-${DIR}` : ""}`;
 				if (ONLY && !ONLY.some((needle) => id.includes(needle))) continue;
-				cases.push({ id, state, readings, width, measure: MEASURE });
+				cases.push({ id, state, readings, width, measure: MEASURE, dir: DIR });
 			}
 		}
 	}
@@ -575,7 +614,7 @@ const main = async () => {
 			await cdp.send("Page.navigate", { url: "about:blank" });
 			await sleep(120);
 			await cdp.send("Page.navigate", {
-				url: `${ORIGIN}/composer-readings-geometry.html?w=${entry.width}&state=${entry.state}&readings=${entry.readings}&theme=${theme}${MEASURE ? `&measure=${MEASURE}` : ""}`,
+				url: `${ORIGIN}/composer-readings-geometry.html?w=${entry.width}&state=${entry.state}&readings=${entry.readings}&theme=${theme}${MEASURE ? `&measure=${MEASURE}` : ""}${DIR ? `&dir=${DIR}` : ""}`,
 			});
 			await waitForRow(cdp);
 			await sleep(180);

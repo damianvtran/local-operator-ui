@@ -87,6 +87,14 @@ const THEME = (params.get("theme") ?? DEFAULT_THEME) as ThemeName;
  */
 const MEASURE_PARAM = Number(params.get("measure") ?? 0);
 const MEASURE = MEASURE_PARAM > 0 ? MEASURE_PARAM : null;
+/*
+ * THE ROW'S DIRECTION. `ur` is a shipped locale and `dir="rtl"` mirrors the
+ * composer row, so a fit rule that only reads physical edges passes every LTR
+ * frame and hides the reading in that locale. This is the driver's hook for
+ * photographing that case: `--dir=rtl` sets the document's direction on the
+ * harness's own wrapper, and the strip resolves it with `getComputedStyle`.
+ */
+const DIR = params.get("dir") === "rtl" ? "rtl" : "ltr";
 
 applyThemeToDocument(THEME);
 
@@ -362,8 +370,10 @@ createRoot(document.getElementById("root") as HTMLElement).render(
 				{/* Bottom-anchored, like the app's own band: the row sits at the bottom
 				    edge of the pane, which is the geometry the app draws. */}
 				<div
+					dir={DIR}
 					style={{ height: "100vh", display: "flex", flexDirection: "column" }}
 					className="justify-end bg-canvas"
+					data-lo-geometry-dir={DIR}
 				>
 					<Harness />
 				</div>
