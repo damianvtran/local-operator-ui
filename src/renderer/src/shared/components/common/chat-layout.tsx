@@ -113,16 +113,6 @@ function useMeasuredBox(
 type ChatLayoutProps = {
 	sidebar: ReactNode;
 	content: ReactNode;
-	/**
-	 * The route's own panels paint from y0 and pad their content themselves.
-	 *
-	 * The lane is an OVERLAY for such a route, so the shell must not also reserve
-	 * its height: that reservation is what starts the panels 32px down, the
-	 * "doesn't go all the way to the top" defect reported for the Library
-	 * sidebar, the canvas right bar and Team Bridge. A route that does not opt in
-	 * keeps the painted lane row and its first row below it exactly as before.
-	 */
-	flushTop?: boolean;
 };
 
 /**
@@ -136,168 +126,6 @@ type ChatLayoutProps = {
  * focus and a Radix menu keeps its own keys.
  */
 const SIDEBAR_SHEET_SCOPE = "data-sidebar-sheet";
-
-/**
- * The marker a route's own leading column wears, so the lane can carry its
- * ground - and it NAMES that ground, because the lane paints what it names.
- *
- * WHY A ROUTE HAS TO SAY ANYTHING AT ALL. The lane above the two shell columns is a
- * MIRROR of their grounds: it paints the app sidebar's width in `surface` and the
- * rest in `canvas`. It has to be - a column cannot paint above its own top edge, and
- * the row that holds the columns is `overflow: hidden` with a second clipped column
- * inside it, so nothing a route renders can reach y0. The mirror is therefore the
- * only thing that can put a route-owned column's ground up there, and it has to be
- * told which column that is - and on which rung the column stands. It used to assume
- * `surface`; the settings rail's move to `elevated` (2026-09-27) is what made the
- * assumption visible, and the attribute's VALUE is the role the lane must paint
- * across the marked column's width. That rail was re-grounded flat on 2026-09-30, so
- * every column hands over `surface` today - the rung stays part of the contract
- * rather than being narrowed away, because a route on `elevated` is exactly the case
- * the argument exists for.
- *
- * WRITTEN BY `useLaneLeadingColumn` rather than spelled in the JSX, so the attribute
- * and the registration that gives it meaning cannot be separated: an element wearing
- * the attribute is exactly an element the shell was handed. It stays in the DOM as
- * the handle a rig finds the column by (`--scene route-tops`).
- */
-const LANE_LEADING_COLUMN = "data-lane-leading-column";
-
-/**
- * The rungs a route's leading column may stand on. The shell paints the one the
- * marker names, resolved off the theme's own `--lo-<role>` variable, so the value
- * is a role and never a colour.
- */
-type LaneLeadingGround = "surface" | "elevated";
-
-/** The shell's half of the contract: a route hands its leading column over. */
-type LaneLeadingRegistration = (column: HTMLElement | null) => void;
-
-const LaneLeadingContext = createContext<LaneLeadingRegistration | null>(null);
-
-/**
- * Attach to a route's own leading column - `ref={laneLeadingColumn}` - and the shell
- * puts that column's ground behind the window's top strip.
- *
- * THE ARGUMENT IS THE COLUMN'S OWN GROUND, and it is required rather than defaulted:
- * a route added later has to say which rung it stands on for its column to be
- * mirrored, and the settings rail's round on `elevated` (2026-09-27, given up
- * 2026-09-30) is why one fixed ground is no longer enough. This hook does not
- * restate the paint - `chat-layout`'s lane reads the marker back - so the value and
- * the class on the column are one decision, pinned by the sweep:
- * `lane-leading.test.mjs` reads the painting file's `bg-<ground>` beside the handed
- * value, so `settings-sidebar.tsx`'s `bg-surface` and the rail wrapper's
- * `"surface"` fail together if only one of them moves.
- *
- * A REF RATHER THAN A QUERY, and the settings rail is why: it renders after the
- * route's config read resolves, so on a cold route it is not in the tree at the
- * commit the shell renders in, and a shell that looked for it once would find nothing
- * and never look again (measured 2026-09-27 - the settings rail stayed under the
- * strip on the run that arrived cold, while the second visit, whose store was warm,
- * was carried). Registration is an event: whatever commit the column appears in,
- * this runs in it.
- *
- * OUTSIDE THE SHELL IT IS INERT IN BOTH HALVES (review round 1, N1), which is what
- * a story rendering one of these routes on its own gets (`register` is null):
- * nothing registers and no marker is written, and only the lane's band is missing,
- * because there is no lane.
- */
-export const useLaneLeadingColumn = (
-	ground: LaneLeadingGround,
-): LaneLeadingRegistration => {
-	const register = useContext(LaneLeadingContext);
-	return useCallback<LaneLeadingRegistration>(
-		(column) => {
-			/*
-			 * GATED ON `register` (review round 1, N1): the marker's one meaning is "this
-			 * element was handed to the shell", and outside the shell there is no shell to
-			 * hand it to - so a story rendering the route alone must not wear it.
-			 */
-			if (column && register) column.setAttribute(LANE_LEADING_COLUMN, ground);
-			register?.(column);
-		},
-		[register, ground],
-	);
-};
-
-/**
- * The ground the marker names, read back off the element.
- *
- * `surface` answers for an absent or unknown value rather than throwing: the
- * shell's job on a bad hand-over is to paint something sane - the band's
- * historic shape - and not to take the window down over a route's regression.
- */
-const laneGroundOf = (column: HTMLElement): LaneLeadingGround =>
-	column.getAttribute(LANE_LEADING_COLUMN) === "elevated"
-		? "elevated"
-		: "surface";
-
-/**
- * Where the lane's `surface` band has to end on the route that is up, and on which
- * rung the column that ends it stands.
- *
- * The right edge of the registered column, in the lane's own coordinates, or null
- * where the route has no such column - which is most of them (chat, schedules, agent
- * hub, projects), and where the band keeps the app sidebar's own width.
- *
- * MEASURED IN A LAYOUT EFFECT, so the band is right in the FIRST painted frame of a
- * route rather than one frame later: a state update from `useLayoutEffect` is flushed
- * before the browser paints. `ResizeObserver` rather than a dependency on the window
- * width is what keeps it true when the column changes size for a reason that is not a
- * React render - the rail's `min-[1040px]:` step is a media query, and a container
- * query or a font arriving would be the same shape of change.
- */
-function useLaneLeadingEdge(
-	lane: RefObject<HTMLDivElement | null>,
-	column: HTMLElement | null,
-	sidebarWidth: number,
-	direction: "ltr" | "rtl",
-): { edge: number; ground: LaneLeadingGround } | null {
-	const [leading, setLeading] = useState<{
-		edge: number;
-		ground: LaneLeadingGround;
-	} | null>(null);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `sidebarWidth` is a re-measure TRIGGER rather than a value the body reads. The registered column's right edge moves with the sidebar it stands beside, and the observer cannot see that: dragging the divider does not change the column's own box at all, only where it sits.
-	useLayoutEffect(() => {
-		const laneElement = lane.current;
-		if (!laneElement || !column) {
-			setLeading(null);
-			return;
-		}
-		const measure = () => {
-			/* One rounding, so a fractional box does not re-render the shell on its own
-			   noise: the value becomes a background stop, and a stop is a length. */
-			const columnRect = column.getBoundingClientRect();
-			const laneRect = laneElement.getBoundingClientRect();
-			/*
-			 * A STOP IS MEASURED FROM THE LANE'S INLINE-START EDGE, not from the
-			 * physical left: in RTL the leading column stands at the right and the
-			 * band is painted with `to left`, so the same number must be the distance
-			 * from the right edge. The two branches are the same quantity read from
-			 * opposite sides; neither flips the layout.
-			 */
-			const edgeFromInlineStart =
-				direction === "rtl"
-					? laneRect.right - columnRect.left
-					: columnRect.right - laneRect.left;
-			const next = {
-				edge: Math.round(edgeFromInlineStart * 100) / 100,
-				ground: laneGroundOf(column),
-			};
-			setLeading((previous) =>
-				previous !== null &&
-				previous.edge === next.edge &&
-				previous.ground === next.ground
-					? previous
-					: next,
-			);
-		};
-		const observer = new ResizeObserver(measure);
-		observer.observe(column);
-		measure();
-		return () => observer.disconnect();
-	}, [column, direction, lane, sidebarWidth]);
-	return leading;
-}
 
 /**
  * What the sidebar itself needs to know about where it is drawn.
@@ -318,15 +146,6 @@ type SidebarFrame = {
 	 * the docked chevron inside the sheet beside the primitive's own close.
 	 */
 	mode: "docked" | "strip" | "overlay";
-	/**
-	 * Whether this shell route pads the sidebar's own panel for the chrome lane.
-	 *
-	 * The padding belongs INSIDE the panel that owns the ground, not on a shell
-	 * wrapper: a wrapper with a background would sit between `#app` and the glass
-	 * regions and make the window opaque (review round 1, S1). Only `flushTop`
-	 * routes ask for it.
-	 */
-	chromePadTop?: boolean;
 	/**
 	 * The one control that changes the sidebar's shape: collapse the dock, close
 	 * the sheet, or - from the strip - expand (the dock at >=1024, the sheet below).
@@ -351,11 +170,7 @@ export const useSidebarFrame = (): SidebarFrame => {
 	return frame;
 };
 
-export const ChatLayout: FC<ChatLayoutProps> = ({
-	sidebar,
-	content,
-	flushTop = false,
-}) => {
+export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	/*
 	 * The sidebar's sheet edge is LOGICAL: it is the sidebar, so it enters from
 	 * the inline-start edge — left in LTR, right in RTL. Radix names the edge
@@ -382,10 +197,9 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 	 * chose the app in. Reopening the window does not reopen it.
 	 */
 	const [sheetRequested, setSheetRequested] = useState(false);
-	/* The strip the band is painted on, and whichever leading column the route has
-	   handed over through `useLaneLeadingColumn` - null on every route that draws none. */
+	/* The strip the OS's controls sit over. It is an OVERLAY for every route, so
+	   the columns behind it keep y0 and paint their own grounds through it. */
 	const laneRef = useRef<HTMLDivElement | null>(null);
-	const [leadingColumn, setLeadingColumn] = useState<HTMLElement | null>(null);
 
 	useEffect(() => {
 		const onResize = () => setViewportWidth(window.innerWidth);
@@ -566,26 +380,17 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 	 * exactly as they were, and the sheet is drawn on top of them, dimmed by the
 	 * scrim, with the pane itself as the outside press that closes it.
 	 *
-	 * THE LANE TAKES EACH COLUMN'S OWN GROUND (D10). It was one window-wide strip
-	 * on `canvas`, so over the sidebar's `surface` it read as a notch the sidebar
-	 * hung from. It is still ONE element spanning both columns - that is what keeps
-	 * the brand row and the conversation title on one line - but it paints each
-	 * column's ground with a hard-stop gradient: the band's width in `surface` (the
-	 * sidebar's own, or a leading column a route hands over - `laneEdge` below),
-	 * the conversation's in `canvas`, and - since the slot moved to the drawer's
-	 * rung (`canvas/index.tsx`) - THE SLOT'S WIDTH IN `elevated`, so the pane is
-	 * continuous from y0 down. A pane-only change would leave the pane's tone
-	 * meeting this band at y32: the hard horizontal cut this pass's predecessor
-	 * removed, one layer up.
-	 *
-	 * The stop is the pane's leading edge, from the content column's own measured
-	 * box (`useMeasuredBox` above states the arithmetic and the frame that caught a
-	 * first version of it 60px wide), and `slotWidth` is 0 when no pane is open - a
-	 * zero-width last stop, so the band is exactly the two-stop gradient it was.
-	 * The canvas's `overlay` mode needs no branch here and gets none: the pane
-	 * draws at the width the resolver measures (it no longer covers the row - see
-	 * `canvasPaneMode` for what the literal draws today), and the lane paints the
-	 * pane's own ground from that leading edge.
+	 * THE LANE PAINTS NOTHING ANY MORE. It used to be a reserved row carrying a
+	 * hard-stop gradient that mirrored the columns' grounds - the sidebar's
+	 * `surface`, the conversation's `canvas`, the slot's `elevated` - because a
+	 * column clipped below the row could not paint above its own top edge. That
+	 * mirror was always one column behind the route: a route-owned leading
+	 * column, the Library dock and the right slot each started below a band of
+	 * the wrong tone, and the opt-in that lifted the columns left every other
+	 * route 32px down. The lane is now a TRANSPARENT overlay and the
+	 * columns paint through it (the panel contract in `styles/index.css`); what
+	 * remains here is the drag surface and `data-slot-edge`, the geometry handle
+	 * the evidence rigs read the pane's leading edge from.
 	 */
 	const columnWidth =
 		layout.mode === "docked" ? layout.width : SIDEBAR_COLLAPSED_WIDTH;
@@ -638,56 +443,9 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 					? viewportWidth - contentBox.left
 					: contentBox.left + contentBox.width) - slotWidth
 			: 0;
-	/*
-	 * THE RAIL'S LEADING EDGE, which is the content column's trailing edge (#872).
-	 * The rail is a sibling AFTER the measured column, so it begins exactly where
-	 * the column ends; the lane's last pair paints its x-range in the rail's own
-	 * `surface` rather than letting the slot's `elevated` run to the window's end
-	 * above a rail that is not elevated. With no rail (settings, agents) the column
-	 * reaches the window's end and the band is zero-width.
-	 */
-	const railEdge =
-		contentBox.width > 0
-			? direction === "rtl"
-				? viewportWidth - contentBox.left
-				: contentBox.left + contentBox.width
-			: 0;
-	/*
-	 * THE BAND'S OWN WIDTH, which is the sidebar's UNLESS the route beside it draws a
-	 * leading column of its own: settings has its rail, agents its list pane, and the
-	 * saved-agent route a 280px roster. On those routes the lane has to carry the
-	 * column's own ground across its width - the column cannot paint above its own top
-	 * edge, and the operator's report of 2026-09-26 (and again of 2026-09-27, as still
-	 * true) is the screenshot that proves it: the settings rail's ground began below a
-	 * differently-toned strip. The sidebar's width is the FLOOR rather than the answer:
-	 * a route column can only ever stand to the right of it, and with no marker the
-	 * number is exactly what it always was.
-	 *
-	 * THE TWO EDGES COMPOSE RATHER THAN COMPETE, which is why both are computed here
-	 * and neither replaces the other. THE FIRST PAIR - `laneEdge` - IS THE LEADING
-	 * COLUMN'S RUNG (the settings-rail edge, 2026-09-27) and is read off the marker
-	 * rather than assumed: the lane paints the sidebar's width in `surface`, the rung
-	 * the column NAMES across its width, then `canvas`. A `surface` column keeps the
-	 * old two-stop shape exactly (the band IS the column), which is also what a route
-	 * with no column gets. THE LAST PAIR - `slotEdge` - IS THE SLOT'S STOP (the
-	 * drawer's-rung pass): it repeats the conversation's token at the pane's leading
-	 * edge, so the slot's `elevated` begins exactly where the conversation's `canvas`
-	 * ends and the pane is continuous from y0 down. The chat route draws no leading
-	 * column, so there the first pair collapses onto the sidebar's own width and the
-	 * gradient is the one the drawer's-rung pass shipped. The sheet, the divider and
-	 * the drag handling are untouched by any of this.
-	 */
-	const leading = useLaneLeadingEdge(
-		laneRef,
-		leadingColumn,
-		columnWidth,
-		direction,
-	);
-	const laneEdge = Math.max(columnWidth, leading?.edge ?? 0);
-	const laneGround = leading?.ground ?? "surface";
 	return (
 		<div
-			className="flex min-h-0 flex-1 flex-col overflow-hidden"
+			className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
 			/*
 			 * THE RAIL'S WIDTH, PUBLISHED FOR THE CSS THAT HAS TO SUBTRACT IT (#872).
 			 * On Windows and Linux the OS caption buttons are ~138px wide
@@ -708,54 +466,44 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 			}
 		>
 			{/*
-			 * THE macOS LANE, and it is SHELL-LEVEL rather than the sidebar's own.
+			 * THE macOS LANE: ONE TRANSPARENT OVERLAY, FOR EVERY ROUTE.
 			 *
 			 * Electron leaves the native traffic lights over the renderer once the
-			 * title bar is hidden (`src/main/titlebar-options.ts`), so the renderer has
-			 * to keep their 32px clear. Reserving it ONCE, above BOTH columns, is what
-			 * lets the sidebar's brand row and the conversation title be the same row:
-			 * with the lane scoped to one column, that column's first row starts 32px
-			 * lower than the other's and the two only agree by accident. The lane is
-			 * also the window's drag handle - every control in either first row opts
-			 * back out with `data-titlebar-no-drag`.
+			 * title bar is hidden (`src/main/titlebar-options.ts`), so the window has
+			 * to keep their 32px clear and provide a drag surface there. The lane is
+			 * the ONE element that does both - spanning the window, so the sidebar's
+			 * brand row and the conversation title are the same row.
 			 *
-			 * It is `display: none` outside the mac gate (the rule is in
-			 * `styles/index.css`, keyed on the chrome attributes), so a platform whose
-			 * OS is not drawing over the app loses nothing to it.
+			 * IT RESERVES NO HEIGHT. A reserved row put every column 32px down and
+			 * forced the shell to paint a mirror of their grounds above them; the
+			 * mirror could not know about a route-owned panel and the opt-in that
+			 * lifted the columns left every other route inset (the operator's third
+			 * report of the same seam, 2026-10-20). The columns now reach y0 and
+			 * paint their own ground through the strip - the panel contract in
+			 * `styles/index.css` - and this element is only the drag surface.
+			 * Nothing interactive stands above y32 (each panel pads its own content
+			 * by `--panel-top-pad`), so the overlay has no press to steal.
+			 *
+			 * It is `display: none` outside the mac/leading gate (the rule in
+			 * `styles/index.css`, keyed on the chrome attributes), so a platform
+			 * whose OS is not drawing over the app loses nothing to it.
+			 *
+			 * `data-slot-edge` STAYS: it is the geometry handle the evidence rigs
+			 * read the pane's leading edge from, not a paint stop.
 			 */}
-			{flushTop ? (
-				<div
-					ref={laneRef}
-					data-titlebar-lane=""
-					data-titlebar-drag=""
-					data-slot-edge={slotEdge}
-					className="absolute inset-x-0 top-0 z-30 h-[var(--chrome-strip-h)]"
-				/>
-			) : (
-				<div
-					ref={laneRef}
-					data-titlebar-lane=""
-					data-titlebar-drag=""
-					/* The stop as a fact on the element, the same reason the canvas's mode is one,
-					   so a probe reads where the lane changes ground rather than reverse-engineering
-					   it from a gradient string. */
-					data-slot-edge={slotEdge}
-					className="h-8 shrink-0"
-					style={{
-						background:
-							laneGround === "surface"
-								? `linear-gradient(to ${direction === "rtl" ? "left" : "right"}, var(--lo-surface) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px, var(--lo-elevated) ${railEdge}px, var(--lo-surface) ${railEdge}px)`
-								: `linear-gradient(to ${direction === "rtl" ? "left" : "right"}, var(--lo-surface) ${columnWidth}px, var(--lo-${laneGround}) ${columnWidth}px, var(--lo-${laneGround}) ${laneEdge}px, var(--lo-canvas) ${laneEdge}px, var(--lo-canvas) ${slotEdge}px, var(--lo-elevated) ${slotEdge}px, var(--lo-elevated) ${railEdge}px, var(--lo-surface) ${railEdge}px)`,
-					}}
-				/>
-			)}
+			<div
+				ref={laneRef}
+				data-titlebar-lane=""
+				data-titlebar-drag=""
+				data-slot-edge={slotEdge}
+				className="absolute inset-x-0 top-0 z-30 h-[var(--chrome-strip-h)]"
+			/>
 			<div className="flex min-h-0 flex-1 overflow-hidden">
 				<div className={cn("h-full shrink-0")} style={{ width: columnWidth }}>
 					<SidebarFrameContext.Provider
 						value={{
 							expanded: layout.mode === "docked",
 							mode: layout.mode === "docked" ? "docked" : "strip",
-							chromePadTop: flushTop,
 							onCollapse:
 								viewportWidth >= SIDEBAR_DOCK_MIN_PX
 									? toggleSidebar
@@ -805,68 +553,66 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 					className="flex h-full min-w-0 grow flex-col overflow-hidden"
 					style={
 						{
-							"--panel-top-pad": flushTop ? "var(--chrome-strip-h)" : "0px",
+							"--panel-top-pad": "var(--chrome-strip-h)",
 						} as CSSProperties
 					}
 				>
-					<LaneLeadingContext.Provider value={setLeadingColumn}>
-						<PanelRailHostContext.Provider value={railHost}>
+					<PanelRailHostContext.Provider value={railHost}>
+						{/*
+						 * THE CONTENT COLUMN IS A ROW INSIDE, so the shell can dock its own
+						 * pane BESIDE the route rather than over it. The measured box stays the
+						 * COLUMN (`contentColumnRef`, above): a flex item's width here is
+						 * resolved by the row it sits in, not by its own content, so adding a
+						 * pane inside cannot feed back into the number `resolveRightSlotWidth`
+						 * is called with — the column is the same width with the pane open as
+						 * with it closed, which is exactly what keeps the lane's stop and the
+						 * pane's leading edge one number.
+						 */}
+						<div className="flex h-full min-h-0 w-full overflow-hidden">
+							{content}
 							{/*
-							 * THE CONTENT COLUMN IS A ROW INSIDE, so the shell can dock its own
-							 * pane BESIDE the route rather than over it. The measured box stays the
-							 * COLUMN (`contentColumnRef`, above): a flex item's width here is
-							 * resolved by the row it sits in, not by its own content, so adding a
-							 * pane inside cannot feed back into the number `resolveRightSlotWidth`
-							 * is called with — the column is the same width with the pane open as
-							 * with it closed, which is exactly what keeps the lane's stop and the
-							 * pane's leading edge one number.
+							 * THE FLEET ASKS PANE: the same three pieces the route's occupants
+							 * use (the divider, the slot, the pane), so the column is one idiom in
+							 * both homes. The divider exists only while it DOCKS, for the reason
+							 * the canvas's own states: in the overlay mode there is no flow
+							 * boundary to drag.
 							 */}
-							<div className="flex h-full min-h-0 w-full overflow-hidden">
-								{content}
-								{/*
-								 * THE FLEET ASKS PANE: the same three pieces the route's occupants
-								 * use (the divider, the slot, the pane), so the column is one idiom in
-								 * both homes. The divider exists only while it DOCKS, for the reason
-								 * the canvas's own states: in the overlay mode there is no flow
-								 * boundary to drag.
-								 */}
-								{fleetAsksOpen && (
-									<>
-										{fleetDocked && (
-											<ResizableDivider
-												sidebarWidth={slotWidth}
-												onSidebarWidthChange={setRightSlotWidth}
-												minWidth={CANVAS_PANE_MIN_PX}
-												maxWidth={Math.max(
-													CANVAS_PANE_MIN_PX,
-													canvasDockWidth(contentBox.width),
-												)}
-												side="left"
-												onDoubleClick={restoreDefaultRightSlotWidth}
-												label="Resize asks. Double-click resets the shared pane width."
-											/>
-										)}
-										<PaneSlot
-											width={slotWidth}
-											tourTag="ask-fleet-slot"
-											data-ask-mode={fleetDocked ? "docked" : "overlay"}
-										>
-											<FleetAskDrawer
-												/*
-												 * THE KIND OF CLOSE IS FORWARDED, NOT DECIDED HERE (#1079): the pane's X
-												 * asks for an empty slot and passes `dismissSlot`, while its own Escape
-												 * listener (and the queue emptying) withdraw and pass nothing.
-												 */
-												onClose={(options) =>
-													setAskDrawerOpen(false, "fleet", options)
-												}
-											/>
-										</PaneSlot>
-									</>
-								)}
-							</div>
-						</PanelRailHostContext.Provider>
-					</LaneLeadingContext.Provider>
+							{fleetAsksOpen && (
+								<>
+									{fleetDocked && (
+										<ResizableDivider
+											sidebarWidth={slotWidth}
+											onSidebarWidthChange={setRightSlotWidth}
+											minWidth={CANVAS_PANE_MIN_PX}
+											maxWidth={Math.max(
+												CANVAS_PANE_MIN_PX,
+												canvasDockWidth(contentBox.width),
+											)}
+											side="left"
+											onDoubleClick={restoreDefaultRightSlotWidth}
+											label="Resize asks. Double-click resets the shared pane width."
+										/>
+									)}
+									<PaneSlot
+										width={slotWidth}
+										tourTag="ask-fleet-slot"
+										data-ask-mode={fleetDocked ? "docked" : "overlay"}
+									>
+										<FleetAskDrawer
+											/*
+											 * THE KIND OF CLOSE IS FORWARDED, NOT DECIDED HERE (#1079): the pane's X
+											 * asks for an empty slot and passes `dismissSlot`, while its own Escape
+											 * listener (and the queue emptying) withdraw and pass nothing.
+											 */
+											onClose={(options) =>
+												setAskDrawerOpen(false, "fleet", options)
+											}
+										/>
+									</PaneSlot>
+								</>
+							)}
+						</div>
+					</PanelRailHostContext.Provider>
 				</div>
 				{/*
 				 * THE PANEL RAIL'S HOST (#872): a 44px sibling AFTER the measured column,
@@ -889,7 +635,13 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 					ref={setRailHost}
 					data-panel-rail-host=""
 					data-glass-region="sidebar"
-					className="h-full shrink-0 bg-surface"
+					/*
+					 * `panel-top-pad` because this is the shell's other full-height
+					 * panel: the rail paints `surface` from y0 and its first item must
+					 * clear the OS controls. The host's ground is the panel; the pad
+					 * moves only what the portal puts inside it.
+					 */
+					className="panel-top-pad h-full shrink-0 bg-surface"
 					style={{ width: railWidth }}
 				/>
 			</div>
@@ -950,7 +702,7 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 						 * Linux with trailing buttons), so the padding is absent exactly
 						 * where it should be.
 						 */
-						"pt-[var(--chrome-strip-h)]",
+						"panel-top-pad",
 					)}
 					aria-describedby={undefined}
 				>
@@ -966,7 +718,6 @@ export const ChatLayout: FC<ChatLayoutProps> = ({
 						value={{
 							expanded: true,
 							mode: "overlay",
-							chromePadTop: false,
 							onCollapse: () => setSheetRequested(false),
 						}}
 					>

@@ -622,7 +622,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	return (
 		<div
 			data-glass-region="canvas"
-			className="@container/bridge relative flex h-full min-h-0 w-full overflow-hidden bg-canvas"
+			className="panel-flush @container/bridge relative flex min-h-0 flex-1 w-full overflow-hidden bg-canvas"
 		>
 			<aside
 				data-glass-region="page-sidebar"
@@ -632,7 +632,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 				   Agents, Library) and the one `rowCurrent`'s fill is tuned against:
 				   on the canvas ground the selected row measured 1.06:1 on `paper`
 				   (design round 1, D2). */
-				className="flex w-72 shrink-0 flex-col bg-surface pt-[var(--panel-top-pad,0px)]"
+				className="panel-top-pad flex w-72 shrink-0 flex-col bg-surface"
 			>
 				<h1 className="sr-only">{t("ui.teamBridge.page.title")}</h1>
 				<header className="flex h-11 shrink-0 items-center gap-2 px-3">
@@ -854,7 +854,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			    carries the surface — two regions read apart without a rule. */}
 			<section
 				className={cn(
-					"flex min-w-0 flex-1 flex-col bg-surface pt-[var(--panel-top-pad,0px)]",
+					"panel-top-pad flex min-w-0 flex-1 flex-col bg-surface",
 					threadIsOpen && "@max-[1024px]/bridge:invisible",
 				)}
 			>
