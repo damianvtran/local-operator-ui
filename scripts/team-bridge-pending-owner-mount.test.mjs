@@ -51,6 +51,49 @@ for (const phase of ["create", "post"]) {
 	}
 }
 
+for (const boundary of ["account", "tenant"]) {
+	test(`same conversation id cannot project another ${boundary}'s failed body`, async () => {
+		const page = await mountPendingOwnerPage({ existing: true });
+		try {
+			await page.sendPrivateGroup("A existing private body", "failed");
+			await page.changeOwner(boundary);
+			assert.equal(page.text().includes("A existing private body"), false);
+			assert.equal(page.foreignFrames("A existing private body").length, 0);
+		} finally { await page.close(); }
+	});
+}
+
+for (const permission of ["off", "readonly"]) {
+	for (const action of ["create", "retry", "dialog"]) {
+		test(`${permission} revocation fences pending ${action}`, async () => {
+			const page = await mountPendingOwnerPage();
+			try {
+				if (action === "dialog") await page.openChannel();
+				else await page.sendPrivateGroup("A private authority body", action === "create" ? "create" : "failed");
+				await page.setPermission(permission);
+				const postsBefore = page.posts().length;
+				const createsBefore = page.creates().length;
+				const readsBefore = page.readCount();
+				if (action === "create") await page.release("create");
+				if (action === "retry") await page.retryIfVisible();
+				if (action === "dialog") await page.submitChannelIfVisible();
+				assert.equal(page.posts().length, postsBefore);
+				assert.equal(page.creates().length, createsBefore);
+				assert.equal(page.readCount(), readsBefore);
+			} finally { await page.close(); }
+		});
+	}
+}
+
+test("active owner can still create a channel", async () => {
+	const page = await mountPendingOwnerPage();
+	try {
+		await page.openChannel();
+		await page.submitChannelIfVisible();
+		assert.equal(page.creates().length, 1);
+	} finally { await page.close(); }
+});
+
 test("same-owner rerender and retry reuse the created group and client reference", async () => {
 	const page = await mountPendingOwnerPage();
 	try {
