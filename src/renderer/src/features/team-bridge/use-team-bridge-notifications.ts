@@ -234,6 +234,8 @@ async function deliverTeamBridgeBanner(
 	await bridge
 		.notify({
 			conversationId: candidate.conversationId,
+			// A reply banner names its thread root so the click opens the thread
+			// pane; omitted for a top-level message so the click opens the conversation.
 			...(candidate.threadId ? { threadId: candidate.threadId } : {}),
 			tenantId: candidate.tenantId,
 			seq: candidate.seq,

@@ -60,6 +60,15 @@ export type ThreadPaneProps = {
 	loadingMore?: boolean;
 	onMore?: () => void;
 	onRead?: (seq: number) => Promise<unknown>;
+	/*
+	 * Lets the pane's rows carry the message toolbar's react and more. There is
+	 * deliberately no `onReply`: threads are one level deep, so a reply (and
+	 * the root, which this pane already is the thread of) never offers
+	 * reply-in-thread.
+	 */
+	reactionContext?: { accountId: string; tenantId: string; disabled?: boolean };
+	/** Story/capture seed only: show the rows' toolbars without hover. */
+	forceToolbar?: boolean;
 };
 
 /** A sibling surface, not a dialog: the channel stays visible beside its thread.
@@ -79,6 +88,8 @@ export function TeamBridgeThreadPaneView({
 	loadingMore = false,
 	onMore,
 	onRead,
+	reactionContext,
+	forceToolbar,
 	tenantId,
 	conversationId,
 	accountId,
@@ -188,6 +199,8 @@ export function TeamBridgeThreadPaneView({
 						labelFor={labelFor}
 						tenantId={tenantId}
 						density="compact"
+						reactionContext={reactionContext}
+						forceToolbar={forceToolbar}
 					/>
 				)}
 				{/* Pending/error pages cannot assert an empty count from an empty array. */}
@@ -219,6 +232,8 @@ export function TeamBridgeThreadPaneView({
 						labelFor={labelFor}
 						tenantId={tenantId}
 						density="compact"
+						reactionContext={reactionContext}
+						forceToolbar={forceToolbar}
 					/>
 				)}
 				{hasMore && (
@@ -317,6 +332,7 @@ export function TeamBridgeThreadPane({
 	readOnly,
 	labelFor,
 	onClose,
+	reactionContext,
 	accountId,
 	attachmentCapability,
 }: {
@@ -325,6 +341,7 @@ export function TeamBridgeThreadPane({
 	readOnly: boolean;
 	labelFor: ThreadPaneProps["labelFor"];
 	onClose: () => void;
+	reactionContext?: ThreadPaneProps["reactionContext"];
 	accountId?: string;
 	attachmentCapability?: TeamBridgeAttachmentCapability | null;
 }) {
@@ -415,6 +432,7 @@ export function TeamBridgeThreadPane({
 			hasMore={query.hasNextPage}
 			loadingMore={query.isFetchingNextPage}
 			onMore={() => void query.fetchNextPage()}
+			reactionContext={reactionContext}
 		/>
 	);
 }

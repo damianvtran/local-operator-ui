@@ -582,7 +582,10 @@ function buildLegs({ top, since, paths, flags }) {
 				run: () =>
 					runInherited(
 						process.execPath,
-						["scripts/check-scripts-lint.mjs", "--since", since],
+						// A pushed branch is not Actions' synthetic merge checkout:
+						// its first parent can contain the entire feature/stack. Keep
+						// the caller's target and the full merge-base delta instead.
+						["scripts/check-scripts-lint.mjs", "--branch", "--since", since],
 						top,
 					) === 0,
 			});

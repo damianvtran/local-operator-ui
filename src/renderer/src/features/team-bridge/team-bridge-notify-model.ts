@@ -184,7 +184,9 @@ export function teamBridgeNotificationSubject(
 	return {
 		conversationName: conversationTitle(conversation, selfAccountId),
 		organizationName: conversationOrganizationName(conversation, organizations),
-		// Match the reviewed reply-banner fallback: legacy Member is not a name.
+		// The list row's label is the degraded-banner title (the message read that
+		// names the sender can fail, and a thread reply is invisible to it), so the
+		// legacy "Member" placeholder is dropped here exactly as the rail drops it.
 		senderLabel: storedLabel(conversation.last_sender_label ?? ""),
 	};
 }
