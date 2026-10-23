@@ -1,0 +1,66 @@
+name: Temporary npm 0.41.0 containment
+
+# C6 containment only: no artifact build/publish, and no configurable write target.
+# DELETE this workflow in a reviewed follow-up immediately after verified success.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-0410-containment
+  cancel-in-progress: false
+
+jobs:
+  contain:
+    if: github.repository == 'damianvtran/local-operator-ui' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # No checkout or third-party action: only runner-provided npm/Python and
+      # hardcoded registry operations. The token is never echoed or persisted.
+      - name: Roll back latest and deprecate affected version
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/containment.npmrc
+          NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+          NPM_CONFIG_JSON: 'true'
+          NPM_CONFIG_COLOR: 'false'
+          NPM_CONFIG_IGNORE_SCRIPTS: 'true'
+          # Invalid credentials or network failure must stop, never retry or
+          # fall back to OIDC/another token. The existing publish path is unrelated.
+          NPM_CONFIG_FETCH_RETRIES: '0'
+        run: |
+          set -euo pipefail
+          test -n "$NODE_AUTH_TOKEN" || { echo 'NPM_TOKEN is missing; stopping.' >&2; exit 1; }
+          umask 077
+          trap 'rm -f "$NPM_CONFIG_USERCONFIG"' EXIT
+          printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$NPM_CONFIG_USERCONFIG"
+
+          # Both exact versions must exist and belong to this repository before
+          # either write. Never redirect a newer release back to this incident.
+          for version in 0.40.0 0.41.0; do
+            npm view "local-operator-ui@$version" name version repository.url --json |
+              python3 -c 'import json,sys; d=json.load(sys.stdin); assert d == {"name":"local-operator-ui", "version":sys.argv[1], "repository.url":"git+https://github.com/damianvtran/local-operator-ui.git"}, d' "$version"
+          done
+          latest=$(npm view local-operator-ui dist-tags.latest --json)
+          case "$latest" in
+            '"0.41.0"') npm dist-tag add local-operator-ui@0.40.0 latest ;;
+            '"0.40.0"') echo 'latest is already 0.40.0; leaving it unchanged.' ;;
+            *) echo "Unexpected latest: $latest; refusing containment." >&2; exit 1 ;;
+          esac
+          npm deprecate local-operator-ui@0.41.0 'This version has a cross-account message-state issue; use 0.40.0 until a verified fix is released.'
+
+          # End with the exact requested readbacks. JSON is an environment
+          # setting so these commands remain literal; assert, do not just log.
+          echo 'npm view local-operator-ui dist-tags'
+          tags=$(npm view local-operator-ui dist-tags)
+          printf '%s\n' "$tags"
+          printf '%s\n' "$tags" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d.get("latest") == "0.40.0", d'
+          echo 'npm view local-operator-ui@0.41.0 deprecated'
+          deprecated=$(npm view local-operator-ui@0.41.0 deprecated)
+          printf '%s\n' "$deprecated"
+          printf '%s\n' "$deprecated" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d == "This version has a cross-account message-state issue; use 0.40.0 until a verified fix is released.", d'
