@@ -613,7 +613,7 @@ const ShellFrame: FC<{ children: ReactNode; windows?: boolean }> = ({
 			<ChatLayout
 				sidebar={<SidebarNavigation />}
 				content={
-					<main className="flex min-w-0 grow flex-col overflow-hidden">
+					<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden">
 						{children}
 					</main>
 				}
@@ -998,7 +998,12 @@ const ConversationStandIn = ({
 	return (
 		<div
 			data-tour-tag="chat-column"
-			className="w-0 min-w-[480px] flex-1 flex h-full min-h-0 flex-col overflow-hidden"
+			/*
+			 * `panel-top-pad bg-canvas`, as `chat-content.tsx`'s column: under the
+			 * flush row this column's ground starts at y0 and its own pad moves the
+			 * header below the OS controls.
+			 */
+			className="panel-top-pad w-0 min-w-[480px] flex-1 flex h-full min-h-0 flex-col overflow-hidden bg-canvas"
 		>
 			<ChatHeader
 				agentName="Core"
@@ -1235,11 +1240,18 @@ const ChatShellFrame: FC<{
 			<ChatLayout
 				sidebar={<SidebarNavigation />}
 				content={
-					<main className="flex min-w-0 grow flex-col overflow-hidden">
+					<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden">
+						{/*
+						 * The pane row stands in for `ChatPage`'s root, so it is the chat
+						 * route's flush root as that is (design round 1, D1): it cancels
+						 * `<main>`'s pad so the conversation, the slot's pane and the rail
+						 * all start at y0 and each pads itself once. `flex-1`, not `h-full`,
+						 * so the negative margin is absorbed rather than lost at the bottom.
+						 */}
 						<div
 							ref={rowRef}
 							data-tour-tag="pane-row"
-							className="flex h-full min-h-0 w-full overflow-hidden"
+							className="panel-flush flex min-h-0 w-full flex-1 overflow-hidden"
 						>
 							<ConversationStandIn
 								details={details}

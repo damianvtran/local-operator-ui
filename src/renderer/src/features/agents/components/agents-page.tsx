@@ -57,7 +57,6 @@ import {
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
 import { teamDisplayName } from "@shared/api/local-operator/team-display";
-import { useLaneLeadingColumn } from "@shared/components/common/chat-layout";
 import {
 	Alert,
 	AlertDescription,
@@ -166,7 +165,6 @@ function focusThatActivatesNothing(
 }
 
 export function AgentsPage() {
-	const laneLeadingColumn = useLaneLeadingColumn("surface");
 	const { agentId } = useParams<{ agentId?: string }>();
 	const [params, setParams] = useSearchParams();
 
@@ -606,7 +604,8 @@ export function AgentsPage() {
 		<div
 			data-glass-region="canvas"
 			data-glass-split=""
-			className="flex h-full min-h-0 bg-canvas text-ink"
+			/* A full-height panel: `canvas` from y0, the two columns pad themselves. */
+			className="panel-flush flex min-h-0 flex-1 bg-canvas text-ink"
 		>
 			{/*
 			 * The leading column keeps the shell's own ground rule (`chat-layout`).
@@ -618,7 +617,6 @@ export function AgentsPage() {
 			 * before.
 			 */}
 			<aside
-				ref={laneLeadingColumn}
 				// The narrow-width rule rides a data attribute rather than a `cn`
 				// expression so this element keeps a plain class literal: it is the
 				// ground the roster's row states are painted on, and the row-surface
@@ -626,10 +624,15 @@ export function AgentsPage() {
 				// is open, which is exactly when the roster steps aside for the detail).
 				data-open={selected ? "true" : undefined}
 				data-glass-region="page-sidebar"
-				className="flex w-72 shrink-0 flex-col gap-3 bg-surface p-4 max-[999px]:data-[open=true]:hidden"
+				/*
+				 * `panel-top-pad` + the lateral/bottom 16px the old `p-4` supplied;
+				 * the heading's own `pt-4` restores the 16px step the `p-4` gave it
+				 * above the strip, so the roster's first row keeps its measured y.
+				 */
+				className="panel-top-pad flex w-72 shrink-0 flex-col gap-3 bg-surface px-4 pb-4 max-[999px]:data-[open=true]:hidden"
 			>
 				{/* The page's ONLY h1 (design D9): a definition's name is an h2. */}
-				<h1 className="text-heading">Agents and teams</h1>
+				<h1 className="pt-4 text-heading">Agents and teams</h1>
 
 				{/*
 				 * ONE CLUSTER, 8 px INSIDE AND 12 px BETWEEN COMPONENTS (design spec s3):
@@ -795,7 +798,7 @@ export function AgentsPage() {
 			 */}
 			<main
 				data-glass-region="canvas-content"
-				className="flex min-w-0 flex-1 flex-col"
+				className="panel-top-pad flex min-w-0 flex-1 flex-col"
 			>
 				{/*
 				 * `pb-0`, not `p-6`: the detail's own pinned footer sticks to the BOTTOM
