@@ -1687,14 +1687,25 @@ test("the pager and the roster hand focus to a surviving control", () => {
  * declare. Freshness of a blob's pixels is what the re-shoot commit and its
  * message are for; a missing or orphaned frame is what this catches.
  */
-test("every agent-hub-page state holds one frame per sweep theme", async () => {
+test("every agent-hub-page state holds one frame per sweep theme", async (t) => {
 	const { readdirSync, existsSync } = await import("node:fs");
 	const table = read("scripts/capture-evidence.mjs");
 	const registered = [
 		...table.matchAll(/^\t\["agent-hub-page--([a-z0-9-]+)",/gm),
 	].map((match) => match[1]);
 	assert.ok(registered.length >= 27, "the table registers the hub's states");
-	const root = "docs/evidence/agent-hub-page";
+	/*
+	 * The IGNORED frames tree: a frame is rig output and is no longer committed
+	 * (`docs/evidence-frames`), so a clean checkout has none and this cell can
+	 * only be asked where a capture has been taken.
+	 */
+	const root = "docs/evidence-frames/agent-hub-page";
+	if (!existsSync(root)) {
+		t.skip(
+			"no captured frames: docs/evidence-frames is rig output, so run node scripts/capture-evidence.mjs first",
+		);
+		return;
+	}
 	const onDisk = readdirSync(root, { withFileTypes: true })
 		.filter((entry) => entry.isDirectory())
 		.map((entry) => entry.name);

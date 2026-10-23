@@ -14,10 +14,10 @@ import type {
 } from "../../../../../shared/desktop-contract";
 import { ChatSidebar } from "./chat-sidebar";
 
-const REMOVE_TAG_MENU_ITEM = /Remove (all tags|tag)/;
 let calls: DesktopRequest[] = [];
-let finishRegistry: (() => void) | null = null;
+let finishFirstRegistryWrite: (() => void) | null = null;
 type Scenario =
+	| "drop-ux"
 	| "held-pin"
 	| "pinned-tags"
 	| "move-conflict"
@@ -29,24 +29,82 @@ type Scenario =
 	| "picker"
 	| "manage"
 	| "picker-error"
-	| "picker-loading";
+	| "picker-loading"
+	| "picker-many"
+	| "picker-dense"
+	| "picker-eight"
+	| "picker-one"
+	| "picker-empty"
+	| "picker-unicode"
+	| "manage-dense"
+	| "picker-create-error"
+	| "picker-create-loading"
+	| "picker-remote"
+	| "manage-error"
+	| "unused"
+	| "load-failed"
+	| "management-concurrency";
 /** The actual sidebar and contract-shaped desktop bridge, not a proposed mock.
- * Mutable fixture data makes Apply/Clear/registry edits observable through the
+ * Mutable fixture data makes immediate assignment and registry edits observable through the
  * same catalogue refresh as production. No operator backend or config is used.
  */
 function installBridge(scenario: Scenario) {
 	calls = [];
-	finishRegistry = null;
+	finishFirstRegistryWrite = null;
+	let registryRequestIndex = 0;
 	document.body.dataset.tagsProof = "";
 	document.body.dataset.tagsOpened = "";
-	let categories: TagCategory[] =
-		scenario === "no-categories"
-			? []
-			: [
-					{ id: "review", name: "Review", order: 0, conversations: 2 },
-					{ id: "project", name: "Project", order: 1, conversations: 2 },
-					{ id: "concept", name: "Concept", order: 2, conversations: 1 },
-				];
+	let categories: TagCategory[] = ["no-categories", "picker-empty"].includes(
+		scenario,
+	)
+		? []
+		: [
+				{ id: "review", name: "Review", order: 0, conversations: 2 },
+				{ id: "project", name: "Project", order: 1, conversations: 2 },
+				{ id: "concept", name: "Concept", order: 2, conversations: 1 },
+			];
+	if (
+		[
+			"picker-dense",
+			"manage-dense",
+			"picker-eight",
+			"picker-unicode",
+			"picker-many",
+		].includes(scenario)
+	)
+		categories = [
+			...categories,
+			...Array.from(
+				{
+					length:
+						scenario === "picker-eight"
+							? 9
+							: scenario === "picker-many"
+								? 7
+								: 29,
+				},
+				(_, index) => ({
+					id: `extra-${index}`,
+					name: `Extra vocabulary ${index + 4}`,
+					order: index + 3,
+					conversations: 0,
+				}),
+			),
+		];
+	if (scenario === "unused")
+		categories.push({
+			id: "unused",
+			name: "Next project",
+			order: 3,
+			conversations: 0,
+		});
+	if (scenario === "picker-one") categories = categories.slice(0, 1);
+	if (scenario === "picker-empty") categories = [];
+	if (scenario === "picker-unicode") {
+		categories[3].name = "界".repeat(24);
+		categories[4].name = "مشروع 東京 é Γνώση";
+		categories[5].name = String.fromCodePoint(0x1f331).repeat(24);
+	}
 	const now = Date.now() / 1000;
 	const tags = (...ids: string[]) =>
 		categories
@@ -92,10 +150,19 @@ function installBridge(scenario: Scenario) {
 	].map((row, index) => ({
 		...row,
 		pinned:
-			["held-pin", "pinned-tags"].includes(scenario) &&
-			row.id === "222222222222"
+			scenario === "drop-ux" && row.id === "555555555555"
 				? true
-				: row.pinned,
+				: ["held-pin", "pinned-tags"].includes(scenario) &&
+						row.id === "222222222222"
+					? true
+					: row.pinned,
+		...(scenario === "picker-remote"
+			? {
+					locality: "remote" as const,
+					owner_device: "synthetic-peer",
+					owner_device_name: "Fixture peer",
+				}
+			: {}),
 		mtime: now - index * 60,
 		created_at: now - index * 60,
 		preview: "",
@@ -108,6 +175,17 @@ function installBridge(scenario: Scenario) {
 		status_epoch: "tag-fixture-epoch",
 		tags_revision: "0",
 	}));
+	if (scenario === "picker-eight")
+		rows[0].tags = tags(...categories.slice(0, 8).map((tag) => tag.id));
+	if (scenario === "picker-unicode")
+		rows[0].tags = tags("review", "extra-0", "extra-1", "extra-2");
+	for (const row of rows)
+		if (!row.tags.some((tag) => tag.id === row.primary))
+			row.primary = row.tags[0]?.id ?? null;
+	for (const tag of categories)
+		tag.conversations = rows.filter((row) =>
+			row.tags.some((held) => held.id === tag.id),
+		).length;
 	const ok = (result: unknown): DesktopResponse => ({
 		status: 200,
 		body: { result },
@@ -147,14 +225,35 @@ function installBridge(scenario: Scenario) {
 					),
 				});
 			case "tags.list":
+				if (scenario === "load-failed")
+					return {
+						status: 503,
+						body: { detail: "Fixture registry unavailable" },
+					};
+				for (const tag of categories)
+					tag.conversations = rows.filter((row) =>
+						row.tags.some((held) => held.id === tag.id),
+					).length;
 				if (scenario === "old-backend")
 					throw new Error("Old backend must not receive a tags request");
 				if (scenario === "picker-loading")
-					return new Promise<DesktopResponse>((resolve) => {
-						finishRegistry = () => resolve(ok({ tags: categories }));
-					});
+					return new Promise<DesktopResponse>(() => {});
 				return ok({ tags: categories });
 			case "tags.replace":
+				if (
+					scenario === "management-concurrency" &&
+					registryRequestIndex++ === 0
+				)
+					await new Promise<void>((resolve) => {
+						finishFirstRegistryWrite = resolve;
+					});
+				if (scenario === "picker-create-loading")
+					await new Promise<void>(() => {});
+				if (scenario === "picker-create-error" || scenario === "manage-error")
+					return {
+						status: 503,
+						body: { detail: "Fixture durable Create refused" },
+					};
 				categories = request.tags.map((tag, index) => ({
 					id: tag.id ?? `new-${index}`,
 					name: tag.name,
@@ -176,6 +275,13 @@ function installBridge(scenario: Scenario) {
 				}
 				return ok({ tags: categories });
 			case "sessions.tags": {
+				if (scenario === "picker-remote")
+					return {
+						status: 409,
+						body: {
+							detail: { code: "session_is_remote", text: "Session is remote" },
+						},
+					};
 				if (scenario === "picker-error")
 					return {
 						status: 503,
@@ -186,7 +292,7 @@ function installBridge(scenario: Scenario) {
 				const row = rows.find((entry) => entry.id === request.sessionId);
 				if (!row) throw new Error("Unknown fixture conversation");
 				if (scenario === "move-conflict") {
-					// Simulate another client changing assignments after this dialog opened.
+					// Simulate another client changing assignments after this popover opened.
 					row.tags = tags("project");
 					row.primary = "project";
 					row.tags_revision = "2";
@@ -206,7 +312,27 @@ function installBridge(scenario: Scenario) {
 						},
 					};
 				}
+				if (
+					request.expected_revision !== undefined &&
+					request.expected_revision !== row.tags_revision
+				)
+					return {
+						status: 409,
+						body: {
+							detail: {
+								code: "tags_conflict",
+								text: "Tags changed elsewhere",
+								result: {
+									session_id: row.id,
+									tags: row.tags,
+									primary: row.primary,
+									tags_revision: row.tags_revision,
+								},
+							},
+						},
+					};
 				revealHeld = true;
+				row.tags_revision = String(Number(row.tags_revision) + 1);
 				row.tags = request.tags.flatMap((id) => {
 					const tag = categories.find((entry) => entry.id === id);
 					return tag ? [{ id, name: tag.name }] : [];
@@ -254,33 +380,45 @@ function installBridge(scenario: Scenario) {
 function Page({ scenario, width }: { scenario: Scenario; width: number }) {
 	const client = useQueryClient();
 	useState(() => {
-		// Changing scenario on one story ID must not reuse the previous fixture's
-		// cached capabilities/catalogue (especially the old-backend negative control).
 		client.clear();
 		installBridge(scenario);
 	});
 	const [geometry, setGeometry] = useState("");
 	useEffect(() => {
 		const measure = () => {
-			const rows = [
-				...document.querySelectorAll<HTMLElement>(
-					"[data-session-row] [data-chat-row]",
-				),
-			];
 			const headers = [
 				...document.querySelectorAll<HTMLElement>(
-					"[data-chat-tag-group] > div:first-child",
+					"[data-tag-drop-target]:not([data-tag-drop-body])",
 				),
 			];
-			const modal = document.querySelector<HTMLElement>("[role=dialog]");
-			setGeometry(
-				`rows ${rows.length} · row heights ${[...new Set(rows.map((row) => row.getBoundingClientRect().height))].join(",")} · subheaders ${headers.length} × ${[...new Set(headers.map((header) => header.getBoundingClientRect().height))].join(",")}px · modal ${modal ? Math.round(modal.getBoundingClientRect().width) : "none"} · assignment writes ${calls.filter((call) => call.op === "sessions.tags").length} · ${document.body.dataset.tagsProof ?? ""}`,
+			const panel = document.querySelector<HTMLElement>(
+				"[data-chat-tag-popover]",
 			);
+			const metrics = {
+				active: document.activeElement?.outerHTML.slice(0, 400),
+				headers: headers.map((node) => ({
+					id: node.dataset.tagDropTarget,
+					height: node.getBoundingClientRect().height,
+					width: node.getBoundingClientRect().width,
+				})),
+				popover: panel
+					? {
+							width: panel.getBoundingClientRect().width,
+							height: panel.getBoundingClientRect().height,
+							overflowX: panel.scrollWidth > panel.clientWidth,
+						}
+					: null,
+				registryWrites: calls.filter((call) => call.op === "tags.replace")
+					.length,
+				assignmentWrites: calls.filter((call) => call.op === "sessions.tags")
+					.length,
+				proof: document.body.dataset.tagsProof ?? "",
+			};
+			setGeometry(JSON.stringify(metrics));
 		};
 		const timer = setInterval(measure, 200);
 		return () => clearInterval(timer);
 	}, []);
-
 	return (
 		<div className="flex h-screen bg-canvas text-ink">
 			<div className="shrink-0 border-hairline border-r" style={{ width }}>
@@ -292,9 +430,9 @@ function Page({ scenario, width }: { scenario: Scenario; width: number }) {
 					onStageDraft={() => undefined}
 				/>
 			</div>
-			<main className="p-6 text-body-sm text-ink-muted">
-				Implemented tag grouping · {width}px sidebar · {scenario}
-				<output data-tags-geometry className="mt-3 block">
+			<main className="min-w-0 p-6 text-body-sm text-ink-muted">
+				Sidebar tags v3 · {width}px · {scenario}
+				<output data-tags-geometry className="sr-only">
 					{geometry}
 				</output>
 			</main>
@@ -310,14 +448,16 @@ const meta = {
 		scenario: {
 			control: "select",
 			options: [
-				"tags-off",
 				"tags-on",
+				"tags-off",
+				"unused",
 				"no-categories",
 				"old-backend",
 				"picker",
-				"manage",
 				"picker-error",
 				"picker-loading",
+				"picker-remote",
+				"load-failed",
 			],
 		},
 		width: { control: "select", options: [220, 260, 320] },
@@ -335,26 +475,36 @@ const ready = async () =>
 			document.querySelectorAll("[data-session-row]").length,
 		).toBeGreaterThan(0),
 	);
+const sourceRow = () => {
+	const row = document.querySelector<HTMLElement>(
+		'[data-session-row="111111111111"] [data-chat-row]',
+	);
+	if (!row) throw new Error("Missing source conversation");
+	return row;
+};
 const picker = async () => {
 	await ready();
-	const row = document.querySelector<HTMLElement>(
-		"[data-session-row] [data-chat-row]",
-	);
-	if (!row) throw new Error("No fixture row");
-	row.focus();
+	sourceRow().focus();
 	await userEvent.keyboard("{Shift>}{F10}{/Shift}");
-	await userEvent.click(await within(document.body).findByText("Tags…"));
-	await within(document.body).findByRole("dialog");
+	await userEvent.click(
+		await within(document.body).findByRole("menuitem", { name: /^Tags…/ }),
+	);
+	await waitFor(() =>
+		expect(document.querySelector("[data-chat-tag-popover]")).not.toBeNull(),
+	);
+};
+const headerStop = (id = "review") => {
+	const stop = document.querySelector<HTMLElement>(
+		`[data-chat-tag-header="${id}"]`,
+	);
+	if (!stop) throw new Error(`Missing ${id} header`);
+	return stop;
 };
 const manage = async () => {
 	await ready();
-	const trigger = document.querySelector<HTMLElement>(
-		"[data-sidebar-view-options]",
-	);
-	if (!trigger) throw new Error("No view options trigger");
-	await userEvent.click(trigger);
-	await userEvent.click(await within(document.body).findByText("Manage tags…"));
-	await within(document.body).findByRole("dialog");
+	headerStop().focus();
+	await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+	await within(document.body).findByRole("menuitem", { name: "Rename" });
 };
 const story = (
 	scenario: Scenario,
@@ -362,37 +512,42 @@ const story = (
 	theme = "localOperatorDark",
 ): Story => ({
 	args: { scenario, width, theme },
-	// Args drive both the actual fixture and its interaction, not a closure over
-	// an export's convenience defaults. This enables the complete URL matrix.
 	render: ({ scenario, width }) => (
 		<Page key={scenario} scenario={scenario} width={width} />
 	),
 	play: async ({ args }) => {
-		if (args.scenario === "picker" || args.scenario === "picker-loading")
-			await picker();
-		else if (args.scenario === "manage") await manage();
-		else if (args.scenario === "picker-error") {
-			await picker();
-			await userEvent.click(
-				within(document.body).getByRole("button", { name: "Apply" }),
+		if (args.scenario === "picker-remote") {
+			await ready();
+			sourceRow().focus();
+			await userEvent.keyboard("{Shift>}{F10}{/Shift}");
+			expect(
+				await within(document.body).findByRole("menuitem", { name: /^Tags…/ }),
+			).toHaveAttribute("aria-disabled", "true");
+			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
+				0,
 			);
-			await within(document.body).findByRole("alert");
-			await within(document.body).findByText("Tags were not saved. Try again.");
-			expect(
-				within(document.body).getByRole("button", { name: "Retry" }),
-			).toBeEnabled();
-			expect(
-				within(document.body).getByRole("checkbox", { name: "Review" }),
-			).toBeChecked();
-			document.body.dataset.tagsProof =
-				"PASS: assignment 503 shows tag-specific save failure + Retry and preserves draft";
-		} else {
+		} else if (
+			args.scenario.startsWith("picker") ||
+			args.scenario === "load-failed"
+		) {
+			await picker();
+			if (args.scenario === "picker-error") {
+				await userEvent.click(
+					within(document.body).getByRole("option", { name: "Concept" }),
+				);
+				await within(document.body).findByText(
+					"Tags were not saved. Try again.",
+				);
+				expect(
+					within(document.body).getByRole("option", { name: "Concept" }),
+				).toHaveAttribute("aria-selected", "false");
+			}
+		} else if (args.scenario.startsWith("manage")) await manage();
+		else {
 			await ready();
 			if (args.scenario === "old-backend") {
 				expect(calls.filter((call) => call.op === "tags.list")).toHaveLength(0);
-				expect(document.querySelector("[data-chat-tag-group]")).toBeNull();
-				document.body.dataset.tagsProof =
-					"PASS: old backend requests no tags.list and renders no tag groups";
+				expect(document.querySelector("[data-chat-tag-footer]")).toBeNull();
 			}
 		}
 	},
@@ -405,486 +560,473 @@ export const Picker = story("picker");
 export const Manage = story("manage");
 export const PickerError = story("picker-error");
 export const PickerLoading = story("picker-loading");
+export const PickerLoadFailed = story("load-failed");
 export const Narrow220 = story("tags-on", 220);
 export const Wide320 = story("tags-on", 320);
 export const Light = story("tags-on", 260, "localOperatorLight");
 export const PickerLight = story("picker", 220, "localOperatorLight");
 export const ManageLight = story("manage", 320, "localOperatorLight");
-
-/** Real mounted UI path: Cancel writes nothing; Clear + Apply emits exactly one
- * desired-state request and returns focus to the stable originating row. */
-export const AssignClearRoundTrip: Story = {
-	...story("tags-on"),
+export const PickerDense = story("picker-dense", 220);
+export const PickerDenseLight = story(
+	"picker-dense",
+	220,
+	"localOperatorLight",
+);
+export const PickerEight = story("picker-eight");
+export const PickerEmpty = story("picker-empty", 220);
+export const PickerOne = story("picker-one", 320);
+export const PickerUnicode = story("picker-unicode", 220);
+export const PickerRemoteRefusal = story("picker-remote");
+export const UnusedTags = story("unused");
+export const PickerNoMatch: Story = {
+	...story("picker"),
+	play: async () => {
+		await picker();
+		await userEvent.type(
+			within(document.body).getByRole("combobox"),
+			"Future work",
+		);
+		expect(
+			await within(document.body).findByRole("option", {
+				name: /Create “Future work”/,
+			}),
+		).toHaveAttribute("aria-disabled", "false");
+	},
+};
+export const PickerCreateError: Story = {
+	...story("picker-create-error"),
+	play: async () => {
+		await picker();
+		await userEvent.type(
+			within(document.body).getByRole("combobox"),
+			"Future work",
+		);
+		await userEvent.keyboard("{Enter}");
+		await within(document.body).findByText("Tag was not created. Try again.");
+	},
+};
+export const PickerKeyboardRoundTrip: Story = {
+	...story("picker"),
+	play: async () => {
+		await ready();
+		sourceRow().focus();
+		await userEvent.keyboard("{Control>}{Shift>}L{/Shift}{/Control}");
+		await userEvent.type(
+			await within(document.body).findByRole("combobox"),
+			"Release 東京",
+		);
+		await userEvent.keyboard("{Enter}");
+		await waitFor(() =>
+			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
+				1,
+			),
+		);
+		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(1);
+		await userEvent.keyboard("{Escape}");
+		await waitFor(() =>
+			expect(document.querySelector("[data-chat-tag-popover]")).toBeNull(),
+		);
+		await waitFor(() => expect(document.activeElement).toBe(sourceRow()));
+		document.body.dataset.tagsProof =
+			"PASS: chord → type → Enter creates+assigns, Escape returns row focus; no dialog or Apply";
+	},
+};
+export const PickerConflict: Story = {
+	...story("move-conflict"),
 	play: async () => {
 		await picker();
 		await userEvent.click(
-			within(document.body).getByRole("checkbox", { name: "Concept" }),
-		);
-		await userEvent.click(
-			within(document.body).getByRole("button", { name: "Cancel" }),
-		);
-		await waitFor(() =>
-			expect(document.querySelector("[role=dialog]")).toBeNull(),
-		);
-		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(0);
-		await picker();
-		await userEvent.click(
-			within(document.body).getByRole("button", { name: "Clear tags" }),
-		);
-		await userEvent.click(
-			within(document.body).getByRole("button", { name: "Apply" }),
-		);
-		await waitFor(() =>
-			expect(document.querySelector("[role=dialog]")).toBeNull(),
-		);
-		expect(calls.filter((call) => call.op === "sessions.tags")).toEqual([
-			{
-				op: "sessions.tags",
-				sessionId: "111111111111",
-				tags: [],
-				primary: null,
-			},
-		]);
-		expect(
-			useCanonicalSessionsStore
-				.getState()
-				.sessions.find((row) => row.session_id === "111111111111")?.tags,
-		).toEqual([]);
-		await waitFor(() =>
-			expect(document.activeElement).toBe(
-				document.querySelector(
-					'[data-session-row="111111111111"] [data-chat-row]',
-				),
-			),
+			within(document.body).getByRole("option", { name: "Concept" }),
 		);
 		await within(document.body).findByText(
-			"Tags updated. Shown under Untagged.",
+			"Tags changed elsewhere. The list now shows their current tags; select again to apply your change.",
 		);
-		document.body.dataset.tagsProof =
-			"PASS: Cancel 0 writes; Clear 1 atomic write; canonical tags []; focus returned";
+		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(1);
 	},
 };
-
-/** Exercise all four local mutations without touching the registry until Apply. */
-const editRegistryDraft = async () => {
-	const body = within(document.body);
-	await userEvent.type(
-		body.getByRole("textbox", { name: "New tag name" }),
-		"New category",
-	);
-	await userEvent.click(body.getByRole("button", { name: "Add" }));
-	await body.findByText("New category");
-	const review = document.querySelector<HTMLElement>('[data-tag-id="review"]');
-	if (!review) throw new Error("Review category missing");
-	await userEvent.click(within(review).getByRole("button", { name: "Rename" }));
-	const rename = body.getByRole("textbox", { name: "Rename Review" });
-	fireEvent.change(rename, { target: { value: "Review renamed" } });
-	await waitFor(() => expect(rename).toHaveValue("Review renamed"));
-	await userEvent.click(body.getByRole("button", { name: "Save" }));
-	await body.findByText("Review renamed");
-	for (let index = 0; index < 3; index++) {
+export const HeaderRenameBlurFailure: Story = {
+	...story("manage-error"),
+	play: async () => {
+		await ready();
+		headerStop().focus();
+		await userEvent.keyboard("{F2}");
+		const field = await within(document.body).findByRole("textbox", {
+			name: "Rename Review",
+		});
+		await userEvent.clear(field);
+		await userEvent.type(field, "Retained draft");
+		headerStop("project").focus();
+		await within(document.body).findByText("Tags were not saved. Try again.");
+		await waitFor(() => expect(field).toHaveFocus());
+		expect(field).toHaveValue("Retained draft");
+		expect(
+			within(document.body).getByRole("button", { name: "Retry" }),
+		).toBeVisible();
+		document.body.dataset.tagsProof =
+			"PASS C2: blur HTTP503 keeps typed draft, alert, Retry and restores editor focus";
+	},
+};
+export const ConcurrentHeaderRenames: Story = {
+	...story("management-concurrency"),
+	play: async () => {
+		await ready();
+		headerStop().focus();
+		await userEvent.keyboard("{F2}");
+		const first = await within(document.body).findByRole("textbox", {
+			name: "Rename Review",
+		});
+		await userEvent.clear(first);
+		await userEvent.type(first, "Review2{Enter}");
+		headerStop("project").focus();
+		await userEvent.keyboard("{F2}");
+		const second = await within(document.body).findByRole("textbox", {
+			name: "Rename Project",
+		});
+		await userEvent.clear(second);
+		await userEvent.type(second, "Project2{Enter}");
+		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(1);
+		if (!finishFirstRegistryWrite)
+			throw new Error("First registry write was not deferred");
+		finishFirstRegistryWrite();
+		await waitFor(() =>
+			expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(
+				2,
+			),
+		);
+		const writes = calls.filter(
+			(call): call is Extract<DesktopRequest, { op: "tags.replace" }> =>
+				call.op === "tags.replace",
+		);
+		expect(writes[1].tags.map((tag) => tag.name)).toEqual([
+			"Review2",
+			"Project2",
+			"Concept",
+		]);
+		await waitFor(() =>
+			expect(headerStop("project")).toHaveAttribute(
+				"aria-label",
+				"Tag actions: Project2",
+			),
+		);
+		document.body.dataset.tagsProof =
+			"PASS C1: second header queues before transport; acknowledged Review2 survives Project2 desired-state write";
+	},
+};
+export const HeaderRenameFailure: Story = {
+	...story("manage-error"),
+	play: async () => {
+		await ready();
+		headerStop().focus();
+		await userEvent.keyboard("{F2}");
+		const field = await within(document.body).findByRole("textbox", {
+			name: "Rename Review",
+		});
+		await userEvent.clear(field);
+		await userEvent.type(field, "Uncommitted{Enter}");
+		await within(document.body).findByText("Tags were not saved. Try again.");
+	},
+};
+export const HeaderRenameSaving: Story = {
+	...story("picker-create-loading"),
+	play: async () => {
+		await ready();
+		headerStop().focus();
+		await userEvent.keyboard("{F2}");
+		const field = await within(document.body).findByRole("textbox", {
+			name: "Rename Review",
+		});
+		await userEvent.clear(field);
+		await userEvent.type(field, "Saving name{Enter}");
+		expect(field).toHaveAttribute("aria-busy", "true");
+	},
+};
+export const FooterAtLimit: Story = { ...story("picker-dense"), play: ready };
+export const HeaderDeleteConfirm: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await manage();
 		await userEvent.click(
-			body.getByRole("button", { name: "Move New category up" }),
+			within(document.body).getByRole("menuitem", { name: "Delete" }),
+		);
+		const confirm = await within(document.body).findByRole("alertdialog");
+		expect(
+			within(confirm).getByRole("button", { name: "Cancel" }),
+		).toHaveFocus();
+		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
+	},
+};
+export const DeleteRoundTrip: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await manage();
+		await userEvent.click(
+			within(document.body).getByRole("menuitem", { name: "Delete" }),
+		);
+		const confirm = await within(document.body).findByRole("alertdialog");
+		await userEvent.click(
+			within(confirm).getByRole("button", { name: "Delete tag" }),
+		);
+		await waitFor(() =>
+			expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(
+				1,
+			),
 		);
 		await waitFor(() =>
 			expect(
-				document.activeElement
-					?.closest("[data-tag-id]")
-					?.getAttribute("data-tag-id"),
-			).toBe("new:New category"),
+				document.querySelector('[data-chat-tag-header="review"]'),
+			).toBeNull(),
 		);
-	}
-	expect(
-		body.getByRole("button", { name: "Move New category up" }),
-	).toBeDisabled();
-	const project = document.querySelector<HTMLElement>(
-		'[data-tag-id="project"]',
-	);
-	if (!project) throw new Error("Project category missing");
-	await userEvent.click(
-		within(project).getByRole("button", { name: "Delete" }),
-	);
-	await body.findByText(
-		"Remove this tag from 2 conversations. Conversations grouped here move to their oldest remaining tag, or Untagged. Conversations will not be deleted.",
-	);
-	const confirmation = document.querySelector<HTMLElement>(
-		'section[aria-label="Delete “Project”?"]',
-	);
-	if (!confirmation) throw new Error("No delete confirmation");
-	await waitFor(() =>
-		expect(document.activeElement).toBe(
-			within(confirmation).getByRole("button", { name: "Cancel" }),
-		),
-	);
-	expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
-	await userEvent.click(body.getByRole("button", { name: "Delete tag" }));
-	await waitFor(() =>
-		expect(document.querySelector('[data-tag-id="project"]')).toBeNull(),
-	);
-	expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
-	expect(useSessionTagsStore.getState().categories).toHaveLength(3);
+		document.body.dataset.tagsProof =
+			"PASS: anchored confirmation defaults to Cancel; confirmed deletion replaces registry once without deleting chats";
+	},
+};
+export const PopoverFloor600: Story = {
+	...story("tags-on"),
+	render: () => (
+		<iframe
+			title="Tags popover at 600×600 app floor"
+			style={{ width: 600, height: 600, border: 0 }}
+			src="/iframe.html?id=chat-sidebar-tags--picker&viewMode=story&args=width:220"
+		/>
+	),
+	play: undefined,
+};
+export const HeaderRename: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await ready();
+		headerStop().focus();
+		await userEvent.keyboard("{F2}");
+		await userEvent.clear(
+			await within(document.body).findByRole("textbox", {
+				name: "Rename Review",
+			}),
+		);
+		await userEvent.type(
+			within(document.body).getByRole("textbox", { name: "Rename Review" }),
+			"Release review",
+		);
+	},
+};
+export const HeaderRenameInvalid: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await ready();
+		headerStop().focus();
+		await userEvent.keyboard("{F2}");
+		const field = await within(document.body).findByRole("textbox", {
+			name: "Rename Review",
+		});
+		await userEvent.clear(field);
+		await userEvent.type(field, "Untagged{Enter}");
+		expect(field).toHaveAttribute("aria-invalid", "true");
+	},
 };
 export const ManagementRoundTrip: Story = {
 	...story("tags-on"),
 	play: async () => {
-		await manage();
-		await editRegistryDraft();
-		await userEvent.click(
-			within(document.body).getByRole("button", { name: "Cancel" }),
-		);
+		await ready();
+		headerStop().focus();
+		await userEvent.keyboard("{F2}");
+		const field = await within(document.body).findByRole("textbox", {
+			name: "Rename Review",
+		});
+		await userEvent.clear(field);
+		await userEvent.type(field, "Review renamed{Enter}");
 		await waitFor(() =>
-			expect(document.querySelector("[role=dialog]")).toBeNull(),
-		);
-		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
-		expect(
-			useSessionTagsStore.getState().categories.map((tag) => tag.name),
-		).toEqual(["Review", "Project", "Concept"]);
-		await manage();
-		await editRegistryDraft();
-		await userEvent.click(
-			within(document.body).getByRole("button", { name: "Apply" }),
-		);
-		await waitFor(() =>
-			expect(document.querySelector("[role=dialog]")).toBeNull(),
-		);
-		expect(calls.filter((call) => call.op === "tags.replace")).toEqual([
-			{
-				op: "tags.replace",
-				tags: [
-					{ name: "New category" },
-					{ id: "review", name: "Review renamed" },
-					{ id: "concept", name: "Concept" },
-				],
-			},
-		]);
-		await waitFor(() =>
-			expect(
-				useCanonicalSessionsStore
-					.getState()
-					.sessions.every(
-						(row) => !row.tags?.some((tag) => tag.id === "project"),
-					),
-			).toBe(true),
-		);
-		expect(useCanonicalSessionsStore.getState().sessions).toHaveLength(5);
-		await waitFor(() =>
-			expect(document.activeElement).toBe(
-				document.querySelector("[data-sidebar-view-options]"),
+			expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(
+				1,
 			),
 		);
+		await userEvent.click(
+			within(document.body).getByRole("button", { name: "New tag" }),
+		);
+		await userEvent.type(
+			await within(document.body).findByRole("textbox", {
+				name: "New tag name",
+			}),
+			"Unused next{Enter}",
+		);
+		await waitFor(() =>
+			expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(
+				2,
+			),
+		);
+		await within(document.body).findByText("Unused next");
+		expect(document.querySelector('[role="dialog"]')).toBeNull();
 		document.body.dataset.tagsProof =
-			"PASS: local add/rename/reorder/delete; confirmation 0 writes; Cancel 0 writes; Apply 1 desired-state request; 5 chats retained; trigger focus returned";
+			"PASS: inline rename and footer create write on press, unused group expands, no Apply or dialog";
 	},
 };
-
+export const FooterNewTag: Story = {
+	...story("tags-on"),
+	play: async () => {
+		await ready();
+		await userEvent.click(
+			within(document.body).getByRole("button", { name: "New tag" }),
+		);
+	},
+};
+export const UnusedExpanded: Story = {
+	...story("unused"),
+	play: async () => {
+		await ready();
+		await userEvent.click(
+			within(document.body).getByRole("button", { name: "Unused tags (1)" }),
+		);
+	},
+};
 export const ViewOptions220: Story = {
 	...story("tags-on", 220),
-	play: async ({ args }) => {
+	play: async () => {
 		await ready();
-		const trigger = document.querySelector<HTMLElement>(
-			"[data-sidebar-view-options]",
+		await userEvent.click(
+			document.querySelector<HTMLElement>(
+				"[data-sidebar-view-options]",
+			) as HTMLElement,
 		);
-		if (!trigger) throw new Error("No view trigger");
-		await userEvent.click(trigger);
-		const action = await within(document.body).findByRole("button", {
-			name: "Manage tags…",
-		});
-		const group = action.closest<HTMLElement>("[data-sidebar-tags-options]");
-		if (!group) throw new Error("No Tags row");
-		const box = group.getBoundingClientRect();
-		const button = action.getBoundingClientRect();
-		const range = document.createRange();
-		range.selectNodeContents(action);
-		const lines = range.getClientRects().length;
-		const content = group.firstElementChild?.getBoundingClientRect();
-		const baseHeight =
-			(content?.height ?? 0) +
-			Number.parseFloat(getComputedStyle(group).borderBottomWidth);
-		expect(baseHeight).toBe(40);
-		expect(lines).toBe(1);
-		expect(action.scrollWidth).toBeLessThanOrEqual(action.clientWidth);
-		if (args.scenario === "no-categories") {
-			await within(document.body).findByText("No tags yet");
-			for (
-				let step = 0;
-				step < 60 &&
-				document.activeElement?.getAttribute("data-sidebar-view-section") !==
-					"older";
-				step++
-			)
-				await userEvent.tab();
-			expect(
-				document.activeElement?.getAttribute("data-sidebar-view-section"),
-			).toBe("older");
-			const panel = document.querySelector<HTMLElement>(
-				"[data-sidebar-view-panel]",
-			);
-			if (!panel) throw new Error("No scrollable View panel");
-			const focused = document.activeElement?.getBoundingClientRect();
-			expect(focused?.bottom ?? 0).toBeLessThanOrEqual(
-				panel.getBoundingClientRect().bottom,
-			);
-		}
-		document.body.dataset.tagsProof = `PASS: ${args.width}px sidebar; base Tags row ${baseHeight}px; Tags row ${box.width}×${box.height}px; Manage ${button.width}×${button.height}px; text lines ${lines}; no horizontal overflow`;
-	},
-};
-
-export const PickerManageRoundTrip: Story = {
-	...story("tags-on", 220),
-	play: async () => {
-		await picker();
 		const body = within(document.body);
-		useSessionTagsStore.setState({
-			categories: [
-				...useSessionTagsStore.getState().categories,
-				...Array.from({ length: 7 }, (_, index) => ({
-					id: `extra-${index}`,
-					name: `Extra ${index}`,
-					order: index + 3,
-					conversations: 0,
-				})),
-			],
-		});
-		await userEvent.click(body.getByRole("checkbox", { name: "Concept" }));
-		await userEvent.click(body.getByRole("radio", { name: "Project" }));
-		await userEvent.type(
-			body.getByRole("textbox", { name: "Search tags" }),
-			"e",
-		);
-		const scroll = document.querySelector<HTMLElement>(
-			"[role=dialog] .overflow-y-auto",
-		);
-		if (!scroll) throw new Error("No picker scroller");
-		scroll.scrollTop = 60;
-		let heldScroll = scroll.scrollTop;
-		expect(heldScroll).toBeGreaterThan(0);
-		const openManager = async () => {
-			const invokingScroller = document.querySelector<HTMLElement>(
-				"[role=dialog] .overflow-y-auto",
-			);
-			const button = body.getByRole("button", { name: "Manage tags…" });
-			// Capture after the click's own scroll-into-view, before React unmounts
-			// the old modal content (detached nodes report scrollTop = 0).
-			button.addEventListener(
-				"click",
-				() => {
-					heldScroll = invokingScroller?.scrollTop ?? 0;
-				},
-				{ once: true, capture: true },
-			);
-			await userEvent.click(button);
-			await body.findByRole("heading", { name: "Manage tags" });
-			await new Promise((resolve) =>
-				requestAnimationFrame(() => requestAnimationFrame(resolve)),
-			);
-			expect(document.activeElement?.closest('[role="dialog"]')).not.toBeNull();
-			expect(document.querySelectorAll("[role=dialog]")).toHaveLength(1);
-		};
-		const restored = async () => {
-			await body.findByRole("heading", {
-				name: "Tags for “Review the migration safety checks”",
-			});
-			expect(body.getByRole("checkbox", { name: "Concept" })).toBeChecked();
-			expect(body.getByRole("radio", { name: "Project" })).toBeChecked();
-			expect(body.getByRole("textbox", { name: "Search tags" })).toHaveValue(
-				"e",
-			);
-			await waitFor(() =>
-				expect(
-					document.activeElement,
-					`Picker return focus: ${document.activeElement?.getAttribute("role") ?? "button"} ${document.activeElement?.textContent}`,
-				).toBe(body.getByRole("button", { name: "Manage tags…" })),
-			);
-			expect(
-				document.querySelector<HTMLElement>("[role=dialog] .overflow-y-auto")
-					?.scrollTop,
-			).toBe(heldScroll);
-		};
-		await openManager();
-		await userEvent.click(body.getByRole("button", { name: "Cancel" }));
-		await restored();
-		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
-		await openManager();
-		await userEvent.type(
-			body.getByRole("textbox", { name: "New tag name" }),
-			"Nested category",
-		);
-		await userEvent.click(body.getByRole("button", { name: "Add" }));
-		await userEvent.click(body.getByRole("button", { name: "Apply" }));
-		await restored();
 		expect(
-			body.getByRole("checkbox", { name: "Nested category" }),
-		).not.toBeChecked();
-		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(1);
-		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(0);
-		await userEvent.click(body.getByRole("button", { name: "Cancel" }));
-		await waitFor(() =>
-			expect(document.activeElement).toBe(
-				document.querySelector(
-					'[data-session-row="111111111111"] [data-chat-row]',
-				),
-			),
-		);
-		document.body.dataset.tagsProof =
-			"PASS: picker checks/primary/search/scroll survive Manage Cancel and Apply; refreshed categories; one modal; no assignment; row focus returned";
+			await body.findByRole("switch", { name: "Group chats by tag" }),
+		).toBeVisible();
+		expect(body.queryByText("Manage tags…")).toBeNull();
 	},
 };
-
-export const ManagementFailureRetry: Story = {
+export const HeaderArrowRing: Story = {
 	...story("tags-on"),
 	play: async () => {
-		await manage();
-		const original = window.api.desktop.request;
-		let attempts = 0;
-		window.api.desktop.request = async (request) => {
-			if (request.op === "tags.replace" && attempts++ === 0) {
-				calls.push(request);
-				return {
-					status: 503,
-					body: {
-						detail: "Fixture registry save failed. Retry keeps the draft.",
-					},
-				};
-			}
-			return original(request);
-		};
-		const body = within(document.body);
-		await userEvent.type(
-			body.getByRole("textbox", { name: "New tag name" }),
-			"Retry category",
-		);
-		await userEvent.click(body.getByRole("button", { name: "Add" }));
-		await userEvent.click(body.getByRole("button", { name: "Apply" }));
-		await body.findByRole("alert");
-		await body.findByText("Tags were not saved. Try again.");
-		expect(body.getByText("Retry category")).toBeTruthy();
-		expect(useSessionTagsStore.getState().categories).toHaveLength(3);
-		await userEvent.click(body.getByRole("button", { name: "Retry" }));
-		await waitFor(() =>
-			expect(document.querySelector("[role=dialog]")).toBeNull(),
-		);
-		expect(
-			useSessionTagsStore
-				.getState()
-				.categories.some((tag) => tag.name === "Retry category"),
-		).toBe(true);
-		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(2);
-		window.api.desktop.request = original;
+		await ready();
+		const header = headerStop();
+		header.focus();
+		await userEvent.keyboard("{ArrowDown}");
+		expect(document.activeElement).toHaveAttribute("data-chat-row");
+		await userEvent.keyboard("{ArrowUp}");
+		expect(document.activeElement).toBe(header);
+		await userEvent.keyboard("{ArrowDown}");
+		expect(document.activeElement).toHaveAttribute("data-chat-row");
 		document.body.dataset.tagsProof =
-			"PASS: failed Apply retains draft; Retry repeats one full desired-state request and closes on success";
+			"PASS: header → row → header → row physical keyboard arrow walk";
 	},
 };
-
-export const AssignPrimaryAnnouncement: Story = {
+export const KeyboardDismiss: Story = {
 	...story("tags-on"),
 	play: async () => {
 		await picker();
-		await userEvent.click(
-			within(document.body).getByRole("radio", { name: "Project" }),
-		);
-		await userEvent.click(
-			within(document.body).getByRole("button", { name: "Apply" }),
-		);
-		await within(document.body).findByText(
-			"Tags updated. Grouped under Project.",
-		);
+		await userEvent.keyboard("{Escape}");
 		await waitFor(() =>
-			expect(document.querySelector("[role=dialog]")).toBeNull(),
+			expect(document.querySelector("[data-chat-tag-popover]")).toBeNull(),
 		);
-		await waitFor(() =>
-			expect(document.activeElement).toBe(
-				document.querySelector(
-					'[data-session-row="111111111111"] [data-chat-row]',
-				),
-			),
-		);
+		await waitFor(() => expect(document.activeElement).toBe(sourceRow()));
 		document.body.dataset.tagsProof =
-			"PASS: primary assignment announces Tags updated. Grouped under Project.; row focus returned";
+			"PASS: Escape dismisses picker in one press and returns to the originating row";
 	},
 };
-
-export const DeleteNameReuseGuard: Story = {
+export const KeyboardCreate: Story = {
 	...story("tags-on"),
 	play: async () => {
-		await manage();
-		const body = within(document.body);
-		const project = document.querySelector<HTMLElement>(
-			'[data-tag-id="project"]',
-		);
-		if (!project) throw new Error("Missing Project tag");
-		await userEvent.click(
-			within(project).getByRole("button", { name: "Delete" }),
-		);
-		await userEvent.click(body.getByRole("button", { name: "Delete tag" }));
-		fireEvent.change(body.getByRole("textbox", { name: "New tag name" }), {
-			target: { value: "Project" },
+		await ready();
+		sourceRow().focus();
+		await userEvent.keyboard("{Meta>}{Shift>}l{/Shift}{/Meta}");
+		const input = await within(document.body).findByRole("combobox", {
+			name: "Search tags",
 		});
-		await userEvent.click(body.getByRole("button", { name: "Add" }));
+		await userEvent.type(input, "Keyboard tag{Enter}");
 		await waitFor(() =>
-			expect(
-				document.querySelector('[data-tag-id="new:Project"]'),
-			).not.toBeNull(),
-		);
-		await userEvent.click(body.getByRole("button", { name: "Apply" }));
-		await body.findByText(
-			"Apply the deletion first, then add “Project” again.",
-		);
-		expect(calls.filter((call) => call.op === "tags.replace")).toHaveLength(0);
-		expect(
-			useSessionTagsStore
-				.getState()
-				.categories.some((tag) => tag.id === "project"),
-		).toBe(true);
-		await userEvent.click(body.getByRole("button", { name: "Cancel" }));
-		await waitFor(() =>
-			expect(document.querySelector("[role=dialog]")).toBeNull(),
-		);
-		document.body.dataset.tagsProof =
-			"PASS: delete + same-name ID-less add blocks Apply; zero registry writes; existing assignments retained";
-	},
-};
-
-export const PickerLoadingFocus: Story = {
-	...story("picker-loading", 220),
-	play: async () => {
-		await picker();
-		const heading = within(document.body).getByRole("heading", {
-			name: "Tags for “Review the migration safety checks”",
-		});
-		expect(document.activeElement).toBe(heading);
-		const scroller = document.querySelector<HTMLElement>(
-			"[role=dialog] .overflow-y-auto",
-		);
-		if (!scroller) throw new Error("No picker scroll body");
-		const padding = getComputedStyle(scroller);
-		expect(padding.paddingLeft).toBe("4px");
-		expect(padding.paddingBottom).toBe("4px");
-		const manageButton = within(document.body).getByRole("button", {
-			name: "Manage tags…",
-		});
-		const bodyBox = scroller.getBoundingClientRect();
-		const manageBox = manageButton.getBoundingClientRect();
-		expect(manageBox.left - bodyBox.left).toBeGreaterThanOrEqual(4);
-		expect(bodyBox.bottom - manageBox.bottom).toBeGreaterThanOrEqual(4);
-		const measurements = `loading body ${bodyBox.width}×${bodyBox.height}px, ring inset left ${manageBox.left - bodyBox.left}px bottom ${bodyBox.bottom - manageBox.bottom}px`;
-		expect(finishRegistry).not.toBeNull();
-		finishRegistry?.();
-		await waitFor(() =>
-			expect(document.activeElement).toBe(
-				within(document.body).getByRole("checkbox", { name: "Review" }),
+			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
+				1,
 			),
 		);
-		await userEvent.click(
-			within(document.body).getByRole("button", { name: "Cancel" }),
-		);
-		document.body.dataset.tagsProof = `PASS: initial focus heading; loaded focus first checkbox; ${measurements}`;
+		document.body.dataset.tagsProof =
+			"PASS: primary+shift+l → type → Enter creates and assigns in one keyboard flow";
 	},
 };
-
-/** Real sidebar DOM/optimistic bridge proof. Synthetic pointer events exercise
- * the component lifecycle, not native capture/touch; independent native QA owns
- * those browser delivery guarantees. The node lane separately tests revisions. */
-const dragRoundTrip = async (crossSection: boolean) => {
+export const UnusedTagDragPreview: Story = {
+	...story("unused"),
+	play: async () => {
+		await ready();
+		const source = document.querySelector<HTMLElement>(
+			'[data-session-row="222222222222"] [data-chat-row]',
+		);
+		if (!source) throw new Error("No drag source");
+		const before = source.getBoundingClientRect();
+		const pointer = {
+			pointerId: 78,
+			pointerType: "mouse",
+			isPrimary: true,
+			button: 0,
+			clientX: before.left + 40,
+			clientY: before.top + 16,
+		};
+		fireEvent.pointerDown(source, pointer);
+		await new Promise((done) => setTimeout(done, 200));
+		const slot = document.querySelector<HTMLElement>(
+			'[data-tag-unused-slot][data-tag-drop-target="unused"]',
+		);
+		if (!slot) throw new Error("Missing unused slot");
+		await waitFor(() => expect(slot.getBoundingClientRect().height).toBe(28));
+		expect(source.getBoundingClientRect().top).toBe(before.top);
+		const rect = slot.getBoundingClientRect();
+		fireEvent.pointerMove(window, {
+			...pointer,
+			clientX: rect.left + 40,
+			clientY: rect.top + 14,
+		});
+		await waitFor(() => expect(slot).toHaveClass("bg-row-selected"));
+		document.body.dataset.tagsProof =
+			"PASS: armed unused-tag preview; source top unchanged; no write before release";
+	},
+};
+export const UnusedTagDrop: Story = {
+	...story("unused"),
+	play: async () => {
+		await ready();
+		const source = document.querySelector<HTMLElement>(
+			'[data-session-row="222222222222"] [data-chat-row]',
+		);
+		if (!source) throw new Error("No drag source");
+		const before = source.getBoundingClientRect();
+		const pointer = {
+			pointerId: 77,
+			pointerType: "mouse",
+			isPrimary: true,
+			button: 0,
+			clientX: before.left + 40,
+			clientY: before.top + 16,
+		};
+		fireEvent.pointerDown(source, pointer);
+		await new Promise((done) => setTimeout(done, 200));
+		const slot = document.querySelector<HTMLElement>(
+			'[data-tag-unused-slot][data-tag-drop-target="unused"]',
+		);
+		if (!slot) throw new Error("Missing unused slot");
+		await waitFor(() => expect(slot.getBoundingClientRect().height).toBe(28));
+		expect(source.getBoundingClientRect().top).toBe(before.top);
+		const target = slot.getBoundingClientRect();
+		fireEvent.pointerMove(window, {
+			...pointer,
+			clientX: target.left + 40,
+			clientY: target.top + 14,
+		});
+		await waitFor(() => expect(slot).toHaveClass("bg-row-selected"));
+		fireEvent.pointerUp(window, {
+			...pointer,
+			clientX: target.left + 40,
+			clientY: target.top + 14,
+		});
+		await waitFor(() =>
+			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
+				1,
+			),
+		);
+		expect(calls.find((call) => call.op === "sessions.tags")).toMatchObject({
+			tags: ["project", "unused"],
+			primary: "unused",
+		});
+		document.body.dataset.tagsProof =
+			"PASS: armed drag expands unused slots without moving source; drop adds unused tag and makes primary";
+	},
+};
+const dragRoundTrip = async (crossSection: boolean, targetBody = false) => {
 	await ready();
 	const row = () =>
 		document.querySelector<HTMLButtonElement>(
@@ -918,7 +1060,7 @@ const dragRoundTrip = async (crossSection: boolean) => {
 	const sourceSection = button.closest<HTMLElement>("[data-chat-section]");
 	const header = crossSection
 		? document.querySelector<HTMLElement>(
-				'[data-chat-section="pinned"] [data-tag-drop-target="review"]',
+				`[data-chat-section="pinned"] [data-tag-drop-target="review"]${targetBody ? "[data-tag-drop-body]" : ":not([data-tag-drop-body])"}`,
 			)
 		: sourceSection?.querySelector<HTMLElement>(
 				'[data-tag-drop-target="review"]',
@@ -980,73 +1122,101 @@ const dragRoundTrip = async (crossSection: boolean) => {
 	document.body.dataset.tagsProof =
 		"PASS: >5px pending movement wrote nothing; 180ms hold painted occupied header; same-section header assigned/preserved tags without pinning; Undo restored bucket (synthetic DOM pointers, not native capture proof)";
 };
+/** The operator's Untagged source can cross sections into occupied body space.
+ * Keep the tagged-source negative first so its zero-write assertion is independent. */
 export const DragAssignRoundTrip: Story = {
-	...story("tags-on"),
-	play: async () => dragRoundTrip(true),
+	...story("drop-ux"),
+	play: async () => {
+		await dragRoundTrip(true);
+		await dragRoundTrip(true, true);
+		await untaggedBodyDrop(false);
+	},
+};
+
+const untaggedBodyDrop = async (previewOnly: boolean) => {
+	await ready();
+	const source = document.querySelector<HTMLElement>(
+		'[data-session-row="555555555555"] [data-chat-row]',
+	);
+	const target = document.querySelector<HTMLElement>(
+		'[data-chat-section="today"] [data-tag-drop-body][data-tag-drop-target="review"]',
+	);
+	if (!source || !target) throw new Error("Missing Untagged/body fixture");
+	expect(getComputedStyle(source).cursor).toBe("grab");
+	const box = source.getBoundingClientRect();
+	const pointer = {
+		pointerId: 81,
+		pointerType: "mouse",
+		isPrimary: true,
+		button: 0,
+		clientX: box.left + 60,
+		clientY: box.top + 16,
+	};
+	fireEvent.pointerDown(source, pointer);
+	await new Promise((resolve) => setTimeout(resolve, 200));
+	await waitFor(() => expect(getComputedStyle(source).cursor).toBe("grabbing"));
+	const rect = target.getBoundingClientRect();
+	const over = {
+		...pointer,
+		clientX: rect.left + 60,
+		clientY: rect.top + rect.height / 2,
+	};
+	fireEvent.pointerMove(window, over);
+	await waitFor(() =>
+		expect(target.closest("[data-chat-tag-group]")).toHaveAttribute(
+			"data-tag-drop-preview",
+			"true",
+		),
+	);
+	const group = target.closest("[data-chat-tag-group]");
+	const header = group?.querySelector<HTMLElement>(
+		"[data-tag-drop-target]:not([data-tag-drop-body])",
+	);
+	if (!header) throw new Error("Missing matching group header");
+	expect(header.dataset.tagDropTarget).toBe(target.dataset.tagDropTarget);
+	expect(
+		document
+			.elementFromPoint(over.clientX, over.clientY)
+			?.closest("[data-tag-drop-body]"),
+	).toBe(target);
+	document.body.dataset.tagsProof = `PASS: cursor grab → grabbing; header/body ID ${header.dataset.tagDropTarget}; body ${rect.width}×${rect.height}px; tagged cross-section 0 writes; synthetic pointer preview (not native delivery proof)`;
+	if (previewOnly) return;
+	fireEvent.pointerUp(window, over);
+	await waitFor(() =>
+		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(1),
+	);
+	expect(calls.find((call) => call.op === "sessions.tags")).toMatchObject({
+		primary: "review",
+		tags: ["review"],
+	});
+	await waitFor(() =>
+		expect(
+			document
+				.querySelector('[data-session-row="555555555555"]')
+				?.closest("[data-chat-tag-group]"),
+		).toHaveAttribute("data-chat-tag-group", "review"),
+	);
+	await userEvent.click(
+		within(document.body).getByRole("button", { name: "Undo" }),
+	);
+	await waitFor(() =>
+		expect(
+			document
+				.querySelector('[data-session-row="555555555555"]')
+				?.closest("[data-chat-tag-group]"),
+		).toHaveAttribute("data-chat-tag-group", "untagged"),
+	);
+	expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(2);
+	document.body.dataset.tagsProof +=
+		"; Untagged→tagged body 1 write; Undo restored Untagged (2 total)";
+};
+export const CursorAndBodyTarget: Story = {
+	...story("drop-ux", 220),
+	play: async () => untaggedBodyDrop(true),
 };
 export const SameSectionDragRoundTrip: Story = {
 	...story("tags-on"),
 	play: async () => dragRoundTrip(false),
-};
-
-export const MoveMenuRoundTrip: Story = {
-	...story("tags-on"),
-	play: async () => {
-		await ready();
-		const body = within(document.body);
-		const button = () =>
-			document.querySelector<HTMLElement>(
-				'[data-session-row="111111111111"] [data-chat-row]',
-			);
-		const source = button();
-		if (!source) throw new Error("Missing move source");
-		fireEvent.contextMenu(source);
-		await body.findByRole("menuitem", { name: "Move to tag…" });
-		expect(body.getAllByRole("menuitem")).toHaveLength(9);
-		await userEvent.click(
-			await body.findByRole("menuitem", { name: "Move to tag…" }),
-		);
-		await body.findByRole("heading", {
-			name: "Move “Review the migration safety checks”",
-		});
-		await userEvent.click(body.getByRole("button", { name: "Concept" }));
-		await waitFor(() =>
-			expect(document.querySelector("[role=dialog]")).toBeNull(),
-		);
-		await waitFor(() => expect(document.activeElement).toBe(button()));
-		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(1);
-		expect(calls.find((call) => call.op === "sessions.tags")).toMatchObject({
-			tags: ["review", "project", "concept"],
-			primary: "concept",
-		});
-		const moved = button();
-		if (!moved) throw new Error("Moved row missing");
-		fireEvent.contextMenu(moved);
-		await userEvent.click(
-			await body.findByRole("menuitem", { name: "Remove all tags (3)" }),
-		);
-		await waitFor(() =>
-			expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(
-				2,
-			),
-		);
-		expect(
-			calls.filter((call) => call.op === "sessions.tags")[1],
-		).toMatchObject({ tags: [], primary: null });
-		const cleared = button();
-		if (!cleared) throw new Error("Cleared source missing");
-		fireEvent.contextMenu(cleared);
-		await body.findByRole("menuitem", { name: "Move to tag…" });
-		expect(body.getAllByRole("menuitem")).toHaveLength(8);
-		expect(
-			body.queryByRole("menuitem", { name: REMOVE_TAG_MENU_ITEM }),
-		).toBeNull();
-		fireEvent.keyDown(document.activeElement ?? document.body, {
-			key: "Escape",
-		});
-		document.body.dataset.tagsProof =
-			"PASS: Move picker preserves assignments and returns row focus; tagged Remove all tags (3) clears once; untagged menu omits Remove and retains Move to tag";
-	},
 };
 
 export const DragPreview: Story = {
@@ -1096,151 +1266,6 @@ export const TagActionsMenu: Story = {
 		});
 	},
 };
-export const MovePicker: Story = {
-	...story("tags-on"),
-	play: async () => {
-		await ready();
-		const row = document.querySelector<HTMLElement>(
-			'[data-session-row="111111111111"] [data-chat-row]',
-		);
-		if (!row) throw new Error("Missing move source");
-		fireEvent.contextMenu(row);
-		await userEvent.click(
-			await within(document.body).findByRole("menuitem", {
-				name: "Move to tag…",
-			}),
-		);
-		await within(document.body).findByRole("heading", {
-			name: "Move “Review the migration safety checks”",
-		});
-	},
-};
-
-export const MoveConflict: Story = {
-	...story("move-conflict"),
-	play: async () => {
-		await ready();
-		const body = within(document.body);
-		const row = document.querySelector<HTMLElement>(
-			'[data-session-row="111111111111"] [data-chat-row]',
-		);
-		if (!row) throw new Error("Missing conflict source");
-		const reads = calls.filter((call) => call.op === "sessions.list").length;
-		fireEvent.contextMenu(row);
-		await userEvent.click(
-			await body.findByRole("menuitem", { name: "Move to tag…" }),
-		);
-		await userEvent.click(await body.findByRole("button", { name: "Concept" }));
-		await body.findByRole("alert");
-		await waitFor(() =>
-			expect(
-				body.getAllByText("Tags changed elsewhere").length,
-			).toBeGreaterThan(0),
-		);
-		await waitFor(() =>
-			expect(
-				calls.filter((call) => call.op === "sessions.list").length,
-			).toBeGreaterThan(reads),
-		);
-		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(1);
-		expect(calls.find((call) => call.op === "sessions.tags")).toMatchObject({
-			expected_revision: "0",
-		});
-		const current = useCanonicalSessionsStore
-			.getState()
-			.sessions.find((entry) => entry.session_id === "111111111111");
-		expect(current).toMatchObject({
-			primary: "project",
-			tags_revision: "2",
-			tags: [{ id: "project", name: "Project" }],
-		});
-		expect(body.queryByRole("button", { name: "Undo" })).toBeNull();
-		document.body.dataset.tagsProof =
-			"PASS: core-shaped detail.code/detail.result 409 refreshed Project revision 2, showed Tags changed elsewhere, one write attempt, no retry/overwrite/Undo (fixture, not real-core QA)";
-	},
-};
-
-/** The application floor is 600px. An actual nested browsing context supplies
- * that viewport, so 50dvh measures 300px rather than borrowing the host's 720px. */
-export const TagActionsMenu600: Story = {
-	...story("menu-wide", 220),
-	render: () => (
-		<>
-			<iframe
-				title="Sidebar menu at the 600px application floor"
-				src="./iframe.html?id=chat-sidebar-tags--tag-actions-menu&viewMode=story&args=width:220"
-				style={{ width: 1000, height: 600, border: 0 }}
-			/>
-			<output data-floor-proof>Waiting for 600px menu assertions</output>
-		</>
-	),
-	play: async ({ canvasElement }) => {
-		const frame = canvasElement.querySelector("iframe");
-		if (!frame) throw new Error("Missing 600px viewport");
-		await waitFor(
-			() =>
-				expect(
-					frame.contentDocument?.querySelectorAll('[role="menuitem"]').length,
-				).toBe(10),
-			{ timeout: 15000 },
-		);
-		const doc = frame.contentDocument;
-		const win = frame.contentWindow;
-		if (!doc || !win) throw new Error("Missing frame document");
-		const menu = doc.querySelector<HTMLElement>('[role="menu"]');
-		if (!menu) throw new Error("Missing menu");
-		expect(win.innerHeight).toBe(600);
-		const items = Array.from(
-			doc.querySelectorAll<HTMLElement>('[role="menuitem"]'),
-		);
-		expect(win.getComputedStyle(menu).overflowY).toBe("auto");
-		expect(menu.scrollHeight).toBeGreaterThan(menu.clientHeight);
-		for (const item of items)
-			expect(item.getBoundingClientRect().height).toBeGreaterThanOrEqual(32);
-		menu.focus();
-		fireEvent.keyDown(menu, { key: "End" });
-		await waitFor(() => expect(doc.activeElement).toBe(items.at(-1)));
-		expect(menu.scrollTop).toBeGreaterThan(0);
-		fireEvent.keyDown(doc.activeElement ?? menu, { key: "Home" });
-		await waitFor(() => expect(doc.activeElement).toBe(items[0]));
-		fireEvent.keyDown(items[0], { key: "End" });
-		await waitFor(() => expect(doc.activeElement).toBe(items.at(-1)));
-		document.body.dataset.tagsProof = `PASS: 220px sidebar, 600px viewport floor, 10 rows, max-height ${win.getComputedStyle(menu).maxHeight}, scroll ${menu.clientHeight}/${menu.scrollHeight}, >=32px targets, End/Home reach all items`;
-		const proof = canvasElement.querySelector("[data-floor-proof]");
-		if (proof) proof.textContent = document.body.dataset.tagsProof;
-	},
-};
-
-export const MoveFailure: Story = {
-	...story("picker-error"),
-	play: async () => {
-		await ready();
-		const body = within(document.body);
-		const row = document.querySelector<HTMLElement>(
-			'[data-session-row="111111111111"] [data-chat-row]',
-		);
-		if (!row) throw new Error("Missing failure source");
-		fireEvent.contextMenu(row);
-		await userEvent.click(
-			await body.findByRole("menuitem", { name: "Move to tag…" }),
-		);
-		await userEvent.click(await body.findByRole("button", { name: "Concept" }));
-		await waitFor(() =>
-			expect(
-				body.getAllByText("Tags were not moved. Try again.").length,
-			).toBeGreaterThan(0),
-		);
-		expect(
-			useCanonicalSessionsStore
-				.getState()
-				.sessions.find((entry) => entry.session_id === "111111111111")?.primary,
-		).toBe("review");
-		expect(calls.filter((call) => call.op === "sessions.tags")).toHaveLength(1);
-		document.body.dataset.tagsProof =
-			"PASS: move 503 rolled back Review, showed Tags were not moved. Try again., no retry/Undo";
-	},
-};
-
 export const HeldPinnedTagDrop: Story = {
 	...story("held-pin"),
 	play: async () => {

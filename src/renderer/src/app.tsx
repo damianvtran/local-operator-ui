@@ -1,6 +1,6 @@
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import {
 	Navigate,
 	Route,
@@ -16,6 +16,7 @@ import { useConsentAttentionLifetime } from "@features/browser/hooks/use-consent
 // imported: lazy-loading it would put a Suspense fallback on first paint.
 import { ArchiveConversationDialog } from "@features/chat/components/archive-conversation-dialog";
 import { ChatPage } from "@features/chat/components/chat-page";
+import { consoleRevealMayNavigate } from "@features/chat/composer-field";
 import { useHeldDraftResolution } from "@features/chat/hooks/use-held-draft-resolution";
 import { shouldStartNewChat } from "@features/chat/new-chat-shortcut";
 import { PanelOutlet } from "@features/chat/pickers/panel-outlet";
@@ -34,7 +35,9 @@ import { PeersCatalogueSync } from "@features/mesh/peers-catalogue";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
 import { ConnectProviderDialog } from "@features/providers/connect-provider-dialog";
+import { SessionSwitcher } from "@features/session-switcher/components/session-switcher";
 import { LanguageDialog } from "@features/settings/components/language-dialog";
+import { useTeamBridgeNotifications } from "@features/team-bridge/use-team-bridge-notifications";
 import {
 	desktopFeatureEnabled,
 	desktopFeatureState,
@@ -46,8 +49,13 @@ import {
 } from "@shared/browser-consent-attention";
 import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { useI18nLocaleSync } from "@shared/i18n/locale-sync";
+import { useDocumentDirection } from "@shared/i18n/use-document-direction";
 import { useKeymapShortcuts } from "@shared/keymap/use-keymap-shortcuts";
 import { t } from "../../i18n/messages";
+import {
+	type TeamBridgeOpenTarget,
+	teamBridgeOpenPath,
+} from "../../shared/team-bridge-notify";
 
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { CreateAgentDialog } from "@shared/components/common/create-agent-dialog";
@@ -165,6 +173,13 @@ const App: FC = () => {
 	 * one-value reason; it renders nothing.
 	 */
 	useI18nLocaleSync();
+	/*
+	 * The document root's `dir`/`lang`, derived from the locale manifest and
+	 * re-written whenever the store moves. Mounted here, once, for the same
+	 * reason as the writer above: one document has one direction, and a second
+	 * mount would be a second subscriber competing to write it.
+	 */
+	useDocumentDirection();
 	const { pathname } = useLocation();
 	/*
 	 * The routes that already own a 40px row at the window's top: the chat surface
@@ -283,6 +298,15 @@ const App: FC = () => {
 	const bridgeState = desktopFeatureState(
 		capabilities.data,
 		"team_bridge_conversations",
+	);
+	/*
+	 * Team Bridge banners, watched in the SHELL because the page is the one place
+	 * a banner is not needed. The capability gate is the same one the route and
+	 * the rail row read; a backend without the conversation surface is never
+	 * polled for a route it does not have.
+	 */
+	useTeamBridgeNotifications(
+		desktopFeatureEnabled(capabilities.data, "team_bridge_conversations"),
 	);
 
 	const handleAgentCreated = (agent: { id: string; name: string }) => {
@@ -453,6 +477,42 @@ const App: FC = () => {
 	}, [navigate, setActiveSession, setConsolePaneOpen, setConsoleActiveSurface]);
 
 	/*
+	 * A Team Bridge banner's click names an ORGANIZATION and a CONVERSATION. The
+	 * target is HELD until the capability gate has answered: the route is mounted
+	 * only for `team_bridge_conversations`, so navigating during the first
+	 * capability read would fall through the catch-all and lose the click. Once
+	 * the gate is open the route is the app's existing navigation path; the page
+	 * consumes the two parameters once and clears them.
+	 *
+	 * THE WAKE-UP CARRIES NO PAYLOAD. Main parks the target and sends a signal;
+	 * this effect PULLS the target, on mount and on every signal. That is what
+	 * makes a click into a loading or reloading renderer survive: if the signal is
+	 * dropped, the target is still in main, and the mount pull claims it. The pull
+	 * is one-shot, so a normal launch pays one cheap IPC call and nothing else.
+	 */
+	const [teamBridgeTarget, setTeamBridgeTarget] =
+		useState<TeamBridgeOpenTarget | null>(null);
+	useEffect(() => {
+		const bridge = window.api?.desktop?.teamBridge;
+		const pull = () => {
+			void bridge
+				?.pendingOpen?.()
+				.then((target) => {
+					if (target) setTeamBridgeTarget(target);
+				})
+				.catch(() => undefined);
+		};
+		const unsubscribe = bridge?.onOpen?.(pull);
+		pull();
+		return () => unsubscribe?.();
+	}, []);
+	useEffect(() => {
+		if (!teamBridgeTarget || bridgeState !== "enabled") return;
+		navigate(teamBridgeOpenPath(teamBridgeTarget));
+		setTeamBridgeTarget(null);
+	}, [teamBridgeTarget, bridgeState, navigate]);
+
+	/*
 	 * AN AGENT'S `reveal`, handled in the shell because the shell is what knows
 	 * which conversation is on screen (design §10.4).
 	 *
@@ -482,13 +542,27 @@ const App: FC = () => {
 				payload.session_id !== displayedSessionId
 			)
 				return;
-			if (payload.mode === "open") setActiveSession(payload.session_id);
+			if (payload.mode === "open") {
+				// Typing: degrade to the `session` reveal, which does nothing for a
+				// conversation that is not on screen.
+				if (
+					!consoleRevealMayNavigate({
+						targetSessionId: payload.session_id,
+						displayedSessionId,
+						activeElement: document.activeElement,
+						commandPaletteOpen: isCommandPaletteOpen,
+					})
+				)
+					return;
+				setActiveSession(payload.session_id);
+			}
 			setConsoleActiveSurface(payload.surface);
 			setConsolePaneOpen(true);
 		});
 		return () => unsubscribe?.();
 	}, [
 		displayedSessionId,
+		isCommandPaletteOpen,
 		setActiveSession,
 		setConsolePaneOpen,
 		setConsoleActiveSurface,
@@ -723,6 +797,15 @@ const App: FC = () => {
 				 */}
 				<div className="flex min-h-0 flex-1 overflow-hidden">
 					{isCommandPaletteOpen && <CommandPalette />}
+					{/*
+					 * The Ctrl+Tab recent-session switcher. Mounted UNCONDITIONALLY beside the
+					 * palette rather than gated on its own open state: the keyboard listener is what
+					 * opens it, so a component that unmounted while closed would have nothing to
+					 * listen with (the palette's own hook lives out here for the same reason). It
+					 * renders null until a run paints, and answers to every route the window can
+					 * show.
+					 */}
+					<SessionSwitcher />
 
 					{/*
 					 * The shell's presenter for the machine panels, so `/info`, `/usage` and
@@ -828,9 +911,18 @@ const App: FC = () => {
 					<ChatLayout
 						sidebar={<SidebarNavigation />}
 						content={
+							/*
+							 * ORDINARY ROUTE CONTENT GETS THE STRIP'S PAD ONCE, HERE.
+							 *
+							 * `--panel-top-pad` is the content column's statement of the
+							 * OS controls' reach (set on every route by `ChatLayout`). A
+							 * page that is a full-height panel cancels this with
+							 * `panel-flush` and pads its own columns; every other page
+							 * inherits one inset and adds none of its own.
+							 */
 							<main
 								data-glass-region="canvas-backing"
-								className="flex grow flex-col overflow-hidden"
+								className="panel-top-pad flex grow flex-col overflow-hidden"
 							>
 								{/*
 								 * THE NON-CHAT ROUTES' DRAG BAND, WHERE THE LANE IS NOT.

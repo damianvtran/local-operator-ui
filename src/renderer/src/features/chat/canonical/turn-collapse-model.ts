@@ -2487,6 +2487,66 @@ function settledCloseOf(
 }
 
 /**
+ * Does this run's OWN data say it is still being written?
+ *
+ * WHY THIS EXISTS BESIDE THE SETTLE LATCH (operator report, 2026-10-21). The
+ * latch was built on "the rows cannot state whether a turn will resume", which
+ * is true of exactly one window: the INTER-CYCLE gap, where a finished call and
+ * a dead run are the same rows. It is false for the rest of a live turn, and
+ * reading the pane's `live` flag alone there is what made a one-frame flicker
+ * out of every liveness dip:
+ *
+ * - an assistant row still `streaming` cannot be a finished turn's last word;
+ * - a tool row whose `phase` is not `done` has not reported its outcome, so the
+ *   turn that called it is still open.
+ *
+ * Both are facts about the run's own records, so anchoring on them is
+ * idempotent under `live`: the plan can only change when the rows change, which
+ * is the requirement this whole tier exists to hold. A dip (a tool-segment
+ * boundary) and a blank (the reconnect arm sets `frontend: null`, which drops
+ * `working` and even the latch's store key) both stop mattering here.
+ *
+ * WHEN IT RELEASES. The moment the last row stops claiming to be live: the
+ * streaming flag clears and the pending tool reports `done`. That is the pass
+ * on which a completed turn condenses - a real change in the data under the
+ * rows, not a sample of a flag.
+ *
+ * WHAT IT DELIBERATELY DOES NOT COVER. A run whose rows are all settled and
+ * whose turn has not resumed yet (the inter-cycle gap). Nothing in the rows can
+ * separate that from a run that has genuinely finished, so the pane's latch
+ * (`watchedRunId`) still owns it - see `collapsePlan`'s option.
+ *
+ * THE RELEASE IS THE ROW, AND THERE IS NO TIMEOUT (agent review round 1, F1).
+ * The normal operator is `agent_end`, which settles every streaming row and
+ * every non-`done` call (`transcript-reducer.ts`'s sweep), and a durable page
+ * always carries settled rows. The residue is a LOST TERMINAL FRAME - a process
+ * killed mid-turn with no `agent_end` and no `session_incident` - where the row
+ * keeps claiming to be live and this run therefore never condenses. That
+ * direction is chosen: a stale card that still says it is running is a wrong
+ * row the reader can see and act on, while folding rows on a wall clock would
+ * hide work under a bar the moment a slow call outlived the guess. The escape
+ * already exists in the data - any terminal marker (an error-level `custom`, a
+ * completion notice) condenses the run again - and a re-read of the session
+ * replaces the stale rows outright.
+ */
+function runStatesItsOwnLiveness(
+	records: readonly TranscriptRecord[],
+): boolean {
+	for (const record of records) {
+		if (record.kind === "assistant" && record.streaming === true) return true;
+		if (
+			record.kind === "tool" &&
+			(record.phase === "running" ||
+				record.phase === "composing" ||
+				record.phase === "queued")
+		) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
  * The fact for this run, found by its STABLE identity rather than by the run's
  * live key (agent review round 1, F3).
  *
@@ -2906,7 +2966,7 @@ function planRun(
 	 * watched (a fresh open, a finished transcript), which is what keeps the
 	 * idle-residual shape (R2) exactly as it was.
 	 */
-	const anchored = live || watched;
+	const anchored = live || watched || runStatesItsOwnLiveness(records);
 	const settledAt = anchored ? settledCloseOf(records, partition.cycles) : -1;
 	const liveFrom = anchored ? settledAt + 1 : -1;
 
@@ -3023,9 +3083,32 @@ function planRun(
 					span.to < liveFrom ||
 					groupKeepsItsBar ||
 					internal !== null);
-			if (internal === null && foldEligible) ordinarySlots.add(i);
+			const facts = factsOf(segRows, {
+				partial: !headLoaded,
+				headLoaded,
+				group,
+			});
+			/*
+			 * A SPAN WITH NOTHING TO SHOW IS NOT A BAR. `factsOf` excludes the quiet
+			 * call from the count, so a span that holds only a settled `no_reply`
+			 * (a peer-triggered turn that ended silently, whose opener record has
+			 * not - or not yet, on the live path - landed ahead of it) states no
+			 * label, no duration and no actions: a bare check and chevron over rows
+			 * that paint nothing. It stays loose, where those rows are invisible, and
+			 * it does so the same way live and on reload because it reads only the
+			 * span's own facts. A labelled bar, a group and an episode are untouched.
+			 */
+			const hasNothingToShow =
+				label === null &&
+				internal === null &&
+				group === null &&
+				facts.actions === 0 &&
+				facts.durationS === null;
+			if (internal === null && foldEligible && !hasNothingToShow)
+				ordinarySlots.add(i);
 			const collapsedHere =
 				foldEligible &&
+				!hasNothingToShow &&
 				!(
 					focusHold !== null &&
 					!openRuns.has(key) &&
@@ -3055,11 +3138,7 @@ function planRun(
 					i === nearest && answerAt !== null && preAnswerCount === 1
 						? records[answerAt].ts
 						: null,
-				facts: factsOf(segRows, {
-					partial: !headLoaded,
-					headLoaded,
-					group,
-				}),
+				facts,
 			};
 		},
 	);

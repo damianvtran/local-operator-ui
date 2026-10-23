@@ -2,13 +2,17 @@
  * The supplement block's DOM contract, asked of the SHIPPED row.
  *
  * WHAT THIS FILE IS FOR (design round 1, D1's pin; reworked by the operator
- * decision of 2026-10-16): while the block's own turn renders condensed the
- * block shows the SAME files section as its expanded self — actionable
- * `[data-supplement-file]` rows and the `[data-supplement-images]` tile grid —
- * with no `[data-supplement-slot]`, no iframe and no graphics beside them; a
- * graphics-ONLY finish keeps the design's plain count clause. It also pins the
- * glyph-fallback slot of an image tile and the graphics disclosure's singular
- * arm (`Show all 1 graphic`, U7).
+ * decisions of 2026-10-16 and 2026-10-19): while the block's own turn renders
+ * condensed the block shows the SAME files section as its expanded self —
+ * actionable `[data-supplement-file]` rows and the `[data-supplement-images]`
+ * tile grid — and graphics are VISIBLE BY DEFAULT: a graphics-only or mixed
+ * finish renders its budgeted `[data-supplement-slot]` head with the Hide clause
+ * without a press (the 2026-10-19 operator request; it supersedes the closed
+ * default this file used to pin). Static markup runs no effects, so the slot is
+ * the reserved box and no document or iframe exists yet; the viewport gate and
+ * the fetch counts are `supplement-disclosure.test.mjs`'s mounted contract.
+ * The file also pins the glyph-fallback slot of an image tile and the graphics
+ * disclosure's singular arm (`Show all 1 graphic`, U7).
  *
  * WHY STATIC MARKUP AND NOT A MOUNT. The contract is about what the row
  * RENDERS; `renderToStaticMarkup` runs every render pass and no effect, so a
@@ -159,15 +163,21 @@ test("the failed line names the typed cause, and stays bare without one", () => 
 
 /* -------------------------- the condensed arms --------------------------- */
 
-test("a condensed block keeps the design's quiet arms: no slot, no iframe, no graphics", () => {
+test("a condensed block shows its graphics by default, behind the viewport gate", () => {
 	/*
-	 * THE GRAPHICS-ONLY ARM keeps the design's plain count clause (there is no
-	 * file to act on, and the turn's own bar is the expansion frames render in),
-	 * and it is still pinned on the DOM by `data-supplement-condensed`.
+	 * THE GRAPHICS-ONLY ARM now defaults OPEN (operator request, 2026-10-19;
+	 * superseding the closed default from 2026-10-16): the budgeted head's slot
+	 * is in the markup without a press and the same block still offers Hide. A
+	 * static render runs no effects, so the slot is the reserved box and no
+	 * iframe/document exists yet — the viewport gate and fetch counts are the
+	 * mounted contract in `supplement-disclosure.test.mjs`.
 	 */
 	const arms = [
 		// components only
-		[supplement({ components: [component("one", "Chart", 320)] }), "1 graphic"],
+		[
+			supplement({ components: [component("one", "Chart", 320)] }),
+			"Hide 1 graphic",
+		],
 		[
 			supplement({
 				components: [
@@ -175,7 +185,7 @@ test("a condensed block keeps the design's quiet arms: no slot, no iframe, no gr
 					component("two", "Table", 320),
 				],
 			}),
-			"2 graphics",
+			"Hide 2 graphics",
 		],
 	];
 	for (const [record, line] of arms) {
@@ -184,15 +194,23 @@ test("a condensed block keeps the design's quiet arms: no slot, no iframe, no gr
 			markup.includes("data-supplement-condensed"),
 			`the condensed form must be pinned on the DOM: ${line}`,
 		);
-		assert.ok(
-			!markup.includes("data-supplement-slot"),
-			`no slot under a condensed block: ${line}`,
+		assert.equal(
+			(markup.match(/data-supplement-slot/g) ?? []).length,
+			1,
+			`the budgeted head is mounted by default: ${line}`,
 		);
 		assert.ok(
 			!markup.includes("<iframe"),
-			`no iframe under a condensed block: ${line}`,
+			`static markup cannot paint the document: ${line}`,
 		);
-		assert.equal(textOf(markup), line, `whole text is the one clause: ${line}`);
+		assert.ok(
+			textOf(markup).startsWith(line),
+			`the Hide clause leads the visible body: ${line}`,
+		);
+		assert.ok(
+			textOf(markup).includes("Source: bench.csv rows 1-4"),
+			`the budgeted head keeps its caption: ${line}`,
+		);
 	}
 });
 
@@ -227,17 +245,20 @@ test("a condensed block's files are the SAME actionable rows as the expanded for
 		assert.ok(!markup.includes("data-supplement-slot"));
 		assert.ok(!markup.includes("<iframe"));
 	}
-	/*
-	 * The mixed set renders the files and NOT a graphics clause beside them:
-	 * the graphics' route is the turn's bar, and a count of frames the reader
-	 * cannot reach from here would be a dead end the design does not draw.
-	 */
+	/* Mixed sets retain their file rows and show their graphics by default. */
 	const mixed = render(
 		supplement({ files, components: [component("one", "Chart", 320)] }),
 		true,
 	);
 	assert.equal((mixed.match(/data-supplement-file=""/g) ?? []).length, 2);
-	assert.ok(!mixed.includes("graphic"), "no graphics clause beside rows");
+	assert.ok(
+		textOf(mixed).includes("Hide 1 graphic"),
+		"graphics are visible beside files",
+	);
+	assert.ok(
+		mixed.includes("data-supplement-slot"),
+		"mixed graphics default open",
+	);
 });
 
 test("a not-settled condensed block leads with its rows and keeps its actions", () => {
@@ -414,6 +435,65 @@ test("a row with sounds draws them in both forms; a row without draws nothing", 
 		condensed.includes("data-supplement-slot"),
 		false,
 		"and still draws no component slot",
+	);
+});
+
+test("fourteen sounds draw one collage cell each, in both forms", () => {
+	/*
+	 * THE OPERATOR'S WALL (2026-10-23). The producer now sends every sound it
+	 * generated, so fourteen arrived as fourteen stacked rows. The fix is a
+	 * width-driven grid: the container answers to the BLOCK's own width, a
+	 * single sound still fills the row, and no cell is dropped - the brief's
+	 * explicit rule is no slice, no cap, no pagination.
+	 */
+	const sounds = Array.from({ length: 14 }, (_, index) =>
+		sound(`collage-${index}`, `Take ${index + 1}`, 6 + index),
+	);
+	const record = supplement({ sounds });
+	for (const condensed of [false, true]) {
+		const markup = render(record, condensed);
+		assert.equal(
+			(markup.match(/data-supplement-sounds=""/g) ?? []).length,
+			1,
+			"one section in both forms",
+		);
+		assert.equal(
+			(markup.match(/data-supplement-sound=""/g) ?? []).length,
+			14,
+			"every distinct digest gets its own cell",
+		);
+		assert.equal(
+			(markup.match(/data-supplement-sound-placeholder=""/g) ?? []).length,
+			14,
+			"every cell carries its player's own seat (bytes resolve in the mount)",
+		);
+		assert.equal(
+			(markup.match(/data-supplement-sound-title=""/g) ?? []).length,
+			14,
+			"each cell keeps the producer's title",
+		);
+		assert.ok(
+			markup.includes("grid-cols-[repeat(auto-fit,minmax(15rem,1fr))]"),
+			"the collage is a responsive grid, not the old column",
+		);
+		assert.equal(
+			(markup.match(/data-sound-player="compact"/g) ?? []).length,
+			0,
+			"the players mount once the resolver answers, never before",
+		);
+	}
+});
+
+test("a single sound keeps today's full-width row", () => {
+	const markup = render(
+		supplement({ sounds: [sound("only", "Solo take", 4)] }),
+		false,
+	);
+	assert.equal((markup.match(/data-supplement-sound=""/g) ?? []).length, 1);
+	assert.equal(
+		markup.includes("auto-fit"),
+		false,
+		"one sound must not be squeezed into a multi-column template",
 	);
 });
 

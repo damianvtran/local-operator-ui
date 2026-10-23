@@ -8,65 +8,87 @@ import {
 import { Input } from "@shared/components/ui/input";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
-import { Plus, X } from "lucide-react";
 import type { FC } from "react";
-import { useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { TeamBridgeMemberInput } from "../../../../shared/team-bridge-contract";
+import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
+import {
+	type TeamBridgeRecipient,
+	recipientMemberInput,
+} from "./team-bridge-model";
 
 /**
- * Start a conversation: a DM, a group or a channel.
+ * Create a CHANNEL: a name, an optional topic, and who to add.
  *
- * DELIBERATELY SMALL. The server takes member ids because the desktop app has
- * no directory view of the organization yet; a picker that guessed at names
- * would be a second source of identity truth. The form therefore asks for the
- * account id the person already knows from their org admin, plus a display
- * label the other members will see — the label is the ONLY name that crosses
- * the wire, so it is required rather than derived.
+ * WHY CHANNEL-ONLY (review round 1, R1-7). DMs and groups are no longer made
+ * in a form: a person's row, a chief of staff's row and the To: compose bar
+ * address a draft, and the FIRST SEND creates it (find-or-create for a DM).
+ * The dialog used to offer all three kinds and defaulted to DM, which made it a
+ * second, unreviewed create path with the wrong default. A channel is the one
+ * conversation that has a name and exists before anyone writes in it, so it is
+ * the one that keeps a form.
  *
- * AGENTS ARE A SEPARATE ROW KIND. A member row may be a person or an agent; an
- * agent row names its endpoint (the agent's bridge endpoint in this tenant) and
- * stays invited until its owner consents. The dialog does not attempt that
- * consent: it belongs to the owner's machine and is a separate, explicit act.
+ * MEMBERS COME FROM THE DIRECTORY, NOT FROM TYPED IDS. The previous form asked
+ * for raw account ids and a free-text label because the app had no roster;
+ * it has one now, and the To: picker the compose bar uses resolves people and
+ * chiefs of staff by name, so the label that crosses the wire is the
+ * directory's. The creator is added by the server and is not listed here.
+ * Members are optional: a channel is `tenant`-visible, so anyone in the
+ * organization can find and join it; adding people is an invitation.
  */
+const WHITESPACE_RUN = /\s+/g;
+const LEADING_HASHES = /^#+/;
+
+/** "QA coordination" / "#qa coordination" → "qa-coordination". */
+function channelSlug(name: string): string {
+	return name
+		.trim()
+		.toLowerCase()
+		.replace(WHITESPACE_RUN, "-")
+		.replace(LEADING_HASHES, "");
+}
+
 export const TeamBridgeCreateDialog: FC<{
 	open: boolean;
 	onClose: () => void;
+	/** Who the picker offers: the organization's people and chiefs of staff. */
+	candidates: readonly TeamBridgeRecipient[];
 	onCreate: (input: {
-		kind: "dm" | "group" | "channel";
-		name?: string;
-		visibility?: "private" | "tenant";
-		agentCapable?: boolean;
+		kind: "channel";
+		name: string;
+		topic?: string;
+		visibility: "tenant";
+		agentCapable: boolean;
 		members: TeamBridgeMemberInput[];
 	}) => void;
 	pending?: boolean;
 	error?: string;
-}> = ({ open, onClose, onCreate, pending = false, error }) => {
+}> = ({ open, onClose, candidates, onCreate, pending = false, error }) => {
 	useI18nLocale();
-	const [kind, setKind] = useState<"dm" | "group" | "channel">("dm");
+	const nameId = useId();
+	const topicId = useId();
 	const [name, setName] = useState("");
-	const [members, setMembers] = useState<
-		Array<TeamBridgeMemberInput & { rowId: string }>
-	>([
-		{
-			account_id: "",
-			kind: "human",
-			display_label: "",
-			rowId: crypto.randomUUID(),
-		},
-	]);
+	const [topic, setTopic] = useState("");
+	const [members, setMembers] = useState<TeamBridgeRecipient[]>([]);
+	/*
+	 * EVERY OPEN STARTS A FRESH FORM: a half-typed channel that was cancelled
+	 * must not reappear on the next open.
+	 */
+	useEffect(() => {
+		if (!open) return;
+		setName("");
+		setTopic("");
+		setMembers([]);
+	}, [open]);
 
-	const update = (index: number, patch: Partial<TeamBridgeMemberInput>) => {
-		setMembers((current) =>
-			current.map((member, at) =>
-				at === index ? { ...member, ...patch } : member,
-			),
-		);
-	};
-	const valid =
-		members.some(
-			(member) => member.account_id.trim() && member.display_label.trim(),
-		) &&
-		(kind === "dm" || name.trim().length > 0 || kind === "group");
+	/*
+	 * A channel name is a slug, Slack-style: lower case, spaces to hyphens, so
+	 * "#qa coordination" and "#qa-coordination" cannot both exist by accident.
+	 * The server stores what it is sent; normalising here keeps the rail's `#`
+	 * names consistent without a server rule.
+	 */
+	const slug = channelSlug(name);
+	const valid = slug.length > 0;
 
 	return (
 		<Dialog
@@ -77,113 +99,48 @@ export const TeamBridgeCreateDialog: FC<{
 		>
 			<DialogContent className="gap-4">
 				<DialogTitle>{t("ui.teamBridge.create.title")}</DialogTitle>
-				<DialogDescription className="sr-only">
-					{t("ui.teamBridge.page.subtitle")}
+				<DialogDescription className="text-[13px] text-ink-muted">
+					{t("ui.teamBridge.create.channel_description")}
 				</DialogDescription>
 
-				<fieldset className="flex gap-1">
-					<legend className="sr-only">{t("ui.teamBridge.create.title")}</legend>
-					{(["dm", "group", "channel"] as const).map((option) => (
-						<Button
-							key={option}
-							type="button"
-							size="sm"
-							variant={kind === option ? "primary" : "ghost"}
-							onClick={() => setKind(option)}
-						>
-							{t(`ui.teamBridge.kind.${option}`)}
-						</Button>
-					))}
-				</fieldset>
+				<label
+					htmlFor={nameId}
+					className="flex flex-col gap-1 text-[13px] text-ink-muted"
+				>
+					{t("ui.teamBridge.create.name")}
+					<Input
+						id={nameId}
+						value={name}
+						onChange={(event) => setName(event.target.value)}
+						placeholder={t("ui.teamBridge.create.name_placeholder")}
+						maxLength={80}
+						autoFocus
+					/>
+				</label>
 
-				{kind !== "dm" && (
-					<span className="flex flex-col gap-1 text-[13px] text-ink-muted">
-						{t("ui.teamBridge.create.name")}
-						<Input
-							value={name}
-							onChange={(event) => setName(event.target.value)}
-							aria-label={t("ui.teamBridge.create.name")}
-							maxLength={128}
+				<label
+					htmlFor={topicId}
+					className="flex flex-col gap-1 text-[13px] text-ink-muted"
+				>
+					{t("ui.teamBridge.create.topic")}
+					<Input
+						id={topicId}
+						value={topic}
+						onChange={(event) => setTopic(event.target.value)}
+						maxLength={512}
+					/>
+				</label>
+
+				<div className="flex flex-col gap-1 text-[13px] text-ink-muted">
+					<span>{t("ui.teamBridge.create.members")}</span>
+					<div className="relative -mx-5">
+						<TeamBridgeComposeBar
+							recipients={members}
+							candidates={candidates}
+							onChange={setMembers}
+							autoFocus={false}
 						/>
-					</span>
-				)}
-
-				<div className="flex flex-col gap-2">
-					<span className="text-[13px] text-ink-muted">
-						{t("ui.teamBridge.create.members")}
-					</span>
-					{members.map((member, index) => (
-						<div key={member.rowId} className="flex items-center gap-2">
-							<Input
-								value={member.account_id}
-								onChange={(event) =>
-									update(index, { account_id: event.target.value })
-								}
-								placeholder={t("ui.teamBridge.create.account_placeholder")}
-								aria-label={t("ui.teamBridge.create.member_account")}
-								className="flex-1"
-							/>
-							<Input
-								value={member.display_label}
-								onChange={(event) =>
-									update(index, { display_label: event.target.value })
-								}
-								placeholder={t("ui.teamBridge.create.member_name")}
-								aria-label={t("ui.teamBridge.create.member_name")}
-								maxLength={64}
-								className="flex-1"
-							/>
-							<select
-								value={member.kind}
-								onChange={(event) =>
-									update(index, {
-										kind: event.target.value as "human" | "agent",
-									})
-								}
-								aria-label={t("ui.teamBridge.create.member_kind")}
-								className="h-8 rounded-md border border-hairline bg-surface px-1 text-[13px]"
-							>
-								<option value="human">
-									{t("ui.teamBridge.create.member_person")}
-								</option>
-								<option value="agent">
-									{t("ui.teamBridge.create.member_agent")}
-								</option>
-							</select>
-							<Button
-								type="button"
-								size="icon-sm"
-								variant="ghost"
-								aria-label={t("ui.teamBridge.create.remove_member")}
-								onClick={() =>
-									setMembers((current) =>
-										current.filter((_, at) => at !== index),
-									)
-								}
-							>
-								<X size={14} />
-							</Button>
-						</div>
-					))}
-					<Button
-						type="button"
-						size="sm"
-						variant="ghost"
-						onClick={() =>
-							setMembers((current) => [
-								...current,
-								{
-									account_id: "",
-									kind: "human",
-									display_label: "",
-									rowId: crypto.randomUUID(),
-								},
-							])
-						}
-					>
-						<Plus size={14} />
-						{t("ui.teamBridge.create.add_member")}
-					</Button>
+					</div>
 				</div>
 
 				{error && (
@@ -202,14 +159,14 @@ export const TeamBridgeCreateDialog: FC<{
 						disabled={!valid || pending}
 						onClick={() =>
 							onCreate({
-								kind,
-								...(name.trim() ? { name: name.trim() } : {}),
-								visibility: kind === "channel" ? "tenant" : "private",
-								agentCapable: members.some((member) => member.kind === "agent"),
-								members: members.filter(
-									(member) =>
-										member.account_id.trim() && member.display_label.trim(),
-								),
+								kind: "channel",
+								name: slug,
+								...(topic.trim() ? { topic: topic.trim() } : {}),
+								visibility: "tenant",
+								// A channel is agent-capable by definition on the server; the
+								// flag is stated so the request reads the same as it is stored.
+								agentCapable: true,
+								members: members.map(recipientMemberInput),
 							})
 						}
 					>

@@ -1,0 +1,24 @@
+{
+  "source_head": "7cb9d4f3f117eca39005637c6bde79c096f2123e",
+  "source_fix_commit": "aecf1b2b9fd3a2a5716f91c0838d3fbbc1ed32ba",
+  "actual_viewport": [
+    320,
+    568
+  ],
+  "dialog": [
+    288,
+    536
+  ],
+  "body_client_scroll_height": [
+    311,
+    3164
+  ],
+  "footer_visible": true,
+  "horizontal_overflow": false,
+  "stable_consecutive_geometry": true,
+  "viewed": true,
+  "source": "Harness browser tool, paired real Chrome extension after desktop browser host failed; Storybook preview zoom explicitly reset and addon panel hidden. No second engine installed.",
+  "result": "Usage 2 conversations stays on one intrinsic line; reorder/rename/delete remain grouped together underneath; Apply/Cancel visible.",
+  "before": "manage-narrow-320x568.png",
+  "after": "r1-manage-narrow-320x568.png"
+}

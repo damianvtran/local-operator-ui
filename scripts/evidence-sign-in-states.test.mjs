@@ -23,7 +23,11 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { test } from "node:test";
 
-const SET = "docs/evidence/provider-sign-in-onboarding";
+/*
+ * The IGNORED frames tree: these are frame hashes, and frames are rig output
+ * (`docs/evidence-frames`), so this cell reads a captured checkout.
+ */
+const SET = "docs/evidence-frames/provider-sign-in-onboarding";
 
 /** The states whose frames must be images of DIFFERENT screens. */
 const DISTINCT_STATES = [
@@ -44,7 +48,21 @@ const hashOf = (state) => {
 	return createHash("sha256").update(readFileSync(file)).digest("hex");
 };
 
-test("launch_url changes no pixel, and the waiting disclosure stays SHUT", () => {
+/**
+ * These cases hash PIXELS, and pixels are rig output: the set is empty on a
+ * checkout that has never run a capture. Say so as a skip rather than failing
+ * an assertion about a tree nobody asked the machine to produce.
+ */
+const captureRequired = (t) => {
+	if (existsSync(SET)) return false;
+	t.skip(
+		"no captured frames: docs/evidence-frames is rig output, so run its capture rig first",
+	);
+	return true;
+};
+
+test("launch_url changes no pixel, and the waiting disclosure stays SHUT", (t) => {
+	if (captureRequired(t)) return;
 	/*
 	 * Two claims this set makes, and the only assertions that can make them:
 	 *
@@ -76,7 +94,8 @@ test("launch_url changes no pixel, and the waiting disclosure stays SHUT", () =>
 	);
 });
 
-test("every terminal panel state is its own image, and not the waiting one", () => {
+test("every terminal panel state is its own image, and not the waiting one", (t) => {
+	if (captureRequired(t)) return;
 	const hashes = new Map();
 	for (const state of DISTINCT_STATES) hashes.set(state, hashOf(state));
 

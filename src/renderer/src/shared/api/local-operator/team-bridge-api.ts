@@ -13,23 +13,52 @@
  * a message body.
  */
 import {
+	type AgentMessagesBoundary,
+	type AgentMessagesStatus,
+	agentMessagesStatusSchema,
+} from "../../../../../shared/agent-messages-contract";
+import {
 	type TeamBridgeConversation,
 	type TeamBridgeConversationList,
+	type TeamBridgeDirectory,
 	type TeamBridgeMemberInput,
 	type TeamBridgeMessagePage,
+	type TeamBridgeNotify,
 	type TeamBridgeReadScope,
 	type TeamBridgeReadState,
+	type TeamBridgeThreadPage,
 	type TeamBridgeUnread,
 	teamBridgeConversationListSchema,
 	teamBridgeConversationSchema,
+	teamBridgeDirectorySchema,
 	teamBridgeIdentitySchema,
 	teamBridgeMessagePageSchema,
+	teamBridgeReactionsSchema,
 	teamBridgeReadStateSchema,
+	teamBridgeThreadPageSchema,
 	teamBridgeUnreadSchema,
 } from "../../../../../shared/team-bridge-contract";
 import { desktopResult } from "./desktop-api";
 
 export const TeamBridgeApi = {
+	async react(
+		conversationId: string,
+		messageId: string,
+		emoji: string,
+		active: boolean,
+		tenantId?: string,
+	) {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.reactions.toggle",
+			conversation_id: conversationId,
+			message_id: messageId,
+			emoji,
+			active,
+			...(tenantId ? { tenant_id: tenantId } : {}),
+		});
+		return teamBridgeReactionsSchema.parse(answer);
+	},
+
 	/**
 	 * The conversation page for one read scope.
 	 *
@@ -102,9 +131,34 @@ export const TeamBridgeApi = {
 		return teamBridgeMessagePageSchema.parse(answer);
 	},
 
+	/** One thread: the root with its rollup and its replies, oldest-first. */
+	async listReplies(
+		conversationId: string,
+		rootId: string,
+		options: { tenantId?: string; limit?: number; afterSeq?: number } = {},
+	): Promise<TeamBridgeThreadPage> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.messages.replies",
+			conversation_id: conversationId,
+			message_id: rootId,
+			...(options.tenantId ? { tenant_id: options.tenantId } : {}),
+			...(options.limit === undefined ? {} : { limit: options.limit }),
+			...(options.afterSeq === undefined
+				? {}
+				: { after_seq: options.afterSeq }),
+		});
+		return teamBridgeThreadPageSchema.parse(answer);
+	},
+
 	async send(
 		conversationId: string,
-		input: { clientRef: string; body: string; tenantId?: string },
+		input: {
+			clientRef: string;
+			body: string;
+			tenantId?: string;
+			/* Set to reply in that root's thread; omitted for a channel-level post. */
+			threadRootId?: string;
+		},
 	): Promise<unknown> {
 		return desktopResult<unknown>({
 			op: "team_bridge.messages.send",
@@ -112,6 +166,7 @@ export const TeamBridgeApi = {
 			client_ref: input.clientRef,
 			body: input.body,
 			...(input.tenantId ? { tenant_id: input.tenantId } : {}),
+			...(input.threadRootId ? { thread_root_id: input.threadRootId } : {}),
 		});
 	},
 
@@ -159,6 +214,38 @@ export const TeamBridgeApi = {
 		return teamBridgeUnreadSchema.parse(answer);
 	},
 
+	/**
+	 * One organization's active people, with their bridge eligibility.
+	 *
+	 * The tenant is REQUIRED, not optional: the rail's People section only
+	 * exists under a selected organization, and an absent tenant would make the
+	 * server resolve its own default — the one way this read could show the
+	 * wrong organization's roster. Parsing the answer here means a malformed
+	 * directory is the section's own error state, never a crash in a row.
+	 */
+	async directory(tenantId: string): Promise<TeamBridgeDirectory> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.directory",
+			tenant_id: tenantId,
+		});
+		return teamBridgeDirectorySchema.parse(answer);
+	},
+
+	/**
+	 * The bridge's platform state, parsed with the SAME schema the settings
+	 * surface uses: one status payload, two op spellings. The page reads this
+	 * for the plan/sign-in cue; `identity()` still reads the account id through
+	 * the settings op because the notification watcher depends on that exact
+	 * cache entry.
+	 */
+	async status(boundary?: AgentMessagesBoundary): Promise<AgentMessagesStatus> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.status",
+			...(boundary ? { boundary } : {}),
+		});
+		return agentMessagesStatusSchema.parse(answer);
+	},
+
 	async setArchived(
 		conversationId: string,
 		archive: boolean,
@@ -176,5 +263,48 @@ export const TeamBridgeApi = {
 			conversation_id: conversationId,
 			action: "leave",
 		});
+	},
+
+	/**
+	 * Join a discoverable channel, or accept an invitation.
+	 *
+	 * `tenantId` is the selected row's own organization, not the rail scope: in
+	 * the merged view the scope is "all", and a join without a tenant would be
+	 * resolved by whatever the server treats as default — the one way a row
+	 * could be joined in the wrong organization. The server answer is the
+	 * joined conversation, so the caller can parse it rather than guess.
+	 */
+	async join(
+		conversationId: string,
+		tenantId?: string,
+	): Promise<TeamBridgeConversation> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.conversations.join",
+			conversation_id: conversationId,
+			...(tenantId ? { tenant_id: tenantId } : {}),
+		});
+		return teamBridgeConversationSchema.parse(answer);
+	},
+
+	/**
+	 * Set one conversation's notification register.
+	 *
+	 * The desktop op rides the read route's `notify` field (agent-server #148)
+	 * and deliberately sends no `seq`: choosing a level must not move the read
+	 * cursor. The server's answer is the read post-state, which carries the
+	 * canonical `muted` flag this client derives from the same value.
+	 */
+	async setNotify(
+		conversationId: string,
+		notify: TeamBridgeNotify,
+		tenantId?: string,
+	): Promise<TeamBridgeReadState> {
+		const answer = await desktopResult<unknown>({
+			op: "team_bridge.conversations.notify",
+			conversation_id: conversationId,
+			...(tenantId ? { tenant_id: tenantId } : {}),
+			notify,
+		});
+		return teamBridgeReadStateSchema.parse(answer);
 	},
 };

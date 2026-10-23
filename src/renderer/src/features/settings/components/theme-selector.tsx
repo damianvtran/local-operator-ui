@@ -490,7 +490,7 @@ const ThemeOptionTile: FC<{
 				onFocus={onFocusTile}
 				onClick={onSelect}
 				className={cn(
-					"relative flex flex-col gap-1.5 rounded-md p-1 text-left transition-colors duration-fast ease-out-quart",
+					"relative flex flex-col gap-1.5 rounded-md p-1 text-start transition-colors duration-fast ease-out-quart",
 					isSelected ? SELECTED_TILE_GROUND : "hover:bg-surface",
 				)}
 			>
@@ -527,7 +527,7 @@ const ThemeOptionTile: FC<{
 					{isSelected && (
 						<span
 							className={cn(
-								"pointer-events-none absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full",
+								"pointer-events-none absolute top-0.5 end-0.5 flex h-4 w-4 items-center justify-center rounded-full",
 								SELECTED_TILE_GROUND,
 							)}
 						>

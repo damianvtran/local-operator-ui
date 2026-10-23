@@ -233,6 +233,30 @@ function exempt(file, name, index, why, site, noEnv) {
 
 const APP_SPAWN_SITES = [
 	guarded(
+		"scripts/browser-native-determination.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless for the post-merge S4b native determination; it launches Electron directly, so the notification kill switch must ride the launch env",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
+		"scripts/browser-chrome-s4b-probe.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to measure S4b's product chrome and its native list child; there is no opt-in gate on this path, so the kill switch must ride the launch env",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
+		"scripts/browser-address-overlay-probe.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless to drive S1's native child; its environment carries the notification kill switch like every other app rig",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/renderer-driver.mjs",
 		"spawn",
 		1,
@@ -287,6 +311,16 @@ const APP_SPAWN_SITES = [
 		/const env = withNotificationsOff\(\{/,
 	),
 	guarded(
+		"scripts/console-ended-proof.mjs",
+		"spawn",
+		/* #2, not #1: the `lop serve` daemon is spawned first; the app's own spawn is
+		 * the second and is the one this table exists to check. */
+		2,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the BUILT app twice over one quit (the run's own evidence path), on a scratch profile against a real `lop serve` daemon - two chances to banner the operator, and the second launch is a restore",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-file-transfer-proof.mjs",
 		"spawn",
 		1,
@@ -325,6 +359,22 @@ const APP_SPAWN_SITES = [
 		/(?:\{|,)\s*env\s*,/,
 		"boots the app headless to measure the environment it hands the backend it spawns, so the app and that backend both banner here if the switch is missing",
 		/withNotificationsOff\(env\);/,
+	),
+	guarded(
+		"scripts/browser-url-autocomplete-proof.mjs",
+		"spawn",
+		1,
+		/env,\s*detached:/,
+		"boots the built app headless against local fixture sites to exercise the address bar's local autocomplete with real input and real keys",
+		/const env = withTelemetryOff\(\s*withNotificationsOff\(\{/,
+	),
+	guarded(
+		"scripts/browser-tab-menu-turn-proof.mjs",
+		"spawn",
+		1,
+		/env:\s*spawnEnv,/,
+		"boots the built app headless against an isolated backend to open the tab-actions menu over a REAL running turn - a stopped turn is exactly the state a notification is posted from, so a missing switch here banners the operator about a stop they just made themselves",
+		/const spawnEnv = withNotificationsOff\(\{/,
 	),
 	guarded(
 		"scripts/interrupt-esc-proof.mjs",

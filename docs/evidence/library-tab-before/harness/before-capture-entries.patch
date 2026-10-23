@@ -1,0 +1,91 @@
+diff --git a/scripts/capture-evidence.mjs b/scripts/capture-evidence.mjs
+index d1cd1ac109..c4581559ae 100755
+--- a/scripts/capture-evidence.mjs
++++ b/scripts/capture-evidence.mjs
+@@ -12499,15 +12499,81 @@ export const STORIES = [
+ 			expectPresent: VIEWER_FILMSTRIP,
+ 		},
+ 	],
++	/*
++	 * THE BEFORE ARM OF PR #1259, captured from base `c9bbfe25f0` with the
++	 * uncommitted `PreviewInline*` stories that render the same 440px docked
++	 * preview this branch's stories do. These tuples are scratch too: they are
++	 * NOT part of the shipped sweep, and the frames they write live in
++	 * `docs/evidence/library-tab-before/` on the PR branch as a declared
++	 * supplementary set. The selectors are the before code's own labels
++	 * (`Edit Name`, `Current value: …`) because none of the `data-inline-edit*`
++	 * hooks exist here.
++	 */
++	["library-tab--preview-inline-populated", 640, 900],
+ 	[
+-		"image-viewer-controls--group-wide",
++		"library-tab--preview-inline-name-hover",
++		640,
++		900,
++		{
++			hover: 'button[aria-label^="Current value: March invoices."]',
++		},
++	],
++	["library-tab--preview-inline-long-name", 640, 900],
++	[
++		"library-tab--preview-inline-long-name",
++		640,
++		900,
++		{
++			dir: "preview-inline-long-name-hover",
++			hover: 'button[aria-label^="Current value: March invoice"]',
++		},
++	],
++	[
++		"library-tab--preview-inline-name-editing",
++		640,
++		900,
++		{ expectPresent: "header > div:first-child input" },
++	],
++	[
++		"library-tab--preview-inline-name-escape",
++		640,
++		900,
++		{
++			expectGone: "header > div:first-child input",
++			expectSentence: "March invoices",
++		},
++	],
++	[
++		"library-tab--preview-inline-description-editing",
++		640,
++		900,
++		{ expectPresent: "header textarea" },
++	],
++	[
++		"library-tab--preview-inline-empty-tags",
++		640,
++		900,
++		{
++			expectPresent: 'input[placeholder="Add a tag"]',
++			expectSentence: "No tags added",
++		},
++	],
++	[
++		"library-tab--preview-media-inert",
++		640,
++		900,
++		{
++			expectPresent: 'img[alt="Invoice illustration"]',
++			expectGone: "[data-library-media-trigger]",
++		},
++	],
++	[
++		"library-tab--preview-media-inert-page",
+ 		1280,
+ 		900,
+ 		{
+-			dir: "wide-walk",
+-			press: VIEWER_TILE_ONE,
+-			keys: [...Array(9)].map(() => ({ key: "ArrowRight", settleMs: 120 })),
+-			expectPresent: VIEWER_FILMSTRIP,
++			expectPresent: 'img[alt="Invoice illustration"]',
++			expectGone: "[data-library-media-trigger]",
+ 		},
+ 	],
+ ];

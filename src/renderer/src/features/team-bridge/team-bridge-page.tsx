@@ -1,156 +1,289 @@
 import { useMembershipsQuery } from "@features/agent-hub/hooks/use-memberships-query";
+import {
+	type DesktopFeatureState,
+	desktopFeatureState,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
+import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 import { Spinner } from "@shared/components/common/spinner";
-import { Badge, countLabel } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { ScrollArea } from "@shared/components/ui/scroll-area";
-import { t } from "@shared/i18n";
-import { formatRelativeTime } from "@shared/i18n";
+import { useRadientAuth } from "@shared/hooks/use-radient-auth";
+import { formatRelativeTime, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { AtSign, Bot, Hash, Plus, Send, Users } from "lucide-react";
-import type { FC } from "react";
+import { ArrowUp, Bot, Hash, Plus, Users } from "lucide-react";
+import type { FC, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import type {
 	TeamBridgeConversation,
+	TeamBridgeDirectoryMember,
 	TeamBridgeMessage,
+	TeamBridgeNotify,
 } from "../../../../shared/team-bridge-contract";
+import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
+import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
+import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
+	type TeamBridgeEligibility,
 	type TeamBridgeOrganization,
+	type TeamBridgeRecipient,
 	type TeamBridgeScope,
-	chronological,
-	conversationGlyph,
+	type TeamBridgeTarget,
+	asTeamBridgeTenantId,
+	chiefsOfStaff,
+	conversationMemberCount,
 	conversationOrganizationName,
 	conversationTitle,
-	orderedMembers,
+	directoryFailureKind,
+	dmWithAgent,
+	dmWithPerson,
+	draftCreateInput,
+	hubTenantList,
+	isPreviewConversation,
+	notifyFailureIsVisible,
 	organizationOptions,
+	organizationsReadState,
+	participantLabel,
+	personDisplayLabel,
 	preferredScope,
+	railSections,
+	recipientCandidates,
+	recipientKey,
+	sendFirstMessage,
+	targetConversation,
+	teamBridgeEligibility,
+	unmatchedDirects,
 	visibleConversationRows,
 } from "./team-bridge-model";
 import { TeamBridgeOrgSwitcher } from "./team-bridge-org-switcher";
 import {
+	ChiefRailRow,
+	ConversationRailRow,
+	PersonRailRow,
+	RailLoading,
+	RailSection,
+	isTargetRow,
+} from "./team-bridge-rail";
+import { teamBridgeReactionsAvailable } from "./team-bridge-reaction-gate";
+import {
+	TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD,
+	teamBridgeThreadsAvailable,
+} from "./team-bridge-thread-gate";
+import { TeamBridgeThreadPane } from "./team-bridge-thread-pane";
+import {
+	type ThreadTarget,
+	threadTargetFromSearch,
+} from "./team-bridge-thread-read";
+import { useReportTeamBridgeViewing } from "./team-bridge-viewing";
+import {
 	useCreateTeamBridgeConversation,
+	useJoinTeamBridgeConversation,
 	useMarkTeamBridgeRead,
 	useSendTeamBridgeMessage,
+	useSetTeamBridgeNotify,
 	useTeamBridgeConversations,
-	useTeamBridgeIdentity,
+	useTeamBridgeDirectories,
+	useTeamBridgeDirectory,
 	useTeamBridgeMessages,
+	useTeamBridgeStatus,
 	useTeamBridgeUnread,
 } from "./use-team-bridge";
 
 /**
- * The Team Bridge page: conversation list, thread and composer.
+ * The Team Bridge page: a Slack-shaped rail, a thread and a composer.
  *
- * WHY A PAGE AND NOT A DIALOG. The settings section explains a capability; a
- * conversation is a place a person returns to, reads a history in and types in.
- * A dialog would put the inbox in front of the work and close on the first
- * outside click, which is the opposite of what a messaging surface is for.
+ * WHY A PAGE AND NOT A DIALOG. A conversation is a place a person returns to,
+ * reads a history in and types in; a dialog would put the inbox in front of
+ * the work and close on the first outside click.
  *
- * LAYOUT. One 288px list column and a flexible thread, matching the app's own
- * docked-sidebar geometry (30px rows, 13px labels) rather than importing a
- * second set of metrics. Every surface colour is a token role (`bg-surface`,
- * `border-hairline`, `text-ink-muted`, `bg-row-hover`) so light, dark and every
- * palette resolve without a per-theme branch, and the page root opts into the
- * desktop's glass regions (`data-glass-region="canvas"`) so a glass setting is
- * not defeated by an opaque layer.
+ * THE RAIL IS SLACK'S (operator review, 2026-10-21): Channels (the built-in
+ * #humans and #agents first), Groups, People and Chiefs of staff, each with a
+ * header that stays when the section is empty. A person's row IS their DM, so
+ * there is never a second "@ Ben" row; see `team-bridge-rail.tsx`.
+ *
+ * NOTHING IS CREATED BY A CLICK. Selecting a person, a chief of staff or a
+ * compose draft shows the thread if it exists and an empty, addressed draft
+ * if it does not. The FIRST SEND creates the conversation (find-or-create for
+ * a DM) and then posts the message with the same idempotency key, so a
+ * double click, a second window or a retried send all converge on one thread.
+ * This is the "consistent layer" the operator asked for: every conversation
+ * the rail shows exists because someone said something in it.
  *
  * THE VIEW IS PURE. `TeamBridgePageView` takes its state as props; the
- * container below is the only place that knows about queries. That split is
- * what lets the stories render loading, empty, error and populated states
- * without a backend, and it keeps the visual review honest.
+ * container below is the only place that knows about queries, which is what
+ * lets the stories render every state without a backend.
+ *
+ * THE THREAD SURFACE IS HELD CLOSED IN THIS BUILD. The pane and the
+ * reply-in-thread affordance mount only when `teamBridgeThreadsAvailable` says
+ * so, which requires BOTH the shipped-in-this-build constant and a
+ * `team_bridge_threads` capability answer of exactly `enabled`. The reason and
+ * the fail-closed rule live in `team-bridge-thread-gate.ts`; the short version
+ * is that the thread cache/retry paths inherit the #1304 cross-account
+ * isolation defects, so a runtime advertising the route is not clearance to
+ * run them. `unknown` (no answer yet, or the read failed), `below-version` and
+ * `unpaired` hide the surface too - never infer `enabled` from the absence of
+ * an error.
+ *
+ * REACTIONS ARE HELD IN THIS BUILD. The shipped runtime serves no reaction
+ * path, and the old reaction path is not reviewed for account/retry safety, so
+ * the reaction context is withheld even when `team_bridge_reactions` answers
+ * `enabled`: no chips, no toolbar react button and no picker, rather than
+ * controls that fail. The constant dominates the capability
+ * (`team-bridge-reaction-gate.ts`); enabling reactions is a deliberate flip.
+ *
+ * LAYOUT. Panels run the full height of the window and are separated by
+ * ground (`canvas` rail, `surface` thread), never by a rule; the top inset is
+ * padding inside each panel (`--panel-top-pad`), not an offset of the panel.
  */
 
-const ConversationRow: FC<{
-	conversation: TeamBridgeConversation;
-	selected: boolean;
-	selfAccountId?: string;
-	/** The merged view names each row's organization; a single-org rail does not. */
-	organizationName?: string | null;
-	showOrganization: boolean;
-	onSelect: () => void;
-}> = ({
-	conversation,
-	selected,
-	selfAccountId,
-	organizationName,
-	showOrganization,
-	onSelect,
-}) => {
-	const locale = useI18nLocale();
-	const glyph = conversationGlyph(conversation);
-	const Icon = glyph === "hash" ? Hash : glyph === "users" ? Users : AtSign;
-	const title =
-		conversationTitle(conversation, selfAccountId) ??
-		t("ui.teamBridge.list.untitled");
-	const unread = conversation.unread_count;
-	const lastMessage = conversation.last_message_at
-		? relative(conversation.last_message_at, locale)
-		: "";
-
+/**
+ * A failed directory read, with the cause named.
+ *
+ * The People section is the one place a reader goes to find a colleague, so a
+ * generic "could not be loaded" is not actionable: a signed-out viewer must be
+ * told to sign in (and not offered a Try again that cannot work), an org whose
+ * plan does not include the bridge must say so, and only a transport/server
+ * failure earns a retry. The status/code classification lives in the model so
+ * the view does not parse errors.
+ */
+const PeopleFailure: FC<{
+	error?: unknown;
+	onRetry?: () => void;
+}> = ({ error, onRetry }) => {
+	useI18nLocale();
+	const kind = directoryFailureKind(error);
+	const rawMessage = (error as { message?: unknown } | null | undefined)
+		?.message;
+	const detail = typeof rawMessage === "string" ? rawMessage.trim() : "";
+	const reason =
+		kind === "sign_in"
+			? t("ui.teamBridge.plan.sign_in_reason")
+			: kind === "plan"
+				? t("ui.teamBridge.plan.reason")
+				: kind === "invalid"
+					? detail || t("ui.teamBridge.scope.error")
+					: kind === "outdated"
+						? t("ui.teamBridge.plan.update_reason")
+						: t("ui.teamBridge.plan.unavailable_reason");
+	const retryable = kind === "unreachable" || kind === "server";
 	return (
-		<li>
-			<button
-				type="button"
-				onClick={onSelect}
-				aria-current={selected ? "page" : undefined}
-				data-conversation-id={conversation.id}
-				data-conversation-tenant={conversation.tenant_id}
-				className={cn(
-					"flex w-full items-center gap-2 rounded-md px-2 text-left",
-					"transition-colors duration-fast ease-out-quart",
-					showOrganization ? "min-h-[38px] py-1" : "h-[30px]",
-					selected
-						? "bg-row-selected text-ink"
-						: "text-ink-muted hover:bg-row-hover hover:text-ink",
-				)}
-			>
-				<Icon size={16} aria-hidden="true" className="shrink-0" />
-				<span className="flex min-w-0 flex-1 flex-col">
-					<span className="flex min-w-0 items-center gap-2">
-						<span className="min-w-0 flex-1 truncate text-[13px]">{title}</span>
-						{/* The merged view moves the timestamp to the chip line: the org
-						    name is the fact that distinguishes two same-named conversations,
-						    so it keeps the title line's room. */}
-						{lastMessage && !showOrganization && (
-							<span className="shrink-0 text-meta-sm text-ink-dim">
-								{lastMessage}
-							</span>
-						)}
-						{unread > 0 && (
-							<span className="ml-1 inline-flex shrink-0">
-								<Badge
-									variant="attentionQuiet"
-									shape="pill"
-									size="count"
-									aria-label={t("ui.teamBridge.unread.count", {
-										count: unread,
-									})}
-								>
-									{countLabel(unread, 99)}
-								</Badge>
-							</span>
-						)}
-					</span>
-					{showOrganization && (
-						<span className="mt-0.5 flex min-w-0 items-center gap-1.5">
-							<span className="truncate rounded-sm border border-control bg-elevated px-1 text-meta-sm text-ink-dim">
-								{organizationName ?? t("ui.teamBridge.scope.unknown")}
-							</span>
-							{lastMessage && (
-								<span className="shrink-0 text-meta-sm text-ink-dim">
-									{lastMessage}
-								</span>
-							)}
-						</span>
-					)}
-				</span>
-			</button>
-		</li>
+		<div className="flex flex-col items-start gap-2 px-2 py-1">
+			<p className="text-[12px] leading-snug text-ink-muted">
+				{t("ui.teamBridge.people.error")}
+			</p>
+			<p className="text-[12px] leading-snug text-ink-dim">{reason}</p>
+			{retryable && onRetry && (
+				<Button type="button" size="sm" variant="outline" onClick={onRetry}>
+					{t("ui.teamBridge.list.retry")}
+				</Button>
+			)}
+		</div>
 	);
 };
 
-function relative(iso: string, locale: string): string {
+/**
+ * The first paint while the eligibility read is in flight.
+ *
+ * WHY A HOLD RATHER THAN THE PAGE. The status answer decides whether this
+ * surface exists for the account at all; mounting the rail and firing the read
+ * set before it lands showed ineligible accounts live chrome and several
+ * requests the server answers with a refusal (round-1 U-6). The read is local
+ * and cheap, so a calm spinner for one round trip is the cheaper mistake.
+ */
+const TeamBridgeGateLoading: FC = () => {
+	useI18nLocale();
+	return (
+		<div
+			data-glass-region="canvas"
+			className="flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-canvas px-6"
+		>
+			<Spinner size="sm" label={t("ui.teamBridge.plan.checking")} />
+		</div>
+	);
+};
+
+/**
+ * What a signed-in user sees when the bridge says this account or
+ * organization cannot use it.
+ *
+ * A GATE, NOT AN ADVERTISEMENT. It names the exact reason the server gave and
+ * the value in one sentence; it draws no controls, because every control this
+ * page could offer (create, scope, compose) would be refused. The surface
+ * capability still mounts the page, so this is the honest answer for a build
+ * that can render Team Bridge but no plan can serve it.
+ */
+export const TeamBridgeEligibilityPanel: FC<{
+	reason: TeamBridgeEligibility;
+}> = ({ reason }) => {
+	useI18nLocale();
+	const copy = {
+		plan_required: {
+			title: "ui.teamBridge.plan.title",
+			reason: "ui.teamBridge.plan.reason",
+		},
+		signed_out: {
+			title: "ui.teamBridge.plan.sign_in_title",
+			reason: "ui.teamBridge.plan.sign_in_reason",
+		},
+		update_required: {
+			title: "ui.teamBridge.plan.update_title",
+			reason: "ui.teamBridge.plan.update_reason",
+		},
+		unavailable: {
+			title: "ui.teamBridge.plan.unavailable_title",
+			reason: "ui.teamBridge.plan.unavailable_reason",
+		},
+	} as const satisfies Record<
+		TeamBridgeEligibility,
+		{ title: string; reason: string }
+	>;
+	return (
+		<div
+			data-glass-region="canvas"
+			className="flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-canvas px-6"
+		>
+			<div className="max-w-lg text-center">
+				{/* The one glyph on the panel: Team Bridge is a people surface, and the
+				    mark gives the centred block an anchor without a control. */}
+				<Users
+					size={20}
+					aria-hidden="true"
+					className="mx-auto mb-3 text-ink-dim"
+				/>
+				<h1 className="text-balance text-[16px] font-medium text-ink">
+					{t(copy[reason].title)}
+				</h1>
+				<div className="mt-2">
+					<p className="text-pretty text-[13px] leading-relaxed text-ink-muted">
+						{t("ui.teamBridge.plan.body")}
+					</p>
+					<p className="mt-4 text-[12px] leading-snug text-ink-dim">
+						{t(copy[reason].reason)}
+					</p>
+				</div>
+			</div>
+		</div>
+	);
+};
+
+export function absolute(
+	iso: string | null | undefined,
+	locale: string,
+): string {
+	if (!iso) return "";
+	const then = Date.parse(iso);
+	if (Number.isNaN(then)) return "";
+	return new Intl.DateTimeFormat(locale, {
+		dateStyle: "medium",
+		timeStyle: "short",
+	}).format(new Date(then));
+}
+
+export function relative(iso: string, locale: string): string {
 	const then = Date.parse(iso);
 	if (Number.isNaN(then)) return "";
 	const minutes = Math.round((then - Date.now()) / 60_000);
@@ -169,77 +302,20 @@ function relative(iso: string, locale: string): string {
 	);
 }
 
-const MessageRow: FC<{
-	message: TeamBridgeMessage;
-	selfAccountId?: string;
-}> = ({ message, selfAccountId }) => {
-	const own = message.sender.account_id === selfAccountId;
-	const agent = message.sender.kind === "agent";
-	const time = new Date(message.created_at);
-	return (
-		<li className={cn("flex gap-2 px-1", own && "flex-row-reverse text-right")}>
-			<span
-				className={cn(
-					"mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full",
-					agent ? "bg-accent-wash text-accent" : "bg-sunken text-ink-muted",
-				)}
-				aria-hidden="true"
-			>
-				{agent ? <Bot size={14} /> : (message.sender.display_label[0] ?? "?")}
-			</span>
-			<div className={cn("min-w-0 max-w-[min(72ch,80%)]", own && "items-end")}>
-				<div
-					className={cn(
-						"flex items-baseline gap-2 text-[12px] text-ink-dim",
-						own && "justify-end",
-					)}
-				>
-					<span className="truncate font-medium text-ink-muted">
-						{message.sender.display_label}
-					</span>
-					{agent && (
-						<Badge variant="accent" shape="pill" size="count">
-							{t("ui.teamBridge.member.agent")}
-						</Badge>
-					)}
-					<time dateTime={message.created_at}>
-						{Number.isNaN(time.getTime())
-							? ""
-							: time.toLocaleTimeString(undefined, {
-									hour: "2-digit",
-									minute: "2-digit",
-								})}
-					</time>
-				</div>
-				<p
-					className={cn(
-						"mt-0.5 whitespace-pre-wrap break-words rounded-md text-[13px] leading-relaxed",
-						// Own messages get the accent wash — the app's "yours" tint, soft
-						// enough not to shout beside an agent's plain text but distinct in
-						// every palette. Other people's messages are plain text on the
-						// thread ground, which is what keeps a busy channel from turning
-						// into a column of boxes.
-						own ? "bg-accent-wash px-2.5 py-1.5 text-ink" : "text-ink",
-					)}
-				>
-					{/* A null body is an agent member's unadmitted message: say so
-					    rather than rendering an empty bubble. */}
-					{message.body ?? (
-						<span className="text-ink-dim italic">
-							{t("ui.teamBridge.thread.withheld")}
-						</span>
-					)}
-				</p>
-			</div>
-		</li>
-	);
-};
-
 export type TeamBridgePageViewProps = {
+	/** Presentation-only fixtures can render pane states without dispatching live queries. */
+	renderThreadPane?: (target: ThreadTarget, close: () => void) => ReactNode;
+	threadLink?: ThreadTarget | null;
+	onCloseThread?: () => void;
 	listState: "loading" | "error" | "ready";
 	messageState: "idle" | "loading" | "error" | "ready";
 	conversations: TeamBridgeConversation[];
-	selected: TeamBridgeConversation | null;
+	/**
+	 * What the rail has selected. The view resolves the conversation it shows
+	 * (if any) from this and `conversations`, so the page and the stories share
+	 * one rule for "which thread is open".
+	 */
+	target: TeamBridgeTarget | null;
 	messages: TeamBridgeMessage[];
 	/** The caller's active memberships, already joined with per-org counts. */
 	organizations: TeamBridgeOrganization[];
@@ -249,24 +325,72 @@ export type TeamBridgePageViewProps = {
 	membershipsLoading?: boolean;
 	organizationsFailed?: boolean;
 	selfAccountId?: string;
+	/** A send (or the create-then-send of a first message) is in flight. */
 	sending?: boolean;
 	sendFailed?: boolean;
+	joining?: boolean;
+	joinFailed?: boolean;
+	notifyFailed?: boolean;
+	onJoin?: () => void;
+	onNotifyChange?: (notify: TeamBridgeNotify) => void;
+	/**
+	 * The `team_bridge_threads` capability answer, computed by the container from
+	 * `useDesktopCapabilities()`. Defaults to `unknown` so a caller that has not
+	 * asked - a story, a test, a mount without a capabilities provider - gets the
+	 * held, fail-closed surface rather than an assumed one.
+	 */
+	threadsCapabilityState?: DesktopFeatureState;
+	/**
+	 * The `team_bridge_reactions` capability answer, computed by the container.
+	 * Defaults to `unknown`, so a surface that has not asked gets no reaction
+	 * controls rather than an assumed one.
+	 */
+	reactionsCapabilityState?: DesktopFeatureState;
+	/** Story/test seed only: opens the header menu so its rows are visible. */
+	defaultMenuOpen?: boolean;
 	/** Story/test seed only: the page's real draft is user-owned state. */
 	initialDraft?: string;
-	onSelect: (conversationId: string) => void;
+	/** The organization's directory: People and Chiefs of staff both read it. */
+	people?: readonly TeamBridgeDirectoryMember[];
+	/**
+	 * The merged view's per-organization rosters, keyed by tenant, used ONLY to
+	 * name senders and DM rows (`people` is empty there: no single roster to
+	 * list). A tenant whose read has not answered is absent.
+	 */
+	directories?: Readonly<Record<string, readonly TeamBridgeDirectoryMember[]>>;
+	/**
+	 * The signed-in reader's account name, so their own messages are named even
+	 * when no directory lists them (merged view, directory loading or failed).
+	 */
+	selfName?: string;
+	peopleState?: "loading" | "error" | "ready";
+	peopleError?: unknown;
+	peopleIncomplete?: boolean;
+	onRetryPeople?: () => void;
+	eligibility?: TeamBridgeEligibility | null;
+	gatePending?: boolean;
+	readOnly?: boolean;
+	onTarget: (target: TeamBridgeTarget) => void;
+	/**
+	 * Send `body`. For a target with no conversation yet the container creates
+	 * it first; the view does not know or care which.
+	 */
 	onSend: (body: string, clientRef: string) => Promise<unknown> | undefined;
-	onNewConversation: () => void;
+	/** Open the channel form (Channels' "+" and its empty line). */
+	onNewChannel: () => void;
 	onRetry?: () => void;
 	onScopeChange: (scope: TeamBridgeScope) => void;
-	/** Retry the memberships read behind the switcher (its own recovery action). */
 	onRetryMemberships?: () => void;
 };
 
 export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
+	renderThreadPane,
+	threadLink,
+	onCloseThread,
 	listState,
 	messageState,
 	conversations,
-	selected,
+	target,
 	messages,
 	organizations,
 	scope,
@@ -276,24 +400,107 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	selfAccountId,
 	sending = false,
 	sendFailed = false,
+	joining = false,
+	joinFailed = false,
+	notifyFailed = false,
+	onJoin,
+	onNotifyChange,
+	threadsCapabilityState = "unknown",
+	reactionsCapabilityState = "unknown",
+	defaultMenuOpen = false,
 	initialDraft = "",
-	onSelect,
+	people = [],
+	directories,
+	selfName,
+	peopleState = "ready",
+	peopleError,
+	peopleIncomplete = false,
+	onRetryPeople,
+	eligibility = null,
+	gatePending = false,
+	readOnly = false,
+	onTarget,
 	onSend,
-	onNewConversation,
+	onNewChannel,
 	onRetry,
 	onScopeChange,
 	onRetryMemberships,
 }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
+	/* THE HOLD. Both halves must agree before any thread state exists, so a deep
+	   link or a reply handler cannot leave a selection behind that a later
+	   render would mount. See `team-bridge-thread-gate.ts`. */
+	const threadsAvailable = teamBridgeThreadsAvailable(threadsCapabilityState);
+	/* THE REACTIONS HOLD. The build constant dominates the capability: the
+	   context is withheld in this build whatever the runtime advertises, so the
+	   message list mounts no reaction state and neither chips nor the toolbar's
+	   react button exist. See `team-bridge-reaction-gate.ts`. */
+	const reactionsAvailable = teamBridgeReactionsAvailable(
+		reactionsCapabilityState,
+	);
 	const [draft, setDraft] = useState(initialDraft);
-	const threadEnd = useRef<HTMLDivElement>(null);
-	const ordered = useMemo(() => chronological(messages), [messages]);
-
+	// Thread identity is checked against the current selection before mounting.
+	const [threadSelection, setThreadSelection] = useState<ThreadTarget | null>(
+		threadsAvailable ? (threadLink ?? null) : null,
+	);
+	useEffect(() => {
+		if (threadsAvailable && threadLink) setThreadSelection(threadLink);
+	}, [threadLink, threadsAvailable]);
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
+	const identityKnown = selfAccountId !== undefined;
+
 	const listRows = useMemo(
 		() => visibleConversationRows(conversations, scope, organizations),
 		[conversations, scope, organizations],
 	);
+	const sections = useMemo(() => railSections(listRows), [listRows]);
+	const chiefs = useMemo(
+		() => (mergedView ? [] : chiefsOfStaff(people, selfAccountId)),
+		[mergedView, people, selfAccountId],
+	);
+	const chiefLabel = (agent: string, person: string) =>
+		t("ui.teamBridge.chief.label", { agent, person });
+	const self = useMemo(
+		() =>
+			selfAccountId && selfName?.trim()
+				? { accountId: selfAccountId, name: selfName }
+				: null,
+		[selfAccountId, selfName],
+	);
+	/*
+	 * Which roster names a participant: the organization's own in a single-org
+	 * scope, and in the merged view the roster of the conversation's own
+	 * organization (an account id is only meaningful inside its tenant).
+	 */
+	const rosterFor = (tenantId: string) =>
+		mergedView ? (directories?.[tenantId] ?? []) : people;
+	const labelFor = (
+		participant: {
+			account_id: string;
+			kind: "human" | "agent";
+			display_label: string;
+		},
+		tenantId: string,
+	) => participantLabel(participant, rosterFor(tenantId), chiefLabel, self);
+	/* A title has no "Unknown person" styling to lean on, so an unnamed peer
+	   keeps the same visibly-placeholder wording the thread uses. */
+	const titleFor = (
+		participant: Parameters<typeof labelFor>[0],
+		tenantId: string,
+	) =>
+		labelFor(participant, tenantId) ??
+		(participant.kind === "agent"
+			? t("ui.teamBridge.sender.unknown_agent")
+			: t("ui.teamBridge.sender.unknown_person"));
+	// The single-org rail paints DMs on People / Chiefs rows; only a DM no row
+	// owns is listed on its own. The merged view has no directory, so every DM
+	// is listed there.
+	const looseDirects = mergedView
+		? sections.directs
+		: unmatchedDirects(sections.directs, people, chiefs, selfAccountId);
+
+	const selected = targetConversation(target, listRows, selfAccountId);
+	const previewSelected = selected !== null && isPreviewConversation(selected);
 	const selectedOrganizationName = selected
 		? conversationOrganizationName(selected, organizations)
 		: null;
@@ -301,20 +508,96 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		mergedView && selected !== null && selectedOrganizationName === null;
 
 	/*
-	 * ONE description id for the disabled New conversation affordance. Exactly
-	 * one node owns it in every merged-view state: the rail hint while the list
-	 * is loading or errored, or while it has rows; the empty pane's body when the
-	 * list is ready and empty. The states are mutually exclusive, so the button's
-	 * `aria-describedby` never dangles — including the transient states where the
-	 * pane is not rendered at all.
+	 * The pane's title for a target with no conversation yet: the person or
+	 * chief it is addressed to. A compose draft has no title; its To: bar is
+	 * the header.
 	 */
-	const createHintId = "team-bridge-create-hint";
-	const createHintVisible = mergedView;
+	const draftPerson =
+		target?.type === "person" || target?.type === "chief"
+			? (people.find((row) => row.account_id === target.accountId) ?? null)
+			: null;
+	const draftChief =
+		target?.type === "chief"
+			? (chiefs.find((chief) => chief.person.account_id === target.accountId) ??
+				null)
+			: null;
+	const paneTitle = selected
+		? selected.kind === "dm"
+			? (() => {
+					const other = selected.members.find(
+						(member) =>
+							member.state !== "removed" &&
+							!(member.kind === "human" && member.account_id === selfAccountId),
+					);
+					return other
+						? titleFor(other, selected.tenant_id)
+						: t("ui.teamBridge.list.untitled");
+				})()
+			: (conversationTitle(selected, selfAccountId) ??
+				t("ui.teamBridge.list.untitled"))
+		: draftChief
+			? chiefLabel(draftChief.agentName, personDisplayLabel(draftChief.person))
+			: draftPerson
+				? personDisplayLabel(draftPerson)
+				: null;
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: scroll only when the conversation or message count changes; `ordered` is a fresh array each render and must not retrigger a scroll on every keystroke.
-	useEffect(() => {
-		threadEnd.current?.scrollIntoView({ block: "end" });
-	}, [selected?.id, ordered.length]);
+	/*
+	 * The compose draft's candidates: every reachable person (not you) and
+	 * every chief of staff, labelled the way the rail labels them.
+	 */
+	const candidates = useMemo(
+		() =>
+			recipientCandidates(people, selfAccountId, (agent, person) =>
+				t("ui.teamBridge.chief.label", { agent, person }),
+			),
+		[people, selfAccountId],
+	);
+
+	const composeRecipients = target?.type === "compose" ? target.recipients : [];
+	// `selected` already resolves a one-recipient draft to its existing DM
+	// (`targetConversation`), so the view and the container agree on it.
+	const shown = selected;
+	const threadIsOpen = Boolean(
+		threadsAvailable &&
+			threadSelection &&
+			shown &&
+			threadSelection.conversationId === shown.id &&
+			threadSelection.tenantId === shown.tenant_id &&
+			!previewSelected &&
+			!selectedOrganizationUnknown,
+	);
+	// A focused window is quiet only for the conversation actually on screen.
+	useReportTeamBridgeViewing(shown?.id);
+	/* The reply route: only ever handed to the timeline while the hold permits
+	   it (see the `onReply` site), never mounted from stale state. */
+	const openThreadFor = (message: TeamBridgeMessage) => {
+		if (!shown) return;
+		setThreadSelection({
+			tenantId: shown.tenant_id,
+			conversationId: shown.id,
+			rootId: message.id,
+		});
+	};
+	const canCompose =
+		!readOnly &&
+		!previewSelected &&
+		!selectedOrganizationUnknown &&
+		(shown !== null ||
+			(target?.type === "compose" && composeRecipients.length > 0) ||
+			((target?.type === "person" || target?.type === "chief") &&
+				draftPerson !== null));
+	/* One reaction context for the timeline AND the thread pane, so a reply can
+	   be reacted to under exactly the rules its root is. WITHHELD - not passed
+	   disabled - when the runtime does not advertise reactions: a chip or picker
+	   that cannot work is the dead end the fail-closed rule forbids. */
+	const reactionContext =
+		reactionsAvailable && selfAccountId && selected
+			? {
+					accountId: selfAccountId,
+					tenantId: selected.tenant_id,
+					disabled: !canCompose || selected.status !== "open",
+				}
+			: undefined;
 
 	// The retry's idempotency key: a failed send is retried with the SAME
 	// `client_ref`, so an ambiguous failure (request landed, answer lost) cannot
@@ -322,7 +605,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	const pendingSend = useRef<{ body: string; clientRef: string } | null>(null);
 	const submit = () => {
 		const body = draft.trim();
-		if (!body || sending) return;
+		if (!body || sending || !canCompose) return;
 		const clientRef =
 			pendingSend.current?.body === body
 				? pendingSend.current.clientRef
@@ -334,8 +617,6 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		// sent — text typed while it was in flight is not the send's to discard.
 		const result = onSend(body, clientRef);
 		const settle = () => {
-			// Only the entry this send created may be cleared: a second send in
-			// another conversation settling late must not drop the first one's key.
 			if (pendingSend.current === entry) pendingSend.current = null;
 			setDraft((current) => (current.trim() === body ? "" : current));
 		};
@@ -346,26 +627,74 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 		}
 	};
 
+	if (gatePending) return <TeamBridgeGateLoading />;
+	if (eligibility) return <TeamBridgeEligibilityPanel reason={eligibility} />;
+
+	const isSelectedConversation = (conversation: TeamBridgeConversation) =>
+		target?.type === "conversation" && target.id === conversation.id;
+	const startGroup = (recipient: TeamBridgeRecipient) =>
+		onTarget({ type: "compose", recipients: [recipient] });
+	const createDisabled = mergedView || readOnly;
+	const createHint = readOnly
+		? t("ui.teamBridge.read_only.note")
+		: t("ui.teamBridge.scope.create_needs_org");
+
+	const conversationRows = (rows: TeamBridgeConversation[]) => (
+		<ul className="flex flex-col">
+			{rows.map((conversation) => (
+				<ConversationRailRow
+					key={conversation.id}
+					conversation={conversation}
+					selected={isSelectedConversation(conversation)}
+					selfAccountId={selfAccountId}
+					title={
+						conversation.kind === "dm"
+							? (() => {
+									const other = conversation.members.find(
+										(member) =>
+											member.state !== "removed" &&
+											!(
+												member.kind === "human" &&
+												member.account_id === selfAccountId
+											),
+									);
+									return other
+										? titleFor(other, conversation.tenant_id)
+										: undefined;
+								})()
+							: undefined
+					}
+					organizationName={
+						mergedView
+							? (conversationOrganizationName(conversation, organizations) ??
+								t("ui.teamBridge.scope.unknown"))
+							: undefined
+					}
+					onSelect={() =>
+						onTarget({ type: "conversation", id: conversation.id })
+					}
+				/>
+			))}
+		</ul>
+	);
+
 	return (
 		<div
 			data-glass-region="canvas"
-			className="flex h-full min-h-0 w-full overflow-hidden"
+			className="panel-flush @container/bridge relative flex min-h-0 flex-1 w-full overflow-hidden bg-canvas"
 		>
 			<aside
 				data-glass-region="page-sidebar"
 				/* BORDERLESS CHROME: the column is separated by its own ground, not a
-				   rule. A full-height border beside a 30px-row list reads as a hard
-				   frame; the sunken tint does the same job and survives glass, where a
-				   solid line is the one thing a translucent surface cannot hide. */
-				className="flex w-72 shrink-0 flex-col"
+				   rule; the top inset is padding inside the full-height panel.
+				   `bg-surface` is the ground every page sidebar paints (Settings,
+				   Agents, Library) and the one `rowCurrent`'s fill is tuned against:
+				   on the canvas ground the selected row measured 1.06:1 on `paper`
+				   (design round 1, D2). */
+				className="panel-top-pad flex w-72 shrink-0 flex-col bg-surface"
 			>
-				{/* The page's heading for heading navigation. The rail's visible title is
-				    the scope, which is a control rather than a document heading. */}
 				<h1 className="sr-only">{t("ui.teamBridge.page.title")}</h1>
 				<header className="flex h-11 shrink-0 items-center gap-2 px-3">
-					{/* The scope IS the rail title: every row below belongs to the
-					    organization named here, and the switcher is the rail's first
-					    30px row rather than a framed field above it. */}
 					<TeamBridgeOrgSwitcher
 						organizations={organizations}
 						scope={scope}
@@ -375,341 +704,750 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 						organizationsFailed={organizationsFailed}
 						onRetry={onRetryMemberships}
 					/>
+					{/* "New message" opens an empty To: draft: a DM or a group is
+					    decided by how many people the reader adds, as in Slack. */}
 					<Button
 						size="icon-sm"
 						variant="ghost"
-						aria-label={t("ui.teamBridge.page.new_conversation")}
-						aria-disabled={mergedView || undefined}
-						aria-describedby={createHintVisible ? createHintId : undefined}
+						aria-label={t("ui.teamBridge.compose.new")}
+						aria-disabled={createDisabled || undefined}
+						title={createDisabled ? createHint : undefined}
 						className={
-							mergedView ? "text-ink-disabled hover:bg-transparent" : undefined
+							createDisabled
+								? "text-ink-disabled hover:bg-transparent"
+								: undefined
 						}
 						onClick={() => {
-							if (!mergedView) onNewConversation();
+							if (!createDisabled)
+								onTarget({ type: "compose", recipients: [] });
 						}}
 					>
 						<Plus size={16} />
 					</Button>
 				</header>
-				{mergedView && (listRows.length > 0 || listState !== "ready") && (
-					<p id={createHintId} className="px-3 pb-2 text-[12px] text-ink-dim">
-						{t("ui.teamBridge.scope.create_needs_org")}
-					</p>
-				)}
-				<ScrollArea className="min-h-0 flex-1">
-					{listState === "loading" && (
-						<div className="flex items-center justify-center py-8">
-							<Spinner size="sm" label={t("ui.teamBridge.list.loading")} />
-						</div>
-					)}
+				<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block!">
 					{listState === "error" && (
-						<div className="flex flex-col items-start gap-2 px-3 py-6">
-							<p className="text-[13px] text-ink-muted">
+						<div className="flex flex-col items-start gap-2 px-3 py-3">
+							<p className="text-[12px] text-ink-muted">
 								{t("ui.teamBridge.list.error")}
 							</p>
 							{onRetry && (
-								<Button size="sm" variant="outline" onClick={onRetry}>
+								<Button size="sm" variant="ghost" onClick={onRetry}>
 									{t("ui.teamBridge.list.retry")}
 								</Button>
 							)}
 						</div>
 					)}
-					{/* The empty state is ONE statement, in the pane. A second copy in the
-					    column would say the same thing twice in the same viewport. */}
-					{listState === "ready" && listRows.length > 0 && (
-						<ul className="flex flex-col gap-0.5 px-1 pb-2">
-							{listRows.map((conversation) => (
-								<ConversationRow
-									key={conversation.id}
-									conversation={conversation}
-									selected={selected?.id === conversation.id}
-									selfAccountId={selfAccountId}
-									showOrganization={mergedView}
-									organizationName={
-										mergedView
-											? conversationOrganizationName(
-													conversation,
-													organizations,
-												)
-											: undefined
+					<RailSection
+						id="team-bridge-channels-heading"
+						title={t("ui.teamBridge.section.channels")}
+						add={
+							createDisabled
+								? undefined
+								: {
+										label: t("ui.teamBridge.section.channels_add"),
+										onAdd: onNewChannel,
 									}
-									onSelect={() => onSelect(conversation.id)}
-								/>
-							))}
-						</ul>
+						}
+						empty={
+							listState === "ready" && sections.channels.length === 0
+								? {
+										text: createDisabled
+											? t("ui.teamBridge.section.channels_none")
+											: t("ui.teamBridge.section.channels_empty"),
+										onCreate: createDisabled ? undefined : onNewChannel,
+									}
+								: undefined
+						}
+					>
+						{listState === "loading" ? (
+							<RailLoading label={t("ui.teamBridge.list.loading")} />
+						) : (
+							conversationRows(sections.channels)
+						)}
+					</RailSection>
+					<RailSection
+						id="team-bridge-groups-heading"
+						title={t("ui.teamBridge.section.groups")}
+						add={
+							createDisabled
+								? undefined
+								: {
+										label: t("ui.teamBridge.section.groups_add"),
+										onAdd: () => onTarget({ type: "compose", recipients: [] }),
+									}
+						}
+						empty={
+							listState === "ready" && sections.groups.length === 0
+								? {
+										text: createDisabled
+											? t("ui.teamBridge.section.groups_none")
+											: t("ui.teamBridge.section.groups_empty"),
+										onCreate: createDisabled
+											? undefined
+											: () => onTarget({ type: "compose", recipients: [] }),
+									}
+								: undefined
+						}
+					>
+						{listState === "loading" ? (
+							<RailLoading label={t("ui.teamBridge.list.loading")} />
+						) : (
+							conversationRows(sections.groups)
+						)}
+					</RailSection>
+					{looseDirects.length > 0 && (
+						<RailSection
+							id="team-bridge-directs-heading"
+							title={t("ui.teamBridge.section.directs")}
+						>
+							{conversationRows(looseDirects)}
+						</RailSection>
+					)}
+					{mergedView ? (
+						<RailSection
+							id="team-bridge-people-heading"
+							title={t("ui.teamBridge.people.title")}
+							empty={{ text: t("ui.teamBridge.people.all_scope") }}
+						/>
+					) : (
+						<>
+							<RailSection
+								id="team-bridge-people-heading"
+								title={t("ui.teamBridge.people.title")}
+								empty={
+									peopleState === "ready" && people.length === 0
+										? {
+												text: peopleIncomplete
+													? t("ui.teamBridge.people.error")
+													: t("ui.teamBridge.people.empty"),
+											}
+										: undefined
+								}
+							>
+								{peopleState === "loading" ? (
+									<RailLoading label={t("ui.teamBridge.people.loading")} />
+								) : peopleState === "error" ? (
+									<PeopleFailure error={peopleError} onRetry={onRetryPeople} />
+								) : (
+									<ul className="flex flex-col">
+										{people.map((member) => (
+											<PersonRailRow
+												key={member.account_id}
+												member={member}
+												selfAccountId={selfAccountId}
+												identityKnown={identityKnown}
+												selected={isTargetRow(
+													target,
+													"person",
+													member.account_id,
+												)}
+												dm={dmWithPerson(
+													listRows,
+													member.account_id,
+													selfAccountId,
+												)}
+												readOnly={readOnly}
+												onSelect={() =>
+													onTarget({
+														type: "person",
+														accountId: member.account_id,
+													})
+												}
+												onStartGroup={startGroup}
+											/>
+										))}
+									</ul>
+								)}
+							</RailSection>
+							<RailSection
+								id="team-bridge-chiefs-heading"
+								title={t("ui.teamBridge.section.chiefs")}
+								empty={
+									peopleState === "ready" && chiefs.length === 0
+										? { text: t("ui.teamBridge.section.chiefs_empty") }
+										: undefined
+								}
+							>
+								{peopleState === "loading" ? (
+									<RailLoading label={t("ui.teamBridge.people.loading")} />
+								) : peopleState === "error" ? null : (
+									<ul className="flex flex-col">
+										{chiefs.map((chief) => (
+											<ChiefRailRow
+												key={chief.person.account_id}
+												chief={chief}
+												label={chiefLabel(
+													chief.agentName,
+													personDisplayLabel(chief.person),
+												)}
+												selected={isTargetRow(
+													target,
+													"chief",
+													chief.person.account_id,
+												)}
+												dm={dmWithAgent(
+													listRows,
+													chief.person.account_id,
+													selfAccountId,
+												)}
+												readOnly={readOnly}
+												onSelect={() =>
+													onTarget({
+														type: "chief",
+														accountId: chief.person.account_id,
+													})
+												}
+												onStartGroup={startGroup}
+											/>
+										))}
+									</ul>
+								)}
+							</RailSection>
+						</>
 					)}
 				</ScrollArea>
 			</aside>
 
 			{/* The ONE ground split: the rail inherits the page canvas, the thread
-			    carries the surface. In every palette `surface` sits off `canvas`, so the
-			    two regons read apart in light and dark without a single rule between
-			    them — which is also what survives the glass settings, where a hard
-			    line is the one thing a translucent ground cannot hide. */}
-			<section className="flex min-w-0 flex-1 flex-col bg-surface">
-				{selected === null ? (
-					listState === "ready" ? (
-						<div className="flex flex-1 items-center justify-center px-6">
+			    carries the surface — two regions read apart without a rule. */}
+			<section
+				className={cn(
+					"panel-top-pad flex min-w-0 flex-1 flex-col bg-surface",
+					threadIsOpen && "@max-[1024px]/bridge:invisible",
+				)}
+			>
+				{target === null ? (
+					<div className="flex flex-1 items-center justify-center px-6">
+						{listState === "loading" ? (
+							<Spinner size="sm" label={t("ui.teamBridge.list.loading")} />
+						) : listState === "error" ? (
+							/* A failed read never claims emptiness (design round 1, D7):
+							   the rail already states the failure and offers Try again. */
+							<p className="max-w-sm text-center text-[13px] text-ink-muted">
+								{t("ui.teamBridge.list.error_pane")}
+							</p>
+						) : (
 							<div className="max-w-sm text-center">
 								<p className="font-medium text-[13px] text-ink">
 									{t("ui.teamBridge.list.empty.title")}
 								</p>
-								<p
-									id={
-										mergedView && listState === "ready" && listRows.length === 0
-											? createHintId
-											: undefined
-									}
-									className="mt-1 text-[13px] text-ink-muted"
-								>
-									{mergedView && listState === "ready" && listRows.length === 0
-										? t("ui.teamBridge.scope.create_needs_org")
+								<p className="mt-1 text-[13px] text-ink-muted">
+									{createDisabled
+										? createHint
 										: t("ui.teamBridge.list.empty.body")}
 								</p>
-								<Button
-									size="sm"
-									variant="primary"
-									className={mergedView ? "mt-3 opacity-60" : "mt-3"}
-									aria-disabled={mergedView || undefined}
-									aria-describedby={
-										createHintVisible ? createHintId : undefined
-									}
-									onClick={() => {
-										if (!mergedView) onNewConversation();
-									}}
-								>
-									<Plus size={14} />
-									{t("ui.teamBridge.page.new_conversation")}
-								</Button>
 							</div>
-						</div>
-					) : null
+						)}
+					</div>
 				) : (
 					<>
-						{/* No rule under the header: the thread's own ground already
-						    separates it, and Slack's chrome carries no line here either. */}
-						<header className="flex h-11 shrink-0 items-center gap-2 px-3">
-							<h2 className="min-w-0 truncate font-medium text-[13px] text-ink">
-								{conversationTitle(selected, selfAccountId) ??
-									t("ui.teamBridge.list.untitled")}
-							</h2>
-							{mergedView && selectedOrganizationName && (
-								<span className="shrink-0 rounded-sm bg-elevated px-1.5 py-0.5 text-meta-sm text-ink-dim">
-									{selectedOrganizationName}
-								</span>
-							)}
-							<span className="shrink-0 text-meta-sm text-ink-dim">
-								{t("ui.teamBridge.member.count", {
-									count: orderedMembers(selected).filter(
-										(member) => member.state === "active",
-									).length,
-								})}
-							</span>
-							<div className="ml-auto flex items-center gap-1">
-								{orderedMembers(selected)
-									.slice(0, 6)
-									.map((member) => (
-										<span
-											key={`${member.kind}:${member.account_id}`}
-											className={cn(
-												"flex size-5 items-center justify-center rounded-full text-[10px]",
-												member.kind === "agent"
-													? "bg-accent-wash text-accent"
-													: "bg-sunken text-ink-muted",
-											)}
-											title={
-												member.state === "invited"
-													? `${member.display_label} — ${t("ui.teamBridge.member.invited")}`
-													: member.display_label
-											}
-										>
-											{member.kind === "agent" ? (
-												<Bot size={12} aria-hidden="true" />
-											) : (
-												(member.display_label[0] ?? "?")
-											)}
-										</span>
-									))}
-							</div>
-						</header>
+						{target.type === "compose" ? (
+							<TeamBridgeComposeBar
+								recipients={composeRecipients}
+								candidates={candidates}
+								onChange={(recipients) =>
+									onTarget({ type: "compose", recipients })
+								}
+							/>
+						) : (
+							<header className="flex h-11 shrink-0 items-center gap-2 px-5">
+								{shown?.kind === "channel" ? (
+									<Hash
+										size={16}
+										aria-hidden="true"
+										className="shrink-0 text-ink-dim"
+									/>
+								) : shown?.kind === "group" ? (
+									<Users
+										size={16}
+										aria-hidden="true"
+										className="shrink-0 text-ink-dim"
+									/>
+								) : target.type === "chief" ? (
+									<Bot
+										size={16}
+										aria-hidden="true"
+										className="shrink-0 text-accent"
+									/>
+								) : null}
+								<h2 className="min-w-0 truncate font-semibold text-[15px] text-ink">
+									{paneTitle ?? t("ui.teamBridge.list.untitled")}
+								</h2>
+								{mergedView && selectedOrganizationName && (
+									<span className="shrink-0 rounded-sm bg-elevated px-1.5 py-0.5 text-meta-sm text-ink-dim">
+										{selectedOrganizationName}
+									</span>
+								)}
+								{shown && shown.kind !== "dm" && (
+									<span className="shrink-0 text-meta-sm text-ink-dim">
+										{t("ui.teamBridge.member.count", {
+											count: conversationMemberCount(shown),
+										})}
+									</span>
+								)}
+								{shown?.last_message_at && shown.latest_seq > 0 && (
+									<span
+										className="shrink-0 text-meta-sm text-ink-dim"
+										title={absolute(shown.last_message_at, locale)}
+									>
+										<span aria-hidden="true">·</span>{" "}
+										{relative(shown.last_message_at, locale)}
+									</span>
+								)}
+								<div className="ml-auto flex items-center gap-1">
+									{shown && !previewSelected && !readOnly && onNotifyChange && (
+										<TeamBridgeConversationMenu
+											conversation={shown}
+											onNotifyChange={onNotifyChange}
+											defaultOpen={defaultMenuOpen}
+										/>
+									)}
+								</div>
+							</header>
+						)}
+						{notifyFailed && (
+							<p role="alert" className="px-5 pb-1 text-[12px] text-danger">
+								{t("ui.teamBridge.notify.error")}
+							</p>
+						)}
+						{shown?.builtin && (
+							<p className="px-5 pb-1 text-[12px] text-ink-dim">
+								{shown.builtin === "agents"
+									? t("ui.teamBridge.builtin.agents_topic")
+									: t("ui.teamBridge.builtin.humans_topic")}
+							</p>
+						)}
 
-						{/* Radix wraps children in an auto-height table cell; these
-						    arbitrary variants make that wrapper fill the viewport so the
-						    list can justify-end (Slack anchors a short history at the
-						    bottom, next to the composer). */}
-						<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block [&_[data-radix-scroll-area-viewport]>div]:h-full">
+						<ScrollArea className="min-h-0 flex-1 [&_[data-radix-scroll-area-viewport]>div]:block! [&_[data-radix-scroll-area-viewport]>div]:h-full">
 							<div className="flex h-full flex-col">
-								{messageState === "loading" && (
+								{previewSelected ? (
+									<TeamBridgePreviewBanner
+										joining={joining}
+										joinFailed={joinFailed}
+										readOnly={readOnly}
+										onJoin={onJoin}
+									/>
+								) : selectedOrganizationUnknown ? (
+									<p className="px-5 py-8 text-[13px] text-ink-muted">
+										{t("ui.teamBridge.scope.thread_unknown")}
+									</p>
+								) : shown === null ? (
+									/*
+									 * No thread yet: an addressed, empty draft, introduced the way
+									 * Slack and Discord open an empty DM (design round 1, D5): a
+									 * bottom-anchored block with the person's mark, their name and
+									 * one line. The copy never says "created": that nothing is
+									 * written until the first send is the code's fact, not the
+									 * reader's concern. A compose draft names who it will reach
+									 * (D6) instead of the generic thread line.
+									 */
+									<div className="mt-auto flex flex-col gap-2 px-5 pb-5">
+										{target.type === "compose" ? (
+											<p className="text-[13px] text-ink-muted">
+												{composeRecipients.length === 0
+													? t("ui.teamBridge.compose.empty")
+													: t("ui.teamBridge.thread.intro_group", {
+															names: composeRecipients
+																.map((recipient) => recipient.label)
+																.join(", "),
+														})}
+											</p>
+										) : (
+											<>
+												<span
+													aria-hidden="true"
+													className={cn(
+														"flex size-14 items-center justify-center rounded-xl font-semibold text-[22px]",
+														target.type === "chief"
+															? "bg-accent-wash text-accent"
+															: "bg-sunken text-ink-muted",
+													)}
+												>
+													{target.type === "chief" ? (
+														<Bot size={26} />
+													) : (
+														(paneTitle ?? "").trim().charAt(0).toUpperCase() ||
+														"?"
+													)}
+												</span>
+												<p className="font-semibold text-[17px] text-ink">
+													{paneTitle}
+												</p>
+												<p className="text-[13px] text-ink-muted">
+													{target.type === "chief"
+														? t("ui.teamBridge.thread.intro_chief", {
+																name: paneTitle ?? "",
+															})
+														: t("ui.teamBridge.thread.intro_person", {
+																name: paneTitle ?? "",
+															})}
+												</p>
+											</>
+										)}
+									</div>
+								) : messageState === "loading" ? (
 									<div className="flex items-center justify-center py-10">
 										<Spinner
 											size="sm"
 											label={t("ui.teamBridge.thread.loading")}
 										/>
 									</div>
-								)}
-								{messageState === "error" && (
-									<p className="px-4 py-8 text-[13px] text-ink-muted">
+								) : messageState === "error" ? (
+									<p className="px-5 py-8 text-[13px] text-ink-muted">
 										{t("ui.teamBridge.thread.error")}
 									</p>
-								)}
-								{selectedOrganizationUnknown && (
-									<p className="px-4 py-8 text-[13px] text-ink-muted">
-										{t("ui.teamBridge.scope.thread_unknown")}
+								) : messages.length === 0 ? (
+									<p className="mt-auto px-5 pb-4 text-[13px] text-ink-muted">
+										{t("ui.teamBridge.thread.empty")}
 									</p>
+								) : (
+									<TeamBridgeMessageList
+										messages={messages}
+										labelFor={(sender) =>
+											labelFor(sender, shown?.tenant_id ?? "")
+										}
+										reactionContext={reactionContext}
+										/* HIDDEN, not inert, while the thread surface is held: the toolbar's
+										   reply button and the "N replies" summary are both rendered from this
+										   prop, and a visible Reply that opens nothing is the dead end the
+										   fail-closed rule forbids. */
+										onReply={threadsAvailable ? openThreadFor : undefined}
+									/>
 								)}
-								{!selectedOrganizationUnknown &&
-									messageState === "ready" &&
-									ordered.length === 0 && (
-										<p className="px-4 py-10 text-center text-[13px] text-ink-muted">
-											{t("ui.teamBridge.thread.empty")}
-										</p>
-									)}
-								{!selectedOrganizationUnknown &&
-									messageState === "ready" &&
-									ordered.length > 0 && (
-										/* SLACK'S ANCHOR: a short history sits at the BOTTOM of the
-								   pane and grows upward, so the newest message is always next to
-								   the composer. `min-h-full justify-end` does that inside the
-								   scroll area and collapses to plain flow once the list is
-								   taller than the pane. */
-										<ul className="mt-auto flex flex-col gap-3 px-4 py-4">
-											{ordered.map((message) => (
-												<MessageRow
-													key={message.id}
-													message={message}
-													selfAccountId={selfAccountId}
-												/>
-											))}
-											<div ref={threadEnd} />
-										</ul>
-									)}
 							</div>
 						</ScrollArea>
 
-						{/* THE AGENT COMPOSER'S SHAPE (operator review, 2026-10-18): one
-						    borderless box on `elevated`, the field and the tools inside it,
-						    and Send in the bottom-right corner of the box rather than a
-						    button floating beside a bordered field. The box uses the same
-						    focus contract as `shared/components/composer/message-input.tsx`
-						    — the ring is promoted from the textarea to the box via `:has`,
-						    so previews and tools read as one control and there is no second
-						    ring inside. Radius is 12 rather than the agent composer's 16:
-						    this box is shorter, so 16 read as a pill at rest. The ground
-						    (`elevated` over `surface`) does the separating, never an edge. */}
-						<div className="shrink-0 px-3 pb-3">
-							{sendFailed && (
-								<p role="alert" className="px-2 pb-1 text-[12px] text-danger">
-									{t("ui.teamBridge.composer.error")}
+						{/* THE AGENT COMPOSER'S SHAPE: one borderless box on `elevated`,
+						    the field and its tools inside, Send in the bottom-right. The
+						    focus ring is promoted from the textarea to the box via `:has`.
+						    No composer in a preview (a non-member cannot write) and none
+						    on surface F, where the reason replaces it. */}
+						{!previewSelected &&
+							(readOnly ? (
+								<p className="shrink-0 px-5 pb-4 text-[12px] text-ink-dim leading-snug">
+									{t("ui.teamBridge.read_only.composer")}
 								</p>
-							)}
-							<div
-								className={cn(
-									"rounded-xl bg-elevated",
-									"transition-colors duration-fast ease-out-quart",
-									"has-[textarea:focus-visible]:outline-solid has-[textarea:focus-visible]:outline-2",
-									"has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2",
-								)}
-							>
-								<textarea
-									value={draft}
-									onChange={(event) => setDraft(event.target.value)}
-									onKeyDown={(event) => {
-										// An IME candidate confirmation is Enter too; sending on it
-										// would post the half-composed text.
-										if (
-											event.key === "Enter" &&
-											!event.shiftKey &&
-											!event.nativeEvent.isComposing
-										) {
-											event.preventDefault();
-											submit();
-										}
-									}}
-									rows={1}
-									placeholder={t("ui.teamBridge.composer.placeholder")}
-									aria-label={t("ui.teamBridge.composer.placeholder")}
-									className={cn(
-										"block max-h-40 min-h-9 w-full resize-none bg-transparent px-3 pt-2.5 pb-1",
-										"text-[13px] text-ink placeholder:text-ink-dim",
-										"outline-none",
+							) : (
+								<div className="shrink-0 px-4 pb-4">
+									{sendFailed && (
+										<p
+											role="alert"
+											className="px-2 pb-1 text-[12px] text-danger"
+										>
+											{t("ui.teamBridge.composer.error")}
+										</p>
 									)}
-								/>
-								<div className="flex items-center gap-2 px-2 pb-2">
-									{/* The hint takes the tools' slot until the bridge has a tool
-									    worth putting here (no attachment route exists yet, and a
-									    disabled paperclip would be fake chrome). */}
-									<span className="min-w-0 flex-1 truncate pl-1 text-meta-sm text-ink-dim">
-										{t("ui.teamBridge.composer.hint")}
-									</span>
-									<Button
-										size="icon-sm"
-										variant="primary"
-										className="rounded-full"
-										disabled={!draft.trim() || sending}
-										aria-label={t("ui.teamBridge.composer.send")}
-										onClick={submit}
+									<div
+										className={cn(
+											"rounded-xl bg-elevated transition-colors duration-fast ease-out-quart",
+											"has-[textarea:focus-visible]:outline-2 has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2 has-[textarea:focus-visible]:outline-solid",
+										)}
 									>
-										<Send size={16} />
-									</Button>
+										<textarea
+											value={draft}
+											onChange={(event) => setDraft(event.target.value)}
+											onKeyDown={(event) => {
+												// An IME candidate confirmation is Enter too; sending on it
+												// would post the half-composed text.
+												if (
+													event.key === "Enter" &&
+													!event.shiftKey &&
+													!event.nativeEvent.isComposing
+												) {
+													event.preventDefault();
+													submit();
+												}
+											}}
+											rows={1}
+											disabled={!canCompose}
+											placeholder={
+												target.type === "compose" &&
+												composeRecipients.length > 0
+													? t("ui.teamBridge.composer.placeholder_to", {
+															name: composeRecipients
+																.map((recipient) => recipient.label)
+																.join(", "),
+														})
+													: paneTitle && target.type !== "compose"
+														? t("ui.teamBridge.composer.placeholder_to", {
+																name: paneTitle,
+															})
+														: t("ui.teamBridge.composer.placeholder")
+											}
+											aria-label={t("ui.teamBridge.composer.placeholder")}
+											className="block max-h-40 min-h-10 w-full resize-none bg-transparent px-3.5 pt-3 pb-1 text-[14px] text-ink outline-none placeholder:text-ink-dim disabled:cursor-not-allowed"
+										/>
+										<div className="flex items-center gap-2 px-2 pb-2">
+											{/*
+											 * The key hint shows only while there is something to send
+											 * (design round 1, D8): permanent chrome the agent composer,
+											 * Slack and Discord do not carry. The slot stays, so Send
+											 * does not move when the hint appears.
+											 */}
+											<span
+												className={cn(
+													"min-w-0 flex-1 truncate pl-1.5 text-meta-sm text-ink-dim transition-opacity duration-fast",
+													draft.trim() ? "opacity-100" : "opacity-0",
+												)}
+												aria-hidden={!draft.trim()}
+											>
+												{t("ui.teamBridge.composer.hint")}
+											</span>
+											<Button
+												size="icon-sm"
+												variant="primary"
+												/* A rounded square, the avatar's shape (design round 1,
+												   D11), not the pill the size's default radius gave. */
+												className="rounded-md"
+												disabled={!draft.trim() || sending || !canCompose}
+												aria-label={t("ui.teamBridge.composer.send")}
+												onClick={submit}
+											>
+												{sending ? (
+													<Spinner size="sm" />
+												) : (
+													<ArrowUp size={16} />
+												)}
+											</Button>
+										</div>
+									</div>
 								</div>
-							</div>
-						</div>
+							))}
 					</>
 				)}
 			</section>
+			{/* Threads: a ground-separated sibling; no rail or compose routing changes.
+			    THE HOLD IS THE FIRST TERM: `threadsAvailable` is false in this
+			    build whatever the runtime advertises, so no selection - deep link,
+			    reply click, story fixture - can mount the pane. */}
+			{threadsAvailable &&
+				threadSelection &&
+				shown &&
+				threadSelection.conversationId === shown.id &&
+				threadSelection.tenantId === shown.tenant_id &&
+				!previewSelected &&
+				!selectedOrganizationUnknown && (
+					/* At the supported 800px minimum a second flex column leaves only
+					   152px for the timeline. Take over its whole region below 1024px,
+					   rather than shrinking either reading measure. The 288px rail stays. */
+					<div className="absolute inset-y-0 right-0 left-72 z-20 min-w-0 @min-[1024px]/bridge:static @min-[1024px]/bridge:w-[min(26rem,45%)] @min-[1024px]/bridge:min-w-72 @min-[1024px]/bridge:shrink-0">
+						{renderThreadPane ? (
+							renderThreadPane(threadSelection, () => {
+								setThreadSelection(null);
+								onCloseThread?.();
+							})
+						) : (
+							<TeamBridgeThreadPane
+								key={`${threadSelection.tenantId}:${threadSelection.conversationId}:${threadSelection.rootId}`}
+								target={threadSelection}
+								initialRoot={messages.find(
+									(message) => message.id === threadSelection.rootId,
+								)}
+								labelFor={(sender) =>
+									labelFor(sender, threadSelection.tenantId)
+								}
+								readOnly={readOnly}
+								reactionContext={reactionContext}
+								onClose={() => {
+									setThreadSelection(null);
+									onCloseThread?.();
+								}}
+							/>
+						)}
+					</div>
+				)}
 		</div>
 	);
 };
 
 /**
- * The container. It owns the queries, the selected conversation and the
- * read-cursor write; the view above owns nothing but what it is given.
+ * What a discoverable non-member sees INSTEAD of a thread.
  *
- * Reading a thread marks it read at the newest seq the reader has actually
- * been shown: the page is visible, the messages are in the DOM, and leaving the
- * cursor behind would make the badge keep counting a conversation the user is
- * looking at. The write is idempotent on the server (`$max`), so a focus
- * re-render cannot move the cursor backwards.
+ * The server answers `not_a_member` for a history read, so this banner is not
+ * a loading state and must never sit above message bodies that arrived from a
+ * cache: the caller neither requests nor renders them, and this component is
+ * the only content the pane owns in that state. The primary action is a real
+ * Join (the same write the header menu's absence implies), and a refusal is
+ * stated beside it rather than replacing it — a failed join is retryable.
+ */
+export const TeamBridgePreviewBanner: FC<{
+	joining?: boolean;
+	joinFailed?: boolean;
+	/**
+	 * Surface F: the server refuses every write, so Join is not offered. The
+	 * reader still needs the reason beside the preview copy rather than a
+	 * disabled button that would be fake chrome (round-2 MINOR-1).
+	 */
+	readOnly?: boolean;
+	onJoin?: () => void;
+}> = ({ joining = false, joinFailed = false, readOnly = false, onJoin }) => {
+	useI18nLocale();
+	return (
+		<div className="flex flex-1 items-center justify-center px-6 py-10">
+			<div className="flex max-w-md flex-col items-center gap-3 text-center">
+				<p className="text-[13px] text-ink">
+					{t("ui.teamBridge.preview.banner")}
+				</p>
+				{joinFailed && (
+					<p role="alert" className="text-[12px] text-danger">
+						{t("ui.teamBridge.preview.join_error")}
+					</p>
+				)}
+				{readOnly ? (
+					<p className="text-[12px] leading-snug text-ink-dim">
+						{t("ui.teamBridge.read_only.note")}
+					</p>
+				) : (
+					<Button
+						type="button"
+						size="sm"
+						variant="primary"
+						disabled={joining}
+						onClick={onJoin}
+					>
+						{t("ui.teamBridge.preview.join")}
+					</Button>
+				)}
+			</div>
+		</div>
+	);
+};
+
+/**
+ * The container. It owns the queries, the rail target, and the two writes a
+ * first message needs (create, then send).
+ *
+ * Reading a thread marks it read at the newest seq the reader has been shown;
+ * the server applies `$max`, so a re-render cannot move the cursor backwards.
  */
 export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
-	const [scope, setScope] = useState<TeamBridgeScope>(TEAM_BRIDGE_ALL_SCOPE);
-	// Whether the reader has chosen a scope themselves. Until they do, a
-	// single-membership account lands in its only organization instead of the
-	// account-wide view: "All organizations" is a multi-org affordance, and the
-	// sole-org account should not need to pick its one org to create anything.
-	const scopeChosen = useRef(false);
-	// The memberships are the switcher's ONE source, and the account aggregate
-	// is the ONE unread read — the same cache entry the sidebar badge spends.
-	// Per-org counts are joined from that payload, never fetched per org.
-	const memberships = useMembershipsQuery();
-	const unread = useTeamBridgeUnread(true, TEAM_BRIDGE_ALL_SCOPE);
+	/*
+	 * A banner click lands here with `?tenant=…&conversation=…`. The parameters
+	 * seed the FIRST render so the clicked conversation wins over the landing
+	 * effect below, then are cleared so a refetch cannot re-select it.
+	 */
+	const [searchParams, setSearchParams] = useSearchParams();
+	const requestedConversation = searchParams.get("conversation");
+	const requestedTenant = searchParams.get("tenant");
+	const requestedRoot = searchParams.get("thread");
+	const [threadLink, setThreadLink] = useState<ThreadTarget | null>(() =>
+		/* THE HOLD: a `?thread=` deep link (a notification click, a shared link)
+		   must not become a thread target in this build. The conversation still
+		   opens - that is the click's other half - and no selection is left
+		   behind for a later render to mount. */
+		TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD
+			? threadTargetFromSearch(searchParams)
+			: null,
+	);
+	const [scope, setScope] = useState<TeamBridgeScope>(() =>
+		requestedTenant
+			? asTeamBridgeTenantId(requestedTenant)
+			: TEAM_BRIDGE_ALL_SCOPE,
+	);
+	const scopeChosen = useRef(Boolean(requestedTenant));
+	// THE GATE IS THE FIRST READ (round-1 U-6): until it answers, every other
+	// read is disabled, so an ineligible account issues no refused requests.
+	const status = useTeamBridgeStatus();
+	const eligibility = status.data ? teamBridgeEligibility(status.data) : null;
+	const gatePending = status.isPending;
+	const readsEnabled = !gatePending && eligibility === null;
+	const selfAccountId = status.data?.account_id ?? undefined;
+	const readOnly = status.data?.read_only === true;
+	/*
+	 * THE THREAD CAPABILITY, ASKED AND THEN HELD. The key is read here so the
+	 * plumbing the feature returns on exists and is exercised; the build's own
+	 * hold (`team-bridge-thread-gate.ts`) is what keeps the surface closed
+	 * whatever this answers. An absent or failed capabilities read answers
+	 * `unknown`, which the view treats as hidden.
+	 */
+	const capabilities = useDesktopCapabilities();
+	// The hub's status `tenants[]` is the switcher's and the merged filter's
+	// authoritative source; memberships only label it (and stand in when the
+	// status has no tenant list). Filtering by memberships alone dropped every
+	// row of a hub tenant the memberships read lacked (F6 on #1314). The
+	// account aggregate is the ONE unread read — the same cache entry the
+	// sidebar badge spends. Per-org counts are joined from that payload, never
+	// fetched per org.
+	const memberships = useMembershipsQuery({ enabled: readsEnabled });
+	const unread = useTeamBridgeUnread(readsEnabled, TEAM_BRIDGE_ALL_SCOPE);
+	const hubTenants = hubTenantList(status.data);
 	const organizations = useMemo(
 		() =>
-			organizationOptions(memberships.memberships, unread.data?.organizations),
-		[memberships.memberships, unread.data],
+			organizationOptions(
+				memberships.memberships,
+				unread.data?.organizations,
+				hubTenants,
+			),
+		[memberships.memberships, unread.data, hubTenants],
 	);
-	const list = useTeamBridgeConversations(scope);
-	// The page mounted from the route has no prop caller; identity comes from
-	// the bridge status read, which is the one place the hub account is published.
-	const identity = useTeamBridgeIdentity();
-	const selfAccountId = identity.data ?? undefined;
-	const [selectedId, setSelectedId] = useState<string | null>(null);
-	const [createOpen, setCreateOpen] = useState(false);
-	const conversations = list.data?.conversations ?? [];
+	const { pending: organizationsPending, failed: organizationsFailed } =
+		organizationsReadState(hubTenants, memberships);
+	const list = useTeamBridgeConversations(scope, readsEnabled);
+	const directory = useTeamBridgeDirectory(
+		scope === TEAM_BRIDGE_ALL_SCOPE ? null : scope,
+		readsEnabled,
+	);
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
+	// Names only (see `useTeamBridgeDirectories`): the merged view lists no
+	// roster, but its threads and DM rows still need their senders named.
+	const directories = useTeamBridgeDirectories(
+		mergedView
+			? organizations.map((organization) => organization.tenantId)
+			: [],
+		readsEnabled,
+	);
+	// The reader's own name for their own messages; `user` is null until the
+	// account read answers, never the user store's placeholder name.
+	const selfName = useRadientAuth().user?.name ?? undefined;
+	const conversations = list.data?.conversations ?? [];
+	const people = directory.data?.members ?? [];
+	// The channel form offers the same people and chiefs of staff as the To: bar.
+	const channelCandidates = recipientCandidates(
+		people,
+		selfAccountId,
+		(agent, person) => t("ui.teamBridge.chief.label", { agent, person }),
+	);
 
-	// A conversation id belongs to exactly one organization. Clearing the
-	// selection on a scope change — including "All organizations" — is what
-	// keeps the thread from looking a cached message page up under the new
-	// scope's title while the new list is still loading.
+	const [target, setTarget] = useState<TeamBridgeTarget | null>(() =>
+		requestedConversation
+			? { type: "conversation", id: requestedConversation }
+			: null,
+	);
+	const [channelFormOpen, setChannelFormOpen] = useState(false);
+
+	useEffect(() => {
+		if (!requestedConversation || !requestedTenant) return;
+		scopeChosen.current = true;
+		setScope(asTeamBridgeTenantId(requestedTenant));
+		setTarget({ type: "conversation", id: requestedConversation });
+		setThreadLink(
+			TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD
+				? threadTargetFromSearch(
+						new URLSearchParams({
+							tenant: requestedTenant,
+							conversation: requestedConversation,
+							...(requestedRoot ? { thread: requestedRoot } : {}),
+						}),
+					)
+				: null,
+		);
+		setChannelFormOpen(false);
+		setSearchParams({}, { replace: true });
+	}, [requestedConversation, requestedTenant, requestedRoot, setSearchParams]);
+
+	// A conversation id and a person both belong to one organization; a scope
+	// change clears the target so a stale thread is never shown under a new title.
 	const changeScope = (next: TeamBridgeScope) => {
 		scopeChosen.current = true;
 		setScope(next);
-		setSelectedId(null);
-		setCreateOpen(false);
+		setThreadLink(null);
+		setTarget(null);
+		setChannelFormOpen(false);
 	};
 
-	// The memberships resolve after the first paint; adopt the only one unless
+	// The organization list (hub tenants, or memberships without them) resolves
+	// after the first paint; adopt the only one unless
 	// the reader has already picked a scope. A later unread poll re-renders the
 	// options array, so the equality check keeps this to the one transition.
 	useEffect(() => {
@@ -718,63 +1456,192 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		);
 	}, [organizations]);
 
-	// The selection may only name a row the rail actually renders. The merged
-	// view withholds rows whose org is unknown, and the same filter decides the
-	// landing row — otherwise a first paint could open a hidden conversation.
 	const visibleConversations = useMemo(
 		() => visibleConversationRows(conversations, scope, organizations),
 		[conversations, scope, organizations],
 	);
 
-	// Land on the first conversation once, not on every refetch: a poll must not
-	// move the reader out of the thread they are reading.
+	// Land on the first rail row once (built-ins lead), not on every refetch:
+	// a poll must not move the reader out of the thread they are reading.
 	useEffect(() => {
-		if (selectedId === null && visibleConversations.length > 0) {
-			setSelectedId(visibleConversations[0].id);
+		if (target === null && visibleConversations.length > 0) {
+			const first =
+				visibleConversations.find((row) => row.builtin === "humans") ??
+				visibleConversations[0];
+			setTarget({ type: "conversation", id: first.id });
 		}
-	}, [visibleConversations, selectedId]);
+	}, [visibleConversations, target]);
 
-	const selected =
-		visibleConversations.find(
-			(conversation) => conversation.id === selectedId,
-		) ?? null;
-	// Every thread read and write names the SELECTED CONVERSATION's tenant, not
-	// the rail scope: in the merged view the scope is "all", and a message call
-	// without a tenant would fall back to whatever the server considers default
-	// — the one way a merged row could be read under the wrong organization.
+	const selected = targetConversation(
+		target,
+		visibleConversations,
+		selfAccountId,
+	);
+	const previewSelected = selected !== null && isPreviewConversation(selected);
+	// Every thread read and write names the SELECTED conversation's tenant, not
+	// the rail scope, so a merged-view row can never be read under another org.
 	const messages = useTeamBridgeMessages(
-		selected?.id ?? null,
+		previewSelected ? null : (selected?.id ?? null),
 		selected?.tenant_id,
+		readsEnabled,
 	);
 	const send = useSendTeamBridgeMessage(
 		selected?.id ?? "",
 		selected?.tenant_id,
 	);
 	const create = useCreateTeamBridgeConversation(
-		scope === TEAM_BRIDGE_ALL_SCOPE ? undefined : scope,
+		mergedView ? undefined : scope,
 	);
 	const markRead = useMarkTeamBridgeRead(
 		selected?.id ?? "",
 		selected?.tenant_id,
 	);
+	const join = useJoinTeamBridgeConversation(
+		selected?.id ?? "",
+		selected?.tenant_id,
+	);
+	const notify = useSetTeamBridgeNotify();
 
-	// Mark read at the newest seq actually rendered. A visible page has shown
-	// these messages; leaving the cursor behind would keep the badge counting a
-	// conversation the reader is looking at. The server applies `$max`, so this
-	// is safe to repeat on a refetch.
-	// A refusal belongs to the conversation it happened in; selecting another
-	// conversation must not leave the line on screen.
+	/*
+	 * WHO A DRAFT IS ADDRESSED TO, resolved from the directory at send time so
+	 * the label written into the conversation is the live name and the agent
+	 * endpoint is the one the directory publishes now.
+	 */
+	const chiefLabel = (agent: string, person: string) =>
+		t("ui.teamBridge.chief.label", { agent, person });
+	const draftRecipients = (): TeamBridgeRecipient[] => {
+		if (target === null) return [];
+		if (target.type === "compose") return target.recipients;
+		if (target.type === "person") {
+			const person = people.find((row) => row.account_id === target.accountId);
+			return person
+				? [
+						{
+							kind: "human",
+							accountId: person.account_id,
+							label: personDisplayLabel(person),
+						},
+					]
+				: [];
+		}
+		if (target.type === "chief") {
+			const chief = chiefsOfStaff(people, selfAccountId).find(
+				(row) => row.person.account_id === target.accountId,
+			);
+			return chief
+				? [
+						{
+							kind: "agent",
+							accountId: chief.person.account_id,
+							endpointId: chief.endpointId,
+							label: chiefLabel(
+								chief.agentName || t("ui.teamBridge.chief.fallback"),
+								personDisplayLabel(chief.person),
+							),
+						},
+					]
+				: [];
+		}
+		return [];
+	};
+
+	/*
+	 * SEND, CREATING ON FIRST MESSAGE. With a conversation selected this is a
+	 * plain send. Without one, the draft's recipients become a create request
+	 * (DM for one, private group for several); the server's DM find-or-create
+	 * makes a repeat land on the same row. The message is then posted to the
+	 * returned id with the SAME client_ref the view minted, so a retry after an
+	 * ambiguous failure cannot post it twice. The target is re-pointed at the
+	 * new conversation only for a compose draft: a person/chief target already
+	 * resolves to its DM once the list refetches, and keeping it keeps the
+	 * person's row highlighted.
+	 */
+	const [creating, setCreating] = useState(false);
+	const [firstSendFailed, setFirstSendFailed] = useState(false);
+	/*
+	 * THE CONVERSATION A DRAFT ALREADY CREATED, keyed by the draft's identity
+	 * (review round 1, R1-2). A first send is two writes: create, then post.
+	 * When the create lands and the post fails, the target is still the draft,
+	 * so a retry would create AGAIN: harmless for a DM (find-or-create) but a
+	 * second, duplicate GROUP, because groups are not find-or-create and the
+	 * `client_ref` only dedupes inside one conversation. The retry reuses the
+	 * remembered id instead, so a group draft creates at most one group however
+	 * many times the post is retried. A ref, not state: nothing renders from it.
+	 */
+	const createdForDraft = useRef(
+		new Map<string, { id: string; tenantId: string | undefined }>(),
+	);
+	/*
+	 * The target the reader is looking at NOW, for an async send to compare
+	 * against after it resolves (review round 1, R1-6): the closure's `target`
+	 * is the one from the render that started the send.
+	 */
+	const targetRef = useRef(target);
+	targetRef.current = target;
+
+	const sendBody = async (body: string, clientRef: string) => {
+		if (selected !== null) return send.mutateAsync({ clientRef, body });
+		const recipients = draftRecipients();
+		const input = draftCreateInput(recipients);
+		if (input === null) return undefined;
+		const draftKey = `${mergedView ? "*" : scope}|${input.kind}|${recipients
+			.map(recipientKey)
+			.sort()
+			.join(",")}`;
+		const startedOn = target;
+		setCreating(true);
+		setFirstSendFailed(false);
+		try {
+			const { id: conversationId } = await sendFirstMessage({
+				draftKey,
+				input,
+				body,
+				clientRef,
+				tenantId: mergedView ? undefined : scope,
+				remembered: createdForDraft.current,
+				create: (createInput) =>
+					create.mutateAsync(createInput) as Promise<{
+						id?: string;
+						tenant_id?: string;
+					}>,
+				// Straight to the API rather than the selected conversation's
+				// mutation hook: that hook is bound to the conversation selected at
+				// RENDER time, which a just-created row is not yet.
+				post: (id, message) => TeamBridgeApi.send(id, message),
+			});
+			/*
+			 * Move to the new group only if the reader is STILL on the draft that
+			 * sent it. A person or chief target needs no move: once the list
+			 * refetches, the same target resolves to the new DM by itself.
+			 */
+			if (startedOn?.type === "compose" && targetRef.current === startedOn) {
+				setTarget({ type: "conversation", id: conversationId });
+			}
+			await list.refetch();
+			return { id: conversationId };
+		} catch (error) {
+			setFirstSendFailed(true);
+			throw error;
+		} finally {
+			setCreating(false);
+		}
+	};
+
+	// A refusal belongs to the conversation it happened in.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reset only when the selection changes.
 	useEffect(() => {
 		send.reset();
-	}, [selected?.id]);
+		join.reset();
+		notify.reset();
+		setFirstSendFailed(false);
+	}, [selected?.id, target]);
 
 	const newest = messages.data?.messages.reduce<number | undefined>(
 		(max, message) =>
 			max === undefined || message.seq > max ? message.seq : max,
 		undefined,
 	);
-	// biome-ignore lint/correctness/useExhaustiveDependencies: advance the cursor only when the conversation or its newest seq changes; including the mutation object or the whole conversation would re-fire on every render.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: advance the cursor only when the conversation or its newest seq changes.
 	useEffect(() => {
 		if (selected === null || newest === undefined) return;
 		if (newest <= selected.last_read_seq) return;
@@ -784,10 +1651,20 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	return (
 		<>
 			<TeamBridgePageView
+				threadLink={threadLink}
+				threadsCapabilityState={desktopFeatureState(
+					capabilities.data,
+					"team_bridge_threads",
+				)}
+				reactionsCapabilityState={desktopFeatureState(
+					capabilities.data,
+					"team_bridge_reactions",
+				)}
+				onCloseThread={() => setThreadLink(null)}
 				listState={
-					list.isPending || (mergedView && memberships.isLoading)
+					list.isPending || (mergedView && organizationsPending)
 						? "loading"
-						: list.isError || (mergedView && memberships.isError)
+						: list.isError || (mergedView && organizationsFailed)
 							? "error"
 							: "ready"
 				}
@@ -801,22 +1678,56 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 								: "ready"
 				}
 				conversations={conversations}
-				selected={selected}
+				target={target}
 				messages={messages.data?.messages ?? []}
 				organizations={organizations}
 				scope={scope}
 				totalUnread={unread.data?.total ?? 0}
-				membershipsLoading={memberships.isLoading}
-				organizationsFailed={memberships.isError}
+				membershipsLoading={organizationsPending}
+				organizationsFailed={organizationsFailed}
 				selfAccountId={selfAccountId}
-				sending={send.isPending}
-				sendFailed={send.isError}
-				onSelect={setSelectedId}
-				onSend={(body, clientRef) => {
+				sending={send.isPending || creating}
+				sendFailed={send.isError || firstSendFailed}
+				joining={join.isPending}
+				joinFailed={join.isError}
+				notifyFailed={notifyFailureIsVisible(notify, selected?.id ?? null)}
+				onJoin={() => join.mutate()}
+				onNotifyChange={(next) => {
 					if (selected === null) return;
-					return send.mutateAsync({ clientRef, body });
+					notify.mutate({
+						conversationId: selected.id,
+						tenantId: selected.tenant_id,
+						notify: next,
+					});
 				}}
-				onNewConversation={() => setCreateOpen(true)}
+				onTarget={(next) => {
+					setThreadLink(null);
+					setChannelFormOpen(false);
+					setTarget(next);
+				}}
+				onSend={sendBody}
+				onNewChannel={() => {
+					if (readOnly || mergedView) return;
+					setChannelFormOpen(true);
+				}}
+				people={people}
+				directories={directories}
+				selfName={selfName}
+				peopleState={
+					directory.isPending
+						? "loading"
+						: directory.isError
+							? "error"
+							: "ready"
+				}
+				peopleError={directory.error}
+				peopleIncomplete={(directory.data?.unavailable_count ?? 0) > 0}
+				onRetryPeople={() => {
+					void directory.refetch();
+				}}
+				eligibility={eligibility}
+				gatePending={gatePending}
+				readOnly={readOnly}
 				onRetry={() => {
 					void list.refetch();
 					if (memberships.isError) void memberships.refetch();
@@ -827,16 +1738,18 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				}}
 			/>
 			<TeamBridgeCreateDialog
-				open={createOpen}
+				open={channelFormOpen}
+				candidates={channelCandidates}
 				pending={create.isPending}
 				error={create.isError ? t("ui.teamBridge.create.error") : undefined}
-				onClose={() => setCreateOpen(false)}
+				onClose={() => setChannelFormOpen(false)}
 				onCreate={(input) => {
 					create.mutate(input, {
 						onSuccess: (created) => {
-							setCreateOpen(false);
+							setChannelFormOpen(false);
 							const conversation = created as { id?: string };
-							if (conversation.id) setSelectedId(conversation.id);
+							if (conversation.id)
+								setTarget({ type: "conversation", id: conversation.id });
 						},
 					});
 				}}

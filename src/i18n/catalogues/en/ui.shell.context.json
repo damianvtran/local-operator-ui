@@ -12,14 +12,14 @@
 	},
 	"ui.shell.sidebar_navigation.agent_hub": {
 		"role": "navigation label",
-		"tone": "Short destination noun; sentence case.",
-		"note": "The public catalogue for discovering and installing agents.",
+		"tone": "Destination proper name; title case.",
+		"note": "The public catalogue for discovering and installing agents. Destinations are proper names and take title case (Agent Hub, Team Bridge, Library); actions are sentences and take sentence case (New chat, Search). Localised labels follow their own locale's conventions rather than English title case.",
 		"length": "Single sidebar row; aim for 1–2 words."
 	},
 	"ui.shell.sidebar_navigation.agents": {
 		"role": "navigation label",
-		"tone": "Short destination noun; sentence case.",
-		"note": "The operator-owned agent roster, not the public catalogue.",
+		"tone": "Destination proper name; title case.",
+		"note": "The operator-owned agent roster, not the public catalogue. Destinations are proper names and take title case (Agent Hub, Team Bridge, Library); actions are sentences and take sentence case (New chat, Search). Localised labels follow their own locale's conventions rather than English title case.",
 		"length": "Single sidebar row; aim for 1–2 words."
 	},
 	"ui.shell.sidebar_navigation.aida_missed": {
@@ -42,8 +42,8 @@
 	},
 	"ui.shell.sidebar_navigation.browser": {
 		"role": "navigation label",
-		"tone": "Short destination noun; sentence case.",
-		"note": "The integrated browser workspace.",
+		"tone": "Destination proper name; title case.",
+		"note": "The integrated browser workspace. Destinations are proper names and take title case (Agent Hub, Team Bridge, Library); actions are sentences and take sentence case (New chat, Search). Localised labels follow their own locale's conventions rather than English title case.",
 		"length": "Single sidebar row; aim for 1–2 words."
 	},
 	"ui.shell.sidebar_navigation.browser_waiting": {
@@ -66,6 +66,14 @@
 		"tone": "Direct action verb.",
 		"note": "Describes what pressing the sidebar toggle will do: reduce the desktop sidebar to icons."
 	},
+	"ui.shell.sidebar_navigation.drag_armed": {
+		"role": "live-region announcement",
+		"tone": "Instruction with a cancel affordance; calm, not alarmed.",
+		"note": "Announced when a pointer drag arms on a destination row: names the row being moved and the key that aborts the gesture. Esc restores the starting layout.",
+		"placeholders": {
+			"name": "Destination label as displayed, verbatim."
+		}
+	},
 	"ui.shell.sidebar_navigation.expand_sidebar": {
 		"role": "button accessible name",
 		"tone": "Direct action verb.",
@@ -73,8 +81,8 @@
 	},
 	"ui.shell.sidebar_navigation.mesh": {
 		"role": "navigation label",
-		"tone": "Short destination noun; sentence case.",
-		"note": "Linked devices and peer sessions.",
+		"tone": "Destination proper name; title case.",
+		"note": "Linked devices and peer sessions. Destinations are proper names and take title case (Agent Hub, Team Bridge, Library); actions are sentences and take sentence case (New chat, Search). Localised labels follow their own locale's conventions rather than English title case.",
 		"length": "Single sidebar row; aim for 1–2 words."
 	},
 	"ui.shell.sidebar_navigation.mesh_waiting": {
@@ -86,6 +94,57 @@
 			"countText": "Existing decimal display string, without English grouping punctuation."
 		},
 		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.shell.sidebar_navigation.more_waiting": {
+		"role": "navigation accessible name",
+		"tone": "Pending-work status, not an error.",
+		"note": "Names the More disclosure with the summed attention count of the destinations folded inside it. The count is never hidden by customisation: an unread chief of staff must stay reachable. English waiting is count-invariant but both grammatical branches are intentional.",
+		"placeholders": {
+			"count": "Uncapped pending cardinal count for grammatical number.",
+			"countText": "Existing decimal display string, without English grouping punctuation."
+		},
+		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.shell.sidebar_navigation.more_working": {
+		"role": "navigation accessible name",
+		"tone": "Quiet in-progress status; no completion implied.",
+		"note": "Names the More disclosure while at least one folded destination is working. Mirrors the working glyph the More row carries so hidden activity is still announced."
+	},
+	"ui.shell.sidebar_navigation.move_down": {
+		"role": "menu item label",
+		"tone": "Short imperative; sentence case.",
+		"note": "Moves the focused destination one rendered position down inside its own region. Disabled at the region's bottom boundary. Keyboard equivalent: Alt+ArrowDown.",
+		"length": "Two-word menu item."
+	},
+	"ui.shell.sidebar_navigation.move_note": {
+		"role": "live-region announcement",
+		"tone": "Plain confirmation of what just changed.",
+		"note": "Announced after a keyboard or menu reorder, giving the new one-based position within the rendered list and the list's total. Positions are counts, not ordinals, so no locale ordinal rules apply.",
+		"placeholders": {
+			"name": "Destination label as displayed, verbatim.",
+			"position": "One-based position after the move; rendered as a plain number.",
+			"total": "Number of destinations currently rendered in that region."
+		}
+	},
+	"ui.shell.sidebar_navigation.move_to_more": {
+		"role": "menu item label",
+		"tone": "Short imperative; sentence case.",
+		"note": "Folds the focused visible destination into More, appending it at the end of that region and opening the fold so the landing is visible. More is the feature's own region name and matches the row's label.",
+		"length": "Three-word menu item."
+	},
+	"ui.shell.sidebar_navigation.move_to_more_note": {
+		"role": "live-region announcement",
+		"tone": "Plain confirmation of what just changed.",
+		"note": "Announced after a destination is moved out of the visible list into the More fold.",
+		"placeholders": {
+			"name": "Destination label as displayed, verbatim."
+		}
+	},
+	"ui.shell.sidebar_navigation.move_up": {
+		"role": "menu item label",
+		"tone": "Short imperative; sentence case.",
+		"note": "Moves the focused destination one rendered position up inside its own region. Disabled at the region's top boundary. Keyboard equivalent: Alt+ArrowUp.",
+		"length": "Two-word menu item."
 	},
 	"ui.shell.sidebar_navigation.new_chat": {
 		"role": "button label",
@@ -103,14 +162,39 @@
 	},
 	"ui.shell.sidebar_navigation.projects": {
 		"role": "navigation label",
-		"tone": "Short destination noun; sentence case.",
-		"note": "Workstreams and milestones, not filesystem folders.",
+		"tone": "Destination proper name; title case.",
+		"note": "Workstreams and milestones, not filesystem folders. Destinations are proper names and take title case (Agent Hub, Team Bridge, Library); actions are sentences and take sentence case (New chat, Search). Localised labels follow their own locale's conventions rather than English title case.",
 		"length": "Single sidebar row; aim for 1–2 words."
+	},
+	"ui.shell.sidebar_navigation.reset_layout": {
+		"role": "menu item label",
+		"tone": "Short imperative; sentence case.",
+		"note": "Restores the sidebar's default destination order and fold. Offered only when the current layout differs from the default.",
+		"length": "Three-word menu item."
+	},
+	"ui.shell.sidebar_navigation.reset_note": {
+		"role": "live-region announcement",
+		"tone": "Plain confirmation of what just changed.",
+		"note": "Announced after the sidebar layout is restored to its default arrangement."
+	},
+	"ui.shell.sidebar_navigation.row_actions": {
+		"role": "button accessible name",
+		"tone": "Short label naming the row and what the control opens.",
+		"note": "Accessible name of the ellipsis button on a destination row (and the right-click/Shift+F10 menu). Opens the move, change-region and reset commands.",
+		"placeholders": {
+			"name": "Destination label as displayed, verbatim."
+		}
+	},
+	"ui.shell.sidebar_navigation.save_failed": {
+		"role": "error toast",
+		"tone": "Direct statement of the failure and its subject; no blame, no jargon.",
+		"note": "Shown when writing the sidebar layout fails. The previous arrangement has already been restored when this appears, so it says what could not be saved rather than asking for a retry.",
+		"length": "One short sentence."
 	},
 	"ui.shell.sidebar_navigation.schedules": {
 		"role": "navigation label",
-		"tone": "Short destination noun; sentence case.",
-		"note": "Recurring or scheduled runs.",
+		"tone": "Destination proper name; title case.",
+		"note": "Recurring or scheduled runs. Destinations are proper names and take title case (Agent Hub, Team Bridge, Library); actions are sentences and take sentence case (New chat, Search). Localised labels follow their own locale's conventions rather than English title case.",
 		"length": "Single sidebar row; aim for 1–2 words."
 	},
 	"ui.shell.sidebar_navigation.search": {
@@ -142,6 +226,20 @@
 		"tone": "Short destination noun; sentence case.",
 		"note": "Application preferences.",
 		"length": "Single sidebar row; aim for 1–2 words."
+	},
+	"ui.shell.sidebar_navigation.show_in_sidebar": {
+		"role": "menu item label",
+		"tone": "Short imperative; sentence case.",
+		"note": "Brings a destination folded inside More back into the visible sidebar list, appending it at the end of that region.",
+		"length": "Three-word menu item."
+	},
+	"ui.shell.sidebar_navigation.show_in_sidebar_note": {
+		"role": "live-region announcement",
+		"tone": "Plain confirmation of what just changed.",
+		"note": "Announced after a destination is moved out of the More fold into the visible list.",
+		"placeholders": {
+			"name": "Destination label as displayed, verbatim."
+		}
 	},
 	"ui.shell.user_profile_sidebar.account_settings": {
 		"role": "profile button tooltip",

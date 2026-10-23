@@ -27,6 +27,7 @@ import type { CanonicalFrontendState } from "../../../../../shared/desktop-sessi
 import type { DesktopFeature } from "../../../shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "../../../shared/api/local-operator/profile-hooks";
 import type { ArgumentSource } from "../components/slash-argument-rows";
+import { TAG_INLINE_ARGUMENT } from "../components/slash-argument-rows";
 import { runMoveSessionFromDispatch } from "../move-session";
 import type { MoveRunContext } from "../move-session";
 import {
@@ -277,6 +278,22 @@ export function inlineArgumentFor(
 const TeamPicker: FC<PickerContext> = (props) => (
 	<ProfilePicker {...props} which="team" />
 );
+
+/**
+ * `/tag`'s destination has no dialog.
+ *
+ * The command's whole surface is the composer's own inline argument list: a
+ * pick toggles through `useChatTagAssignment` and the list stays up, which is
+ * why `inline.runs` is true and why the dispatcher is never reached for this
+ * word (the composer opens/reopens the list instead). The entry exists because
+ * this table is what answers "does this destination open a list" to the pick
+ * gate and the footer, and because the catalogue itself is backend-owned. The
+ * null component is unreachable: the local row is not in the backend catalogue,
+ * so no palette row and no `native_action` can name this destination. If a
+ * future backend does, give this row a real presenter instead of deleting the
+ * guard.
+ */
+const TagListHost: FC<PickerContext> = () => null;
 const AgentPicker: FC<PickerContext> = (props) => (
 	<ProfilePicker {...props} which="agent" />
 );
@@ -410,6 +427,11 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 		kind: "picker",
 		component: ApprovalsPicker,
 		inline: { source: "approvals", nameThenMessage: false, runs: true },
+	},
+	"session.tags": {
+		kind: "picker",
+		component: TagListHost,
+		inline: TAG_INLINE_ARGUMENT,
 	},
 	"session.context": { kind: "picker", component: ContextView },
 	// `/session` used to answer "not available in the desktop app yet" because

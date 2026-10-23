@@ -20,6 +20,7 @@
  * result count describe the page rather than the query.
  */
 
+import { peaksFrom } from "@features/chat/canonical/use-waveform";
 import {
 	retryDesktopMutation,
 	retryDesktopQuery,
@@ -29,6 +30,7 @@ import {
 	desktopResult,
 } from "@shared/api/local-operator/desktop-api";
 import {
+	type InfiniteData,
 	type QueryClient,
 	useInfiniteQuery,
 	useMutation,
@@ -179,6 +181,14 @@ function invalidateLibrary(client: QueryClient) {
  * would also do it, but a refusal that arrives after another write must not
  * paint a mixed document).
  */
+/** A row as it reads with a patch applied; every patched field is optional. */
+function patchedAsset(
+	asset: DesktopLibraryAsset,
+	fields: DesktopLibraryUpdateFields,
+): DesktopLibraryAsset {
+	return { ...asset, ...fields };
+}
+
 export function useUpdateLibraryAsset() {
 	const client = useQueryClient();
 	return useMutation({
@@ -188,11 +198,62 @@ export function useUpdateLibraryAsset() {
 				id: input.id,
 				fields: input.fields,
 			}),
+		/*
+		 * THE PRESS PAINTS BEFORE THE WRITE ANSWERS, AND THE ROLLBACK IS THE ROW
+		 * THE USER SAW. The operator asked for favourite to read as a toggle; a
+		 * heart that only fills after a round trip on a 60-row page reads as a
+		 * dead control, and on a filtered `favorite` list the row would drop out
+		 * while the cursor is elsewhere.
+		 *
+		 * THE SNAPSHOT IS EVERY PAGE, not the detail row: this mutation writes a
+		 * field that more than one surface reads (the grid card, the list row,
+		 * the preview, the status counts), and a rollback that restored only the
+		 * open detail would leave the list showing a favourite the server
+		 * refused. `cancelQueries` first is what keeps an in-flight list read
+		 * from landing the pre-press row over the optimistic one and then
+		 * "winning" permanently.
+		 */
+		onMutate: async (input) => {
+			await client.cancelQueries({ queryKey: libraryKeys.all });
+			const detail = client.getQueryData<DesktopLibraryAsset>(
+				libraryKeys.detail(input.id),
+			);
+			const lists = client.getQueriesData<InfiniteData<DesktopLibraryList>>({
+				queryKey: [...libraryKeys.all, "list"],
+			});
+			if (detail) {
+				client.setQueryData(
+					libraryKeys.detail(input.id),
+					patchedAsset(detail, input.fields),
+				);
+			}
+			for (const [key, data] of lists) {
+				if (!data) continue;
+				client.setQueryData<InfiniteData<DesktopLibraryList>>(key, {
+					...data,
+					pages: data.pages.map((page) => ({
+						...page,
+						rows: page.rows.map((row) =>
+							row.id === input.id ? patchedAsset(row, input.fields) : row,
+						),
+					})),
+				});
+			}
+			return { detail, lists };
+		},
 		onSuccess: (asset) => {
 			client.setQueryData(libraryKeys.detail(asset.id), asset);
 			return invalidateLibrary(client);
 		},
-		onError: (_error, input) => {
+		onError: (_error, input, context) => {
+			// The paint goes back to what it was before the press, then the reads
+			// re-ask so a refusal's own state wins over both guesses.
+			if (context?.detail) {
+				client.setQueryData(libraryKeys.detail(input.id), context.detail);
+			}
+			for (const [key, data] of context?.lists ?? []) {
+				client.setQueryData(key, data);
+			}
 			void client.invalidateQueries({
 				queryKey: libraryKeys.detail(input.id),
 			});
@@ -371,6 +432,93 @@ export function useLibraryBytes(
 	}, [assetId, kind, enabled, download]);
 
 	return state;
+}
+
+/**
+ * A Library audio asset's stored peaks, for the shared player's waveform.
+ *
+ * THE SIDECAR IS A PROPERTY OF THE ASSET, NOT OF THE SCREEN. The same sound can
+ * be on a grid card, in the drawer and in a story at once; a digest-addressed
+ * request per mount (the shape `use-waveform` documents for attachments) would
+ * ask the same question three times per scroll. So the promise is cached per
+ * ASSET ID for the module's lifetime, misses included: a 404 is an answer - the
+ * catalog holds no sidecar for this asset - and re-asking cannot change it.
+ *
+ * EVERY ABSENCE IS `null`, never a fabricated shape: no id, a route the
+ * backend has not shipped yet (the two lanes meet on this contract), a
+ * non-JSON body, and a malformed peak list all fall through `peaksFrom` or the
+ * response check. The player draws its honest flat scrubber for `null`.
+ */
+export function useLibraryWaveform(
+	assetId: string | null,
+	enabled = true,
+): number[] | null {
+	const [peaks, setPeaks] = useState<number[] | null>(() =>
+		assetId ? (settledWaveforms.get(assetId) ?? null) : null,
+	);
+	useEffect(() => {
+		/*
+		 * RESET ON THE SWITCH, from the cache, BEFORE ANY AWAIT. The drawer
+		 * re-renders one viewer with a new asset id while the mount stays, so
+		 * the previous asset's peaks would survive into the new asset's first
+		 * frames - A's bars under B's title until B's answer lands. Seeding
+		 * from `settledWaveforms` gives B either its own painted envelope (a
+		 * settled hit) or `null` (the honest flat scrubber) on that first frame.
+		 */
+		if (!assetId) {
+			setPeaks(null);
+			return;
+		}
+		setPeaks(settledWaveforms.get(assetId) ?? null);
+		if (!enabled) return;
+		let live = true;
+		requestLibraryPeaks(assetId).then((value) => {
+			if (live) setPeaks(value);
+		});
+		return () => {
+			live = false;
+		};
+	}, [assetId, enabled]);
+	return peaks;
+}
+
+/** Settled answers, so a later mount paints the waveform on its first frame. */
+const settledWaveforms = new Map<string, number[] | null>();
+const waveformRequests = new Map<string, Promise<number[] | null>>();
+
+/**
+ * One sidecar read. Exported so a node test can drive the exact relay call the
+ * hook makes (the `fetchWaveformPeaks` convention beside `use-waveform`).
+ */
+export async function fetchLibraryWaveform(
+	assetId: string,
+): Promise<number[] | null> {
+	try {
+		const result = await desktopMedia(
+			{ op: "library.waveform", assetId },
+			null,
+		);
+		return result.kind === "json" ? peaksFrom(result.body) : null;
+	} catch {
+		// A transport failure and a 404 mean the same thing here: no shape.
+		return null;
+	}
+}
+
+function requestLibraryPeaks(assetId: string): Promise<number[] | null> {
+	const existing = waveformRequests.get(assetId);
+	if (existing) return existing;
+	const pending = fetchLibraryWaveform(assetId)
+		.then((value) => {
+			settledWaveforms.set(assetId, value);
+			return value;
+		})
+		.catch(() => {
+			settledWaveforms.set(assetId, null);
+			return null;
+		});
+	waveformRequests.set(assetId, pending);
+	return pending;
 }
 
 /** Turn bytes into a revocable object URL the DOM can load. */

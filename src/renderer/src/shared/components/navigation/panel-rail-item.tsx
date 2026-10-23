@@ -79,7 +79,7 @@ export type PanelRailItemProps = Omit<
  * comment records (design round 2, D2-1).
  */
 const LIT =
-	"bg-row-selected text-accent hover:bg-row-selected hover:text-accent active:bg-row-selected active:text-accent before:absolute before:inset-y-1 before:-left-[6px] before:w-0.5 before:rounded-full before:bg-accent";
+	"bg-row-selected text-accent hover:bg-row-selected hover:text-accent active:bg-row-selected active:text-accent before:absolute before:inset-y-1 before:-start-[6px] before:w-0.5 before:rounded-full before:bg-accent";
 const IDLE =
 	"text-ink-muted hover:bg-row-hover hover:text-ink active:bg-row-hover active:text-ink";
 

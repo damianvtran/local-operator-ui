@@ -1,5 +1,9 @@
 import { t } from "../../i18n";
 import type {
+	AddressHistoryRequest,
+	AddressHistoryResponse,
+} from "../../shared/browser-address-history";
+import type {
 	HumanTabAction,
 	HumanTabActionOutcome,
 } from "../../shared/browser-tab-action";
@@ -12,9 +16,14 @@ import * as inputActions from "./actions/input";
 import * as pageActions from "./actions/page";
 import * as tabActions from "./actions/tabs";
 import * as uploadActions from "./actions/upload";
+import { collectAddressHistory, mergeAddressHistory } from "./address-history";
 import type { ConsentDecision } from "./approvals";
 import { ChromeTabOrder } from "./chrome-tab-order";
 import { BrowserHostError } from "./errors";
+import {
+	type BrowserHistoryStore,
+	createBrowserHistoryStore,
+} from "./history-store";
 import { PageControls, type PageZoomCommand } from "./page-controls";
 import { COMMAND_TIMEOUTS_S, type Method, PROTO_VERSION } from "./protocol";
 import type { ContentRect, TabRecord } from "./registry";
@@ -327,6 +336,17 @@ export interface BrowserHostOptions {
 	 * Injected from the wiring that owns the session, so this module does not
 	 * depend on the session object. */
 	forgetSiteData: (origin: string) => Promise<void>;
+	/** S4b: the popout's health, supplied by the wiring that owns the overlay
+	 * controller. Absent means no controller was built, which is `suspend`. */
+	addressOverlayMode?: () => {
+		mode: "popout" | "suspend";
+		reason: string | null;
+	};
+	/** Where the persistent suggestion history lives. Absent means no store
+	 * (a test or a story): suggestions still come from live tabs, and nothing
+	 * is recorded or written. The production wiring passes
+	 * `<userData>/browser-history.json`. */
+	historyFilePath?: string;
 }
 
 export class BrowserHost implements BrowserActionContext {
@@ -359,6 +379,17 @@ export class BrowserHost implements BrowserActionContext {
 	readonly facts: () => HostFacts;
 	/** The session's per-origin storage clear, injected (see `BrowserHostOptions`). */
 	private readonly forgetSiteData: (origin: string) => Promise<void>;
+	/** S4b's popout health, read from the controller (or the launch's platform
+	 * answer when no controller exists). The strip reads this from the same
+	 * projection as the tabs, so the renderer has one source for "child or
+	 * fallback" and never guesses from a failed IPC call. */
+	private readonly addressOverlayMode: () => {
+		mode: "popout" | "suspend";
+		reason: string | null;
+	};
+	/** One instance per host, constructed once in the constructor. `null` when
+	 * no path was supplied (see `BrowserHostOptions.historyFilePath`). */
+	private readonly historyStore: BrowserHistoryStore | null;
 
 	/**
 	 * The last main-frame load failure per tab, cleared by the next load.
@@ -389,6 +420,12 @@ export class BrowserHost implements BrowserActionContext {
 		this.tabAudio = new TabAudioTracker(() => this.onChanged());
 		this.facts = options.facts;
 		this.forgetSiteData = options.forgetSiteData;
+		this.addressOverlayMode =
+			options.addressOverlayMode ??
+			(() => ({ mode: "suspend", reason: "unavailable" }));
+		this.historyStore = options.historyFilePath
+			? createBrowserHistoryStore(options.historyFilePath)
+			: null;
 	}
 
 	/** Answer one wire request. The only place a method name becomes an action. */
@@ -782,6 +819,7 @@ export class BrowserHost implements BrowserActionContext {
 			new Set(this.registry.snapshot().map((entry) => entry.tabId)),
 		);
 		return {
+			addressOverlay: this.addressOverlayMode(),
 			pageControls: this.pageControls.state(active),
 			tabs: this.chromeTabOrder
 				.project(this.registry.snapshot())
@@ -1042,6 +1080,15 @@ export class BrowserHost implements BrowserActionContext {
 
 	/** Main owns this short-lived UI focus fact; it conveys no page capability. */
 	chordFocus = false;
+	/**
+	 * The tab whose native view last reported focus. Tracked from each view's own
+	 * `focus`/`blur` events because `webContents.getFocusedWebContents()` can
+	 * answer null while a `WebContentsView` holds focus (measured on Electron
+	 * 44.3.0 in a window that is not itself activated). Like `chordFocus`, this
+	 * is an input-ownership fact and carries no page capability; `ownsPage`
+	 * refuses it unless the tab is the active, presented one.
+	 */
+	focusedPageTabId: number | null = null;
 	onChordFocusChanged?: (focused: boolean) => void;
 	/** An explicit tab id fences queued chrome intents: a switch between key
 	 * delivery and IPC must never search/zoom the newly active tab instead. */
@@ -1075,6 +1122,16 @@ export class BrowserHost implements BrowserActionContext {
 		this.chordFocus = focused;
 		this.onChordFocusChanged?.(focused);
 	}
+	/** One view gained or lost native focus. Only the id that lost it may clear
+	 * the fact: a departing view's blur must not erase a successor's focus. */
+	setPageFocused(tabId: number, focused: boolean): void {
+		if (focused) this.focusedPageTabId = tabId;
+		else if (this.focusedPageTabId === tabId) this.focusedPageTabId = null;
+	}
+	/** The window's own renderer gained focus (the user clicked chrome/chat). */
+	clearPageFocus(): void {
+		this.focusedPageTabId = null;
+	}
 	/** Only user URLs survive a close, never a capability, page state or nonce.
 	 * Conversation attribution is retained only to find the appropriate scope. */
 	private closedUserTabs: Array<{ url: string; sessionId: string | null }> = [];
@@ -1093,6 +1150,7 @@ export class BrowserHost implements BrowserActionContext {
 	clearChordState(): void {
 		this.pageControls.clear();
 		this.setChordFocus(false);
+		this.clearPageFocus();
 		this.closedUserTabs = [];
 	}
 	/**
@@ -1507,6 +1565,92 @@ export class BrowserHost implements BrowserActionContext {
 	}
 
 	/**
+	 * Local address suggestions for the field the user is editing.
+	 *
+	 * THE EXPECTED TAB IS A GUARD, not a hint: a response about tab A rendered
+	 * over tab B is how a stale completion navigates a tab the user is no longer
+	 * looking at. Main answers the read only when the request still names the
+	 * active tab; the renderer separately discards responses whose `activeTabId`
+	 * no longer matches, which covers the race between this check and the reply
+	 * landing.
+	 *
+	 * RANKING MOVED HERE with the persistent store: the renderer used to rank a
+	 * snapshot of every stack, which cannot scale to a 5000-entry history either
+	 * in memory or across IPC. Main now asks the store for its top matches, puts
+	 * them ahead of the live-tab rows (`mergeAddressHistory`), and bounds the
+	 * answer by `request.limit`. The renderer still derives display text, the
+	 * target URL and the inline suffix, because those depend on exactly what the
+	 * user typed.
+	 */
+	addressHistory(request: AddressHistoryRequest): AddressHistoryResponse {
+		const activeTabId = this.registry.activeTab?.tabId ?? null;
+		if (activeTabId !== request.expectedTabId) {
+			throw new BrowserHostError(
+				"nav_failed",
+				"the active tab changed before suggestions were read",
+			);
+		}
+		const live = collectAddressHistory(
+			this.registry.list().map((record) => ({
+				tabId: record.tabId,
+				sessionId: record.sessionId,
+				webContents: record.view.webContents,
+				restoreRow: record.restoreRow ?? null,
+			})),
+			activeTabId,
+		);
+		const historyMatches =
+			this.historyStore?.suggest(request.query, request.limit) ?? [];
+		return {
+			requestId: request.requestId,
+			activeTabId: live.activeTabId,
+			entries: mergeAddressHistory(
+				live.entries,
+				historyMatches,
+				request.query,
+				request.limit,
+			),
+		};
+	}
+
+	/**
+	 * Record one committed top-level navigation.
+	 *
+	 * Called from the per-view wiring in `index.ts`, which is the only place that
+	 * sees the event for every tab. A non-HTTP(S) URL is dropped by the store, so
+	 * `about:blank`, `chrome://` and a refused scheme never enter the document.
+	 * The title is filled in by `recordHistoryTitle` when Chromium announces it;
+	 * recording the visit first is deliberate, because the commit is the fact and
+	 * the title is a later, optional update.
+	 */
+	recordHistoryVisit(url: string): void {
+		this.historyStore?.record(url, "");
+	}
+
+	/** Update the stored title for a URL that is already in the history. Never
+	 * increments a visit: `page-title-updated` fires for a page that has already
+	 * been counted, sometimes several times. */
+	recordHistoryTitle(url: string, title: string): void {
+		this.historyStore?.updateTitle(url, title);
+	}
+
+	/** Write any debounced history change now (quit, and the host's own stop). */
+	flushHistory(): void {
+		this.historyStore?.flush();
+	}
+
+	/** "Clear everything" also forgets the suggestion history (`profile.ts` is
+	 * the path that calls this, so cookies/cache alone cannot reach it). */
+	clearHistory(): void {
+		this.historyStore?.clear();
+	}
+
+	/** "Forget this site" drops that origin's rows; other origins stay. */
+	clearOriginHistory(origin: string): void {
+		this.historyStore?.clearOrigin(origin);
+	}
+
+	/**
 	 * A URL the USER typed goes through here, and it is deliberately different from
 	 * an agent navigation in one way and identical in another (design 6.1):
 	 *
@@ -1518,10 +1662,22 @@ export class BrowserHost implements BrowserActionContext {
 	 *   `file:` or `javascript:` here would hand a page (or a paste) a way to reach
 	 *   the local filesystem through the app's own URL bar.
 	 */
-	async navigateActive(rawUrl: string): Promise<Record<string, unknown>> {
+	async navigateActive(
+		rawUrl: string,
+		expectedTabId?: number,
+	): Promise<Record<string, unknown>> {
 		const record = this.registry.activeTab;
 		if (!record)
 			throw new BrowserHostError("tab_closed", "no browser tab is open");
+		// ADDITIVE AND OPTIONAL: the URL bar always supplies the tab its draft belongs
+		// to, so a commit that raced a tab switch is refused instead of loading the
+		// new active tab with the old tab's address. Agent/legacy callers omit it.
+		if (expectedTabId !== undefined && record.tabId !== expectedTabId) {
+			throw new BrowserHostError(
+				"nav_failed",
+				"the active tab changed before the address was submitted",
+			);
+		}
 		let url: URL;
 		try {
 			url = new URL(rawUrl.includes("://") ? rawUrl : `https://${rawUrl}`);
@@ -1614,13 +1770,24 @@ export class BrowserHost implements BrowserActionContext {
 	 * area and reports it, and main applies it to the active tab only. */
 	setContentRect(rect: ContentRect | null): Record<string, unknown> {
 		this.registry.setContentRect(rect);
+		// A hidden surface is no longer the accelerator's owner; a view can keep a
+		// stale focus fact while it is not presented.
+		if (rect === null) this.clearPageFocus();
 		return this.chromeState();
 	}
 
 	/** Full-window overlays hide the view: a native view paints above all DOM, so
-	 * an overlay is invisible unless the view goes away (design 11.3). */
-	setViewVisible(visible: boolean): Record<string, unknown> {
-		this.registry.setViewVisible(visible);
+	 * an overlay is invisible unless the view goes away (design 11.3).
+	 *
+	 * `ownPage` is the RENDERER'S REASON for the hide, and the only fact that lets
+	 * main tell the browser's own state pages (start page, load failure - hidden so
+	 * their DOM can paint) from an overlay covering them. Shortcut ownership keys
+	 * on it; presentation does not. See `TabRegistry.chromeVisible`. */
+	setViewVisible(visible: boolean, ownPage = false): Record<string, unknown> {
+		this.registry.setViewVisible(visible, ownPage);
+		// Suppressed by an overlay: the page must not keep the native key owner.
+		// True for a state page too - there is no presented page either way.
+		if (!visible) this.clearPageFocus();
 		return this.chromeState();
 	}
 

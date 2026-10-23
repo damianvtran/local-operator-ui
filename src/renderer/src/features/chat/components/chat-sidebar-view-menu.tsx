@@ -117,8 +117,13 @@ type Props = {
 	view: SidebarView;
 	counts?: ViewMenuCounts;
 	tagsAvailable?: boolean;
-	tagsEmpty?: boolean;
-	onManageTags?: () => void;
+	/**
+	 * Whether this backend's fork route understands `auto_tag`
+	 * (`chat-auto-tag.ts` owns the version). The row is ABSENT rather than
+	 * disabled when it cannot work: a switch that writes an intent no backend
+	 * reads is the dead control this repo's fail-closed rule forbids.
+	 */
+	autoTagAvailable?: boolean;
 	/** Called with the WHOLE next view - the model returns complete values. */
 	onView: (view: SidebarView) => void;
 };
@@ -185,8 +190,7 @@ export function ChatSidebarViewMenu({
 	counts,
 	onView,
 	tagsAvailable = false,
-	tagsEmpty = false,
-	onManageTags,
+	autoTagAvailable = false,
 }: Props) {
 	// Refresh all option/section labels when the backend-owned locale changes.
 	useI18nLocale();
@@ -343,30 +347,63 @@ export function ChatSidebarViewMenu({
 			{tagsAvailable && (
 				<div className="border-hairline border-b" data-sidebar-tags-options>
 					{/* 39px content plus the group hairline is the contracted 40px insertion. */}
+					{/*
+					 * LABEL + SWITCH ONLY (v3 spec D7). `Manage tags…` is gone: tags are
+					 * renamed, reordered and deleted on their own group headers and created
+					 * in the list's tag footer. The visible label IS the accessible name
+					 * (a real `<label>`), where it used to read "Tags" while the switch
+					 * announced "Group chats by tag" (WCAG 2.5.3, label in name).
+					 */}
 					<div className="flex h-[39px] items-center gap-2 px-1">
-						<span className="flex-1 text-meta text-ink-dim">
-							{t("ui.chat.tags.label")}
-						</span>
+						<label
+							htmlFor="sidebar-tags-switch"
+							className="flex-1 text-meta text-ink-dim"
+						>
+							{t("ui.chat.tags.group")}
+						</label>
 						<Switch
-							aria-label={t("ui.chat.tags.group")}
+							id="sidebar-tags-switch"
 							aria-describedby="sidebar-tags-help"
 							checked={view.tagsEnabled}
 							onCheckedChange={(tagsEnabled) =>
 								onView({ ...view, tagsEnabled })
 							}
 						/>
-						<Button
-							variant="ghost"
-							className="h-7 px-1 text-meta"
-							onClick={onManageTags}
-						>
-							{t("ui.chat.tags.manage")}
-						</Button>
 					</div>
-					{view.tagsEnabled && tagsEmpty && (
-						<p className="px-1 pb-1 text-meta text-ink-muted">
-							{t("ui.chat.tags.none_yet")}
-						</p>
+					{/*
+					 * THE AUTO-TAG INTENT, inside the Tags group rather than beside it
+					 * (§5.4): it is a consequence of tagging, is only meaningful while the
+					 * group is on, and shares the panel's ONE scroller with the Sections
+					 * controls below. The row is absent - not disabled - when the backend
+					 * cannot read the fork field; see `autoTagAvailable`'s own comment.
+					 *
+					 * The helper is a real description, wired with `aria-describedby`, not
+					 * a caption: it says WHICH tags (the reader's own) and WHEN (naming a
+					 * fork), the two facts the label alone leaves open.
+					 */}
+					{view.tagsEnabled && autoTagAvailable && (
+						<>
+							<div className="flex min-h-7 items-center gap-2 px-1 py-0.5">
+								<span className="min-w-0 flex-1 text-meta text-ink-dim">
+									{t("ui.chat.tags.auto_tag")}
+								</span>
+								<Switch
+									data-sidebar-auto-tag
+									aria-label={t("ui.chat.tags.auto_tag")}
+									aria-describedby="sidebar-auto-tag-help"
+									checked={view.autoTagForks}
+									onCheckedChange={(autoTagForks) =>
+										onView({ ...view, autoTagForks })
+									}
+								/>
+							</div>
+							<p
+								id="sidebar-auto-tag-help"
+								className="px-1 pb-1 text-meta text-ink-dim"
+							>
+								{t("ui.chat.tags.auto_tag_help")}
+							</p>
+						</>
 					)}
 					<span id="sidebar-tags-help" className="sr-only">
 						{t("ui.chat.tags.discovery")}

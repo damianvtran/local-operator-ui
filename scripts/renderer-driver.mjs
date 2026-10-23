@@ -89,13 +89,13 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-open|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|mini-view|drafts|stale-team-draft|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
  *                          where a dropped file attaches, or the base tree, where
  *                          the same gesture leaves nothing behind
- *   --project <key>        (with --scene project-detail, project-inline-edit or
+ *   --project <key>        (with --scene project-detail, project-update-assets, project-inline-edit or
  *                          project-open) the seeded project the scene drives;
  *                          the seed decides the name and a default would
  *                          photograph whatever it happened to use
@@ -268,6 +268,7 @@ import {
 	IMAGEGEN_CALL_FOLD,
 	IMAGEGEN_FIXTURE_SESSION,
 } from "./imagegen-card-fixture.mjs";
+import { sceneLibraryAsset } from "./library-asset-scene.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 /*
  * Every python this harness starts is handed an environment it has decided about,
@@ -277,6 +278,10 @@ import { withNotificationsOff } from "./notifications-off.mjs";
  * interpreter, so a new one has to say so there as well as here.
  */
 import { pythonChildEnv } from "./python-child-env.mjs";
+import {
+	prepareSidebarLayoutScene,
+	sceneSidebarLayout,
+} from "./sidebar-layout-scene.mjs";
 import { SEAL_AUDIT_PURPOSE } from "./skill-seal-fixture.mjs";
 import { sceneSounds } from "./sounds-scene.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
@@ -9698,9 +9703,16 @@ async function sceneTurnCollapse(cdp) {
 			(finished.runIds ?? "").split(" ").length >= 3,
 		JSON.stringify(finished),
 	);
+	/*
+	 * TWO STAMPS, per message (operator, 2026-10-20): the reader's own message
+	 * keeps its time on its action line, and the collapsed run carries the closing
+	 * answer's on the bar. The count was one while the stamp was a fact about the
+	 * turn; it is two now, and the assertion is `===` rather than `>=` because a
+	 * third would mean a stamp the per-message rule does not own.
+	 */
 	check(
-		"completed: the bar carries the turn's one stamp and the foot stands down",
-		finished !== null && finished.stamps === 1 && finished.foot === false,
+		"completed: the bar carries the answer's stamp and the message keeps its own",
+		finished !== null && finished.stamps === 2 && finished.foot === false,
 		JSON.stringify(finished),
 	);
 	const completedFrame = await captureSettled(cdp, "turn-collapse-completed");
@@ -24511,6 +24523,174 @@ async function seedDrafts(cdp, { pendingAll = false } = {}) {
 	await wait(1500);
 }
 
+/**
+ * `--scene stale-team-draft`: the operator's own screen, before and after.
+ *
+ * THE REPORT (2026-10-22): pressing a TEAM in the sidebar to start a new chat
+ * landed on a transcript that said "This conversation is no longer on this
+ * machine" with the composer replaced by "This conversation is gone" - under a
+ * header that said "New chat with <team>". The two halves read different facts:
+ * the header reads `activeDraftKey`, and the pane reads the drafted row's
+ * `sessionId` (`panelSessionIdOfView`). The stable `draft:<kind>:<name>` row is
+ * REUSED by every press for that team, so a row that had already created a
+ * conversation - left behind by a failed message or a quit before the ack -
+ * made every later press resolve it; once it was deleted, the press resolved a
+ * dead id.
+ *
+ * WHAT THIS SEEDS is the exact persisted pair that produces it: `activeDraftKey`
+ * naming the team's stable row, that row carrying `sessionId` and the failure's
+ * own claim, and a tombstone for the id (the conversation was deleted on this
+ * device). A relaunch is the honest way to reach it, because that is what the
+ * store does with the pair - and it is how the operator hit it after their
+ * delete.
+ *
+ * THE PRESS ITSELF IS NOT DRIVEN HERE, and the substitution is named rather than
+ * hidden: the sidebar's team rows come from the backend's authoring list, and a
+ * run-owned daemon has no "minerva-development" team to press. The press's own
+ * rule is the store's (`stageDraft` never reuses a conversation-bound row), and
+ * `scripts/team-new-chat-stale-draft.test.mjs` drives it directly - five cases,
+ * the agent path included.
+ */
+async function sceneStaleTeamDraft(cdp) {
+	/*
+	 * A COMPOSER IS THE POINT. Without a backend the chat route draws its
+	 * capability refusal in place of the whole pane, so a frame would photograph
+	 * the gate rather than the defect.
+	 */
+	if (BACKEND === null) {
+		throw new Error(
+			"--scene stale-team-draft needs --backend <url>: the chat pane's composer (the control the defect replaces) only mounts against a reachable session catalogue",
+		);
+	}
+	const DEAD = "deadbeef0001";
+	const STABLE = "draft:team:minerva-development";
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	await cdp.evaluate(`(() => {
+		const read = (key) => { try { return JSON.parse(localStorage.getItem(key) || "null") || {}; } catch { return {}; } };
+		const canonical = read("canonical-sessions-storage");
+		canonical.state = {
+			...(canonical.state || {}),
+			activeSessionId: null,
+			activeDraftKey: ${JSON.stringify(STABLE)},
+			forgotten: { ${JSON.stringify(DEAD)}: { at: 0, title: "An old chat" } },
+			drafts: {
+				...((canonical.state || {}).drafts || {}),
+				[${JSON.stringify(STABLE)}]: {
+					key: ${JSON.stringify(STABLE)},
+					target: { kind: "team", name: "minerva-development" },
+					createRequestId: "req-stale-create-0001",
+					admissionRequestId: "req-stale-admit-0001",
+					sessionId: ${JSON.stringify(DEAD)},
+					pending: false,
+					admissionAttempted: true,
+					submittedText: "Can you pick up where we left off?",
+					submittedRendered: "Can you pick up where we left off?",
+					errorCode: "deadline_exceeded",
+					errorRetry: true,
+					error: "Couldn't confirm your message was sent.",
+				},
+			},
+		};
+		localStorage.setItem("canonical-sessions-storage", JSON.stringify(canonical));
+		const input = read("conversation-input-store");
+		input.state = { ...(input.state || {}), inputByConversation: {} };
+		localStorage.setItem("conversation-input-store", JSON.stringify(input));
+		return true;
+	})()`);
+	await cdp.send("Page.reload", { ignoreCache: false });
+	await wait(1500);
+	await waitForBridge(cdp);
+	const read = () =>
+		cdp.evaluate(`(() => {
+			const canonical = (() => { try { return JSON.parse(localStorage.getItem("canonical-sessions-storage") || "null")?.state ?? null; } catch { return null; } })();
+			const notice = document.getElementById("lo-missing-session-notice");
+			const box = document.querySelector('[data-tour-tag="chat-input-textarea"] textarea');
+			return {
+				text: document.body.innerText,
+				notice: notice === null ? null : (notice.textContent || "").trim(),
+				composer: box === null ? null : { value: box.value, disabled: box.disabled === true, readOnly: box.readOnly === true },
+				storedDraft: canonical?.drafts?.[${JSON.stringify(STABLE)}] ?? null,
+				activeDraftKey: canonical?.activeDraftKey ?? null,
+			};
+		})()`);
+	const screen = await read();
+	note(
+		"the restored screen (header, notice, composer)",
+		JSON.stringify({
+			activeDraftKey: screen.activeDraftKey,
+			notice: screen.notice,
+			composer: screen.composer,
+			sessionId: screen.storedDraft?.sessionId ?? null,
+		}),
+	);
+	check(
+		"the header names the press's own act: a NEW chat with the team",
+		/New chat with minerva-development/.test(screen.text ?? ""),
+		`body: ${JSON.stringify((screen.text ?? "").slice(0, 160))}`,
+	);
+	check(
+		"the terminal 'no longer on this machine' notice is NOT rendered",
+		screen.notice === null,
+		JSON.stringify(screen.notice),
+	);
+	check(
+		"a working composer is on screen, which is what one click must always end with",
+		screen.composer !== null &&
+			screen.composer.disabled === false &&
+			screen.composer.readOnly === false,
+		JSON.stringify(screen.composer),
+	);
+	check(
+		"and the dead pointer was retired before the first paint",
+		screen.storedDraft !== null &&
+			screen.storedDraft.sessionId === undefined &&
+			screen.storedDraft.pending === false,
+		JSON.stringify({
+			sessionId: screen.storedDraft?.sessionId ?? null,
+			pending: screen.storedDraft?.pending ?? null,
+		}),
+	);
+	const frame = await captureSettled(cdp, "stale-team-draft");
+	note("frame", JSON.stringify(frame));
+	/*
+	 * THE CONTROL (design review round 1's D3): the same build, the same daemon,
+	 * and NO seeded draft - the app's own launch state. It answers whether anything
+	 * the after frame shows (the model chip's "Retry", the empty-state prompts)
+	 * belongs to the fix or to a daemon with no resolved model. A pair is only
+	 * evidence if the control shares the environment.
+	 */
+	await cdp.evaluate(`(() => {
+		localStorage.removeItem("canonical-sessions-storage");
+		localStorage.removeItem("conversation-input-store");
+		return true;
+	})()`);
+	await cdp.send("Page.reload", { ignoreCache: false });
+	await wait(1500);
+	await waitForBridge(cdp);
+	const control = await read();
+	note(
+		"the plain-new-chat control (no seeded draft)",
+		JSON.stringify({
+			notice: control.notice,
+			composer: control.composer,
+			sessionId: control.storedDraft?.sessionId ?? null,
+		}),
+	);
+	check(
+		"the control is the app's own new chat: no notice and an editable composer",
+		control.notice === null &&
+			control.composer !== null &&
+			control.composer.disabled === false &&
+			control.composer.readOnly === false,
+		JSON.stringify({ notice: control.notice, composer: control.composer }),
+	);
+	note(
+		"control frame",
+		JSON.stringify(await captureSettled(cdp, "stale-team-draft-control")),
+	);
+}
+
 async function sceneDrafts(cdp) {
 	await verb(cdp, "navigate", "/chat");
 	await verb(cdp, "setTheme", "localOperatorDark");
@@ -32815,29 +32995,19 @@ async function scenePaletteRecents(cdp) {
  * QA round 2 ran). That is a statement about the harness, not a defect in this
  * scene, and it is the honest answer while the key does not exist.
  *
- * AND THE ORIGIN IT HAS TO BE SERVED FROM, which is a requirement of its own and
- * cost a QA round its whole diagnosis (QA round 3, Q-6). `src/renderer/index.html`
- * pins the page's `connect-src` to `1111` and `8080` plus three vendor origins and
- * nothing computes it at runtime (`grep -rn "connect-src" src/main src/preload` is
- * empty), so a `--backend` rig on any OTHER loopback port is refused by the page
- * itself: the app's log says
- * `Connecting to 'http://127.0.0.1:<port>/v1/credentials' violates the following
- * Content Security Policy`, the chat route never gets a pane, and this scene throws
- * its composer refusal while the daemon behind the proxy is up and answering —
- * which reads as the wrong cause. ONLY THE SCENE needs this: the picker and the
- * chip are served over main-process IPC, which no CSP touches (measured — QA's
- * round-3 rows were green at 8080 and the port was the only difference). So run the
- * proxy on an allowed port (8080 is what QA used for the green run) and build the
- * renderer with `VITE_LOCAL_OPERATOR_API_URL` set to that same URL.
- *
- * THAT PORT CLAIM IS NOT WHAT GENERALISES, and it is corrected here rather than left as advice a
- * reader would act on. The app's transport is MAIN's - the renderer's `apiBaseUrl` is read over IPC
- * and never fetched - and the driver widens `frame-src`/`media-src` in the gitignored build output,
- * so a rig on a port the policy does not name is reachable. MEASURED 2026-09-27: `--scene
- * session-archive` reads 69 PASS / 0 FAIL at `127.0.0.1:8123`, and the port was the only difference
- * between the two runs of this scene above. What the CSP line quoted here records is a PAGE-side
- * fetch of `/v1/credentials`, so it is a signal to check WHICH surface was refused rather than
- * proof that the port must be allowlisted: read the message beside it before moving the rig. Two
+ * AND THE PORT IT IS SERVED FROM (QA round 3, Q-6), stated as the measurement
+ * rather than as a rule about which ports are allowed. `src/renderer/index.html`
+ * pins the page's `connect-src` to `1111` and `8080` plus three vendor origins,
+ * and nothing computes it at runtime, so a PAGE-side fetch to another loopback
+ * port is refused (`Connecting to 'http://127.0.0.1:<port>/v1/credentials'
+ * violates the following Content Security Policy`) - a signal to check WHICH
+ * surface was refused, not proof that the port must be allowlisted. The app's
+ * transport is MAIN's (the renderer's `apiBaseUrl` is read over IPC and never
+ * fetched) and the driver widens `frame-src`/`media-src` in the gitignored build
+ * output, so a rig on any free loopback port is reachable: MEASURED 2026-09-27,
+ * `--scene session-archive` reads 69 PASS / 0 FAIL at `127.0.0.1:8123`, a port
+ * the policy does not name. Build the renderer with
+ * `VITE_LOCAL_OPERATOR_API_URL` set to the same URL either way. Two
  * further facts this pass cost, for the next reader: a `-c`-cloned `node_modules` needs
  * `node_modules/@babel/plugin-transform-arrow-functions` linked out of `.pnpm/node_modules` or
  * `electron-vite build` dies in its bytecode step, and `pnpm run <script>` in such a tree starts a
@@ -42133,10 +42303,40 @@ async function sceneRouteTops(cdp) {
 			const laneStops = [
 				...gradient.matchAll(/(rgba?\\([^)]*\\))\\s+([0-9.]+)px/g),
 			].map((match) => ({ colour: match[1], stop: Number(match[2]) }));
+			/*
+			 * THE REAL GROUND AT y8, from the element stack rather than the lane's
+			 * gradient: the lane is transparent now, so what a reader sees in the
+			 * strip is whichever panel is behind it. The body, html and #app are
+			 * SKIPPED deliberately - they paint the window's fallback canvas, and
+			 * accepting them would let a hole read as a panel. A probe therefore
+			 * answers only when a panel owns that pixel, which is the contract.
+			 */
+			const groundAt = (x) => {
+				for (const el of document.elementsFromPoint(x, 8)) {
+					if (el === document.body || el === document.documentElement || el.id === "app") continue;
+					const bg = getComputedStyle(el).backgroundColor;
+					if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") {
+						return { x: Math.round(x), bg, tag: el.tagName.toLowerCase() };
+					}
+				}
+				return { x: Math.round(x), bg: null, tag: null };
+			};
+			const sidebar = box(document.querySelector("[data-sidebar-shell]") || document.querySelector("[data-sidebar-strip]"));
+			const stripX = [4, window.innerWidth - 4, window.innerWidth / 2];
+			if (sidebar) stripX.push(sidebar.left + sidebar.width / 2);
+			if (leading) stripX.push(leading.left + leading.width / 2);
+			const settingsRailEl = document.querySelector('nav[aria-label="Settings sections"]');
+			if (settingsRailEl) {
+				const r = settingsRailEl.getBoundingClientRect();
+				stripX.push(r.left + r.width / 2);
+			}
+			const stripGrounds = [...new Set(stripX.map((x) => Math.round(x)))].map(groundAt);
 			return {
 				platform: document.documentElement.getAttribute("data-chrome-platform"),
 				mode: document.documentElement.getAttribute("data-chrome-mode"),
 				viewport: { width: window.innerWidth, height: window.innerHeight },
+				routeFlush: ownRoot ? getComputedStyle(ownRoot).marginTop : null,
+				stripGrounds,
 				lane: box(lane),
 				laneDisplay: lane ? getComputedStyle(lane).display : null,
 				laneStops,
@@ -42207,157 +42407,78 @@ async function sceneRouteTops(cdp) {
 		laneDrawn;
 
 	if (macIntegrated) {
-		for (const [, path, reading] of readings) {
-			check(
-				`${path}: the route's own first box starts on the lane's bottom edge (${laneBottom}px)`,
-				reading.route !== null &&
-					Math.abs(reading.route.top - laneBottom) < 0.5,
-				`the route's first box is at y ${reading.route === null ? "(absent)" : reading.route.top} against a lane that ends at ${laneBottom}`,
-				`route y ${reading.route === null ? "(absent)" : reading.route.top}, sidebar y ${reading.sidebar === null ? "(none)" : reading.sidebar.top}, settings rail y ${reading.settingsRail === null ? "(none)" : reading.settingsRail.top}, settings content y ${reading.settingsContent === null ? "(none)" : reading.settingsContent.top}`,
-			);
-		}
 		/*
-		 * THE LANE CARRIES EVERY GROUND BESIDE IT, and since 2026-09-27 that means
-		 * each column's OWN rung rather than an assumed `surface`. On the rail that
-		 * rung is `surface` again (it held `elevated` from 2026-09-27 to 2026-09-30,
-		 * and gave it up when the split it required was reported as mismatched
-		 * blocks inside the rail), so on this tree the lane paints the sidebar's
-		 * width in `surface`, the rail's width in `surface` too, then `canvas` - and
-		 * the two agent rosters have always been `surface`. The rule is what is
-		 * asserted rather than today's value: the rail is INSIDE the clipped content
-		 * column and cannot paint above its own top edge, so the lane is the only
-		 * thing that can carry its ground to y0, and the check below fails if the lane
-		 * paints anything but the rung the column is actually standing on. The
-		 * operator reported the band half of this twice (2026-09-26, and again
-		 * 2026-09-27 as still true).
-		 *
-		 * THE RULES ARE GONE, and this is where the half a source test cannot see it
-		 * is refused: no stop in the lane's resolved gradient may paint the hairline
-		 * role on any route. The operator's first sentence - "the right border doesn't
-		 * go all the way up ... either make it extend all the way up or remove the
-		 * right border" - is answered with the removal on every column, because each
-		 * boundary those rules drew is a tone step now, and a rule could only ever
-		 * begin at the lane's lower edge (nothing a route renders reaches y0), which
-		 * is the half-drawn edge being reported.
-		 *
-		 * THE SUBJECT IS DERIVED, NOT LOOKED UP BY THE HANDLE THE FIX ADDS. Asking the
-		 * page for the marker would make this guard pass on the unfixed tree - the
-		 * marker is not there, every reading comes back null, and a check with nothing
-		 * to check is a check that cannot fail (measured on the base tree: all six
-		 * routes "passed" as routes with no leading column). The rule is derived
-		 * instead, from the layout on both trees: a full-height column on a column rung
-		 * of the ladder at the route's own left edge. The registration and the rung it
-		 * was handed are then asked for separately, so a column nobody handed over - or
-		 * one handed over on a stale rung - fails by name rather than quietly becoming
-		 * "no column here".
-		 *
-		 * The control is the routes that draw no such column (chat, schedules, agent
-		 * hub, projects, browser): there the band stays exactly the app sidebar's width,
-		 * which is what keeps this from being a rule that quietly widens every route's
-		 * band.
+		 * THE PANEL CONTRACT, IN THE RUNNING APP. The lane is a transparent overlay,
+		 * so there is no gradient left to read: what has to be true is that the
+		 * route's own box reaches y0 when it is a panel (its computed margin-top is
+		 * the negative `panel-flush`) or begins on the strip's edge when it is an
+		 * ordinary page, and that every probe at y8 across the window is a panel's
+		 * own ground. `stripGrounds` walks the element stack and skips html/body/#app,
+		 * so the window's fallback canvas cannot stand in for a panel.
 		 */
 		for (const [, path, reading] of readings) {
-			if (!reading.lane || reading.laneDisplay === "none") continue;
-			const laneLeft = reading.lane.left;
-			/*
-			 * The lane's colour at an x in lane coordinates, read off the RESOLVED
-			 * stop list: each stop owns its colour from its own position to the next
-			 * stop's, which is what makes a sample either side of an edge a claim about
-			 * the ground CHANGING there rather than about a single stop existing.
-			 */
-			const laneColourAt = (x) => {
-				let colour = reading.laneStops[0]?.colour ?? null;
-				for (const stop of reading.laneStops) {
-					if (x >= stop.stop) colour = stop.colour;
-				}
-				return colour;
-			};
-			const sidebarEdge = reading.sidebar
-				? reading.sidebar.left + reading.sidebar.width - laneLeft
-				: null;
 			check(
-				`${path}: no rule is painted in the lane`,
-				reading.laneStops.every(
-					(stop) => stop.colour !== reading.hairlineGround,
-				),
-				`the lane's stops are ${reading.laneStops.map((s) => `${s.colour} ${s.stop}px`).join(", ")} against the hairline role's ${reading.hairlineGround}`,
+				`${path}: the route's own first box starts at y0 (panel) or the strip's edge (ordinary page)`,
+				reading.route !== null &&
+					(Math.abs(reading.route.top) < 0.5 ||
+						Math.abs(reading.route.top - laneBottom) < 0.5),
+				`the route's first box is at y ${reading.route === null ? "(absent)" : reading.route.top}; lane ends at ${laneBottom}; route margin-top ${reading.routeFlush}`,
+				`route y ${reading.route === null ? "(absent)" : reading.route.top}, sidebar y ${reading.sidebar === null ? "(none)" : reading.sidebar.top}, settings rail y ${reading.settingsRail === null ? "(none)" : reading.settingsRail.top}, settings content y ${reading.settingsContent === null ? "(none)" : reading.settingsContent.top}`,
+			);
+			check(
+				`${path}: the route root declares which side of the lane it is on`,
+				reading.routeFlush !== null &&
+					(Number.parseFloat(reading.routeFlush) < -0.5 ||
+						Math.abs(reading.route.top - laneBottom) < 0.5),
+				`route margin-top ${reading.routeFlush}: a panel root must cancel the shell's pad with \`panel-flush\`, and an ordinary page must start on the strip's edge`,
+			);
+			check(
+				`${path}: every probe at y8 is a panel's own ground`,
+				reading.stripGrounds.length > 0 &&
+					reading.stripGrounds.every((probe) =>
+						[
+							reading.surfaceGround,
+							reading.canvasGround,
+							reading.elevatedGround,
+						].includes(probe.bg),
+					),
+				`the y8 probes read ${reading.stripGrounds.map((p) => `${p.x}px=${p.bg ?? "NOTHING"}<${p.tag ?? "-"}>`).join(", ")} against surface ${reading.surfaceGround}, canvas ${reading.canvasGround}, elevated ${reading.elevatedGround}`,
+			);
+			check(
+				`${path}: the window's left edge in the strip belongs to the sidebar's surface`,
+				reading.stripGrounds[0]?.bg === reading.surfaceGround,
+				`x${reading.stripGrounds[0]?.x} reads ${reading.stripGrounds[0]?.bg}`,
 			);
 			if (reading.leadingColumn) {
 				const column = reading.leadingColumn;
-				const edge = column.left + column.width;
-				const laneEdge = edge - laneLeft;
+				const mid = column.left + column.width / 2;
 				check(
-					`${path}: the route's leading column is handed to the shell`,
-					reading.registeredColumn !== null &&
-						Math.abs(reading.registeredColumn.left - column.left) < 0.5,
-					`the column at x ${column.left} is ${reading.registeredColumn === null ? "not registered at all" : `registered at x ${reading.registeredColumn.left}`}`,
-				);
-				check(
-					`${path}: the shell is handed the rung the column is painted in`,
-					reading.markerGround !== null &&
-						reading.markerGround === reading.leadingColumnGround,
-					`the marker says ${JSON.stringify(reading.markerValue)} (${reading.markerGround}) against a column painted ${reading.leadingColumnGround}`,
-				);
-				/*
-				 * SENTENCE ONE OF THE REPORT, IN THE RUNNING APP: "the right border
-				 * doesn't go all the way up ... either make it extend all the way up or
-				 * remove the right border" - answered with removal on every column.
-				 * Both elements are read because the rule lived on a different level per
-				 * route (the settings rail's wrapper, the rosters' own boxes), and this
-				 * check has to fail on the before tree for all three - which it does:
-				 * on `origin/main` the settings rail's wrapper and the rosters' boxes each
-				 * compute a 1px border-right-WIDTH here. (The width, not the style:
-				 * Tailwind's preflight leaves `border-right-style: solid` on every box, so
-				 * the style reads `solid` whether or not a rule is drawn, and only the
-				 * width separates 1px of rule from 0px of none.)
-				 */
-				check(
-					`${path}: neither the column nor its hand-over draws a right rule`,
-					reading.leadingColumnRule === "0px" &&
-						reading.registeredRule === "0px",
-					`column border-right-width ${reading.leadingColumnRule}, registered border-right-width ${reading.registeredRule} - a rule here can only begin at the lane's lower edge (y 32), not at y0`,
-				);
-				check(
-					`${path}: the lane carries the column's own ground across its width`,
+					`${path}: the route's leading column paints its own ground through the strip`,
 					reading.leadingColumnGround !== null &&
-						laneColourAt((laneEdge + (column.left - laneLeft)) / 2) ===
-							reading.leadingColumnGround,
-					`mid-column the lane paints ${laneColourAt((laneEdge + (column.left - laneLeft)) / 2)} against the column's own ${reading.leadingColumnGround}`,
+						reading.stripGrounds.some(
+							(probe) =>
+								Math.abs(probe.x - mid) <= 1 &&
+								probe.bg === reading.leadingColumnGround,
+						),
+					`at x${Math.round(mid)} the strip reads ${JSON.stringify(reading.stripGrounds.filter((p) => Math.abs(p.x - mid) <= 1))} against the column's ${reading.leadingColumnGround} - a leading column that stops at y32 is the operator's original report`,
 				);
 				check(
-					`${path}: the lane's canvas resumes at the column's right edge (${edge}px)`,
-					laneColourAt(laneEdge - 1) === reading.leadingColumnGround &&
-						laneColourAt(laneEdge + 1) === reading.canvasGround,
-					`left of the edge ${laneColourAt(laneEdge - 1)}, right of it ${laneColourAt(laneEdge + 1)}, against the column's ${reading.leadingColumnGround} and canvas ${reading.canvasGround}`,
-				);
-				if (sidebarEdge !== null) {
-					check(
-						`${path}: the surface band still starts at the app sidebar's own edge (${sidebarEdge}px from the lane's left)`,
-						laneColourAt(sidebarEdge - 1) === reading.surfaceGround,
-						`the lane paints ${laneColourAt(sidebarEdge - 1)} just left of the sidebar's edge, against the surface role's ${reading.surfaceGround}`,
-					);
-				}
-			} else if (sidebarEdge !== null) {
-				check(
-					`${path}: with no leading column the surface band stops at the app sidebar's own edge (${sidebarEdge}px from the lane's left)`,
-					laneColourAt(sidebarEdge - 1) === reading.surfaceGround &&
-						laneColourAt(sidebarEdge + 1) === reading.canvasGround,
-					`left of the edge ${laneColourAt(sidebarEdge - 1)}, right of it ${laneColourAt(sidebarEdge + 1)}`,
+					`${path}: the column draws no right rule`,
+					reading.leadingColumnRule === "0px",
+					`column border-right-width ${reading.leadingColumnRule} - the boundary beside it is a tone step now`,
 				);
 			}
 		}
 		/*
-		 * The app sidebar is the control for the same number, WHERE IT EXISTS to be
-		 * read: `[data-sidebar-shell]` is the docked column's marker, so at 800 - where
-		 * the dock collapses to the 56px strip - the filter below skips this check rather
-		 * than comparing a box that is not there. On every route at 1380 the sidebar's
-		 * first row sat on the lane's bottom before the report and must still, or the fix
-		 * moved the one column that was never wrong.
+		 * THE APP SIDEBAR IS THE CONTROL, and under the panel contract its own top
+		 * is y0: it paints `surface` through the strip and pads its first row below
+		 * it. The old reading compared it to the lane's bottom edge, which is the
+		 * reserved row this pass removes.
 		 */
 		for (const [, path, reading] of readings.filter(([, , r]) => r.sidebar)) {
 			check(
-				`${path}: the app sidebar still starts on the lane's bottom edge (${laneBottom}px)`,
-				Math.abs(reading.sidebar.top - laneBottom) < 0.5,
+				`${path}: the app sidebar starts at y0, not below the strip`,
+				Math.abs(reading.sidebar.top) < 0.5,
 				`the sidebar's own top is ${reading.sidebar.top}`,
 			);
 		}
@@ -43116,6 +43237,193 @@ async function wheelUntilInScroller(
  * calls that would), and the facts check below proves the window stayed
  * hidden. The run log says it used it.
  */
+
+/**
+ * THE PROJECT UPDATE ASSETS GRID, live: open the seeded picture, Next, a
+ * filmstrip jump, Escape, and the markdown note in the in-app reader. Every
+ * claim is read off the DOM the app painted.
+ */
+async function sceneProjectUpdateAssets(cdp) {
+	if (PROJECT === null) {
+		throw new Error(
+			"--scene project-update-assets needs --project <key>: the feed is reached by the project's own key, and a default would drive whatever the lane's seed happened to call its row",
+		);
+	}
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+	const theme = (THEME ?? "localOperatorDark")
+		.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
+		.replace(/^-/, "");
+
+	const seeded = await fetchProjectView(PROJECT);
+	const names = (seeded.body?.result?.project?.updates ?? [])
+		.flatMap((update) => update.attachments ?? [])
+		.map((attachment) => attachment.name);
+	check(
+		"the seeded project exists and carries the evidence attachments",
+		seeded.status === 200 && names.length >= 4,
+		`status=${seeded.status} names=${JSON.stringify(names)}`,
+	);
+
+	await verb(cdp, "navigate", `/projects/${PROJECT}`);
+	const gridWaited = await waitForCondition(
+		cdp,
+		`(() => {
+			const grid = document.querySelector("[data-project-asset-grid]");
+			if (!grid) return null;
+			return {
+				images: grid.querySelectorAll('[data-project-asset-tile="image"]').length,
+				sounds: grid.querySelectorAll('[data-project-asset-tile="audio"]').length,
+				files: grid.querySelectorAll('[data-project-asset-tile="file"]').length,
+			};
+		})()`,
+		30_000,
+	);
+	const counts = gridWaited.last;
+	check(
+		"the update renders an asset grid of pictures, a sound and a note",
+		gridWaited.ok &&
+			counts?.images === 2 &&
+			counts.sounds >= 1 &&
+			counts.files >= 1,
+		`after ${gridWaited.waitedMs}ms counts=${JSON.stringify(counts)}`,
+	);
+	note("asset grid", `${await verb(cdp, "state")}`);
+
+	const firstImageTile =
+		'[data-project-asset-grid] [data-project-asset-tile="image"]';
+	// The tile is lazy: scroll the slot, then wait for its control to mount.
+	await cdp.evaluate(
+		`document.querySelector('${firstImageTile}').scrollIntoView({ block: "center" })`,
+	);
+	const firstImage = `${firstImageTile} button`;
+	const mounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('${firstImage}'))`,
+		15_000,
+	);
+	check(
+		"the lazy picture tile mounts its control once the slot is in view",
+		mounted.ok,
+		`after ${mounted.waitedMs}ms`,
+	);
+	await wait(200);
+	await captureSettled(cdp, `pua-${size}-${theme}-grid`);
+
+	await clickAt(cdp, firstImage);
+	const opened = await waitForCondition(
+		cdp,
+		`(() => {
+			const image = document.querySelector("[data-image-viewport] img");
+			return image ? image.getAttribute("src") : null;
+		})()`,
+		15_000,
+	);
+	const firstSrc = String(opened.last ?? "");
+	check(
+		"pressing the first picture opens the shared lightbox on an image slide",
+		opened.ok && firstSrc.length > 0,
+		`after ${opened.waitedMs}ms src=${firstSrc.slice(0, 48)}`,
+	);
+	await captureSettled(cdp, `pua-${size}-${theme}-lightbox`);
+
+	await clickAt(cdp, '[role="dialog"] [data-image-viewer-next]');
+	const moved = await waitForCondition(
+		cdp,
+		`(() => {
+			const image = document.querySelector("[data-image-viewport] img");
+			if (!image) return null;
+			const src = image.getAttribute("src");
+			return src !== ${JSON.stringify(firstSrc)} ? src : null;
+		})()`,
+		15_000,
+	);
+	check(
+		"Next moves the gallery to the update's second picture",
+		moved.ok,
+		`after ${moved.waitedMs}ms src=${String(moved.last ?? "").slice(0, 48)}`,
+	);
+	await captureSettled(cdp, `pua-${size}-${theme}-next`);
+
+	const stripCaptured = await cdp.evaluate(
+		`document.querySelectorAll("[data-project-asset-filmstrip] button").length`,
+	);
+	check(
+		"the filmstrip lists media tiles",
+		Number(stripCaptured) >= 2,
+		`tiles=${stripCaptured}`,
+	);
+	await clickAt(cdp, "[data-project-asset-filmstrip] button:first-child");
+	// The name, not the src: a re-resolved slide has a new blob URL.
+	const firstName = String(names[0] ?? "");
+	const jumped = await waitForCondition(
+		cdp,
+		`(() => {
+			const image = document.querySelector("[data-image-viewport] img");
+			return image && image.getAttribute("alt") === ${JSON.stringify(firstName)};
+		})()`,
+		15_000,
+	);
+	check(
+		"a filmstrip tile jumps the gallery to the slot it names",
+		jumped.ok,
+		`after ${jumped.waitedMs}ms expected=${firstName}`,
+	);
+	await captureSettled(cdp, `pua-${size}-${theme}-filmstrip`);
+
+	await pressChord(cdp, { key: "Escape", code: "Escape", virtualKeyCode: 27 });
+	const closed = await waitForCondition(
+		cdp,
+		`!document.querySelector("[data-image-viewport]")`,
+		15_000,
+	);
+	check("Escape closes the lightbox", closed.ok, `after ${closed.waitedMs}ms`);
+
+	// The note opens in the app's own reader and shows the seed's own prose.
+	const noteName = names.find((name) => String(name).endsWith(".md"));
+	check(
+		"the seed carries a markdown attachment",
+		typeof noteName === "string",
+		`names=${JSON.stringify(names)}`,
+	);
+	const noteTile = `[data-project-asset-grid] button[aria-label="Preview ${noteName}"]`;
+	await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(noteTile)}).scrollIntoView({ block: "center" })`,
+	);
+	await wait(150);
+	await clickAt(cdp, noteTile);
+	const preview = await waitForCondition(
+		cdp,
+		`(() => {
+			const body = document.querySelector("[data-project-file-preview]");
+			return body && body.textContent.includes("Rig evidence note")
+				? body.textContent
+				: null;
+		})()`,
+		15_000,
+	);
+	check(
+		"the markdown note opens in the in-app preview, rendered as prose",
+		preview.ok,
+		`after ${preview.waitedMs}ms text=${String(preview.last ?? "").slice(0, 80)}`,
+	);
+	await captureSettled(cdp, `pua-${size}-${theme}-preview`);
+	await pressChord(cdp, { key: "Escape", code: "Escape", virtualKeyCode: 27 });
+	await waitForCondition(
+		cdp,
+		`!document.querySelector("[data-project-file-preview]")`,
+		15_000,
+	);
+}
+
 async function sceneProjectOpen(cdp) {
 	if (PROJECT === null) {
 		throw new Error(
@@ -46705,9 +47013,16 @@ async function sceneHubLinks(cdp, app) {
 	const collapsed = await waitForCondition(
 		cdp,
 		`(() => {
-			const pane = document.querySelector('[data-agents-pane]');
-			if (!pane) return null;
-			const trigger = pane.querySelector('button[aria-expanded]');
+			/*
+			 * THE PANEL'S OWN TRIGGER, not the pane's first expander. The panel
+			 * used to be drawn ABOVE the record's title, so its disclosure was the
+			 * first expander in the pane; it now sits BELOW the title, inside the
+			 * record, and the record's own disclosures come first. The panel
+			 * carries its own marker for exactly this.
+			 */
+			const panel = document.querySelector('[data-hub-links-panel]');
+			if (!panel) return null;
+			const trigger = panel.querySelector('button[aria-expanded]');
 			return trigger ? { expanded: trigger.getAttribute('aria-expanded') } : null;
 		})()`,
 		30_000,
@@ -46731,11 +47046,11 @@ async function sceneHubLinks(cdp, app) {
 	 * origin 2 (Minerva · Private) Subscribe Off - so the pair must read "Mixed".
 	 */
 	const collapsedSummary = await cdp.evaluate(`(() => {
-		// The same trigger the collapsed check above found: the pane-scoped
-		// hub-panel disclosure. The hub-panel marker attribute is not forwarded by
-		// Disclosure, so the pane-scoped selector is the proof.
-		const pane = document.querySelector('[data-agents-pane]');
-		const trigger = pane && pane.querySelector('button[aria-expanded]');
+		// The same trigger the collapsed check above found: the hub panel's own
+		// disclosure, reached through the marker the PANE wrapper carries (the
+		// marker is not forwarded by Disclosure, so it sits on the wrapper).
+		const panel = document.querySelector('[data-hub-links-panel]');
+		const trigger = panel && panel.querySelector('button[aria-expanded]');
 		return trigger ? trigger.textContent : null;
 	})()`);
 	check(
@@ -46780,7 +47095,11 @@ async function sceneHubLinks(cdp, app) {
 			JSON.stringify({ label: unresolvedNamed }),
 		);
 	}
-	await verb(cdp, "press", '[data-agents-pane] button[aria-expanded="false"]');
+	await verb(
+		cdp,
+		"press",
+		'[data-hub-links-panel] button[aria-expanded="false"]',
+	);
 	const ready = await waitForCondition(
 		cdp,
 		`(() => {
@@ -46893,6 +47212,8 @@ async function sceneHubLinks(cdp, app) {
 		`after ${unresolvedReady.waitedMs ?? "?"}ms: ${JSON.stringify(unresolvedReady.last)}`,
 	);
 
+	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-card`);
+
 	/*
 	 * THE EXPLICIT SOURCE CONFIRMATION. The unresolved row's only honest origin is
 	 * an act that names BOTH the approved source and the scope; the confirm
@@ -46990,6 +47311,25 @@ async function sceneHubLinks(cdp, app) {
 		JSON.stringify(chooser.last),
 	);
 	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-open`);
+	// Close through the real control. The opener must exist again before focus
+	// returns, on both record kinds; synchronous focus in the handler is too early.
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+	const canceled = await waitForCondition(
+		cdp,
+		`(() => {
+		const row = document.querySelector('[data-hub-source-unresolved]');
+		const opener = row && row.querySelector('button');
+		return opener && !row.querySelector('select') && document.activeElement === opener;
+	})()`,
+		5_000,
+	);
+	check(
+		"Cancel restores focus to the remounted source opener",
+		canceled.ok,
+		JSON.stringify(canceled.last),
+	);
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+
 	/*
 	 * The confirm button is DISABLED while nothing is chosen - the guard that
 	 * makes the empty default safe. Assert that before choosing.
@@ -47035,6 +47375,16 @@ async function sceneHubLinks(cdp, app) {
 		chosen.ok,
 		`after ${chosen.waitedMs ?? "?"}ms: ${JSON.stringify(chosen.last)}`,
 	);
+
+	await cdp.evaluate(`(() => {
+		window.__hubSuccessToasts = [];
+		window.__hubToastObserver = new MutationObserver(() => {
+			for (const toast of document.querySelectorAll('[data-sonner-toast]')) {
+				window.__hubSuccessToasts.push(toast.textContent);
+			}
+		});
+		window.__hubToastObserver.observe(document.body, {childList:true, subtree:true, characterData:true});
+	})()`);
 	const confirmed = await verb(
 		cdp,
 		"press",
@@ -47058,6 +47408,23 @@ async function sceneHubLinks(cdp, app) {
 		resolvedRow.ok,
 		`after ${resolvedRow.waitedMs ?? "?"}ms: ${JSON.stringify(resolvedRow.last)}`,
 	);
+	const completed = await waitForCondition(
+		cdp,
+		`(() => {
+		const trigger = document.querySelector('[data-hub-links-panel] button[aria-expanded]');
+		return trigger && document.activeElement === trigger &&
+			window.__hubSuccessToasts.some(text => text.includes('Source confirmed'))
+			? {focus: trigger.textContent, toasts: window.__hubSuccessToasts} : null;
+	})()`,
+		5_000,
+	);
+	check(
+		"confirmation announces success and focuses the surviving link disclosure",
+		completed.ok,
+		JSON.stringify(completed.last),
+		JSON.stringify(completed.last),
+	);
+	await cdp.evaluate("window.__hubToastObserver.disconnect()");
 	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-done`);
 
 	/*
@@ -47065,6 +47432,13 @@ async function sceneHubLinks(cdp, app) {
 	 * filter; the daemon's inventory carries one skill link, so the skill surface
 	 * is exercised by the SAME inventory read rather than a second route.
 	 */
+	// A successful confirmation now leaves focus on its collapsed link control.
+	// Inspect the actual link rows only after opening that surviving disclosure.
+	await verb(
+		cdp,
+		"press",
+		'[data-hub-links-panel] button[aria-expanded="false"]',
+	);
 	const kinds = await cdp.evaluate(`(() => {
 		const pane = document.querySelector('[data-agents-pane]');
 		if (!pane) return null;
@@ -47108,6 +47482,148 @@ async function sceneHubLinks(cdp, app) {
 		JSON.stringify(orgRow.last),
 	);
 	await captureSettled(cdp, `hub-links-${size}-${theme}-org-source`);
+
+	/*
+	 * THE UNRESOLVED ROW ON A TEAM'S PAGE. The panel is the same component for a
+	 * team and the resolve arm's domain is `agent|team`, so the source
+	 * confirmation is photographed on a team pane too - there the record it
+	 * describes is a TEAM, and the block has to read as being about that team.
+	 */
+	await verb(cdp, "navigate", "/agents?kind=team&name=legacy-team");
+	const teamUnresolved = await waitForCondition(
+		cdp,
+		`(() => {
+			const pane = document.querySelector('[data-agents-pane]');
+			const card = pane && pane.querySelector('[data-hub-source-unresolved]');
+			if (!card) return null;
+			const heading = card.querySelector('h3, h4');
+			return {
+				card: card.getAttribute('data-hub-source-unresolved'),
+				heading: heading ? heading.textContent : null,
+			};
+		})()`,
+		30_000,
+	);
+	check(
+		"a legacy unknown-origin TEAM renders its own source-confirmation block",
+		teamUnresolved.ok && teamUnresolved.last.card === "team-legacy",
+		`after ${teamUnresolved.waitedMs ?? "?"}ms: ${JSON.stringify(teamUnresolved.last)}`,
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-team-unresolved`);
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+	const teamCanceled = await waitForCondition(
+		cdp,
+		`(() => {
+		const row = document.querySelector('[data-hub-source-unresolved]');
+		const opener = row && row.querySelector('button');
+		return opener && !row.querySelector('select') && document.activeElement === opener;
+	})()`,
+		5_000,
+	);
+	check(
+		"team Cancel restores focus to its remounted source opener",
+		teamCanceled.ok,
+		JSON.stringify(teamCanceled.last),
+	);
+
+	await verb(cdp, "navigate", "/agents?name=legacy-solo");
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+	await cdp.evaluate(`(() => {
+		const select = document.querySelector('[data-hub-source-unresolved] select');
+		Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, 'public');
+		select.dispatchEvent(new Event('change', {bubbles:true}));
+	})()`);
+	await verb(cdp, "press", "[data-hub-source-unresolved] button:last-of-type");
+	const conflict = await waitForCondition(
+		cdp,
+		`(() => {
+		const row = document.querySelector('[data-hub-source-unresolved]');
+		const alert = row && row.querySelector('[role="alert"]');
+		return alert && !row.querySelector('button').disabled ? {text:alert.textContent} : null;
+	})()`,
+		10_000,
+	);
+	check(
+		"conflicting scope keeps the unresolved card and settled recovery controls",
+		conflict.ok,
+		JSON.stringify(conflict.last),
+		JSON.stringify(conflict.last),
+	);
+	check(
+		"conflict names source/scope, unchanged state and a safe next step",
+		conflict.ok &&
+			/source or publish scope/.test(conflict.last.text) &&
+			/Nothing was changed/.test(conflict.last.text) &&
+			/Cancel and check/.test(conflict.last.text) &&
+			/separate local copy/.test(conflict.last.text),
+		JSON.stringify(conflict.last),
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-resolve-conflict`);
+	await verb(cdp, "press", "[data-hub-source-unresolved] button");
+	const conflictCanceled = await waitForCondition(
+		cdp,
+		`(() => {
+		const row = document.querySelector('[data-hub-source-unresolved]');
+		return row && !row.querySelector('select') && document.activeElement === row.querySelector('button');
+	})()`,
+		5_000,
+	);
+	check(
+		"Cancel after conflict restores focus to its source opener",
+		conflictCanceled.ok,
+		JSON.stringify(conflictCanceled.last),
+	);
+
+	/*
+	 * A RECORD WITH NO HUB LINK DRAWS NOTHING. The panel used to render a "Hub
+	 * links - Not linked to the hub" disclosure on every record, above the
+	 * record's title; a record with no hub presence has nothing to say, and most
+	 * records on a roster have no hub presence.
+	 *
+	 * The assertion is the TEXT, not a marker: "Hub links" appearing anywhere in
+	 * the pane is the old disclosure's own summary, so a record that still drew
+	 * it fails here whether the block is a disclosure or something else.
+	 */
+	await verb(cdp, "navigate", "/agents?name=loner");
+	const noLinkReady = await waitForCondition(
+		cdp,
+		`(() => {
+			const pane = document.querySelector('[data-agents-pane]');
+			if (!pane) return null;
+			const heading = pane.querySelector('h2');
+			return heading ? { title: heading.textContent } : null;
+		})()`,
+		30_000,
+	);
+	/*
+	 * Give the inventory read time to ANSWER before the assertion: the point is
+	 * that the panel says nothing once it knows there is nothing to say, not
+	 * that it says nothing before it has looked.
+	 */
+	await wait(2_000);
+	const noLink = await cdp.evaluate(`(() => {
+		const pane = document.querySelector('[data-agents-pane]');
+		if (!pane) return null;
+		return {
+			rows: pane.querySelectorAll('[data-hub-link]').length,
+			unresolved: pane.querySelectorAll('[data-hub-source-unresolved]').length,
+			hubLinksText: (pane.textContent || '').includes('Hub links'),
+		};
+	})()`);
+	note(
+		"no-link record",
+		JSON.stringify({ ready: noLinkReady.last, read: noLink }),
+	);
+	check(
+		"a record with no hub link draws NO hub panel at all",
+		noLink !== null &&
+			noLink.rows === 0 &&
+			noLink.unresolved === 0 &&
+			noLink.hubLinksText === false,
+		JSON.stringify(noLink),
+	);
+	await captureSettled(cdp, `hub-links-${size}-${theme}-no-link`);
 
 	/*
 	 * THE SIDEBAR MARK (design §Sidebar line 48, CODE MAJOR-2). The chat sidebar
@@ -47198,7 +47714,11 @@ async function sceneHubLinks(cdp, app) {
 		detailOpened.ok,
 		`after ${detailOpened.waitedMs ?? "?"}ms: ${JSON.stringify(detailOpened.last)}`,
 	);
-	await verb(cdp, "press", '[data-agents-pane] button[aria-expanded="false"]');
+	await verb(
+		cdp,
+		"press",
+		'[data-hub-links-panel] button[aria-expanded="false"]',
+	);
 	const origins = await waitForCondition(
 		cdp,
 		`(() => {
@@ -47709,7 +48229,7 @@ async function sceneHubSkills(cdp, app) {
 			const d = document.querySelector('[data-hub-skill-detail]');
 			if (!d) return null;
 			const files = d.querySelectorAll('details').length;
-			const name = d.querySelector('h3');
+			const name = d.querySelector('[data-testid="hub-skill-detail-name"]');
 			return files > 0 && name ? { files, name: name.textContent } : null;
 		})()`,
 		20_000,
@@ -47725,7 +48245,7 @@ async function sceneHubSkills(cdp, app) {
 	const gate = await cdp.evaluate(`(() => {
 		const d = document.querySelector('[data-hub-skill-detail]');
 		if (!d) return null;
-		const create = d.querySelector('[data-testid="hub-skill-create"]');
+		const create = d.querySelector('[data-testid="hub-skill-download"]');
 		return { disabled: create ? create.disabled === true : null, noCredential: /credential|sign in/i.test(d.textContent || '') };
 	})()`);
 	if (gate && gate.disabled === true) {
@@ -47755,65 +48275,8 @@ async function sceneHubSkills(cdp, app) {
 		return;
 	}
 
-	/* THE CONSENT DIALOG, mounted by the LIBRARY's own policy fields. */
-	const autoPushCheckbox = '[data-hub-skill-detail] [id$="-autoPush"]';
-	const checkboxState = await cdp.evaluate(
-		`(() => { const el = document.querySelector(${JSON.stringify(autoPushCheckbox)}); return el ? { state: el.getAttribute('data-state'), disabled: el.disabled === true } : null; })()`,
-	);
-	check(
-		"the detail's policy fields mount the auto-push checkbox",
-		checkboxState && checkboxState.disabled === false,
-		JSON.stringify(checkboxState),
-	);
-	const consentPressed = await verb(cdp, "press", autoPushCheckbox);
-	check(
-		"the auto-push checkbox received the point",
-		consentPressed.hitTest === true,
-		JSON.stringify({ hitTest: consentPressed.hitTest }),
-	);
-	const dialog = await waitForCondition(
-		cdp,
-		`(() => {
-			const d = document.querySelector('[role="dialog"]');
-			return d ? { text: d.textContent.slice(0, 240) } : null;
-		})()`,
-		10_000,
-	);
-	check(
-		"the consent dialog opens from the library's own fields",
-		dialog.ok,
-		`after ${dialog.waitedMs ?? "?"}ms: ${JSON.stringify(dialog.last)}`,
-	);
-	if (expectedScope === "public") {
-		const text = await cdp.evaluate(
-			`document.querySelector('[role="dialog"]').textContent`,
-		);
-		check(
-			"public consent names public publication",
-			/public/i.test(text),
-			text,
-		);
-	}
-	note("consent dialog text", JSON.stringify(dialog.last?.text));
-	await captureSettled(cdp, `hub-skills-${size}-${theme}-consent`);
-	geometry.consent = await box('[role="dialog"]');
-	await verb(cdp, "press", '[data-testid="hub-policy-enable"]');
-	await waitForCondition(
-		cdp,
-		`(() => (!document.querySelector('[role="dialog"]') ? true : null))()`,
-		5_000,
-	);
-	const enabledState = await cdp.evaluate(
-		`(() => { const el = document.querySelector(${JSON.stringify(autoPushCheckbox)}); return el ? el.getAttribute('data-state') : null; })()`,
-	);
-	check(
-		"enabling records the consent on the draft (checkbox checked)",
-		enabledState === "checked",
-		JSON.stringify({ enabledState }),
-	);
-
 	/* THE PULL: alias is pre-filled; the press is the real hub.skillPull write. */
-	const createSelector = '[data-testid="hub-skill-create"]';
+	const createSelector = '[data-testid="hub-skill-download"]';
 	const prePull = await cdp.evaluate(
 		`(() => { const el = document.querySelector(${JSON.stringify(createSelector)}); return el ? { disabled: el.disabled === true } : null; })()`,
 	);
@@ -47862,12 +48325,41 @@ async function sceneHubSkills(cdp, app) {
 		note("pull refusal line", JSON.stringify(pullEnd.last.text));
 	}
 
-	/* THE PUBLICATION PANEL: preview, then confirm (or the pending receipt). */
-	const publication = await box("[data-hub-skill-publication]");
+	/*
+	 * THE LINK'S POLICY CONTROLS. The three-acts form and its initial-policy
+	 * consent left this surface in design round 1; the controls now mount from
+	 * the link the real pull created. The auto-push switch is PRESENT here and
+	 * may be disabled with its reason (the stub destination is not verified for
+	 * safe automatic publication), which is a state to photograph, not a failure.
+	 */
+	const autoPushCheckbox = '[data-hub-skill-detail] [id$="-push"]';
+	const policyControls = await cdp.evaluate(
+		`(() => {
+			const d = document.querySelector('[data-hub-skill-detail]');
+			const push = d?.querySelector('[id$="-push"]');
+			const subscribe = d?.querySelector('[id$="-subscribe"]');
+			return { push: push ? { disabled: push.disabled === true, state: push.getAttribute('data-state') } : null, subscribe: subscribe !== null };
+		})()`,
+	);
 	check(
-		"the publication panel is mounted under the library",
-		publication !== null,
-		JSON.stringify(publication),
+		"the detail's link controls mount subscribe and auto-push",
+		policyControls.subscribe === true && policyControls.push !== null,
+		JSON.stringify(policyControls),
+	);
+	note("auto-push control state", JSON.stringify(policyControls.push));
+	await captureSettled(cdp, `hub-skills-${size}-${theme}-policy`);
+	/* THE PUBLICATION PANEL: preview, then confirm (or the pending receipt). */
+	await verb(cdp, "press", '[data-testid="hub-skill-publish-open"]');
+	check(
+		"the publication panel opens from the toolbar action",
+		(
+			await waitForCondition(
+				cdp,
+				`(() => { const p = document.querySelector("[data-hub-skill-publication]"); return p ? true : null; })()`,
+				10_000,
+			)
+		).ok,
+		"the panel did not mount",
 	);
 	await setValue(
 		'[data-testid="hub-skill-publish-source"]',
@@ -47954,7 +48446,7 @@ async function sceneHubSkills(cdp, app) {
 		await captureSettled(cdp, `hub-skills-${size}-${theme}-publish-complete`);
 	}
 	note("publication outcome", JSON.stringify(publishEnd.last.text));
-	geometry.publication = publication;
+	geometry.publication = await box("[data-hub-skill-publication]");
 
 	/* The signed-out gate is a DIFFERENT library mount (public scope, no org chip). */
 	writeFileSync(
@@ -48217,14 +48709,18 @@ async function sceneHubCoreGuard(cdp, app) {
 	await verb(cdp, "navigate", "/agents?name=reviewer");
 	const collapsed = await waitForCondition(
 		cdp,
-		`!!document.querySelector('[data-agents-pane] button[aria-expanded="false"]')`,
+		`!!document.querySelector('[data-hub-links-panel] button[aria-expanded="false"]')`,
 		30_000,
 	);
 	check(
 		"linked profile remains browsable before opening controls",
 		collapsed.ok,
 	);
-	await verb(cdp, "press", '[data-agents-pane] button[aria-expanded="false"]');
+	await verb(
+		cdp,
+		"press",
+		'[data-hub-links-panel] button[aria-expanded="false"]',
+	);
 	const row = '[data-hub-link="link-public-agent"]';
 	const ready = await waitForCondition(
 		cdp,
@@ -48719,6 +49215,18 @@ async function main() {
 			"--scene project-detail needs --backend: the seeded row, quick-send's message and the picker's create are all real requests to the daemon this run owns, so a run with none would photograph three refusals",
 		);
 	}
+	if (SCENE === "project-update-assets") {
+		if (BACKEND === null) {
+			throw new Error(
+				"--scene project-update-assets needs --backend: the seeded row and the attachment bytes are real requests to the daemon this run owns, so a run with none would photograph a feed with no grid",
+			);
+		}
+		if (PROJECT === null) {
+			throw new Error(
+				"--scene project-update-assets needs --project <key>: the feed is reached by the project's own key",
+			);
+		}
+	}
 	if (SCENE === "project-open") {
 		if (BACKEND === null || BACKEND_RECORDS === null) {
 			throw new Error(
@@ -48760,6 +49268,7 @@ async function main() {
 			);
 		}
 	}
+	if (SCENE === "sidebar-layout") await prepareSidebarLayoutScene();
 	if (SCENE === "mini-view" && BACKEND !== null && BACKEND_RECORDS === null) {
 		throw new Error(
 			"--scene mini-view with --backend needs --backend-records: the app admits only a daemon a serve record describes, and the live send walks that daemon's own routes through the record the run linked",
@@ -48907,6 +49416,20 @@ async function main() {
 			else if (SCENE === "connection-drop") await sceneConnectionDrop(cdp);
 			else if (SCENE === "row-space") await sceneRowSpace(cdp);
 			else if (SCENE === "sidebar-bottom") await sceneSidebarBottom(cdp);
+			else if (SCENE === "sidebar-layout")
+				await sceneSidebarLayout({
+					cdp,
+					verb,
+					capture: captureSettled,
+					check,
+					note,
+					wait,
+					waitForCondition,
+					factsOf,
+					require,
+					parkPointer,
+					pressPointer,
+				});
 			else if (SCENE === "states") await sceneStates(cdp);
 			/*
 			 * §I's pane floors (the chat column's 480, the canvas's dock cap and its
@@ -48933,6 +49456,7 @@ async function main() {
 			else if (SCENE === "sidebar-bin-promptness")
 				await sceneSidebarBinPromptness(cdp);
 			else if (SCENE === "drafts") await sceneDrafts(cdp);
+			else if (SCENE === "stale-team-draft") await sceneStaleTeamDraft(cdp);
 			else if (SCENE === "undo-toasts-stacked")
 				await sceneUndoToastsStacked(cdp);
 			/*
@@ -48994,6 +49518,18 @@ async function main() {
 				await sceneSettingsIntegrations(cdp);
 			else if (SCENE === "route-tops") await sceneRouteTops(cdp);
 			else if (SCENE === "project-detail") await sceneProjectDetail(cdp);
+			else if (SCENE === "library-asset")
+				await sceneLibraryAsset({
+					cdp,
+					verb,
+					capture: captureSettled,
+					check,
+					note,
+					waitForCondition,
+					factsOf,
+				});
+			else if (SCENE === "project-update-assets")
+				await sceneProjectUpdateAssets(cdp);
 			else if (SCENE === "project-open") await sceneProjectOpen(cdp);
 			else if (SCENE === "agents-ask") await sceneAgentsAsk(cdp);
 			else if (SCENE === "composer-drop") await sceneComposerDrop(cdp);

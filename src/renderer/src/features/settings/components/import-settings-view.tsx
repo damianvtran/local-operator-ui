@@ -36,7 +36,7 @@ import {
 	Square,
 } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import type {
 	ImportAvailability,
 	ImportOutcome,
@@ -68,6 +68,13 @@ export type ImportSettingsViewProps = {
 	selected: Set<string>;
 	preview: ImportPreview | null;
 	previewStale: boolean;
+	/**
+	 * A preview build's own failure, rendered inside the preview block rather
+	 * than in the section banner. The banner stays for source, session and job
+	 * failures, which have no block of their own to live in; a preview failure
+	 * belongs beside the acknowledgement it disables.
+	 */
+	previewError: string | null;
 	confirmed: boolean;
 	busy: ImportBusy;
 	error: string | null;
@@ -79,7 +86,6 @@ export type ImportSettingsViewProps = {
 	onToggleSession: (sourceId: string) => void;
 	onSelectAll: () => void;
 	onClearSelection: () => void;
-	onPreview: () => void;
 	onConfirmChange: (value: boolean) => void;
 	onImport: () => void;
 	onCancel: () => void;
@@ -308,6 +314,7 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 	selected,
 	preview,
 	previewStale,
+	previewError,
 	confirmed,
 	busy,
 	error,
@@ -319,7 +326,6 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 	onToggleSession,
 	onSelectAll,
 	onClearSelection,
-	onPreview,
 	onConfirmChange,
 	onImport,
 	onCancel,
@@ -330,18 +336,9 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 	onCopyPath,
 }) => {
 	useI18nLocale();
-	const previewRef = useRef<HTMLDivElement>(null);
 	const active = sources.find((source) => source.source === activeSource);
 	const jobActive = progress !== null && !TERMINAL_STATES.has(progress.state);
 	const resultTotal = progress?.total ?? selected.size;
-	useEffect(() => {
-		if (preview && !previewStale && !progress && !result) {
-			// A built preview can land below the fold (measured at 1380x900);
-			// bring the confirmation and its Import control into view rather than
-			// asking the user to discover them by scrolling.
-			previewRef.current?.scrollIntoView({ block: "start", inline: "nearest" });
-		}
-	}, [preview, previewStale, progress, result]);
 	const visibleSessions = useMemo(
 		() => filterSessions(sessions, query),
 		[query, sessions],
@@ -434,7 +431,7 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 										disabled={jobActive}
 										onClick={() => onSelectSource(source.source)}
 										className={cn(
-											"rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+											"rounded-lg border p-3 text-start transition-colors disabled:cursor-not-allowed disabled:opacity-60",
 											"focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2",
 											isActive
 												? "border-accent bg-accent-wash"
@@ -503,13 +500,13 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 						<div className="relative">
 							<Search
 								size={15}
-								className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-dim"
+								className="pointer-events-none absolute top-1/2 start-3 -translate-y-1/2 text-ink-dim"
 							/>
 							<Input
 								value={query}
 								onChange={(event) => onQueryChange(event.target.value)}
 								placeholder={t("ui.settings.imports.search_placeholder")}
-								className="pl-9"
+								className="ps-9"
 							/>
 						</div>
 
@@ -535,107 +532,128 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 							</p>
 						) : (
 							<div className="flex max-h-80 flex-col gap-1 overflow-y-auto">
-								{visibleSessions.map((session) => (
-									<div
-										key={session.sourceId}
-										className="flex items-start gap-3 rounded-md border border-hairline bg-surface p-3 hover:bg-sunken"
-									>
-										<Checkbox
-											checked={selected.has(session.sourceId)}
-											onCheckedChange={() => onToggleSession(session.sourceId)}
-											aria-label={sessionLabel(session)}
-											className="mt-0.5"
-										/>
-										<button
-											type="button"
-											onClick={() => onToggleSession(session.sourceId)}
-											className="min-w-0 flex-1 text-left"
+								{visibleSessions.map((session) => {
+									/*
+									 * ONE FOCUS STOP PER ROW. The row text used to be a second
+									 * `<button>` with the same onClick as the checkbox, so a
+									 * screen reader heard two controls for one action, and the
+									 * second one did not expose the checked state. A `<label>`
+									 * associated with the checkbox keeps the large pointer target,
+									 * makes one click toggle exactly once, and leaves the checkbox
+									 * as the only focusable control. The `<label>` is a SIBLING,
+									 * not a wrapper: a checkbox inside its own label fires twice
+									 * for one press.
+									 */
+									const inputId = `import-session-${session.source}-${session.sourceId}`;
+									return (
+										<div
+											key={session.sourceId}
+											className={cn(
+												"flex items-start gap-3 rounded-md border p-3",
+												selected.has(session.sourceId)
+													? "border-accent bg-row-selected"
+													: "border-hairline bg-surface hover:bg-sunken",
+											)}
 										>
-											<span className="flex flex-wrap items-center gap-2">
-												<span className="min-w-0 truncate text-body-sm text-ink">
-													{sessionLabel(session)}
+											<Checkbox
+												id={inputId}
+												checked={selected.has(session.sourceId)}
+												onCheckedChange={() =>
+													onToggleSession(session.sourceId)
+												}
+												aria-label={sessionLabel(session)}
+												className="mt-0.5"
+											/>
+											<label
+												htmlFor={inputId}
+												className="min-w-0 flex-1 cursor-pointer text-start"
+											>
+												<span className="flex flex-wrap items-center gap-2">
+													<span className="min-w-0 truncate text-body-sm text-ink">
+														{sessionLabel(session)}
+													</span>
+													<Badge
+														variant={
+															session.availability === "full"
+																? "neutral"
+																: "warning"
+														}
+													>
+														{t(availabilityKey(session.availability))}
+													</Badge>
 												</span>
-												<Badge
-													variant={
-														session.availability === "full"
-															? "neutral"
-															: "warning"
-													}
-												>
-													{t(availabilityKey(session.availability))}
-												</Badge>
-											</span>
-											<span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-meta text-ink-muted">
-												<span>
-													{t("ui.settings.imports.session_meta", {
-														messages: session.messageCount ?? 0,
-														compactions: session.compactionCount,
-													})}
-												</span>
-												<span>
-													{t("ui.settings.imports.session_updated", {
-														date: formatCalendarDateTime(
-															new Date(
-																(session.updatedTs || session.createdTs) * 1000,
+												<span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-meta text-ink-muted">
+													<span>
+														{t("ui.settings.imports.session_meta", {
+															messages: session.messageCount ?? 0,
+															compactions: session.compactionCount,
+														})}
+													</span>
+													<span>
+														{t("ui.settings.imports.session_updated", {
+															date: formatCalendarDateTime(
+																new Date(
+																	(session.updatedTs || session.createdTs) *
+																		1000,
+																),
 															),
-														),
-													})}
+														})}
+													</span>
 												</span>
-											</span>
-											{session.cwd && (
-												<span className="mt-1 block break-all font-mono text-meta text-ink-dim">
-													{session.cwd}
-												</span>
-											)}
-											{session.availability === "metadata_only" && (
-												<span className="mt-1 block text-meta text-warning">
-													{t("ui.settings.imports.metadata_only_explain")}
-												</span>
-											)}
-											{session.availability === "unsupported" && (
-												<span className="mt-1 block text-meta text-warning">
-													{t("ui.settings.imports.session_index_only")}
-												</span>
-											)}
-										</button>
-									</div>
-								))}
+												{session.cwd && (
+													<span className="mt-1 block break-all font-mono text-meta text-ink-dim">
+														{session.cwd}
+													</span>
+												)}
+												{session.availability === "metadata_only" && (
+													<span className="mt-1 block text-meta text-warning">
+														{t("ui.settings.imports.metadata_only_explain")}
+													</span>
+												)}
+												{session.availability === "unsupported" && (
+													<span className="mt-1 block text-meta text-warning">
+														{t("ui.settings.imports.session_index_only")}
+													</span>
+												)}
+											</label>
+										</div>
+									);
+								})}
 							</div>
 						)}
 					</div>
 				)}
 
 				{active && selectedCount > 0 && !progress && !result && (
-					<div
-						ref={previewRef}
-						className="flex flex-col gap-3 border-t border-hairline pt-5"
-					>
-						<div className="flex flex-wrap items-center justify-between gap-2">
-							<h3 className="text-heading text-ink">
-								{t("ui.settings.imports.preview_heading")}
-							</h3>
-							<Button
-								variant="secondary"
-								size="sm"
-								onClick={onPreview}
-								disabled={busy === "preview" || busy === "start"}
-							>
-								{busy === "preview" ? (
-									<Loader2 size={14} className="animate-spin" />
-								) : (
-									<Download size={14} />
-								)}
-								{busy === "preview"
-									? t("ui.settings.imports.loading_preview")
-									: t("ui.settings.imports.preview_heading")}
-							</Button>
-						</div>
-						{previewStale && (
-							<Alert variant="warning">
-								<AlertDescription>
-									{t("ui.settings.imports.preview_required")}
-								</AlertDescription>
-							</Alert>
+					<div className="flex flex-col gap-3 border-t border-hairline pt-5">
+						<h3 className="text-heading text-ink">
+							{t("ui.settings.imports.preview_heading")}
+						</h3>
+						{/*
+						 * THE PREVIEW IS BUILT AUTOMATICALLY now (the container
+						 * debounces a build per selection change), so this state is
+						 * "a preview for what you just selected is on its way", not
+						 * "go and build one yourself". `preview_required` said the
+						 * latter and is no longer true of this screen.
+						 *
+						 * The third clause is the gap between the selection and the
+						 * first build landing: the debounce means there is a moment
+						 * where a selection exists, no preview does, and neither the
+						 * spinner nor a summary is showing - and the Import button
+						 * below is grey with nothing saying why. "Building the
+						 * preview..." is the honest answer there, and it is the same
+						 * answer the other two clauses give. The error case is
+						 * excluded because the preview block below states the failure
+						 * and offers its Retry, and a spinner under a failure would be
+						 * a lie.
+						 */}
+						{(busy === "preview" ||
+							previewStale ||
+							(preview === null && !previewError)) && (
+							<p className="flex items-center gap-2 text-meta text-ink-muted">
+								<Loader2 size={14} className="animate-spin" />
+								{t("ui.settings.imports.loading_preview")}
+							</p>
 						)}
 						{preview && !previewStale && (
 							<div className="flex flex-col gap-2 rounded-lg border border-hairline bg-surface p-4">
@@ -672,31 +690,61 @@ export const ImportSettingsView: FC<ImportSettingsViewProps> = ({
 								</p>
 							</div>
 						)}
-						<div className="flex items-start gap-2 text-body-sm text-ink">
-							<Checkbox
-								checked={confirmed}
-								onCheckedChange={(value) => onConfirmChange(value === true)}
-								disabled={!preview || previewStale}
-								aria-label={t("ui.settings.imports.confirm_label")}
-								className="mt-0.5"
-							/>
-							<span>{t("ui.settings.imports.confirm_label")}</span>
-						</div>
-						<Button
-							variant="primary"
-							onClick={onImport}
-							disabled={!canImport}
-							className="self-start"
-						>
-							{busy === "start" ? (
-								<Loader2 size={14} className="animate-spin" />
-							) : (
-								<Download size={14} />
+						{/*
+						 * THE CONFIRMATION AND THE BUTTON IT GATES ARE ONE BLOCK.
+						 * They used to be two controls in two sections, which is why
+						 * the row's tick and this square looked like the same kind of
+						 * control doing the same kind of job. One bordered box, the
+						 * acknowledgement directly above the button it holds shut, and
+						 * `preview_confirm` above them says what is still outstanding.
+						 */}
+						<div className="flex flex-col gap-3 rounded-lg border border-hairline bg-surface p-4">
+							{/*
+							 * THE FAILURE BELONGS WHERE IT HAPPENED, inside the block
+							 * that holds the controls it disables. It used to be reported
+							 * only in the section banner at the top, above the source
+							 * cards and the whole session list - so at this block the
+							 * operator saw a grey Import and no explanation. Same copy
+							 * (`error_preview`), same `retry` control.
+							 */}
+							{previewError && (
+								<Alert variant="warning">
+									<AlertDescription>
+										<span className="flex flex-wrap items-center justify-between gap-3">
+											<span>{previewError}</span>
+											<Button variant="secondary" size="sm" onClick={onRetry}>
+												{t("ui.settings.imports.retry")}
+											</Button>
+										</span>
+									</AlertDescription>
+								</Alert>
 							)}
-							{t("ui.settings.imports.import_button", {
-								count: selectedCount,
-							})}
-						</Button>
+							<div className="flex items-start gap-2 text-body-sm text-ink">
+								<Checkbox
+									checked={confirmed}
+									onCheckedChange={(value) => onConfirmChange(value === true)}
+									disabled={!preview || previewStale}
+									aria-label={t("ui.settings.imports.confirm_label")}
+									className="mt-0.5"
+								/>
+								<span>{t("ui.settings.imports.confirm_label")}</span>
+							</div>
+							<Button
+								variant="primary"
+								onClick={onImport}
+								disabled={!canImport}
+								className="self-start"
+							>
+								{busy === "start" ? (
+									<Loader2 size={14} className="animate-spin" />
+								) : (
+									<Download size={14} />
+								)}
+								{t("ui.settings.imports.import_button", {
+									count: selectedCount,
+								})}
+							</Button>
+						</div>
 					</div>
 				)}
 

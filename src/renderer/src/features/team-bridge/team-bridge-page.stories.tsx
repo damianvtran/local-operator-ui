@@ -1,14 +1,19 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { type CSSProperties, useLayoutEffect, useState } from "react";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
+import { ChatLayout } from "../../shared/components/common/chat-layout";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeOrganization,
 	asTeamBridgeTenantId,
+	organizationOptions,
 } from "./team-bridge-model";
 import { TeamBridgePageView } from "./team-bridge-page";
+import { TeamBridgeThreadPaneView } from "./team-bridge-thread-pane";
+import { threadTargetFromSearch } from "./team-bridge-thread-read";
 
 /**
  * Presentation states for the Team Bridge page.
@@ -24,6 +29,33 @@ import { TeamBridgePageView } from "./team-bridge-page";
  */
 
 const self = "acct_self";
+
+/**
+ * Storybook has no native window chrome, so the lane's CSS gates stay off.
+ * Set the same document attributes `main.tsx` writes before render; without
+ * them the comparison story is not the pre-fix shape (the lane is `display:
+ * none`, so nothing is reserved above the page).
+ */
+const useMacChromeSimulation = () => {
+	useLayoutEffect(() => {
+		const root = document.documentElement;
+		const previous = {
+			mode: root.getAttribute("data-chrome-mode"),
+			platform: root.getAttribute("data-chrome-platform"),
+			leading: root.getAttribute("data-chrome-leading"),
+		};
+		root.setAttribute("data-chrome-mode", "integrated");
+		root.setAttribute("data-chrome-platform", "mac");
+		root.setAttribute("data-chrome-leading", "false");
+		return () => {
+			for (const [key, value] of Object.entries(previous)) {
+				const name = `data-chrome-${key}`;
+				if (value === null) root.removeAttribute(name);
+				else root.setAttribute(name, value);
+			}
+		};
+	}, []);
+};
 
 const dm: TeamBridgeConversation = {
 	id: "bcv_dm_1",
@@ -96,6 +128,10 @@ const channel: TeamBridgeConversation = {
 	last_read_seq: 9,
 	unread_count: 3,
 	muted: false,
+	// What agent-server sends on every row: active + invited (Damian, Bea, Cy).
+	// The header must still read 2 active members, not 3, so this fixture is the
+	// insider branch of `conversationMemberCount` rather than a decorative field.
+	member_count: 3,
 };
 
 const group: TeamBridgeConversation = {
@@ -208,6 +244,115 @@ const northwindChannel: TeamBridgeConversation = {
 	last_message_at: new Date(Date.now() - 2 * 60 * 60_000).toISOString(),
 };
 
+/**
+ * A discoverable channel the caller has not joined.
+ *
+ * `members` is EMPTY on purpose: the preview's whole point is that membership
+ * is the fact withheld, so the header's count has to come from `member_count`
+ * and the rail has no participant rows to draw. The messages beside it in the
+ * story are a trap for the component test — they must never be rendered.
+ */
+const previewChannel: TeamBridgeConversation = {
+	...channel,
+	id: "bcv_ch_preview",
+	name: "product-design",
+	topic: "Design critiques and reviews",
+	visibility: "tenant",
+	discoverable: true,
+	member: false,
+	member_count: 24,
+	members: [],
+	latest_seq: 41,
+	last_read_seq: 0,
+	unread_count: 0,
+	muted: false,
+	last_message_at: new Date(Date.now() - 30 * 60_000).toISOString(),
+};
+
+/** A joined channel whose notification register is the middle-low `mute`. */
+const mutedChannel: TeamBridgeConversation = {
+	...channel,
+	id: "bcv_ch_muted",
+	name: "alerts",
+	discoverable: true,
+	member: true,
+	notify: "mute",
+	muted: true,
+	latest_seq: 12,
+	last_read_seq: 10,
+	unread_count: 2,
+	last_message_at: new Date(Date.now() - 8 * 60_000).toISOString(),
+};
+
+/**
+ * The rail's roster, one row per state the directory can answer with.
+ *
+ * The fixtures are deliberately ordered like the server orders them (no
+ * client sort): the signed-in owner first, then a reachable member, a paused
+ * admin, and two people whose bridge is off in each of its two spellings. The
+ * screen capture therefore shows the quiet states beside the live ones, which
+ * is the comparison this section exists to make.
+ */
+const directoryPeople = [
+	{
+		account_id: self,
+		display_label: "Damian",
+		role: "owner",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+	},
+	{
+		account_id: "acct_bea",
+		display_label: "Bea",
+		role: "member",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+	},
+	{
+		account_id: "acct_ada",
+		display_label: "Ada",
+		role: "admin",
+		bridge_enabled: true,
+		bridge_state: "paused" as const,
+	},
+	{
+		account_id: "acct_cy",
+		display_label: "Cy",
+		role: "member",
+		bridge_enabled: false,
+		bridge_state: "none" as const,
+	},
+	{
+		account_id: "acct_dee",
+		display_label: "Dee",
+		role: "member",
+		bridge_enabled: false,
+		bridge_state: "disabled" as const,
+	},
+];
+
+/** A DM with one of the roster's people, so that row's DM already exists. */
+const beaDm: TeamBridgeConversation = {
+	...dm,
+	id: "bcv_dm_bea",
+	members: [
+		{
+			account_id: self,
+			kind: "human",
+			display_label: "Damian",
+			role: "owner",
+			state: "active",
+		},
+		{
+			account_id: "acct_bea",
+			kind: "human",
+			display_label: "Bea",
+			role: "member",
+			state: "active",
+		},
+	],
+};
+
 const meta = {
 	title: "Team Bridge/Page",
 	component: TeamBridgePageView,
@@ -225,18 +370,21 @@ const meta = {
 	args: {
 		selfAccountId: self,
 		conversations: [dm, channel, group],
-		selected: dm,
+		target: { type: "conversation", id: dm.id },
 		messages,
 		organizations: [minervaOrganization, northwindOrganization],
 		scope: minervaOrganization.tenantId,
 		totalUnread: minervaOrganization.unread + northwindOrganization.unread,
 		listState: "ready",
 		messageState: "ready",
-		onSelect: () => {},
+		onTarget: () => {},
 		onSend: () => {},
-		onNewConversation: () => {},
+		onNewChannel: () => {},
 		onRetry: () => {},
 		onScopeChange: () => {},
+		onJoin: () => {},
+		onNotifyChange: () => {},
+		onRetryPeople: () => {},
 	},
 } satisfies Meta<typeof TeamBridgePageView>;
 
@@ -247,7 +395,7 @@ export const PopulatedDirectMessage: Story = {};
 
 export const ChannelSelected: Story = {
 	args: {
-		selected: channel,
+		target: { type: "conversation", id: channel.id },
 		messages: messages.map((message) => ({
 			...message,
 			conversation_id: channel.id,
@@ -255,10 +403,48 @@ export const ChannelSelected: Story = {
 	},
 };
 
+/**
+ * The preview state: header metadata and the join banner, never a body.
+ *
+ * The messages are deliberately attached to the preview conversation in this
+ * story. A regression that renders cached history under a non-member banner
+ * would be visible here (and is asserted in the component test).
+ */
+export const PreviewChannel: Story = {
+	args: {
+		target: { type: "conversation", id: previewChannel.id },
+		conversations: [dm, previewChannel, group],
+		messages: messages.map((message) => ({
+			...message,
+			conversation_id: previewChannel.id,
+		})),
+	},
+};
+
+/** A muted member channel: the rail draws its quiet bell beside the unread count. */
+export const MutedChannel: Story = {
+	args: {
+		target: { type: "conversation", id: mutedChannel.id },
+		conversations: [dm, mutedChannel, group],
+		messages: messages.map((message) => ({
+			...message,
+			conversation_id: mutedChannel.id,
+		})),
+	},
+};
+
+/** The header menu open on its three-level preference section. */
+export const NotificationMenu: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		defaultMenuOpen: true,
+	},
+};
+
 export const EmptyAccount: Story = {
 	args: {
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 	},
@@ -268,7 +454,7 @@ export const Loading: Story = {
 	args: {
 		listState: "loading",
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 	},
@@ -285,7 +471,7 @@ export const ErrorState: Story = {
 	args: {
 		listState: "error",
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 	},
@@ -319,7 +505,37 @@ export const AllOrganizations: Story = {
 	args: {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
 		conversations: [dm, channel, group, northwindChannel],
-		selected: dm,
+		target: { type: "conversation", id: dm.id },
+		messageState: "ready",
+	},
+};
+
+/**
+ * The hub lists both tenants, the memberships read has returned nothing (F6 on
+ * #1314). The organizations are built through `organizationOptions` exactly as
+ * the page builds them, so this frame shows the fix itself: before it, the
+ * merged rail was empty here; now every row carries the hub's org name.
+ */
+export const AllOrganizationsHubOnly: Story = {
+	args: {
+		organizations: organizationOptions(
+			[],
+			[
+				{ tenant_id: minervaOrganization.tenantId, unread: 5 },
+				{ tenant_id: northwindOrganization.tenantId, unread: 4 },
+			],
+			[
+				{ tenant_id: minervaOrganization.tenantId, tenant_name: "Minerva" },
+				{
+					tenant_id: northwindOrganization.tenantId,
+					tenant_name: "Northwind Collective",
+				},
+			],
+		),
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		conversations: [dm, channel, group, northwindChannel],
+		// #1296 selects by `target` (the view resolves the conversation itself).
+		target: { type: "conversation", id: dm.id },
 		messageState: "ready",
 	},
 };
@@ -330,7 +546,7 @@ export const EmptyOrganization: Story = {
 		organizations: [minervaOrganization, northwindOrganization],
 		scope: northwindOrganization.tenantId,
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 	},
@@ -344,7 +560,7 @@ export const OrganizationsUnavailable: Story = {
 		organizationsFailed: true,
 		listState: "error",
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 	},
@@ -356,7 +572,7 @@ export const LoadingAllOrganizations: Story = {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
 		listState: "loading",
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
 	},
@@ -367,8 +583,571 @@ export const EmptyAllOrganizations: Story = {
 	args: {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
 		conversations: [],
-		selected: null,
+		target: null,
 		messages: [],
 		messageState: "idle",
+	},
+};
+
+/**
+ * The page in the real shell, with the chrome lane as an overlay.
+ *
+ * This is the shape the operator's screenshot is about: the panels start at
+ * y0 and the 32px traffic-light clearance is padding INSIDE them, not a band
+ * above them. `--chrome-strip-h` is set on the frame because Storybook has no
+ * native window chrome; the production value comes from the same property.
+ */
+export const FlushToTheWindowTop: Story = {
+	render: () => {
+		useMacChromeSimulation();
+		return (
+			<div
+				className="relative flex h-screen flex-col overflow-hidden"
+				style={{ "--chrome-strip-h": "32px" } as CSSProperties}
+			>
+				<ChatLayout
+					sidebar={<div className="panel-top-pad h-full bg-surface" />}
+					content={
+						<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas">
+							<TeamBridgePageView
+								listState="ready"
+								messageState="ready"
+								conversations={[channel, group, dm]}
+								target={{ type: "conversation", id: channel.id }}
+								messages={messages}
+								organizations={[minervaOrganization, northwindOrganization]}
+								scope={asTeamBridgeTenantId("tnt_1")}
+								totalUnread={3}
+								selfAccountId={self}
+								onTarget={() => {}}
+								onSend={() => undefined}
+								onNewChannel={() => {}}
+								onScopeChange={() => {}}
+							/>
+						</main>
+					}
+				/>
+			</div>
+		);
+	},
+};
+
+/**
+ * The People section, fully populated: self, an openable DM, a paused person
+ * and the two "bridge off" spellings. Bea's DM already exists, so her row
+ * opens it; the others resolve through the seeded compose flow.
+ */
+export const People: Story = {
+	args: {
+		conversations: [dm, beaDm, channel, group],
+		target: { type: "conversation", id: dm.id },
+		people: directoryPeople,
+	},
+};
+
+/** The directory read in flight: one quiet 30px row under the conversation list. */
+export const PeopleLoading: Story = {
+	args: {
+		people: [],
+		peopleState: "loading",
+	},
+};
+
+/** A refused directory: stated in the rail, with the conversations untouched. */
+export const PeopleError: Story = {
+	args: {
+		people: [],
+		peopleState: "error",
+	},
+};
+
+/** Everyone but the reader has their bridge off: the roster is visible, inert. */
+export const PeopleDisabled: Story = {
+	args: {
+		people: directoryPeople.filter(
+			(member) =>
+				member.account_id === self || member.bridge_state === "disabled",
+		),
+	},
+};
+
+/** The merged scope has no single roster, and says so instead of guessing. */
+export const PeopleAllOrganizations: Story = {
+	args: {
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		conversations: [dm, beaDm, channel, group, northwindChannel],
+		people: directoryPeople,
+	},
+};
+
+/** The plan gate: signed in and current, but the organization has no Team Bridge. */
+export const PlanRequired: Story = {
+	args: {
+		eligibility: "plan_required",
+		conversations: [],
+		target: null,
+		messages: [],
+		messageState: "idle",
+		people: [],
+	},
+};
+
+/** Signed out: the panel says so; there is no fake sign-in control to press. */
+export const SignedOut: Story = {
+	args: {
+		eligibility: "signed_out",
+		conversations: [],
+		target: null,
+		messages: [],
+		messageState: "idle",
+		people: [],
+	},
+};
+
+/** An outdated app is named as such; another panel state on the same surface. */
+export const UpdateRequired: Story = {
+	args: {
+		eligibility: "update_required",
+		conversations: [],
+		target: null,
+		messages: [],
+		messageState: "idle",
+		people: [],
+	},
+};
+
+/*
+ * ---------------------------------------------------------------------------
+ * The Slack-shaped rail (operator review 2026-10-21): built-in channels,
+ * section headers that survive empty, a person's row as their DM, chiefs of
+ * staff named "{agent} ({person})" from the live directory, the addressed
+ * draft that creates nothing until the first send, and the To: compose bar.
+ * ---------------------------------------------------------------------------
+ */
+
+const at = (minutesAgo: number) =>
+	new Date(Date.now() - minutesAgo * 60_000).toISOString();
+
+const humansChannel: TeamBridgeConversation = {
+	...channel,
+	id: "bcv_builtin_humans",
+	name: "humans",
+	builtin: "humans",
+	unread_count: 2,
+	last_message_at: at(3),
+};
+const agentsChannel: TeamBridgeConversation = {
+	...channel,
+	id: "bcv_builtin_agents",
+	name: "agents",
+	builtin: "agents",
+	unread_count: 0,
+	notify: "mention",
+	last_message_at: at(40),
+};
+
+/** The roster with each member's chief of staff, as the directory publishes it. */
+const rosterWithChiefs = [
+	{
+		account_id: self,
+		display_label: "Damian Tran",
+		role: "owner",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+		agent: { endpoint_id: "bep_self", name: "Aida", state: "active" },
+	},
+	{
+		account_id: "acct_ben",
+		display_label: "Ben Tran",
+		role: "admin",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+		agent: { endpoint_id: "bep_ben", name: "Aida", state: "active" },
+	},
+	{
+		account_id: "acct_sherman",
+		display_label: "Sherman Tsui",
+		role: "admin",
+		bridge_enabled: true,
+		bridge_state: "active" as const,
+		agent: { endpoint_id: "bep_sherman", name: "Juno", state: "active" },
+	},
+	{
+		account_id: "acct_sana",
+		display_label: "Sana Ketabchi",
+		role: "admin",
+		bridge_enabled: false,
+		bridge_state: "none" as const,
+	},
+	{
+		account_id: "acct_ola",
+		display_label: "Ola Fagbemi",
+		role: "admin",
+		bridge_enabled: false,
+		bridge_state: "none" as const,
+	},
+];
+
+/** A DM with Ben whose creator label the hub stored as "Member". */
+const benDm: TeamBridgeConversation = {
+	...dm,
+	id: "bcv_dm_ben",
+	unread_count: 1,
+	last_message_at: at(2),
+	members: [
+		{
+			account_id: self,
+			kind: "human",
+			display_label: "Member",
+			role: "owner",
+			state: "active",
+		},
+		{
+			account_id: "acct_ben",
+			kind: "human",
+			display_label: "Ben Tran",
+			role: "member",
+			state: "active",
+		},
+	],
+};
+
+const benThread: TeamBridgeMessage[] = [
+	{
+		id: "bcmsg_y1",
+		conversation_id: benDm.id,
+		seq: 1,
+		sender: {
+			account_id: "acct_ben",
+			kind: "human",
+			display_label: "Ben Tran",
+		},
+		body: "Hi, will miss the standup this morning. Deploying the remote cloud to the new AWS infra.",
+		origin: "human",
+		created_at: new Date(Date.now() - 26 * 60 * 60_000).toISOString(),
+	},
+	{
+		id: "bcmsg_t1",
+		conversation_id: benDm.id,
+		seq: 2,
+		sender: { account_id: self, kind: "human", display_label: "Member" },
+		body: "Also FYI, user-dashboard is fully ported to shadcn/tailwind components.",
+		origin: "human",
+		created_at: at(9),
+	},
+	{
+		id: "bcmsg_t2",
+		conversation_id: benDm.id,
+		seq: 3,
+		sender: { account_id: self, kind: "human", display_label: "Member" },
+		body: "New features there should look better out of the box, without the **MUI** jank.",
+		origin: "human",
+		created_at: at(8),
+	},
+	{
+		id: "bcmsg_t3",
+		conversation_id: benDm.id,
+		seq: 4,
+		sender: {
+			account_id: "acct_ben",
+			kind: "human",
+			display_label: "Ben Tran",
+		},
+		body: "**What happened**\n\n- A pre-push hook pushed its own seed commit to `main`\n- `main` was restored 9 minutes later by `aa72763`\n\nI'll write up the fix.",
+		origin: "human",
+		created_at: at(2),
+	},
+];
+
+const slackRail = {
+	conversations: [humansChannel, agentsChannel, channel, benDm],
+	people: rosterWithChiefs,
+	organizations: [minervaOrganization],
+	scope: minervaOrganization.tenantId,
+};
+
+/** Ben's row is selected and IS the DM: no "@ Ben" row exists above People. */
+export const PersonRowIsTheDm: Story = {
+	args: {
+		...slackRail,
+		target: { type: "person", accountId: "acct_ben" },
+		messages: benThread,
+	},
+};
+
+/** Built-in #humans first, with its topic in the header. */
+export const BuiltinHumansChannel: Story = {
+	args: {
+		...slackRail,
+		target: { type: "conversation", id: humansChannel.id },
+		messages: [],
+	},
+};
+
+/** A person with no DM: an addressed draft; nothing has been created. */
+export const PersonDraft: Story = {
+	args: {
+		...slackRail,
+		conversations: [humansChannel, agentsChannel],
+		target: { type: "person", accountId: "acct_sherman" },
+		messages: [],
+		messageState: "idle",
+	},
+};
+
+/** A chief of staff selected: "Aida (Ben)", the DM created on first send. */
+export const ChiefOfStaffDraft: Story = {
+	args: {
+		...slackRail,
+		target: { type: "chief", accountId: "acct_ben" },
+		messages: [],
+		messageState: "idle",
+	},
+};
+
+/** "Start a group conversation": the To: bar seeded with one recipient. */
+export const ComposeGroup: Story = {
+	args: {
+		...slackRail,
+		target: {
+			type: "compose",
+			recipients: [{ kind: "human", accountId: "acct_ben", label: "Ben Tran" }],
+		},
+		messages: [],
+		messageState: "idle",
+	},
+};
+
+/** A new organization: every header stays, each empty line is the create action. */
+export const EmptySections: Story = {
+	args: {
+		conversations: [],
+		people: [rosterWithChiefs[0]],
+		organizations: [minervaOrganization],
+		scope: minervaOrganization.tenantId,
+		target: null,
+		messages: [],
+		messageState: "idle",
+	},
+};
+
+// These boards use the real page and ChatLayout, not a width-only pane mock.
+// The presentation seam prevents Storybook from contacting the operator's hub.
+const threadRoot: TeamBridgeMessage = {
+	...messages[0],
+	conversation_id: channel.id,
+	reply_count: 2,
+	reply_participants: ["Bea", "Ada"],
+	last_reply_at: new Date().toISOString(),
+};
+const threadReply: TeamBridgeMessage = {
+	...messages[1],
+	conversation_id: channel.id,
+	thread_root_id: threadRoot.id,
+};
+const threadTarget = {
+	tenantId: channel.tenant_id,
+	conversationId: channel.id,
+	rootId: threadRoot.id,
+};
+
+export const ThreadSummaryRow: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: [threadRoot],
+	},
+};
+export const ThreadAtMinimumWindow: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: [threadRoot],
+		threadLink: threadTarget,
+		renderThreadPane: (_target, close) => (
+			<TeamBridgeThreadPaneView
+				root={threadRoot}
+				replies={[threadReply]}
+				state="ready"
+				labelFor={(sender) => sender.display_label}
+				onClose={close}
+				onRetry={() => {}}
+				onSend={async () => {}}
+			/>
+		),
+	},
+	render: (args) => (
+		<div className="h-[700px] w-[800px] max-w-full">
+			<TeamBridgePageView {...args} />
+		</div>
+	),
+};
+
+/**
+ * A deep link opens the thread on the route's first paint. The simulated `<main>`
+ * carries the shell's own `panel-top-pad` (app.tsx spells it unconditionally now
+ * that the per-route `flushTop` opt-in is gone); the route root's `panel-flush`
+ * cancels it, so the panels still paint from y0 and pad their own first row.
+ */
+export const ThreadDeepLinkFromSearch: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: [],
+		// The old root is deliberately NOT present in the timeline page.
+		threadLink: threadTargetFromSearch(
+			new URLSearchParams({
+				tenant: channel.tenant_id,
+				conversation: channel.id,
+				thread: threadRoot.id,
+			}),
+		),
+		renderThreadPane: (_target, close) => (
+			<TeamBridgeThreadPaneView
+				root={threadRoot}
+				replies={[threadReply]}
+				state="ready"
+				labelFor={(sender) => sender.display_label}
+				onClose={close}
+				onRetry={() => {}}
+				onSend={async () => {}}
+			/>
+		),
+	},
+	render: (args) => {
+		useMacChromeSimulation();
+		return (
+			<div
+				className="relative flex h-screen flex-col overflow-hidden"
+				style={{ "--chrome-strip-h": "32px" } as CSSProperties}
+			>
+				<ChatLayout
+					sidebar={<div className="panel-top-pad h-full bg-surface" />}
+					content={
+						<main className="panel-top-pad flex min-w-0 grow flex-col overflow-hidden bg-canvas">
+							<TeamBridgePageView {...args} />
+						</main>
+					}
+				/>
+			</div>
+		);
+	},
+};
+
+/** The real visibility observer drives this board's local badge, without a hub
+ * request. In a background/unfocused document it intentionally remains unread;
+ * once the replies intersect an active pane the same onRead seam clears it.
+ */
+export const ThreadReadAcknowledgement: Story = {
+	args: {
+		target: { type: "conversation", id: channel.id },
+		messages: [threadRoot],
+		threadLink: threadTarget,
+	},
+	render: (args) => {
+		const [unread, setUnread] = useState(1);
+		return (
+			<TeamBridgePageView
+				{...args}
+				totalUnread={unread}
+				conversations={[{ ...channel, unread_count: unread }]}
+				renderThreadPane={(_target, close) => (
+					<TeamBridgeThreadPaneView
+						root={threadRoot}
+						replies={[threadReply]}
+						state="ready"
+						labelFor={(sender) => sender.display_label}
+						onClose={close}
+						onRetry={() => {}}
+						onSend={async () => {}}
+						onRead={async () => {
+							setUnread(0);
+						}}
+					/>
+				)}
+			/>
+		);
+	},
+};
+
+/*
+ * THE LEGACY "Member" LABEL (operator report, 2026-10-22). Production rows
+ * written before agent-server #166 carry the hub's placeholder "Member" as the
+ * stored label for creators and self-joins. These boards hold every sender at
+ * that label: the reader (resolved from the signed-in identity, since this
+ * roster leaves them out), Ben (resolved from the directory) and a member who
+ * left (in no directory: rendered as an unknown person with a neutral glyph).
+ */
+const legacyGroup: TeamBridgeConversation = {
+	...dm,
+	id: "bcv_grp_legacy",
+	kind: "group",
+	name: "release-ops",
+	unread_count: 0,
+	last_read_seq: 3,
+	latest_seq: 3,
+	last_message_at: at(4),
+	members: [
+		{
+			account_id: self,
+			kind: "human",
+			display_label: "Member",
+			role: "owner",
+			state: "active",
+		},
+		{
+			account_id: "acct_ben",
+			kind: "human",
+			display_label: "Member",
+			role: "member",
+			state: "active",
+		},
+		{
+			account_id: "acct_departed",
+			kind: "human",
+			display_label: "Member",
+			role: "member",
+			state: "removed",
+		},
+	],
+};
+
+const legacyThread: TeamBridgeMessage[] = [
+	["acct_ben", "Cutting the 0.42 release branch now.", 30],
+	[self, "Thanks. I'll take the changelog.", 20],
+	["acct_departed", "Handing my open tickets over before I go.", 12],
+	[self, "Got them, thank you.", 4],
+].map(([accountId, body, minutesAgo], index) => ({
+	id: `bcmsg_legacy_${index + 1}`,
+	conversation_id: legacyGroup.id,
+	seq: index + 1,
+	sender: {
+		account_id: accountId as string,
+		kind: "human" as const,
+		display_label: "Member",
+	},
+	body: body as string,
+	origin: "human" as const,
+	created_at: at(minutesAgo as number),
+}));
+
+/** Every stored label is "Member": names come from directory and identity. */
+export const LegacyMemberLabels: Story = {
+	args: {
+		conversations: [humansChannel, legacyGroup],
+		// The roster leaves the reader out, as a self-excluding directory does.
+		people: rosterWithChiefs.slice(1),
+		organizations: [minervaOrganization],
+		scope: minervaOrganization.tenantId,
+		selfName: "Damian Tran",
+		target: { type: "conversation", id: legacyGroup.id },
+		messages: legacyThread,
+	},
+};
+
+/** The same thread in the merged view, named from its organization's roster. */
+export const LegacyMemberLabelsAllOrganizations: Story = {
+	args: {
+		...LegacyMemberLabels.args,
+		scope: TEAM_BRIDGE_ALL_SCOPE,
+		people: [],
+		directories: { [minervaOrganization.tenantId]: rosterWithChiefs.slice(1) },
 	},
 };

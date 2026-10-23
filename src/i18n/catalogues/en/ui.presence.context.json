@@ -1,0 +1,29 @@
+{
+	"ui.presence.unknown": {
+		"description": "Neutral inline word for an unreported conversation count OR an unknown last-contact age. Not a measured zero; no placeholders."
+	},
+	"ui.presence.link_down_last_seen": {
+		"description": "Screen-reader status and sidebar tooltip after an observed unanswered peer link. age is an already-formatted relative-time fragment, e.g. 4m ago; do not format it again."
+	},
+	"ui.presence.device_link_down": {
+		"description": "Mesh conversation notice for an observed unanswered peer. reason is verbatim backend diagnostic text; age is an already-formatted relative-time fragment. Preserve both placeholders."
+	},
+	"ui.presence.device_unreachable": {
+		"description": "Fallback diagnostic fragment when an observed unanswered peer supplied no reason. Used as the reason argument in the Mesh link-loss notice."
+	},
+	"ui.presence.just_now": {
+		"description": "Relative last-contact age under one minute. Short neutral fragment inserted into a larger sentence; no placeholders."
+	},
+	"ui.presence.minutes_ago": {
+		"description": "Compact relative last-contact age. count is a nonnegative whole number of elapsed minutes, ICU number-formatted. Keep the unit compact for narrow sidebar rows."
+	},
+	"ui.presence.hours_ago": {
+		"description": "Compact relative last-contact age. count is a nonnegative whole number of elapsed hours, ICU number-formatted. Keep the unit compact for narrow sidebar rows."
+	},
+	"ui.presence.days_ago": {
+		"description": "Compact relative last-contact age. count is a nonnegative whole number of elapsed days, ICU number-formatted. Keep the unit compact for narrow sidebar rows."
+	},
+	"ui.presence.link_down_compact": {
+		"description": "Compact visible sidebar trailing fact after an unanswered peer link. age is an already-formatted relative-time fragment, e.g. 4m ago. Full last-seen wording is provided separately in the accessible name and tooltip."
+	}
+}

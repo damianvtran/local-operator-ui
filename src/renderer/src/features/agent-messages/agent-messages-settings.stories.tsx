@@ -1,4 +1,6 @@
+import { SettingsSection } from "@features/settings/components/settings-section";
 import type { Meta, StoryObj } from "@storybook/react";
+import { MessageSquare } from "lucide-react";
 import allowlistFixture from "../../../../../scripts/fixtures/agent-messages-allowlist.json";
 import settingsFixture from "../../../../../scripts/fixtures/agent-messages-settings.json";
 import statusFixture from "../../../../../scripts/fixtures/agent-messages-status.json";
@@ -7,7 +9,10 @@ import type {
 	AgentMessagesSettingsResult,
 	AgentMessagesStatus,
 } from "../../../../shared/agent-messages-contract";
-import type { AgentMessagesSettingsApi } from "./agent-messages-settings";
+import type {
+	AgentMessagesSettingsApi,
+	AgentMessagesSettingsProps,
+} from "./agent-messages-settings";
 import { AgentMessagesSettings } from "./agent-messages-settings";
 
 /**
@@ -171,4 +176,91 @@ export const ReadFailed: Story = {
 			},
 		},
 	},
+};
+
+/*
+ * The chief-of-staff delivery hold (runtime #2777). The runtime holds incoming
+ * messages while the designated chief of staff has never been opened, and the
+ * status read reports how many; each story below is one count.
+ */
+const HOLD_SESSION = "aaaaaaaaaaaa";
+function holdStatus(count: number | null): AgentMessagesStatus {
+	return statusWith({
+		surface_state: "C",
+		local: { enabled: true, session: HOLD_SESSION },
+		delivery_hold:
+			count === null
+				? null
+				: { code: "open_chief_of_staff", count, session: HOLD_SESSION },
+	});
+}
+
+/** One message held: singular copy, with the button that opens the session. */
+export const HoldOneMessage: Story = {
+	args: { status: holdStatus(1), onOpenSession: () => {} },
+};
+
+/** Several messages held: plural copy. */
+export const HoldSeveralMessages: Story = {
+	args: { status: holdStatus(7), onOpenSession: () => {} },
+};
+
+/** Nothing held (the runtime sends `null`; an older one omits the key): no notice. */
+export const HoldNone: Story = {
+	args: { status: holdStatus(null), onOpenSession: () => {} },
+};
+
+/** The hold renders while the settings read is still loading. */
+export const HoldWhileLoading: Story = {
+	args: {
+		status: holdStatus(3),
+		onOpenSession: () => {},
+		api: {
+			...fakeApi(activeSettings),
+			settings: () => new Promise(() => {}),
+		},
+	},
+};
+
+/*
+ * Design D2: no session to open - neither the runtime's designation nor the
+ * local preference names one - so there is no button, and the sentence says
+ * where to find the conversation instead. `onOpenSession` is still passed,
+ * as the page always does: the missing target is the trigger, not the prop.
+ */
+export const HoldNoSession: Story = {
+	args: {
+		status: statusWith({
+			surface_state: "C",
+			local: { enabled: true, session: "" },
+			delivery_hold: { code: "open_chief_of_staff", count: 2, session: null },
+		}),
+		onOpenSession: () => {},
+	},
+};
+
+/*
+ * Design D1: the notice in its real context - the page's `SettingsSection`
+ * heading, description, column width and closing rule, copied from the
+ * `settings-page.tsx` mount - so its placement under the heading can be
+ * judged rather than the bare section edge to edge.
+ */
+export const HoldInSettingsSection: Story = {
+	args: { status: holdStatus(7), onOpenSession: () => {} },
+	render: (args) => (
+		<div className="min-h-screen bg-canvas p-8">
+			<div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
+				<SettingsSection
+					title="Agent messages"
+					icon={MessageSquare}
+					description="Your agent can exchange messages with other members' agents in your organization."
+					className="border-b border-hairline pb-8"
+				>
+					{/* Storybook merges meta args into these at render; its type
+					    only knows they are partial. */}
+					<AgentMessagesSettings {...(args as AgentMessagesSettingsProps)} />
+				</SettingsSection>
+			</div>
+		</div>
+	),
 };

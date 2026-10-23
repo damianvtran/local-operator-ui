@@ -1,0 +1,29 @@
+{
+  "auditor": "translation-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "ae6bdf9315f1",
+  "reissued_from": "859a20bd9c70",
+  "date": "2026-10-20",
+  "round": 7,
+  "namespace": "ui.hub",
+  "locale": "hi",
+  "status": "clean-with-findings",
+  "sha256": {
+    "hi": "74e392f6d0f428153aa65095116f1ac205019ef34abc5bfaa8ceb7b19168d1bb",
+    "en": "281a4058420d135c4dd8767610f6144ab1597fc2fca50e96253bd5846605905f"
+  },
+  "head": "1c3ecb6d52bb7dd0bc7436ea1493cff594dcd007",
+  "keys_audited": 49,
+  "scope": "ui.hub.skills.* — all 49 keys in hi/ui.hub.json read against en/ui.hub.json (full namespace pass). Every plural message parsed and rendered with the repo's intl-messageformat 12.1.3 for counts 0/1/2/3/5/11/21/100/1.5/1000000, and its declared branches compared with Intl.PluralRules('hi') CLDR categories; every placeholder, plural branch and ::group-off skeleton checked per branch. count/count_shared judged at their only call sites (hub-skills-library.tsx:385-392): count is a bare plural concatenated with public_hub, count_shared carries {organization}. Term consistency cross-checked against ui.hub.taxonomy.origin.named and the sibling subscription keys (auto_push, pull, subscri*). Read at head 1c3ecb6d52 (fix(i18n): keep the scope out of the count sentence).",
+  "findings": [
+    {
+      "severity": "minor",
+      "type": "message",
+      "key": "ui.hub.skills.initial_policy_description",
+      "location": "same screen as ui.hub.subscriptions.auto_push / enable_title / enable / links.healthy",
+      "current": "… इस गंतव्य के लिए चालू किए जाने तक ऑटो-पुश बंद रहता है। (Devanagari “पुश”)",
+      "proposed": "… ऑटो-push बंद रहता है। — matching the four sibling keys; if the team prefers Devanagari, normalize all five to “ऑटो-पुश” instead. One spelling, not two.",
+      "reason": "Same English term “auto-push” is spelled “ऑटो-पुश” here and “ऑटो-push” in ui.hub.subscriptions.{auto_push,enable_title,enable} and ui.hub.links.healthy, so the toggle and the sentence explaining it use two scripts. Round 6 raised exactly this and neither spelling moved on head — the only round-6 item not remediated."
+    }
+  ]
+}

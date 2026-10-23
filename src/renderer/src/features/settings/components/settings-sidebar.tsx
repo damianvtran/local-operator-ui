@@ -222,7 +222,7 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 				aria-label={labelled ? undefined : section.label}
 				data-tour-tag={TOUR_TAGS[section.id]}
 				className={cn(
-					"relative flex h-8 w-full items-center rounded-sm bg-transparent text-left text-body-sm hover:bg-row-hover hover:text-ink",
+					"relative flex h-8 w-full items-center rounded-sm bg-transparent text-start text-body-sm hover:bg-row-hover hover:text-ink",
 					"transition-colors duration-fast ease-out-quart",
 					labelled ? "justify-start gap-2 px-3" : "justify-center",
 					/* A settings destination is not a selected conversation. Keep the
@@ -234,7 +234,7 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 				{isActive && (
 					<span
 						aria-hidden="true"
-						className="absolute left-1 top-1/2 size-1 -translate-y-1/2 rounded-full bg-accent"
+						className="absolute start-1 top-1/2 size-1 -translate-y-1/2 rounded-full bg-accent"
 					/>
 				)}
 				{/* Decorative in both layouts: labelled, the text beside it names the
@@ -297,7 +297,7 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 				"ui.settings.navigation.settings_sidebar.settings_sections",
 			)}
 			data-glass-region="page-sidebar"
-			className="flex h-full w-full flex-col overflow-hidden bg-surface"
+			className="panel-top-pad flex h-full w-full flex-col overflow-hidden bg-surface"
 		>
 			{/* `gap-6` between groups rather than a margin on each: a stacking
 			    margin needs a `last:` reset to stop it adding a phantom row of

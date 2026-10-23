@@ -13,7 +13,11 @@ import { build } from "esbuild";
 const electron = `
 import { EventEmitter } from 'node:events';
 const f = () => globalThis.__browserStartupFixture;
-export const app = { getVersion: () => 'isolated-test' };
+// A real EventEmitter: production startup registers a module-level
+// before-quit history flush (browser/index.ts), and a bare object stub
+// turns that registration into a startup crash the app never has. The fake
+// models the listener surface; the test never fires quit itself.
+export const app = Object.assign(new EventEmitter(), { getVersion: () => 'isolated-test' });
 export class BrowserWindow { constructor() { throw new Error('A test must never create a desktop window'); } }
 export const shell = { openPath: async () => '' };
 // The page context menu's two Electron members (LOH-13), modelled only so
@@ -40,8 +44,10 @@ export class WebContentsView {
    close: () => { if (!wc.destroyed) { wc.destroyed = true; wc.emit('destroyed'); f().views.delete(wc.id); } },
    debugger: { isAttached: () => false },
    navigationHistory: { canGoBack: () => false, canGoForward: () => false,
+     length: () => 1, getActiveIndex: () => 0,
+     getEntryAtIndex: () => ({ url: wc.url || 'about:blank' }),
      restore: async ({ entries }) => { wc.url = entries[0]?.url; },
-     getAllEntries: () => [{ url: wc.url || 'about:blank' }], getActiveIndex: () => 0 }
+     getAllEntries: () => [{ url: wc.url || 'about:blank' }] }
   });
   this.webContents = wc; this.setBounds = () => {}; this.setVisible = () => {};
   f().views.add(wc.id); f().peak = Math.max(f().peak, f().views.size);
@@ -160,6 +166,10 @@ function fixture(failConsole) {
 		mainFrame,
 		send() {},
 		isDestroyed: () => false,
+		// The real Electron API ownsPage reads; this fake must model it so a host
+		// that asks the focus fact cannot crash on the fake's shape.
+		getFocusedWebContents: () =>
+			globalThis.__browserStartupFixture?.focused ?? null,
 		setIgnoreMenuShortcuts(value) {
 			webContents.ignoringMenu = value;
 		},

@@ -776,7 +776,7 @@ export const SettingControl = ({
 												 * carries `whitespace-nowrap` so it cannot break the row into
 												 * two lines beside the RTL label (UX U2).
 												 */
-												<span className="ml-2 shrink-0 text-caption text-ink-dim whitespace-nowrap">
+												<span className="ms-2 shrink-0 text-caption text-ink-dim whitespace-nowrap">
 													{t("ui.settings.language.general.unavailable_choice")}
 												</span>
 											)}

@@ -93,6 +93,7 @@ import {
 } from "../ask-queue";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type { UndeliveredTurn } from "../canonical/canonical-transcript";
+import { LiveUpdatesPausedBanner } from "../canonical/live-updates-paused-banner";
 import { openFrameFacts } from "../canonical/open-frame";
 import {
 	canonicalTranscriptSpeaks,
@@ -1756,6 +1757,19 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			[consoleUnseenAll, sessionId],
 		);
 		const consoleUnseenPulsing = useConsoleBlipPulse(consoleUnseenMarks);
+		/*
+		 * THE CONSOLE'S LIVENESS FACT, for the rail item's active treatment. The pane
+		 * publishes the running count it already reads (`consoleLiveSurface`), so this
+		 * is a projection rather than a second subscription or a poll - the same
+		 * discipline the unseen marks above follow.
+		 */
+		const consoleLiveSurface = useUiPreferencesStore(
+			(s) => s.consoleLiveSurface,
+		);
+		const consoleLiveCount =
+			consoleLiveSurface !== null && consoleLiveSurface.sessionId === sessionId
+				? consoleLiveSurface.count
+				: 0;
 
 		/*
 		 * THE CODE REQUEST LEDGER, read here for the rail item's name and its
@@ -2247,11 +2261,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					 * transcript scroller now inherit rather than name one, and the
 					 * canonical user bubble carries a note. Each is annotated where it
 					 * sits.
+					 *
+					 * `panel-top-pad` because the chat route is a flush panel route
+					 * (`ChatPage`'s root, design round 1, D1): this column's `canvas`
+					 * ground starts at y0 under the transparent lane, and the pad is
+					 * what moves the header below the OS controls. It is padding, not
+					 * a margin, so the ground stays continuous through the strip.
 					 */}
 					<div
 						ref={chatContainerRef}
 						data-glass-region="canvas"
-						className="flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-canvas"
+						className="panel-top-pad flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-canvas"
 					>
 						{/* Chat header */}
 						{/*
@@ -2641,6 +2661,47 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * docking it at the composer's top edge still holds for it alone.
 						 */}
 						{/*
+						 * THE PAUSED LIVE STREAM, directly above the composer (agent report:
+						 * a long-lived session froze with no affordance after a frame over
+						 * the backend's socket cap was replaced by a passive notice). It
+						 * sits on the composer band rather than inside the transcript's
+						 * scroller because it must stay visible while the reader scrolls:
+						 * the claim is about the view as a whole, and the control repaints
+						 * the view as a whole. `canonical` gates it exactly as it gates the
+						 * box below - a legacy path has no live stream to be paused.
+						 */}
+						{/*
+						 * THE SAME COLUMN CONTRACT AS THE DOCK AND THE COMPOSER, and the
+						 * SAME NESTING the dock uses: the host carries the 24px gutter, the
+						 * BAND carries the 810px measure. Putting both on one element made
+						 * the measure pay for the inset (810 - 48 = 762px), so the band sat
+						 * 24px inside the composer on each side at every wide column (design
+						 * round 2, D1; code M5 residual). The root carries no horizontal
+						 * padding of its own.
+						 *
+						 * HIDDEN FOR A MISSING SESSION: the transcript replaces itself with
+						 * "this conversation is no longer on this machine", and a paused
+						 * warning over a conversation that does not exist would be a claim
+						 * about nothing.
+						 */}
+						{canonical?.view.liveUpdatesPaused && !canonical.view.missing && (
+							<div
+								className={cn(
+									CHAT_COLUMN_CONTAINER,
+									CHAT_COLUMN_INSET,
+									"w-full shrink-0 pt-2",
+								)}
+							>
+								<LiveUpdatesPausedBanner
+									className={CHAT_MEASURE}
+									paused={canonical.view.liveUpdatesPaused}
+									reloading={canonical.view.liveUpdatesReloading}
+									reloadFailed={canonical.view.liveUpdatesReloadFailed}
+									onReload={canonical.view.reloadFromHistory}
+								/>
+							</div>
+						)}
+						{/*
 						 * THE BLOCKING DOCK, and the one rule a reader of both must know: once the
 						 * queue is on the wire, an ask-shaped `pending_gate` is the backend's
 						 * LEGACY MIRROR of an ask already in `asks[]`, so drawing it would show the
@@ -2659,6 +2720,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									key={gate.request_id}
 									className={CHAT_MEASURE}
 									gate={gate}
+									sessionId={sessionId}
 									onAnswer={canonical.onAnswer}
 									/*
 									 * The secret field's own door, forwarded untouched like `onAnswer`:
@@ -3487,6 +3549,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						askScope={headerAsksScope}
 						consoleUnseenCount={consoleUnseenMarks.length}
 						consoleUnseenPulsing={consoleUnseenPulsing}
+						consoleLiveCount={consoleLiveCount}
 						fileCount={mentionedFileCount}
 						codeOpened={codeGroups.opened.length}
 						codeMentioned={codeGroups.mentioned.length}
