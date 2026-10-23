@@ -551,15 +551,18 @@ async function mountSwitcher({
 	});
 
 	const key = async (init) => {
+		let event = null;
 		await act(async () => {
-			dom.window.document.dispatchEvent(
-				new dom.window.KeyboardEvent("keydown", {
-					bubbles: true,
-					cancelable: true,
-					...init,
-				}),
-			);
+			event = new dom.window.KeyboardEvent("keydown", {
+				bubbles: true,
+				cancelable: true,
+				...init,
+			});
+			dom.window.document.dispatchEvent(event);
 		});
+		/* Returned so a case can ask whether the press was CLAIMED: the difference
+		 * between a key the app answers and one the browser still acts on (R2-2). */
+		return event;
 	};
 	const keyup = async (init) => {
 		await act(async () => {
@@ -875,6 +878,44 @@ test("a key release reporting Control up ends the run too", async () => {
 	}
 });
 
+test("the Tab that ends a lost run is claimed, so focus stays where the run began", async () => {
+	const { key, keyup, opened, panel, wait, unmount } = await mountSwitcher({
+		sessions: ["current", "previous", "older"],
+		recents: ["current", "previous", "older"],
+		displayed: "current",
+	});
+	try {
+		await key(CTRL_TAB);
+		await wait(REVEAL_WAIT_MS);
+		/*
+		 * CONTROL'S KEYUP NEVER ARRIVED (agent review round 2, R2-2). The console hands
+		 * this plain Tab back to the page BECAUSE a run is open (console-mirror), so an
+		 * unclaimed press would move focus out of the terminal that produced it - the
+		 * exact case that change was added for. Claimed, the caret stays put and the
+		 * shell gets nothing, which is the lost run ending rather than a tab.
+		 */
+		const tab = await key({ key: "Tab", ctrlKey: false });
+		assert.equal(
+			tab.defaultPrevented,
+			true,
+			"the press that ends a run is claimed",
+		);
+		assert.equal(panel(), null, "and it ends the run");
+		await keyup({ key: "Control", ctrlKey: false });
+		assert.deepEqual(opened(), [], "ending a run is not a choice of row");
+
+		/* The same branch, any other key: the reader is typing, not choosing. */
+		await key(CTRL_TAB);
+		await wait(REVEAL_WAIT_MS);
+		const letter = await key({ key: "a", ctrlKey: false });
+		assert.equal(letter.defaultPrevented, false, "a typed key is not claimed");
+		assert.equal(panel(), null);
+		await keyup({ key: "Control", ctrlKey: false });
+	} finally {
+		await unmount();
+	}
+});
+
 test("a pointer press away from the rows ends the run, and a press on a row commits it", async () => {
 	const { key, keyup, pointer, opened, panel, rows, wait, dom, unmount } =
 		await mountSwitcher({
@@ -909,7 +950,7 @@ test("a pointer press away from the rows ends the run, and a press on a row comm
 	}
 });
 
-test("a row swallows the context menu a macOS Ctrl+click raises", async () => {
+test("a right-click on a mounted row opens no context menu, and is not a commit", async () => {
 	const { key, keyup, pointer, panel, rows, wait, unmount } =
 		await mountSwitcher({
 			sessions: ["current", "previous"],
@@ -919,6 +960,9 @@ test("a row swallows the context menu a macOS Ctrl+click raises", async () => {
 	try {
 		await key(CTRL_TAB);
 		await wait(REVEAL_WAIT_MS);
+		/* A press that never commits - the row is still mounted, so its own handler
+		 * is the one that answers (the committing press's menu is caught after the
+		 * row is gone; see the two cases below). */
 		const event = await pointer("contextmenu", rows()[1]);
 		assert.equal(event.defaultPrevented, true);
 		/* Still up: a context menu is not a commit. */
@@ -929,7 +973,62 @@ test("a row swallows the context menu a macOS Ctrl+click raises", async () => {
 	}
 });
 
-test("hovering a row moves the selection to it, and the release commits that row", async () => {
+/*
+ * THE OTHER HALF, AND THE ONE THAT WAS MISSING (agent review round 2, R2-1). A
+ * macOS Ctrl+click commits on `pointerdown`, which unmounts the row inside that
+ * event; Chromium then raises `contextmenu` against whatever the panel covered.
+ * Sending `contextmenu` to a row that is still mounted proved the `keep` case and
+ * nothing about the real gesture, so these two drive the press first.
+ */
+test("a committing press leaves no context menu for the element underneath it", async () => {
+	const { key, keyup, pointer, opened, panel, rows, wait, dom, unmount } =
+		await mountSwitcher({
+			sessions: ["current", "previous"],
+			recents: ["current", "previous"],
+			displayed: "current",
+		});
+	try {
+		await key(CTRL_TAB);
+		await wait(REVEAL_WAIT_MS);
+		await pointer("pointerdown", rows()[1], { button: 0 });
+		assert.deepEqual(opened(), ["previous"], "the press commits its row");
+		assert.equal(panel(), null, "and takes the row that would have answered");
+		/* The menu Chromium raises next, hit-tested at the element underneath. */
+		const menu = await pointer("contextmenu", dom.window.document.body);
+		assert.equal(menu.defaultPrevented, true, "the press still owns its menu");
+		/* One press, one guard: a later right-click is nobody's to swallow. */
+		const later = await pointer("contextmenu", dom.window.document.body);
+		assert.equal(later.defaultPrevented, false, "the guard was one-shot");
+		await keyup({ key: "Control", ctrlKey: false });
+	} finally {
+		await unmount();
+	}
+});
+
+test("the press's own pointerup disarms the context menu guard", async () => {
+	const { key, keyup, pointer, panel, rows, wait, dom, unmount } =
+		await mountSwitcher({
+			sessions: ["current", "previous"],
+			recents: ["current", "previous"],
+			displayed: "current",
+		});
+	try {
+		await key(CTRL_TAB);
+		await wait(REVEAL_WAIT_MS);
+		await pointer("pointerdown", rows()[1], { button: 0 });
+		assert.equal(panel(), null);
+		/* A press that released without raising a menu - a real move of the pointer,
+		 * not a Ctrl+click - must not leave the guard behind for the next one. */
+		await pointer("pointerup", dom.window.document.body);
+		const later = await pointer("contextmenu", dom.window.document.body);
+		assert.equal(later.defaultPrevented, false, "nothing left armed");
+		await keyup({ key: "Control", ctrlKey: false });
+	} finally {
+		await unmount();
+	}
+});
+
+test("a resting pointer leaves the opening selection alone, and a moving one takes it", async () => {
 	const { key, keyup, pointer, opened, active, rows, wait, dom, unmount } =
 		await mountSwitcher({
 			sessions: ["current", "previous", "older"],
@@ -940,9 +1039,31 @@ test("hovering a row moves the selection to it, and the release commits that row
 		await key(CTRL_TAB);
 		await wait(REVEAL_WAIT_MS);
 		assert.equal(active().dataset.sessionId, "previous");
+		/*
+		 * THE POINTER IS RESTING WHERE THE PANEL PAINTED (design round 2, D6).
+		 * Chromium raises boundary events on an element inserted under a stationary
+		 * cursor, so `pointerover`/`mouseover` arrive here with no movement at all -
+		 * and on this surface the release IS the commit, so a row that selected
+		 * itself on the way past would open a conversation nobody chose.
+		 */
 		await pointer("pointerover", rows()[2], {
 			relatedTarget: dom.window.document.body,
 		});
+		assert.equal(
+			active().dataset.sessionId,
+			"previous",
+			"a boundary event is not movement",
+		);
+		await pointer("mouseover", rows()[2], {
+			relatedTarget: dom.window.document.body,
+		});
+		assert.equal(
+			active().dataset.sessionId,
+			"previous",
+			"nor is the mouse flavour of it",
+		);
+		/* A real move still selects - that is what shows the row a press commits. */
+		await pointer("mousemove", rows()[2]);
 		assert.equal(active().dataset.sessionId, "older", "the pointer moved it");
 		await keyup({ key: "Control", ctrlKey: false });
 		assert.deepEqual(opened(), ["older"]);

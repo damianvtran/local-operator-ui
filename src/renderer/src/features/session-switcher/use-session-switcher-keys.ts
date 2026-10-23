@@ -245,6 +245,16 @@ export function useSessionSwitcherKeys(): SessionSwitcherView & {
 			 * (a dialog's Escape, a list's Tab) is still evidence that Control is up.
 			 */
 			if (run.current !== null && !event.ctrlKey) {
+				/*
+				 * A TAB HERE IS CLAIMED, so focus stays where the run began. The console
+				 * hands a plain Tab back to the page while a run is open (console-mirror),
+				 * precisely so this listener can end the lost run - and an unclaimed Tab
+				 * would then move focus out of the terminal that produced it. Claimed on
+				 * this branch only: every other key that reports Control up is the reader
+				 * typing into whatever they moved on to, and swallowing those would be
+				 * their keystrokes gone.
+				 */
+				if (event.key === "Tab") event.preventDefault();
 				close();
 				return;
 			}
