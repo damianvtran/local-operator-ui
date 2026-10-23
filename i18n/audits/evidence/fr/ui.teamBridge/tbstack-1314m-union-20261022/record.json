@@ -1,0 +1,214 @@
+{
+ "audit_id": "tbstack-r1-1314m-fr",
+ "date": "2026-10-22",
+ "locale": "fr",
+ "namespace": "ui.teamBridge",
+ "source_commit": "7a2e6371736c327e28c2e57d45d9a5a5d5304360",
+ "merge_parents": [
+  "95e9b273a2bef3487cfa5718fbde99a66cc31f23",
+  "6dac4f5baa8e26da07370d244240e7acb8238e1f"
+ ],
+ "status": "passed",
+ "result": "clean-with-findings",
+ "keys_read": 178,
+ "keys_substantive": 4,
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "openai/gpt-6.1-sol",
+   "session": "5cbc583203b9",
+   "job": "163c5616675a",
+   "instance": "tbstack-r1-1314m-fr"
+  }
+ ],
+ "model_note": "Session began on anthropic/claude-opus-5-5 for required skill reading; announced quota fallback to openai/gpt-6.1-sol before repository-contract and catalogue audit work. All linguistic review, comparisons, ICU validation and artifacts in this pass used openai/gpt-6.1-sol.",
+ "independence": "Independent translation-auditor child audit-stackm-fr-es-vi; produced none of the reviewed copy. Read Git objects only; no repository edits, builds, tests, installs, worktrees or pushes. Pure receipt derivation and catalogue parsing are validation, not app test/render evidence.",
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "d27275edddf911b66c28f71051c318ca939a968b462937c6ca3809b8ae7f34cc"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/fr/ui.teamBridge.json",
+   "sha256": "b705fef45e370adcb8a74a678955d0fe3d48951df8d09d0937ceada301d1a585"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "e10643d988fdb11fe2f76ba9408a85bbd1a19d006c1940e4144364612e0916c8"
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/fr.md",
+   "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "ref": "origin/main",
+   "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+  }
+ },
+ "union_integrity": {
+  "own": 174,
+  "integrated": 144,
+  "shared": 140,
+  "own_only": 34,
+  "integrated_only": 4,
+  "head": 178,
+  "dropped": 0,
+  "altered": 0,
+  "conflicts": 0,
+  "extra": 0
+ },
+ "inherited_chain_verification": [
+  {
+   "path": "i18n/receipts/att-r3-fr.json",
+   "located_at": "95e9b273a2bef3487cfa5718fbde99a66cc31f23:i18n/receipts/att-r3-fr.json",
+   "receipt_sha256": "a758272ea2d66753f5ca97cc9decdae27679817c617fa894e1aec80548ac6958",
+   "snapshot": "69c71578b6",
+   "instance": "att-r3-fr",
+   "keys_inherited": 172,
+   "verified_source_target": true
+  },
+  {
+   "path": "i18n/receipts/tbh-r2-fr.json",
+   "located_at": "95e9b273a2bef3487cfa5718fbde99a66cc31f23:i18n/receipts/tbh-r2-fr.json",
+   "receipt_sha256": "ea54d0ab14dead34e0b18e912905cc9601c7c1cdc393c7bc2b18f0f26e4e6eb6",
+   "snapshot": "fd926568e3",
+   "instance": "tbh-r2-fr",
+   "keys_inherited": 0,
+   "verified_source_target": true
+  },
+  {
+   "path": "i18n/receipts/tbd-sender-r1-fr.json",
+   "located_at": "95e9b273a2bef3487cfa5718fbde99a66cc31f23:i18n/receipts/tbd-sender-r1-fr.json",
+   "receipt_sha256": "bab4b302a8a0685aff261ec4b595f00ee734176ea9c752960b23f0a3a12dcf8c",
+   "snapshot": "9aa14137de",
+   "instance": "tbd-sender-r1-fr",
+   "keys_inherited": 2,
+   "verified_source_target": true
+  }
+ ],
+ "findings": [
+  {
+   "id": "TBS1314-FR-N1",
+   "severity": "NIT",
+   "key": "ui.teamBridge.attachments.failed_count",
+   "current": "{count, plural, one {# image ne peut pas être envoyée.} other {# images ne peuvent pas être envoyées.}}",
+   "proposed": "{count, plural, one {# image ne peut pas être envoyée.} many {# d’images ne peuvent pas être envoyées.} other {# images ne peuvent pas être envoyées.}}",
+   "note": "Inherited from TBS1314-FR-N1, ATT-FR-R3-01; still present in bytes, with prior rejection for unreachable many preserved. Not reopened as a runtime defect.",
+   "inherited_ids": [
+    "TBS1314-FR-N1",
+    "ATT-FR-R3-01"
+   ],
+   "reason": "Missing CLDR many branch is inherited unchanged; source passes only 2–4 failed images, so that branch is unreachable and the issue remains a non-blocking NIT, not a runtime defect.",
+   "prior_disposition": "rejected as unreachable (task-supplied disposition); independently verified count domain from source, not an MR-comment fetch."
+  }
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/tbstack-r1-1314m-fr.json",
+   "sha256": "b25dec001b1fad7f23d3ce7f131df4484e6edd9a82a7eb19ab088869ec7a92dc"
+  }
+ ],
+ "deriveReceiptAudit": {
+  "module_commit": "7a2e6371736c327e28c2e57d45d9a5a5d5304360",
+  "module_path": "scripts/i18n/ledger-rules.mjs",
+  "module_sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+  "execution": "Imported exact git-show module bytes via in-memory data URL; called pure deriveReceiptAudit with actual source/target catalogue SHA-256; exit 0. No assembler write was executed.",
+  "derived": {
+   "agent": "translation-auditor",
+   "instance": "tbstack-r1-1314m-fr",
+   "model": "openai/gpt-6.1-sol",
+   "result": "clean-with-findings",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "source_sha256": "d27275edddf911b66c28f71051c318ca939a968b462937c6ca3809b8ae7f34cc",
+   "target_sha256": "b705fef45e370adcb8a74a678955d0fe3d48951df8d09d0937ceada301d1a585",
+   "receipt_sha256": "b25dec001b1fad7f23d3ce7f131df4484e6edd9a82a7eb19ab088869ec7a92dc"
+  }
+ },
+ "substantive_assessment": {
+  "banner": "channel preserves literal # and channel; subtitle preserves place · organization in that order. count and count_preview accurately describe new messages, never who sent them; count remains rendered in every plural arm, and preview remains verbatim and last. French colon uses narrow no-break space; Spanish and Vietnamese colon spacing is idiomatic. fr/es one/many/other, vi other-only.",
+  "terminology": "Notifications agree with message/messages elsewhere: fr message(s), es mensaje(s), vi tin nhắn. Thread/reply vocabulary remains fr fil/réponse, es hilo/respuesta, vi luồng/câu trả lời; #1308 reactions remain fr réaction/émoji, es reacción/emoji, vi cảm xúc/biểu tượng cảm xúc. Scheduling remains fr planification/planifier, es programación/programar, vi lịch/lên lịch. #1314 image attachment terminology remains fr image, es imagen, vi hình ảnh. Features absent at a particular head are not being claimed present.",
+  "register": "vous in instructional copy; impersonal compact banners introduce no address-form mismatch.",
+  "width": "No fixed pixel budget or rendered measurements claimed. New banner fragments are short and natural; count_preview leaves preview last so OS truncation does not consume the count first. Context permits 2–4 words for the count (French many is four with de). Rendered fit remains unverified.",
+  "rtl": "Not applicable for fr/es/vi; values are NFC and contain no bidi controls."
+ },
+ "limitations": [
+  "Catalogue-only union audit; no builds/tests/installs/browser/render/activation/release evidence.",
+  "Unchanged inherited feature values were read for context and traceability, not claimed as a fresh full linguistic re-audit.",
+  "Prior rejected nits remain recorded where still present; prior MR-comment disposition supplied by task, not independently fetched."
+ ],
+ "inherited_receipts": [
+  {
+   "parent": "95e9b273a2bef3487cfa5718fbde99a66cc31f23",
+   "path": "i18n/receipts/tbstack-r1-1314-fr.json",
+   "sha256": "dc814ee9b677314352c7aec3ff4e55dd35f26bd0a081385d984d954a6c1a7030",
+   "instance": "tbstack-r1-1314-fr",
+   "result": "clean-with-findings",
+   "keys_verified_unchanged": 174,
+   "source_sha256": "9da45f3026229bfd8c10f0a09dbc6e52b0d7f82a4c8a20af8feb77ef4c83931c",
+   "target_sha256": "09dd8d32bf579264e8f8fff71f478746d0b2955b6944d6771ab773f7e02fe1bb",
+   "context_sha256": "5a18898b0ee57a11b3b67e796f0203248b4371a7e66b8ed11c5eebcc42ad0d13"
+  },
+  {
+   "parent": "6dac4f5baa8e26da07370d244240e7acb8238e1f",
+   "path": "i18n/receipts/tbstack-r1-1309m-fr.json",
+   "staged_at": "/Users/damian/workspace/tb-i18n-audit/tbstack-mainmerge/1309/i18n/receipts/tbstack-r1-1309m-fr.json",
+   "sha256": "91a9e90a9bc4a9eb4e78ec1be954f8a72319d11844fb521f44c00132dc0c9011",
+   "instance": "tbstack-r1-1309m-fr",
+   "result": "clean",
+   "keys_verified_unchanged": 144,
+   "source_sha256": "b027df099c805e7121cc74c80411959c6ea178abe7a6b9a9fd6b9cb35524e510",
+   "target_sha256": "ae29837b879f3df0900fcdd71e7c47f7d62ba95bc5f6c5a55109ac98b2dced8a",
+   "context_sha256": "7062ca8351d00aba9c040eeae2a1d5f1cee83f6c4dd3dbcaab6da60c2aa5bd5b"
+  }
+ ],
+ "union_integrity_by_file": {
+  "en": {
+   "own": 174,
+   "integrated": 144,
+   "shared": 140,
+   "own_only": 34,
+   "integrated_only": 4,
+   "head": 178,
+   "dropped": 0,
+   "altered": 0,
+   "conflicts": 0,
+   "extra": 0
+  },
+  "fr": {
+   "own": 174,
+   "integrated": 144,
+   "shared": 140,
+   "own_only": 34,
+   "integrated_only": 4,
+   "head": 178,
+   "dropped": 0,
+   "altered": 0,
+   "conflicts": 0,
+   "extra": 0
+  },
+  "context": {
+   "own": 174,
+   "integrated": 144,
+   "shared": 140,
+   "own_only": 34,
+   "integrated_only": 4,
+   "head": 178,
+   "dropped": 0,
+   "altered": 0,
+   "conflicts": 0,
+   "extra": 0
+  }
+ }
+}
