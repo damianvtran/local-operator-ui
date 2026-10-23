@@ -165,7 +165,7 @@ const PANEL_COLUMNS = [
 	{
 		path: "src/renderer/src/features/team-bridge/team-bridge-page.tsx",
 		classes: [
-			'className="panel-top-pad flex w-72 shrink-0 flex-col"',
+			'className="panel-top-pad flex w-72 shrink-0 flex-col bg-surface"',
 			'className="panel-top-pad flex min-w-0 flex-1 flex-col bg-surface"',
 		],
 	},
