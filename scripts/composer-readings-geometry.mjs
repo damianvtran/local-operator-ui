@@ -5,6 +5,7 @@
  *
  *     node scripts/composer-readings-geometry.mjs [--json] [--out=<dir>]
  *         [--label=<tree>] [--only=<case>] [--themes=dark|both]
+ *         [--measure=<px>]
  *
  * WHY THIS EXISTS. Issue #788 is a geometry defect with a number in it: the
  * duration reading's shed band
@@ -65,6 +66,17 @@ const LABEL = flag("label") ?? "tree";
 const OUT_DIR = flag("out");
 const THEME_MODE = flag("themes") ?? "dark";
 const PORT = Number(flag("port") ?? 5431);
+/*
+ * THE MEASURE OVERRIDE, in px, or null for the shipped 810px cap.
+ *
+ * The composer box is capped at `--lo-chat-measure`, so the row's width is
+ * `min(column - 48, measure)`: at the shipped 810 the row is 778px at every
+ * column from 858 up, while the operator's own composer box measures 918px and
+ * their row ~886px at the same column. A run that wants the operator's row
+ * names the measure here; the value rides the harness URL and the case id, so
+ * a widened capture can never overwrite or be mistaken for a default-810 one.
+ */
+const MEASURE = flag("measure") ?? null;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
@@ -97,8 +109,14 @@ const WIDTHS = flag("widths")
 /** The two states the row can be photographed in. */
 const STATES = ["idle", "running"];
 
-/** The two readings fixtures: the cheaper state and the one that sets the threshold. */
-const READING_FIXTURES = ["plain", "issue", "fullest"];
+/**
+ * The readings fixtures: the cheap end (`plain`), the issue #788 repro and its
+ * widest superset (`issue`, `fullest`), and the operator's own row from the
+ * duration report (`reported`). Keep this list in step with
+ * `READINGS_FIXTURES` in the harness - a name here the page does not know
+ * throws on mount, which is loud rather than a blank row, but still a wasted run.
+ */
+const READING_FIXTURES = ["plain", "issue", "fullest", "reported"];
 
 const THEMES =
 	THEME_MODE === "both"
@@ -502,9 +520,9 @@ const main = async () => {
 	for (const state of STATES) {
 		for (const readings of READING_FIXTURES) {
 			for (const width of WIDTHS) {
-				const id = `${state}-${readings}-w${width}`;
+				const id = `${state}-${readings}-w${width}${MEASURE ? `-m${MEASURE}` : ""}`;
 				if (ONLY && !ONLY.some((needle) => id.includes(needle))) continue;
-				cases.push({ id, state, readings, width });
+				cases.push({ id, state, readings, width, measure: MEASURE });
 			}
 		}
 	}
@@ -522,7 +540,7 @@ const main = async () => {
 			await cdp.send("Page.navigate", { url: "about:blank" });
 			await sleep(120);
 			await cdp.send("Page.navigate", {
-				url: `${ORIGIN}/composer-readings-geometry.html?w=${entry.width}&state=${entry.state}&readings=${entry.readings}&theme=${theme}`,
+				url: `${ORIGIN}/composer-readings-geometry.html?w=${entry.width}&state=${entry.state}&readings=${entry.readings}&theme=${theme}${MEASURE ? `&measure=${MEASURE}` : ""}`,
 			});
 			await waitForRow(cdp);
 			await sleep(180);
