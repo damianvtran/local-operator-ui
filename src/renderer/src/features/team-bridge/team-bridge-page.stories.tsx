@@ -1,15 +1,20 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { type CSSProperties, useLayoutEffect, useState } from "react";
+import { type CSSProperties, useLayoutEffect, useRef, useState } from "react";
+import {} from "react";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
 import { ChatLayout } from "../../shared/components/common/chat-layout";
 import {
+	type PendingSend,
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeOrganization,
 	asTeamBridgeTenantId,
+	draftCreateInput,
 	organizationOptions,
+	performSend,
+	threadWithPending,
 } from "./team-bridge-model";
 import { TeamBridgePageView } from "./team-bridge-page";
 import { TeamBridgeThreadPaneView } from "./team-bridge-thread-pane";
@@ -362,7 +367,7 @@ const meta = {
 	// shows the real composition rather than a page collapsed to its content.
 	decorators: [
 		(Story) => (
-			<div className="h-dvh">
+			<div className="flex h-dvh flex-col">
 				<Story />
 			</div>
 		),
@@ -1149,5 +1154,303 @@ export const LegacyMemberLabelsAllOrganizations: Story = {
 		scope: TEAM_BRIDGE_ALL_SCOPE,
 		people: [],
 		directories: { [minervaOrganization.tenantId]: rosterWithChiefs.slice(1) },
+	},
+};
+
+/*
+ * TEAM BRIDGE: OPTIMISTIC SEND, SPARSE THREAD, CHIEF-OF-STAFF LABEL
+ * (operator report after v0.39.9). Fixtures are hand-written; the pending rows
+ * are built with the same `threadWithPending` the page uses, so a story shows
+ * what the container really hands the view.
+ */
+const sentAt = new Date().toISOString();
+const pendingEntry = (
+	clientRef: string,
+	body: string,
+	status: "sending" | "failed",
+): PendingSend => ({
+	clientRef,
+	body,
+	createdAt: sentAt,
+	tenantId: "tnt_1",
+	conversationId: benDm.id,
+	draftKey: null,
+	baselineSeq: 1,
+	status,
+});
+const withPending = (pending: PendingSend[]) =>
+	threadWithPending(benThread, pending, {
+		accountId: self,
+		label: "Damian Tran",
+	});
+
+/** The message is on screen before the round trip: dimmed, "Sending…". */
+export const OptimisticSending: Story = {
+	args: (() => {
+		const pendingSends = [
+			pendingEntry("ref-1", "On my way, see you there.", "sending"),
+		];
+		return {
+			...slackRail,
+			selfName: "Damian Tran",
+			target: { type: "person" as const, accountId: "acct_ben" },
+			messages: withPending(pendingSends),
+			pendingSends,
+		};
+	})(),
+};
+
+/** A refused send stays in the thread as "Not sent" with a Retry. */
+export const OptimisticFailedWithRetry: Story = {
+	args: (() => {
+		const pendingSends = [
+			pendingEntry("ref-2", "On my way, see you there.", "failed"),
+		];
+		return {
+			...slackRail,
+			selfName: "Damian Tran",
+			target: { type: "person" as const, accountId: "acct_ben" },
+			messages: withPending(pendingSends),
+			pendingSends,
+			onRetrySend: () => {},
+		};
+	})(),
+};
+
+/** Sending, then a failed one beneath it: typed order, after confirmed rows. */
+export const OptimisticMixed: Story = {
+	args: (() => {
+		const pendingSends = [
+			pendingEntry("ref-3", "First, this one failed.", "failed"),
+			pendingEntry("ref-4", "Second, still sending.", "sending"),
+		];
+		return {
+			...slackRail,
+			selfName: "Damian Tran",
+			target: { type: "person" as const, accountId: "acct_ben" },
+			messages: withPending(pendingSends),
+			pendingSends,
+			onRetrySend: () => {},
+		};
+	})(),
+};
+
+/** One message in a thread: breathing room under it, above the composer. */
+export const SparseThread: Story = {
+	args: {
+		...slackRail,
+		target: { type: "person", accountId: "acct_ben" },
+		messages: benThread.slice(0, 1),
+	},
+};
+
+/**
+ * Chiefs of staff: Ben's agent name was defaulted to Ben's own name by the
+ * server ("Ben Tran" → "Ben Tran's chief of staff"), Sherman's is Juno
+ * ("Juno (Sherman Tsui)"). The DM below stores the doubled label "Ben Tran (Ben
+ * Tran)" as the agent member's name; it must read as the same single label on
+ * the rail, the thread header, the composer placeholder and the messages.
+ */
+const echoedRoster = rosterWithChiefs.map((row) =>
+	row.account_id === "acct_ben"
+		? {
+				...row,
+				agent: { endpoint_id: "bep_ben", name: "Ben Tran", state: "active" },
+			}
+		: row,
+);
+const chiefDm: TeamBridgeConversation = {
+	...dm,
+	id: "bcv_dm_chief",
+	agent_capable: true,
+	members: [
+		{
+			account_id: self,
+			kind: "human",
+			display_label: "Damian Tran",
+			role: "owner",
+			state: "active",
+		},
+		{
+			account_id: "acct_ben",
+			kind: "agent",
+			display_label: "Ben Tran (Ben Tran)",
+			role: "member",
+			state: "active",
+		},
+	],
+};
+export const ChiefLabelUnnamedAgent: Story = {
+	args: {
+		...slackRail,
+		people: echoedRoster,
+		conversations: [humansChannel, agentsChannel, chiefDm],
+		target: { type: "chief", accountId: "acct_ben" },
+		messages: [
+			{
+				id: "bcmsg_c1",
+				conversation_id: chiefDm.id,
+				seq: 1,
+				sender: {
+					account_id: "acct_ben",
+					kind: "agent",
+					display_label: "Ben Tran (Ben Tran)",
+				},
+				body: "Hi, this is Ben's chief of staff. How can I help?",
+				origin: "agent",
+				created_at: at(5),
+			},
+		],
+	},
+};
+
+/** The same, with the agent's own name published: "Aida (Ben Tran)". */
+export const ChiefLabelNamedAgent: Story = {
+	args: {
+		...ChiefLabelUnnamedAgent.args,
+		people: rosterWithChiefs,
+	},
+};
+
+/**
+ * Scripted transport around the real view + performSend. Buttons control only
+ * the fake server's settlement, never the message row: this makes the no-id,
+ * failed, Retry and feed-before-POST windows observable in a browser. It does
+ * not claim coverage of the production query/container glue or a live backend.
+ */
+export const OptimisticIntegrationFlow: Story = {
+	render: (args) => {
+		const [pending, setPending] = useState<PendingSend[]>([]);
+		const [confirmed, setConfirmed] = useState<TeamBridgeMessage[]>([]);
+		const [made, setMade] = useState(false);
+		const [counts, setCounts] = useState({ create: 0, post: 0 });
+		const remembered = useRef(
+			new Map<string, { id: string; tenantId: string | undefined }>(),
+		);
+		const resolveCreate = useRef<(() => void) | null>(null);
+		const post = useRef<{
+			ok: () => void;
+			no: () => void;
+			body: string;
+			ref: string;
+		} | null>(null);
+		const patch = (ref: string, value: Partial<PendingSend>) =>
+			setPending((rows) =>
+				rows.map((row) => (row.clientRef === ref ? { ...row, ...value } : row)),
+			);
+		const run = async (body: string, clientRef: string) => {
+			patch(clientRef, { status: "sending" });
+			const result = await performSend({
+				conversationId: null,
+				tenantId: "tnt_1",
+				draftTenantId: "tnt_1",
+				draftKey: "integration",
+				input: draftCreateInput([
+					{ kind: "human", accountId: "acct_ben", label: "Ben Tran" },
+				]),
+				body,
+				clientRef,
+				remembered: remembered.current,
+				create: () => {
+					setCounts((c) => ({ ...c, create: c.create + 1 }));
+					return new Promise((resolve) => {
+						resolveCreate.current = () => {
+							setMade(true);
+							resolve({ id: benDm.id, tenant_id: "tnt_1" });
+						};
+					});
+				},
+				onCreated: (c) => patch(clientRef, { conversationId: c.id }),
+				post: () => {
+					setCounts((c) => ({ ...c, post: c.post + 1 }));
+					return new Promise((resolve, reject) => {
+						post.current = {
+							ok: () => resolve({ id: "bcmsg_flow" }),
+							no: () => reject(new Error("scripted failure")),
+							body,
+							ref: clientRef,
+						};
+					});
+				},
+			});
+			patch(
+				clientRef,
+				result.ok
+					? { status: "sent", confirmedId: result.confirmedId }
+					: { status: "failed" },
+			);
+		};
+		const feed = () => {
+			if (post.current)
+				setConfirmed([
+					{
+						id: "bcmsg_flow",
+						conversation_id: benDm.id,
+						seq: 1,
+						sender: {
+							account_id: self,
+							kind: "human",
+							display_label: "Damian Tran",
+						},
+						origin: "human",
+						body: post.current.body,
+						created_at: sentAt,
+					},
+				]);
+		};
+		return (
+			<div className="flex h-full flex-col">
+				<div className="flex shrink-0 gap-3 p-2 text-[12px]">
+					<button type="button" onClick={() => resolveCreate.current?.()}>
+						Resolve create
+					</button>
+					<button type="button" onClick={() => post.current?.no()}>
+						Reject POST
+					</button>
+					<button type="button" onClick={feed}>
+						Deliver server copy
+					</button>
+					<button type="button" onClick={() => post.current?.ok()}>
+						Resolve POST
+					</button>
+					<span>
+						Create {counts.create}; POST {counts.post}
+					</span>
+				</div>
+				<TeamBridgePageView
+					{...args}
+					{...slackRail}
+					selfName="Damian Tran"
+					conversations={made ? [benDm] : []}
+					target={{ type: "person", accountId: "acct_ben" }}
+					messageState={made ? "ready" : "idle"}
+					messages={threadWithPending(confirmed, pending, {
+						accountId: self,
+						label: "Damian Tran",
+					})}
+					pendingSends={pending}
+					onSend={(body, ref) => {
+						setPending((rows) => [
+							...rows,
+							{
+								clientRef: ref,
+								body,
+								createdAt: sentAt,
+								tenantId: "tnt_1",
+								conversationId: null,
+								draftKey: "integration",
+								baselineSeq: -1,
+								status: "sending",
+							},
+						]);
+						return run(body, ref);
+					}}
+					onRetrySend={(ref) => {
+						const row = pending.find((r) => r.clientRef === ref);
+						if (row) void run(row.body, ref);
+					}}
+				/>
+			</div>
+		);
 	},
 };
