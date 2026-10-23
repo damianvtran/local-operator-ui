@@ -1,0 +1,67 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "tbs-r1-ur",
+ "session": "de0dd342e922",
+ "date": "2026-10-21",
+ "locale": "ur",
+ "translator": "translator",
+ "translator_session": "35c1316997af",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 27,
+ "scope": "27-key ui.teamBridge drafts/schedule delta (2e16fb1456..e400709b71) audited against en source, context sidecar, glossary, ur style guide and renderer usage; the 109 base values were verified byte-unchanged versus HEAD and are inherited; catalogue audit only, not rendered-fit, activation or release.",
+ "sha256": {
+  "en": "145e5d2de5165a0fa6e5ce1cff91f6e6909007e448b4a6e229b47a87a71cb46b",
+  "ur": "ff558016cbf8fbcaaf2b8952e7aad171cee2972c3dd6fed1ad174f634c9360ce",
+  "context": "cfb426eebee10f1a71310746c4491690a24e2ad6074401115e217d222b9857b2"
+ },
+ "findings": [
+  {
+   "severity": "MINOR",
+   "key": "ui.teamBridge.schedule.confirm",
+   "current": "{date} کو بھیجیں؟",
+   "proposed": "کیا یہ پیغام {date} بھیجا جائے؟",
+   "note": "The ur Intl dateStyle:full+timeStyle:long output already contains the connector کو (formatted sample: “جمعرات، 22 اکتوبر، 2026 کو 2:30:00 PM GMT +5 کو بھیجیں؟”), so the template's trailing کو doubles it and reads clumsily; a passive question with no postposition reads naturally after the formatted time."
+  },
+  {
+   "severity": "MINOR",
+   "key": "ui.teamBridge.schedule.create_retry",
+   "current": "میں نے “گروپس” دیکھ لیے ہیں — دوبارہ بنانے کی کوشش کی اجازت دیں",
+   "proposed": "میں نے “گروپس” دیکھ لیے ہیں — دوبارہ کوشش کی اجازت دیں",
+   "note": "Rendered in a ghost Button whose base class is whitespace-nowrap, at 63 chars versus 49 in English (1.29×), so it risks overflowing a narrow composer; the shorter form (55 chars) keeps the explicit acknowledgement and permission, and either form still needs a rendered-width check."
+  },
+  {
+   "severity": "NIT",
+   "key": "ui.teamBridge.drafts.navigation",
+   "current": "پیغامات کے شارٹ کٹس",
+   "proposed": "پیغامات تک فوری رسائی",
+   "note": "This aria-label names the Drafts/Scheduled quick-link nav, but in ur catalogues شارٹ کٹ consistently means a keyboard shortcut (کی بورڈ شارٹ کٹس، کوئی شارٹ کٹ نہیں), so screen-reader users may expect key bindings."
+  }
+ ],
+ "inherited_receipt": {
+  "base": "2e16fb1456",
+  "path": "i18n/receipts/tbd-r3-ur.json",
+  "sha256": "84aef64e4d8e735ad57713e54ec6f5b514ad89ba3d02b387e44a67c68b26a0a4",
+  "keys_inherited": 109,
+  "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+  "base_target_sha256": "76bfaa1fa565994bbeeb8c76450042111a405525442a1ba2e0a956e1ba2e5397",
+  "full_coverage_receipt": {
+   "path": "i18n/receipts/tbd-r1-ur.json",
+   "sha256": "93b5f17ca759586da078f4890ab524d5d61ea46a609076273745d6a42b1a44f8"
+  },
+  "unchanged_values_verified": 109
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+ },
+ "validation": {
+  "independence": "Auditor session de0dd342e922 is not the translator session 35c1316997af; every value was read from the worktree bytes and nothing in the repo was edited, staged or committed.",
+  "semantics": "All 27 values read against en, the context sidecar and their renderer roles (dialog title and icon aria-label, nav aria-label, rail badge and title, alerts, aria-live status, nowrap Buttons). Register is آپ with polite -یں imperatives throughout. Glossary terms hold: schedule→شیڈول, device→ڈیوائس. The Scheduled view is “شیڈول شدہ” in both schedule.failed and schedule.success, identical to schedule.list. The Groups reference is “گروپس”, identical to section.groups. Other terms match the existing file and other ur catalogues: پیغام, تنظیم, منسوخ کریں, دوبارہ کوشش کریں, تازہ کریں (refresh), and مسودہ/مسودے, which matches ui.code_review. Explicit uncertainty is kept: تصدیق نہیں ہوئی, ممکن ہے … پہلے ہی / شروع ہو چکا ہو. The term for pending differs: زیر التوا here, منتظر in the settings.imports and code_review status labels. That split fits the different contexts and was not raised as a finding. No value is identical to English. confirm_action and review are distinct labels of similar length (19 and 18 chars).",
+  "icu": "All 27 en and ur values were parsed with @formatjs/icu-messageformat-parser from the repo's node_modules, and the argument sets match: {timezone} in schedule.timezone, {date} in schedule.confirm, none elsewhere. Every value was formatted with intl-messageformat (locale ur), using timezone=Asia/Karachi and a real ur Intl.DateTimeFormat dateStyle:full/timeStyle:long date. All 27 formatted cleanly. The 109 base values match HEAD byte for byte: the only removed line in the diff is the former last entry gaining a trailing comma.",
+  "typography": "All 27 values are NFC, and none contain manual bidi controls (U+200E/F, U+202A–E, U+2066–9, U+061C). Urdu ۔ ، ؛ ؟ are used, with no Latin sentence punctuation, Hindi danda or ASCII '...'. The ellipsis is U+2026, quotes are “ ” per the style guide (already used in other ur catalogues), and dashes are U+2014. Digits are Latin (1, 120), as the style guide requires, with no Urdu digits. In logical order, the embedded Latin tokens ({timezone} rendering as e.g. Asia/Karachi, and the Latin time/GMT run in {date}) sit at clause positions where the render layer's FSI isolation keeps them intact. confirm starts with {date}, whose formatted value begins with Urdu script.",
+  "overflow": "Short labels are at or under 1.2× English: drafts.indicator badge 5/5, schedule.list nav button 9/9, drafts.title 5/6, confirm_action 19/16, review 18/15. reschedule is 17/10 and cancel 16/14, both in a nowrap button pair in the scheduled list pane; retry is 31/23 in a nowrap ghost button. These are flagged for a rendered check, not as findings. create_retry (63/49, nowrap) is raised as a MINOR finding above. Paragraph alerts wrap.",
+  "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, visual-fit or rendered bidi claim. No catalogue/code edits."
+ }
+}

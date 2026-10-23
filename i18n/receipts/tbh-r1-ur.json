@@ -1,0 +1,44 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "tbh-r1-ur",
+ "session": "52a0333b3b81",
+ "date": "2026-10-21",
+ "locale": "ur",
+ "translator": "translator",
+ "translator_session": "8e5edb2e9750",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 2,
+ "scope": "2-key held-schedule recovery delta (ui.teamBridge.schedule.held, ui.teamBridge.schedule.discard_attempt) per git diff 51dceb5a09..c06b457 of en; the 136 other values were verified byte-unchanged vs HEAD and are inherited from tbs-r2-ur; catalogue audit only, not rendered-fit, activation or release.",
+ "sha256": {
+  "en": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+  "ur": "d8a04b1e39a509dbee21aa7b2cf9b1d021a23ba9d1c0ba1a0c2e0c55309d7c0b",
+  "context": "02e7be8fe466cd83941fcead89f234a705d0aa40765d274b9d92390333e4337c"
+ },
+ "findings": [],
+ "inherited_receipt": {
+  "base": "c06b457be9",
+  "path": "i18n/receipts/tbs-r2-ur.json",
+  "sha256": "0e8658bc7dff364bc7c8d1d001fb464ee55519c15896d7e12742b12cb2593ebb",
+  "keys_inherited": 136,
+  "base_target_sha256": "4ebc50f4ddd9cf752e84ba73ba632009e1bd8f928c9b9e85a522ff66a082b6be",
+  "previous_round_receipt": {
+   "path": "i18n/receipts/tbs-r1-ur.json",
+   "sha256": "d28c064e5095b4bf622770ba7a36e94f9f304ceac0ec0bbb571ee39da248cfb1"
+  },
+  "unchanged_values_verified": 136
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+ },
+ "validation": {
+  "independence": "Auditor session 52a0333b3b81 is not translator session 8e5edb2e9750; both values were read from the working-tree bytes (sha256 d8a04b1e…7c0b, matching the reported hash), and nothing in the repo was edited, staged or committed.",
+  "semantics": "held: “ممکن ہے پچھلا شیڈول اب بھی موجود ہو۔ یہ کوشش ترک کرنے سے پہلے “شیڈول شدہ” دیکھ لیں اور ضرورت ہو تو اسے منسوخ کر دیں۔ آپ کا مسودہ برقرار ہے۔” carries all three English clauses: the uncertainty, check-then-cancel before discarding, and draft retained. Its Scheduled reference “شیڈول شدہ” equals schedule.list and the quoted form in schedule.failed and schedule.success, and its closing sentence is identical to schedule.create_uncertain and schedule.failed. The server action uses منسوخ (as in schedule.cancel “پیغام منسوخ کریں”), while the local discard uses ترک کریں, which matches the existing ur use of ترک for Abandon/Discard (ui.mesh abandon, ui.projects discard edit). The local discard therefore cannot read as cancelling or deleting the server message. discard_attempt: “میں نے “شیڈول شدہ” دیکھ لیا ہے — یہ کوشش ترک کریں” keeps the first-person explicit acknowledgement in the same shape as schedule.create_retry, with correct masculine-singular agreement (دیکھ لیا) for شیڈول شدہ. The register is the respectful آپ-imperative per the style guide. Glossary: schedule → شیڈول.",
+  "icu": "Both values parse with @formatjs/icu-messageformat-parser to a single literal node (type 0), the same as English, with no arguments. intl-messageformat for locale ur formats each with no values to output byte-identical to the source. The en/ur key set is 138 keys in identical order. git diff vs HEAD shows only the 2 added lines plus the trailing comma on schedule.retry, and 136/136 HEAD values are unchanged. The HEAD target sha256 4ebc50f4… equals the target hash audited in tbs-r2-ur.",
+  "typography": "The file is NFC, with no BOM and a trailing newline. It contains zero bidi controls (U+200E/F, U+202A–E, U+2066–9, U+061C). Punctuation per ur.md: the full stop is U+06D4 ۔, quotes are “ ” (U+201C/U+201D) used in the same logical order as the existing approved values, and the em dash with spaces matches create_retry. The button has no terminal full stop, as in English and create_retry. There are no Latin runs.",
+  "overflow": "held 139 vs en 128 chars (1.09×) in a wrapping <p>, so no width concern. discard_attempt 49 vs en 42 chars (1.17×) in a ghost Button whose base cva class is whitespace-nowrap. That is shorter than the previously approved create_retry (54 chars vs en 49) in the same composer slot, so it is not materially long, though a rendered narrow-width check is still advisable.",
+  "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, visual-fit or rendered bidi claim. No catalogue/code edits."
+ }
+}

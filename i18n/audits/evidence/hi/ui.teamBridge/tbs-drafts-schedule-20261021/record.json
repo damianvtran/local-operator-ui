@@ -1,0 +1,165 @@
+{
+  "audit_id": "tbs-drafts-schedule-20261021",
+  "date": "2026-10-21",
+  "locale": "hi",
+  "namespace": "ui.teamBridge",
+  "source_commit": "e400709b7146e39abc137561ac11c985c216c5ff",
+  "source_base": "2e16fb1456",
+  "scope": "27 keys added at e400709b71: 5 ui.teamBridge.drafts.* and 22 ui.teamBridge.schedule.* (git diff 2e16fb1456..e400709b71). The other 109 values are inherited unchanged from the base audit.",
+  "status": "audited",
+  "translator": {
+    "agent": "translator",
+    "model": "anthropic/claude-opus-5-5",
+    "session": "79cb4bc439e2",
+    "job": "8dff9658451d",
+    "remediation_job": "851b5a0d57f6",
+    "date": "2026-10-21"
+  },
+  "auditors": [
+    {
+      "agent": "translation-auditor",
+      "model": "anthropic/claude-opus-5-5",
+      "date": "2026-10-21",
+      "result": "clean",
+      "instance": "tbs-r2-hi",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "receipt": "i18n/receipts/tbs-r2-hi.json",
+      "receipt_sha256": "b6312b60c3b68b2abf8d4a5313b545e80c05ffc72d44e0f905fa3aaa8451049e",
+      "scope": "Team Bridge drafts/schedule: 27-key delta (5 drafts.*, 22 schedule.*) independently audited in tbs-r1-hi, remediation delta re-audited here; base 109 values inherited unchanged from 2e16fb1456. Catalogue audit only, not rendered-fit, activation or release approval.",
+      "note": "Independent delta audit; round 1 retained at i18n/receipts/tbs-r1-hi.json and i18n/audits/evidence/hi/ui.teamBridge/tbs-drafts-schedule-20261021/. No rendered-fit claim."
+    }
+  ],
+  "audit_rounds": [
+    {
+      "round": 1,
+      "instance": "tbs-r1-hi",
+      "session": "5cbd61e9669b",
+      "job": "398cdc1e6c7b",
+      "model": "anthropic/claude-opus-5-5",
+      "status": "passed",
+      "keys_audited": 27,
+      "target_sha256": "8ae1dd53731eed74ea1b8d2e2a3cd8bf04b2225b40e648f985db360e1e1b9343",
+      "findings": [
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.schedule.confirm"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.schedule.invalid"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.schedule.cancel_failed"
+        },
+        {
+          "severity": "MINOR",
+          "key": "ui.teamBridge.schedule.retry"
+        }
+      ],
+      "receipt": {
+        "path": "i18n/receipts/tbs-r1-hi.json",
+        "sha256": "d3d63d0074df1eed832f029103151c908be1f47e89858cb60a01b0cbdc0be97c"
+      }
+    },
+    {
+      "round": 2,
+      "instance": "tbs-r2-hi",
+      "session": "5cbd61e9669b",
+      "job": "82ca2a886227",
+      "model": "anthropic/claude-opus-5-5",
+      "status": "passed",
+      "keys_audited": 4,
+      "target_sha256": "ecc9fec207ec0685265caedbb99d3acbc75c3e7285e526c7e78a9b7aa911761b",
+      "findings": [],
+      "remediation": [
+        {
+          "key": "ui.teamBridge.schedule.confirm",
+          "r1_severity": "MINOR",
+          "disposition": "fixed",
+          "verified": true
+        },
+        {
+          "key": "ui.teamBridge.schedule.invalid",
+          "r1_severity": "MINOR",
+          "disposition": "fixed",
+          "verified": true
+        },
+        {
+          "key": "ui.teamBridge.schedule.cancel_failed",
+          "r1_severity": "MINOR",
+          "disposition": "fixed",
+          "verified": true
+        },
+        {
+          "key": "ui.teamBridge.schedule.retry",
+          "r1_severity": "MINOR",
+          "disposition": "fixed",
+          "verified": true
+        }
+      ],
+      "receipt": {
+        "path": "i18n/receipts/tbs-r2-hi.json",
+        "sha256": "b6312b60c3b68b2abf8d4a5313b545e80c05ffc72d44e0f905fa3aaa8451049e"
+      }
+    }
+  ],
+  "inherited_receipt": {
+    "base": "2e16fb1456",
+    "path": "i18n/receipts/tbd-r3-hi.json",
+    "sha256": "b0a3d96a6fce52dab28f89094ee16997846e8301cedbe06d90733e8d450b0313",
+    "keys_inherited": 109,
+    "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+    "base_target_sha256": "78ff808697020fdde224fe7609a18d4aee9ab63f1f8719d2447d204a39933b7c",
+    "full_coverage_receipt": {
+      "path": "i18n/receipts/tbd-r1-hi.json",
+      "sha256": "48c6c90dc1cda69478373a5f312bec377ac13ca4d4286dd2101d3df25e1b2cae"
+    },
+    "unchanged_values_verified": 109
+  },
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "145e5d2de5165a0fa6e5ce1cff91f6e6909007e448b4a6e229b47a87a71cb46b"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/hi/ui.teamBridge.json",
+      "sha256": "ecc9fec207ec0685265caedbb99d3acbc75c3e7285e526c7e78a9b7aa911761b"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "cfb426eebee10f1a71310746c4491690a24e2ad6074401115e217d222b9857b2"
+    }
+  },
+  "references": {
+    "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    }
+  },
+  "independence": "Translator and auditor are different agents (translator vs translation-auditor) in different sessions; the auditor never edited catalogues; the coordinator neither translated nor audited and only assembled evidence with scripts/i18n/ledger-assemble.mjs.",
+  "limitations": [
+    "Browser unavailable by task constraint; no rendered-fit, screenshots, glyph metrics, pseudo-localization, native bidi rendering or activation evidence claimed.",
+    "Auditors flagged long non-wrapping buttons (e.g. schedule.create_retry) for a rendered-width check that has not been performed."
+  ],
+  "retained_rounds": [
+    {
+      "path": "i18n/receipts/tbs-r1-hi.json",
+      "sha256": "d3d63d0074df1eed832f029103151c908be1f47e89858cb60a01b0cbdc0be97c"
+    },
+    {
+      "path": "i18n/receipts/tbs-r2-hi.json",
+      "sha256": "b6312b60c3b68b2abf8d4a5313b545e80c05ffc72d44e0f905fa3aaa8451049e"
+    }
+  ]
+}

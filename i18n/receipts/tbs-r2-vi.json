@@ -1,0 +1,55 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbs-r2-vi",
+  "session": "b4195c849296",
+  "date": "2026-10-21",
+  "locale": "vi",
+  "translator": "translator",
+  "translator_session": "fcf03ca6da03",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 1,
+  "scope": "Round-2 remediation delta: 1 changed key (ui.teamBridge.schedule.cancel_failed) versus round-1 audited bytes; the other 135 values verified byte-identical to round 1; inherits the round-1 27-key drafts/schedule audit and the base 109-key audit; catalogue audit only, not rendered-fit/activation/release.",
+  "sha256": {
+    "en": "145e5d2de5165a0fa6e5ce1cff91f6e6909007e448b4a6e229b47a87a71cb46b",
+    "vi": "f58d7e6209ff630ac5cf98eae89c0803ed7b032c568482820ac1c77e4691789c",
+    "context": "cfb426eebee10f1a71310746c4491690a24e2ad6074401115e217d222b9857b2"
+  },
+  "findings": [],
+  "previous_round": {
+    "path": "i18n/receipts/tbs-r1-vi.json",
+    "sha256": "fbb64cbb4d4e9a5c02fb57249f03a46dd4b937579bf38a0e0132f32168c3c568",
+    "target_sha256": "8f2c3810f712f17e66dce9f306f209cbe16702e13c148c669a16cbc5249a18b7"
+  },
+  "remediation": [
+    {
+      "key": "ui.teamBridge.schedule.cancel_failed",
+      "r1_severity": "MINOR",
+      "disposition": "fixed",
+      "verified": true,
+      "value": "Chưa xác nhận được việc hủy. Tin nhắn có thể đã bắt đầu được gửi. Hãy làm mới trước khi thử lại."
+    }
+  ],
+  "inherited_receipt": {
+    "base": "2e16fb1456",
+    "path": "i18n/receipts/tbd-r2-vi.json",
+    "sha256": "b06b33c45ad38222050412836b2f095a369eab4905066f0e96b9443045851bd8",
+    "keys_inherited": 109,
+    "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+    "base_target_sha256": "71339f089127558ebe551d701ab8fbb394322a61bb44843002310cb294195fdc",
+    "unchanged_values_verified": 109
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+  },
+  "validation": {
+    "independence": "Auditor session b4195c849296 is distinct from translator session fcf03ca6da03; round-1 receipt left untouched (sha fbb64cbb… re-verified); no repo edits, no git add/commit.",
+    "semantics": "New value restores “already” (đã bắt đầu được gửi = may already have started sending) while keeping explicit uncertainty “có thể” and “Chưa xác nhận được”; idiomatic, no bạn added (register unchanged), Hủy/Làm mới/thử lại terms unchanged and consistent with create.cancel, ui.settings refresh and the retry verb in adjacent keys; review/confirm_action, Scheduled (“Đã lên lịch”) and Groups (“Nhóm”) references untouched.",
+    "icu": "diff of r1 snapshot (sha 8f2c3810…) vs current file: 136 keys, same order, 135 byte-identical, exactly 1 changed = the round-1 finding key. @formatjs/icu-messageformat-parser: en and vi both a single literal, no placeholders; intl-messageformat vi format returns the string unchanged.",
+    "typography": "NFC; no U+200E/F, U+202A–E, U+2066–9, U+061C; no space before punctuation; no “!”; spelling hủy per wave orthography.",
+    "overflow": "96 characters vs en 96 (r1 90); wrapping role=alert paragraph in the scheduled-message card; no overflow risk.",
+    "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, visual-fit or rendered bidi claim. No catalogue/code edits."
+  }
+}

@@ -832,6 +832,227 @@
 		"placeholders": {},
 		"note": "Shown in the main pane when the conversation list failed to load; the retry button lives in the rail on the left. ('left' is the inline-start side; in RTL locales say the side the list is actually on, i.e. right.)"
 	},
+	"ui.teamBridge.drafts.title": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.drafts.navigation": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.drafts.empty": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.drafts.indicator": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.drafts.storage_failed": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.title": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.timezone": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {
+			"timezone": "The machine timezone identifier, e.g. America/New_York."
+		},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.when": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.window": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.invalid": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.confirm": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {
+			"date": "A localized date, time and timezone."
+		},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.failed": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.confirm_action": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.review": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.list": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.loading": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.load_failed": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.empty": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.sending": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.reschedule": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.cancel": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.cancel_failed": {
+		"role": "Scheduled messaging and intentional draft interface",
+		"tone": "Clear, calm, sentence case",
+		"length": "Concise; permit wrapping.",
+		"placeholders": {},
+		"note": "Desktop Team Bridge. Drafts are intentionally authored private text. Scheduled means server-side future delivery; cancel stops delivery, not deletes sent history. Preserve explicit uncertainty on failed writes."
+	},
+	"ui.teamBridge.schedule.success": {
+		"role": "Scheduling success or ambiguous group creation recovery",
+		"tone": "Clear, explicit about uncertainty",
+		"length": "Permit wrapping.",
+		"placeholders": {},
+		"note": "Group creation has no idempotency token. A lost response MUST NOT be auto-retried: the reader must check Groups and deliberately acknowledge the risk before retry. Keep the acknowledgement explicit."
+	},
+	"ui.teamBridge.schedule.create_uncertain": {
+		"role": "Scheduling success or ambiguous group creation recovery",
+		"tone": "Clear, explicit about uncertainty",
+		"length": "Permit wrapping.",
+		"placeholders": {},
+		"note": "Group creation has no idempotency token. A lost response MUST NOT be auto-retried: the reader must check Groups and deliberately acknowledge the risk before retry. Keep the acknowledgement explicit."
+	},
+	"ui.teamBridge.schedule.create_retry": {
+		"role": "Scheduling success or ambiguous group creation recovery",
+		"tone": "Clear, explicit about uncertainty",
+		"length": "Permit wrapping.",
+		"placeholders": {},
+		"note": "Group creation has no idempotency token. A lost response MUST NOT be auto-retried: the reader must check Groups and deliberately acknowledge the risk before retry. Keep the acknowledgement explicit."
+	},
+	"ui.teamBridge.schedule.edit_body": {
+		"role": "Scheduled message editor label",
+		"tone": "Sentence case",
+		"length": "One word.",
+		"placeholders": {},
+		"note": "Labels the editable body of a pending server-side scheduled message. Saving changes both the text and confirmed delivery time."
+	},
+	"ui.teamBridge.schedule.retry": {
+		"role": "Uncertain schedule recovery action",
+		"tone": "Clear, sentence case",
+		"length": "Short action.",
+		"placeholders": {},
+		"note": "Replays the previously confirmed scheduling request with its original delivery time and idempotency key, even if the time has since passed. Never creates a new schedule key on an ambiguous failure."
+	},
+	"ui.teamBridge.schedule.held": {
+		"role": "Held scheduling attempt recovery explanation",
+		"tone": "Clear, calm, explicit about uncertainty and user acknowledgement",
+		"length": "Permit wrapping; do not shorten away the Scheduled check or cancellation distinction.",
+		"placeholders": {},
+		"note": "Scheduled is the existing named quick link. A lost server response may hide a pending scheduled message. This action clears only the local attempt/idempotency reference and retains the authored draft; it does NOT cancel server delivery. The reader must check Scheduled and cancel any unwanted server message before acknowledging. Keep this distinct from the Cancel message server action."
+	},
+	"ui.teamBridge.schedule.discard_attempt": {
+		"role": "Explicit local scheduling-attempt discard acknowledgement",
+		"tone": "Clear, calm, explicit about uncertainty and user acknowledgement",
+		"length": "Permit wrapping; do not shorten away the Scheduled check or cancellation distinction.",
+		"placeholders": {},
+		"note": "Scheduled is the existing named quick link. A lost server response may hide a pending scheduled message. This action clears only the local attempt/idempotency reference and retains the authored draft; it does NOT cancel server delivery. The reader must check Scheduled and cancel any unwanted server message before acknowledging. Keep this distinct from the Cancel message server action."
+	},
+	"ui.teamBridge.sender.unknown_person": {
+		"role": "placeholder sender name",
+		"tone": "plain, sentence case",
+		"length": "Short; fits a message header beside a time.",
+		"placeholders": {},
+		"note": "Shown as the author of a message when the person's name cannot be resolved (they left the organization, or the directory has not loaded). Must read as a placeholder, not as a name; rendered in muted italics."
+	},
+	"ui.teamBridge.sender.unknown_agent": {
+		"role": "placeholder sender name",
+		"tone": "plain, sentence case",
+		"length": "Short; fits a message header beside a time.",
+		"placeholders": {},
+		"note": "Shown as the author of an agent's message when the agent's name cannot be resolved. Must read as a placeholder, not as a name; rendered in muted italics. 'Agent' is an AI agent; use the glossary term."
+	},
 	"ui.teamBridge.reactions.add": {
 		"role": "reaction picker control or status",
 		"tone": "neutral, sentence case",
@@ -1038,19 +1259,5 @@
 		"length": "Short label; screen readers announce it as the toolbar's name.",
 		"placeholders": {},
 		"note": "Slack-style hover toolbar on one chat message (react and reply in thread). Names the group of actions for ONE message, not the conversation."
-	},
-	"ui.teamBridge.sender.unknown_person": {
-		"role": "placeholder sender name",
-		"tone": "plain, sentence case",
-		"length": "Short; fits a message header beside a time.",
-		"placeholders": {},
-		"note": "Shown as the author of a message when the person's name cannot be resolved (they left the organization, or the directory has not loaded). Must read as a placeholder, not as a name; rendered in muted italics."
-	},
-	"ui.teamBridge.sender.unknown_agent": {
-		"role": "placeholder sender name",
-		"tone": "plain, sentence case",
-		"length": "Short; fits a message header beside a time.",
-		"placeholders": {},
-		"note": "Shown as the author of an agent's message when the agent's name cannot be resolved. Must read as a placeholder, not as a name; rendered in muted italics. 'Agent' is an AI agent; use the glossary term."
 	}
 }

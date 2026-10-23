@@ -1,0 +1,150 @@
+{
+  "audit_id": "tbstack-landed-1309-20261022",
+  "date": "2026-10-22",
+  "locale": "ru",
+  "namespace": "ui.teamBridge",
+  "source_commit": "6631ee87aaa036a387493e51b6ce3716a8a8aad3",
+  "source_base": "946bf937fd9c158f20708fe069e8fb70c830b191",
+  "scope": "Landing union only, PR #1309 at 6631ee87aaa036a387493e51b6ce3716a8a8aad3: 173 English/target keys read side by side; 29 new-to-branch keys substantively reviewed in scheduling/attachment/thread context. Unchanged inherited values traced to audited receipts. Catalogue-only, not native-fit, activation or release approval.",
+  "status": "audited",
+  "instance_scope": "Artifact-scoped receipt instance, not a separate auditor session. All four landing-union receipts were authored in real session 055fbd3ce084, job 37b159ce7761; they do not represent four independent reviewers.",
+  "translator": {
+    "agent": "translator",
+    "model": "anthropic/claude-opus-5-5",
+    "date": "2026-10-21",
+    "session": "485b723247d7",
+    "job": "764e8ee192fe",
+    "remediation_job": "78daa414c10d"
+  },
+  "auditors": [
+    {
+      "agent": "translation-auditor",
+      "instance": "055fbd3ce084-landed-1309-ru",
+      "model": "openai/gpt-6-astra",
+      "result": "clean",
+      "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "source_sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7",
+      "target_sha256": "f9fda9d7602e31e508642e6cba18f487217589d0457f90c01aeec73c525a2da4",
+      "receipt_sha256": "331fbf1d59b043d83c88b3f772237340326d3a504e32f8fc21c5fa86066d5228",
+      "date": "2026-10-22",
+      "receipt": "i18n/receipts/tbstack-landed-1309-ru.json",
+      "scope": "Landing union only, PR #1309 at 6631ee87aaa036a387493e51b6ce3716a8a8aad3: 173 English/target keys read side by side; 29 new-to-branch keys substantively reviewed in scheduling/attachment/thread context. Unchanged inherited values traced to audited receipts. Catalogue-only, not native-fit, activation or release approval."
+    }
+  ],
+  "audit_rounds": [
+    {
+      "round": 1,
+      "instance": "055fbd3ce084-landed-1309-ru",
+      "session": "055fbd3ce084",
+      "job": "37b159ce7761",
+      "parent_session": "687384e07954",
+      "model": "openai/gpt-6-astra",
+      "status": "passed",
+      "keys_read": 173,
+      "keys_audited": 29,
+      "findings": [],
+      "receipt": {
+        "path": "i18n/receipts/tbstack-landed-1309-ru.json",
+        "sha256": "331fbf1d59b043d83c88b3f772237340326d3a504e32f8fc21c5fa86066d5228"
+      }
+    }
+  ],
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7"
+    },
+    "ru": {
+      "path": "src/i18n/catalogues/ru/ui.teamBridge.json",
+      "sha256": "f9fda9d7602e31e508642e6cba18f487217589d0457f90c01aeec73c525a2da4"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "5daf30ba2344de56b9a26328939d7e62c516d34e30b5cf7fe27c10d15d93c2fb"
+    }
+  },
+  "union_integrity": {
+    "parents": [
+      "946bf937fd9c158f20708fe069e8fb70c830b191",
+      "19f094810fcc26757efc2bf456f8a4b5437bb984"
+    ],
+    "files_verified": [
+      "src/i18n/catalogues/en/ui.teamBridge.json",
+      "src/i18n/catalogues/fr/ui.teamBridge.json",
+      "src/i18n/catalogues/es/ui.teamBridge.json",
+      "src/i18n/catalogues/hi/ui.teamBridge.json",
+      "src/i18n/catalogues/ru/ui.teamBridge.json",
+      "src/i18n/catalogues/ur/ui.teamBridge.json",
+      "src/i18n/catalogues/vi/ui.teamBridge.json",
+      "src/i18n/catalogues/zh-CN/ui.teamBridge.json",
+      "src/i18n/catalogues/en/ui.teamBridge.context.json"
+    ],
+    "all_exact_parent_union": true,
+    "changed_previous_values": 0,
+    "conflicting_parent_values": 0,
+    "dropped_keys": 0,
+    "new_to_branch": 29
+  },
+  "inherited_receipts": [
+    {
+      "commit": "946bf937fd9c158f20708fe069e8fb70c830b191",
+      "receipt": "i18n/receipts/tbstack-r1-1309m-ru.json",
+      "receipt_sha256": "40cfe19f3c936933a115cc3e5804574f2c73b7c919f9c1afbace15ce17d5c2ff",
+      "sha256": {
+        "en": "b027df099c805e7121cc74c80411959c6ea178abe7a6b9a9fd6b9cb35524e510",
+        "ru": "49cc192fbc1eed523e5bf310e435117176749130b72cdaa412770ff1771fc941",
+        "context": "7062ca8351d00aba9c040eeae2a1d5f1cee83f6c4dd3dbcaab6da60c2aa5bd5b"
+      },
+      "findings": []
+    },
+    {
+      "commit": "19f094810fcc26757efc2bf456f8a4b5437bb984",
+      "receipt": "i18n/receipts/tbstack-r1-1308m-ru.json",
+      "receipt_sha256": "9ea05b1352407d17f21caa29ce5191b87a0db9d52cf864cc61f81e98d4dca1df",
+      "sha256": {
+        "en": "f9d6aa7afa46fd6b877e5fe1b3e8a276657445bf929f237a51b0726f6860d214",
+        "ru": "da83d146bd27c3cfbffa6dc959bcd874e3c0d04a3236e281dcd2ecc5df853652",
+        "context": "be847e5b61705864af0972446332cbed327f98f2d7f591c4a4de0d86f39e6f7b"
+      },
+      "findings": []
+    },
+    {
+      "commit": "2156430ae280ba2e368db32a51242927c72057fb",
+      "receipt": "i18n/receipts/tbstack-r2-1308-ru.json",
+      "receipt_sha256": "bd7b5894f3e983dd0dee7c20dc1bbfc8bba5354bc59354e81924971a7a75ec3a",
+      "sha256": {
+        "en": "f940f0c6b7bd896e49c691c1afa4cdb21a0c7dcf8179b81e3c9071503f168448",
+        "ru": "4e19d6ae2e530e0ebbd94017fa178f78bc1507e18228796fcb3aa1f2e9dc6b29",
+        "context": "2c60cbbbf0164f2a888809eeb8e3eddb11dc6c8bf9bbb2176b3687542acb4843"
+      },
+      "findings": []
+    },
+    {
+      "commit": "3269107dbd8582ab07a6fddba55b271ad0a6c076",
+      "receipt": "i18n/receipts/tbstack-r1-1304m-ru.json",
+      "receipt_sha256": "17942312ad3740fc3607e1aeadfacb770e5195846779d29d4754731f5addd36a",
+      "sha256": {
+        "en": "281cb8adcc75e5bb4fcebf5c9112ab260bcf8ed2fbcf6bbcd6d04bfc3cfff41c",
+        "ru": "fb1be86084c6881b20ed04b944ed83ff8267cc77dc3384f2b6361b78e3a5b43a",
+        "context": "f5cf60d75f5e8b8ecc378174bc9f9e5e158b14afb80cda504e1b61e921b5cafd"
+      },
+      "findings": []
+    }
+  ],
+  "limitations": [
+    "Read-only git-object audit. No catalogue/source edits, tests, builds, installs, worktrees, pushes or rendered/native checks. Both locales LTR; RTL not applicable. NFC and no invisible direction controls verified. Historical findings are retained in referenced receipts, not overwritten.",
+    "Rendered check required, not a proven defect: reactions.frequent is 18 vs 15 source characters and shares a row with the tone select; reactions.tone is 12 vs 9 (accessible label); actions.label is 21 vs 15 (toolbar accessible name, no visual width). replies.last is 23 vs 17 including unchanged {time}; replies.more is 20 vs 17. Preserve precise wording unless real geometry shows clipping. Inherited schedule/banner/image width limitations remain."
+  ],
+  "validation": {
+    "deriveReceiptAudit": "passed using module read from exact head",
+    "ledger_rules_sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+    "context_sha256": "independently matched exact-head raw bytes",
+    "icu": "parsed every source/target value; argument types/names, branch count usage, CLDR categories, skeletons and markup compared; 0 errors",
+    "inherited_receipt_hashes": "matched git ledger references and their source/target/context bytes; no active inherited ru/zh-CN findings"
+  }
+}

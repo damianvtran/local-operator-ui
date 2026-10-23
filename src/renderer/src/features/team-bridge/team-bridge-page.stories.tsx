@@ -1,10 +1,18 @@
+import { t } from "@shared/i18n";
 import type { Meta, StoryObj } from "@storybook/react";
+import { fireEvent, userEvent, within } from "@storybook/test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { type CSSProperties, useLayoutEffect, useState } from "react";
+import type {
+	DesktopRequest,
+	DesktopResponse,
+} from "../../../../shared/desktop-contract";
 import type {
 	TeamBridgeConversation,
 	TeamBridgeMessage,
 } from "../../../../shared/team-bridge-contract";
 import { ChatLayout } from "../../shared/components/common/chat-layout";
+import { draftStorageKey } from "./team-bridge-drafts";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
 	type TeamBridgeOrganization,
@@ -12,6 +20,7 @@ import {
 	organizationOptions,
 } from "./team-bridge-model";
 import { TeamBridgePageView } from "./team-bridge-page";
+import { scheduledLocalInput } from "./team-bridge-scheduling";
 import { TeamBridgeThreadPaneView } from "./team-bridge-thread-pane";
 import { threadTargetFromSearch } from "./team-bridge-thread-read";
 
@@ -928,6 +937,223 @@ export const EmptySections: Story = {
 		target: null,
 		messages: [],
 		messageState: "idle",
+	},
+};
+
+/** Interactive per-target draft probe; only this fixture account is touched.
+ * Navigate among channel/group/DM, type independently, then reload the story. */
+function DurableDraftStory() {
+	const [target, setTarget] = useState<
+		import("./team-bridge-model").TeamBridgeTarget
+	>({ type: "conversation", id: channel.id });
+	return (
+		<TeamBridgePageView
+			{...meta.args}
+			selfAccountId="acct_story_drafts"
+			target={target}
+			onTarget={setTarget}
+			initialDraft="The handoff notes are ready for review."
+			onSend={async () => {
+				throw new Error("fixture send refused");
+			}}
+			onSchedule={async () => {
+				throw new Error("fixture schedule refused");
+			}}
+		/>
+	);
+}
+export const DurablePerTargetDrafts: Story = {
+	render: () => <DurableDraftStory />,
+};
+
+/** Seed only this disposable story account, never any operator draft. The
+ * persisted attempt is the real reload/recovery path, not a visual stand-in. */
+function SchedulingPageStory({
+	held = false,
+	narrow = false,
+}: { held?: boolean; narrow?: boolean }) {
+	const [account] = useState(() => {
+		const accountId = held
+			? "acct_story_held_attempt"
+			: "acct_story_pending_schedule";
+		const target = { type: "conversation" as const, id: dm.id };
+		localStorage.setItem(
+			draftStorageKey(accountId, dm.tenant_id),
+			JSON.stringify({
+				[`conversation:${dm.id}`]: {
+					target,
+					body: "The release handoff is ready for review.",
+					clientRef: "story-schedule-reference",
+					...(held
+						? { sendAt: new Date(Date.now() + 3_600_000).toISOString() }
+						: {}),
+				},
+			}),
+		);
+		return accountId;
+	});
+	return (
+		<div className={narrow ? "h-full w-[640px] max-w-full" : "h-full"}>
+			<TeamBridgePageView
+				{...meta.args}
+				selfAccountId={account}
+				onSchedule={() =>
+					held
+						? Promise.reject(new Error("fixture response lost"))
+						: new Promise(() => {})
+				}
+			/>
+		</div>
+	);
+}
+export const HeldAttempt: Story = {
+	render: () => <SchedulingPageStory held />,
+};
+export const HeldAttemptNarrow: Story = {
+	render: () => <SchedulingPageStory held narrow />,
+};
+export const HeldAttemptMinimumWidth: Story = {
+	render: () => (
+		<div className="h-full w-[800px] max-w-full">
+			<SchedulingPageStory held />
+		</div>
+	),
+};
+export const ScheduleComposer: Story = {
+	render: () => <SchedulingPageStory />,
+};
+export const SchedulingInFlight: Story = {
+	render: () => <SchedulingPageStory />,
+	play: async ({ canvasElement }) => {
+		await userEvent.click(
+			within(canvasElement).getByRole("button", {
+				name: t("ui.teamBridge.schedule.title"),
+			}),
+		);
+		const dialog = within(document.body).getByRole("dialog");
+		fireEvent.change(
+			within(dialog).getByLabelText(t("ui.teamBridge.schedule.when")),
+			{
+				target: {
+					value: scheduledLocalInput(
+						new Date(Date.now() + 3_600_000).toISOString(),
+					),
+				},
+			},
+		);
+		await userEvent.click(
+			within(dialog).getByRole("button", {
+				name: t("ui.teamBridge.schedule.review"),
+			}),
+		);
+		await userEvent.click(
+			within(dialog).getByRole("button", {
+				name: t("ui.teamBridge.schedule.confirm_action"),
+			}),
+		);
+	},
+};
+
+/** The production Scheduled view inside the page, using the desktop transport
+ * seam. A 409 transitions one row to sending; another organization refuses its
+ * list. The error and successful rows must remain visible together. */
+function ScheduledRecoveryPageStory() {
+	const [client] = useState(
+		() =>
+			new QueryClient({
+				defaultOptions: { queries: { retry: false, gcTime: 0 } },
+			}),
+	);
+	useLayoutEffect(() => {
+		const previous = window.api;
+		let raced = false;
+		const request = async (input: DesktopRequest): Promise<DesktopResponse> => {
+			if (input.op === "team_bridge.scheduled.list") {
+				if (input.tenant_id === northwindOrganization.tenantId)
+					return {
+						status: 403,
+						body: {
+							detail: {
+								code: "not_a_member",
+								message: "Fixture organization refusal",
+							},
+						},
+					};
+				const base = {
+					tenant_id: minervaOrganization.tenantId,
+					conversation_id: dm.id,
+					send_at: new Date(Date.now() + 3_600_000).toISOString(),
+					created_at: new Date().toISOString(),
+				};
+				return {
+					status: 200,
+					body: {
+						result: {
+							scheduled: [
+								{
+									...base,
+									id: "bsch_story_race",
+									body: "A cancellation races with delivery.",
+									status: raced ? "sending" : "scheduled",
+								},
+								{
+									...base,
+									id: "bsch_story_sending",
+									body: "This message is already being sent.",
+									status: "sending",
+								},
+							],
+						},
+					},
+				};
+			}
+			if (input.op === "team_bridge.scheduled.cancel") {
+				raced = true;
+				return {
+					status: 409,
+					body: {
+						detail: {
+							code: "invalid_transition",
+							message: "Fixture delivery already started",
+						},
+					},
+				};
+			}
+			return previous?.desktop?.request
+				? previous.desktop.request(input)
+				: { status: 501, body: { detail: "Unsupported fixture request" } };
+		};
+		window.api = {
+			...previous,
+			desktop: { ...previous?.desktop, request },
+		} as typeof window.api;
+		return () => {
+			window.api = previous;
+			client.clear();
+		};
+	}, [client]);
+	return (
+		<QueryClientProvider client={client}>
+			<TeamBridgePageView
+				{...meta.args}
+				selfAccountId="acct_story_scheduled_page"
+				scope={TEAM_BRIDGE_ALL_SCOPE}
+			/>
+		</QueryClientProvider>
+	);
+}
+export const ScheduledPageRecovery: Story = {
+	render: () => <ScheduledRecoveryPageStory />,
+	play: async ({ canvasElement }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(
+			canvas.getByRole("button", { name: t("ui.teamBridge.schedule.list") }),
+		);
+		await userEvent.click(
+			await canvas.findByRole("button", {
+				name: t("ui.teamBridge.schedule.cancel"),
+			}),
+		);
 	},
 };
 

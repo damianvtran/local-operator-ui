@@ -1,0 +1,41 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "tbh-r1-zh-cn",
+ "session": "a6a595ab4be8",
+ "date": "2026-10-21",
+ "locale": "zh-CN",
+ "translator": "translator",
+ "translator_session": "d04f0e3ee24c",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 2,
+ "scope": "2-key held-schedule recovery delta (ui.teamBridge.schedule.held, schedule.discard_attempt) per git diff 51dceb5a09..c06b457 of en; 136 other values verified byte-unchanged vs HEAD and inherited from tbs-r2-zh-cn; catalogue audit only, not rendered-fit/activation/release.",
+ "sha256": {
+  "en": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+  "zh-CN": "5892a79f1f3d8367d15efbfbe65e7ab429e697d6f63b01f4cba31ed181a81614",
+  "context": "02e7be8fe466cd83941fcead89f234a705d0aa40765d274b9d92390333e4337c"
+ },
+ "findings": [],
+ "inherited_receipt": {
+  "base": "c06b457be9",
+  "path": "i18n/receipts/tbs-r2-zh-cn.json",
+  "sha256": "ca6464ce006a72a0de9a3ddee9c9163938515e8da5ff787fb17366d68e35fedc",
+  "keys_inherited": 136,
+  "base_target_sha256": "c18478fbf811fd1fd1ec27ed3ac2dec8e3daccce92c0ad848b43d35ecdbbd55f",
+  "unchanged_values_verified": 136
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+ },
+ "validation": {
+  "independence": "Auditor session a6a595ab4be8 is distinct from translator session d04f0e3ee24c; values read from working-tree bytes at HEAD c06b457be90a58b3a330f361f9e260cf88a4dfa4, no translator summary relied on.",
+  "semantics": "held = '上次的定时发送可能仍然存在。放弃本次尝试前，请先查看“定时消息”，必要时将其取消。草稿已保留。' conveys possible surviving schedule, check-then-cancel-if-needed ordering before discard, and draft retention. discard_attempt = '我已查看“定时消息”，放弃本次尝试' keeps the explicit first-person acknowledgement and uses 放弃 (abandon local attempt), distinct from schedule.cancel '取消发送'. “定时消息” matches schedule.list and the references in schedule.failed / schedule.success; structure mirrors schedule.create_uncertain / create_retry ('请先查看“群组”' / '我已查看“群组”，…'). 定时 per glossary/style guide; 你-register (pronoun dropped), 请 consistent with approved siblings.",
+  "icu": "@formatjs/icu-messageformat-parser parses both values to a single literal node (no arguments), identical shape to English; intl-messageformat (zh-CN) formats both to the exact stored strings.",
+  "typography": "Both NFC; no bidi controls (U+200E/F, U+202A–E, U+2066–9, U+061C); no ASCII characters; full-width punctuation U+FF0C/U+3002 and mainland quotes U+201C/U+201D; held ends with 。 as full sentences, label discard_attempt has no sentence-final 。; English em dash rendered as ，as in create_retry.",
+  "overflow": "held: 47 chars/94 cells vs 128 en chars, wrapping <p>, fine. discard_attempt: 17 chars/34 cells vs 42 en chars inside a ghost Button whose base class is whitespace-nowrap (button.tsx buttonVariants); estimated ~17em vs ~21em English at text-sm, not longer than source — no overflow finding, rendered check not performed.",
+  "catalogue_integrity": "git diff vs HEAD is exactly 2 added lines plus trailing comma on schedule.retry; 138 keys, key set and order equal English; HEAD target sha c18478fb… equals tbs-r2-zh-cn's recorded zh-CN sha; tbs-r1-zh-cn.json sha 30f57335… matches tbs-r2 previous_round.",
+  "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, visual-fit or rendered bidi claim. No catalogue/code edits."
+ }
+}

@@ -1,0 +1,240 @@
+{
+  "audit_id": "tbstack-landed-1309-vi",
+  "date": "2026-10-22",
+  "locale": "vi",
+  "namespace": "ui.teamBridge",
+  "source_commit": "6631ee87aaa036a387493e51b6ce3716a8a8aad3",
+  "merge_parents": [
+    "946bf937fd9c158f20708fe069e8fb70c830b191",
+    "19f094810fcc26757efc2bf456f8a4b5437bb984"
+  ],
+  "status": "passed",
+  "result": "clean",
+  "keys_read": 173,
+  "keys_substantive": 29,
+  "auditor": {
+    "agent": "translation-auditor",
+    "label": "audit-landed-fr-es-vi",
+    "model": "openai/gpt-6-astra",
+    "instance": "f39d0c2ada5e-landed-1309-vi",
+    "session": "f39d0c2ada5e",
+    "job": "396a37b6695e",
+    "parent_session": "687384e07954"
+  },
+  "model_note": "Served model announced by this child runtime: openai/gpt-6-astra; no model fallback announced.",
+  "independence": "Independent child audit-landed-fr-es-vi; authored none of the reviewed translations. Git-object reads only; no repository edits, tests, builds, installs, worktrees or pushes.",
+  "files": {
+    "en": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+      "sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7"
+    },
+    "target": {
+      "path": "src/i18n/catalogues/vi/ui.teamBridge.json",
+      "sha256": "291883bf26f884cae277fd11ca7046eb5108ab85c47874d8ab88c410cf578f8e"
+    },
+    "context": {
+      "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+      "sha256": "5daf30ba2344de56b9a26328939d7e62c516d34e30b5cf7fe27c10d15d93c2fb"
+    }
+  },
+  "references": {
+    "core_commit": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "glossary": {
+      "path": "i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "i18n/style-guides/vi.md",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    },
+    "contract": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    },
+    "rules": {
+      "path": "scripts/i18n/ledger-rules.mjs",
+      "sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6"
+    }
+  },
+  "union": {
+    "own": 144,
+    "integrated": 144,
+    "head": 173,
+    "shared": 115,
+    "added": 29,
+    "changed": 0,
+    "conflicts": [],
+    "union_exact": true
+  },
+  "all_eight_catalogues_and_context_exact_parent_union": true,
+  "raw_catalogue_values": {
+    "serialized_string_values_unchanged": true,
+    "checked_parent_entries": 288
+  },
+  "inherited_receipts": [
+    {
+      "path": "i18n/receipts/tbstack-r1-1309m-vi.json",
+      "receipt_sha256": "8cf514cab61b3f615b01c7581d41d2a7067c0dcb27e0c2ec4841c1122ad8ae65",
+      "source_head": "6dac4f5baa8e26da07370d244240e7acb8238e1f",
+      "instance": "tbstack-r1-1309m-vi",
+      "result": "clean",
+      "hashes_and_unchanged_values": {
+        "en": {
+          "sha256": "b027df099c805e7121cc74c80411959c6ea178abe7a6b9a9fd6b9cb35524e510",
+          "keys_verified_unchanged": 144
+        },
+        "vi": {
+          "sha256": "79fb46a6f2029437dab260fd9eaee5d5d4e179edb3cfe578682de5a6a904247b",
+          "keys_verified_unchanged": 144
+        },
+        "context": {
+          "sha256": "7062ca8351d00aba9c040eeae2a1d5f1cee83f6c4dd3dbcaab6da60c2aa5bd5b",
+          "keys_verified_unchanged": 144
+        }
+      }
+    },
+    {
+      "path": "i18n/receipts/tbstack-r1-1308m-vi.json",
+      "receipt_sha256": "68c9c3c0deb1aa4285e0197b1f36a771c853463a47008f4884c11007222ca94c",
+      "source_head": "2908b0a9f1ad0c7be87553cd2c12b20008ad0c31",
+      "instance": "tbstack-r1-1308m-vi",
+      "result": "clean",
+      "hashes_and_unchanged_values": {
+        "en": {
+          "sha256": "f9d6aa7afa46fd6b877e5fe1b3e8a276657445bf929f237a51b0726f6860d214",
+          "keys_verified_unchanged": 144
+        },
+        "vi": {
+          "sha256": "41ae5ca6f44c23bbdaf46254ef54a1e9246ebd1e45e74332e6d746c9c639b99c",
+          "keys_verified_unchanged": 144
+        },
+        "context": {
+          "sha256": "be847e5b61705864af0972446332cbed327f98f2d7f591c4a4de0d86f39e6f7b",
+          "keys_verified_unchanged": 144
+        }
+      }
+    },
+    {
+      "path": "i18n/receipts/tbstack-r1-1304m-vi.json",
+      "receipt_sha256": "2702bad0d4221dc0be25f646097250c4f6852f7521ed6623888a5e598b49c7db",
+      "source_head": "12dddf52f78bd30704b48a8c856f2b69e1bef6e3",
+      "instance": "tbstack-r1-1304m-vi",
+      "result": "clean",
+      "hashes_and_unchanged_values": {
+        "en": {
+          "sha256": "281cb8adcc75e5bb4fcebf5c9112ab260bcf8ed2fbcf6bbcd6d04bfc3cfff41c",
+          "keys_verified_unchanged": 123
+        },
+        "vi": {
+          "sha256": "bfcb454de420940f3f7a066f2ca8f94e74dfb4eb1236ad4e12ba513311840cef",
+          "keys_verified_unchanged": 123
+        },
+        "context": {
+          "sha256": "f5cf60d75f5e8b8ecc378174bc9f9e5e158b14afb80cda504e1b61e921b5cafd",
+          "keys_verified_unchanged": 123
+        }
+      }
+    }
+  ],
+  "findings": [],
+  "analysis": {
+    "scope": "Landing-union-only audit; inherited keys read for combined context and hash/value continuity, not claimed as a fresh full linguistic audit. Identical shared values reused across the two heads.",
+    "accuracy_idiom_register_glossary": "bạn or omitted pronouns remain consistent. luồng/luồng trò chuyện and câu trả lời distinguish thread from reply; cảm xúc denotes a message reaction, biểu tượng cảm xúc its emoji, and hình ảnh an attachment. lịch/lên lịch remains the scheduling term. Short action labels use plain verbs; reply time uses lúc, correctly matching a localized clock value. No calque or new glossary conflict found in the joined terms.",
+    "placeholders": "Every message parsed from exact source/target bytes; every target ICU branch retains source argument names/types, pound tokens, offsets, styles and markup-token multiset. No date/number skeleton or markup alteration found. replies.count preserves count; replies.last preserves time. Locale-specific plural categories checked separately.",
+    "icu": {
+      "parsed": 173,
+      "plural_messages": 6,
+      "categories": [
+        "other"
+      ],
+      "errors": [],
+      "missing_categories": []
+    },
+    "overflow": "Character counts are screening observations, not pixel measurements or findings. Picker is w-80/max viewport width; search is a full-width input, categories are icons with title/aria text, all/categories/choose are accessible labels. Thread title is visible. Native rendering and pseudo-localization not performed.",
+    "width_observations": [
+      {
+        "key": "ui.teamBridge.reactions.all",
+        "current": "Tất cả biểu tượng cảm xúc",
+        "en_chars": 9,
+        "target_chars": 25,
+        "disposition": "Accessible name/sr-only text; not a fixed-width visible text label."
+      },
+      {
+        "key": "ui.teamBridge.reactions.categories",
+        "current": "Danh mục biểu tượng cảm xúc",
+        "en_chars": 16,
+        "target_chars": 27,
+        "disposition": "Accessible name/sr-only text; not a fixed-width visible text label."
+      },
+      {
+        "key": "ui.teamBridge.reactions.choose",
+        "current": "Chọn biểu tượng cảm xúc",
+        "en_chars": 15,
+        "target_chars": 23,
+        "disposition": "Accessible name/sr-only text; not a fixed-width visible text label."
+      },
+      {
+        "key": "ui.teamBridge.reactions.empty",
+        "current": "Không tìm thấy biểu tượng cảm xúc",
+        "en_chars": 14,
+        "target_chars": 33,
+        "disposition": "Rendered check required; no overflow measured. Keep current idiomatic copy unless actual geometry requires shortening."
+      },
+      {
+        "key": "ui.teamBridge.reactions.noResults",
+        "current": "Không tìm thấy biểu tượng cảm xúc",
+        "en_chars": 14,
+        "target_chars": 33,
+        "disposition": "Rendered check required; no overflow measured. Keep current idiomatic copy unless actual geometry requires shortening."
+      },
+      {
+        "key": "ui.teamBridge.reactions.search",
+        "current": "Tìm biểu tượng cảm xúc",
+        "en_chars": 12,
+        "target_chars": 22,
+        "disposition": "Rendered check required; no overflow measured. Keep current idiomatic copy unless actual geometry requires shortening."
+      },
+      {
+        "key": "ui.teamBridge.replies.close",
+        "current": "Đóng luồng trò chuyện",
+        "en_chars": 12,
+        "target_chars": 21,
+        "disposition": "Accessible name/sr-only text; not a fixed-width visible text label."
+      },
+      {
+        "key": "ui.teamBridge.replies.empty",
+        "current": "Chưa có câu trả lời nào. Hãy bắt đầu luồng trò chuyện.",
+        "en_chars": 33,
+        "target_chars": 54,
+        "disposition": "Rendered check required; no overflow measured. Keep current idiomatic copy unless actual geometry requires shortening."
+      },
+      {
+        "key": "ui.teamBridge.replies.last",
+        "current": "trả lời gần nhất lúc {time}",
+        "en_chars": 17,
+        "target_chars": 27,
+        "disposition": "Rendered check required; no overflow measured. Keep current idiomatic copy unless actual geometry requires shortening."
+      },
+      {
+        "key": "ui.teamBridge.replies.title",
+        "current": "Luồng trò chuyện",
+        "en_chars": 6,
+        "target_chars": 16,
+        "disposition": "Rendered check required; no overflow measured. Keep current idiomatic copy unless actual geometry requires shortening."
+      }
+    ],
+    "rtl": "Not applicable to these LTR locales; all values NFC with no directional control characters."
+  },
+  "limitations": [
+    "No native or browser rendered-fit evidence; no runtime activation/release claim.",
+    "Prior rejected many nits retained where present; no new blocker/major/minor/nit found in the landing delta.",
+    "Shared inherited values reused across heads; 173 and 199 are branch-scoped key reads, not two independently retranslated inventories."
+  ],
+  "receipt_derivation": {"rules_from_head": "6631ee87aaa036a387493e51b6ce3716a8a8aad3", "context_hash_verified": true, "agent": "translation-auditor", "instance": "f39d0c2ada5e-landed-1309-vi", "model": "openai/gpt-6-astra", "result": "clean", "findings": {"blocker": 0, "major": 0, "minor": 0, "nit": 0}, "source_sha256": "58594ba5908c2a3e5caaf839e6e4491e8ada46df72733212ed114b17112f94e7", "target_sha256": "291883bf26f884cae277fd11ca7046eb5108ab85c47874d8ab88c410cf578f8e", "receipt_sha256": "1d408a966590ae4a9adeea9f8e389a9db4fd8a4bfdd33d0e03f7d3c985737e7f"},
+  "artifacts": [
+    {
+      "path": "i18n/receipts/tbstack-landed-1309-vi.json",
+      "sha256": "1d408a966590ae4a9adeea9f8e389a9db4fd8a4bfdd33d0e03f7d3c985737e7f"
+    }
+  ]
+}

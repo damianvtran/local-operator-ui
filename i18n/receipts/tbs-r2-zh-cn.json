@@ -1,0 +1,76 @@
+{
+  "auditor": "translation-auditor",
+  "model": "anthropic/claude-opus-5-5",
+  "instance": "tbs-r2-zh-cn",
+  "session": "3deb8598170c",
+  "date": "2026-10-21",
+  "locale": "zh-CN",
+  "translator": "translator",
+  "translator_session": "4e9a64c540d9",
+  "namespace": "ui.teamBridge",
+  "status": "passed",
+  "keys_audited": 4,
+  "scope": "Round-2 remediation delta: 4 changed values (schedule.review, schedule.retry, schedule.confirm_action, schedule.create_uncertain) versus the round-1 snapshot r1/zh-CN.json (0fa86492…); the other 132 values were verified byte-identical to round-1 bytes and inherit the round-1 audit of the 27-key drafts/schedule delta (tbs-r1-zh-cn) and the base 109-key audit (tbd-r4-zhcn); catalogue audit only, not rendered-fit/activation/release.",
+  "sha256": {
+    "en": "145e5d2de5165a0fa6e5ce1cff91f6e6909007e448b4a6e229b47a87a71cb46b",
+    "zh-CN": "c18478fbf811fd1fd1ec27ed3ac2dec8e3daccce92c0ad848b43d35ecdbbd55f",
+    "context": "cfb426eebee10f1a71310746c4491690a24e2ad6074401115e217d222b9857b2"
+  },
+  "findings": [],
+  "previous_round": {
+    "path": "i18n/receipts/tbs-r1-zh-cn.json",
+    "sha256": "30f573354a38ee846237e73ba50adbc4c8edecf0cd579caa1385d00bf92cd251",
+    "target_sha256": "0fa864927225e75e241d9aac7a2bce99294181feaca1396fbae51d6045e053fe"
+  },
+  "remediation": [
+    {
+      "key": "ui.teamBridge.schedule.review",
+      "r1_severity": "MINOR",
+      "disposition": "fixed",
+      "verified": true,
+      "value": "核对定时发送"
+    },
+    {
+      "key": "ui.teamBridge.schedule.retry",
+      "r1_severity": "MINOR",
+      "disposition": "fixed",
+      "verified": true,
+      "value": "重试上次定时发送"
+    },
+    {
+      "key": "ui.teamBridge.schedule.confirm_action",
+      "r1_severity": "MINOR",
+      "disposition": "fixed",
+      "verified": true,
+      "value": "确认定时发送"
+    },
+    {
+      "key": "ui.teamBridge.schedule.create_uncertain",
+      "r1_severity": "NIT",
+      "disposition": "fixed",
+      "verified": true,
+      "value": "未能确认群组是否已创建，可能已经存在。再次创建群组前，请先查看“群组”。草稿已保留。"
+    }
+  ],
+  "inherited_receipt": {
+    "base": "2e16fb1456",
+    "path": "i18n/receipts/tbd-r4-zhcn.json",
+    "sha256": "85d1f0e0870d1a20d82e242187fbb7fba745a88189d98965e51010bd0e7125e9",
+    "keys_inherited": 109,
+    "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+    "base_target_sha256": "a461bd1121e50a3091f42da7ec75196ff94efa0eecc3e87bd99ea352d3e33672",
+    "unchanged_values_verified": 109
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  },
+  "validation": {
+    "independence": "Auditor session 3deb8598170c is distinct from translator session 4e9a64c540d9; the round-1 receipt and snapshot were left untouched; read-only audit, no repo edits, no git add/commit.",
+    "semantics": "A diff of r1/zh-CN.json against the current file shows exactly the 4 round-1 finding keys changed; 132/136 values are byte-identical, and the key order matches en. Each new value equals the round-1 proposal. review/confirm_action are now a parallel pair (核对定时发送 / 确认定时发送) on the same primary button. retry (重试上次定时发送) keeps the file's 重试 verb and uses the delta's 定时发送 noun, consistent with schedule.title, failed and success. create_uncertain drops the calqued 它 while keeping explicit uncertainty (未能确认…是否已创建，可能已经存在) and the “群组” Groups reference matching section.groups. Register stays pronoun-drop with no 您. No regressions found.",
+    "icu": "All 4 values parse with @formatjs/icu-messageformat-parser as a single literal node, matching en (none of them has placeholders); intl-messageformat zh-CN format() returns each value verbatim.",
+    "typography": "File is NFC, has no BOM, ends with a newline, and contains no U+200E/F, U+202A–E, U+2066–9 or U+061C. Changed values use only full-width ，。 and mainland “” quotes, with no ASCII prose punctuation and no CJK/Latin spacing.",
+    "overflow": "Dialog primary button: 12 cells (en 15–16 chars). Composer retry ghost button: 16 cells (en 23). create_uncertain: 82 cells (en 123), a wrapping alert. Every value stays below its English length; no material overflow risk.",
+    "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, visual-fit or rendered bidi claim. No catalogue/code edits."
+  }
+}

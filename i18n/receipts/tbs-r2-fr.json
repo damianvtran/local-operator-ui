@@ -1,0 +1,66 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "tbs-r2-fr",
+ "session": "a418e33f0cf6",
+ "date": "2026-10-21",
+ "locale": "fr",
+ "translator": "translator",
+ "translator_session": "1198ce271648",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 2,
+ "scope": "Round-2 remediation delta: 2 changed keys (schedule.when, schedule.create_retry) audited versus round-1 snapshot r1/fr.json (cfe5349c…); 134 other values verified byte-identical to round-1 bytes, key set and order unchanged; inherits the round-1 27-key drafts/schedule audit (tbs-r1-fr) and the base 109-key audit (tbd-r3-fr); catalogue audit only, not rendered-fit/activation/release.",
+ "sha256": {
+  "en": "145e5d2de5165a0fa6e5ce1cff91f6e6909007e448b4a6e229b47a87a71cb46b",
+  "fr": "551c9ae899c431dfd85d4e9ce30ca4942eb698df4b032f6943dc2c3af2418ce4",
+  "context": "cfb426eebee10f1a71310746c4491690a24e2ad6074401115e217d222b9857b2"
+ },
+ "findings": [],
+ "previous_round": {
+  "path": "i18n/receipts/tbs-r1-fr.json",
+  "sha256": "b106e8156841eccca6e5306c585602bae13125a175ae8078c2567180a8581d73",
+  "target_sha256": "cfe5349c5f64503c074a57ac86fb5e8d9817d84a31c53d02cd6de1e2c3944dea"
+ },
+ "remediation": [
+  {
+   "key": "ui.teamBridge.schedule.create_retry",
+   "r1_severity": "MINOR",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "J’ai vérifié la section Groupes — autoriser un nouvel essai"
+  },
+  {
+   "key": "ui.teamBridge.schedule.when",
+   "r1_severity": "NIT",
+   "disposition": "fixed",
+   "verified": true,
+   "value": "Date et heure d’envoi"
+  }
+ ],
+ "inherited_receipt": {
+  "base": "2e16fb1456",
+  "path": "i18n/receipts/tbd-r3-fr.json",
+  "sha256": "fe0341dd78a19bfe03e02625f56ec08e77aab77f27123a57b00e3cd4a045fbcd",
+  "keys_inherited": 109,
+  "base_source_sha256": "92f6c40f5da4092adb0b720fb6f89ba0f42857590f19627e99e8c6579b11585b",
+  "base_target_sha256": "b28cfcd21792bd85822daffe240797f932dbf2c6fa9e11b1917c1c20759438fb",
+  "full_coverage_receipt": {
+   "path": "i18n/receipts/tbd-r2-fr.json",
+   "sha256": "1166ae248ede12a85c9526e8ac4ac2ff65df4b870619da96c30c820cf7e256fe"
+  },
+  "unchanged_values_verified": 109
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+ },
+ "validation": {
+  "independence": "Auditor session a418e33f0cf6 is distinct from translator session 1198ce271648; both changed values read from the current working-tree bytes and diffed against the round-1 snapshot, not taken from any remediation summary; round-1 receipt left unmodified (sha re-verified); no repo file edited, staged or committed.",
+  "semantics": "create_retry « J’ai vérifié la section Groupes — autoriser un nouvel essai » keeps the explicit first-person acknowledgement the sidecar requires before a non-idempotent retry, keeps « Groupes » = section.groups / create_uncertain, and « essai » sits naturally beside the Réessayer verb of list.retry and schedule.retry. when « Date et heure d’envoi » is an idiomatic noun-phrase label for the datetime-local field, accurate for « Send at », and consistent with schedule.invalid (« une date et une heure »); labels carry no address form, sentence case kept. No regression to the review/confirm_action pair or the « Planifiés » references (unchanged).",
+  "icu": "Both values parsed with @formatjs/icu-messageformat-parser: one literal node each, argument set empty as in en; intl-messageformat (fr) output equals the stored string. No placeholders or plurals affected.",
+  "typography": "Both values NFC; no bidi controls (U+200E/F, U+202A–E, U+2066–9, U+061C) in the values or the file; apostrophes U+2019; em dash spaced with U+0020 as in the round-1-approved form; no : ; ! ? « » so no U+202F required.",
+  "overflow": "create_retry shortened 78 → 59 chars (en 49, 1.20×), resolving the nowrap ghost-button overflow risk at catalogue level; a rendered check at the 800 px minimum window width remains advisable. when 10 → 21 chars (en 7) as a stacked label in a max-w-lg dialog, which has room.",
+  "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, visual-fit or rendered bidi claim. No catalogue/code edits."
+ }
+}

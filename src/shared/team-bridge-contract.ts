@@ -423,3 +423,21 @@ export type TeamBridgeMemberInput = {
 	endpoint_id?: string;
 	display_label: string;
 };
+
+/** Server-owned delivery intent; bodies here are explicit user-authored work,
+ * never a desktop inbound-body cache. Terminal rows are absent from list. */
+export const teamBridgeScheduledMessageSchema = z.object({
+	id: id,
+	tenant_id: id,
+	conversation_id: id,
+	body: z.string(),
+	send_at: z.string().datetime({ offset: true }),
+	status: z.enum(["scheduled", "sending"]),
+	created_at: z.string().datetime({ offset: true }),
+});
+export type TeamBridgeScheduledMessage = z.infer<
+	typeof teamBridgeScheduledMessageSchema
+>;
+export const teamBridgeScheduledListSchema = z.object({
+	scheduled: z.array(teamBridgeScheduledMessageSchema),
+});

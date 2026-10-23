@@ -1,0 +1,74 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "tbstack-r1-1309-es",
+ "session": "c0d3d761bdad",
+ "job": "cc3ccc31983c",
+ "date": "2026-10-22",
+ "locale": "es",
+ "translator": "translator",
+ "translator_session": "87a8efad496d",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 140,
+ "keys_substantive": 0,
+ "scope": "PR #1309 (feat/tb-drafts-scheduled-desktop) at merged head 3751b6750b: union audit of es ui.teamBridge after merge 3751b6750b (parents fd926568e3 own pre-merge, 9aa14137de integrated). No new or changed values; no substantive retranslation audit was needed. Union integrity: all 140 values verified equal to the side they came from (29 own-side only, 2 integrated-side only, 109 shared, 0 dropped, 0 altered), and every non-toolbar value traced to an audited (en, target) snapshot. Terminology checked namespace-wide for message, more/actions, thread, reply in thread, react/reaction. ICU and CLDR plurals were parsed for all 140 keys.",
+ "source_head": "3751b6750bfc1a6ff90c6b8b7956ca6f559a686c",
+ "source_base": "9aa14137dec1562dac0ee72a5f056010d5438432",
+ "sha256": {
+  "en": "3d738f54b329fc56922b7113f8114dcf05a7ca1e6f3d70827a529ee00c21732e",
+  "es": "19a119c0fe3a8d0097e709d5865fc51bbe0ac03439d60007e6dbdc1abdef53ce",
+  "context": "2f510c8d3a2154b62e33851605da21211f7dbace28c9390d9ea2d9a3d75e902c"
+ },
+ "findings": [],
+ "inherited_receipts": [
+  {
+   "base": "fd926568e3",
+   "reached_via_parent": "fd926568e3",
+   "path": "i18n/receipts/tbh-r1-es.json",
+   "sha256": "3da7b99f0f97255ffdaf4c81901ed300326e4c22898d7559e436a420a708923f",
+   "instance": "tbh-r1-es",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "base_source_sha256": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+   "base_target_sha256": "055492d0493b4bad648830f5d5cc6c57ef5db2588aa8178fdc189b39d6f6eae7",
+   "keys_inherited": 138,
+   "unchanged_values_verified": 138
+  },
+  {
+   "base": "9aa14137de",
+   "reached_via_parent": "9aa14137de",
+   "path": "i18n/receipts/tbd-sender-r1-es.json",
+   "sha256": "e621cc31a7dbb50c5a3227a4ede62832b2294c0a3c7658f9f3d118864ebf39c0",
+   "instance": "tbd-sender-r1-es",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "base_source_sha256": "7fd64414c053ab675f35a7aedd1389d30de404b964565207a02173ce9fd4935e",
+   "base_target_sha256": "23b17040807c59c54240eb97a30841b41697a985d104ca94f09994c1e0d04361",
+   "keys_inherited": 2,
+   "unchanged_values_verified": 2
+  }
+ ],
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+ },
+ "validation": {
+  "independence": "Auditor session c0d3d761bdad (job cc3ccc31983c, translation-auditor) translated none of these strings. The other values were translated in earlier sessions and audited under the inherited receipts listed. Every claim was checked against bytes read with `git show <sha>:<path>`; no checkout, worktree or repo edit was made. The ledger row's own translator is translator (87a8efad496d).",
+  "union": "Merge 3751b6750b: parents fd926568e3 (own pre-merge head) and 9aa14137de (integrated). scripts/i18n/catalogue-union-parity.mjs (origin/main, sha256 cec426a6…) ran read-only from a scratch copy with --repo, --head 3751b6750b --old-head fd926568e3 --base 9aa14137de, over the en catalogue, the context and fr/es/vi. RESULT: PASS, exit 0 (union-parity-fr-es-vi.txt, sha256 5855aca9a70f48d68ded725d14d337432bba670b0efd7703f943d4e0e4861e62). An independent Python pass gave the same answer: es merged 140 keys = own 138 ∪ integrated 111, 0 dropped, 0 shared keys altered, 0 side conflicts, and key order equals en. Provenance: each value equals an audited (en value, target value) pair at a fresh ledger snapshot (tbh-r1-es@fd926568e3: 138; tbd-sender-r1-es@9aa14137de: 2). No key is uncovered. All inherited receipt files re-hashed equal to their ledger receipt_sha256. The parity tool also flags three historical merges (fbb29247e5, f1520f143e, 9aa14137de). Each flag is expected and not a defect: an earlier-audited value was kept over a pre-audit draft, or a deliberate key removal (d6b202c9c4) was carried. None is one of these heads' own merges, and every resulting value traces to an audited snapshot.",
+  "semantics": "No new values to judge. For terminology, the shared terms are message, more/actions, thread, reply in thread, and react/reaction (the last only where present). Read across the whole merged namespace, each maps to one local term. Union deltas from the integrated side (sender.unknown_person/unknown_agent, and the drafts/schedule/notify/replies/attachments copy where it applies) agree with those terms.",
+  "icu": "Parsed all 140 en/es pairs with @formatjs/icu-messageformat-parser (~/local-operator-ui/node_modules, run from the auditor scratchpad). Argument names and types, and markup tags, are identical to en for every key; context parity holds (140 en = 140 context keys).",
+  "plurals": "CLDR es one/many/other. Every plural selector carries exactly the locale's categories.",
+  "limitations": "Catalogue audit only. No rendered-fit, pseudo-localization, activation or release evidence is claimed; the browser was not used. The toolbar label is an accessible name and the more button's text is a tooltip, so the text is not painted in the row."
+ }
+}

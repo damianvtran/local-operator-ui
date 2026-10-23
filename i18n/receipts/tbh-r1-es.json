@@ -1,0 +1,40 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "tbh-r1-es",
+ "session": "981afd4acd10",
+ "date": "2026-10-21",
+ "locale": "es",
+ "translator": "translator",
+ "translator_session": "87a8efad496d",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 2,
+ "scope": "2-key held-schedule recovery delta (ui.teamBridge.schedule.held, ui.teamBridge.schedule.discard_attempt) per git diff 51dceb5a09..c06b457 of en; the other 136 values verified byte-unchanged versus HEAD and inherited from tbs-r2-es; catalogue audit only, not rendered-fit/activation/release.",
+ "sha256": {
+  "en": "5f67df6c37f34f1f83e4048ad47aef9bd4020fe2ba74c5e8e548b9c4439dc7ee",
+  "es": "055492d0493b4bad648830f5d5cc6c57ef5db2588aa8178fdc189b39d6f6eae7",
+  "context": "02e7be8fe466cd83941fcead89f234a705d0aa40765d274b9d92390333e4337c"
+ },
+ "findings": [],
+ "inherited_receipt": {
+  "base": "c06b457be9",
+  "path": "i18n/receipts/tbs-r2-es.json",
+  "sha256": "8fb0a8827543fa9a832cdf857f2a2f2960e0b4d8ad4883222d4b1cc6fe780d8f",
+  "keys_inherited": 136,
+  "base_target_sha256": "6ed0b9dc102977bb5952209bf17920a3fcd023cd475c99215d0be40ed6dae3b2",
+  "unchanged_values_verified": 136
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+ },
+ "validation": {
+  "independence": "Auditor session 981afd4acd10 is distinct from translator session 87a8efad496d and from the tbs-r1/r2-es auditor session e81ede7b8f9d; values read from working-tree bytes, not from a summary.",
+  "semantics": "held: 'Revisa Programados' matches schedule.list 'Programados' and the schedule.failed/schedule.success references; 'aún exista' correctly renders 'still exist' (vs 'ya exista' in create_uncertain); 'cancela el envío' points at the server action labelled schedule.cancel 'Cancelar envío'; 'Tu borrador se conserva.' matches failed/create_uncertain. discard_attempt: 'He revisado Programados — descartar este intento' mirrors create_retry ('He revisado Grupos — …'), keeps the explicit first-person acknowledgement, uses 'descartar' (not 'cancelar'/'eliminar') so it does not read as cancelling the server message; 'intento' matches create_retry. tú register, infinitive action, glossary schedule → programación respected.",
+  "icu": "Both values parsed with @formatjs/icu-messageformat-parser: one literal node each, zero arguments, same as English; formatted with intl-messageformat locale es to identical text. Key set and order equal English (138); HEAD-to-working diff is 2 added lines + trailing comma on schedule.retry; 136 values byte-identical to HEAD (sha256 6ed0b9dc…, equal to tbs-r2-es target sha).",
+  "typography": "File and values NFC; no bidi controls (U+200E/F, U+202A–E, U+2066–9, U+061C); no straight quotes, no double spaces; em dash U+2014 with spaces per es style guide; non-ASCII only ú, ó, í and —.",
+  "overflow": "held (<p>, wraps) 166 vs 128 chars (1.30x), within normal es expansion. discard_attempt is a ghost Button whose base class sets whitespace-nowrap: 48 vs 42 chars (1.14x), shorter than the already-approved sibling create_retry (54 chars) in the same composer footer; no finding, rendered fit not verified.",
+  "limitations": "Browser unavailable by task constraint; no screenshots, glyph metrics, visual-fit or rendered bidi claim. No catalogue/code edits."
+ }
+}
