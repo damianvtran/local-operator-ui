@@ -168,6 +168,14 @@ function Frame({ surface, state, before = false }: FrameProps) {
 const meta = {
 	title: "Team Bridge/Default on",
 	component: Frame,
+	// A theme switch replays play(). Remount its isolated state too, otherwise a
+	// prior Dismiss click would make the next theme's pending control disappear.
+	render: (args, context) => (
+		<Frame
+			key={`${context.id}:${String((context.args as Record<string, unknown>).theme)}:${args.state}:${args.before}`}
+			{...args}
+		/>
+	),
 	parameters: { layout: "fullscreen" },
 	args: { surface: "settings", state: "pending", before: false },
 } satisfies Meta<typeof Frame>;
