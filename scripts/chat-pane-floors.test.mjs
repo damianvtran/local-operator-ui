@@ -586,6 +586,19 @@ test("the seam inset is gated on a separator actually being drawn", () => {
 			definition[1].replace(/\s+/g, " ").includes(pair),
 			`\`rightPaneDocked\` no longer carries \`${pair}\`: \`canvasDocked\` alone means the row is wide enough to dock, which is true with the canvas closed - the inset then applies to every chat on a wide window (review round 1, BLOCKER)`,
 		);
+	/*
+	 * AND NO BARE `canvasDocked` SURVIVES the pairs above (review round 2's MINOR).
+	 * The presence checks alone pass on `canvasDocked || (isCanvasOpen &&
+	 * canvasDocked) || ...`, which is the round-1 defect with the fix bolted on:
+	 * stripping the two correct pairs must leave no reference to the mode flag.
+	 */
+	const stripped = definition[1]
+		.replace(/\(\s*isCanvasOpen && canvasDocked\s*\)/g, "")
+		.replace(/\(\s*sessionAsksOpen && canvasDocked\s*\)/g, "");
+	assert.ok(
+		!/\bcanvasDocked\b/.test(stripped),
+		"`rightPaneDocked` still reads `canvasDocked` outside the canvas families' open pairs; a bare `canvasDocked` is true with every pane closed and insets every chat on a wide window",
+	);
 	for (const flag of [
 		"isRunPanelOpen",
 		"isBrowserPaneOpen",
