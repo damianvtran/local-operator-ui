@@ -302,6 +302,113 @@ const MANY_ROWS: DesktopLibraryAsset[] = Array.from(
 	},
 );
 
+/**
+ * WHAT THE LINKED CONVERSATION'S STREAM PAINTS, and why a story needs a stream
+ * at all.
+ *
+ * The transcript holds hydration until the canonical stream's first `snapshot`
+ * frame, so a desktop-REQUEST mock (`sessions.history`) leaves the well on the
+ * shared spinner — the QA-round-1 finding. These frames go through the NATIVE
+ * transport instead (`window.api.desktop.stream.subscribe`), which is the same
+ * shape `library-page.cases.mjs` installs, and the hook's `JSON.parse` is
+ * unvalidated, so one snapshot frame is the whole mock. A durable row's
+ * `content` is a BLOCK LIST — a bare string paints nothing (`messageText`).
+ */
+type TrajectoryState = "populated" | "streaming" | "long" | "question";
+
+const TRAJECTORY_SESSION = "abcdef123456";
+
+const durableRow = (
+	id: string,
+	role: "user" | "assistant",
+	text: string,
+	ts: number,
+) => ({
+	id,
+	ts,
+	type: "message",
+	payload: { role, content: [{ type: "text", text }] },
+});
+
+const TRAJECTORY_LINES: ReadonlyArray<["user" | "assistant", string]> = [
+	["user", "Which invoices are still open for March?"],
+	["assistant", "Three are unpaid: two net-30 and one disputed line."],
+	["user", "Show me the disputed one."],
+	["assistant", "INV-2291, 1,240.00 EUR, flagged twice by the same reviewer."],
+];
+
+const trajectoryEntries = (state: TrajectoryState) =>
+	state === "long"
+		? Array.from({ length: 36 }, (_, index) =>
+				durableRow(
+					`row-${index}`,
+					index % 2 === 0 ? "user" : "assistant",
+					index % 2 === 0
+						? `Follow-up ${index / 2 + 1}: what changed on this line?`
+						: `Line ${index}: the ledger moved by 120.00 and the note was re-dated.`,
+					1_759_000_000 + index * 60,
+				),
+			)
+		: TRAJECTORY_LINES.map(([role, text], index) =>
+				durableRow(`row-${index}`, role, text, 1_759_000_000 + index * 60),
+			);
+
+const trajectoryFrames = (state: TrajectoryState) => [
+	{
+		session_id: TRAJECTORY_SESSION,
+		epoch: "epoch-1",
+		seq: 1,
+		type: "snapshot",
+		payload: {
+			frontend: {
+				state_version: 1,
+				epoch: "epoch-1",
+				sequence: 1,
+				live_cursor: null,
+				snapshot: {
+					state_version: 1,
+					session_id: TRAJECTORY_SESSION,
+					epoch: "epoch-1",
+					sequence: 1,
+					cwd: "/tmp",
+					conversation_title: "March invoices",
+					conversation_title_user_set: false,
+					conversation_title_forked: false,
+					goal: "",
+					active_agent: "",
+					active_team: "",
+					selected_model: null,
+					effective_model: null,
+					streaming: state === "streaming",
+					generation: 1,
+					...(state === "question"
+						? {
+								pending_gate: {
+									request_id: "gate-1",
+									kind: "ask",
+									title: "Which ledger should I reconcile against?",
+									detail: "",
+									options: [{ label: "March" }, { label: "April" }],
+									secret: false,
+									question_index: 0,
+									question_total: 1,
+								},
+							}
+						: {}),
+				},
+			},
+			history: {
+				entries: trajectoryEntries(state),
+				// A long page says there is more behind it, which is what the
+				// older-history row is for.
+				has_more: state === "long",
+				cursor_missing: false,
+			},
+			cold: false,
+		},
+	},
+];
+
 type StubState = {
 	rows: DesktopLibraryAsset[];
 	detail: DesktopLibraryAsset | null;
@@ -310,6 +417,13 @@ type StubState = {
 	failList: string | null;
 	media: "text" | "pptx" | "error";
 	linkedChat: boolean;
+	/**
+	 * What the linked conversation's stream paints, or null for a stream that
+	 * never answers (the subscriber-only default).
+	 */
+	trajectory: TrajectoryState | null;
+	/** Rows whose thumbnail is the pale artwork; see `palePictureSvg`. */
+	brightThumbnails: string[];
 };
 
 let stub: StubState = {
@@ -320,6 +434,8 @@ let stub: StubState = {
 	failList: null,
 	media: "text",
 	linkedChat: false,
+	trajectory: null,
+	brightThumbnails: [],
 };
 
 /*
@@ -399,6 +515,21 @@ const pictureSvg = (
 	const hue = (seed * 47) % 360;
 	const circle = Math.round(height * 0.22);
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${hue} 42% 36%)"/><stop offset="1" stop-color="hsl(${(hue + 40) % 360} 52% 15%)"/></linearGradient></defs><rect width="${width}" height="${height}" fill="url(#g)"/><circle cx="${Math.round(width * 0.74)}" cy="${Math.round(height * 0.3)}" r="${circle}" fill="#e8c56a" opacity=".8"/><path d="M0 ${Math.round(height * 0.76)} L${Math.round(width * 0.29)} ${Math.round(height * 0.42)} L${Math.round(width * 0.55)} ${Math.round(height * 0.8)} L${Math.round(width * 0.78)} ${Math.round(height * 0.56)} L${width} ${Math.round(height * 0.82)} V${height} H0Z" fill="#0a1f24" opacity=".75"/><text x="${Math.round(width * 0.05)}" y="${Math.round(height * 0.14)}" font-family="Helvetica, Arial, sans-serif" font-size="${Math.round(height * 0.052)}" fill="#ffffff" opacity=".9">${label}</text></svg>`;
+};
+
+/**
+ * A BRIGHT thumbnail, for judging a mark that sits on top of the picture.
+ *
+ * The generated artwork above is deliberately saturated (a dark gradient with a
+ * gold disc), and a heart's legibility cannot be judged against it: the QA
+ * fixture a design round reaches for is often a pale screenshot, and the
+ * operator's own files are invoices on white. This is a near-white ground with
+ * faint grey content, drawn by the same stub so the frame needs no asset.
+ */
+const palePictureSvg = (label: string, width: number, height: number) => {
+	const w = width;
+	const h = height;
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><rect width="${w}" height="${h}" fill="#fbfbfc"/><rect x="${Math.round(w * 0.06)}" y="${Math.round(h * 0.16)}" width="${Math.round(w * 0.46)}" height="${Math.round(h * 0.035)}" fill="#e6e8ec"/><rect x="${Math.round(w * 0.06)}" y="${Math.round(h * 0.26)}" width="${Math.round(w * 0.72)}" height="${Math.round(h * 0.022)}" fill="#eceef1"/><rect x="${Math.round(w * 0.06)}" y="${Math.round(h * 0.33)}" width="${Math.round(w * 0.64)}" height="${Math.round(h * 0.022)}" fill="#eceef1"/><rect x="${Math.round(w * 0.06)}" y="${Math.round(h * 0.4)}" width="${Math.round(w * 0.55)}" height="${Math.round(h * 0.022)}" fill="#eceef1"/><circle cx="${Math.round(w * 0.82)}" cy="${Math.round(h * 0.24)}" r="${Math.round(h * 0.09)}" fill="#f1f2f4"/><text x="${Math.round(w * 0.06)}" y="${Math.round(h * 0.9)}" font-family="Helvetica, Arial, sans-serif" font-size="${Math.round(h * 0.05)}" fill="#c9ccd2">${label}</text></svg>`;
 };
 
 const listing = (request: { scope?: string } = {}) => {
@@ -602,6 +733,39 @@ const install = () => {
 	api.desktop = {
 		...api.desktop,
 		request: answer,
+		/*
+		 * THE STREAM'S NATIVE TRANSPORT. `desktop-api` prefers it over the
+		 * EventSource proxy, so a fake subscription that emits one JSON frame is
+		 * all a story needs to paint a durable transcript. Frames are emitted on
+		 * a task, not synchronously inside the subscriber's own effect.
+		 */
+		stream: {
+			subscribe: (
+				_args: { sessionId: string },
+				onEvent: (event: {
+					streamId: string;
+					kind: "data" | "error" | "end";
+					data?: string;
+				}) => void,
+			) => {
+				const streamId = "library-story-stream";
+				const frames = stub.trajectory
+					? trajectoryFrames(stub.trajectory)
+					: null;
+				if (frames) {
+					setTimeout(() => {
+						for (const frame of frames) {
+							onEvent({
+								streamId,
+								kind: "data",
+								data: JSON.stringify(frame),
+							});
+						}
+					}, 0);
+				}
+				return { streamId: Promise.resolve(streamId), dispose: () => {} };
+			},
+		},
 		media: async (request: { op: string; [key: string]: unknown }) => {
 			if (stub.media === "error") {
 				return {
@@ -624,6 +788,16 @@ const install = () => {
 			if (request.op === "library.thumbnail") {
 				thumbnailReads.push(String(request.assetId ?? ""));
 				if (row?.kind === "image" && row.exists) {
+					if (stub.brightThumbnails.includes(row.id)) {
+						return {
+							status: 200,
+							kind: "bytes",
+							mimeType: "image/svg+xml",
+							data: new TextEncoder().encode(
+								palePictureSvg(assetDisplayName(row), 1600, 1000),
+							),
+						};
+					}
 					const svg = pictureSvg(
 						assetDisplayName(row),
 						Number.parseInt(row.id.slice(-2), 10),
@@ -776,6 +950,8 @@ const page = (
 		failList: null,
 		media: "text",
 		linkedChat: false,
+		trajectory: null,
+		brightThumbnails: [],
 		...state,
 	};
 	extraTags = [];
@@ -903,6 +1079,119 @@ export const CardsFavourited: Story = {
 };
 export const RowsFavourited: Story = {
 	render: () => page({ rows: FAVORITE_ROWS, view: "list" }),
+};
+
+/*
+ * THE SAME MARK ON A BRIGHT GROUND (design round 2, R1's evidence gap). The
+ * operator's own screenshots are invoices on white, and the generic artwork is
+ * dark enough that a mark's contrast against a pale image cannot be judged from
+ * it. These four rows are near-white thumbnails — two favourited, two not — so
+ * one frame answers "can I see the heart on a white document". The production
+ * mark is untouched: the fixture changes the PICTURE, never the styling.
+ */
+const BRIGHT_ROWS: DesktopLibraryAsset[] = [0, 1, 2, 3].map((index) =>
+	asset(`la_000000000000006${index + 1}`, {
+		name: `Scanned invoice ${index + 1}`,
+		derived_name: `invoice-0${index + 1}.png`,
+		kind: "image",
+		category: "image",
+		origin: "mentioned",
+		origin_group: "mentioned",
+		favorite: index < 2,
+		width: 1600,
+		height: 1000,
+		size_bytes: 240_000,
+	}),
+);
+export const CardsFavouritedOnBright: Story = {
+	render: () =>
+		page({
+			rows: BRIGHT_ROWS,
+			brightThumbnails: BRIGHT_ROWS.map((row) => row.id),
+		}),
+};
+export const RowsFavouritedOnBright: Story = {
+	render: () =>
+		page({
+			rows: BRIGHT_ROWS,
+			brightThumbnails: BRIGHT_ROWS.map((row) => row.id),
+			view: "list",
+		}),
+};
+
+/*
+ * THE CONVERSATION STATES THE QA ROUND ASKED FOR, painted from a real snapshot
+ * frame through the stream's native transport (see `TrajectoryState`). Each is
+ * the same dock with the same asset; only the stream's answer changes.
+ */
+export const TrajectoryPopulated: Story = {
+	render: () =>
+		page({
+			shell: true,
+			route: "/library/assets/la_0000000000000023",
+			linkedChat: true,
+			trajectory: "populated",
+		}),
+	/*
+	 * THE PLAY IS THE PROOF THE FRAME PAINTS ROWS, not that a spinner rendered:
+	 * it waits for the snapshot's own sentence. A story whose stream mock
+	 * regressed fails here instead of being captured as evidence.
+	 */
+	play: async () => {
+		await waitFor(() =>
+			expect(document.body.textContent).toContain(
+				"Which invoices are still open for March?",
+			),
+		);
+	},
+};
+export const TrajectoryStreaming: Story = {
+	render: () =>
+		page({
+			shell: true,
+			route: "/library/assets/la_0000000000000023",
+			linkedChat: true,
+			trajectory: "streaming",
+		}),
+	play: async () => {
+		await waitFor(() =>
+			expect(document.body.textContent).toContain(
+				"INV-2291, 1,240.00 EUR, flagged twice by the same reviewer.",
+			),
+		);
+	},
+};
+export const TrajectoryLong: Story = {
+	render: () =>
+		page({
+			shell: true,
+			route: "/library/assets/la_0000000000000023",
+			linkedChat: true,
+			trajectory: "long",
+		}),
+	play: async () => {
+		await waitFor(() =>
+			expect(document.body.textContent).toContain(
+				"Line 17: the ledger moved by 120.00 and the note was re-dated.",
+			),
+		);
+	},
+};
+export const TrajectoryQuestion: Story = {
+	render: () =>
+		page({
+			shell: true,
+			route: "/library/assets/la_0000000000000023",
+			linkedChat: true,
+			trajectory: "question",
+		}),
+	play: async () => {
+		await waitFor(() =>
+			expect(
+				document.querySelector("[data-library-trajectory-gate]"),
+			).not.toBeNull(),
+		);
+	},
 };
 export const Preview: Story = {
 	render: () =>
@@ -1418,6 +1707,8 @@ const installPreviewStub = (row: DesktopLibraryAsset) => {
 		failList: null,
 		media: "text",
 		linkedChat: false,
+		trajectory: null,
+		brightThumbnails: [],
 	};
 	extraTags = [];
 	install();
@@ -1760,6 +2051,8 @@ const previewSwitchPane = () => {
 		failList: null,
 		media: "text",
 		linkedChat: false,
+		trajectory: null,
+		brightThumbnails: [],
 	};
 	extraTags = [];
 	install();

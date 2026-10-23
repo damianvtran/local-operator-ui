@@ -335,6 +335,8 @@ const ANSWER = {
 	requests: [],
 	/** A gate the `library.update` answer waits on, so a case can see the paint first. */
 	updateGate: null,
+	/** Frames the stream bridge emits on subscribe; null keeps the EventSource path. */
+	stream: null,
 	state: "ready",
 	nextCursor: null,
 	allTotal: null,
@@ -442,6 +444,30 @@ const desktopRequest = async (request) => {
 					},
 				},
 			},
+		};
+	}
+	if (request.op === "sessions.checkpoints") {
+		/*
+		 * The transcript's checkpoint rail reads this on mount. An empty, READY
+		 * index is the honest "this conversation has none" answer; leaving it out
+		 * made the harness throw, which surfaced as a render crash inside the
+		 * transcript rather than as a failed request.
+		 */
+		return {
+			status: 200,
+			body: {
+				result: {
+					session_id: request.sessionId,
+					index: { state: "ready" },
+					checkpoints: [],
+				},
+			},
+		};
+	}
+	if (request.op === "sessions.checkpoints.warm") {
+		return {
+			status: 200,
+			body: { result: { accepted: [], pending: [] } },
 		};
 	}
 	if (request.op === "sessions.history") {
@@ -588,6 +614,27 @@ api.desktop = {
 			mimeType: "text/markdown",
 			data: new TextEncoder().encode("# Notes\n\nA document."),
 		};
+	},
+};
+/*
+ * THE CANONICAL STREAM'S NATIVE TRANSPORT, when a case wants a painted
+ * transcript: `desktop-api` prefers `window.api.desktop.stream.subscribe` over
+ * the EventSource proxy, so a fake subscription that emits one JSON frame is
+ * the whole mock. `streamId` resolves, and `dispose` is the no-op a story
+ * subscription has.
+ */
+api.desktop.stream = {
+	subscribe: (args, onEvent) => {
+		const streamId = "library-case-stream";
+		const frames = ANSWER.stream;
+		if (frames) {
+			setTimeout(() => {
+				for (const frame of frames) {
+					onEvent({ streamId, kind: "data", data: JSON.stringify(frame) });
+				}
+			}, 0);
+		}
+		return { streamId: Promise.resolve(streamId), dispose: () => {} };
 	},
 };
 api.openFile = async () => {};
@@ -981,6 +1028,7 @@ test("the rail renders as the page row's first column at 1380px", async () => {
 		await act(async () => root.unmount());
 	} finally {
 		dom.window.Element.prototype.getBoundingClientRect = original;
+		sessionStorage.removeItem("library-filters");
 	}
 });
 
@@ -1406,11 +1454,35 @@ test("a path-backed asset reads its live file and says when it moved", async () 
 		text(container).includes("rewritten by the agent"),
 		"the viewer paints the file at its path, not the indexed copy",
 	);
-	const live = container.querySelector("[data-library-file-live]");
-	assert.ok(live, "the size shown is the live file's, marked as such");
+	const live = () => container.querySelector("[data-library-file-live]");
+	assert.equal(
+		text(live()),
+		"22 B",
+		"the strip reports the live file's own size, not the 1.2 MB row figure",
+	);
+	/*
+	 * AND A SECOND WRITE IS SEEN BY THE POLL, not just by the mount. The bridge's
+	 * answer moves; the watcher's 2 s visible poll (fresh, so the probe cache does
+	 * not serve the old stat) must bump the revision and the viewer re-read the
+	 * path. The wait is real time because the interval is the product's.
+	 */
+	ANSWER.fileBridge = {
+		text: "rewritten once more",
+		sizeBytes: 4096,
+		mtimeMs: 1_700_000_000_000 + 120_000,
+	};
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 2600));
+	});
+	await flush(8);
+	assert.equal(
+		text(live()),
+		"4.0 KB",
+		"the next poll reports the file's new size",
+	);
 	assert.ok(
-		text(live).length > 0 && !text(live).includes("1.2 MB"),
-		"the live size replaces the stale row figure",
+		text(container).includes("rewritten once more"),
+		"the viewer re-read the path after the mtime moved",
 	);
 	await act(async () => root.unmount());
 	ANSWER.fileBridge = null;
@@ -1443,7 +1515,12 @@ test("a linked conversation holds the shared spinner until the stream answers", 
 			id: "e1",
 			ts: 1_700_000_000,
 			type: "message",
-			payload: { role: "user", content: "what is in this file?" },
+			// A durable row's content is a BLOCK list; `messageText` reads only that
+			// shape, which is why a bare string painted no row at first.
+			payload: {
+				role: "user",
+				content: [{ type: "text", text: "what is in this file?" }],
+			},
 		},
 		{
 			id: "e2",
@@ -1580,5 +1657,123 @@ test("favourite paints at the press, survives a refetch, and filters the list", 
 		await act(async () => root.unmount());
 	} finally {
 		dom.window.Element.prototype.getBoundingClientRect = original;
+		sessionStorage.removeItem("library-filters");
 	}
+});
+
+/**
+ * One canonical snapshot frame, as the stream's native transport delivers it.
+ *
+ * `JSON.parse` in the session hook is unvalidated (`as DesktopSessionFrame`), so
+ * this is the shape the reducer reads rather than a schema: the frontend
+ * snapshot carries the fields the transcript paints its working line and gate
+ * from, the history page carries the durable rows. `patch` lets a case state
+ * `streaming` or `pending_gate`.
+ */
+const streamSnapshot = (sessionId, entries, patch = {}) => [
+	{
+		session_id: sessionId,
+		epoch: "epoch-1",
+		seq: 1,
+		type: "snapshot",
+		payload: {
+			frontend: {
+				state_version: 1,
+				epoch: "epoch-1",
+				sequence: 1,
+				live_cursor: null,
+				snapshot: {
+					state_version: 1,
+					session_id: sessionId,
+					epoch: "epoch-1",
+					sequence: 1,
+					cwd: "/tmp",
+					conversation_title: "Asset chat",
+					conversation_title_user_set: false,
+					conversation_title_forked: false,
+					goal: "",
+					active_agent: "",
+					active_team: "",
+					selected_model: null,
+					effective_model: null,
+					streaming: false,
+					generation: 1,
+					...patch,
+				},
+			},
+			history: { entries, has_more: false, cursor_missing: false },
+			cold: false,
+		},
+	},
+];
+
+test("a stream snapshot paints the persisted conversation below the asset", async () => {
+	ANSWER.rows = [
+		asset("la_0000000000000018", {
+			name: "Snapshot chat",
+			chat: {
+				session_id: "feedface5678",
+				title: "Asset chat",
+				updated_at: 1_700_000_000,
+			},
+		}),
+	];
+	ANSWER.ops = [];
+	ANSWER.requests = [];
+	ANSWER.history = null;
+	/*
+	 * THE FILTER IS THE PREVIOUS CASE'S, AND IT PERSISTS. The favourite case
+	 * presses the rail's Favorites row, which writes `library-filters` to
+	 * sessionStorage; a later mount reads it back and this asset is not a
+	 * favourite, so its card would not render. Clear the stored filter this case
+	 * does not want rather than inheriting it.
+	 */
+	sessionStorage.removeItem("library-filters");
+	ANSWER.stream = streamSnapshot("feedface5678", [
+		{
+			id: "row-1",
+			ts: 1_700_000_000,
+			type: "message",
+			// A durable row's content is a BLOCK list; `messageText` reads only that
+			// shape, which is why a bare string painted no row at first.
+			payload: {
+				role: "user",
+				content: [{ type: "text", text: "what is in this file?" }],
+			},
+		},
+		{
+			id: "row-2",
+			ts: 1_700_000_001,
+			type: "message",
+			payload: {
+				role: "assistant",
+				content: [{ type: "text", text: "It is a one-line note." }],
+			},
+		},
+	]);
+	const { container, root } = await mount();
+	const card = container.querySelector(
+		'[data-library-card-id="la_0000000000000018"] button',
+	);
+	await act(async () => card.click());
+	await flush(10);
+	const trajectory = container.querySelector("[data-library-trajectory]");
+	assert.ok(trajectory);
+	const toggle = trajectory.querySelector("button[aria-expanded]");
+	if (toggle?.getAttribute("aria-expanded") === "false") {
+		await act(async () => toggle.click());
+		await flush(4);
+	}
+	if (process.env.LIBRARY_DEBUG)
+		console.error("TRAJ", JSON.stringify(text(trajectory)));
+	assert.ok(
+		text(trajectory).includes("what is in this file?"),
+		"the snapshot's user row paints",
+	);
+	assert.ok(
+		text(trajectory).includes("It is a one-line note."),
+		"the snapshot's assistant row paints",
+	);
+	await act(async () => root.unmount());
+	ANSWER.stream = null;
 });

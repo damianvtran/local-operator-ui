@@ -694,6 +694,7 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 					asset={asset}
 					focusSignal={composerFocusSignal}
 					showLinkedRow={!chatSessionId}
+					onOpenChat={onOpenConversation}
 					refreshSignal={refreshTick}
 					streaming={chatSessionId ? streamingBySession[chatSessionId] : false}
 					onSessionChange={(assetId, sessionId) =>
