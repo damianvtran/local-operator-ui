@@ -116,9 +116,12 @@ function titleOf(row: SwitcherRow): string {
  * just switched to (agent review round 2, R2-1).
  *
  * A capture-phase listener on `window` is the one place that still sees the
- * event: capture on the window runs before the element under the pointer, and
- * before Radix's composed trigger, whose handler skips a prevented event.
- * `preventDefault` is the whole action.
+ * event: capture on the window runs before the element under the pointer, so
+ * preventing it there keeps the browser's own menu shut - and stopping it
+ * there keeps every handler underneath from seeing it at all. Preventing is
+ * not enough on its own: Radix's composed trigger skips a prevented event, but
+ * a plain `onContextMenu` opens its own menu without checking (agent review
+ * round 3, R3-1).
  *
  * ARMED FOR ONE PRESS, NEVER LONGER: it disarms on the first `contextmenu` it
  * swallows, on the next `pointerup`, or at the bound below. A guard that outlived
@@ -136,6 +139,10 @@ function guardNextContextMenu(): void {
 	}
 	function onContextMenu(event: MouseEvent): void {
 		event.preventDefault();
+		/* So the page's own handlers never run: this listener is capture on the
+		   window, the outermost target, and stopping here ends the path before
+		   React's root listener or any element handler sees the event. */
+		event.stopPropagation();
 		disarm();
 	}
 	bound = window.setTimeout(disarm, PRESS_CONTEXT_MENU_GUARD_MS);
