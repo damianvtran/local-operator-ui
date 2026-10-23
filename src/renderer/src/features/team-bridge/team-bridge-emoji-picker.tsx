@@ -1,7 +1,7 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { t } from "@shared/i18n";
 import { Grid2X2 } from "lucide-react";
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
 	EMOJI_ENTRIES,
 	EMOJI_GROUPS,
@@ -9,7 +9,8 @@ import {
 	searchEmoji,
 	tonedEmoji,
 } from "./team-bridge-emoji-model";
-import { canRenderEmoji } from "./team-bridge-emoji-support";
+import { cachedEmojiSupport } from "./team-bridge-emoji-support";
+import { scheduleEmojiSupport } from "./team-bridge-emoji-support-scheduler";
 import { useReactionPreferences } from "./team-bridge-reaction-preferences";
 
 const COLUMNS = 8;
@@ -31,7 +32,7 @@ const CATEGORY_KEYS = [
 // A supported base does not guarantee its tone variant is joined on an older font.
 function supportedTone(emoji: string, tone: number): string {
 	const variant = tonedEmoji(emoji, tone);
-	return canRenderEmoji(variant) ? variant : emoji;
+	return cachedEmojiSupport(variant) === true ? variant : emoji;
 }
 
 /** Offline Unicode/CLDR data, 53 KB gzip. A virtual table renders at most 10 rows for the whole
@@ -58,20 +59,42 @@ export function TeamBridgeEmojiPicker({
 	const [top, setTop] = useState(0);
 	const scroll = useRef<HTMLDivElement>(null);
 	const grid = useRef<HTMLTableElement>(null);
-	// Keep the full wire corpus, but only offer glyphs this renderer actually paints. The
-	// per-glyph probe caches across popover mounts; filtering never changes the server allowlist.
-	const entries = useMemo(
-		() =>
-			searchEmoji(query, group).filter((entry) => canRenderEmoji(entry.emoji)),
-		[query, group],
+	const [, refreshSupport] = useState(0);
+	const candidates = useMemo(() => searchEmoji(query, group), [query, group]);
+	const frequent = useMemo(
+		() => frequentEmoji(preferences?.usage ?? {}, Date.now()),
+		[preferences?.usage],
 	);
-	const frequent = frequentEmoji(preferences?.usage ?? {}, Date.now()).filter(
-		canRenderEmoji,
+	/* Never measure a glyph during render. A cold picker commits its search,
+	 * categories and fixed recent slots first; cached reopen needs no warm-up.
+	 * Discover in corpus order and expose only a resolved PREFIX. Filtering all
+	 * known positives would insert newly measured cells ahead of a focused cell
+	 * when recents or another picker had already warmed a later glyph. Prefix
+	 * growth only appends: indices, DOM keys and keyboard focus stay stable. */
+	const entries: typeof candidates = [];
+	let pendingSupport = false;
+	for (const entry of candidates) {
+		const supported = cachedEmojiSupport(entry.emoji);
+		if (supported === undefined) {
+			pendingSupport = true;
+			break;
+		}
+		if (supported) entries.push(entry);
+	}
+	useEffect(
+		() =>
+			scheduleEmojiSupport(
+				[...frequent, ...candidates.map((entry) => entry.emoji)],
+				() => refreshSupport((revision) => revision + 1),
+			),
+		[candidates, frequent],
 	);
 	const tone = preferences?.tone ?? 0;
 	const select = (emoji: string) => {
-		if (disabled) return;
-		onSelect(supportedTone(emoji, tone));
+		// Dispatch exactly the proven glyph displayed by this render, not a tone
+		// that an asynchronous probe might have resolved since it painted.
+		if (disabled || cachedEmojiSupport(emoji) !== true) return;
+		onSelect(emoji);
 		onClose();
 	};
 	const reset = () => {
@@ -83,6 +106,25 @@ export function TeamBridgeEmojiPicker({
 	const endRow = Math.min(
 		Math.ceil(entries.length / COLUMNS),
 		startRow + Math.ceil(HEIGHT / CELL) + 3,
+	);
+	// Only visible/recent variants need warming. A stable sequence key prevents
+	// each base-support batch from restarting the same viewport's tone work.
+	// RGI emoji contain no NUL, so the separator cannot alias two sequences.
+	const visibleToneKey = [
+		...frequent,
+		...entries
+			.slice(startRow * COLUMNS, endRow * COLUMNS)
+			.map((entry) => entry.emoji),
+	]
+		.map((emoji) => tonedEmoji(emoji, tone))
+		.join("\0");
+	useEffect(
+		() =>
+			scheduleEmojiSupport(
+				visibleToneKey ? visibleToneKey.split("\0") : [],
+				() => refreshSupport((revision) => revision + 1),
+			),
+		[visibleToneKey],
 	);
 	return (
 		<div
@@ -169,29 +211,46 @@ export function TeamBridgeEmojiPicker({
 				className="grid grid-cols-8"
 				aria-label={t("ui.teamBridge.reactions.frequent")}
 			>
-				{frequent.map((emoji) => (
-					<button
-						key={emoji}
-						type="button"
-						title={EMOJI_ENTRIES.find((e) => e.emoji === emoji)?.name ?? emoji}
-						className="h-9 rounded text-[22px] hover:bg-row-hover"
-						disabled={disabled}
-						onClick={() => select(emoji)}
-					>
-						{supportedTone(emoji, tone)}
-					</button>
-				))}
+				{frequent.map((emoji) => {
+					// Reserve each slot even while cold/unsupported: a resolving glyph
+					// must not move another recent button out from under the pointer.
+					if (cachedEmojiSupport(emoji) !== true) {
+						return <span key={emoji} aria-hidden="true" className="h-9" />;
+					}
+					const displayed = supportedTone(emoji, tone);
+					return (
+						<button
+							key={emoji}
+							type="button"
+							title={
+								EMOJI_ENTRIES.find((e) => e.emoji === emoji)?.name ?? emoji
+							}
+							className="h-9 rounded text-[22px] hover:bg-row-hover"
+							disabled={disabled}
+							onClick={() => select(displayed)}
+						>
+							{displayed}
+						</button>
+					);
+				})}
 			</div>
 			<div
 				ref={scroll}
+				aria-busy={pendingSupport}
 				className="min-h-0 flex-shrink overflow-y-auto rounded bg-surface"
 				style={{ height: HEIGHT }}
 				onScroll={(event) => setTop(event.currentTarget.scrollTop)}
 			>
 				{!entries.length ? (
-					<p className="p-4 text-ink-muted">
-						{t("ui.teamBridge.reactions.noResults")}
-					</p>
+					pendingSupport ? (
+						<div className="flex justify-center p-4" aria-hidden="true">
+							<Spinner size="xs" />
+						</div>
+					) : (
+						<p className="p-4 text-ink-muted">
+							{t("ui.teamBridge.reactions.noResults")}
+						</p>
+					)
 				) : (
 					<table
 						ref={grid}
@@ -226,7 +285,13 @@ export function TeamBridgeEmojiPicker({
 									scroll.current.scrollTop = Math.max(0, rowTop - HEIGHT / 2);
 							} else if (event.key === "Enter" || event.key === " ") {
 								event.preventDefault();
-								select(entries[active].emoji);
+								// Use the rendered cell's handler, just like a pointer pick:
+								// a later cache fill must not change the selected tone.
+								event.currentTarget
+									.querySelector<HTMLButtonElement>(
+										`button[data-index="${active}"]`,
+									)
+									?.click();
 							}
 						}}
 					>
@@ -246,6 +311,7 @@ export function TeamBridgeEmojiPicker({
 												.slice(row * COLUMNS, (row + 1) * COLUMNS)
 												.map((entry, column) => {
 													const index = row * COLUMNS + column;
+													const displayed = supportedTone(entry.emoji, tone);
 													return (
 														<td
 															key={entry.emoji}
@@ -266,9 +332,9 @@ export function TeamBridgeEmojiPicker({
 																}
 																onMouseEnter={() => setActive(index)}
 																disabled={disabled}
-																onClick={() => select(entry.emoji)}
+																onClick={() => select(displayed)}
 															>
-																{supportedTone(entry.emoji, tone)}
+																{displayed}
 															</button>
 														</td>
 													);

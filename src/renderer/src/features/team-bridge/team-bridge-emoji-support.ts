@@ -22,6 +22,14 @@ export function isSingleColorGlyph(
 	return painted;
 }
 
+/** Render may read a known font fact, but must never discover one: canvas text
+ * rasterisation/readback across the corpus used to block the picker's first
+ * frame. `undefined` is intentionally distinct from an unsupported glyph. The
+ * deferred scheduler owns discovery; selection only offers proven glyphs. */
+export function cachedEmojiSupport(emoji: string): boolean | undefined {
+	return cache.get(emoji);
+}
+
 export function canRenderEmoji(emoji: string): boolean {
 	const cached = cache.get(emoji);
 	if (cached !== undefined) return cached;

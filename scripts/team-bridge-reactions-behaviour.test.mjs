@@ -6,6 +6,9 @@ import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import { Profiler, createElement as h } from "react";
+// Keep the bounded-work contract on this existing desktop-suite entry point;
+// the sibling also runs alone when diagnosing scheduler behavior.
+import "./team-bridge-emoji-support-scheduler.test.mjs";
 const I18N_SEAM = /^@shared\/i18n(?:\/use-locale)?$/;
 const API_SEAM = /^@shared\/api\/local-operator\/team-bridge-api$/;
 const PROSE_SEAM = /^\.\/team-bridge-markdown$/;
@@ -49,6 +52,7 @@ const bundle = await build({
 			'export {TeamBridgeMessageList} from "./src/renderer/src/features/team-bridge/team-bridge-message-list";',
 			'export {TeamBridgeThreadPaneView} from "./src/renderer/src/features/team-bridge/team-bridge-thread-pane";',
 			'export {TeamBridgeEmojiPicker} from "./src/renderer/src/features/team-bridge/team-bridge-emoji-picker";',
+			'export {EMOJI_ENTRIES} from "./src/renderer/src/features/team-bridge/team-bridge-emoji-model";',
 			'export {useReactionPreferences} from "./src/renderer/src/features/team-bridge/team-bridge-reaction-preferences";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -87,7 +91,19 @@ const bundle = await build({
 				}));
 				b.onLoad({ filter: ANY_SEAM, namespace: "seam" }, (args) => ({
 					contents: args.path.includes("emoji-support")
-						? "export const canRenderEmoji=(emoji)=>!globalThis.__unsupportedGlyphs?.has(emoji);"
+						? `
+							// Warm by default for existing interaction tests. The cold test below
+							// opts into an empty cache and counts actual probe calls separately.
+							export const cachedEmojiSupport=(emoji)=>globalThis.__coldGlyphCache
+								? globalThis.__coldGlyphCache.get(emoji)
+								: !globalThis.__unsupportedGlyphs?.has(emoji);
+							export const canRenderEmoji=(emoji)=>{
+								globalThis.__glyphProbeCount=(globalThis.__glyphProbeCount??0)+1;
+								const supported=!globalThis.__unsupportedGlyphs?.has(emoji);
+								globalThis.__coldGlyphCache?.set(emoji,supported);
+								return supported;
+							};
+						`
 						: args.path.includes("api/")
 							? "export const TeamBridgeApi={react:(...args)=>globalThis.__reactionApi(...args)};"
 							: args.path.includes("markdown")
@@ -109,6 +125,7 @@ const {
 	TeamBridgeMessageList,
 	TeamBridgeThreadPaneView,
 	TeamBridgeEmojiPicker,
+	EMOJI_ENTRIES,
 	useReactionPreferences,
 } = await import(file.href);
 await unlink(file);
@@ -148,6 +165,167 @@ const click = async (node) => {
 		node.dispatchEvent(new MouseEvent("click", { bubbles: true })),
 	);
 };
+
+test("cold picker commits its tray without probing glyphs or fetching data; close cancels deferred work", async () => {
+	const m = mount();
+	const originalFrame = globalThis.requestAnimationFrame;
+	const originalCancel = globalThis.cancelAnimationFrame;
+	const originalFetch = globalThis.fetch;
+	const frames = new Map();
+	let nextFrame = 0;
+	let fetches = 0;
+	globalThis.requestAnimationFrame = (callback) => {
+		const id = ++nextFrame;
+		frames.set(id, callback);
+		return id;
+	};
+	globalThis.cancelAnimationFrame = (id) => frames.delete(id);
+	globalThis.fetch = () => {
+		fetches++;
+		throw new Error("The offline picker must not fetch");
+	};
+	globalThis.__coldGlyphCache = new Map();
+	globalThis.__glyphProbeCount = 0;
+	try {
+		await act(() =>
+			m.root.render(
+				h(TeamBridgeEmojiPicker, {
+					accountId: "cold-picker",
+					onSelect: () => assert.fail("mount must not select"),
+					onClose: () => {},
+				}),
+			),
+		);
+		assert.ok(
+			m.host.querySelector("input"),
+			"search/tray must commit immediately",
+		);
+		assert.ok(
+			m.host.querySelector("fieldset"),
+			"categories must commit immediately",
+		);
+		assert.ok(
+			m.host.querySelector("div.grid"),
+			"recent tray reserves its geometry",
+		);
+		assert.equal(
+			globalThis.__glyphProbeCount,
+			0,
+			"first commit cannot do canvas probes",
+		);
+		assert.equal(fetches, 0);
+		assert.ok(frames.size > 0, "cold support discovery is deferred");
+		// The first rAF is before paint, not proof that a frame has painted.
+		const first = [...frames.values()];
+		frames.clear();
+		for (const callback of first) callback(0);
+		assert.equal(globalThis.__glyphProbeCount, 0);
+		await m.close();
+		assert.equal(
+			frames.size,
+			0,
+			"closing cancels even the second-frame boundary",
+		);
+		assert.equal(globalThis.__glyphProbeCount, 0);
+		assert.equal(fetches, 0);
+	} finally {
+		if (m.host.isConnected) await m.close();
+		globalThis.requestAnimationFrame = originalFrame;
+		globalThis.cancelAnimationFrame = originalCancel;
+		globalThis.fetch = originalFetch;
+		delete globalThis.__coldGlyphCache;
+		delete globalThis.__glyphProbeCount;
+	}
+});
+
+test("partial support only appends proven cells and does not replace the focused button", async () => {
+	const m = mount();
+	const originalFrame = globalThis.requestAnimationFrame;
+	const originalCancel = globalThis.cancelAnimationFrame;
+	const frames = new Map();
+	let nextFrame = 0;
+	globalThis.requestAnimationFrame = (callback) => {
+		frames.set(++nextFrame, callback);
+		return nextFrame;
+	};
+	globalThis.cancelAnimationFrame = (id) => frames.delete(id);
+	const first = EMOJI_ENTRIES.slice(0, 5);
+	globalThis.__coldGlyphCache = new Map([
+		[first[0].emoji, true],
+		[first[1].emoji, true],
+		[first[4].emoji, true], // A different picker warmed a later corpus entry.
+	]);
+	globalThis.__glyphProbeCount = 0;
+	const render = () =>
+		m.root.render(
+			h(TeamBridgeEmojiPicker, {
+				accountId: "partial-picker",
+				onSelect: () => {},
+				onClose: () => {},
+			}),
+		);
+	try {
+		await act(render);
+		assert.equal(m.host.querySelectorAll("table button").length, 2);
+		const focused = m.host.querySelector('table button[data-index="1"]');
+		focused.focus();
+		globalThis.__coldGlyphCache.set(first[2].emoji, false);
+		globalThis.__coldGlyphCache.set(first[3].emoji, true);
+		await act(render);
+		assert.deepEqual(
+			[...m.host.querySelectorAll("table button")].map(
+				(button) => button.textContent,
+			),
+			[first[0].emoji, first[1].emoji, first[3].emoji, first[4].emoji],
+		);
+		assert.equal(document.activeElement, focused);
+		assert.equal(m.host.querySelector('table button[data-index="1"]'), focused);
+		assert.equal(
+			globalThis.__glyphProbeCount,
+			0,
+			"rerender only reads cache facts",
+		);
+	} finally {
+		await m.close();
+		assert.equal(frames.size, 0);
+		globalThis.requestAnimationFrame = originalFrame;
+		globalThis.cancelAnimationFrame = originalCancel;
+		delete globalThis.__coldGlyphCache;
+		delete globalThis.__glyphProbeCount;
+	}
+});
+
+test("picker Enter and Space choose the displayed tone through the same cell handler", async () => {
+	const m = mount();
+	const selected = [];
+	useReactionPreferences.getState().setTone("keyboard-tone", 3);
+	try {
+		await act(() =>
+			m.root.render(
+				h(TeamBridgeEmojiPicker, {
+					accountId: "keyboard-tone",
+					initialQuery: "thumbs up",
+					onSelect: (emoji) => selected.push(emoji),
+					onClose: () => {},
+				}),
+			),
+		);
+		const table = m.host.querySelector("table");
+		const cell = table.querySelector('button[data-index="0"]');
+		assert.ok(cell);
+		for (const key of ["Enter", " "]) {
+			await act(() =>
+				table.dispatchEvent(
+					new KeyboardEvent("keydown", { key, bubbles: true }),
+				),
+			);
+			assert.equal(selected.at(-1), cell.textContent);
+		}
+		assert.equal(selected.length, 2);
+	} finally {
+		await m.close();
+	}
+});
 
 test("missing optional reactions settle without an effect-render loop", async () => {
 	const m = mount();
