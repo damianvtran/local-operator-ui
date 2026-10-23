@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import { after, beforeEach, describe, test } from "node:test";
 import { build } from "esbuild";
 
+const FONT_SEAM = /\.\/team-bridge-emoji-support$/;
+const ANY_SEAM = /.*/;
 const bundle = await build({
 	entryPoints: [
 		"src/renderer/src/features/team-bridge/team-bridge-emoji-support-scheduler.ts",
@@ -16,11 +18,11 @@ const bundle = await build({
 		{
 			name: "counted-font-boundary",
 			setup(b) {
-				b.onResolve({ filter: /\.\/team-bridge-emoji-support$/ }, () => ({
+				b.onResolve({ filter: FONT_SEAM }, () => ({
 					path: "font",
 					namespace: "seam",
 				}));
-				b.onLoad({ filter: /.*/, namespace: "seam" }, () => ({
+				b.onLoad({ filter: ANY_SEAM, namespace: "seam" }, () => ({
 					contents: `
 				export const cachedEmojiSupport = (emoji) => globalThis.__font.cache.get(emoji);
 				export const canRenderEmoji = (emoji) => {
@@ -47,7 +49,7 @@ const {
 
 describe("emoji support scheduling", () => {
 	after(() => {
-		delete globalThis.__font;
+		globalThis.__font = undefined;
 	});
 	beforeEach(() => {
 		globalThis.__font = {
