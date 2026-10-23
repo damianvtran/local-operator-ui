@@ -3199,6 +3199,38 @@ test("a document round trip cannot return the unapproved document's text", async
 	);
 });
 
+test("a query is document-scoped: a navigation it did not cause discards it", async () => {
+	// Agent review round 2 on the query slice: `query` was in NEITHER action set,
+	// so it skipped document authorization and the per-tab lane. Same round-trip
+	// shape as the read above — the answer must not be described as coming from a
+	// document the call did not enter on.
+	const { host, registry } = makeHost();
+	const params = {
+		url: "https://approved.example/",
+		requester: "session:alice",
+	};
+	await host.dispatch("request_access", params, "request");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "open");
+	const record = registry.requireSurface(opened.tab);
+	record.view.webContents.executeJavaScriptInIsolatedWorld = async () => {
+		record.view.webContents.url = "https://forbidden.example/";
+		registry.bumpEpoch(record.tabId);
+		record.view.webContents.url = "https://approved.example/";
+		return { count: 1, matches: [{ tag: "input", id: "secret" }] };
+	};
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"query",
+				{ ...params, tab: opened.tab, selector: "input" },
+				"q1",
+			),
+		(error) =>
+			error.code === "origin_not_allowed" && error.data.reason === "changed",
+	);
+});
+
 /**
  * Make the fixture's field HOLD what `Input.insertText` sent, so a `type` the
  * fixture drives is read back honestly. These tests are about navigation and the

@@ -68,6 +68,12 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	"hit_test",
 	"ancestors",
 	"snapshot",
+	// `query` is a read of the CURRENT document's DOM (CSS in, descriptors out),
+	// so it is authorized against that document on entry and again on the result
+	// exactly as `read` is: an answer that raced a navigation it did not cause
+	// must be discarded, not reported as the new page's (agent review round 2 on
+	// the query slice — the action was missing from BOTH sets).
+	"query",
 	"screenshot",
 	"click",
 	"type",
@@ -169,6 +175,7 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	"hit_test",
 	"ancestors",
 	"snapshot",
+	"query",
 	"screenshot",
 	"click",
 	"type",
