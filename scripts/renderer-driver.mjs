@@ -40210,15 +40210,31 @@ async function sceneAttach(cdp) {
 	 * THE DAEMON'S OWN RECORD, not the painted echo: a send the plane refused
 	 * still puts text on screen, and the file block only proves the paperclip
 	 * reached the model if the admitted row carries it. Polled because the turn
-	 * is asynchronous; the assistant's answer is the completion signal.
+	 * is asynchronous.
+	 *
+	 * THE END OF THE TURN IS THE COMPLETION SIGNAL, not the first assistant row
+	 * with text. A tool-using turn can emit an interim assistant message, and
+	 * checking the expected answer against that message would judge the wrong
+	 * text (agent review round 2, m5). The snapshot's `streaming` plus
+	 * `last_turn_outcome` is the daemon's own statement that the turn settled;
+	 * `last_turn_outcome` is set once per prompt, so a non-empty value cannot be
+	 * an interim message. An OLD runtime that omits the field is handled by
+	 * requiring the assistant text to be unchanged across three polls.
 	 */
 	const deadline = Date.now() + 180_000;
 	let history = null;
 	let userEntry = null;
 	let documents = [];
 	let assistantText = "";
+	let turnOutcome = null;
+	let streaming = null;
+	let previousText = "";
+	let stablePolls = 0;
 	while (Date.now() < deadline) {
 		history = await fetchSessionHistory(created.id);
+		const snapshot = await fetchSessionSnapshot(created.id);
+		streaming = snapshot.state?.streaming ?? null;
+		turnOutcome = snapshot.state?.last_turn_outcome ?? null;
 		const entries = history.body?.result?.entries ?? [];
 		const user = entries.find((entry) => {
 			if (entry?.payload?.role !== "user") return false;
@@ -40249,8 +40265,22 @@ async function sceneAttach(cdp) {
 					.join(" "),
 			)
 			.filter((text) => text.trim().length > 0);
-		assistantText = answers.at(-1) ?? "";
-		if (assistantText) break;
+		const current = answers.at(-1) ?? "";
+		stablePolls = current && current === previousText ? stablePolls + 1 : 0;
+		previousText = current;
+		const settledOutcome =
+			typeof turnOutcome === "string" && turnOutcome !== "";
+		const settled =
+			current.length > 0 &&
+			streaming === false &&
+			(settledOutcome ||
+				// An older daemon publishes no outcome: three unchanged polls with
+				// the stream stopped are the strongest signal it can give.
+				(turnOutcome === null && stablePolls >= 2));
+		if (settled) {
+			assistantText = current;
+			break;
+		}
 		await wait(1000);
 	}
 	note("session id", created.id);
@@ -40259,6 +40289,10 @@ async function sceneAttach(cdp) {
 		JSON.stringify(userEntry ? userEntry.payload.content : null).slice(0, 2000),
 	);
 	note("document blocks", JSON.stringify(documents));
+	note(
+		"turn state",
+		JSON.stringify({ streaming, outcome: turnOutcome, stablePolls }),
+	);
 	note("assistant final text", assistantText);
 	check(
 		"the daemon admitted the prompt as a user row",
@@ -40276,8 +40310,9 @@ async function sceneAttach(cdp) {
 	);
 	check(
 		"the assistant turn completed with a final answer",
-		assistantText.trim().length > 0,
-		`assistant text=${JSON.stringify(assistantText).slice(0, 400)}`,
+		assistantText.trim().length > 0 &&
+			(turnOutcome === null || turnOutcome === "completed"),
+		`assistant text=${JSON.stringify(assistantText).slice(0, 400)} outcome=${JSON.stringify(turnOutcome)}`,
 	);
 	if (ATTACH_EXPECT_ANSWER !== null) {
 		check(
@@ -42897,6 +42932,33 @@ async function fetchSessionHistory(sessionId) {
 	);
 	const body = await response.json().catch(() => null);
 	return { status: response.status, body };
+}
+
+/**
+ * One session's canonical snapshot, which is where the TURN state lives.
+ *
+ * The history page has the messages but not whether the turn behind them has
+ * ENDED; the snapshot's `frontend.snapshot` publishes `streaming` and
+ * `last_turn_outcome`, the two fields a rig needs to tell an interim assistant
+ * message from the answer (agent review round 2, m5). Read tolerantly: an older
+ * daemon may answer the envelope at either depth.
+ */
+async function fetchSessionSnapshot(sessionId) {
+	const response = await fetch(
+		`${BACKEND}/v1/desktop/sessions/${encodeURIComponent(sessionId)}`,
+		{
+			headers: {
+				authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+			},
+		},
+	);
+	const body = await response.json().catch(() => null);
+	const state =
+		body?.result?.payload?.frontend?.snapshot ??
+		body?.result?.frontend?.snapshot ??
+		body?.payload?.frontend?.snapshot ??
+		null;
+	return { status: response.status, body, state };
 }
 
 /**
