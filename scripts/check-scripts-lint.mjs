@@ -93,6 +93,19 @@
  * both ways on `scripts/linux/launcher.sh`: exit 1 each time), which is why the
  * gate decides it rather than passing a flag and hoping.
  */
+/**
+ * WHY `biome.json`'S `files.maxSize` IS 3 MiB (2026-10-22).
+ *
+ * It was 2 MiB, and `scripts/renderer-driver.mjs` sat at 2,096,584 bytes against
+ * a 2,097,152 ceiling - 568 bytes of headroom. Any scene added to that file
+ * therefore crossed it, and the only verdict this gate could give was a size
+ * error on a file it exists to process: not a finding about the change, and not
+ * fixable by editing the change. Biome 1.9.4 has no per-file override for
+ * `maxSize` (it is a top-level `files` option, and `overrides` has no `files`
+ * member), so the ceiling itself moves. It remains a guard against accidentally
+ * committing a giant generated file; splitting the 2 MiB driver is its own
+ * follow-up.
+ */
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
