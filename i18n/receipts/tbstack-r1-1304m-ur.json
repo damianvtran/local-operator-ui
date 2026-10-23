@@ -1,0 +1,64 @@
+{
+ "auditor": "translation-auditor",
+ "translator": "translator",
+ "translator_session": "d0fdd4718fd7",
+ "model": "openai/gpt-6.1-sol",
+ "instance": "tbstack-r1-1304m-ur",
+ "session": "58cc48ff55aa",
+ "job": null,
+ "task_label": "i18n-1304m-hi-ur",
+ "model_history": [
+  "anthropic/claude-opus-5-5",
+  "anthropic/claude-sonnet-5-5",
+  "openai/gpt-6.1-sol"
+ ],
+ "date": "2026-10-22",
+ "locale": "ur",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 123,
+ "union_keys_verified": 123,
+ "scope": "PR #1304 merged head 12dddf52f78bd30704b48a8c856f2b69e1bef6e3: all 123 ur keys read beside English; union integrity against e3c24e98eb (119 keys) and de047d49e3 (115 keys); substantive contextual review of the 4 inherited #1298 notify.channel/subtitle/count/count_preview keys, the 8 replies keys and namespace-wide thread/reply/message terminology; full ICU structural parity. No reaction keys exist in this namespace.",
+ "sha256": {
+  "en": "281cb8adcc75e5bb4fcebf5c9112ab260bcf8ed2fbcf6bbcd6d04bfc3cfff41c",
+  "ur": "13a817c6386e954b1a38eb656ac13b9d7d1fb32ee4cf0118425924547169e16e",
+  "context": "f5cf60d75f5e8b8ecc378174bc9f9e5e158b14afb80cda504e1b61e921b5cafd"
+ },
+ "findings": [],
+ "inherited_receipts": [
+  {
+   "base": "e3c24e98eb",
+   "base_commit": "e3c24e98ebeba1b3ddcf1751c1ea68a30acf2d50",
+   "path": "i18n/receipts/tbstack-r1-1304-ur.json",
+   "sha256": "0a2b6715ccf1c85b4c4b2417b7b0e7f68e37ffccae605af5675663e7a9c23e2e",
+   "keys_inherited": 119,
+   "base_target_sha256": "ec463510d1d66f8389bf01e75cfe0cf78995cc009e43a77ebb109096d7164418",
+   "unchanged_values_verified": 119
+  },
+  {
+   "base": "de047d49e3",
+   "base_commit": "de047d49e3818abdfc0cc8e64c0b6d59f5e4af40",
+   "path": "i18n/receipts/tbstack-r1-1298-ur.json",
+   "sha256": "bdc04bf2a752038e98652806d036fd8f23dcaee2540840d85312c59c515b0f46",
+   "keys_inherited": 115,
+   "base_target_sha256": "a4c335724f0c629d61316e4e7207cad8bfec713362a2867adc9b5005ad161429",
+   "unchanged_values_verified": 115
+  }
+ ],
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+ },
+ "validation": {
+  "independence": "Independent translation-auditor, task label i18n-1304m-hi-ur, session 58cc48ff55aa; runtime job id not exposed (job=null). This auditor did not author or edit any catalogue. All repo source bytes read via git show; only small audit artifacts written outside the repository. Model fallback history recorded explicitly.",
+  "union_integrity": "Repo branch parity script run read-only with --repo: both locale runs exit 0, missing keys=[], value differences=[]. Separate Python comparison: en/hi/ur union=123, zero mismatches, zero dropped keys, zero untraced keys and zero conflicting shared values; key order equals English. All source receipts rehashed from source refs against their ledger rows and source/target bytes.",
+  "icu": "hi pluralCategories=one,other\nur pluralCategories=one,other\nchecked 246 (locale,key) pairs; structural problems=0; arguments, ICU arms, pound nodes, offsets, skeletons and markup retained branch-by-branch\nexit=0",
+  "plurals": "hi and ur require one/other, both present for every plural; count appears in each source-corresponding arm. notify.count and count_preview retain # in both arms; preview remains last in each arm.",
+  "typography": "NFC and trailing newline; no U+200B–200F, U+202A–202E, U+2066–2069, U+061C or BOM in either target.",
+  "terminology": "thread=تھریڈ; reply=جواب/جوابات; message=پیغام/پیغامات (direct message=براہ راست پیغام), regular inflections not drift. Polite آپ/کریں register retained. Conversation noun گفتگو versus verbal بات چیت کریں is grammatical, not term drift.",
+  "new_copy": "All four inherited OS banner keys are accurate and idiomatic in context: channel and subtitle preserve source tokens, separator and logical ordering; count and preview distinguish singular/plural and keep count and preview. Same message term as the existing banner body, compose.new and thread pane; no new translator-attributed claim accepted without byte verification.",
+  "rtl": "Urdu stored in logical order; #{channel}, {place} · {organization}, title parentheses, ICU tokens and Latin runs preserved with zero manual bidi controls. Colon remains before the final preview in logical order. Mixed Latin/Urdu OS rendering remains a rendered-check limitation, not a proven catalogue defect.",
+  "overflow": "The four added templates have no material text expansion over English; dynamic names/preview retain the source truncation exposure. Existing labels read for terminology/register; no new material-overflow finding. No rendered-fit claim.",
+  "limitations": "No builds, installs, test suites, screenshots, pseudo-localization or native RTL rendering performed. Source audit only; not activation or release approval."
+ }
+}
