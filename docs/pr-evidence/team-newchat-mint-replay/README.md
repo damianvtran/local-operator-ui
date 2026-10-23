@@ -26,7 +26,7 @@ the renderer, leaving this PR's client arm unexercised.
 | frame | source | reading |
 | --- | --- | --- |
 | `before.png` | `origin/main` (`39164868fc`) | header *New chat with Minerva Development*; body *This conversation is no longer on this machine.* / *It was deleted, or it belongs to a machine this app is not connected to.*; composer holds `C`, `readOnly: true`; the row still holds the seeded request id; no bubble after Enter (45 s bound) |
-| `after-first.png` | `fix/team-newchat-missing` | the FIRST frame after the bridge's answer — same working new chat as the settled one (the two images differ only in the text caret's phase) |
+| `after-first.png` | `fix/team-newchat-missing` | the FIRST frame after the bridge's answer — same working new chat as the settled one (the pair differs in transient paint only: the focus ring, the send control and the starter-prompt chips' mount transition, plus the caret's phase where it falls in the sampling window — 28,756 px, 0.58% of the frame, no layout change) |
 | `after-new-chat.png` | same | no notice; the app's new-chat empty state with `C` in an editable composer, caret at 1; the row's request id re-minted, no `sessionId` |
 | `after-send.png` | same | the same send reached the conversation: user bubble *C a regression check*, mock provider's answer, no undelivered line, composer empty |
 
@@ -58,7 +58,7 @@ which is the design review's own measurement) and the typed `C`'s ink is
 identical. The bytes differ in transient paint only - the focus ring on that
 boundary, the send control's ink, and the starter-prompt chips' mount
 transition; a connected-components diff of the pair confines every differing
-pixel to those three (28,688 px, 0.58% of the frame) - which is why the
+pixel to those three (28,756 px, 0.58% of the frame) - which is why the
 assertion is the state (the header, the notice's absence, the box's value and
 editability) and the byte comparison is reported beside it.
 

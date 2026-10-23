@@ -7464,10 +7464,13 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 * discard them. The retired-draft path adopts before it moves for the same
 					 * reason (`restoreRetiredDraftPayload`); this is that order.
 					 *
-					 * A row that STILL holds `pendingText` after the adopt did not take the
-					 * text (no row to adopt into, or a capture in progress), so it is left
-					 * where it is rather than deleted under the words: the rule is that a
-					 * draft follows the reader or stays put, never vanishes.
+					 * The adopt itself is unconditional and synchronous at this layer (the
+					 * masked-capture skip lives in the hook, not here), so a row that held
+					 * words has given them up by the time it returns. The guard is the
+					 * defensive read: it covers a row that did not adopt - no row left to
+					 * adopt into - so the move can never delete a row under words that did
+					 * not land in the target. The rule is that a draft follows the reader or
+					 * stays put, never vanishes.
 					 */
 					useConversationInputStore.getState().adoptReturnedText(from);
 					const source =
