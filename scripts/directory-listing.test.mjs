@@ -437,6 +437,58 @@ test("a positive answer is cached for its TTL", async () => {
 	assert.equal(stats, 2, "expired, re-probed");
 });
 
+test("a fresh ask ignores a cached answer and still remembers its own", async () => {
+	/*
+	 * THE WATCHER'S OPT-OUT (QA round 1, Q1). A viewer that re-probes every 2 s
+	 * was reading a 30 s-old cached mtime and reporting a write 21-29 s late. The
+	 * fresh flag skips the LOOKUP only: the new answer is remembered, so the next
+	 * ordinary caller still gets the damping the cache exists for.
+	 */
+	const clock = { now: 0 };
+	let stats = 0;
+	const deps = {
+		stat: async () => {
+			stats += 1;
+			return { isFile: () => true, size: 12 + stats, mtimeMs: 100 + stats };
+		},
+		realpath: async (path) => path,
+		now: () => clock.now,
+	};
+	const cache = new Map();
+	const ask = (fresh) =>
+		probeFiles(["/notes/plan.md"], undefined, "/home", deps, cache, fresh);
+	/*
+	 * The DEFAULT call — no sixth argument at all — is what every existing caller
+	 * makes, and it must keep the cache. Its own call rather than `ask(false)`,
+	 * so the default is pinned rather than a caller passing `false`.
+	 */
+	const defaultAsk = () =>
+		probeFiles(["/notes/plan.md"], undefined, "/home", deps, cache);
+
+	const first = await defaultAsk();
+	assert.equal(stats, 1);
+	assert.deepEqual(
+		await defaultAsk(),
+		first,
+		"the default path keeps the cache",
+	);
+	assert.equal(stats, 1);
+
+	const fresh = await ask(true);
+	assert.equal(stats, 2, "a fresh ask skips the cached answer");
+	assert.notEqual(
+		fresh[0].mtimeMs,
+		first[0].mtimeMs,
+		"it reads the file again",
+	);
+	assert.deepEqual(
+		await defaultAsk(),
+		fresh,
+		"the fresh answer was REMEMBERED for the next ordinary caller",
+	);
+	assert.equal(stats, 2);
+});
+
 test("a miss's damping is rated by what the lookup cost", async () => {
 	/*
 	 * Round 1's MAJOR: a flat 120 s negative TTL absorbed the renderer's

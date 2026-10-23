@@ -459,9 +459,41 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 		},
 		[goToAsset],
 	);
+	/*
+	 * ONE PRESS PER ASSET UNTIL ITS WRITE SETTLES. The menu item and the preview
+	 * heart both land here, and a double press used to compute the toggle from
+	 * the SAME stale `asset.favorite` twice - two writes of the same value, and
+	 * with an optimistic row the second press could be read as a flip back. The
+	 * guard is per asset id rather than one global flag, because two cards are
+	 * two independent toggles.
+	 */
+	const favoriteWrites = useRef(new Set<string>());
 	const toggleFavorite = useCallback(
 		(asset: DesktopLibraryAsset) => {
-			update.mutate({ id: asset.id, fields: { favorite: !asset.favorite } });
+			if (favoriteWrites.current.has(asset.id)) return;
+			favoriteWrites.current.add(asset.id);
+			update.mutate(
+				{ id: asset.id, fields: { favorite: !asset.favorite } },
+				{
+					onSettled: () => {
+						favoriteWrites.current.delete(asset.id);
+					},
+					/*
+					 * A REFUSAL MUST SAY SO, because the optimistic paint has just
+					 * been rolled back and the heart's disappearance is otherwise the
+					 * only trace. The toast lives HERE rather than in the mutation's
+					 * `onError` so it is reported once (the hook is shared with the
+					 * inline edits, which own their own error copy).
+					 */
+					onError: (error) => {
+						showErrorToast(
+							error instanceof Error && error.message
+								? error.message
+								: t("ui.library.preview.not_saved"),
+						);
+					},
+				},
+			);
 		},
 		[update],
 	);
