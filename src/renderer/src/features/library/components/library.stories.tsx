@@ -14,6 +14,7 @@
 
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
+import { useAudioEngineStore } from "@shared/store/audio-engine-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, waitFor } from "@storybook/test";
@@ -309,6 +310,8 @@ type StubState = {
 	building: boolean;
 	failList: string | null;
 	media: "text" | "pptx" | "error";
+	/** `none` serves the 404 a path-backed audio asset answers for peaks. */
+	waveform: "stored" | "none";
 	linkedChat: boolean;
 };
 
@@ -319,6 +322,7 @@ let stub: StubState = {
 	building: false,
 	failList: null,
 	media: "text",
+	waveform: "stored",
 	linkedChat: false,
 };
 
@@ -356,6 +360,52 @@ const PptxBytes = (() => {
 			async (response) => new Uint8Array(await response.arrayBuffer()),
 		);
 		return promise;
+	};
+})();
+
+/** The envelope every audio story draws: deterministic, 240 bars. */
+const AUDIO_PEAKS = Array.from({ length: 240 }, (_, index) =>
+	Math.min(1, 0.12 + Math.abs(Math.sin(index / 9)) * 0.82),
+);
+
+/**
+ * A short valid WAV the shared player can resolve into a blob URL. A story
+ * never plays it (the playing frames write the ENGINE's state directly, the
+ * `sound-player.stories.tsx` convention), so this only has to be a real sound
+ * of the right shape rather than a long one.
+ */
+const AudioBytes = (() => {
+	let cached: Uint8Array | null = null;
+	return () => {
+		if (cached) return cached;
+		const rate = 8000;
+		const samples = rate / 4;
+		const wav = new Uint8Array(44 + samples * 2);
+		const view = new DataView(wav.buffer);
+		const ascii = (offset: number, text: string) => {
+			for (let index = 0; index < text.length; index += 1)
+				view.setUint8(offset + index, text.charCodeAt(index));
+		};
+		ascii(0, "RIFF");
+		view.setUint32(4, wav.length - 8, true);
+		ascii(8, "WAVEfmt ");
+		view.setUint32(16, 16, true);
+		view.setUint16(20, 1, true);
+		view.setUint16(22, 1, true);
+		view.setUint32(24, rate, true);
+		view.setUint32(28, rate * 2, true);
+		view.setUint16(32, 2, true);
+		view.setUint16(34, 16, true);
+		ascii(36, "data");
+		view.setUint32(40, samples * 2, true);
+		for (let index = 0; index < samples; index += 1)
+			view.setInt16(
+				44 + index * 2,
+				Math.round(6000 * Math.sin((2 * Math.PI * 220 * index) / rate)),
+				true,
+			);
+		cached = wav;
+		return wav;
 	};
 })();
 
@@ -621,6 +671,27 @@ const install = () => {
 			const row =
 				stub.rows.find((item) => item.id === String(request.assetId ?? "")) ??
 				null;
+			if (request.op === "library.waveform") {
+				// The sidecar the producer writes beside generated audio. A
+				// path-backed import has none, and the `none` story is that 404:
+				// the player must draw its flat scrubber rather than a guessed
+				// shape.
+				if (stub.waveform === "none")
+					return {
+						status: 404,
+						kind: "error",
+						detail: "No peaks sidecar for this asset.",
+					};
+				return {
+					status: 200,
+					kind: "json",
+					body: {
+						version: 1,
+						bars: AUDIO_PEAKS.length,
+						peaks: AUDIO_PEAKS,
+					},
+				};
+			}
 			if (request.op === "library.thumbnail") {
 				thumbnailReads.push(String(request.assetId ?? ""));
 				if (row?.kind === "image" && row.exists) {
@@ -672,6 +743,13 @@ const install = () => {
 					kind: "bytes",
 					mimeType: "video/mp4",
 					data: await Mp4Bytes(),
+				};
+			if (row?.kind === "audio")
+				return {
+					status: 200,
+					kind: "bytes",
+					mimeType: "audio/wav",
+					data: AudioBytes(),
 				};
 			return {
 				status: 200,
@@ -773,6 +851,7 @@ const page = (
 		building: false,
 		failList: null,
 		media: "text",
+		waveform: "stored",
 		linkedChat: false,
 		...state,
 	};
@@ -896,6 +975,108 @@ export const PreviewLinkedChat: Story = {
 			route: "/library/assets/la_0000000000000023",
 			linkedChat: true,
 		}),
+};
+
+/*
+ * SOUND CARDS AND THE SOUND DRAWER (operator report, 2026-10-23).
+ *
+ * The card used to paint a glyph and only played after the drawer opened. These
+ * stories are the three states the fix is judged on - idle with a real
+ * envelope, playing in place (the ENGINE's state written directly, the
+ * `sound-player.stories.tsx` convention: a story never starts real playback),
+ * and a 404 sidecar that must degrade to the flat scrubber rather than vanish -
+ * plus the drawer, whose native control is gone in favour of the same player.
+ */
+const AUDIO_ROWS: DesktopLibraryAsset[] = [
+	asset("la_0000000000000061", {
+		name: "Storm swell",
+		derived_name: "storm-swell.wav",
+		kind: "audio",
+		category: "sound",
+		origin: "generated",
+		origin_group: "generated",
+		ref: {
+			type: "artifact",
+			path: null,
+			display_path: "attachments/storm-swell.wav",
+			digest: "11111111111111111111111111111111",
+			content_type: "audio/wav",
+		},
+		duration_s: 12,
+		size_bytes: 96_000,
+	}),
+	asset("la_0000000000000062", {
+		name: "Door chime",
+		derived_name: "door-chime.wav",
+		kind: "audio",
+		category: "sound",
+		origin: "generated",
+		origin_group: "generated",
+		ref: {
+			type: "artifact",
+			path: null,
+			display_path: "attachments/door-chime.wav",
+			digest: "22222222222222222222222222222222",
+			content_type: "audio/wav",
+		},
+		duration_s: 6,
+		size_bytes: 48_000,
+	}),
+];
+
+/** Drives the shared engine so the card's own player paints a playing frame. */
+const CardEnginePlaying: FC<{ assetId: string }> = ({ assetId }) => {
+	const ownerId = `sound:library:${assetId}`;
+	useEffect(() => {
+		useAudioEngineStore.setState({
+			element: { currentTime: 4.2, duration: 12 } as HTMLAudioElement,
+			ownerId,
+			url: "story://silent",
+			status: "playing",
+			currentTime: 4.2,
+			duration: 12,
+			volume: 1,
+			playbackRate: 1,
+		});
+		return () => {
+			useAudioEngineStore.setState({
+				element: null,
+				ownerId: null,
+				url: null,
+				status: "idle",
+				currentTime: 0,
+				duration: 0,
+			});
+		};
+	}, [ownerId]);
+	return null;
+};
+
+/** Audio cards, idle: every well carries the shared player and its envelope. */
+export const AudioCards: Story = { render: () => page({ rows: AUDIO_ROWS }) };
+
+/** The same cards with one transport running, in place, without a drawer. */
+export const AudioCardPlaying: Story = {
+	name: "Audio card / playing",
+	render: () => (
+		<>
+			<CardEnginePlaying assetId={AUDIO_ROWS[0].id} />
+			{page({ rows: AUDIO_ROWS })}
+		</>
+	),
+};
+
+/** No sidecar: the player must still work, on its honest flat scrubber. */
+export const AudioCardNoPeaks: Story = {
+	name: "Audio card / no peaks",
+	render: () => page({ rows: AUDIO_ROWS, waveform: "none" }),
+};
+
+/** The drawer: the shared full player, and no native `<audio controls>`. */
+export const PreviewAudio: Story = {
+	name: "Audio drawer",
+	render: () =>
+		page({ rows: AUDIO_ROWS, route: `/library/assets/${AUDIO_ROWS[0].id}` }),
 };
 
 /*
@@ -1377,6 +1558,7 @@ const installPreviewStub = (row: DesktopLibraryAsset) => {
 		hang: false,
 		building: false,
 		failList: null,
+		waveform: "stored",
 		media: "text",
 		linkedChat: false,
 	};
@@ -1717,6 +1899,7 @@ const previewSwitchPane = () => {
 		],
 		detail: ROWS[2],
 		hang: false,
+		waveform: "stored",
 		building: false,
 		failList: null,
 		media: "text",

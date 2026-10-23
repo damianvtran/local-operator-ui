@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { build } from "esbuild";
 import {
+	SOUNDS_COUNT,
 	SOUNDS_SESSION,
 	soundSample,
 	writeSoundsFixture,
@@ -49,6 +50,34 @@ test("sounds native preflight: journal mounts audio and Highlights; fixture has 
 		state.records.find((row) => row.kind === "supplement").sounds[0].attachment,
 		fixture.digest,
 	);
+	/*
+	 * THE COLLAGE'S INPUT: fourteen DISTINCT sounds on one row, every digest
+	 * backed by its own bytes and sidecar. The layout cases (condensed and
+	 * expanded) assert the count in the DOM; this preflight is what proves the
+	 * fixture really seeds fourteen, so a scene that found one could not pass
+	 * for the wrong reason.
+	 */
+	const highlights = state.records.find((row) => row.kind === "supplement");
+	assert.equal(highlights.sounds.length, SOUNDS_COUNT);
+	assert.equal(
+		new Set(highlights.sounds.map((row) => row.attachment)).size,
+		SOUNDS_COUNT,
+	);
+	assert.deepEqual(
+		highlights.sounds.map((row) => row.attachment),
+		fixture.digests,
+	);
+	for (const [tone, digest] of fixture.digests.entries()) {
+		assert.equal(
+			readFileSync(join(root, "attachments", `${digest}.bin`)).length,
+			fixture.bytes,
+			`sound ${tone + 1} has its own bytes`,
+		);
+		const sidecar = JSON.parse(
+			readFileSync(join(root, "attachments", `${digest}.peaks.json`), "utf8"),
+		);
+		assert.equal(sidecar.peaks.length, sidecar.bars);
+	}
 	const wav = soundSample();
 	assert.equal(wav.toString("ascii", 0, 4), "RIFF");
 	assert.notEqual(
