@@ -360,10 +360,14 @@ export const DevicePanel: FC<{
 	 * frame): the shipped header read `3 conversations · seen 9m ago`, which printed the
 	 * rotation stamp under a heartbeat's name AND printed it a second time in the section
 	 * below. One fact, one place - so the header carries the member-record fact where there
-	 * is one (a revoked membership, a suspect identity) beside the reach, and the age lives
-	 * in the Status section that labels it.
+	 * is one (a suspect identity) beside the reach, and the age lives in the Status section
+	 * that labels it.
+	 *
+	 * THE REVOKED BRANCH IS GONE WITH THE TOMBSTONE NODES: `meshGraph` builds a device
+	 * from live memberships only, so a panel can no longer be opened on a revoked id and
+	 * every membership this header could read is `active`. The audit fact lives under the
+	 * list's revoked count, where it is read rather than dressed as a device.
 	 */
-	const revoked = device.memberships.every((membership) => !membership.active);
 	const countWords =
 		device.sessionCount === null
 			? conversationUnit(null)
@@ -377,12 +381,7 @@ export const DevicePanel: FC<{
 	 */
 	const headWords = device.suspect
 		? suspectWords()
-		: [
-				revoked ? t("ui.mesh.mesh_card.revoked_membership") : countWords,
-				reachWords(reach),
-			]
-				.filter(Boolean)
-				.join(" · ");
+		: [countWords, reachWords(reach)].filter(Boolean).join(" · ");
 	const shownOf =
 		sessionTotal > sessions.rows.length
 			? t("ui.mesh.mesh_card.shown_of", {
@@ -454,9 +453,8 @@ export const DevicePanel: FC<{
 								{membership.capabilities.length > 0
 									? ` · ${membership.capabilities.join(", ")}`
 									: ""}
-								{membership.active ? "" : t("ui.mesh.mesh_card.revoked")}
 							</span>
-							{canInvite && membership.active && (
+							{canInvite && (
 								<Button
 									size="sm"
 									variant="ghost"

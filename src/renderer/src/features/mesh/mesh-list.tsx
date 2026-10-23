@@ -249,6 +249,12 @@ export const MeshList: FC<MeshListProps> = ({
 							{t("ui.mesh.mesh_graph.device_count", {
 								count: network.memberCount,
 							})}
+							{/*
+							 * THE COUNT STAYS, AS TEXT: the one affordance that opens the audit rows
+							 * is in the census band above both presentations (`mesh-revoked.tsx`), so
+							 * a second toggle here would be a second way to inspect one fact. The
+							 * lane and this heading only report the number.
+							 */}
 							{network.revokedCount > 0
 								? t("ui.mesh.mesh_list.revoked_count", {
 										count: network.revokedCount,
@@ -353,10 +359,14 @@ export const MeshList: FC<MeshListProps> = ({
 											)}
 										</span>
 										<span className="shrink-0 text-meta text-ink-dim">
+											{/*
+											 * EVERY ROW IS A LIVE MEMBER now: `meshGraph` builds a row from an
+											 * active membership only, and a tombstone is the heading's
+											 * disclosure rather than a device. The old `revoked` badge here was
+											 * the second place the tab taught a tombstone to look like a device.
+											 */}
 											{membership?.role ? `${membership.role} · ` : ""}
-											{membership && !membership.active
-												? t("ui.mesh.mesh_list.revoked")
-												: t("ui.mesh.mesh_list.member")}
+											{t("ui.mesh.mesh_list.member")}
 										</span>
 									</div>
 									{/*
@@ -463,7 +473,13 @@ export const MeshList: FC<MeshListProps> = ({
 											})}
 										</span>
 									)}
-									{(membership?.active || device.state !== "self") && (
+									{/*
+									 * EVERY ROW HERE IS A LIVE MEMBERSHIP (`meshGraph` builds rows from
+									 * active memberships only), so the old `membership.active` gate had
+									 * become a condition that could never be false. Removing a member is
+									 * an action on the membership this row IS.
+									 */}
+									{(membership || device.state !== "self") && (
 										<div className="flex flex-wrap items-center gap-1">
 											{/* ONE MENU PER ROW, and it is the same component the canvas
 											 * chips open through the panel: a table cannot carry a drag, so
@@ -482,7 +498,7 @@ export const MeshList: FC<MeshListProps> = ({
 											>
 												{t("ui.mesh.mesh_actions.invite_to_a_network")}
 											</Button>
-											{membership?.active && (
+											{membership && (
 												<Button
 													size="sm"
 													variant="ghost"
@@ -514,7 +530,9 @@ export const MeshList: FC<MeshListProps> = ({
 				 * across every shared network while this list groups by network, so a peer
 				 * the catalogue named and no membership holds is a fact the reads disagree
 				 * about. It is stated rather than dropped: silently ignoring it would hide
-				 * a device the relay says is there.
+				 * a device the relay says is there. A REVOKED membership is not one of
+				 * these - the tab holds that row, and the heading's revoked count is where
+				 * it is named - so `meshGraph` excludes tombstone ids from this list.
 				 */
 				<p className="text-meta text-warning">
 					{t("ui.mesh.mesh_graph.device_count", {
