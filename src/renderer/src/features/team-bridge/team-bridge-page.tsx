@@ -20,6 +20,7 @@ import type {
 import { TeamBridgeComposeBar } from "./team-bridge-compose-bar";
 import { TeamBridgeConversationMenu } from "./team-bridge-conversation-menu";
 import { TeamBridgeCreateDialog } from "./team-bridge-create-dialog";
+import { TeamBridgeDefaultOnBanner } from "./team-bridge-default-on-banner";
 import { TeamBridgeMessageList } from "./team-bridge-message-list";
 import {
 	TEAM_BRIDGE_ALL_SCOPE,
@@ -193,6 +194,12 @@ export const TeamBridgeEligibilityPanel: FC<{
 }> = ({ reason }) => {
 	useI18nLocale();
 	const copy = {
+		// Member opt-out is a plain state, not an organization-plan upsell.
+		// Reuse the existing audited Settings copy; no inline Enable path here.
+		off: {
+			title: "ui.agentMessages.settings.state.e_title",
+			reason: "ui.agentMessages.settings.state.e_body",
+		},
 		plan_required: {
 			title: "ui.teamBridge.plan.title",
 			reason: "ui.teamBridge.plan.reason",
@@ -230,9 +237,11 @@ export const TeamBridgeEligibilityPanel: FC<{
 					{t(copy[reason].title)}
 				</h1>
 				<div className="mt-2">
-					<p className="text-pretty text-[13px] leading-relaxed text-ink-muted">
-						{t("ui.teamBridge.plan.body")}
-					</p>
+					{reason !== "off" && (
+						<p className="text-pretty text-[13px] leading-relaxed text-ink-muted">
+							{t("ui.teamBridge.plan.body")}
+						</p>
+					)}
 					<p className="mt-4 text-[12px] leading-snug text-ink-dim">
 						{t(copy[reason].reason)}
 					</p>
@@ -329,6 +338,12 @@ export type TeamBridgePageViewProps = {
 	eligibility?: TeamBridgeEligibility | null;
 	gatePending?: boolean;
 	readOnly?: boolean;
+	/**
+	 * A band above the thread pane (the default-on first-run notice). A slot
+	 * rather than a prop bag so the pure view stays ignorant of the notice's
+	 * reads and writes, which live in its container.
+	 */
+	notice?: ReactNode;
 	onTarget: (target: TeamBridgeTarget) => void;
 	/**
 	 * Send `body`. For a target with no conversation yet the container creates
@@ -376,6 +391,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	eligibility = null,
 	gatePending = false,
 	readOnly = false,
+	notice = null,
 	onTarget,
 	onSend,
 	onNewChannel,
@@ -850,6 +866,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					threadIsOpen && "@max-[1024px]/bridge:invisible",
 				)}
 			>
+				{notice}
 				{target === null ? (
 					<div className="flex flex-1 items-center justify-center px-6">
 						{listState === "loading" ? (
@@ -1636,6 +1653,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				eligibility={eligibility}
 				gatePending={gatePending}
 				readOnly={readOnly}
+				notice={<TeamBridgeDefaultOnBanner status={status.data} />}
 				onRetry={() => {
 					void list.refetch();
 					if (memberships.isError) void memberships.refetch();

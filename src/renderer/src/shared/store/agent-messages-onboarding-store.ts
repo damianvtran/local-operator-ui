@@ -10,7 +10,16 @@ export function agentMessagesOnboardingKey(
 
 type AgentMessagesOnboardingState = {
 	seen: Record<string, true>;
+	/**
+	 * Default-on banners the reader has dismissed (runtime #2790). The runtime's
+	 * `notice_pending` is the authority; this is the belt for the window where
+	 * the shared status model still replays a cached "pending" (its cache is
+	 * five minutes) so a remount straight after Dismiss cannot bring the banner
+	 * back. Only written after the runtime accepted the dismissal.
+	 */
+	defaultOnDismissed: Record<string, true>;
 	markSeen: (accountId: string, tenantId: string) => void;
+	markDefaultOnDismissed: (accountId: string, tenantId: string) => void;
 };
 
 /**
@@ -23,6 +32,14 @@ export const useAgentMessagesOnboardingStore =
 		persist(
 			(set) => ({
 				seen: {},
+				defaultOnDismissed: {},
+				markDefaultOnDismissed: (accountId, tenantId) =>
+					set((state) => ({
+						defaultOnDismissed: {
+							...state.defaultOnDismissed,
+							[agentMessagesOnboardingKey(accountId, tenantId)]: true,
+						},
+					})),
 				markSeen: (accountId, tenantId) =>
 					set((state) => ({
 						seen: {
@@ -33,7 +50,10 @@ export const useAgentMessagesOnboardingStore =
 			}),
 			{
 				name: "agent-messages-onboarding",
-				partialize: (state) => ({ seen: state.seen }),
+				partialize: (state) => ({
+					seen: state.seen,
+					defaultOnDismissed: state.defaultOnDismissed,
+				}),
 			},
 		),
 	);

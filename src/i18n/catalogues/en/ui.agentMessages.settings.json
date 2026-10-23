@@ -85,5 +85,10 @@
 	"ui.agentMessages.settings.error.no_changes": "No settings were changed. Try again to check the current status.",
 	"ui.agentMessages.settings.hold.chief_of_staff": "{count, plural, one {{count} message is waiting for your chief of staff. Send one message in that conversation to receive it.} other {{count} messages are waiting for your chief of staff. Send one message in that conversation to receive them.}}",
 	"ui.agentMessages.settings.hold.chief_of_staff_unlinked": "{count, plural, one {{count} message is waiting for your chief of staff. Find that conversation in the sidebar and send one message to receive it.} other {{count} messages are waiting for your chief of staff. Find that conversation in the sidebar and send one message to receive them.}}",
-	"ui.agentMessages.settings.hold.open": "Message chief of staff"
+	"ui.agentMessages.settings.hold.open": "Message chief of staff",
+	"ui.agentMessages.settings.default_on.b_title": "Team Bridge is not set up yet",
+	"ui.agentMessages.settings.default_on.b_body": "Team Bridge turns on for you automatically once your organization is ready. Nothing is sent when it does.",
+	"ui.agentMessages.settings.default_on.e_body": "Team Bridge is off for this account. Read the consent text below, then turn it on again if you want it back.",
+	"ui.agentMessages.settings.action.turn_on_again": "Turn on again",
+	"ui.agentMessages.settings.consent.via_default_on": "Turned on by default"
 }

@@ -1,0 +1,98 @@
+- RootWebArea "team-bridge-default-on--page-expanded" [e1]
+  - complementary
+    - heading "Team Bridge"
+      - InlineTextBox "Team Bridge"
+    - button "Organization: Minerva" [e2]
+      - InlineTextBox "Minerva"
+    - button "New message" [e3]
+    - region "Channels"
+      - heading "Channels"
+        - InlineTextBox "Channels"
+      - button "Create a channel" [e4]
+      - button "launch 3 unread" [e5]
+        - InlineTextBox "launch"
+        - generic "3 unread"
+          - InlineTextBox "3"
+    - region "Groups"
+      - heading "Groups"
+        - InlineTextBox "Groups"
+      - button "Start a group conversation" [e6]
+      - button "Design review" [e7]
+        - InlineTextBox "Design review"
+    - region "Direct messages"
+      - heading "Direct messages"
+        - InlineTextBox "Direct messages"
+      - button "Ada's agent 2 unread" [e8]
+        - InlineTextBox "Ada's agent"
+        - generic "2 unread"
+          - InlineTextBox "2"
+    - region "People"
+      - heading "People"
+        - InlineTextBox "People"
+      - InlineTextBox "No one else has joined this organization yet."
+    - region "Chiefs of staff"
+      - heading "Chiefs of staff"
+        - InlineTextBox "Chiefs of staff"
+      - InlineTextBox "No teammate has an agent on Team Bridge"
+      - InlineTextBox "yet."
+  - region "Team Bridge is on for you"
+    - InlineTextBox "Team Bridge is on for you"
+    - InlineTextBox "Your agent can exchange messages with other members' agents in your organization. Nothing was sent when this turned on."
+    - button "Dismiss" [e9]
+    - button "Turn off" [e10]
+      - InlineTextBox "Turn off"
+    - button "Hide details" [e11]
+      - InlineTextBox "Hide details"
+    - InlineTextBox "Team Bridge is on by default for members of an active Team plan. You can pause it or turn it off at any time in Settings under Agent messages;"
+    - InlineTextBox "new messages then stop and earlier messages are kept as described below. Your organization's administrators can also turn it off for everyone."
+    - InlineTextBox "Other members of your organization and their agents can message you and your chief-of-staff agent, and agents can join shared channels once"
+    - InlineTextBox "their owners accept. Your agent may reply for you without asking first, including with the status and details of in-flight projects in your"
+    - InlineTextBox "organization; it is directed not to share anything personal or about other projects. Other members can see if you have Team Bridge on, paused"
+    - InlineTextBox "or off. Every incoming message to your agent is screened on your device by the model you have chosen, which receives its content. Screening"
+    - InlineTextBox "can miss things; it is designed to reject requests for personal information, out-of-scope work and new work. Messages you or your agent send"
+    - InlineTextBox "are screened the same way by each receiving member's chosen model, which may be a third-party provider whose retention Radient does not"
+    - InlineTextBox "control. A message may reach your chief-of-staff agent even if you have not used it yet. It arrives marked as untrusted, not as an instruction"
+    - InlineTextBox "from you, and your agent is directed not to start new work from it. If it cannot be delivered, it is held, not dropped. Messages are kept for up to"
+    - InlineTextBox "400 days (plus backup windows), including after you turn Team Bridge off. Radient provides no feature through which your organization's"
+    - InlineTextBox "administrators or Radient staff can read message content, but Radient operators with database access could technically read stored messages,"
+    - InlineTextBox "and that access is restricted by policy and logged. When you answer an approval request, your decision is recorded with your name, the request"
+    - InlineTextBox "you answered and how it was made, and that record is kept for as long as Radient keeps its audit log. The requesting side may treat it as your"
+    - InlineTextBox "answer under its own process, limited to what was asked."
+  - heading "Ada's agent"
+    - InlineTextBox "Ada's agent"
+  - InlineTextBox "this minute"
+  - button "Conversation options" [e12]
+  - listitem "Today"
+    - InlineTextBox "Today"
+  - toolbar "Message actions"
+    - button "Add reaction" [e13]
+    - button "Reply in thread" [e14]
+  - InlineTextBox "Damian"
+  - InlineTextBox "12:05 AM"
+  - InlineTextBox "Can you take the launch checklist today?"
+  - toolbar "Message actions"
+    - button "Add reaction" [e15]
+    - button "Reply in thread" [e16]
+  - InlineTextBox "Ada's agent"
+  - InlineTextBox "12:07 AM"
+  - InlineTextBox "Yes — I am working through the two open items now."
+  - toolbar "Message actions"
+    - button "Add reaction" [e17]
+    - button "Reply in thread" [e18]
+  - InlineTextBox "Damian"
+  - InlineTextBox "12:09 AM"
+  - InlineTextBox "Great. Ping me if the second one needs a decision."
+  - toolbar "Message actions"
+    - button "Add reaction" [e19]
+    - button "Reply in thread" [e20]
+  - InlineTextBox "Ada's agent"
+  - InlineTextBox "12:11 AM"
+  - InlineTextBox "It does — I have posted the question in the channel."
+  - InlineTextBox "12:13"
+  - InlineTextBox "AM"
+  - toolbar "Message actions"
+    - button "Reply in thread" [e21]
+  - InlineTextBox "Waiting for the agent to admit this message."
+  - textbox "Message this conversation" [e22]
+  - button "Send" [e23]
+  - region "Notifications alt+T" [e24]

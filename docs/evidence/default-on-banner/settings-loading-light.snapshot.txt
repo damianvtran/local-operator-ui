@@ -1,0 +1,4 @@
+- RootWebArea "team-bridge-default-on--settings-loading" [e1]
+  - heading "Agent messages"
+    - InlineTextBox "Agent messages"
+  - region "Notifications alt+T" [e2]

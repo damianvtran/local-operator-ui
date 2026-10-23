@@ -1,0 +1,635 @@
+{
+  "storage": "Ignored local frames; never force-add. Historical URLs refer to the original reviewed head, not the current tree.",
+  "frames": [
+    {
+      "path": "docs/evidence-frames/default-on-banner/contact-historical-main.jpg",
+      "sha256": "966c69c06547f97155da83098a26907741d93bb4b7bade2c8aaaf1a29ceb12ec",
+      "bytes": 147538,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/contact-historical-main.jpg"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/contact-page-dark.jpg",
+      "sha256": "d08aac647155272346e29c822d42d8663bfe87515f8ab4d0fb54ea8ecf79f2e5",
+      "bytes": 149810,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/contact-page-dark.jpg"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/contact-page-light.jpg",
+      "sha256": "8a3ad6b7329f5cb3c1460f8b6a0beca747e4328769b1b9d95c91f062581709e4",
+      "bytes": 155023,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/contact-page-light.jpg"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/contact-settings-dark.jpg",
+      "sha256": "0f72fcd7ca934f7e01cb8d38e715b54976405514a91ddf759605c9df37925f32",
+      "bytes": 192028,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/contact-settings-dark.jpg"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/contact-settings-light.jpg",
+      "sha256": "478060b9bc07286b1679ecb30b02d7d2f2394e88111af129940a3a996747ff98",
+      "bytes": 190966,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/contact-settings-light.jpg"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/historical-main-page-dark-initial.png",
+      "sha256": "ba198c73b1a2135f165f29b83998f4b0a4d9ca14f2d7d444ad04dd007e9ee71f",
+      "bytes": 153908,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/historical-main-page-dark-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/historical-main-page-dark-settled.png",
+      "sha256": "ba198c73b1a2135f165f29b83998f4b0a4d9ca14f2d7d444ad04dd007e9ee71f",
+      "bytes": 153908,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/historical-main-page-dark-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/historical-main-page-light-initial.png",
+      "sha256": "fae429c294d71d4b76fd2e45d33d230cd78257266362c8144dec09410d5f33a6",
+      "bytes": 154206,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/historical-main-page-light-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/historical-main-page-light-settled.png",
+      "sha256": "fae429c294d71d4b76fd2e45d33d230cd78257266362c8144dec09410d5f33a6",
+      "bytes": 154206,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/historical-main-page-light-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/historical-main-settings-dark-initial.png",
+      "sha256": "f63b43691f080a5900a59346087d23784637bc36db18ee727015ab836e7b70f2",
+      "bytes": 188732,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/historical-main-settings-dark-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/historical-main-settings-dark-settled.png",
+      "sha256": "f63b43691f080a5900a59346087d23784637bc36db18ee727015ab836e7b70f2",
+      "bytes": 188732,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/historical-main-settings-dark-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/historical-main-settings-light-initial.png",
+      "sha256": "fa91f56f0e2b8fdaf1620483360f82e4cdf3d6122a83a851c9790db038dcdac6",
+      "bytes": 180675,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/historical-main-settings-light-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/historical-main-settings-light-settled.png",
+      "sha256": "fa91f56f0e2b8fdaf1620483360f82e4cdf3d6122a83a851c9790db038dcdac6",
+      "bytes": 180675,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/historical-main-settings-light-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/historical-main-settings-on-ramp-dark-initial.png",
+      "sha256": "24f71f06c38b25bd2effdc4b4204d02ba18b1e8a09fcbf49118f13836be19752",
+      "bytes": 194453,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/historical-main-settings-on-ramp-dark-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/historical-main-settings-on-ramp-dark-settled.png",
+      "sha256": "24f71f06c38b25bd2effdc4b4204d02ba18b1e8a09fcbf49118f13836be19752",
+      "bytes": 194453,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/historical-main-settings-on-ramp-dark-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/historical-main-settings-on-ramp-light-initial.png",
+      "sha256": "8b3862aafe77031c2013626faa1c2114b7495ae1116ed22bb0808e5e766eeb65",
+      "bytes": 189648,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/historical-main-settings-on-ramp-light-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/historical-main-settings-on-ramp-light-settled.png",
+      "sha256": "8b3862aafe77031c2013626faa1c2114b7495ae1116ed22bb0808e5e766eeb65",
+      "bytes": 189648,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/historical-main-settings-on-ramp-light-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-dismissed-dark-initial.png",
+      "sha256": "6cb5427a2b855cd28b5de8e7d5a7b4f1c86fc5d4fe6643e9fc6f1a4103dee14f",
+      "bytes": 154125,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-dismissed-dark-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-dismissed-dark-settled.png",
+      "sha256": "6cb5427a2b855cd28b5de8e7d5a7b4f1c86fc5d4fe6643e9fc6f1a4103dee14f",
+      "bytes": 154125,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-dismissed-dark-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-dismissed-light-initial.png",
+      "sha256": "16b857b1d4a80aeae8334933f342ffb132e49578c8dc06431960d61a674385d0",
+      "bytes": 155045,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-dismissed-light-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-dismissed-light-settled.png",
+      "sha256": "16b857b1d4a80aeae8334933f342ffb132e49578c8dc06431960d61a674385d0",
+      "bytes": 155045,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-dismissed-light-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-expanded-dark-initial.png",
+      "sha256": "0a286fe62eef7fa50628841f5b158af9d7773acc5813db2e175d5016ac6de843",
+      "bytes": 393964,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-expanded-dark-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-expanded-dark-settled.png",
+      "sha256": "0a286fe62eef7fa50628841f5b158af9d7773acc5813db2e175d5016ac6de843",
+      "bytes": 393964,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-expanded-dark-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-expanded-light-initial.png",
+      "sha256": "d14f96d241b14d53d95c633df54fed995227802ba99df885c8fcb477cdfb2920",
+      "bytes": 391999,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-expanded-light-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-expanded-light-settled.png",
+      "sha256": "d14f96d241b14d53d95c633df54fed995227802ba99df885c8fcb477cdfb2920",
+      "bytes": 391999,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-expanded-light-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-failed-dark-initial.png",
+      "sha256": "e3602019081b4714976a7503f8e93a4dd9244bdbf74a6ca25af24704dc22888d",
+      "bytes": 199240,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-failed-dark-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-failed-dark-settled.png",
+      "sha256": "e3602019081b4714976a7503f8e93a4dd9244bdbf74a6ca25af24704dc22888d",
+      "bytes": 199240,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-failed-dark-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-failed-light-initial.png",
+      "sha256": "8e43229440044b5824552075b9f2ba89ff17c354bd503d04e9eba81c48efc552",
+      "bytes": 200136,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-failed-light-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-failed-light-settled.png",
+      "sha256": "8e43229440044b5824552075b9f2ba89ff17c354bd503d04e9eba81c48efc552",
+      "bytes": 200136,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-failed-light-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-loading-dark-initial.png",
+      "sha256": "abfec02c2d4e6f5665cc2e9d7b1189245c3d6c2aab83151901fb832ae18705b5",
+      "bytes": 16018,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-loading-dark-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-loading-dark-settled.png",
+      "sha256": "b61871ef9a3bcac4f76c394210d2a771e1188332e98f1243d84a4c2150915474",
+      "bytes": 16007,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-loading-dark-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-loading-light-initial.png",
+      "sha256": "cc0d6dee4b1f542c5af27ef9f69f6b0d3ac1e76e66612dab281b431da1a3ded0",
+      "bytes": 16064,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-loading-light-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-loading-light-settled.png",
+      "sha256": "e47b61215e8b3fa24794972c9b3719ab6c9157a726184d619456c11f977fe658",
+      "bytes": 16050,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-loading-light-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-off-dark-initial.png",
+      "sha256": "6cb5427a2b855cd28b5de8e7d5a7b4f1c86fc5d4fe6643e9fc6f1a4103dee14f",
+      "bytes": 154125,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-off-dark-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-off-dark-settled.png",
+      "sha256": "6cb5427a2b855cd28b5de8e7d5a7b4f1c86fc5d4fe6643e9fc6f1a4103dee14f",
+      "bytes": 154125,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-off-dark-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-off-light-initial.png",
+      "sha256": "16b857b1d4a80aeae8334933f342ffb132e49578c8dc06431960d61a674385d0",
+      "bytes": 155045,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-off-light-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-off-light-settled.png",
+      "sha256": "16b857b1d4a80aeae8334933f342ffb132e49578c8dc06431960d61a674385d0",
+      "bytes": 155045,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-off-light-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-pending-dark-initial.png",
+      "sha256": "46093f5b321206e34d330707e2329e463ed4adcd73d171e158954b646c485392",
+      "bytes": 186436,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-pending-dark-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-pending-dark-settled.png",
+      "sha256": "46093f5b321206e34d330707e2329e463ed4adcd73d171e158954b646c485392",
+      "bytes": 186436,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-pending-dark-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-pending-light-initial.png",
+      "sha256": "b86719c58b3785dbbfa86e88729986daa45e5c7da0125523f573e304e92a8d03",
+      "bytes": 187150,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-pending-light-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-pending-light-settled.png",
+      "sha256": "b86719c58b3785dbbfa86e88729986daa45e5c7da0125523f573e304e92a8d03",
+      "bytes": 187150,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-pending-light-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-v1-dark-initial.png",
+      "sha256": "41914108d1a543c96a4f10696dd681ecd941b523512adc4eb593435362b1a766",
+      "bytes": 154122,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-v1-dark-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-v1-dark-settled.png",
+      "sha256": "41914108d1a543c96a4f10696dd681ecd941b523512adc4eb593435362b1a766",
+      "bytes": 154122,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-v1-dark-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-v1-light-initial.png",
+      "sha256": "16b857b1d4a80aeae8334933f342ffb132e49578c8dc06431960d61a674385d0",
+      "bytes": 155045,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-v1-light-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/page-v1-light-settled.png",
+      "sha256": "16b857b1d4a80aeae8334933f342ffb132e49578c8dc06431960d61a674385d0",
+      "bytes": 155045,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/page-v1-light-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-dismissed-dark-initial.png",
+      "sha256": "4a61c5ff401e06c20e66ad8a085bd37d8584ef5250c64b7c3bc393166c7de3d2",
+      "bytes": 190367,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-dismissed-dark-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-dismissed-dark-settled.png",
+      "sha256": "4a61c5ff401e06c20e66ad8a085bd37d8584ef5250c64b7c3bc393166c7de3d2",
+      "bytes": 190367,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-dismissed-dark-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-dismissed-light-initial.png",
+      "sha256": "92b7571200cb8b63fd9f955a9083f3f955198ab61ca2364500f0af85f85bab95",
+      "bytes": 182264,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-dismissed-light-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-dismissed-light-settled.png",
+      "sha256": "92b7571200cb8b63fd9f955a9083f3f955198ab61ca2364500f0af85f85bab95",
+      "bytes": 182264,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-dismissed-light-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-expanded-dark-initial.png",
+      "sha256": "9cd7328fbeabff9655c7f75bed0aef445503b51637f62839dfe9ba5965076c1e",
+      "bytes": 360514,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-expanded-dark-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-expanded-dark-settled.png",
+      "sha256": "9cd7328fbeabff9655c7f75bed0aef445503b51637f62839dfe9ba5965076c1e",
+      "bytes": 360514,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-expanded-dark-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-expanded-light-initial.png",
+      "sha256": "9a673bc9957036b1cc096a5a1725d9ada4265a96697485a4dc9c2001bead3169",
+      "bytes": 353084,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-expanded-light-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-expanded-light-settled.png",
+      "sha256": "9a673bc9957036b1cc096a5a1725d9ada4265a96697485a4dc9c2001bead3169",
+      "bytes": 353084,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-expanded-light-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-failed-dark-initial.png",
+      "sha256": "81cf0e91044ae3e6b82ec77cd0a81586f353748bf499b8903f672a4e5ac46404",
+      "bytes": 195773,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-failed-dark-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-failed-dark-settled.png",
+      "sha256": "81cf0e91044ae3e6b82ec77cd0a81586f353748bf499b8903f672a4e5ac46404",
+      "bytes": 195773,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-failed-dark-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-failed-light-initial.png",
+      "sha256": "597ebc8fa08d7428243bad197651588e3c122f52448a2b6af27d989f62910f9c",
+      "bytes": 190063,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-failed-light-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-failed-light-settled.png",
+      "sha256": "597ebc8fa08d7428243bad197651588e3c122f52448a2b6af27d989f62910f9c",
+      "bytes": 190063,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-failed-light-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-loading-dark-initial.png",
+      "sha256": "e7dfee1be23a6e7c1cc2909e8c1bce2897831efd544450a3dee9cbd8552aa85e",
+      "bytes": 22553,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-loading-dark-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-loading-dark-settled.png",
+      "sha256": "bea80bea4cc0ddc2d3e6ac2a336d8e1ac278e8089980b3845f0d0a416f60f760",
+      "bytes": 22376,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-loading-dark-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-loading-light-initial.png",
+      "sha256": "69ecbf61a085b083df10c51a3eb229368dfc12f185b38d2e51092c3ef7d275ca",
+      "bytes": 22892,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-loading-light-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-loading-light-settled.png",
+      "sha256": "ff6858c730d90fc48f90256ca8f6ac26f851293487e17ba2e5725d21404f1cce",
+      "bytes": 22744,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-loading-light-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-off-dark-initial.png",
+      "sha256": "b01f4cebff3246ea5bc0b07192d54aa1b8f81d55a32a0b205902e0b47e1f3b79",
+      "bytes": 302338,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-off-dark-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-off-dark-settled.png",
+      "sha256": "b01f4cebff3246ea5bc0b07192d54aa1b8f81d55a32a0b205902e0b47e1f3b79",
+      "bytes": 302338,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-off-dark-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-off-light-initial.png",
+      "sha256": "356884aee24efe519ef4b9e6995d1986e10112619458d286e469970f2aff8767",
+      "bytes": 295501,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-off-light-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-off-light-settled.png",
+      "sha256": "356884aee24efe519ef4b9e6995d1986e10112619458d286e469970f2aff8767",
+      "bytes": 295501,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-off-light-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-pending-dark-initial.png",
+      "sha256": "8b0a152fdbd7ce146a60db4b2e878643e512357fd8738af7d75d0272921d1fe9",
+      "bytes": 194276,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-pending-dark-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-pending-dark-settled.png",
+      "sha256": "8b0a152fdbd7ce146a60db4b2e878643e512357fd8738af7d75d0272921d1fe9",
+      "bytes": 194276,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-pending-dark-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-pending-light-initial.png",
+      "sha256": "2444e7c97dac9a58cb57eb2bbf8a0446b4f4570171def9e2f66e33cfa44c36e3",
+      "bytes": 187779,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-pending-light-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-pending-light-settled.png",
+      "sha256": "2444e7c97dac9a58cb57eb2bbf8a0446b4f4570171def9e2f66e33cfa44c36e3",
+      "bytes": 187779,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-pending-light-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-v1-dark-initial.png",
+      "sha256": "45ff676b5aaa5f851bacfeac44cce35eb06c844d6f4763cc63305bcc52577257",
+      "bytes": 204108,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-v1-dark-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-v1-dark-settled.png",
+      "sha256": "45ff676b5aaa5f851bacfeac44cce35eb06c844d6f4763cc63305bcc52577257",
+      "bytes": 204108,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-v1-dark-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-v1-light-initial.png",
+      "sha256": "0cc4b222e997483dec3db244468e5417fe963ddcddc174da6f38b2934914c36b",
+      "bytes": 198472,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-v1-light-initial.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/settings-v1-light-settled.png",
+      "sha256": "0cc4b222e997483dec3db244468e5417fe963ddcddc174da6f38b2934914c36b",
+      "bytes": 198472,
+      "historical_url": "https://raw.githubusercontent.com/damianvtran/local-operator-ui/2df48707a9896f06dc6792d8f7347466db97e8f8/docs/evidence/default-on-banner/settings-v1-light-settled.png"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d1-desktop-expanded-dark-initial.png",
+      "sha256": "ff74f985892a0f91a1eeda787cceed5faef8d80f1f8aca349cbf436fb1ca6bd3",
+      "bytes": 396809,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d1-desktop-expanded-dark-settled.png",
+      "sha256": "ff74f985892a0f91a1eeda787cceed5faef8d80f1f8aca349cbf436fb1ca6bd3",
+      "bytes": 396809,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d1-desktop-expanded-light-initial.png",
+      "sha256": "362034ef3c8496b0064bbda0155544c61bd8a94eb3ca252db3ed73a14b668de9",
+      "bytes": 394280,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d1-desktop-expanded-light-settled.png",
+      "sha256": "362034ef3c8496b0064bbda0155544c61bd8a94eb3ca252db3ed73a14b668de9",
+      "bytes": 394280,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d1-green-off-dark-initial.png",
+      "sha256": "115679bb8e8bb0705b0a039c90a22c3db7cf087f0d21d5b251138fadf9982e53",
+      "bytes": 30459,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d1-green-off-dark-settled.png",
+      "sha256": "115679bb8e8bb0705b0a039c90a22c3db7cf087f0d21d5b251138fadf9982e53",
+      "bytes": 30459,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d1-green-off-light-initial.png",
+      "sha256": "a7d95de52db231ea8ab866bb0d94a9f2d5d3c2fa606fd764119955af3a0bb9ec",
+      "bytes": 29131,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d1-green-off-light-settled.png",
+      "sha256": "a7d95de52db231ea8ab866bb0d94a9f2d5d3c2fa606fd764119955af3a0bb9ec",
+      "bytes": 29131,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d1-red-off-light.png",
+      "sha256": "67370eaeb6aff118692651a32378526cb416da071fe57a083d99d749ea6a23eb",
+      "bytes": 153945,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-contact.jpg",
+      "sha256": "eca054a649f1d25f8a244c55a69e94c95fbab503a3e3eea4966f7eb319757292",
+      "bytes": 184011,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-disclosure-end-dark-initial.png",
+      "sha256": "dc7b112b9ed8c380d7810fc995da3b0d94487e79271bb5fb01f7e3a573dc178a",
+      "bytes": 246281,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-disclosure-end-dark-settled.png",
+      "sha256": "dc7b112b9ed8c380d7810fc995da3b0d94487e79271bb5fb01f7e3a573dc178a",
+      "bytes": 246281,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-disclosure-end-light-initial.png",
+      "sha256": "0c8b5c1c4dc375c523a85883849ab8218dd155e0a1fef2699bc282825f19f624",
+      "bytes": 245763,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-disclosure-end-light-settled.png",
+      "sha256": "0c8b5c1c4dc375c523a85883849ab8218dd155e0a1fef2699bc282825f19f624",
+      "bytes": 245763,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-dark-initial.png",
+      "sha256": "2101ae8596b045b72176247698a6718f803a64d1981e99e74bee400c3759b315",
+      "bytes": 242353,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-dark-settled.png",
+      "sha256": "2101ae8596b045b72176247698a6718f803a64d1981e99e74bee400c3759b315",
+      "bytes": 242353,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-french-dark-initial.png",
+      "sha256": "d99dc92a9afcf340872db0150250c9b38990fdf3a7ae58f4343dfe3b8c25884e",
+      "bytes": 255577,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-french-dark-settled.png",
+      "sha256": "d99dc92a9afcf340872db0150250c9b38990fdf3a7ae58f4343dfe3b8c25884e",
+      "bytes": 255577,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-french-light-initial.png",
+      "sha256": "83799d80b13c8f32bb01908334b0a0f5e75bad3bdf0d3e51452f399f539b3e14",
+      "bytes": 254693,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-french-light-settled.png",
+      "sha256": "83799d80b13c8f32bb01908334b0a0f5e75bad3bdf0d3e51452f399f539b3e14",
+      "bytes": 254693,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-light-initial.png",
+      "sha256": "6ae1c915be72de5af2378a7dac87cf5e110cbc327dccda8189585f1bf9692ef5",
+      "bytes": 242016,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-light-settled.png",
+      "sha256": "6ae1c915be72de5af2378a7dac87cf5e110cbc327dccda8189585f1bf9692ef5",
+      "bytes": 242016,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-urdu-dark-initial.png",
+      "sha256": "fbe3cd4bcb9e55b8ec29cb3e5e922fe0ba16310a45d992fc454b9d677dadbd53",
+      "bytes": 246443,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-urdu-dark-settled.png",
+      "sha256": "fbe3cd4bcb9e55b8ec29cb3e5e922fe0ba16310a45d992fc454b9d677dadbd53",
+      "bytes": 246443,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-urdu-light-initial.png",
+      "sha256": "7434f20b187b5c5d748a4c91e76ffe14106db57e055104ee02eb58905a839726",
+      "bytes": 245327,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-expanded-urdu-light-settled.png",
+      "sha256": "7434f20b187b5c5d748a4c91e76ffe14106db57e055104ee02eb58905a839726",
+      "bytes": 245327,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-off-observed-dark-initial.png",
+      "sha256": "517370517ca44d090a72b608fd1e450d126befc9809a7fd15b4aa17115ebff67",
+      "bytes": 30574,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-off-observed-dark-settled.png",
+      "sha256": "517370517ca44d090a72b608fd1e450d126befc9809a7fd15b4aa17115ebff67",
+      "bytes": 30574,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-off-observed-light-initial.png",
+      "sha256": "c2113cf022507536eacdea194409488f83484fa6085efcbfa154a21f9ac252e9",
+      "bytes": 29256,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-green-minimum-off-observed-light-settled.png",
+      "sha256": "c2113cf022507536eacdea194409488f83484fa6085efcbfa154a21f9ac252e9",
+      "bytes": 29256,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d2-red-minimum-expanded-light-settled.png",
+      "sha256": "63da8b8206946e2f8b44c1fc573c4a29c918548658f7a8a33ec01acd2c3fe997",
+      "bytes": 340471,
+      "source": "D1/D2 full-container browser capture; local ignored artifact, no published attachment URL claimed"
+    },
+    {
+      "path": "docs/evidence-frames/default-on-banner/d1-final-contact.jpg",
+      "sha256": "e58b4ed9f5c64857d840dbbacb9e5cc35f330318990aa7bb05da6097573cbc27",
+      "bytes": 164357,
+      "source": "D1/D2 browser follow-up; ignored local artifact, no published URL claimed"
+    }
+  ]
+}

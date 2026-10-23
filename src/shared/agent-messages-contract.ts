@@ -70,6 +70,34 @@ export type AgentMessagesDeliveryHold = NonNullable<
 >;
 
 /**
+ * Default-on (opt-out) enrolment facts (runtime PR #2790, batch-5 deliverable 4).
+ *
+ * WHY: under `bridge_consent_v2` the runtime enrols an eligible member without
+ * a consent dialog and nothing fires at enrolment, so the UI's whole first-run
+ * job becomes one dismissible banner. `in_force` says the hub serves AND accepts
+ * v2 (the opt-in dialog and every Enable cue must then stay out of the way);
+ * `notice_pending` says the member has not dismissed that banner yet.
+ *
+ * CONSTRAINTS: additive and optional. A runtime older than #2790, or a hub
+ * serving only v1, omits the key and the client behaves exactly as before the
+ * feature existed. A malformed block degrades to absent (`.catch`) rather than
+ * failing the status read that gates every agent-messages surface: the
+ * conservative reading of "I cannot tell" is the opt-in flow we already ship.
+ */
+export const agentMessagesDefaultOnSchema = z
+	.object({
+		in_force: z.boolean(),
+		// Tolerated on its own: a malformed `notice_pending` must read as "no
+		// notice", never collapse the whole block to absent - an absent block
+		// means "not in force" and would reopen the opt-in dialog for a member
+		// who is enrolled. false only hides the banner.
+		notice_pending: z.boolean().catch(false),
+	})
+	.passthrough()
+	.optional()
+	.catch(undefined);
+
+/**
  * The local desktop projection, not a second Radient eligibility policy.
  * Unknown additive fields survive; missing or unfamiliar required state fails
  * closed. The backend alone selects the v1 organization (HOME-first, then ID).
@@ -123,9 +151,20 @@ export const agentMessagesStatusSchema = z
 		// press a Save the server will refuse.
 		read_only: z.boolean().optional(),
 		delivery_hold: agentMessagesDeliveryHoldSchema,
+		default_on: agentMessagesDefaultOnSchema,
 	})
 	.passthrough();
 export type AgentMessagesStatus = z.infer<typeof agentMessagesStatusSchema>;
+
+/**
+ * What a REQUEST may claim about where consent was collected.
+ *
+ * `"default_on"` is deliberately absent: only the hub's enrolment route can
+ * assert it, and the runtime answers a client that tries with a 422. Keeping
+ * the request types narrower than the response enum below makes the claim
+ * unrepresentable here rather than relying on the server to refuse it.
+ */
+export type AgentMessagesRequestConsentVia = "dialog" | "settings";
 
 export type AgentMessagesConsentPut = {
 	expected_account_id: string;
@@ -145,7 +184,7 @@ export type AgentMessagesSettingsPut = {
 	tenant_id?: string;
 	state: "active" | "paused" | "disabled";
 	consent_version?: string;
-	consented_via?: "dialog" | "settings";
+	consented_via?: AgentMessagesRequestConsentVia;
 	label?: string;
 };
 
@@ -153,7 +192,13 @@ const consentRecordSchema = z
 	.object({
 		version: z.string().min(1),
 		consented_at: z.string().min(1),
-		consented_via: z.enum(["dialog", "settings"]),
+		// RESPONSES ONLY may carry "default_on" (a member the runtime enrolled
+		// automatically). Requests use AgentMessagesRequestConsentVia, which
+		// cannot. The enum has already grown once, so the read stays open: an
+		// unknown spelling from a newer runtime must not fail the settings read
+		// (it would put the whole section in its error state). Surfaces label the
+		// known values through the catalogue and show an unknown one as-is.
+		consented_via: z.string().min(1),
 		// False means the served text moved on since this record was written; the
 		// surface must route the reader back through the enable action.
 		current: z.boolean(),
@@ -189,6 +234,10 @@ export const agentMessagesSettingsResultSchema = z
 				consent_required: z.boolean(),
 			})
 			.passthrough(),
+		// Runtime #2790: true when the endpoint's consent was collected as
+		// `default_on`. Absent on an older runtime; a malformed value reads as
+		// absent so it can only hide the banner, never break the settings read.
+		default_on: z.boolean().optional().catch(undefined),
 	})
 	.passthrough();
 export type AgentMessagesSettingsResult = z.infer<
@@ -291,6 +340,66 @@ export type AgentMessagesAllowlistResult = z.infer<
 	typeof agentMessagesAllowlistResultSchema
 >;
 
+/** The runtime's answer to the banner's dismiss route. */
+export const agentMessagesOnboardingDismissResultSchema = z
+	.object({ onboarding: z.literal("seen") })
+	.passthrough();
+
+/**
+ * Whether default-on is in force for this status: the hub serves and accepts v2.
+ *
+ * Every opt-in cue (the onboarding dialog, an Enable button, "enable later"
+ * copy, the opt-in default-reach line) is suppressed while this is true. Absent
+ * or malformed reads as false, so an older runtime keeps today's flow.
+ */
+export function agentMessagesDefaultOnInForce(
+	status: AgentMessagesStatus | null,
+): boolean {
+	return status?.default_on?.in_force === true;
+}
+
+/**
+ * The consent text the default-on banner may show, or null.
+ *
+ * The banner promises the member the text they were ENROLLED under. The status
+ * read serves the CURRENT text (or a cached copy), which can have moved on
+ * since enrolment; showing it would put words in front of the member that they
+ * never accepted. So the served text is returned only when its version equals
+ * the endpoint's recorded consent version; on any mismatch (or no record) the
+ * caller shows the "unavailable" copy rather than a different version's text.
+ */
+export function agentMessagesDefaultOnBannerConsentText(
+	status: AgentMessagesStatus | null,
+	settings: Pick<AgentMessagesSettingsResult, "endpoint"> | null,
+): string | null {
+	const served = agentMessagesServedConsent(status);
+	const enrolled = settings?.endpoint?.consent?.version;
+	return served && enrolled && served.version === enrolled ? served.text : null;
+}
+
+/**
+ * The banner rule, exactly as the runtime contract states it: active/enrolled
+ * (surface C), the endpoint was enrolled by default-on, and the member has not
+ * dismissed the notice. All three are required; a missing one hides the banner
+ * rather than guessing, since a banner that returns after dismissal breaks the
+ * "never returns" promise.
+ *
+ * The endpoint must also still be `active`: a Turn off answer changes the
+ * endpoint before the cached status catches up, and a banner offering to turn
+ * off something already off would be a lie for those few seconds.
+ */
+export function agentMessagesDefaultOnBannerPending(
+	status: AgentMessagesStatus | null,
+	settings: Pick<AgentMessagesSettingsResult, "default_on" | "endpoint"> | null,
+): boolean {
+	return (
+		status?.surface_state === "C" &&
+		settings?.default_on === true &&
+		settings.endpoint?.state === "active" &&
+		status.default_on?.notice_pending === true
+	);
+}
+
 /**
  * Validate the selected row, never pick a row. This consistency check also
  * refuses old mixed-org projections rather than inferring "any eligible".
@@ -302,6 +411,10 @@ export function agentMessagesOnboardingContext(
 	if (
 		!status ||
 		!accountId ||
+		// Under default-on there is nothing to opt into, so there is no
+		// onboarding context: the dialog cannot open and the model cannot present
+		// or send an enable on its behalf.
+		agentMessagesDefaultOnInForce(status) ||
 		status.account_id !== accountId ||
 		status.capability < 1 ||
 		status.state !== "ready" ||

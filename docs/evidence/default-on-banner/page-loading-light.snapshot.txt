@@ -1,0 +1,3 @@
+- RootWebArea "team-bridge-default-on--page-loading" [e1]
+  - InlineTextBox "Checking Team Bridge…"
+  - region "Notifications alt+T" [e2]
