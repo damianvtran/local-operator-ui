@@ -76,6 +76,7 @@ import {
 	RailSection,
 	isTargetRow,
 } from "./team-bridge-rail";
+import { useReportTeamBridgeViewing } from "./team-bridge-viewing";
 import {
 	TeamBridgeScheduleDialog,
 	TeamBridgeScheduledList,
@@ -656,6 +657,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			!previewSelected &&
 			!selectedOrganizationUnknown,
 	);
+	// A focused window is quiet only for the conversation actually on screen.
+	useReportTeamBridgeViewing(shown?.id);
 	const canCompose =
 		!readOnly &&
 		!previewSelected &&

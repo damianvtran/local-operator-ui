@@ -289,6 +289,10 @@ test("a newer seq for a member on notify=all is a candidate", () => {
 		conversationName: "Bea",
 		organizationName: "Minerva",
 		senderLabel: null,
+		// The banner formatter's facts (tb-os-notifications): place and count.
+		kind: "dm",
+		name: null,
+		unreadCount: 2,
 	});
 });
 
