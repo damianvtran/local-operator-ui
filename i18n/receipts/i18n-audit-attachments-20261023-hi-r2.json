@@ -1,0 +1,71 @@
+{
+	"auditor": "i18n-auditor",
+	"model": "radient/auto",
+	"instance": "i18n-audit-attachments-20261023-hi-r2",
+	"locale": "hi",
+	"date": "2026-10-23",
+	"round": 2,
+	"status": "passed",
+	"namespace": "ui.chat.attachments",
+	"sha256": {
+		"hi": "5da8b986b66dcbd4968eea212e85d6508a0e9edc2af34298c4732b58caa1df05",
+		"en": "ec4220c2402d678bab8d969d5c8298548d40e2fdfd2fa926190f03c008018a54"
+	},
+	"context_sha256": "8cb3fc33d0e9dcccd1e6085b50534c9a1e2a751367a80a150310ce5f5892de86",
+	"scope": "Round-2 full independent audit of all 11 keys for hi at head e9d3930e14: English meaning and the en context sidecar, core glossary and the locale style guide, structural parity (key set/order, {type}/{size}/{digest}, ICU parse and format), NFC, manual bidi controls, locale punctuation, sibling terminology in the shipped catalogues, and the new recovery/copy/type-fallback sentences.",
+	"model_provenance": "Served model label reported by this session is radient/auto (routed); the underlying provider model is not exposed to the session, so none is invented.",
+	"instance_note": "Round-2 instance, distinct from the round-1 receipt for these bytes.",
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+			"revision": "local-operator 24dbccbb78"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/hi.md",
+			"sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+		},
+		"languages_manifest": {
+			"path": "i18n/languages.json",
+			"sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+		}
+	},
+	"findings": [
+		{
+			"severity": "MINOR",
+			"key": "ui.chat.attachments.copy_path",
+			"locale": "hi",
+			"current": "पथ कॉपी करें",
+			"proposed": "पाथ कॉपी करें",
+			"rule": "Path is पाथ in the shipped Hindi copy, including the SAME English strings 'Copy path'/'Path copied' in ui.library.menu.copy_path ('पाथ कॉपी करें') and ui.library.menu.path_copied ('पाथ कॉपी किया गया'), plus ui.settings.imports.copy_path, ui.chat.highlights.file_resolution_failed, ui.canvas.files.pathCopyNote, ui.library.preview.read_only_markdown and ui.mesh.mesh_actions.the_route_did_not_name_a_path (7 occurrences). The new namespace is the only place using पथ (5 occurrences). Core glossary: one term, one decision.",
+			"note": "Same root cause, term only, in the other four keys listed in affected_keys; their sentence shapes stay as written (the Library's 'किया गया' voice is not required).",
+			"affected_keys": [
+				{
+					"key": "ui.chat.attachments.copy_path",
+					"current": "पथ कॉपी करें",
+					"proposed": "पाथ कॉपी करें"
+				},
+				{
+					"key": "ui.chat.attachments.path_copied",
+					"current": "पथ कॉपी हो गया",
+					"proposed": "पाथ कॉपी हो गया"
+				},
+				{
+					"key": "ui.chat.attachments.file_missing_recovery",
+					"current": "मूल फ़ाइल अब इस पथ पर नहीं है। सहेजी गई प्रति अभी भी अनुलग्नक स्टोर में रखी है।",
+					"proposed": "मूल फ़ाइल अब इस पाथ पर नहीं है। सहेजी गई प्रति अभी भी अनुलग्नक स्टोर में रखी है।"
+				},
+				{
+					"key": "ui.chat.attachments.copy_saved_path",
+					"current": "सहेजी गई प्रति का पथ कॉपी करें",
+					"proposed": "सहेजी गई प्रति का पाथ कॉपी करें"
+				},
+				{
+					"key": "ui.chat.attachments.saved_path_copied",
+					"current": "सहेजी गई प्रति का पथ कॉपी हो गया",
+					"proposed": "सहेजी गई प्रति का पाथ कॉपी हो गया"
+				}
+			]
+		}
+	]
+}
