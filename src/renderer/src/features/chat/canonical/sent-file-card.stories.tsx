@@ -43,20 +43,20 @@ export const SentFile: Story = {
 };
 
 /**
- * The origin path is gone on this machine. The verdict names what happened, the
- * recovery line says the saved copy is available and gives a human next step; the
- * digest is diagnostic detail behind the line's tooltip, not the sentence itself
- * (design round 1, D2).
+ * The origin path is gone but the row names the retained copy. The original path
+ * stays as the record of where the file was (dimmed, no control); the saved copy
+ * has its own labelled row with its own copy control, and the digest is tooltip
+ * detail on that label (design round 2, D2).
  */
 export const MovedOrDeleted: Story = {
 	render: () => <SentFileCard document={DOCUMENT} existence={false} />,
 };
 
 /**
- * An OLDER row (or a remote one) that carries no store path. The origin path is
- * gone, so there is nothing usable to copy: the card renders the verdict and the
- * recovery sentence and NO copy control, rather than a control whose output is a
- * dead path (design D2 follow-up).
+ * An OLDER row (or a remote one) that carries no store path: nothing here can
+ * name or copy a saved copy, so the card makes no such promise - only the verdict
+ * and the truthful line that the file is no longer at this path, with no copy
+ * control at all (design round 2, D2).
  */
 export const MovedOrDeletedNoStoredPath: Story = {
 	render: () => (
@@ -65,6 +65,18 @@ export const MovedOrDeletedNoStoredPath: Story = {
 			existence={false}
 		/>
 	),
+	play: async ({ canvasElement }) => {
+		if (canvasElement.querySelector("button"))
+			throw new Error("the no-store-path state rendered a copy control");
+		if (canvasElement.textContent?.includes("Saved copy"))
+			throw new Error("the no-store-path state promised a saved copy");
+		if (
+			!canvasElement.textContent?.includes(
+				"The file is no longer at this path.",
+			)
+		)
+			throw new Error("the no-store-path state lost its truthful line");
+	},
 };
 
 /**
@@ -75,11 +87,18 @@ export const MovedOrDeletedNoStoredPath: Story = {
 export const MovedOrDeletedCopyProof: Story = {
 	render: () => <SentFileCard document={DOCUMENT} existence={false} />,
 	play: async ({ canvasElement }) => {
+		const controlCount = canvasElement.querySelectorAll("button").length;
+		if (controlCount !== 1)
+			throw new Error(
+				`the missing state should own exactly one control (the saved copy), found ${controlCount}`,
+			);
 		const button = canvasElement.querySelector<HTMLButtonElement>(
 			'button[aria-label="Copy saved copy path"]',
 		);
 		if (!button)
 			throw new Error("the saved-copy copy control is not in this story");
+		if (!canvasElement.textContent?.includes("Saved copy"))
+			throw new Error("the saved-copy row is not labelled");
 		let copied = null;
 		const original = Object.getOwnPropertyDescriptor(navigator, "clipboard");
 		Object.defineProperty(navigator, "clipboard", {

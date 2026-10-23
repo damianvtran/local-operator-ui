@@ -35,9 +35,9 @@
 		"note": "Announced politely for two seconds after a successful copy; not a toast."
 	},
 	"ui.chat.attachments.file_missing_recovery": {
-		"role": "recovery line under the missing verdict on a sent file card",
-		"tone": "two short sentences, sentence case, no implementation vocabulary",
-		"note": "The original file is gone from this machine, but the attachment store still keeps a saved copy. State both facts; do not suggest an action (the card cannot make the agent do anything). Do not name a digest here."
+		"role": "line under the missing verdict when the row has NO store path",
+		"tone": "one short sentence, sentence case",
+		"note": "The origin file is gone. Do not claim a saved copy here: without a store path the card cannot name or copy one (design round 2, D2)."
 	},
 	"ui.chat.attachments.file_type_unknown": {
 		"role": "type fallback on a file card with no readable extension or MIME subtype",
@@ -53,5 +53,10 @@
 		"role": "confirmation for the saved-copy copy control",
 		"tone": "short state phrase, sentence case",
 		"note": "Announced politely for two seconds after a successful copy of the retained copy's store path."
+	},
+	"ui.chat.attachments.saved_copy_label": {
+		"role": "label on the saved-copy row of a missing file card",
+		"tone": "short noun phrase, sentence case",
+		"note": "Introduces the attachment store path of the retained copy, which follows on the same row beside a copy control."
 	}
 }

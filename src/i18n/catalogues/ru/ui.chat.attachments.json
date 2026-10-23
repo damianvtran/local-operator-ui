@@ -6,8 +6,9 @@
 	"ui.chat.attachments.file_unnamed": "Вложенный файл",
 	"ui.chat.attachments.copy_path": "Скопировать путь",
 	"ui.chat.attachments.path_copied": "Путь скопирован",
-	"ui.chat.attachments.file_missing_recovery": "Исходного файла по этому пути больше нет. Сохранённая копия по-прежнему хранится в хранилище вложений.",
+	"ui.chat.attachments.file_missing_recovery": "Файла по этому пути больше нет.",
 	"ui.chat.attachments.file_type_unknown": "Файл",
 	"ui.chat.attachments.copy_saved_path": "Скопировать путь сохранённой копии",
-	"ui.chat.attachments.saved_path_copied": "Путь сохранённой копии скопирован"
+	"ui.chat.attachments.saved_path_copied": "Путь сохранённой копии скопирован",
+	"ui.chat.attachments.saved_copy_label": "Сохранённая копия"
 }

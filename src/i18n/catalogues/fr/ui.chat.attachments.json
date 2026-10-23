@@ -6,8 +6,9 @@
 	"ui.chat.attachments.file_unnamed": "Pièce jointe",
 	"ui.chat.attachments.copy_path": "Copier le chemin",
 	"ui.chat.attachments.path_copied": "Chemin copié",
-	"ui.chat.attachments.file_missing_recovery": "Le fichier d'origine n'est plus à cet emplacement. Une copie est toujours conservée dans le stockage des pièces jointes.",
+	"ui.chat.attachments.file_missing_recovery": "Le fichier n'est plus à cet emplacement.",
 	"ui.chat.attachments.file_type_unknown": "Fichier",
 	"ui.chat.attachments.copy_saved_path": "Copier le chemin de la copie conservée",
-	"ui.chat.attachments.saved_path_copied": "Chemin de la copie conservée copié"
+	"ui.chat.attachments.saved_path_copied": "Chemin de la copie conservée copié",
+	"ui.chat.attachments.saved_copy_label": "Copie conservée"
 }
