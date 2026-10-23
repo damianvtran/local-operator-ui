@@ -3,7 +3,11 @@ import { drainLogs } from "../log-capture";
 import { SCROLL_DIRECTIONS, sleep } from "../policy/adapter";
 import type { LogEntry, ScrollResult } from "../protocol";
 import type { TabRecord, TabRef } from "../registry";
-import { type AXNode, compactAX } from "../vendor/driver/ax-compact";
+import {
+	type AXNode,
+	compactAX,
+	windowSnapshot,
+} from "../vendor/driver/ax-compact";
 import {
 	CDP_DEADLINE_MS,
 	SCRIPTING_DEADLINE_MS,
@@ -149,24 +153,60 @@ export async function snapshot(
 		// disable, and a failed disable must not replace the read's outcome.
 		await ctx.cdp.send(contents, "Accessibility.disable", {}).catch(() => {});
 	}
-	const { snapshot: topRendered, refs: topRefs } = compactAX(
-		nodes,
-		record.epoch,
-	);
+	// The scope is resolved BEFORE the a11y read, and the order is the contract:
+	// a selector that matches nothing must fail as a typed element_not_found
+	// naming the selector, not after paying for a whole tree and returning an
+	// empty one that reads like an empty section.
+	const scope = stringParam(params, "selector");
+	const rootBackendNodeId = scope
+		? await backendNodeIdForSelector(ctx, record.view, scope)
+		: undefined;
+	const {
+		snapshot: topRendered,
+		refs: topRefs,
+		scoped,
+	} = compactAX(nodes, record.epoch, { rootBackendNodeId });
+	if (rootBackendNodeId !== undefined && !scoped) {
+		// The DOM element exists but contributes no accessible node
+		// (display:none, aria-hidden, or inside a closed <details>). "matched
+		// nothing" would be a lie here; name the state the agent has to change.
+		throw new BrowserHostError(
+			"element_not_found",
+			`selector ${scope} matched an element with no accessibility subtree (hidden, aria-hidden, or inside a collapsed section); expand it first, then snapshot again`,
+		);
+	}
 	const refs: Record<string, TabRef> = { ...topRefs };
 	let rendered = topRendered;
 	// Frames are walked only when the page's own tree shows one, so a page with no
-	// iframe sends exactly the commands it always sent (ARCH-1).
-	if (nodes.some(isFrameNode)) {
+	// iframe sends exactly the commands it always sent (ARCH-1). A SCOPED read
+	// deliberately does not walk them: the caller asked for one subtree, and a
+	// frame block would arrive from a different document than the scope names.
+	if (!scope && nodes.some(isFrameNode)) {
 		const blocks = await frameSnapshots(ctx, record, nodes, refs);
 		if (blocks.length) rendered = [rendered, ...blocks].join("\n");
 	}
 	record.refs = refs;
 	ctx.registry.touch(record);
+	// Windowed at the TEXT level, after refs are minted, so a ref keeps its name
+	// across pages: an agent that pages a form and then clicks a ref it saw two
+	// calls ago clicks the element it read. The numbers are what the footer in
+	// the Python tool renders.
+	const page = windowSnapshot(rendered, {
+		search: stringParam(params, "search"),
+		start: numberParam(params, "start") ?? 1,
+		limit: numberParam(params, "limit") ?? 0,
+	});
 	return {
-		snapshot: rendered,
+		snapshot: page.text,
 		refs: Object.keys(refs).length,
 		epoch: record.epoch,
+		scoped,
+		total_lines: page.totalLines,
+		matched_lines: page.matchedLines,
+		returned_lines: page.returnedLines,
+		start: page.start,
+		limit: page.limit,
+		search: page.search,
 		...pageOf(record.view),
 	};
 }
@@ -599,6 +639,35 @@ export async function nodeIdForSelector(
 		);
 	}
 	return queried.nodeId;
+}
+
+/** A CSS selector's element, named by the id the ACCESSIBILITY tree uses.
+ *
+ * `snapshot` scoping needs this rather than `nodeIdForSelector`: the AX tree
+ * indexes nodes by `backendDOMNodeId`, while frontend node ids belong to one
+ * session's document. The describe hop translates, and `depth: 0` keeps it to
+ * the element itself. It lives here, beside `nodeIdForSelector`, because the
+ * document-request dance and the typed miss should have exactly one spelling.
+ */
+export async function backendNodeIdForSelector(
+	ctx: BrowserActionContext,
+	view: import("../electron-types").DriveableView,
+	selector: string,
+): Promise<number> {
+	const nodeId = await nodeIdForSelector(ctx, view, selector);
+	const described = await ctx.cdp.send<{ node?: { backendNodeId?: number } }>(
+		view.webContents,
+		"DOM.describeNode",
+		{ nodeId, depth: 0 },
+	);
+	const backendNodeId = described?.node?.backendNodeId;
+	if (backendNodeId === undefined) {
+		throw new BrowserHostError(
+			"element_not_found",
+			`selector ${selector} has no backend node id`,
+		);
+	}
+	return backendNodeId;
 }
 
 /** Re-exported for `input.ts`, which resolves refs against the same table. */
