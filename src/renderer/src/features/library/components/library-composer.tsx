@@ -44,7 +44,7 @@
  *
  * MEDIA IS ATTACHED WHERE THE WIRE CAN CARRY IT. `sessions.message`'s `images`
  * field takes base64 bytes, so an image asset rides inside the prompt through
- * `encodeImageAttachments` — the same encoder every other send uses, rather
+ * `encodeAttachments` — the same encoder every other send uses, rather
  * than a second base64 pipeline here. There is NO audio field on that op today:
  * an audio asset is named by its display path/digest in the prompt text
  * instead, and that contract gap is recorded rather than faked by sending audio
@@ -141,7 +141,7 @@ function assetReference(asset: DesktopLibraryAsset): string {
  * An image asset as a composer attachment.
  *
  * A DATA URL rather than the path: the viewer's bytes are already in hand, and
- * `encodeImageAttachments` accepts both forms. Digest-only assets have no path
+ * `encodeAttachments` accepts both forms. Digest-only assets have no path
  * at all, so the data URL is the only form that works for every image row.
  */
 function imageAttachment(

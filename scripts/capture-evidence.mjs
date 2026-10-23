@@ -5591,7 +5591,20 @@ export const STORIES = [
 	["chat-message-input--pending-send-pdf", 1024, 400],
 	["chat-message-input--pending-send-pdf-remove-focus", 1024, 400],
 	["chat-message-input--pending-send-mixed", 1024, 400],
+	/* The largest row a send can carry, and the narrow rung where it wraps: the
+	   single-PDF frame cannot show either (design round 1, D3). 520 tall because
+	   eight cards at two rows plus the caption exceed the 400px used above. */
+	["chat-message-input--pending-send-many-files", 1024, 520],
+	["chat-message-input--pending-send-narrow-long-name", 440, 460],
+	/* The image remove control over real fixture pixels, focused - the image
+	   half of the reserved-corner claim. */
+	["chat-message-input--pending-send-image-remove-focus", 1024, 400],
 	["chat-sent-file-card--sent-file", 1024, 240],
+	/* A long path whose visible line is truncated and whose copy control is the
+	   only way to the full value (design D1), and a conversation whose placement
+	   is not known (agent review n3). */
+	["chat-sent-file-card--sent-file-long-path", 1024, 240],
+	["chat-sent-file-card--placement-unknown-no-claim", 1024, 240],
 	["chat-sent-file-card--moved-or-deleted", 1024, 240],
 	["chat-canonical-user-card-measure--file-attachment", 1024, 620],
 

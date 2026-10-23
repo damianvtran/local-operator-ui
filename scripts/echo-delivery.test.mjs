@@ -1406,7 +1406,7 @@ test("R1: a clear at the paint cannot change what the request carries", async ()
 	 * composer reads is cleared at the echo, so anything that read the ROW after
 	 * that moment would see nothing. The request is built from the arguments the
 	 * press handed over - `buildSendPayload` for the words and the reply prefix,
-	 * `encodeImageAttachments` for the file paths - and this drives the real
+	 * `encodeAttachments` for the file paths - and this drives the real
 	 * `admitChatDraft` with a mounted transcript and a paint callback that clears
 	 * the row for real, then reads what reached the wire.
 	 */

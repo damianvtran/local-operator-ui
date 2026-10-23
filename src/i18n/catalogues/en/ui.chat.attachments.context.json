@@ -12,16 +12,36 @@
 	"ui.chat.attachments.file_missing": {
 		"role": "existence verdict on a sent file card",
 		"tone": "two-word verdict, sentence case",
-		"note": "Shown when the origin path no longer exists on this machine. The retained-copy line follows it."
+		"note": "Shown when the origin path no longer exists on this machine. The recovery line follows it; this verdict must read as a fact about the original file, not as an error about the message."
 	},
 	"ui.chat.attachments.file_retained": {
 		"role": "retained-copy line under the missing verdict",
 		"tone": "one sentence",
-		"note": "digest is the attachment store content address. Do not translate or shorten the digest placeholder."
+		"note": "Diagnostic detail shown in the recovery line's tooltip, not the default sentence (design round 1, D2). digest is the attachment store content address; do not translate or shorten the placeholder."
 	},
 	"ui.chat.attachments.file_unnamed": {
 		"role": "filename fallback on a file card",
 		"tone": "short noun phrase",
 		"note": "Only when a document block carried no filename."
+	},
+	"ui.chat.attachments.copy_path": {
+		"role": "accessible name of the copy control beside a sent file path",
+		"tone": "short imperative, sentence case",
+		"note": "Copies the full absolute path, not the truncated line shown on screen."
+	},
+	"ui.chat.attachments.path_copied": {
+		"role": "confirmation for the path copy control",
+		"tone": "short state phrase, sentence case",
+		"note": "Announced politely for two seconds after a successful copy; not a toast."
+	},
+	"ui.chat.attachments.file_missing_recovery": {
+		"role": "recovery line under the missing verdict on a sent file card",
+		"tone": "two short sentences, sentence case, no implementation vocabulary",
+		"note": "The original file is gone from this machine but a saved copy remains. Give a human next step that works today: ask the agent to send the saved copy again by name. Do not name the attachment store or a digest here; the digest lives in the tooltip."
+	},
+	"ui.chat.attachments.file_type_unknown": {
+		"role": "type fallback on a file card with no readable extension or MIME subtype",
+		"tone": "single noun, sentence case",
+		"note": "Only when neither the filename nor the MIME type names a type."
 	}
 }

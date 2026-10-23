@@ -5,8 +5,10 @@ import type {
 	BackendUpdateCompletion,
 	BackendUpdateErrorReport,
 } from "../main/update-service";
-import type { AttachmentUploadResult } from "../shared/attachment-upload";
-import type { AttachmentUploadSource } from "../shared/attachment-upload";
+import type {
+	AttachmentUploadResult,
+	AttachmentUploadSource,
+} from "../shared/attachment-upload";
 import type { DaemonStatusSnapshot } from "../shared/backend-status";
 import type {
 	AddressHistoryRequest,

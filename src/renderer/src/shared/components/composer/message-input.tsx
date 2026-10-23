@@ -7331,7 +7331,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 *
 		 * THE REPRESENTATION IS THE PATH WHEN THERE IS ONE, and that choice comes from
 		 * what the consumer requires rather than from what is easiest:
-		 * `encodeImageAttachments` (features/chat/utils/attachment-encode.ts) takes both
+		 * `encodeAttachments` (features/chat/utils/attachment-encode.ts) takes both
 		 * forms - a data URL is used as the base64 directly, a filesystem path has its
 		 * bytes read in main over `api.readFile` - and both are then bounded by the same
 		 * `boundImagesForBudget` before the send. What decides between them is the

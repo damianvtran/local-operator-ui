@@ -3,5 +3,9 @@
 	"ui.chat.attachments.file_meta": "{type} · {size}",
 	"ui.chat.attachments.file_missing": "Déplacé ou supprimé",
 	"ui.chat.attachments.file_retained": "Toujours conservé dans le stockage des pièces jointes ({digest})",
-	"ui.chat.attachments.file_unnamed": "Fichier joint"
+	"ui.chat.attachments.file_unnamed": "Pièce jointe",
+	"ui.chat.attachments.copy_path": "Copier le chemin",
+	"ui.chat.attachments.path_copied": "Chemin copié",
+	"ui.chat.attachments.file_missing_recovery": "Le fichier d'origine n'est plus à cet emplacement. Une copie est toujours conservée : demandez à l'agent de la renvoyer par son nom.",
+	"ui.chat.attachments.file_type_unknown": "Fichier"
 }

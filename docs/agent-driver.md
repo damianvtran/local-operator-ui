@@ -110,10 +110,29 @@ the OS picker opens or that a person can choose a file through it — say so bes
 the frame rather than implying it. `--attach` is refused for a relative path, and
 the queue is read only when the dev-driver bridge is armed.
 
+**`--attach-prompt "<text>"` sends after staging, so the scene proves the
+paperclip reaches an answer.** The prompt is typed into the composer's real field
+and the real `Send message` control is pressed; the run then waits for the
+daemon's own transcript (not the painted echo) to carry the prompt as a user row.
+It reports the session id, the row's `document` block(s) and the assistant's
+final text, and asserts that each staged file arrived as a document block and
+that the assistant turn completed. `--attach-expect-answer "<substring>"` adds a
+substring check on that final text. This path needs a daemon that serves
+`POST /v1/desktop/attachments` **and** a provider that can answer; a daemon
+without either is refused by the send, and the scene reports that refusal rather
+than a staged-only pass.
+
 ```bash
 pnpm build
 node scripts/renderer-driver.mjs --scene attach \
   --backend http://127.0.0.1:<port> --attach /abs/path/report.pdf \
+  --seed-onboarding-complete --out /tmp/frames
+
+# the answer path QA runs
+node scripts/renderer-driver.mjs --scene attach \
+  --backend http://127.0.0.1:<port> --attach /abs/path/report.pdf \
+  --attach-prompt "Summarise this PDF in one line." \
+  --attach-expect-answer "<expected substring>" \
   --seed-onboarding-complete --out /tmp/frames
 ```
 

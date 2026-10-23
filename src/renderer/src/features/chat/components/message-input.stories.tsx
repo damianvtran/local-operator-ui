@@ -34,6 +34,7 @@ import type { SlashCommandMeta } from "./slash-commands";
 import type { SlashDispatchOutcome } from "./slash-dispatch";
 import type { SlashCommandInvocation } from "./slash-submit";
 import "./story-electron-shim";
+import { STAGED_IMAGE_DATA_URL } from "./attachment-image-fixture";
 
 /*
  * THE COMPOSER'S OWN STATES, which had no committed surface at all.
@@ -3076,8 +3077,14 @@ const PENDING_FILE_PATH = "/Users/you/Documents/Complete_With_Docusign.pdf";
  */
 const PENDING_PDF_CHIPS = [{ id: "pending-pdf", path: PENDING_FILE_PATH }];
 const PENDING_PDF_BYTES = { [PENDING_FILE_PATH]: 2_411_520 };
+/*
+ * THE IMAGE IS REAL BYTES. The old path existed on nobody's machine, so both
+ * mixed frames photographed the degraded icon tile and the thumbnail half of the
+ * design was never judged (design round 1, D3). The fixture is a committed 64x64
+ * PNG inlined as a data URL, so every checkout renders the same pixels.
+ */
 const PENDING_MIXED_CHIPS = [
-	{ id: "mixed-image", path: "/Users/you/Screenshots/shot.png" },
+	{ id: "mixed-image", path: STAGED_IMAGE_DATA_URL },
 	{ id: "mixed-pdf", path: PENDING_FILE_PATH },
 ];
 
@@ -3152,6 +3159,170 @@ export const PendingSendMixed: Story = {
 		const cards = canvasElement.querySelectorAll("[data-attachment-id]");
 		if (cards.length !== 2)
 			throw new Error(`expected two chips, found ${cards.length}`);
+		releaseShutter();
+	},
+};
+
+/**
+ * A full draft: eight files, one of them a long name, so the row's WRAP is the
+ * subject rather than a single card's shape. Eight is the wire's own cap
+ * (`DESKTOP_MESSAGE_MAX_FILES`), so this is the largest row a send can carry.
+ */
+const PENDING_MANY_CHIPS = Array.from({ length: 6 }, (_, index) => ({
+	id: `many-${index}`,
+	path:
+		index === 3
+			? "/Users/you/Documents/Quarterly Reports/2026/Q4/Board_Pack_and_Appendices_Final_Reviewed.pdf"
+			: `/Users/you/Documents/Quarterly Reports/2026/Q4/file-${index + 1}.pdf`,
+}));
+const PENDING_MANY_BYTES = Object.fromEntries(
+	PENDING_MANY_CHIPS.map((chip, index) => [
+		chip.path,
+		120_000 + index * 31_000,
+	]),
+);
+
+export const PendingSendManyFiles: Story = {
+	render: () => (
+		<PendingSendHarness
+			label="six files staged: the row wraps, and a long filename is truncated inside its card rather than pushing the row"
+			chips={PENDING_MANY_CHIPS}
+			byteSizes={PENDING_MANY_BYTES}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		assertAttachmentRowAboveField(canvasElement);
+		const cards = canvasElement.querySelectorAll("[data-attachment-id]");
+		if (cards.length !== PENDING_MANY_CHIPS.length)
+			throw new Error(
+				`expected ${PENDING_MANY_CHIPS.length} chips, found ${cards.length}`,
+			);
+		releaseShutter();
+	},
+};
+
+/**
+ * THE MAXIMUM a send can carry: eight cards, which exceed the preview area's
+ * 240px bound. Deliberately NOT an evidence frame - the composer scrolls, so a
+ * still shows a sliced third row and describes the bound poorly. The assertion
+ * is the point: the SCROLLER ends above the field and really scrolls, rather
+ * than a band whose content escapes and takes the send controls off screen.
+ */
+const PENDING_EIGHT_CHIPS = Array.from({ length: 8 }, (_, index) => ({
+	id: `eight-${index}`,
+	path: `/Users/you/Documents/Quarterly Reports/2026/Q4/file-${index + 1}.pdf`,
+}));
+const PENDING_EIGHT_BYTES = Object.fromEntries(
+	PENDING_EIGHT_CHIPS.map((chip, index) => [
+		chip.path,
+		120_000 + index * 31_000,
+	]),
+);
+
+export const PendingSendEightFiles: Story = {
+	render: () => (
+		<PendingSendHarness
+			label="eight files, the wire's maximum: the preview area scrolls instead of growing the band"
+			chips={PENDING_EIGHT_CHIPS}
+			byteSizes={PENDING_EIGHT_BYTES}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		const cards = canvasElement.querySelectorAll("[data-attachment-id]");
+		if (cards.length !== PENDING_EIGHT_CHIPS.length)
+			throw new Error(
+				`expected ${PENDING_EIGHT_CHIPS.length} chips, found ${cards.length}`,
+			);
+		const scroller = cards[0]?.parentElement?.closest(".overflow-y-auto");
+		if (!scroller) throw new Error("the chip row has no bounded scroller");
+		const box = scroller.getBoundingClientRect();
+		const field = composerField(canvasElement).getBoundingClientRect();
+		if (box.bottom > field.top + 0.5)
+			throw new Error(
+				`the scroller reaches the field: bottom ${box.bottom}, field top ${field.top}`,
+			);
+		if (scroller.scrollHeight <= scroller.clientHeight)
+			throw new Error(
+				`eight cards were expected to overflow the scroller: scrollHeight ${scroller.scrollHeight}, clientHeight ${scroller.clientHeight}`,
+			);
+		releaseShutter();
+	},
+};
+
+/**
+ * The narrow rung with an image and two files: the wrapping case at the width
+ * where the file card and the 100px tile can no longer share one line. The long
+ * filename is the card's own truncation test, not a row-overflow test.
+ */
+const PENDING_NARROW_CHIPS = [
+	{ id: "narrow-image", path: STAGED_IMAGE_DATA_URL },
+	{
+		id: "narrow-long",
+		path: "/Users/you/Documents/Quarterly Reports/2026/Q4/Board_Pack_and_Appendices_Final_Reviewed.pdf",
+	},
+	{ id: "narrow-pdf", path: PENDING_FILE_PATH },
+];
+const PENDING_NARROW_BYTES = {
+	[PENDING_NARROW_CHIPS[1].path]: 8_912_345,
+	[PENDING_FILE_PATH]: 2_411_520,
+};
+
+export const PendingSendNarrowLongName: Story = {
+	render: () => (
+		<PendingSendHarness
+			label="the compact rung: an image and two files wrap, and the long filename stays inside its card"
+			isSmallView={true}
+			chips={PENDING_NARROW_CHIPS}
+			byteSizes={PENDING_NARROW_BYTES}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		assertAttachmentRowAboveField(canvasElement);
+		const cards = canvasElement.querySelectorAll("[data-attachment-id]");
+		if (cards.length !== PENDING_NARROW_CHIPS.length)
+			throw new Error(
+				`expected ${PENDING_NARROW_CHIPS.length} chips, found ${cards.length}`,
+			);
+		releaseShutter();
+	},
+};
+
+/**
+ * The remove control focused OVER REAL IMAGE PIXELS: the reserved corner must
+ * stay legible and the image tile must not move. The image is the committed
+ * fixture, so this frame is the image half of the focus claim (design D3).
+ */
+export const PendingSendImageRemoveFocus: Story = {
+	render: () => (
+		<PendingSendHarness
+			label="the image tile's remove control focused: a legible control over real pixels, and nothing reflows"
+			chips={[{ id: "focus-image", path: STAGED_IMAGE_DATA_URL }]}
+		/>
+	),
+	play: async ({ canvasElement }) => {
+		if (!holdAndReset(canvasElement)) return;
+		assertAttachmentRowAboveField(canvasElement);
+		const card = canvasElement.querySelector(
+			'[data-attachment-id="focus-image"]',
+		);
+		if (!card) throw new Error("the image tile is not in this story");
+		const button = card.querySelector("button");
+		if (!button) throw new Error("the image tile has no remove control");
+		const before = card.getBoundingClientRect();
+		button.focus();
+		const after = card.getBoundingClientRect();
+		if (
+			before.x !== after.x ||
+			before.y !== after.y ||
+			before.width !== after.width ||
+			before.height !== after.height
+		)
+			throw new Error(
+				`focusing remove moved the image tile: ${JSON.stringify({ before, after })}`,
+			);
 		releaseShutter();
 	},
 };

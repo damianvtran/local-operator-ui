@@ -1705,10 +1705,14 @@ export type MessageParams = {
 	"ui.chat.analytics.title": undefined;
 	"ui.chat.analytics.toolbar.refreshing": undefined;
 	"ui.chat.analytics.toolbar.this_session_only": undefined;
+	"ui.chat.attachments.copy_path": undefined;
 	"ui.chat.attachments.file_meta": { type: string; size: string };
 	"ui.chat.attachments.file_missing": undefined;
+	"ui.chat.attachments.file_missing_recovery": undefined;
 	"ui.chat.attachments.file_retained": { digest: string };
+	"ui.chat.attachments.file_type_unknown": undefined;
 	"ui.chat.attachments.file_unnamed": undefined;
+	"ui.chat.attachments.path_copied": undefined;
 	"ui.chat.attachments.pending_caption": undefined;
 	"ui.chat.canonical.sound.batch_attachment_unavailable": undefined;
 	"ui.chat.canonical.sound.player_failed": undefined;

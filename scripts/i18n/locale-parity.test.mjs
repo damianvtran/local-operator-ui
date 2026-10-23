@@ -58,6 +58,14 @@ const IDENTICAL_OK = new Map([
 		"language-neutral counter: only placeholders and '/', no words to translate",
 	],
 	[
+		"ui.chat.attachments.file_meta",
+		// `{type} · {size}`: placeholders and a middle dot, no words. The type is a
+		// filename-derived token (PDF, PNG) and the size is formatted by the caller;
+		// there is nothing for a locale to translate, and a differing value would
+		// only invent punctuation per language.
+		"language-neutral format string: only placeholders and '·', no words",
+	],
+	[
 		"ui.settings.account.settings_page.radient_pass",
 		"Product name, preserved verbatim by the programme glossary.",
 	],

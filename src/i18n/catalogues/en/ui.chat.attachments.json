@@ -3,5 +3,9 @@
 	"ui.chat.attachments.file_meta": "{type} · {size}",
 	"ui.chat.attachments.file_missing": "Moved or deleted",
 	"ui.chat.attachments.file_retained": "Still retained in the attachment store ({digest})",
-	"ui.chat.attachments.file_unnamed": "Attached file"
+	"ui.chat.attachments.file_unnamed": "Attached file",
+	"ui.chat.attachments.copy_path": "Copy path",
+	"ui.chat.attachments.path_copied": "Path copied",
+	"ui.chat.attachments.file_missing_recovery": "The original file is no longer at this path. A saved copy is still available — ask the agent to send it again by name.",
+	"ui.chat.attachments.file_type_unknown": "File"
 }

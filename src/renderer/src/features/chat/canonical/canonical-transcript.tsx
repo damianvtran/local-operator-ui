@@ -1001,6 +1001,19 @@ const UserRow = memo(function UserRow({
 			: false,
 	);
 	/*
+	 * "Not remote" is not "local" until the catalogue has stated where this
+	 * conversation lives: the placement fact or the row's own `locality` is that
+	 * statement, and until one exists the file card must make no existence claim
+	 * (contract §5; agent review round 1, n3).
+	 */
+	const placementKnown = useCanonicalSessionsStore((state) => {
+		if (!conversationId) return false;
+		if (state.placementFacts[conversationId]?.locality) return true;
+		return state.sessions.some(
+			(row) => row.session_id === conversationId && row.locality !== undefined,
+		);
+	});
+	/*
 	 * Whether this turn is long enough to need D2's eight-line clamp, MEASURED
 	 * rather than guessed from a character count: the box is clamped first and
 	 * then asked whether it is hiding anything, so a `Show more` can never appear
@@ -1335,6 +1348,7 @@ const UserRow = memo(function UserRow({
 											key={document.id}
 											document={document}
 											remote={remote}
+											placementKnown={placementKnown}
 										/>
 									))}
 								</div>
