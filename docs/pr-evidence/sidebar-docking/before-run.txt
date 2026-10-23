@@ -1,0 +1,130 @@
+renderer-driver: frame timezone pinned to America/New_York (ambient TZ=America/Toronto)
+[build] current: assets 2026-10-23T21:31:34.414Z >= sources 2026-10-23T21:20:50.762Z
+[note] abandoned scratch trees
+        5 seen, 0 owned by a live pid (kept), 5 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        out/renderer/index.html: http://127.0.0.1:8080 added to frame-src, media-src, img-src (build output only; src/ untouched)
+  serve records 1 linked from /Users/damian/.local-operator/sessions/01a5c3b03595/scratchpad/issue-1077-backend.m7okU7/config/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui/.worktrees/issue-1077-base
+  scratch       /Users/damian/.local-operator/sessions/01a5c3b03595/scratchpad/issue-1077-backend.m7okU7/driver-tmp-base/lo-renderer-driver-79735
+  frames        /Users/damian/.local-operator/sessions/01a5c3b03595/scratchpad/issue-1077-backend.m7okU7/frames/base
+  app cwd       /Users/damian/.local-operator/sessions/01a5c3b03595/scratchpad/issue-1077-backend.m7okU7/driver-tmp-base/lo-renderer-driver-79735/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0_supports-color@8.1.1/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["filesFacts","hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","soundsArm","soundsEnd","soundsFacts","soundsScrub","soundsScrubFinish","soundsSpeech","stageLiveConsents","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] the docking scene runs in a hidden, unfocused native window
+[PASS] the isolated fixture populates the sidebar
+[note] synthetic session navigation
+        {"route":"/chat/1c2c0fd840e6"}
+[PASS] the isolated fixture populates the real transcript
+[note] sidebar-docking-1380-expanded-dark geometry
+        {"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"document":{"scrollWidth":1380,"clientWidth":1380,"bodyScrollWidth":1380},"mode":"docked","sidebar":{"x":0,"y":0,"width":320,"height":900,"right":320,"bottom":900},"chat":{"x":320,"y":0,"width":1016,"height":900,"right":1336,"bottom":900},"rail":{"x":1336,"y":32,"width":44,"height":868,"right":1380,"bottom":900},"row":{"x":320,"y":0,"width":1016,"height":900,"right":1336,"bottom":900},"preference":{"collapsed":false,"width":320},"sheetCount":0,"openDialogCount":0,"sessionRows":2,"populated":{"question":true,"answer":true,"characters":180}}
+[PASS] sidebar-docking-1380-expanded-dark: docked is drawn from collapsed=false
+[PASS] sidebar-docking-1380-expanded-dark: no sidebar overlay sheet or dialog opened
+[PASS] sidebar-docking-1380-expanded-dark: the stored 320px width was not rewritten
+[PASS] sidebar-docking-1380-expanded-dark: no horizontal document overflow
+[PASS] sidebar-docking-1380-expanded-dark: populated conversation remains mounted; a drawn list has rows
+[PASS] sidebar-docking-1380-expanded-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 37.3 vs 32.1 own / 237.3 other
+[note] frame
+        {"label":"sidebar-docking-1380-expanded-dark","path":"/Users/damian/.local-operator/sessions/01a5c3b03595/scratchpad/issue-1077-backend.m7okU7/frames/base/sidebar-docking-1380-expanded-dark.png","bytes":257962,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":1}
+[PASS] sidebar-docking-1380-expanded-dark is a settled, toast-free frame
+[PASS] the CSS viewport reached 1023px
+[note] sidebar-docking-1023-expanded-dark geometry
+        {"viewport":{"width":1023,"height":900,"devicePixelRatio":2},"document":{"scrollWidth":1023,"clientWidth":1023,"bodyScrollWidth":1023},"mode":"strip","sidebar":{"x":0,"y":0,"width":56,"height":900,"right":56,"bottom":900},"chat":{"x":56,"y":0,"width":923,"height":900,"right":979,"bottom":900},"rail":{"x":979,"y":32,"width":44,"height":868,"right":1023,"bottom":900},"row":{"x":56,"y":0,"width":923,"height":900,"right":979,"bottom":900},"preference":{"collapsed":false,"width":320},"sheetCount":0,"openDialogCount":0,"sessionRows":0,"populated":{"question":true,"answer":true,"characters":153}}
+[FAIL] sidebar-docking-1023-expanded-dark: docked is drawn from collapsed=false
+        mode=strip width=56 preference={"collapsed":false,"width":320}
+[PASS] sidebar-docking-1023-expanded-dark: no sidebar overlay sheet or dialog opened
+[PASS] sidebar-docking-1023-expanded-dark: the stored 320px width was not rewritten
+[PASS] sidebar-docking-1023-expanded-dark: no horizontal document overflow
+[PASS] sidebar-docking-1023-expanded-dark: populated conversation remains mounted; a drawn list has rows
+[PASS] sidebar-docking-1023-expanded-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 35.6 vs 32.1 own / 237.3 other
+[note] frame
+        {"label":"sidebar-docking-1023-expanded-dark","path":"/Users/damian/.local-operator/sessions/01a5c3b03595/scratchpad/issue-1077-backend.m7okU7/frames/base/sidebar-docking-1023-expanded-dark.png","bytes":127185,"pixels":{"width":2046,"height":1800},"viewport":{"width":1023,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":1}
+[PASS] sidebar-docking-1023-expanded-dark is a settled, toast-free frame
+[note] sidebar-docking-1023-keyboard-collapsed-dark geometry
+        {"viewport":{"width":1023,"height":900,"devicePixelRatio":2},"document":{"scrollWidth":1023,"clientWidth":1023,"bodyScrollWidth":1023},"mode":"overlay","sidebar":{"x":0,"y":32,"width":260,"height":868,"right":260,"bottom":900},"chat":{"x":56,"y":0,"width":923,"height":900,"right":979,"bottom":900},"rail":{"x":979,"y":32,"width":44,"height":868,"right":1023,"bottom":900},"row":{"x":56,"y":0,"width":923,"height":900,"right":979,"bottom":900},"preference":{"collapsed":false,"width":320},"sheetCount":1,"openDialogCount":1,"sessionRows":2,"populated":{"question":true,"answer":true,"characters":153}}
+[FAIL] sidebar-docking-1023-keyboard-collapsed-dark: strip is drawn from collapsed=true
+        mode=overlay width=260 preference={"collapsed":false,"width":320}
+[FAIL] sidebar-docking-1023-keyboard-collapsed-dark: no sidebar overlay sheet or dialog opened
+        sheet=1 dialogs=1
+[PASS] sidebar-docking-1023-keyboard-collapsed-dark: the stored 320px width was not rewritten
+[PASS] sidebar-docking-1023-keyboard-collapsed-dark: no horizontal document overflow
+[PASS] sidebar-docking-1023-keyboard-collapsed-dark: populated conversation remains mounted; a drawn list has rows
+[PASS] sidebar-docking-1023-keyboard-collapsed-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 19.4 vs 32.1 own / 237.3 other
+[note] frame
+        {"label":"sidebar-docking-1023-keyboard-collapsed-dark","path":"/Users/damian/.local-operator/sessions/01a5c3b03595/scratchpad/issue-1077-backend.m7okU7/frames/base/sidebar-docking-1023-keyboard-collapsed-dark.png","bytes":195521,"pixels":{"width":2046,"height":1800},"viewport":{"width":1023,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":0}
+[PASS] sidebar-docking-1023-keyboard-collapsed-dark is a settled, toast-free frame
+[note] base negative control reproduced
+        the narrow chord opened the legacy overlay instead of writing the collapsed preference; head-only checks are not applicable to this tree
+[note] renderer diagnostics
+        {"consoleEntries":0,"consoleErrors":[],"networkFailures":[],"requestCount":14}
+[PASS] no renderer console errors during docking
+[PASS] no failed network requests during docking
+
+---- app log (tail) ----
+17:31:35.550 › [webauthn] Touch ID passkeys are off: unpackaged — an unpackaged run has no signature to carry the entitlement, so there is no group to configure
+17:31:35.558 › [browser] denied a media permission request from (unknown origin)
+17:31:35.559 › [browser] denied a media permission request from (unknown origin)
+17:31:35.559 › [browser] denied a web-app-installation permission request from (unknown origin)
+17:31:35.559 › [browser] denied a geolocation permission request from (unknown origin)
+17:31:35.658 › [browser] address overlay hidden: layout
+17:31:35.658 › [browser] denied a media permission request from (unknown origin)
+17:31:35.658 › [browser] denied a media permission request from (unknown origin)
+17:31:35.659 › [browser] denied a web-app-installation permission request from (unknown origin)
+17:31:35.659 › [browser] denied a geolocation permission request from (unknown origin)
+17:31:35.660 › [browser] address overlay hidden: navigation
+17:31:35.668 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)
+17:31:35.672 › [browser] host on 127.0.0.1:51394 (proto 1), profile /Users/damian/.local-operator/sessions/01a5c3b03595/scratchpad/issue-1077-backend.m7okU7/driver-tmp-base/lo-renderer-driver-79735/userdata-scene/Partitions/local-operator-browser, agent tabs 0/8, console on (0 surface(s))
+Error occurred in handler for 'mini-view:registration-get': Error: This window cannot read the hotkey registration.
+    at /Users/damian/local-operator-ui/.worktrees/issue-1077-base/out/main/index.jsc:1:4844899
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+17:31:35.763 › [browser] tab 1 navigated to about:blank
+17:31:35.890 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+17:31:35.890 › Checking for UI updates...
+17:31:35.893 › Skip checkForUpdates because application is not packed and dev update config is not forced
+(node:79754) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 backend-status-changed listeners added to [IpcRenderer]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `Electron Helper (Renderer) --trace-warnings ...` to show where the warning was created)
+17:31:35.995 › [browser] address overlay child released: owner_navigation
+17:31:36.124 › [window-chrome] applied themeId=localOperatorDark ground=#22201c symbol=#c2bcaf
+17:31:36.125 › Checking for UI updates...
+17:31:36.125 › Skip checkForUpdates because application is not packed and dev update config is not forced
+(node:79754) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 backend-status-changed listeners added to [IpcRenderer]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `Electron Helper (Renderer) --trace-warnings ...` to show where the warning was created)
+[window-mode] state: visible=false focused=false focusable=false size=1380x900 content=1380x900
+17:31:38.564 › Checking for updates... (silent mode: true)
+17:31:38.564 › Skip checkForUpdates because application is not packed and dev update config is not forced
+17:31:38.564 › Checking for backend updates... (silent mode: true)
+17:31:38.564 › Skip backend update check in dev mode unless forced
+Error occurred in handler for 'desktop-request': Error: View these completions in the foreground before marking them read.
+    at /Users/damian/local-operator-ui/.worktrees/issue-1077-base/out/main/index.jsc:1:4369041
+    at /Users/damian/local-operator-ui/.worktrees/issue-1077-base/out/main/index.jsc:1:4370441
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:123833)
+    at Session.emit (node:events:514:28)
+
+[PASS] no process from this run outlived its boot
+
+frames: sidebar-docking-1023-expanded-dark.png, sidebar-docking-1023-keyboard-collapsed-dark.png, sidebar-docking-1380-expanded-dark.png, sidebar-docking-preflight-failure-dark.png
+frames directory: /Users/damian/.local-operator/sessions/01a5c3b03595/scratchpad/issue-1077-backend.m7okU7/frames/base
+app log: /Users/damian/.local-operator/sessions/01a5c3b03595/scratchpad/issue-1077-backend.m7okU7/driver-tmp-base/lo-renderer-driver-79735/app-scene.log
+scratch kept: /Users/damian/.local-operator/sessions/01a5c3b03595/scratchpad/issue-1077-backend.m7okU7/driver-tmp-base/lo-renderer-driver-79735 (the frames are also in --out)
+
+3 CHECK(S) FAILED

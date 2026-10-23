@@ -39,11 +39,9 @@
  * 3. The right pane's capacity is the row MINUS that floor, measured from the
  *    element (not assumed in the component), and the pane has a contract floor of
  *    its own that decides whether a docked pane is possible at all.
- * 4. The sidebar's bands keep their relations at BOTH floors: the strip plus the
- *    chat floor fits inside the width the pane is said to hold its floor at, and
- *    the docked sidebar plus the chat floor fits inside the dock threshold. §I's
- *    ordering rule (chat floor, then the sidebar to the strip, then the canvas
- *    stopping docking) is only coherent while both sums hold.
+ * 4. The sidebar's render-only capacity cap keeps the chat floor and the 44px
+ *    rail inside the app's 800px minimum window, even when the stored sidebar
+ *    preference is wider. The stored preference itself is not rewritten.
  */
 
 import assert from "node:assert/strict";
@@ -88,12 +86,13 @@ const {
 	CHAT_PANE_WITH_DOCK_MIN_PX,
 	SIDEBAR_COLLAPSED_WIDTH,
 	SIDEBAR_DEFAULT_WIDTH,
-	SIDEBAR_DOCK_MIN_PX,
+	PANEL_RAIL_WIDTH_PX,
 	CANVAS_PANE_MIN_PX,
 	CANVAS_PANE_MAX_PX,
 	canvasDockWidth,
 	canvasPaneMode,
 	rightSlotDividerContract,
+	sidebarDockCapacity,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -413,20 +412,15 @@ test("the canvas docks at min(560, available - 480), or stops docking below 400 
 	assert.equal(canvasPaneMode(400), "overlay");
 });
 
-test("the sidebar's bands keep their relations at both floors", () => {
-	assert.equal(SIDEBAR_DOCK_MIN_PX, 1024);
+test("the sidebar's render cap preserves the chat floor at the app minimum", () => {
 	assert.equal(SIDEBAR_COLLAPSED_WIDTH, 56);
 	assert.equal(SIDEBAR_DEFAULT_WIDTH, 260);
-	for (const floor of [appliedChatFloor().declared, CHAT_PANE_MIN_PX]) {
-		assert.ok(
-			SIDEBAR_COLLAPSED_WIDTH + floor <= CHAT_PANE_WITH_DOCK_MIN_PX,
-			`the icon strip (${SIDEBAR_COLLAPSED_WIDTH}) plus a ${floor}px chat floor does not fit inside \`CHAT_PANE_WITH_DOCK_MIN_PX\` (${CHAT_PANE_WITH_DOCK_MIN_PX})`,
-		);
-		assert.ok(
-			SIDEBAR_DEFAULT_WIDTH + floor <= SIDEBAR_DOCK_MIN_PX,
-			`the docked sidebar (${SIDEBAR_DEFAULT_WIDTH}) plus a ${floor}px chat floor does not fit inside the dock threshold (${SIDEBAR_DOCK_MIN_PX})`,
-		);
-	}
+	assert.equal(PANEL_RAIL_WIDTH_PX, 44);
+	const capacity = sidebarDockCapacity(800);
+	assert.equal(capacity, 276);
+	assert.equal(capacity + CHAT_PANE_MIN_PX + PANEL_RAIL_WIDTH_PX, 800);
+	/* A wide window does not cap the user's 220-320px drag range further. */
+	assert.equal(sidebarDockCapacity(1380), 320);
 });
 
 test("the layout module owns the bands the shell reads", () => {
@@ -436,16 +430,19 @@ test("the layout module owns the bands the shell reads", () => {
 		"CANVAS_PANE_MIN_PX",
 		"CANVAS_PANE_MAX_PX",
 		"CHAT_PANE_WITH_DOCK_MIN_PX",
-		"SIDEBAR_DOCK_MIN_PX",
 		"SIDEBAR_COLLAPSED_WIDTH",
 		"SIDEBAR_DEFAULT_WIDTH",
-		"SIDEBAR_SHEET_WIDTH",
 	])
 		assert.match(
 			layout,
 			new RegExp(`export const ${name}\\b`),
 			`${name} is no longer exported from \`chat-sidebar-layout.ts\`; the bands and this test read it from there`,
 		);
+	assert.match(
+		layout,
+		/export function sidebarDockCapacity\b/,
+		"the render-only dock capacity must stay in the shipped layout module",
+	);
 });
 
 /* --------------------------- the seam's clearance --------------------------- */
