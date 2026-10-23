@@ -156,6 +156,9 @@ test("A1: every job is gated on flags that exist, or is declared ungated", () =>
 test("A2: every gate escapes the implicit success() and names its dependencies", () => {
 	for (const job of Object.keys(jobs)) {
 		if (!flagged(job)) continue;
+		// The result consumer is separately pinned by A17e: always-run so failed
+		// or missing workers become a red required result, never a collateral skip.
+		if (job === "desktop-tests-result") continue;
 		assert.match(
 			jobIf(job),
 			/!\s*cancelled\(\)/,
@@ -170,6 +173,7 @@ test("A2: every gate escapes the implicit success() and names its dependencies",
 		}
 	}
 	for (const job of Object.keys(jobs)) {
+		if (job === "desktop-tests-result") continue; // A17e pins the sole consumer exception.
 		assert.doesNotMatch(
 			jobIf(job),
 			/always\(\)/,
@@ -239,6 +243,7 @@ test("A4: dependency clauses match the implication the module actually guarantee
 	const vectors = flagVectors();
 	const runs = (job, flags) => JOB_FLAGS[job].every((flag) => flags[flag]);
 	for (const job of gatedJobs) {
+		if (job === "desktop-tests-result") continue; // A17e requires failed-worker consumption.
 		for (const dependency of jobNeeds(job)) {
 			if (dependency === "changes") continue;
 			const implied = vectors.every(
@@ -673,6 +678,23 @@ test("A11: every job's local commands exist and match the workflow's own steps",
 			// command drifting to a different tool, and two tokens is the
 			// strongest check that the prefix cannot defeat.
 			const [tool, argument] = command.split(/\s+/);
+			if (job === "test" && command === "pnpm test:desktop") {
+				assert.ok(
+					blocks.some((b) =>
+						b.includes("node scripts/desktop-test-shards.mjs run"),
+					),
+				);
+				const planner = readFileSync(
+					join(repoRoot, "scripts/desktop-test-shards.mjs"),
+					"utf8",
+				);
+				assert.ok(planner.includes('pkg.scripts?.["test:desktop"]'));
+				assert.ok(planner.includes("[RUNNER, ...expected.shards[index]]"));
+				assert.ok(
+					planner.includes('const RUNNER = "scripts/run-desktop-tests.mjs"'),
+				);
+				continue;
+			}
 			assert.ok(
 				blocks.some(
 					(block) => block.includes(tool) && block.includes(argument),
@@ -1074,14 +1096,16 @@ test("A16: docs/evidence/** keeps the suite and the evidence job, and nothing el
 test("A17: exactly one desktop-suite invocation, behind a failing-closed step", () => {
 	const invocations = runBlocks("test")
 		.join("\n")
-		.match(/pnpm test:desktop\b/g);
+		.match(/node scripts\/desktop-test-shards\.mjs run\b/g);
 	assert.equal(
 		invocations?.length ?? 0,
 		1,
 		`the 'test' job invokes \`pnpm test:desktop\` ${invocations?.length ?? 0} times; the suite is the job's dominant cost and one run plus the count assertions is the whole signal`,
 	);
 	const blocks = runBlocks("test");
-	const suite = blocks.find((block) => block.includes("pnpm test:desktop"));
+	const suite = blocks.find((block) =>
+		block.includes("node scripts/desktop-test-shards.mjs run"),
+	);
 	assert.match(
 		suite,
 		/set -o pipefail/,
@@ -1162,7 +1186,7 @@ function desktopStepBody() {
 	const step = (jobs.test?.steps ?? []).find(
 		(candidate) =>
 			typeof candidate.run === "string" &&
-			candidate.run.includes("pnpm test:desktop"),
+			candidate.run.includes("node scripts/desktop-test-shards.mjs run"),
 	);
 	assert.ok(step, "the `test` job has no step that runs `pnpm test:desktop`");
 	return step.run;
@@ -1190,7 +1214,7 @@ function runDesktopStep(body, scenario) {
 	mkdirSync(bin, { recursive: true });
 	const synthetic = join(dir, "synthetic.log");
 	writeFileSync(synthetic, scenario.log);
-	const stub = join(bin, "pnpm");
+	const stub = join(bin, "node");
 	writeFileSync(
 		stub,
 		[
@@ -1202,6 +1226,14 @@ function runDesktopStep(body, scenario) {
 		].join("\n"),
 	);
 	chmodSync(stub, 0o755);
+	// A17 exercises diagnostics, not Git or the planner. Exact synthetic SHA
+	// prevents a real git/keychain lookup under a fixture's environment.
+	const gitStub = join(bin, "git");
+	writeFileSync(
+		gitStub,
+		"#!/bin/sh\nprintf '%s\\n' aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+	);
+	chmodSync(gitStub, 0o755);
 	const script = join(dir, "step.sh");
 	writeFileSync(
 		script,
@@ -1217,6 +1249,9 @@ function runDesktopStep(body, scenario) {
 			// attribute when a variable that is already in the environment is
 			// reassigned, so a stub reading `SUITE_RC` would have read the step's
 			// own `SUITE_RC=0` and exited green for every case.
+			GITHUB_OUTPUT: join(dir, "step-output"),
+			DESKTOP_REQUESTED_HEAD: "a".repeat(40),
+			DESKTOP_SHARD_INDEX: "0",
 			CI_SCOPE_STUB_LOG: synthetic,
 			CI_SCOPE_STUB_STDERR: scenario.stderr ?? "",
 			CI_SCOPE_STUB_RC: String(scenario.suiteRc),
@@ -1490,6 +1525,7 @@ test("A17d: a failed desktop run retains its full log as a failure artifact", ()
 	assert.ok(jobs.test.steps.indexOf(artifact) > jobs.test.steps.indexOf(suite));
 	assert.match(artifact.with.name, /github\.run_id/);
 	assert.match(artifact.with.name, /github\.run_attempt/);
+	assert.match(artifact.with.name, /shard-\$\{\{ matrix\.shard \}\}/);
 	// Exercise the unchanged REAL shell body with an intentionally failed
 	// synthetic suite. Byte equality catches a tail-only or dropped stderr log.
 	const scenario = {
@@ -2248,3 +2284,92 @@ function runClassifier(args, cwd, module = join(repoRoot, MODULE)) {
 		stderr: result.stderr ?? "",
 	};
 }
+
+// A17e owns the one exception to A2/A4's dependency-success admission rule:
+// this job CONSUMES failures, rather than starting work that needs their artifacts.
+test("A17e: three protected workers feed one exact fail-closed Desktop Tests result", () => {
+	const worker = jobs.test;
+	const result = jobs["desktop-tests-result"];
+	assert.deepEqual(worker.strategy, {
+		"fail-fast": false,
+		matrix: { shard: [0, 1, 2] },
+	});
+	assert.equal(worker["timeout-minutes"], 50);
+	assert.equal(result.name, "Desktop Tests");
+	assert.deepEqual(result.needs, ["changes", "test"]);
+	assert.equal(
+		result.if.trim().replace(/\s+/g, " "),
+		"always() && (needs.changes.outputs.unit != 'false' || needs.changes.result != 'success')",
+	);
+	assert.equal(result.env.CLASSIFIER_RESULT, "${{ needs.changes.result }}");
+	assert.equal(result.env.WORKER_RESULT, "${{ needs.test.result }}");
+	assert.equal(result.env.UNIT_SCOPE, "${{ needs.changes.outputs.unit }}");
+	const reject = result.steps.find((step) =>
+		step.name.startsWith("Reject unsuccessful"),
+	);
+	for (const variable of ["CLASSIFIER_RESULT", "WORKER_RESULT"])
+		assert.ok(reject.run.includes(`test "$${variable}" = success`));
+	assert.ok(reject.run.includes('test "$UNIT_SCOPE" = true'));
+	assert.ok(!result.steps.some((step) => step["continue-on-error"]));
+	assert.ok(
+		!runBlocks("desktop-tests-result").some((block) =>
+			/pnpm|npm install/.test(block),
+		),
+	);
+	assert.ok(
+		runBlocks("desktop-tests-result").some((block) =>
+			block.includes("desktop-test-shards.mjs verify"),
+		),
+	);
+	assert.equal(
+		LOCAL_EXCLUSIONS["desktop-tests-result"].includes(
+			"no local suite execution",
+		),
+		true,
+	);
+	assert.equal(Object.hasOwn(JOB_COMMANDS, "desktop-tests-result"), false);
+	const download = result.steps.find((step) =>
+		step.uses?.startsWith("actions/download-artifact@"),
+	);
+	assert.equal(
+		download.with.pattern,
+		"desktop-shard-proof-${{ github.run_id }}-${{ github.run_attempt }}-*",
+	);
+	assert.equal(download.with["merge-multiple"], false);
+	const proof = worker.steps.find(
+		(step) => step.name === "Record successful shard coverage",
+	);
+	assert.equal(proof.if, "${{ steps.desktop_suite.outcome == 'success' }}");
+	assert.ok(proof.run.includes("desktop-test-shards.mjs receipt"));
+	const upload = worker.steps.find(
+		(step) => step.name === "Upload shard coverage receipt",
+	);
+	assert.equal(upload.if, "${{ always() }}");
+	assert.equal(upload.with["if-no-files-found"], "error");
+	assert.equal(
+		upload.with.name,
+		"desktop-shard-proof-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.shard }}",
+	);
+	assert.equal(
+		worker.steps.filter((step) => step.run === "pnpm test:tag-dialogs").length,
+		1,
+	);
+	assert.equal(
+		worker.steps.find((step) => step.run === "pnpm test:tag-dialogs").if,
+		"${{ matrix.shard == 0 }}",
+	);
+	for (const name of [
+		"Build plain-JS bundle for isolated native QA",
+		"Upload isolated native QA bundle",
+	]) {
+		const step = worker.steps.find((candidate) => candidate.name === name);
+		assert.ok(step.if.includes("matrix.shard == 0"));
+		assert.ok(step.if.includes("!cancelled()"));
+		assert.ok(step.if.includes("github.event_name == 'pull_request'"));
+	}
+	assert.ok(
+		worker.steps
+			.find((step) => step.name === "Upload isolated native QA bundle")
+			.if.includes("steps.qa_bundle.outcome == 'success'"),
+	);
+});
