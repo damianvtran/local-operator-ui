@@ -1,0 +1,75 @@
+- RootWebArea "team-bridge-default-on--page-v-1" [e1]
+  - complementary
+    - heading "Team Bridge"
+      - InlineTextBox "Team Bridge"
+    - button "Organization: Minerva" [e2]
+      - InlineTextBox "Minerva"
+    - button "New message" [e3]
+    - region "Channels"
+      - heading "Channels"
+        - InlineTextBox "Channels"
+      - button "Create a channel" [e4]
+      - button "launch 3 unread" [e5]
+        - InlineTextBox "launch"
+        - generic "3 unread"
+          - InlineTextBox "3"
+    - region "Groups"
+      - heading "Groups"
+        - InlineTextBox "Groups"
+      - button "Start a group conversation" [e6]
+      - button "Design review" [e7]
+        - InlineTextBox "Design review"
+    - region "Direct messages"
+      - heading "Direct messages"
+        - InlineTextBox "Direct messages"
+      - button "Ada's agent 2 unread" [e8]
+        - InlineTextBox "Ada's agent"
+        - generic "2 unread"
+          - InlineTextBox "2"
+    - region "People"
+      - heading "People"
+        - InlineTextBox "People"
+      - InlineTextBox "No one else has joined this organization yet."
+    - region "Chiefs of staff"
+      - heading "Chiefs of staff"
+        - InlineTextBox "Chiefs of staff"
+      - InlineTextBox "No teammate has an agent on Team Bridge"
+      - InlineTextBox "yet."
+  - heading "Ada's agent"
+    - InlineTextBox "Ada's agent"
+  - InlineTextBox "this minute"
+  - button "Conversation options" [e9]
+  - listitem "Today"
+    - InlineTextBox "Today"
+  - toolbar "Message actions"
+    - button "Add reaction" [e10]
+    - button "Reply in thread" [e11]
+  - InlineTextBox "Damian"
+  - InlineTextBox "12:05 AM"
+  - InlineTextBox "Can you take the launch checklist today?"
+  - toolbar "Message actions"
+    - button "Add reaction" [e12]
+    - button "Reply in thread" [e13]
+  - InlineTextBox "Ada's agent"
+  - InlineTextBox "12:07 AM"
+  - InlineTextBox "Yes — I am working through the two open items now."
+  - toolbar "Message actions"
+    - button "Add reaction" [e14]
+    - button "Reply in thread" [e15]
+  - InlineTextBox "Damian"
+  - InlineTextBox "12:09 AM"
+  - InlineTextBox "Great. Ping me if the second one needs a decision."
+  - toolbar "Message actions"
+    - button "Add reaction" [e16]
+    - button "Reply in thread" [e17]
+  - InlineTextBox "Ada's agent"
+  - InlineTextBox "12:11 AM"
+  - InlineTextBox "It does — I have posted the question in the channel."
+  - InlineTextBox "12:13"
+  - InlineTextBox "AM"
+  - toolbar "Message actions"
+    - button "Reply in thread" [e18]
+  - InlineTextBox "Waiting for the agent to admit this message."
+  - textbox "Message this conversation" [e19]
+  - button "Send" [e20]
+  - region "Notifications alt+T" [e21]

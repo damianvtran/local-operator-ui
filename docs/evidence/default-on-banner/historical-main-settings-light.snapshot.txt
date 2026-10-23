@@ -1,0 +1,87 @@
+- RootWebArea "agent-messages-settings--populated" [e1]
+  - heading "On"
+    - InlineTextBox "On"
+  - InlineTextBox "Beta Member"
+  - InlineTextBox "Your agent can send and receive messages with members of your organization."
+  - button "Pause" [e2]
+    - InlineTextBox "Pause"
+  - button "Turn off" [e3]
+    - InlineTextBox "Turn off"
+  - InlineTextBox "Consent version"
+  - InlineTextBox "bridge_consent_v1"
+  - InlineTextBox "Collected in"
+  - InlineTextBox "Settings"
+  - InlineTextBox "Accepted"
+  - InlineTextBox "2026-10-18T22:54:53.644474Z"
+  - DisclosureTriangle "Read the consent text" [e4]
+    - InlineTextBox "Read the consent text"
+  - InlineTextBox "Enabled on this machine"
+  - InlineTextBox "Your enrollment stays active for this account and your other machines."
+  - switch "Enabled on this machine" [e5]
+  - heading "Session for new messages"
+    - InlineTextBox "Session for new messages"
+  - InlineTextBox "Session that may be woken for new messages; empty = badge only."
+  - combobox "Session for new messages" [e6]
+    - InlineTextBox "Research"
+  - heading "Reach"
+    - InlineTextBox "Reach"
+  - InlineTextBox "Choose who can message you, and who you can message."
+  - group "Who can message you"
+    - InlineTextBox "Who can message you"
+    - group "Who may message"
+      - InlineTextBox "Who may message"
+      - button "Anyone in my organization" [e7]
+        - InlineTextBox "Anyone in my organization"
+      - button "Only agents I choose" [e8]
+        - InlineTextBox "Only agents I choose"
+    - InlineTextBox "Choosing Only agents I choose switches new conversations in that direction to that list."
+    - InlineTextBox "Removing an entry does not stop an open conversation. Blocking does."
+    - InlineTextBox "Blocking applies both ways."
+    - InlineTextBox "Blocked"
+    - InlineTextBox "Person ID"
+    - InlineTextBox "account-blocked"
+    - button "Remove account-blocked" [e9]
+      - InlineTextBox "Remove"
+    - InlineTextBox "Block an agent or person"
+    - combobox "Kind" [e10]
+      - InlineTextBox "Agent"
+    - textbox "Block an agent or person" [e11]
+    - button "Add" [e12]
+      - InlineTextBox "Add"
+    - InlineTextBox "Enter an agent ID (bep_…)"
+  - group "Who you can message"
+    - InlineTextBox "Who you can message"
+    - group "Who may message"
+      - InlineTextBox "Who may message"
+      - button "Anyone in my organization" [e13]
+        - InlineTextBox "Anyone in my organization"
+      - button "Only agents I choose" [e14]
+        - InlineTextBox "Only agents I choose"
+    - InlineTextBox "Choosing Only agents I choose switches new conversations in that direction to that list."
+    - InlineTextBox "Removing an entry does not stop an open conversation. Blocking does."
+    - InlineTextBox "Blocking applies both ways."
+    - InlineTextBox "Allowed"
+    - InlineTextBox "Agent ID"
+    - InlineTextBox "bep_peer_send"
+    - button "Remove bep_peer_send" [e15]
+      - InlineTextBox "Remove"
+    - InlineTextBox "Allow an agent or person"
+    - combobox "Kind" [e16]
+      - InlineTextBox "Agent"
+    - textbox "Allow an agent or person" [e17]
+    - button "Add" [e18]
+      - InlineTextBox "Add"
+    - InlineTextBox "Enter an agent ID (bep_…)"
+    - InlineTextBox "Blocked"
+    - InlineTextBox "No one is blocked."
+    - InlineTextBox "Block an agent or person"
+    - combobox "Kind" [e19]
+      - InlineTextBox "Agent"
+    - textbox "Block an agent or person" [e20]
+    - button "Add" [e21]
+      - InlineTextBox "Add"
+    - InlineTextBox "Enter an agent ID (bep_…)"
+  - button "Save reach settings" [e22]
+    - InlineTextBox "Save reach settings"
+  - InlineTextBox "No changes to save."
+  - region "Notifications alt+T" [e23]

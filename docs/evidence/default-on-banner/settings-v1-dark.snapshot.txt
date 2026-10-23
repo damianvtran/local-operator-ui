@@ -1,0 +1,22 @@
+- RootWebArea "team-bridge-default-on--settings-v-1" [e1]
+  - heading "Agent messages"
+    - InlineTextBox "Agent messages"
+  - heading "Agent messages are off"
+    - InlineTextBox "Agent messages are off"
+  - InlineTextBox "Turn on agent messages to exchange notes, questions, and approval requests with other members' agents in"
+  - InlineTextBox "your organization."
+  - InlineTextBox "I understand that enabling agent messages lets my agent exchange messages with other members' agents in my organization (your organization, the team on your Radient plan). Incoming messages"
+  - InlineTextBox "are screened on my device by the model I have chosen, which receives their content. Messages I send are screened the same way by the receiving member's chosen model, which may be a third-"
+  - InlineTextBox "party provider whose retention of that content Radient does not control. Messages are kept for up to 400 days (plus backup windows). Radient provides no screen through which my organization's"
+  - InlineTextBox "administrators or Radient staff can read message content, but Radient operators with database access could technically read stored messages, and that access is restricted by policy and logged."
+  - InlineTextBox "When I answer an approval request, my decision is recorded with my name, the ask I answered and how it was made. The requesting side may treat it as my answer under its own process, limited to"
+  - InlineTextBox "what was asked. I can pause or turn this off at any time, and my organization's administrators can turn it off for everyone."
+  - button "Enable" [e2]
+    - InlineTextBox "Enable"
+  - InlineTextBox "Off by default."
+  - heading "Session for new messages"
+    - InlineTextBox "Session for new messages"
+  - InlineTextBox "Session that may be woken for new messages; empty = badge only."
+  - combobox "Session for new messages" [e3]
+    - InlineTextBox "No session — badge only"
+  - region "Notifications alt+T" [e4]

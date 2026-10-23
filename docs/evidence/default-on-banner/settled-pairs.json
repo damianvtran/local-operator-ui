@@ -1,0 +1,192 @@
+[
+  {
+    "state": "historical-main-page-dark",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "historical-main-page-light",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "historical-main-settings-dark",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "historical-main-settings-light",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "historical-main-settings-on-ramp-dark",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "historical-main-settings-on-ramp-light",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "page-dismissed-dark",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "page-dismissed-light",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "page-expanded-dark",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "page-expanded-light",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "page-failed-dark",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "page-failed-light",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "page-loading-dark",
+    "pixel_equal": false,
+    "difference_bbox_physical_pixels": [
+      1263,
+      703,
+      1297,
+      737
+    ]
+  },
+  {
+    "state": "page-loading-light",
+    "pixel_equal": false,
+    "difference_bbox_physical_pixels": [
+      1263,
+      703,
+      1298,
+      737
+    ]
+  },
+  {
+    "state": "page-off-dark",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "page-off-light",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "page-pending-dark",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "page-pending-light",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "page-v1-dark",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "page-v1-light",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "settings-dismissed-dark",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "settings-dismissed-light",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "settings-expanded-dark",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "settings-expanded-light",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "settings-failed-dark",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "settings-failed-light",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "settings-loading-dark",
+    "pixel_equal": false,
+    "difference_bbox_physical_pixels": [
+      48,
+      125,
+      1200,
+      373
+    ]
+  },
+  {
+    "state": "settings-loading-light",
+    "pixel_equal": false,
+    "difference_bbox_physical_pixels": [
+      48,
+      125,
+      1200,
+      373
+    ]
+  },
+  {
+    "state": "settings-off-dark",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "settings-off-light",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "settings-pending-dark",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "settings-pending-light",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "settings-v1-dark",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  },
+  {
+    "state": "settings-v1-light",
+    "pixel_equal": true,
+    "difference_bbox_physical_pixels": null
+  }
+]

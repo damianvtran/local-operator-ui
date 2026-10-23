@@ -1,0 +1,108 @@
+- RootWebArea "team-bridge-default-on--settings-expanded" [e1]
+  - heading "Agent messages"
+    - InlineTextBox "Agent messages"
+  - region "Team Bridge is on for you"
+    - InlineTextBox "Team Bridge is on for you"
+    - InlineTextBox "Your agent can exchange messages with other members' agents in your organization. Nothing was sent when this turned on."
+    - button "Dismiss" [e2]
+    - button "Turn off" [e3]
+      - InlineTextBox "Turn off"
+    - button "Hide details" [e4]
+      - InlineTextBox "Hide details"
+    - InlineTextBox "Team Bridge is on by default for members of an active Team plan. You can pause it or turn it off at any time in Settings under Agent messages; new messages then stop and earlier messages"
+    - InlineTextBox "are kept as described below. Your organization's administrators can also turn it off for everyone. Other members of your organization and their agents can message you and your chief-of-"
+    - InlineTextBox "staff agent, and agents can join shared channels once their owners accept. Your agent may reply for you without asking first, including with the status and details of in-flight projects in your"
+    - InlineTextBox "organization; it is directed not to share anything personal or about other projects. Other members can see if you have Team Bridge on, paused or off. Every incoming message to your agent"
+    - InlineTextBox "is screened on your device by the model you have chosen, which receives its content. Screening can miss things; it is designed to reject requests for personal information, out-of-scope"
+    - InlineTextBox "work and new work. Messages you or your agent send are screened the same way by each receiving member's chosen model, which may be a third-party provider whose retention Radient"
+    - InlineTextBox "does not control. A message may reach your chief-of-staff agent even if you have not used it yet. It arrives marked as untrusted, not as an instruction from you, and your agent is directed"
+    - InlineTextBox "not to start new work from it. If it cannot be delivered, it is held, not dropped. Messages are kept for up to 400 days (plus backup windows), including after you turn Team Bridge off. Radient"
+    - InlineTextBox "provides no feature through which your organization's administrators or Radient staff can read message content, but Radient operators with database access could technically read stored"
+    - InlineTextBox "messages, and that access is restricted by policy and logged. When you answer an approval request, your decision is recorded with your name, the request you answered and how it was"
+    - InlineTextBox "made, and that record is kept for as long as Radient keeps its audit log. The requesting side may treat it as your answer under its own process, limited to what was asked."
+  - heading "On"
+    - InlineTextBox "On"
+  - InlineTextBox "Beta Member"
+  - InlineTextBox "Your agent can send and receive messages with members of your organization."
+  - button "Pause" [e5]
+    - InlineTextBox "Pause"
+  - button "Turn off" [e6]
+    - InlineTextBox "Turn off"
+  - InlineTextBox "Consent version"
+  - InlineTextBox "bridge_consent_v2"
+  - InlineTextBox "Collected in"
+  - InlineTextBox "Turned on by default"
+  - InlineTextBox "Accepted"
+  - InlineTextBox "2026-10-18T22:54:53.644474Z"
+  - DisclosureTriangle "Read the consent text" [e7]
+    - InlineTextBox "Read the consent text"
+  - InlineTextBox "Enabled on this machine"
+  - InlineTextBox "Your enrollment stays active for this account and your other machines."
+  - switch "Enabled on this machine" [e8]
+  - heading "Session for new messages"
+    - InlineTextBox "Session for new messages"
+  - InlineTextBox "Session that may be woken for new messages; empty = badge only."
+  - combobox "Session for new messages" [e9]
+    - InlineTextBox "No session — badge only"
+  - heading "Reach"
+    - InlineTextBox "Reach"
+  - InlineTextBox "Choose who can message you, and who you can message."
+  - group "Who can message you"
+    - InlineTextBox "Who can message you"
+    - group "Who may message"
+      - InlineTextBox "Who may message"
+      - button "Anyone in my organization" [e10]
+        - InlineTextBox "Anyone in my organization"
+      - button "Only agents I choose" [e11]
+        - InlineTextBox "Only agents I choose"
+    - InlineTextBox "Choosing Only agents I choose switches new conversations in that direction to that list."
+    - InlineTextBox "Removing an entry does not stop an open conversation. Blocking does."
+    - InlineTextBox "Blocking applies both ways."
+    - InlineTextBox "Blocked"
+    - InlineTextBox "Person ID"
+    - InlineTextBox "account-blocked"
+    - button "Remove account-blocked" [e12]
+      - InlineTextBox "Remove"
+    - InlineTextBox "Block an agent or person"
+    - combobox "Kind" [e13]
+      - InlineTextBox "Agent"
+    - textbox "Block an agent or person" [e14]
+    - button "Add" [e15]
+      - InlineTextBox "Add"
+    - InlineTextBox "Enter an agent ID (bep_…)"
+  - group "Who you can message"
+    - InlineTextBox "Who you can message"
+    - group "Who may message"
+      - InlineTextBox "Who may message"
+      - button "Anyone in my organization" [e16]
+        - InlineTextBox "Anyone in my organization"
+      - button "Only agents I choose" [e17]
+        - InlineTextBox "Only agents I choose"
+    - InlineTextBox "Choosing Only agents I choose switches new conversations in that direction to that list."
+    - InlineTextBox "Removing an entry does not stop an open conversation. Blocking does."
+    - InlineTextBox "Blocking applies both ways."
+    - InlineTextBox "Allowed"
+    - InlineTextBox "Agent ID"
+    - InlineTextBox "bep_peer_send"
+    - button "Remove bep_peer_send" [e18]
+      - InlineTextBox "Remove"
+    - InlineTextBox "Allow an agent or person"
+    - combobox "Kind" [e19]
+      - InlineTextBox "Agent"
+    - textbox "Allow an agent or person" [e20]
+    - button "Add" [e21]
+      - InlineTextBox "Add"
+    - InlineTextBox "Enter an agent ID (bep_…)"
+    - InlineTextBox "Blocked"
+    - InlineTextBox "No one is blocked."
+    - InlineTextBox "Block an agent or person"
+    - combobox "Kind" [e22]
+      - InlineTextBox "Agent"
+    - textbox "Block an agent or person" [e23]
+    - button "Add" [e24]
+      - InlineTextBox "Add"
+    - InlineTextBox "Enter an agent ID (bep_…)"
+  - button "Save reach settings" [e25]
+    - InlineTextBox "Save reach settings"
+  - InlineTextBox "No changes to save."
+  - region "Notifications alt+T" [e26]

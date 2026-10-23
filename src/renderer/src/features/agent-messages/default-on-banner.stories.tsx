@@ -131,7 +131,7 @@ function Frame({ surface, state, before = false }: FrameProps) {
 	return (
 		<QueryClientProvider client={client}>
 			{surface === "settings" ? (
-				<div className="min-h-dvh bg-canvas p-6">
+				<div className="h-dvh overflow-y-auto bg-canvas p-6">
 					<SettingsSection
 						title={t("ui.agentMessages.settings.section")}
 						icon={MessageSquare}
