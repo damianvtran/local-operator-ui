@@ -68,6 +68,7 @@ import {
 	RailSection,
 	isTargetRow,
 } from "./team-bridge-rail";
+import { teamBridgeReactionsAvailable } from "./team-bridge-reaction-gate";
 import {
 	TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD,
 	teamBridgeThreadsAvailable,
@@ -126,6 +127,13 @@ import {
  * run them. `unknown` (no answer yet, or the read failed), `below-version` and
  * `unpaired` hide the surface too - never infer `enabled` from the absence of
  * an error.
+ *
+ * REACTIONS ARE HELD IN THIS BUILD. The shipped runtime serves no reaction
+ * path, and the old reaction path is not reviewed for account/retry safety, so
+ * the reaction context is withheld even when `team_bridge_reactions` answers
+ * `enabled`: no chips, no toolbar react button and no picker, rather than
+ * controls that fail. The constant dominates the capability
+ * (`team-bridge-reaction-gate.ts`); enabling reactions is a deliberate flip.
  *
  * LAYOUT. Panels run the full height of the window and are separated by
  * ground (`canvas` rail, `surface` thread), never by a rule; the top inset is
@@ -332,6 +340,12 @@ export type TeamBridgePageViewProps = {
 	 * held, fail-closed surface rather than an assumed one.
 	 */
 	threadsCapabilityState?: DesktopFeatureState;
+	/**
+	 * The `team_bridge_reactions` capability answer, computed by the container.
+	 * Defaults to `unknown`, so a surface that has not asked gets no reaction
+	 * controls rather than an assumed one.
+	 */
+	reactionsCapabilityState?: DesktopFeatureState;
 	/** Story/test seed only: opens the header menu so its rows are visible. */
 	defaultMenuOpen?: boolean;
 	/** Story/test seed only: the page's real draft is user-owned state. */
@@ -392,6 +406,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onJoin,
 	onNotifyChange,
 	threadsCapabilityState = "unknown",
+	reactionsCapabilityState = "unknown",
 	defaultMenuOpen = false,
 	initialDraft = "",
 	people = [],
@@ -416,6 +431,13 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	   link or a reply handler cannot leave a selection behind that a later
 	   render would mount. See `team-bridge-thread-gate.ts`. */
 	const threadsAvailable = teamBridgeThreadsAvailable(threadsCapabilityState);
+	/* THE REACTIONS HOLD. The build constant dominates the capability: the
+	   context is withheld in this build whatever the runtime advertises, so the
+	   message list mounts no reaction state and neither chips nor the toolbar's
+	   react button exist. See `team-bridge-reaction-gate.ts`. */
+	const reactionsAvailable = teamBridgeReactionsAvailable(
+		reactionsCapabilityState,
+	);
 	const [draft, setDraft] = useState(initialDraft);
 	// Thread identity is checked against the current selection before mounting.
 	const [threadSelection, setThreadSelection] = useState<ThreadTarget | null>(
@@ -565,9 +587,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			((target?.type === "person" || target?.type === "chief") &&
 				draftPerson !== null));
 	/* One reaction context for the timeline AND the thread pane, so a reply can
-	   be reacted to under exactly the rules its root is. */
+	   be reacted to under exactly the rules its root is. WITHHELD - not passed
+	   disabled - when the runtime does not advertise reactions: a chip or picker
+	   that cannot work is the dead end the fail-closed rule forbids. */
 	const reactionContext =
-		selfAccountId && selected
+		reactionsAvailable && selfAccountId && selected
 			? {
 					accountId: selfAccountId,
 					tenantId: selected.tenant_id,
@@ -1631,6 +1655,10 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				threadsCapabilityState={desktopFeatureState(
 					capabilities.data,
 					"team_bridge_threads",
+				)}
+				reactionsCapabilityState={desktopFeatureState(
+					capabilities.data,
+					"team_bridge_reactions",
 				)}
 				onCloseThread={() => setThreadLink(null)}
 				listState={

@@ -271,6 +271,22 @@ export function parseTeamBridgeNotifyRequest(
 export const TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD = false;
 
 /**
+ * THE REACTIONS HOLD: the reaction affordances do not ship in this build,
+ * whatever a runtime advertises.
+ *
+ * The shipped runtime serves no reaction route at all (its OpenAPI schema
+ * carries none; a reaction GET answers 404), and the old reaction path has NOT
+ * been reviewed for account/retry safety. A backend advertising a
+ * `team_bridge_reactions` capability must therefore never wake it up: enabling
+ * reactions is a DELIBERATE flip of this constant in a release that carries the
+ * verified fix, never an automatic consequence of a capability appearing.
+ *
+ * Kept beside the threads constant because the two holds share one shape: the
+ * build constant dominates, and the capability only narrows further.
+ */
+export const TEAM_BRIDGE_REACTIONS_SHIPPED_IN_THIS_BUILD = false;
+
+/**
  * The in-app path a click lands on.
  *
  * A query parameter rather than a new global store: the page already owns its
