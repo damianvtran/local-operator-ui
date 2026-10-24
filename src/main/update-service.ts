@@ -52,6 +52,8 @@ import {
 import type { BackendServiceManager } from "./backend/backend-service";
 import {
 	type UpdateReport,
+	type UpdateReportFailureKind,
+	type UpdateReportFailureStep,
 	daemonMoveOutcome,
 	parseUpdateReport,
 	runtimeStragglerCount,
@@ -1206,6 +1208,26 @@ export type BackendUpdateErrorReport = {
 	 * both, so the producer says which is which and no heuristic decides it.
 	 */
 	installerOutput?: string;
+	/**
+	 * The updater's structured cause, when the build that failed emits one.
+	 *
+	 * WHY IT TRAVELS BESIDE THE SENTENCE. `message` is the app's own copy and is
+	 * rendered verbatim; parsing a sentence to recover the step or kind would be a
+	 * second way to read the same fact, which drifts the moment the copy is edited.
+	 * The producer therefore carries the machine-readable half, and every surface
+	 * that needs to act on the kind can read it rather than match English.
+	 *
+	 * ABSENT means an older backend (or a report this app could not read). The
+	 * `message` already preserves that build's wording, so the renderer needs no
+	 * special case for it.
+	 */
+	failure?: {
+		step: UpdateReportFailureStep;
+		kind: UpdateReportFailureKind;
+		exitCode: number;
+		/** One sentence naming the cause, in the updater's own words. */
+		error: string;
+	};
 	/**
 	 * Set when this report is a REFUSAL rather than a failure: the fleet did not
 	 * drain and the app chose not to update the server (review round 1, D1).
@@ -9235,6 +9257,25 @@ export class UpdateService {
 			const diagnosis = installDiagnosisLines(
 				run.stderr.length > 0 ? run.stderr : run.stdout,
 			);
+			/*
+			 * THE STRUCTURED CAUSE, taken from the same stdout the post-condition read
+			 * (contract 2026-10-24). Parsed on the failing branch too, because this is
+			 * the branch the contract exists for: the updater prints ONE report line at
+			 * exit, and its `failure` block is the only account of WHY that does not
+			 * depend on which stream happened to carry startup chatter first.
+			 *
+			 * MEASURED ON THE INCIDENT (2026-10-24): the stderr was 1,475 characters,
+			 * opening with two startup advisories of 355 and 427. `installDiagnosisLines`
+			 * takes the head and slices it at 800 characters, so it returned the first
+			 * advisory, the second, and sixteen characters of a third - while the cause,
+			 * `fresh PyPI latest is 0.88.4, not 0.89.0`, sat on line 6 and never reached
+			 * the panel. The diagnosis is still the raw-output fallback; it cannot be the
+			 * diagnosis when its budget is spent before the verdict arrives.
+			 *
+			 * `parseUpdateReport` returns null for a build that predates the contract, and
+			 * the sentence then composes exactly as before - the older-backend path.
+			 */
+			const failedReport = parseUpdateReport(run.stdout)?.failure ?? null;
 			logger.error(
 				`${rebuildRoute ? "Source rebuild" : "Global install update"} did not land (exited ${run.exitCode}, ran ${run.ran}${groupSurvived ? `, group ${run.groupPid} still alive` : ""}): ${before ?? "unknown"} -> ${after ?? "unknown"}${rebuildRoute ? `, marker ${markerBefore?.ref ?? "none"} -> ${markerAfter?.ref ?? "none"}` : ""}, running backend reports ${running ?? "no reading"}`,
 				LogFileType.UPDATE_SERVICE,
@@ -9252,8 +9293,23 @@ export class UpdateService {
 					after,
 					before,
 					updateCommand: freshPlan.updateCommand ?? null,
+					failure: failedReport
+						? {
+								step: failedReport.step,
+								kind: failedReport.kind,
+								error: failedReport.error,
+							}
+						: null,
 				}),
 				installerOutput: diagnosis || undefined,
+				failure: failedReport
+					? {
+							step: failedReport.step,
+							kind: failedReport.kind,
+							exitCode: failedReport.exit_code,
+							error: failedReport.error,
+						}
+					: undefined,
 				phase: "update",
 				logPath: serverUpdateLogPath(),
 			});

@@ -10087,6 +10087,13 @@ const driveGlobalUpdate = async ({
 	exitCode = 0,
 	ran = true,
 	target = "0.56.0",
+	/*
+	 * THE UPDATER'S STREAMS, scriptable for the case that drives the structured
+	 * report: the failing branch reads the cause from STDOUT (one report line at
+	 * exit) while the diagnosis fallback still comes from stderr's head.
+	 */
+	stdout = "",
+	stderr = null,
 	external = false,
 	daemonReports = null,
 	/*
@@ -10435,11 +10442,12 @@ const driveGlobalUpdate = async ({
 			if (runGate) await runGate({ markerPath });
 			return {
 				exitCode,
-				stdout: "",
+				stdout,
 				stderr:
-					exitCode === 0
+					stderr ??
+					(exitCode === 0
 						? ""
-						: "error: Failed to install: the index is unreachable\n\n  Caused by: network unreachable",
+						: "error: Failed to install: the index is unreachable\n\n  Caused by: network unreachable"),
 				ran,
 				command: command.path,
 			};
@@ -16236,6 +16244,12 @@ test("every server-update failure sentence reaches the panel verbatim, and the f
 		),
 		"utf8",
 	);
+	/*
+	 * The stream head the failing branch would have chosen: two long startup
+	 * advisories, which is why the sentence's cause cannot be the diagnosis field.
+	 */
+	const INCIDENT_STARTUP_DIAGNOSIS =
+		"2026-10-24 16:42:26,743 - WARNING - config.yml lost 1 setting(s) since the last launch\n2026-10-24 16:42:27,154 - WARNING - the LOADED page of the project store carries 2 rows named 'minerva-assigned-mr-release-20261013'";
 	const routes = [
 		{
 			name: "release",
@@ -16280,6 +16294,32 @@ test("every server-update failure sentence reaches the panel verbatim, and the f
 				after: "0.56.10",
 				before: "0.56.10",
 				updateCommand: "lop update",
+			},
+		},
+		{
+			/*
+			 * THE STRUCTURED-CAUSE ROUTE (contract 2026-10-24), driven by the incident's
+			 * facts: exit 1 at the publish step, PyPI at 0.88.4 while the target was
+			 * 0.89.0. The fixture name is the story constant, so a reworded composer
+			 * or a drifted story fails here rather than in a frame nobody re-reads.
+			 */
+			name: "publication",
+			fixture: "SERVER_UPDATE_PUBLICATION_FAILURE_MESSAGE",
+			input: {
+				rebuildRoute: false,
+				ran: true,
+				exitCode: 1,
+				groupSurvived: false,
+				diagnosis: INCIDENT_STARTUP_DIAGNOSIS,
+				target: "0.89.0",
+				after: "0.88.4",
+				before: "0.88.4",
+				updateCommand: "lop update",
+				failure: {
+					step: "publish",
+					kind: "publication",
+					error: "fresh PyPI latest is 0.88.4, not 0.89.0; retry lop update",
+				},
 			},
 		},
 		{
@@ -16349,6 +16389,207 @@ test("every server-update failure sentence reaches the panel verbatim, and the f
 		panel.serverUpdateFailureReason({ message: machine, phase: "update" }),
 		machine,
 	);
+});
+
+/**
+ * THE STRUCTURED CAUSE (contract 2026-10-24): the sentence names the step and the
+ * updater's own sentence, and each kind gets the remedy that actually applies.
+ *
+ * WHY THIS CASE IS SEPARATE FROM THE VERBATIM ONE ABOVE. That case asserts the panel
+ * receives whatever the composer produced; this one asserts what the composer
+ * produces once the updater names a cause. Both matter: verbatim delivery of a
+ * sentence that still hides the cause would pass the first and fail the incident.
+ *
+ * THE LEGACY LITERAL IS PINNED HERE, because the contract is additive and a backend
+ * that predates it must keep today's wording byte-for-byte rather than gaining a
+ * clause it cannot back with data.
+ */
+test("a structured failure names the cause, and each kind names its own next step", () => {
+	const base = {
+		rebuildRoute: false,
+		ran: true,
+		exitCode: 1,
+		groupSurvived: false,
+		diagnosis: "[startup advisories and PyPI lines]",
+		target: "0.89.0",
+		after: "0.88.4",
+		before: "0.88.4",
+		updateCommand: "lop update",
+	};
+
+	/*
+	 * THE INCIDENT'S OWN FACTS, quoted from the update service log of 2026-10-24:
+	 * exit 1, a publish step that found PyPI at 0.88.4 while the target was 0.89.0.
+	 */
+	const incident = install.serverUpdateFailureSentence({
+		...base,
+		failure: {
+			step: "publish",
+			kind: "publication",
+			error: "fresh PyPI latest is 0.88.4, not 0.89.0; retry lop update",
+		},
+	});
+	assert.match(incident, /It stopped at the publish step/);
+	assert.match(incident, /PyPI did not yet offer 0\.89\.0/);
+	assert.ok(
+		incident.includes(
+			"(`fresh PyPI latest is 0.88.4, not 0.89.0; retry lop update`)",
+		),
+		`the updater's own cause must be quoted: ${incident}`,
+	);
+	assert.match(
+		incident,
+		/The release is still publishing; try again in a few minutes\./,
+	);
+	assert.ok(incident.length < 400, `${incident.length} characters`);
+
+	/*
+	 * NO CAUSE BLOCK IS THE OLD SENTENCE, and it is asserted as a literal rather
+	 * than against the composer itself: the whole point is that this path did not
+	 * move. A future edit that "improves" the legacy arm is a wording change for
+	 * users on an older backend, which this contract did not authorize.
+	 */
+	assert.equal(
+		install.serverUpdateFailureSentence(base),
+		"The server update did not install: `lop update` exited 1. Nothing was restarted: the build that was serving is the build still serving. The installer's own output is below.",
+	);
+	assert.equal(
+		install.serverUpdateFailureSentence({ ...base, failure: null }),
+		install.serverUpdateFailureSentence(base),
+		"an explicit null is the same older-backend path as an absent field",
+	);
+
+	const remedies = [
+		["network", /Check the network connection, then try again\./],
+		[
+			"publication",
+			/The release is still publishing; try again in a few minutes\./,
+		],
+		[
+			"lock",
+			/Another update is running; wait for it to finish, then try again\./,
+		],
+		["disk", /Free some disk space, then try again\./],
+		["ownership", /Correct the install's ownership, then try again\./],
+		["serve", /Restart the server\./],
+		["refused", /Resolve what it refused, then try again\./],
+	];
+	for (const [kind, remedy] of remedies) {
+		const sentence = install.serverUpdateFailureSentence({
+			...base,
+			failure: { step: "install", kind, error: "the updater's own line" },
+		});
+		assert.match(sentence, remedy, `${kind}: ${sentence}`);
+		assert.ok(sentence.length < 400, `${kind}: ${sentence.length} characters`);
+	}
+
+	/*
+	 * `serve` IS THE ONE ARM WHERE "NOTHING WAS RESTARTED" WOULD BE FALSE: the
+	 * install landed and the serving process is the thing that did not move. A
+	 * sentence that said both would contradict its own remedy.
+	 */
+	const serve = install.serverUpdateFailureSentence({
+		...base,
+		failure: {
+			step: "services",
+			kind: "serve",
+			error: "the daemon did not move onto 0.89.0",
+		},
+	});
+	assert.doesNotMatch(serve, /Nothing was restarted/);
+
+	/*
+	 * UNKNOWN INVENTS NO REMEDY, and points at the record instead: the cause clause
+	 * says the updater could not classify it and the pointer says where the raw
+	 * output or log is. A guessed next step is what this contract exists to stop.
+	 */
+	const unknown = install.serverUpdateFailureSentence({
+		...base,
+		failure: { step: "report", kind: "unknown", error: "unexpected state" },
+	});
+	assert.match(unknown, /could not classify the failure/);
+	assert.doesNotMatch(unknown, /try again/i);
+	assert.match(unknown, /The installer's own output is below\./);
+});
+
+/**
+ * THE SERVICE'S HALF OF THE STRUCTURED CAUSE (contract 2026-10-24), driven through
+ * `updateBackend` rather than composed by the test.
+ *
+ * WHY THIS CASE IS SEPARATE FROM THE COMPOSER'S. The composer can be correct while
+ * the failing branch never reads the report, or reads the wrong stream, or drops
+ * the block on its way into the payload - and every one of those leaves the panel
+ * showing the stream head, which is the incident. So this drives the shipped
+ * service with the updater's real shape: the verdict on stdout, the advisories on
+ * stderr, and the failure block in the report.
+ */
+test("the failing branch puts the report's structured cause on backend-update-error", async () => {
+	const failure = {
+		step: "publish",
+		kind: "publication",
+		exit_code: 1,
+		error: "fresh PyPI latest is 0.88.4, not 0.89.0; retry lop update",
+	};
+	const report = JSON.stringify({
+		update_report: {
+			schema: "update.report.v1",
+			ok: false,
+			install_version: "0.88.4",
+			target: "0.89.0",
+			serve: [],
+			daemons: [],
+			failure,
+		},
+	});
+	/*
+	 * THE STREAM HEAD THE PANEL USED TO SHOW: two advisories long enough to consume
+	 * `installDiagnosisLines`' 800-character budget, with the verdict on stdout where
+	 * the diagnosis fallback cannot reach it.
+	 */
+	const stderr = [
+		`2026-10-24 16:42:26,743 - WARNING - ${"config.yml lost 1 setting(s); ".repeat(10)}restore from a backup`,
+		`2026-10-24 16:42:27,154 - WARNING - ${"the project store carries 2 duplicate rows; ".repeat(9)}rename one`,
+		"2026-10-24 16:42:27,154 - WARNING - the LOADED page of the project store carries 2 duplicate rows",
+	].join("\n");
+	const seam = await driveGlobalUpdate({
+		before: "0.88.4",
+		after: "0.88.4",
+		exitCode: 1,
+		target: "0.89.0",
+		stdout: report,
+		stderr,
+	});
+	try {
+		const result = await seam.updateService.updateBackend("0.89.0");
+		assert.equal(result, false);
+		const event = seam.sent.find(
+			({ channel }) => channel === "backend-update-error",
+		);
+		assert.ok(event, JSON.stringify(seam.sent.map(({ channel }) => channel)));
+		assert.equal(event.payload.phase, "update");
+		assert.deepEqual(event.payload.failure, {
+			step: "publish",
+			kind: "publication",
+			exitCode: 1,
+			error: failure.error,
+		});
+		assert.match(event.payload.message, /It stopped at the publish step/);
+		assert.match(event.payload.message, /fresh PyPI latest is 0\.88\.4/);
+		assert.match(
+			event.payload.message,
+			/The release is still publishing; try again in a few minutes\./,
+		);
+		/*
+		 * AND THE RAW FALLBACK IS STILL THE RAW FALLBACK: the head of stderr, with no
+		 * cause in it. If this ever contains the verdict, the panel is being handed
+		 * the same fact twice by two different routes, which is the drift the separate
+		 * `failure` field exists to prevent.
+		 */
+		assert.match(event.payload.installerOutput, /config\.yml lost 1 setting/);
+		assert.doesNotMatch(event.payload.installerOutput, /fresh PyPI latest/);
+	} finally {
+		seam.dispose();
+	}
 });
 
 /**

@@ -9079,6 +9079,25 @@ export const STORIES = [
 	],
 	["common-updatenotification--backend-update-failed", 1280, 900],
 	/*
+	 * THE INCIDENT'S OWN FRAME (2026-10-24): the update stopped because PyPI still
+	 * served 0.88.4 while the target was 0.89.0, and the panel used to show the
+	 * stream head - two startup advisories - with no cause. The claims are the
+	 * clauses this change adds, so a frame that loses the structured cause cannot
+	 * be admitted as evidence for it.
+	 */
+	[
+		"common-updatenotification--backend-update-failed-publication",
+		1280,
+		900,
+		{
+			expectSentence: [
+				"It stopped at the publish step",
+				"PyPI did not yet offer 0.89.0",
+				"The release is still publishing; try again in a few minutes.",
+			],
+		},
+	],
+	/*
 	 * THE REFUSAL, which is not the failure above it (design round 1, D1/D5). The
 	 * fleet did not drain, so the app waited its bounded time and left the server
 	 * alone - a deliberate, bounded decision that used to be painted in the failure

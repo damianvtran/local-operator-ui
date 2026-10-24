@@ -272,6 +272,32 @@ const SERVER_UPDATE_FAILURE_OUTPUT = [
 	" + local-operator==0.55.10",
 ].join("\n");
 
+/*
+ * THE INCIDENT OF 2026-10-24, in the producer's own words (personal paths
+ * replaced with `/Users/operator`, ids made synthetic).
+ *
+ * The updater exited 1 because PyPI still served 0.88.4 while the target was
+ * 0.89.0. Its stderr carried that verdict on line 6, behind two startup
+ * advisories 355 and 427 characters long: `installDiagnosisLines` takes the head
+ * and slices it at 800 characters, so the second advisory was cut mid-line and the
+ * cause never reached the panel - the modal showed the advisories and nothing
+ * about the publish. The report's structured `failure` is what this fixture
+ * stands for, and `scripts/update-robustness.test.mjs` composes this exact
+ * sentence from those facts.
+ */
+const PUBLICATION_FAILURE_ERROR =
+	"fresh PyPI latest is 0.88.4, not 0.89.0; retry lop update";
+const SERVER_UPDATE_PUBLICATION_FAILURE_OUTPUT = [
+	"2026-10-24 16:42:26,743 - WARNING - /Users/operator/.local-operator/config.yml lost 1 setting(s) since the last launch: subagents.models.hi; a writer outside this build removed them — if you did not, an earlier update backed the file up beside itself: restore from the newest config.yml.pre-cleanup-migration.* or config.yml.bak-* and it will be read again.",
+	"2026-10-24 16:42:27,154 - WARNING - the LOADED page of the project store at /Users/operator/.local-operator/projects carries 2 rows named 'minerva-assigned-mr-release-20261013' (ids: 11111111111111111111111111111111, 22222222222222222222222222222222); uniqueness applies when a name is ASSIGNED, so these rows stay readable and writable — rename one when convenient. A pair entirely beyond the page is not reported by this check.",
+	"2026-10-24 16:42:27,154 - WARNING - the LOADED page of the project store at /Users/operator/.local-operator/projects carries 2 rows named 'skill-bundle-carrier' (ids: 33333333333333333333333333333333, 44444444444444444444444444444444); uniqueness applies when a name is ASSIGNED, so these rows stay readable and writable — rename one when convenient. A pair entirely beyond the page is not reported by this check.",
+	'2026-10-24 16:42:27,272 - INFO - HTTP Request: GET https://pypi.org/pypi/local-operator/json "HTTP/1.1 200 OK"',
+	'2026-10-24 16:42:27,355 - INFO - HTTP Request: GET https://pypi.org/pypi/local-operator/json "HTTP/1.1 200 OK"',
+	PUBLICATION_FAILURE_ERROR,
+].join("\n");
+const SERVER_UPDATE_PUBLICATION_FAILURE_MESSAGE =
+	"The server update did not install: `lop update` exited 1. It stopped at the publish step: PyPI did not yet offer 0.89.0 (`fresh PyPI latest is 0.88.4, not 0.89.0; retry lop update`). The release is still publishing; try again in a few minutes. Nothing was restarted. The installer's own output is below.";
+
 /**
  * The listeners `onBackendUpdateError` has registered for the current story.
  *
@@ -374,6 +400,28 @@ const mockUpdaterApi = () => {
 							waitedMs: 600_000,
 							command: DRAIN_REFUSAL_COMMAND,
 							credentialsRefused: unreadable,
+						},
+					});
+				}
+				return false;
+			}
+			/*
+			 * THE PUBLICATION FAILURE (2026-10-24): the report carries the structured
+			 * `failure` the contract added, beside the sentence and the raw output.
+			 */
+			if (window.triggerBackendUpdateErrorPublication) {
+				for (const listener of [...backendUpdateErrorListeners]) {
+					listener({
+						message: SERVER_UPDATE_PUBLICATION_FAILURE_MESSAGE,
+						installerOutput: SERVER_UPDATE_PUBLICATION_FAILURE_OUTPUT,
+						phase: "update",
+						logPath:
+							"/Users/operator/Library/Application Support/Local Operator/logs/update-service.log",
+						failure: {
+							step: "publish",
+							kind: "publication",
+							exitCode: 1,
+							error: PUBLICATION_FAILURE_ERROR,
 						},
 					});
 				}
@@ -1148,6 +1196,11 @@ declare global {
 		};
 		triggerBackendUpdateCompleted?: boolean;
 		triggerBackendUpdateError?: boolean;
+		/**
+		 * The publication failure of 2026-10-24: the same failure panel, caused by a
+		 * release PyPI had not caught up with yet, carrying the structured cause.
+		 */
+		triggerBackendUpdateErrorPublication?: boolean;
 		triggerBackendUpdateInFlight?: boolean;
 		/**
 		 * The phase the main process announces while the update runs, for the two
@@ -2081,7 +2134,12 @@ const PressUpdateServer = ({
 	 * refusal the shipped producer can still send - the after-the-install arm went with the
 	 * restart-leg drains, 2026-09-29).
 	 */
-	variant?: "default" | "source-build" | "orphan" | "refused-unreadable";
+	variant?:
+		| "default"
+		| "source-build"
+		| "orphan"
+		| "publication"
+		| "refused-unreadable";
 	/**
 	 * The phase the in-flight panel is opened on, when the story is about WHICH
 	 * sentence the reader reads while the update runs (UX U6). Null is the
@@ -2101,6 +2159,15 @@ const PressUpdateServer = ({
 			window.triggerBackendUpdateSourceBuild = true;
 			window.triggerBackendUpdateSourceBuildInFlight = outcome === "inflight";
 			window.triggerBackendUpdateSourceBuildFailed = outcome === "failed";
+		} else if (variant === "publication") {
+			/*
+			 * THE INCIDENT'S FAILURE, driven the way the producer reaches it: an offer,
+			 * the press, and the report with the structured cause - not a flag that
+			 * paints a panel assembled by the fixture.
+			 */
+			window.triggerBackendUpdateAvailable = true;
+			window.triggerBackendUpdateErrorPublication = outcome === "failed";
+			window.triggerBackendUpdateError = false;
 		} else if (variant === "orphan") {
 			window.triggerBackendUpdateAvailable = true;
 			window.triggerBackendUpdateFailedOrphan = outcome === "failed";
@@ -2119,6 +2186,7 @@ const PressUpdateServer = ({
 			window.triggerBackendUpdateAvailable = true;
 			window.triggerBackendUpdateInFlight = outcome === "inflight";
 			window.triggerBackendUpdateError = outcome === "failed";
+			window.triggerBackendUpdateErrorPublication = false;
 		}
 		window.triggerBackendUpdatePhase = phase ?? undefined;
 		/*
@@ -2254,6 +2322,22 @@ export const BackendUpdateRestarting: Story = {
 export const BackendUpdateFailed: Story = {
 	args: { autoCheck: false },
 	render: () => <PressUpdateServer outcome="failed" />,
+};
+
+/**
+ * THE INCIDENT, WITH ITS CAUSE ON THE PANEL (2026-10-24).
+ *
+ * The updater stopped because PyPI still served 0.88.4 while the target was
+ * 0.89.0, and the panel that only showed the stream head said nothing about it.
+ * This frame is the claim that the report's structured cause reaches the reader:
+ * the sentence names the publish step, quotes the updater's own line, and gives
+ * the remedy that applies to a release still publishing (wait, then retry) rather
+ * than the generic retry. The raw output keeps its own block below, because it is
+ * the fallback record rather than the diagnosis.
+ */
+export const BackendUpdateFailedPublication: Story = {
+	args: { autoCheck: false },
+	render: () => <PressUpdateServer outcome="failed" variant="publication" />,
 };
 
 /**
