@@ -119,6 +119,7 @@
 
 import { Tooltip } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import {
 	type AskDrawerCloseOptions,
@@ -2699,7 +2700,7 @@ export const ComposerStatusRow = ({
 							<div
 								// biome-ignore lint/a11y/useSemanticElements: a fieldset groups form controls; this groups one authored paragraph, and the name is what makes the region announce itself rather than a landmark per goal.
 								role="group"
-								aria-label="Session goal"
+								aria-label={t("ui.chat.composer.status.session_goal")}
 								// biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region with no focusable content of its own must carry its own tab stop, or a keyboard user cannot reach the goal past the cap (WCAG 2.1.1). The stop exists only while this body is mounted.
 								tabIndex={0}
 								data-status-goal-body=""

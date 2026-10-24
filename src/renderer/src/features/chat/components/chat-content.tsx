@@ -32,6 +32,7 @@ import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
+import { t } from "@shared/i18n";
 /*
  * The mode-dependent classes on the canvas's wrapper below are the first
  * conditional class list in this file: every other one is a literal. `cn` rather
@@ -2859,7 +2860,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 											CHAT_MEASURE,
 										)}
 									>
-										<span>Stopped</span>
+										<span>{t("ui.chat.action.stopped")}</span>
 										{stoppedRetryText !== null && (
 											<>
 												<span aria-hidden="true">·</span>
@@ -2871,7 +2872,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 													}
 													className="rounded-sm text-ink-muted underline-offset-2 transition-colors duration-fast ease-out-quart hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
 												>
-													Retry
+													{t("ui.common.actions.retry")}
 												</button>
 											</>
 										)}

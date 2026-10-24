@@ -61,6 +61,7 @@
  * claim, which is why there is no wire field.
  */
 
+import type { WithoutParams } from "@shared/i18n";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import {
 	SIDEBAR_BASES,
@@ -101,15 +102,22 @@ export const SIDEBAR_SECTIONS: readonly SidebarSectionKey[] = [
 	"teams",
 ];
 
-/** The label each section prints. Sentence case; CSS sets the capitals. */
-export const SIDEBAR_SECTION_LABEL: Record<SidebarSectionKey, string> = {
-	pinned: "Pinned",
-	running: "Running",
-	today: "Today",
-	week: "This week",
-	older: "Older",
-	agents: "Agents",
-	teams: "Teams",
+/**
+ * The label each section prints. Sentence case; CSS sets the capitals.
+ *
+ * KEYS, NOT COPY, for the reason `CHAT_LIST_SECTION_LABEL` beside it states: a
+ * module-scope English table cannot follow a language switch, and it is the
+ * second place a section's name would be spelled. Resolved by `t()` where the
+ * heading is drawn.
+ */
+export const SIDEBAR_SECTION_LABEL: Record<SidebarSectionKey, WithoutParams> = {
+	pinned: "ui.chat.sidebar_view.section.pinned",
+	running: "ui.chat.sidebar_view.section.running",
+	today: "ui.chat.sidebar_view.section.today",
+	week: "ui.chat.sidebar_view.section.week",
+	older: "ui.chat.sidebar_view.section.older",
+	agents: "ui.chat.sidebar_view.section.agents",
+	teams: "ui.chat.sidebar_view.section.teams",
 };
 
 /**

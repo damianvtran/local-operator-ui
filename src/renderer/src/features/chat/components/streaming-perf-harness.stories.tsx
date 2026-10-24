@@ -1,3 +1,4 @@
+import type { WithoutParams } from "@shared/i18n";
 import type { Meta, StoryObj } from "@storybook/react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -434,7 +435,7 @@ type ComposerFlushReport = {
 };
 
 /** A stable empty suggestion list: a fresh `[]` here would defeat the boundary. */
-const NO_SUGGESTIONS: readonly string[] = [];
+const NO_SUGGESTIONS: readonly WithoutParams[] = [];
 
 /**
  * A parent that re-renders at stream-flush cadence — one `flushSync` commit per

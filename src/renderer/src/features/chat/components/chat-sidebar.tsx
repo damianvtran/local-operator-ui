@@ -238,6 +238,7 @@ import {
 import {
 	DEFAULT_SIDEBAR_VIEW,
 	SECTION_GROWN_HINT,
+	SIDEBAR_SECTION_LABEL,
 	SIDEBAR_SECTION_ROWS,
 	type SidebarSectionKey,
 	entityMore,
@@ -7203,7 +7204,8 @@ export function ChatSidebar({
 						 * drawn only while the lift is, so a group the bound did not withhold
 						 * this row from pays nothing for it.
 						 */}
-						{page.lifted && sectionLabel("Current chat")}
+						{page.lifted &&
+							sectionLabel(t("ui.chat.sidebar.section.current_chat"))}
 						{shown.map((row) => sessionRow(row, true))} {/*
 						 * THE GROUP'S OWN SENTENCE.
 						 *
@@ -8526,7 +8528,7 @@ export function ChatSidebar({
 						<section>
 							{heading(
 								"agents",
-								"Agents",
+								t(SIDEBAR_SECTION_LABEL.agents),
 								true,
 								undefined,
 								Bot,
@@ -8877,7 +8879,7 @@ export function ChatSidebar({
 						>
 							{heading(
 								"teams",
-								"Teams",
+								t(SIDEBAR_SECTION_LABEL.teams),
 								true,
 								undefined,
 								Users,
@@ -9107,7 +9109,7 @@ export function ChatSidebar({
 			 */}
 			{liftedRow && (
 				<section data-chat-section="current">
-					{sectionLabel("Current chat")}
+					{sectionLabel(t("ui.chat.sidebar.section.current_chat"))}
 					{sessionRow(liftedRow)}
 				</section>
 			)}
@@ -9559,7 +9561,7 @@ export function ChatSidebar({
 					 */
 					className="relative"
 				>
-					{sectionLabel("Pinned")}
+					{sectionLabel(t(SIDEBAR_SECTION_LABEL.pinned))}
 					{taggedRows(orderedPinned)}
 					{/*
 					 * THE INSERTION INDICATOR, and it exists ONLY while a drag does: a 2px line in
@@ -9592,7 +9594,7 @@ export function ChatSidebar({
 						 */
 						return (
 							<section key={key}>
-								{sectionLabel(CHAT_LIST_SECTION_LABEL[key])}
+								{sectionLabel(t(CHAT_LIST_SECTION_LABEL[key]))}
 								<p className="px-2 text-meta text-ink-dim">
 									{livenessUnread
 										? "The daemon could not read which chats are running, so this list may be incomplete."
@@ -9607,7 +9609,7 @@ export function ChatSidebar({
 					return (
 						<section key={key} data-chat-section={key}>
 							{sectionLabel(
-								CHAT_LIST_SECTION_LABEL[key],
+								t(CHAT_LIST_SECTION_LABEL[key]),
 								/*
 								 * The bulk read receipt sits on the FIRST section that has rows - the
 								 * one the eye lands on - while the set it clears is the STORE's, so

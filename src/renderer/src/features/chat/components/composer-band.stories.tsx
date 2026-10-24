@@ -1,4 +1,5 @@
 import { MessageInput } from "@shared/components/composer/message-input";
+import { type WithoutParams, t } from "@shared/i18n";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { userEvent } from "@storybook/test";
@@ -169,7 +170,7 @@ const EMPTY: Message[] = [];
  * rather than a set of strings invented to overflow.
  */
 const LONGEST_FOUR = [...DEFAULT_MESSAGE_SUGGESTIONS]
-	.sort((a, b) => b.length - a.length)
+	.sort((a, b) => t(b).length - t(a).length)
 	.slice(0, 4);
 
 /**
@@ -261,7 +262,7 @@ type BandProps = {
 	/** Which state this frame is, used to key the conversation id. */
 	story: string;
 	isSmallView?: boolean;
-	pool?: readonly string[];
+	pool?: readonly WithoutParams[];
 	draft?: string;
 	/** A take is live: the composer is told the capability is granted and the rig's press starts the take. */
 	recording?: boolean;

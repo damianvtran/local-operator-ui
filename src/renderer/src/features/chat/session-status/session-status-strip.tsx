@@ -1,5 +1,6 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { Info, Zap } from "lucide-react";
 import {
@@ -1501,7 +1502,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			 */}
 			{held && (
 				<span className="shrink-0 text-meta text-ink-dim @max-[750px]/chatcol:hidden">
-					Last reading
+					{t("ui.chat.session_status.last_reading")}
 				</span>
 			)}
 			{identity && (
@@ -1605,15 +1606,17 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					tooltip={
 						<TooltipLines
 							lines={[
-								"No model resolved yet",
-								"Choose the model this conversation will run on",
+								t("ui.chat.session_status.no_model_resolved"),
+								t("ui.chat.session_status.choose_model_tooltip"),
 							]}
 						/>
 					}
 					onOpen={openModel}
 					className="shrink-0"
 				>
-					<span className="truncate">Choose a model</span>
+					<span className="truncate">
+						{t("ui.chat.session_status.choose_model")}
+					</span>
 				</Reading>
 			)}
 			{/*
@@ -1852,7 +1855,9 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 						 * distinction between a measurement and a guess.
 						 */}
 						{reading.status === "estimate" && (
-							<span className="ms-1 text-ink-dim">estimate</span>
+							<span className="ms-1 text-ink-dim">
+								{t("ui.chat.session_status.estimate")}
+							</span>
 						)}
 					</span>
 				)}
