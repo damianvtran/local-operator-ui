@@ -423,7 +423,7 @@ export const FLAGS = [
  */
 export const JOB_FLAGS = {
 	lint: ["lint"],
-	"i18n-coverage": ["i18n"],
+	"i18n-coverage": ["i18n", "types"],
 	"runtime-deps": ["runtime_deps"],
 	"check-types": ["types"],
 	test: ["unit"],
@@ -433,6 +433,17 @@ export const JOB_FLAGS = {
 	audit: ["audit"],
 	"npx-sanity-check": ["pack"],
 };
+
+/** Jobs whose CI condition is OR; every other job retains the original AND. */
+const JOB_FLAG_OPERATORS = {
+	"i18n-coverage": "some",
+};
+
+/** The single local equivalent of each job's CI flag predicate. */
+export function jobMatchesFlags(job, flags) {
+	const operator = JOB_FLAG_OPERATORS[job] ?? "every";
+	return JOB_FLAGS[job][operator]((flag) => flags[flag]);
+}
 
 /**
  * Jobs in `ci.yml` that take no scope flag, each with the reason. Everything in
@@ -486,11 +497,14 @@ export const PERMISSIVE_DEPS = [
  */
 export const JOB_COMMANDS = {
 	lint: ["pnpm lint", "pnpm lint:scripts"],
-	// The two halves of `pnpm check-i18n`, in the order CI runs them. The local
-	// spelling of the coverage half resolves its base to `origin/main`; CI is the
-	// only caller that can supply `HEAD^1` (`--allowance-base`), and that base is
-	// the only difference between the two runs.
-	"i18n-coverage": ["pnpm check-i18n:catalogues", "pnpm check-i18n:coverage"],
+	// The three halves of `pnpm check-i18n`, in the order CI runs them. The local
+	// added-copy and coverage halves resolve their base to `origin/main`; CI alone
+	// supplies `HEAD^1`, which is the only difference between the two runs.
+	"i18n-coverage": [
+		"pnpm check-i18n:catalogues",
+		"pnpm check-i18n:added-strings",
+		"pnpm check-i18n:coverage",
+	],
 	"runtime-deps": [
 		// The CI spelling, wrapper and all, because the wrapper is part of what the
 		// job verifies: `require-report.sh` refuses to read a silent success as a
@@ -890,15 +904,16 @@ function warn(message, title) {
  * job id -> 'run' | 'skip' for the whole workflow, in `ci.yml` order.
  *
  * Every gated job is gated on all of its flags, so a job with two flags runs
- * only when both are true. Nothing in this workflow inherits a skip: each
+ * only when its flag predicate matches (AND by default, OR where CI uses `||`).
+ * Nothing in this workflow inherits a skip: each
  * gated job's `if:` carries its own `!cancelled()` and its own result clauses,
  * so a skipped `lint` cannot silently skip `npx-sanity-check`.
  */
 export function jobPlan(flags) {
 	const plan = {};
 	for (const job of Object.keys(UNGATED_JOBS)) plan[job] = "run";
-	for (const [job, jobFlags] of Object.entries(JOB_FLAGS)) {
-		plan[job] = jobFlags.every((flag) => flags[flag]) ? "run" : "skip";
+	for (const job of Object.keys(JOB_FLAGS)) {
+		plan[job] = jobMatchesFlags(job, flags) ? "run" : "skip";
 	}
 	return plan;
 }

@@ -131,7 +131,7 @@ function repoRelative(repo, abs) {
 	return rel;
 }
 
-function isScanned(rel) {
+export function isScanned(rel) {
 	if (!SCRIPT_RE.test(rel) || rel.endsWith(".d.ts")) return false;
 	/* Stories are NOT product copy: they exist to render component states in
 	 * Storybook and the gallery, nobody translates them, and counting them
@@ -152,7 +152,7 @@ function lineOf(sourceFile, position) {
 }
 
 /** The 1-based [first, last] lines a node spans (position is its own span). */
-function lineSpan(sourceFile, node) {
+export function lineSpan(sourceFile, node) {
 	const start = node.getStart(sourceFile);
 	const end = Math.max(start, node.getEnd() - 1);
 	return [
@@ -162,7 +162,7 @@ function lineSpan(sourceFile, node) {
 }
 
 /** The nearest enclosing JSX element/fragment, if any. */
-function enclosingElement(node) {
+export function enclosingElement(node) {
 	let current = node.parent;
 	while (current) {
 		if (
@@ -178,7 +178,7 @@ function enclosingElement(node) {
 }
 
 /** The lines carrying an `i18n: ignore` pragma, as a Set. */
-function pragmaLines(sourceFile) {
+export function pragmaLines(sourceFile) {
 	const lines = new Set();
 	for (const match of sourceFile.text.matchAll(LINE_PRAGMA_RE)) {
 		lines.add(sourceFile.getLineAndCharacterOfPosition(match.index).line + 1);
@@ -189,7 +189,7 @@ function pragmaLines(sourceFile) {
 	return lines;
 }
 
-function inSpan([first, last], lines) {
+export function inSpan([first, last], lines) {
 	for (let line = first; line <= last; line += 1) {
 		if (lines.has(line)) return true;
 	}
@@ -197,7 +197,7 @@ function inSpan([first, last], lines) {
 }
 
 /** One line of display text, shorter than the source line in the report. */
-function collapse(text) {
+export function collapse(text) {
 	return text.replace(/\s+/g, " ").trim();
 }
 
