@@ -322,7 +322,7 @@ export function fastModelPickNotice(
 ): string | null {
 	if (carried !== true) return null;
 	if (dial === "on") return "Fast mode stays on for this model.";
-	if (dial === "off") return "Changing model turned fast mode off.";
+	if (dial === "off") return "Changing the model turned fast mode off.";
 	return "This model does not support fast mode, so it stays off.";
 }
 

@@ -348,19 +348,29 @@ export function draftRouteRefusal(
 ): string {
 	const ordinary = `/${name} needs an open conversation. Start one first.`;
 	/*
-	 * No draft context: either this row has no draft route, or the preview that
-	 * would give it one has not answered (or failed). The pane's own resolution
-	 * state is what tells those apart, and it is the same value the strip paints.
+	 * THE ROW'S OWN ROUTE IS ASKED FIRST (design review round 3, D8). The
+	 * resolution copy below is about THIS PANE's model, and it is only the answer
+	 * for a row whose pick would ride that model - which today means the one row
+	 * that declares a draft selection. Asked after the `!draft` block, as it was,
+	 * every session-addressed row inherited it: `/rename hello` on a resolving
+	 * new chat said its model was still resolving, which is true of nothing that
+	 * command needs.
+	 */
+	const capability = draftSelectionCapability(destination);
+	if (!capability) return ordinary;
+	/*
+	 * No draft context ON A ROW THAT HAS THE ROUTE: the picker is waiting for the
+	 * preview that would give it one, or that preview failed. The pane's own
+	 * resolution state is what tells those apart, and it is the same value the
+	 * strip paints.
 	 */
 	if (!draft) {
 		if (resolution?.status === "pending")
 			return `/${name} is waiting for this conversation's model to resolve. Try again in a moment.`;
 		if (resolution?.status === "failed")
-			return `/${name} needs this conversation's model, which was not resolved. Retry it from the model reading.`;
+			return `/${name} needs this conversation's model, which was not resolved. Press Retry, then try again.`;
 		return ordinary;
 	}
-	const capability = draftSelectionCapability(destination);
-	if (!capability) return ordinary;
 	switch (desktopFeatureState(capabilities, capability)) {
 		case "enabled":
 			return `/${name} takes no argument on a new chat. Type /${name} on its own to set it for the first message.`;
