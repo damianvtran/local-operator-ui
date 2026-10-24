@@ -27,9 +27,9 @@ import { resolve } from "node:path";
 import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
+import { JSDOM } from "jsdom";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { JSDOM } from "jsdom";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const CACHE = resolve(ROOT, "node_modules", ".cache", "chat-i18n-reactivity");
@@ -52,7 +52,7 @@ const REACT_STAYS_OUT = {
 	},
 };
 
-async function bundleAndImport(name, contents) {
+async function bundleAndImport(name, contents, extraPlugins = []) {
 	const result = await build({
 		stdin: { contents, resolveDir: ROOT },
 		bundle: true,
@@ -63,7 +63,7 @@ async function bundleAndImport(name, contents) {
 		conditions: ["import", "module", "default"],
 		define: { "import.meta.env": "{}" },
 		loader: { ".css": "empty", ".svg": "text", ".png": "dataurl" },
-		plugins: [REACT_STAYS_OUT],
+		plugins: [REACT_STAYS_OUT, ...extraPlugins],
 		alias: ALIAS,
 		write: false,
 	});
@@ -98,6 +98,35 @@ globalThis.ResizeObserver = class {
 	unobserve() {}
 	disconnect() {}
 };
+globalThis.Text = bootstrap.window.Text;
+globalThis.DocumentFragment = bootstrap.window.DocumentFragment;
+globalThis.DOMRect = bootstrap.window.DOMRect;
+globalThis.Event = bootstrap.window.Event;
+globalThis.CustomEvent = bootstrap.window.CustomEvent;
+globalThis.KeyboardEvent = bootstrap.window.KeyboardEvent;
+globalThis.MouseEvent = bootstrap.window.MouseEvent;
+globalThis.FocusEvent = bootstrap.window.FocusEvent;
+globalThis.PointerEvent =
+	bootstrap.window.PointerEvent ?? bootstrap.window.MouseEvent;
+globalThis.HTMLInputElement = bootstrap.window.HTMLInputElement;
+globalThis.HTMLButtonElement = bootstrap.window.HTMLButtonElement;
+globalThis.HTMLAnchorElement = bootstrap.window.HTMLAnchorElement;
+globalThis.requestAnimationFrame = bootstrap.window.requestAnimationFrame.bind(
+	bootstrap.window,
+);
+globalThis.cancelAnimationFrame = bootstrap.window.cancelAnimationFrame.bind(
+	bootstrap.window,
+);
+globalThis.getSelection = bootstrap.window.getSelection.bind(bootstrap.window);
+/* Radix's presence/scroll-lock path asks for both; a stub, not a polyfill. */
+globalThis.matchMedia = () => ({
+	matches: false,
+	addEventListener() {},
+	removeEventListener() {},
+	addListener() {},
+	removeListener() {},
+	dispatchEvent: () => false,
+});
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const { createRoot } = await import("react-dom/client");
 const { act } = React;
@@ -121,6 +150,7 @@ const chat = await bundleAndImport(
 		export {
 			channelBasisLabel,
 			channelBasisWords,
+			childBasisDetail,
 			childBasisLine,
 		} from "./src/renderer/src/features/chat/session-status/session-cost";
 		export { linkToolbarModel } from "./src/renderer/src/features/chat/utils/link-actions";
@@ -132,6 +162,56 @@ const chat = await bundleAndImport(
 		export { AgentReasoning } from "./src/renderer/src/features/chat/components/trace/agent-reasoning";
 		export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 	`,
+);
+
+/*
+ * THE HEADER'S OWN BUNDLE, with the two picker modules it reads replaced: this
+ * case is about the panel's row copy, and the real pickers pull a query client
+ * and a backend seam that have their own suites. Everything else in the tree -
+ * the header, its menu, the model, the stores - is the shipped code.
+ */
+const HEADER_STUBS = [
+	[
+		/pickers\/destination-pickers$/,
+		"export const useEntities = () => ({ data: globalThis.__headerEntities ?? { entities: [] }, error: null, isLoading: false });",
+	],
+	[
+		/pickers\/use-picker-backend$/,
+		"export const errorText = (error) => String(error);\nexport const useSessionCommand = () => ({ busy: false, run: async () => undefined, reset() {}, outcome: null, result: null });",
+	],
+	[
+		/^@shared\/api\/local-operator\/profile-hooks$/,
+		"export const useTeams = () => ({ data: [], error: null, isLoading: false, refetch: async () => undefined });\nexport const useProfiles = () => ({ data: [], error: null, isLoading: false, refetch: async () => undefined });\nexport const useTeamLabelFor = () => () => null;",
+	],
+];
+const headerStubPlugin = {
+	name: "header-stubs",
+	setup(builder) {
+		for (const [filter] of HEADER_STUBS) {
+			builder.onResolve({ filter }, () => ({
+				path: `stub:${String(filter)}`,
+				namespace: "header-stub",
+			}));
+		}
+		builder.onLoad({ filter: /.*/, namespace: "header-stub" }, (args) => {
+			const entry = HEADER_STUBS.find(
+				([filter]) => args.path === `stub:${String(filter)}`,
+			);
+			return entry === undefined
+				? undefined
+				: { contents: entry[1], loader: "js", resolveDir: ROOT };
+		});
+	},
+};
+
+const header = await bundleAndImport(
+	"header",
+	`
+		export { ChatHeaderIdentity } from "./src/renderer/src/features/chat/components/chat-header-identity";
+		export { setLocale, registerCatalogue, clearRegisteredCatalogues } from "./src/i18n";
+		export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+	`,
+	[headerStubPlugin],
 );
 
 const math = await bundleAndImport(
@@ -167,7 +247,8 @@ const FIXTURE_FR = {
 	"ui.chat.archive_confirm.archive": "FIXTURE Archiver",
 	"ui.chat.get_file_name.pasted_image": "FIXTURE image collee",
 	"ui.chat.get_file_name.pasted_file": "FIXTURE fichier colle",
-	"ui.chat.get_file_name.pasted_simpletype_file": "FIXTURE fichier {simpleType} colle",
+	"ui.chat.get_file_name.pasted_simpletype_file":
+		"FIXTURE fichier {simpleType} colle",
 	"ui.chat.session_status.session_cost.basis_billed": "FIXTURE facture",
 	"ui.chat.session_status.session_cost.basis_included": "FIXTURE inclus",
 	"ui.chat.session_status.session_cost.basis_estimated": "FIXTURE estime",
@@ -291,10 +372,7 @@ test("archive confirmation copy is read at call time, en to fr and back", () => 
 	registerFixture(chat);
 	try {
 		assert.equal(chat.archiveConfirmVerb(), "FIXTURE Archiver");
-		assert.equal(
-			chat.archiveConfirmUnnamed(),
-			"FIXTURE cette conversation",
-		);
+		assert.equal(chat.archiveConfirmUnnamed(), "FIXTURE cette conversation");
 		assert.match(
 			chat.archiveConfirmMessage(),
 			/^FIXTURE quitte vos listes, annulation 8 secondes\.$/,
@@ -360,6 +438,11 @@ test("spend basis words and the child line follow the locale", () => {
 		childrenKnowledge: "exact",
 	};
 	assert.match(chat.childBasisLine(children), /^Subagents \$2\.50 · Billed/);
+	assert.equal(
+		chat.childBasisDetail(children),
+		"$2.50 · Billed",
+		"the by-agent column's half carries no label for a translated one to strip",
+	);
 	assert.deepEqual(chat.channelBasisWords(["billed", "estimated"]), [
 		"Billed",
 		"Estimated",
@@ -374,6 +457,11 @@ test("spend basis words and the child line follow the locale", () => {
 		assert.match(
 			chat.childBasisLine(children),
 			/^FIXTURE Sous-agents \$2\.50 · FIXTURE facture/,
+		);
+		assert.equal(
+			chat.childBasisDetail(children),
+			"$2.50 · FIXTURE facture",
+			"the detail half carries only the amount and its basis words",
 		);
 	} finally {
 		restore(chat);
@@ -408,7 +496,10 @@ test("link toolbar verbs follow the locale", () => {
 });
 
 test("context heading, reasoning default and index errors read the locale", async () => {
-	assert.equal(chat.contextTooltipLines({ status: "no-reading" })[0], "Context");
+	assert.equal(
+		chat.contextTooltipLines({ status: "no-reading" })[0],
+		"Context",
+	);
 	assert.equal(
 		chat.fileIndexErrorMessage("remote-unavailable"),
 		"Remote files cannot be opened on this device.",
@@ -424,7 +515,9 @@ test("context heading, reasoning default and index errors read the locale", asyn
 	const root = createRoot(host);
 	const reasoningText = async () => {
 		await act(async () => {
-			root.render(h(chat.AgentReasoning, { content: "weighing the two paths" }));
+			root.render(
+				h(chat.AgentReasoning, { content: "weighing the two paths" }),
+			);
 		});
 		return host.textContent;
 	};
@@ -524,5 +617,90 @@ test("a retry row carries no authored label; the strip resolves the key", () => 
 		assert.equal(chat.t("ui.common.actions.retry"), "FIXTURE Reessayer");
 	} finally {
 		restore(chat);
+	}
+});
+
+test("a header roster row re-labels in place on a locale change", async () => {
+	/*
+	 * THE REAL HEADER, with the roster answered by the stub above. The row's
+	 * description is built inside the `options` memo with `t()`; the locale
+	 * value is what rebuilds that memo. The POPOVER NODE is captured before the
+	 * switch and compared after it, so a repaint by remount cannot pass this.
+	 */
+	globalThis.__headerEntities = {
+		entities: [
+			{
+				value: "platform-team",
+				name: "Our Platform",
+				label: "Platform",
+				description: "Handles the platform",
+				kind: "team",
+				delegate: true,
+			},
+		],
+	};
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	const client = new header.QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	const chip = () =>
+		[...document.querySelectorAll("button")].find((button) =>
+			(button.getAttribute("aria-label") ?? "").startsWith("Team:"),
+		);
+	const panel = () =>
+		document.querySelector("[data-radix-popper-content-wrapper]");
+	const panelText = () => panel()?.textContent ?? "";
+	try {
+		await act(async () => {
+			root.render(
+				h(
+					header.QueryClientProvider,
+					{ client },
+					h(header.ChatHeaderIdentity, {
+						sessionId: "session-fixture",
+						activeTeam: "platform-team",
+					}),
+				),
+			);
+		});
+		const trigger = chip();
+		assert.ok(chip(), "the team chip is the control this fixture binds");
+		await act(async () => {
+			trigger.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+		});
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 50));
+		});
+		const openedPanel = panel();
+		assert.ok(panel(), "the roster panel opened on the chip's press");
+		assert.match(
+			panelText(),
+			/platform-team · Handles the platform/,
+			"the row's description is the keyed value · description line",
+		);
+		header.registerCatalogue("fr", {
+			"ui.chat.header.chat_header_identity.value_description":
+				"FIXTURE {value} / {description}",
+		});
+		await act(async () => header.setLocale("fr"));
+		assert.equal(
+			panel(),
+			openedPanel,
+			"the panel node survives the switch: the label repaints, the panel does not remount",
+		);
+		assert.match(panelText(), /FIXTURE platform-team \/ Handles the platform/);
+		await act(async () => header.setLocale("en"));
+		assert.match(panelText(), /platform-team · Handles the platform/);
+	} finally {
+		header.clearRegisteredCatalogues();
+		await act(async () => header.setLocale("en"));
+		await act(async () => {
+			root.unmount();
+		});
+		client.clear();
+		container.remove();
+		globalThis.__headerEntities = undefined;
 	}
 });
