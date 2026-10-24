@@ -1,0 +1,796 @@
+{
+  "schema": 1,
+  "locale": "es",
+  "date": "2026-10-24",
+  "status": "changes_requested",
+  "batch": "chat",
+  "repository": "damianvtran/local-operator-ui",
+  "branch": "feat/i18n-chat-es",
+  "head": "372aa11f61370c03864f2a51df5d363445b865ee",
+  "source": {
+    "branch": "feat/i18n-extract-chat",
+    "head": "5d97575ac4388522267291ffee74d12bd9675b12",
+    "base": "9c5ddd18390c66cccd48b34cab0544e863a522d8",
+    "note": "English catalogue files at 5d97575ac4 are byte-identical to the audited head for all 15 namespaces (checked with git show | sha256)."
+  },
+  "auditor": {
+    "agent": "translation-auditor",
+    "model": "radient/auto",
+    "model_provenance": "Harness session selector radient/auto (provider radient); the transcript records selected_model radient/auto effort auto and no fallback event. The routed downstream model id is not exposed to the session.",
+    "instance": "d83bf6bec156",
+    "independence": "Independent auditor session; did not translate, edit, stage or commit any catalogue, ledger, allowance, shipped or generated file. Only this receipt is added."
+  },
+  "scope": {
+    "keys_read": 1795,
+    "batch_keys": 1733,
+    "pre_existing_keys": 62,
+    "pre_existing_preserved": 30,
+    "pre_existing_translated": 32,
+    "namespaces": 15,
+    "source_files": "src/i18n/catalogues/en/ui.chat*.json (15 data files + context sidecars)",
+    "target_files": "src/i18n/catalogues/es/ui.chat*.json (same 15 data files)"
+  },
+  "sha256": {
+    "en": "d6ad4e6c666ee1ff09e7039aa9fcbd0da08b18e70d6b438fdf5971de7ed37cf6",
+    "es": "4118fa8137ea8007f7f02e157cc5a282fd3380ecf17a464f102ad23afc7dd795",
+    "context": "713d4afd5b04a5ebcccbd85635c0b187ebab26ee31c3a0857161e12373ac949b",
+    "method": "SHA-256 over the ordered concatenation of the 15 per-namespace file bytes, namespace order as in namespaces{} (aside, asks, at, canonical, canvas_preview, credential_capture, directory, header, chat, message, options, run_details, session_status, skill, trace)."
+  },
+  "namespaces": {
+    "ui.chat.aside": {
+      "keys": 35,
+      "batch_keys": 35,
+      "en_sha256": "d8ce04c8e909a73f3050588b2b562b12db3840ae1f4231a66ef3eb5ac76ed1b6",
+      "es_sha256": "d05974c88e56ba2577939cfca739eb99e339d87c026a421bc4e4805194ccbb86",
+      "context_sha256": "522fcbc0c965224e7d4fb8cb8200e7c68889c9ee73d073b09c6cb2af827b8431",
+      "status": "passed",
+      "findings_count": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      },
+      "findings": [
+        {
+          "id": "ES-CHAT-18",
+          "severity": "minor",
+          "key": "ui.chat.aside.aside.the_aside_answered",
+          "current": "La consulta al margen respondió",
+          "proposed": "La consulta al margen obtuvo respuesta",
+          "reason": "A query does not \"answer\"; the same namespace already uses \"no obtuvo respuesta\" for the negative state. Apply to the related title/sentence/value keys.",
+          "related_keys": [
+            "ui.chat.aside.aside_panel.the_aside_answered",
+            "ui.chat.aside.aside.the_aside_answered_sentence",
+            "ui.chat.aside.aside.the_aside_answered_value"
+          ]
+        },
+        {
+          "id": "ES-CHAT-19",
+          "severity": "nit",
+          "key": "ui.chat.aside.aside.this_conversation_is_working_adding_the_aside_while_it_runs",
+          "current": "La conversación está trabajando.",
+          "proposed": "La conversación está ocupada.",
+          "reason": "The next sentence in the same namespace uses \"La conversación está ocupada\" for \"busy\"; \"está trabajando\" describes a process, not a conversation."
+        }
+      ]
+    },
+    "ui.chat.asks": {
+      "keys": 101,
+      "batch_keys": 89,
+      "en_sha256": "f5017d10d314fc9e3e94eeff2d5067c559e97ba0c6ffcef4e8ed9d1c39cf67ab",
+      "es_sha256": "74643edd5375a1aa89b1d42a1967cc99275fe2ada2de8ace3ab07978ab1fa60d",
+      "context_sha256": "0e1f544932e7c9c6c94bbb0d4e2066910d80e33060ad23bbbb57d5bb9c1b637c",
+      "status": "passed",
+      "findings_count": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": []
+    },
+    "ui.chat.at": {
+      "keys": 11,
+      "batch_keys": 11,
+      "en_sha256": "685a75115b95770d8d74cc43c2f250c53bed311c0d117cf51849f72041533694",
+      "es_sha256": "e0d1899a23f73e32ee70ca20f003a760d80b8e31ccedd8665b4d9a48c855ad06",
+      "context_sha256": "da529439f1aa5970aff5b833b40900524c2cfd465abe96296e3b9cecf5ec555e",
+      "status": "passed",
+      "findings_count": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "findings": [
+        {
+          "id": "ES-CHAT-22",
+          "severity": "nit",
+          "key": "ui.chat.at.contract.this_backend_cannot_carry_file_references_update_the_backend_and",
+          "current": "Este backend no puede transportar referencias a archivos.",
+          "proposed": "Este backend no puede admitir referencias a archivos.",
+          "reason": "«transportar» is a physical-carry calque; \"admitir\" states the capability limit the error reports."
+        }
+      ]
+    },
+    "ui.chat.canonical": {
+      "keys": 297,
+      "batch_keys": 267,
+      "en_sha256": "522e7fced024ec756b4b93b21952c4abfb232278a3ca32bba67b45978749eb6d",
+      "es_sha256": "c8bd27a28c4eea6e9cc9a5dde2b9558093b1e7097d9f6c4b613cbc30e60aa24e",
+      "context_sha256": "af353a188112ef28df7dfda8c7139fa5bd33506a40b112392e1e40fbe32116f2",
+      "status": "changes_requested",
+      "findings_count": {
+        "blocker": 0,
+        "major": 1,
+        "minor": 3,
+        "nit": 4
+      },
+      "findings": [
+        {
+          "id": "ES-CHAT-04",
+          "severity": "major",
+          "key": "ui.chat.canonical.checkpoint_model.open",
+          "current": "Abrir",
+          "proposed": "Abierto",
+          "reason": "CHECKPOINT_OUTCOME_LABELS prints this beside Complete/Interrupted/Error as a state word, not a control; the source comment in checkpoint-model.ts says \"Open is the backend's own word for a tail turn nothing has resolved\". \"Abrir\" turns the state into an imperative action. Note: the other six locale branches carry the same verb reading, so the English context sidecar also needs a state/examples note."
+        },
+        {
+          "id": "ES-CHAT-05",
+          "severity": "minor",
+          "key": "ui.chat.canonical.sound.batch_attachment_unavailable",
+          "current": " Adjunto de audio no disponible.",
+          "proposed": "Adjunto de audio no disponible.",
+          "reason": "U+0020 at the start of a standalone <p> text node (sound-batch.tsx:65); the English source and all sibling locales start at column 1. Same defect in the related key.",
+          "related_keys": [
+            "ui.chat.canonical.sound.player_failed"
+          ]
+        },
+        {
+          "id": "ES-CHAT-06",
+          "severity": "minor",
+          "key": "ui.chat.canonical.sound.player_failed",
+          "current": " No se pudo reproducir este sonido",
+          "proposed": "No se pudo reproducir este sonido",
+          "reason": "Stray leading U+0020 in a standalone <span> (sound-player.tsx:572); the English source has no leading space."
+        },
+        {
+          "id": "ES-CHAT-07",
+          "severity": "minor",
+          "key": "ui.chat.canonical.supplement_model.show_all_bounded_graphics",
+          "current": "{bounded, plural, one {Mostrar el gráfico} many {Mostrar los # de gráficos} other {Mostrar los # gráficos}}",
+          "proposed": "{bounded, plural, one {Mostrar 1 gráfico} many {Mostrar los # de gráficos} other {Mostrar los # gráficos}}",
+          "reason": "The one arm drops the ICU # that English carries (\"Show all # graphic\"); the rendered singular reads \"Mostrar el gráfico\" while 2+ shows the number. Either restore # as \"Mostrar 1 gráfico\" or record an explicit exemption. No other plural block in the batch drops its # from a shared arm."
+        },
+        {
+          "id": "ES-CHAT-08",
+          "severity": "nit",
+          "key": "ui.chat.canonical.transcript.older_history.scroll_short",
+          "current": "Desplázate arriba para ver lo anterior",
+          "proposed": "Desplázate hacia arriba para ver lo anterior",
+          "reason": "Compact hint; \"hacia arriba\" is the standard Spanish directional form, and the neighbouring strings use \"desplázate hacia arriba\"."
+        },
+        {
+          "id": "ES-CHAT-09",
+          "severity": "nit",
+          "key": "ui.chat.canonical.use_checkpoints.checkpoint_naming_is_unavailable_the_cards_keep_their_fallback_text",
+          "current": "el nombrado de puntos de control no está disponible; las tarjetas conservan su texto alternativo:",
+          "proposed": "la asignación de nombres de puntos de control no está disponible; las tarjetas conservan su texto alternativo:",
+          "reason": "\"nombrado\" as a noun is uncommon and reads translated; \"asignación de nombres\" is the settled Spanish term. The same choice appears in ui.chat.slash.arguments.resumes_auto_naming (\"reanuda el nombrado automático\")."
+        },
+        {
+          "id": "ES-CHAT-10",
+          "severity": "nit",
+          "key": "ui.chat.canonical.sound.stop.warning",
+          "current": "Detener es un intento de mejor esfuerzo; no garantiza la cancelación ni que no haya cargo.",
+          "proposed": "Detener solo es un intento; no garantiza la cancelación ni que no haya cargo.",
+          "reason": "«intento de mejor esfuerzo» is a literal calque of \"best-effort attempt\"; the sentence is a charge warning, so plain Spanish carries the limitation more clearly."
+        },
+        {
+          "id": "ES-CHAT-11",
+          "severity": "nit",
+          "key": "ui.chat.canonical.supplement_model.provider_timed_out",
+          "current": "el proveedor agotó el tiempo",
+          "proposed": "el proveedor superó el tiempo de espera",
+          "reason": "«agotó el tiempo» reads as the provider consuming time; \"superó el tiempo de espera\" states the timeout."
+        }
+      ]
+    },
+    "ui.chat.canvas_preview": {
+      "keys": 2,
+      "batch_keys": 2,
+      "en_sha256": "4a29d028e7727502fbefd86b995750910ca3760879769ffa1fc537e5893920a9",
+      "es_sha256": "e4ce471900aa653d91ea646747eba5c9e46ae7ee4aaa172017986601d63506d3",
+      "context_sha256": "5f336900e740bf4ebc7819837676fc2eeffe6deb69b8181ebc440e962d580a06",
+      "status": "passed",
+      "findings_count": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": []
+    },
+    "ui.chat.credential_capture": {
+      "keys": 18,
+      "batch_keys": 18,
+      "en_sha256": "1776a41f5dfa3335b5e390e85870cb55756e25c6a2439cd3f42ea4c864515bdd",
+      "es_sha256": "b5f598b54defc1810be1949a714e40b354d5fdecbc585623048a98a8b305868e",
+      "context_sha256": "bf6e3bb8cd70e39cba3aad66b0d92aa38ebad880ac49405fb1affd032f6f3b1f",
+      "status": "passed",
+      "findings_count": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "findings": [
+        {
+          "id": "ES-CHAT-12",
+          "severity": "minor",
+          "key": "ui.chat.credential_capture.store_unconfirmed",
+          "current": "almacenamiento sin confirmar",
+          "proposed": "almacén sin confirmar",
+          "reason": "The English pair is \"store unconfirmed\" (chip after a key) and \"Credential store unconfirmed\" (standalone). This string is \"almacenamiento\" (the act/medium) while the standalone uses \"Almacén de credenciales\" (the store); the chip should name the same store."
+        }
+      ]
+    },
+    "ui.chat.directory": {
+      "keys": 42,
+      "batch_keys": 42,
+      "en_sha256": "57540488fb400a9a4ac1040c7d7f91f19f25ab313ec87a50ef527da442d3ec6b",
+      "es_sha256": "98a0f37235ea779d925be8e9e1673bb5bd28cbd7023e00b36e4bcb0bbb7a830a",
+      "context_sha256": "4bfdbc219bccc88fbdcaf3c62897b168d5604d5acbbb5f70f040c95c941c2daa",
+      "status": "passed",
+      "findings_count": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": []
+    },
+    "ui.chat.header": {
+      "keys": 72,
+      "batch_keys": 62,
+      "en_sha256": "ff03f6ca7b3206e77fc260116d2b540cc9f211ea37436863b874770e917158d8",
+      "es_sha256": "ebbdc799fffef405cbe45b642322f513568afef07969cf0fb521cfd30275bdb5",
+      "context_sha256": "0d601a99861fc8b23207f117b90b697ba88ddd4f6419a68021f34c177158ea2e",
+      "status": "passed",
+      "findings_count": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": []
+    },
+    "ui.chat": {
+      "keys": 532,
+      "batch_keys": 524,
+      "en_sha256": "dc5765d20ff846c61f3fe8953e69524393561bc2a39f89fa419958d4e4a67346",
+      "es_sha256": "0ec555046cb07c651ab38df8186de5cc30668ed5e5a8c84aade1b8a204911214",
+      "context_sha256": "f95436a7c1e91f17b47a5f45059f58ef63749cedef54b02d10b29260477be426",
+      "status": "passed",
+      "findings_count": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 2
+      },
+      "findings": [
+        {
+          "id": "ES-CHAT-24",
+          "severity": "nit",
+          "key": "ui.chat.composer.composer_status_row.goal_stalled_auto_continuation_stopped_send_a_message_to_continue",
+          "current": "objetivo estancado: la continuación automática se detuvo: envía un mensaje para continuar",
+          "proposed": "objetivo estancado: la continuación automática se detuvo; envía un mensaje para continuar",
+          "reason": "Two colons in one sentence; the second clause should take a semicolon. The same pattern appears in the three related goal_stalled keys.",
+          "related_keys": [
+            "ui.chat.composer.composer_status_row.goal_stalled_stopped_after_count_continuations_send",
+            "ui.chat.composer.composer_status_row.goal_stalled_judge_could_not_decide_send_a_message_to",
+            "ui.chat.composer.composer_status_row.goal_stalled_reached_the_continuation_limit_send_a_message_to"
+          ]
+        },
+        {
+          "id": "ES-CHAT-25",
+          "severity": "nit",
+          "key": "ui.chat.composer.composer_status_row.mark_the_goal_done_label_seam_goal",
+          "current": "Marcar el objetivo como hecho",
+          "proposed": "Marcar el objetivo como cumplido",
+          "reason": "The completed state is \"Objetivo cumplido\" (goal_done) but the action says \"como hecho\"; one state word should be used for the same goal."
+        }
+      ]
+    },
+    "ui.chat.message": {
+      "keys": 55,
+      "batch_keys": 55,
+      "en_sha256": "95d7b60b2cb1bdc37648cfa896856ce53724e300ed4a6b0448d7562aad452a5a",
+      "es_sha256": "a910392ae64796276878e6d42db1e1c6baa82a296e2e7960c75473d565e3245a",
+      "context_sha256": "0278baa63867980cd08d18e47e282af12a6330b7c6a785f0157e7a01cceb4230",
+      "status": "changes_requested",
+      "findings_count": {
+        "blocker": 0,
+        "major": 2,
+        "minor": 1,
+        "nit": 0
+      },
+      "findings": [
+        {
+          "id": "ES-CHAT-01",
+          "severity": "major",
+          "key": "ui.chat.message.audio_attachment.time_indicator",
+          "current": "time-indicator",
+          "proposed": "indicador de tiempo",
+          "reason": "The value is the aria-label of the audio position slider (audio-attachment.tsx:191), not an identifier: a Spanish screen-reader user hears the English kebab token."
+        },
+        {
+          "id": "ES-CHAT-02",
+          "severity": "major",
+          "key": "ui.chat.message.audio_attachment.volume_control",
+          "current": "volume-control",
+          "proposed": "control de volumen",
+          "reason": "The value is the aria-label of the volume slider (audio-attachment.tsx:219); it remains the English kebab token instead of a Spanish control name."
+        },
+        {
+          "id": "ES-CHAT-03",
+          "severity": "minor",
+          "key": "ui.chat.message.error_block.model_unavailable",
+          "current": "sin límites de velocidad",
+          "proposed": "sin límites de solicitudes",
+          "reason": "Same English term (rate limits) is rendered as «límite de solicitudes» in error_block.rate_limit and rate_limit_all but «límites de velocidad» here; \"velocidad\" describes network throughput, not an API request quota."
+        }
+      ]
+    },
+    "ui.chat.options": {
+      "keys": 33,
+      "batch_keys": 33,
+      "en_sha256": "fdfb1ceae54aa5270dd76b67748f56fa14e5d3f47d7770dad8eba755995a5a79",
+      "es_sha256": "24fc133539505de56f06637789b8f7557b0f8b8237b3f8423ea277b467794e86",
+      "context_sha256": "4609f41205d7d0b14dd07e98a629b9fb40f74f870106e78b30a3b210eb7f13db",
+      "status": "passed",
+      "findings_count": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": []
+    },
+    "ui.chat.run_details": {
+      "keys": 154,
+      "batch_keys": 152,
+      "en_sha256": "daf3ddc7d9c0904642876bf3db0746b6c0c68c5fe3b87a1a6730b07f67c90c2f",
+      "es_sha256": "a2a0aa62feb21dcefa64151bd6ffaa214d66ceab6dee4003731b2f08f6d2712f",
+      "context_sha256": "dcb2cf6f636814a1866186e8864fd6817033fa8de027049b365f362c53b5d384",
+      "status": "passed",
+      "findings_count": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 4,
+        "nit": 0
+      },
+      "findings": [
+        {
+          "id": "ES-CHAT-13",
+          "severity": "minor",
+          "key": "ui.chat.run_details.run_panel.opening_a_subagents_conversation_needs_a_newer_local_operator_backend",
+          "current": "Actualiza el backend y reinicia la aplicación.",
+          "proposed": "Actualiza el backend y reinicia la app.",
+          "reason": "The batch and the wider es catalogue use \"app\" 96 times vs \"aplicación\" 16; this is the only \"aplicación\" in the batch. (The same source sentence in ui.common.account and ui.common.connection already carries \"aplicación\", so those rows should converge separately.)"
+        },
+        {
+          "id": "ES-CHAT-14",
+          "severity": "minor",
+          "key": "ui.chat.run_details.mcp_auth_dialog.replace_grant_and_sign_in",
+          "current": "Reemplazar permiso e iniciar sesión",
+          "proposed": "Reemplazar la autorización e iniciar sesión",
+          "reason": "The same OAuth grant is «autorización» in the adjacent this_replaces_the_existing_grant_for_this_server and «permiso prestado» elsewhere; one term should name the grant."
+        },
+        {
+          "id": "ES-CHAT-15",
+          "severity": "minor",
+          "key": "ui.chat.run_details.run_detail_todos.hidden_hidden",
+          "current": "{hidden, number, ::group-off} ocultos",
+          "proposed": "{hidden, number, ::group-off} ocultas",
+          "reason": "The count is of hidden to-do rows (\"tareas pendientes\", feminine); run_detail_model.opentodos_to_dos_open correctly says \"tareas pendientes abiertas\". The related standalone label has the same disagreement.",
+          "related_keys": [
+            "ui.chat.run_details.run_detail_todos.hidden"
+          ]
+        },
+        {
+          "id": "ES-CHAT-16",
+          "severity": "minor",
+          "key": "ui.chat.run_details.run_detail_wakes.cancel_the_wake_that_fires_duelabel",
+          "current": "Cancelar el despertar que se activa {dueLabel}",
+          "proposed": "Cancelar el despertar que se activa a las {dueLabel}",
+          "reason": "formatWakeDue returns a clock (e.g. \"3:05 PM AEST\"), so \"que se activa 3:05 PM\" lacks the required \"a las\"."
+        }
+      ]
+    },
+    "ui.chat.session_status": {
+      "keys": 162,
+      "batch_keys": 162,
+      "en_sha256": "05a6e2dd52cd41fb90dbb6756bb8a8f51c5d22e3769edb3fd6228a0d9a059198",
+      "es_sha256": "6cf6feb9352c61d2863136dd737655da146c6cc8c1d18a0a88b6350efb1796a2",
+      "context_sha256": "91544a1523e2ccd3a50041e3530ded39255a614f571c50264991ed8e92ca90e7",
+      "status": "passed",
+      "findings_count": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "findings": [
+        {
+          "id": "ES-CHAT-17",
+          "severity": "minor",
+          "key": "ui.chat.session_status.session_model.the_runtime_resolved_borrowed_access_for_this_session_every_new",
+          "current": "El runtime resolvió acceso prestado para esta sesión.",
+          "proposed": "El runtime resolvió el acceso prestado para esta sesión.",
+          "reason": "Missing definite article before the direct object; the same pattern appears in two related keys (\"proporcionar acceso prestado\", \"tomar prestado acceso a {label}\").",
+          "related_keys": [
+            "ui.chat.session_status.session_model.the_owner_cannot_currently_provide_borrowed_access_or_borrowing_permission",
+            "ui.chat.session_status.session_model.this_session_may_borrow_label_access_but_it_has_not"
+          ]
+        }
+      ]
+    },
+    "ui.chat.skill": {
+      "keys": 7,
+      "batch_keys": 7,
+      "en_sha256": "919b6643e792d02ed270911df96d96da277bba5b5b91a2d04fac6cf044acfc10",
+      "es_sha256": "224a3d88bd07a90d0747ac24bd021f9b0c019c695fb8b589bbcfa7380fc7b28b",
+      "context_sha256": "012b41d3b048ae9575012522051687b87e3b3a8189dab9121985052ea04f965d",
+      "status": "passed",
+      "findings_count": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "findings": [
+        {
+          "id": "ES-CHAT-23",
+          "severity": "nit",
+          "key": "ui.chat.skill.contract.this_backend_cannot_serve_the_skill_catalogue_update_the_backend",
+          "current": "Este backend no puede servir el catálogo de habilidades.",
+          "proposed": "Este backend no puede proporcionar el catálogo de habilidades.",
+          "reason": "«servir el catálogo» is a literal rendering of \"serve the catalogue\"; \"proporcionar\" is the settled Spanish verb for supplying a catalogue."
+        }
+      ]
+    },
+    "ui.chat.trace": {
+      "keys": 274,
+      "batch_keys": 274,
+      "en_sha256": "52a0fa5ed78ec2f3bbedf5b67f7abf3cc8d72c7a66ff4383d182358e242fb848",
+      "es_sha256": "9a0c6c24721e8cfd8bf53ac021e7edf7be00fa174876493f9b9c81ec61ee8a0e",
+      "context_sha256": "b54b6acb4399743d207d8a793080555f1cab291761de90cf3e6e9f3ce9c70016",
+      "status": "passed",
+      "findings_count": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 1
+      },
+      "findings": [
+        {
+          "id": "ES-CHAT-20",
+          "severity": "minor",
+          "key": "ui.chat.trace.question_dock.prefix_held_while_this_answers_fate_is_unknown_it_may",
+          "current": "{prefix}En espera mientras se desconoce el destino de esta respuesta: puede que haya llegado, así que no se puede reenviar; pulsa Escape en el mensaje para ocultarla.",
+          "proposed": "{prefix}En espera mientras se desconoce el destino de esta respuesta: puede que haya llegado, así que no se puede reenviar; pulsa Esc en la tarjeta para ocultarla.",
+          "reason": "The English says \"Esc in the card\"; the Spanish changes the card to \"el mensaje\" and uses \"Escape\" while the rest of the dock uses \"Esc\". The two other Escape strings in this namespace have the same key-name drift.",
+          "related_keys": [
+            "ui.chat.trace.question_dock.answer_from_the_composer_instead_type_yes_no_1_or",
+            "ui.chat.trace.question_dock.choose_approve_or_deny_above_type_yes_no_1_or"
+          ]
+        },
+        {
+          "id": "ES-CHAT-21",
+          "severity": "nit",
+          "key": "ui.chat.trace.tool_row_model.previewed_rename",
+          "current": "Vista previa del cambio de nombre",
+          "proposed": "Previsualizó el cambio de nombre",
+          "reason": "Every neighbouring past-tense row uses a verb (\"Editó\", \"Leyó\"); this one switches to a noun, and the corresponding progressive row is \"Previsualizando el cambio de nombre\"."
+        }
+      ]
+    }
+  },
+  "findings_count": {
+    "blocker": 0,
+    "major": 3,
+    "minor": 12,
+    "nit": 10
+  },
+  "findings": [
+    {
+      "id": "ES-CHAT-18",
+      "severity": "minor",
+      "key": "ui.chat.aside.aside.the_aside_answered",
+      "current": "La consulta al margen respondió",
+      "proposed": "La consulta al margen obtuvo respuesta",
+      "reason": "A query does not \"answer\"; the same namespace already uses \"no obtuvo respuesta\" for the negative state. Apply to the related title/sentence/value keys.",
+      "related_keys": [
+        "ui.chat.aside.aside_panel.the_aside_answered",
+        "ui.chat.aside.aside.the_aside_answered_sentence",
+        "ui.chat.aside.aside.the_aside_answered_value"
+      ]
+    },
+    {
+      "id": "ES-CHAT-19",
+      "severity": "nit",
+      "key": "ui.chat.aside.aside.this_conversation_is_working_adding_the_aside_while_it_runs",
+      "current": "La conversación está trabajando.",
+      "proposed": "La conversación está ocupada.",
+      "reason": "The next sentence in the same namespace uses \"La conversación está ocupada\" for \"busy\"; \"está trabajando\" describes a process, not a conversation."
+    },
+    {
+      "id": "ES-CHAT-22",
+      "severity": "nit",
+      "key": "ui.chat.at.contract.this_backend_cannot_carry_file_references_update_the_backend_and",
+      "current": "Este backend no puede transportar referencias a archivos.",
+      "proposed": "Este backend no puede admitir referencias a archivos.",
+      "reason": "«transportar» is a physical-carry calque; \"admitir\" states the capability limit the error reports."
+    },
+    {
+      "id": "ES-CHAT-04",
+      "severity": "major",
+      "key": "ui.chat.canonical.checkpoint_model.open",
+      "current": "Abrir",
+      "proposed": "Abierto",
+      "reason": "CHECKPOINT_OUTCOME_LABELS prints this beside Complete/Interrupted/Error as a state word, not a control; the source comment in checkpoint-model.ts says \"Open is the backend's own word for a tail turn nothing has resolved\". \"Abrir\" turns the state into an imperative action. Note: the other six locale branches carry the same verb reading, so the English context sidecar also needs a state/examples note."
+    },
+    {
+      "id": "ES-CHAT-05",
+      "severity": "minor",
+      "key": "ui.chat.canonical.sound.batch_attachment_unavailable",
+      "current": " Adjunto de audio no disponible.",
+      "proposed": "Adjunto de audio no disponible.",
+      "reason": "U+0020 at the start of a standalone <p> text node (sound-batch.tsx:65); the English source and all sibling locales start at column 1. Same defect in the related key.",
+      "related_keys": [
+        "ui.chat.canonical.sound.player_failed"
+      ]
+    },
+    {
+      "id": "ES-CHAT-06",
+      "severity": "minor",
+      "key": "ui.chat.canonical.sound.player_failed",
+      "current": " No se pudo reproducir este sonido",
+      "proposed": "No se pudo reproducir este sonido",
+      "reason": "Stray leading U+0020 in a standalone <span> (sound-player.tsx:572); the English source has no leading space."
+    },
+    {
+      "id": "ES-CHAT-07",
+      "severity": "minor",
+      "key": "ui.chat.canonical.supplement_model.show_all_bounded_graphics",
+      "current": "{bounded, plural, one {Mostrar el gráfico} many {Mostrar los # de gráficos} other {Mostrar los # gráficos}}",
+      "proposed": "{bounded, plural, one {Mostrar 1 gráfico} many {Mostrar los # de gráficos} other {Mostrar los # gráficos}}",
+      "reason": "The one arm drops the ICU # that English carries (\"Show all # graphic\"); the rendered singular reads \"Mostrar el gráfico\" while 2+ shows the number. Either restore # as \"Mostrar 1 gráfico\" or record an explicit exemption. No other plural block in the batch drops its # from a shared arm."
+    },
+    {
+      "id": "ES-CHAT-08",
+      "severity": "nit",
+      "key": "ui.chat.canonical.transcript.older_history.scroll_short",
+      "current": "Desplázate arriba para ver lo anterior",
+      "proposed": "Desplázate hacia arriba para ver lo anterior",
+      "reason": "Compact hint; \"hacia arriba\" is the standard Spanish directional form, and the neighbouring strings use \"desplázate hacia arriba\"."
+    },
+    {
+      "id": "ES-CHAT-09",
+      "severity": "nit",
+      "key": "ui.chat.canonical.use_checkpoints.checkpoint_naming_is_unavailable_the_cards_keep_their_fallback_text",
+      "current": "el nombrado de puntos de control no está disponible; las tarjetas conservan su texto alternativo:",
+      "proposed": "la asignación de nombres de puntos de control no está disponible; las tarjetas conservan su texto alternativo:",
+      "reason": "\"nombrado\" as a noun is uncommon and reads translated; \"asignación de nombres\" is the settled Spanish term. The same choice appears in ui.chat.slash.arguments.resumes_auto_naming (\"reanuda el nombrado automático\")."
+    },
+    {
+      "id": "ES-CHAT-10",
+      "severity": "nit",
+      "key": "ui.chat.canonical.sound.stop.warning",
+      "current": "Detener es un intento de mejor esfuerzo; no garantiza la cancelación ni que no haya cargo.",
+      "proposed": "Detener solo es un intento; no garantiza la cancelación ni que no haya cargo.",
+      "reason": "«intento de mejor esfuerzo» is a literal calque of \"best-effort attempt\"; the sentence is a charge warning, so plain Spanish carries the limitation more clearly."
+    },
+    {
+      "id": "ES-CHAT-11",
+      "severity": "nit",
+      "key": "ui.chat.canonical.supplement_model.provider_timed_out",
+      "current": "el proveedor agotó el tiempo",
+      "proposed": "el proveedor superó el tiempo de espera",
+      "reason": "«agotó el tiempo» reads as the provider consuming time; \"superó el tiempo de espera\" states the timeout."
+    },
+    {
+      "id": "ES-CHAT-12",
+      "severity": "minor",
+      "key": "ui.chat.credential_capture.store_unconfirmed",
+      "current": "almacenamiento sin confirmar",
+      "proposed": "almacén sin confirmar",
+      "reason": "The English pair is \"store unconfirmed\" (chip after a key) and \"Credential store unconfirmed\" (standalone). This string is \"almacenamiento\" (the act/medium) while the standalone uses \"Almacén de credenciales\" (the store); the chip should name the same store."
+    },
+    {
+      "id": "ES-CHAT-24",
+      "severity": "nit",
+      "key": "ui.chat.composer.composer_status_row.goal_stalled_auto_continuation_stopped_send_a_message_to_continue",
+      "current": "objetivo estancado: la continuación automática se detuvo: envía un mensaje para continuar",
+      "proposed": "objetivo estancado: la continuación automática se detuvo; envía un mensaje para continuar",
+      "reason": "Two colons in one sentence; the second clause should take a semicolon. The same pattern appears in the three related goal_stalled keys.",
+      "related_keys": [
+        "ui.chat.composer.composer_status_row.goal_stalled_stopped_after_count_continuations_send",
+        "ui.chat.composer.composer_status_row.goal_stalled_judge_could_not_decide_send_a_message_to",
+        "ui.chat.composer.composer_status_row.goal_stalled_reached_the_continuation_limit_send_a_message_to"
+      ]
+    },
+    {
+      "id": "ES-CHAT-25",
+      "severity": "nit",
+      "key": "ui.chat.composer.composer_status_row.mark_the_goal_done_label_seam_goal",
+      "current": "Marcar el objetivo como hecho",
+      "proposed": "Marcar el objetivo como cumplido",
+      "reason": "The completed state is \"Objetivo cumplido\" (goal_done) but the action says \"como hecho\"; one state word should be used for the same goal."
+    },
+    {
+      "id": "ES-CHAT-01",
+      "severity": "major",
+      "key": "ui.chat.message.audio_attachment.time_indicator",
+      "current": "time-indicator",
+      "proposed": "indicador de tiempo",
+      "reason": "The value is the aria-label of the audio position slider (audio-attachment.tsx:191), not an identifier: a Spanish screen-reader user hears the English kebab token."
+    },
+    {
+      "id": "ES-CHAT-02",
+      "severity": "major",
+      "key": "ui.chat.message.audio_attachment.volume_control",
+      "current": "volume-control",
+      "proposed": "control de volumen",
+      "reason": "The value is the aria-label of the volume slider (audio-attachment.tsx:219); it remains the English kebab token instead of a Spanish control name."
+    },
+    {
+      "id": "ES-CHAT-03",
+      "severity": "minor",
+      "key": "ui.chat.message.error_block.model_unavailable",
+      "current": "sin límites de velocidad",
+      "proposed": "sin límites de solicitudes",
+      "reason": "Same English term (rate limits) is rendered as «límite de solicitudes» in error_block.rate_limit and rate_limit_all but «límites de velocidad» here; \"velocidad\" describes network throughput, not an API request quota."
+    },
+    {
+      "id": "ES-CHAT-13",
+      "severity": "minor",
+      "key": "ui.chat.run_details.run_panel.opening_a_subagents_conversation_needs_a_newer_local_operator_backend",
+      "current": "Actualiza el backend y reinicia la aplicación.",
+      "proposed": "Actualiza el backend y reinicia la app.",
+      "reason": "The batch and the wider es catalogue use \"app\" 96 times vs \"aplicación\" 16; this is the only \"aplicación\" in the batch. (The same source sentence in ui.common.account and ui.common.connection already carries \"aplicación\", so those rows should converge separately.)"
+    },
+    {
+      "id": "ES-CHAT-14",
+      "severity": "minor",
+      "key": "ui.chat.run_details.mcp_auth_dialog.replace_grant_and_sign_in",
+      "current": "Reemplazar permiso e iniciar sesión",
+      "proposed": "Reemplazar la autorización e iniciar sesión",
+      "reason": "The same OAuth grant is «autorización» in the adjacent this_replaces_the_existing_grant_for_this_server and «permiso prestado» elsewhere; one term should name the grant."
+    },
+    {
+      "id": "ES-CHAT-15",
+      "severity": "minor",
+      "key": "ui.chat.run_details.run_detail_todos.hidden_hidden",
+      "current": "{hidden, number, ::group-off} ocultos",
+      "proposed": "{hidden, number, ::group-off} ocultas",
+      "reason": "The count is of hidden to-do rows (\"tareas pendientes\", feminine); run_detail_model.opentodos_to_dos_open correctly says \"tareas pendientes abiertas\". The related standalone label has the same disagreement.",
+      "related_keys": [
+        "ui.chat.run_details.run_detail_todos.hidden"
+      ]
+    },
+    {
+      "id": "ES-CHAT-16",
+      "severity": "minor",
+      "key": "ui.chat.run_details.run_detail_wakes.cancel_the_wake_that_fires_duelabel",
+      "current": "Cancelar el despertar que se activa {dueLabel}",
+      "proposed": "Cancelar el despertar que se activa a las {dueLabel}",
+      "reason": "formatWakeDue returns a clock (e.g. \"3:05 PM AEST\"), so \"que se activa 3:05 PM\" lacks the required \"a las\"."
+    },
+    {
+      "id": "ES-CHAT-17",
+      "severity": "minor",
+      "key": "ui.chat.session_status.session_model.the_runtime_resolved_borrowed_access_for_this_session_every_new",
+      "current": "El runtime resolvió acceso prestado para esta sesión.",
+      "proposed": "El runtime resolvió el acceso prestado para esta sesión.",
+      "reason": "Missing definite article before the direct object; the same pattern appears in two related keys (\"proporcionar acceso prestado\", \"tomar prestado acceso a {label}\").",
+      "related_keys": [
+        "ui.chat.session_status.session_model.the_owner_cannot_currently_provide_borrowed_access_or_borrowing_permission",
+        "ui.chat.session_status.session_model.this_session_may_borrow_label_access_but_it_has_not"
+      ]
+    },
+    {
+      "id": "ES-CHAT-23",
+      "severity": "nit",
+      "key": "ui.chat.skill.contract.this_backend_cannot_serve_the_skill_catalogue_update_the_backend",
+      "current": "Este backend no puede servir el catálogo de habilidades.",
+      "proposed": "Este backend no puede proporcionar el catálogo de habilidades.",
+      "reason": "«servir el catálogo» is a literal rendering of \"serve the catalogue\"; \"proporcionar\" is the settled Spanish verb for supplying a catalogue."
+    },
+    {
+      "id": "ES-CHAT-20",
+      "severity": "minor",
+      "key": "ui.chat.trace.question_dock.prefix_held_while_this_answers_fate_is_unknown_it_may",
+      "current": "{prefix}En espera mientras se desconoce el destino de esta respuesta: puede que haya llegado, así que no se puede reenviar; pulsa Escape en el mensaje para ocultarla.",
+      "proposed": "{prefix}En espera mientras se desconoce el destino de esta respuesta: puede que haya llegado, así que no se puede reenviar; pulsa Esc en la tarjeta para ocultarla.",
+      "reason": "The English says \"Esc in the card\"; the Spanish changes the card to \"el mensaje\" and uses \"Escape\" while the rest of the dock uses \"Esc\". The two other Escape strings in this namespace have the same key-name drift.",
+      "related_keys": [
+        "ui.chat.trace.question_dock.answer_from_the_composer_instead_type_yes_no_1_or",
+        "ui.chat.trace.question_dock.choose_approve_or_deny_above_type_yes_no_1_or"
+      ]
+    },
+    {
+      "id": "ES-CHAT-21",
+      "severity": "nit",
+      "key": "ui.chat.trace.tool_row_model.previewed_rename",
+      "current": "Vista previa del cambio de nombre",
+      "proposed": "Previsualizó el cambio de nombre",
+      "reason": "Every neighbouring past-tense row uses a verb (\"Editó\", \"Leyó\"); this one switches to a noun, and the corresponding progressive row is \"Previsualizando el cambio de nombre\"."
+    }
+  ],
+  "verdict": "changes_requested",
+  "checks": {
+    "key_parity": "15/15 namespace files: identical key sets and identical key order to English (1795 keys, 0 missing, 0 extra).",
+    "icu_parse": "All 1795 Spanish values parse with intl-messageformat / @formatjs/icu-messageformat-parser: 0 parse errors, 0 argument-set mismatches.",
+    "placeholders": "No named placeholder is missing, renamed or reordered anywhere. The only #-level divergence is ES-CHAT-07 (one arm of one plural); the builtin_offer restructure keeps {count} and all explicit =0/one/=2..=6 arms, drops only the redundant English \"agent is/agents are\" block (meaning preserved).",
+    "icu_skeletons": "All number/date/time skeletons identical to English (::group-off, number).",
+    "select_arms": "All select arguments and arms identical to English.",
+    "plural_categories": "Spanish one/many/other used; no few anywhere. 44 plural blocks: 41 carry one/many/other, 3 lack many but render correctly through other at 1,000,000 (sound_batch_model.summary unknown =0/other; builtin_offer first plural =0/one/=2..=6/other; builtin_offer lo/los one/other). The translator receipt claim \"one/many/other present on every Spanish plural\" is therefore broader than the bytes; no rendered-count defect was found.",
+    "plural_rendering": "Rendered counts 0/1/2/5/1,000,000 through intl-messageformat(es); no wrong category, no \"de\" duplication, no ungrammatical 1e6 phrase. Explicit =0 arms preserved.",
+    "nfc": "All target values NFC; UTF-8 literal accents; no combining-mark detritus.",
+    "bidi_controls": "None (es is LTR); no U+202A-202E/U+2066-2069/U+200B-200F/U+FEFF.",
+    "whitespace": "No double spaces, no trailing spaces; two stray leading U+0020 values (ES-CHAT-05/06).",
+    "markup_and_tokens": "Markup/CSS/command tokens byte-identical: [role=\"menuitem\"], var(--color-warning*), @min-[260px]/olderhistory:hidden, /settings?section=providers, all:{kind}, section-grown-hint-{key}, ⌘⇧L, [redacted], and every ${...}/{{...}} argument.",
+    "punctuation": "Spanish inverted question marks present on all real questions (8 values containing ? — the only exception is the literal /settings?section=providers token). Curly quotes, ellipsis and em-dash spacing follow the es guide.",
+    "register": "Tú throughout; no usted/vosotros/podéis/tenéis; no formal third-person address. Action labels infinitive; sentence case.",
+    "glossary": "Glossary terms consistent: sesión, agente, subagente, herramienta, traza, transcripción, prompt, programación, despertar, trabajo, aprobaciones, proyecto, modelo, compactación, uso, coste, habilidad. Canvas, endpoint, runtime, harness, token, backend and chip follow the accepted kept-English set. Drift found only in the findings above (app/aplicación, permiso/autorización, rate limits, store).",
+    "identical_to_english": {
+      "count": 99,
+      "legitimate": 97,
+      "untranslated_stub": 2,
+      "breakdown": "70 placeholder/format-only templates, 8 language-neutral or technical labels (Chat, Chats, Error x3, Auto, Top K, Top P), 12 technical tokens (paths, CSS vars, DOM role, media query, keyboard shortcut), 2 product/format names (Local Operator, PDF), 5 Windows folder names; 2 untranslated aria-labels (ES-CHAT-01/02)."
+    },
+    "maxcells": "9 keys carry advisory maxCells. Three exceed it, all pre-existing preserved bytes (ui.chat.header.conversation_name 25/24, close_run_details 28/20, open_run_details 27/20); no batch-introduced maxCells overrun. See observations.",
+    "source_binding": "English files and context sidecars at the audited head are byte-identical to source head 5d97575ac4."
+  },
+  "observations": [
+    {
+      "kind": "pre-existing",
+      "key": "ui.chat.header.conversation_name",
+      "detail": "Preserved value \"Nombre de la conversación\" (25 code points) exceeds the advisory maxCells 24 by 1; shorter option \"Nombre del chat\" (15) or accept the 1-cell tolerance."
+    },
+    {
+      "kind": "pre-existing",
+      "key": "ui.chat.header.close_run_details",
+      "detail": "Preserved value \"Cerrar detalles de ejecución\" (28) exceeds maxCells 20 by 8; \"Cerrar detalles\" (15) fits."
+    },
+    {
+      "kind": "pre-existing",
+      "key": "ui.chat.header.open_run_details",
+      "detail": "Preserved value \"Abrir detalles de ejecución\" (27) exceeds maxCells 20 by 7; \"Abrir detalles\" (13) fits."
+    },
+    {
+      "kind": "pre-existing",
+      "key": "ui.chat.asks.dismiss.answered_in_chat.title",
+      "detail": "Preserved \"Respondida en la conversación\" and receipt.answered_in_chat use \"conversación\" while the new queue.settled_in_chat uses \"chat\" for the English \"in chat\". Not introduced by this batch; converge when the preserved rows are next touched."
+    },
+    {
+      "kind": "scope",
+      "key": "ui.chat.chat_regions.ctrl_shift_l",
+      "detail": "\"[redacted]\" is preserved and matches ru/vi/zh handling; the batch itself also uses \"Mayús+F10\" in sidebar help, following fr. Both conventions exist in the corpus; not scored as a defect."
+    },
+    {
+      "kind": "deliberate",
+      "key": "ui.chat.credential_capture.masked_as_you_type_enter_makes_a_pill_esc_twice",
+      "detail": "\"píldora\" for the pill-shaped credential chip is the translator's recorded choice; understood in Spanish UI design usage. Not scored."
+    }
+  ],
+  "notes": [
+    "Source pin: the task named 372aa11f61 as the target head and 5d97575ac4 as base; the receipt's source head is 5d97575ac4. All 15 English files and context sidecars are byte-identical between 5d97575ac4 and 372aa11f61 (git show sha256); the source and target hashes recorded here are the audited bytes.",
+    "The batch contains 1733 added keys plus 62 pre-existing keys: 30 preserved byte-identically and 32 translated (30 canonical keys from a new es file + 2 run_details keys).",
+    "Audit read every one of the 1795 English/Spanish pairs, not a sample; the three majors are the only identical-to-English prose stubs and the only state/action error found.",
+    "No browser, screenshot or native render was used; width findings are source-level advisory-budget observations, not observed clipping.",
+    "This receipt is namespace-scoped and file-backed; no ledger row was written (the task forbids ledger edits)."
+  ]
+}
