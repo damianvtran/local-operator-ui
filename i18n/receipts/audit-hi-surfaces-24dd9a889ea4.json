@@ -1,0 +1,502 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "locale": "hi",
+ "locale_name": "Hindi",
+ "batch": "surfaces (PR #1389)",
+ "pr": 1389,
+ "branch": "feat/i18n-surfaces-batch",
+ "audited_heads": {
+  "base": "40462495827dfb0e1bfacb8643da805912493a5b",
+  "surfaces": "7a1fdf200ce785f959b2e140b4a361ebbf8b4b3c"
+ },
+ "date": "2026-10-24",
+ "auditor": {
+  "agent": "translation-auditor",
+  "role": "independent translation auditor (team lopdev); authored no catalogue value in either batch",
+  "team": "lopdev",
+  "instance": "24dd9a889ea4",
+  "session": "24dd9a889ea4",
+  "model": "radient/auto",
+  "served_model": "radient/auto",
+  "fallback_used": false,
+  "model_provenance": "Harness-reported model for this session is radient/auto; the routed provider model is not exposed to the session and is not claimed. No fallback was reported or observed.",
+  "independence": "Auditor session 24dd9a889ea4 is distinct from the canvas translator session cb9b2869b58b and the surfaces translator session 37f772843d10; this session authored no value in either batch. Findings were read from the catalogue bytes at the audited heads, not from translator summaries."
+ },
+ "model": "radient/auto",
+ "instance": "24dd9a889ea4",
+ "translator": {
+  "agent": "translator (profile i18n-translator)",
+  "team": "lopdev",
+  "session": "37f772843d10",
+  "instance": "37f772843d10",
+  "translation_run_model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "remediation_run_model": "radient/auto",
+  "fallback_used": false,
+  "provenance": "Receipt i18n/receipts/i18n-surfaces-hi-translator.json: 471-key translation on kimi-k3.1-pro; remediation turn on radient/auto; no provider fallback reported."
+ },
+ "guidance": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/hi.md",
+   "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "contracts": [
+   "~/local-operator-ui/docs/I18N.md (sha256 34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca)",
+   "~/local-operator-ui/AGENTS.md § Internationalization"
+  ]
+ },
+ "scope": "23 hi namespace files at head 7a1fdf200ce785f959b2e140b4a361ebbf8b4b3c; every hi value added or changed by the batch (523: 471 manifest keys + 52 pre-existing keys backfilled in ui.chat.canonical (30), ui.common.account (18) and ui.common.viewer (4)) read against the English source and its context sidecar. Full namespace key sets checked: 0 missing, 0 extra.",
+ "method": [
+  "Read every scoped hi value with its English source and the English context sidecar (role/tone/note/placeholders/length) at the audited head.",
+  "Byte-compared en and hi; every exact match among the scoped values classified as IDENTICAL_OK with a technical/product reason, or as a stub. Stubs: 0.",
+  "Parsed every scoped value with @formatjs/icu-messageformat-parser; compared argument names, number/date skeletons, plural/select option sets, tag names and pound nodes; then rendered every plural/select message through intl-messageformat at hi counts 0, 1, 2 and 5 (260 renders, 0 errors).",
+  "Checked hi CLDR categories: one/other with 0 selecting one; every plural has one and other; no locale-inappropriate few/two/zero.",
+  "Checked NFC, manual bidi controls, Devanagari digits, danda/ASCII period usage, space-before-punctuation, register (आप only, कृपया only where English says please, no तुम/तू, no !).",
+  "Compared key sets per namespace (0 missing, 0 extra); read call sites for values whose meaning, gender or referent depended on composition (inline-edit status, session date range, emitted/excluded metric, pager range, image lightbox, find/replace switch, import naming).",
+  "Read the translator receipts but did not treat their summaries as evidence; the findings above were verified from catalogue bytes and code at the audited heads."
+ ],
+ "identical_summary": {
+  "count": 2,
+  "stubs": 0,
+  "note": "Counts only exact matches among the batch’s own values; each has a suggested IDENTICAL_OK reason in namespaces[*].identical_to_en."
+ },
+ "totals": {
+  "keys_audited": 523,
+  "namespaces": 23,
+  "blocker": 0,
+  "major": 0,
+  "minor": 3,
+  "nit": 1
+ },
+ "observations": [
+  "Shared namespaces with the canvas batch: ui.common.actions, ui.common.speech, ui.common.updates and ui.common.viewer carry 6, 0, 127 and 4 common keys; 0 common keys differ in value. The merged files will contain more keys than either head, so these four hashes will not bind the post-merge bytes; re-hash after union before the ledger binds them.",
+  "The surfaces translator receipt's target hashes for ui.chat.canonical, ui.chat.composer, ui.common.account and ui.common.viewer name an uncommitted worktree snapshot (82393f2110b1 has no committed hi files) and do not bind this head; this audit records the actual head hashes above.",
+  "Key order in the newly created ui.chat.canonical and ui.common.account hi files does not follow the English key order, though the key sets are equal. Not a translation defect; flagging it for merge/union handling."
+ ],
+ "verdict": "clean-with-findings — 0 blocker, 0 major, 3 minor, 1 nit across 23 namespace(s); 523 values read; 2 exact matches classified IDENTICAL_OK; 0 untranslated stubs.",
+ "namespaces": {
+  "ui.browser.errors": {
+   "namespace": "ui.browser.errors",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 2,
+   "keys_in_batch_delta": 2,
+   "sha256": {
+    "en": "c76148aad81e67ae2bacc513a51a5ff219c797ea93bf274f6b6ebaa09635426a",
+    "hi": "025af3ee0065f3f956abcd2fce39e0b6faeadd570108e3fbd462054769dce85a",
+    "context": "2b1f9eb5194709780b3c9188d7463177a4bf2aff07b9a5a438e91a2ec7a82906"
+   },
+   "findings": [],
+   "keys_audited": 2
+  },
+  "ui.chat.canonical": {
+   "namespace": "ui.chat.canonical",
+   "status": "passed",
+   "verdict": "clean-with-findings",
+   "keys_total": 47,
+   "keys_in_batch_delta": 47,
+   "sha256": {
+    "en": "dfa9cde6984a451b75a22530303197ed8a3c8d9148685231d017299f16cfe0dd",
+    "hi": "c3eaa00c083c72a6665c74258dcbb4d396c81ded19799a69516e6f725801ad25",
+    "context": "953ddc573ded81d8f78aec78a81cb89dbdf6fdc6f6adf2b0945b8b4bff71077b"
+   },
+   "findings": [
+    {
+     "id": "HI-SU-01",
+     "severity": "minor",
+     "key": "ui.chat.canonical.supplement.file_actions.open_in_canvas",
+     "proposed": "कैनवस में खोलें",
+     "reason": "Every other Hindi value for Canvas is कैनवस (ui.canvas.shell.canvas, ui.settings.shortcuts.canvas); this lone Latin Canvas is glossary drift, and the translator's own terminology note records Canvas → कैनवस.",
+     "batch": "surfaces",
+     "namespace": "ui.chat.canonical",
+     "current": "Canvas में खोलें",
+     "english": "Open in canvas",
+     "keys": [
+      "ui.chat.canonical.supplement.file_actions.open_in_canvas"
+     ],
+     "current_by_key": {
+      "ui.chat.canonical.supplement.file_actions.open_in_canvas": "Canvas में खोलें"
+     },
+     "proposed_by_key": {
+      "ui.chat.canonical.supplement.file_actions.open_in_canvas": "कैनवस में खोलें"
+     }
+    },
+    {
+     "id": "HI-SU-02",
+     "severity": "minor",
+     "key": "ui.chat.canonical.transcript.credential_lost",
+     "proposed": "इस उत्तर में बताया गया क्रेडेंशियल अब सत्र के पास नहीं है।",
+     "reason": "बताया is an incomplete participle here; the relative clause needs बताया गया क्रेडेंशियल.",
+     "batch": "surfaces",
+     "namespace": "ui.chat.canonical",
+     "current": "इस उत्तर में बताया क्रेडेंशियल अब सत्र के पास नहीं है।",
+     "english": "The session no longer holds the credential this answer named.",
+     "keys": [
+      "ui.chat.canonical.transcript.credential_lost"
+     ],
+     "current_by_key": {
+      "ui.chat.canonical.transcript.credential_lost": "इस उत्तर में बताया क्रेडेंशियल अब सत्र के पास नहीं है।"
+     },
+     "proposed_by_key": {
+      "ui.chat.canonical.transcript.credential_lost": "इस उत्तर में बताया गया क्रेडेंशियल अब सत्र के पास नहीं है।"
+     }
+    }
+   ],
+   "keys_audited": 47
+  },
+  "ui.chat.composer": {
+   "namespace": "ui.chat.composer",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 47,
+   "keys_in_batch_delta": 11,
+   "sha256": {
+    "en": "9e591f688e8696c77967bccb7961ee15405481f539e633658f8db4ae58f5b800",
+    "hi": "76157490c25a0c92616956de9482197997cef4097afa06eb043f0b2891e864a6",
+    "context": "3a45a24f1ce79edec4d13b2c0f11272c3dd3974812f05d8009f04ab787da8e63"
+   },
+   "findings": [],
+   "keys_audited": 11
+  },
+  "ui.code_review": {
+   "namespace": "ui.code_review",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 76,
+   "keys_in_batch_delta": 1,
+   "sha256": {
+    "en": "52c1c5147bded8beb2e223c43e7cdb44d236a9ab4c2722627868a5a0fca1a312",
+    "hi": "6529804c8ff678330cda45b9e7bfae822684806d00aa19b5b5bb0d6297c6d5c4",
+    "context": "4d60ce00b0a08f78c30aab5e1b40ddba4e086f61e828e3cf23116866b5daebb2"
+   },
+   "findings": [],
+   "keys_audited": 1
+  },
+  "ui.common.account": {
+   "namespace": "ui.common.account",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 38,
+   "keys_in_batch_delta": 38,
+   "sha256": {
+    "en": "0e39546d4357107a461f4eb3774c3a17d48a29af902825e86e450809dcf51a48",
+    "hi": "a37a86e3af0044b857ac95df74264012701cfa096ac6a6c57590a7d1e6ccce50",
+    "context": "148dcc3c9c40ad03373b54c1394f210386290b9e9395134d12532617d0d33f1a"
+   },
+   "findings": [],
+   "identical_to_en": [
+    {
+     "key": "ui.common.account.low_credits_dialog.detail",
+     "value": "${detail} USD",
+     "class": "technical-token",
+     "suggested_reason": "Price template {amount} + ISO currency code; the currency code and placeholder are the whole value."
+    },
+    {
+     "key": "ui.common.account.low_credits_dialog.radient_pass",
+     "value": "Radient Pass",
+     "class": "product-token",
+     "suggested_reason": "Radient Pass is a product name; glossary §1 keeps product names unchanged."
+    }
+   ],
+   "keys_audited": 38
+  },
+  "ui.common.actions": {
+   "namespace": "ui.common.actions",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 20,
+   "keys_in_batch_delta": 14,
+   "sha256": {
+    "en": "e1d2fa68aededcc4aa67bd9527a80072859f35b8a358cadba2007696414e8235",
+    "hi": "d2d3c897a7fbc5fc7c7bf5f7108020e9b73b9760101706bb26930a84ed748038",
+    "context": "160a775122143fdf72ed91a052d112f568a41105412e69f8adfdcfcc1b3b7256"
+   },
+   "findings": [],
+   "keys_audited": 14
+  },
+  "ui.common.connection": {
+   "namespace": "ui.common.connection",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 37,
+   "keys_in_batch_delta": 27,
+   "sha256": {
+    "en": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
+    "hi": "9ee2b150fc735ab6830983422c1ec29b1e21da33ad2ae16a38b3d0a1fc09c085",
+    "context": "9d39efa215fb38d30e7b70d0df1ed293e32e33a0b72ffc838d7385fb17e7dbb2"
+   },
+   "findings": [],
+   "keys_audited": 27
+  },
+  "ui.common.errors": {
+   "namespace": "ui.common.errors",
+   "status": "passed",
+   "verdict": "clean-with-findings",
+   "keys_total": 135,
+   "keys_in_batch_delta": 131,
+   "sha256": {
+    "en": "59dc7dfdbc3db2070238d457e7700d57941830a223181ea1eb4fabe9d5d7eae4",
+    "hi": "2afadf9f36aff0dd6b5470004360e6c576a7b04bef6a66886f9c8bd69bb05f78",
+    "context": "714850a99bf61133a2fb7548504dc0030a20a516bd1ca3b1dfbe70b2de5f7fb1"
+   },
+   "findings": [
+    {
+     "id": "HI-SU-03",
+     "severity": "minor",
+     "key": "ui.common.errors.speech_radient_sign_in",
+     "proposed": "आपका Radient साइन-इन अब काम नहीं कर रहा।",
+     "reason": "काम करना बंद कर दिया है needs the ergative ने with this transitive compound (साइन-इन ने … बंद कर दिया); the current sentence is ungrammatical. The legacy variant has the same shape.",
+     "batch": "surfaces",
+     "namespace": "ui.common.errors",
+     "current": "आपका Radient साइन-इन काम करना बंद कर दिया है। सेटिंग्स में फिर साइन इन करें।",
+     "english": "Your Radient sign-in has stopped working. Sign in again in Settings.",
+     "keys": [
+      "ui.common.errors.speech_radient_sign_in"
+     ],
+     "current_by_key": {
+      "ui.common.errors.speech_radient_sign_in": "आपका Radient साइन-इन काम करना बंद कर दिया है। सेटिंग्स में फिर साइन इन करें।"
+     },
+     "proposed_by_key": {
+      "ui.common.errors.speech_radient_sign_in": "आपका Radient साइन-इन अब काम नहीं कर रहा।"
+     }
+    }
+   ],
+   "keys_audited": 131
+  },
+  "ui.common.speech": {
+   "namespace": "ui.common.speech",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 11,
+   "keys_in_batch_delta": 11,
+   "sha256": {
+    "en": "75e394ea07a049d8a58a2cc12fedec1042e30b61e572f53740f0fac35a825eb0",
+    "hi": "19b241bc82faa489e707942499c68cad9afd0d4a7b34ef02cf1bae0438aa47b3",
+    "context": "284ead771845e6a6b4ef5c45ddc450e44f0df76873e63b4cc794fba84475522b"
+   },
+   "findings": [],
+   "keys_audited": 11
+  },
+  "ui.common.time": {
+   "namespace": "ui.common.time",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 1,
+   "keys_in_batch_delta": 1,
+   "sha256": {
+    "en": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
+    "hi": "3926070cac4463c4bc5a16aa11cc4e8f9594951a92752241cbda41f82bf1ab7f",
+    "context": "9d666403cd1c661075607faa0a7db78b43bdd570f3d2ce1c7f5968e26f28a6a1"
+   },
+   "findings": [],
+   "keys_audited": 1
+  },
+  "ui.common.updates": {
+   "namespace": "ui.common.updates",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 138,
+   "keys_in_batch_delta": 11,
+   "sha256": {
+    "en": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
+    "hi": "095fd2a2d945b86fa70519840079bca361b236a371af8d0a935f9376df3e011e",
+    "context": "5188c08320cea150fd71c3a26666ca6b0b637a94659bc6087155681b59d9614f"
+   },
+   "findings": [],
+   "keys_audited": 11
+  },
+  "ui.common.viewer": {
+   "namespace": "ui.common.viewer",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 5,
+   "keys_in_batch_delta": 5,
+   "sha256": {
+    "en": "9db8efc731cb81ac781c732a3021587434acd26bd03d41ec41156c5672edabfe",
+    "hi": "9f42571d67b3ec6a18e4edfb72e1fc001c445069953a2d683536698caad4a313",
+    "context": "77232304d3ddc3dbe20151daddc2ee1a3c28271cdcfd7ebc54a302fe6f68f40e"
+   },
+   "findings": [],
+   "keys_audited": 5
+  },
+  "ui.console.errors": {
+   "namespace": "ui.console.errors",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 1,
+   "keys_in_batch_delta": 1,
+   "sha256": {
+    "en": "ef6827986b0cd0d75cb4e2aea62aa0b017b58191b5736f7a721c6afa938f344b",
+    "hi": "6190edc32c336ff2bb80c7be02363e70394058bed707ab6e9e59fbd681f630e7",
+    "context": "7a4e2ef6e8a081c78dab8ac422a3c82fbe268d8f1f68ca885e5f4eb9f7bed0d3"
+   },
+   "findings": [],
+   "keys_audited": 1
+  },
+  "ui.hub.updates": {
+   "namespace": "ui.hub.updates",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 56,
+   "keys_in_batch_delta": 56,
+   "sha256": {
+    "en": "9fa15153d1a036a7f98b1d50da90d736c7f423c2981087ae1436469d23afcfdd",
+    "hi": "8c1c32f08f5a660e5b2f2fcc57da2859ffc25f48de323f97f8367500d1fae32d",
+    "context": "d30a14eb3c3bad0bd2bde7eb1a26fd5fff5aa16ff38dfdd623ed05db4db76390"
+   },
+   "findings": [],
+   "keys_audited": 56
+  },
+  "ui.installer": {
+   "namespace": "ui.installer",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 22,
+   "keys_in_batch_delta": 4,
+   "sha256": {
+    "en": "89b4c22ea75c9c7fb1db96e226c1eed958643d3e08eb4a0317b2e4369fd4e8e9",
+    "hi": "83ef5b6348da275e5f60607a402e659cf8847d5f9df1675c86ada7efb1e382dc",
+    "context": "6969a13f454799d950a961da740d6585545525f0a148dade5c85e1ae81232705"
+   },
+   "findings": [],
+   "keys_audited": 4
+  },
+  "ui.library.errors": {
+   "namespace": "ui.library.errors",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 3,
+   "keys_in_batch_delta": 3,
+   "sha256": {
+    "en": "162f2d82448d8a77cd96d4b142018cf233dd1ebfabe37ba7ce47d4fc52195bc4",
+    "hi": "d7dc544c4b697b509e14a0efaf4e1d2eda55d6183dc713dc76ddce016e4d4719",
+    "context": "cc8e737dc8b52dbe3cc5193a9fc33f5acdb6332420c95e3fad5e1567946b247a"
+   },
+   "findings": [],
+   "keys_audited": 3
+  },
+  "ui.mesh.errors": {
+   "namespace": "ui.mesh.errors",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 1,
+   "keys_in_batch_delta": 1,
+   "sha256": {
+    "en": "285997c116c83dd475ace036931ca2a49108dba4237300be3389bcc513ff2a40",
+    "hi": "37396ae0b70b94fd4da73a7f50b77b1e66670f5d29caf6f23ed863728967670c",
+    "context": "d33ebdde6b2958258ed1e52f9aa44070c9987fe8e40287e6966ff4cfa9021299"
+   },
+   "findings": [],
+   "keys_audited": 1
+  },
+  "ui.miniView": {
+   "namespace": "ui.miniView",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 34,
+   "keys_in_batch_delta": 34,
+   "sha256": {
+    "en": "50202e2b2c757708215867b51811ca4c72dd1814c747960a98a4f1929925119e",
+    "hi": "b94d2e6e39848241ad87979eb35c5d670d51ba766449749b07f85310960e9a70",
+    "context": "22c12b345086a5ae0f1efacf3e9256f2890d8621912f8b0c642554a50f838f07"
+   },
+   "findings": [],
+   "keys_audited": 34
+  },
+  "ui.projects": {
+   "namespace": "ui.projects",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 427,
+   "keys_in_batch_delta": 3,
+   "sha256": {
+    "en": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
+    "hi": "92d40fafa54263c14e7ae7ae5729c2fb4be6d68a7275ca450d5d42c6df9ff462",
+    "context": "7eaaba481914ce8fc0692c6eaee39ad04e80d9cddc82f0c83a00bebc96af28d4"
+   },
+   "findings": [],
+   "keys_audited": 3
+  },
+  "ui.schedules.errors": {
+   "namespace": "ui.schedules.errors",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 3,
+   "keys_in_batch_delta": 3,
+   "sha256": {
+    "en": "05e2bc81700cb5ef326144dcf2ded7fee9b351b02e56226cfc800a9bdcf07961",
+    "hi": "15e8beb161eb505125f7e4533d2282676d20ede56a9f58a883f2e82dc21b6f1c",
+    "context": "e622fe4a49850f864e15cda2fe0d6d724f8ec8e0769f1efb07adf243a51db69b"
+   },
+   "findings": [],
+   "keys_audited": 3
+  },
+  "ui.settings": {
+   "namespace": "ui.settings",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 45,
+   "keys_in_batch_delta": 6,
+   "sha256": {
+    "en": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
+    "hi": "bcf2e5671eef2afcb1ecab6c16062f56ad5802dd4c52cadd4eb83870c8620ab9",
+    "context": "bc524adfbef11d7aa28b074b5884076ab388526f44a344feaf53cabb51bb9692"
+   },
+   "findings": [],
+   "keys_audited": 6
+  },
+  "ui.settings.appearance": {
+   "namespace": "ui.settings.appearance",
+   "status": "passed",
+   "verdict": "clean",
+   "keys_total": 69,
+   "keys_in_batch_delta": 59,
+   "sha256": {
+    "en": "be349b938ef72437bfb68cdcbd6c168247edff20f5efe6b50abe981183769729",
+    "hi": "ecd29d0065d20d305fa8935c61e36a89a96ef35e31854013b3badfb9aacedb5e",
+    "context": "c18933608a9e715e4d7ea6fafd6096c154991e8829f79a2653a3726802cc7f3f"
+   },
+   "findings": [],
+   "keys_audited": 59
+  },
+  "ui.settings.shortcuts": {
+   "namespace": "ui.settings.shortcuts",
+   "status": "passed",
+   "verdict": "clean-with-findings",
+   "keys_total": 63,
+   "keys_in_batch_delta": 54,
+   "sha256": {
+    "en": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
+    "hi": "d4e247ece7519ddf1efe611ff97bbd0de376be73de22256040f35810d3549112",
+    "context": "9c74fb267e6504114980b62f75efa1b02c79d76dbe1a20f1e476b56d9865c215"
+   },
+   "findings": [
+    {
+     "id": "HI-SU-04",
+     "severity": "nit",
+     "key": "ui.settings.shortcuts.reserved.close",
+     "proposed": "आरक्षित: ब्राउज़र टैब या उसके बाहर की विंडो बंद करता है।",
+     "reason": "The English scopes the window to outside the browser; the Hindi drops 'outside it' and says the shortcut closes any window, overstating the binding.",
+     "batch": "surfaces",
+     "namespace": "ui.settings.shortcuts",
+     "current": "आरक्षित: ब्राउज़र टैब या विंडो बंद करता है।",
+     "english": "Reserved: closes the browser tab, or the window outside it.",
+     "keys": [
+      "ui.settings.shortcuts.reserved.close"
+     ],
+     "current_by_key": {
+      "ui.settings.shortcuts.reserved.close": "आरक्षित: ब्राउज़र टैब या विंडो बंद करता है।"
+     },
+     "proposed_by_key": {
+      "ui.settings.shortcuts.reserved.close": "आरक्षित: ब्राउज़र टैब या उसके बाहर की विंडो बंद करता है।"
+     }
+    }
+   ],
+   "keys_audited": 54
+  }
+ }
+}

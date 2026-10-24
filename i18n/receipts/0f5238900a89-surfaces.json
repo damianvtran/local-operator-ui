@@ -1,0 +1,337 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "batch": "surfaces",
+ "pr": 1389,
+ "head": "7a1fdf200ce785f959b2e140b4a361ebbf8b4b3c",
+ "base": "40462495827dfb0e1bfacb8643da805912493a5b",
+ "locale": "ru",
+ "auditor": "translation-auditor",
+ "model": "radient/auto",
+ "session": "0f5238900a89",
+ "instance": "0f5238900a89-surfaces",
+ "date": "2026-10-24",
+ "independence": "Independent session/agent from the i18n translators; no translator ran in this audit.",
+ "source_dir": "src/i18n/catalogues/en",
+ "target_dir": "src/i18n/catalogues/ru",
+ "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+ "style_guide_sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465",
+ "method": "Read the full English and ru files at the audited head via git show (no checkout), namespace by namespace, with the en context sidecars. Ran automated checks for ICU argument/branch structure (ru one/few/many/other), dropped count tokens in plural branches, NFC, manual bidi controls, placeholder and ::group-off skeletons, character-length ratios, and identical values. No compiled Electron render was used; overflow is measured character counts and flagged for rendered check.",
+ "keys_audited": 505,
+ "namespaces": {
+  "ui.browser.errors": {
+   "namespace": "ui.browser.errors",
+   "status": "passed",
+   "keys_audited": 2,
+   "sha256": {
+    "en": "c76148aad81e67ae2bacc513a51a5ff219c797ea93bf274f6b6ebaa09635426a",
+    "ru": "66c66f5e714e0200288aee761e424dbf6c7988da72e215f90a78127de6c764ca"
+   },
+   "context_sha256": "2b1f9eb5194709780b3c9188d7463177a4bf2aff07b9a5a438e91a2ec7a82906",
+   "findings": []
+  },
+  "ui.chat.canonical": {
+   "namespace": "ui.chat.canonical",
+   "status": "passed",
+   "keys_audited": 47,
+   "sha256": {
+    "en": "dfa9cde6984a451b75a22530303197ed8a3c8d9148685231d017299f16cfe0dd",
+    "ru": "00431f21926479fcd03c86d9b72321a31efd94421d22fd583d6284f3acefcef7"
+   },
+   "context_sha256": "953ddc573ded81d8f78aec78a81cb89dbdf6fdc6f6adf2b0945b8b4bff71077b",
+   "findings": [
+    {
+     "severity": "minor",
+     "category": "glossary",
+     "key": "ui.chat.canonical.transcript.missing_session",
+     "related_keys": [
+      "ui.chat.canonical.transcript.missing_session_detail"
+     ],
+     "source": "This conversation is no longer on this machine.",
+     "current": "Этого разговора больше нет на этом устройстве.",
+     "proposed": "Этого разговора больше нет на этом компьютере.",
+     "reason": "The source context says «machine». This locale renders machine as «компьютер» in the rest of the batch (`must_exist_on_this_machine`, `sessions_on_this_machine`, `memory_could_not_be_measured_on_this_machine`), while «устройство» is used for device/device-code. Align this pair to avoid a second term.",
+     "disposition": "open",
+     "related_values": {
+      "ui.chat.canonical.transcript.missing_session_detail": "Он был удалён или принадлежит устройству, к которому это приложение не подключено."
+     }
+    },
+    {
+     "severity": "nit",
+     "category": "consistency",
+     "key": "ui.chat.canonical.supplement.file_actions.open_in_canvas",
+     "source": "Open in canvas",
+     "current": "Открыть в Canvas",
+     "proposed": "Открыть в Canvas (per sidecar) or «Открыть на холсте» (per shipped ru locale); resolve at source",
+     "reason": "The sidecar says «Canvas is the product's own pane name and stays untranslated», so this is not a translator deviation. But every other shipped ru surface renders Canvas as «Холст» (`ui.canvas.shell.canvas`, `ui.canvas.shell.close_canvas`, `ui.settings.shortcuts.row.canvas`); the source context and the locale now disagree. Recorded as a nit for source/context resolution, not as a demand to change this file in isolation.",
+     "disposition": "open"
+    }
+   ]
+  },
+  "ui.chat.composer": {
+   "namespace": "ui.chat.composer",
+   "status": "passed",
+   "keys_audited": 11,
+   "sha256": {
+    "en": "9e591f688e8696c77967bccb7961ee15405481f539e633658f8db4ae58f5b800",
+    "ru": "7d9367b6d5afef66655ac55fdf1003d3d7f16e797c950bbeeb6a1084d8c055fa"
+   },
+   "context_sha256": "3a45a24f1ce79edec4d13b2c0f11272c3dd3974812f05d8009f04ab787da8e63",
+   "findings": [
+    {
+     "severity": "minor",
+     "category": "accuracy",
+     "key": "ui.chat.composer.placeholder.aside",
+     "source": "Ask off the record — Esc closes the aside",
+     "current": "Спросите отдельно — Esc закрывает вопрос",
+     "proposed": "Спросите без записи — Esc закрывает вопрос",
+     "reason": "«отдельно» only says separately; it drops the source's off-the-record promise, so the placeholder no longer tells the user the aside is not recorded in the conversation.",
+     "disposition": "open"
+    }
+   ]
+  },
+  "ui.code_review": {
+   "namespace": "ui.code_review",
+   "status": "passed",
+   "keys_audited": 1,
+   "sha256": {
+    "en": "52c1c5147bded8beb2e223c43e7cdb44d236a9ab4c2722627868a5a0fca1a312",
+    "ru": "161d67313db2455af16a568bc47a51dc3fc2517423c75aaf5cf4d46fef31f7e9"
+   },
+   "context_sha256": "4d60ce00b0a08f78c30aab5e1b40ddba4e086f61e828e3cf23116866b5daebb2",
+   "findings": []
+  },
+  "ui.common.account": {
+   "namespace": "ui.common.account",
+   "status": "passed",
+   "keys_audited": 20,
+   "sha256": {
+    "en": "0e39546d4357107a461f4eb3774c3a17d48a29af902825e86e450809dcf51a48",
+    "ru": "e37d73acb6f5e20977da4e6f67b491b0841f730af7df757779d8ef9df14f93da"
+   },
+   "context_sha256": "148dcc3c9c40ad03373b54c1394f210386290b9e9395134d12532617d0d33f1a",
+   "findings": []
+  },
+  "ui.common.actions": {
+   "namespace": "ui.common.actions",
+   "status": "passed",
+   "keys_audited": 14,
+   "sha256": {
+    "en": "e1d2fa68aededcc4aa67bd9527a80072859f35b8a358cadba2007696414e8235",
+    "ru": "aaf005d56dfeeb3844f108d3930411f5063fae5d1e9d769530a5ac18f1b145ec"
+   },
+   "context_sha256": "160a775122143fdf72ed91a052d112f568a41105412e69f8adfdcfcc1b3b7256",
+   "findings": []
+  },
+  "ui.common.connection": {
+   "namespace": "ui.common.connection",
+   "status": "passed",
+   "keys_audited": 27,
+   "sha256": {
+    "en": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
+    "ru": "7241feb46bb1c172ead3bda903fc9828635ba0b1a77cd65a2b3cbf81ba4e73f0"
+   },
+   "context_sha256": "9d39efa215fb38d30e7b70d0df1ed293e32e33a0b72ffc838d7385fb17e7dbb2",
+   "findings": []
+  },
+  "ui.common.errors": {
+   "namespace": "ui.common.errors",
+   "status": "passed",
+   "keys_audited": 131,
+   "sha256": {
+    "en": "59dc7dfdbc3db2070238d457e7700d57941830a223181ea1eb4fabe9d5d7eae4",
+    "ru": "9863f39fac7f92f76f2df2ea4351ae043afaee46f9a52b536284d10a68648f4e"
+   },
+   "context_sha256": "714850a99bf61133a2fb7548504dc0030a20a516bd1ca3b1dfbe70b2de5f7fb1",
+   "findings": [
+    {
+     "severity": "minor",
+     "category": "glossary",
+     "key": "ui.common.errors.speech_radient_sign_in",
+     "related_keys": [
+      "ui.common.errors.speech_radient_sign_in_legacy"
+     ],
+     "source": "Your Radient sign-in has stopped working. Sign in again in Settings.",
+     "current": "Сеанс Radient больше не действителен. Войдите снова в настройках.",
+     "proposed": "Вход в Radient больше не работает. Войдите снова в настройках.",
+     "reason": "Replaces sign-in with «сеанс» (session). The rest of the batch uses «вход» for sign-in (`Проверка входа в Radient`, `Не удалось проверить вход`, `Войдите … чтобы включить озвучивание`), so this is glossary drift.",
+     "disposition": "open"
+    }
+   ]
+  },
+  "ui.common.speech": {
+   "namespace": "ui.common.speech",
+   "status": "passed",
+   "keys_audited": 11,
+   "sha256": {
+    "en": "75e394ea07a049d8a58a2cc12fedec1042e30b61e572f53740f0fac35a825eb0",
+    "ru": "5b667cc74bb28563edf7feeb6fe1a91021348a038a9474e986776bfb4becaf66"
+   },
+   "context_sha256": "284ead771845e6a6b4ef5c45ddc450e44f0df76873e63b4cc794fba84475522b",
+   "findings": []
+  },
+  "ui.common.time": {
+   "namespace": "ui.common.time",
+   "status": "passed",
+   "keys_audited": 1,
+   "sha256": {
+    "en": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
+    "ru": "5436047ba2fc7843f2a63605c5ed74d6183ce751d1b5958c9b3850cf2f2243ea"
+   },
+   "context_sha256": "9d666403cd1c661075607faa0a7db78b43bdd570f3d2ce1c7f5968e26f28a6a1",
+   "findings": []
+  },
+  "ui.common.updates": {
+   "namespace": "ui.common.updates",
+   "status": "passed",
+   "keys_audited": 11,
+   "sha256": {
+    "en": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
+    "ru": "cc7e477a9afd14aae5f3adb14cfad87b4580cd72f842c1b60e698d3b115011b8"
+   },
+   "context_sha256": "5188c08320cea150fd71c3a26666ca6b0b637a94659bc6087155681b59d9614f",
+   "findings": []
+  },
+  "ui.common.viewer": {
+   "namespace": "ui.common.viewer",
+   "status": "passed",
+   "keys_audited": 5,
+   "sha256": {
+    "en": "9db8efc731cb81ac781c732a3021587434acd26bd03d41ec41156c5672edabfe",
+    "ru": "495354c2bd1c2cd7adeed8bdf361a3b89a9f6fdbfb280354318a995470e969db"
+   },
+   "context_sha256": "77232304d3ddc3dbe20151daddc2ee1a3c28271cdcfd7ebc54a302fe6f68f40e",
+   "findings": []
+  },
+  "ui.console.errors": {
+   "namespace": "ui.console.errors",
+   "status": "passed",
+   "keys_audited": 1,
+   "sha256": {
+    "en": "ef6827986b0cd0d75cb4e2aea62aa0b017b58191b5736f7a721c6afa938f344b",
+    "ru": "5996a36a91c16966df40263496706c97d3498205ed7dd98851f781e9441a1222"
+   },
+   "context_sha256": "7a4e2ef6e8a081c78dab8ac422a3c82fbe268d8f1f68ca885e5f4eb9f7bed0d3",
+   "findings": []
+  },
+  "ui.hub.updates": {
+   "namespace": "ui.hub.updates",
+   "status": "passed",
+   "keys_audited": 56,
+   "sha256": {
+    "en": "9fa15153d1a036a7f98b1d50da90d736c7f423c2981087ae1436469d23afcfdd",
+    "ru": "6ce7d071b469059c6a8f5a428596130cd94e71069df2ab40357edb9d2a77c6f1"
+   },
+   "context_sha256": "d30a14eb3c3bad0bd2bde7eb1a26fd5fff5aa16ff38dfdd623ed05db4db76390",
+   "findings": []
+  },
+  "ui.installer": {
+   "namespace": "ui.installer",
+   "status": "passed",
+   "keys_audited": 4,
+   "sha256": {
+    "en": "89b4c22ea75c9c7fb1db96e226c1eed958643d3e08eb4a0317b2e4369fd4e8e9",
+    "ru": "909f149bc367c7e0b70626e26595c9346fe7433eb66e8983e91dad9fbe27178a"
+   },
+   "context_sha256": "6969a13f454799d950a961da740d6585545525f0a148dade5c85e1ae81232705",
+   "findings": []
+  },
+  "ui.library.errors": {
+   "namespace": "ui.library.errors",
+   "status": "passed",
+   "keys_audited": 3,
+   "sha256": {
+    "en": "162f2d82448d8a77cd96d4b142018cf233dd1ebfabe37ba7ce47d4fc52195bc4",
+    "ru": "bb7bb1072f52c6adbef8a010ed7356d98c38bc89b353eb75ff444af9ba5f9da4"
+   },
+   "context_sha256": "cc8e737dc8b52dbe3cc5193a9fc33f5acdb6332420c95e3fad5e1567946b247a",
+   "findings": []
+  },
+  "ui.mesh.errors": {
+   "namespace": "ui.mesh.errors",
+   "status": "passed",
+   "keys_audited": 1,
+   "sha256": {
+    "en": "285997c116c83dd475ace036931ca2a49108dba4237300be3389bcc513ff2a40",
+    "ru": "9a8cc843af64f5968c014c0243810a3d5c976a9640ee8c0b7e3e755ebaace641"
+   },
+   "context_sha256": "d33ebdde6b2958258ed1e52f9aa44070c9987fe8e40287e6966ff4cfa9021299",
+   "findings": []
+  },
+  "ui.miniView": {
+   "namespace": "ui.miniView",
+   "status": "passed",
+   "keys_audited": 34,
+   "sha256": {
+    "en": "50202e2b2c757708215867b51811ca4c72dd1814c747960a98a4f1929925119e",
+    "ru": "4343472062b81b4b23f8f7f66494154e113fea895b25dee643cbd4aaad5b36f4"
+   },
+   "context_sha256": "22c12b345086a5ae0f1efacf3e9256f2890d8621912f8b0c642554a50f838f07",
+   "findings": []
+  },
+  "ui.projects": {
+   "namespace": "ui.projects",
+   "status": "passed",
+   "keys_audited": 3,
+   "sha256": {
+    "en": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
+    "ru": "931c5450136518ddb01fcd8171b28ceeeb1b5e699d26ffe54f2843a264d2d0c2"
+   },
+   "context_sha256": "7eaaba481914ce8fc0692c6eaee39ad04e80d9cddc82f0c83a00bebc96af28d4",
+   "findings": []
+  },
+  "ui.schedules.errors": {
+   "namespace": "ui.schedules.errors",
+   "status": "passed",
+   "keys_audited": 3,
+   "sha256": {
+    "en": "05e2bc81700cb5ef326144dcf2ded7fee9b351b02e56226cfc800a9bdcf07961",
+    "ru": "08d8174c17517087a7cd2a1ae9da2ed62700c2e939c1915460828d4ff947d4d5"
+   },
+   "context_sha256": "e622fe4a49850f864e15cda2fe0d6d724f8ec8e0769f1efb07adf243a51db69b",
+   "findings": []
+  },
+  "ui.settings.appearance": {
+   "namespace": "ui.settings.appearance",
+   "status": "passed",
+   "keys_audited": 59,
+   "sha256": {
+    "en": "be349b938ef72437bfb68cdcbd6c168247edff20f5efe6b50abe981183769729",
+    "ru": "cea02d53f25013ac7d75343a0f2c0dbcbc3d89eca0e22505ec4fb547d637143b"
+   },
+   "context_sha256": "c18933608a9e715e4d7ea6fafd6096c154991e8829f79a2653a3726802cc7f3f",
+   "findings": []
+  },
+  "ui.settings": {
+   "namespace": "ui.settings",
+   "status": "passed",
+   "keys_audited": 6,
+   "sha256": {
+    "en": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
+    "ru": "696b6cdcc4a21402f9320dbb774ff2e4e6a68a01c483972fb6f7185008dbe92a"
+   },
+   "context_sha256": "bc524adfbef11d7aa28b074b5884076ab388526f44a344feaf53cabb51bb9692",
+   "findings": []
+  },
+  "ui.settings.shortcuts": {
+   "namespace": "ui.settings.shortcuts",
+   "status": "passed",
+   "keys_audited": 54,
+   "sha256": {
+    "en": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
+    "ru": "0ce9956474d363e363d25f58fb5615cd9919ad2aecd6059dd2b6078dbe13c318"
+   },
+   "context_sha256": "9c74fb267e6504114980b62f75efa1b02c79d76dbe1a20f1e476b56d9865c215",
+   "findings": []
+  }
+ },
+ "identical_values": [],
+ "identical_stub_count": 0,
+ "counts": {
+  "blocker": 0,
+  "major": 0,
+  "minor": 3,
+  "nit": 1
+ },
+ "verdict": "clean-with-findings"
+}

@@ -1,0 +1,786 @@
+{
+  "schema": 1,
+  "kind": "independent-translation-audit",
+  "locale": "vi",
+  "batch": "surfaces",
+  "pr": 1389,
+  "branch": "feat/i18n-surfaces-batch",
+  "date": "2026-10-24",
+  "audited_heads": {
+    "head": "7a1fdf200ce785f959b2e140b4a361ebbf8b4b3c",
+    "base_merge_base": "40462495827dfb0e1bfacb8643da805912493a5b",
+    "kind": "batch delta audit: every key whose English value was added or changed between base and head"
+  },
+  "auditor": {
+    "agent": "translation-auditor",
+    "session": "b928c7f0c96d",
+    "instance": "b928c7f0c96d",
+    "model": "radient/auto",
+    "fallback": null
+  },
+  "independence": {
+    "auditor_agent": "translation-auditor",
+    "translator_agent": "translator",
+    "translator_session": "ca0bc31400bd",
+    "translator_receipt": "i18n/receipts/surface-extraction-translator-vi.json",
+    "statement": "Did not author or translate any value in this batch; read the English source, the 31 namespace context sidecars (role/note consulted for flagged or ambiguous keys) and the target bytes at the audited head."
+  },
+  "reference": {
+    "core_glossary": {
+      "path": "i18n/glossary.md",
+      "repo": "damianvtran/local-operator",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "vi_style_guide": {
+      "path": "i18n/style-guides/vi.md",
+      "repo": "damianvtran/local-operator",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    },
+    "ui_i18n_howto": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    },
+    "language_manifest": {
+      "path": "i18n/languages.json",
+      "sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+    },
+    "parity_suite": {
+      "path": "scripts/i18n/locale-parity.test.mjs",
+      "sha256": "efdd5fcf3b1a6358ac2e91e30cab536012823f968cf790c3704fe2fd0fd56919"
+    }
+  },
+  "mechanical": {
+    "namespaces": 23,
+    "keys_audited": 471,
+    "icu_ast_equal_after_vi_plural_collapse": true,
+    "placeholder_integrity": "pass (argument names, selectors, number skeletons and tags)",
+    "nfc": "pass",
+    "manual_bidi_controls": "none",
+    "plural_categories": "other-only for vi; no caller-supplied one/other case in this batch",
+    "keys_read": 471,
+    "preexisting_identical_out_of_scope": 12,
+    "identical_changed_values": 0,
+    "untranslated_stubs": 0,
+    "rtl": "not applicable: vi is LTR"
+  },
+  "gate_checks": {
+    "locale_parity_test": {
+      "command": "node --test scripts/i18n/locale-parity.test.mjs",
+      "result": "PASS",
+      "detail": "vi is not an English stub; all vi checks pass."
+    }
+  },
+  "merge_readiness": "ready",
+  "translation_status": "clean-with-findings",
+  "status": "clean-with-findings",
+  "verdict": "clean-with-findings: 5 minor, 1 nit, 0 blocker, 0 major, no untranslated stubs; parity suite passes.",
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 5,
+    "nit": 1
+  },
+  "gate_findings": [],
+  "observations": [],
+  "limitations": [
+    "Source-and-catalogue audit only; no rendered UI fit, pseudo-localization, RTL layout or activation/release sign-off.",
+    "Every changed key was read; unchanged keys in the same namespace files (34 in ui.chat.pickers, 57 in ui.canvas, and the pre-existing surfaces rows) are outside the batch delta.",
+    "Context sidecars were hashed for every namespace; role/note was read per flagged or ambiguous key rather than for every row."
+  ],
+  "namespaces": {
+    "ui.browser.errors": {
+      "namespace": "ui.browser.errors",
+      "source_path": "src/i18n/catalogues/en/ui.browser.errors.json",
+      "target_path": "src/i18n/catalogues/vi/ui.browser.errors.json",
+      "context_path": "src/i18n/catalogues/en/ui.browser.errors.context.json",
+      "keys_audited": 2,
+      "file_keys": {
+        "en": 2,
+        "vi": 2
+      },
+      "sha256": {
+        "en": "c76148aad81e67ae2bacc513a51a5ff219c797ea93bf274f6b6ebaa09635426a",
+        "target": "e6bcc20734c458caaf8bd40ab9145c9da660bce93e063560bf2fa04eb1368dfa",
+        "context": "2b1f9eb5194709780b3c9188d7463177a4bf2aff07b9a5a438e91a2ec7a82906"
+      },
+      "status": "passed",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "source_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+      "target_path": "src/i18n/catalogues/vi/ui.chat.canonical.json",
+      "context_path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+      "keys_audited": 17,
+      "file_keys": {
+        "en": 47,
+        "vi": 47
+      },
+      "sha256": {
+        "en": "dfa9cde6984a451b75a22530303197ed8a3c8d9148685231d017299f16cfe0dd",
+        "target": "11bec39c8c57dcffd93369604076d5061b7815e436b7cb79d271441230ef6d9c",
+        "context": "953ddc573ded81d8f78aec78a81cb89dbdf6fdc6f6adf2b0945b8b4bff71077b"
+      },
+      "status": "passed",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.chat.composer": {
+      "namespace": "ui.chat.composer",
+      "source_path": "src/i18n/catalogues/en/ui.chat.composer.json",
+      "target_path": "src/i18n/catalogues/vi/ui.chat.composer.json",
+      "context_path": "src/i18n/catalogues/en/ui.chat.composer.context.json",
+      "keys_audited": 11,
+      "file_keys": {
+        "en": 47,
+        "vi": 47
+      },
+      "sha256": {
+        "en": "9e591f688e8696c77967bccb7961ee15405481f539e633658f8db4ae58f5b800",
+        "target": "533a19e92c44da462b9fe347f3d104bc7d1f2dce8e30c6efc2c32f5d8e3122dd",
+        "context": "3a45a24f1ce79edec4d13b2c0f11272c3dd3974812f05d8009f04ab787da8e63"
+      },
+      "status": "passed",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.code_review": {
+      "namespace": "ui.code_review",
+      "source_path": "src/i18n/catalogues/en/ui.code_review.json",
+      "target_path": "src/i18n/catalogues/vi/ui.code_review.json",
+      "context_path": "src/i18n/catalogues/en/ui.code_review.context.json",
+      "keys_audited": 1,
+      "file_keys": {
+        "en": 76,
+        "vi": 76
+      },
+      "sha256": {
+        "en": "52c1c5147bded8beb2e223c43e7cdb44d236a9ab4c2722627868a5a0fca1a312",
+        "target": "f094c2cc035c35f73ed540157fa4dd1a40674c8558d4c3d847e895189310cc1d",
+        "context": "4d60ce00b0a08f78c30aab5e1b40ddba4e086f61e828e3cf23116866b5daebb2"
+      },
+      "status": "passed",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.common.account": {
+      "namespace": "ui.common.account",
+      "source_path": "src/i18n/catalogues/en/ui.common.account.json",
+      "target_path": "src/i18n/catalogues/vi/ui.common.account.json",
+      "context_path": "src/i18n/catalogues/en/ui.common.account.context.json",
+      "keys_audited": 20,
+      "file_keys": {
+        "en": 38,
+        "vi": 38
+      },
+      "sha256": {
+        "en": "0e39546d4357107a461f4eb3774c3a17d48a29af902825e86e450809dcf51a48",
+        "target": "f31d6745518a5270ab7eb1cc5daba3b897e6c3ff92ecd0993f5c205c403693db",
+        "context": "148dcc3c9c40ad03373b54c1394f210386290b9e9395134d12532617d0d33f1a"
+      },
+      "status": "clean-with-findings",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 1
+      },
+      "findings": [
+        {
+          "severity": "nit",
+          "category": "accuracy",
+          "key": "ui.common.account.first_top_up_bonus",
+          "current": "Nhận thêm {bonus} miễn phí cho lần nạp đầu tiên từ {minimum}.",
+          "proposed": "Nhận thêm {bonus} miễn phí cho lần nạp đầu tiên từ {minimum} trở lên.",
+          "reason": "English says “of {minimum} or more”; add “trở lên” so the threshold is explicit."
+        }
+      ],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": [
+        {
+          "key": "ui.common.account.top_up",
+          "en_len": 25,
+          "vi_len": 34,
+          "action": "rendered check: card link/button"
+        }
+      ]
+    },
+    "ui.common.actions": {
+      "namespace": "ui.common.actions",
+      "source_path": "src/i18n/catalogues/en/ui.common.actions.json",
+      "target_path": "src/i18n/catalogues/vi/ui.common.actions.json",
+      "context_path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+      "keys_audited": 14,
+      "file_keys": {
+        "en": 20,
+        "vi": 20
+      },
+      "sha256": {
+        "en": "e1d2fa68aededcc4aa67bd9527a80072859f35b8a358cadba2007696414e8235",
+        "target": "0be5f71f9825dc9ac4e54d6d476d22a49f0d459c077591d2629ab807db80f3aa",
+        "context": "160a775122143fdf72ed91a052d112f568a41105412e69f8adfdcfcc1b3b7256"
+      },
+      "status": "passed",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.common.connection": {
+      "namespace": "ui.common.connection",
+      "source_path": "src/i18n/catalogues/en/ui.common.connection.json",
+      "target_path": "src/i18n/catalogues/vi/ui.common.connection.json",
+      "context_path": "src/i18n/catalogues/en/ui.common.connection.context.json",
+      "keys_audited": 27,
+      "file_keys": {
+        "en": 37,
+        "vi": 37
+      },
+      "sha256": {
+        "en": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
+        "target": "a7e425416d31ba6dfc598eb47436b2fe49ca67e3792655ca5c02823da5a9bb1d",
+        "context": "9d39efa215fb38d30e7b70d0df1ed293e32e33a0b72ffc838d7385fb17e7dbb2"
+      },
+      "status": "passed",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.common.errors": {
+      "namespace": "ui.common.errors",
+      "source_path": "src/i18n/catalogues/en/ui.common.errors.json",
+      "target_path": "src/i18n/catalogues/vi/ui.common.errors.json",
+      "context_path": "src/i18n/catalogues/en/ui.common.errors.context.json",
+      "keys_audited": 131,
+      "file_keys": {
+        "en": 135,
+        "vi": 135
+      },
+      "sha256": {
+        "en": "59dc7dfdbc3db2070238d457e7700d57941830a223181ea1eb4fabe9d5d7eae4",
+        "target": "2160d62e4c79f193a6ff3c309dee327c51403c47d50a1ed6ef5abd9d1cf879bb",
+        "context": "714850a99bf61133a2fb7548504dc0030a20a516bd1ca3b1dfbe70b2de5f7fb1"
+      },
+      "status": "passed",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.common.speech": {
+      "namespace": "ui.common.speech",
+      "source_path": "src/i18n/catalogues/en/ui.common.speech.json",
+      "target_path": "src/i18n/catalogues/vi/ui.common.speech.json",
+      "context_path": "src/i18n/catalogues/en/ui.common.speech.context.json",
+      "keys_audited": 11,
+      "file_keys": {
+        "en": 11,
+        "vi": 11
+      },
+      "sha256": {
+        "en": "75e394ea07a049d8a58a2cc12fedec1042e30b61e572f53740f0fac35a825eb0",
+        "target": "5829eb308bd30ed3f412a84afd73b6b45d1e80fbd9a22144a27f7c56f5ddfb3b",
+        "context": "284ead771845e6a6b4ef5c45ddc450e44f0df76873e63b4cc794fba84475522b"
+      },
+      "status": "passed",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.common.time": {
+      "namespace": "ui.common.time",
+      "source_path": "src/i18n/catalogues/en/ui.common.time.json",
+      "target_path": "src/i18n/catalogues/vi/ui.common.time.json",
+      "context_path": "src/i18n/catalogues/en/ui.common.time.context.json",
+      "keys_audited": 1,
+      "file_keys": {
+        "en": 1,
+        "vi": 1
+      },
+      "sha256": {
+        "en": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
+        "target": "c0bed5df041a72992031e574f0f3a59cd29608a4c6dd13cb1d41186e05d1b60a",
+        "context": "9d666403cd1c661075607faa0a7db78b43bdd570f3d2ce1c7f5968e26f28a6a1"
+      },
+      "status": "passed",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.common.updates": {
+      "namespace": "ui.common.updates",
+      "source_path": "src/i18n/catalogues/en/ui.common.updates.json",
+      "target_path": "src/i18n/catalogues/vi/ui.common.updates.json",
+      "context_path": "src/i18n/catalogues/en/ui.common.updates.context.json",
+      "keys_audited": 11,
+      "file_keys": {
+        "en": 138,
+        "vi": 138
+      },
+      "sha256": {
+        "en": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
+        "target": "38860c7449bbd690395e5829ed88709d8633cd52cb7571374fc295dcd6261e0f",
+        "context": "5188c08320cea150fd71c3a26666ca6b0b637a94659bc6087155681b59d9614f"
+      },
+      "status": "passed",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.common.viewer": {
+      "namespace": "ui.common.viewer",
+      "source_path": "src/i18n/catalogues/en/ui.common.viewer.json",
+      "target_path": "src/i18n/catalogues/vi/ui.common.viewer.json",
+      "context_path": "src/i18n/catalogues/en/ui.common.viewer.context.json",
+      "keys_audited": 1,
+      "file_keys": {
+        "en": 5,
+        "vi": 5
+      },
+      "sha256": {
+        "en": "9db8efc731cb81ac781c732a3021587434acd26bd03d41ec41156c5672edabfe",
+        "target": "637a114e5e108b1e2e5e1d85d6ccd232a4d7d51bd9eab3cd3217e2489de2bc89",
+        "context": "77232304d3ddc3dbe20151daddc2ee1a3c28271cdcfd7ebc54a302fe6f68f40e"
+      },
+      "status": "passed",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.console.errors": {
+      "namespace": "ui.console.errors",
+      "source_path": "src/i18n/catalogues/en/ui.console.errors.json",
+      "target_path": "src/i18n/catalogues/vi/ui.console.errors.json",
+      "context_path": "src/i18n/catalogues/en/ui.console.errors.context.json",
+      "keys_audited": 1,
+      "file_keys": {
+        "en": 1,
+        "vi": 1
+      },
+      "sha256": {
+        "en": "ef6827986b0cd0d75cb4e2aea62aa0b017b58191b5736f7a721c6afa938f344b",
+        "target": "ee0161868220653324581ffcea093b9615965ab0460eb1b64fdf31e76c57888b",
+        "context": "7a4e2ef6e8a081c78dab8ac422a3c82fbe268d8f1f68ca885e5f4eb9f7bed0d3"
+      },
+      "status": "clean-with-findings",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "findings": [
+        {
+          "severity": "minor",
+          "category": "glossary-consistency",
+          "key": "ui.console.errors.console_unavailable",
+          "current": "Cửa sổ này không thể kết nối với console.",
+          "proposed": "Cửa sổ này không thể kết nối với bảng lệnh.",
+          "reason": "Same Console surface; the established vi label is “Bảng lệnh”, not the English “console”."
+        }
+      ],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.hub.updates": {
+      "namespace": "ui.hub.updates",
+      "source_path": "src/i18n/catalogues/en/ui.hub.updates.json",
+      "target_path": "src/i18n/catalogues/vi/ui.hub.updates.json",
+      "context_path": "src/i18n/catalogues/en/ui.hub.updates.context.json",
+      "keys_audited": 56,
+      "file_keys": {
+        "en": 56,
+        "vi": 56
+      },
+      "sha256": {
+        "en": "9fa15153d1a036a7f98b1d50da90d736c7f423c2981087ae1436469d23afcfdd",
+        "target": "c7a862c10c35ed422daf28c587b1820fbf59e6d0cfd731e4a0be6600b3ca7c29",
+        "context": "d30a14eb3c3bad0bd2bde7eb1a26fd5fff5aa16ff38dfdd623ed05db4db76390"
+      },
+      "status": "passed",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.installer": {
+      "namespace": "ui.installer",
+      "source_path": "src/i18n/catalogues/en/ui.installer.json",
+      "target_path": "src/i18n/catalogues/vi/ui.installer.json",
+      "context_path": "src/i18n/catalogues/en/ui.installer.context.json",
+      "keys_audited": 4,
+      "file_keys": {
+        "en": 22,
+        "vi": 22
+      },
+      "sha256": {
+        "en": "89b4c22ea75c9c7fb1db96e226c1eed958643d3e08eb4a0317b2e4369fd4e8e9",
+        "target": "675758ce2f514ed7a460aa46b2209e0d15fae24891f2dfce4e9ac100a5546662",
+        "context": "6969a13f454799d950a961da740d6585545525f0a148dade5c85e1ae81232705"
+      },
+      "status": "passed",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.library.errors": {
+      "namespace": "ui.library.errors",
+      "source_path": "src/i18n/catalogues/en/ui.library.errors.json",
+      "target_path": "src/i18n/catalogues/vi/ui.library.errors.json",
+      "context_path": "src/i18n/catalogues/en/ui.library.errors.context.json",
+      "keys_audited": 3,
+      "file_keys": {
+        "en": 3,
+        "vi": 3
+      },
+      "sha256": {
+        "en": "162f2d82448d8a77cd96d4b142018cf233dd1ebfabe37ba7ce47d4fc52195bc4",
+        "target": "aeef352d2af540954d3067843341ec97faf4c0c7126a205cb9263860db5c4cce",
+        "context": "cc8e737dc8b52dbe3cc5193a9fc33f5acdb6332420c95e3fad5e1567946b247a"
+      },
+      "status": "passed",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.mesh.errors": {
+      "namespace": "ui.mesh.errors",
+      "source_path": "src/i18n/catalogues/en/ui.mesh.errors.json",
+      "target_path": "src/i18n/catalogues/vi/ui.mesh.errors.json",
+      "context_path": "src/i18n/catalogues/en/ui.mesh.errors.context.json",
+      "keys_audited": 1,
+      "file_keys": {
+        "en": 1,
+        "vi": 1
+      },
+      "sha256": {
+        "en": "285997c116c83dd475ace036931ca2a49108dba4237300be3389bcc513ff2a40",
+        "target": "ed61904fa5cc5817f3a1500844e8e3270061d011ee823c514f46dcd20571fd17",
+        "context": "d33ebdde6b2958258ed1e52f9aa44070c9987fe8e40287e6966ff4cfa9021299"
+      },
+      "status": "passed",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.miniView": {
+      "namespace": "ui.miniView",
+      "source_path": "src/i18n/catalogues/en/ui.miniView.json",
+      "target_path": "src/i18n/catalogues/vi/ui.miniView.json",
+      "context_path": "src/i18n/catalogues/en/ui.miniView.context.json",
+      "keys_audited": 34,
+      "file_keys": {
+        "en": 34,
+        "vi": 34
+      },
+      "sha256": {
+        "en": "50202e2b2c757708215867b51811ca4c72dd1814c747960a98a4f1929925119e",
+        "target": "24d5d5411a578c37d1d42cc09eabfafb4249b0606a09b9497fe11aa364475182",
+        "context": "22c12b345086a5ae0f1efacf3e9256f2890d8621912f8b0c642554a50f838f07"
+      },
+      "status": "clean-with-findings",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "findings": [
+        {
+          "severity": "minor",
+          "category": "glossary-consistency",
+          "key": "ui.miniView.sheet_effort",
+          "current": "Mức độ suy luận",
+          "proposed": "Mức suy luận",
+          "reason": "The same “Reasoning effort” control is “Mức suy luận” in every ui.chat.pickers effort string; one term should be used."
+        }
+      ],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.projects": {
+      "namespace": "ui.projects",
+      "source_path": "src/i18n/catalogues/en/ui.projects.json",
+      "target_path": "src/i18n/catalogues/vi/ui.projects.json",
+      "context_path": "src/i18n/catalogues/en/ui.projects.context.json",
+      "keys_audited": 3,
+      "file_keys": {
+        "en": 427,
+        "vi": 427
+      },
+      "sha256": {
+        "en": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
+        "target": "9d4bcad72b9074fe399e541119fda6c1b8b9ef16ede9c10e3f5860be93de5712",
+        "context": "7eaaba481914ce8fc0692c6eaee39ad04e80d9cddc82f0c83a00bebc96af28d4"
+      },
+      "status": "passed",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.schedules.errors": {
+      "namespace": "ui.schedules.errors",
+      "source_path": "src/i18n/catalogues/en/ui.schedules.errors.json",
+      "target_path": "src/i18n/catalogues/vi/ui.schedules.errors.json",
+      "context_path": "src/i18n/catalogues/en/ui.schedules.errors.context.json",
+      "keys_audited": 3,
+      "file_keys": {
+        "en": 3,
+        "vi": 3
+      },
+      "sha256": {
+        "en": "05e2bc81700cb5ef326144dcf2ded7fee9b351b02e56226cfc800a9bdcf07961",
+        "target": "f6e714541ea1241c0c792808332033cb436d12ef48e8f058f531998d8be1ac6e",
+        "context": "e622fe4a49850f864e15cda2fe0d6d724f8ec8e0769f1efb07adf243a51db69b"
+      },
+      "status": "passed",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.settings.appearance": {
+      "namespace": "ui.settings.appearance",
+      "source_path": "src/i18n/catalogues/en/ui.settings.appearance.json",
+      "target_path": "src/i18n/catalogues/vi/ui.settings.appearance.json",
+      "context_path": "src/i18n/catalogues/en/ui.settings.appearance.context.json",
+      "keys_audited": 59,
+      "file_keys": {
+        "en": 69,
+        "vi": 69
+      },
+      "sha256": {
+        "en": "be349b938ef72437bfb68cdcbd6c168247edff20f5efe6b50abe981183769729",
+        "target": "952319ac16b1f715cc9dcffaf8fc26b526b3e3f75efef3bc60e9aa4f74534a07",
+        "context": "c18933608a9e715e4d7ea6fafd6096c154991e8829f79a2653a3726802cc7f3f"
+      },
+      "status": "clean-with-findings",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      },
+      "findings": [
+        {
+          "severity": "minor",
+          "category": "idiom",
+          "key": "ui.settings.appearance.theme.vaporwave",
+          "current": "Pastel hồng phai và xanh mòng két nhạt trên nền tím trung tâm thương mại đậm.",
+          "proposed": "Pastel hồng phai và xanh mòng két nhạt trên nền tím mall đậm.",
+          "reason": "“mall-purple” is an aesthetic descriptor; “tím trung tâm thương mại” is a literal calque, and the translator's own terminology list records “tím mall”."
+        }
+      ],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.settings": {
+      "namespace": "ui.settings",
+      "source_path": "src/i18n/catalogues/en/ui.settings.json",
+      "target_path": "src/i18n/catalogues/vi/ui.settings.json",
+      "context_path": "src/i18n/catalogues/en/ui.settings.context.json",
+      "keys_audited": 6,
+      "file_keys": {
+        "en": 45,
+        "vi": 45
+      },
+      "sha256": {
+        "en": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
+        "target": "eeeb5f42b1cd22b3306e51fd62b324c7da8fb09a5cd65c7544660fbee47e7fd5",
+        "context": "bc524adfbef11d7aa28b074b5884076ab388526f44a344feaf53cabb51bb9692"
+      },
+      "status": "passed",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "findings": [],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": []
+    },
+    "ui.settings.shortcuts": {
+      "namespace": "ui.settings.shortcuts",
+      "source_path": "src/i18n/catalogues/en/ui.settings.shortcuts.json",
+      "target_path": "src/i18n/catalogues/vi/ui.settings.shortcuts.json",
+      "context_path": "src/i18n/catalogues/en/ui.settings.shortcuts.context.json",
+      "keys_audited": 54,
+      "file_keys": {
+        "en": 63,
+        "vi": 63
+      },
+      "sha256": {
+        "en": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
+        "target": "b193310681a609816ecf7809005dc7d19d64d5bf8fb39d92d693bbf496d79ed8",
+        "context": "9c74fb267e6504114980b62f75efa1b02c79d76dbe1a20f1e476b56d9865c215"
+      },
+      "status": "clean-with-findings",
+      "severity_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 2,
+        "nit": 0
+      },
+      "findings": [
+        {
+          "severity": "minor",
+          "category": "glossary-consistency/product-name",
+          "key": "ui.settings.shortcuts.row.canvas",
+          "current": "Bảng Canvas",
+          "proposed": "Canvas",
+          "reason": "The batch's own IDENTICAL_OK entry says Canvas is a product surface name preserved verbatim; ui.canvas.shell.canvas keeps “Canvas”, so “Bảng Canvas” is a second rendering."
+        },
+        {
+          "severity": "minor",
+          "category": "glossary-consistency",
+          "key": "ui.settings.shortcuts.row.console",
+          "current": "Bảng Console",
+          "proposed": "Bảng lệnh",
+          "reason": "The existing Console surface label is “Bảng lệnh” (ui.console.pane.label); “Bảng Console” is a third rendering of the same surface."
+        }
+      ],
+      "identical_ok": [],
+      "stubs": [],
+      "overflow": [
+        {
+          "key": "ui.settings.shortcuts.row.canvas",
+          "en_len": 6,
+          "vi_len": 11,
+          "action": "proposed “Canvas” (6) removes the risk"
+        },
+        {
+          "key": "ui.settings.shortcuts.row.console",
+          "en_len": 7,
+          "vi_len": 12,
+          "action": "proposed “Bảng lệnh” (10) keeps the established label"
+        }
+      ]
+    }
+  }
+}
