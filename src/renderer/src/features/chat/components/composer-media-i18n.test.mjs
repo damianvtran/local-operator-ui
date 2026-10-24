@@ -19,7 +19,7 @@ const bundle = await build({
 			import { AttachmentsPreview } from "./src/renderer/src/features/chat/components/attachments-preview";
 			export * from "./src/i18n";
 			export const recording = (isRecording) => renderToStaticMarkup(React.createElement(AudioRecordingIndicator, { isRecording }));
-			export const attachments = (paths) => renderToStaticMarkup(React.createElement(AttachmentsPreview, { attachments: paths, onRemoveAttachment() {} }));
+			export const attachments = (paths) => renderToStaticMarkup(React.createElement(AttachmentsPreview, { attachments: paths.map((path, index) => ({ id: "a" + index, path })), onRemoveAttachment() {} }));
 		`,
 		resolveDir: process.cwd(),
 	},

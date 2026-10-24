@@ -89,8 +89,17 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|sidebar-docking|mini-view|drafts|stale-team-draft|team-newchat|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|sidebar-docking|mini-view|drafts|stale-team-draft|team-newchat|scrollbar-fade|composer-drop|attach|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
  *                          which built-in scene to run (default: states)
+ *   --attach <absolute-path> (with --scene attach, repeatable) one file the
+ *                          paperclip press stages; ONLY the native picker is
+ *                          replaced, by the queue in src/main/dev-driver-attach.ts
+ *   --attach-prompt <text> (with --scene attach) the prompt typed and SENT after
+ *                          the files are staged; the run then waits for the
+ *                          daemon's assistant turn and reports the session id,
+ *                          the user row's document blocks and the final text
+ *   --attach-expect-answer <substring>  (with --attach-prompt) a substring the
+ *                          assistant's final text must contain
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
  *                          where a dropped file attaches, or the base tree, where
@@ -239,7 +248,7 @@ import { get as httpGet } from "node:http";
 import { createRequire } from "node:module";
 import { connect, createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { basename, join, resolve, sep } from "node:path";
+import { basename, isAbsolute, join, resolve, sep } from "node:path";
 /*
  * A NATIVE dependency, and its ONE import-time side effect is recorded here
  * rather than hidden: loading sharp's vendored libvips sets `VIPSHOME` to the
@@ -361,6 +370,53 @@ function argValue(name, fallback = null) {
 	const at = process.argv.indexOf(name);
 	return at === -1 ? fallback : (process.argv[at + 1] ?? fallback);
 }
+
+/**
+ * Every value of a REPEATABLE flag, in argv order.
+ *
+ * `argValue` answers the first, which is right for a flag that names one thing;
+ * `--attach` names a LIST (the paperclip can stage several files), so reading it
+ * through `argValue` would silently drop every file after the first.
+ */
+function argValues(name) {
+	const values = [];
+	for (let index = 0; index < process.argv.length; index += 1) {
+		const argument = process.argv[index];
+		if (argument === name) {
+			const value = process.argv[index + 1];
+			if (value !== undefined && !value.startsWith("--")) {
+				values.push(value);
+				index += 1;
+			}
+			continue;
+		}
+		if (argument.startsWith(`${name}=`))
+			values.push(argument.slice(name.length + 1));
+	}
+	return values;
+}
+
+/**
+ * The files this run's paperclip presses stage (see `--attach` in the header).
+ *
+ * A separate list from every other flag because it is passed to the APP, not
+ * read by a scene: main answers the next `show-open-dialog` with these paths
+ * (`src/main/dev-driver-attach.ts`), so the press, the IPC and `addAttachment`
+ * are the real ones and only the native picker is replaced.
+ */
+const ATTACH_PATHS = argValues("--attach");
+/**
+ * A prompt to send AFTER the paperclip stages its files (`--attach-prompt`).
+ *
+ * The staged-chip claim is the picker half; this is the half QA needs to prove
+ * the paperclip reaches an ANSWER: the prompt is typed into the composer's real
+ * field, the real Send control is pressed, and the run waits for the daemon's
+ * own assistant turn. Absent, the scene stops at the staged frame exactly as it
+ * did before.
+ */
+const ATTACH_PROMPT = argValue("--attach-prompt", null);
+/** The substring the assistant's final text must contain (`--attach-expect-answer`). */
+const ATTACH_EXPECT_ANSWER = argValue("--attach-expect-answer", null);
 
 const SCENE = argValue("--scene", "states");
 const OUT_ARG = argValue("--out", null);
@@ -1277,6 +1333,12 @@ async function launchApp({
 	 */
 	dotenvLines = [],
 	envExtra = {},
+	/*
+	 * Absolute paths the app's next file dialog answers with. Only an `attach`
+	 * scene passes any; every other boot (and every gate-check boot) gets none,
+	 * so a flag on the command line cannot leak into a scene that did not ask.
+	 */
+	attachPaths = [],
 }) {
 	/*
 	 * THE BACKEND BINDING IS REQUIRED, AND ITS ABSENCE IS A REFUSAL RATHER
@@ -1416,6 +1478,7 @@ async function launchApp({
 			`--inspect=${inspectPort}`,
 			"--window-mode=headless",
 			`--window-size=${WINDOW_SIZE}`,
+			...attachPaths.map((path) => `--attach=${path}`),
 			/*
 			 * The app is CHROMIUM, and this run redirects `HOME`: without this switch
 			 * OSCrypt finds no login keychain under the scratch home and asks macOS to
@@ -39862,7 +39925,7 @@ function translateYOf(transform) {
  * 2. two files - `dataTransfer.files` is a list, and the defect's shape
  *    (the OS promises a copy) is about a real drag, which can carry several;
  * 3. a non-image file - it must attach exactly as any other path does. What
- *    reaches the MODEL is a different question: `encodeImageAttachments` admits
+ *    reaches the MODEL is a different question: `encodeAttachments` admits
  *    only the four image mimes by extension, for every route, so a `.txt` chip
  *    is carried by the composer and skipped by the encoder on the attach
  *    button's route too. That is pre-existing behaviour of the send, not of the
@@ -39904,6 +39967,317 @@ function translateYOf(transform) {
  * the issue reports); and the drag interception flag is a rig device whose
  * refusal the run reports rather than assumes.
  */
+
+/**
+ * THE PAPERCLIP, PRESSED FOR REAL (`--scene attach`, `--attach <absolute-path>`).
+ *
+ * The claim this scene exists for is narrow and honest: pressing the composer's
+ * attach button runs `handleAttachFile` -> `show-open-dialog` -> `addAttachment`,
+ * and the file it stages is the file the run named on its command line. ONLY the
+ * native picker is replaced - main answers the dialog from the `--attach` queue
+ * (`src/main/dev-driver-attach.ts`) - so the press, the IPC round trip and the
+ * store write are the app's own code paths. Nothing here fabricates a chip.
+ *
+ * What it therefore does NOT prove: that the OS dialog opens, and that a person
+ * can reach a file through it. Those are the picker's own behaviour, and a
+ * headless run must not show a picker at all.
+ *
+ * Needs `--backend`: a composer mounts only for a conversation, and the staged
+ * list is read back from the store the app persists.
+ */
+async function sceneAttach(cdp) {
+	if (ATTACH_EXPECT_ANSWER !== null && ATTACH_PROMPT === null) {
+		throw new Error(
+			"--attach-expect-answer needs --attach-prompt: the substring is checked against the assistant's answer to a prompt, and no prompt means no answer to check",
+		);
+	}
+	if (ATTACH_PROMPT !== null && !ATTACH_PROMPT.trim()) {
+		throw new Error(
+			"--attach-prompt must not be empty: an empty send would stage the files and never admit them, so the run would claim a send it did not make",
+		);
+	}
+	if (ATTACH_PATHS.length === 0) {
+		throw new Error(
+			"--scene attach needs at least one --attach <absolute-path>: the subject IS the file the paperclip stages, and a run with no queue would photograph an empty composer as a success",
+		);
+	}
+	for (const path of ATTACH_PATHS) {
+		if (!isAbsolute(path)) {
+			throw new Error(
+				`--attach takes an absolute path (got ${JSON.stringify(path)}): a relative one would resolve against whatever cwd the app holds`,
+			);
+		}
+	}
+	if (BACKEND === null) {
+		throw new Error(
+			"--scene attach needs --backend: the chat pane mounts no composer until a conversation is open, and the staged list is read back from the store and the app log",
+		);
+	}
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+
+	const created = await createBackendSession();
+	check(
+		"a conversation exists on this run's own backend",
+		Boolean(created.id),
+		JSON.stringify(created).slice(0, 400),
+	);
+	await verb(cdp, "navigate", "/chat");
+	const row = '[data-tour-tag="chat-session-row"]';
+	const composerField = 'textarea[aria-label="Message"]';
+	await verb(cdp, "press", {
+		selector: '[data-tour-tag="chat-all-chats"]',
+	}).catch(() => null);
+	const rowShown = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector(${JSON.stringify(row)}))`,
+		10_000,
+	);
+	if (rowShown.ok) await verb(cdp, "press", { selector: row });
+	const mounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector(${JSON.stringify(composerField)}))`,
+		20_000,
+	);
+	check(
+		"the composer is on screen for the conversation this scene created",
+		mounted.ok,
+		`textarea[aria-label="Message"] present=${mounted.ok} after ${mounted.waitedMs}ms`,
+	);
+	if (!mounted.ok) return;
+
+	/*
+	 * THE PRESS. The selector is the button's own `data-tour-tag`, not an
+	 * `aria-label`: the label is localized copy, and a rig that changes with the
+	 * locale is a rig that fails for the wrong reason.
+	 */
+	const pressed = await verb(cdp, "press", {
+		selector: '[data-tour-tag="chat-input-attach-file-button"]',
+	});
+	check(
+		"the paperclip was pressed",
+		pressed !== null && pressed !== undefined,
+		JSON.stringify(pressed ?? null).slice(0, 400),
+	);
+
+	const stagedCount = await waitForCondition(
+		cdp,
+		`document.querySelectorAll("[data-attachment-id]").length === ${ATTACH_PATHS.length}`,
+		10_000,
+	);
+	check(
+		"one chip is staged per queued path",
+		stagedCount.ok,
+		`expected=${ATTACH_PATHS.length} after ${stagedCount.waitedMs}ms`,
+	);
+	const read = await cdp.evaluate(`(() => {
+		const chips = Array.from(document.querySelectorAll("[data-attachment-id]"));
+		let stored = null;
+		try {
+			const raw = window.localStorage.getItem("conversation-input-store");
+			const parsed = raw === null ? null : JSON.parse(raw);
+			stored = Object.values(parsed?.state?.inputByConversation ?? {}).flatMap((entry) =>
+				(entry?.attachments ?? []).map((attachment) => attachment.path),
+			);
+		} catch (error) {
+			stored = ["<store unreadable: " + String(error) + ">"];
+		}
+		return {
+			chips: chips.map((chip) => ({
+				id: chip.getAttribute("data-attachment-id"),
+				text: (chip.textContent || "").trim(),
+			})),
+			pending: Boolean(document.querySelector("[data-attachment-pending]")),
+			stored,
+		};
+	})()`);
+	note("staged chips", JSON.stringify(read.chips));
+	note("staged attachments (store)", JSON.stringify(read.stored));
+	check(
+		"the store holds exactly the paths this run was given, in order",
+		JSON.stringify(read.stored) === JSON.stringify(ATTACH_PATHS),
+		`expected=${JSON.stringify(ATTACH_PATHS)} actual=${JSON.stringify(read.stored)}`,
+	);
+	check(
+		"the chips carry the same ids the store does",
+		read.chips.length === ATTACH_PATHS.length,
+		`chips=${read.chips.length}`,
+	);
+	check(
+		"the row reads as pending, not sent",
+		read.pending === true,
+		`pending caption present=${read.pending}`,
+	);
+	const answerLine = (await readAppLog(app))
+		.split("\n")
+		.filter((line) => line.includes("[dev-driver] answered the file dialog"));
+	check(
+		"main answered the picker from the queue rather than opening it",
+		answerLine.some((line) =>
+			line.includes(`with ${ATTACH_PATHS.length} queued path(s)`),
+		),
+		answerLine.join(" / ") || "no queue-answered line in the app log",
+	);
+	const frame = await captureSettled(cdp, "attach-staged");
+	note("frame", frame.path);
+	if (ATTACH_PROMPT === null) return;
+
+	/*
+	 * THE SEND. The prompt goes in through the composer's own field, then the
+	 * REAL Send control is pressed - not Enter, because the button is the
+	 * gesture a person uses and the one the send-refusal path is wired to.
+	 */
+	await clickAt(cdp, composerField);
+	await cdp.send("Input.insertText", { text: ATTACH_PROMPT });
+	const sent = await verb(cdp, "press", {
+		selector: 'button[aria-label="Send message"]',
+	});
+	check(
+		"the send control was pressed with the prompt in the composer",
+		sent !== null && sent !== undefined,
+		JSON.stringify(sent ?? null).slice(0, 400),
+	);
+	const admitted = await waitForCondition(
+		cdp,
+		`(() => {
+			const log = document.querySelector('[role="log"]');
+			return Boolean(log && log.textContent.includes(${JSON.stringify(ATTACH_PROMPT)}));
+		})()`,
+		60_000,
+	);
+	check(
+		"the prompt reached the transcript",
+		admitted.ok,
+		`after ${admitted.waitedMs ?? "?"}ms`,
+	);
+
+	/*
+	 * THE DAEMON'S OWN RECORD, not the painted echo: a send the plane refused
+	 * still puts text on screen, and the file block only proves the paperclip
+	 * reached the model if the admitted row carries it. Polled because the turn
+	 * is asynchronous.
+	 *
+	 * THE END OF THE TURN IS THE COMPLETION SIGNAL, not the first assistant row
+	 * with text. A tool-using turn can emit an interim assistant message, and
+	 * checking the expected answer against that message would judge the wrong
+	 * text (agent review round 2, m5). The snapshot's `streaming` plus
+	 * `last_turn_outcome` is the daemon's own statement that the turn settled;
+	 * `last_turn_outcome` is set once per prompt, so a non-empty value cannot be
+	 * an interim message. An OLD runtime that omits the field is handled by
+	 * requiring the assistant text to be unchanged across three polls.
+	 */
+	const deadline = Date.now() + 180_000;
+	let history = null;
+	let userEntry = null;
+	let documents = [];
+	let assistantText = "";
+	let turnOutcome = null;
+	let streaming = null;
+	let previousText = "";
+	let stablePolls = 0;
+	while (Date.now() < deadline) {
+		history = await fetchSessionHistory(created.id);
+		const snapshot = await fetchSessionSnapshot(created.id);
+		streaming = snapshot.state?.streaming ?? null;
+		turnOutcome = snapshot.state?.last_turn_outcome ?? null;
+		const entries = history.body?.result?.entries ?? [];
+		const user = entries.find((entry) => {
+			if (entry?.payload?.role !== "user") return false;
+			const content = Array.isArray(entry.payload.content)
+				? entry.payload.content
+				: [];
+			return content.some(
+				(block) =>
+					typeof block?.text === "string" && block.text.includes(ATTACH_PROMPT),
+			);
+		});
+		if (user) {
+			userEntry = user;
+			documents = (user.payload.content ?? []).filter(
+				(block) =>
+					block &&
+					(block.type === "document" ||
+						(typeof block.filename === "string" &&
+							typeof block.attachment === "string")),
+			);
+		}
+		const answers = entries
+			.filter((entry) => entry?.payload?.role === "assistant")
+			.map((entry) =>
+				(entry.payload.content ?? [])
+					.filter((block) => typeof block?.text === "string")
+					.map((block) => block.text)
+					.join(" "),
+			)
+			.filter((text) => text.trim().length > 0);
+		const current = answers.at(-1) ?? "";
+		stablePolls = current && current === previousText ? stablePolls + 1 : 0;
+		previousText = current;
+		const settledOutcome =
+			typeof turnOutcome === "string" && turnOutcome !== "";
+		const settled =
+			current.length > 0 &&
+			streaming === false &&
+			(settledOutcome ||
+				// An older daemon publishes no outcome: three unchanged polls with
+				// the stream stopped are the strongest signal it can give.
+				(turnOutcome === null && stablePolls >= 2));
+		if (settled) {
+			assistantText = current;
+			break;
+		}
+		await wait(1000);
+	}
+	note("session id", created.id);
+	note(
+		"user row",
+		JSON.stringify(userEntry ? userEntry.payload.content : null).slice(0, 2000),
+	);
+	note("document blocks", JSON.stringify(documents));
+	note(
+		"turn state",
+		JSON.stringify({ streaming, outcome: turnOutcome, stablePolls }),
+	);
+	note("assistant final text", assistantText);
+	check(
+		"the daemon admitted the prompt as a user row",
+		userEntry !== null,
+		`history status=${history?.status} entries=${JSON.stringify(history?.body?.result?.entries ?? []).slice(0, 600)}`,
+	);
+	check(
+		"the admitted user row carries the staged file as a document block",
+		documents.length === ATTACH_PATHS.length &&
+			documents.every(
+				(block) =>
+					typeof block.attachment === "string" && block.attachment.length > 0,
+			),
+		`documents=${JSON.stringify(documents)}`,
+	);
+	check(
+		"the assistant turn completed with a final answer",
+		assistantText.trim().length > 0 &&
+			(turnOutcome === null || turnOutcome === "completed"),
+		`assistant text=${JSON.stringify(assistantText).slice(0, 400)} outcome=${JSON.stringify(turnOutcome)}`,
+	);
+	if (ATTACH_EXPECT_ANSWER !== null) {
+		check(
+			"the assistant's final text contains the expected answer",
+			assistantText.includes(ATTACH_EXPECT_ANSWER),
+			`expected substring=${JSON.stringify(ATTACH_EXPECT_ANSWER)} got=${JSON.stringify(assistantText).slice(0, 600)}`,
+		);
+	}
+	const sentFrame = await captureSettled(cdp, "attach-sent");
+	note("frame", sentFrame.path);
+}
+
 async function sceneComposerDrop(cdp) {
 	if (DROP_EXPECT !== "accepted" && DROP_EXPECT !== "discarded") {
 		throw new Error(
@@ -42511,6 +42885,33 @@ async function fetchSessionHistory(sessionId) {
 	);
 	const body = await response.json().catch(() => null);
 	return { status: response.status, body };
+}
+
+/**
+ * One session's canonical snapshot, which is where the TURN state lives.
+ *
+ * The history page has the messages but not whether the turn behind them has
+ * ENDED; the snapshot's `frontend.snapshot` publishes `streaming` and
+ * `last_turn_outcome`, the two fields a rig needs to tell an interim assistant
+ * message from the answer (agent review round 2, m5). Read tolerantly: an older
+ * daemon may answer the envelope at either depth.
+ */
+async function fetchSessionSnapshot(sessionId) {
+	const response = await fetch(
+		`${BACKEND}/v1/desktop/sessions/${encodeURIComponent(sessionId)}`,
+		{
+			headers: {
+				authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+			},
+		},
+	);
+	const body = await response.json().catch(() => null);
+	const state =
+		body?.result?.payload?.frontend?.snapshot ??
+		body?.result?.frontend?.snapshot ??
+		body?.payload?.frontend?.snapshot ??
+		null;
+	return { status: response.status, body, state };
 }
 
 /**
@@ -49307,6 +49708,7 @@ async function main() {
 			armed: true,
 			logName: "app-scene.log",
 			tag: "scene",
+			attachPaths: ATTACH_PATHS,
 		});
 		app = handle;
 		let cdp = null;
@@ -49568,6 +49970,7 @@ async function main() {
 			else if (SCENE === "project-open") await sceneProjectOpen(cdp);
 			else if (SCENE === "agents-ask") await sceneAgentsAsk(cdp);
 			else if (SCENE === "composer-drop") await sceneComposerDrop(cdp);
+			else if (SCENE === "attach") await sceneAttach(cdp);
 			else if (SCENE === "project-inline-edit")
 				await sceneProjectInlineEdit(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
