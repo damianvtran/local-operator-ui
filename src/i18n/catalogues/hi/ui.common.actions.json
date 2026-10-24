@@ -14,7 +14,7 @@
 	"ui.common.actions.file_actions_menu.file_actions": "फ़ाइल कार्रवाइयाँ",
 	"ui.common.actions.file_actions_menu.file_path_copied_to_clipboard": "फ़ाइल पाथ क्लिपबोर्ड पर कॉपी हुआ",
 	"ui.common.actions.file_actions_menu.failed_to_copy_file_path": "फ़ाइल पाथ कॉपी नहीं हो सका",
-	"ui.common.actions.find_replace_widget.switch_to_replace": "बदलाव पर जाएँ",
+	"ui.common.actions.find_replace_widget.switch_to_replace": "बदलें मोड पर जाएँ",
 	"ui.common.actions.find_replace_widget.switch_to_find": "खोज पर जाएँ",
 	"ui.common.actions.find_replace_widget.find": "खोजें",
 	"ui.common.actions.find_replace_widget.replace": "बदलें",
