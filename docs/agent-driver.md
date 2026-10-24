@@ -110,6 +110,49 @@ process-restart persistence are independent QA's lanes. The scene requires
 `--seed-onboarding-complete`, and the mock transcript marker named in
 `scripts/sidebar-docking-scene.mjs`.
 
+**`--scene attach` presses the composer's paperclip and proves what it stages
+(`--attach <absolute-path>`, repeatable).** The attach path is `handleAttachFile`
+-> `show-open-dialog` -> `addAttachment`; the one step a headless CDP scene cannot
+perform is the native picker's answer, so an armed launch that was given
+`--attach` has main return those queued paths from `show-open-dialog`
+(`src/main/dev-driver-attach.ts`) and **only that answer is replaced** — the
+press, the IPC round trip, the store write and the rendered chips are the app's
+own. The scene opens a conversation on its own daemon, presses
+`[data-tour-tag="chat-input-attach-file-button"]`, and asserts: the persisted
+`conversation-input-store` row holds exactly the paths given, in order; one
+`[data-attachment-id]` chip is on screen per path; the row carries the pending
+caption; and the app log names the queue-answered dialog. It does not prove that
+the OS picker opens or that a person can choose a file through it — say so beside
+the frame rather than implying it. `--attach` is refused for a relative path, and
+the queue is read only when the dev-driver bridge is armed.
+
+**`--attach-prompt "<text>"` sends after staging, so the scene proves the
+paperclip reaches an answer.** The prompt is typed into the composer's real field
+and the real `Send message` control is pressed; the run then waits for the
+daemon's own transcript (not the painted echo) to carry the prompt as a user row.
+It waits for the turn to SETTLE - the snapshot's `streaming` and
+`last_turn_outcome`, not the first assistant row with text, which a tool-using
+turn can emit mid-turn - then reports the session id, the row's `document`
+block(s) and the settled final text, and asserts that each staged file arrived
+as a document block and that the assistant turn completed. `--attach-expect-answer "<substring>"` adds a
+substring check on that final text. This path needs a daemon that serves
+`POST /v1/desktop/attachments` **and** a provider that can answer; a daemon
+without either is refused by the send, and the scene reports that refusal rather
+than a staged-only pass.
+
+```bash
+pnpm build
+node scripts/renderer-driver.mjs --scene attach \
+  --backend http://127.0.0.1:<port> --attach /abs/path/report.pdf \
+  --seed-onboarding-complete --out /tmp/frames
+
+# the answer path QA runs
+node scripts/renderer-driver.mjs --scene attach \
+  --backend http://127.0.0.1:<port> --attach /abs/path/report.pdf \
+  --attach-prompt "Summarise this PDF in one line." \
+  --attach-expect-answer "<expected substring>" \
+  --seed-onboarding-complete --out /tmp/frames
+```
 **`--scene authoring-refresh` is the one scene whose write comes from OUTSIDE the
 app.** Its subject is an agent creating a team or a profile on the backend, so
 the write is an HTTP request from this script's own Node process to the
