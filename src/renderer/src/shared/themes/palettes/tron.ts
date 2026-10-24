@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -63,7 +64,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const tron: ThemeDefinition = {
 	id: "tron",
 	name: "Tron",
-	description: "Electric cyan circuitry on the Grid's blue-black.",
+	get description() {
+		return t("ui.settings.appearance.theme.tron");
+	},
 	palette: {
 		mode: "dark",
 

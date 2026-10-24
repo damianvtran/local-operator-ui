@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 /**
  * Models API Client
  *
@@ -104,7 +105,11 @@ export const listProviders = async (
 	});
 
 	if (!response.ok) {
-		throw new Error(`Failed to list providers: ${response.statusText}`);
+		throw new Error(
+			t("ui.common.errors.providers_list", {
+				statusText: response.statusText,
+			}),
+		);
 	}
 
 	return response.json();
@@ -134,7 +139,11 @@ export const listModels = async (
 	});
 
 	if (!response.ok) {
-		throw new Error(`Failed to list models: ${response.statusText}`);
+		throw new Error(
+			t("ui.common.errors.models_list", {
+				statusText: response.statusText,
+			}),
+		);
 	}
 
 	return response.json();

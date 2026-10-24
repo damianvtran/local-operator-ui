@@ -1,0 +1,3 @@
+{
+	"ui.common.viewer.image_progress": "Ảnh {index, number, ::group-off} / {count, number, ::group-off}"
+}

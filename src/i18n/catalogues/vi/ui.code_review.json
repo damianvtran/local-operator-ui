@@ -73,5 +73,6 @@
 	"ui.code_review.row.opens_browser": "mở trong trình duyệt của bạn",
 	"ui.code_review.row.refresh_error": "Không làm mới được: {error}",
 	"ui.code_review.row.stale_error": "Đã cũ — thông tin ghi nhận gần nhất, không phải hiện tại: {error}",
-	"ui.code_review.tool.more": "{count, plural, other {còn {countText}{capped} yêu cầu khác trong đầu ra công cụ}}"
+	"ui.code_review.tool.more": "{count, plural, other {còn {countText}{capped} yêu cầu khác trong đầu ra công cụ}}",
+	"ui.code_review.refresh.try_again": "thử lại"
 }

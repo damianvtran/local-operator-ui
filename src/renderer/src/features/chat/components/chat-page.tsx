@@ -50,7 +50,6 @@ import {
 	ASIDE_STILL_ANSWERING_CODE,
 	SEND_FAILURE_COPY,
 	SESSION_UNVALIDATED_CODE,
-	SESSION_UNVALIDATED_MESSAGE,
 	UNREADABLE_ATTACHMENT_CODE,
 	admitChatDraft,
 	isSessionUnvalidated,
@@ -62,6 +61,7 @@ import {
 	remoteOwnedId,
 	resynthesisePendingSend,
 	sendFailureCopy,
+	sessionUnvalidatedMessage,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
@@ -2398,7 +2398,7 @@ function SessionPanel({
 					if (outcome === "failed") {
 						setSendError(
 							streamRef.current.failure?.statement ??
-								SESSION_UNVALIDATED_MESSAGE,
+								sessionUnvalidatedMessage(),
 						);
 						setSendErrorCode(SESSION_UNVALIDATED_CODE);
 						/*

@@ -356,12 +356,12 @@ const PhaseRow: React.FC<{
 			</span>
 			<span className="sr-only">
 				{state === "done"
-					? " - finished"
+					? t("ui.installer.phase.state.finished")
 					: state === "active"
-						? " - in progress"
+						? t("ui.installer.phase.state.active")
 						: state === "failed"
-							? " - failed"
-							: " - waiting"}
+							? t("ui.installer.phase.state.failed")
+							: t("ui.installer.phase.state.waiting")}
 			</span>
 		</li>
 	);

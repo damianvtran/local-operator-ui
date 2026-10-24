@@ -125,5 +125,16 @@
 	"ui.common.updates.update_quiet_indicator.server_update": "Cập nhật máy chủ",
 	"ui.common.updates.wait.minutes": "Đã chờ {minutes, plural, other {{minutes, number, ::group-off} phút}}",
 	"ui.common.updates.wait.minutes_seconds": "Đã chờ {minutes, plural, other {{minutes, number, ::group-off} phút}} {seconds, plural, other {{seconds, number, ::group-off} giây}}",
-	"ui.common.updates.wait.seconds": "Đã chờ {seconds, plural, other {{seconds, number, ::group-off} giây}}"
+	"ui.common.updates.wait.seconds": "Đã chờ {seconds, plural, other {{seconds, number, ::group-off} giây}}",
+	"ui.common.updates.install.verifying": "Đang xác minh bản cập nhật với ứng dụng sẽ được thay thế…",
+	"ui.common.updates.install.staging": "Đang đặt bản cập nhật cạnh ứng dụng sẽ được thay thế…",
+	"ui.common.updates.install.starting": "Đang khởi động trình cài đặt. Ứng dụng sẽ đóng trong giây lát…",
+	"ui.common.updates.install.preparing": "Đang chuẩn bị cài đặt…",
+	"ui.common.updates.install.succeeded": "Đã cập nhật Local Operator lên v{version}.",
+	"ui.common.updates.error.server_unreachable": "Ứng dụng không thể kết nối với máy chủ cập nhật. Kiểm tra kết nối của máy rồi thử lại.",
+	"ui.common.updates.error.download": "Không thể tải bản cập nhật. Kiểm tra kết nối của máy rồi bắt đầu tải lại.",
+	"ui.common.updates.error.install": "Không thể cài bản cập nhật. Kiểm tra kết nối của máy rồi bắt đầu lại từ bảng cập nhật.",
+	"ui.common.updates.error.quit": "Ứng dụng không thể thoát để hoàn tất cài đặt. Hãy tự thoát ứng dụng rồi để quá trình cập nhật hoàn tất.",
+	"ui.common.updates.error.check_incomplete": "Không thể hoàn tất kiểm tra cập nhật. Ứng dụng sẽ thử lại ở lần kiểm tra tiếp theo.",
+	"ui.common.updates.error.version_unknown_required": "Không xác định (cần cập nhật)"
 }

@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -45,7 +46,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const nord: ThemeDefinition = {
 	id: "nord",
 	name: "Nord",
-	description: "Arctic blue-grey with a frost cyan accent.",
+	get description() {
+		return t("ui.settings.appearance.theme.nord");
+	},
 	palette: {
 		mode: "dark",
 

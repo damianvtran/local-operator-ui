@@ -9,6 +9,7 @@
 import type { ReactNode } from "react";
 import { toast } from "sonner";
 import type { ExternalToast } from "sonner"; // Using ExternalToast for options type
+import { t } from "../../../../i18n/messages";
 import {
 	stripErrorPrefixes,
 	transientTransportFragment,
@@ -61,8 +62,8 @@ const RAW_TRANSPORT_ERRORS: Record<string, true> = {
 	"net::ERR_CONNECTION_REFUSED": true,
 };
 
-const CONNECTION_FAILURE_COPY =
-	"Could not reach the server. Check that it is running, then try again.";
+const connectionFailureCopy = (): string =>
+	t("ui.common.connection.transport_failure");
 
 /**
  * The sentence a person reads, for one raw transport failure.
@@ -100,7 +101,7 @@ const CONNECTION_FAILURE_COPY =
 const transportFailureText = (message: string): string => {
 	const trimmed = message.trim();
 	if (Object.prototype.hasOwnProperty.call(RAW_TRANSPORT_ERRORS, trimmed)) {
-		return CONNECTION_FAILURE_COPY;
+		return connectionFailureCopy();
 	}
 	const cleaned = stripErrorPrefixes(trimmed);
 	const fragment = transientTransportFragment(cleaned);
@@ -108,8 +109,8 @@ const transportFailureText = (message: string): string => {
 	// A fragment inside machine vocabulary is replaced along with it - see
 	// `TransportFragment.clause`; one that is a clause of an authored message
 	// leaves the authored half in place.
-	if (!fragment.clause) return CONNECTION_FAILURE_COPY;
-	return `${cleaned.slice(0, fragment.start)}${CONNECTION_FAILURE_COPY}${cleaned.slice(fragment.end)}`;
+	if (!fragment.clause) return connectionFailureCopy();
+	return `${cleaned.slice(0, fragment.start)}${connectionFailureCopy()}${cleaned.slice(fragment.end)}`;
 };
 
 /**

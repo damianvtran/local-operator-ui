@@ -4,5 +4,19 @@
 	"ui.common.actions.copied": "Copiado",
 	"ui.common.actions.copy_failed": "No se pudo copiar. Selecciónalo y cópialo manualmente.",
 	"ui.common.actions.retry": "Reintentar",
-	"ui.common.actions.retry_again": "Volver a intentar"
+	"ui.common.actions.retry_again": "Volver a intentar",
+	"ui.common.actions.agent_created": "Agente creado",
+	"ui.common.actions.agent_deleted": "Agente eliminado",
+	"ui.common.actions.agent_imported": "Agente importado",
+	"ui.common.actions.agent_exported": "Agente exportado",
+	"ui.common.actions.agent_updated": "Agente actualizado",
+	"ui.common.actions.agent_system_prompt_updated": "Prompt del sistema del agente actualizado",
+	"ui.common.actions.conversation_cleared": "Conversación borrada",
+	"ui.common.actions.variable_created": "Variable creada",
+	"ui.common.actions.variable_updated": "Variable actualizada",
+	"ui.common.actions.variable_deleted": "Variable eliminada",
+	"ui.common.actions.configuration_updated": "Configuración actualizada",
+	"ui.common.actions.system_prompt_updated": "Prompt del sistema actualizado",
+	"ui.common.actions.credential_updated": "Credencial “{key}” actualizada",
+	"ui.common.actions.clear": "Borrar"
 }

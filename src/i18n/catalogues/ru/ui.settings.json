@@ -37,5 +37,11 @@
 	"ui.settings.profile.account_read_failed_retry": "Не удалось прочитать данные учётной записи Radient, поэтому имя и адрес почты ниже — лишь примеры, а не данные вашей учётной записи. Повторите попытку.",
 	"ui.settings.profile.account_read_failed_refused": "Не удалось прочитать данные учётной записи Radient, поэтому имя и адрес почты ниже — лишь примеры, а не данные вашей учётной записи. Повторите попытку или войдите в Radient заново.",
 	"ui.settings.profile.retry": "Повторить",
-	"ui.settings.profile.retrying": "Повторная попытка"
+	"ui.settings.profile.retrying": "Повторная попытка",
+	"ui.settings.section.delegated_enabled.gate_label": "автоматическое удаление",
+	"ui.settings.section.delegated_enabled.help": "Применяется только к запускам субагентов, оболочкам агентов и фоновым запускам.",
+	"ui.settings.section.delegated_enabled.label": "Автоматически удалять делегированные сессии",
+	"ui.settings.section.delegated_max_age.help": "Срок хранения: сколько времени делегированная сессия (субагента или фонового запуска) может оставаться бездействующей до удаления.",
+	"ui.settings.section.delegated_max_age.label": "Удалять через",
+	"ui.settings.section.session_delegated.title": "Делегированная работа: субагенты и фоновые сессии"
 }

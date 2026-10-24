@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -28,7 +29,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const tokyoNight: ThemeDefinition = {
 	id: "tokyoNight",
 	name: "Tokyo Night",
-	description: "Deep blue-purple night with a bright blue accent.",
+	get description() {
+		return t("ui.settings.appearance.theme.tokyo_night");
+	},
 	palette: {
 		mode: "dark",
 

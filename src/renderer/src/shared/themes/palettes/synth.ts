@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -28,7 +29,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const synth: ThemeDefinition = {
 	id: "synth",
 	name: "Synth",
-	description: "Synthwave: deep purple night with hot pink and neon blue.",
+	get description() {
+		return t("ui.settings.appearance.theme.synth");
+	},
 	palette: {
 		mode: "dark",
 

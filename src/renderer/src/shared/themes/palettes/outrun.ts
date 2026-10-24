@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -61,7 +62,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const outrun: ThemeDefinition = {
 	id: "outrun",
 	name: "Outrun",
-	description: "Sunset magenta and grid cyan racing over midnight blue.",
+	get description() {
+		return t("ui.settings.appearance.theme.outrun");
+	},
 	palette: {
 		mode: "dark",
 

@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -27,7 +28,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const neon: ThemeDefinition = {
 	id: "neon",
 	name: "Neon",
-	description: "Tron: near-black blue with cyan and cyberpunk pink.",
+	get description() {
+		return t("ui.settings.appearance.theme.neon");
+	},
 	palette: {
 		mode: "dark",
 

@@ -73,5 +73,6 @@
 	"ui.code_review.row.opens_browser": "se abre en tu navegador",
 	"ui.code_review.row.refresh_error": "No se pudo actualizar: {error}",
 	"ui.code_review.row.stale_error": "Desactualizado — último estado conocido, no el actual: {error}",
-	"ui.code_review.tool.more": "{count, plural, one {{countText}{capped} más vista en la salida de la herramienta} other {{countText}{capped} más vistas en la salida de la herramienta}}"
+	"ui.code_review.tool.more": "{count, plural, one {{countText}{capped} más vista en la salida de la herramienta} other {{countText}{capped} más vistas en la salida de la herramienta}}",
+	"ui.code_review.refresh.try_again": "reintentar"
 }

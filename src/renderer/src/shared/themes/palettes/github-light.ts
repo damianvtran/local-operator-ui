@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -45,7 +46,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const githubLight: ThemeDefinition = {
 	id: "githubLight",
 	name: "GitHub Light",
-	description: "GitHub's daylight canvas, white panels and Primer blue.",
+	get description() {
+		return t("ui.settings.appearance.theme.github_light");
+	},
 	palette: {
 		mode: "light",
 

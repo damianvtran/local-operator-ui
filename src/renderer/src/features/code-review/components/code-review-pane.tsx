@@ -422,7 +422,9 @@ export const CodeReviewPane: FC<CodeReviewPaneProps> = ({
 			setFailure({
 				at: postPressAt.current,
 				message:
-					query.error instanceof Error ? query.error.message : "try again",
+					query.error instanceof Error
+						? query.error.message
+						: t("ui.code_review.refresh.try_again"),
 			});
 			return;
 		}
@@ -470,7 +472,10 @@ export const CodeReviewPane: FC<CodeReviewPaneProps> = ({
 				setFeedback("idle");
 				setFailure({
 					at: Date.now(),
-					message: error instanceof Error ? error.message : "try again",
+					message:
+						error instanceof Error
+							? error.message
+							: t("ui.code_review.refresh.try_again"),
 				});
 			},
 		});

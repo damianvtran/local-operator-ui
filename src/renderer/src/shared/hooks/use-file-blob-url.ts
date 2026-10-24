@@ -1,3 +1,4 @@
+import { t } from "../../../../i18n/messages";
 /**
  * A local file's bytes as an object URL, for every surface that shows a format
  * the renderer has no other way to paint (PDF, image, audio, video thumbnails).
@@ -118,13 +119,13 @@ export function previewFailureReason(
 ): string | null {
 	switch (code) {
 		case "too-large":
-			return "Too large to preview";
+			return t("ui.common.errors.file_too_large");
 		case "not-found":
-			return "File no longer exists";
+			return t("ui.common.errors.file_missing");
 		case "not-a-file":
-			return "Not a file";
+			return t("ui.common.errors.file_not_file");
 		case "unreadable":
-			return "Could not be read";
+			return t("ui.common.errors.file_unreadable");
 		case "no-bridge":
 			return null;
 	}
@@ -208,7 +209,11 @@ export function useFileBlobUrl(
 				status: "unavailable",
 				url: null,
 				code: "too-large",
-				message: `${filePath} is ${sizeBytes} bytes, over the ${cap}-byte preview cap`,
+				message: t("ui.common.errors.file_preview_cap", {
+					filePath,
+					size: sizeBytes ?? 0,
+					cap,
+				}),
 				sizeBytes: sizeBytes ?? undefined,
 			};
 		const cached = peek(key);
@@ -238,7 +243,7 @@ export function useFileBlobUrl(
 				status: "unavailable",
 				url: null,
 				code: "no-bridge",
-				message: "Local file access is unavailable outside the desktop app.",
+				message: t("ui.common.errors.file_preview_no_bridge"),
 			});
 			return;
 		}
