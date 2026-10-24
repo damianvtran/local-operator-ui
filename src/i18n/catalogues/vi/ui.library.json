@@ -135,6 +135,7 @@
 	"ui.library.page.loaded_count": "{loaded}/{total} tệp",
 	"ui.library.page.preview": "Xem trước tệp",
 	"ui.library.page.results": "Kết quả Thư viện",
+	"ui.library.page.resize_preview": "Điều chỉnh kích thước ngăn chi tiết. Nhấp đúp để đặt lại.",
 	"ui.library.preview.unavailable": "Tệp này không khả dụng",
 	"ui.library.preview.unavailable_detail": "Có thể tệp không còn trong thư viện.",
 	"ui.library.preview.pptx_preparing": "Đang chuẩn bị bản trình bày…",

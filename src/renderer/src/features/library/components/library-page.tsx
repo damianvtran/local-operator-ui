@@ -25,6 +25,7 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { PageHeader } from "@shared/components/common/page-header";
+import { ResizableDivider } from "@shared/components/common/resizable-divider";
 import { Spinner } from "@shared/components/common/spinner";
 import {
 	Alert,
@@ -87,9 +88,16 @@ import { LibraryPreview, type LibraryPreviewFocus } from "./library-preview";
 
 const VIEW_STORAGE_KEY = "library-view";
 const FILTER_STORAGE_KEY = "library-filters";
+const DOCK_WIDTH_STORAGE_KEY = "library-details-width";
 
 /** The dock's minimum workspace width, from the design spec's own budget. */
 const DOCK_MIN_WORKSPACE_PX = 1152;
+const DOCK_DEFAULT_WIDTH_PX = 448;
+const DOCK_MIN_WIDTH_PX = 320;
+const DOCK_MAX_WIDTH_PX = 720;
+/* Resizing may spend the surplus, never the results column's reading measure. */
+const DOCK_MIN_RESULTS_PX = 320;
+const FILTER_RAIL_WIDTH_PX = 192;
 /** The rail's minimum viewport and workspace widths. */
 const RAIL_MIN_VIEWPORT_PX = 1200;
 const RAIL_MIN_WORKSPACE_PX = 900;
@@ -101,6 +109,22 @@ function readView(): LibraryView {
 		return localStorage.getItem(VIEW_STORAGE_KEY) === "list" ? "list" : "grid";
 	} catch {
 		return "grid";
+	}
+}
+
+function readDockWidth(): number {
+	try {
+		const raw = localStorage.getItem(DOCK_WIDTH_STORAGE_KEY);
+		if (!raw) return DOCK_DEFAULT_WIDTH_PX;
+		const parsed = Number(raw);
+		return Number.isFinite(parsed)
+			? Math.min(
+					DOCK_MAX_WIDTH_PX,
+					Math.max(DOCK_MIN_WIDTH_PX, Math.round(parsed)),
+				)
+			: DOCK_DEFAULT_WIDTH_PX;
+	} catch {
+		return DOCK_DEFAULT_WIDTH_PX;
 	}
 }
 
@@ -122,6 +146,14 @@ function readFilters(): LibraryListFilters {
 		};
 	} catch {
 		return NO_LIBRARY_FILTERS;
+	}
+}
+
+function writeDockWidth(width: number) {
+	try {
+		localStorage.setItem(DOCK_WIDTH_STORAGE_KEY, String(width));
+	} catch {
+		/* a storage refusal must not disable resizing */
 	}
 }
 
@@ -340,6 +372,11 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 	const [search, setSearch] = useState("");
 	const debouncedSearch = useDebouncedValue(search, 200);
 	const [view, setView] = useState<LibraryView>(readView);
+	const [dockWidthPreference, setDockWidthPreference] = useState(readDockWidth);
+	const updateDockWidth = useCallback((width: number) => {
+		setDockWidthPreference(width);
+		writeDockWidth(width);
+	}, []);
 	const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 	const [composerFocusSignal, setComposerFocusSignal] = useState(0);
 	const [focusRequest, setFocusRequest] = useState<{
@@ -355,6 +392,17 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 	 */
 	const dockEligible =
 		workspaceWidth >= DOCK_MIN_WORKSPACE_PX && Boolean(selectedId) && !fullView;
+	const maxDockWidth = Math.max(
+		DOCK_MIN_WIDTH_PX,
+		Math.min(
+			DOCK_MAX_WIDTH_PX,
+			workspaceWidth -
+				(railVisible ? FILTER_RAIL_WIDTH_PX : 0) -
+				DOCK_MIN_RESULTS_PX,
+		),
+	);
+	/* Keep the preference intact while a smaller workspace temporarily clamps it. */
+	const dockWidth = Math.min(dockWidthPreference, maxDockWidth);
 
 	useEffect(() => {
 		setFilters((current) =>
@@ -1078,29 +1126,43 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 			)}
 
 			{dockEligible && selected && (
-				<aside
-					/*
-					 * THE DOCK IS A PANEL: its `surface` starts at y0 and its header and
-					 * scroller begin below the strip. This is the aside the operator's
-					 * screenshot caught beginning 32px down.
-					 */
-					className="panel-top-pad flex h-full w-[448px] shrink-0 bg-surface"
-					aria-label={t("ui.library.page.preview")}
-				>
-					<LibraryPreview
-						asset={selected}
-						nowMs={clock}
-						onClose={goBack}
-						onOpenConversation={openConversationFor}
-						onFilterSession={filterSession}
-						onAsk={() => setComposerFocusSignal((value) => value + 1)}
-						onToggleFavorite={() => toggleFavorite(selected)}
-						composerFocusSignal={composerFocusSignal}
-						focusRequest={focusRequest}
-						onExpand={openFullView}
-						mediaSiblings={mediaSiblings}
+				<>
+					<ResizableDivider
+						sidebarWidth={dockWidth}
+						onSidebarWidthChange={updateDockWidth}
+						minWidth={DOCK_MIN_WIDTH_PX}
+						maxWidth={maxDockWidth}
+						side="left"
+						homeEnd="value"
+						onDoubleClick={() => updateDockWidth(DOCK_DEFAULT_WIDTH_PX)}
+						label={t("ui.library.page.resize_preview")}
 					/>
-				</aside>
+					<aside
+						/*
+						 * THE DOCK IS A PANEL: its `surface` starts at y0 and its header and
+						 * scroller begin below the strip. This is the aside the operator's
+						 * screenshot caught beginning 32px down.
+						 */
+						data-library-dock=""
+						style={{ width: dockWidth }}
+						className="panel-top-pad flex h-full shrink-0 bg-surface"
+						aria-label={t("ui.library.page.preview")}
+					>
+						<LibraryPreview
+							asset={selected}
+							nowMs={clock}
+							onClose={goBack}
+							onOpenConversation={openConversationFor}
+							onFilterSession={filterSession}
+							onAsk={() => setComposerFocusSignal((value) => value + 1)}
+							onToggleFavorite={() => toggleFavorite(selected)}
+							composerFocusSignal={composerFocusSignal}
+							focusRequest={focusRequest}
+							onExpand={openFullView}
+							mediaSiblings={mediaSiblings}
+						/>
+					</aside>
+				</>
 			)}
 			{standalone && (
 				<div
@@ -1139,11 +1201,27 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 				</div>
 			)}
 			{!standalone && !selected && dockEligible && (
-				<div className="panel-top-pad hidden h-full w-[448px] shrink-0 items-start justify-center bg-surface p-8 lg:flex">
-					<p className="max-w-60 text-center text-body-sm text-ink-dim">
-						{t("ui.library.page.select_asset")}
-					</p>
-				</div>
+				<>
+					<ResizableDivider
+						sidebarWidth={dockWidth}
+						onSidebarWidthChange={updateDockWidth}
+						minWidth={DOCK_MIN_WIDTH_PX}
+						maxWidth={maxDockWidth}
+						side="left"
+						homeEnd="value"
+						onDoubleClick={() => updateDockWidth(DOCK_DEFAULT_WIDTH_PX)}
+						label={t("ui.library.page.resize_preview")}
+					/>
+					<div
+						data-library-dock=""
+						style={{ width: dockWidth }}
+						className="panel-top-pad hidden h-full shrink-0 items-start justify-center bg-surface p-8 lg:flex"
+					>
+						<p className="max-w-60 text-center text-body-sm text-ink-dim">
+							{t("ui.library.page.select_asset")}
+						</p>
+					</div>
+				</>
 			)}
 
 			<Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
