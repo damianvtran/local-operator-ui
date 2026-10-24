@@ -265,6 +265,14 @@ const APP_SPAWN_SITES = [
 		/const env = withNotificationsOff\(\{/,
 	),
 	guarded(
+		"scripts/browser-approvals-s6c-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app in inactive mode for the S6c enabled-path proof and real-app documents; the notification kill switch must ride the launch env",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/browser-approvals-s6a-probe.mjs",
 		"spawn",
 		1,

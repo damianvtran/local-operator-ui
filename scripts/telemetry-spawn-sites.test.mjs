@@ -283,6 +283,14 @@ const APP_SPAWN_SITES = [
 		/withTelemetryOff\(env\);/,
 	),
 	guarded(
+		"scripts/browser-approvals-s6c-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app in inactive mode for the S6c enabled-path proof and real-app documents; the build carries the live PostHog key, so this launch needs the same switch every app rig has",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
 		"scripts/browser-approvals-s6a-probe.mjs",
 		"spawn",
 		1,
