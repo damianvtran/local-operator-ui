@@ -2,7 +2,7 @@
 	"ui.hub.updates.kind.agent": "ایجنٹ",
 	"ui.hub.updates.kind.team": "ٹیم",
 	"ui.hub.updates.kind.skill": "مہارت",
-	"ui.hub.updates.error.provider": "اسے merge کرنے والے ماڈل تک رسائی نہیں ہو سکی۔ خود دوبارہ کوشش ہو گی؛ ابھی کے لیے دوبارہ کوشش کا بٹن دبائیں۔",
+	"ui.hub.updates.error.provider": "اسے merge کرنے والے ماڈل تک رسائی نہیں ہو سکی۔ یہ خود دوبارہ کوشش کرے گا؛ ابھی کوشش کرنے کے لیے “دوبارہ کوشش” دبائیں۔",
 	"ui.hub.updates.error.model_unavailable": "merge کے لیے کوئی ماڈل دستیاب نہیں۔ ترتیبات › Agent Hub چیک کریں۔",
 	"ui.hub.updates.error.prompt_too_long": "یہ خودکار طور پر merge کرنے کے لیے بہت بڑا ہے۔",
 	"ui.hub.updates.error.merge_refused": "ہب اور آپ کی نقل دونوں میں ایک ہی حصہ بدلا گیا ہے۔ جائزہ لیں۔",

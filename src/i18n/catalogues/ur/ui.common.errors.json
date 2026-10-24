@@ -108,7 +108,7 @@
 	"ui.common.errors.agent_prompt_fetch": "ایجنٹ کا سسٹم پرامپٹ حاصل نہیں ہو سکا",
 	"ui.common.errors.agent_prompt_fetch_unknown": "ایجنٹ کا سسٹم پرامپٹ حاصل کرتے وقت نامعلوم خرابی پیش آئی",
 	"ui.common.errors.agent_prompt_update_unknown": "ایجنٹ کا سسٹم پرامپٹ اپ ڈیٹ کرتے وقت نامعلوم خرابی پیش آئی",
-	"ui.common.errors.execution_history_fetch": "اجرا کی تاریخ حاصل نہیں ہو سکی",
+	"ui.common.errors.execution_history_fetch": "اجرا کی سرگزشت حاصل نہیں ہو سکی",
 	"ui.common.errors.system_prompt_fetch": "سسٹم پرامپٹ حاصل نہیں ہو سکا",
 	"ui.common.errors.system_prompt_fetch_unknown": "سسٹم پرامپٹ حاصل کرتے وقت نامعلوم خرابی پیش آئی",
 	"ui.common.errors.configuration_update": "کنفیگریشن اپ ڈیٹ نہیں ہو سکی",
