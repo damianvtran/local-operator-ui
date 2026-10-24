@@ -366,17 +366,25 @@ import urUiAgentsStarters from "./catalogues/ur/ui.agents.starters.json";
 import urUiBrowserChrome from "./catalogues/ur/ui.browser.chrome.json";
 import urUiBrowser from "./catalogues/ur/ui.browser.json";
 import urUiCanvas from "./catalogues/ur/ui.canvas.json";
+import urUiChatAnalytics from "./catalogues/ur/ui.chat.analytics.json";
 import urUiChatAsks from "./catalogues/ur/ui.chat.asks.json";
 import urUiChatAttachments from "./catalogues/ur/ui.chat.attachments.json";
+import urUiChatCanonical from "./catalogues/ur/ui.chat.canonical.json";
+import urUiChatCommentaryActions from "./catalogues/ur/ui.chat.commentary_actions.json";
 import urUiChatComposer from "./catalogues/ur/ui.chat.composer.json";
 import urUiChatComposerMedia from "./catalogues/ur/ui.chat.composer_media.json";
 import urUiChatDialogs from "./catalogues/ur/ui.chat.dialogs.json";
 import urUiChatHeader from "./catalogues/ur/ui.chat.header.json";
 import urUiChat from "./catalogues/ur/ui.chat.json";
 import urUiChatLiveUpdates from "./catalogues/ur/ui.chat.live_updates.json";
+import urUiChatPickers from "./catalogues/ur/ui.chat.pickers.json";
 import urUiChatResponseActions from "./catalogues/ur/ui.chat.response_actions.json";
+import urUiChatRunDetails from "./catalogues/ur/ui.chat.run_details.json";
+import urUiChatSidebar from "./catalogues/ur/ui.chat.sidebar.json";
 import urUiChatSidebarView from "./catalogues/ur/ui.chat.sidebar_view.json";
+import urUiChatTagDialogs from "./catalogues/ur/ui.chat.tag_dialogs.json";
 import urUiChatTags from "./catalogues/ur/ui.chat.tags.json";
+import urUiChatTranscriptCopy from "./catalogues/ur/ui.chat.transcript_copy.json";
 import urUiCodeReview from "./catalogues/ur/ui.code_review.json";
 import urUiCommandPalette from "./catalogues/ur/ui.command_palette.json";
 import urUiCommonAccount from "./catalogues/ur/ui.common.account.json";
@@ -384,10 +392,12 @@ import urUiCommonActions from "./catalogues/ur/ui.common.actions.json";
 import urUiCommonConnection from "./catalogues/ur/ui.common.connection.json";
 import urUiCommonEditing from "./catalogues/ur/ui.common.editing.json";
 import urUiCommonErrors from "./catalogues/ur/ui.common.errors.json";
+import urUiCommonFileActions from "./catalogues/ur/ui.common.file_actions.json";
 import urUiCommonForms from "./catalogues/ur/ui.common.forms.json";
 import urUiCommonLoading from "./catalogues/ur/ui.common.loading.json";
 import urUiCommonModels from "./catalogues/ur/ui.common.models.json";
 import urUiCommonUpdates from "./catalogues/ur/ui.common.updates.json";
+import urUiCommonViewer from "./catalogues/ur/ui.common.viewer.json";
 import urUiConsole from "./catalogues/ur/ui.console.json";
 import urUiHubComments from "./catalogues/ur/ui.hub.comments.json";
 import urUiHub from "./catalogues/ur/ui.hub.json";
@@ -396,6 +406,7 @@ import urUiInstaller from "./catalogues/ur/ui.installer.json";
 import urUiLibrary from "./catalogues/ur/ui.library.json";
 import urUiMesh from "./catalogues/ur/ui.mesh.json";
 import urUiOnboarding from "./catalogues/ur/ui.onboarding.json";
+import urUiPresence from "./catalogues/ur/ui.presence.json";
 import urUiProjects from "./catalogues/ur/ui.projects.json";
 import urUiProviders from "./catalogues/ur/ui.providers.json";
 import urUiSchedules from "./catalogues/ur/ui.schedules.json";
@@ -905,17 +916,25 @@ export const bundledCatalogues: Readonly<
 		...urUiBrowserChrome,
 		...urUiBrowser,
 		...urUiCanvas,
+		...urUiChatAnalytics,
 		...urUiChatAsks,
 		...urUiChatAttachments,
+		...urUiChatCanonical,
+		...urUiChatCommentaryActions,
 		...urUiChatComposer,
 		...urUiChatComposerMedia,
 		...urUiChatDialogs,
 		...urUiChatHeader,
 		...urUiChat,
 		...urUiChatLiveUpdates,
+		...urUiChatPickers,
 		...urUiChatResponseActions,
+		...urUiChatRunDetails,
+		...urUiChatSidebar,
 		...urUiChatSidebarView,
+		...urUiChatTagDialogs,
 		...urUiChatTags,
+		...urUiChatTranscriptCopy,
 		...urUiCodeReview,
 		...urUiCommandPalette,
 		...urUiCommonAccount,
@@ -923,10 +942,12 @@ export const bundledCatalogues: Readonly<
 		...urUiCommonConnection,
 		...urUiCommonEditing,
 		...urUiCommonErrors,
+		...urUiCommonFileActions,
 		...urUiCommonForms,
 		...urUiCommonLoading,
 		...urUiCommonModels,
 		...urUiCommonUpdates,
+		...urUiCommonViewer,
 		...urUiConsole,
 		...urUiHubComments,
 		...urUiHub,
@@ -935,6 +956,7 @@ export const bundledCatalogues: Readonly<
 		...urUiLibrary,
 		...urUiMesh,
 		...urUiOnboarding,
+		...urUiPresence,
 		...urUiProjects,
 		...urUiProviders,
 		...urUiSchedules,
