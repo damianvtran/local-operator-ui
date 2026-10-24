@@ -489,16 +489,23 @@ import zhCNUiAgentsStarters from "./catalogues/zh-CN/ui.agents.starters.json";
 import zhCNUiBrowserChrome from "./catalogues/zh-CN/ui.browser.chrome.json";
 import zhCNUiBrowser from "./catalogues/zh-CN/ui.browser.json";
 import zhCNUiCanvas from "./catalogues/zh-CN/ui.canvas.json";
+import zhCNUiChatAnalytics from "./catalogues/zh-CN/ui.chat.analytics.json";
 import zhCNUiChatAsks from "./catalogues/zh-CN/ui.chat.asks.json";
 import zhCNUiChatAttachments from "./catalogues/zh-CN/ui.chat.attachments.json";
+import zhCNUiChatCanonical from "./catalogues/zh-CN/ui.chat.canonical.json";
+import zhCNUiChatCommentaryActions from "./catalogues/zh-CN/ui.chat.commentary_actions.json";
 import zhCNUiChatComposer from "./catalogues/zh-CN/ui.chat.composer.json";
 import zhCNUiChatComposerMedia from "./catalogues/zh-CN/ui.chat.composer_media.json";
 import zhCNUiChatDialogs from "./catalogues/zh-CN/ui.chat.dialogs.json";
 import zhCNUiChatHeader from "./catalogues/zh-CN/ui.chat.header.json";
 import zhCNUiChat from "./catalogues/zh-CN/ui.chat.json";
 import zhCNUiChatLiveUpdates from "./catalogues/zh-CN/ui.chat.live_updates.json";
+import zhCNUiChatPickers from "./catalogues/zh-CN/ui.chat.pickers.json";
 import zhCNUiChatResponseActions from "./catalogues/zh-CN/ui.chat.response_actions.json";
+import zhCNUiChatRunDetails from "./catalogues/zh-CN/ui.chat.run_details.json";
+import zhCNUiChatSidebar from "./catalogues/zh-CN/ui.chat.sidebar.json";
 import zhCNUiChatSidebarView from "./catalogues/zh-CN/ui.chat.sidebar_view.json";
+import zhCNUiChatTagDialogs from "./catalogues/zh-CN/ui.chat.tag_dialogs.json";
 import zhCNUiChatTags from "./catalogues/zh-CN/ui.chat.tags.json";
 import zhCNUiChatTranscriptCopy from "./catalogues/zh-CN/ui.chat.transcript_copy.json";
 import zhCNUiCodeReview from "./catalogues/zh-CN/ui.code_review.json";
@@ -508,10 +515,12 @@ import zhCNUiCommonActions from "./catalogues/zh-CN/ui.common.actions.json";
 import zhCNUiCommonConnection from "./catalogues/zh-CN/ui.common.connection.json";
 import zhCNUiCommonEditing from "./catalogues/zh-CN/ui.common.editing.json";
 import zhCNUiCommonErrors from "./catalogues/zh-CN/ui.common.errors.json";
+import zhCNUiCommonFileActions from "./catalogues/zh-CN/ui.common.file_actions.json";
 import zhCNUiCommonForms from "./catalogues/zh-CN/ui.common.forms.json";
 import zhCNUiCommonLoading from "./catalogues/zh-CN/ui.common.loading.json";
 import zhCNUiCommonModels from "./catalogues/zh-CN/ui.common.models.json";
 import zhCNUiCommonUpdates from "./catalogues/zh-CN/ui.common.updates.json";
+import zhCNUiCommonViewer from "./catalogues/zh-CN/ui.common.viewer.json";
 import zhCNUiConsole from "./catalogues/zh-CN/ui.console.json";
 import zhCNUiHubComments from "./catalogues/zh-CN/ui.hub.comments.json";
 import zhCNUiHub from "./catalogues/zh-CN/ui.hub.json";
@@ -1032,16 +1041,23 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiBrowserChrome,
 		...zhCNUiBrowser,
 		...zhCNUiCanvas,
+		...zhCNUiChatAnalytics,
 		...zhCNUiChatAsks,
 		...zhCNUiChatAttachments,
+		...zhCNUiChatCanonical,
+		...zhCNUiChatCommentaryActions,
 		...zhCNUiChatComposer,
 		...zhCNUiChatComposerMedia,
 		...zhCNUiChatDialogs,
 		...zhCNUiChatHeader,
 		...zhCNUiChat,
 		...zhCNUiChatLiveUpdates,
+		...zhCNUiChatPickers,
 		...zhCNUiChatResponseActions,
+		...zhCNUiChatRunDetails,
+		...zhCNUiChatSidebar,
 		...zhCNUiChatSidebarView,
+		...zhCNUiChatTagDialogs,
 		...zhCNUiChatTags,
 		...zhCNUiChatTranscriptCopy,
 		...zhCNUiCodeReview,
@@ -1051,10 +1067,12 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiCommonConnection,
 		...zhCNUiCommonEditing,
 		...zhCNUiCommonErrors,
+		...zhCNUiCommonFileActions,
 		...zhCNUiCommonForms,
 		...zhCNUiCommonLoading,
 		...zhCNUiCommonModels,
 		...zhCNUiCommonUpdates,
+		...zhCNUiCommonViewer,
 		...zhCNUiConsole,
 		...zhCNUiHubComments,
 		...zhCNUiHub,
