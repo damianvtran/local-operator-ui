@@ -1,6 +1,6 @@
 | Row | Claim | Status | Actual evidence |
 | --- | --- | --- | --- |
-| P1 | the built card document exists, links only built assets, and carries the pinned deny-all CSP | PASS | htmlSha=f11c1cd915c6 assets=["assets/approvalsOverlay-BBr6f98F.css", "assets/approvalsOverlay-CXYzGAiF.js", "assets/messages-Cw1ZCiy0.js"] csp=default-src 'none'; script-src 'self'; style-src 'self' |
+| P1 | the built card document exists, links only built assets, and carries the pinned deny-all CSP | PASS | htmlSha=95278bc1f028 assets=["assets/approvalsOverlay-BBr6f98F.css", "assets/approvalsOverlay-BgsVsn5g.js", "assets/messages-CpvbutX2.js"] csp=default-src 'none'; script-src 'self'; style-src 'self' |
 | G1 | the S6a opt-in is exact: absent, "0" and "true" are off; only "1" is on | PASS | node --test scripts/approvals-overlay.test.mjs: "controller: S6a is opt-in on the exact env value only" PASS; 13/13 suite |
 | G2 | the real host creates no card child on an ordinary launch, even with the option wired | PASS | QA round 1 (independent qa-tester, head c05d8c1c1a), HOST-OFF row: envGate=null, children=[about:blank,page], no card URL, no child with 2 live pending entries; the gate predicate is unchanged and is now unit-tested (G1) |
 | A1 | 264 content: card view 264x132, card 248x116, 8 DIP on every side | PASS | view={"x": 0, "y": 588, "width": 264, "height": 132} card={"x": 8, "y": 596, "width": 248, "height": 116} document innerWidth=264 card y=8.109 height=115.890625 (top inset 8.109, >=8); both themes |
