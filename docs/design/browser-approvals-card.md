@@ -21,16 +21,17 @@ hiding the page.
   transparent-child path is not used.
 
 The card document is static: query parameters supply the count and theme, and
-its module writes text with `textContent` only. S6b adds the purpose-built
+its module writes catalogued copy with `textContent` only. `card.css` uses the
+`--lo-*` token roles from the generated theme stylesheet; it carries no palette
+of its own. S6b adds the purpose-built
 preload, the two sender-pinned channels, focus handoff and the interactive
 views; none of that exists here.
 
 ## Evidence
 
-The S6a fixture's page bounds, card bounds, focus/typing result and separate child
-captures are attached to PR #1351 as review evidence, not committed here: this
-repository does not carry evidence artifacts. The native composite row is
-**BLOCKED** there: screen-recording capture was unavailable in the evidence run,
+The S6a fixture's page bounds, card bounds, zero page focus/blur events,
+unchanged `activeElement`, typing result and separate child captures are attached to PR #1351 as review evidence, not committed here: this
+repository does not carry evidence artifacts. The native composite row is **BLOCKED** there: screen-recording capture was unavailable in the evidence run,
 so transparency over a sibling page is not claimed beyond the measured
 `#00000000` input and the document's transparent corners.
 
