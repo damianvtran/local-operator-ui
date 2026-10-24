@@ -1,0 +1,238 @@
+{
+  "schema": 1,
+  "kind": "independent-translation-audit-remediation",
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "fallback": "none",
+  "instance": "44b67915fa07-r2",
+  "session": "44b67915fa07",
+  "date": "2026-10-23",
+  "locale": "vi",
+  "round": 2,
+  "status": "passed",
+  "verdict": "clean",
+  "commit": "5eead72b29818f8e06f833699fab79f140a732fd",
+  "delta": "03e1f5c34881dfaa169643f3022a7a45698e8a73..5eead72b29818f8e06f833699fab79f140a732fd",
+  "previous_instance": "44b67915fa07",
+  "previous_receipt_sha256": "4b645c2f11e9b66a171292c265f4d69d0cc2b9eadadb89fcfedfe676cab70ba3",
+  "repository": "/Users/damian/local-operator-ui/.worktrees/i18n-vi",
+  "keys_read": 20,
+  "direct_neighbors_reviewed": true,
+  "mechanical_keys_checked": 296,
+  "namespace_count": 4,
+  "independence": {
+    "translator_agent": "translator",
+    "translator_session": "673311bac161",
+    "independent": true,
+    "authored_translation": false,
+    "repository_edits": false,
+    "basis": "Same independent auditor as round 1 with a new unique round-2 instance; reviewed only the remediation delta and direct neighbors. Did not re-audit unchanged namespaces. HEAD matched the requested remediation and git status --porcelain=v1 was empty."
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+  },
+  "summary": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0,
+    "clean_namespaces": 4,
+    "clean_with_findings_namespaces": 0,
+    "changes_requested_namespaces": 0
+  },
+  "round_1_dispositions": [
+    {
+      "id": "M1",
+      "key": "ui.providers.provider_catalog.didn_t_confirm_the_sign_in",
+      "disposition": "fixed",
+      "current": "{brand} chưa xác nhận đăng nhập.",
+      "reason": "Neutral non-confirmation replaces the incorrect explicit refusal."
+    },
+    {
+      "id": "M2",
+      "key": "ui.providers.provider_detail.didn_t_confirm_the_sign_in",
+      "disposition": "fixed",
+      "current": "{brand} chưa xác nhận đăng nhập.",
+      "reason": "Neutral non-confirmation replaces the incorrect explicit refusal."
+    },
+    {
+      "id": "m1",
+      "key": "ui.providers.phone.action.set_up",
+      "disposition": "fixed",
+      "current": "Thiết lập truy cập từ điện thoại",
+      "reason": "Restores the phone-access object."
+    },
+    {
+      "id": "m2",
+      "key": "ui.providers.provider_detail.use_an_api_key_instead",
+      "disposition": "fixed",
+      "current": "Chuyển sang dùng khóa API",
+      "reason": "Restores the alternative-action meaning idiomatically."
+    },
+    {
+      "id": "m3",
+      "key": "ui.chat.pickers.stop.confirm",
+      "disposition": "fixed",
+      "current": "Dừng {count, plural, =1 {phiên này} other {{count, number, ::group-off} phiên}} ngay",
+      "reason": "Exact =1 preserves 'this session'; count-bearing other preserves plural/count behavior and ::group-off."
+    },
+    {
+      "id": "m4",
+      "key": "ui.chat.sidebar.pins.drag_title",
+      "disposition": "fixed",
+      "current": "Kéo để sắp xếp lại · nhấn Esc để hủy",
+      "reason": "Native explicit keyboard instruction replaces the calque."
+    },
+    {
+      "id": "m5",
+      "keys": [
+        "ui.providers.provider_detail.this_page_updates_on_its_own_once",
+        "ui.providers.provider_detail.shows_after_you_approve",
+        "ui.providers.provider_detail.we_opened_approve_access_there_and_this",
+        "ui.providers.provider_detail.opening_approve_access_there_and_this_page"
+      ],
+      "disposition": "fixed",
+      "reason": "All four user-consent paths now use 'cho phép' rather than administrative 'phê duyệt'."
+    },
+    {
+      "id": "n1",
+      "key": "ui.chat.sidebar.row.matched_in_conversation",
+      "disposition": "fixed",
+      "current": ", có kết quả trong cuộc trò chuyện",
+      "reason": "Idiomatic search-result wording replaces the calque."
+    },
+    {
+      "id": "n2",
+      "key": "ui.providers.phone.signing_in",
+      "disposition": "fixed",
+      "current": "Hoàn tất đăng nhập trong trình duyệt. Trang sẽ tự cập nhật khi xong.",
+      "reason": "Removes the repeated 'hoàn tất' while preserving the automatic-update meaning."
+    },
+    {
+      "id": "n3",
+      "key": "ui.chat.pickers.models.native_details",
+      "disposition": "fixed",
+      "current": "Chi tiết gốc — {name}",
+      "reason": "Removes untranslated prose and preserves the model-name token and em dash."
+    }
+  ],
+  "direct_neighbor_results": [
+    {
+      "key": "ui.providers.provider_detail.this_app_could_not_confirm_the_sign",
+      "status": "clean",
+      "current": "Ứng dụng này không xác nhận được thông tin đăng nhập vào {brand} đã lưu trên máy này.",
+      "reason": "Clarifies the provider and local-machine scope without changing neutral semantics."
+    },
+    {
+      "key": "ui.providers.provider_detail.change",
+      "status": "clean",
+      "current": "Đổi",
+      "reason": "Idiomatic compact button label."
+    },
+    {
+      "key": "ui.providers.provider_grid.no_providers_match_this_search",
+      "status": "clean",
+      "current": "Không có nhà cung cấp khớp.",
+      "reason": "Retains the no-match meaning while shortening 48 to 27 characters."
+    },
+    {
+      "key": "ui.chat.sidebar.search.no_match",
+      "status": "clean",
+      "current": "Không có cuộc trò chuyện nào khớp với “{query}”.",
+      "reason": "Retains exact-query no-match semantics and typography while shortening 66 to 48 characters."
+    },
+    {
+      "key": "ui.chat.sidebar.search.searching",
+      "status": "clean",
+      "current": "Đang tìm cuộc trò chuyện…",
+      "reason": "Matches the sidecar's in-flight conversation-search role and existing ui.command_palette.command_palette.searching_conversations and ui.command_palette.palette_search.searching_conversations terminology; shortened 31 to 25 characters."
+    },
+    {
+      "key": "ui.chat.canonical.supplement.file_actions.reveal_in_finder",
+      "status": "clean",
+      "current": "Hiện trong Finder",
+      "reason": "Idiomatic compact reveal action; Finder remains the required product name; shortened 21 to 17 characters."
+    },
+    {
+      "key": "ui.chat.canonical.supplement.preview_unavailable",
+      "status": "clean",
+      "current": "Không xem trước được tại đây. HTML này cần tài nguyên hoặc nội dung tài liệu mà ứng dụng không hỗ trợ. Mở tệp để xem.",
+      "reason": "Explicitly attributes unsupported resources/content to the app and preserves all three source clauses and the recovery action."
+    }
+  ],
+  "evidence": {
+    "delta_scope": "git diff 03e1f5c..5eead72 showed exactly 20 changed vi values in ui.providers (12), ui.chat.sidebar (4), ui.chat.pickers (2), ui.chat.canonical (2), plus translator receipt target-hash updates. No other catalogue namespace was re-audited.",
+    "semantic_review": "Read every changed en/vi pair, its context where applicable, adjacent diff entries and all round-1 dispositions. Provider non-confirmation is neutral, phone/instead are restored, consent uses 'cho phép', and search/Finder/canonical wording remains accurate and idiomatic.",
+    "stop_outputs": {
+      "command": "IntlMessageFormat on the audited ui.chat.pickers.stop.confirm bytes with count 1, 2 and 1234.",
+      "actual_output": "1 => 'Dừng phiên này ngay'; 2 => 'Dừng 2 phiên ngay'; 1234 => 'Dừng 1234 phiên ngay'. Exact =1 contains no count; other contains the ungrouped count."
+    },
+    "icu_structure": "AST comparison across the four scoped namespaces (296 keys), normalizing only English plural 'one' to Vietnamese exact =1/other adaptation: 0 mismatches. Argument names/types, number skeletons, select arms and tags otherwise match.",
+    "pseudo_localization": "AST-literal-only pseudo-expansion of each of the 20 changed vi values; en/vi/pseudo IntlMessageFormat runs: 60, errors: 0. This is static evidence, not rendered evidence.",
+    "unicode_and_keys": "Key order and en/context/vi key sets match in all four namespaces. NFC and combining-mark checks across those 296 vi values found no issues.",
+    "static_fit": "Derived character deltas: provider no-match 48→27; sidebar no-match 66→48; sidebar searching 31→25; Finder reveal 21→17; native details 24→21. No rendered-fit claim.",
+    "unchanged_presence_watch": "ui.presence was not changed or re-audited. Its round-1 fit watch remains assigned to the separate rendered-QA gate.",
+    "worktree": "HEAD=5eead72b29818f8e06f833699fab79f140a732fd; git status --porcelain=v1 returned an empty string. No source, catalogue, ledger, allowance, generated or receipt files were edited by this auditor."
+  },
+  "rendered_evidence": {
+    "claimed": false,
+    "reason": "Round 2 is source/static scoped. Real-app rendered fit, including the unchanged ui.presence watch, remains a separate gate."
+  },
+  "namespaces": {
+    "ui.providers": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys": 189,
+      "changed_keys_read": 12,
+      "sha256": {
+        "en": "9981637a98afbcbc166d889b461795bae7685e42274f4d607b711f4b0f9085f2",
+        "vi": "bcce6ba38e00c99dcd14e1df2ffbba4089c2f2b595cee2170d8ce9badf08edc4",
+        "target": "bcce6ba38e00c99dcd14e1df2ffbba4089c2f2b595cee2170d8ce9badf08edc4",
+        "context": "038afc45c25370cbea4d94aaf4c3cc822ac9956d02fd54cba70ea66e61a68d4d"
+      },
+      "findings": []
+    },
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys": 43,
+      "changed_keys_read": 4,
+      "sha256": {
+        "en": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+        "vi": "7a52079c6e7552269734420a0a02fcf7e246a9642e7eac4197e90630639bee75",
+        "target": "7a52079c6e7552269734420a0a02fcf7e246a9642e7eac4197e90630639bee75",
+        "context": "fe5dc2a0fa4cb9b95ef5c1a30d57aee030fa5edf2b6b54b323562a1c63b8eb3a"
+      },
+      "findings": []
+    },
+    "ui.chat.pickers": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys": 34,
+      "changed_keys_read": 2,
+      "sha256": {
+        "en": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+        "vi": "81036a8496f366252394936cbb1ce87951b294587d61d1bb24e95412c59bd970",
+        "target": "81036a8496f366252394936cbb1ce87951b294587d61d1bb24e95412c59bd970",
+        "context": "8d3fa914cd52768c98a75c4f41b903b86553335b27e406f98500eab7ff576e64"
+      },
+      "findings": []
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys": 30,
+      "changed_keys_read": 2,
+      "sha256": {
+        "en": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
+        "vi": "9dc590d7959f51cd187983cb0a54d67316500e7ea06b022d44efb3809e28ed60",
+        "target": "9dc590d7959f51cd187983cb0a54d67316500e7ea06b022d44efb3809e28ed60",
+        "context": "53145be31fe46bde6578d114653466dc5c6c932947460c10a0022c9e190d9a34"
+      },
+      "findings": []
+    }
+  }
+}
