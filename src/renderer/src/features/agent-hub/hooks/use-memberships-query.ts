@@ -31,26 +31,36 @@ import type {
 	MembershipSummary,
 	MembershipsResult,
 } from "@shared/api/radient/types";
+import {
+	readForRadientAccount,
+	useObservedRadientAuthority,
+} from "@shared/hooks/radient-account-authority";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 /**
- * One key, no parameters: the rows are the account's own and the request takes
- * nothing. Anything that wants to reach this cache invalidates the prefix.
+ * The request takes no account parameter, but its PRIVATE answer belongs to
+ * the observed auth owner. Keep the broad key for invalidation only.
  */
 export const membershipKeys = {
 	all: ["memberships"] as const,
+	account: (accountId?: string) =>
+		["memberships", "account", accountId ?? "unresolved-owner"] as const,
 };
 
 export const useMembershipsQuery = ({
 	enabled = true,
 }: { enabled?: boolean } = {}) => {
 	const { isAuthenticated } = useRadientAuth();
+	const client = useQueryClient();
+	const { accountId } = useObservedRadientAuthority();
 
 	const query = useQuery<MembershipsResult, Error>({
-		queryKey: membershipKeys.all,
+		queryKey: membershipKeys.account(accountId),
 		queryFn: async () => {
-			const response = await listMemberships();
+			const response = await readForRadientAccount(client, accountId, () =>
+				listMemberships(),
+			);
 			// `?? {memberships: []}` rather than trusting the envelope: an empty
 			// result and an absent one are the same answer here (this account holds
 			// no memberships), and a `result` that came back null would otherwise
@@ -59,7 +69,7 @@ export const useMembershipsQuery = ({
 		},
 		// Signed-out is not a failure and must not be a request: `memberships.list`
 		// spends the stored bearer, which a signed-out viewer does not have.
-		enabled: enabled && isAuthenticated,
+		enabled: enabled && isAuthenticated && Boolean(accountId),
 		// The same five-minute courtesy the hub's own list uses, and the same
 		// deliberately-off focus refetch: a membership read that refired on every
 		// window focus would re-run the whole org surface's reads.

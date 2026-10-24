@@ -78,6 +78,30 @@ export const SIDEBAR_DOCK_MIN_PX = 1024;
 export const CHAT_PANE_MIN_PX = 480;
 
 /**
+ * The clearance the chat column keeps at its right seam while a separator is
+ * drawn there, in pixels.
+ *
+ * THE NUMBER IS THE SCROLLBAR'S OWN WIDTH (8px, `global-scrollbar-styles.tsx`),
+ * and it exists because the separator's hit band is 12px wide and CENTRED on the
+ * seam (`resizable-divider.tsx`: `w-3` at `-left-1.5`/`-right-1.5`), so it
+ * reaches 6px into this column. The transcript's scrollbar sat flush against
+ * that seam, so the band covered 6 of its 8px: a drag started on the bar
+ * resized the pane instead of scrolling, and 2px was left to grab (operator
+ * report, 2026-10-23).
+ *
+ * WHY IT CANNOT GO ON THE PANE SIDE INSTEAD: the pane beside this column hosts a
+ * native `WebContentsView`, and a native view paints above ALL DOM
+ * (`browser-view-policy.ts`), so the pane-side 6px is dead wherever a page is
+ * showing. The live half has to be on the chat side, which is why the bar moves
+ * off it rather than the band moving over.
+ *
+ * 8 > 6, so the band can never reach the bar; measured, the scroller then ends
+ * 2px clear of the band. `scripts/chat-pane-floors.test.mjs` fails if this
+ * falls to or below the band's reach.
+ */
+export const CHAT_SEAM_INSET_PX = 8;
+
+/**
  * The width of the right-edge panel rail, in pixels (#872): the column of four
  * triggers (Run details, Browser, Console, Canvas) at the window's trailing edge.
  *

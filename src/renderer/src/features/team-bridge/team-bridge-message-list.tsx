@@ -11,6 +11,7 @@ import {
 	TeamBridgeReactionChips,
 	useTeamBridgeReactionState,
 } from "./team-bridge-reactions";
+import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
 import { threadSummary } from "./team-bridge-threads-model";
 
 /**
@@ -172,8 +173,14 @@ const MessageRowView: FC<MessageRowProps> = ({
 	forceToolbar,
 }) => {
 	const summary = threadSummary(message);
-	/* One-level threads: only a timeline root can open a thread. */
-	const canReply = onReply !== undefined && !message.thread_root_id;
+	/* One-level threads: only a timeline root can open a thread - and none can
+	   while the thread surface is held. `canReply` is therefore the ONE term the
+	   toolbar button and the "N replies" summary both read, so the affordance
+	   does not render rather than rendering inert. */
+	const canReply =
+		TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD &&
+		onReply !== undefined &&
+		!message.thread_root_id;
 	const agent = message.sender.kind === "agent";
 	const label =
 		known ??
@@ -282,7 +289,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 					</TeamBridgeMarkdown>
 				)}
 				{reactions && <TeamBridgeReactionChips state={reactions} />}
-				{onReply && summary.count > 0 && (
+				{canReply && summary.count > 0 && (
 					<button
 						type="button"
 						onClick={() => onReply(message)}

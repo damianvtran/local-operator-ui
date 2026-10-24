@@ -113,6 +113,7 @@ import {
 import {
 	CANVAS_PANE_MIN_PX,
 	CHAT_PANE_MIN_PX,
+	CHAT_SEAM_INSET_PX,
 	canvasDockWidth,
 	canvasPaneMode,
 	rightSlotDividerContract,
@@ -200,6 +201,14 @@ type ChatContentProps = {
 	 */
 	renameSessionId?: string;
 	onOpenOptions: () => void;
+	/**
+	 * The missing notice's way out, threaded from the page that owns `navigate`
+	 * (agent review round 1 / QA round 1, Q1). The transcript stages the fresh
+	 * draft through the store; this moves the ADDRESS with it. Optional because the
+	 * transcript also renders on surfaces with no route (stories, the run panel's
+	 * child reader), where there is nothing to navigate.
+	 */
+	onStartNewChat?: () => void;
 	isOptionsSidebarOpen: boolean;
 	onCloseOptions: () => void;
 	agentId: string;
@@ -864,6 +873,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		deviceHold,
 		renameSessionId,
 		onOpenOptions,
+		onStartNewChat,
 		isOptionsSidebarOpen,
 		onCloseOptions,
 		agentId,
@@ -1933,6 +1943,25 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 */
 		const canvasDocked =
 			canvasPaneMode(paneRowWidth || Number.MAX_SAFE_INTEGER) === "docked";
+		/*
+		 * IS A SEPARATOR DRAWN ON THIS COLUMN'S RIGHT EDGE? Read from the SAME
+		 * open-flags and mode pairs the row's own `{... && (` blocks use, which is why
+		 * the two canvas families carry `canvasDocked` as well: the canvas and the ask
+		 * drawer draw their divider only while they DOCK, so `canvasDocked` alone -
+		 * "the row is wide enough to dock" - is true with no pane open at all, and
+		 * gating the inset on it alone insets every chat on a wide window.
+		 *
+		 * THE LIST IS HAND-KEPT, and a sixth occupant has to be added here beside its
+		 * `{... && (` block; `scripts/chat-pane-floors.test.mjs` pins the canvas half,
+		 * which is the one that was missing.
+		 */
+		const rightPaneDocked =
+			(isCanvasOpen && canvasDocked) ||
+			(sessionAsksOpen && canvasDocked) ||
+			isRunPanelOpen ||
+			isBrowserPaneOpen ||
+			isConsolePaneOpen ||
+			isCodeReviewPaneOpen;
 		const canvasWidth = useUiPreferencesStore((state) =>
 			resolveRightSlotWidth(paneRowWidth, state),
 		);
@@ -2271,6 +2300,28 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					<div
 						ref={chatContainerRef}
 						data-glass-region="canvas"
+						/*
+						 * THE SEAM INSET: 8px given back while a separator is drawn on this
+						 * column's right edge, and it is a SCROLLBAR clearance rather than
+						 * spacing. `CHAT_SEAM_INSET_PX` carries the numbers and the reasoning
+						 * (the separator reaches 6px in, the bar is 8px wide and sat flush).
+						 *
+						 * AN INLINE STYLE, not a conditional class, for two reasons. This
+						 * element's class attribute is a literal thumbprint two guards read
+						 * (`lane-leading.test.mjs`: a full-height column wears `panel-top-pad`
+						 * and paints `bg-canvas`, matched as one string), and moving it into a
+						 * `cn(...)` call broke both of that file's cases; and the value is a
+						 * pixel measured against the band's reach, the same class of value
+						 * `PaneSlot` sets inline for its width.
+						 *
+						 * It sits on this inner surface rather than on the column itself so the
+						 * column's own box - the width the right pane's capacity is measured
+						 * against, and the element `chat-pane-floors.test.mjs` reads its floor
+						 * from - is untouched.
+						 */
+						style={
+							rightPaneDocked ? { paddingRight: CHAT_SEAM_INSET_PX } : undefined
+						}
 						className="panel-top-pad flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-canvas"
 					>
 						{/* Chat header */}
@@ -2631,6 +2682,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										labelHoldLate={canonical.view.labelHoldLate}
 										labelMarked={canonical.view.labelMarked}
 										onReconnect={canonical.view.retry}
+										onStartNewChat={onStartNewChat}
 										// The two states a notification click paints before the
 										// owner answers: the rows may be this window's memory of
 										// the conversation rather than the owner's, or the
@@ -2720,6 +2772,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 									key={gate.request_id}
 									className={CHAT_MEASURE}
 									gate={gate}
+									sessionId={sessionId}
 									onAnswer={canonical.onAnswer}
 									/*
 									 * The secret field's own door, forwarded untouched like `onAnswer`:

@@ -368,6 +368,13 @@ export type ImageGenCardView =
 	| {
 			state: "queued";
 			/**
+			 * Which artifact this call will produce. Carried on the queued arm so a
+			 * queued SOUND can draw its own seat (`SoundGeneratingTile`'s queued
+			 * state) instead of falling back to no tile at all; a picture's seat is
+			 * still only drawn once it exists (the image card's own rule).
+			 */
+			material: ImageGenMaterial;
+			/**
 			 * The model is still DICTATING the request (the record's `composing`
 			 * phase), as opposed to `queued` proper. The distinction is the row's
 			 * own quirk (`toolRecordSummary`): only `composing` may claim the
@@ -419,6 +426,8 @@ export type ImageGenCardView =
 			state: "cancelling";
 			/** The call had already started executing when the stop was pressed. */
 			generating: boolean;
+			/** The artifact the call was making; lets the seat pick the sound band. */
+			material: ImageGenMaterial;
 			startedAtMs: number | null;
 			progress: ImageGenProgress;
 	  }
@@ -697,11 +706,13 @@ export function imageGenCardView(
 				return {
 					state: "cancelling",
 					generating: false,
+					material,
 					startedAtMs: null,
 					progress: NO_PROGRESS,
 				};
 			return {
 				state: "queued",
+				material,
 				composing: record.phase === "composing",
 				argumentBytes: record.argumentBytes ?? 0,
 				/*
@@ -718,6 +729,7 @@ export function imageGenCardView(
 				return {
 					state: "cancelling",
 					generating: true,
+					material,
 					startedAtMs,
 					progress: progressFrom(canonical),
 				};
