@@ -60,12 +60,17 @@ function httpOrigin(value: unknown): string | null {
 	}
 }
 
-/** One queue entry → one card request, or `null` when it cannot be displayed. */
-export function approvalsCardRequestFrom(entry: {
+/**
+ * One CARD request → the sanitized shape. This is the pass the model itself is
+ * checked with, so a field named for the card (`requester`) survives the second
+ * validation; the queue's own field (`displayAuthority`) is mapped in below.
+ */
+function sanitizeCardRequest(entry: {
 	entryId?: unknown;
 	origin?: unknown;
-	displayAuthority?: unknown;
+	requester?: unknown;
 	expiresAt?: unknown;
+	broadKey?: unknown;
 }): ApprovalsCardRequest | null {
 	const entryId = text(entry.entryId, APPROVALS_CARD_MODEL_LIMITS.entryId);
 	const origin = httpOrigin(entry.origin);
@@ -74,13 +79,40 @@ export function approvalsCardRequestFrom(entry: {
 		typeof entry.expiresAt === "number" && Number.isFinite(entry.expiresAt)
 			? entry.expiresAt
 			: 0;
+	const broadKey = text(entry.broadKey, 253);
 	return {
 		entryId,
 		origin,
-		requester:
-			text(entry.displayAuthority, APPROVALS_CARD_MODEL_LIMITS.requester) || "",
+		requester: text(entry.requester, APPROVALS_CARD_MODEL_LIMITS.requester),
 		expiresAt,
+		...(broadKey ? { broadKey } : {}),
 	};
+}
+
+/**
+ * One queue entry → one card request, or `null` when it cannot be displayed.
+ * The queue's `requester` is an authority boundary and must never be rendered;
+ * `displayAuthority` is the display string, and `broad.key` is the registrable
+ * domain the broad grant would cover.
+ */
+export function approvalsCardRequestFrom(entry: {
+	entryId?: unknown;
+	origin?: unknown;
+	displayAuthority?: unknown;
+	expiresAt?: unknown;
+	broad?: unknown;
+}): ApprovalsCardRequest | null {
+	const broad =
+		entry.broad && typeof entry.broad === "object"
+			? (entry.broad as { key?: unknown })
+			: null;
+	return sanitizeCardRequest({
+		entryId: entry.entryId,
+		origin: entry.origin,
+		requester: entry.displayAuthority,
+		expiresAt: entry.expiresAt,
+		broadKey: broad?.key,
+	});
 }
 
 export interface ApprovalsCardModelInput {
@@ -164,15 +196,15 @@ export function sanitizeApprovalsCardModel(
 	const pending: ApprovalsCardRequest[] = [];
 	for (const entry of pendingRaw) {
 		if (pending.length >= APPROVALS_CARD_MODEL_LIMITS.pending) break;
-		const request = approvalsCardRequestFrom(
-			(entry ?? {}) as Parameters<typeof approvalsCardRequestFrom>[0],
+		const request = sanitizeCardRequest(
+			(entry ?? {}) as Parameters<typeof sanitizeCardRequest>[0],
 		);
 		if (request) pending.push(request);
 	}
 	const requestRaw =
 		input.request && typeof input.request === "object"
-			? approvalsCardRequestFrom(
-					input.request as Parameters<typeof approvalsCardRequestFrom>[0],
+			? sanitizeCardRequest(
+					input.request as Parameters<typeof sanitizeCardRequest>[0],
 				)
 			: null;
 	const request = requestRaw ?? null;

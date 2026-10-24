@@ -341,6 +341,43 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	const approvalsOpen = nativeApprovalsCard?.available
 		? Boolean(nativeApprovalsCard.open)
 		: dockOpen;
+	/*
+	 * THE CARD'S LOCALE FOLLOWS THE APP, INCLUDING WHEN IT AUTO-PRESENTS (U5).
+	 * The renderer is the only side that resolves the locale, so it pushes the
+	 * resolved tag and direction to main whenever the route mounts or the locale
+	 * changes; without this the card rendered in `en` until the first explicit
+	 * open, because only `open()` carried the context.
+	 */
+	const locale = currentLocale();
+	const documentTheme =
+		typeof document !== "undefined"
+			? document.documentElement.dataset.theme
+			: undefined;
+	const cardTheme = documentTheme?.toLowerCase().includes("light")
+		? "light"
+		: "dark";
+	useEffect(() => {
+		if (!nativeApprovalsCard?.available) return;
+		void window.api?.browser.setApprovalsCardContext({
+			locale,
+			dir: resolveLanguage(locale).dir,
+			theme: cardTheme,
+		});
+	}, [nativeApprovalsCard?.available, locale, cardTheme]);
+	/*
+	 * KEYBOARD ENTRY IS THE SHIELD, AND CLOSING MUST GIVE IT BACK (U1). Close and
+	 * Escape focus the page in main; the shield is app DOM, not page content, so
+	 * the trigger button is focused here on the true→false transition. Without
+	 * this a keyboard user who opened the card had no way back into the chrome.
+	 */
+	const cardWasOpen = useRef(false);
+	useEffect(() => {
+		const isOpen = Boolean(nativeApprovalsCard?.open);
+		if (cardWasOpen.current && !isOpen) {
+			approvalsTriggerRef.current?.focus();
+		}
+		cardWasOpen.current = isOpen;
+	}, [nativeApprovalsCard?.open]);
 
 	// The scope filter, applied to the projection the strip, the URL bar and the
 	// waiting chips all read. `state?.tabs` is a fresh array per projection, so the
@@ -1092,24 +1129,25 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			    resolved row the user is still reading (spec 3.4's bounded memory). One
 			    pending request and no resolved rows is the common case and the tray then
 			    renders the card alone, which is the band the user already knows. */}
-			{(queue.rows.length > 0 || queue.resolved.length > 0) && (
-				// `aria-live` because this band appears without the user's action: the
-				// agent navigated, and the prompt must be announced rather than merely
-				// painted (design 9.2's whole reason for the bar).
-				<div aria-live="polite">
-					<BrowserConsentBar
-						rows={queue.rows}
-						resolved={queue.resolved}
-						selectedEntryId={selectedRow?.request.entryId ?? null}
-						onSelect={setSelectedEntryId}
-						busy={busy}
-						onDecide={decide}
-						dockOpen={dockOpen}
-						onToggleDock={() => setDockOpen((open) => !open)}
-						headerLabel={approvalHeaderLabel}
-					/>
-				</div>
-			)}
+			{!nativeApprovalsCard?.available &&
+				(queue.rows.length > 0 || queue.resolved.length > 0) && (
+					// `aria-live` because this band appears without the user's action: the
+					// agent navigated, and the prompt must be announced rather than merely
+					// painted (design 9.2's whole reason for the bar).
+					<div aria-live="polite">
+						<BrowserConsentBar
+							rows={queue.rows}
+							resolved={queue.resolved}
+							selectedEntryId={selectedRow?.request.entryId ?? null}
+							onSelect={setSelectedEntryId}
+							busy={busy}
+							onDecide={decide}
+							dockOpen={dockOpen}
+							onToggleDock={() => setDockOpen((open) => !open)}
+							headerLabel={approvalHeaderLabel}
+						/>
+					</div>
+				)}
 			{chrome.error && (
 				<output
 					className="flex items-center gap-2 border-control border-b bg-danger-wash px-3 py-1.5"
@@ -1309,7 +1347,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					)}
 				</div>
 				<BrowserApprovalsDock
-					open={dockOpen}
+					open={nativeApprovalsCard?.available ? false : dockOpen}
 					focusRequest={dockFocusRequest}
 					rows={queue.rows}
 					resolved={queue.resolved}

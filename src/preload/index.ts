@@ -919,6 +919,12 @@ const api = {
 			ipcRenderer.invoke("browser-approvals-card-open", input),
 		closeApprovalsCard: (): Promise<unknown> =>
 			ipcRenderer.invoke("browser-approvals-card-close"),
+		setApprovalsCardContext: (input: {
+			locale?: string;
+			dir?: "ltr" | "rtl";
+			theme?: "light" | "dark";
+		}): Promise<unknown> =>
+			ipcRenderer.invoke("browser-approvals-card-context", input),
 		onChord: (
 			callback: (
 				message: import("../shared/browser-chord").BrowserChordMessage,

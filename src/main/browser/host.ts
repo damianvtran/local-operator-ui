@@ -394,6 +394,11 @@ export interface BrowserHostOptions {
 			theme?: "light" | "dark";
 		}) => void;
 		close: () => void;
+		setContext: (input: {
+			locale?: string;
+			dir?: "ltr" | "rtl";
+			theme?: "light" | "dark";
+		}) => void;
 		state: () => { available: boolean; open: boolean };
 	};
 }
@@ -1934,13 +1939,38 @@ export class BrowserHost implements BrowserActionContext {
 				? request.theme
 				: undefined;
 		this.approvalsCard?.open({ locale, dir, theme });
+		// The renderer discards the returned projection for the shield toggle
+		// (M2); the push is what makes aria-expanded and the button's selected
+		// style follow main. `onChanged` also re-renders a route that mounted
+		// after the card opened (U1).
+		this.onChanged();
 		return { ...this.chromeState() };
 	}
 
 	/** Close the native card without deciding (shield's second click / Escape). */
 	closeApprovalsCard(): Record<string, unknown> {
 		this.approvalsCard?.close();
+		this.onChanged();
 		return { ...this.chromeState() };
+	}
+
+	/** The renderer's resolved locale/theme, pushed on mount and on change (U5). */
+	setApprovalsCardContext(input: unknown): void {
+		const request =
+			input && typeof input === "object"
+				? (input as Record<string, unknown>)
+				: {};
+		this.approvalsCard?.setContext({
+			locale: typeof request.locale === "string" ? request.locale : undefined,
+			dir:
+				request.dir === "rtl" || request.dir === "ltr"
+					? request.dir
+					: undefined,
+			theme:
+				request.theme === "light" || request.theme === "dark"
+					? request.theme
+					: undefined,
+		});
 	}
 
 	/** Revoke one origin's approvals (design 9.4). Separate from closing a tab and

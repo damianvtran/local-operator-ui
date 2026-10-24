@@ -4,159 +4,151 @@
     "claim": "the built card document exists, links only built assets, and carries the pinned deny-all CSP",
     "mode": "static",
     "status": "PASS",
-    "evidence": "htmlSha=335db8cb6b88 assets=['assets/approvalsOverlay-CIioLbFg.css', 'assets/approvalsOverlay-CdTOiyrn.js', 'assets/messages-B-6W58IA.js'] csp=default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; font-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'",
-    "at": "2026-10-24T07:05:48Z"
+    "evidence": "htmlSha=d7dbdde91875 assets=['assets/approvalsOverlay-BjzLydBu.css', 'assets/approvalsOverlay-CHLFiaby.js', 'assets/messages-B-6W58IA.js'] csp=default-src 'none'; script-src 'self'; style-src 'self'",
+    "at": "2026-10-24T09:29:23Z"
   },
   {
     "id": "U1",
-    "claim": "the card contract is unit-tested: sanitizer caps/enums, two channel names, RTL mirror, seq/sender drops, focus handoff, channel teardown",
+    "claim": "the round-1 contract is unit-tested: explicit-open latch, empty-open guard, recall, selected-entry decisions, context re-push, sanitizer caps/enums, RTL mirror, sender/seq drops, channel teardown",
     "mode": "unit",
     "status": "PASS",
-    "evidence": "node --test scripts/approvals-overlay.test.mjs: 19/19 PASS (incl. 'model: hostile fields...', 'geometry: RTL...', 'controller: the two card channels...', 'dispose detaches both card channels')",
-    "at": "2026-10-24T07:05:48Z"
+    "evidence": "node --test scripts/approvals-overlay.test.mjs: 25/25 PASS; full targeted set 103/103 PASS",
+    "at": "2026-10-24T09:29:23Z"
   },
   {
     "id": "A1",
-    "claim": "auto-present shows the card with no focus call, no page focus/blur event, unchanged page bounds and `presented`",
+    "claim": "auto-present is unfocused: no focus call, no page focus/blur event, unchanged activeElement/bounds/presented",
     "mode": "driven",
-    "status": "PASS",
-    "evidence": "pageBefore={\"focusEvents\": 0, \"blurEvents\": 0, \"clicks\": 0, \"keys\": 0, \"activeElement\": \"\", \"status\": \"ready\"} pageAfter={\"focusEvents\": 0, \"blurEvents\": 0, \"clicks\": 0, \"keys\": 0, \"activeElement\": \"\", \"status\": \"ready\"} bounds={\"x\": 0, \"y\": 120, \"width\": 900, \"height\": 600}->{\"x\": 0, \"y\": 120, \"width\": 900, \"height\": 600} focusTargets=['card', 'page', 'card', 'page', 'card', 'card', 'page'] explicitOpen=True",
-    "at": "2026-10-24T07:05:48Z"
+    "status": "BLOCKED",
+    "evidence": "Rig blocked in this environment: a minimal WebContentsView fails to load any URL (ERR_FAILED -2, and `app.exit` does not terminate) while a BrowserWindow in the same Electron 44.3.0 process loads file:// and data: URLs and exits normally. The probe's four cells therefore could not be re-captured at this head; the negative control is recorded in the PR thread. Re-capture is required before the driven rows are claimed.",
+    "at": "2026-10-24T09:29:23Z"
   },
   {
     "id": "A2",
-    "claim": "264 content: card view 264x496 (ceiling 480 + 16), card 248 wide with 8 DIP insets",
+    "claim": "264/900 geometry at the content-driven height, with the five decisions above the fold",
     "mode": "driven",
-    "status": "PASS",
-    "evidence": "264-dark facts.bounds={\"x\": 0, \"y\": 224, \"width\": 264, \"height\": 496} card={\"x\": 8, \"y\": 8, \"width\": 248, \"height\": 480}",
-    "at": "2026-10-24T07:05:48Z"
+    "status": "BLOCKED",
+    "evidence": "Rig blocked in this environment: a minimal WebContentsView fails to load any URL (ERR_FAILED -2, and `app.exit` does not terminate) while a BrowserWindow in the same Electron 44.3.0 process loads file:// and data: URLs and exits normally. The probe's four cells therefore could not be re-captured at this head; the negative control is recorded in the PR thread. Re-capture is required before the driven rows are claimed.",
+    "at": "2026-10-24T09:29:23Z"
   },
   {
     "id": "A3",
-    "claim": "900 content: card view 368x496 anchored to the bottom-right, card 352 wide with 8 DIP insets",
+    "claim": "RTL mirrors the native view (view x=0, card x=8)",
     "mode": "driven",
-    "status": "PASS",
-    "evidence": "900-dark facts.bounds={\"x\": 532, \"y\": 224, \"width\": 368, \"height\": 496} card={\"x\": 8, \"y\": 8, \"width\": 352, \"height\": 480}",
-    "at": "2026-10-24T07:05:48Z"
-  },
-  {
-    "id": "A4",
-    "claim": "RTL anchors the card's inline end to the content rect's left edge (view x=0, card x=8)",
-    "mode": "driven",
-    "status": "PASS",
-    "evidence": "RTL row in all four cells: {\"view\": {\"x\": 0, \"y\": 224, \"width\": 368, \"height\": 496}, \"card\": {\"x\": 8, \"y\": 232, \"width\": 352, \"height\": 480}, \"width\": 352, \"height\": 480, \"pad\": 8}",
-    "at": "2026-10-24T07:05:48Z"
+    "status": "BLOCKED",
+    "evidence": "Rig blocked in this environment: a minimal WebContentsView fails to load any URL (ERR_FAILED -2, and `app.exit` does not terminate) while a BrowserWindow in the same Electron 44.3.0 process loads file:// and data: URLs and exits normally. The probe's four cells therefore could not be re-captured at this head; the negative control is recorded in the PR thread. Re-capture is required before the driven rows are claimed.",
+    "at": "2026-10-24T09:29:23Z"
   },
   {
     "id": "C1",
-    "claim": "the card copy follows the app's resolved locale, and lang/dir travel in the model (UX U2)",
+    "claim": "the card follows the app's resolved locale on auto-present (lang/dir, ICU copy)",
     "mode": "driven",
-    "status": "PASS",
-    "evidence": "document lang=fr dir=ltr requester='Un agent' close='Fermer' review='Ouvrir les approbations' expiry='expire dans 9 minutes'",
-    "at": "2026-10-24T07:05:48Z"
+    "status": "BLOCKED",
+    "evidence": "Rig blocked in this environment: a minimal WebContentsView fails to load any URL (ERR_FAILED -2, and `app.exit` does not terminate) while a BrowserWindow in the same Electron 44.3.0 process loads file:// and data: URLs and exits normally. The probe's four cells therefore could not be re-captured at this head; the negative control is recorded in the PR thread. Re-capture is required before the driven rows are claimed.",
+    "at": "2026-10-24T09:29:23Z"
   },
   {
     "id": "I1",
-    "claim": "Allow once through the document's real button calls respond once with the live entry id",
+    "claim": "Allow once through the real document button",
     "mode": "driven",
-    "status": "PASS",
-    "evidence": "{\"responded\":[{\"entryId\":\"entry-0\",\"decision\":\"once\"}],\"actions\":{\"dismissed\":0,\"decided\":1,\"dropped\":0}}",
-    "at": "2026-10-24T07:05:48Z"
+    "status": "BLOCKED",
+    "evidence": "Rig blocked in this environment: a minimal WebContentsView fails to load any URL (ERR_FAILED -2, and `app.exit` does not terminate) while a BrowserWindow in the same Electron 44.3.0 process loads file:// and data: URLs and exits normally. The probe's four cells therefore could not be re-captured at this head; the negative control is recorded in the PR thread. Re-capture is required before the driven rows are claimed.",
+    "at": "2026-10-24T09:29:23Z"
   },
   {
     "id": "I2",
-    "claim": "a click outside the card (on the page) neither dismisses nor decides",
+    "claim": "outside click neither dismisses nor decides",
     "mode": "driven",
-    "status": "PASS",
-    "evidence": "{\"outsideBefore\":{\"focusEvents\":0,\"blurEvents\":0,\"clicks\":0,\"keys\":0,\"activeElement\":\"\",\"status\":\"ready\"},\"outsideAfter\":{\"focusEvents\":0,\"blurEvents\":0,\"clicks\":1,\"keys\":0,\"activeElement\":\"click\",\"status\":\"clicks:1\"},\"visible\":true,\"responded\":[{\"entryId\":\"entry-0\",\"decision\":\"once\"}]}",
-    "at": "2026-10-24T07:05:48Z"
+    "status": "BLOCKED",
+    "evidence": "Rig blocked in this environment: a minimal WebContentsView fails to load any URL (ERR_FAILED -2, and `app.exit` does not terminate) while a BrowserWindow in the same Electron 44.3.0 process loads file:// and data: URLs and exits normally. The probe's four cells therefore could not be re-captured at this head; the negative control is recorded in the PR thread. Re-capture is required before the driven rows are claimed.",
+    "at": "2026-10-24T09:29:23Z"
   },
   {
     "id": "I3",
-    "claim": "a click inside the 8 DIP ring does not decide or dismiss; native sibling-view routing is BLOCKED",
+    "claim": "ring click: native sibling-view routing",
     "mode": "driven",
     "status": "BLOCKED",
-    "evidence": "{\"visible\":true,\"responded\":[{\"entryId\":\"entry-0\",\"decision\":\"once\"}],\"nativeRouting\":\"BLOCKED: hidden window, no sibling-view hit testing\"}",
-    "at": "2026-10-24T07:05:48Z"
+    "evidence": "Rig blocked in this environment: a minimal WebContentsView fails to load any URL (ERR_FAILED -2, and `app.exit` does not terminate) while a BrowserWindow in the same Electron 44.3.0 process loads file:// and data: URLs and exits normally. The probe's four cells therefore could not be re-captured at this head; the negative control is recorded in the PR thread. Re-capture is required before the driven rows are claimed.",
+    "at": "2026-10-24T09:29:23Z"
   },
   {
     "id": "I4",
-    "claim": "Escape dismisses without deciding (the next live request may present)",
+    "claim": "Escape dismisses without deciding",
     "mode": "driven",
-    "status": "PASS",
-    "evidence": "{\"visible\":true,\"requestEntryId\":\"entry-1\",\"dismissedEntry\":\"entry-0\",\"responded\":[{\"entryId\":\"entry-0\",\"decision\":\"once\"}],\"actions\":{\"dismissed\":1,\"decided\":1,\"dropped\":1}}",
-    "at": "2026-10-24T07:05:48Z"
+    "status": "BLOCKED",
+    "evidence": "Rig blocked in this environment: a minimal WebContentsView fails to load any URL (ERR_FAILED -2, and `app.exit` does not terminate) while a BrowserWindow in the same Electron 44.3.0 process loads file:// and data: URLs and exits normally. The probe's four cells therefore could not be re-captured at this head; the negative control is recorded in the PR thread. Re-capture is required before the driven rows are claimed.",
+    "at": "2026-10-24T09:29:23Z"
   },
   {
     "id": "I5",
-    "claim": "a page click while open leaves the card presented",
+    "claim": "page click keeps the card presented",
     "mode": "driven",
-    "status": "PASS",
-    "evidence": "{\"pageClickBefore\":{\"focusEvents\":0,\"blurEvents\":0,\"clicks\":1,\"keys\":0,\"activeElement\":\"click\",\"status\":\"clicks:1\"},\"pageClickAfter\":{\"focusEvents\":0,\"blurEvents\":0,\"clicks\":2,\"keys\":0,\"activeElement\":\"click\",\"status\":\"clicks:2\"},\"visible\":true}",
-    "at": "2026-10-24T07:05:48Z"
+    "status": "BLOCKED",
+    "evidence": "Rig blocked in this environment: a minimal WebContentsView fails to load any URL (ERR_FAILED -2, and `app.exit` does not terminate) while a BrowserWindow in the same Electron 44.3.0 process loads file:// and data: URLs and exits normally. The probe's four cells therefore could not be re-captured at this head; the negative control is recorded in the PR thread. Re-capture is required before the driven rows are claimed.",
+    "at": "2026-10-24T09:29:23Z"
   },
   {
     "id": "I6",
-    "claim": "the shield's open/close handoff focuses the card on explicit open and returns the page on close",
+    "claim": "explicit open/close focus handoff",
     "mode": "driven",
-    "status": "PASS",
-    "evidence": "{\"opened\":true,\"closed\":true,\"openFocus\":[\"card\"],\"closeFocus\":[\"card\",\"page\"],\"doc\":{\"active\":\"approvals-card\",\"lang\":\"fr\",\"dir\":\"ltr\",\"theme\":\"localOperatorDark\",\"card\":{\"x\":8,\"y\":8,\"width\":352,\"height\":480},\"origin\":\"https://example0.test\",\"requester\":\"Un agent\",\"expiry\":\"expire dans 9 minutes\",\"review\":\"Ouvrir les approbations\",\"close\":\"Fermer\",\"allowOnce\":{\"text\":\"Autoriser une fois\",\"disabled\":false,\"x\":176.5,\"y\":175.0859375},\"buttons\":[{\"id\":\"approvals-close\",\"text\":\"Fermer\",\"disabled\":fa",
-    "at": "2026-10-24T07:05:48Z"
+    "status": "BLOCKED",
+    "evidence": "Rig blocked in this environment: a minimal WebContentsView fails to load any URL (ERR_FAILED -2, and `app.exit` does not terminate) while a BrowserWindow in the same Electron 44.3.0 process loads file:// and data: URLs and exits normally. The probe's four cells therefore could not be re-captured at this head; the negative control is recorded in the PR thread. Re-capture is required before the driven rows are claimed.",
+    "at": "2026-10-24T09:29:23Z"
   },
   {
     "id": "I7",
-    "claim": "Tab order runs Close -> Allow once -> the four scoped decisions -> Review all inside the child",
+    "claim": "Tab order inside the child",
     "mode": "driven",
-    "status": "PASS",
-    "evidence": "{\"tabOrder\":[\"approvals-close\",\"approvals-allow-once\",\"\",\"\",\"\",\"\",\"approvals-review\"]}",
-    "at": "2026-10-24T07:05:48Z"
+    "status": "BLOCKED",
+    "evidence": "Rig blocked in this environment: a minimal WebContentsView fails to load any URL (ERR_FAILED -2, and `app.exit` does not terminate) while a BrowserWindow in the same Electron 44.3.0 process loads file:// and data: URLs and exits normally. The probe's four cells therefore could not be re-captured at this head; the negative control is recorded in the PR thread. Re-capture is required before the driven rows are claimed.",
+    "at": "2026-10-24T09:29:23Z"
   },
   {
     "id": "I8",
-    "claim": "a stale seq crosses the preload API but decides nothing (dropped in main)",
+    "claim": "stale seq decides nothing",
     "mode": "driven",
-    "status": "PASS",
-    "evidence": "{\"staleResult\":\"sent\",\"responded\":[{\"entryId\":\"entry-0\",\"decision\":\"once\"}],\"actions\":{\"dismissed\":0,\"decided\":1,\"dropped\":1}}",
-    "at": "2026-10-24T07:05:48Z"
+    "status": "BLOCKED",
+    "evidence": "Rig blocked in this environment: a minimal WebContentsView fails to load any URL (ERR_FAILED -2, and `app.exit` does not terminate) while a BrowserWindow in the same Electron 44.3.0 process loads file:// and data: URLs and exits normally. The probe's four cells therefore could not be re-captured at this head; the negative control is recorded in the PR thread. Re-capture is required before the driven rows are claimed.",
+    "at": "2026-10-24T09:29:23Z"
   },
   {
     "id": "E1",
-    "claim": "card-document frames captured and viewed at 264/900 in dark and light",
+    "claim": "card-document frames at 264/900 dark/light",
     "mode": "driven",
-    "status": "PASS",
-    "evidence": "s6b-card-capture.png per cell (528x992 and 736x992 @2x), each read: localized identity, header, origin, expiry, primary, scoped decisions with glosses, sticky Review all footer. Frames attached to the PR, not committed",
-    "at": "2026-10-24T07:05:48Z"
+    "status": "BLOCKED",
+    "evidence": "Rig blocked in this environment: a minimal WebContentsView fails to load any URL (ERR_FAILED -2, and `app.exit` does not terminate) while a BrowserWindow in the same Electron 44.3.0 process loads file:// and data: URLs and exits normally. The probe's four cells therefore could not be re-captured at this head; the negative control is recorded in the PR thread. Re-capture is required before the driven rows are claimed.",
+    "at": "2026-10-24T09:29:23Z"
   },
   {
     "id": "V1",
     "claim": "native composite / transparency over a live page",
     "mode": "driven",
     "status": "BLOCKED",
-    "evidence": "hidden window and no Screen Recording; the document-only frame is not a composite",
-    "at": "2026-10-24T07:05:48Z"
+    "evidence": "no Screen Recording and a hidden window; not claimed",
+    "at": "2026-10-24T09:29:23Z"
   },
   {
     "id": "V2",
     "claim": "VoiceOver across the second document",
     "mode": "driven",
     "status": "BLOCKED",
-    "evidence": "no automated VoiceOver; manual release gate",
-    "at": "2026-10-24T07:05:48Z"
+    "evidence": "manual release gate",
+    "at": "2026-10-24T09:29:23Z"
   },
   {
     "id": "V3",
     "claim": "8 DIP ring native hit routing",
     "mode": "driven",
     "status": "BLOCKED",
-    "evidence": "hidden window has no sibling-view hit testing; only the geometry row A2 is claimed",
-    "at": "2026-10-24T07:05:48Z"
+    "evidence": "hidden window has no sibling-view hit testing",
+    "at": "2026-10-24T09:29:23Z"
   },
   {
     "id": "T1",
-    "claim": "every probe run stopped with exit 0 and left no Electron process behind",
+    "claim": "every probe boot exits cleanly and leaves no process",
     "mode": "driven",
-    "status": "PASS",
-    "evidence": "4/4 exit=0; pgrep for s6b-main.mjs and the probe after the matrix: none",
-    "at": "2026-10-24T07:05:48Z"
+    "status": "BLOCKED",
+    "evidence": "Rig blocked in this environment: a minimal WebContentsView fails to load any URL (ERR_FAILED -2, and `app.exit` does not terminate) while a BrowserWindow in the same Electron 44.3.0 process loads file:// and data: URLs and exits normally. The probe's four cells therefore could not be re-captured at this head; the negative control is recorded in the PR thread. Re-capture is required before the driven rows are claimed.",
+    "at": "2026-10-24T09:29:23Z"
   }
 ]

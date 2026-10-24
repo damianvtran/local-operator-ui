@@ -630,12 +630,10 @@ test("model: hostile fields are rebuilt from the allow-list, never forwarded", (
 		request: {
 			entryId: "e1",
 			origin: "https://example.test/path",
-			displayAuthority: "x".repeat(100_000),
+			requester: "x".repeat(100_000),
 			expiresAt: 123,
 		},
-		pending: [
-			{ entryId: "e1", origin: "javascript:alert(1)", displayAuthority: "" },
-		],
+		pending: [{ entryId: "e1", origin: "javascript:alert(1)", requester: "" }],
 	});
 	assert.equal(model.seq, 7);
 	assert.equal(model.dir, "rtl");
@@ -650,6 +648,26 @@ test("model: hostile fields are rebuilt from the allow-list, never forwarded", (
 	);
 	assert.equal(model.request.requester.length, 256, "the requester is capped");
 	assert.equal(model.pending.length, 0, "a non-http origin cannot be painted");
+});
+
+test("model: the display authority reaches the card as the requester", () => {
+	const model = mod.approvalsCardModelFrom({
+		seq: 1,
+		entries: [
+			{
+				entryId: "e1",
+				origin: "https://example.test",
+				displayAuthority: "The agent in 'probe'",
+				expiresAt: Date.now() + 60_000,
+				broad: { scope: "domain", key: "example.test" },
+			},
+		],
+		locale: "en",
+		dir: "ltr",
+		theme: "dark",
+	});
+	assert.equal(model.request.requester, "The agent in 'probe'");
+	assert.equal(model.request.broadKey, "example.test");
 });
 
 test("model: the pending list is capped and the request skips dismissed entries", () => {
@@ -828,4 +846,222 @@ test("controller: dispose detaches both card channels", () => {
 	controller.dispose("test");
 	assert.equal(mod.listenerCount("browser-approvals-card-dismiss"), 0);
 	assert.equal(mod.listenerCount("browser-approvals-card-decide"), 0);
+});
+
+test("controller: auto-present is not an explicit open, and the latch clears on empty", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+		},
+	};
+	const controller = new mod.ApprovalsOverlayController({
+		window: { contentView, isDestroyed: () => false },
+		documentUrl: "file:///tmp/browser-approvals-overlay.html",
+	});
+	controller.onLayout({
+		presented: true,
+		contentRect: rect(0, 0, 900, 600),
+		revision: 1,
+	});
+	controller.setModel({ entries: entries(1) });
+	await waitFor(
+		() => controller.facts().ready && controller.facts().visible,
+		"auto-present",
+	);
+	// M1: the shield must not read an auto-presented card as "open" — the first
+	// click would close it instead of opening/focusing.
+	assert.equal(controller.state().open, false);
+	assert.equal(controller.state().visible, true);
+	controller.open({ focus: true });
+	assert.equal(controller.state().open, true);
+	controller.close("test");
+	assert.equal(controller.state().open, false);
+	controller.setModel({ entries: [] });
+	assert.equal(controller.state().open, false);
+	assert.equal(controller.state().visible, false);
+	controller.dispose("test");
+});
+
+test("controller: an open with an empty queue arms nothing (M3)", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+		},
+	};
+	const focused = [];
+	const controller = new mod.ApprovalsOverlayController({
+		window: { contentView, isDestroyed: () => false },
+		documentUrl: "file:///tmp/browser-approvals-overlay.html",
+		focusTarget: (target) => focused.push(target),
+	});
+	controller.onLayout({
+		presented: true,
+		contentRect: rect(0, 0, 900, 600),
+		revision: 1,
+	});
+	controller.setModel({ entries: [] });
+	controller.open({ focus: true });
+	assert.equal(controller.state().open, false, "an empty open arms nothing");
+	controller.setModel({ entries: entries(1) });
+	await waitFor(
+		() => controller.facts().ready && controller.facts().visible,
+		"arrival",
+	);
+	assert.equal(focused.length, 0, "the next arrival must not be focused");
+	assert.equal(controller.state().open, false);
+	controller.dispose("test");
+});
+
+test("controller: a fully dismissed queue is recallable from the shield (U3)", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+		},
+	};
+	const controller = new mod.ApprovalsOverlayController({
+		window: { contentView, isDestroyed: () => false },
+		documentUrl: "file:///tmp/browser-approvals-overlay.html",
+	});
+	controller.onLayout({
+		presented: true,
+		contentRect: rect(0, 0, 900, 600),
+		revision: 1,
+	});
+	controller.setModel({ entries: entries(1) });
+	await waitFor(
+		() => controller.facts().ready && controller.facts().visible,
+		"auto-present",
+	);
+	const view = children.at(-1);
+	const event = { sender: view.webContents, senderFrame: view.mainFrame };
+	mod.emitIpc("browser-approvals-card-dismiss", event, {
+		seq: controller.facts().seq,
+		entryId: controller.facts().requestEntryId,
+	});
+	await waitFor(() => !controller.facts().visible, "dismissed");
+	assert.equal(controller.facts().pending, 1, "still pending and counted");
+	controller.open({ focus: true });
+	await waitFor(() => controller.facts().visible, "recalled");
+	assert.equal(controller.facts().visible, true);
+	assert.equal(controller.state().open, true);
+	controller.dispose("test");
+});
+
+test("controller: a selected pending entry may be decided, not only the oldest (D9)", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+		},
+	};
+	const responded = [];
+	const controller = new mod.ApprovalsOverlayController({
+		window: { contentView, isDestroyed: () => false },
+		documentUrl: "file:///tmp/browser-approvals-overlay.html",
+		respond: (entryId, decision) => responded.push([entryId, decision]),
+	});
+	controller.onLayout({
+		presented: true,
+		contentRect: rect(0, 0, 900, 600),
+		revision: 1,
+	});
+	controller.setModel({ entries: entries(2) });
+	await waitFor(
+		() => controller.facts().ready && controller.facts().visible,
+		"auto-present",
+	);
+	const view = children.at(-1);
+	mod.emitIpc(
+		"browser-approvals-card-decide",
+		{
+			sender: view.webContents,
+			senderFrame: view.mainFrame,
+		},
+		{
+			seq: controller.facts().seq,
+			entryId: "entry-1",
+			decision: "site",
+		},
+	);
+	assert.deepEqual(responded, [["entry-1", "site"]]);
+	controller.dispose("test");
+});
+
+test("controller: setContext re-pushes the locale and mirrors the view (U5)", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+		},
+	};
+	const controller = new mod.ApprovalsOverlayController({
+		window: { contentView, isDestroyed: () => false },
+		documentUrl: "file:///tmp/browser-approvals-overlay.html",
+	});
+	controller.onLayout({
+		presented: true,
+		contentRect: rect(0, 0, 900, 600),
+		revision: 1,
+	});
+	controller.setModel({ entries: entries(1), locale: "en", dir: "ltr" });
+	await waitFor(
+		() => controller.facts().ready && controller.facts().visible,
+		"auto-present",
+	);
+	const before = controller.facts().seq;
+	controller.setContext({ locale: "fr", dir: "rtl" });
+	await waitFor(
+		() => controller.facts().bounds?.view?.x === 0,
+		"the RTL layout pass",
+	);
+	assert.ok(controller.facts().seq > before, "the model was re-pushed");
+	controller.dispose("test");
 });

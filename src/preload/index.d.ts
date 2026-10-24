@@ -161,6 +161,11 @@ declare global {
 					theme?: "light" | "dark";
 				}) => Promise<unknown>;
 				closeApprovalsCard: () => Promise<unknown>;
+				setApprovalsCardContext: (input: {
+					locale?: string;
+					dir?: "ltr" | "rtl";
+					theme?: "light" | "dark";
+				}) => Promise<unknown>;
 				onChord: (
 					callback: (
 						message: import("../shared/browser-chord").BrowserChordMessage,

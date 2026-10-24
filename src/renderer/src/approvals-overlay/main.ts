@@ -4,9 +4,9 @@
  * IT PAINTS A MODEL AND SENDS TWO VERBS. The model arrives from main through
  * `window.__approvalsCard.setModel` — the seam S6a proved for the count — and
  * the only things this document can say back are `dismiss` and `decide`, both
- * exposed by the purpose-built preload. `More options` and `Review all` are
- * local view changes: they never cross the boundary, so two of the card's four
- * verbs have no wire representation at all.
+ * exposed by the purpose-built preload. The scoped decisions and the queue list
+ * are local view changes: they never cross the boundary, so the card's two
+ * channels remain exactly two.
  *
  * TRUST RULES THIS FILE KEEPS:
  * - every string is written with `textContent`; no `innerHTML`, no URL content;
@@ -72,6 +72,7 @@ const expiryNode = document.getElementById("approvals-expiry");
 const allowOnceNode = document.getElementById(
 	"approvals-allow-once",
 ) as HTMLButtonElement | null;
+const glossNode = document.getElementById("approvals-gloss");
 const secondaryNode = document.getElementById("approvals-secondary");
 const reviewNode = document.getElementById(
 	"approvals-review",
@@ -85,6 +86,16 @@ const errorNode = document.getElementById("approvals-error");
 let model: ApprovalsCardModel | null = null;
 let localView: "request" | "list" = "request";
 let lastEntryId: string | null = null;
+/** A row the operator picked in the queue list; overrides the controller's pick. */
+let selectedEntryId: string | null = null;
+
+function shownRequest(): ApprovalsCardRequest | null {
+	if (!model) return null;
+	return (
+		model.pending.find((entry) => entry.entryId === selectedEntryId) ??
+		model.request
+	);
+}
 
 function minutesLeft(expiresAt: number): number | null {
 	if (!Number.isFinite(expiresAt) || expiresAt <= 0) return null;
@@ -107,106 +118,149 @@ function expiringText(expiresAt: number): string {
 	});
 }
 
-function action(label: string, onClick: () => void): HTMLButtonElement {
+function setGloss(text: string): void {
+	if (glossNode) glossNode.textContent = text;
+}
+
+function action(
+	label: string,
+	onClick: () => void,
+	onGloss: () => void,
+): HTMLButtonElement {
 	const button = document.createElement("button");
 	button.type = "button";
-	button.className = "card-action";
 	button.textContent = label;
 	button.addEventListener("click", onClick);
+	button.addEventListener("mouseenter", onGloss);
+	button.addEventListener("focus", onGloss);
 	return button;
-}
-
-function decisionButton(
-	decision: ApprovalsCardDecision,
-	label: string,
-	gloss: string,
-): HTMLElement {
-	const button = action(label, () => sendDecision(decision));
-	const description = document.createElement("p");
-	description.className = "card-gloss";
-	description.textContent = gloss;
-	const wrapper = document.createElement("div");
-	wrapper.className = "card-decision";
-	wrapper.append(button, description);
-	return wrapper;
-}
-
-function sendDecision(decision: ApprovalsCardDecision): void {
-	if (!model?.request || model.busy) return;
-	if ((minutesLeft(model.request.expiresAt) ?? 1) <= 0) return;
-	window.approvalsCard?.decide({
-		seq: model.seq,
-		entryId: model.request.entryId,
-		decision,
-	});
 }
 
 function dismiss(): void {
 	if (!model) return;
 	window.approvalsCard?.dismiss({
 		seq: model.seq,
-		entryId: model.request?.entryId ?? "",
+		entryId: shownRequest()?.entryId ?? "",
 	});
 }
 
+function sendDecision(decision: ApprovalsCardDecision): void {
+	if (!model) return;
+	const request = shownRequest();
+	if (!request) return;
+	window.approvalsCard?.decide({
+		seq: model.seq,
+		entryId: request.entryId,
+		decision,
+	});
+}
+
+/**
+ * The four scoped decisions, using the band's existing copy verbatim.
+ *
+ * THE DOMAIN OPTION EXISTS ONLY WHEN THE QUEUE CARRIES A BROAD GRANT. Rendering
+ * "allow all of every site under <origin>" from concatenated fragments was
+ * ungrammatical in both shipped languages (D3/Q-1); the label is the audited
+ * `allow_all_of` + the grant's own registrable-domain key, the same composition
+ * the consent card uses.
+ */
 function renderSecondary(request: ApprovalsCardRequest): void {
 	if (!secondaryNode) return;
 	secondaryNode.replaceChildren();
-	const origin = request.origin;
-	secondaryNode.append(
-		decisionButton(
-			"session",
+	const buttons: HTMLButtonElement[] = [
+		action(
 			t("ui.browser.browser_consent_request.allow_until_the_app_quits"),
-			t("ui.browser.browser_consent_request.this_site_for_this_run_only_and"),
+			() => sendDecision("session"),
+			() =>
+				setGloss(
+					t(
+						"ui.browser.browser_consent_request.this_site_for_this_run_only_and",
+					),
+				),
 		),
-		decisionButton(
-			"site",
+		action(
 			t("ui.browser.browser_consent_request.always_allow_this_site"),
-			t(
-				"ui.browser.browser_consent_request.kept_until_you_revoke_it_and_shared",
-			),
+			() => sendDecision("site"),
+			() =>
+				setGloss(
+					t(
+						"ui.browser.browser_consent_request.kept_until_you_revoke_it_and_shared",
+					),
+				),
 		),
-		decisionButton(
-			"domain",
-			`${t("ui.browser.browser_consent_request.allow_all_of")}${t(
-				"ui.browser.browser_consent_request.every_site_under",
-			)}${origin}`,
-			// The standalone gloss form: the `_shared_with` variant begins with a
-			// comma because the consent card concatenates it after the origin.
-			t(
-				"ui.browser.browser_consent_request.kept_until_you_revoke_it_and_shared",
+	];
+	if (request.broadKey) {
+		buttons.push(
+			action(
+				`${t("ui.browser.browser_consent_request.allow_all_of")}${request.broadKey}`,
+				() => sendDecision("domain"),
+				() =>
+					setGloss(
+						`${t("ui.browser.browser_consent_request.every_site_under")}${request.broadKey}${t("ui.browser.browser_consent_request.kept_until_you_revoke_it_shared_with")}`,
+					),
 			),
-		),
-		decisionButton(
-			"deny",
+		);
+	}
+	buttons.push(
+		action(
 			t("ui.browser.browser_consent_request.don_t_allow"),
-			t(
-				"ui.browser.browser_consent_request.the_agent_stops_asking_about_this_site",
-			),
+			() => sendDecision("deny"),
+			() =>
+				setGloss(
+					t(
+						"ui.browser.browser_consent_request.the_agent_stops_asking_about_this_site",
+					),
+				),
 		),
 	);
+	secondaryNode.append(...buttons);
 }
 
 function renderRows(pending: ReadonlyArray<ApprovalsCardRequest>): void {
 	if (!rowsNode) return;
 	rowsNode.replaceChildren();
 	for (const entry of pending) {
-		const row = document.createElement("li");
+		const item = document.createElement("div");
+		item.setAttribute("role", "listitem");
+		const row = document.createElement("button");
+		row.type = "button";
 		row.className = "card-row";
 		const origin = document.createElement("span");
 		origin.className = "card-row-origin";
 		origin.textContent = entry.origin;
 		const meta = document.createElement("span");
 		meta.className = "card-row-meta";
+		// The requester is the difference between two requests for one site; the
+		// list must carry it, not just the origin and the expiry (U4).
 		meta.textContent = [entry.requester, expiringText(entry.expiresAt)]
 			.filter(Boolean)
 			.join(" · ");
 		row.append(origin, meta);
-		rowsNode.append(row);
+		row.addEventListener("click", () => {
+			selectedEntryId = entry.entryId;
+			setView("request");
+			render();
+		});
+		item.append(row);
+		rowsNode.append(item);
 	}
 }
 
 function setView(view: "request" | "list"): void {
+	/*
+	 * KEEP THE CARD'S HEIGHT STABLE ACROSS THE LOCAL VIEWS (D11). The native view
+	 * follows the card's measured height, and only a model push re-measures; a
+	 * shorter list would otherwise shrink the card inside a view that stays tall,
+	 * leaving the ring in the wrong place. The list inherits the request view's
+	 * height instead.
+	 */
+	if (card) {
+		if (view === "list" && localView !== "list") {
+			card.style.minHeight = `${Math.ceil(card.getBoundingClientRect().height)}px`;
+		} else if (view === "request") {
+			card.style.minHeight = "";
+		}
+	}
 	localView = view;
 	if (requestView) requestView.hidden = view !== "request";
 	if (listView) listView.hidden = view !== "list";
@@ -216,9 +270,10 @@ function setView(view: "request" | "list"): void {
 
 function render(): void {
 	if (!model) return;
-	const request = model.request;
+	const request = shownRequest();
 	if (request && request.entryId !== lastEntryId) {
 		lastEntryId = request.entryId;
+		selectedEntryId = request.entryId;
 		// A new request always opens on the request view, never on the list a
 		// previous request left behind.
 		setView("request");
@@ -241,6 +296,11 @@ function render(): void {
 			);
 			allowOnceNode.disabled = model.busy;
 			allowOnceNode.onclick = () => sendDecision("once");
+			setGloss(
+				t(
+					"ui.browser.browser_consent_request.one_navigation_for_that_conversation_up_to",
+				),
+			);
 		}
 		renderSecondary(request);
 	}
@@ -260,7 +320,7 @@ function render(): void {
 	const disabled =
 		model.busy || (request ? (minutesLeft(request.expiresAt) ?? 1) <= 0 : true);
 	for (const button of secondaryNode?.querySelectorAll("button") ?? []) {
-		(button as HTMLButtonElement).disabled = disabled;
+		button.disabled = disabled;
 	}
 	card?.setAttribute("aria-busy", model.busy ? "true" : "false");
 	if (errorNode) {
@@ -276,6 +336,14 @@ function render(): void {
 window.__approvalsCard = {
 	setModel(next: ApprovalsCardModel): void {
 		model = next;
+		// A selected row that left the queue must not keep the request view on a
+		// stale entry; fall back to the controller's current request.
+		if (
+			selectedEntryId &&
+			!next.pending.some((entry) => entry.entryId === selectedEntryId)
+		) {
+			selectedEntryId = null;
+		}
 		// The document's language metadata follows the APP's resolved locale, not
 		// the device tag (UX U2); `setLocale` makes `t()` format plurals with the
 		// same catalogue the metadata names.
@@ -313,6 +381,7 @@ document.addEventListener("keydown", (event) => {
 // The expiry line is the one value that changes without a model push. A local
 // tick repaints it; it crosses no boundary and decides nothing.
 setInterval(() => {
-	if (!model?.request || !expiryNode) return;
-	expiryNode.textContent = expiringText(model.request.expiresAt);
+	const request = shownRequest();
+	if (!request || !expiryNode) return;
+	expiryNode.textContent = expiringText(request.expiresAt);
 }, 30_000);

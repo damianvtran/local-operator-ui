@@ -80,7 +80,7 @@ app.whenReady().then(async () => {
           // A rebuild can close this view mid-evaluate; the pending promise then
           // never settles, so bound every read rather than hang the whole probe.
           const document = await Promise.race([
-            view.webContents.executeJavaScript("(() => ({ href: location.href, innerWidth, innerHeight, natural: window.__approvalsCard ? window.__approvalsCard.naturalHeight() : null, card: (() => { const r = document.getElementById('approvals-card')?.getBoundingClientRect(); return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null; })() }))()"),
+            view.webContents.executeJavaScript("(() => ({ href: location.href, innerWidth, innerHeight, natural: (() => { const el = document.getElementById('approvals-card'); if (!el) return null; const previous = el.style.maxHeight; el.style.maxHeight = 'none'; const height = el.getBoundingClientRect().height; el.style.maxHeight = previous; return height; })(), card: (() => { const r = document.getElementById('approvals-card')?.getBoundingClientRect(); return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null; })() }))()"),
             new Promise((_, reject) => setTimeout(() => reject(new Error("read-timeout")), 1000)),
           ]);
           last = { view: view.getBounds(), document, facts: snapshot };
