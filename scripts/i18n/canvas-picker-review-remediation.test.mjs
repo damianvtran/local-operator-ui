@@ -176,7 +176,7 @@ const FRENCH = {
 	},
 	"ui.common.forms": {
 		"ui.common.forms.categories_input_chips.category":
-			"{category, select, role_play {Jeu de rôle FR} other {{category}}}",
+			"{category, select, role_play {Jeu de rôle FR} other_category {Autre FR} other {{category}}}",
 		"ui.common.forms.categories_input_chips.remove_category":
 			"Retirer la catégorie {value} FR",
 	},
@@ -467,6 +467,10 @@ testSerial(
 		);
 		try {
 			assert.match(view.container.textContent, /Role Play/);
+			assert.equal(
+				view.container.querySelector("button").getAttribute("aria-label"),
+				"Remove category Role Play",
+			);
 			await view.setLocale("fr");
 			assert.equal(
 				messages.t("ui.common.forms.categories_input_chips.category", {
@@ -481,6 +485,10 @@ testSerial(
 			assert.ok(
 				remove,
 				"remove-button accessible name uses the localized label",
+			);
+			assert.equal(
+				remove.getAttribute("aria-label"),
+				"Retirer la catégorie Jeu de rôle FR FR",
 			);
 			const input = view.container.querySelector("input");
 			await act(async () => input.focus());
@@ -506,6 +514,34 @@ testSerial(
 		} finally {
 			await view.unmount();
 			await switchLocale("en");
+		}
+
+		for (const [id, english, french] of [
+			["other", "Other", "Autre FR"],
+			["unknown_future_id", "unknown_future_id", "unknown_future_id"],
+		]) {
+			const category = await mount(
+				React.createElement(CategoriesInputChips, {
+					value: [id],
+					onChange: () => {},
+				}),
+			);
+			try {
+				assert.match(category.container.textContent, new RegExp(english));
+				assert.equal(
+					category.container.querySelector("button").getAttribute("aria-label"),
+					`Remove category ${english}`,
+				);
+				await category.setLocale("fr");
+				assert.match(category.container.textContent, new RegExp(french));
+				assert.equal(
+					category.container.querySelector("button").getAttribute("aria-label"),
+					`Retirer la catégorie ${french} FR`,
+				);
+			} finally {
+				await category.unmount();
+				await switchLocale("en");
+			}
 		}
 	},
 );

@@ -248,10 +248,10 @@
 	"ui.common.forms.categories_input_chips.category": {
 		"role": "category display label",
 		"tone": "Plain, concise product language; preserve raw identifiers.",
-		"note": "Select arms are stable backend category ids, never translated values. The other arm returns an unknown id verbatim. Used for chips, search and remove-button accessible names.",
+		"note": "Raw backend category ids select display labels except raw 'other', which maps to other_category so ICU's mandatory other arm can return a genuinely unknown future id verbatim. Used for chips, search and remove-button accessible names.",
 		"placeholders": {
-			"category": "Raw backend category identifier and ICU select selector; do not translate or rename the select arms."
+			"category": "Raw backend category identifier, except raw other maps to other_category before lookup. Do not translate or rename selector arms; unknown future ids reach the other fallback verbatim."
 		},
-		"select_guidance": "Translate display labels only. Keep every selector id and the fallback {category} unchanged."
+		"select_guidance": "Translate display labels only. Keep every selector id, including other_category and the mandatory other fallback with {category}, unchanged."
 	}
 }
