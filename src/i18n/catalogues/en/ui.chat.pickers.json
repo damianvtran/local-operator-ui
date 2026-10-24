@@ -40,7 +40,7 @@
 	"ui.chat.pickers.destination_pickers.signed_in": "Signed in",
 	"ui.chat.pickers.destination_pickers.needs_sign_in660cb8": "Needs sign-in",
 	"ui.chat.pickers.destination_pickers.the_default_was_not_saved": "The default was not saved",
-	"ui.chat.pickers.destination_pickers.this_pane_has_not_resolved_a_model_to_change": "{refused} This pane has not resolved a model to change.",
+	"ui.chat.pickers.destination_pickers.this_pane_has_not_resolved_a_model_to_change": "{refused}This pane has not resolved a model to change.",
 	"ui.chat.pickers.destination_pickers.show_all_supported_models": "Show all supported models",
 	"ui.chat.pickers.destination_pickers.default_for_new_sessions": "Default for new sessions: {modelname}",
 	"ui.chat.pickers.destination_pickers.the_model_was_not_changed": "The model was not changed.",
@@ -718,5 +718,6 @@
 	"ui.chat.pickers.usage_view_model.requests": "req",
 	"ui.chat.pickers.usage_view_model.credits": "credits",
 	"ui.chat.pickers.destination_pickers.refreshing": "Refreshing…",
-	"ui.chat.pickers.destination_pickers.checking": "Checking…"
+	"ui.chat.pickers.destination_pickers.checking": "Checking…",
+	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": "Applies to the conversation this chat starts."
 }

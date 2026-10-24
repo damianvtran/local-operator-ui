@@ -4528,6 +4528,7 @@ export type MessageParams = {
 	"ui.chat.pickers.destination_pickers.also_make_this_the_default_effort_for_new_sessions": undefined;
 	"ui.chat.pickers.destination_pickers.also_make_this_the_default_for_new_sessions": undefined;
 	"ui.chat.pickers.destination_pickers.an_explicit_name_takes_precedence_over_the_generated_title": undefined;
+	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": undefined;
 	"ui.chat.pickers.destination_pickers.applies_to_this_session_only": undefined;
 	"ui.chat.pickers.destination_pickers.as_quote": undefined;
 	"ui.chat.pickers.destination_pickers.attach_team": undefined;

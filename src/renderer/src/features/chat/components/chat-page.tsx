@@ -138,6 +138,8 @@ import { ChatDeviceSlot } from "../device/chat-device-slot";
 import {
 	type DraftResolution,
 	type DraftSelectionTarget,
+	FAST_UNAVAILABLE_CODE,
+	FAST_UNAVAILABLE_SENTENCE,
 	draftPreviewQuery,
 } from "../draft-selection";
 import { FLEET_ASKS_QUERY_KEY, useFleetAsks } from "../fleet-asks";
@@ -391,6 +393,18 @@ function SessionPanel({
 			.getState()
 			.setDraftWarmable(
 				desktopFeatureEnabled(panelCapabilities.data, "session_draft_warm"),
+			);
+		/*
+		 * The same publication for the draft dial (round 2's F1 follow-up). The
+		 * store builds the create and the warm-mint bodies and must not import this
+		 * module's capability hook, so the mounted pane states whether the field can
+		 * ride; fail-closed, so an unanswered query strips it rather than sending a
+		 * body an older core refuses whole.
+		 */
+		useCanonicalSessionsStore
+			.getState()
+			.setDraftFastCarries(
+				desktopFeatureEnabled(panelCapabilities.data, "draft_fast"),
 			);
 	}, [panelCapabilities.data]);
 	/*
@@ -1445,8 +1459,21 @@ function SessionPanel({
 		!sessionId &&
 		cwd.length > 0 &&
 		desktopFeatureEnabled(capabilities.data, "draft_preview");
+	/*
+	 * WHETHER THIS BACKEND CARRIES THE DIAL (round 2's F1 follow-up). A row
+	 * persisted with `fast_mode: true` meets an older core with a 422 for the WHOLE
+	 * body, and that core refuses the preview as readily as the create - so the
+	 * query filters the field out at its own sender (`draftPreviewQuery`) and the
+	 * store does the same for `sessions.draft`/`sessions.create`. The row keeps the
+	 * dial (it was the user's choice, and a capable backend restores it); the line
+	 * below says so out loud rather than dropping it in silence.
+	 */
+	const draftFastCarries = desktopFeatureEnabled(
+		capabilities.data,
+		"draft_fast",
+	);
 	const preview = useQuery({
-		...draftPreviewQuery(draftTarget),
+		...draftPreviewQuery(draftTarget, draftFastCarries),
 		enabled: draftPreviewOn,
 	});
 	/*
@@ -1467,6 +1494,35 @@ function SessionPanel({
 				? { status: "failed", retry: () => void preview.refetch() }
 				: { status: "pending" }
 		: undefined;
+	/*
+	 * A DIAL THE USER SET THAT THIS BACKEND CANNOT CARRY (round 2's F1 follow-up).
+	 *
+	 * The senders drop the field so the request survives (`draftPreviewQuery`, the
+	 * store's create and its warm mint), but dropping it in silence is the discard
+	 * the effort carry exists to prevent. The pane says it once, on the surface it
+	 * already uses for statements of fact about a send (`muted`, the register the
+	 * queued-send line uses), and only when the answer is `below-version` - an
+	 * unanswered probe or a missing pairing is not "update the service".
+	 */
+	const draftFastDropped =
+		!sessionId &&
+		draft?.model?.fast_mode === true &&
+		desktopFeatureState(capabilities.data, "draft_fast") === "below-version";
+	useEffect(() => {
+		if (!draftFastDropped) return;
+		/*
+		 * ITS OWN CODE, not the lock answer's shape (QA round 2, Q1). `muted` alone
+		 * is what the retirement effect reads, and a notice in that register naming
+		 * no code is how it identifies the lock answer - so this line used to be
+		 * cleared on the next commit by `lockAnswerOutlived`, which found nothing
+		 * pending on a restored draft and retired a statement of fact as if it were
+		 * a claim about a flight.
+		 */
+		setSendError(FAST_UNAVAILABLE_SENTENCE);
+		setSendErrorCode(FAST_UNAVAILABLE_CODE);
+		setSendErrorRetry(false);
+		setSendErrorMuted(true);
+	}, [draftFastDropped]);
 	const draftPickable =
 		!sessionId &&
 		desktopFeatureEnabled(capabilities.data, "draft_selection") &&
@@ -1490,6 +1546,12 @@ function SessionPanel({
 	 *   - `catalogues` — the picker's list. `models.catalogue` is where its rows come
 	 *     from, and a picker that opens onto an empty list is a dead control wearing
 	 *     a live one's clothes.
+	 *
+	 * `/fast` is NOT one of these chips, and it needs a FOURTH: the core field its
+	 * pick writes (`draft_fast`) is a capability of the row, not of the pane, so
+	 * `draftSelectionRoute` asks it there and this flag stays exactly as it was —
+	 * a core with `draft_selection` but without `draft_fast` keeps its model and
+	 * effort chips AND refuses `/fast` on a draft (agent review round 1, F1).
 	 */
 	/*
 	 * Retire whatever the composer's error line is holding.
@@ -1642,6 +1704,13 @@ function SessionPanel({
 								.setDraftModel(draftIdentity, selection),
 					}
 				: undefined,
+		/*
+		 * And WHERE the resolution is, which is the only way the dispatcher can tell
+		 * "this pane cannot carry a draft pick" from "this pane has not answered
+		 * yet" (round 2, D7). The same value the strip paints, so the refusal and
+		 * the reading describe one state.
+		 */
+		draftResolution,
 	});
 
 	/*
@@ -4158,6 +4227,7 @@ function SessionPanel({
 				admitting,
 				gatePending: canonical.frontend?.pending_gate != null,
 				muted: sendErrorMuted,
+				code: sendErrorCode,
 			})
 		)
 			return;
@@ -4170,6 +4240,7 @@ function SessionPanel({
 		admitting,
 		canonical.frontend?.pending_gate,
 		sendErrorMuted,
+		sendErrorCode,
 	]);
 	/*
 	 * MEMOISED FOR THE COMPOSER'S MEMO BOUNDARY (C1), with the registry read kept
