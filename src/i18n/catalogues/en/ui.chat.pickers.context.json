@@ -286,9 +286,9 @@
 	"ui.chat.pickers.destination_pickers.this_pane_has_not_resolved_a_model_to_change": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
-		"note": "Shown in destination-pickers.tsx; interface copy in the destination pickers surface.",
+		"note": "Shown in destination-pickers.tsx when a pane has no model to change. `refused` is the server's refusal sentence followed by a space, or empty when there is none; the message carries no space of its own.",
 		"placeholders": {
-			"refused": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+			"refused": "A refusal sentence plus a trailing space, or the empty string."
 		}
 	},
 	"ui.chat.pickers.destination_pickers.show_all_supported_models": {
@@ -4261,5 +4261,10 @@
 		"role": "button label",
 		"tone": "Concise in-progress status.",
 		"note": "Shown during the initial live model-catalogue check before the user explicitly requests a refresh."
+	},
+	"ui.chat.pickers.destination_pickers.applies_to_the_conversation_this_chat_starts": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in destination-pickers.tsx for a draft, whose first message starts the conversation."
 	}
 }

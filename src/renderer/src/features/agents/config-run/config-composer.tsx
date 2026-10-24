@@ -982,7 +982,10 @@ export function ConfigComposer({
 		cwd.length > 0 &&
 		desktopFeatureEnabled(capabilities.data, "draft_preview");
 	const preview = useQuery({
-		...draftPreviewQuery({ cwd, model: null }),
+		...draftPreviewQuery(
+			{ cwd, model: null },
+			desktopFeatureEnabled(capabilities.data, "draft_fast"),
+		),
 		enabled: draftPreviewOn,
 	});
 	/*
