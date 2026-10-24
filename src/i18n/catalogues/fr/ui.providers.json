@@ -187,5 +187,6 @@
 	"ui.providers.provider_detail.the_sign_in_page": "la page de connexion",
 	"ui.providers.provider_grid.row_action": "{action} : {brand}",
 	"ui.providers.provider_detail.code_expiry": "Le code expire dans {minutes, plural, one {{minutes, number, ::group-off} min} many {{minutes, number, ::group-off} min} other {{minutes, number, ::group-off} min}}",
-	"ui.providers.provider_detail.link_expiry": "Le lien expire dans {minutes, plural, one {{minutes, number, ::group-off} min} many {{minutes, number, ::group-off} min} other {{minutes, number, ::group-off} min}}"
+	"ui.providers.provider_detail.link_expiry": "Le lien expire dans {minutes, plural, one {{minutes, number, ::group-off} min} many {{minutes, number, ::group-off} min} other {{minutes, number, ::group-off} min}}",
+	"ui.providers.provider_detail.sign_in_again": "Se connecter à nouveau"
 }

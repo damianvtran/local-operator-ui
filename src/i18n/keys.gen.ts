@@ -171,13 +171,20 @@ import esUiShellRail from "./catalogues/es/ui.shell.rail.json";
 import esUiTeamBridge from "./catalogues/es/ui.teamBridge.json";
 import frUiAgentMessages from "./catalogues/fr/ui.agentMessages.json";
 import frUiAgentMessagesSettings from "./catalogues/fr/ui.agentMessages.settings.json";
+import frUiAgentsConfig from "./catalogues/fr/ui.agents.config.json";
+import frUiAgentsDetail from "./catalogues/fr/ui.agents.detail.json";
 import frUiAgentsDialogs from "./catalogues/fr/ui.agents.dialogs.json";
+import frUiAgentsEditor from "./catalogues/fr/ui.agents.editor.json";
 import frUiAgents from "./catalogues/fr/ui.agents.json";
 import frUiAgentsModels from "./catalogues/fr/ui.agents.models.json";
 import frUiAgentsNavigation from "./catalogues/fr/ui.agents.navigation.json";
+import frUiAgentsPage from "./catalogues/fr/ui.agents.page.json";
+import frUiAgentsPublication from "./catalogues/fr/ui.agents.publication.json";
 import frUiAgentsRefusals from "./catalogues/fr/ui.agents.refusals.json";
 import frUiAgentsSettings from "./catalogues/fr/ui.agents.settings.json";
 import frUiAgentsStarters from "./catalogues/fr/ui.agents.starters.json";
+import frUiAgentsTeam from "./catalogues/fr/ui.agents.team.json";
+import frUiAgentsUpload from "./catalogues/fr/ui.agents.upload.json";
 import frUiBrowserChrome from "./catalogues/fr/ui.browser.chrome.json";
 import frUiBrowser from "./catalogues/fr/ui.browser.json";
 import frUiCanvas from "./catalogues/fr/ui.canvas.json";
@@ -205,13 +212,17 @@ import frUiCommonLoading from "./catalogues/fr/ui.common.loading.json";
 import frUiCommonModels from "./catalogues/fr/ui.common.models.json";
 import frUiCommonUpdates from "./catalogues/fr/ui.common.updates.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
+import frUiHubAgents from "./catalogues/fr/ui.hub.agents.json";
 import frUiHubComments from "./catalogues/fr/ui.hub.comments.json";
+import frUiHubDownload from "./catalogues/fr/ui.hub.download.json";
 import frUiHub from "./catalogues/fr/ui.hub.json";
 import frUiHubTaxonomy from "./catalogues/fr/ui.hub.taxonomy.json";
+import frUiHubTeams from "./catalogues/fr/ui.hub.teams.json";
 import frUiInstaller from "./catalogues/fr/ui.installer.json";
 import frUiLibrary from "./catalogues/fr/ui.library.json";
 import frUiMesh from "./catalogues/fr/ui.mesh.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
+import frUiOnboardingTour from "./catalogues/fr/ui.onboarding.tour.json";
 import frUiPresence from "./catalogues/fr/ui.presence.json";
 import frUiProjects from "./catalogues/fr/ui.projects.json";
 import frUiProviders from "./catalogues/fr/ui.providers.json";
@@ -706,13 +717,20 @@ export const bundledCatalogues: Readonly<
 	fr: {
 		...frUiAgentMessages,
 		...frUiAgentMessagesSettings,
+		...frUiAgentsConfig,
+		...frUiAgentsDetail,
 		...frUiAgentsDialogs,
+		...frUiAgentsEditor,
 		...frUiAgents,
 		...frUiAgentsModels,
 		...frUiAgentsNavigation,
+		...frUiAgentsPage,
+		...frUiAgentsPublication,
 		...frUiAgentsRefusals,
 		...frUiAgentsSettings,
 		...frUiAgentsStarters,
+		...frUiAgentsTeam,
+		...frUiAgentsUpload,
 		...frUiBrowserChrome,
 		...frUiBrowser,
 		...frUiCanvas,
@@ -740,13 +758,17 @@ export const bundledCatalogues: Readonly<
 		...frUiCommonModels,
 		...frUiCommonUpdates,
 		...frUiConsole,
+		...frUiHubAgents,
 		...frUiHubComments,
+		...frUiHubDownload,
 		...frUiHub,
 		...frUiHubTaxonomy,
+		...frUiHubTeams,
 		...frUiInstaller,
 		...frUiLibrary,
 		...frUiMesh,
 		...frUiOnboarding,
+		...frUiOnboardingTour,
 		...frUiPresence,
 		...frUiProjects,
 		...frUiProviders,
