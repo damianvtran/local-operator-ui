@@ -88,7 +88,7 @@
 		"placeholder_match": "687/687 keys keep the same argument names, selector arms and number skeletons (::group-off) as English; comparison ran per plural/select arm so a dropped `one` arm is not mistaken for a dropped placeholder",
 		"plural_arms": "zh-CN uses CLDR `other` only; no `=N` explicit selector exists in this batch's English source, so none was retained",
 		"pseudo_marker_render": "687/687 rendered with ⟦arg⟧ string markers and numeric samples at 0/1/2/5/1000000; every marker appeared in the output and no ICU braces remained",
-		"markup": "onboarding.tour HTML tags and ICU literal apostrophe quoting preserved segment for segment; tag sequence identical to English in all 84 keys",
+		"markup": "onboarding.tour keeps the HTML markup and the ICU apostrophe quoting that carries it; the rendered tag sequence is identical to English in all 84 keys. English prose apostrophes (you'll, agent's) are not reproduced because zh-CN prose does not use them; no ASCII apostrophe was introduced into Chinese text.",
 		"nfc": "687/687 NFC",
 		"bidi_controls": 0,
 		"english_stubs": "0 — the only English-identical candidates were removed by localizing them: ui.hub.teams.slot_with_count is {role}×{count} (no space) and ui.hub.teams.version is 版本{version}",
