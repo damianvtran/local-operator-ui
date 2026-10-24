@@ -1,0 +1,262 @@
+{
+  "auditor": "i18n-auditor",
+  "agent": "i18n-auditor",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "fallback": "none",
+  "instance": "2016fab9f0bb-r2",
+  "session": "2016fab9f0bb",
+  "previous_instance": "2016fab9f0bb",
+  "date": "2026-10-23",
+  "audited_at_utc": "2026-10-24T03:46:46.399679+00:00",
+  "status": "passed",
+  "result": "clean",
+  "verdict": "clean",
+  "locale": "vi",
+  "commit": "5eead72b29818f8e06f833699fab79f140a732fd",
+  "scope": "03e1f5c34881dfaa169643f3022a7a45698e8a73..5eead72b29818f8e06f833699fab79f140a732fd",
+  "audit_round": 2,
+  "keys_read": 296,
+  "semantic_delta_values_reviewed": 20,
+  "namespace_count": 4,
+  "independence": {
+    "authored_translation": false,
+    "authored_remediation": false,
+    "translator_session": "673311bac161",
+    "distinct_from_translator": true,
+    "repo_edits": false,
+    "unchanged_namespaces_reaudited": false
+  },
+  "review_policy": "Semantic review of the 20 changed values and direct neighbors only. Mechanical parse/signature/plural/NFC/typography/pseudo checks covered all 296 keys in the four changed namespaces. Unchanged entries retain the prior verdict through byte compatibility; unchanged namespaces were not re-audited.",
+  "namespaces": {
+    "ui.providers": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 189,
+      "semantic_delta_values_reviewed": 12,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.providers.json",
+        "vi": "src/i18n/catalogues/vi/ui.providers.json",
+        "context": "src/i18n/catalogues/en/ui.providers.context.json"
+      },
+      "sha256": {
+        "en": "9981637a98afbcbc166d889b461795bae7685e42274f4d607b711f4b0f9085f2",
+        "vi": "bcce6ba38e00c99dcd14e1df2ffbba4089c2f2b595cee2170d8ce9badf08edc4",
+        "context": "038afc45c25370cbea4d94aaf4c3cc822ac9956d02fd54cba70ea66e61a68d4d"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 43,
+      "semantic_delta_values_reviewed": 4,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+        "vi": "src/i18n/catalogues/vi/ui.chat.sidebar.json",
+        "context": "src/i18n/catalogues/en/ui.chat.sidebar.context.json"
+      },
+      "sha256": {
+        "en": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+        "vi": "7a52079c6e7552269734420a0a02fcf7e246a9642e7eac4197e90630639bee75",
+        "context": "fe5dc2a0fa4cb9b95ef5c1a30d57aee030fa5edf2b6b54b323562a1c63b8eb3a"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.chat.pickers": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 34,
+      "semantic_delta_values_reviewed": 2,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+        "vi": "src/i18n/catalogues/vi/ui.chat.pickers.json",
+        "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+      },
+      "sha256": {
+        "en": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+        "vi": "81036a8496f366252394936cbb1ce87951b294587d61d1bb24e95412c59bd970",
+        "context": "8d3fa914cd52768c98a75c4f41b903b86553335b27e406f98500eab7ff576e64"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 30,
+      "semantic_delta_values_reviewed": 2,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "vi": "src/i18n/catalogues/vi/ui.chat.canonical.json",
+        "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+      },
+      "sha256": {
+        "en": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
+        "vi": "9dc590d7959f51cd187983cb0a54d67316500e7ea06b022d44efb3809e28ed60",
+        "context": "53145be31fe46bde6578d114653466dc5c6c932947460c10a0022c9e190d9a34"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    }
+  },
+  "findings": [],
+  "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+  },
+  "prior_dispositions": {
+    "VI2-MAJOR-1": "resolved — both didn_t_confirm fallbacks now use neutral “{brand} chưa xác nhận đăng nhập.” with no unsupported refusal claim.",
+    "VI2-MINOR-1": "resolved — use_an_api_key_instead is now “Chuyển sang dùng khóa API”.",
+    "VI2-MINOR-2": "resolved — provider empty search is now “Không có nhà cung cấp khớp.” (27 codepoints versus English 31).",
+    "VI2-MINOR-3": "resolved — Reveal in Finder now matches existing “Hiện trong Finder”.",
+    "VI2-MINOR-4": "resolved — searching now matches existing “Đang tìm cuộc trò chuyện…”.",
+    "VI2-NIT-1": "unchanged and out of round-2 scope — ui.presence is byte-identical to round 1; compact-fit watch remains for rendered QA, not re-audited here.",
+    "VI2-NIT-2": "resolved — provider Change is now “Đổi”.",
+    "VI2-NIT-3": "resolved — stored sign-in wording is now “đăng nhập vào {brand} … trên máy này”.",
+    "VI2-NIT-4": "resolved — canonical preview now uses the explicit “mà ứng dụng không hỗ trợ” relative clause."
+  },
+  "additional_delta_checks": [
+    {
+      "keys": [
+        "ui.providers.phone.action.set_up"
+      ],
+      "result": "PASS — “Thiết lập truy cập từ điện thoại” restores the phone object."
+    },
+    {
+      "keys": [
+        "ui.providers.phone.signing_in"
+      ],
+      "result": "PASS — “Trang sẽ tự cập nhật khi xong” is natural, terse and preserves automatic completion behavior."
+    },
+    {
+      "keys": [
+        "ui.providers.provider_detail.this_page_updates_on_its_own_once",
+        "ui.providers.provider_detail.shows_after_you_approve",
+        "ui.providers.provider_detail.we_opened_approve_access_there_and_this",
+        "ui.providers.provider_detail.opening_approve_access_there_and_this_page"
+      ],
+      "result": "PASS — “cho phép” correctly translates approve/access consent in the actual device-approval sentence fragments; register and punctuation remain intact."
+    },
+    {
+      "keys": [
+        "ui.chat.pickers.models.native_details"
+      ],
+      "result": "PASS — “Chi tiết gốc — {name}” is idiomatic for the provider-native source-facts block and preserves the name and em dash."
+    },
+    {
+      "keys": [
+        "ui.chat.sidebar.pins.drag_title"
+      ],
+      "result": "PASS — “nhấn Esc để hủy” is a natural explicit cancellation instruction."
+    },
+    {
+      "keys": [
+        "ui.chat.sidebar.row.matched_in_conversation"
+      ],
+      "result": "PASS — “có kết quả trong cuộc trò chuyện” reads naturally in the screen-reader suffix and preserves match meaning."
+    },
+    {
+      "keys": [
+        "ui.chat.sidebar.search.no_match"
+      ],
+      "result": "PASS — concise wording preserves quoted-query semantics and reduces 64 to 46 codepoints (English 38)."
+    },
+    {
+      "keys": [
+        "ui.chat.canonical.supplement.file_actions.reveal_in_finder",
+        "ui.chat.canonical.supplement.preview_unavailable"
+      ],
+      "result": "PASS — Finder terminology is consistent and the unsupported-resource/content modifier is unambiguous."
+    }
+  ],
+  "evidence": {
+    "mechanical": {
+      "result": "PASS",
+      "detail": "296/296 keys in the four changed namespaces: key order preserved; zero ICU parse failures, argument/skeleton/select signature mismatches, pseudo-format failures, NFC failures, typography failures, or disallowed plural selectors. English/context hashes are current below; no source or context bytes changed."
+    },
+    "stop_plural_samples": [
+      {
+        "count": 1,
+        "vi_cldr": "other",
+        "selector": "=1",
+        "formatted": "Dừng phiên này ngay"
+      },
+      {
+        "count": 2,
+        "vi_cldr": "other",
+        "selector": "other",
+        "formatted": "Dừng 2 phiên ngay"
+      },
+      {
+        "count": 1234,
+        "vi_cldr": "other",
+        "selector": "other",
+        "formatted": "Dừng 1234 phiên ngay",
+        "grouping": "ungrouped ::group-off preserved"
+      }
+    ],
+    "compact_samples": [
+      {
+        "key": "ui.providers.provider_grid.no_providers_match_this_search",
+        "en_codepoints": 31,
+        "vi_codepoints": 27
+      },
+      {
+        "key": "ui.chat.sidebar.search.no_match",
+        "en_codepoints": 38,
+        "vi_codepoints": 46,
+        "previous_vi_codepoints": 64
+      }
+    ],
+    "commands": [
+      {
+        "command": "node --input-type=module < vi-second-round2-mechanical.mjs",
+        "result": "PASS — 296 keys; all mechanical counts zero; actual stop and compact outputs above."
+      },
+      {
+        "command": "node scripts/i18n/generate.mjs --check",
+        "result": "PASS — keys.gen.ts byte-identical to fresh generation."
+      },
+      {
+        "command": "node scripts/i18n/context-parity.mjs",
+        "result": "PASS — existing allowed gaps only; scoped English context unchanged."
+      },
+      {
+        "command": "pnpm check-i18n:coverage",
+        "result": "PASS — 7 languages over 72 namespaces; 876 allowed keys across 61 pairs."
+      },
+      {
+        "command": "git diff --quiet 03e1f5c..5eead72 -- src/i18n/catalogues/vi/ui.presence.json",
+        "result": "PASS (exit 0) — presence bytes unchanged; fit watch deferred to rendered QA."
+      }
+    ],
+    "english_leakage": "PASS for changed values — native was replaced with gốc; no new English prose introduced. Existing allowed product/technology/ICU tokens remain unchanged.",
+    "rendered": "UNVERIFIED — no real-app rendered, clipping, geometry, font or interaction claim. Presence compact-fit watch remains assigned to rendered QA."
+  },
+  "artifacts": []
+}

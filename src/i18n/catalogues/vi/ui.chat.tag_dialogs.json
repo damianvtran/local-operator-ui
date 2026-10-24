@@ -1,0 +1,6 @@
+{
+	"ui.chat.tag_dialogs.deleted_name": "Đã xóa “{name}”",
+	"ui.chat.tag_dialogs.created_assigned": "Đã tạo “{name}” và thêm vào cuộc trò chuyện này",
+	"ui.chat.tag_dialogs.assign_created_failed": "Đã tạo “{name}” nhưng không thêm được vào cuộc trò chuyện này. Chọn nhãn trong danh sách để thêm.",
+	"ui.chat.tag_dialogs.changed_elsewhere": "Nhãn đã thay đổi ở nơi khác. Danh sách hiện hiển thị nhãn mới nhất của cuộc trò chuyện; hãy chọn lại để áp dụng thay đổi của bạn."
+}

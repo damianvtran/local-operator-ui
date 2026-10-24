@@ -1,0 +1,11 @@
+{
+	"ui.presence.unknown": "không rõ",
+	"ui.presence.link_down_last_seen": "Mất liên kết · lần cuối hoạt động {age}",
+	"ui.presence.device_link_down": "Mất liên kết thiết bị · {reason} · lần cuối hoạt động {age}",
+	"ui.presence.device_unreachable": "không truy cập được thiết bị",
+	"ui.presence.just_now": "vừa xong",
+	"ui.presence.minutes_ago": "{count, number} phút trước",
+	"ui.presence.hours_ago": "{count, number} giờ trước",
+	"ui.presence.days_ago": "{count, number} ngày trước",
+	"ui.presence.link_down_compact": "Mất liên kết · {age}"
+}
