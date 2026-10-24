@@ -1,11 +1,14 @@
 {
-  "at": "2026-10-24T11:44:36Z",
-  "htmlSha": "db94ef2e5fd2",
+  "at": "2026-10-24T14:36:51Z",
+  "sourceHead": "1d08bf2358",
+  "htmlSha": "bc5af88a9a23",
   "assets": [
-    "assets/approvalsOverlay-DfX37EO0.js",
-    "assets/approvalsOverlay-Dx9qo8hX.css",
-    "assets/messages-B-6W58IA.js"
+    "assets/approvalsOverlay-BD_S5t5z.js",
+    "assets/approvalsOverlay-CX3DxhSv.css",
+    "assets/messages-DwEn-4Kt.js"
   ],
+  "csp": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; font-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'",
+  "bootGuard": "BOOT-fixture-load / BOOT-flow writes a facts file and exits 1 instead of hanging; final cells all exit 0",
   "cells": {
     "264-dark": {
       "view": {
@@ -21,6 +24,10 @@
         "height": 397.765625
       },
       "footerTop": 352,
+      "viewport": {
+        "w": 264,
+        "h": 600
+      },
       "rows": {
         "Q2-decisions-above-fold": "PASS",
         "A1-auto-present-unfocused": "PASS",
@@ -49,6 +56,10 @@
         "height": 397.765625
       },
       "footerTop": 352,
+      "viewport": {
+        "w": 264,
+        "h": 600
+      },
       "rows": {
         "Q2-decisions-above-fold": "PASS",
         "A1-auto-present-unfocused": "PASS",
@@ -77,6 +88,10 @@
         "height": 348.7734375
       },
       "footerTop": 303,
+      "viewport": {
+        "w": 900,
+        "h": 600
+      },
       "rows": {
         "Q2-decisions-above-fold": "PASS",
         "A1-auto-present-unfocused": "PASS",
@@ -105,6 +120,10 @@
         "height": 348.7734375
       },
       "footerTop": 303,
+      "viewport": {
+        "w": 900,
+        "h": 600
+      },
       "rows": {
         "Q2-decisions-above-fold": "PASS",
         "A1-auto-present-unfocused": "PASS",
