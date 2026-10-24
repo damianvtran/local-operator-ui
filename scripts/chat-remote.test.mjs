@@ -30,6 +30,11 @@ const bundle = await build({
 	bundle: true,
 	format: "esm",
 	platform: "node",
+	/*
+	 * `chat-device-model` resolves its placement sentences through `t()`; the
+	 * alias is what keeps this suite bundling the real renderer module.
+	 */
+	alias: { "@shared": "./src/renderer/src/shared" },
 	write: false,
 });
 const {

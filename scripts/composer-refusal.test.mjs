@@ -586,7 +586,7 @@ test("the secret gate's term refuses the box, and the box points at the dock's f
 	);
 	assert.match(
 		placeholder,
-		/if \(state\.secretAnswer\) return COMPOSER_PLACEHOLDER\.secretAnswer;/,
+		/if \(state\.secretAnswer\) return t\(COMPOSER_PLACEHOLDER\.secretAnswer\);/,
 		"and the chooser itself reads it",
 	);
 	assert.ok(
