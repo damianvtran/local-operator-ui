@@ -84,7 +84,9 @@ present), `available`.
 2. **Fraction.** `used_fraction` if present; else `used / limit` when
    `limit > 0`; else `used / (used + remaining)` when that sum is positive;
    else null. Never guess a fraction.
-3. **Amount text.** Percent is an integer with a `%` suffix. USD keeps two
+3. **Amount text.** Percent prints as an integer with a `%` suffix, except a
+   nonzero reading below 1%, which prints `<1%` — a window that has started
+   must not read as untouched; zero stays `0%`. USD keeps two
    decimals. Other units use `%g` with the unit label (`tokens`, `req`). A
    used/limit pair in real units prints both (`12.00 USD / 40.00 USD`); a
    percent does not repeat its denominator. Remaining-only → `N left`.

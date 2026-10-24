@@ -57,6 +57,19 @@ an open paints FIRST — skeleton body, the check's own label, the action enable
 — and the committed pair is taken from that story row, so a story that drifts
 back into depicting a toolbar the container cannot produce fails there.
 
+### Two formatter regression stories the sweep does not shoot
+
+`chat-usage--kimi-monthly` and `chat-usage--kimi-monthly-binding` are
+formatter regression stories: the frames taken from them are PR-review
+evidence, not release evidence. Both are deliberately NOT declared in
+`capture-evidence.mjs`'s `STORIES`, so the release sweep does not re-shoot
+them. This change adds no committed sweep frame — the story exists to pin a
+wire-shape reading (Kimi's monthly pool arrives as `used: 0.06`,
+`used_fraction: 0.0006`, no limit), and a committed frame would freeze a
+fixture meant to track the formatter's rules rather than a product surface.
+Read those two frames when the row or heading percent vocabulary changes;
+the sweep counts are not the check for this.
+
 ### The in-flight vocabulary
 
 Two labels cover the two reads this view can have in flight: `Checking provider
