@@ -455,11 +455,14 @@ test("the menu's tab leaving the list on its own takes the menu AND the suppress
 		document.querySelector('[data-tour-tag="browser-tab-actions"]'),
 		"the menu is up before the removal",
 	);
-	assert.equal(
-		view.suppressed().some((id) => id.startsWith("browser-tab-actions")),
-		true,
-		`the strip's registration is held while the menu is open: ${JSON.stringify(view.suppressed())}`,
-	);
+	/*
+	 * THE PAUSE ITSELF IS A NATIVE MEASUREMENT (S5). The strip no longer registers
+	 * unconditionally: the panel is a `DropdownMenuContent`, whose shared primitive
+	 * registers only where the painted panel intersects the view rect — and jsdom
+	 * has neither layout nor a view, so the snapshot here is legitimately empty.
+	 * The "inside-band menu does not pause / crossing menu does" half is measured in
+	 * the native probe; what this test owns is the RELEASE (below).
+	 */
 
 	/*
 	 * THE REMOVAL THE MENU NEVER HEARD OF: an agent tool closing the tab in main, or any

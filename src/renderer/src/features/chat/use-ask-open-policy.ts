@@ -7,6 +7,7 @@ import {
 	askOpenAnnouncement,
 	askOpenFacts,
 	askOutstandingReading,
+	askSettledAnnouncement,
 	createAskOpenView,
 	shouldCloseCarriedDrawer,
 } from "./ask-open-policy";
@@ -315,6 +316,24 @@ export const useAskOpenPolicy = ({
 		if (drawerWasOpen.current && !sessionDrawerOpen) setAnnouncement("");
 		drawerWasOpen.current = sessionDrawerOpen;
 	}, [sessionDrawerOpen]);
+	/*
+	 * AND A SETTLE INSIDE AN OPEN DRAWER SPEAKS THE STATE THAT FOLLOWS IT (UX round 1,
+	 * U8). The open sentence described the queue as it was; once the last ask is
+	 * answered or dismissed, that sentence is false, and nothing else writes this
+	 * region until the drawer closes. The transition - something waiting -> nothing
+	 * outstanding - is the event, so a queue refresh that arrives already empty (the
+	 * routine poll) speaks nothing, and so does a settle that leaves other asks up
+	 * (their count is not news the reader acted on).
+	 */
+	const wasWaiting = useRef(
+		view.waiting > 0 || view.open > 0 || view.delivering > 0,
+	);
+	useEffect(() => {
+		const waiting = view.waiting > 0 || view.open > 0 || view.delivering > 0;
+		if (wasWaiting.current && !waiting && sessionDrawerOpen)
+			setAnnouncement(askSettledAnnouncement(view));
+		wasWaiting.current = waiting;
+	}, [view, sessionDrawerOpen]);
 
 	return announcement;
 };

@@ -170,6 +170,36 @@ const ATTACHED: TranscriptRecord[] = [
 ];
 
 /**
+ * A SENT FILE in the user's own turn (attachment contract v1 §5): the flat row
+ * with the type line and the origin path, and no remove control over it. It sits
+ * here beside the image fixture because it is the other attachment route to a
+ * card the prose does not decide - and because it is the shape a reviewer needs
+ * to hold against the composer's pending chip.
+ */
+const FILED: TranscriptRecord[] = [
+	{
+		kind: "user",
+		id: "u1",
+		ts: TS,
+		text: "Please check the signature page before I send it back.",
+		images: [],
+		documents: [
+			{
+				id: "u1:doc:0",
+				attachment: "0123456789abcdef0123456789abcdef",
+				filename: "Complete_With_Docusign.pdf",
+				mimeType: "application/pdf",
+				path: "/Users/you/Documents/Complete_With_Docusign.pdf",
+				storedPath:
+					"/Users/you/.local-operator/attachments/0123456789abcdef0123456789abcdef.bin",
+				bytes: 2_411_520,
+				injection: "native",
+			},
+		],
+	},
+];
+
+/**
  * The majority shape, and the one the first round did not photograph.
  *
  * No quote and no attachment: nothing here is wider than a 62ch column, so this
@@ -247,6 +277,11 @@ export const ReportedShape: Story = {
 /** The same card widened by an attachment instead of a quote. */
 export const WideAttachment: Story = {
 	render: () => <Frame records={ATTACHED} />,
+};
+
+/** A sent PDF in the transcript: the flat history card, distinct from the chip. */
+export const FileAttachment: Story = {
+	render: () => <Frame records={FILED} />,
 };
 
 /** A long turn with nothing but text: the card's width from the prose alone. */

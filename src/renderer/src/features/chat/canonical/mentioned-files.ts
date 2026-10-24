@@ -4,11 +4,12 @@
  * ## Why this exists
  *
  * A file the agent touched reaches the renderer only as text. The canonical
- * wire carries no file list — `CanonicalContentBlock` is `text | image`
- * (`src/shared/desktop-session-contract.ts`) — so a path survives in exactly
- * four places: prose, tool arguments, tool output, and a diff body. The old
- * producer read `message.files`, which the canonical transcript never carried,
- * and it is gone with the dead `MessageItem` effect.
+ * wire carries no list of files the AGENT used — `CanonicalContentBlock`
+ * (`src/shared/desktop-session-contract.ts`) now also carries `document` blocks,
+ * but those are files the USER sent, not paths an agent read or wrote — so a
+ * path survives in exactly four places: prose, tool arguments, tool output, and
+ * a diff body. The old producer read `message.files`, which the canonical
+ * transcript never carried, and it is gone with the dead `MessageItem` effect.
  *
  * So the panel's content is *inferred* from what the agent wrote. That is a
  * weaker guarantee than a field on the wire, and the whole shape of this module

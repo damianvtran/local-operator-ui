@@ -42,8 +42,9 @@ import { AIDA_DISABLED_SENTENCE } from "@features/aida/aida-control";
 import { gateIsSecret } from "@features/chat/ask-answer";
 import { effectiveGate } from "@features/chat/ask-queue";
 import { formatContextTokens } from "@features/chat/pickers/panels/formatters";
-import { encodeImageAttachments } from "@features/chat/utils/attachment-encode";
+import { encodeAttachments } from "@features/chat/utils/attachment-encode";
 import {
+	fileOverflowRefusal,
 	imageOverflowRefusal,
 	unreadableAttachmentRefusal,
 } from "@features/chat/utils/attachment-read";
@@ -78,6 +79,7 @@ import {
 	admitChatDraft,
 	isRefusedBeforeAdmission,
 	paneDraftKey,
+	remoteOwnedId,
 	sendFailureCopy,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
@@ -504,11 +506,19 @@ export function MiniComposer() {
 			beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
 			inputMode?: "typed" | "dictated" | "mixed",
 		) => {
-			const { images, unreadable, overflow } = await encodeImageAttachments(
-				attachments,
-				content,
-			);
-			const unreadableRefusal = unreadableAttachmentRefusal(unreadable);
+			const { images, files, failures, overflow, fileOverflow } =
+				await encodeAttachments(attachments, content, {
+					// The seat is the session this pane addresses; a peer-owned seat has a
+					// different attachment store, so files are refused before upload
+					// (contract §6b.2). Unknown seat ids read local, and the core refuses
+					// the send itself if it disagrees.
+					remoteOwned: remoteOwnedId(
+						useCanonicalSessionsStore.getState().sessions,
+						useCanonicalSessionsStore.getState().placementFacts,
+						seatRef.current ?? "",
+					),
+				});
+			const unreadableRefusal = unreadableAttachmentRefusal(failures);
 			if (unreadableRefusal) {
 				setSendError({
 					message: unreadableRefusal,
@@ -520,6 +530,11 @@ export function MiniComposer() {
 			const overflowRefusal = imageOverflowRefusal(overflow);
 			if (overflowRefusal) {
 				setSendError({ message: overflowRefusal, retry: false });
+				return false;
+			}
+			const fileOverflowMessage = fileOverflowRefusal(fileOverflow);
+			if (fileOverflowMessage) {
+				setSendError({ message: fileOverflowMessage, retry: false });
 				return false;
 			}
 			const budgetRefusal = messageBudgetRefusal(content, images);
@@ -566,6 +581,7 @@ export function MiniComposer() {
 						text: content,
 						attachments,
 						images,
+						...(files.length ? { files } : {}),
 						mode: frontendRef.current?.streaming ? "steer" : "prompt",
 						cwd: frontendRef.current?.cwd ?? "",
 						inputMode: inputModeEnabled ? inputMode : undefined,

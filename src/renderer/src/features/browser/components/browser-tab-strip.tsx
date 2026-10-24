@@ -1,4 +1,3 @@
-import { useSuppressBrowserView } from "@shared/browser-view-policy";
 import { Button, Tooltip } from "@shared/components/ui";
 import {
 	DropdownMenu,
@@ -31,7 +30,7 @@ import {
 	VolumeX,
 	X,
 } from "lucide-react";
-import type { FC, ReactNode } from "react";
+import type { FC } from "react";
 import {
 	Fragment,
 	useCallback,
@@ -95,13 +94,12 @@ import {
  * notch moved with it — left on `canvas` they drew a 1px seam where the sheet
  * used to be, in every theme.
  *
- * WHY THE ROW ACTIONS ARE A REGISTERED POPOUT (operator report, 2026-09-28; this
- * SUPERSEDES the in-band ruling of the previous round). The actions expand in a
- * `DropdownMenu` portaled over the content area, and the menu REGISTERS ITSELF
- * with the overlay policy while it is open (`useSuppressBrowserView(…,
- * "browser-tab-actions")`) - so the native view hides exactly as it does for a
- * dialog, the paused note paints behind the menu, and dismissing it brings the
- * page back. The in-band row it replaces was itself the answer to an occluded
+ * WHY THE ROW ACTIONS ARE A POPOUT (operator report, 2026-09-28; this SUPERSEDES
+ * the in-band ruling of the previous round). The actions expand in a
+ * `DropdownMenu` portaled over the content area, and the panel's shared
+ * primitive registers a MEASURED pause (S5): a menu wholly inside the band does
+ * nothing, and one that crosses into the page hides the native view exactly as a
+ * dialog does — measured, because the band below is the page's own top edge. The in-band row it replaces was itself the answer to an occluded
  * dropdown, and it cost the page: opening it grew the strip by its own height
  * (~214px at the worst case it was designed to) and pushed the page and the URL
  * bar down - which is the operator's report. A registered popout takes neither
@@ -126,14 +124,6 @@ import {
  */
 
 export interface BrowserTabStripProps {
-	/** The S4b address trigger, page menu and (when waiting) approvals control.
-	 * Rendered at the trailing edge, before the new-tab control; the strip owns
-	 * the row geometry, the surface owns these controls. */
-	trailing?: ReactNode;
-	/** True while the address popout covers the strip: every control here must
-	 * stop being focusable and clickable, or Tab would walk tabs underneath a
-	 * row the user cannot see. */
-	chromeInert?: boolean;
 	/** The host's OWN list — the pane's strip is scoped to a conversation, the route's is
 	 * everything — and it is the list every count in the band is taken from (design R5 as
 	 * the operator ruled it in review round 2, settling U7 against round 1's A3).
@@ -449,8 +439,6 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	onTabAction,
 	onHandOver,
 	onRevokeHandOver,
-	trailing,
-	chromeInert = false,
 }) => {
 	useI18nLocale();
 	const copy = {
@@ -515,9 +503,6 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	const closeChord = chordCaption("primary+w", isMac ? "mac" : "linux");
 	const [overflowOpen, setOverflowOpen] = useState(false);
 	const stripRootRef = useRef<HTMLDivElement | null>(null);
-	useEffect(() => {
-		stripRootRef.current?.toggleAttribute("inert", chromeInert);
-	}, [chromeInert]);
 	const scrollerRef = useRef<HTMLDivElement | null>(null);
 	/** The pinned control's own element, so dismissing the list hands focus back to the
 	 * control that opened it — the same contract the actions menu has with its trigger
@@ -529,19 +514,15 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	/** The list's own scroller, for the reveal below. */
 	const overflowScrollerRef = useRef<HTMLDivElement | null>(null);
 
-	/**
-	 * Register the popout with the overlay policy while it is OPEN.
-	 *
-	 * THE REGISTRATION IS THE CHANGE (2026-09-28, operator report). The menu
-	 * floats over the content area, where a native `WebContentsView` paints above
-	 * all DOM, so an unregistered menu would be invisible - which is why the
-	 * actions used to be an in-band row at all. Registering hides the view while
-	 * the menu is open, exactly as `BaseDialog` does; the paused note paints
-	 * behind the menu, and dismissing it brings the page back. The id is a NAME
-	 * (`browser-tab-actions`), and the policy suffixes it with a `useId` so two
-	 * mounts cannot cancel each other's registration out.
+	/*
+	 * NO REGISTRATION HERE ANY MORE (S5). The tab-actions panel is a shared
+	 * `DropdownMenuContent`, and that primitive now registers a MEASURED pause:
+	 * a panel wholly inside the strip's band measures no intersection and does
+	 * nothing, while one that crosses into the page pauses from the measurement.
+	 * Registering unconditionally here was the older, coarser rule — it hid the
+	 * page for a menu that happened not to reach it, and it could not express the
+	 * inside-band case the S5 ruling asks for.
 	 */
-	useSuppressBrowserView(actionsTabId !== null, "browser-tab-actions");
 
 	/**
 	 * A TAB THAT STOPS EXISTING TAKES ITS MENU WITH IT — AND RELEASES THE VIEW.
@@ -964,14 +945,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 			 * only nothing selects it and the flat `sunken` track is unchanged.
 			 */
 			data-glass-region="chrome"
-			className={cn(
-				"flex flex-col border-hairline border-b bg-sunken",
-				// The popout is opaque and covers this band; `invisible` is what
-				// stops the trailing controls and `+` painting THROUGH it (measured
-				// in the S4b owner frame: the trigger/host and plus sat over the
-				// field, because inert hides interaction but not pixels).
-				chromeInert && "invisible",
-			)}
+			className="flex flex-col border-hairline border-b bg-sunken"
 			role="tablist"
 			aria-label={t("ui.browser.browser_tab_strip.browser_tabs")}
 			data-tour-tag="browser-tab-strip"
@@ -1376,12 +1350,13 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 									    while its trigger is the row's leading identity slot. No overlay
 									    covers title text on hover or focus. */}
 									<div className="contents">
-										{/* The tab's actions, as a REGISTERED POPOUT (2026-09-28, operator
-										    report). It floats over the content area, where a native
-										    view paints above all DOM, so the strip registers it with
-										    the overlay policy while it is open: the view hides, the
-										    paused note shows behind the menu, and dismissing it brings
-										    the page back. The strip does not grow and the page does not
+										{/* The tab's actions, as a popout whose panel is a MEASURED
+										    pause (S5). It floats over the content area, where a native
+										    view paints above all DOM, so the shared `DropdownMenuContent`
+										    primitive registers only while its painted panel intersects
+										    the view: a panel that stays inside the band does nothing,
+										    and one that crosses hides the view with the paused note
+										    behind it. The strip does not grow and the page does not
 										    move — see the component docstring for the in-band row this
 										    replaces and why. */}
 										<DropdownMenu
@@ -1902,42 +1877,6 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						</Button>
 					</Tooltip>
 				)}
-				{/* THE TRAILING CLUSTER HOLDS THE RIGHT EDGE (design round 1, D1). It used
-				    to follow the last tab, so the site/address trigger and its menu moved
-				    with the tab count — the page menu sat ~490px further left at rest than
-				    when the popout replaced the strip. `ml-auto` parks the cluster against
-				    the far edge and the leading hairline separates it from the tab run;
-				    the new-tab control stays outside it, because `+` belongs to the tabs,
-				    not to the origin. */}
-				{trailing != null && (
-					/*
-					 * THE RULE HAS ITS OWN GAP, not the cluster's border (design round 2,
-					 * D10). As `border-l` on the cluster it sat flush against the last
-					 * control in the run — the overflow count chip — and read as a strike
-					 * through the chip's right edge in the tabs-fill and narrow frames.
-					 *
-					 * THE MARGIN IS 16px BECAUSE THE CHIP IS WIDER THAN ITS BUTTON (QA round
-					 * 3, Q5). The count chip protrudes 7px past the 28px overflow button's
-					 * right edge, so `ml-2`'s 8px left margin left the chip only 1px from
-					 * the rule — measured, chipRight 446 vs ruleLeft 447 at the 560px strip
-					 * and 1266 vs 1267 when filled. The margin is the whole distance from
-					 * that button to the rule, so `ml-4` keeps 16 - 7 = 9px of clearance at
-					 * both widths. Fitting the chip inside the button would widen the
-					 * control by ~16px and take that width from the tab run; moving the
-					 * rule costs 8px, and the trailing cluster already owns the right edge
-					 * (D1).
-					 */
-					<div
-						className="ml-auto flex shrink-0 items-center"
-						data-tour-tag="browser-strip-trailing"
-					>
-						<span
-							aria-hidden
-							className="ml-4 w-px shrink-0 self-stretch bg-hairline"
-						/>
-						<div className="flex items-center pl-1">{trailing}</div>
-					</div>
-				)}
 				{tabs.length > 0 && (
 					<Tooltip
 						content={`${newTabLabel} (${newChord.glyph})`}
@@ -1962,10 +1901,11 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 				/*
 				 * THE BAND ROW THE PINNED CONTROL OPENS, and the reason it is a row and not
 				 * a menu: a Radix menu anchored in the band paints DOWNWARD into the content
-				 * rect, where the native view wins — `browser-view-policy.ts:34-38`
-				 * deliberately does not register menus in the band, and no z-index beats a
-				 * native sibling view. This row is outside that rectangle, so nothing here can
-				 * be occluded and nothing needs suppressing; the strip grows by its height and
+				 * rect, where the native view wins. Menus now register a MEASURED pause
+				 * (S5), so a crossing panel would hide the page to be readable — an oxymoron
+				 * for a list whose job is to be read BESIDE the page. This row is outside
+				 * that rectangle, so nothing here can be occluded and nothing needs
+				 * suppressing; the strip grows by its height and
 				 * the page's own rectangle shrinks by exactly the same amount, because the
 				 * content element is measured by a `ResizeObserver` and the host re-bounds the
 				 * view. The same trade the dock makes — the page narrows rather than hides —

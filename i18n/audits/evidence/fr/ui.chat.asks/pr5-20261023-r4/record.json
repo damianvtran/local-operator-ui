@@ -1,0 +1,179 @@
+{
+ "audit_id": "pr5-20261023-r4",
+ "round": 4,
+ "date": "2026-10-23",
+ "locale": "fr",
+ "namespace": "ui.chat.asks",
+ "source_commit": "dfb45ee7d5474369dcaeba8de893d000da7e810d",
+ "previous_audited_commit": "b47b4dd8a2eabb935fe9a0f910b00387ac3109ce",
+ "scope": "PR #1363 fr-only round-4 delta check at dfb45ee7d: ui.chat.asks.dismiss.in_flight changed from « Fermeture en cours… » to « En cours… » (round-3 fr-r3-m1). Parsed key-by-key comparison against round-3 head b47b4dd8a: this is the only fr value change, and the other 10 keys are identical. en catalogue and en context are byte-identical to b47b4dd8a. ICU/CLDR (rendered at 1, 2, 5 and 1,000,000), NFC and bidi were re-run over all 11 fr keys. No rendered-fit claim.",
+ "status": "passed",
+ "result": "clean",
+ "keys_read": 11,
+ "keys_substantive": [
+  "ui.chat.asks.dismiss.in_flight"
+ ],
+ "keys_verified_unchanged": 10,
+ "translator": {
+  "note": "The round-4 value was applied by the coder in dfb45ee7d from the round-3 auditor proposal. The ledger assembler supplies the row translator. This auditor did not write the catalogue bytes."
+ },
+ "auditors": [
+  {
+   "agent": "task",
+   "model": "anthropic/claude-opus-5-5",
+   "session": "fb125765ab49",
+   "team": "lopdev",
+   "instance": "pr5-20261023-r4-fr",
+   "date": "2026-10-23",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/pr5-fr-r4.json",
+   "receipt_sha256": "2f3a9d354340adef85a7a4e8491a7390009e549dea594b6f4b7194fe4fa19262"
+  }
+ ],
+ "model_note": "Served model anthropic/claude-opus-5-5 for the whole round-4 pass. No provider fallback occurred. The session runtime restarted at the start of this round (Python kernel reset), but the model did not change.",
+ "independence": "Independent translation audit by the `task` member of team lopdev (session fb125765ab49), delegated by the team manager; the same independent auditor as rounds 1-3. This session produced none of the reviewed copy: the round-4 value was applied by the coder in dfb45ee7d from this auditor's round-3 proposal. It did not edit, commit or push any catalogue, context file or ledger row, and wrote only its own receipt and evidence record. No MT, translation API or SDK was used. ICU parsing ran the worktree's existing intl-messageformat as validation.",
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.asks.json",
+   "sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
+   "unchanged_since": "b47b4dd8a"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/fr/ui.chat.asks.json",
+   "sha256": "dca9ae6d9d4c629d5bdc9c7efa1b3170ff50e670873c097eb6398b66be1e17b6",
+   "previous_sha256": "c12e8cf845275c90081317e278a119ad1f9ca478b234373268389fc2fbaf2078"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.asks.context.json",
+   "sha256": "218cc05ebbb63f375875be61cd418caa2d0aac8043bcc9346e19b521d3d37d7c",
+   "unchanged_since": "b47b4dd8a"
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "~/workspace/repos/lo-stale-ask-dismiss/i18n/glossary.md",
+   "revision": "9969e2907933b1bf87df6c2502332396f36d36ec",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/workspace/repos/lo-stale-ask-dismiss/i18n/style-guides/fr.md",
+   "revision": "9969e2907933b1bf87df6c2502332396f36d36ec",
+   "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "ref": "origin/main",
+   "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+  },
+  "cross_surface": {
+   "repo": "~/workspace/repos/lo-stale-ask-surfaces",
+   "commit": "93f798ddb284bca3e342112a7fca76c60729e83a",
+   "catalogues": [
+    "local_operator/i18n/catalogues/fr/tui.asks.json",
+    "local_operator/i18n/catalogues/fr/relay.ask.json"
+   ],
+   "note": "Unmerged branch at audit time."
+  }
+ },
+ "findings": [
+  {
+   "id": "fr-r4-i1",
+   "severity": "INFO",
+   "key": "ui.chat.asks.dismiss.in_flight",
+   "issue": "Round-3 minor fr-r3-m1 fixed exactly as proposed: « Fermeture en cours… » → « En cours… ». Neutral progress label; it no longer brings a third verb (closing) beside « Ignorer », makes no success claim, and drops the « en cours » redundancy. Not counted."
+  }
+ ],
+ "validation": {
+  "icu_errors": [],
+  "plural_arms": [
+   "one",
+   "many",
+   "other"
+  ],
+  "cldr_categories": [
+   "one",
+   "many",
+   "other"
+  ],
+  "arms_match_cldr": true,
+  "placeholders_match_en": true,
+  "key_parity": "11/11",
+  "nfc": true,
+  "bidi_controls": 0,
+  "plural_samples": {
+   "1": "1 message de votre part depuis cette demande (dernier message à 19:36)",
+   "2": "2 messages de votre part depuis cette demande (dernier message à 19:36)",
+   "5": "5 messages de votre part depuis cette demande (dernier message à 19:36)",
+   "1000000": "1 000 000 de messages de votre part depuis cette demande (dernier message à 19:36)"
+  },
+  "rendered_fit": "Not executed; no rendered-frame or width claim."
+ },
+ "deriveReceiptAudit": {
+  "module_ref": "origin/main (unchanged in the PR)",
+  "module_path": "scripts/i18n/ledger-rules.mjs",
+  "module_sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+  "execution": "Imported exact git-show bytes via in-memory data URL; called pure deriveReceiptAudit with actual en/fr SHA-256 from disk; exit 0. No assembler or ledger write executed.",
+  "derived": {
+   "agent": "task",
+   "instance": "pr5-20261023-r4-fr",
+   "model": "anthropic/claude-opus-5-5",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "source_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
+   "target_sha256": "dca9ae6d9d4c629d5bdc9c7efa1b3170ff50e670873c097eb6398b66be1e17b6",
+   "receipt_sha256": "2f3a9d354340adef85a7a4e8491a7390009e549dea594b6f4b7194fe4fa19262"
+  }
+ },
+ "retained_rounds": [
+  {
+   "round": 1,
+   "path": "i18n/receipts/pr5-fr.json",
+   "sha256": "c70e7eff938b7d32dc3681df33dd9605acf5ca61c3dc3f9aa77d527051c28d3f",
+   "instance": "pr5-20261023-fr",
+   "result": "changes_requested",
+   "record": "i18n/audits/evidence/fr/ui.chat.asks/pr5-20261023/record.json"
+  },
+  {
+   "round": 2,
+   "path": "i18n/receipts/pr5-fr-r2.json",
+   "sha256": "5f42a459164a0f6f084d21e49882e5aed384412daf8320b8c03a70d457b1385b",
+   "instance": "pr5-20261023-r2-fr",
+   "result": "clean"
+  },
+  {
+   "round": 3,
+   "path": "i18n/receipts/pr5-fr-r3.json",
+   "sha256": "b7215f44111e4639db7febe8513708fa40442da833f691e928b35d16723c571a",
+   "instance": "pr5-20261023-r3-fr",
+   "result": "clean-with-findings"
+  },
+  {
+   "round": 4,
+   "path": "i18n/receipts/pr5-fr-r4.json",
+   "sha256": "2f3a9d354340adef85a7a4e8491a7390009e549dea594b6f4b7194fe4fa19262",
+   "instance": "pr5-20261023-r4-fr",
+   "result": "clean"
+  }
+ ],
+ "history_records": [
+  "i18n/audits/evidence/fr/ui.chat.asks/pr5-20261023/record.json",
+  "i18n/audits/evidence/fr/ui.chat.asks/pr5-20261023-r2/record.json",
+  "i18n/audits/evidence/fr/ui.chat.asks/pr5-20261023-r3/record.json"
+ ],
+ "limitations": [
+  "Catalogue-only delta check; no build, test, install, browser, render or activation evidence.",
+  "The 10 unchanged fr keys inherit the round-3 verdict through value identity; they were not re-judged in this round.",
+  "The round-3 fr receipt no longer matches the current target bytes; it is retained as history only and cannot back a ledger row."
+ ]
+}

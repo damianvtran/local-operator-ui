@@ -12,6 +12,7 @@ export type DesiredTag = { id?: string; name: string };
 
 import { z } from "zod";
 import { agentMessagesBoundarySchema } from "./agent-messages-contract";
+import { DESKTOP_MESSAGE_MAX_FILES } from "./attachment-upload";
 // The sidebar's destination vocabulary is the same list the route validates
 // against, so the request schema below and the renderer's pure model cannot
 // disagree about what an id is.
@@ -167,6 +168,34 @@ const sessionImage = z
 	.object({
 		data_b64: z.string().min(1).max(1_000_000),
 		mime_type: z.enum(["image/png", "image/jpeg", "image/gif", "image/webp"]),
+		/**
+		 * Where the image came from, when it came from disk. Provenance only: the
+		 * daemon carries it to `ImageContent.path` and every provider serializer
+		 * ignores it (attachment contract v1 §1.3). Absent on pasted images, which
+		 * have no path.
+		 */
+		origin_path: z.string().max(4096).optional(),
+	})
+	.strict();
+
+/**
+ * One uploaded file the message references (contract v1 §1.2, `Prompt.files`).
+ *
+ * The BYTES are not here: they live in the daemon's attachment store under
+ * `digest`, and the daemon resolves the reference at admission. Everything
+ * else is display/provenance - the filename a person recognises, the mime the
+ * daemon decided by content, the size, and the origin path - and each is
+ * optional because a reference is still valid without them. A digest that
+ * does not resolve is the daemon's refusal to raise; the UI has already
+ * refused before this body is built.
+ */
+const sessionFile = z
+	.object({
+		digest: z.string().regex(/^[0-9a-f]{32}$/),
+		name: z.string().max(1024).optional(),
+		mime_type: z.string().max(255).optional(),
+		bytes: z.number().int().min(0).optional(),
+		path: z.string().max(4096).optional(),
 	})
 	.strict();
 
@@ -188,7 +217,7 @@ export const DESKTOP_MESSAGE_MAX_CHARS = 200_000;
  * Most images one message-carrying op carries, in IMAGES.
  *
  * Named and exported rather than repeated as a literal because the renderer
- * has to agree with it: `encodeImageAttachments` applies the cap to every
+ * has to agree with it: `encodeAttachments` applies the cap to every
  * send it encodes, and a draft that staged more images than this used to be
  * sliced to the ceiling SILENTLY - a send left with fewer images than the
  * composer showed and nothing named the difference (design round 1 on issue
@@ -1946,6 +1975,13 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			requestId,
 			text: z.string().max(DESKTOP_MESSAGE_MAX_CHARS),
 			images: z.array(sessionImage).max(DESKTOP_MESSAGE_MAX_IMAGES).optional(),
+			/**
+			 * Uploaded files this message references, bounded to the backend's
+			 * `Prompt.files` ceiling. Absent rather than empty when the send carries
+			 * none, so an older harness's `extra=forbid` sees a legacy body - the same
+			 * rule the optional fields below follow.
+			 */
+			files: z.array(sessionFile).max(DESKTOP_MESSAGE_MAX_FILES).optional(),
 			mode: z.enum(["prompt", "steer"]).optional(),
 			/*
 			 * HOW THE MESSAGE WAS PRODUCED (arch §4.2), and the harness gate is what
@@ -2052,6 +2088,27 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			 * pre-judge that, it renders the owner's refusal.
 			 */
 			revise: z.boolean().optional(),
+			/**
+			 * PUT AN OPEN ASK AWAY instead of answering it (harness PR #2833, SA-D5).
+			 *
+			 * A modifier on the SAME `{ask_id}` body rather than a fourth op: a dismissal
+			 * is the same epoch-free queued-ask door an answer is, addressed by an id that
+			 * outlives any owner. Only `true` selects the shape — `false` is the same
+			 * statement as omitting it — and the shape rules below refuse it beside
+			 * answers/decline/revise, because no single body may answer and dismiss one ask.
+			 *
+			 * GATED ON `features.ask_dismiss` at the surface that offers the control: the
+			 * backend's `Answer` is `extra="forbid"`, so an older daemon answers 422 to this
+			 * field rather than ignoring it.
+			 */
+			dismiss: z.boolean().optional(),
+			/**
+			 * Why the operator put it away: `answered_in_chat` (the conversation already
+			 * answered it) or `moot` (no longer needed). Optional; the ask log records
+			 * `moot` when absent. Refused without `dismiss: true` — the same no-op rule
+			 * `revise` follows above.
+			 */
+			reason: z.enum(["answered_in_chat", "moot"]).optional(),
 		})
 		/*
 		 * A PLAIN `ZodObject`, with the mutual-exclusion rules on the UNION below.
@@ -4360,7 +4417,32 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 				 * carries neither answers nor a decline is malformed rather than merely
 				 * empty, and the two together are contradictory rather than redundant.
 				 */
-				if (request.decline !== true && !request.answers)
+				/*
+				 * THE FOURTH SHAPE (harness PR #2833, SA-D5): an id and nothing else. It
+				 * returns before the answer-shape rules, because a dismissal has no answers
+				 * to require — and the fields it cannot honour are refused in words, the
+				 * backend's own `Answer.one_answer` rule restated at the client boundary.
+				 */
+				if (request.dismiss === true) {
+					if (
+						request.answers !== undefined ||
+						request.decline === true ||
+						request.revise === true
+					)
+						ctx.addIssue({
+							code: z.ZodIssueCode.custom,
+							message: "A dismissal carries no answers, decline or revise",
+							path: ["dismiss"],
+						});
+					return;
+				}
+				if (request.reason !== undefined)
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: "A reason applies to a dismissal",
+						path: ["reason"],
+					});
+				else if (request.decline !== true && !request.answers)
 					ctx.addIssue({
 						code: z.ZodIssueCode.custom,
 						message: "A queued-ask answer needs answers or decline",
@@ -4419,6 +4501,26 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 					code: z.ZodIssueCode.custom,
 					message: "revise applies to a queued ask",
 					path: ["revise"],
+				});
+			if (request.dismiss === true)
+				/*
+				 * A dismissal is addressed by `ask_id` alone, so on the gate shape the
+				 * field names no ask it could put away — refused rather than ignored, the
+				 * same rule `revise` just took. `dismiss: false` is deliberately NOT
+				 * refused: the backend states it is the same statement as omitting the
+				 * field, and a client stricter than the wire would refuse a body the
+				 * route answers.
+				 */
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "dismiss applies to a queued ask",
+					path: ["dismiss"],
+				});
+			if (request.reason !== undefined)
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "reason applies to a queued ask",
+					path: ["reason"],
 				});
 			return;
 		}
@@ -7777,6 +7879,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 					request_id: request.requestId,
 					text: request.text,
 					images: request.images ?? [],
+					...(request.files?.length ? { files: request.files } : {}),
 					mode: request.mode ?? "prompt",
 					/*
 					 * ABSENT, not empty, when the app has nothing to say: an older harness
@@ -7825,6 +7928,19 @@ export function desktopEndpoint(request: DesktopRequest): {
 						 * asserting an intent it does not have.
 						 */
 						...(request.revise === true ? { revise: true } : {}),
+						/*
+						 * The dismissal modifier and its reason, on the same absent-when-not-
+						 * asked-for rule: an older harness refuses the field outright
+						 * (`extra="forbid"`), so an ordinary answer must not carry it.
+						 */
+						...(request.dismiss === true
+							? {
+									dismiss: true,
+									...(request.reason !== undefined
+										? { reason: request.reason }
+										: {}),
+								}
+							: {}),
 					},
 				};
 			return {
