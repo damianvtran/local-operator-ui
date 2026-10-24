@@ -2,5 +2,11 @@
 	"ui.chat.dialogs.delete_title": "删除此对话？",
 	"ui.chat.dialogs.delete_action": "删除",
 	"ui.chat.dialogs.archive_action": "归档",
-	"ui.chat.dialogs.cancel": "取消"
+	"ui.chat.dialogs.cancel": "取消",
+	"ui.chat.dialogs.options.clear_confirm": "清空",
+	"ui.chat.dialogs.options.clear_conversation": "清空对话",
+	"ui.chat.dialogs.options.clear_message": "此对话中的所有消息都将从本机删除，且无法撤销。智能体本身不受影响。",
+	"ui.chat.dialogs.options.clear_title": "清空此对话？",
+	"ui.chat.dialogs.options.description": "为此智能体自定义设置",
+	"ui.chat.dialogs.options.title": "对话选项"
 }
