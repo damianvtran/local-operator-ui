@@ -55,7 +55,7 @@
       "populated": {
         "question": true,
         "answer": true,
-        "characters": 180
+        "characters": 153
       }
     },
     {
@@ -546,9 +546,9 @@
       "chat": {
         "x": 56,
         "y": 0,
-        "width": 658,
+        "width": 480,
         "height": 900,
-        "right": 714,
+        "right": 536,
         "bottom": 900
       },
       "rail": {
@@ -642,8 +642,8 @@
   "frames": [
     {
       "label": "sidebar-docking-1380-expanded-dark",
-      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/sidebar-docking-merge-b1b252d/frames/head/sidebar-docking-1380-expanded-dark.png",
-      "bytes": 256851,
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1380-expanded-dark.png",
+      "bytes": 254706,
       "pixels": {
         "width": 2760,
         "height": 1800
@@ -656,12 +656,12 @@
       "attempts": 3,
       "stable": true,
       "toastFree": true,
-      "toastWaitMs": 3
+      "toastWaitMs": 7
     },
     {
       "label": "sidebar-docking-1023-expanded-dark",
-      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/sidebar-docking-merge-b1b252d/frames/head/sidebar-docking-1023-expanded-dark.png",
-      "bytes": 244606,
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1023-expanded-dark.png",
+      "bytes": 238545,
       "pixels": {
         "width": 2046,
         "height": 1800
@@ -674,30 +674,12 @@
       "attempts": 2,
       "stable": true,
       "toastFree": true,
-      "toastWaitMs": 1
+      "toastWaitMs": 2
     },
     {
       "label": "sidebar-docking-1023-keyboard-collapsed-dark",
-      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/sidebar-docking-merge-b1b252d/frames/head/sidebar-docking-1023-keyboard-collapsed-dark.png",
-      "bytes": 126789,
-      "pixels": {
-        "width": 2046,
-        "height": 1800
-      },
-      "viewport": {
-        "width": 1023,
-        "height": 900,
-        "devicePixelRatio": 2
-      },
-      "attempts": 6,
-      "stable": true,
-      "toastFree": true,
-      "toastWaitMs": 4
-    },
-    {
-      "label": "sidebar-docking-1023-keyboard-expanded-dark",
-      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/sidebar-docking-merge-b1b252d/frames/head/sidebar-docking-1023-keyboard-expanded-dark.png",
-      "bytes": 245277,
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1023-keyboard-collapsed-dark.png",
+      "bytes": 129391,
       "pixels": {
         "width": 2046,
         "height": 1800
@@ -710,12 +692,30 @@
       "attempts": 2,
       "stable": true,
       "toastFree": true,
-      "toastWaitMs": 1
+      "toastWaitMs": 5
+    },
+    {
+      "label": "sidebar-docking-1023-keyboard-expanded-dark",
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1023-keyboard-expanded-dark.png",
+      "bytes": 242019,
+      "pixels": {
+        "width": 2046,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1023,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "attempts": 3,
+      "stable": true,
+      "toastFree": true,
+      "toastWaitMs": 5
     },
     {
       "label": "sidebar-docking-1023-pointer-collapsed-dark",
-      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/sidebar-docking-merge-b1b252d/frames/head/sidebar-docking-1023-pointer-collapsed-dark.png",
-      "bytes": 124305,
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1023-pointer-collapsed-dark.png",
+      "bytes": 127047,
       "pixels": {
         "width": 2046,
         "height": 1800
@@ -732,8 +732,8 @@
     },
     {
       "label": "sidebar-docking-800-collapsed-dark",
-      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/sidebar-docking-merge-b1b252d/frames/head/sidebar-docking-800-collapsed-dark.png",
-      "bytes": 117687,
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-800-collapsed-dark.png",
+      "bytes": 120245,
       "pixels": {
         "width": 1600,
         "height": 1800
@@ -746,12 +746,12 @@
       "attempts": 2,
       "stable": true,
       "toastFree": true,
-      "toastWaitMs": 0
+      "toastWaitMs": 1
     },
     {
       "label": "sidebar-docking-800-expanded-dark",
-      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/sidebar-docking-merge-b1b252d/frames/head/sidebar-docking-800-expanded-dark.png",
-      "bytes": 228447,
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-800-expanded-dark.png",
+      "bytes": 226540,
       "pixels": {
         "width": 1600,
         "height": 1800
@@ -764,12 +764,12 @@
       "attempts": 2,
       "stable": true,
       "toastFree": true,
-      "toastWaitMs": 0
+      "toastWaitMs": 1
     },
     {
       "label": "sidebar-docking-800-expanded-light",
-      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/sidebar-docking-merge-b1b252d/frames/head/sidebar-docking-800-expanded-light.png",
-      "bytes": 227714,
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-800-expanded-light.png",
+      "bytes": 225819,
       "pixels": {
         "width": 1600,
         "height": 1800
@@ -786,8 +786,8 @@
     },
     {
       "label": "sidebar-docking-1380-restored-dark",
-      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/sidebar-docking-merge-b1b252d/frames/head/sidebar-docking-1380-restored-dark.png",
-      "bytes": 255028,
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1380-restored-dark.png",
+      "bytes": 256912,
       "pixels": {
         "width": 2760,
         "height": 1800
@@ -800,12 +800,12 @@
       "attempts": 2,
       "stable": true,
       "toastFree": true,
-      "toastWaitMs": 1
+      "toastWaitMs": 2
     },
     {
       "label": "sidebar-docking-1023-canvas-yield-dark",
-      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/sidebar-docking-merge-b1b252d/frames/head/sidebar-docking-1023-canvas-yield-dark.png",
-      "bytes": 167646,
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1023-canvas-yield-dark.png",
+      "bytes": 168367,
       "pixels": {
         "width": 2046,
         "height": 1800
@@ -822,8 +822,8 @@
     },
     {
       "label": "sidebar-docking-1023-canvas-restored-dark",
-      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/sidebar-docking-merge-b1b252d/frames/head/sidebar-docking-1023-canvas-restored-dark.png",
-      "bytes": 242324,
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1023-canvas-restored-dark.png",
+      "bytes": 240231,
       "pixels": {
         "width": 2046,
         "height": 1800
@@ -836,22 +836,22 @@
       "attempts": 3,
       "stable": true,
       "toastFree": true,
-      "toastWaitMs": 0
+      "toastWaitMs": 7
     }
   ],
   "console": [],
   "consoleErrors": [],
   "networkFailures": [],
   "requests": [
-    "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/browser-webauthn-prompt-obZmGk-U.js",
+    "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/browser-webauthn-prompt-DtpQg49J.js",
     "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/brand-mark-Bv0Hu-Cz.png",
     "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/GeistMonoNerdFontMono-Regular-CWdDX7GJ.otf",
     "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/index.html",
-    "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/index-DZpO1uxX.js",
+    "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/index-bUquJe4n.js",
     "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/index-BDzV3bGH.js",
     "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/path-utils-CKvVXTlE.js",
     "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/error-boundary-ZYkSCpZC.js",
-    "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/conversation-input-sync-BBKx3ESE.js",
+    "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/conversation-input-sync-7ZrxePUF.js",
     "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/console-mirror-0VCyM-hV.js",
     "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/index-ZovyVTxQ.css",
     "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/conversation-input-sync-CAX4_ErH.css",

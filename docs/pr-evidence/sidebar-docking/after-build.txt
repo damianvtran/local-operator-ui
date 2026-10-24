@@ -1,10 +1,11 @@
-tree=merged-head
-HEAD=b1b252d846dc2202054dc7819ba5a97727721a3e
-origin_main=2eaf19928b2b7b26c67b690fbe2a013308584d63
+tree=remediation-head
+HEAD=e323c1ac06498a1b57bc73ef9294300cbc414979
 status_before_build:
 source_identity:
 617a472c10682221d08de1f866b0f0f54c963c10cb5e144086b2453dbc0d641f  scripts/renderer-driver.mjs
-4c78f6de261c06ee8e0a224c052c982dd5c23009c5447da148cc17e6c99e9fd5  scripts/sidebar-docking-scene.mjs
+6c61d47e789742f7eeaca33ed1f86c04a628cda505a7ad95ecd5aad2357ca1c9  scripts/sidebar-docking-scene.mjs
+0c2a062070caae913fa890566e71afbc2bf9e40730e505890f7b7f1b72ef4eb0  src/renderer/src/app.tsx
+f6d0985671a54a7ebefd7b6a3046692293cef602260059b875ec3b50a6aeba98  src/renderer/src/features/agents/config-run/config-composer.tsx
 87a4cd5416150c4385b39d83e3456a65ff988ed4ffc9ac70c1717db0e0178bbc  src/renderer/src/features/chat/chat-sidebar-layout.ts
 fadb6d68e334e90fee3564092c4f8f7ece5f0790b7d8d098a70eaadfdbe880e2  src/renderer/src/shared/components/common/chat-layout.tsx
 2447b31d569cef970db214bcfdc4753a4ac7e9b835ecf9fb6c2794c6e6a9b8e7  src/renderer/src/shared/components/navigation/sidebar-navigation.tsx
@@ -19,16 +20,16 @@ transforming...
 [BABEL] Note: The code generator has deoptimised the styling of undefined as it exceeds the max of 500KB.
 rendering chunks...
 out/main/bytecode-loader.cjs      2.31 kB
-out/main/index.js             5,346.19 kB
-✓ built in 2.20s
+out/main/index.js             5,346.17 kB
+✓ built in 2.57s
 ✓ 1 bundles compiled into bytecode.
-out/main/index.jsc   4821.68 kB
+out/main/index.jsc   4821.60 kB
 vite v6.2.6 building SSR bundle for production...
 transforming...
 ✓ 17 modules transformed.
 rendering chunks...
 out/preload/index.js  211.80 kB
-✓ built in 139ms
+✓ built in 70ms
 vite v6.2.6 building for production...
 transforming...
 Found 4 warnings while optimizing generated CSS:
@@ -157,104 +158,104 @@ rendering chunks...
 ../../out/renderer/assets/index-DHKnfVbX.css                              6.07 kB
 ../../out/renderer/assets/katex-BCx1q_2Y.css                             28.46 kB
 ../../out/renderer/assets/index-ZovyVTxQ.css                            211.71 kB
-../../out/renderer/assets/clone-B0ffZjqP.js                               0.10 kB
-../../out/renderer/assets/channel-4dZtvypZ.js                             0.11 kB
-../../out/renderer/assets/chunk-XZIHB7SX-ChrxDiqN.js                      0.20 kB
-../../out/renderer/assets/chunk-4BMEZGHF-D9VJVEon.js                      0.23 kB
+../../out/renderer/assets/clone-os2nwwHk.js                               0.10 kB
+../../out/renderer/assets/channel-TK89Mw1N.js                             0.11 kB
+../../out/renderer/assets/chunk-XZIHB7SX--gRxNAlh.js                      0.20 kB
+../../out/renderer/assets/chunk-4BMEZGHF-BmzW-6WB.js                      0.23 kB
 ../../out/renderer/assets/org-surface-gate-B-7IGKy2.js                    0.26 kB
-../../out/renderer/assets/browser-page-CrV0ILx8.js                        0.42 kB
+../../out/renderer/assets/browser-page-CIIGoc6K.js                        0.42 kB
 ../../out/renderer/assets/heart-tKYqMVIH.js                               0.42 kB
 ../../out/renderer/assets/book-open-C1uak1LZ.js                           0.46 kB
-../../out/renderer/assets/stateDiagram-v2-YXO3MK2T-v3YuFkA2.js            0.47 kB
-../../out/renderer/assets/classDiagram-GIVACNV2-qeyOoVZR.js               0.47 kB
-../../out/renderer/assets/classDiagram-v2-COTLJTTW-qeyOoVZR.js            0.47 kB
+../../out/renderer/assets/stateDiagram-v2-YXO3MK2T-zPI21EsU.js            0.47 kB
+../../out/renderer/assets/classDiagram-GIVACNV2-CAPoZsK0.js               0.47 kB
+../../out/renderer/assets/classDiagram-v2-COTLJTTW-CAPoZsK0.js            0.47 kB
 ../../out/renderer/assets/hash-BN0ECl3H.js                                0.48 kB
 ../../out/renderer/assets/page-header-6mrV9W-E.js                         0.55 kB
 ../../out/renderer/assets/use-session-snapshot-DmzyMc25.js                0.62 kB
 ../../out/renderer/assets/building-2-Bpz1qaDa.js                          0.62 kB
 ../../out/renderer/assets/notebook-pen-C3CwzwGA.js                        0.66 kB
-../../out/renderer/assets/chunk-RZ5BOZE2-V0Xo6jX8.js                      0.68 kB
-../../out/renderer/assets/infoDiagram-PH2N3AL5-C-ADkY0E.js                0.80 kB
+../../out/renderer/assets/chunk-RZ5BOZE2-CcMuiu7T.js                      0.68 kB
+../../out/renderer/assets/infoDiagram-PH2N3AL5-BCx3V9K-.js                0.80 kB
 ../../out/renderer/assets/consoleCapture-BNUNUZ0q.js                      1.28 kB
-../../out/renderer/assets/chunk-D6G4REZN-9RqAe16V.js                      1.44 kB
-../../out/renderer/assets/radient-auth-buttons-BSCuVPtR.js                1.45 kB
+../../out/renderer/assets/chunk-D6G4REZN-DZpCWn-2.js                      1.44 kB
+../../out/renderer/assets/radient-auth-buttons-Ce8gNp1m.js                1.45 kB
 ../../out/renderer/assets/rpm-CTu-6PCP.js                                 1.62 kB
 ../../out/renderer/assets/addressOverlayList-SGt8bawf.js                  2.17 kB
-../../out/renderer/assets/_basePickBy-XIuJpC-t.js                         2.59 kB
+../../out/renderer/assets/_basePickBy-CeQ_c0_C.js                         2.59 kB
 ../../out/renderer/assets/parseISO-BHJWTxrA.js                            2.76 kB
-../../out/renderer/assets/arc-BHfsLYpo.js                                 3.44 kB
-../../out/renderer/assets/diagram-VNBRO52H-DOSO9__T.js                    3.85 kB
+../../out/renderer/assets/arc-Cq2yl-8n.js                                 3.44 kB
+../../out/renderer/assets/diagram-VNBRO52H-vJ9zE3Po.js                    3.85 kB
 ../../out/renderer/assets/asn1-EdZsLKOL.js                                3.98 kB
 ../../out/renderer/assets/ttcn-cfg-B9xdYoR4.js                            4.05 kB
 ../../out/renderer/assets/mllike-CXdrOF99.js                              4.79 kB
-../../out/renderer/assets/pieDiagram-IB7DONF6-CniB_S0m.js                 5.00 kB
-../../out/renderer/assets/graph-DvCA-9c_.js                               5.92 kB
-../../out/renderer/assets/diagram-SSKATNLV-DqB22zSc.js                    6.02 kB
-../../out/renderer/assets/browser-webauthn-prompt-obZmGk-U.js             6.05 kB
+../../out/renderer/assets/pieDiagram-IB7DONF6-BOBLLuac.js                 5.00 kB
+../../out/renderer/assets/graph-DXLtbPH6.js                               5.92 kB
+../../out/renderer/assets/diagram-SSKATNLV-C2YBmDVr.js                    6.02 kB
+../../out/renderer/assets/browser-webauthn-prompt-DtpQg49J.js             6.05 kB
 ../../out/renderer/assets/python-BuPzkPfP.js                              6.48 kB
 ../../out/renderer/assets/pug-DukmZTjD.js                                 6.67 kB
 ../../out/renderer/assets/en-US-CHJkXXr4.js                               7.71 kB
-../../out/renderer/assets/org-access-mTF077ui.js                          8.14 kB
+../../out/renderer/assets/org-access-DoSp0kb5.js                          8.14 kB
 ../../out/renderer/assets/installer-Dw1P6j8q.js                           9.08 kB
-../../out/renderer/assets/smartart-CgvoBRBD.js                           10.53 kB
-../../out/renderer/assets/stateDiagram-DGXRK772-0GWHMLXR.js              10.77 kB
+../../out/renderer/assets/smartart-RY-RtACu.js                           10.53 kB
+../../out/renderer/assets/stateDiagram-DGXRK772-BxWoaskt.js              10.77 kB
 ../../out/renderer/assets/clojure-BMjYHr_A.js                            10.82 kB
-../../out/renderer/assets/dagre-OKDRZEBW-B1I9Gt8-.js                     11.12 kB
-../../out/renderer/assets/publication-validation-BxqG9Evl.js             11.45 kB
-../../out/renderer/assets/_baseUniq-oVeL0Pg7.js                          11.89 kB
+../../out/renderer/assets/dagre-OKDRZEBW-C5ydGqdt.js                     11.12 kB
+../../out/renderer/assets/publication-validation-BTtyYsiv.js             11.45 kB
+../../out/renderer/assets/_baseUniq-DHpgv07Q.js                          11.89 kB
 ../../out/renderer/assets/format-esAOn2VS.js                             12.47 kB
-../../out/renderer/assets/use-download-agent-mutation-nDhjys2L.js        12.63 kB
-../../out/renderer/assets/index-DujPSzBf.js                              12.78 kB
-../../out/renderer/assets/mini-C4uwDDoh.js                               13.02 kB
-../../out/renderer/assets/agent-details-page-Btma6pV2.js                 14.52 kB
+../../out/renderer/assets/use-download-agent-mutation-C38DZupS.js        12.63 kB
+../../out/renderer/assets/index-DDG3SAjD.js                              12.78 kB
+../../out/renderer/assets/mini-WLGW7I7X.js                               13.02 kB
+../../out/renderer/assets/agent-details-page-BZVzp_fe.js                 14.52 kB
 ../../out/renderer/assets/javascript-qCveANmP.js                         17.08 kB
-../../out/renderer/assets/kanban-definition-NDS4AKOZ-1_CsjQeu.js         20.25 kB
-../../out/renderer/assets/sankeyDiagram-QLVOVGJD-CYUB-gi3.js             22.12 kB
-../../out/renderer/assets/journeyDiagram-U35MCT3I-1y8n8UMI.js            22.81 kB
-../../out/renderer/assets/timeline-definition-BDJGKUSR-B72j6AQc.js       23.65 kB
-../../out/renderer/assets/gitGraphDiagram-7IBYFJ6S-8DIXZEMq.js           24.18 kB
-../../out/renderer/assets/erDiagram-Q7BY3M3F-CFlR_jlt.js                 25.31 kB
+../../out/renderer/assets/kanban-definition-NDS4AKOZ-D7GgsNfw.js         20.25 kB
+../../out/renderer/assets/sankeyDiagram-QLVOVGJD-yX7sJXAb.js             22.12 kB
+../../out/renderer/assets/journeyDiagram-U35MCT3I-Dtvw1YW2.js            22.81 kB
+../../out/renderer/assets/timeline-definition-BDJGKUSR-CW635E78.js       23.65 kB
+../../out/renderer/assets/gitGraphDiagram-7IBYFJ6S-kS4EJGDY.js           24.18 kB
+../../out/renderer/assets/erDiagram-Q7BY3M3F-D5uytfH9.js                 25.31 kB
 ../../out/renderer/assets/css-BnMrqG3P.js                                27.13 kB
-../../out/renderer/assets/layout-BHMN0YtN.js                             27.21 kB
-../../out/renderer/assets/requirementDiagram-KVF5MWMF-Ci0BbtIo.js        30.15 kB
-../../out/renderer/assets/index-BPye-dZH.js                              30.88 kB
-../../out/renderer/assets/quadrantDiagram-7GDLP6J5-CE6ewDDB.js           33.86 kB
-../../out/renderer/assets/chunk-AEK57VVT-xzM_aYY5.js                     34.50 kB
+../../out/renderer/assets/layout-Vnb8fNgm.js                             27.21 kB
+../../out/renderer/assets/requirementDiagram-KVF5MWMF-BitLeWhg.js        30.15 kB
+../../out/renderer/assets/index-CZIL-6Oy.js                              30.88 kB
+../../out/renderer/assets/quadrantDiagram-7GDLP6J5-CU8lsa2-.js           33.86 kB
+../../out/renderer/assets/chunk-AEK57VVT-DUoG5R_R.js                     34.50 kB
 ../../out/renderer/assets/sql-D0XecflT.js                                37.05 kB
-../../out/renderer/assets/xychartDiagram-VJFVF3MP-BZSNrKEr.js            37.45 kB
-../../out/renderer/assets/chunk-A2AXSNBT-DDs0wIeD.js                     45.03 kB
-../../out/renderer/assets/ganttDiagram-APWFNJXF-B0598SN9.js              47.30 kB
-../../out/renderer/assets/mesh-page-D-UIXLH3.js                          53.25 kB
-../../out/renderer/assets/legacy-agents-page-D8UnGGd3.js                 55.70 kB
-../../out/renderer/assets/flowDiagram-4HSFHLVR-DhUTPjEq.js               60.30 kB
-../../out/renderer/assets/agent-hub-page-B5rpmK3N.js                     64.12 kB
-../../out/renderer/assets/c4Diagram-VJAJSXHY-CWC368Hb.js                 70.24 kB
-../../out/renderer/assets/blockDiagram-JOT3LUYC-r7aLtzVl.js              71.62 kB
-../../out/renderer/assets/sequenceDiagram-X6HHIX6F-CgikqJrg.js           88.55 kB
-../../out/renderer/assets/agents-page-CAhDb5Aj.js                        96.60 kB
-../../out/renderer/assets/mindmap-definition-ALO5MXBD-CTkG8ZkC.js       101.04 kB
-../../out/renderer/assets/architectureDiagram-IEHRJDOE-CS7MRGyQ.js      148.27 kB
-../../out/renderer/assets/projects-page-BmiRziZq.js                     162.38 kB
+../../out/renderer/assets/xychartDiagram-VJFVF3MP-CkZhhtjC.js            37.45 kB
+../../out/renderer/assets/chunk-A2AXSNBT-DvarzCh7.js                     45.03 kB
+../../out/renderer/assets/ganttDiagram-APWFNJXF-CDYEeoGB.js              47.30 kB
+../../out/renderer/assets/mesh-page-BBpfOEwm.js                          53.25 kB
+../../out/renderer/assets/legacy-agents-page-B3BHcC1i.js                 55.70 kB
+../../out/renderer/assets/flowDiagram-4HSFHLVR-CHjJXtRJ.js               60.30 kB
+../../out/renderer/assets/agent-hub-page-Qb06iUUh.js                     64.12 kB
+../../out/renderer/assets/c4Diagram-VJAJSXHY-RsWXdJRi.js                 70.24 kB
+../../out/renderer/assets/blockDiagram-JOT3LUYC-Cm8T5erY.js              71.62 kB
+../../out/renderer/assets/sequenceDiagram-X6HHIX6F-BPv3B73M.js           88.55 kB
+../../out/renderer/assets/agents-page-CFHIIfSv.js                        96.60 kB
+../../out/renderer/assets/mindmap-definition-ALO5MXBD-BNQwtJHa.js       101.04 kB
+../../out/renderer/assets/architectureDiagram-IEHRJDOE-Cx4IMXcl.js      148.27 kB
+../../out/renderer/assets/projects-page-BpZhTmNc.js                     162.38 kB
 ../../out/renderer/assets/error-boundary-ZYkSCpZC.js                    190.73 kB
-../../out/renderer/assets/settings-page-DajCniuN.js                     197.37 kB
-../../out/renderer/assets/library-page-CYg6vpM5.js                      234.67 kB
+../../out/renderer/assets/settings-page-DbAgn7t3.js                     197.37 kB
+../../out/renderer/assets/library-page-BE8UHdG_.js                      234.67 kB
 ../../out/renderer/assets/katex-DsmCZfJr.js                             265.43 kB
-../../out/renderer/assets/radar-MK3ICKWK-DfdA7IdH.js                    314.65 kB
-../../out/renderer/assets/team-bridge-page-SiLt9K5W.js                  331.81 kB
+../../out/renderer/assets/radar-MK3ICKWK-Uzkgekbn.js                    314.65 kB
+../../out/renderer/assets/team-bridge-page-DwLuXZl1.js                  331.81 kB
 ../../out/renderer/assets/console-mirror-0VCyM-hV.js                    375.65 kB
-../../out/renderer/assets/schedules-page-CvL0luv_.js                    424.75 kB
+../../out/renderer/assets/schedules-page-B2sOTAGZ.js                    424.75 kB
 ../../out/renderer/assets/cytoscape.esm-DHvQc-Lm.js                     438.64 kB
 ../../out/renderer/assets/path-utils-CKvVXTlE.js                        447.73 kB
-../../out/renderer/assets/mermaid.core-BXa0hjGG.js                      459.85 kB
-../../out/renderer/assets/index-DZpO1uxX.js                           2,954.73 kB
+../../out/renderer/assets/mermaid.core-DvbzIiFN.js                      459.85 kB
+../../out/renderer/assets/index-bUquJe4n.js                           2,954.73 kB
 ../../out/renderer/assets/index-BDzV3bGH.js                           3,227.81 kB
-../../out/renderer/assets/conversation-input-sync-BBKx3ESE.js         4,115.21 kB
+../../out/renderer/assets/conversation-input-sync-7ZrxePUF.js         4,115.20 kB
 
 (!) Some chunks are larger than 500 kB after minification. Consider:
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 12.07s
+✓ built in 13.16s
 $ chmod +x ./bin/local-operator-ui.js
 build_rc=0
 status_after_build:
