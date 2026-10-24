@@ -85,7 +85,8 @@ html[data-opaque="1"] #approvals-card {
 }
 
 .card-brand {
-	margin: 0 0 2px;
+	margin: 0;
+	padding: 8px 12px 0;
 	color: var(--lo-ink-muted);
 	font-size: 11px;
 	font-weight: 500;
@@ -231,8 +232,13 @@ html[data-opaque="1"] #approvals-card {
 	line-height: 1.4;
 }
 
+.card-footer {
+	flex: 0 0 auto;
+	padding: 8px 12px 12px;
+}
+
 .card-review {
-	margin-top: 10px;
+	margin: 0;
 	width: 100%;
 	padding: 5px 8px;
 	font-size: 11px;

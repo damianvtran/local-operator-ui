@@ -47,15 +47,15 @@ import {
 	isApprovalsCardDecision,
 } from "../../shared/browser-approvals-overlay";
 import {
-	type ApprovalsCardModelInput,
-	approvalsCardModelFrom,
-} from "./approvals-overlay-model";
-import {
 	APPROVALS_CARD_MIN_HEIGHT,
 	type ApprovalsCardBounds,
 	type ApprovalsCardRect,
 	approvalsCardBoundsFor,
 } from "./approvals-overlay-bounds";
+import {
+	type ApprovalsCardModelInput,
+	approvalsCardModelFrom,
+} from "./approvals-overlay-model";
 
 export interface ApprovalsOverlayLayout {
 	presented: boolean;
@@ -188,8 +188,14 @@ export class ApprovalsOverlayController {
 		| ((target: { isDestroyed(): boolean; focus(): void }) => void)
 		| null;
 	private readonly log: (message: string) => void;
-	private readonly onDismissAction: (event: IpcMainEvent, payload: unknown) => void;
-	private readonly onDecideAction: (event: IpcMainEvent, payload: unknown) => void;
+	private readonly onDismissAction: (
+		event: IpcMainEvent,
+		payload: unknown,
+	) => void;
+	private readonly onDecideAction: (
+		event: IpcMainEvent,
+		payload: unknown,
+	) => void;
 
 	private view: WebContentsView | null;
 	private childListeners: Array<() => void>;
@@ -347,12 +353,14 @@ export class ApprovalsOverlayController {
 	 * supplied `focusTarget`; an inactive/headless run still opens the card but
 	 * takes nothing.
 	 */
-	open(input: {
-		focus?: boolean;
-		locale?: string;
-		dir?: "ltr" | "rtl";
-		theme?: "light" | "dark";
-	} = {}): void {
+	open(
+		input: {
+			focus?: boolean;
+			locale?: string;
+			dir?: "ltr" | "rtl";
+			theme?: "light" | "dark";
+		} = {},
+	): void {
 		if (this.disposed) return;
 		if (typeof input.locale === "string" && input.locale.trim() !== "") {
 			this.locale = input.locale.trim().slice(0, 35);
@@ -441,7 +449,10 @@ export class ApprovalsOverlayController {
 		this.disposed = true;
 		this.visible = false;
 		this.ready = false;
-		ipcMain.removeListener(APPROVALS_CARD_DISMISS_CHANNEL, this.onDismissAction);
+		ipcMain.removeListener(
+			APPROVALS_CARD_DISMISS_CHANNEL,
+			this.onDismissAction,
+		);
 		ipcMain.removeListener(APPROVALS_CARD_DECIDE_CHANNEL, this.onDecideAction);
 		this.releaseView(reason);
 	}
@@ -458,7 +469,10 @@ export class ApprovalsOverlayController {
 			this.dropAction();
 			return false;
 		}
-		if (!event.senderFrame || event.senderFrame !== view.webContents.mainFrame) {
+		if (
+			!event.senderFrame ||
+			event.senderFrame !== view.webContents.mainFrame
+		) {
 			this.dropAction();
 			return false;
 		}
@@ -470,7 +484,11 @@ export class ApprovalsOverlayController {
 			payload && typeof payload === "object"
 				? (payload as { seq?: unknown }).seq
 				: undefined;
-		if (typeof seq !== "number" || !Number.isInteger(seq) || seq !== this.model?.seq) {
+		if (
+			typeof seq !== "number" ||
+			!Number.isInteger(seq) ||
+			seq !== this.model?.seq
+		) {
 			this.dropAction();
 			return false;
 		}
@@ -480,7 +498,10 @@ export class ApprovalsOverlayController {
 	private sameDocument(url: string): boolean {
 		const strip = (value: string): string => value.split("?")[0].split("#")[0];
 		try {
-			return strip(new URL(url).toString()) === strip(new URL(this.documentUrl).toString());
+			return (
+				strip(new URL(url).toString()) ===
+				strip(new URL(this.documentUrl).toString())
+			);
 		} catch {
 			return false;
 		}
@@ -550,7 +571,12 @@ export class ApprovalsOverlayController {
 
 	/** Focus the card, only through the host's gated helper. */
 	private focusIfPending(): void {
-		if (!this.pendingFocus || !this.explicitOpen || !this.ready || !this.visible) {
+		if (
+			!this.pendingFocus ||
+			!this.explicitOpen ||
+			!this.ready ||
+			!this.visible
+		) {
 			return;
 		}
 		const view = this.view;

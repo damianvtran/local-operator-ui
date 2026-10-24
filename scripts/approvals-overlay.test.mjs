@@ -593,7 +593,6 @@ test("controller: the opaque fallback is a full-bleed opaque view", async () => 
 	controller.dispose("test");
 });
 
-
 test("geometry: RTL anchors the card's inline end to the content rect's left edge", () => {
 	const ltr = mod.approvalsCardBoundsFor({
 		contentRect: rect(0, 0, 900, 600),
@@ -606,7 +605,11 @@ test("geometry: RTL anchors the card's inline end to the content rect's left edg
 		dir: "rtl",
 	});
 	assert.equal(ltr.view.x, 900 - 368);
-	assert.equal(rtl.view.x, 0, "the view's left edge is the content's left edge");
+	assert.equal(
+		rtl.view.x,
+		0,
+		"the view's left edge is the content's left edge",
+	);
 	assert.equal(rtl.card.x, 8, "the card keeps the same 8 DIP inset");
 	assert.equal(rtl.view.y, ltr.view.y, "the vertical anchor is unchanged");
 	assert.equal(rtl.view.width, ltr.view.width);
@@ -630,7 +633,9 @@ test("model: hostile fields are rebuilt from the allow-list, never forwarded", (
 			displayAuthority: "x".repeat(100_000),
 			expiresAt: 123,
 		},
-		pending: [{ entryId: "e1", origin: "javascript:alert(1)", displayAuthority: "" }],
+		pending: [
+			{ entryId: "e1", origin: "javascript:alert(1)", displayAuthority: "" },
+		],
 	});
 	assert.equal(model.seq, 7);
 	assert.equal(model.dir, "rtl");
@@ -638,7 +643,11 @@ test("model: hostile fields are rebuilt from the allow-list, never forwarded", (
 	assert.equal(model.view, "request");
 	assert.equal(model.focus, false, "only the literal true focuses");
 	assert.equal(model.error, null, "an unknown error code is dropped");
-	assert.equal(model.request.origin, "https://example.test", "the origin is normalised");
+	assert.equal(
+		model.request.origin,
+		"https://example.test",
+		"the origin is normalised",
+	);
 	assert.equal(model.request.requester.length, 256, "the requester is capped");
 	assert.equal(model.pending.length, 0, "a non-http origin cannot be painted");
 });
@@ -769,10 +778,14 @@ test("controller: the two card channels are sender-pinned, seq-checked and route
 	assert.ok(entryId);
 
 	// A forged sender, a stale seq and an unknown entry all drop without acting.
-	mod.emitIpc(mod.APPROVALS_CARD_DISMISS_CHANNEL, {
-		sender: {},
-		senderFrame: null,
-	}, { seq, entryId });
+	mod.emitIpc(
+		mod.APPROVALS_CARD_DISMISS_CHANNEL,
+		{
+			sender: {},
+			senderFrame: null,
+		},
+		{ seq, entryId },
+	);
 	mod.emitIpc(mod.APPROVALS_CARD_DISMISS_CHANNEL, event, {
 		seq: seq - 1,
 		entryId,
