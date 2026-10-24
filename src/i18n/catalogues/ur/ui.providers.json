@@ -187,5 +187,6 @@
 	"ui.providers.provider_detail.the_sign_in_page": "سائن ان صفحہ",
 	"ui.providers.provider_grid.row_action": "{action}: {brand}",
 	"ui.providers.provider_detail.code_expiry": "کوڈ کی مدت {minutes, plural, other {{minutes, number, ::group-off} min}} میں ختم ہوگی",
-	"ui.providers.provider_detail.link_expiry": "لنک کی مدت {minutes, plural, other {{minutes, number, ::group-off} min}} میں ختم ہوگی"
+	"ui.providers.provider_detail.link_expiry": "لنک کی مدت {minutes, plural, other {{minutes, number, ::group-off} min}} میں ختم ہوگی",
+	"ui.providers.provider_detail.sign_in_again": "دوبارہ سائن ان کریں"
 }
