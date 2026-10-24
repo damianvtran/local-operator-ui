@@ -224,7 +224,6 @@ export const ChatStatusStrip = () => {
 	const confirmationRef = useRef<OfflineConfirmation>(noOfflineConfirmation());
 
 	useEffect(() => {
-		useI18nLocale();
 		const advance = () =>
 			setInternetOffline(
 				observeConnectivityReading(confirmationRef.current, {

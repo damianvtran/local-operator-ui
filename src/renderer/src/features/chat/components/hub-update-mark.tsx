@@ -182,7 +182,6 @@ export function HubUpdateMark({
 				// ignored while it is open instead (the Mark-all-read control's rule).
 				aria-disabled={inert || undefined}
 				onClick={() => {
-					useI18nLocale();
 					if (inert) return;
 					onPress();
 				}}
@@ -244,6 +243,7 @@ export function HubHeadingControls({
 	onCheck?: () => void;
 	checking?: boolean;
 }) {
+	useI18nLocale();
 	const offerAll = available >= UPDATE_ALL_FROM;
 	if (!offerAll && !onCheck) return null;
 	return (
@@ -267,7 +267,6 @@ export function HubHeadingControls({
 						"hover:bg-row-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-1",
 					)}
 					onClick={() => {
-						useI18nLocale();
 						if (!busy && !blocked) onUpdateAll();
 					}}
 				>
@@ -337,6 +336,7 @@ export function HubSectionLines({
 	note: HubNote | undefined;
 	onDismissRollup: () => void;
 }) {
+	useI18nLocale();
 	if (!reserve && !signIn && !rollup && !note) return null;
 	return (
 		<div
