@@ -918,7 +918,11 @@ test("each picker routes a draft's pick through one resolver, and never through 
 	 * instead of an early `return`.
 	 */
 	assert.match(resolve, /if \(!next\)/);
-	assert.match(resolve, /has not resolved a model to change/);
+	assert.match(
+		resolve,
+		/ui\.chat\.pickers\.destination_pickers\.this_pane_has_not_resolved_a_model_to_change/,
+		"the refusal reads the extracted sentence rather than a literal",
+	);
 	assert.doesNotMatch(
 		picker,
 		/draft\.target\.model \?\? selectionFromModel\(model\)/,
@@ -982,7 +986,11 @@ test("each picker routes a draft's pick through one resolver, and never through 
 	// The machine's default is not this control's to change, so a draft has no
 	// checkbox to change it with.
 	assert.match(picker, /\{!draft && \(/);
-	assert.match(picker, /Picks here also set the default for new sessions/);
+	assert.match(
+		picker,
+		/ui\.chat\.pickers\.destination_pickers\.picks_here_also_set_the_default_(?:effort_)?for_new_sessions/,
+		"the default-writing sentences are catalogue keys, not literals",
+	);
 
 	/*
 	 * THE FAST DIAL'S DRAFT BRANCH (issue #1265), pinned as the shape it has to
@@ -1696,7 +1704,15 @@ const pickerDependencies = {
 	 * beside the React hooks. English only — locale negotiation is
 	 * `scripts/i18n/`'s subject, not this file's.
 	 */
-	t: (key) => PICKERS_ENGLISH[key] ?? key,
+	t: (key, values) => {
+		const message = PICKERS_ENGLISH[key] ?? key;
+		if (!values) return message;
+		// The extracted messages are ICU with simple placeholders; this seam
+		// interpolates them so a sentence's words - not `{label}` - are asserted.
+		return message.replace(/\{(\w+)\}/g, (placeholder, name) =>
+			Object.hasOwn(values, name) ? String(values[name]) : placeholder,
+		);
+	},
 	useI18nLocale: () => {},
 	NO_DRAFT_TARGET,
 	draftPreviewQuery,
