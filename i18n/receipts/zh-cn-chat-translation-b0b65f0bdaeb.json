@@ -1,0 +1,305 @@
+{
+  "schema": 1,
+  "audit_kind": "translation-batch-delivery",
+  "status": "translated",
+  "locale": "zh-CN",
+  "translator": "translator (lopdev team)",
+  "session": "b0b65f0bdaeb",
+  "model": "radient/auto",
+  "model_fallback": "none",
+  "model_note": "Harness-selected model identity recorded as radient/auto; the routed upstream model is not exposed in session metadata. No fallback model was used.",
+  "date": "2026-10-24",
+  "scope": {
+    "repo": "damianvtran/local-operator-ui",
+    "branch": "feat/i18n-chat-zh-CN",
+    "base": "5d97575ac4388522267291ffee74d12bd9675b12",
+    "head": "de461316260931efe38f82f421501b90369eda3e",
+    "batch": "chat renderer copy, read at the round-3 remediation head 5d97575ac4 (the 23eaaea extraction plus the two remediation commits that pruned 38 generated id/format keys and added 11 copy keys)"
+  },
+  "references": {
+    "ui_howto": {
+      "path": "docs/I18N.md"
+    },
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    }
+  },
+  "totals": {
+    "namespaces": 14,
+    "keys": 1793,
+    "translated": 1763,
+    "preserved_existing": 30,
+    "identical_to_english": 66
+  },
+  "namespaces": {
+    "ui.chat": {
+      "keys": 532,
+      "translated": 524,
+      "preserved": 8,
+      "sha256": {
+        "en": "dc5765d20ff846c61f3fe8953e69524393561bc2a39f89fa419958d4e4a67346",
+        "zh-CN": "dcdb9cd562ad0d479556a86621e5040e683b301bf7d9bb226ff38cfad9fb634f",
+        "context": "f95436a7c1e91f17b47a5f45059f58ef63749cedef54b02d10b29260477be426"
+      }
+    },
+    "ui.chat.trace": {
+      "keys": 274,
+      "translated": 274,
+      "preserved": 0,
+      "sha256": {
+        "en": "52a0fa5ed78ec2f3bbedf5b67f7abf3cc8d72c7a66ff4383d182358e242fb848",
+        "zh-CN": "182b046fe7450de7f3c84237c46c2b7a3d91ce544f4bf263a9c48e5b128b8652",
+        "context": "b54b6acb4399743d207d8a793080555f1cab291761de90cf3e6e9f3ce9c70016"
+      }
+    },
+    "ui.chat.canonical": {
+      "keys": 297,
+      "translated": 297,
+      "preserved": 0,
+      "sha256": {
+        "en": "522e7fced024ec756b4b93b21952c4abfb232278a3ca32bba67b45978749eb6d",
+        "zh-CN": "5a3de2cb2d94dcd0f3247a8837f5736d8d17d57368d5c871455e2efe75d9fab6",
+        "context": "af353a188112ef28df7dfda8c7139fa5bd33506a40b112392e1e40fbe32116f2"
+      }
+    },
+    "ui.chat.session_status": {
+      "keys": 162,
+      "translated": 162,
+      "preserved": 0,
+      "sha256": {
+        "en": "05a6e2dd52cd41fb90dbb6756bb8a8f51c5d22e3769edb3fd6228a0d9a059198",
+        "zh-CN": "e5b957f9aa0b7dd07157efcad98a8b1c6f8b69eedfef8ea181b7f733758781de",
+        "context": "91544a1523e2ccd3a50041e3530ded39255a614f571c50264991ed8e92ca90e7"
+      }
+    },
+    "ui.chat.run_details": {
+      "keys": 154,
+      "translated": 154,
+      "preserved": 0,
+      "sha256": {
+        "en": "daf3ddc7d9c0904642876bf3db0746b6c0c68c5fe3b87a1a6730b07f67c90c2f",
+        "zh-CN": "55c4549e7c580b18c3c25010f76164ab926e8c7f73905a0c43baf0fce62ee3df",
+        "context": "dcb2cf6f636814a1866186e8864fd6817033fa8de027049b365f362c53b5d384"
+      }
+    },
+    "ui.chat.asks": {
+      "keys": 101,
+      "translated": 89,
+      "preserved": 12,
+      "sha256": {
+        "en": "f5017d10d314fc9e3e94eeff2d5067c559e97ba0c6ffcef4e8ed9d1c39cf67ab",
+        "zh-CN": "8092f0ed616d24b448c82f482adcf2136bf6f96467df9e3610c088061c120e70",
+        "context": "0e1f544932e7c9c6c94bbb0d4e2066910d80e33060ad23bbbb57d5bb9c1b637c"
+      }
+    },
+    "ui.chat.header": {
+      "keys": 72,
+      "translated": 62,
+      "preserved": 10,
+      "sha256": {
+        "en": "ff03f6ca7b3206e77fc260116d2b540cc9f211ea37436863b874770e917158d8",
+        "zh-CN": "e2f29448d6dca386a98fb6879fe434e9c9b958463754685829de03ce1293682c",
+        "context": "0d601a99861fc8b23207f117b90b697ba88ddd4f6419a68021f34c177158ea2e"
+      }
+    },
+    "ui.chat.message": {
+      "keys": 55,
+      "translated": 55,
+      "preserved": 0,
+      "sha256": {
+        "en": "95d7b60b2cb1bdc37648cfa896856ce53724e300ed4a6b0448d7562aad452a5a",
+        "zh-CN": "899e3844d0d86333428c9470e61411c303b998801069de9a000bb36c1fede815",
+        "context": "0278baa63867980cd08d18e47e282af12a6330b7c6a785f0157e7a01cceb4230"
+      }
+    },
+    "ui.chat.directory": {
+      "keys": 42,
+      "translated": 42,
+      "preserved": 0,
+      "sha256": {
+        "en": "57540488fb400a9a4ac1040c7d7f91f19f25ab313ec87a50ef527da442d3ec6b",
+        "zh-CN": "6f47fe55691e1868db2e3fb3d3d075dba0cc2a3b9b89d4fb4797cbb73ef4f9b8",
+        "context": "4bfdbc219bccc88fbdcaf3c62897b168d5604d5acbbb5f70f040c95c941c2daa"
+      }
+    },
+    "ui.chat.aside": {
+      "keys": 35,
+      "translated": 35,
+      "preserved": 0,
+      "sha256": {
+        "en": "d8ce04c8e909a73f3050588b2b562b12db3840ae1f4231a66ef3eb5ac76ed1b6",
+        "zh-CN": "7e3a6d910628c3a727601c7accb795a3dee6f1cbd7f6e3fd17ba8354314fc80f",
+        "context": "522fcbc0c965224e7d4fb8cb8200e7c68889c9ee73d073b09c6cb2af827b8431"
+      }
+    },
+    "ui.chat.options": {
+      "keys": 33,
+      "translated": 33,
+      "preserved": 0,
+      "sha256": {
+        "en": "fdfb1ceae54aa5270dd76b67748f56fa14e5d3f47d7770dad8eba755995a5a79",
+        "zh-CN": "010048b7b769cf730f054261610e85753fcf6501154fefa497aaf11f934add8e",
+        "context": "4609f41205d7d0b14dd07e98a629b9fb40f74f870106e78b30a3b210eb7f13db"
+      }
+    },
+    "ui.chat.credential_capture": {
+      "keys": 18,
+      "translated": 18,
+      "preserved": 0,
+      "sha256": {
+        "en": "1776a41f5dfa3335b5e390e85870cb55756e25c6a2439cd3f42ea4c864515bdd",
+        "zh-CN": "f2e91de4935c8bf644dee2e93f6b4a9a63b48de954f54ac7817114b1909a962a",
+        "context": "bf6e3bb8cd70e39cba3aad66b0d92aa38ebad880ac49405fb1affd032f6f3b1f"
+      }
+    },
+    "ui.chat.at": {
+      "keys": 11,
+      "translated": 11,
+      "preserved": 0,
+      "sha256": {
+        "en": "685a75115b95770d8d74cc43c2f250c53bed311c0d117cf51849f72041533694",
+        "zh-CN": "9bd6e7d1330d28e60bc078951c1ae47f275b2d1d66ffe4ed1a3d8b58f73330db",
+        "context": "da529439f1aa5970aff5b833b40900524c2cfd465abe96296e3b9cecf5ec555e"
+      }
+    },
+    "ui.chat.skill": {
+      "keys": 7,
+      "translated": 7,
+      "preserved": 0,
+      "sha256": {
+        "en": "919b6643e792d02ed270911df96d96da277bba5b5b91a2d04fac6cf044acfc10",
+        "zh-CN": "a0dd6b655e52d87538cccb35fd1a009304e78b51e278adf90020ce96081a7d51",
+        "context": "012b41d3b048ae9575012522051687b87e3b3a8189dab9121985052ea04f965d"
+      }
+    }
+  },
+  "checks": [
+    {
+      "command": "node scripts/i18n/generate.mjs --check",
+      "result": "pass",
+      "output": "src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+    },
+    {
+      "command": "node scripts/i18n/check-strings.mjs",
+      "result": "pass",
+      "output": "ok — 1343 file(s) scanned, 391 literal(s) at or below the baseline"
+    },
+    {
+      "command": "node scripts/i18n/context-parity.mjs",
+      "result": "pass",
+      "output": "ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json)."
+    },
+    {
+      "command": "node scripts/i18n/locale-parity.test.mjs",
+      "result": "fail (known, enumerated in identical_values)",
+      "output": "For zh-CN: key completeness, no-unknown-keys and placeholder integrity pass; 'is not an English stub' fails on the 66 machine-token values listed below. The same run fails key completeness for es/fr/hi/ru/ur/vi because their chat namespaces still predate this batch — that gap is present at the base commit and is not introduced here."
+    },
+    {
+      "command": "per-key ICU check (check-zh-final.mjs, run in this worktree)",
+      "result": "pass",
+      "output": "Every value parses with @formatjs/icu-messageformat-parser. Argument names, select arms, plural arms (other-only, exact =N retained), number skeletons, NFC and the absence of bidi controls were verified for all 1793 keys. The only findings are the 66 byte-identical values enumerated below."
+    }
+  ],
+  "identical_values": {
+    "keyboard chord: printed verbatim": [
+      "ui.chat.chat_regions.ctrl_shift_l",
+      "ui.chat.chat_regions.l"
+    ],
+    "Tailwind class / CSS selector: machine token": [
+      "ui.chat.canonical.older_history_slot.min_260px_olderhistory_hidden",
+      "ui.chat.sidebar.chat_sidebar.role_menuitem"
+    ],
+    "checkbox glyph compared with the hard-coded \"[ ]\": symbol token": [
+      "ui.chat.slash_commands.x"
+    ],
+    "placeholder/separator composition only — no words to translate": [
+      "ui.chat.artifact_identity.title_head",
+      "ui.chat.asks.ask_panel.label_count",
+      "ui.chat.asks.fleet_ask_drawer.verb_name",
+      "ui.chat.canonical.canonical_transcript.direction",
+      "ui.chat.canonical.fold_media.more",
+      "ui.chat.canonical.image_gen_card.noun_value",
+      "ui.chat.canonical.transcript_reducer.stringvalue_value",
+      "ui.chat.chat_status_strip.outcome",
+      "ui.chat.composer.composer_status_row.askdeadlinesubject",
+      "ui.chat.composer.composer_status_row.goal_clear_text_label_seam_goal",
+      "ui.chat.composer.composer_status_row.goal_cleared_text_leading",
+      "ui.chat.composer.composer_status_row.goal_disclosure_label",
+      "ui.chat.composer.composer_status_row.job_actionvalue_label_seam_jobclausevalue_busiestclausevalue",
+      "ui.chat.composer.composer_status_row.loop_labelvalue_loopstatuswordvalue",
+      "ui.chat.composer.composer_status_row.monitor_actionvalue_label_seam_monitorclausevalue",
+      "ui.chat.composer.composer_status_row.plan_actionvalue_label_seam_todoclausevalue",
+      "ui.chat.composer.composer_status_row.subagent_actionvalue_label_seam_childclausevalue_busiestclausevalue",
+      "ui.chat.composer.composer_status_row.text_label_seam_loopclausevalue",
+      "ui.chat.composer.composer_status_row.wake_actionvalue_label_seam_wakeclausevalue",
+      "ui.chat.credential_capture.unconfirmed_chip",
+      "ui.chat.delete_conversation.title",
+      "ui.chat.draft_rows.draft_row_prefix_draftrowtitlevalue",
+      "ui.chat.draft_rows.value",
+      "ui.chat.header.chat_header_identity.label_current",
+      "ui.chat.header.chat_header_identity.value_description",
+      "ui.chat.header.chat_header_identity_menu.closednoteid_title",
+      "ui.chat.hub_update_mark.detail_action",
+      "ui.chat.message.attachment_frame.detail",
+      "ui.chat.message.attachment_frame.name_detail",
+      "ui.chat.message.invalid_attachment.getfilenamevalue_reason",
+      "ui.chat.message.turn_timestamp.value_full",
+      "ui.chat.message_grouping.value_value2",
+      "ui.chat.run_details.run_detail_model.value",
+      "ui.chat.run_details.run_detail_monitors.healthlabel",
+      "ui.chat.run_details.run_detail_monitors.interval",
+      "ui.chat.run_details.run_detail_monitors.lastchecklabel",
+      "ui.chat.run_details.run_detail_wakes.cadence",
+      "ui.chat.run_details.run_detail_wakes.trailingclause",
+      "ui.chat.session_status.session_cost.text_cue",
+      "ui.chat.sidebar.chat_sidebar.clause",
+      "ui.chat.sidebar.chat_sidebar.detail",
+      "ui.chat.sidebar.chat_sidebar.silent_remedy",
+      "ui.chat.sidebar.chat_sidebar_view.label_position",
+      "ui.chat.trace.receipt_row_model.base",
+      "ui.chat.trace.turn_summary.receipts",
+      "ui.chat.trace.turn_summary.value",
+      "ui.chat.trace.turn_summary.value_75ced7",
+      "ui.chat.undo_toasts.detail"
+    ],
+    "DOM id / element key prefix": [
+      "ui.chat.sidebar.chat_sidebar.all_kind",
+      "ui.chat.sidebar.chat_sidebar_view.section_grown_hint_key"
+    ],
+    "CSS custom property: must resolve as authored": [
+      "ui.chat.mermaid_diagram.var_color_warning",
+      "ui.chat.mermaid_diagram.var_color_warning_border",
+      "ui.chat.mermaid_diagram.var_color_warning_wash"
+    ],
+    "product name, preserved by glossary §1": [
+      "ui.chat.header.chat_header.local_operator"
+    ],
+    "internal DOM id": [
+      "ui.chat.message.audio_attachment.time_indicator",
+      "ui.chat.message.audio_attachment.volume_control"
+    ],
+    "route token": [
+      "ui.chat.message.error_block.settings_section_providers"
+    ],
+    "literal Windows path shown next to its localised label": [
+      "ui.chat.directory.directory_indicator.c_program_files",
+      "ui.chat.directory.directory_indicator.c_program_files_x86"
+    ],
+    "sampling-parameter name kept in Latin by the zh-CN guide": [
+      "ui.chat.options.generation_settings_section.top_k",
+      "ui.chat.options.generation_settings_section.top_p"
+    ]
+  },
+  "notes": [
+    "Values pre-existing in zh-CN for these namespaces (30) were preserved byte-for-byte; every file is written in English key order.",
+    "The batch base was corrected by the manager to 5d97575ac4; the branch was rebased onto it and the 38 keys that remediation pruned were dropped rather than carried.",
+    "keys.gen.ts was regenerated because the generator embeds per-locale namespace imports; the diff is zh-CN import lines only.",
+    "The stub guard (scripts/i18n/locale-parity.test.mjs IDENTICAL_OK) needs the 66 keys above before zh-CN passes that test; this change does not edit the guard.",
+    "Not an audit: an independent reviewer round still has to run before the ledger can record these namespaces."
+  ]
+}
