@@ -200,7 +200,7 @@ export function memberCountLabel(
 	members: readonly TeamMember[] | undefined,
 ): string {
 	const total = memberCount(members);
-	return total === 1 ? "1 member" : `${total} members`;
+	return t("ui.agents.team.member_count", { count: total });
 }
 
 /**
@@ -584,27 +584,25 @@ export function TeamDetail({
 		 * likely first failure here.
 		 */
 		if (creating && !name.trim()) {
-			setError("Give the team a name.");
+			setError(t("ui.agents.team.name_required"));
 			setErrorField("name");
 			teamNameRef.current?.focus();
 			return;
 		}
 		if (creating && /[\\/\s]/.test(name.trim())) {
-			setError("Names cannot contain spaces or slashes.");
+			setError(t("ui.agents.team.name_invalid"));
 			setErrorField("name");
 			teamNameRef.current?.focus();
 			return;
 		}
 		if (creating && (teams ?? []).some((row) => row.name === name.trim())) {
-			setError(
-				`A team called “${name.trim()}” already exists. Open it to change it, or choose another name.`,
-			);
+			setError(t("ui.agents.team.name_taken", { name: name.trim() }));
 			setErrorField("name");
 			teamNameRef.current?.focus();
 			return;
 		}
 		if (creating && !draft.instructions.trim()) {
-			setError("Give the team instructions.");
+			setError(t("ui.agents.team.instructions_required"));
 			setErrorField("instructions");
 			teamInstructionsRef.current?.focus();
 			return;
@@ -662,7 +660,11 @@ export function TeamDetail({
 			 * "CREATED" FOR A CREATE, "SAVED" FOR AN EDIT (review round 1, UX nit):
 			 * the agent form already said Created, so the same act had two names.
 			 */
-			showSuccessToast(`${creating ? "Created" : "Saved"} ${result.name}.`);
+			showSuccessToast(
+				creating
+					? t("ui.agents.team.created_name", { name: result.name })
+					: t("ui.agents.team.saved_name", { name: result.name }),
+			);
 			if (creating) requestHeadingFocus();
 			requestAnimationFrame(() => headingRef.current?.focus());
 		} catch (caught) {
@@ -682,7 +684,7 @@ export function TeamDetail({
 			const copy = refusalCopy(
 				caught instanceof Error
 					? caught.message
-					: "The team could not be saved.",
+					: t("ui.agents.team.save_failed"),
 			);
 			setError(copy.message);
 			setErrorField(copy.field);
@@ -725,7 +727,9 @@ export function TeamDetail({
 	// the count follows it; otherwise it is the saved team's.
 	const shownMembers = draft.members.length ? draft.members : team?.members;
 
-	const displayName = team ? teamDisplayName(team) : "New team";
+	const displayName = team
+		? teamDisplayName(team)
+		: t("ui.agents.team.new_team");
 	const includesTeam = draft.members.some((member) => member.kind === "team");
 
 	return (
@@ -763,8 +767,11 @@ export function TeamDetail({
 						 */}
 						{team ? (
 							<p className="text-body-sm text-ink-muted">
-								{memberCountLabel(shownMembers)}
-								{includesTeam ? " · Includes a team" : ""}
+								{includesTeam
+									? t("ui.agents.team.member_count_with_team", {
+											count: memberCount(shownMembers),
+										})
+									: memberCountLabel(shownMembers)}
 							</p>
 						) : null}
 					</div>
@@ -802,7 +809,7 @@ export function TeamDetail({
 									navigate("/chat");
 								}}
 							>
-								New team chat
+								{t("ui.agents.team.new_chat")}
 							</Button>
 							<HubTeamPublication team={team} />
 							<Button
@@ -813,14 +820,14 @@ export function TeamDetail({
 									setEditing(true);
 								}}
 							>
-								Edit
+								{t("ui.agents.team.edit")}
 							</Button>
 							{askEnabled ? (
 								<Button
 									variant="ghost"
 									onClick={() => onAskAgent(`Change the team ${team.name}: `)}
 								>
-									Ask for a change
+									{t("ui.agents.team.ask_for_change")}
 								</Button>
 							) : null}
 						</div>
@@ -836,7 +843,7 @@ export function TeamDetail({
 				 */}
 				{error && !errorField ? (
 					<Alert variant="danger" role="alert" data-testid="team-save-error">
-						<AlertTitle>That did not save</AlertTitle>
+						<AlertTitle>{t("ui.agents.team.save_alert_title")}</AlertTitle>
 						<AlertDescription>{error}</AlertDescription>
 					</Alert>
 				) : null}
@@ -892,11 +899,11 @@ export function TeamDetail({
 					<>
 						{creating ? (
 							<Section
-								title="Name"
-								description="How you and your chats will refer to this team."
+								title={t("ui.agents.team.name")}
+								description={t("ui.agents.team.name_description")}
 							>
 								<FieldLabel
-									label="Team name"
+									label={t("ui.agents.team.name_label")}
 									htmlFor="team-name"
 									error={errorField === "name" ? error : null}
 								/>
@@ -914,20 +921,20 @@ export function TeamDetail({
 							</Section>
 						) : null}
 						<Section
-							title="Manager"
-							description="The agent that leads the chat and decides who works on what."
+							title={t("ui.agents.team.manager")}
+							description={t("ui.agents.team.manager_description")}
 						>
 							<div className="space-y-2">
 								<FieldLabel
-									label="Manager agent"
+									label={t("ui.agents.team.manager_agent")}
 									htmlFor="team-manager"
 									error={errorField === "manager" ? error : null}
 								/>
 								<SearchableSelect
-									ariaLabel="Manager agent"
+									ariaLabel={t("ui.agents.team.manager_agent")}
 									showLabel={false}
-									placeholder="Choose a manager"
-									busyLabel="Loading agents"
+									placeholder={t("ui.agents.team.choose_manager")}
+									busyLabel={t("ui.agents.team.loading_agents")}
 									options={managerOptions(agents, teams)}
 									selected={
 										managerOptions(agents, teams).find(
@@ -940,20 +947,22 @@ export function TeamDetail({
 									onCustomSubmit={(text) =>
 										setDraft((current) => ({ ...current, manager: text }))
 									}
-									listNotice="Agents and teams on this machine"
+									listNotice={t("ui.agents.team.manager_candidates")}
 								/>
 								{!managerOptions(agents, teams).some(
 									(option) => option.id === draft.manager,
 								) ? (
 									<Badge variant="warning" data-testid="team-manager-missing">
-										Not found: {draft.manager}
+										{t("ui.agents.team.not_found_prefix", {
+											role: draft.manager,
+										})}
 									</Badge>
 								) : null}
 							</div>
 						</Section>
 						<Section
-							title="Members"
-							description="Who the manager can delegate to, how many of each, and the model each runs on."
+							title={t("ui.agents.team.members")}
+							description={t("ui.agents.team.members_description")}
 						>
 							{/*
 							 * THE SCOPE AND THE PRECEDENCE, at the point of choice (UX round 1,
@@ -1038,15 +1047,17 @@ export function TeamDetail({
 										>
 											<div className="min-w-0">
 												<SearchableSelect
-													ariaLabel={`Member ${index + 1}`}
+													ariaLabel={t("ui.agents.team.member_label", {
+														index: index + 1,
+													})}
 													showLabel={false}
-													placeholder="Choose an agent or team"
-													busyLabel="Loading agents"
+													placeholder={t("ui.agents.team.choose_member")}
+													busyLabel={t("ui.agents.team.loading_agents")}
 													options={[
 														...managerOptions(agents, teams).filter((option) =>
 															member.kind === "team"
-																? option.group === "Teams"
-																: option.group === "Agents",
+																? option.group === t("ui.agents.page.teams")
+																: option.group === t("ui.agents.page.agents"),
 														),
 													]}
 													selected={
@@ -1057,7 +1068,10 @@ export function TeamDetail({
 													onSelect={(option) =>
 														updateMember(index, {
 															role: option.id,
-															kind: option.group === "Teams" ? "team" : "agent",
+															kind:
+																option.group === t("ui.agents.page.teams")
+																	? "team"
+																	: "agent",
 														})
 													}
 													onCustomSubmit={(text) =>
@@ -1074,14 +1088,20 @@ export function TeamDetail({
 												}
 											>
 												<SelectTrigger
-													aria-label={`Member ${index + 1} kind`}
+													aria-label={t("ui.agents.team.member_kind_label", {
+														index: index + 1,
+													})}
 													className="w-full"
 												>
 													<SelectValue />
 												</SelectTrigger>
 												<SelectContent>
-													<SelectItem value="agent">Agent</SelectItem>
-													<SelectItem value="team">Team</SelectItem>
+													<SelectItem value="agent">
+														{t("ui.agents.team.agent")}
+													</SelectItem>
+													<SelectItem value="team">
+														{t("ui.agents.team.team")}
+													</SelectItem>
 												</SelectContent>
 											</Select>
 											{/*
@@ -1093,7 +1113,9 @@ export function TeamDetail({
 												<Button
 													variant="secondary"
 													size="icon-sm"
-													aria-label={`One fewer ${member.role}`}
+													aria-label={t("ui.agents.team.one_fewer", {
+														name: member.role,
+													})}
 													disabled={member.count <= 1}
 													onClick={() =>
 														updateMember(index, { count: member.count - 1 })
@@ -1103,14 +1125,19 @@ export function TeamDetail({
 												</Button>
 												<span
 													className="min-w-6 text-center text-body-sm tabular-nums"
-													aria-label={`${member.count} of ${member.role}`}
+													aria-label={t("ui.agents.team.count_of", {
+														count: member.count,
+														name: member.role,
+													})}
 												>
 													{member.count}
 												</span>
 												<Button
 													variant="secondary"
 													size="icon-sm"
-													aria-label={`One more ${member.role}`}
+													aria-label={t("ui.agents.team.one_more", {
+														name: member.role,
+													})}
 													disabled={member.count >= 16}
 													onClick={() =>
 														updateMember(index, { count: member.count + 1 })
@@ -1130,7 +1157,7 @@ export function TeamDetail({
 													}))
 												}
 											>
-												Remove
+												{t("ui.agents.team.remove")}
 											</Button>
 											{missing ? (
 												// Own grid row, so the warning never pushes a column.
@@ -1138,7 +1165,9 @@ export function TeamDetail({
 													variant="warning"
 													className="col-span-full w-fit"
 												>
-													Not found: {member.role}
+													{t("ui.agents.team.not_found_prefix", {
+														role: member.role,
+													})}
 												</Badge>
 											) : null}
 											{/*
@@ -1175,7 +1204,10 @@ export function TeamDetail({
 																	"ui.agents.models.override.tier_label",
 																	{
 																		member:
-																			member.role || `Member ${index + 1}`,
+																			member.role ||
+																			t("ui.agents.team.member_label", {
+																				index: index + 1,
+																			}),
 																	},
 																)}
 																className="w-full"
@@ -1209,7 +1241,10 @@ export function TeamDetail({
 																	"ui.agents.models.override.effort_label",
 																	{
 																		member:
-																			member.role || `Member ${index + 1}`,
+																			member.role ||
+																			t("ui.agents.team.member_label", {
+																				index: index + 1,
+																			}),
 																	},
 																)}
 																className="w-full"
@@ -1290,7 +1325,10 @@ export function TeamDetail({
 													>
 														{t("ui.agents.models.reading.unavailable_editor", {
 															member:
-																savedReading.role || `Member ${index + 1}`,
+																savedReading.role ||
+																t("ui.agents.team.member_label", {
+																	index: index + 1,
+																}),
 															reason: savedReading.reason,
 														})}
 													</p>
@@ -1326,13 +1364,13 @@ export function TeamDetail({
 										}));
 									}}
 								>
-									Add member
+									{t("ui.agents.team.add_member")}
 								</Button>
 							</div>
 						</Section>
-						<Section title="Description">
+						<Section title={t("ui.agents.team.description")}>
 							<FieldLabel
-								label="What this team is for"
+								label={t("ui.agents.team.description_placeholder")}
 								htmlFor="team-description"
 								error={errorField === "description" ? error : null}
 							/>
@@ -1347,7 +1385,7 @@ export function TeamDetail({
 								}
 							/>
 						</Section>
-						<Section title="Collaboration instructions">
+						<Section title={t("ui.agents.team.collaboration_instructions")}>
 							{/*
 							 * THE REFUSAL LANDS ON THE FIELD (design review round 3, D16).
 							 * The sentence used to live only in the top banner, 300-plus px
@@ -1366,7 +1404,7 @@ export function TeamDetail({
 							) : null}
 							<Textarea
 								ref={teamInstructionsRef}
-								aria-label="Collaboration instructions"
+								aria-label={t("ui.agents.team.collaboration_instructions")}
 								aria-invalid={errorField === "instructions"}
 								className="min-h-36"
 								maxLength={8000}
@@ -1379,9 +1417,9 @@ export function TeamDetail({
 								}
 							/>
 						</Section>
-						<Section title="Project brief">
+						<Section title={t("ui.agents.team.project_brief")}>
 							<Textarea
-								aria-label="Project brief"
+								aria-label={t("ui.agents.team.project_brief")}
 								className="min-h-36"
 								maxLength={8000}
 								value={draft.project}
@@ -1399,16 +1437,24 @@ export function TeamDetail({
 							onConfirmingChange={setConfirmDiscard}
 							dirty={dirty}
 							pending={pending}
-							saveLabel={creating ? "Create team" : "Save changes"}
-							pendingLabel={creating ? "Creating…" : "Saving…"}
-							dirtyHint="Discard this team?"
+							saveLabel={
+								creating
+									? t("ui.agents.team.create_team")
+									: t("ui.agents.team.save_changes")
+							}
+							pendingLabel={
+								creating
+									? t("ui.agents.editor.creating")
+									: t("ui.agents.editor.saving")
+							}
+							dirtyHint={t("ui.agents.team.discard_team")}
 							onSave={() => void save()}
 							onCancel={cancel}
 						/>
 					</>
 				) : (
 					<>
-						<Section title="Manager">
+						<Section title={t("ui.agents.team.manager")}>
 							{/*
 							 * THE MANAGER ROW IS THE MEMBERS' ROW (design spec s4; design review
 							 * round 1 D5). Same `<colgroup>`, same `py-2` cells, same sr-only head:
@@ -1424,14 +1470,14 @@ export function TeamDetail({
 							 */}
 							<Table
 								className="table-fixed"
-								aria-label="Manager: the agent that leads the chat"
+								aria-label={t("ui.agents.team.manager_tooltip")}
 							>
 								<MemberCols />
 								<TableHeader className="sr-only">
 									<TableRow>
-										<TableHead>Member</TableHead>
-										<TableHead>Type</TableHead>
-										<TableHead>Count</TableHead>
+										<TableHead>{t("ui.agents.team.member")}</TableHead>
+										<TableHead>{t("ui.agents.team.type")}</TableHead>
+										<TableHead>{t("ui.agents.team.count")}</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
@@ -1464,21 +1510,21 @@ export function TeamDetail({
 														variant="warning"
 														data-testid="team-manager-missing"
 													>
-														Not found
+														{t("ui.agents.team.not_found")}
 													</Badge>
 												) : null}
 											</div>
 										</TableCell>
 										<TableCell className="px-2 py-2 text-ink-dim text-meta">
 											{/* The type is a fact about the row; the manager is an agent. */}
-											Agent
+											{t("ui.agents.team.agent")}
 										</TableCell>
 										<TableCell />
 									</TableRow>
 								</TableBody>
 							</Table>
 						</Section>
-						<Section title="Members">
+						<Section title={t("ui.agents.team.members")}>
 							{/*
 							 * A REAL TABLE (design spec D7): the three columns are the same on
 							 * every row, so the type word and the count share an x whatever the
@@ -1488,13 +1534,16 @@ export function TeamDetail({
 							 * five-row list. Rows are separated by the hairline, which is the
 							 * token's stated job; the last row drops it.
 							 */}
-							<Table className="table-fixed" aria-label="Members">
+							<Table
+								className="table-fixed"
+								aria-label={t("ui.agents.team.members")}
+							>
 								<MemberCols />
 								<TableHeader className="sr-only">
 									<TableRow>
-										<TableHead>Member</TableHead>
-										<TableHead>Type</TableHead>
-										<TableHead>Count</TableHead>
+										<TableHead>{t("ui.agents.team.member")}</TableHead>
+										<TableHead>{t("ui.agents.team.type")}</TableHead>
+										<TableHead>{t("ui.agents.team.count")}</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
@@ -1513,13 +1562,15 @@ export function TeamDetail({
 															variant="warning"
 															data-testid="team-member-missing"
 														>
-															Not found
+															{t("ui.agents.team.not_found")}
 														</Badge>
 													) : null}
 												</div>
 											</TableCell>
 											<TableCell className="px-2 py-2 text-ink-dim text-meta">
-												{member.kind === "team" ? "Team" : "Agent"}
+												{member.kind === "team"
+													? t("ui.agents.team.team")
+													: t("ui.agents.team.agent")}
 											</TableCell>
 											{/* Right-aligned so every count shares an x; the glyph is kept. */}
 											<TableCell className="px-0 py-2 text-right text-ink-muted tabular-nums">
@@ -1713,19 +1764,19 @@ export function TeamDetail({
 								</Table>
 							</Section>
 						) : null}
-						<Section title="What it is for">
+						<Section title={t("ui.agents.team.what_it_is_for")}>
 							<ReadBlock
 								text={team?.description ?? ""}
-								empty="No description yet."
+								empty={t("ui.agents.team.no_description")}
 							/>
 						</Section>
 						{team?.instructions ? (
-							<Section title="Collaboration instructions">
+							<Section title={t("ui.agents.team.collaboration_instructions")}>
 								<ReadBlock text={team.instructions} />
 							</Section>
 						) : null}
 						{team?.project ? (
-							<Disclosure summary="Project brief">
+							<Disclosure summary={t("ui.agents.team.project_brief")}>
 								<ReadBlock text={team.project} />
 							</Disclosure>
 						) : null}
@@ -1746,13 +1797,13 @@ function managerOptions(
 			id: agent.name,
 			name: agent.name,
 			description: agent.description,
-			group: "Agents",
+			group: t("ui.agents.page.agents"),
 		})),
 		...(teams ?? []).map((row) => ({
 			id: row.name,
 			name: row.name,
 			description: row.description,
-			group: "Teams",
+			group: t("ui.agents.page.teams"),
 		})),
 	];
 }

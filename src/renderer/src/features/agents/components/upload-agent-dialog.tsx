@@ -98,6 +98,7 @@ import {
 	publicationTreatment,
 } from "../utils/publication-failure";
 import {
+	formatPublicationIssue,
 	isReservedBuiltinName,
 	publicationIssues,
 	toolsFromAgentTags,
@@ -255,7 +256,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 			: t("ui.hub.links.source_unavailable");
 	const targetDisplayName =
 		publishTargets.find((org) => org.tenant_id === targetTenant)?.tenant_name ||
-		"this organization";
+		t("ui.agents.upload.this_organization");
 
 	// Generated rather than a literal: three surfaces mount this dialog and two
 	// can be in the tree at once, so a fixed id would make one label toggle the
@@ -320,27 +321,26 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	 * come back as a treatment below instead, because they arrive with a code and a
 	 * different next step.
 	 */
-	const issues = useMemo(() => {
-		const list = publicationIssues({
-			name,
-			description: agent?.description ?? "",
-			// `null` while the body is still loading, which is not a violation.
-			instructions: instructions ?? null,
-			tools: toolsFromAgentTags(agent?.tags),
-		});
-		if (reserved) {
-			// The same sentence the hub's `name_reserved_builtin` refusal gets, taken
-			// from the treatment table rather than written twice.
-			list.unshift({
-				field: "name",
-				message: publicationTreatment(
-					{ code: "name_reserved_builtin", message: "" },
-					{ name, hubAgentId: null },
-				).body,
-			});
-		}
-		return list;
-	}, [name, agent?.description, agent?.tags, instructions, reserved]);
+	const issues = useMemo(
+		() =>
+			publicationIssues({
+				name,
+				description: agent?.description ?? "",
+				// `null` while the body is still loading, which is not a violation.
+				instructions: instructions ?? null,
+				tools: toolsFromAgentTags(agent?.tags),
+			}),
+		[name, agent?.description, agent?.tags, instructions],
+	);
+	// Translate during this render rather than retaining the descriptor memo's
+	// locale in the reserved-name treatment.
+	const reservedMessage = reserved
+		? publicationTreatment(
+				{ code: "name_reserved_builtin", message: "" },
+				{ name, hubAgentId: null },
+			).body
+		: null;
+	const issueCount = issues.length + (reservedMessage ? 1 : 0);
 
 	const treatment = failure
 		? publicationTreatment(failure, {
@@ -366,7 +366,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 		if (
 			!agent ||
 			submitting ||
-			issues.length > 0 ||
+			issueCount > 0 ||
 			(targetIsOrg && !targetOrganization)
 		)
 			return;
@@ -461,7 +461,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					: {
 							message: userFacingMessage(
 								error,
-								"The agent could not be published. Try again.",
+								t("ui.agents.upload.publish_failed"),
 							),
 						},
 			);
@@ -560,15 +560,21 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	 */
 	const title = published
 		? published.orgName
-			? `Published "${agentName}" to ${published.orgName}`
+			? t("ui.agents.upload.published_org_title", {
+					name: agentName,
+					organization: published.orgName,
+				})
 			: published.republished
-				? `Updated the Agent Hub listing for "${agentName}"`
-				: `Published "${agentName}" to the Agent Hub`
+				? t("ui.agents.upload.updated_title", { name: agentName })
+				: t("ui.agents.upload.published_public_title", { name: agentName })
 		: targetIsOrg
-			? `Publish "${agentName}" to ${targetDisplayName}?`
+			? t("ui.agents.upload.publish_org_title", {
+					name: agentName,
+					organization: targetDisplayName,
+				})
 			: listing
-				? `Update the Agent Hub listing for "${agentName}"?`
-				: `Publish "${agentName}" to the Agent Hub?`;
+				? t("ui.agents.upload.update_title", { name: agentName })
+				: t("ui.agents.upload.publish_public_title", { name: agentName });
 
 	/*
 	 * Where focus goes when a RESULT renders, and why it goes to a SINK.
@@ -620,7 +626,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 				onClick={onClose}
 				data-tour-tag="upload-agent-dialog-cancel-button"
 			>
-				Close
+				{t("ui.agents.upload.close")}
 			</SecondaryButton>
 			{published.hubAgentId && (
 				<PrimaryButton
@@ -629,7 +635,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 						navigate(`/agent-hub/${published.hubAgentId}`);
 					}}
 				>
-					Open the listing
+					{t("ui.agents.upload.open_listing")}
 				</PrimaryButton>
 			)}
 		</>
@@ -639,7 +645,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 				onClick={onClose}
 				data-tour-tag="upload-agent-dialog-cancel-button"
 			>
-				Close
+				{t("ui.agents.upload.close")}
 			</SecondaryButton>
 			{treatment.actions.map((action, index) =>
 				// The first action is the primary: the order is the contract's, and it
@@ -650,7 +656,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 						onClick={() => runAction(action)}
 						disabled={submitting}
 					>
-						{PUBLICATION_ACTION_LABEL[action]}
+						{t(PUBLICATION_ACTION_LABEL[action])}
 					</PrimaryButton>
 				) : (
 					<SecondaryButton
@@ -658,7 +664,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 						onClick={() => runAction(action)}
 						disabled={submitting}
 					>
-						{PUBLICATION_ACTION_LABEL[action]}
+						{t(PUBLICATION_ACTION_LABEL[action])}
 					</SecondaryButton>
 				),
 			)}
@@ -669,7 +675,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 				onClick={onClose}
 				data-tour-tag="upload-agent-dialog-cancel-button"
 			>
-				Cancel
+				{t("ui.agents.upload.cancel")}
 			</SecondaryButton>
 			{/*
 			 * The pre-flight block names fields this dialog has NO control for (the
@@ -687,7 +693,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 						}
 					}}
 				>
-					Edit the agent
+					{t("ui.agents.upload.edit_agent")}
 				</SecondaryButton>
 			)}
 			{isAuthenticated && (
@@ -697,7 +703,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					disabled={
 						(targetIsOrg && !targetOrganization) ||
 						!agreedToTerms ||
-						issues.length > 0 ||
+						issueCount > 0 ||
 						!name.trim() ||
 						submitting ||
 						(linksEnabled &&
@@ -712,10 +718,10 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					 * creates would be the receipt's own defect, one control earlier.
 					 */}
 					{submitting
-						? "Publishing…"
+						? t("ui.agents.upload.publishing")
 						: listing && !targetIsOrg
-							? "Update listing"
-							: "Publish"}
+							? t("ui.agents.upload.update_listing")
+							: t("ui.agents.upload.publish")}
 				</PrimaryButton>
 			)}
 		</>
@@ -768,11 +774,10 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 				{!isAuthenticated ? (
 					<div className="flex flex-col items-center gap-6 text-center">
 						<p className="text-body text-ink">
-							You need to be signed in to Radient to publish agents to the Agent
-							hub.
+							{t("ui.agents.upload.sign_in_required")}
 						</p>
 						<RadientAuthButtons
-							titleText="Sign in to continue"
+							titleText={t("ui.agents.upload.sign_in_continue")}
 							descriptionText=""
 							onSignInSuccess={onSignInSuccess}
 						/>
@@ -789,21 +794,29 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					<Alert variant="success" aria-live="polite">
 						<AlertTitle>
 							{published.orgName
-								? `Published to ${published.orgName}`
+								? t("ui.agents.upload.published_to_org", {
+										organization: published.orgName,
+									})
 								: published.republished
-									? "Listing updated"
-									: "Published to the hub"}
+									? t("ui.agents.upload.listing_updated")
+									: t("ui.agents.upload.published_to_hub")}
 						</AlertTitle>
 						<AlertDescription>
 							{published.orgName
-								? `"${published.name}" is in ${published.orgName}'s shared agents as an instruction set. Its members can read and install it; nobody outside the organization can.`
+								? t("ui.agents.upload.success_org_description", {
+										name: published.name,
+										organization: published.orgName,
+									})
 								: published.republished
-									? `The hub now holds the current instruction set of "${published.name}".`
-									: `"${published.name}" is on the hub as an instruction set. Anyone can read and install it.`}
+									? t("ui.agents.upload.success_updated_description", {
+											name: published.name,
+										})
+									: t("ui.agents.upload.success_public_description", {
+											name: published.name,
+										})}
 						</AlertDescription>
 						<AlertDescription className="text-ink-muted">
-							Nothing else left this machine: no conversation, no execution
-							history, no memory, no plan and no machine-specific configuration.
+							{t("ui.agents.upload.success_privacy")}
 						</AlertDescription>
 					</Alert>
 				) : treatment && failure ? (
@@ -832,11 +845,10 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					 */
 					<div className="flex flex-col items-center gap-6 text-center">
 						<p className="text-body text-ink">
-							Sign in to Radient again to replace the credential the hub
-							refused.
+							{t("ui.agents.upload.sign_in_again_description")}
 						</p>
 						<RadientAuthButtons
-							titleText="Sign in again"
+							titleText={t("ui.agents.upload.sign_in_again")}
 							descriptionText=""
 							onSignInSuccess={() => {
 								// The refusal was about the credential, so it stops being the question
@@ -896,18 +908,22 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					<>
 						<p className="text-body text-ink">
 							{targetIsOrg
-								? `You are about to publish this agent's instruction set into ${targetDisplayName}, where only its members can read and install it. What is published is what describes the agent:`
-								: "You are about to publish this agent's instruction set to the public Agent Hub. What is published is what describes the agent:"}
+								? t("ui.agents.upload.confirm_org", {
+										organization: targetDisplayName,
+									})
+								: t("ui.agents.upload.confirm_public")}
 						</p>
 						<ul className="list-disc space-y-1 pl-5 text-body text-ink-muted">
-							<li>Its name and description</li>
-							<li>Its instructions</li>
-							<li>Its tool surface, effort and delegation, when it has them</li>
+							<li>{t("ui.agents.upload.includes_name_description")}</li>
+							<li>{t("ui.agents.upload.includes_instructions")}</li>
+							<li>{t("ui.agents.upload.includes_configuration")}</li>
 						</ul>
 						<p className="text-body text-ink">
 							{targetIsOrg
-								? `Nothing else leaves this machine: no conversation, no execution history, no memory or learnings, no plan, and no machine-specific configuration. ${targetDisplayName}'s members can read and install what you publish; nobody outside it can.`
-								: "Nothing else leaves this machine: no conversation, no execution history, no memory or learnings, no plan, and no machine-specific configuration. Anyone can read and install what you publish."}
+								? t("ui.agents.upload.confirm_privacy_org", {
+										organization: targetDisplayName,
+									})
+								: t("ui.agents.upload.confirm_privacy_public")}
 						</p>
 
 						{/*
@@ -934,7 +950,9 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 						 */}
 						{publishTargets.length > 0 || blockedTargets.length > 0 ? (
 							<div className="flex flex-col gap-1.5">
-								<Label htmlFor={`${termsCheckboxId}-target`}>Publish to</Label>
+								<Label htmlFor={`${termsCheckboxId}-target`}>
+									{t("ui.agents.upload.publish_to")}
+								</Label>
 								<Select
 									value={targetTenant}
 									onValueChange={(value) => {
@@ -951,10 +969,12 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value={PUBLIC_TARGET}>Public hub</SelectItem>
+										<SelectItem value={PUBLIC_TARGET}>
+											{t("ui.agents.upload.public_hub")}
+										</SelectItem>
 										{publishTargets.map((org) => (
 											<SelectItem key={org.tenant_id} value={org.tenant_id}>
-												{org.tenant_name || "Organization"}
+												{org.tenant_name || t("ui.agents.upload.organization")}
 											</SelectItem>
 										))}
 										{blockedTargets.map((org) => (
@@ -968,7 +988,8 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 												value={org.tenant_id}
 												disabled
 											>
-												{org.tenant_name || "Organization"} (upgrade needed)
+												{org.tenant_name || t("ui.agents.upload.organization")}{" "}
+												{t("ui.agents.upload.upgrade_needed")}
 											</SelectItem>
 										))}
 									</SelectContent>
@@ -978,12 +999,14 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 									data-testid="publish-target-hint"
 								>
 									{blockedTargets.length > 0
-										? `Sharing agents inside an organization is part of the Team plan. An owner of ${
-												blockedTargets.length === 1
-													? blockedTargets[0].tenant_name || "this organization"
-													: "any of the organizations marked above"
-											} can activate it in the Radient console.`
-										: "Public hub publications are readable by anyone. An organization's agents are readable by its members only."}
+										? blockedTargets.length === 1
+											? t("ui.agents.upload.team_plan_required_org", {
+													organization:
+														blockedTargets[0].tenant_name ||
+														t("ui.agents.upload.this_organization"),
+												})
+											: t("ui.agents.upload.team_plan_required_multiple")
+										: t("ui.agents.upload.visibility_description")}
 								</p>
 							</div>
 						) : orgNotice ? (
@@ -998,22 +1021,21 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 								className="text-meta text-ink-muted"
 								data-testid="publish-target-failed"
 							>
-								Your organizations could not be read, so this publishes to the
-								public hub. Try again in a moment to publish into an
-								organization.
+								{t("ui.agents.upload.organizations_unavailable")}
 							</p>
 						) : null}
 
-						{issues.length > 0 && (
+						{issueCount > 0 && (
 							// The one boundary inside the dialog: this list has to read as a
 							// blocker rather than as more body copy, and it is what disables
 							// the submit button.
 							<Alert variant="danger">
-								<AlertTitle>This agent cannot be published yet</AlertTitle>
+								<AlertTitle>{t("ui.agents.upload.cannot_publish")}</AlertTitle>
 								<ul className="list-disc space-y-1 pl-5">
+									{reservedMessage ? <li>{reservedMessage}</li> : null}
 									{issues.map((issue) => (
-										<li key={`${issue.field}:${issue.message}`}>
-											{issue.message}
+										<li key={`${issue.field}:${issue.rule.id}`}>
+											{formatPublicationIssue(issue)}
 										</li>
 									))}
 								</ul>
@@ -1021,7 +1043,9 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 						)}
 
 						<div className="flex flex-col gap-1.5">
-							<Label htmlFor={nameInputId}>Name on the hub</Label>
+							<Label htmlFor={nameInputId}>
+								{t("ui.agents.upload.hub_name")}
+							</Label>
 							<Input
 								id={nameInputId}
 								ref={nameInput}
@@ -1029,7 +1053,9 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 								onChange={(event) => setName(event.target.value)}
 								autoComplete="off"
 								spellCheck={false}
-								aria-invalid={issues.some((issue) => issue.field === "name")}
+								aria-invalid={
+									reserved || issues.some((issue) => issue.field === "name")
+								}
 								aria-describedby={`${nameInputId}-hint`}
 							/>
 							<p
@@ -1043,7 +1069,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 								 * — and a reader who believed it would stop typing the name they
 								 * wanted. The separators and the cap are the rules that hold.
 								 */}
-								No "/", "\" or ":". Up to 128 characters.
+								{t("ui.agents.upload.name_rules")}
 							</p>
 							{/*
 							 * SUPPRESSED FOR AN ORG TARGET, and the reason is a namespace fact
@@ -1079,7 +1105,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 								htmlFor={termsCheckboxId}
 								className="block font-normal text-body text-ink"
 							>
-								I confirm that I have read and agree to the{" "}
+								{t("ui.agents.upload.consent_before_terms")}{" "}
 								{/* An anchor is interactive content, so clicking it does not
 								    also toggle the checkbox the label owns. */}
 								<a
@@ -1088,10 +1114,9 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 									rel="noopener noreferrer"
 									className="text-accent underline-offset-4 hover:text-accent-hover hover:underline"
 								>
-									terms and conditions
+									{t("ui.agents.upload.terms")}
 								</a>{" "}
-								and that this agent does not contain malicious content or
-								violate usage policies.
+								{t("ui.agents.upload.consent_after_terms")}
 							</Label>
 						</div>
 					</>
@@ -1101,7 +1126,9 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					// The refusal is about this agent, and the dialog's own title is the
 					// only other place that says which one — worth restating once the
 					// title has scrolled out of the reader's attention.
-					<p className="text-meta text-ink-muted">Agent: {agentName}</p>
+					<p className="text-meta text-ink-muted">
+						{t("ui.agents.upload.agent_label", { name: agentName })}
+					</p>
 				)}
 			</div>
 		</BaseDialog>
@@ -1126,7 +1153,7 @@ const availabilityLine = (availability: {
 		case "checking":
 			return (
 				<p className="text-meta text-ink-muted">
-					Checking whether this name is free…
+					{t("ui.agents.upload.checking_name")}
 				</p>
 			);
 		case "available":
@@ -1138,11 +1165,15 @@ const availabilityLine = (availability: {
 			 * authoritative one. A promise of "free" here would make that refusal read
 			 * as a bug.
 			 */
-			return <p className="text-meta text-ink-muted">This name looks free.</p>;
+			return (
+				<p className="text-meta text-ink-muted">
+					{t("ui.agents.upload.name_available")}
+				</p>
+			);
 		case "taken":
 			return (
 				<p className="text-meta text-ink">
-					This name is already published on the hub.
+					{t("ui.agents.upload.name_published")}
 				</p>
 			);
 		case "reserved":
@@ -1157,8 +1188,10 @@ const availabilityLine = (availability: {
 			return (
 				<p className="text-meta text-ink-muted">
 					{availability.builtinName
-						? `The hub reserves "${availability.builtinName}" for one of its built-in agents.`
-						: "The hub reserves this name for one of its built-in agents."}
+						? t("ui.agents.upload.name_reserved_builtin", {
+								name: availability.builtinName,
+							})
+						: t("ui.agents.upload.name_reserved")}
 				</p>
 			);
 		default:

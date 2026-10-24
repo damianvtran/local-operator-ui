@@ -17,12 +17,13 @@ import {
 } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { TEXT_SURFACE_PROPS } from "@shared/components/ui/text-surface";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type KeyboardEvent as ReactKeyboardEvent,
 	type ReactNode,
 	useEffect,
-	useMemo,
 	useRef,
 	useState,
 } from "react";
@@ -100,6 +101,7 @@ export const OrgTeamsList: React.FC<{
 	tenantId: string;
 	orgName: string | null;
 }> = ({ tenantId, orgName }) => {
+	useI18nLocale();
 	const { teams, isLoading, isFetching, isError, error, refetch } =
 		useOrgTeamsQuery({ tenantId });
 	/* The refusal the read is answered with, when it is one (§2.2). */
@@ -170,20 +172,23 @@ export const OrgTeamsList: React.FC<{
 	 * reach — a treatment pinned by a test and rendered by nobody. The name in the
 	 * context is the failed row's, because the sentence is about that document.
 	 */
-	const pullTreatment = useMemo(() => {
-		if (!isPublicationError(pull.error)) return null;
-		const failed = teams.find((team) => team.id === failedTeamId);
-		return publicationTreatment(
-			{
-				code: pull.error.code,
-				message: pull.error.message,
-				details: pull.error.details,
-			},
-			// `surface: "pull"`: the table is shared with the publish dialog, and its
-			// verb-bearing bodies must name the act this surface performed (C7).
-			{ name: failed?.name ?? "this team", hubAgentId: null, surface: "pull" },
-		);
-	}, [pull.error, failedTeamId, teams]);
+	const failed = teams.find((team) => team.id === failedTeamId);
+	const pullTreatment = isPublicationError(pull.error)
+		? publicationTreatment(
+				{
+					code: pull.error.code,
+					message: pull.error.message,
+					details: pull.error.details,
+				},
+				// `surface: "pull"`: the table is shared with the publish dialog, and its
+				// verb-bearing bodies must name the act this surface performed (C7).
+				{
+					name: failed?.name ?? t("ui.hub.teams.this_team"),
+					hubAgentId: null,
+					surface: "pull",
+				},
+			)
+		: null;
 
 	/*
 	 * One action, one act. `default` renders nothing at all (see ROSTER_ACTIONS):
@@ -230,7 +235,9 @@ export const OrgTeamsList: React.FC<{
 			 * notice's 42rem, because a row carries a summary line as well as a name.
 			 */
 			className="mb-6 max-w-4xl rounded-md bg-surface"
-			aria-label={`Teams shared with ${orgName ?? "this organization"}`}
+			aria-label={t("ui.hub.teams.shared_with", {
+				organization: orgName ?? t("ui.hub.teams.this_organization"),
+			})}
 			data-testid="org-teams"
 		>
 			{/*
@@ -307,18 +314,23 @@ export const OrgTeamsList: React.FC<{
 				>
 					<AlertTitle>
 						{refusal === "plan"
-							? "That organization needs an active Team plan"
+							? t("ui.hub.teams.team_plan_required")
 							: refusal === "no_access"
-								? "You do not have access to that organization"
-								: "Teams could not be loaded"}
+								? t("ui.hub.teams.access_denied")
+								: t("ui.hub.teams.load_failed")}
 					</AlertTitle>
 					<AlertDescription>
 						{refusal === "plan"
-							? `Reading an organization's teams is part of the Team plan. An owner of ${orgName ?? "this organization"} can activate it in the Radient console, and then its teams will be listed here.`
+							? t("ui.hub.teams.team_plan_body", {
+									organization: orgName ?? t("ui.hub.teams.this_organization"),
+								})
 							: refusal === "no_access"
-								? `You are not a member of ${orgName ?? "that organization"}, so its teams are not listed here. An owner can invite you again.`
+								? t("ui.hub.teams.access_denied_body", {
+										organization:
+											orgName ?? t("ui.hub.teams.that_organization"),
+									})
 								: backendLoadErrorMessage(
-										"The teams shared with this organization could not be read.",
+										t("ui.hub.teams.read_failed_body"),
 										error,
 									)}
 					</AlertDescription>
@@ -331,7 +343,9 @@ export const OrgTeamsList: React.FC<{
 								disabled={isFetching}
 								aria-busy={isFetching}
 							>
-								{isFetching ? "Trying…" : "Try again"}
+								{isFetching
+									? t("ui.hub.teams.trying")
+									: t("ui.hub.teams.try_again")}
 							</Button>
 						</div>
 					)}
@@ -343,7 +357,9 @@ export const OrgTeamsList: React.FC<{
 					className="p-4 text-body-sm text-ink-muted"
 					data-testid="org-teams-empty"
 				>
-					{`Teams shared into ${orgName ?? "this organization"} appear here for its members.`}
+					{t("ui.hub.teams.empty_organization", {
+						organization: orgName ?? t("ui.hub.teams.this_organization"),
+					})}
 				</p>
 			)}
 
@@ -429,9 +445,13 @@ export const OrgTeamsList: React.FC<{
 											 * it paints the derived form like every other one (agent review round 1,
 											 * m4); the node's IDENTITY stays the hub's id.
 											 */
-											aria-label={`Pull team ${hubDisplayName(team.name)}`}
+											aria-label={t("ui.hub.teams.pull_named", {
+												name: hubDisplayName(team.name),
+											})}
 										>
-											{pullingTeamId === team.id ? "Pulling…" : "Pull"}
+											{pullingTeamId === team.id
+												? t("ui.hub.teams.pulling")
+												: t("ui.hub.teams.pull")}
 										</Button>
 									</div>
 								}
@@ -452,7 +472,9 @@ export const OrgTeamsList: React.FC<{
 									<output className="text-meta text-danger">
 										{pullTreatment?.body ??
 											pull.error?.message ??
-											`"${hubDisplayName(team.name)}" could not be pulled.`}
+											t("ui.hub.teams.pull_named_failed", {
+												name: hubDisplayName(team.name),
+											})}
 									</output>
 									{pullTreatment?.actions
 										.filter((action) => ROSTER_ACTIONS.includes(action))
@@ -463,7 +485,7 @@ export const OrgTeamsList: React.FC<{
 												size="sm"
 												onClick={() => runTreatmentAction(action, team)}
 											>
-												{PUBLICATION_ACTION_LABEL[action]}
+												{t(PUBLICATION_ACTION_LABEL[action])}
 											</Button>
 										))}
 									{reauthenticating && (
@@ -475,7 +497,7 @@ export const OrgTeamsList: React.FC<{
 										 */
 										<div className="mt-1" data-testid="org-team-pull-reauth">
 											<RadientAuthButtons
-												titleText="Sign in again"
+												titleText={t("ui.hub.teams.sign_in_again")}
 												descriptionText=""
 												onSignInSuccess={() => {
 													setReauthenticating(false);
@@ -540,13 +562,15 @@ const TeamComposition = ({ team }: { team: HubTeam }) => {
 		<span className="block truncate text-meta">
 			{manager ? (
 				<>
-					<span className="text-ink-dim">Manager:</span>{" "}
+					<span className="text-ink-dim">
+						{t("ui.hub.teams.manager_prefix")}
+					</span>{" "}
 					<span className="text-ink-muted">{manager}</span>
 				</>
 			) : null}
 			{manager ? <Dot /> : null}
 			{team.members.length === 0 ? (
-				<span className="text-ink-dim">No members</span>
+				<span className="text-ink-dim">{t("ui.hub.teams.no_members")}</span>
 			) : (
 				<>
 					<span className="text-ink-dim">
@@ -644,7 +668,7 @@ const TeamSummary = ({
 				</span>
 				{version ? (
 					<span className="ml-2 shrink-0 text-ink-dim text-meta">
-						v{version}
+						{t("ui.hub.teams.version", { version })}
 					</span>
 				) : null}
 			</span>
@@ -680,7 +704,9 @@ const TeamSummary = ({
 					</span>
 				</>
 			) : (
-				<span className="mt-1 text-body-sm text-ink-dim">No description</span>
+				<span className="mt-1 text-body-sm text-ink-dim">
+					{t("ui.hub.teams.no_description")}
+				</span>
 			)}
 			<span className="mt-1 flex min-w-0 flex-col">
 				<TeamComposition team={team} />
@@ -724,21 +750,27 @@ const TeamDetails = ({ team }: { team: HubTeam }) => {
 	const manager = team.manager?.trim();
 	const dates = teamDates(team);
 	const dateParts = [
-		dates.created ? `Created ${dates.created}` : null,
-		dates.updated ? `Updated ${dates.updated}` : null,
+		dates.created
+			? t("ui.hub.teams.created_date", { date: dates.created })
+			: null,
+		dates.updated
+			? t("ui.hub.teams.updated_date", { date: dates.updated })
+			: null,
 	].filter((part) => part !== null);
 	const hasRoster = Boolean(manager) || team.members.length > 0;
 	return (
 		<div className="mt-1 flex flex-col gap-2">
 			{hasRoster || dateParts.length === 0 ? (
 				<div className="flex flex-col gap-1">
-					<p className="text-ink-dim text-meta">Members</p>
+					<p className="text-ink-dim text-meta">{t("ui.hub.teams.members")}</p>
 					<ul className="flex flex-col gap-0.5">
 						{manager ? (
 							<li className="flex items-baseline gap-1.5">
 								{/* `ink-muted`, not `ink`: a member outshouted the description it belongs to (design round 1, D1). */}
 								<span className="text-body-sm text-ink-muted">{manager}</span>
-								<span className="text-ink-dim text-meta">Manager</span>
+								<span className="text-ink-dim text-meta">
+									{t("ui.hub.teams.manager")}
+								</span>
 							</li>
 						) : null}
 						{team.members.map((slot) => (
@@ -758,7 +790,9 @@ const TeamDetails = ({ team }: { team: HubTeam }) => {
 							</li>
 						))}
 						{!hasRoster ? (
-							<li className="text-ink-dim text-meta">No members</li>
+							<li className="text-ink-dim text-meta">
+								{t("ui.hub.teams.no_members")}
+							</li>
 						) : null}
 					</ul>
 				</div>

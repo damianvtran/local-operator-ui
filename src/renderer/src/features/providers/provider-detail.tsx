@@ -1503,7 +1503,7 @@ export const ProviderDetail: FC<ProviderDetailProps> = ({
 				// stranded the phone block on "sign in, then check again".
 				actionLabel={
 					provider.id === "radient" && readiness?.group === "Needs sign-in"
-						? "Sign in again"
+						? t("ui.providers.provider_detail.sign_in_again")
 						: doneLabel
 				}
 				onAction={

@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The Agents and teams page: a roster you can read, a definition you can read
  * before you edit it, and a composer that asks for a change in words.
@@ -129,12 +130,12 @@ const EFFORT_TIER_KEY = /^subagents\.models\.([^.]+)$/;
  */
 const CANONICAL_EFFORT_TIERS: readonly string[] = ["lo", "med", "hi"];
 
-const SCOPE_LABEL: Record<Scope, string> = {
-	all: "All",
-	custom: "Custom",
-	installed: "Installed",
-	builtin: "Built-in",
-};
+const SCOPE_LABEL = {
+	all: "ui.agents.page.scope_all",
+	custom: "ui.agents.page.scope_custom",
+	installed: "ui.agents.page.scope_installed",
+	builtin: "ui.agents.page.scope_builtin",
+} as const;
 
 /**
  * WHERE "KEEP EDITING" MAY PUT FOCUS BACK, which is never on a control whose focus
@@ -579,7 +580,11 @@ export function AgentsPage() {
 	if (agentId)
 		return (
 			<Suspense
-				fallback={<p className="p-6 text-body">Loading saved agent…</p>}
+				fallback={
+					<p className="p-6 text-body">
+						{t("ui.agents.page.loading_saved_agent")}
+					</p>
+				}
 			>
 				<LegacyAgentsPage />
 			</Suspense>
@@ -632,7 +637,7 @@ export function AgentsPage() {
 				className="panel-top-pad flex w-72 shrink-0 flex-col gap-3 bg-surface px-4 pb-4 max-[999px]:data-[open=true]:hidden"
 			>
 				{/* The page's ONLY h1 (design D9): a definition's name is an h2. */}
-				<h1 className="pt-4 text-heading">Agents and teams</h1>
+				<h1 className="pt-4 text-heading">{t("ui.agents.page.title")}</h1>
 
 				{/*
 				 * ONE CLUSTER, 8 px INSIDE AND 12 px BETWEEN COMPONENTS (design spec s3):
@@ -648,7 +653,7 @@ export function AgentsPage() {
 						}
 					>
 						<TabsList
-							aria-label="Browse definitions by type"
+							aria-label={t("ui.agents.page.browse_by_type")}
 							className="w-full"
 						>
 							<TabsTrigger
@@ -657,7 +662,7 @@ export function AgentsPage() {
 								data-testid="agents-tab"
 							>
 								<Bot className="size-3.5" />
-								Agents
+								{t("ui.agents.page.agents")}
 								{profiles.data ? (
 									<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
 										{profiles.data.length}
@@ -670,7 +675,7 @@ export function AgentsPage() {
 								data-testid="teams-tab"
 							>
 								<Users className="size-3.5" />
-								Teams
+								{t("ui.agents.page.teams")}
 								{teams.data ? (
 									<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
 										{teams.data.length}
@@ -688,8 +693,12 @@ export function AgentsPage() {
 						<Input
 							className="pl-8"
 							type="search"
-							aria-label="Search agents and teams"
-							placeholder={teamMode ? "Search teams" : "Search agents"}
+							aria-label={t("ui.agents.page.search_all")}
+							placeholder={
+								teamMode
+									? t("ui.agents.page.search_teams")
+									: t("ui.agents.page.search_agents")
+							}
 							value={search}
 							onChange={(event) => setSearch(event.target.value)}
 						/>
@@ -704,7 +713,9 @@ export function AgentsPage() {
 					 */}
 					{!teamMode && profiles.data ? (
 						<fieldset className="m-0 min-w-0 border-0 p-0">
-							<legend className="sr-only">Show definitions owned by</legend>
+							<legend className="sr-only">
+								{t("ui.agents.page.show_owned_by")}
+							</legend>
 							{/*
 							 * NO VISIBLE "Showing" LABEL (design spec D10): it cost 24 px of height
 							 * and pushed the segments' right edge in from the tabs' and the search's.
@@ -726,7 +737,7 @@ export function AgentsPage() {
 										onClick={() => setScope(value)}
 										className={cn("flex-1", scope === value && rowCurrent)}
 									>
-										{SCOPE_LABEL[value]}
+										{t(SCOPE_LABEL[value])}
 									</Button>
 								))}
 							</div>
@@ -748,12 +759,12 @@ export function AgentsPage() {
 					) : rows.length === 0 ? (
 						<p className="px-1 py-2 text-body-sm text-ink-muted">
 							{search
-								? `Nothing matches “${search}”.`
+								? t("ui.agents.page.no_search_matches", { search })
 								: teamMode
-									? "No teams yet. Ask for one below, or add one by hand."
+									? t("ui.agents.page.no_teams")
 									: scope === "all"
-										? "No agents yet. Ask for one below, or add one by hand."
-										: `No ${SCOPE_LABEL[scope].toLowerCase()} agents.`}
+										? t("ui.agents.page.no_agents")
+										: t("ui.agents.page.no_scoped_agents", { scope })}
 						</p>
 					) : (
 						<Roster
@@ -786,7 +797,9 @@ export function AgentsPage() {
 					onClick={() => requestGo({ create: teamMode ? "team" : "agent" })}
 				>
 					<Plus className="size-4" />
-					{teamMode ? "Add team manually" : "Add agent manually"}
+					{teamMode
+						? t("ui.agents.page.add_team_manually")
+						: t("ui.agents.page.add_agent_manually")}
 				</Button>
 			</aside>
 
@@ -822,7 +835,7 @@ export function AgentsPage() {
 							onClick={() => requestGo({ name: null })}
 						>
 							<ArrowLeft className="size-4" />
-							Back to the list
+							{t("ui.agents.page.back_to_list")}
 						</Button>
 					</div>
 				) : null}
@@ -925,32 +938,32 @@ export function AgentsPage() {
 									>
 										<AlertTitle>
 											{capabilities.isLoading
-												? "Connecting to the backend"
+												? t("ui.agents.page.connecting_backend")
 												: capabilities.error
-													? "The backend could not be reached"
-													: "Reusable agents need a newer backend"}
+													? t("ui.agents.page.backend_unreachable")
+													: t("ui.agents.page.newer_backend_required")}
 										</AlertTitle>
 										<AlertDescription>
 											{capabilities.isLoading
-												? "Loading what this backend can do…"
+												? t("ui.agents.page.loading_capabilities")
 												: capabilities.error
 													? capabilities.error.message
-													: "Update the backend to manage reusable agents and teams. Saved chats are unchanged."}
+													: t("ui.agents.page.update_backend_description")}
 										</AlertDescription>
 									</Alert>
 								) : listError ? (
 									<PaneError
 										title={
 											teamMode
-												? "Teams could not be read"
-												: "Agents could not be read"
+												? t("ui.agents.page.teams_read_failed")
+												: t("ui.agents.page.agents_read_failed")
 										}
 										what={
 											listError instanceof Error
 												? listError.message
-												: "The request did not complete."
+												: t("ui.agents.page.request_failed")
 										}
-										meaning="Nothing is lost. This is a read that failed — the backend answered an error, which is different from the backend being out of date."
+										meaning={t("ui.agents.page.read_failure_description")}
 										onRetry={refreshAll}
 										retrying={profiles.isFetching || teams.isFetching}
 									/>
@@ -962,15 +975,21 @@ export function AgentsPage() {
 									<PaneError
 										title={
 											teamMode
-												? `“${selected}” could not be read`
-												: `“${selected}” could not be read`
+												? t("ui.agents.page.definition_read_failed", {
+														name: selected,
+													})
+												: t("ui.agents.page.definition_read_failed", {
+														name: selected,
+													})
 										}
 										what={
 											detailError instanceof Error
 												? detailError.message
-												: "The request did not complete."
+												: t("ui.agents.page.request_failed")
 										}
-										meaning="The definition may have been removed, or the backend refused the read."
+										meaning={t(
+											"ui.agents.page.detail_read_failure_description",
+										)}
 										onRetry={() => {
 											void profileDetail.refetch();
 											void teamDetail.refetch();
@@ -1118,12 +1137,12 @@ export function AgentsPage() {
 					<div
 						className="flex flex-wrap items-center gap-2 border-hairline border-t bg-surface px-4 py-3"
 						role="alertdialog"
-						aria-label="Discard your unsaved changes?"
+						aria-label={t("ui.agents.page.discard_unsaved")}
 					>
 						<span className="text-body-sm text-ink">
 							{teamMode
-								? "Discard your unsaved changes to this team?"
-								: "Discard your unsaved changes to this agent?"}
+								? t("ui.agents.page.discard_team")
+								: t("ui.agents.page.discard_agent")}
 						</span>
 						<Button
 							variant="danger"
@@ -1134,10 +1153,10 @@ export function AgentsPage() {
 								go(pendingNav);
 							}}
 						>
-							Discard changes
+							{t("ui.agents.page.discard_changes")}
 						</Button>
 						<Button ref={keepBarRef} variant="ghost" onClick={dismissBar}>
-							Keep editing
+							{t("ui.agents.page.keep_editing")}
 						</Button>
 					</div>
 				) : null}
@@ -1164,7 +1183,7 @@ export function AgentsPage() {
 							about={run.about}
 							onClearAbout={() => run.setAbout(null)}
 							blockedReason={
-								editDirty ? "Finish or cancel your edit first." : null
+								editDirty ? t("ui.agents.page.finish_edit_first") : null
 							}
 						/>
 					</div>
@@ -1235,12 +1254,14 @@ function EmptyPane({
 			<div className={column}>
 				<div className={cn(CHAT_MEASURE, "space-y-2")}>
 					<h2 className="text-title">
-						{teamMode ? "Ask for a team" : "Ask for an agent"}
+						{teamMode
+							? t("ui.agents.page.ask_for_team")
+							: t("ui.agents.page.ask_for_agent")}
 					</h2>
 					<p className="text-body text-ink-muted">
 						{teamMode
-							? "A team has one agent that leads the chat and members it can hand work to. Describe what you want and a configuration run sets it up."
-							: "An agent is a reusable set of instructions you can start a chat with, or let other agents call on. Describe what you want and a configuration run sets it up."}
+							? t("ui.agents.page.team_run_description")
+							: t("ui.agents.page.agent_run_description")}
 					</p>
 				</div>
 			</div>
@@ -1254,7 +1275,9 @@ function EmptyPane({
 				<div className={CHAT_MEASURE}>
 					{/* `-ml-3` cancels this `md` button's own `px-3` (the chips are `sm`, `px-2`, hence their `-ml-2`), so its TEXT is at the box's edge. */}
 					<Button variant="ghost" className="-ml-3" onClick={onAddManually}>
-						{teamMode ? "Or add a team by hand" : "Or add an agent by hand"}
+						{teamMode
+							? t("ui.agents.page.or_add_team")
+							: t("ui.agents.page.or_add_agent")}
 					</Button>
 				</div>
 			</div>
@@ -1325,7 +1348,12 @@ function Roster({
 	 * of buttons with roving `tabIndex` is exactly that.
 	 */
 	return (
-		<ul aria-label={teamMode ? "Teams" : "Agents"} className="space-y-0.5">
+		<ul
+			aria-label={
+				teamMode ? t("ui.agents.page.teams") : t("ui.agents.page.agents")
+			}
+			className="space-y-0.5"
+		>
 			{rows.map((row) => {
 				const isProfile = "source" in row;
 				const mark = marked.get(`${teamMode ? "team" : "agent"}:${row.name}`);
@@ -1400,7 +1428,9 @@ function Roster({
 										 * the badge followed "this row was marked", and the strip next to it
 										 * said Created, so the two disagreed about the same fact.
 										 */}
-										{mark ? "New" : "Updated"}
+										{mark
+											? t("ui.agents.page.mark_new")
+											: t("ui.agents.page.mark_updated")}
 									</Badge>
 								) : null}
 								{/*
@@ -1453,7 +1483,7 @@ function Roster({
 									 * not move.
 									 */
 									<span className="min-w-0 flex-1 truncate text-ink-dim">
-										No description
+										{t("ui.agents.page.no_description")}
 									</span>
 								)}
 							</span>

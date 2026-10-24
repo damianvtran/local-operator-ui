@@ -1,5 +1,6 @@
 import type { HubTeam, HubTeamMember } from "@shared/api/radient/types";
-import { format, formatDistanceStrict } from "date-fns";
+import { formatDate, formatNumber, t } from "@shared/i18n";
+import { commentAge } from "../comment-age";
 
 /**
  * The facts the Teams roster prints about a team, derived from one `HubTeam`.
@@ -32,7 +33,12 @@ export const memberCount = (team: HubTeam): number =>
  * analyst" reads as a roster, "screener ×3, analyst ×1" as a spreadsheet.
  */
 export const slotLabel = (slot: HubTeamMember): string =>
-	slot.count > 1 ? `${slot.role} ×${slot.count}` : slot.role;
+	slot.count > 1
+		? t("ui.hub.teams.slot_with_count", {
+				role: slot.role,
+				count: formatNumber(slot.count, { useGrouping: false }),
+			})
+		: slot.role;
 
 /** The member slots as one comma-joined tail: the elastic part of the composition line. */
 export const slotList = (team: HubTeam): string =>
@@ -125,7 +131,7 @@ export const announcedDescription = (
 
 /** A date the way the expanded body and the tooltip both print it. */
 export const formatTeamDate = (date: Date): string =>
-	format(date, "d MMM yyyy");
+	formatDate(date, { day: "numeric", month: "short", year: "numeric" });
 
 const parseDate = (raw: string | undefined): Date | null => {
 	if (!raw) return null;
@@ -157,19 +163,11 @@ const recencyOf = (
 		when = formatTeamDate(date);
 	} else if (age < 60_000) {
 		// A seconds counter is noise on a list that does not tick.
-		when = "just now";
+		when = t("ui.hub.teams.just_now");
 	} else {
-		/*
-		 * `formatDistanceStrict(date, new Date(now))`, NOT
-		 * `formatDistanceToNowStrict(date)`: the latter reads the REAL clock, so the
-		 * `now` parameter governed only the branch and the label while the distance
-		 * itself was measured against wall time. The suite's fixture is a synthetic
-		 * `now`, so the assertion `3 days ago` held only until wall time crossed the
-		 * half-day rounding boundary (measured: 13/13 at 20:47Z, 12/13 at 20:53Z on
-		 * 2026-09-30) - a test that fails by the calendar rather than by a change.
-		 * With `now` defaulting to `Date.now()` production behaviour is unchanged.
-		 */
-		when = `${formatDistanceStrict(date, new Date(now))} ago`;
+		// Pass the synthetic clock through to the shared localized age formatter;
+		// reading wall time here would make the fixture and the visible label disagree.
+		when = commentAge(date, new Date(now));
 	}
 	return {
 		label,
@@ -212,7 +210,7 @@ export const teamDates = (
 
 /** `Role` / `Specialist` for the two kinds the hub defines; anything else is shown as stored. */
 export const kindLabel = (kind: string): string => {
-	if (kind === "role") return "Role";
-	if (kind === "specialist") return "Specialist";
+	if (kind === "role") return t("ui.hub.teams.kind_role");
+	if (kind === "specialist") return t("ui.hub.teams.kind_specialist");
 	return kind;
 };

@@ -350,22 +350,37 @@ test("--update lowers a ceiling, and refuses every raise", () => {
 		const baselinePath = join(dir, "baseline.json");
 		/*
 		 * A REAL, baselined file rather than the excluded fixture: `--update`
-		 * scans the tree's own corpus (fixtures are outside it by design), and
-		 * 99 sits above this file's real count so the update has something to
-		 * lower; the raise-target entry sits BELOW its real count so the raise case
-		 * has something to refuse.
+		 * scans the tree's own corpus (fixtures are outside it by design). The
+		 * extracted detail page now has zero literals, so lowering prunes its entry.
+		 * Pick the raise target from the current scan rather than pinning a count
+		 * that another successful extraction can legitimately move to zero.
 		 */
 		const lowerTarget =
 			"src/renderer/src/features/agent-hub/agent-details-page.tsx";
-		const raiseTarget =
-			"src/renderer/src/features/agent-hub/agent-hub-page.tsx";
-		saveBaseline(baselinePath, { [lowerTarget]: 99, [raiseTarget]: 1 }, "note");
+		const { counts } = runCheck({});
+		const raiseTarget = Object.keys(counts)
+			.sort()
+			.find((path) => counts[path] > 0);
+		assert.ok(
+			raiseTarget,
+			"the real tree has a counted file for the raise case",
+		);
+		const raiseCeiling = counts[raiseTarget] - 1;
+		saveBaseline(
+			baselinePath,
+			{ [lowerTarget]: 99, [raiseTarget]: raiseCeiling },
+			"note",
+		);
 		const options = { baselinePath, allowlistPath: ALLOWLIST };
 		assert.equal(main(["--update", lowerTarget], options), 0);
-		assert.equal(loadBaseline(baselinePath).files[lowerTarget], 16);
-		// A file recorded at 1 while the tree carries 12: refused, entry intact.
+		assert.equal(
+			Object.hasOwn(loadBaseline(baselinePath).files, lowerTarget),
+			false,
+			"a fully extracted file is pruned rather than assigned a zero ceiling",
+		);
+		// A file recorded below its current count: refused, entry intact.
 		assert.equal(main(["--update", raiseTarget], options), 1);
-		assert.equal(loadBaseline(baselinePath).files[raiseTarget], 1);
+		assert.equal(loadBaseline(baselinePath).files[raiseTarget], raiseCeiling);
 		// The preceding refusal proves raiseTarget still has literals. Remove
 		// only its scratch-baseline entry to exercise the missing-entry case;
 		// a translated product file may legitimately have zero literals now.

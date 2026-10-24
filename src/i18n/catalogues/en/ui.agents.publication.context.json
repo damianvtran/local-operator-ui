@@ -1,0 +1,626 @@
+{
+	"ui.agents.publication.action_choose_name": {
+		"role": "Action or accessible label in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.action_edit_agent": {
+		"role": "Action or accessible label in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.action_edit_instructions": {
+		"role": "Action or accessible label in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.action_install_builtin": {
+		"role": "Action or accessible label in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.action_publish_new": {
+		"role": "Action or accessible label in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.action_refresh_hub": {
+		"role": "Action or accessible label in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.action_retry": {
+		"role": "Action or accessible label in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.action_sign_in": {
+		"role": "Action or accessible label in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.action_update_listing": {
+		"role": "Action or accessible label in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.already_published": {
+		"role": "Field, section, state, or status copy in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.already_published_body": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "User-supplied definition name; preserve verbatim"
+		}
+	},
+	"ui.agents.publication.api_url_missing": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.publication.download_busy": {
+		"role": "Dynamic status or complete sentence in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"subject": "Definition name or translated fallback subject"
+		}
+	},
+	"ui.agents.publication.download_error": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"subject": "Definition name or translated fallback subject",
+			"reason": "Backend-provided detail; preserve verbatim"
+		}
+	},
+	"ui.agents.publication.download_failed": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"subject": "Definition name or translated fallback subject"
+		}
+	},
+	"ui.agents.publication.download_hub_error": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"subject": "Definition name or translated fallback subject"
+		}
+	},
+	"ui.agents.publication.download_missing": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"subject": "Definition name or translated fallback subject"
+		}
+	},
+	"ui.agents.publication.download_refused": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"subject": "Definition name or translated fallback subject"
+		}
+	},
+	"ui.agents.publication.download_typed_error": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"subject": "Definition name or translated fallback subject",
+			"reason": "Backend-provided detail; preserve verbatim"
+		}
+	},
+	"ui.agents.publication.download_typed_failure": {
+		"role": "Dynamic status or complete sentence in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"subject": "Definition name or translated fallback subject"
+		}
+	},
+	"ui.agents.publication.download_unauthorized": {
+		"role": "Dynamic status or complete sentence in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"subject": "Definition name or translated fallback subject"
+		}
+	},
+	"ui.agents.publication.download_unreachable": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"subject": "Definition name or translated fallback subject"
+		}
+	},
+	"ui.agents.publication.fallback_agent": {
+		"role": "Field, section, state, or status copy in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.fallback_subject": {
+		"role": "Dynamic status or complete sentence in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"surface": "ICU selector: pull or publish"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.agents.publication.field_description": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.field_instructions": {
+		"role": "Field, section, state, or status copy in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.field_name": {
+		"role": "Field, section, state, or status copy in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.field_tools": {
+		"role": "Field, section, state, or status copy in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.generic_publish_failed": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.hub_unauthorized": {
+		"role": "Field, section, state, or status copy in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.publication.hub_unauthorized_body": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"surface": "ICU selector: pull or publish"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.agents.publication.hub_unavailable_body": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"surface": "ICU selector: pull or publish"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.agents.publication.insufficient_role": {
+		"role": "Field, section, state, or status copy in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.publication.insufficient_role_body": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"surface": "ICU selector: pull or publish",
+			"role": "Organization role identifier or display label"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.agents.publication.insufficient_role_unknown_body": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"surface": "ICU selector: pull or publish"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.agents.publication.invalid_categories_rule": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"rule": "Backend/shared-contract validation rule; preserve its leading space when present"
+		}
+	},
+	"ui.agents.publication.invalid_description_rule": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"rule": "Backend/shared-contract validation rule; preserve its leading space when present"
+		}
+	},
+	"ui.agents.publication.invalid_document": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.invalid_instructions_length": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"maximum": "Maximum character count"
+		}
+	},
+	"ui.agents.publication.invalid_instructions_rule": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"rule": "Backend/shared-contract validation rule; preserve its leading space when present"
+		}
+	},
+	"ui.agents.publication.invalid_name": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.invalid_name_rule": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"rule": "Backend/shared-contract validation rule; preserve its leading space when present"
+		}
+	},
+	"ui.agents.publication.invalid_tags_rule": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"rule": "Backend/shared-contract validation rule; preserve its leading space when present"
+		}
+	},
+	"ui.agents.publication.invalid_tools_rule": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"rule": "Backend/shared-contract validation rule; preserve its leading space when present"
+		}
+	},
+	"ui.agents.publication.invalid_when_to_use_rule": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"rule": "Backend/shared-contract validation rule; preserve its leading space when present"
+		}
+	},
+	"ui.agents.publication.listing_missing": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.listing_missing_body": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.local_publish_failed": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.publication.local_pull_failed": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.publication.local_validation": {
+		"role": "Dynamic status or complete sentence in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"label": "Localized field label",
+			"rule": "Localized predicate from a stable PublicationRule descriptor"
+		}
+	},
+	"ui.agents.publication.rule_empty": {
+		"role": "Local publication validation rule",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short predicate following a field label"
+	},
+	"ui.agents.publication.rule_max_characters": {
+		"role": "Local publication validation rule",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short predicate following a field label",
+		"placeholders": {
+			"max": "Maximum Unicode character count as a numeric ICU argument"
+		}
+	},
+	"ui.agents.publication.rule_name_bidi_override": {
+		"role": "Local publication name validation rule",
+		"tone": "Concise, plain product language",
+		"length_hint": "One wrapped line"
+	},
+	"ui.agents.publication.rule_name_control": {
+		"role": "Local publication name validation rule",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short predicate following a field label"
+	},
+	"ui.agents.publication.rule_name_edge_punctuation": {
+		"role": "Local publication name validation rule",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short predicate following a field label"
+	},
+	"ui.agents.publication.rule_name_format": {
+		"role": "Local publication name validation rule",
+		"tone": "Concise, plain product language",
+		"length_hint": "One wrapped line"
+	},
+	"ui.agents.publication.rule_name_separators": {
+		"role": "Local publication name validation rule",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short predicate following a field label",
+		"note": "Preserve the literal slash, backslash, and colon characters exactly."
+	},
+	"ui.agents.publication.rule_name_whitespace": {
+		"role": "Local publication name validation rule",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short predicate following a field label"
+	},
+	"ui.agents.publication.rule_tool_item_characters": {
+		"role": "Local publication tools validation rule",
+		"tone": "Concise, plain product language",
+		"length_hint": "One wrapped line",
+		"placeholders": {
+			"min": "Minimum characters per tool name as a numeric ICU argument",
+			"max": "Maximum characters per tool name as a numeric ICU argument"
+		}
+	},
+	"ui.agents.publication.rule_tools_max_items": {
+		"role": "Local publication tools validation rule",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short predicate following a field label",
+		"placeholders": {
+			"max": "Maximum tool count as a numeric ICU argument"
+		}
+	},
+	"ui.agents.publication.moderation_credential_theft": {
+		"role": "Safety-specific publication refusal explanation",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "Preserve the safety category meaning exactly; do not soften or broaden the refusal."
+	},
+	"ui.agents.publication.moderation_drugs": {
+		"role": "Safety-specific publication refusal explanation",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "Preserve the safety category meaning exactly; do not soften or broaden the refusal."
+	},
+	"ui.agents.publication.moderation_dual_use": {
+		"role": "Safety-specific publication refusal explanation",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "Preserve the safety category meaning exactly; do not soften or broaden the refusal."
+	},
+	"ui.agents.publication.moderation_evasion": {
+		"role": "Safety-specific publication refusal explanation",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "Preserve the safety category meaning exactly; do not soften or broaden the refusal."
+	},
+	"ui.agents.publication.moderation_fraud": {
+		"role": "Safety-specific publication refusal explanation",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "Preserve the safety category meaning exactly; do not soften or broaden the refusal."
+	},
+	"ui.agents.publication.moderation_harassment": {
+		"role": "Safety-specific publication refusal explanation",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "Preserve the safety category meaning exactly; do not soften or broaden the refusal."
+	},
+	"ui.agents.publication.moderation_malware": {
+		"role": "Safety-specific publication refusal explanation",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "Preserve the safety category meaning exactly; do not soften or broaden the refusal."
+	},
+	"ui.agents.publication.moderation_other": {
+		"role": "Safety-specific publication refusal explanation",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "Preserve the safety category meaning exactly; do not soften or broaden the refusal."
+	},
+	"ui.agents.publication.moderation_prompt_injection": {
+		"role": "Safety-specific publication refusal explanation",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "Preserve the safety category meaning exactly; do not soften or broaden the refusal."
+	},
+	"ui.agents.publication.moderation_self_harm": {
+		"role": "Safety-specific publication refusal explanation",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "Preserve the safety category meaning exactly; do not soften or broaden the refusal."
+	},
+	"ui.agents.publication.moderation_sexual_content": {
+		"role": "Safety-specific publication refusal explanation",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "Preserve the safety category meaning exactly; do not soften or broaden the refusal."
+	},
+	"ui.agents.publication.moderation_sexual_minors": {
+		"role": "Safety-specific publication refusal explanation",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "Preserve the safety category meaning exactly; do not soften or broaden the refusal."
+	},
+	"ui.agents.publication.moderation_surveillance": {
+		"role": "Safety-specific publication refusal explanation",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "Preserve the safety category meaning exactly; do not soften or broaden the refusal."
+	},
+	"ui.agents.publication.moderation_violence": {
+		"role": "Safety-specific publication refusal explanation",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "Preserve the safety category meaning exactly; do not soften or broaden the refusal."
+	},
+	"ui.agents.publication.name_in_flight": {
+		"role": "Field, section, state, or status copy in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.publication.name_in_flight_body": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "User-supplied definition name; preserve verbatim"
+		}
+	},
+	"ui.agents.publication.name_reserved": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.name_reserved_builtin_body": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "User-supplied definition name; preserve verbatim",
+			"builtin": "Built-in agent name; preserve verbatim"
+		}
+	},
+	"ui.agents.publication.name_reserved_unknown_body": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "User-supplied definition name; preserve verbatim"
+		}
+	},
+	"ui.agents.publication.name_taken": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.name_taken_body": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "User-supplied definition name; preserve verbatim"
+		}
+	},
+	"ui.agents.publication.not_accepted": {
+		"role": "Field, section, state, or status copy in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.not_member": {
+		"role": "Field, section, state, or status copy in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.publication.not_member_body": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"surface": "ICU selector: pull or publish"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.agents.publication.not_owner": {
+		"role": "Field, section, state, or status copy in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.not_owner_body": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.publication.other_action_failed": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.publish_failed": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.pull_failed": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.review_unavailable": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.review_unavailable_body": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.publication.team_missing": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.team_missing_body": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.publication.team_plan_publish_body": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.publication.team_plan_pull_body": {
+		"role": "Explanatory or refusal detail in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.publication.team_plan_required": {
+		"role": "Validation or failure feedback in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.publication.too_large": {
+		"role": "Field, section, state, or status copy in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.publication.too_large_limit": {
+		"role": "Dynamic status or complete sentence in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"size": "Whole KiB limit"
+		}
+	},
+	"ui.agents.publication.too_large_unknown_limit": {
+		"role": "Field, section, state, or status copy in Agent Hub publication and download feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	}
+}

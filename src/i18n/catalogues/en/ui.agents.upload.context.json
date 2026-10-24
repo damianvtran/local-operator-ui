@@ -1,0 +1,318 @@
+{
+	"ui.agents.upload.agent_label": {
+		"role": "Field, section, state, or status copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "Agent name; preserve verbatim"
+		}
+	},
+	"ui.agents.upload.cancel": {
+		"role": "Action or accessible label in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.cannot_publish": {
+		"role": "Validation or failure feedback in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.checking_name": {
+		"role": "Field, section, state, or status copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.upload.close": {
+		"role": "Action or accessible label in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.confirm_org": {
+		"role": "Dynamic status or complete sentence in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"organization": "Organization display name; preserve verbatim"
+		}
+	},
+	"ui.agents.upload.confirm_privacy_org": {
+		"role": "Explanatory or consent copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"organization": "Organization display name; preserve verbatim"
+		}
+	},
+	"ui.agents.upload.confirm_privacy_public": {
+		"role": "Explanatory or consent copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.upload.confirm_public": {
+		"role": "Field, section, state, or status copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.upload.consent_after_terms": {
+		"role": "Explanatory or consent copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "These three messages surround the existing terms link in the consent checkbox; preserve legal meaning and link order."
+	},
+	"ui.agents.upload.consent_before_terms": {
+		"role": "Explanatory or consent copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "These three messages surround the existing terms link in the consent checkbox; preserve legal meaning and link order."
+	},
+	"ui.agents.upload.edit_agent": {
+		"role": "Action or accessible label in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.hub_name": {
+		"role": "Field, section, state, or status copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.includes_configuration": {
+		"role": "Field, section, state, or status copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.upload.includes_instructions": {
+		"role": "Field, section, state, or status copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.includes_name_description": {
+		"role": "Explanatory or consent copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.listing_updated": {
+		"role": "Field, section, state, or status copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.name_available": {
+		"role": "Field, section, state, or status copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.name_published": {
+		"role": "Field, section, state, or status copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.upload.name_reserved": {
+		"role": "Validation or failure feedback in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.upload.name_reserved_builtin": {
+		"role": "Validation or failure feedback in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "User-supplied definition or member name; preserve verbatim"
+		}
+	},
+	"ui.agents.upload.name_rules": {
+		"role": "Field, section, state, or status copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.upload.open_listing": {
+		"role": "Action or accessible label in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.organization": {
+		"role": "Field, section, state, or status copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.organizations_unavailable": {
+		"role": "Validation or failure feedback in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.upload.public_hub": {
+		"role": "Field, section, state, or status copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.publish": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.publish_failed": {
+		"role": "Validation or failure feedback in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.upload.publish_org_title": {
+		"role": "Dynamic status or complete sentence in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "User-supplied definition or member name; preserve verbatim",
+			"organization": "Organization display name; preserve verbatim"
+		}
+	},
+	"ui.agents.upload.publish_public_title": {
+		"role": "Dynamic status or complete sentence in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "User-supplied definition or member name; preserve verbatim"
+		}
+	},
+	"ui.agents.upload.publish_to": {
+		"role": "Action or accessible label in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.published_org_title": {
+		"role": "Dynamic status or complete sentence in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "User-supplied definition or member name; preserve verbatim",
+			"organization": "Organization display name; preserve verbatim"
+		}
+	},
+	"ui.agents.upload.published_public_title": {
+		"role": "Dynamic status or complete sentence in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "User-supplied definition or member name; preserve verbatim"
+		}
+	},
+	"ui.agents.upload.published_to_hub": {
+		"role": "Field, section, state, or status copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.published_to_org": {
+		"role": "Dynamic status or complete sentence in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"organization": "Organization display name; preserve verbatim"
+		}
+	},
+	"ui.agents.upload.publishing": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.sign_in_again": {
+		"role": "Action or accessible label in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.sign_in_again_description": {
+		"role": "Explanatory or consent copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.upload.sign_in_continue": {
+		"role": "Action or accessible label in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.sign_in_required": {
+		"role": "Validation or failure feedback in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.upload.success_org_description": {
+		"role": "Explanatory or consent copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "User-supplied definition or member name; preserve verbatim",
+			"organization": "Organization display name; preserve verbatim"
+		}
+	},
+	"ui.agents.upload.success_privacy": {
+		"role": "Explanatory or consent copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.upload.success_public_description": {
+		"role": "Explanatory or consent copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "User-supplied definition or member name; preserve verbatim"
+		}
+	},
+	"ui.agents.upload.success_updated_description": {
+		"role": "Explanatory or consent copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "User-supplied definition or member name; preserve verbatim"
+		}
+	},
+	"ui.agents.upload.team_plan_required_multiple": {
+		"role": "Validation or failure feedback in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.upload.team_plan_required_org": {
+		"role": "Validation or failure feedback in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"organization": "Organization display name; preserve verbatim"
+		}
+	},
+	"ui.agents.upload.terms": {
+		"role": "Field, section, state, or status copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"note": "These three messages surround the existing terms link in the consent checkbox; preserve legal meaning and link order."
+	},
+	"ui.agents.upload.this_organization": {
+		"role": "Field, section, state, or status copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.update_listing": {
+		"role": "Field, section, state, or status copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.update_title": {
+		"role": "Dynamic status or complete sentence in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "User-supplied definition or member name; preserve verbatim"
+		}
+	},
+	"ui.agents.upload.updated_title": {
+		"role": "Dynamic status or complete sentence in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "User-supplied definition or member name; preserve verbatim"
+		}
+	},
+	"ui.agents.upload.upgrade_needed": {
+		"role": "Field, section, state, or status copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.upload.visibility_description": {
+		"role": "Explanatory or consent copy in the Agent Hub publication dialog",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	}
+}
