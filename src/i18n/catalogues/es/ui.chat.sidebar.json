@@ -40,6 +40,7 @@
 	"ui.chat.sidebar.search.searching": "Buscando en las conversaciones…",
 	"ui.chat.sidebar.search.too_long": "Las búsquedas tienen un límite de {max, number, ::group-off} caracteres. Esta lo supera, así que solo se busca en los nombres de los chats.",
 	"ui.chat.sidebar.search.unavailable": "La búsqueda en las conversaciones no está disponible, así que estas coincidencias son solo de nombres.",
+	"ui.chat.sidebar.section.current_chat": "Chat actual",
 	"ui.chat.sidebar.teams.create": "Crear equipo",
 	"ui.chat.sidebar.teams.loading": "Cargando equipos…"
 }

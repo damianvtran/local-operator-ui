@@ -190,6 +190,50 @@ const IDENTICAL_OK = new Map([
 		"ui.chat.composer.message",
 		"French cognate: « message » has the same spelling.",
 	],
+	// --- ui.chat.directory / ui.chat.tabs. The working-directory quick-pick
+	// labels each Linux folder by its own basename (`/etc` is `etc` on every
+	// filesystem), and the en sidecar records those seven as untranslated
+	// exceptions; Spanish cannot spell a path segment differently without
+	// renaming the folder on screen. `ProgramData` is the Windows folder's own
+	// name, which Spanish Explorer shows verbatim. `Chat` is the audited es
+	// house voice's established noun for the conversation, not a skipped
+	// string: the rest of the es catalogue translates around it.
+	[
+		"ui.chat.directory.folder.etc",
+		"Literal path segment: the quick-pick labels `/etc` by its own basename; identical is the correct translation.",
+	],
+	[
+		"ui.chat.directory.folder.media",
+		"Literal path segment: the quick-pick labels `/media` by its own basename; identical is the correct translation.",
+	],
+	[
+		"ui.chat.directory.folder.mnt",
+		"Literal path segment: the quick-pick labels `/mnt` by its own basename; identical is the correct translation.",
+	],
+	[
+		"ui.chat.directory.folder.opt",
+		"Literal path segment: the quick-pick labels `/opt` by its own basename; identical is the correct translation.",
+	],
+	[
+		"ui.chat.directory.folder.program_data",
+		"Windows folder name: Spanish Explorer shows `ProgramData` verbatim; the path beside the label is never translated.",
+	],
+	[
+		"ui.chat.directory.folder.srv",
+		"Literal path segment: the quick-pick labels `/srv` by its own basename; identical is the correct translation.",
+	],
+	[
+		"ui.chat.directory.folder.usr",
+		"Literal path segment: the quick-pick labels `/usr` by its own basename; identical is the correct translation.",
+	],
+	[
+		"ui.chat.directory.folder.var",
+		"Literal path segment: the quick-pick labels `/var` by its own basename; identical is the correct translation.",
+	],
+	[
+		"ui.chat.tabs.chat",
+		"Spanish loanword, not untranslated English: «chat» is the established noun in the audited es house voice.",
+	],
 	[
 		"ui.agents.navigation.sidebar.title",
 		"French cognate: « agents » has the same spelling.",
