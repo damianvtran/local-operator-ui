@@ -488,7 +488,9 @@ import viUiChatCanonical from "./catalogues/vi/ui.chat.canonical.json";
 import viUiChatCommentaryActions from "./catalogues/vi/ui.chat.commentary_actions.json";
 import viUiChatComposer from "./catalogues/vi/ui.chat.composer.json";
 import viUiChatComposerMedia from "./catalogues/vi/ui.chat.composer_media.json";
+import viUiChatDevice from "./catalogues/vi/ui.chat.device.json";
 import viUiChatDialogs from "./catalogues/vi/ui.chat.dialogs.json";
+import viUiChatDirectory from "./catalogues/vi/ui.chat.directory.json";
 import viUiChatHeader from "./catalogues/vi/ui.chat.header.json";
 import viUiChat from "./catalogues/vi/ui.chat.json";
 import viUiChatLiveUpdates from "./catalogues/vi/ui.chat.live_updates.json";
@@ -1103,7 +1105,9 @@ export const bundledCatalogues: Readonly<
 		...viUiChatCommentaryActions,
 		...viUiChatComposer,
 		...viUiChatComposerMedia,
+		...viUiChatDevice,
 		...viUiChatDialogs,
+		...viUiChatDirectory,
 		...viUiChatHeader,
 		...viUiChat,
 		...viUiChatLiveUpdates,
