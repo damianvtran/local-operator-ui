@@ -1,0 +1,1177 @@
+{
+	"schema": 1,
+	"kind": "translation-audit-round-2",
+	"audit_kind": "independent-remediation-translation-audit-round-2",
+	"round": 2,
+	"locale": "zh-CN",
+	"locale_name": "Simplified Chinese",
+	"batch": "chat",
+	"branch": "feat/i18n-chat-zh-CN-fix",
+	"audited_heads": {
+		"base": "5d97575ac4",
+		"round1": "44fb2e1699",
+		"base_receipt": "976ac6896a",
+		"remediation": "d331f46ecc"
+	},
+	"head": "d331f46ecc191d2ed9f60ad4965a8f3f932471e1",
+	"previous_audited_head": "44fb2e1699e1aa509b46b32cef8f28d1b1ecc81b",
+	"base_receipt_head": "976ac6896a9a2bb63a9a30b47001314305d7bab8",
+	"translation_base": "5d97575ac4",
+	"translation_commit": "de461316260931efe38f82f421501b90369eda3e",
+	"remediation_commit": "d331f46ecc191d2ed9f60ad4965a8f3f932471e1",
+	"date": "2026-10-24",
+	"auditor": {
+		"agent": "translation-auditor",
+		"role": "independent translation auditor (team lopdev); authored no catalogue value in this batch or its remediation",
+		"team": "lopdev",
+		"instance": "58b663ac400e",
+		"session": "58b663ac400e",
+		"model": "radient/auto",
+		"served_model": "radient/auto",
+		"fallback_used": false,
+		"model_provenance": "Harness-reported model for this session is radient/auto; the routed provider model is not exposed to the session and is not claimed. No fallback was reported or observed. No translation API, SDK or MT service was used.",
+		"independence": "Auditor session 58b663ac400e is distinct from the chat translator session b0b65f0bdaeb (round-1 receipt) and the round-1 auditor session 9d254e15f39a. This session authored no catalogue, ledger or generated value; it wrote only this receipt. The remediation commit d331f46ecc was authored by the translator/implementer, not by this session."
+	},
+	"model": "radient/auto",
+	"instance": "58b663ac400e",
+	"prior_receipt": {
+		"path": "i18n/receipts/zh-chat-batch-audit-9d254e15f39a.json",
+		"sha256": "4c5193511aa16a041c0c246491ed50e96d9e2eac6a8f17832ed455f300ae1128",
+		"verdict": "changes requested — 4 major, 15 minor, 3 nit; no blocker. 14/15 namespaces and 1,731/1,733 batch keys present; 1,793 values read; plurals other-only and structurally sound; 66 identical values all legitimate tokens, 0 untranslated stubs."
+	},
+	"guidance": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/zh-CN.md",
+			"sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+		},
+		"core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09"
+	},
+	"diff": {
+		"files_changed": 14,
+		"catalogue_files": 13,
+		"catalogue_modified": 12,
+		"catalogue_added": 1,
+		"generated_files": 1,
+		"insertions": 149,
+		"deletions": 143,
+		"other_locales_changed": 0,
+		"other_non_i18n_files_changed": 0
+	},
+	"hash_verification": {
+		"en_and_context_hashes_unchanged_from_round1": true,
+		"zh_unchanged_files_byte_identical_to_round1": [
+			"ui.chat.directory",
+			"ui.chat.options"
+		],
+		"zh_changed_files": [
+			"ui.chat",
+			"ui.chat.aside",
+			"ui.chat.asks",
+			"ui.chat.at",
+			"ui.chat.canonical",
+			"ui.chat.canvas_preview",
+			"ui.chat.credential_capture",
+			"ui.chat.header",
+			"ui.chat.message",
+			"ui.chat.run_details",
+			"ui.chat.session_status",
+			"ui.chat.skill",
+			"ui.chat.trace"
+		],
+		"prior_receipt_sha256": "4c5193511aa16a041c0c246491ed50e96d9e2eac6a8f17832ed455f300ae1128",
+		"keys_gen_sha256": "27e05d9b0c2baf6c6294abe479bb373494d097db9b7b089f17b52b9418eb1e22",
+		"keys_gen_matches_generator": true
+	},
+	"scope": "Delta re-audit of the zh-CN chat remediation at d331f46ecc (one commit on 976ac6896a, which audited 44fb2e1699): all 4 majors and all 18 minor/nit findings of receipt 9d254e15f39a re-checked against the bytes, the 145 keys touched by the remediation (143 modified + 2 added) read side by side with English, and the 15 ui.chat.* namespaces re-scanned for structural and typographic regressions. 1,650 values unchanged from the round-1 audited head were not re-read semantically; their bytes are identical.",
+	"method": [
+		"Read the remediation commit d331f46ecc and the full 976ac6896a..d331f46ecc diff; established the touched set programmatically: 145 keys = 143 modified + 2 added (ui.chat.canvas_preview.html_title, ui.chat.canvas_preview.pdf_title), 0 removed; the diff names only 13 zh-CN catalogue files and src/i18n/keys.gen.ts.",
+		"Read every one of the 145 changed values side by side with its English source at d331f46ecc, and re-read every one of the 22 prior findings' keys against the applied bytes rather than the remediation summary.",
+		"Parsed all 1,795 values in the 15 namespaces with a balanced-brace ICU parser; compared argument names, argument types/styles (including number/date skeletons), plural/select node names and branch sets, select arms, exact plural arms, markup/backtick tokens and plural pound (#) presence with the English source. 0 mismatches in the 145 touched keys; the only mismatches anywhere are two pre-existing exact =1 arms in untouched keys.",
+		"Verified Z1 at the call sites: src/renderer/src/features/chat/components/canvas/html-preview.tsx and pdf-preview.tsx call t('ui.chat.canvas_preview.*_title', {name}); src/i18n/keys.gen.ts imports zhCNUiChatCanvasPreview and spreads it into bundledCatalogues; generate --check passes.",
+		"Verified Z2 empirically with the repo's intl-messageformat 12.1.3: the fixed message renders attempt '3' as 第3次 and '?' as 第?次; the pre-fix {attempt, number} message renders '?' as 第NaN次. The call site transcript-reducer.ts:6590 still passes String(event.attempt ?? '?').",
+		"Verified Z3 byte-for-byte: both zh-CN values equal the English bytes, including the trailing 0x20 in stopped_after; local_operator/session/goal_judge.py at core 24dbccbb defines STALLED_BREAKER_REASON = 'judge could not decide' and STALLED_CAP_REASON = 'stopped after {n} continuations'; composer-status-row.tsx still uses equality and startsWith and never displays either value.",
+		"Verified Z4 with a polite-请 regex that excludes the lexical 请 in 请求/申请/邀请/请示/请教/请假/请柬/聘请/提请/报请/呈请/恳请/敬请/回请: 97 such keys at 976ac6896a, 94 removed, 3 remaining at d331f46ecc. The removed set equals the prior Z4 key list exactly (94/94; sorted-key sha256 match). None of the 94 English sources contains 'please'; the two sources that do (error_block.rate_limit, rate_limit_all) retain 请.",
+		"Re-ran the repository checks from the detached worktree at d331f46ecc: generate.mjs --check, check-strings.mjs, context-parity.mjs pass; ledger-check.mjs fails repo-wide at 75 findings (the remediation disclosed 74 at its base; the +1 is the new canvas_preview ledger entry); locale-parity.test.mjs passes zh-CN's key, placeholder and coverage tests and fails only the English-stub test, which lists 68 identical values (66 pre-existing legitimate tokens + the 2 deliberate sentinels).",
+		"Re-derived SHA-256 for en/zh-CN/context for all 15 namespaces and compared with the round-1 receipt: all 15 en and context hashes unchanged; 2 zh-CN files (directory, options) byte-identical to round 1; 13 zh-CN files changed (12 modified + 1 added). No other locale, ledger, allowance, baseline or generated file was changed by the remediation.",
+		"Ran NFC, bidi-control (U+200E/F, U+202A-E, U+2066-9), zero-width (U+200B-D, U+2060, U+FEFF), spaced-em-dash, placeholder/digit+space+classifier, ASCII-ellipsis, half-width-punctuation-adjacent-to-CJK, 「」quote, 您/particles/！ and cell-width scans over all 15 namespaces; all clean. Max width ratio for an English value >= 20 cells is 1.028; all 9 context maxCells budgets pass.",
+		"Classified all 68 identical-to-English values: 2 are the deliberate Z3 wire sentinels and 66 are the same legitimate placeholder-only/format/token values the round-1 audit classified (0 untranslated stubs). The locale-parity test's count is 68 at this head, not the 67 stated in the remediation message; 44fb and 976ac each have 66, so the delta is exactly the two sentinels."
+	],
+	"checks": [
+		{
+			"check": "node scripts/i18n/generate.mjs --check",
+			"result": "pass",
+			"output": "src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+		},
+		{
+			"check": "node scripts/i18n/check-strings.mjs",
+			"result": "pass",
+			"output": "ok — 1343 file(s) scanned, 391 literal(s) at or below the baseline."
+		},
+		{
+			"check": "node scripts/i18n/context-parity.mjs",
+			"result": "pass",
+			"output": "ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s)."
+		},
+		{
+			"check": "node scripts/i18n/ledger-check.mjs",
+			"result": "fail-repo-wide",
+			"output": "75 finding(s) across 438 ledger entries; +1 versus the remediation's disclosed 74 at base; includes the new zh-CN/ui.chat.canvas_preview entry and stale zh-CN chat target hashes awaiting receipt binding. Not a translation defect and outside the auditor's edit scope."
+		},
+		{
+			"check": "node --test --test-reporter=spec scripts/i18n/locale-parity.test.mjs",
+			"result": "mixed",
+			"output": "zh-CN passes key-set, placeholder and coverage tests; the English-stub test fails with 68 identical values (66 pre-existing legitimate tokens + 2 deliberate sentinels). Other locales' unrelated coverage failures are pre-existing."
+		},
+		{
+			"check": "key parity",
+			"result": "pass",
+			"output": "15/15 files have exactly the English key set; 0 missing, 0 extra, 0 duplicate keys; every file is in English key order."
+		},
+		{
+			"check": "ICU argument and branch structure",
+			"result": "pass",
+			"output": "1,795 values parsed; argument-name/type/style sets and plural/select branch sets equal; 0 mismatches in the 145 touched keys; 0 pound-token mismatches; no unmatched braces."
+		},
+		{
+			"check": "plural categories",
+			"result": "pass",
+			"output": "42 plural messages / 48 plural nodes; 48 other arms, 3 =0, 3 =1, 1 each =2..=6; no one/few/many/two CLDR category in zh-CN; 2 select messages with true/other. The 3 =1 arms are pre-existing in 2 untouched keys (builtin_offer, thread_search.truncated) and render count=1 correctly."
+		},
+		{
+			"check": "placeholders and skeletons",
+			"result": "pass",
+			"output": "Z2 fixed: {attempt} has no number skeleton. All 145 touched keys have the English argument-name set and skeleton; the 6 named-argument reorders recorded in round 1 are order-insensitive and none changes an argument set."
+		},
+		{
+			"check": "Z4 polite 请",
+			"result": "pass",
+			"output": "97 polite-请 keys at 976ac6896a; exactly 94 removed (set equals the prior Z4 list); 3 remain: the two source-please rate-limit keys and the pre-existing highlights.file_resolution_failed."
+		},
+		{
+			"check": "Z3 wire sentinels",
+			"result": "pass",
+			"output": "judge_could_not_decide and stopped_after are byte-identical to English; stopped_after keeps its trailing space; both match goal_judge.py's reasons."
+		},
+		{
+			"check": "markup and literals",
+			"result": "pass",
+			"output": "No HTML markup tags, backticks or bold markup in the 145 touched values; the only angle-bracket token is the literal /move '<path>' path placeholder, byte-identical to English; flags, paths, DOM ids, the /settings route, Windows paths and CSS custom properties across the namespaces are unchanged. No ASCII ellipsis."
+		},
+		{
+			"check": "unicode",
+			"result": "pass",
+			"output": "All values NFC; no bidi controls; no zero-width characters."
+		},
+		{
+			"check": "identical-to-English classification",
+			"result": "pass",
+			"output": "68 identical values: 2 deliberate wire sentinels + 66 legitimate placeholder-only/format/key-chord/DOM/CSS/path/product tokens; 0 untranslated stubs."
+		},
+		{
+			"check": "width",
+			"result": "pass",
+			"output": "Max zh-CN/English cell-width ratio among English values >= 20 cells is 1.028; all 9 context maxCells budgets pass."
+		},
+		{
+			"check": "typography and register",
+			"result": "pass",
+			"output": "0 spaced half-width em dashes, 0 placeholder/digit+space+classifier sequences, 0 half-width punctuation adjacent to CJK, 0 「」 quotes, 0 您/啦/哦/呀/！."
+		},
+		{
+			"check": "hash identity",
+			"result": "pass",
+			"output": "15/15 en and context hashes unchanged from round 1; 2/15 zh-CN files byte-identical (directory, options); 13/15 changed (12 modified + 1 added)."
+		}
+	],
+	"sanctioned_public_copy_route": {
+		"reader": "~/.local/share/lop/current/tools/local-operator/bin/python: local_operator.tools.public_copy.execute_read_public_copy",
+		"worktree": "~/local-operator-ui/.worktrees/zh-chat-reaudit-d331f46ecc",
+		"worktree_head": "d331f46ecc191d2ed9f60ad4965a8f3f932471e1",
+		"session_dir": "~/.local-operator/sessions/58b663ac400e/scratchpad/audit",
+		"audit_log": "~/.local-operator/sessions/58b663ac400e/scratchpad/audit-config/audit/public-copy-reads.jsonl",
+		"audit_log_records": 8,
+		"audit_log_sha256": "af7f1da007cbee6ac704e262684a39a0b3867be35fb6b7cd246f1fa71fc04b74",
+		"reads": [
+			"src/i18n/catalogues/zh-CN/ui.chat.canvas_preview.json#ui.chat.canvas_preview.html_title",
+			"src/i18n/catalogues/zh-CN/ui.chat.canvas_preview.json#ui.chat.canvas_preview.pdf_title",
+			"src/i18n/catalogues/zh-CN/ui.chat.canonical.json#ui.chat.canonical.transcript_reducer.retrying",
+			"src/i18n/catalogues/zh-CN/ui.chat.json#ui.chat.composer.composer_status_row.judge_could_not_decide",
+			"src/i18n/catalogues/zh-CN/ui.chat.json#ui.chat.composer.composer_status_row.stopped_after",
+			"src/i18n/catalogues/zh-CN/ui.chat.json#ui.chat.chat_regions.ctrl_shift_l",
+			"src/i18n/catalogues/zh-CN/ui.chat.asks.json#ui.chat.asks.queue.receipt_declined"
+		],
+		"note": "The reader served the committed HEAD blob of the detached worktree and appended each read to the log before returning it. The ctrl_shift_l read was classified structurally (12 ASCII chars, identical en/zh) because its display was masked; it is a key chord, not a finding. The seven evidence reads above plus one startup probe make the eight log records."
+	},
+	"findings": [
+		{
+			"id": "Z1",
+			"prior_severity": "major",
+			"namespace": "ui.chat.canvas_preview",
+			"status": "fixed",
+			"note": "The namespace is present with exactly the two English keys; both values are the round-1 proposal, {name} preserved, label first; keys.gen imports the file and bundles it for zh-CN, and the two iframe title call sites pass {name}.",
+			"keys": [
+				"ui.chat.canvas_preview.html_title",
+				"ui.chat.canvas_preview.pdf_title"
+			],
+			"applied": {
+				"ui.chat.canvas_preview.html_title": "HTML预览：{name}",
+				"ui.chat.canvas_preview.pdf_title": "PDF：{name}"
+			}
+		},
+		{
+			"id": "Z2",
+			"prior_severity": "major",
+			"namespace": "ui.chat.canonical",
+			"status": "fixed",
+			"note": "The number skeleton is gone; {attempt} is a plain string argument feeding 第…次. With intl-messageformat 12.1.3, attempt '3' renders 第3次 and '?' renders 第?次; the pre-fix value rendered 第NaN次 for '?'.",
+			"keys": [
+				"ui.chat.canonical.transcript_reducer.retrying"
+			],
+			"applied": {
+				"ui.chat.canonical.transcript_reducer.retrying": "出错后正在重试（第{attempt}次）{fallback}"
+			}
+		},
+		{
+			"id": "Z3",
+			"prior_severity": "major",
+			"namespace": "ui.chat",
+			"status": "fixed",
+			"note": "Both values are byte-identical to the English catalogue, including the trailing space in stopped_after, and match goal_judge.py's STALLED_BREAKER_REASON / STALLED_CAP_REASON prefix; composer-status-row.tsx still mirrors them by equality and startsWith, and neither value is displayed.",
+			"keys": [
+				"ui.chat.composer.composer_status_row.judge_could_not_decide",
+				"ui.chat.composer.composer_status_row.stopped_after"
+			],
+			"applied": {
+				"ui.chat.composer.composer_status_row.judge_could_not_decide": "judge could not decide",
+				"ui.chat.composer.composer_status_row.stopped_after": "stopped after "
+			}
+		},
+		{
+			"id": "Z4",
+			"prior_severity": "major",
+			"namespace": "batch",
+			"status": "fixed",
+			"note": "94 of 94 prior keys lost the polite 请; the removed-key set is exactly the round-1 Z4 list (sha256 match). No key whose English source says please lost 请; error_block.rate_limit and rate_limit_all retain it.",
+			"keys": [
+				"ui.chat.archive_confirm.undo_explanation",
+				"ui.chat.attachment_read.this_draft_carries_total_images_and_one",
+				"ui.chat.attachment_read.this_draft_carries_total_images_and_one_721f14",
+				"ui.chat.attachment_read.value_could_not_be_read_it_may_have_been_moved",
+				"ui.chat.attachment_read.value_could_not_be_read_they_may_have_been_moved",
+				"ui.chat.chat_archived.this_backend_cannot_archive_conversations_update_the_backend_and_try",
+				"ui.chat.chat_archived.this_conversation_is_already_archived_use_unarchive_to_restore_it",
+				"ui.chat.chat_archived.this_window_cannot_tell_whether_that_conversation_is_archived_it",
+				"ui.chat.chat_page.an_aside_answers_text_only_remove_the_attached_files_to",
+				"ui.chat.delete_conversation.the_guard_above_is_the_daemons_own_and_nothing_in",
+				"ui.chat.delete_conversation.this_backend_cannot_delete_conversations_update_the_backend_and_try",
+				"ui.chat.draft_selection.nothing_was_changed_because_that_models_effort_levels_could_not",
+				"ui.chat.error_view.message_the_agents_history_is_safe_try_again_in_a",
+				"ui.chat.error_view.the_local_server_returned_an_error_the_agents_history_is",
+				"ui.chat.message_budget.these_images_total_size_more_than_the",
+				"ui.chat.message_budget.this_command_is_size_more_than_the",
+				"ui.chat.message_budget.this_command_is_value_characters_more_than_the_value2_one",
+				"ui.chat.message_budget.this_first_message_is_size_more_than",
+				"ui.chat.message_budget.this_first_message_is_value_characters_more_than_the_value2",
+				"ui.chat.message_budget.this_message_is_size_of_text_more",
+				"ui.chat.message_budget.this_message_is_value_characters_more_than_the_value2_one",
+				"ui.chat.message_budget.this_system_prompt_is_size_more_than",
+				"ui.chat.message_budget.this_system_prompt_is_value_characters_more_than_the_value2",
+				"ui.chat.move_session.this_backend_cannot_move_a_live_session_start_a_new",
+				"ui.chat.radient_session_issue.complete_the_sign_in_in_your_browser_the_connector_restarts",
+				"ui.chat.radient_session_issue.if_signing_in_does_not_clear_this_run_command_in",
+				"ui.chat.radient_session_issue.message_this_surface_cannot_take_the_pasted_code_so_finish",
+				"ui.chat.sidebar.chat_sidebar.stop_if_it_stays_silent",
+				"ui.chat.sidebar.sidebar_scope_paging.they_may_be_archived_search_with_include_archived",
+				"ui.chat.slash.contract.needs_an_open_conversation_start_one_first",
+				"ui.chat.slash.contract.needs_conversation_clause",
+				"ui.chat.slash.contract.secret_dialog_fields",
+				"ui.chat.slash.dispatch.choose_the_folder_in_the_working_directory_chip_above_or",
+				"ui.chat.slash.dispatch.the_backend_could_not_complete_this_request_check_its_connection",
+				"ui.chat.slash_commands.the_list_could_not_be_loaded_try_again",
+				"ui.chat.aside.aside.the_aside_could_not_be_confirmed_in_the_conversation_if",
+				"ui.chat.aside.aside.the_aside_was_not_added_to_the_conversation_add_it",
+				"ui.chat.aside.aside.the_conversation_stopped_in_the_middle_of_a_tool_call",
+				"ui.chat.aside.aside.the_model_didnt_reply_in_text_ask_again",
+				"ui.chat.aside.aside.this_aside_cant_continue_press_esc_to_close_it_which",
+				"ui.chat.aside.aside.this_conversation_is_busy_and_the_version_its_running_cant",
+				"ui.chat.asks.ask_answer_field.files_and_images_cant_be_attached_to_an_answer_yet",
+				"ui.chat.asks.ask_panel.no_asks_are_pending_they_have_all_settled_see_settled",
+				"ui.chat.asks.queue.expired_this_ask_is_too_old_to_answer_ask_the",
+				"ui.chat.asks.queue.required_type_it_again_it_is_never_shown",
+				"ui.chat.asks.queue.this_ask_is_too_old_to_answer_ask_the_agent",
+				"ui.chat.at.contract.could_not_read_this_folder_check_that_it_exists_and",
+				"ui.chat.at.contract.this_backend_cannot_carry_file_references_update_the_backend_and",
+				"ui.chat.canonical.canonical_transcript.could_not_reach_that_turn_it_is_further_back_than",
+				"ui.chat.canonical.image_gen_card_model.audio_generation_is_busy_right_now_wait_a_moment_and",
+				"ui.chat.canonical.supplement.preview_unavailable",
+				"ui.chat.canonical.thread_search.jump_miss",
+				"ui.chat.canonical.use_session_files.files_are_changing_quickly_retry_after_the_current_turn_finishes",
+				"ui.chat.credential_capture.unstored_receipt",
+				"ui.chat.header.chat_header_identity_menu_model.no_profile_can_take_the_seat_switch_the_team",
+				"ui.chat.header.chat_header_identity_menu_model.no_profile_here_can_take_the_seat_clear_the_search",
+				"ui.chat.header.chat_header_identity_menu_model.team_team_owns_this_session_value_is_the_speaker_so",
+				"ui.chat.message.error_block.hosting",
+				"ui.chat.message.error_block.invalid_key",
+				"ui.chat.message.error_block.model",
+				"ui.chat.message.error_block.model_unavailable",
+				"ui.chat.run_details.mcp_auth_dialog.could_not_determine_this_servers_sign_in_method_check_its",
+				"ui.chat.run_details.mcp_auth_dialog.this_server_does_not_use_oauth_and_declares_no_secret",
+				"ui.chat.run_details.mcp_auth_dialog.update_the_backend_for_secure_mcp_key_entry_oauth_and",
+				"ui.chat.run_details.mcp_failure.lead_a_sign_in_is_already_running_for_this_conversation",
+				"ui.chat.run_details.run_detail_mcp.this_server_refused_the_sign_in_check_its_configuration",
+				"ui.chat.run_details.run_panel.opening_a_subagents_conversation_needs_a_newer_local_operator_backend",
+				"ui.chat.run_details.run_panel.the_backend_update_could_not_start_retry_or_update_from",
+				"ui.chat.run_details.use_mcp_remedy.confirm_replacement_of_the_existing_shared_keys_before_saving",
+				"ui.chat.run_details.use_mcp_remedy.not_saved_value_unlock_or_repair_the_encrypted_store_then",
+				"ui.chat.run_details.use_mcp_remedy.the_keys_were_saved_but_this_server_is_not_connected",
+				"ui.chat.run_details.wake_controls_model.this_wake_is_name_s_own_schedule_so_it_cant",
+				"ui.chat.session_status.chat_device_model.the_conversation_is_not_here_to_move_recall_it_here",
+				"ui.chat.session_status.quota_notice.could_not_check_try_again",
+				"ui.chat.session_status.quota_notice.could_not_send_try_again",
+				"ui.chat.session_status.quota_notice.requested_recently_try_again_in_about_2_minutes",
+				"ui.chat.session_status.quota_notice.sent_check_your_inbox_and_spam_folder",
+				"ui.chat.session_status.session_model.the_device_running_this_session_has_no_effective_provider_access",
+				"ui.chat.session_status.session_model.the_owner_cannot_currently_provide_borrowed_access_or_borrowing_permission",
+				"ui.chat.session_status.session_model.the_serving_device_has_no_effective_provider_access_for_this",
+				"ui.chat.session_status.session_model.this_login_cannot_be_borrowed_sign_in_on_the_device",
+				"ui.chat.session_status.session_model.this_session_could_not_resolve_label_access_from_owner_previous",
+				"ui.chat.session_status.session_model.your_saved_sign_in_is_still_present_try_again_later",
+				"ui.chat.session_status.session_status_strip.model_none_resolved_yet_choose_the_model_this_conversation_will",
+				"ui.chat.session_status.session_status_strip.model_this_conversations_model_was_not_resolved_retry",
+				"ui.chat.skill.contract.no_skills_found_see_skills",
+				"ui.chat.skill.contract.this_backend_cannot_serve_the_skill_catalogue_update_the_backend",
+				"ui.chat.trace.question_dock.choose_approve_or_deny_above_type_yes_no_1_or",
+				"ui.chat.trace.receipt_row_model.cancel_with_wake",
+				"ui.chat.trace.tool_row_model.delivered_to_their_mailbox_the_wake_got_no_answer_so",
+				"ui.chat.trace.tool_row_model.delivery_unconfirmed_it_may_still_arrive_so_check_before_resending",
+				"ui.chat.trace.tool_row_model.no_wake_answer_and_not_yet_in_their_transcript_it",
+				"ui.chat.trace.tool_row_model.not_confirmed_there_was_no_answer_and_the_message_is",
+				"ui.chat.trace.tool_row_model.nothing_was_delivered_fix_the_cause_named_below_or_retry"
+			],
+			"key_count": 94,
+			"removed_key_count": 94,
+			"removed_key_set_sha256": "7169e1153fd059a68d72165255564bee978bae9fda6f53388bce2909c723ef81",
+			"set_equals_removed_delta": true,
+			"examples": {
+				"ui.chat.chat_archived.this_window_cannot_tell_whether_that_conversation_is_archived_it": "此窗口无法判断该对话是否已归档——它不在此处列出的对话中。使用搜索找到它，并通过其条目恢复。",
+				"ui.chat.slash_commands.the_list_could_not_be_loaded_try_again": "无法加载列表。重试。",
+				"ui.chat.asks.queue.receipt_declined": "请求{askId}已被拒绝——已告知智能体"
+			},
+			"remaining_polite_qing_keys": {
+				"ui.chat.message.error_block.rate_limit": "source says Please",
+				"ui.chat.message.error_block.rate_limit_all": "source says Please",
+				"ui.chat.highlights.file_resolution_failed": "pre-existing base value, outside the 94 new keys"
+			}
+		},
+		{
+			"id": "Z5",
+			"prior_severity": "minor",
+			"namespace": "ui.chat",
+			"status": "fixed",
+			"note": "芯片 is replaced by 标签 and the 请 is gone; the rest of the sentence is unchanged.",
+			"keys": [
+				"ui.chat.slash.dispatch.choose_the_folder_in_the_working_directory_chip_above_or"
+			],
+			"applied": {
+				"ui.chat.slash.dispatch.choose_the_folder_in_the_working_directory_chip_above_or": "在上方的工作目录标签中选择文件夹，或输入/move '<path>'直接迁移到该处。"
+			}
+		},
+		{
+			"id": "Z6",
+			"prior_severity": "minor",
+			"namespace": [
+				"ui.chat.header",
+				"ui.chat"
+			],
+			"status": "fixed",
+			"note": "All 5 keys now use 配置档案. The locale's other profile senses stay distinct: browser profile is 配置 and the user profile is 个人资料, so the agent-profile term is now unambiguous.",
+			"keys": [
+				"ui.chat.header.chat_header_identity_menu_model.teamlabel_is_led_by_its_manager_only_the_manager_and",
+				"ui.chat.header.chat_header_identity_menu_model.needs_a_delegating_profile_here",
+				"ui.chat.header.chat_header_identity_menu_model.no_profile_can_take_the_seat_switch_the_team",
+				"ui.chat.header.chat_header_identity_menu_model.no_profile_here_can_take_the_seat_clear_the_search",
+				"ui.chat.slash_commands.no_profiles_found"
+			],
+			"applied": {
+				"ui.chat.header.chat_header_identity_menu_model.teamlabel_is_led_by_its_manager_only_the_manager_and": "{teamLabel}由其管理者领导；只有管理者和具备委派能力的配置档案可以担任此席位。",
+				"ui.chat.header.chat_header_identity_menu_model.needs_a_delegating_profile_here": "此处需要具备委派能力的配置档案。",
+				"ui.chat.header.chat_header_identity_menu_model.no_profile_can_take_the_seat_switch_the_team": "没有配置档案可以担任此席位——切换团队。",
+				"ui.chat.header.chat_header_identity_menu_model.no_profile_here_can_take_the_seat_clear_the_search": "此处没有配置档案可以担任此席位——清除搜索，或切换团队。",
+				"ui.chat.slash_commands.no_profiles_found": "未找到配置档案。"
+			}
+		},
+		{
+			"id": "Z7",
+			"prior_severity": "minor",
+			"namespace": "ui.chat.session_status",
+			"status": "fixed",
+			"note": "The passive future reading is restored: 将在对话开始后设置。",
+			"keys": [
+				"ui.chat.session_status.session_status_strip.set_once_the_conversation_starts"
+			],
+			"applied": {
+				"ui.chat.session_status.session_status_strip.set_once_the_conversation_starts": "将在对话开始后设置。"
+			}
+		},
+		{
+			"id": "Z8",
+			"prior_severity": "minor",
+			"namespace": "ui.chat.session_status",
+			"status": "fixed",
+			"note": "The word-for-word 开始对话于 is replaced by the heading 在以下设备上开始对话.",
+			"keys": [
+				"ui.chat.session_status.chat_device_model.start_the_conversation_on"
+			],
+			"applied": {
+				"ui.chat.session_status.chat_device_model.start_the_conversation_on": "在以下设备上开始对话"
+			}
+		},
+		{
+			"id": "Z9",
+			"prior_severity": "minor",
+			"namespace": "ui.chat.canonical",
+			"status": "fixed",
+			"note": "免费 is replaced by 不产生费用; the 保证 clause now has matching objects.",
+			"keys": [
+				"ui.chat.canonical.sound.stop.warning"
+			],
+			"applied": {
+				"ui.chat.canonical.sound.stop.warning": "服务商没有取消接口。生成会继续，若产出音频仍会计费。停止是尽力而为，并不保证取消或不产生费用。"
+			}
+		},
+		{
+			"id": "Z10",
+			"prior_severity": "minor",
+			"namespace": "ui.chat.asks",
+			"status": "fixed",
+			"note": "已回答至 is replaced by 回答已发送至, the delivery outcome rather than an answer already given.",
+			"keys": [
+				"ui.chat.asks.fleet_ask_drawer.answer_sent_to"
+			],
+			"applied": {
+				"ui.chat.asks.fleet_ask_drawer.answer_sent_to": "回答已发送至"
+			}
+		},
+		{
+			"id": "Z11",
+			"prior_severity": "minor",
+			"namespace": "ui.chat.asks",
+			"status": "fixed",
+			"note": "The passive marker 被 is present: 请求{askId}已被拒绝.",
+			"keys": [
+				"ui.chat.asks.queue.receipt_declined"
+			],
+			"applied": {
+				"ui.chat.asks.queue.receipt_declined": "请求{askId}已被拒绝——已告知智能体"
+			}
+		},
+		{
+			"id": "Z12",
+			"prior_severity": "minor",
+			"namespace": "ui.chat.asks",
+			"status": "fixed",
+			"note": "最多到 is replaced by 最长为 for the length limit.",
+			"keys": [
+				"ui.chat.asks.answer_field.max_chars"
+			],
+			"applied": {
+				"ui.chat.asks.answer_field.max_chars": "回答最长为{count}个字符；超出部分不会保留。"
+			}
+		},
+		{
+			"id": "Z13",
+			"prior_severity": "minor",
+			"namespace": "ui.chat.session_status",
+			"status": "fixed",
+			"note": "计费了token is replaced by 产生了token计费.",
+			"keys": [
+				"ui.chat.session_status.session_cost.this_session_billed_tokens_on_a_model_with_no_published"
+			],
+			"applied": {
+				"ui.chat.session_status.session_cost.this_session_billed_tokens_on_a_model_with_no_published": "此会话在一个未公开价格的模型上产生了token计费，因此无法计算花费。"
+			}
+		},
+		{
+			"id": "Z14",
+			"prior_severity": "minor",
+			"namespace": "ui.chat.run_details",
+			"status": "fixed",
+			"note": "The inverted comma clause is replaced by the heading 所属子智能体.",
+			"keys": [
+				"ui.chat.run_details.run_child_subagents.subagents_of"
+			],
+			"applied": {
+				"ui.chat.run_details.run_child_subagents.subagents_of": "所属子智能体"
+			}
+		},
+		{
+			"id": "Z15",
+			"prior_severity": "minor",
+			"namespace": "ui.chat.run_details",
+			"status": "fixed",
+			"note": "不再知道 is replaced by 无法识别.",
+			"keys": [
+				"ui.chat.run_details.job_controls_model.not_cancelled_the_provider_no_longer_knows_the_job"
+			],
+			"applied": {
+				"ui.chat.run_details.job_controls_model.not_cancelled_the_provider_no_longer_knows_the_job": "未取消——服务商已无法识别该任务"
+			}
+		},
+		{
+			"id": "Z16",
+			"prior_severity": "minor",
+			"namespace": "ui.chat.canonical",
+			"status": "fixed",
+			"note": "个 now has its noun: 个精确匹配.",
+			"keys": [
+				"ui.chat.canonical.thread_search.count_split"
+			],
+			"applied": {
+				"ui.chat.canonical.thread_search.count_split": "{exact, number, ::group-off}个精确匹配 · {soft, number, ::group-off}个相关"
+			}
+		},
+		{
+			"id": "Z17",
+			"prior_severity": "minor",
+			"namespace": "ui.chat.canonical",
+			"status": "fixed",
+			"note": "并 restores the conjunction: 正在进行并被中断.",
+			"keys": [
+				"ui.chat.canonical.transcript_reducer.retired_for_an_update_a_turn_was_in_flight_and"
+			],
+			"applied": {
+				"ui.chat.canonical.transcript_reducer.retired_for_an_update_a_turn_was_in_flight_and": "因更新而退役——有回合正在进行并被中断；其先前的输出已保留"
+			}
+		},
+		{
+			"id": "Z18",
+			"prior_severity": "minor",
+			"namespace": "ui.chat.canonical",
+			"status": "fixed",
+			"note": "All four peer values use 对端; the locale has 0 remaining 对等 and 7 total 对端, matching ui.mesh.",
+			"keys": [
+				"ui.chat.canonical.turn_segments.peer_message",
+				"ui.chat.canonical.turn_segments.peer_messages",
+				"ui.chat.trace.tool_row_model.listed_network_peers",
+				"ui.chat.trace.tool_row_model.listing_network_peers"
+			],
+			"applied": {
+				"ui.chat.canonical.turn_segments.peer_message": "对端消息",
+				"ui.chat.canonical.turn_segments.peer_messages": "对端消息",
+				"ui.chat.trace.tool_row_model.listed_network_peers": "已列出网络对端",
+				"ui.chat.trace.tool_row_model.listing_network_peers": "正在列出网络对端"
+			}
+		},
+		{
+			"id": "Z19",
+			"prior_severity": "minor",
+			"namespace": "ui.chat",
+			"status": "fixed",
+			"note": "用搜索 is replaced by 使用搜索.",
+			"keys": [
+				"ui.chat.chat_archived.this_window_cannot_tell_whether_that_conversation_is_archived_it"
+			],
+			"applied": {
+				"ui.chat.chat_archived.this_window_cannot_tell_whether_that_conversation_is_archived_it": "此窗口无法判断该对话是否已归档——它不在此处列出的对话中。使用搜索找到它，并通过其条目恢复。"
+			}
+		},
+		{
+			"id": "Z20",
+			"prior_severity": "nit",
+			"namespace": "ui.chat.credential_capture",
+			"status": "fixed",
+			"note": "All 9 strings use the Chinese double em dash ——; the 15 namespaces contain 0 spaced half-width em dashes.",
+			"keys": [
+				"ui.chat.credential_capture.armed_add_a_space_then_type_or_paste_the_secret",
+				"ui.chat.credential_capture.masked_as_you_type_enter_makes_a_pill_esc_twice",
+				"ui.chat.credential_capture.masked_enter_opens_the_credential_picker_type_or_paste_the",
+				"ui.chat.credential_capture.esc_again_discards_it_still_masked_enter_makes_a_pill",
+				"ui.chat.credential_capture.credential_discarded_nothing_was_stored_or_sent",
+				"ui.chat.credential_capture.masked_enter_runs_credential_which_needs_an_open_conversation_type",
+				"ui.chat.credential_capture.removed_receipt",
+				"ui.chat.credential_capture.held_label",
+				"ui.chat.credential_capture.plain_text_warning"
+			],
+			"applied": {
+				"ui.chat.credential_capture.armed_add_a_space_then_type_or_paste_the_secret": "已待命——加一个空格，然后输入或粘贴密钥",
+				"ui.chat.credential_capture.masked_as_you_type_enter_makes_a_pill_esc_twice": "输入时已遮蔽——Enter生成胶囊标签，连按两次Esc放弃",
+				"ui.chat.credential_capture.masked_enter_opens_the_credential_picker_type_or_paste_the": "已遮蔽——Enter打开凭据选择器；在此范围内输入或粘贴密钥",
+				"ui.chat.credential_capture.esc_again_discards_it_still_masked_enter_makes_a_pill": "再按Esc即放弃——仍保持遮蔽，Enter生成胶囊标签",
+				"ui.chat.credential_capture.credential_discarded_nothing_was_stored_or_sent": "凭据已放弃——未存储也未发送任何内容",
+				"ui.chat.credential_capture.masked_enter_runs_credential_which_needs_an_open_conversation_type": "已遮蔽——Enter执行/credential，此命令需要已打开的对话；在此范围内输入或粘贴密钥",
+				"ui.chat.credential_capture.removed_receipt": "已从此消息中移除{key}（凭据 #{index, number}）。其值已消失——按{undoCap}可恢复，或在/credential之后再次粘贴以复用。",
+				"ui.chat.credential_capture.held_label": "凭据 #{index, number}，{chars, number}个字符——保留在此消息中；其值无法读取",
+				"ui.chat.credential_capture.plain_text_warning": "{length, number}个字符现在在输入框中是纯文本——按Enter会将其暴露"
+			}
+		},
+		{
+			"id": "Z21",
+			"prior_severity": "nit",
+			"namespace": "batch",
+			"status": "fixed",
+			"note": "All 21 listed keys were changed; the 15 namespaces contain 0 placeholder/digit + space + classifier sequences. thread_search.count_split is also clean.",
+			"keys": [
+				"ui.chat.credential_chip.chars_chars",
+				"ui.chat.mark_all_read.count_live_on_other_devices_and_clear",
+				"ui.chat.chat_session_subagents.wholevalue_queued",
+				"ui.chat.message_grouping.today_value",
+				"ui.chat.message_grouping.yesterday_value",
+				"ui.chat.asks.ask_panel.dropped_questions_timed_out_your_answers_were_not_sent",
+				"ui.chat.asks.ask_panel.length_questions_timed_out",
+				"ui.chat.asks.queue.rail_count",
+				"ui.chat.canonical.canonical_transcript.1_action",
+				"ui.chat.canonical.fold_media.1_image_from_this_run",
+				"ui.chat.canonical.supplement_image_grid.1_image_from_this_run",
+				"ui.chat.canonical.image_group_lightbox.count_images",
+				"ui.chat.canonical.canonical_transcript.actions_actions",
+				"ui.chat.canonical.image_gen_card.length_items",
+				"ui.chat.credential_capture.held_label",
+				"ui.chat.credential_capture.plain_text_warning",
+				"ui.chat.run_details.run_detail_mcp.toolcount_tools",
+				"ui.chat.run_details.run_detail_model.opentodos_to_dos_open",
+				"ui.chat.run_details.run_detail_todos.hidden_hidden",
+				"ui.chat.session_status.quota_notice.requested_recently_try_again_in_about_2_minutes",
+				"ui.chat.trace.trace_labels.length_files"
+			],
+			"key_count": 21,
+			"key_set_sha256": "c7d5f435d9c3ce3fe54d0945911897bf768bc2d73783a896eda470cc2065fc1e",
+			"examples": {
+				"ui.chat.canonical.canonical_transcript.1_action": "1个操作",
+				"ui.chat.message_grouping.today_value": "今天{value}",
+				"ui.chat.trace.trace_labels.length_files": "{length, number, ::group-off}个文件"
+			}
+		},
+		{
+			"id": "Z22",
+			"prior_severity": "nit",
+			"namespace": "ui.chat.canonical",
+			"status": "fixed",
+			"note": "段 is replaced by 分段, matching the other turn_segments strings.",
+			"keys": [
+				"ui.chat.canonical.turn_segments.segment_s_is_empty"
+			],
+			"applied": {
+				"ui.chat.canonical.turn_segments.segment_s_is_empty": "分段{s, number, ::group-off}为空"
+			}
+		}
+	],
+	"namespaces": {
+		"ui.chat": {
+			"namespace": "ui.chat",
+			"status": "clean",
+			"file_keys": 532,
+			"delta_keys_read": 43,
+			"delta_keys": 43,
+			"delta_key_list": [
+				"ui.chat.archive_confirm.undo_explanation",
+				"ui.chat.attachment_read.this_draft_carries_total_images_and_one",
+				"ui.chat.attachment_read.this_draft_carries_total_images_and_one_721f14",
+				"ui.chat.attachment_read.value_could_not_be_read_it_may_have_been_moved",
+				"ui.chat.attachment_read.value_could_not_be_read_they_may_have_been_moved",
+				"ui.chat.chat_archived.this_backend_cannot_archive_conversations_update_the_backend_and_try",
+				"ui.chat.chat_archived.this_conversation_is_already_archived_use_unarchive_to_restore_it",
+				"ui.chat.chat_archived.this_window_cannot_tell_whether_that_conversation_is_archived_it",
+				"ui.chat.chat_page.an_aside_answers_text_only_remove_the_attached_files_to",
+				"ui.chat.chat_session_subagents.wholevalue_queued",
+				"ui.chat.composer.composer_status_row.judge_could_not_decide",
+				"ui.chat.composer.composer_status_row.stopped_after",
+				"ui.chat.credential_chip.chars_chars",
+				"ui.chat.delete_conversation.the_guard_above_is_the_daemons_own_and_nothing_in",
+				"ui.chat.delete_conversation.this_backend_cannot_delete_conversations_update_the_backend_and_try",
+				"ui.chat.draft_selection.nothing_was_changed_because_that_models_effort_levels_could_not",
+				"ui.chat.error_view.message_the_agents_history_is_safe_try_again_in_a",
+				"ui.chat.error_view.the_local_server_returned_an_error_the_agents_history_is",
+				"ui.chat.mark_all_read.count_live_on_other_devices_and_clear",
+				"ui.chat.message_budget.these_images_total_size_more_than_the",
+				"ui.chat.message_budget.this_command_is_size_more_than_the",
+				"ui.chat.message_budget.this_command_is_value_characters_more_than_the_value2_one",
+				"ui.chat.message_budget.this_first_message_is_size_more_than",
+				"ui.chat.message_budget.this_first_message_is_value_characters_more_than_the_value2",
+				"ui.chat.message_budget.this_message_is_size_of_text_more",
+				"ui.chat.message_budget.this_message_is_value_characters_more_than_the_value2_one",
+				"ui.chat.message_budget.this_system_prompt_is_size_more_than",
+				"ui.chat.message_budget.this_system_prompt_is_value_characters_more_than_the_value2",
+				"ui.chat.message_grouping.today_value",
+				"ui.chat.message_grouping.yesterday_value",
+				"ui.chat.move_session.this_backend_cannot_move_a_live_session_start_a_new",
+				"ui.chat.radient_session_issue.complete_the_sign_in_in_your_browser_the_connector_restarts",
+				"ui.chat.radient_session_issue.if_signing_in_does_not_clear_this_run_command_in",
+				"ui.chat.radient_session_issue.message_this_surface_cannot_take_the_pasted_code_so_finish",
+				"ui.chat.sidebar.chat_sidebar.stop_if_it_stays_silent",
+				"ui.chat.sidebar.sidebar_scope_paging.they_may_be_archived_search_with_include_archived",
+				"ui.chat.slash.contract.needs_an_open_conversation_start_one_first",
+				"ui.chat.slash.contract.needs_conversation_clause",
+				"ui.chat.slash.contract.secret_dialog_fields",
+				"ui.chat.slash.dispatch.choose_the_folder_in_the_working_directory_chip_above_or",
+				"ui.chat.slash.dispatch.the_backend_could_not_complete_this_request_check_its_connection",
+				"ui.chat.slash_commands.no_profiles_found",
+				"ui.chat.slash_commands.the_list_could_not_be_loaded_try_again"
+			],
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.chat.json",
+				"zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.json",
+				"context": "src/i18n/catalogues/en/ui.chat.context.json"
+			},
+			"sha256": {
+				"en": "dc5765d20ff846c61f3fe8953e69524393561bc2a39f89fa419958d4e4a67346",
+				"zh-CN": "b20cdf8b38e40d21f0fddb1b430d8b2ade3c6989bf6ae8f0bf93fcd48a610d11",
+				"context": "f95436a7c1e91f17b47a5f45059f58ef63749cedef54b02d10b29260477be426"
+			},
+			"verdict": "clean — 43 delta key(s) verified against the English source; full namespace structural/key-order parity clean; no regression.",
+			"findings": []
+		},
+		"ui.chat.aside": {
+			"namespace": "ui.chat.aside",
+			"status": "clean",
+			"file_keys": 35,
+			"delta_keys_read": 6,
+			"delta_keys": 6,
+			"delta_key_list": [
+				"ui.chat.aside.aside.the_aside_could_not_be_confirmed_in_the_conversation_if",
+				"ui.chat.aside.aside.the_aside_was_not_added_to_the_conversation_add_it",
+				"ui.chat.aside.aside.the_conversation_stopped_in_the_middle_of_a_tool_call",
+				"ui.chat.aside.aside.the_model_didnt_reply_in_text_ask_again",
+				"ui.chat.aside.aside.this_aside_cant_continue_press_esc_to_close_it_which",
+				"ui.chat.aside.aside.this_conversation_is_busy_and_the_version_its_running_cant"
+			],
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.chat.aside.json",
+				"zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.aside.json",
+				"context": "src/i18n/catalogues/en/ui.chat.aside.context.json"
+			},
+			"sha256": {
+				"en": "d8ce04c8e909a73f3050588b2b562b12db3840ae1f4231a66ef3eb5ac76ed1b6",
+				"zh-CN": "446553adc94b352aec17999ee2a556c1da688d8e410a9665948ad5e187eef4ba",
+				"context": "522fcbc0c965224e7d4fb8cb8200e7c68889c9ee73d073b09c6cb2af827b8431"
+			},
+			"verdict": "clean — 6 delta key(s) verified against the English source; full namespace structural/key-order parity clean; no regression.",
+			"findings": []
+		},
+		"ui.chat.asks": {
+			"namespace": "ui.chat.asks",
+			"status": "clean",
+			"file_keys": 101,
+			"delta_keys_read": 11,
+			"delta_keys": 11,
+			"delta_key_list": [
+				"ui.chat.asks.answer_field.max_chars",
+				"ui.chat.asks.ask_answer_field.files_and_images_cant_be_attached_to_an_answer_yet",
+				"ui.chat.asks.ask_panel.dropped_questions_timed_out_your_answers_were_not_sent",
+				"ui.chat.asks.ask_panel.length_questions_timed_out",
+				"ui.chat.asks.ask_panel.no_asks_are_pending_they_have_all_settled_see_settled",
+				"ui.chat.asks.fleet_ask_drawer.answer_sent_to",
+				"ui.chat.asks.queue.expired_this_ask_is_too_old_to_answer_ask_the",
+				"ui.chat.asks.queue.rail_count",
+				"ui.chat.asks.queue.receipt_declined",
+				"ui.chat.asks.queue.required_type_it_again_it_is_never_shown",
+				"ui.chat.asks.queue.this_ask_is_too_old_to_answer_ask_the_agent"
+			],
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.chat.asks.json",
+				"zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.asks.json",
+				"context": "src/i18n/catalogues/en/ui.chat.asks.context.json"
+			},
+			"sha256": {
+				"en": "f5017d10d314fc9e3e94eeff2d5067c559e97ba0c6ffcef4e8ed9d1c39cf67ab",
+				"zh-CN": "847c563da27d561b1a32b3a8122bf79b8f45752a4d596234dc35ae50d13a65b5",
+				"context": "0e1f544932e7c9c6c94bbb0d4e2066910d80e33060ad23bbbb57d5bb9c1b637c"
+			},
+			"verdict": "clean — 11 delta key(s) verified against the English source; full namespace structural/key-order parity clean; no regression.",
+			"findings": []
+		},
+		"ui.chat.at": {
+			"namespace": "ui.chat.at",
+			"status": "clean",
+			"file_keys": 11,
+			"delta_keys_read": 2,
+			"delta_keys": 2,
+			"delta_key_list": [
+				"ui.chat.at.contract.could_not_read_this_folder_check_that_it_exists_and",
+				"ui.chat.at.contract.this_backend_cannot_carry_file_references_update_the_backend_and"
+			],
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.chat.at.json",
+				"zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.at.json",
+				"context": "src/i18n/catalogues/en/ui.chat.at.context.json"
+			},
+			"sha256": {
+				"en": "685a75115b95770d8d74cc43c2f250c53bed311c0d117cf51849f72041533694",
+				"zh-CN": "ef76ee7b1bbe35d4c19b347d7edafe642bfd764d2a01a6ca873ace2e46d8c1a9",
+				"context": "da529439f1aa5970aff5b833b40900524c2cfd465abe96296e3b9cecf5ec555e"
+			},
+			"verdict": "clean — 2 delta key(s) verified against the English source; full namespace structural/key-order parity clean; no regression.",
+			"findings": []
+		},
+		"ui.chat.canonical": {
+			"namespace": "ui.chat.canonical",
+			"status": "clean",
+			"file_keys": 297,
+			"delta_keys_read": 18,
+			"delta_keys": 18,
+			"delta_key_list": [
+				"ui.chat.canonical.canonical_transcript.1_action",
+				"ui.chat.canonical.canonical_transcript.actions_actions",
+				"ui.chat.canonical.canonical_transcript.could_not_reach_that_turn_it_is_further_back_than",
+				"ui.chat.canonical.fold_media.1_image_from_this_run",
+				"ui.chat.canonical.image_gen_card.length_items",
+				"ui.chat.canonical.image_gen_card_model.audio_generation_is_busy_right_now_wait_a_moment_and",
+				"ui.chat.canonical.image_group_lightbox.count_images",
+				"ui.chat.canonical.sound.stop.warning",
+				"ui.chat.canonical.supplement.preview_unavailable",
+				"ui.chat.canonical.supplement_image_grid.1_image_from_this_run",
+				"ui.chat.canonical.thread_search.count_split",
+				"ui.chat.canonical.thread_search.jump_miss",
+				"ui.chat.canonical.transcript_reducer.retired_for_an_update_a_turn_was_in_flight_and",
+				"ui.chat.canonical.transcript_reducer.retrying",
+				"ui.chat.canonical.turn_segments.peer_message",
+				"ui.chat.canonical.turn_segments.peer_messages",
+				"ui.chat.canonical.turn_segments.segment_s_is_empty",
+				"ui.chat.canonical.use_session_files.files_are_changing_quickly_retry_after_the_current_turn_finishes"
+			],
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+				"zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+				"context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+			},
+			"sha256": {
+				"en": "522e7fced024ec756b4b93b21952c4abfb232278a3ca32bba67b45978749eb6d",
+				"zh-CN": "966283b599bf085fa9f6c1bed9eb1c42476c7f2036064ac11a26bcf3fc68814c",
+				"context": "af353a188112ef28df7dfda8c7139fa5bd33506a40b112392e1e40fbe32116f2"
+			},
+			"verdict": "clean — 18 delta key(s) verified against the English source; full namespace structural/key-order parity clean; no regression.",
+			"findings": []
+		},
+		"ui.chat.canvas_preview": {
+			"namespace": "ui.chat.canvas_preview",
+			"status": "clean",
+			"file_keys": 2,
+			"delta_keys_read": 2,
+			"delta_keys": 2,
+			"delta_key_list": [
+				"ui.chat.canvas_preview.html_title",
+				"ui.chat.canvas_preview.pdf_title"
+			],
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.chat.canvas_preview.json",
+				"zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.canvas_preview.json",
+				"context": "src/i18n/catalogues/en/ui.chat.canvas_preview.context.json"
+			},
+			"sha256": {
+				"en": "4a29d028e7727502fbefd86b995750910ca3760879769ffa1fc537e5893920a9",
+				"zh-CN": "1b9a4f5fcedda6004be00025f867980a2767cb288730efd519c1165df3712798",
+				"context": "5f336900e740bf4ebc7819837676fc2eeffe6deb69b8181ebc440e962d580a06"
+			},
+			"verdict": "clean — namespace added with both English keys; values match the round-1 proposal exactly; imported and bundled; key order matches English.",
+			"findings": []
+		},
+		"ui.chat.credential_capture": {
+			"namespace": "ui.chat.credential_capture",
+			"status": "clean",
+			"file_keys": 18,
+			"delta_keys_read": 10,
+			"delta_keys": 10,
+			"delta_key_list": [
+				"ui.chat.credential_capture.armed_add_a_space_then_type_or_paste_the_secret",
+				"ui.chat.credential_capture.credential_discarded_nothing_was_stored_or_sent",
+				"ui.chat.credential_capture.esc_again_discards_it_still_masked_enter_makes_a_pill",
+				"ui.chat.credential_capture.held_label",
+				"ui.chat.credential_capture.masked_as_you_type_enter_makes_a_pill_esc_twice",
+				"ui.chat.credential_capture.masked_enter_opens_the_credential_picker_type_or_paste_the",
+				"ui.chat.credential_capture.masked_enter_runs_credential_which_needs_an_open_conversation_type",
+				"ui.chat.credential_capture.plain_text_warning",
+				"ui.chat.credential_capture.removed_receipt",
+				"ui.chat.credential_capture.unstored_receipt"
+			],
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.chat.credential_capture.json",
+				"zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.credential_capture.json",
+				"context": "src/i18n/catalogues/en/ui.chat.credential_capture.context.json"
+			},
+			"sha256": {
+				"en": "1776a41f5dfa3335b5e390e85870cb55756e25c6a2439cd3f42ea4c864515bdd",
+				"zh-CN": "123bac2d2fc9758e9b4a45f47faa974d18803c3db808c5e983fdde8d027524fc",
+				"context": "bf6e3bb8cd70e39cba3aad66b0d92aa38ebad880ac49405fb1affd032f6f3b1f"
+			},
+			"verdict": "clean — 10 delta key(s) verified against the English source; full namespace structural/key-order parity clean; no regression.",
+			"findings": []
+		},
+		"ui.chat.directory": {
+			"namespace": "ui.chat.directory",
+			"status": "clean",
+			"file_keys": 42,
+			"delta_keys_read": 0,
+			"delta_keys": 0,
+			"delta_key_list": [],
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.chat.directory.json",
+				"zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.directory.json",
+				"context": "src/i18n/catalogues/en/ui.chat.directory.context.json"
+			},
+			"sha256": {
+				"en": "57540488fb400a9a4ac1040c7d7f91f19f25ab313ec87a50ef527da442d3ec6b",
+				"zh-CN": "6f47fe55691e1868db2e3fb3d3d075dba0cc2a3b9b89d4fb4797cbb73ef4f9b8",
+				"context": "4bfdbc219bccc88fbdcaf3c62897b168d5604d5acbbb5f70f040c95c941c2daa"
+			},
+			"verdict": "clean — byte-identical to the round-1 audited file (zh sha256 match); full namespace structural/key-order scan clean; no delta keys.",
+			"findings": []
+		},
+		"ui.chat.header": {
+			"namespace": "ui.chat.header",
+			"status": "clean",
+			"file_keys": 72,
+			"delta_keys_read": 5,
+			"delta_keys": 5,
+			"delta_key_list": [
+				"ui.chat.header.chat_header_identity_menu_model.needs_a_delegating_profile_here",
+				"ui.chat.header.chat_header_identity_menu_model.no_profile_can_take_the_seat_switch_the_team",
+				"ui.chat.header.chat_header_identity_menu_model.no_profile_here_can_take_the_seat_clear_the_search",
+				"ui.chat.header.chat_header_identity_menu_model.team_team_owns_this_session_value_is_the_speaker_so",
+				"ui.chat.header.chat_header_identity_menu_model.teamlabel_is_led_by_its_manager_only_the_manager_and"
+			],
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.chat.header.json",
+				"zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.header.json",
+				"context": "src/i18n/catalogues/en/ui.chat.header.context.json"
+			},
+			"sha256": {
+				"en": "ff03f6ca7b3206e77fc260116d2b540cc9f211ea37436863b874770e917158d8",
+				"zh-CN": "36667fd80eb399788fa8a2e3fd36edcfa551076e8de5ea70db7e8b7cbebe2f5a",
+				"context": "0d601a99861fc8b23207f117b90b697ba88ddd4f6419a68021f34c177158ea2e"
+			},
+			"verdict": "clean — 5 delta key(s) verified against the English source; full namespace structural/key-order parity clean; no regression.",
+			"findings": []
+		},
+		"ui.chat.message": {
+			"namespace": "ui.chat.message",
+			"status": "clean",
+			"file_keys": 55,
+			"delta_keys_read": 4,
+			"delta_keys": 4,
+			"delta_key_list": [
+				"ui.chat.message.error_block.hosting",
+				"ui.chat.message.error_block.invalid_key",
+				"ui.chat.message.error_block.model",
+				"ui.chat.message.error_block.model_unavailable"
+			],
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.chat.message.json",
+				"zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.message.json",
+				"context": "src/i18n/catalogues/en/ui.chat.message.context.json"
+			},
+			"sha256": {
+				"en": "95d7b60b2cb1bdc37648cfa896856ce53724e300ed4a6b0448d7562aad452a5a",
+				"zh-CN": "ee44f13e2e567aa50ee15835205ff9b199f657e65f71f1a5fb8c59cda0d659c2",
+				"context": "0278baa63867980cd08d18e47e282af12a6330b7c6a785f0157e7a01cceb4230"
+			},
+			"verdict": "clean — 4 delta key(s) verified against the English source; full namespace structural/key-order parity clean; no regression.",
+			"findings": []
+		},
+		"ui.chat.options": {
+			"namespace": "ui.chat.options",
+			"status": "clean",
+			"file_keys": 33,
+			"delta_keys_read": 0,
+			"delta_keys": 0,
+			"delta_key_list": [],
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.chat.options.json",
+				"zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.options.json",
+				"context": "src/i18n/catalogues/en/ui.chat.options.context.json"
+			},
+			"sha256": {
+				"en": "fdfb1ceae54aa5270dd76b67748f56fa14e5d3f47d7770dad8eba755995a5a79",
+				"zh-CN": "010048b7b769cf730f054261610e85753fcf6501154fefa497aaf11f934add8e",
+				"context": "4609f41205d7d0b14dd07e98a629b9fb40f74f870106e78b30a3b210eb7f13db"
+			},
+			"verdict": "clean — byte-identical to the round-1 audited file (zh sha256 match); full namespace structural/key-order scan clean; no delta keys.",
+			"findings": []
+		},
+		"ui.chat.run_details": {
+			"namespace": "ui.chat.run_details",
+			"status": "clean",
+			"file_keys": 154,
+			"delta_keys_read": 16,
+			"delta_keys": 16,
+			"delta_key_list": [
+				"ui.chat.run_details.job_controls_model.not_cancelled_the_provider_no_longer_knows_the_job",
+				"ui.chat.run_details.mcp_auth_dialog.could_not_determine_this_servers_sign_in_method_check_its",
+				"ui.chat.run_details.mcp_auth_dialog.this_server_does_not_use_oauth_and_declares_no_secret",
+				"ui.chat.run_details.mcp_auth_dialog.update_the_backend_for_secure_mcp_key_entry_oauth_and",
+				"ui.chat.run_details.mcp_failure.lead_a_sign_in_is_already_running_for_this_conversation",
+				"ui.chat.run_details.run_child_subagents.subagents_of",
+				"ui.chat.run_details.run_detail_mcp.this_server_refused_the_sign_in_check_its_configuration",
+				"ui.chat.run_details.run_detail_mcp.toolcount_tools",
+				"ui.chat.run_details.run_detail_model.opentodos_to_dos_open",
+				"ui.chat.run_details.run_detail_todos.hidden_hidden",
+				"ui.chat.run_details.run_panel.opening_a_subagents_conversation_needs_a_newer_local_operator_backend",
+				"ui.chat.run_details.run_panel.the_backend_update_could_not_start_retry_or_update_from",
+				"ui.chat.run_details.use_mcp_remedy.confirm_replacement_of_the_existing_shared_keys_before_saving",
+				"ui.chat.run_details.use_mcp_remedy.not_saved_value_unlock_or_repair_the_encrypted_store_then",
+				"ui.chat.run_details.use_mcp_remedy.the_keys_were_saved_but_this_server_is_not_connected",
+				"ui.chat.run_details.wake_controls_model.this_wake_is_name_s_own_schedule_so_it_cant"
+			],
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.chat.run_details.json",
+				"zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.run_details.json",
+				"context": "src/i18n/catalogues/en/ui.chat.run_details.context.json"
+			},
+			"sha256": {
+				"en": "daf3ddc7d9c0904642876bf3db0746b6c0c68c5fe3b87a1a6730b07f67c90c2f",
+				"zh-CN": "84cbc53fc983154133fef6b7754375fb96565529e851f8f37d8664bf9c4e6016",
+				"context": "dcb2cf6f636814a1866186e8864fd6817033fa8de027049b365f362c53b5d384"
+			},
+			"verdict": "clean — 16 delta key(s) verified against the English source; full namespace structural/key-order parity clean; no regression.",
+			"findings": []
+		},
+		"ui.chat.session_status": {
+			"namespace": "ui.chat.session_status",
+			"status": "clean",
+			"file_keys": 162,
+			"delta_keys_read": 16,
+			"delta_keys": 16,
+			"delta_key_list": [
+				"ui.chat.session_status.chat_device_model.start_the_conversation_on",
+				"ui.chat.session_status.chat_device_model.the_conversation_is_not_here_to_move_recall_it_here",
+				"ui.chat.session_status.quota_notice.could_not_check_try_again",
+				"ui.chat.session_status.quota_notice.could_not_send_try_again",
+				"ui.chat.session_status.quota_notice.requested_recently_try_again_in_about_2_minutes",
+				"ui.chat.session_status.quota_notice.sent_check_your_inbox_and_spam_folder",
+				"ui.chat.session_status.session_cost.this_session_billed_tokens_on_a_model_with_no_published",
+				"ui.chat.session_status.session_model.the_device_running_this_session_has_no_effective_provider_access",
+				"ui.chat.session_status.session_model.the_owner_cannot_currently_provide_borrowed_access_or_borrowing_permission",
+				"ui.chat.session_status.session_model.the_serving_device_has_no_effective_provider_access_for_this",
+				"ui.chat.session_status.session_model.this_login_cannot_be_borrowed_sign_in_on_the_device",
+				"ui.chat.session_status.session_model.this_session_could_not_resolve_label_access_from_owner_previous",
+				"ui.chat.session_status.session_model.your_saved_sign_in_is_still_present_try_again_later",
+				"ui.chat.session_status.session_status_strip.model_none_resolved_yet_choose_the_model_this_conversation_will",
+				"ui.chat.session_status.session_status_strip.model_this_conversations_model_was_not_resolved_retry",
+				"ui.chat.session_status.session_status_strip.set_once_the_conversation_starts"
+			],
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.chat.session_status.json",
+				"zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.session_status.json",
+				"context": "src/i18n/catalogues/en/ui.chat.session_status.context.json"
+			},
+			"sha256": {
+				"en": "05a6e2dd52cd41fb90dbb6756bb8a8f51c5d22e3769edb3fd6228a0d9a059198",
+				"zh-CN": "26fc2e16a7e2b7317175d13eafa1e622a64a2eadbc180238d9204ec790fe5212",
+				"context": "91544a1523e2ccd3a50041e3530ded39255a614f571c50264991ed8e92ca90e7"
+			},
+			"verdict": "clean — 16 delta key(s) verified against the English source; full namespace structural/key-order parity clean; no regression.",
+			"findings": []
+		},
+		"ui.chat.skill": {
+			"namespace": "ui.chat.skill",
+			"status": "clean",
+			"file_keys": 7,
+			"delta_keys_read": 2,
+			"delta_keys": 2,
+			"delta_key_list": [
+				"ui.chat.skill.contract.no_skills_found_see_skills",
+				"ui.chat.skill.contract.this_backend_cannot_serve_the_skill_catalogue_update_the_backend"
+			],
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.chat.skill.json",
+				"zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.skill.json",
+				"context": "src/i18n/catalogues/en/ui.chat.skill.context.json"
+			},
+			"sha256": {
+				"en": "919b6643e792d02ed270911df96d96da277bba5b5b91a2d04fac6cf044acfc10",
+				"zh-CN": "e942e5392fbb1abea9e712af67ec875d7ce45c1e2bea157908d9d6453d0052c1",
+				"context": "012b41d3b048ae9575012522051687b87e3b3a8189dab9121985052ea04f965d"
+			},
+			"verdict": "clean — 2 delta key(s) verified against the English source; full namespace structural/key-order parity clean; no regression.",
+			"findings": []
+		},
+		"ui.chat.trace": {
+			"namespace": "ui.chat.trace",
+			"status": "clean",
+			"file_keys": 274,
+			"delta_keys_read": 10,
+			"delta_keys": 10,
+			"delta_key_list": [
+				"ui.chat.trace.question_dock.choose_approve_or_deny_above_type_yes_no_1_or",
+				"ui.chat.trace.receipt_row_model.cancel_with_wake",
+				"ui.chat.trace.tool_row_model.delivered_to_their_mailbox_the_wake_got_no_answer_so",
+				"ui.chat.trace.tool_row_model.delivery_unconfirmed_it_may_still_arrive_so_check_before_resending",
+				"ui.chat.trace.tool_row_model.listed_network_peers",
+				"ui.chat.trace.tool_row_model.listing_network_peers",
+				"ui.chat.trace.tool_row_model.no_wake_answer_and_not_yet_in_their_transcript_it",
+				"ui.chat.trace.tool_row_model.not_confirmed_there_was_no_answer_and_the_message_is",
+				"ui.chat.trace.tool_row_model.nothing_was_delivered_fix_the_cause_named_below_or_retry",
+				"ui.chat.trace.trace_labels.length_files"
+			],
+			"paths": {
+				"en": "src/i18n/catalogues/en/ui.chat.trace.json",
+				"zh-CN": "src/i18n/catalogues/zh-CN/ui.chat.trace.json",
+				"context": "src/i18n/catalogues/en/ui.chat.trace.context.json"
+			},
+			"sha256": {
+				"en": "52a0fa5ed78ec2f3bbedf5b67f7abf3cc8d72c7a66ff4383d182358e242fb848",
+				"zh-CN": "78f28a0ea253396e6e31f2ce091917f9af09e3d003c5d756c9d499eca44b8de3",
+				"context": "b54b6acb4399743d207d8a793080555f1cab291761de90cf3e6e9f3ce9c70016"
+			},
+			"verdict": "clean — 10 delta key(s) verified against the English source; full namespace structural/key-order parity clean; no regression.",
+			"findings": []
+		}
+	},
+	"counts": {
+		"namespaces": 15,
+		"values_in_namespaces": 1795,
+		"values_parsed": 1795,
+		"keys_read_semantically": 145,
+		"changed_keys": 145,
+		"modified_keys": 143,
+		"added_keys": 2,
+		"removed_keys": 0,
+		"unchanged_keys_byte_identical_to_round1_head": 1650,
+		"prior_findings": 22,
+		"prior_major": 4,
+		"prior_minor": 15,
+		"prior_nit": 3,
+		"fixed": 22,
+		"new_findings": 0,
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"observations": [
+		"All four majors are fixed in the bytes: canvas_preview exists with both keys; retrying has no number skeleton; the two wire sentinels are byte-identical English; the 94 invented 请 are gone with an exact set match.",
+		"All 18 minors/nits are also fixed as proposed: 芯片→标签, profile→配置档案 (5), the seven calque/phrasing fixes (Z7-Z13), 所属子智能体 (Z14), 无法识别 (Z15), 个精确匹配 (Z16), 并被中断 (Z17), peer→对端 (4), 使用搜索 (Z19), the nine em dashes (Z20), the 21 spacing keys (Z21) and 段→分段 (Z22).",
+		"Pre-existing, not introduced by the remediation: two untouched plural nodes (ui.chat.sidebar.chat_sidebar.builtin_offer and ui.chat.canonical.thread_search.truncated) carry an exact =1 arm where the English uses one; they render count=1 correctly and were not touched. The preserved 请 in ui.chat.highlights.file_resolution_failed also predates the batch and is outside Z4's 94 new keys.",
+		"The remediation message says the locale-parity English-stub test lists 67 identical values; the test at d331f46ecc lists 68. Verified counts: 66 at 44fb2e1699 and 976ac6896a, 68 at d331f46ecc; the delta is exactly the two deliberate sentinels. This is a claim correction, not a translation defect.",
+		"The ledger-check failure is the expected post-remediation state: the new canvas_preview namespace is the +1 finding, and the zh-CN chat entries' target hashes are stale because the remediation changed them. The receipt is the input the ledger binds; the programme owner must update the ledger after this audit."
+	],
+	"gates": {
+		"generate_check": "pass",
+		"check_strings": "pass",
+		"context_parity": "pass",
+		"ledger_check": "fail-repo-wide (75 findings; disclosed 74 at base; new namespace + stale zh chat target hashes await ledger binding)",
+		"locale_parity_zh": "key/placeholder/coverage pass; English-stub test red with 68 identical values (66 legitimate tokens + 2 deliberate sentinels)",
+		"note": "Neither red gate is a translation defect in the delta; both need programme action outside the auditor's no-edit scope (ledger binding; IDENTICAL_OK entry or the pending source fix for the two sentinels)."
+	},
+	"limitations": [
+		"No native-speaker sign-off and no rendered UI frame pass are claimed; this is a text/ICU audit against the committed bytes, with one ICU render check for Z2.",
+		"1,650 values unchanged from the round-1 audited head were verified by byte identity and mechanical parity, not re-read semantically; the semantic read covers the 145 changed values.",
+		"The two wire sentinels remain a code/copy seam until the preferred source fix stops routing them through t(); the byte-identical fallback is the finding's accepted alternative."
+	],
+	"totals": {
+		"namespaces": 15,
+		"keys_read_semantically": 145,
+		"values_parsed": 1795,
+		"prior_findings_reaudited": 22,
+		"fixed": 22,
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 0
+	},
+	"status": "passed",
+	"result": "clean",
+	"verdict": "passed — 0 blocker, 0 major, 0 minor, 0 nit; 22/22 prior findings fixed; 145 touched keys (143 modified + 2 added) read and structurally clean; 15/15 namespaces key-set/order clean; 1,795 values re-scanned; no regression. Two programme gates remain red outside the delta (ledger binding; locale-parity English-stub allowlist for the 2 deliberate sentinels)."
+}
