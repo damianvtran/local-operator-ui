@@ -1041,7 +1041,7 @@ const IDENTICAL_OK = new Map([
 	],
 	[
 		"ui.chat.pickers.session_panel.ok",
-		"French interjection: « ok » is used unchanged",
+		"status token / interjection: « ok » is conventional in French and Vietnamese",
 	],
 	[
 		"ui.chat.pickers.session_panel.phase",
