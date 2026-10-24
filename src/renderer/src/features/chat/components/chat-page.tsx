@@ -134,6 +134,7 @@ import { ChatDeviceSlot } from "../device/chat-device-slot";
 import {
 	type DraftResolution,
 	type DraftSelectionTarget,
+	FAST_UNAVAILABLE_CODE,
 	FAST_UNAVAILABLE_SENTENCE,
 	draftPreviewQuery,
 } from "../draft-selection";
@@ -1497,8 +1498,16 @@ function SessionPanel({
 		desktopFeatureState(capabilities.data, "draft_fast") === "below-version";
 	useEffect(() => {
 		if (!draftFastDropped) return;
+		/*
+		 * ITS OWN CODE, not the lock answer's shape (QA round 2, Q1). `muted` alone
+		 * is what the retirement effect reads, and a notice in that register naming
+		 * no code is how it identifies the lock answer - so this line used to be
+		 * cleared on the next commit by `lockAnswerOutlived`, which found nothing
+		 * pending on a restored draft and retired a statement of fact as if it were
+		 * a claim about a flight.
+		 */
 		setSendError(FAST_UNAVAILABLE_SENTENCE);
-		setSendErrorCode(undefined);
+		setSendErrorCode(FAST_UNAVAILABLE_CODE);
 		setSendErrorRetry(false);
 		setSendErrorMuted(true);
 	}, [draftFastDropped]);
@@ -4126,6 +4135,7 @@ function SessionPanel({
 				admitting,
 				gatePending: canonical.frontend?.pending_gate != null,
 				muted: sendErrorMuted,
+				code: sendErrorCode,
 			})
 		)
 			return;
@@ -4138,6 +4148,7 @@ function SessionPanel({
 		admitting,
 		canonical.frontend?.pending_gate,
 		sendErrorMuted,
+		sendErrorCode,
 	]);
 	/*
 	 * MEMOISED FOR THE COMPOSER'S MEMO BOUNDARY (C1), with the registry read kept

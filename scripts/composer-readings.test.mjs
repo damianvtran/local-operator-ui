@@ -608,6 +608,22 @@ test("a dial this backend cannot carry is SAID on this composer, not only filter
 		/setSendError\(FAST_UNAVAILABLE_SENTENCE\);[\s\S]{0,160}setSendErrorMuted\(true\);/,
 		"the sentence is said on the composer's muted line, the register for a statement of fact",
 	);
+	/*
+	 * AND IT NAMES ITSELF (QA round 2, Q1). Without a code it is byte-identical to
+	 * the lock answer's shape, and the flight rule cleared it on the next commit -
+	 * the line reached no screen in three QA runs. Both ends of that identity are
+	 * pinned: the pane states the code, and the retirement is TOLD the code.
+	 */
+	assert.match(
+		page,
+		/setSendError\(FAST_UNAVAILABLE_SENTENCE\);[\s\S]{0,160}setSendErrorCode\(FAST_UNAVAILABLE_CODE\);/,
+		"the fast-unavailable line carries its own code, not the lock answer's silence",
+	);
+	assert.match(
+		page,
+		/muted: sendErrorMuted,\s*code: sendErrorCode,/,
+		"the retirement is told which notice it is looking at, so it retires the lock answer only",
+	);
 });
 
 test("a session with no snapshot is still silent, not pending", () => {
