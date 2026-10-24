@@ -360,6 +360,29 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	const approvalsOpen = nativeApprovalsCard?.available
 		? Boolean(nativeApprovalsCard.open)
 		: dockOpen;
+	/**
+	 * THE APPROVALS ROUTE, ONCE. The shield and the page menu's Approvals item
+	 * both come here: when the native card exists they toggle IT (the route the
+	 * dock used to serve); otherwise they toggle the DOM dock, which is also the
+	 * kill-switch and child-failure fallback. Return `false` when the dock was
+	 * not opened, so the menu does not try to focus a dock that is not mounted.
+	 */
+	const openApprovalsRoute = (): boolean => {
+		if (nativeApprovalsCard?.available) {
+			if (nativeApprovalsCard.open) {
+				void window.api?.browser.closeApprovalsCard();
+			} else {
+				const nextLocale = currentLocale();
+				void window.api?.browser.openApprovalsCard({
+					locale: nextLocale,
+					dir: resolveLanguage(nextLocale).dir,
+				});
+			}
+			return false;
+		}
+		setDockOpen((open) => !open);
+		return true;
+	};
 	/*
 	 * THE CARD'S LOCALE FOLLOWS THE APP, INCLUDING WHEN IT AUTO-PRESENTS (U5).
 	 * The renderer is the only side that resolves the locale, so it pushes the
@@ -1057,28 +1080,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 											}
 											size="icon-sm"
 											className={approvalsOpen ? "bg-row-selected" : undefined}
-											onClick={() => {
-												/*
-												 * S6b: when the host built the native card, the shield
-												 * opens THAT surface (focused) instead of the DOM dock;
-												 * the dock is the fallback for a launch without it.
-												 * The locale/direction are resolved in the renderer
-												 * because main has no catalogue (UX U2).
-												 */
-												if (nativeApprovalsCard?.available) {
-													if (nativeApprovalsCard.open) {
-														void window.api?.browser.closeApprovalsCard();
-													} else {
-														const locale = currentLocale();
-														void window.api?.browser.openApprovalsCard({
-															locale,
-															dir: resolveLanguage(locale).dir,
-														});
-													}
-													return;
-												}
-												setDockOpen((open) => !open);
-											}}
+											onClick={openApprovalsRoute}
 											aria-expanded={approvalsOpen}
 											aria-label={
 												queue.count > 0
@@ -1130,11 +1132,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 										void chrome.pageControl(state.activeTabId, "reset");
 								}}
 								onOpenDownloads={() => void chrome.revealDownloads()}
-								onOpenApprovals={() => {
-									const opening = !dockOpen;
-									setDockOpen(opening);
-									return opening;
-								}}
+								onOpenApprovals={openApprovalsRoute}
 								onDockOpened={() => setDockFocusRequest((n) => n + 1)}
 								triggerRef={pageMenuTriggerRef}
 								showApprovalsFolded={rowWidth > 0 && rowWidth < 300}
@@ -1406,28 +1404,32 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						/>
 					)}
 				</div>
-				<BrowserApprovalsDock
-					open={nativeApprovalsCard?.available ? false : dockOpen}
-					focusRequest={dockFocusRequest}
-					rows={queue.rows}
-					resolved={queue.resolved}
-					selectedEntryId={pendingSelected?.entryId ?? null}
-					onSelect={setSelectedEntryId}
-					busy={busy}
-					onDecide={decide}
-					approvals={state?.approvals ?? []}
-					currentOrigin={currentOrigin}
-					onRevoke={(origin) =>
-						void runBusy(() => chrome.revokeApproval(origin))
-					}
-					onRevokeAll={() => void runBusy(() => chrome.revokeAllApprovals())}
-					onForgetSite={(origin) =>
-						void runBusy(() => chrome.forgetSite(origin))
-					}
-					onClearData={(what) => void runBusy(() => chrome.clearData(what))}
-					onClose={closeDock}
-					surfaceTag={dockSurfaceTag}
-				/>
+				{/* The dock is the FALLBACK, not a hidden second surface: when the
+				    native card exists this component is not mounted at all. */}
+				{!nativeApprovalsCard?.available && (
+					<BrowserApprovalsDock
+						open={dockOpen}
+						focusRequest={dockFocusRequest}
+						rows={queue.rows}
+						resolved={queue.resolved}
+						selectedEntryId={pendingSelected?.entryId ?? null}
+						onSelect={setSelectedEntryId}
+						busy={busy}
+						onDecide={decide}
+						approvals={state?.approvals ?? []}
+						currentOrigin={currentOrigin}
+						onRevoke={(origin) =>
+							void runBusy(() => chrome.revokeApproval(origin))
+						}
+						onRevokeAll={() => void runBusy(() => chrome.revokeAllApprovals())}
+						onForgetSite={(origin) =>
+							void runBusy(() => chrome.forgetSite(origin))
+						}
+						onClearData={(what) => void runBusy(() => chrome.clearData(what))}
+						onClose={closeDock}
+						surfaceTag={dockSurfaceTag}
+					/>
+				)}
 			</div>
 			<BrowserHandOverDialog
 				open={handOverTab !== null}

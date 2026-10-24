@@ -1,15 +1,19 @@
 # Browser approvals card — S6b
 
-Status (2026-10-24): **S6b, interactive native child under the S6A opt-in.
-Round-2 remediation applied; the four-cell native probe passes apart from the
-measured I3 ring row. Not a shipped product surface until the independent
-rounds clear.**
+Status (2026-10-24): **S6c, product surface, default-on with one kill switch.**
+`LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_DISABLE=1` restores the DOM dock
+for that launch; absent/other values leave the card on. VoiceOver across the
+second document remains BLOCKED and is an owner-named limitation, not parity
+with the DOM picker. Native composite/transparency and 8 px ring hit routing
+remain BLOCKED; non-darwin paints the opaque-square fallback.
 
 The approvals card is one native `WebContentsView` over the live page, sized to
 the card and anchored to the content rect's **inline end**: bottom-right in LTR,
 bottom-left in RTL. It exists because the page is itself a native child painted
 above the app's DOM: a DOM popup cannot appear over it without moving or hiding
-the page.
+the page. **S6c makes it the Approvals route:** the shield and the page menu's
+Approvals item open the card, and the dock component is not mounted while the
+card is available (the dock is the kill-switch/child-failure fallback).
 
 ## Scope
 
