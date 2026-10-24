@@ -148,7 +148,7 @@ export const LibraryTrajectory: FC<LibraryTrajectoryProps> = ({
 			data-library-trajectory=""
 			data-collapsed={collapsed ? "" : undefined}
 			className={cn(
-				"flex min-h-0 flex-col bg-canvas",
+				"flex min-h-0 flex-col bg-sunken",
 				/*
 				 * BOUNDED, AND NEVER THE VIEWER'S AIR: 38% by default, capped at
 				 * 20rem so a wide window does not grow a second reading column,

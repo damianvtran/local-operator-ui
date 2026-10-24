@@ -870,8 +870,11 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 								</Button>
 							</div>
 						</div>
-						<div className="flex h-12 min-w-0 items-center gap-2">
-							<div className="relative min-w-60 flex-1">
+						<div
+							data-library-toolbar=""
+							className="flex h-12 min-w-0 items-center gap-2"
+						>
+							<div className="relative min-w-0 flex-1">
 								<Search
 									size={14}
 									aria-hidden="true"
@@ -895,7 +898,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 									<Button
 										variant="ghost"
 										size="sm"
-										className="bg-elevated text-ink"
+										className="shrink-0 bg-elevated text-ink"
 									>
 										<ArrowDownWideNarrow aria-hidden="true" />
 										{t("ui.library.page.sort")}
@@ -926,6 +929,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 							<Button
 								variant="ghost"
 								size="icon-sm"
+								className="shrink-0"
 								aria-label={t("ui.library.page.reverse_order")}
 								onClick={() =>
 									setFilters((current) => ({

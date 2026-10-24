@@ -1127,7 +1127,22 @@ test("the dock resizes by keyboard and pointer, persists, and clamps to the work
 		const composer = container.querySelector("[data-library-composer]");
 		assert.ok(composer?.className.includes("bg-sunken"));
 		assert.ok(composer?.className.includes("px-4"));
-		assert.ok(composer?.className.includes("py-3"));
+		assert.ok(composer?.className.includes("pt-3"));
+		assert.ok(composer?.className.includes("pb-1"));
+		const search = container.querySelector(
+			'input[placeholder="Search the Library"]',
+		);
+		assert.ok(search?.parentElement?.className.includes("min-w-0"));
+		const toolbar = container.querySelector("[data-library-toolbar]");
+		const sort = [...(toolbar?.querySelectorAll("button") ?? [])].find(
+			(button) => button.textContent === "Sort",
+		);
+		assert.ok(sort?.className.includes("shrink-0"));
+		assert.ok(
+			toolbar
+				?.querySelector('[aria-label="Reverse the order"]')
+				?.className.includes("shrink-0"),
+		);
 
 		await act(async () => {
 			separator.dispatchEvent(
@@ -1199,6 +1214,10 @@ test("the dock resizes by keyboard and pointer, persists, and clamps to the work
 		assert.equal(dock.style.width, "688px");
 		assert.equal(separator.getAttribute("aria-valuemax"), "688");
 		assert.equal(separator.getAttribute("aria-valuenow"), "688");
+		await resizeWorkspace(1152);
+		assert.equal(dock.style.width, "640px");
+		assert.equal(separator.getAttribute("aria-valuemax"), "640");
+		assert.equal(separator.getAttribute("aria-valuenow"), "640");
 		await resizeWorkspace(1380);
 		assert.equal(
 			dock.style.width,
