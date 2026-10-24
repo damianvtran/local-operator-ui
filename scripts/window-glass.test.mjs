@@ -37,6 +37,9 @@ const bundleOf = async (entry) => {
 	);
 };
 
+const BACKGROUND_COLOR_DECLARATION = /background-color:\s*([^;]+);/;
+const TRANSPARENT_BACKGROUND_DECLARATION = /background-color:\s*transparent/;
+
 const glass = await bundleOf("./src/shared/window-glass");
 const floorsFile = JSON.parse(
 	readFileSync(`${ROOT}/src/shared/window-glass-floors.json`, "utf8"),
@@ -1219,6 +1222,83 @@ test("G-11 every region, state and well the CSS names is a marker some component
 			`CSS names ${attribute} but no component carries it`,
 		);
 	}
+});
+
+test("G-11b nested panes clear instead of compounding raw, net, or split alpha", () => {
+	const css = readFileSync(`${ROOT}/src/renderer/src/styles/index.css`, "utf8");
+	const dom = new JSDOM(`<!doctype html><html data-glass="canvas pane"><body>
+		<div id="raw" data-glass-region="pane"><div id="raw-inner" data-glass-region="pane"></div></div>
+		<main data-glass-region="canvas-backing">
+			<div id="net" data-glass-region="pane"><div id="net-inner" data-glass-region="pane"></div></div>
+			<div id="split" data-glass-region="pane" data-glass-split><div id="split-inner" data-glass-region="pane"></div></div>
+		</main>
+	</body></html>`);
+	const { document } = dom.window;
+	const winningBackground = (source, element) => {
+		let winner;
+		for (const rule of cssRules(source)) {
+			/* Every pane paint is unlayered, so a layered utility cannot win
+			 * these mounts regardless of its position in the stylesheet. */
+			if (rule.layer !== null) continue;
+			const value = BACKGROUND_COLOR_DECLARATION.exec(rule.body)?.[1].trim();
+			if (!value) continue;
+			for (const selector of splitSelectorList(rule.selector)) {
+				if (!element.matches(selector)) continue;
+				const candidate = {
+					value,
+					order: rule.order,
+					specificity: specificityOf(selector),
+				};
+				if (!winner) {
+					winner = candidate;
+					continue;
+				}
+				const specific =
+					[0, 1, 2]
+						.map(
+							(index) =>
+								candidate.specificity[index] - winner.specificity[index],
+						)
+						.find((difference) => difference !== 0) ?? 0;
+				if (specific > 0 || (specific === 0 && candidate.order > winner.order))
+					winner = candidate;
+			}
+		}
+		return winner?.value ?? "none";
+	};
+	for (const outer of ["raw", "net", "split"]) {
+		const outerElement = document.getElementById(outer);
+		const innerElement = document.getElementById(`${outer}-inner`);
+		assert.notEqual(
+			winningBackground(css, outerElement),
+			"transparent",
+			`${outer}: the outer pane remains the alpha owner`,
+		);
+		assert.equal(
+			winningBackground(css, innerElement),
+			"transparent",
+			`${outer}: the nested pane cannot repaint a second alpha`,
+		);
+	}
+	/* Negative control: without the clear branches the same cascade must paint
+	 * the child. A test that only sees transparency could otherwise be vacuous. */
+	const withoutClears = cssRules(css)
+		.filter(
+			(rule) =>
+				!(
+					TRANSPARENT_BACKGROUND_DECLARATION.test(rule.body) &&
+					rule.selector.includes(
+						'[data-glass-region="pane"] [data-glass-region="pane"]',
+					)
+				),
+		)
+		.map((rule) => `${rule.selector}{${rule.body}}`)
+		.join("\n");
+	assert.notEqual(
+		winningBackground(withoutClears, document.getElementById("net-inner")),
+		"transparent",
+		"the net-pane paint wins when its clear is removed",
+	);
 });
 
 test("G-12 unset vs explicit: a default change never overturns a recorded choice", () => {

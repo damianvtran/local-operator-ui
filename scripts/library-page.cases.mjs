@@ -1118,6 +1118,14 @@ test("the dock resizes by keyboard and pointer, persists, and clamps to the work
 		assert.equal(separator?.getAttribute("aria-valuemax"), "720");
 		assert.ok(dock?.className.includes("panel-top-pad"));
 		assert.ok(dock?.className.includes("bg-surface"));
+		assert.equal(dock?.getAttribute("data-glass-region"), "pane");
+		assert.equal(
+			container
+				.querySelector("[data-library-preview]")
+				?.getAttribute("data-glass-region"),
+			"pane",
+			"the inner preview is nested inside the outer alpha owner",
+		);
 		assert.ok(
 			container
 				.querySelector("[data-library-preview]")
