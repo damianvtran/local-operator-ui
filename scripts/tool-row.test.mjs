@@ -1728,7 +1728,7 @@ test("the ledger row height is one number, not two that can drift", () => {
 	// to it: the app-wide disclosure default must still be the comfortable one.
 	assert.match(
 		source("src/renderer/src/shared/components/ui/disclosure.tsx"),
-		/const ROW = "flex min-h-6 w-full items-center gap-1\.5 py-0\.5 text-left"/,
+		/const ROW = "flex min-h-6 w-full items-center gap-1\.5 py-0\.5 text-start"/,
 		"the shared disclosure keeps its comfortable default",
 	);
 });
