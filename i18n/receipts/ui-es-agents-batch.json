@@ -133,7 +133,8 @@
     "typed_keys_and_format": "node --test scripts/i18n/typed-keys.test.mjs scripts/i18n/format.test.mjs -> 14/14 pass",
     "context_parity": "node --test scripts/i18n/context-parity.test.mjs -> 8/8 pass",
     "control_run": "the two failures in exclusive-feature-copy.test.mjs and shell-rail-copy.test.mjs (display headings, tooltip action) reproduce unchanged at 92d6e07625 in a clean detached worktree: pre-existing on the source branch, not caused by these catalogues",
-    "known_red_gates": "pnpm check-i18n cannot be green on this branch yet: the ledger gate reports each new es namespace as 'shipped without a ledger entry' and the es/ui.hub + es/ui.providers rows as stale against the moved English source; fr/hi/ru/ur/vi/zh-CN still miss the 7 keys the batch added to ui.hub and ui.providers. Both belong to the audit/batch stage, not to this translation."
+    "known_red_gates": "pnpm check-i18n cannot be green on this branch yet: the ledger gate reports each new es namespace as 'shipped without a ledger entry' and the es/ui.hub + es/ui.providers rows as stale against the moved English source; fr/hi/ru/ur/vi/zh-CN still miss the 7 keys the batch added to ui.hub and ui.providers. Both belong to the audit/batch stage, not to this translation.",
+    "render_execution": "translator-executed: every Spanish message in the 13 namespaces was formatted through the real IntlMessageFormat runtime at counts 1, 2 and 1000000 with synthetic arguments -> 3165 renders, no throw, no leftover brace, no empty output"
   },
   "neutral_identical": {
     "note": "Four values are byte-identical to English because the correct Spanish is the same string. scripts/i18n/locale-parity.test.mjs IDENTICAL_OK is a gate script this lane must not edit, so these need one exempt entry each (key + reason) before the es PR can be green; nothing else in es is identical to English.",
