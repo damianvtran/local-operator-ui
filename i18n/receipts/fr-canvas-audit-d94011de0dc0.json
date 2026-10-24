@@ -1,0 +1,724 @@
+{
+  "schema": 1,
+  "kind": "translation-audit",
+  "locale": "fr",
+  "batch": "canvas-and-picker batch",
+  "pr": 1388,
+  "audited_heads": {
+    "base": "40462495827dfb0e1bfacb8643da805912493a5b",
+    "canvas": "936e3a483b4d675c9827be5f40167da186f86900"
+  },
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev) — not a translator on either batch",
+    "instance": "d94011de0dc0",
+    "model": "radient/auto",
+    "model_note": "Session banner reports radient/auto; no provider fallback was reported or observed during this run. The translators disclosed kimi-k3.1-pro → radient/auto switches; that does not make this a different instance.",
+    "independence": "This session produced no catalogue, receipt, ledger, allowance or code change for either batch. Translator receipts: fr-canvas-pickers-20261024.json (session 0749478e57b2) and fr-surface-extraction-20261024.json / fr-surface-remediation-r1-20261024.json (session f707a5a88dbb). Prior audits were different sessions (canvas: 32d8c951fea8, 125915832871; surfaces: 37b58fd63a32, 0cf3c0ed2c7b)."
+  },
+  "guidance": {
+    "glossary": {
+      "path": "local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+      "label": "current checkout"
+    },
+    "style_guide": {
+      "path": "local-operator/i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39",
+      "label": "current checkout"
+    },
+    "contracts": [
+      "local-operator/docs/I18N.md",
+      "local-operator-ui/docs/I18N.md",
+      "local-operator-ui/AGENTS.md § Internationalization"
+    ]
+  },
+  "scope": "8 fr namespace file(s) at the composed head; every French value added or changed by the batch (1041 values) read against the English source and the English context sidecar; the full namespace key sets checked for coverage and orphan keys.",
+  "method": [
+    "Read all scoped fr values with their en source and, where present, the en context sidecar (role/tone/length/note).",
+    "Byte-compared en and fr values; every exact match among the batch's values classified as a token/cognate IDENTICAL_OK candidate with a reason, or as a stub. Stubs: 0.",
+    "Extracted interpolation arguments with a regex restricted to `{name}` / `{name, type, ...}` nodes (not branch labels) and compared en↔fr per key.",
+    "Parsed each `plural` block at brace depth 0 to read its CLDR categories; checked `other` presence and rejected `few`/`two`/`zero` for fr.",
+    "Compared every `{n, number, ::...}` skeleton token-for-token.",
+    "Typographic scan outside ICU braces: ASCII space before : ; ! ?, NBSP before punctuation, missing space before ? ! : ;, ASCII ellipsis, straight apostrophes, « » spacing; NFC; bidi control characters.",
+    "Register scan for tu/te/ton/ta/tes/toi and for « Veuillez ».",
+    "Coverage: en keys missing from fr, and fr keys absent from en, per namespace.",
+    "Read the call sites for every value whose meaning, gender or referent depended on context (image/variables previews, inline-edit status, analytics window guards, hub kind noun, credential toast, loader notice)."
+  ],
+  "identical_summary": {
+    "count": 85,
+    "stubs": 0,
+    "note": "Counts only exact matches among the batch's own values (not pre-existing keys). All are technical tokens, product names, French cognates or language-neutral formatting; each carries a suggested IDENTICAL_OK reason. The canvas translator receipt independently reports the same 85-value list for fr, and the parity guard's stub arm requires a reviewed IDENTICAL_OK entry per key — it currently rejects an identical value with no entry."
+  },
+  "informational_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 3,
+    "nit": 5
+  },
+  "verdict": "passed — 0 blocker, 0 major, 3 minor, 5 nit across 8 namespace(s); 1041 values read; 85 exact matches classified, 0 untranslated stubs.",
+  "observations": [
+    "IDENTICAL_OK workload: 85 exact matches are classified in namespaces[*].identical_to_en with a suggested reason each — 25 file-type labels (`Module (.ext)`), 29 French cognates, 9 kept-English technical terms, 7 other technical tokens, 6 literal samples, 3 placeholder-only formats, and 6 single values (product name « Canvas », Dockerfile, Python+placeholder, the `MAC` platform token, the interjection « ok », and the glossary term « agent »). The parity guard's stub arm fails an identical value unless the key is in IDENTICAL_OK, so these 85 reviewed entries (or a token-only exemption rule) are required before the fr stub arm can go green; I did not edit the gate script, catalogues or ledger.",
+    "Prior rounds: the canvas lane's remediation round 2 (base 09d425ec) is included in the audited head; its recorded fixes and its two rejected mechanisms were not re-opened. This audit adds findings on keys neither earlier round named.",
+    "Shared namespaces: ui.common.actions, ui.common.speech, ui.common.updates and ui.common.viewer also carry keys from the surface batch (PR #1389): 6, 0, 127 and 4 shared keys respectively, with 0 value conflicts. A hand-union is safe, but the merged files will contain more keys than either head, so these four blocks' hashes will not bind the post-merge bytes; re-hash those namespaces after the merge before the ledger binds them.",
+    "Not a translation finding (code scope): ui.common.layout.chat_layout.mac is display-inert — chat-layout.tsx compares navigator.platform against this catalogue value. The fr value is « MAC » so detection works, but a locale that translated it would silently break macOS detection; the token belongs outside the catalogue.",
+    "Typographic and structural checks found no defects: 0 straight apostrophes outside CLI/JSON literals, 0 ASCII ellipses, U+202F before every prose : ; ! ? (and none where the guide forbids it), « » with U+202F inside, no NBSP, NFC-clean, 0 bidi controls; 33 plural messages in the batch, every one carrying one/many/other with `other` and none using few/two/zero; 0 missing and 0 orphan keys across the 8 namespaces (1,296 keys compared at name level).",
+    "Width: no fr key in this batch declares a `maxCells` budget in its context sidecar; the only budgeted value is ui.miniView.sent (surfaces batch, one word — met). 283 of the batch's values are ≥1.35× their English source on sources of 40 characters or fewer, but almost all are wrapping sentences, table cells or status lines, and no shorter synonym would keep the meaning (the extreme ratios are the toggles « On »→« Activé » and « Off »→« Désactivé », which are single-word labels in a segmented control). No canvas string is flagged for a rendered fit check on this evidence; the batch's tightest labels are the inline-edit statuses (« Modification en cours », « Modification suivante »), which match the width of their English peers."
+  ],
+  "namespaces": {
+    "ui.canvas": {
+      "status": "passed",
+      "keys_total": 347,
+      "keys_in_batch_delta": 290,
+      "identical_to_en": [
+        {
+          "key": "ui.canvas.create_file_dialog.c_c",
+          "value": "C (.c)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.c_cpp",
+          "value": "C++ (.cpp)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.c_cs",
+          "value": "C# (.cs)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.configuration",
+          "value": "Configuration",
+          "suggested_reason": "French cognate: « Configuration » has the same spelling in French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.css_css",
+          "value": "CSS (.css)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.dockerfile",
+          "value": "Dockerfile",
+          "suggested_reason": "Product token: the file type is called « Dockerfile » in French too."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.env",
+          "value": ".env",
+          "suggested_reason": "Literal extension token « .env »; the glossary keeps file extensions and paths verbatim (§1)."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.go_go",
+          "value": "Go (.go)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.html_html",
+          "value": "HTML (.html)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.ini_ini",
+          "value": "INI (.ini)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.java_java",
+          "value": "Java (.java)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.javascript_js",
+          "value": "JavaScript (.js)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.json_json",
+          "value": "JSON (.json)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.jsx_jsx",
+          "value": "JSX (.jsx)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.kotlin_kt",
+          "value": "Kotlin (.kt)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.markdown_md",
+          "value": "Markdown (.md)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.php_php",
+          "value": "PHP (.php)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.python_py",
+          "value": "Python (.py)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.ruby_rb",
+          "value": "Ruby (.rb)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.rust_rs",
+          "value": "Rust (.rs)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.scala_scala",
+          "value": "Scala (.scala)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.swift_swift",
+          "value": "Swift (.swift)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.toml_toml",
+          "value": "TOML (.toml)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.tsx_tsx",
+          "value": "TSX (.tsx)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.typescript_ts",
+          "value": "TypeScript (.ts)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.xml_xml",
+          "value": "XML (.xml)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.yaml_yaml",
+          "value": "YAML (.yaml)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.yaml_yml",
+          "value": "YAML (.yml)",
+          "suggested_reason": "Technology name plus its file extension: both are tokens the glossary keeps verbatim (§1: technology names, extensions); only the surrounding UI is French."
+        },
+        {
+          "key": "ui.canvas.file_rows.archives",
+          "value": "Archives",
+          "suggested_reason": "French cognate: « Archives » has the same spelling in French (category label, not a skipped string)."
+        },
+        {
+          "key": "ui.canvas.file_rows.code",
+          "value": "Code",
+          "suggested_reason": "French cognate: « Code » has the same spelling in French (category label, not a skipped string)."
+        },
+        {
+          "key": "ui.canvas.file_rows.documents",
+          "value": "Documents",
+          "suggested_reason": "French cognate: « Documents » has the same spelling in French (category label, not a skipped string)."
+        },
+        {
+          "key": "ui.canvas.file_rows.images",
+          "value": "Images",
+          "suggested_reason": "French cognate: « Images » has the same spelling in French (category label, not a skipped string)."
+        },
+        {
+          "key": "ui.canvas.insert_image_dialog.users_eren_documents_image_png",
+          "value": "/Users/eren/Documents/image.png",
+          "suggested_reason": "Literal example path; the glossary keeps paths byte-identical."
+        },
+        {
+          "key": "ui.canvas.insert_link_dialog.https_example_com",
+          "value": "https://example.com",
+          "suggested_reason": "Literal sample URL; context requires it byte-identical."
+        },
+        {
+          "key": "ui.canvas.insert_link_dialog.url",
+          "value": "URL",
+          "suggested_reason": "Standard technical abbreviation « URL », unchanged in French."
+        },
+        {
+          "key": "ui.canvas.shell.canvas",
+          "value": "Canvas",
+          "suggested_reason": "Product surface name « Canvas », preserved verbatim by the programme glossary (same decision as the Urdu IDENTICAL_OK entry for this surface)."
+        },
+        {
+          "key": "ui.canvas.shell.documents",
+          "value": "Documents",
+          "suggested_reason": "French cognate: « Documents » has the same spelling in French (category label, not a skipped string)."
+        },
+        {
+          "key": "ui.canvas.shell.variables",
+          "value": "Variables",
+          "suggested_reason": "French cognate: « Variables » has the same spelling in French (category label, not a skipped string)."
+        },
+        {
+          "key": "ui.canvas.variable_form_dialog.example_key_example_value",
+          "value": "'{ \"example_key\": \"example_value\" }'",
+          "suggested_reason": "Literal JSON sample; context requires it byte-identical (translating the keys would show invalid input)."
+        },
+        {
+          "key": "ui.canvas.variable_form_dialog.item1_item2",
+          "value": "[ \"item1\", \"item2\" ]",
+          "suggested_reason": "Literal JSON array sample; values are user-typed syntax, not prose."
+        },
+        {
+          "key": "ui.canvas.variable_form_dialog.type",
+          "value": "Type",
+          "suggested_reason": "French cognate: « Type » has the same spelling in French."
+        }
+      ],
+      "findings": [
+        {
+          "id": "FR-CA-01",
+          "severity": "minor",
+          "namespace": "ui.canvas",
+          "key": "ui.canvas.inline_edit.not_reviewed_yet",
+          "keys": [
+            "ui.canvas.inline_edit.not_reviewed_yet"
+          ],
+          "current": "Pas encore révisé",
+          "current_by_key": {
+            "ui.canvas.inline_edit.not_reviewed_yet": "Pas encore révisé"
+          },
+          "proposed": "Pas encore révisée",
+          "proposed_by_key": {
+            "ui.canvas.inline_edit.not_reviewed_yet": "Pas encore révisée"
+          },
+          "reason": "The badge names the state of one diff, and this namespace calls that diff « Modification » (ui.canvas.inline_edit.change). The same status row already reads « Acceptée » / « Rejetée » (feminine); « révisé » is the only masculine form in the set, so it is the visible outlier."
+        }
+      ],
+      "en_sha256": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+      "fr_sha256": "65ae722bee3d81c60e1208205228065fcf4fb5c068ef036a77fc2f1958beb181",
+      "context_sha256": "4bc0f2bc47d4b0e826ebb10ba78ff965c550debef54f47c912b9e257fd1784f8"
+    },
+    "ui.chat.pickers": {
+      "status": "passed",
+      "keys_total": 720,
+      "keys_in_batch_delta": 686,
+      "identical_to_en": [
+        {
+          "key": "ui.chat.pickers.analytics_model.tokens",
+          "value": "Tokens",
+          "suggested_reason": "Kept-English technical term: the French style guide keeps « token » in English (wave-2 kept-English set)."
+        },
+        {
+          "key": "ui.chat.pickers.analytics_panel.session",
+          "value": "session",
+          "suggested_reason": "French cognate: « session » has the same spelling in French."
+        },
+        {
+          "key": "ui.chat.pickers.analytics_panel.sessionf7f199",
+          "value": "Session",
+          "suggested_reason": "French cognate: « Session » has the same spelling in French."
+        },
+        {
+          "key": "ui.chat.pickers.analytics_panel.sessions",
+          "value": "sessions",
+          "suggested_reason": "French cognate: « sessions » has the same spelling in French."
+        },
+        {
+          "key": "ui.chat.pickers.analytics_panel.tokens",
+          "value": "Tokens",
+          "suggested_reason": "Kept-English technical term: the French style guide keeps « token » in English (wave-2 kept-English set)."
+        },
+        {
+          "key": "ui.chat.pickers.analytics_session_state.session",
+          "value": "Session",
+          "suggested_reason": "French cognate: « Session » has the same spelling in French."
+        },
+        {
+          "key": "ui.chat.pickers.analytics_session_state.tokens",
+          "value": "Tokens",
+          "suggested_reason": "Kept-English technical term: the French style guide keeps « token » in English (wave-2 kept-English set)."
+        },
+        {
+          "key": "ui.chat.pickers.context_model.instructions",
+          "value": "Instructions",
+          "suggested_reason": "French cognate: « Instructions » has the same spelling in French."
+        },
+        {
+          "key": "ui.chat.pickers.context_model.messages",
+          "value": "Messages",
+          "suggested_reason": "French cognate: « Messages » has the same spelling in French."
+        },
+        {
+          "key": "ui.chat.pickers.context_panel.tokens",
+          "value": "Tokens",
+          "suggested_reason": "Kept-English technical term: the French style guide keeps « token » in English (wave-2 kept-English set)."
+        },
+        {
+          "key": "ui.chat.pickers.context_panel.total",
+          "value": "Total",
+          "suggested_reason": "French cognate: « Total » has the same spelling in French."
+        },
+        {
+          "key": "ui.chat.pickers.destination_pickers.code",
+          "value": "(code)",
+          "suggested_reason": "French cognate: « (code) » has the same spelling in French."
+        },
+        {
+          "key": "ui.chat.pickers.destination_pickers.completed_only",
+          "value": "{completed, number, ::group-off}",
+          "suggested_reason": "Placeholder-only formatting: a formatted number with no words to translate."
+        },
+        {
+          "key": "ui.chat.pickers.destination_pickers.k",
+          "value": "{value, number, ::group-off}k",
+          "suggested_reason": "Unit suffix on a formatted number (« k »); language-neutral."
+        },
+        {
+          "key": "ui.chat.pickers.destination_pickers.message",
+          "value": "message",
+          "suggested_reason": "French cognate: « message » has the same spelling in French."
+        },
+        {
+          "key": "ui.chat.pickers.destination_pickers.messages",
+          "value": "Messages",
+          "suggested_reason": "French cognate: « Messages » has the same spelling in French."
+        },
+        {
+          "key": "ui.chat.pickers.destination_pickers.my_api_key",
+          "value": "MY_API_KEY",
+          "suggested_reason": "Literal credential-name example; identifiers stay verbatim (§1)."
+        },
+        {
+          "key": "ui.chat.pickers.destination_pickers.ports",
+          "value": "Ports",
+          "suggested_reason": "French cognate: « Ports » has the same spelling in French."
+        },
+        {
+          "key": "ui.chat.pickers.destination_pickers.skill",
+          "value": "skill://",
+          "suggested_reason": "URI scheme token « skill:// »; machine token, never translated."
+        },
+        {
+          "key": "ui.chat.pickers.info_model.agent",
+          "value": "agent {active_agent}",
+          "suggested_reason": "Glossary §2 renders « agent » as « agent » in French; the placeholder is untouched."
+        },
+        {
+          "key": "ui.chat.pickers.info_model.colorterm",
+          "value": "COLORTERM",
+          "suggested_reason": "Environment-variable name « COLORTERM »; identifiers stay verbatim."
+        },
+        {
+          "key": "ui.chat.pickers.info_model.conversation",
+          "value": "Conversation",
+          "suggested_reason": "French cognate: « Conversation » has the same spelling in French."
+        },
+        {
+          "key": "ui.chat.pickers.info_model.pid",
+          "value": "pid {pid, number, ::group-off}",
+          "suggested_reason": "« pid » is an identifier label used by developers, kept verbatim; only the number is formatted."
+        },
+        {
+          "key": "ui.chat.pickers.info_model.pid_7837d5",
+          "value": "pid {pid, number, ::group-off}",
+          "suggested_reason": "« pid » is an identifier label used by developers, kept verbatim; only the number is formatted."
+        },
+        {
+          "key": "ui.chat.pickers.info_model.python",
+          "value": "Python {python_version}",
+          "suggested_reason": "Language/product name plus a placeholder; only the token remains, correctly."
+        },
+        {
+          "key": "ui.chat.pickers.info_model.runtime",
+          "value": "runtime",
+          "suggested_reason": "Kept-English technical term: the French style guide keeps « runtime » in English."
+        },
+        {
+          "key": "ui.chat.pickers.info_model.runtime_trajectories",
+          "value": "{runtimecount} · {bound}{trajectorycount}",
+          "suggested_reason": "Language-neutral composition: placeholders and a separator only."
+        },
+        {
+          "key": "ui.chat.pickers.info_model.runtimes",
+          "value": "runtimes",
+          "suggested_reason": "Kept-English technical term: the French style guide keeps « runtime » in English."
+        },
+        {
+          "key": "ui.chat.pickers.info_model.session",
+          "value": "Session",
+          "suggested_reason": "French cognate: « Session » has the same spelling in French."
+        },
+        {
+          "key": "ui.chat.pickers.info_model.sessionfcbdc4",
+          "value": "session",
+          "suggested_reason": "French cognate: « session » has the same spelling in French."
+        },
+        {
+          "key": "ui.chat.pickers.info_model.sessions",
+          "value": "sessions",
+          "suggested_reason": "French cognate: « sessions » has the same spelling in French."
+        },
+        {
+          "key": "ui.chat.pickers.info_model.term",
+          "value": "TERM",
+          "suggested_reason": "Environment-variable name « TERM »; identifiers stay verbatim."
+        },
+        {
+          "key": "ui.chat.pickers.info_panel.session",
+          "value": "Session",
+          "suggested_reason": "French cognate: « Session » has the same spelling in French."
+        },
+        {
+          "key": "ui.chat.pickers.info_panel.version",
+          "value": "Version",
+          "suggested_reason": "French cognate: « Version » has the same spelling in French."
+        },
+        {
+          "key": "ui.chat.pickers.session_panel.ok",
+          "value": "ok",
+          "suggested_reason": "Interjection « ok », used unchanged in French UI copy."
+        },
+        {
+          "key": "ui.chat.pickers.session_panel.phase",
+          "value": "Phase",
+          "suggested_reason": "French cognate: « Phase » has the same spelling in French."
+        },
+        {
+          "key": "ui.chat.pickers.session_panel.session",
+          "value": "Session",
+          "suggested_reason": "French cognate: « Session » has the same spelling in French."
+        },
+        {
+          "key": "ui.chat.pickers.session_panel.tokens",
+          "value": "Tokens",
+          "suggested_reason": "Kept-English technical term: the French style guide keeps « token » in English (wave-2 kept-English set)."
+        },
+        {
+          "key": "ui.chat.pickers.session_report_model.conversation",
+          "value": "Conversation",
+          "suggested_reason": "French cognate: « Conversation » has the same spelling in French."
+        },
+        {
+          "key": "ui.chat.pickers.session_report_model.images_est",
+          "value": "Images (est.)",
+          "suggested_reason": "« Images » is a French cognate and « est. » is the same abbreviation in French (estimation); nothing to change."
+        },
+        {
+          "key": "ui.chat.pickers.session_report_model.tokens",
+          "value": "Tokens",
+          "suggested_reason": "Kept-English technical term: the French style guide keeps « token » in English (wave-2 kept-English set)."
+        },
+        {
+          "key": "ui.chat.pickers.usage_view_model.note_with_period",
+          "value": "{note}.",
+          "suggested_reason": "Placeholder plus a full stop; no words to translate."
+        },
+        {
+          "key": "ui.chat.pickers.usage_view_model.tokens",
+          "value": "tokens",
+          "suggested_reason": "Kept-English technical term: the French style guide keeps « token » in English (wave-2 kept-English set)."
+        }
+      ],
+      "findings": [
+        {
+          "id": "FR-CA-02",
+          "severity": "minor",
+          "namespace": "ui.chat.pickers",
+          "key": "ui.chat.pickers.context_panel.asking_the_owner",
+          "keys": [
+            "ui.chat.pickers.context_panel.asking_the_owner"
+          ],
+          "current": "Demande au propriétaire.",
+          "current_by_key": {
+            "ui.chat.pickers.context_panel.asking_the_owner": "Demande au propriétaire."
+          },
+          "proposed": "Interrogation du propriétaire…",
+          "proposed_by_key": {
+            "ui.chat.pickers.context_panel.asking_the_owner": "Interrogation du propriétaire…"
+          },
+          "reason": "This string is the loading notice of a PickerHost (kind=\"loading\"); the English is progressive (\"Asking the owner.\"). The French renders a noun phrase that reads as a label or an instruction, so the screen gives no sense that work is in progress. A progressive/ellipsis form matches the other loading notices in this namespace (« Chargement… », « Lecture de la liste… »)."
+        },
+        {
+          "id": "FR-CA-03",
+          "severity": "minor",
+          "namespace": "ui.chat.pickers",
+          "key": "ui.chat.pickers.session_panel.by_purpose",
+          "keys": [
+            "ui.chat.pickers.session_panel.by_purpose"
+          ],
+          "current": "Par usage",
+          "current_by_key": {
+            "ui.chat.pickers.session_panel.by_purpose": "Par usage"
+          },
+          "proposed": "Par finalité",
+          "proposed_by_key": {
+            "ui.chat.pickers.session_panel.by_purpose": "Par finalité"
+          },
+          "reason": "One English term, two French terms on the same screen: session-panel.tsx:509 renders this key as the section title (« Par usage ») directly above a table whose header is ui.chat.pickers.session_panel.purpose (« Finalité », line 518); the section's description is « Utilisation par finalité ». « usage » is already the rendering of English « usage » (utilisation) in this namespace, so the title also reads as a usage/consumption split. The prior remediation recorded « FR-PIC-04 finalité »; this key was missed."
+        },
+        {
+          "id": "FR-CA-04",
+          "severity": "nit",
+          "namespace": "ui.chat.pickers",
+          "key": "ui.chat.pickers.session_panel.no_recorded_requests_for_this_session_yet",
+          "keys": [
+            "ui.chat.pickers.session_panel.no_recorded_requests_for_this_session_yet"
+          ],
+          "current": "Aucune requête enregistrée pour cette session pour l’instant.",
+          "current_by_key": {
+            "ui.chat.pickers.session_panel.no_recorded_requests_for_this_session_yet": "Aucune requête enregistrée pour cette session pour l’instant."
+          },
+          "proposed": "Aucune requête enregistrée pour cette session jusqu’ici.",
+          "proposed_by_key": {
+            "ui.chat.pickers.session_panel.no_recorded_requests_for_this_session_yet": "Aucune requête enregistrée pour cette session jusqu’ici."
+          },
+          "reason": "Two « pour » in one short sentence (« pour cette session pour l’instant ») read as a stutter. « jusqu’ici » carries « yet » without the repetition."
+        },
+        {
+          "id": "FR-CA-05",
+          "severity": "nit",
+          "namespace": "ui.chat.pickers",
+          "key": "ui.chat.pickers.session_panel.of_this_session_s",
+          "keys": [
+            "ui.chat.pickers.session_panel.of_this_session_s"
+          ],
+          "current": "{label} : {formatpercent} de {value} de cette session",
+          "current_by_key": {
+            "ui.chat.pickers.session_panel.of_this_session_s": "{label} : {formatpercent} de {value} de cette session"
+          },
+          "proposed": "{label} : {formatpercent} de {value} pour cette session",
+          "proposed_by_key": {
+            "ui.chat.pickers.session_panel.of_this_session_s": "{label} : {formatpercent} de {value} pour cette session"
+          },
+          "reason": "« de {value} de cette session » stacks two possessive « de » in a table cell. « pour cette session » states the same relation without the double genitive."
+        },
+        {
+          "id": "FR-CA-06",
+          "severity": "nit",
+          "namespace": "ui.chat.pickers",
+          "key": "ui.chat.pickers.usage_view_model.model_cap_exhausted",
+          "keys": [
+            "ui.chat.pickers.usage_view_model.model_cap_exhausted"
+          ],
+          "current": "{count, plural, one {plafond du modèle atteint} many {de plafonds des modèles atteints} other {plafonds des modèles atteints}}",
+          "current_by_key": {
+            "ui.chat.pickers.usage_view_model.model_cap_exhausted": "{count, plural, one {plafond du modèle atteint} many {de plafonds des modèles atteints} other {plafonds des modèles atteints}}"
+          },
+          "proposed": "{count, plural, one {plafond du modèle atteint} many {de plafonds de modèles atteints} other {plafonds des modèles atteints}}",
+          "proposed_by_key": {
+            "ui.chat.pickers.usage_view_model.model_cap_exhausted": "{count, plural, one {plafond du modèle atteint} many {de plafonds de modèles atteints} other {plafonds des modèles atteints}}"
+          },
+          "reason": "The many arm reads « de plafonds des modèles atteints »; the partitive « de » should govern the whole noun phrase, so « de plafonds de modèles atteints » (the other arm's « des modèles » is correct there)."
+        },
+        {
+          "id": "FR-CA-07",
+          "severity": "nit",
+          "namespace": "ui.chat.pickers",
+          "key": "ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears",
+          "keys": [
+            "ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears"
+          ],
+          "current": "Stocke un secret nommé pour les outils de cette session. La valeur n’apparaît jamais dans le champ de saisie, la transcription ou le récépissé de commande.",
+          "current_by_key": {
+            "ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears": "Stocke un secret nommé pour les outils de cette session. La valeur n’apparaît jamais dans le champ de saisie, la transcription ou le récépissé de commande."
+          },
+          "proposed": "Stocke, pour les outils de cette session, un secret désigné par son nom. La valeur n’apparaît jamais dans le champ de saisie, la transcription ou le récépissé de commande.",
+          "proposed_by_key": {
+            "ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears": "Stocke, pour les outils de cette session, un secret désigné par son nom. La valeur n’apparaît jamais dans le champ de saisie, la transcription ou le récépissé de commande."
+          },
+          "reason": "EN « stores a secret … by name » means the secret is addressed by its name; « un secret nommé » reads as « a named secret » (a secret that has a name), which is a different claim. « désigné par son nom » says it, and moving the complement forward avoids the long trailing clause."
+        },
+        {
+          "id": "FR-CA-08",
+          "severity": "nit",
+          "namespace": "ui.chat.pickers",
+          "key": "ui.chat.pickers.analytics_panel.no_calls_recorded_in_the_last_days",
+          "keys": [
+            "ui.chat.pickers.analytics_panel.no_calls_recorded_in_the_last_days"
+          ],
+          "current": "Aucun appel enregistré au cours des {windowdays, plural, one {{windowdays, number, ::group-off} dernier jour} many {{windowdays, number, ::group-off} derniers jours} other {{windowdays, number, ::group-off} derniers jours}}.",
+          "current_by_key": {
+            "ui.chat.pickers.analytics_panel.no_calls_recorded_in_the_last_days": "Aucun appel enregistré au cours des {windowdays, plural, one {{windowdays, number, ::group-off} dernier jour} many {{windowdays, number, ::group-off} derniers jours} other {{windowdays, number, ::group-off} derniers jours}}."
+          },
+          "proposed": "Aucun appel enregistré au cours des {windowdays, number, ::group-off} derniers jours.",
+          "proposed_by_key": {
+            "ui.chat.pickers.analytics_panel.no_calls_recorded_in_the_last_days": "Aucun appel enregistré au cours des {windowdays, number, ::group-off} derniers jours."
+          },
+          "reason": "This message is only called with a window of 2 or more days (analytics-panel.tsx maps windowDays === 1 to no_calls_recorded_today; the picker offers 1/7/30), so the fr `one` arm is unreachable — but it is ungrammatical as written: « au cours des … dernier jour » mixes a plural article with a singular noun. Dropping the plural makes the reachable text correct. ui.chat.pickers.analytics_model.last_days has the same dead `one` arm (it drops the count); noted, not changed."
+        }
+      ],
+      "en_sha256": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+      "fr_sha256": "2f084a6a1d24dc40d48d1e4146709d2fdb044ab516543aff9518f077a70f33d9",
+      "context_sha256": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9"
+    },
+    "ui.common.actions": {
+      "status": "passed",
+      "keys_total": 36,
+      "keys_in_batch_delta": 30,
+      "identical_to_en": [],
+      "findings": [],
+      "en_sha256": "d65be7beac66c209a55db5d8a672ff8a8a743eea49ba21593120d4b8664603b2",
+      "fr_sha256": "e8004e12fcc3549867dd3b95d4921975ad1d4f8cef7009f23f208805adcf46f9",
+      "context_sha256": "29a6cc54f8605ab2612775708bf5eb202a89e6708167d8a7c3f329a536b339db"
+    },
+    "ui.common.forms": {
+      "status": "passed",
+      "keys_total": 37,
+      "keys_in_batch_delta": 10,
+      "identical_to_en": [],
+      "findings": [],
+      "en_sha256": "c87c16b1169f32105e017fd27eb80047446938b1b45046c28bcf693856898238",
+      "fr_sha256": "32ffb1f02a1ea0a0dbc48448f32b04d872fcdf6983d2a36c6817ac329a5237f8",
+      "context_sha256": "c11472cc390fe7771e08dcd34bb633e63797f979a113feaa47d70d06daea38b4"
+    },
+    "ui.common.layout": {
+      "status": "passed",
+      "keys_total": 8,
+      "keys_in_batch_delta": 8,
+      "identical_to_en": [
+        {
+          "key": "ui.common.layout.chat_layout.mac",
+          "value": "MAC",
+          "suggested_reason": "Platform-detection token: the value is compared against navigator.platform, so any translation would break macOS detection; it is not display copy."
+        }
+      ],
+      "findings": [],
+      "en_sha256": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+      "fr_sha256": "26c831d3c079c031c9b406e4e480e8faab8d3670912971a575da5873d73b47d4",
+      "context_sha256": "318673c640a31e11f5249127c8ef5a76d63c16c3c191960824391d934766bd39"
+    },
+    "ui.common.speech": {
+      "status": "passed",
+      "keys_total": 5,
+      "keys_in_batch_delta": 5,
+      "identical_to_en": [],
+      "findings": [],
+      "en_sha256": "fa6a973f1a6a36f25218e884174299ba154e124baaddc87594bd516c8d07d8f6",
+      "fr_sha256": "c5172745262a062e6f3c47b249c2d04e667a140b1c634bf15b07be4c21e8182a",
+      "context_sha256": "740828525702d67b6ee0ecf7eb0a3f1582167989355bd12d0579d698b982267a"
+    },
+    "ui.common.updates": {
+      "status": "passed",
+      "keys_total": 135,
+      "keys_in_batch_delta": 8,
+      "identical_to_en": [],
+      "findings": [],
+      "en_sha256": "1f81721263fa4c7d74219bd2c0af82b908bf2fb4491df074e99e2215ad00d667",
+      "fr_sha256": "d807475f42e34864c3f4cb1bdbce6e3eb7e7d321fa0dc3c3269c3b4b8637c7c2",
+      "context_sha256": "cb4a160ef62b1760d4622b29c90e130cff1b4165ac770dab200ebc54eca38bee"
+    },
+    "ui.common.viewer": {
+      "status": "passed",
+      "keys_total": 8,
+      "keys_in_batch_delta": 4,
+      "identical_to_en": [],
+      "findings": [],
+      "en_sha256": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+      "fr_sha256": "45b0e3669be462ff23652796e5f7779f3484ba130e265e9d612f015349f68c90",
+      "context_sha256": "8b324e966ddb4aaef92ec3b3465f8ac6a80982529bcbd3b45a3c1cf1f9b28dd8"
+    }
+  }
+}
