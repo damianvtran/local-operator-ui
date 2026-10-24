@@ -1736,20 +1736,74 @@ test("a completed Radient credential write commissions the account read", () => 
 	 * subscribes through the binding.
 	 */
 	const hook = source("shared/hooks/use-radient-user-query.ts");
+	const authority = source("shared/hooks/radient-account-authority.ts");
+	assert.match(
+		authority,
+		/export const radientUserKeys = \{\s*all: \["radient-user"\] as const,/,
+		"the canonical account prefix is registered by the shared authority module",
+	);
 	assert.match(
 		hook,
-		/export const radientUserKeys = \{\s*all: \["radient-user"\] as const,/,
-		"the account key is registered once, as the prefix every consumer subscribes under",
+		/export \{ radientUserKeys \} from "\.\/radient-account-authority";/,
+		"existing callers receive the same canonical binding through the hook module",
+	);
+	assert.match(
+		hook,
+		/import\s*\{[^}]*\bradientUserKeys\b[^}]*\}\s*from "\.\/radient-account-authority";/,
+		"the hook consumes the same binding it reexports",
+	);
+	assert.doesNotMatch(
+		hook,
+		/(?:const|let|var) radientUserKeys\s*=/,
+		"the hook must not recreate or shadow the canonical key",
 	);
 	assert.match(
 		hook,
 		/export async function commissionAccountRead\(/,
-		"the completion paths' one entry point is exported by the module that owns the key",
+		"the completion paths' stable entry point remains exported by the hook module",
 	);
-	assert.match(
-		hook,
-		/commissionAccountRead\([\s\S]{0,300}?forgetAccountReadFailure\(\);[\s\S]{0,120}?cancelQueries\(\{ queryKey: radientUserKeys\.all \}\);[\s\S]{0,120}?invalidateQueries\(\{ queryKey: radientUserKeys\.all \}\)/,
-		"the entry point clears, cancels any chain still asking, then invalidates - an invalidation alone would join it",
+	// Follow the brace-balanced function extraction used by browser-host.test,
+	// not a character-distance pin that breaks when the auth fence is documented.
+	const signature = hook.indexOf(
+		"export async function commissionAccountRead(",
+	);
+	assert.notEqual(signature, -1);
+	const open = hook.indexOf("{", signature);
+	let depth = 0;
+	let end = -1;
+	for (let index = open; index < hook.length; index += 1) {
+		if (hook[index] === "{") depth += 1;
+		else if (hook[index] === "}" && --depth === 0) {
+			end = index;
+			break;
+		}
+	}
+	assert.notEqual(end, -1, "commissionAccountRead body is balanced");
+	const body = hook.slice(open + 1, end);
+	// Statement anchors cannot be satisfied by the explanatory comment. Require
+	// the new synchronous fence as well as the original clear/cancel/invalidate
+	// ordering; do not weaken the original credential-completion contract.
+	const statements = body.split("\n").map((line) => line.trim());
+	const revoke = statements.indexOf(
+		"beginRadientAuthorityTransition(queryClient);",
+	);
+	const clear = statements.indexOf("forgetAccountReadFailure();");
+	const cancel = statements.indexOf(
+		"await queryClient.cancelQueries({ queryKey: radientUserKeys.all });",
+	);
+	const invalidate = statements.indexOf(
+		"await queryClient.invalidateQueries({ queryKey: radientUserKeys.all });",
+	);
+	const firstAwait = statements.findIndex((line) =>
+		/\bawait\b/.test(line.replace(/\/\/.*$/, "")),
+	);
+	assert.ok(
+		revoke >= 0 && revoke < firstAwait,
+		"private authority is revoked before the first await",
+	);
+	assert.ok(
+		revoke < clear && clear < cancel && cancel < invalidate,
+		"the entry point revokes, clears, cancels any chain still asking, then invalidates",
 	);
 
 	const detail = source("features/providers/provider-detail.tsx");

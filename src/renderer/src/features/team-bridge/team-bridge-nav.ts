@@ -1,7 +1,8 @@
 import { t } from "@shared/i18n";
 import { MessagesSquare } from "lucide-react";
 import { TEAM_BRIDGE_ALL_SCOPE, badgeTotal } from "./team-bridge-model";
-import { useTeamBridgeUnread } from "./use-team-bridge";
+import { useTeamBridgeAccount } from "./team-bridge-owner";
+import { useTeamBridgeStatus, useTeamBridgeUnread } from "./use-team-bridge";
 
 /**
  * The sidebar descriptor for the Team Bridge row.
@@ -47,9 +48,16 @@ export function useTeamBridgeNavItem(
 	// asks for "is anything waiting anywhere", which is exactly the single
 	// `scope=account` read. The page reads the same cache for its per-org
 	// counts, so mounting both costs one request.
-	const unread = useTeamBridgeUnread(enabled, TEAM_BRIDGE_ALL_SCOPE);
+	const { accountId } = useTeamBridgeAccount();
+	const status = useTeamBridgeStatus(enabled);
+	const ready =
+		enabled && Boolean(accountId) && status.data?.account_id === accountId;
+	const unread = useTeamBridgeUnread(ready, TEAM_BRIDGE_ALL_SCOPE, {
+		accountId,
+	});
 	if (!enabled) return null;
-	const attention = unread.data ? badgeTotal(unread.data) : 0;
+	// Disabled observers can still expose cached data: unresolved auth is zero.
+	const attention = ready && unread.data ? badgeTotal(unread.data) : 0;
 	return {
 		icon: MessagesSquare,
 		label: t("ui.teamBridge.nav.label"),
