@@ -1,0 +1,14 @@
+{
+	"ui.chat.asks.context.messages_since": "{count, plural, one {# message de votre part depuis cette demande (dernier message à {time})} many {# de messages de votre part depuis cette demande (dernier message à {time})} other {# messages de votre part depuis cette demande (dernier message à {time})}}",
+	"ui.chat.asks.dismiss.answered_in_chat.note": "vous avez déjà répondu dans la conversation",
+	"ui.chat.asks.dismiss.answered_in_chat.title": "Répondu dans la conversation",
+	"ui.chat.asks.dismiss.cancel": "Annuler",
+	"ui.chat.asks.dismiss.heading": "Ignorer cette demande",
+	"ui.chat.asks.dismiss.in_flight": "En cours…",
+	"ui.chat.asks.dismiss.moot.note": "l’agent n’attendra plus de réponse",
+	"ui.chat.asks.dismiss.moot.title": "Plus nécessaire",
+	"ui.chat.asks.dismiss.receipt.answered_in_chat": "Ignorée — réglée dans la conversation",
+	"ui.chat.asks.dismiss.receipt.moot": "Ignorée — plus nécessaire",
+	"ui.chat.asks.dismiss.refused": "Impossible d’ignorer cette demande : rien n’a été envoyé.",
+	"ui.chat.asks.dismiss.trigger": "Ignorer…"
+}

@@ -10385,3 +10385,38 @@ test("duplicate source disappearing during URL read resolves a typed failure", a
 	assert.equal(result.error.code, "navigation_failed");
 	assert.equal(registry.count(), 1);
 });
+
+test("page controls work while an app overlay hides the view, and only then (Q2-F1)", async () => {
+	const { host } = makeHost();
+	await host.newTab();
+	host.setContentRect({ x: 0, y: 0, width: 1000, height: 700 });
+	const id = host.registry.activeTab.tabId;
+	// Find, Print and Reset zoom are chrome-initiated: the menu that pauses the
+	// page must not make its own items dead. `false` = our overlay asked the view
+	// to stand down, `contentRect` still laid out.
+	host.setViewVisible(false);
+	await host.controlPage(id, "open");
+	assert.equal(host.chromeState().pageControls.find?.tabId, id);
+	await host.controlPage(id, "reset");
+	assert.equal(host.chromeState().pageControls.notice, null);
+	// An own-state page (start/failure) is not a page to control, and it stays
+	// refused while an overlay ALSO hides it (Q3-1): true in the third slot means
+	// "the browser's own content, whatever else is over it".
+	host.setViewVisible(false, false, true);
+	await assert.rejects(
+		() => host.controlPage(id, "open"),
+		/no longer presented/,
+	);
+	host.setViewVisible(false, true);
+	await assert.rejects(
+		() => host.controlPage(id, "open"),
+		/no longer presented/,
+	);
+	// A route teardown drops the rect entirely: not presented, no overlay excuse.
+	host.setViewVisible(true);
+	host.setContentRect(null);
+	await assert.rejects(
+		() => host.controlPage(id, "open"),
+		/no longer presented/,
+	);
+});

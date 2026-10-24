@@ -416,7 +416,11 @@ export class BrowserHost implements BrowserActionContext {
 
 	constructor(options: BrowserHostOptions) {
 		this.registry = options.registry;
-		this.pageControls = new PageControls(() => this.onChanged());
+		this.pageControls = new PageControls(
+			() => this.onChanged(),
+			5000,
+			(tabId) => this.registry.hiddenByOverlay(tabId),
+		);
 		this.cdp = options.cdp;
 		this.approvals = options.approvals;
 		this.ownership = options.ownership;
@@ -1114,7 +1118,7 @@ export class BrowserHost implements BrowserActionContext {
 			if (
 				!active ||
 				active.tabId !== tabId ||
-				!active.presented ||
+				(!active.presented && !this.registry.hiddenByOverlay(tabId)) ||
 				active.view.webContents.isDestroyed()
 			)
 				throw new Error("The browser tab is no longer presented.");
@@ -1793,8 +1797,12 @@ export class BrowserHost implements BrowserActionContext {
 	 * main tell the browser's own state pages (start page, load failure - hidden so
 	 * their DOM can paint) from an overlay covering them. Shortcut ownership keys
 	 * on it; presentation does not. See `TabRegistry.chromeVisible`. */
-	setViewVisible(visible: boolean, ownPage = false): Record<string, unknown> {
-		this.registry.setViewVisible(visible, ownPage);
+	setViewVisible(
+		visible: boolean,
+		ownPage = false,
+		ownStatePage = ownPage,
+	): Record<string, unknown> {
+		this.registry.setViewVisible(visible, ownPage, ownStatePage);
 		// Suppressed by an overlay: the page must not keep the native key owner.
 		// True for a state page too - there is no presented page either way.
 		if (!visible) this.clearPageFocus();

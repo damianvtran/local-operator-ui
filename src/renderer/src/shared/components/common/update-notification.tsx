@@ -1,4 +1,4 @@
-import { useSuppressBrowserView } from "@shared/browser-view-policy";
+import { useSuppressBrowserViewWhileIntersecting } from "@shared/browser-view-policy";
 import { FloatingAlert } from "@shared/components/common/floating-alert";
 import { Button, Progress } from "@shared/components/ui";
 import { useElapsedSince } from "@shared/hooks/use-elapsed-since";
@@ -546,7 +546,11 @@ export const UpdateContainer = ({
 	 * put while the notes move, so the cap and the clip moved one level down and
 	 * this box became the one that never scrolls.
 	 */
-	useSuppressBrowserView(true, "update-notice");
+	useSuppressBrowserViewWhileIntersecting(
+		true,
+		"notice-card",
+		() => cardRef.current,
+	);
 	return (
 		<div
 			/* The drag-strip opt-out; see the note above. */

@@ -59,6 +59,7 @@ import {
 	panelIdentityFor,
 	panelSessionIdOfView,
 	pressLockCopy,
+	remoteOwnedId,
 	resynthesisePendingSend,
 	sendFailureCopy,
 	useCanonicalSessionsStore,
@@ -99,11 +100,13 @@ import {
 	approvalAnswerValue,
 	createSendLock,
 	declineQueuedAsk,
+	dismissQueuedAsk,
 	gateIsSecret,
 	reviseQueuedAsk,
 } from "../ask-answer";
 import {
 	type AskAnswerAttempt,
+	type AskDismissReason,
 	type AskDraft,
 	type AskOutcome,
 	askClaimsEscape,
@@ -158,8 +161,9 @@ import {
 	modelAccessLocality,
 } from "../session-status/session-model";
 import type { Message } from "../types/message";
-import { encodeImageAttachments } from "../utils/attachment-encode";
+import { encodeAttachments } from "../utils/attachment-encode";
 import {
+	fileOverflowRefusal,
 	imageOverflowRefusal,
 	unreadableAttachmentRefusal,
 } from "../utils/attachment-read";
@@ -1999,10 +2003,25 @@ function SessionPanel({
 					});
 				return true;
 			}
-			const { images, unreadable, overflow } = await encodeImageAttachments(
-				attachments,
-				content,
+			/*
+			 * Files cannot ride a peer-owned conversation in v1 (attachment contract
+			 * §6b.2): the upload lands in THIS machine's attachment store, and the owner
+			 * has a different one. The encoder reports the files as `remote` failures, so
+			 * the refusal below names them and the send stops here rather than posting a
+			 * digest the owner could never resolve. Images keep today's peer staging.
+			 */
+			const remoteOwned = remoteOwnedId(
+				useCanonicalSessionsStore.getState().sessions,
+				useCanonicalSessionsStore.getState().placementFacts,
+				sessionId ?? draft?.sessionId ?? "",
 			);
+			const {
+				images,
+				files,
+				failures,
+				overflow,
+				fileOverflow: fileOverflowCount,
+			} = await encodeAttachments(attachments, content, { remoteOwned });
 			/*
 			 * An attachment the send could not read, reported before admission for the
 			 * same reason as the budget refusal below: the file is not in the message
@@ -2017,7 +2036,7 @@ function SessionPanel({
 			 * how the same sentence was measured both with and without it (design
 			 * round 4, D13; the predicate is `withholdsRetryHint`).
 			 */
-			const unreadableRefusal = unreadableAttachmentRefusal(unreadable);
+			const unreadableRefusal = unreadableAttachmentRefusal(failures);
 			if (unreadableRefusal) {
 				setSendError(unreadableRefusal);
 				setSendErrorCode(UNREADABLE_ATTACHMENT_CODE);
@@ -2035,6 +2054,14 @@ function SessionPanel({
 				 * register is set here rather than told to a code.
 				 */
 				setSendError(overflowRefusal);
+				setSendErrorCode(undefined);
+				setSendErrorRetry(false);
+				setSendErrorMuted(false);
+				return false;
+			}
+			const fileOverflow = fileOverflowRefusal(fileOverflowCount);
+			if (fileOverflow) {
+				setSendError(fileOverflow);
 				setSendErrorCode(undefined);
 				setSendErrorRetry(false);
 				setSendErrorMuted(false);
@@ -2322,6 +2349,7 @@ function SessionPanel({
 					text: content,
 					attachments,
 					images,
+					...(files.length ? { files } : {}),
 					mode: turnAlive ? "steer" : "prompt",
 					cwd,
 					/*
@@ -2933,6 +2961,53 @@ function SessionPanel({
 			setAdmitting(false);
 		}
 		settleAskOutcome(taskId, outcome);
+	};
+	/**
+	 * PUT AN OPEN ASK AWAY (harness PR #2833, SA-D5).
+	 *
+	 * The third queued-ask door, behind the same lock as its siblings. Its receipt
+	 * is this surface's own record (`AskOutcome.dismissed`): the wire folds the ask
+	 * to `dismissed` with no marker for WHICH reason went, and the card that offered
+	 * the chooser collapses on the frame — so the reason has to be remembered here
+	 * or it is lost between the press and the row.
+	 *
+	 * NO TOAST. A decline has none and the card keeps its own line: the reader is
+	 * looking at the ask they just put away, and a transient notice over it would
+	 * be the second receipt for one act. The fleet scope does toast, because there
+	 * the row leaves the pane rather than settling in place (see its own note).
+	 */
+	const dismissAsk = async (taskId: string, reason: AskDismissReason) => {
+		if (!sessionId || sendLock.held) return;
+		setAdmitting(true);
+		setAskOutcomes((current) => ({
+			...current,
+			[taskId]: { sending: true, refused: null },
+		}));
+		let outcome: AnswerOutcome;
+		try {
+			outcome = await dismissQueuedAsk(
+				{ taskId, reason, sessionId, lock: sendLock },
+				(request) => desktopResult(request),
+			);
+		} finally {
+			setAdmitting(false);
+		}
+		if (outcome.status !== "sent") {
+			/*
+			 * `settleAskOutcome` is the one place that clears the in-flight flag and
+			 * records the sentence: a transport failure carries the owner's words, and
+			 * a `refused` outcome (the lock was taken, or the session id is gone) reached
+			 * nothing so it records neither. Returning without it would leave the card
+			 * disabled for the mount's life.
+			 */
+			settleAskOutcome(taskId, outcome);
+			return;
+		}
+		setAskOutcomes((current) => ({
+			...current,
+			[taskId]: { sending: false, refused: null, dismissed: reason },
+		}));
+		void queryClient.invalidateQueries({ queryKey: FLEET_ASKS_QUERY_KEY });
 	};
 	/*
 	 * THE DRAWER'S TOGGLE. The bar, the chip and the panel's Escape all call this
@@ -4822,6 +4897,20 @@ function SessionPanel({
 						onDeclineAsk: (taskId: string) => void declineAsk(taskId),
 						onReviseAsk: (taskId: string, answers: Record<string, string[]>) =>
 							void reviseAsk(taskId, answers),
+						/*
+						 * THE DISMISS DOOR IS GATED ON THE CAPABILITY, not on the reason a call
+						 * might fail: an older daemon's `Answer` is `extra="forbid"`, so a body
+						 * carrying `dismiss` is a 422 there, and a control that can only be
+						 * refused is the dead affordance the ask panel refuses. Absent means the
+						 * panel draws no button.
+						 */
+						onDismissAsk: desktopFeatureEnabled(
+							capabilities.data,
+							"ask_dismiss",
+						)
+							? (taskId: string, reason: AskDismissReason) =>
+									void dismissAsk(taskId, reason)
+							: undefined,
 						askOutcomes,
 						/* The asks drawer's lane: the flag, its door and the panel's draft. The
 						 * composer is deliberately NOT part of it (no sentence, no mode). */

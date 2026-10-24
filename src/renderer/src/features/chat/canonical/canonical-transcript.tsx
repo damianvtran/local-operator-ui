@@ -54,7 +54,10 @@ import { useCompletionView } from "@shared/hooks/use-completion-view";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import {
+	remoteOwnedId,
+	useCanonicalSessionsStore,
+} from "@shared/store/canonical-sessions-store";
 import {
 	type InternalEpisodeIdentitySnapshot,
 	captureInternalEpisodeIdentity,
@@ -181,6 +184,7 @@ import { QuoteToolkit } from "./quote-toolkit";
 import { RadientCreditsGuidance } from "./radient-credits-guidance";
 import { ensureReachable, jumpToEntry } from "./reveal-record";
 import { SETTLE_MS } from "./scroll-paging";
+import { SentFileCard } from "./sent-file-card";
 import { editTextOf, skillRowOf } from "./skill-row";
 import { SupplementRow } from "./supplement-row";
 import { THREAD_SEARCH_JUMP_MISS_COPY } from "./thread-search-model";
@@ -986,6 +990,30 @@ const UserRow = memo(function UserRow({
 	 */
 	const pictures = record.images.filter(isPictureRef);
 	/*
+	 * Whether this conversation lives on another device. Read from the store
+	 * because the placement fact is not on the transcript row, and a remote
+	 * conversation's file cards make no existence claim (contract v1 §5): the
+	 * path never lived on this machine.
+	 */
+	const remote = useCanonicalSessionsStore((state) =>
+		conversationId
+			? remoteOwnedId(state.sessions, state.placementFacts, conversationId)
+			: false,
+	);
+	/*
+	 * "Not remote" is not "local" until the catalogue has stated where this
+	 * conversation lives: the placement fact or the row's own `locality` is that
+	 * statement, and until one exists the file card must make no existence claim
+	 * (contract §5; agent review round 1, n3).
+	 */
+	const placementKnown = useCanonicalSessionsStore((state) => {
+		if (!conversationId) return false;
+		if (state.placementFacts[conversationId]?.locality) return true;
+		return state.sessions.some(
+			(row) => row.session_id === conversationId && row.locality !== undefined,
+		);
+	});
+	/*
 	 * Whether this turn is long enough to need D2's eight-line clamp, MEASURED
 	 * rather than guessed from a character count: the box is clamped first and
 	 * then asked whether it is hiding anything, so a `Show more` can never appear
@@ -1312,6 +1340,18 @@ const UserRow = memo(function UserRow({
 								>
 									{expanded ? "Show less" : "Show more"}
 								</button>
+							)}
+							{(record.documents?.length ?? 0) > 0 && (
+								<div className={cn("mt-2 flex flex-col gap-1")}>
+									{record.documents?.map((document) => (
+										<SentFileCard
+											key={document.id}
+											document={document}
+											remote={remote}
+											placementKnown={placementKnown}
+										/>
+									))}
+								</div>
 							)}
 							{pictures.length > 0 && (
 								<div className={cn("mt-2 flex flex-col gap-2")}>
@@ -2806,13 +2846,27 @@ const AskReceiptRow = memo(function AskReceiptRow({
 			</MessageContainer>
 		);
 	const summary = askResponseSummary(record);
-	if (record.questions.length === 0)
+	/*
+	 * A DISMISSAL HAS NO ANSWER FRAME, and the harness says so in its own words
+	 * (`asks/render.py::response_text`: a dismissed ask "NEVER" goes through the
+	 * report, because the report renders the absence as an empty answer). The row
+	 * still carries the ask's questions, so without this arm an expanded dismissal
+	 * would print each question beside `No answer given` — a receipt that reads as
+	 * a partial answer. The sentence IS the receipt.
+	 */
+	if (record.questions.length === 0 || record.status === "dismissed")
 		return (
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
 				<ToolLedgerRow
 					toolName="ask"
 					verbless
 					summary={summary}
+					/*
+					 * THE DISMISSED SENTENCE WRAPS (UX round 1, U1): it ends in the ask id, and a
+					 * truncated receipt at 1024px read `… no longer needed — …`, losing the one
+					 * token that tells two dismissals in one turn apart.
+					 */
+					summaryWrap={record.status === "dismissed"}
 					outcome="receipt"
 					durationS={null}
 				/>

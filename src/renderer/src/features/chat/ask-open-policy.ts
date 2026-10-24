@@ -539,6 +539,20 @@ export const askOpenAnnouncement = (view: AskQueueView): string =>
 	`Opened your questions: ${askChipCountClause(view)}.`;
 
 /**
+ * THE ONE OTHER SENTENCE THE SAME LIVE REGION SPEAKS (UX round 1, U8): what the
+ * queue settled to inside a drawer the region already opened.
+ *
+ * Without it the region kept `Opened your questions: 1 question waiting.` after the
+ * last ask was answered or dismissed - the reader who cannot see the drawer was told
+ * one was waiting when none was. It is written on the transition to nothing
+ * outstanding, not on every refresh (a refresh is not an event), and it reuses the
+ * chip's own clause for the same reason the open sentence does: one vocabulary
+ * point, so the region and the chip cannot disagree.
+ */
+export const askSettledAnnouncement = (view: AskQueueView): string =>
+	`${askChipCountClause(view)}.`;
+
+/**
  * The conversations whose surface the user has closed while asks remained, and WHICH
  * asks they waved off.
  *

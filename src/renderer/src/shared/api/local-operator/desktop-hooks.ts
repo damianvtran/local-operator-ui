@@ -208,6 +208,17 @@ export type DesktopFeature =
 	 * See `local_operator/server/features.py`.
 	 */
 	| "session_tags_auto_tag"
+	/**
+	 * PUT AN OPEN QUEUED ASK AWAY from a surface (`{ask_id, dismiss: true,
+	 * reason?}` on the answers route, harness PR #2833 / SA-D5).
+	 *
+	 * ITS OWN KEY because the body field is refused, not ignored: the backend's
+	 * `Answer` is `extra="forbid"`, so a daemon that predates the field answers 422
+	 * to a body carrying `dismiss`. A client that offered the control without asking
+	 * this key would draw a button whose only outcome is a refusal — the dead
+	 * affordance the ask panel refuses elsewhere.
+	 */
+	| "ask_dismiss"
 	| "session_files"
 	/**
 	 * The global Library surface (`/v1/desktop/library*` and the Librarian

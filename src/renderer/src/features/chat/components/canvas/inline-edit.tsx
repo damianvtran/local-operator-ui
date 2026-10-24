@@ -24,6 +24,7 @@ import {
 import { speechUnavailableReason } from "@shared/lib/speech-gate";
 import { cn } from "@shared/lib/utils";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
+import type { Attachment } from "@shared/store/conversation-input-store";
 import { normalizePath } from "@shared/utils/path-utils";
 import {
 	showErrorToast,
@@ -151,7 +152,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	onNavigateDiff,
 }) => {
 	const [prompt, setPrompt] = useState("");
-	const [attachments, setAttachments] = useState<string[]>([]);
+	const [attachments, setAttachments] = useState<Attachment[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const { lastChatAgentId } = useAgentSelectionStore();
 	const { data: config } = useConfig();
@@ -541,21 +542,19 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		);
 
 		if (!result.canceled && result.filePaths.length > 0) {
-			const newAttachments = result.filePaths.map((path: string) =>
-				normalizePath(path),
-			);
+			const newAttachments = result.filePaths.map((path: string) => ({
+				id: crypto.randomUUID(),
+				path: normalizePath(path),
+			}));
 			setAttachments((prev) => [...prev, ...newAttachments]);
 		}
 	};
 
-	const handleRemoveAttachment = (index: number) => {
+	const handleRemoveAttachment = (id: string) => {
 		setAttachments((prev) => {
-			const newAttachments = [...prev];
-			if (newAttachments[index].startsWith("blob:")) {
-				URL.revokeObjectURL(newAttachments[index]);
-			}
-			newAttachments.splice(index, 1);
-			return newAttachments;
+			const removed = prev.find((attachment) => attachment.id === id);
+			if (removed?.path.startsWith("blob:")) URL.revokeObjectURL(removed.path);
+			return prev.filter((attachment) => attachment.id !== id);
 		});
 	};
 
@@ -569,7 +568,10 @@ export const InlineEdit: FC<InlineEditProps> = ({
 						const reader = new FileReader();
 						reader.onload = (e) => {
 							if (e.target?.result) {
-								setAttachments((prev) => [...prev, e.target?.result as string]);
+								setAttachments((prev) => [
+									...prev,
+									{ id: crypto.randomUUID(), path: e.target?.result as string },
+								]);
 							}
 						};
 						reader.readAsDataURL(file);
@@ -597,7 +599,9 @@ export const InlineEdit: FC<InlineEditProps> = ({
 				file_content: fileContent,
 				edit_prompt: prompt,
 				selection,
-				attachments,
+				// The legacy edit route takes paths; the composer's chips carry ids for
+				// their keys, which that wire has no notion of.
+				attachments: attachments.map((attachment) => attachment.path),
 			};
 
 			const response = await client.chat.editFileWithAgent(agentToUse, request);

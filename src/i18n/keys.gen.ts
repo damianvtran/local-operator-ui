@@ -34,6 +34,8 @@ import enUiBrowserChrome from "./catalogues/en/ui.browser.chrome.json";
 import enUiBrowser from "./catalogues/en/ui.browser.json";
 import enUiCanvas from "./catalogues/en/ui.canvas.json";
 import enUiChatAnalytics from "./catalogues/en/ui.chat.analytics.json";
+import enUiChatAsks from "./catalogues/en/ui.chat.asks.json";
+import enUiChatAttachments from "./catalogues/en/ui.chat.attachments.json";
 import enUiChatCanonical from "./catalogues/en/ui.chat.canonical.json";
 import enUiChatCommentaryActions from "./catalogues/en/ui.chat.commentary_actions.json";
 import enUiChatComposer from "./catalogues/en/ui.chat.composer.json";
@@ -104,6 +106,8 @@ import esUiAgentsStarters from "./catalogues/es/ui.agents.starters.json";
 import esUiBrowserChrome from "./catalogues/es/ui.browser.chrome.json";
 import esUiBrowser from "./catalogues/es/ui.browser.json";
 import esUiCanvas from "./catalogues/es/ui.canvas.json";
+import esUiChatAsks from "./catalogues/es/ui.chat.asks.json";
+import esUiChatAttachments from "./catalogues/es/ui.chat.attachments.json";
 import esUiChatComposer from "./catalogues/es/ui.chat.composer.json";
 import esUiChatComposerMedia from "./catalogues/es/ui.chat.composer_media.json";
 import esUiChatDialogs from "./catalogues/es/ui.chat.dialogs.json";
@@ -166,6 +170,8 @@ import frUiAgentsStarters from "./catalogues/fr/ui.agents.starters.json";
 import frUiBrowserChrome from "./catalogues/fr/ui.browser.chrome.json";
 import frUiBrowser from "./catalogues/fr/ui.browser.json";
 import frUiCanvas from "./catalogues/fr/ui.canvas.json";
+import frUiChatAsks from "./catalogues/fr/ui.chat.asks.json";
+import frUiChatAttachments from "./catalogues/fr/ui.chat.attachments.json";
 import frUiChatComposer from "./catalogues/fr/ui.chat.composer.json";
 import frUiChatComposerMedia from "./catalogues/fr/ui.chat.composer_media.json";
 import frUiChatDialogs from "./catalogues/fr/ui.chat.dialogs.json";
@@ -228,6 +234,8 @@ import hiUiAgentsStarters from "./catalogues/hi/ui.agents.starters.json";
 import hiUiBrowserChrome from "./catalogues/hi/ui.browser.chrome.json";
 import hiUiBrowser from "./catalogues/hi/ui.browser.json";
 import hiUiCanvas from "./catalogues/hi/ui.canvas.json";
+import hiUiChatAsks from "./catalogues/hi/ui.chat.asks.json";
+import hiUiChatAttachments from "./catalogues/hi/ui.chat.attachments.json";
 import hiUiChatComposer from "./catalogues/hi/ui.chat.composer.json";
 import hiUiChatComposerMedia from "./catalogues/hi/ui.chat.composer_media.json";
 import hiUiChatDialogs from "./catalogues/hi/ui.chat.dialogs.json";
@@ -287,6 +295,8 @@ import ruUiAgentsStarters from "./catalogues/ru/ui.agents.starters.json";
 import ruUiBrowserChrome from "./catalogues/ru/ui.browser.chrome.json";
 import ruUiBrowser from "./catalogues/ru/ui.browser.json";
 import ruUiCanvas from "./catalogues/ru/ui.canvas.json";
+import ruUiChatAsks from "./catalogues/ru/ui.chat.asks.json";
+import ruUiChatAttachments from "./catalogues/ru/ui.chat.attachments.json";
 import ruUiChatComposer from "./catalogues/ru/ui.chat.composer.json";
 import ruUiChatComposerMedia from "./catalogues/ru/ui.chat.composer_media.json";
 import ruUiChatDialogs from "./catalogues/ru/ui.chat.dialogs.json";
@@ -347,6 +357,8 @@ import urUiAgentsStarters from "./catalogues/ur/ui.agents.starters.json";
 import urUiBrowserChrome from "./catalogues/ur/ui.browser.chrome.json";
 import urUiBrowser from "./catalogues/ur/ui.browser.json";
 import urUiCanvas from "./catalogues/ur/ui.canvas.json";
+import urUiChatAsks from "./catalogues/ur/ui.chat.asks.json";
+import urUiChatAttachments from "./catalogues/ur/ui.chat.attachments.json";
 import urUiChatComposer from "./catalogues/ur/ui.chat.composer.json";
 import urUiChatComposerMedia from "./catalogues/ur/ui.chat.composer_media.json";
 import urUiChatDialogs from "./catalogues/ur/ui.chat.dialogs.json";
@@ -407,6 +419,8 @@ import viUiAgentsStarters from "./catalogues/vi/ui.agents.starters.json";
 import viUiBrowserChrome from "./catalogues/vi/ui.browser.chrome.json";
 import viUiBrowser from "./catalogues/vi/ui.browser.json";
 import viUiCanvas from "./catalogues/vi/ui.canvas.json";
+import viUiChatAsks from "./catalogues/vi/ui.chat.asks.json";
+import viUiChatAttachments from "./catalogues/vi/ui.chat.attachments.json";
 import viUiChatComposer from "./catalogues/vi/ui.chat.composer.json";
 import viUiChatComposerMedia from "./catalogues/vi/ui.chat.composer_media.json";
 import viUiChatDialogs from "./catalogues/vi/ui.chat.dialogs.json";
@@ -466,6 +480,8 @@ import zhCNUiAgentsStarters from "./catalogues/zh-CN/ui.agents.starters.json";
 import zhCNUiBrowserChrome from "./catalogues/zh-CN/ui.browser.chrome.json";
 import zhCNUiBrowser from "./catalogues/zh-CN/ui.browser.json";
 import zhCNUiCanvas from "./catalogues/zh-CN/ui.canvas.json";
+import zhCNUiChatAsks from "./catalogues/zh-CN/ui.chat.asks.json";
+import zhCNUiChatAttachments from "./catalogues/zh-CN/ui.chat.attachments.json";
 import zhCNUiChatComposer from "./catalogues/zh-CN/ui.chat.composer.json";
 import zhCNUiChatComposerMedia from "./catalogues/zh-CN/ui.chat.composer_media.json";
 import zhCNUiChatDialogs from "./catalogues/zh-CN/ui.chat.dialogs.json";
@@ -532,6 +548,8 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiBrowser,
 	...enUiCanvas,
 	...enUiChatAnalytics,
+	...enUiChatAsks,
+	...enUiChatAttachments,
 	...enUiChatCanonical,
 	...enUiChatCommentaryActions,
 	...enUiChatComposer,
@@ -610,6 +628,8 @@ export const bundledCatalogues: Readonly<
 		...esUiBrowserChrome,
 		...esUiBrowser,
 		...esUiCanvas,
+		...esUiChatAsks,
+		...esUiChatAttachments,
 		...esUiChatComposer,
 		...esUiChatComposerMedia,
 		...esUiChatDialogs,
@@ -674,6 +694,8 @@ export const bundledCatalogues: Readonly<
 		...frUiBrowserChrome,
 		...frUiBrowser,
 		...frUiCanvas,
+		...frUiChatAsks,
+		...frUiChatAttachments,
 		...frUiChatComposer,
 		...frUiChatComposerMedia,
 		...frUiChatDialogs,
@@ -738,6 +760,8 @@ export const bundledCatalogues: Readonly<
 		...hiUiBrowserChrome,
 		...hiUiBrowser,
 		...hiUiCanvas,
+		...hiUiChatAsks,
+		...hiUiChatAttachments,
 		...hiUiChatComposer,
 		...hiUiChatComposerMedia,
 		...hiUiChatDialogs,
@@ -799,6 +823,8 @@ export const bundledCatalogues: Readonly<
 		...ruUiBrowserChrome,
 		...ruUiBrowser,
 		...ruUiCanvas,
+		...ruUiChatAsks,
+		...ruUiChatAttachments,
 		...ruUiChatComposer,
 		...ruUiChatComposerMedia,
 		...ruUiChatDialogs,
@@ -861,6 +887,8 @@ export const bundledCatalogues: Readonly<
 		...urUiBrowserChrome,
 		...urUiBrowser,
 		...urUiCanvas,
+		...urUiChatAsks,
+		...urUiChatAttachments,
 		...urUiChatComposer,
 		...urUiChatComposerMedia,
 		...urUiChatDialogs,
@@ -923,6 +951,8 @@ export const bundledCatalogues: Readonly<
 		...viUiBrowserChrome,
 		...viUiBrowser,
 		...viUiCanvas,
+		...viUiChatAsks,
+		...viUiChatAttachments,
 		...viUiChatComposer,
 		...viUiChatComposerMedia,
 		...viUiChatDialogs,
@@ -984,6 +1014,8 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiBrowserChrome,
 		...zhCNUiBrowser,
 		...zhCNUiCanvas,
+		...zhCNUiChatAsks,
+		...zhCNUiChatAttachments,
 		...zhCNUiChatComposer,
 		...zhCNUiChatComposerMedia,
 		...zhCNUiChatDialogs,
@@ -1689,6 +1721,30 @@ export type MessageParams = {
 	"ui.chat.analytics.title": undefined;
 	"ui.chat.analytics.toolbar.refreshing": undefined;
 	"ui.chat.analytics.toolbar.this_session_only": undefined;
+	"ui.chat.asks.context.messages_since": { count: number; time: string };
+	"ui.chat.asks.dismiss.answered_in_chat.note": undefined;
+	"ui.chat.asks.dismiss.answered_in_chat.title": undefined;
+	"ui.chat.asks.dismiss.cancel": undefined;
+	"ui.chat.asks.dismiss.heading": undefined;
+	"ui.chat.asks.dismiss.in_flight": undefined;
+	"ui.chat.asks.dismiss.moot.note": undefined;
+	"ui.chat.asks.dismiss.moot.title": undefined;
+	"ui.chat.asks.dismiss.receipt.answered_in_chat": undefined;
+	"ui.chat.asks.dismiss.receipt.moot": undefined;
+	"ui.chat.asks.dismiss.refused": undefined;
+	"ui.chat.asks.dismiss.trigger": undefined;
+	"ui.chat.attachments.copy_path": undefined;
+	"ui.chat.attachments.copy_saved_path": undefined;
+	"ui.chat.attachments.file_meta": { type: string; size: string };
+	"ui.chat.attachments.file_missing": undefined;
+	"ui.chat.attachments.file_missing_recovery": undefined;
+	"ui.chat.attachments.file_retained": { digest: string };
+	"ui.chat.attachments.file_type_unknown": undefined;
+	"ui.chat.attachments.file_unnamed": undefined;
+	"ui.chat.attachments.path_copied": undefined;
+	"ui.chat.attachments.pending_caption": undefined;
+	"ui.chat.attachments.saved_copy_label": undefined;
+	"ui.chat.attachments.saved_path_copied": undefined;
 	"ui.chat.canonical.sound.batch_attachment_unavailable": undefined;
 	"ui.chat.canonical.sound.player_failed": undefined;
 	"ui.chat.canonical.sound.stop.confirm_label": undefined;

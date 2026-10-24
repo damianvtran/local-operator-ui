@@ -12,6 +12,10 @@ import type {
 	BackendUpdateErrorReport,
 	BackendUpdateInfo,
 } from "../main/update-service";
+import type {
+	AttachmentUploadResult,
+	AttachmentUploadSource,
+} from "../shared/attachment-upload";
 import {
 	BACKEND_RECONNECT_CHANNEL,
 	BACKEND_STATUS_CHANNEL,
@@ -398,7 +402,7 @@ const api = {
 	 *
 	 * WHY THE RENDERER ASKS AT ALL: the composer's attach button already stores a
 	 * real path for everything it adds, and the send reads that path's bytes in main
-	 * (`encodeImageAttachments` -> `api.readFile`). A dropped file expressed as a
+	 * (`encodeAttachments` -> `api.readFile`). A dropped file expressed as a
 	 * data URL instead would be a second kind of attachment - one whose base64 copy
 	 * is written into the persisted draft store, which is where a large image turns
 	 * into a localStorage quota problem the path form simply does not have.
@@ -423,6 +427,18 @@ const api = {
 	 */
 	readFileBytes: (filePath: string, maxBytes?: number) =>
 		ipcRenderer.invoke("read-file-bytes", filePath, maxBytes),
+	/**
+	 * Upload one composer attachment to the daemon's attachment store.
+	 *
+	 * The bytes never enter this context: main reads the file, posts the
+	 * multipart body, and answers the stored record (attachment contract v1
+	 * §1.1). The composer replaces a non-image chip with this record's digest on
+	 * the wire, and refuses the send when the answer is a failure.
+	 */
+	uploadAttachment: (
+		source: AttachmentUploadSource,
+	): Promise<AttachmentUploadResult> =>
+		ipcRenderer.invoke("upload-attachment", source),
 	/**
 	 * Resolve-and-stat a batch of paths. The answer carries the resolved path,
 	 * which is the Files panel's identity for a file.
@@ -957,8 +973,12 @@ const api = {
 		setContentRect: (
 			rect: { x: number; y: number; width: number; height: number } | null,
 		): Promise<unknown> => ipcRenderer.invoke("browser-set-content-rect", rect),
-		setViewVisible: (visible: boolean, ownPage = false): Promise<unknown> =>
-			ipcRenderer.invoke("browser-set-visible", visible, ownPage),
+		setViewVisible: (
+			visible: boolean,
+			ownPage = false,
+			ownStatePage = ownPage,
+		): Promise<unknown> =>
+			ipcRenderer.invoke("browser-set-visible", visible, ownPage, ownStatePage),
 		handOver: (tabId: number, sessionId: string): Promise<unknown> =>
 			ipcRenderer.invoke("browser-hand-over", tabId, sessionId),
 		revokeHandOver: (tabId: number): Promise<unknown> =>

@@ -444,7 +444,7 @@ export function layoutKeyOf(snapshot: AddressOverlayLayoutSnapshot): string {
 /** The identity of the CONTENT a projection hangs from: the tab and the
  * rectangle, WITHOUT presentation.
  *
- * A presentation flip alone is not a reason to lower the product popout.
+ * A presentation flip alone is not a reason to drop the product row's draft.
  * Opening the page menu suppresses the native page by design (the panel paints
  * into the content rect, where a native view wins), which flips `presented` to
  * false while the tab and the rectangle stay identical. Keying the dismissal on
@@ -631,7 +631,7 @@ export interface AddressOverlayCommitEvent {
 }
 
 /**
- * The other event main sends: the popout must come down, and the reason is
+ * The other event main sends: the list must come down, and the reason is
  * main's own observation (the page took focus, the bound tab navigated, the tab
  * changed or the layout moved). The renderer lowers its field row; it never
  * decides these facts itself, because a renderer-only dismissal cannot see a

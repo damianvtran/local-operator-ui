@@ -27,9 +27,9 @@ import { useConsoleAttention } from "@features/console/hooks/use-console-attenti
 /*
  * THE AMBIENT FEDERATED CATALOGUE (mesh §2.1's sidebar merge): mounted HERE, in
  * the shell rather than in the sidebar, because it must run per WINDOW and not
- * per route or per layout - the sidebar swaps for a strip under 1024px and
- * unmounts behind the sheet, and a read whose rows the sidebar depends on must
- * not pause because a layout mode changed. It renders null.
+ * per route or per layout - the persisted preference can replace the dock with
+ * its 56px strip at any window width, and a read whose rows the sidebar depends
+ * on must not pause because that navigation subtree changed. It renders null.
  */
 import { PeersCatalogueSync } from "@features/mesh/peers-catalogue";
 import { OnboardingModal } from "@features/onboarding";
@@ -227,9 +227,9 @@ const App: FC = () => {
 	 * `ModelsInitializer` renders nothing, so it has nothing to register.
 	 */
 	useSuppressBrowserView(isCommandPaletteOpen, "command-palette");
-	useSuppressBrowserView(isCreateAgentDialogOpen, "create-agent-dialog");
+	useSuppressBrowserView(isCreateAgentDialogOpen, "dialog", "create-agent");
 	useSuppressBrowserView(isOnboardingActive, "onboarding");
-	useSuppressBrowserView(isLowCreditsDialogOpen, "low-credits");
+	useSuppressBrowserView(isLowCreditsDialogOpen, "dialog", "low-credits");
 	const navigate = useNavigate(); // For onAgentCreated
 
 	/*
@@ -735,7 +735,7 @@ const App: FC = () => {
 				 * the document element before the first render, from main's own fact
 				 * (`--lo-window-chrome`), and `useWindowChrome` keeps the live ones current.
 				 * Root-level also lets the attribute rules reach PORTALED elements, which the
-				 * sidebar's overlay sheet is.
+				 * command palette's Radix dialog is.
 				 */
 				data-titlebar-sidebar-collapsed={isSidebarCollapsed ? "true" : "false"}
 			>

@@ -861,7 +861,9 @@ export const PickerHost: FC<PickerHostProps> = ({
 	 * way. Registered here, in the one funnel BOTH hosts render through, rather
 	 * than in each panel, so a picker added tomorrow inherits it.
 	 */
-	useSuppressBrowserView(open, "panel-picker");
+	// A modal presentation (the shell below), not a popover: it covers the content
+	// area with a scrim, so the dialog rule — always pause while open — is right.
+	useSuppressBrowserView(open, "dialog", "panel-picker");
 	const [query, setQuery] = useState("");
 	// The keyboard's selection: the row Enter picks, and the row
 	// `aria-activedescendant` names. Moved by the arrow keys only — see

@@ -159,7 +159,7 @@ export function HubUpdateMark({
 		// the action it names (design D3; UX U2).
 		<Tooltip
 			content={action ? `${detail} ${action}` : detail}
-			side="right"
+			side="top"
 			align="center"
 			disableHoverableContent
 		>
@@ -265,7 +265,7 @@ export function HubHeadingControls({
 				</button>
 			)}
 			{onCheck && (
-				<Tooltip content="Check the hub for updates now" side="right">
+				<Tooltip content="Check the hub for updates now" side="top">
 					<button
 						type="button"
 						data-testid="hub-check-now"
