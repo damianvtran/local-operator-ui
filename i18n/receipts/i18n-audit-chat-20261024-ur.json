@@ -66,7 +66,7 @@
   "pound_tokens_in_added_english": 78,
   "placeholder_occurrences_missing_or_renamed": 0,
   "icu_shape_differences": 6,
-  "icu_shape_differences_note": "All six are placeholder-order swaps verified as grammatical in Urdu: total/value (position phrase), scope/query, count/value (image of count), owner/label (access from owner) twice, and the same pair in the longer sentence.",
+  "icu_shape_differences_note": "All six are placeholder-order swaps verified as grammatical in Urdu: total/value (position phrase), scope/query (two keys), count/value (image of count), and owner/label in the label and its longer sentence.",
   "plural_messages": 42,
   "plural_categories": {
    "locale": [
@@ -316,7 +316,7 @@
    "key": "ui.chat.trace.receipt_row_model.cancel_with_wake",
    "current": " — wake( سے منسوخ کریں",
    "proposed": "Keep byte-identical to English: \" — cancel with wake(\" and \"Scheduled wake \". Source fix preferred: move both markers out of the catalogue into locale-independent constants.",
-   "reason": "These two values are not display copy. wakeReceiptHeadline() splits the persisted wake envelope on t(cancel_with_wake) and strips t(scheduled_wake) as a prefix; the envelope is model-facing English, so the translated delimiters never match. The row then shows the full envelope, cancel how-to included — the exact leak the function exists to prevent.",
+   "reason": "These two values are not display copy. wakeReceiptHeadline() splits the persisted wake envelope on t(cancel_with_wake) and strips t(scheduled_wake) as a prefix; the envelope is model-facing English (the core hardcodes the markers at local_operator/harness/rows.py:124, 1034 and 1058), so the translated delimiters never match. The row then shows the full envelope, cancel how-to included — the exact leak the function exists to prevent.",
    "also_affects": [
     {
      "key": "ui.chat.trace.receipt_row_model.scheduled_wake",
