@@ -1786,6 +1786,8 @@ export type MessageParams = {
 	"ui.chat.composer.confirm_recording": undefined;
 	"ui.chat.composer.confirm_recording_hint": undefined;
 	"ui.chat.composer.delivery_remedies_hint": undefined;
+	"ui.chat.composer.dictation_failed_transient": undefined;
+	"ui.chat.composer.dictation_failed_transient_take_kept": undefined;
 	"ui.chat.composer.message": undefined;
 	"ui.chat.composer.processing_audio": undefined;
 	"ui.chat.composer.secret_ask_notice": undefined;
