@@ -148,7 +148,10 @@ export function transcriptionFailureMessage(error: unknown): string {
 	if (flat === "") {
 		return NO_REASON;
 	}
-	if (UPSTREAM_STATUS_ONLY.test(flat) && isTransientTranscriptionFailure(error)) {
+	if (
+		UPSTREAM_STATUS_ONLY.test(flat) &&
+		isTransientTranscriptionFailure(error)
+	) {
 		return UPSTREAM_TEMPORARY;
 	}
 	if (OUT_OF_CREDITS.test(flat)) {
@@ -372,7 +375,8 @@ const UPSTREAM_FAILURE = /upstream\s+(?:responded|returned)\s+5\d\d/i;
  * having no usable reason, and takes the class's own sentence; the words still
  * reach the console and the app's log on `error.message`.
  */
-const UPSTREAM_STATUS_ONLY = /upstream\s+(?:responded|returned)\s+5\d\d\s*:?\s*\{/i;
+const UPSTREAM_STATUS_ONLY =
+	/upstream\s+(?:responded|returned)\s+5\d\d\s*:?\s*\{/i;
 
 /**
  * The daemon's wordings for a 4xx REFUSAL from the upstream hop.
