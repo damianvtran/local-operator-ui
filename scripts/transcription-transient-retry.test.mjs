@@ -213,6 +213,41 @@ test("only a fault time can fix is transient, and a refusal never is", () => {
 	}
 });
 
+/*
+ * NEVER RETRY A 4xx, swept rather than sampled (review round 1, gap b).
+ *
+ * The classifier used to name 401/402/403 as its 4xx exclusions, which read as
+ * though 404, 409, 413 and the rest fell through to the retry path. They did not:
+ * the final line of the predicate is `status >= 500`, so those statuses were
+ * already refused by the allow-list, and this sweep passes against the old rule
+ * as well as the new one - checked, not assumed. The change is therefore about
+ * saying the rule once, as a range, instead of listing three statuses and leaving
+ * the real gate seven lines below; a reader who stopped at the exclusion list
+ * would believe the opposite of what shipped.
+ *
+ * The sweep stays because the claim is "no 4xx", and a claim is only held if it
+ * is swept: a future edit that retried, say, 429 with a Retry-After would trip
+ * this. Each status carries bodies that would otherwise look transient, so the
+ * status is the only thing the classifier can be reading.
+ */
+test("no 4xx is retried, whatever its body says", () => {
+	for (let status = 400; status <= 499; status += 1) {
+		for (const detail of [
+			"",
+			"The audio could not be decoded.",
+			`Upstream responded 500: {"error":"failed to check billing account"}`,
+			"HTTP 500 from the provider",
+		]) {
+			assert.equal(
+				isTransientTranscriptionFailure(
+					new TranscriptionRequestError(status, detail),
+				),
+				false,
+				`a ${status} carrying ${JSON.stringify(detail)} must not be retried`,
+			);
+		}
+	}
+});
 test("the transient sentence names the fault as temporary and names the action", () => {
 	/*
 	 * One sentence, chosen in one place, so the composer and the canvas's inline
@@ -249,13 +284,18 @@ test("the transient sentence names the fault as temporary and names the action",
 		"Dictation failed: the account behind dictation is out of credits. If it's yours, top it up.",
 	);
 	/*
-	 * A 5xx WITH NO WORDS still names its class. "The server gave no reason" is
-	 * the fallback for a body that says nothing, and it sends the reader to the
-	 * log - the wrong door for a fault whose action is the control.
+	 * A 5xx WITH NO WORDS STATES THE ABSENCE. This assertion used to pin the
+	 * temporary sentence here, and the invariant it broke is the one
+	 * `transcription-failure-copy.test.mjs` already held on main: an absent reason
+	 * states the absence rather than inventing a cause. The class is a fact about
+	 * retrying, not a diagnosis, so it cannot stand in for a reason that was never
+	 * given - only the relay's wrapped-JSON shape, which carries scaffolding and no
+	 * sentence, takes the class's own wording. Empty bodies stay out of it. A test
+	 * this PR added does not get to overrule a test this PR did not write.
 	 */
 	assert.equal(
 		transcriptionFailureMessage(new TranscriptionRequestError(503, "")),
-		"Dictation failed: the transcription service had a temporary fault. Try again.",
+		"Dictation failed: the server gave no reason. Try again, or report it with the app's log.",
 	);
 });
 
@@ -507,6 +547,36 @@ test("both dictation surfaces take the retrying client, and the composer keeps t
 	assert.ok(
 		canvas.includes("TranscriptionApi.createTranscriptionWithRetry("),
 		"the canvas's dictation takes the same retry, so the shared sentence is true there too",
+	);
+	/*
+	 * GAP (a), canvas side: automatic retries are exhausted by this point, so the
+	 * offer must exist or the operator re-records a take the app is still holding.
+	 * The canvas needs all four pieces the composer has - the flag the failure
+	 * sets, the retained blob, the nudge that re-arms the one auto-send effect, and
+	 * the control - because any one of them missing turns the retry into a button
+	 * that does nothing.
+	 */
+	assert.ok(
+		canvas.includes("setDictationFailure(transcriptionFailureMessage(error))"),
+		"the canvas keeps the failure sentence, not just the toast that dismisses",
+	);
+	assert.ok(
+		canvas.includes("data-dictation-retry"),
+		"the canvas renders the Retry control in the slot the transcribing row vacates",
+	);
+	assert.ok(
+		canvas.includes("[audioBlob, handleSendAudio, dictationRetry]"),
+		"the retry nudge re-arms the same auto-send effect rather than adding a second send path",
+	);
+	assert.ok(
+		// The blob is cleared on success only, so a failed take still has its bytes.
+		canvas.indexOf("setAudioBlob(null)") <
+			canvas.indexOf("setDictationFailure(transcriptionFailureMessage(error))"),
+		"the take survives a failure; it is cleared only on the success path above it",
+	);
+	assert.ok(
+		canvas.includes('t("ui.common.actions.retry")'),
+		"the canvas control reuses the audited catalogue key, not an inline label",
 	);
 });
 

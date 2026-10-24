@@ -23,6 +23,7 @@ import {
 } from "@shared/hooks/use-speech-to-text-manager";
 import { speechUnavailableReason } from "@shared/lib/speech-gate";
 import { cn } from "@shared/lib/utils";
+import { t } from "@shared/i18n";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import type { Attachment } from "@shared/store/conversation-input-store";
 import { normalizePath } from "@shared/utils/path-utils";
@@ -161,6 +162,22 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	const [isRecording, setIsRecording] = useState(false);
 	const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
 	const [isTranscribing, setIsTranscribing] = useState(false);
+	/**
+	 * THE TAKE THAT OUTLIVED ITS FAILURE (#1087), canvas side.
+	 *
+	 * `audioBlob` is cleared only on success, so after a failure the bytes needed
+	 * to try again are still in hand - but until now the only thing that said so
+	 * was a toast, which dismisses, and nothing on the surface could spend them.
+	 * The operator was left re-recording a take the app already had.
+	 *
+	 * `dictationFailure` is that offer's copy and `dictationRetry` is the nudge
+	 * that re-arms it. A retry is the first attempt's own path - the effect below
+	 * re-runs `handleSendAudio` from the retained blob - never a second send path
+	 * beside it, which is the rule the composer states and keeps for the same
+	 * reason: two send paths drifted into two retry bursts on the #1087 rig.
+	 */
+	const [dictationFailure, setDictationFailure] = useState<string | null>(null);
+	const [dictationRetry, setDictationRetry] = useState(0);
 	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 	const audioChunksRef = useRef<Blob[]>([]);
 	const [platform, setPlatform] = useState("");
@@ -479,12 +496,22 @@ export const InlineEdit: FC<InlineEditProps> = ({
 				showInfoToast(EMPTY_TRANSCRIPTION_MESSAGE);
 			}
 			setAudioBlob(null); // Clear the blob after sending
+			// A take that went through puts the offer away, so a stale sentence cannot
+			// sit over a transcript that already arrived.
+			setDictationFailure(null);
 		} catch (error) {
-			// The raw server message stays on the console; the toast names the cause
+			// The raw server message stays on the console; the surface names the cause
 			// in a sentence a person can act on (see
 			// `transcriptionFailureMessage`), because "please try again" cannot fix
 			// an account with no credits or a refused sign-in.
 			console.error("Error transcribing audio:", error);
+			/*
+			 * THE SENTENCE IS KEPT, NOT JUST SHOWN. The toast dismisses; the operator
+			 * who dismissed it, or who looked away while it timed out, still needs to
+			 * know why the take did not go and what the next step is. The row below
+			 * carries both, and `audioBlob` still holds the bytes it would spend.
+			 */
+			setDictationFailure(transcriptionFailureMessage(error));
 			showErrorToast(transcriptionFailureMessage(error));
 		} finally {
 			setIsTranscribing(false);
@@ -495,7 +522,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		if (audioBlob) {
 			handleSendAudio();
 		}
-	}, [audioBlob, handleSendAudio]);
+	}, [audioBlob, handleSendAudio, dictationRetry]);
 
 	useEffect(() => {
 		window.electron.ipcRenderer
@@ -872,6 +899,46 @@ export const InlineEdit: FC<InlineEditProps> = ({
 								Processing audio
 							</span>
 							<WaveformAnimation />
+						</div>
+					) : dictationFailure !== null ? (
+						/*
+						 * THE OFFER, in the slot the transcribing row vacates (#1087).
+						 *
+						 * It is a row and not a toast action because a toast dismisses,
+						 * and the take it would spend is already in hand - the composer
+						 * says the same and shows the same control, so the two surfaces
+						 * of one relay do not disagree about what a spent retry leaves
+						 * the operator holding. Gated on `!isTranscribing` so the
+						 * sentence never sits over a take that is on its way again.
+						 */
+						<div
+							data-dictation-retry
+							className={cn(
+								"flex min-h-[50px] flex-1 flex-col items-start justify-center gap-1 px-1.5 py-2",
+							)}
+						>
+							<span className={cn("text-body-sm text-ink-muted")}>
+								{dictationFailure}
+							</span>
+							<Button
+								type="button"
+								size="sm"
+								variant="ghost"
+								disabled={isTranscribing || audioBlob === null}
+								onClick={() => {
+									/*
+									 * Clear first, then nudge: the row goes away the moment the
+									 * retry is accepted, and the effect above re-runs the one send
+									 * path from the retained blob. Without a blob there is nothing
+									 * to spend, so the button stays disabled rather than becoming
+									 * a control that does nothing.
+									 */
+									setDictationFailure(null);
+									setDictationRetry((n) => n + 1);
+								}}
+							>
+								{t("ui.common.actions.retry")}
+							</Button>
 						</div>
 					) : (
 						<textarea
