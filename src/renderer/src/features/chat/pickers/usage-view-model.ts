@@ -447,6 +447,24 @@ const generalFormat = (value: number): string => {
 	return `${sign}${point}`;
 };
 
+/**
+ * A percent for a row, without rounding a real reading down to nothing.
+ * `_format_percent()` in `usage_panel.py`.
+ *
+ * Percent rows print integers because the vendors quote `2.0` and `100.0`, and
+ * a trailing `.0` on every row costs width to say nothing. Kimi's monthly
+ * window is the counter-example: it arrives as a ratio like `0.0006` — 0.06% —
+ * and zero-places rounding renders that `0%`, which claims a window that has
+ * started is untouched. Anything strictly between 0 and 1 prints `<1` so the
+ * number stays honest and narrow; zero and whole percentages keep the integer
+ * form. Half-even is preserved elsewhere (`toFixedHalfEven`) — this replaces
+ * ONLY the zero-places rounding of a sub-1 value, never the rounding mode.
+ */
+export const formatPercentValue = (value: number): string => {
+	if (value > 0 && value < 1) return "<1";
+	return toFixedHalfEven(value, 0);
+};
+
 const withUnit = (value: number, unit: UsageUnit): string => {
 	const label = UNIT_LABELS[unit] ?? unit;
 	const text =
@@ -455,7 +473,7 @@ const withUnit = (value: number, unit: UsageUnit): string => {
 			: unit === "percent"
 				? // Percent rows are integers: the endpoints quote `2.0` and `100.0`,
 					// and a trailing `.0` on every row costs width to say nothing.
-					toFixedHalfEven(value, 0)
+					formatPercentValue(value)
 				: generalFormat(value);
 	if (!label) return text;
 	// "%" is a suffix; every other label is a separate word.
@@ -485,7 +503,7 @@ export const formatAmount = (amount: UsageAmount): string => {
 		return `${withUnit(amount.remaining, unit)} left`;
 	if (amount.limit !== null) return `${withUnit(amount.limit, unit)} limit`;
 	if (amount.used_fraction !== null)
-		return `${toFixedHalfEven(amount.used_fraction * 100, 0)}% used`;
+		return `${formatPercentValue(amount.used_fraction * 100)}% used`;
 	return "";
 };
 
@@ -909,7 +927,7 @@ export const bindingSummary = (
 	const limit = bindingLimit(report);
 	if (!limit) return null;
 	const fraction = fractionOf(limit.amount) ?? 0;
-	const percent = `${toFixedHalfEven(fraction * 100, 0)}%`;
+	const percent = `${formatPercentValue(fraction * 100)}%`;
 	return {
 		limit,
 		status: effectiveStatus(limit),
