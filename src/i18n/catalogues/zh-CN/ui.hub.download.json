@@ -1,0 +1,6 @@
+{
+	"ui.hub.download.collision": "已下载“{name}”。你已有名为“{collision}”的智能体，因此现在有两个智能体使用该名称，可能任意一个被选中。请重命名其中一个。",
+	"ui.hub.download.fallback_agent": "智能体",
+	"ui.hub.download.renamed": "已下载“{name}”——你已有名为“{previous}”的智能体。",
+	"ui.hub.download.succeeded": "已从中心下载“{name}”。"
+}

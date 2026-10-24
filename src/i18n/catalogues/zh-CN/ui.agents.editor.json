@@ -1,0 +1,15 @@
+{
+	"ui.agents.editor.cancel": "取消",
+	"ui.agents.editor.creating": "正在创建……",
+	"ui.agents.editor.discard_changes": "放弃更改",
+	"ui.agents.editor.discard_unsaved": "放弃未保存的更改？",
+	"ui.agents.editor.empty": "这里还没有内容。",
+	"ui.agents.editor.keep_editing": "继续编辑",
+	"ui.agents.editor.retry": "重试",
+	"ui.agents.editor.retrying": "正在重试……",
+	"ui.agents.editor.save_changes": "保存更改",
+	"ui.agents.editor.saving": "正在保存……",
+	"ui.agents.editor.show_all": "显示全部",
+	"ui.agents.editor.show_less": "收起",
+	"ui.agents.editor.unsaved_changes": "未保存的更改"
+}
