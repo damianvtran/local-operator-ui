@@ -36,7 +36,7 @@
 	"ui.chat.composer.suggestion.phone_access": "Activez l’accès téléphone",
 	"ui.chat.composer.suggestion.review_repo_pr": "Relisez ce dépôt et ouvrez une pull request",
 	"ui.chat.composer.suggestion.schedule_mornings": "Planifiez une tâche chaque matin",
-	"ui.chat.composer.suggestion.wake_with_summary": "Réveillez-moi demain avec un résumé",
+	"ui.chat.composer.suggestion.wake_with_summary": "Réveillez-moi demain matin avec un résumé",
 	"ui.chat.composer.tip.approvals": "saisissez /approvals pour choisir si les outils demandent",
 	"ui.chat.composer.tip.ask_for_a_team": "demandez une équipe et plusieurs agents partagent une requête",
 	"ui.chat.composer.tip.attach_a_file": "joignez un fichier avec le trombone, ou collez-le",
