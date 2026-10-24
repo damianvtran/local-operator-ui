@@ -307,6 +307,24 @@ export function isReportableLoadFailure(code: number): boolean {
 }
 
 /**
+ * Whether a `history.restore()` rejection is the superseded-navigation abort.
+ *
+ * THE RESTORE PATH DOES NOT GET A NUMERIC NET CODE, unlike `did-fail-load`: the
+ * rejection is an `Error` whose message is the only place Electron puts
+ * `ERR_ABORTED (-3)`. Matching the message here is deliberate and narrow — the
+ * same reason `isReportableLoadFailure` exists one layer down — because a
+ * superseding navigation is ordinary browsing, not a restore failure. If that
+ * superseding page is then stopped before its `did-navigate`, no commit ever
+ * arrives to clear a mark written here, and `lastLoadFailed` would skip the tab
+ * on the next launch. The timeout and a deliberate Stop reject with different
+ * text (`ERR_FAILED (-2)` for a stop), so they still mark.
+ */
+function isSupersededRestore(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	return message.includes("ERR_ABORTED (-3)");
+}
+
+/**
  * The bare lop session id behind a consent requester, or null.
  *
  * Null for anything that is not a `session:<id>` identity, so an internal request
@@ -1525,21 +1543,19 @@ export class BrowserHost implements BrowserActionContext {
 			// to a sentence the user can act on, and this fallback exists only for the
 			// failures that path cannot see.
 			//
-			// AN ABORT IS NOT EXEMPTED HERE, unlike the view's own `did-fail-load`
-			// path (`isReportableLoadFailure` drops `ERR_ABORTED`). RE-EVALUATED
-			// 2026-10-24, and the exemption still does not belong here: the catch's
-			// OWN timeout rejection carries no net code, and the one rejection
-			// `history.restore` itself produces with an abort is a SUPERSEDING
-			// navigation (Electron 44.3.0: `ERR_ABORTED (-3) loading '<new url>'`).
-			// That navigation fires `did-navigate`, so `committed` is true and no
-			// mark is written; if a mark were written first, the ordinary clear on
-			// the commit retires it. A user STOP during a restore rejects
-			// `ERR_FAILED (-2)`, not `ERR_ABORTED`: no page came back, so the mark
-			// is honest. A redirect chain resolves on its final commit. Matching a
-			// code here would therefore be either dead code behind the commit guard
-			// or a second, guessing spelling of the exemption.
+			// AN ABORT IS EXEMPTED HERE TOO. The earlier reading — that a
+			// supersede always commits before this catch runs, so the commit
+			// guard covers it — was too strong: on Electron 44.3.0 a restore
+			// superseded mid-flight rejects `ERR_ABORTED (-3)` at 928ms while
+			// the superseding page's `did-navigate` did not arrive until 4960ms
+			// (and fast runs showed 611ms vs 678ms). If that superseding load is
+			// then stopped, no `did-navigate` ever arrives, so a mark written here
+			// would survive and `lastLoadFailed` would skip the tab next launch.
+			// The rejection is the ordinary supersede, not a restore failure; the
+			// timeout and a deliberate Stop still carry different text and mark.
 			if (
 				!committed &&
+				!isSupersededRestore(error) &&
 				!this.loadFailures.has(tabId) &&
 				this.registry.get(tabId) &&
 				!contents.isDestroyed()
