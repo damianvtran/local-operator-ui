@@ -1,12 +1,13 @@
 # S6c-lite: the approvals dock at 264px
 
-App code: `635d19fbf1225dfda1ad340babdab4539c19ff74` (rebased onto main
-`8eb5a0a9ad`; the built `out/` is from this code). The evidence tree is
-`5cc37427d6`; the final evidence commit is docs-only.
+App code: `40c3671dd23c23bdc66a2e579e9ff6e653e42d45` (rebased onto main
+`8eb5a0a9ad`; the built `out/` is from this code). This is the proof head; the
+final evidence commit is docs-only.
 Run mode: headless, 264×900 content, the real `/browser` route. The native
 approvals card is not involved; the rig removes the S6A opt-in from the launch
 env so the product dock is the path under test. The grants/revoke surface is
-the shipped one, unchanged.
+the shipped one, unchanged. The dock's floored left edge is kept at full width
+(the contrast contract treats it as a structural boundary).
 
 Command:
 
@@ -22,9 +23,9 @@ centre.
 | Acceptance | Dark | Light |
 | --- | --- | --- |
 | Full-width in flow | panel 264×721 at x=0; content 0×721; row 264; `position: static`; `data-dock-layout="full"` | panel 264×695.6; content 0×695.6; row 264; static |
-| Allow / Deny reachable, unclipped | Allow `x45 y521.47 78.75×28`; Deny `x154.47 y521.47 80.53×28`; both inside the panel, hitSelf, enabled | Allow `x45 y534.37 78.75×28`; Deny `x154.47 y534.37 80.53×28`; same |
-| Standing-grant Revoke / Revoke-all | Revoke `x176.31 y521.73 59.69×28`; Revoke-all `x12 y535.84 232×28`; both inside, hitSelf, enabled | Revoke `x176.31 y534.43 59.69×28`; Revoke-all `x12 y535.53 232×28`; same |
-| Request reason wraps | 106 chars, client 190px, scroll 190px, 7 line rects, widest 172.8px; `overflow-wrap: anywhere` | 106 chars, client 190px, scroll 190px, 7 line rects, widest 172.8px |
+| Allow / Deny reachable, unclipped | Allow `x46 y521.47 78.75×28`; Deny `x154.47 y521.47 80.53×28`; both inside the panel, hitSelf, enabled | Allow `x46 y534.37 78.75×28`; Deny `x154.47 y534.37 80.53×28`; same |
+| Standing-grant Revoke / Revoke-all | Revoke `x176.31 y521.73 59.69×28`; Revoke-all `x13 y535.84 231×28`; both inside, hitSelf, enabled | Revoke `x176.31 y534.43 59.69×28`; Revoke-all `x13 y535.53 231×28`; same |
+| Request reason wraps | 106 chars, client 189px, scroll 189px, 7 line rects, widest 172.8px; `overflow-wrap: anywhere` | 106 chars, client 189px, scroll 189px, 7 line rects, widest 172.8px |
 
 Panel height and displacement (same measurement): light client 688px / scroll
 1891px; dark client 713px / scroll 1848px; content width 264 → 0 when the dock
