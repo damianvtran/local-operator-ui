@@ -1,4 +1,4 @@
-# S6b approvals card frames — round-2 remediation head
+# S6b approvals card frames — round-3 head
 
 **Document-only frames.** These are cropped screenshots of the BUILT card
 document (`out/renderer/browser-approvals-overlay.html`) loaded in an iframe
@@ -24,7 +24,8 @@ routing and VoiceOver are **not** shown and are recorded BLOCKED in
 What they show: one request sentence with the origin inline; the broad grant as
 `allow_all_of` + the queue's registrable-domain key; a single gloss line; all
 five decisions plus the footer above the fold at 264 and 368; the footer's
-hairline and scrim; the count-labelled list action; the list footer at the card
+hairline, with a scrim only while the body actually scrolls; the count-labelled
+list action with an action aria-label and chevron; the unnamed-row discriminator; the list footer at the card
 foot without changing the pinned height; the exact app palette; disabled states
 as colour, not opacity; the stale/error line above the footer.
 

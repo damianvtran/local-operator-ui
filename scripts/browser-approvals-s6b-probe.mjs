@@ -16,7 +16,7 @@
  * and out/preload/browser-approvals-overlay.js.
  */
 import { spawn } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -46,7 +46,7 @@ const CARD = join(ROOT, "out/renderer/browser-approvals-overlay.html");
 const PRELOAD = join(ROOT, "out/preload/browser-approvals-overlay.js");
 writeFileSync(
 	FIXTURE,
-	`<!doctype html><html lang="en"><body style="margin:0;background:#204060;color:#fff;font:16px sans-serif"><div style="padding:16px"><h1>Fixture page</h1><p id="status">ready</p><button id="click" style="position:absolute;left:24px;top:24px;width:120px;height:40px">click</button><input id="field" style="position:absolute;left:24px;top:90px"></div><script>let clicks=0,keys=0,focusEvents=0,blurEvents=0;window.addEventListener("focus",()=>{focusEvents+=1});window.addEventListener("blur",()=>{blurEvents+=1});document.getElementById("click").onclick=()=>{clicks+=1;document.getElementById("status").textContent="clicks:"+clicks};document.getElementById("field").addEventListener("keydown",()=>{keys+=1});window.__focusField=()=>{document.getElementById("field").focus()};window.__probe=()=>({focusEvents,blurEvents,clicks,keys,activeElement:document.activeElement?.id??document.activeElement?.tagName??null,status:document.getElementById("status").textContent})</script></body></html>`,
+	`<!doctype html><html lang="en"><body style="margin:0;background:#204060;color:#fff;font:16px sans-serif"><div style="padding:16px"><h1>Fixture page</h1><p id="status">ready</p><button id="click" style="position:absolute;left:24px;top:24px;width:120px;height:40px">click</button><input id="field" style="position:absolute;left:24px;top:90px"></div><script>let clicks=0,keys=0,focusEvents=0,blurEvents=0;window.addEventListener("focus",()=>{focusEvents+=1});window.addEventListener("blur",()=>{blurEvents+=1});document.getElementById("click").onclick=()=>{clicks+=1;document.getElementById("status").textContent="clicks:"+clicks};document.getElementById("field").addEventListener("keydown",()=>{keys+=1});window.__focusField=()=>{document.getElementById("field").focus()};window.__probe=()=>({focusEvents,blurEvents,clicks,keys,activeElement:document.activeElement?.id??document.activeElement?.tagName??null,status:document.getElementById("status").textContent,innerWidth,innerHeight})</script></body></html>`,
 );
 
 writeFileSync(
@@ -64,15 +64,42 @@ const WIDTH = ${WIDTH};
 const THEME = ${JSON.stringify(THEME)};
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 app.commandLine.appendSwitch("use-mock-keychain");
+const watchdog = setTimeout(() => {
+  try {
+    writeFileSync(out + "/s6b-facts.json", JSON.stringify({
+      boot: { flow: "FAIL", reason: "watchdog: flow exceeded 90s" },
+      rows: { "BOOT-flow": { status: "FAIL", detail: "flow exceeded 90s" } },
+    }, null, 2));
+  } catch (error) { }
+  app.exit(1);
+}, 240000);
+watchdog.unref?.();
 
 app.whenReady().then(async () => {
   const win = new BrowserWindow({ show: false, width: Math.max(1000, WIDTH), height: 800, backgroundColor: "#000000" });
   const page = new WebContentsView({ webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } });
   win.contentView.addChildView(page);
   const pageRect = { x: 0, y: 120, width: WIDTH, height: 600 };
-  page.setBounds(pageRect);
-  page.setVisible(true);
-  await page.webContents.loadURL(fixture);
+  writeFileSync(out + "/s6b-boot.txt", JSON.stringify({ fixture, width: WIDTH, theme: THEME }));
+  /*
+   * A BOUNDED FIXTURE LOAD. A failed child load must become a recorded cell, not
+   * a 180s hang and a leaked Electron tree (round-3 F4). The watchdog below is
+   * the second line for a stall later in the flow; this one names the load.
+   */
+  const loaded = await Promise.race([
+    page.webContents.loadURL(fixture).then(() => "ok").catch((error) => "fail:" + String(error)),
+    sleep(30000).then(() => "timeout"),
+  ]);
+  if (loaded !== "ok") {
+    writeFileSync(out + "/s6b-facts.json", JSON.stringify({
+      boot: { load: "FAIL", reason: String(loaded) },
+      rows: { "BOOT-fixture-load": { status: "FAIL", detail: String(loaded) } },
+    }, null, 2));
+    console.error("fixture load", loaded);
+    win.close();
+    app.exit(1);
+    return;
+  }
   await sleep(250);
 
   const responded = [];
@@ -93,6 +120,11 @@ app.whenReady().then(async () => {
       focusTargets.push(target === page.webContents ? "page" : "card");
     },
   });
+  // The hidden window does not always propagate the page's bounds to its
+  // renderer once a second child exists (measured innerWidth 0 at this head):
+  // re-apply the page rect after the card child is attached, then confirm.
+  page.setBounds(pageRect);
+  const pageViewport = await page.webContents.executeJavaScript("({ w: innerWidth, h: innerHeight })");
   const currentCard = () => win.contentView.children[win.contentView.children.length - 1];
   const readCard = () =>
     currentCard().webContents.executeJavaScript(\`(() => ({
@@ -114,7 +146,7 @@ app.whenReady().then(async () => {
       footerTop: (() => { const el = document.querySelector('.card-footer'); const card = document.getElementById('approvals-card'); if (!el || !card) return null; return Math.round(el.getBoundingClientRect().top - card.getBoundingClientRect().top); })(),
       decisionRects: [...document.querySelectorAll('#approvals-secondary button')].map((b) => { const r = b.getBoundingClientRect(); const c = document.getElementById('approvals-card').getBoundingClientRect(); return { text: b.textContent, top: Math.round(r.top - c.top), bottom: Math.round(r.bottom - c.top) }; }),
     }))()\`);
-  const settle = async (predicate, label, timeout = 20000) => {
+  const settle = async (predicate, label, timeout = 45000) => {
     const started = Date.now();
     while (Date.now() - started < timeout) {
       try { if (predicate(controller.facts())) return true; } catch {}
@@ -150,7 +182,7 @@ app.whenReady().then(async () => {
     return false;
   };
 
-  const pageBefore = { bounds: page.getBounds(), visible: page.getVisible(), probe: await page.webContents.executeJavaScript("window.__probe()") };
+  const pageBefore = { bounds: page.getBounds(), visible: page.getVisible(), viewport: pageViewport, probe: await page.webContents.executeJavaScript("window.__probe()") };
   const focusBefore = webContents.getFocusedWebContents()?.id ?? null;
   controller.onLayout({ presented: true, contentRect: pageRect, revision: 1 });
   controller.setModel({ entries, locale: "fr", dir: "ltr", theme: THEME, requesterLabels });
@@ -230,12 +262,18 @@ app.whenReady().then(async () => {
   const outsideBefore = await page.webContents.executeJavaScript("window.__probe()");
   const cardBeforeOutside = controller.facts().visible;
   const decisionsBeforeOutside = responded.length;
+  // A page click in the product focuses the page first; the card's own click
+  // above focused the card, and Chromium delivers synthetic mouse input to the
+  // focused child. Focus the page, then click it (same as the real gesture).
+  page.webContents.focus();
+  await sleep(80);
+  const outsideHit = await page.webContents.executeJavaScript("(() => ({ el: document.elementFromPoint(40, 40)?.id ?? null, dpr: devicePixelRatio, innerWidth, innerHeight }))()");
   page.webContents.sendInputEvent({ type: "mouseMove", x: 40, y: 40 });
   page.webContents.sendInputEvent({ type: "mouseDown", x: 40, y: 40, button: "left", clickCount: 1 });
   page.webContents.sendInputEvent({ type: "mouseUp", x: 40, y: 40, button: "left", clickCount: 1 });
   await sleep(450);
   const outsideAfter = await page.webContents.executeJavaScript("window.__probe()");
-  record("I2-click-outside", outsideAfter.clicks === outsideBefore.clicks + 1 && controller.facts().visible === cardBeforeOutside && responded.length === decisionsBeforeOutside, { outsideBefore, outsideAfter, visible: controller.facts().visible, responded: [...responded] });
+  record("I2-click-outside", outsideAfter.clicks === outsideBefore.clicks + 1 && controller.facts().visible === cardBeforeOutside && responded.length === decisionsBeforeOutside, { outsideBefore, outsideAfter, outsideHit, focusedWebContentsId: webContents.getFocusedWebContents()?.id ?? null, visible: controller.facts().visible, responded: [...responded] });
 
   // I3 — a click inside the 8px ring: the document ignores it; native routing
   // between sibling views is BLOCKED in a hidden window and is not claimed.
@@ -246,6 +284,8 @@ app.whenReady().then(async () => {
 
   // I5 — a page click while the card is open: the card stays.
   const pageClickBefore = await page.webContents.executeJavaScript("window.__probe()");
+  page.webContents.focus();
+  await sleep(80);
   page.webContents.sendInputEvent({ type: "mouseDown", x: 40, y: 40, button: "left", clickCount: 1 });
   page.webContents.sendInputEvent({ type: "mouseUp", x: 40, y: 40, button: "left", clickCount: 1 });
   await sleep(200);
@@ -327,6 +367,7 @@ app.whenReady().then(async () => {
       ringNativeRouting: "BLOCKED: hidden window, no sibling-view hit testing",
     }, null, 2),
   );
+  clearTimeout(watchdog);
   controller.dispose("probe");
   win.close();
   app.quit();
@@ -349,6 +390,9 @@ const env = withNotificationsOff({
 for (const key of Object.keys(env))
 	if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
 withTelemetryOff(env);
+// A fresh profile per cell: a lock left by an earlier hung boot can make the
+// next `loadURL` wait forever (round-3 F4, measured on the 900 cells).
+rmSync(join(OUT, "userdata"), { recursive: true, force: true });
 const child = spawn(
 	ELECTRON_BIN,
 	[
@@ -385,7 +429,7 @@ const code = await new Promise((resolveExit) => {
 	const kill = setTimeout(() => {
 		reap();
 		resolveExit("timeout");
-	}, 180000);
+	}, 300000);
 	child.on("exit", (exitCode) => {
 		clearTimeout(kill);
 		// Chromium helpers can outlive the main process; this exact-pid group kill

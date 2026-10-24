@@ -82,6 +82,7 @@ const backNode = document.getElementById(
 	"approvals-back",
 ) as HTMLButtonElement | null;
 const errorNode = document.getElementById("approvals-error");
+const cardBody = document.querySelector(".card-body");
 
 let model: ApprovalsCardModel | null = null;
 let localView: "request" | "list" = "request";
@@ -246,6 +247,19 @@ function renderRows(pending: ReadonlyArray<ApprovalsCardRequest>): void {
 	}
 }
 
+/**
+ * THE SCRIM MARKS A SCROLL BOUNDARY, SO IT EXISTS ONLY AT ONE. An always-on
+ * shadow painted a grey band over the empty ground of a short list (D13); the
+ * class follows the body's actual overflow.
+ */
+function syncScrim(): void {
+	if (!cardBody) return;
+	cardBody.classList.toggle(
+		"is-scrollable",
+		cardBody.scrollHeight > cardBody.clientHeight + 1,
+	);
+}
+
 function setView(view: "request" | "list"): void {
 	/*
 	 * KEEP THE CARD'S HEIGHT STABLE ACROSS THE LOCAL VIEWS (D11). The native view
@@ -266,6 +280,7 @@ function setView(view: "request" | "list"): void {
 	if (listView) listView.hidden = view !== "list";
 	if (reviewNode) reviewNode.hidden = view !== "request";
 	if (backNode) backNode.hidden = view !== "list";
+	setTimeout(syncScrim, 0);
 }
 
 function render(): void {
@@ -309,11 +324,16 @@ function render(): void {
 		renderSecondary(request);
 	}
 	if (reviewNode) {
-		// The count is the reason to open the list, and the audited plural names
-		// what the list holds; "Open approvals" read like a separate surface (D9).
+		// The count says what the list holds (D9), and the accessible name says
+		// what pressing it does, so the visible status text is still a known
+		// action for a screen reader and for the U9 "reads as status" nit.
 		reviewNode.textContent = t(
 			"ui.browser.browser_approvals_tray.header_waiting",
 			{ count: model.count },
+		);
+		reviewNode.setAttribute(
+			"aria-label",
+			t("ui.browser.browser_approvals_tray.open_approvals"),
 		);
 		reviewNode.disabled = model.busy;
 		reviewNode.onclick = () => setView("list");
@@ -342,6 +362,9 @@ function render(): void {
 					: "";
 	}
 	if (model.focus) card?.focus();
+	// After the view switch and the model paint; a timer, not rAF, because the
+	// card's window is hidden and runs no animation frames.
+	setTimeout(syncScrim, 0);
 }
 
 window.__approvalsCard = {
@@ -392,6 +415,8 @@ document.addEventListener("keydown", (event) => {
 
 // The expiry line is the one value that changes without a model push. A local
 // tick repaints it; it crosses no boundary and decides nothing.
+window.addEventListener("resize", syncScrim);
+
 setInterval(() => {
 	const request = shownRequest();
 	if (!request || !expiryNode) return;
