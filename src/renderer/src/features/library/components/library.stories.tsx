@@ -1315,6 +1315,20 @@ export const DockedReopen: Story = {
 	render: () =>
 		page({ docked: true, preserveDockWidth: true, freeNavigation: true }),
 };
+export const StandaloneNarrow: Story = {
+	render: () =>
+		page({
+			docked: true,
+			workspaceWidth: 1000,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: async () => {
+		await waitFor(() => {
+			expect(document.querySelector("[data-library-preview]")).not.toBeNull();
+			expect(document.querySelector('[role="separator"]')).toBeNull();
+		});
+	},
+};
 export const DockedEmpty: Story = {
 	render: () =>
 		page({
