@@ -1015,6 +1015,30 @@ test("S4b: a presentation-only flip lowers nothing, and the child comes back", a
 	controller.dispose("test");
 });
 
+test("page_pointer dismisses the bound tab only, through the product door", () => {
+	// The page's own press path (browser/index.ts's `before-mouse-event`) calls
+	// this. The reason is asserted because the renderer's abandonment is keyed on
+	// the event, and a background tab's press must not lower the active field.
+	const events = [];
+	const { controller } = makeController({
+		product: true,
+		onEvent: (event) => events.push(event),
+	});
+	controller.onLayout(layout());
+	controller.dismissForTab(2, "page_pointer");
+	assert.deepEqual(
+		events,
+		[],
+		"another tab's press is not this popout's business",
+	);
+	controller.dismissForTab(1, "page_pointer");
+	assert.deepEqual(
+		events.map((event) => [event.type, event.reason]),
+		[["dismiss", "page_pointer"]],
+	);
+	controller.dispose("test");
+});
+
 test("S5: a narrow anchor that precedes its page rect resizes the hidden reusable child", async () => {
 	const events = [];
 	const {
