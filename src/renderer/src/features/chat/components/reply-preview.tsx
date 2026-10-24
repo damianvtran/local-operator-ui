@@ -1,4 +1,5 @@
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
 import type { Reply } from "@shared/store/conversation-input-store";
 import { MessageSquareReply, X } from "lucide-react";
 import type { FC } from "react";
@@ -43,7 +44,7 @@ export const ReplyPreview: FC<ReplyPreviewProps> = ({
 	<div className="mb-2 flex flex-col gap-1.5 rounded-sm bg-sunken p-2">
 		<div className="flex items-center gap-1.5 text-ink-dim">
 			<MessageSquareReply size={12} aria-hidden="true" />
-			<span className="text-meta">Replying to</span>
+			<span className="text-meta">{t("ui.chat.reply.replying_to")}</span>
 		</div>
 		{replies.map((reply) => (
 			<div
@@ -62,7 +63,7 @@ export const ReplyPreview: FC<ReplyPreviewProps> = ({
 						size="icon-sm"
 						className="shrink-0 text-ink-dim hover:bg-elevated hover:text-ink"
 						onClick={() => onRemoveReply(reply.id)}
-						aria-label="Remove reply"
+						aria-label={t("ui.chat.reply.remove")}
 					>
 						<X aria-hidden="true" />
 					</Button>

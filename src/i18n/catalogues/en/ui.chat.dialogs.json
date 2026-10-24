@@ -1,6 +1,12 @@
 {
-	"ui.chat.dialogs.delete_title": "Delete this conversation?",
-	"ui.chat.dialogs.delete_action": "Delete",
 	"ui.chat.dialogs.archive_action": "Archive",
-	"ui.chat.dialogs.cancel": "Cancel"
+	"ui.chat.dialogs.cancel": "Cancel",
+	"ui.chat.dialogs.delete_action": "Delete",
+	"ui.chat.dialogs.delete_title": "Delete this conversation?",
+	"ui.chat.dialogs.options.clear_confirm": "Clear",
+	"ui.chat.dialogs.options.clear_conversation": "Clear conversation",
+	"ui.chat.dialogs.options.clear_message": "Every message in it is deleted from this computer, and there is no undo. The agent itself is not affected.",
+	"ui.chat.dialogs.options.clear_title": "Clear this conversation?",
+	"ui.chat.dialogs.options.description": "Customize settings for this agent",
+	"ui.chat.dialogs.options.title": "Chat options"
 }

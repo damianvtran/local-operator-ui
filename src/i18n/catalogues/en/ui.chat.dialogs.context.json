@@ -1,16 +1,4 @@
 {
-	"ui.chat.dialogs.delete_title": {
-		"role": "permanent deletion confirmation heading",
-		"tone": "direct confirmation question",
-		"maxCells": 40,
-		"note": "Shown above the named consequence message; question mark is part of the heading. maxCells is an advisory translator target, not measured fit."
-	},
-	"ui.chat.dialogs.delete_action": {
-		"role": "permanent deletion confirmation button",
-		"tone": "single imperative verb, sentence case",
-		"maxCells": 16,
-		"note": "Danger action; permanently removes this conversation, unlike archive. maxCells is an advisory translator target, not measured fit."
-	},
 	"ui.chat.dialogs.archive_action": {
 		"role": "reversible archive confirmation button",
 		"tone": "single imperative verb, sentence case",
@@ -22,5 +10,53 @@
 		"tone": "single imperative verb, sentence case",
 		"maxCells": 16,
 		"note": "Safe default-focus action. Dismisses without changing or deleting the conversation. maxCells is an advisory translator target, not measured fit."
+	},
+	"ui.chat.dialogs.delete_action": {
+		"role": "permanent deletion confirmation button",
+		"tone": "single imperative verb, sentence case",
+		"maxCells": 16,
+		"note": "Danger action; permanently removes this conversation, unlike archive. maxCells is an advisory translator target, not measured fit."
+	},
+	"ui.chat.dialogs.delete_title": {
+		"role": "permanent deletion confirmation heading",
+		"tone": "direct confirmation question",
+		"maxCells": 40,
+		"note": "Shown above the named consequence message; question mark is part of the heading. maxCells is an advisory translator target, not measured fit."
+	},
+	"ui.chat.dialogs.options.clear_confirm": {
+		"role": "confirm button in the clear-conversation dialog",
+		"tone": "one word, sentence case",
+		"note": "Performs the deletion. The cancel button uses the shared Cancel action.",
+		"placeholders": {}
+	},
+	"ui.chat.dialogs.options.clear_conversation": {
+		"role": "destructive action in the chat options sheet",
+		"tone": "verb phrase, sentence case",
+		"note": "Opens the confirmation dialog; it does not delete anything by itself.",
+		"placeholders": {}
+	},
+	"ui.chat.dialogs.options.clear_message": {
+		"role": "confirmation dialog body",
+		"tone": "two statements, sentence case",
+		"note": "States the scope (every message in THIS conversation), that the deletion is local, and that there is no undo. Must not imply the agent itself is deleted.",
+		"placeholders": {}
+	},
+	"ui.chat.dialogs.options.clear_title": {
+		"role": "confirmation dialog title",
+		"tone": "question, sentence case, trailing question mark",
+		"note": "The dialog that guards deleting this conversation's messages.",
+		"placeholders": {}
+	},
+	"ui.chat.dialogs.options.description": {
+		"role": "subtitle of the chat options sheet",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "Says whose settings the sheet edits: the agent behind this conversation.",
+		"placeholders": {}
+	},
+	"ui.chat.dialogs.options.title": {
+		"role": "title of the chat options sheet",
+		"tone": "noun phrase, sentence case",
+		"note": "A settings sheet about the conversation's agent, opened from the chat header.",
+		"placeholders": {}
 	}
 }

@@ -1,0 +1,16 @@
+{
+	"ui.chat.device.label.moving_to": "Moving to {name}",
+	"ui.chat.device.label.new_on": "New on {name}",
+	"ui.chat.device.label.new_on_this_device": "New on this device",
+	"ui.chat.device.label.on": "On {name}",
+	"ui.chat.device.label.on_this_device": "On this device",
+	"ui.chat.device.sentence.draft_elsewhere": "New conversations are created on {name}. Click to choose a different device.",
+	"ui.chat.device.sentence.draft_here": "New conversations are created on this device. Click to choose a different device.",
+	"ui.chat.device.sentence.gone": "This conversation moved to {name}. The copy that was here was deleted. Click to bring it back here.",
+	"ui.chat.device.sentence.gone_did_not_answer": "This conversation moved to {name}, which did not answer the last read. The copy that was here was deleted. Click to bring it back here.",
+	"ui.chat.device.sentence.local": "This conversation runs on this device. Click to move it to another device or recall it later.",
+	"ui.chat.device.sentence.moving": "Moving this conversation to {name}.",
+	"ui.chat.device.sentence.remote": "This conversation runs on {name}. Click to recall it here or move it on.",
+	"ui.chat.device.sentence.remote_did_not_answer": "This conversation runs on {name}, which did not answer the last read.",
+	"ui.chat.device.sentence.remote_did_not_answer_reason": "This conversation runs on {name}, which did not answer the last read ({reason})."
+}

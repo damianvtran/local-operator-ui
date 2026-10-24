@@ -135,7 +135,7 @@ import {
 	setDictationActive,
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
-import { t } from "@shared/i18n";
+import { type WithoutParams, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	type RadientSpeechBlock,
@@ -899,7 +899,7 @@ export type MessageInputProps = {
 	 * a constant the caller owns: the composer draws a sample and never sorts,
 	 * appends to or otherwise edits what it was handed.
 	 */
-	initialSuggestions?: readonly string[];
+	initialSuggestions?: readonly WithoutParams[];
 	/**
 	 * True when the app KNOWS no model provider is connected (the census was
 	 * read and nothing answers; see `useProviderStatus`). The empty chat then
@@ -1873,7 +1873,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		ref,
 	) => {
 		// Copy follows backend locale changes without altering composer state or handlers.
-		useI18nLocale();
+		const locale = useI18nLocale();
 		messageInputRenderCount.current += 1;
 		/*
 		 * The canonical session's cwd is the answer where there is one; the legacy
@@ -2214,7 +2214,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * keeps the array identity stable across a gate flip, so
 		 * `MeasuredSuggestionStack` does not re-measure for unchanged content.
 		 */
-		const heldSample = useRef<readonly string[] | null>(null);
+		const heldSample = useRef<readonly WithoutParams[] | null>(null);
 		const suggestions = useMemo(() => {
 			if (!initialSuggestions || initialSuggestions.length === 0) return [];
 			/*
@@ -2229,6 +2229,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			}
 			return heldSample.current;
 		}, [initialSuggestions, showEmptyChatPrompt]);
+
+		/*
+		 * The chip LABELS, resolved at the render that draws them: the sample above
+		 * holds keys so a draw is locale-independent, and `t()` here is what makes
+		 * the same four chips follow a language switch. Memoized on the sample and
+		 * the locale so the measured stack sees a new array only when one of them
+		 * changes - a fresh array per render would re-run its measurement.
+		 */
+		// biome-ignore lint/correctness/useExhaustiveDependencies: `t()` reads the locale store directly, so `locale` is not referenced in the body - it is the dependency that RE-RUNS this memo when the language changes. Dropping it would leave the four chips in the previous language until the sample itself changed.
+		const suggestionLabels = useMemo(
+			() => suggestions.map((key) => t(key)),
+			[suggestions, locale],
+		);
 
 		// Node-valued callback refs follow conditional splash remounts; a stable
 		// suggestion sample does not imply that the measured DOM is still alive.
@@ -9022,7 +9035,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										 * control row hold their position through it (design round 1, D4).
 										 */
 										isRecording
-											? COMPOSER_PLACEHOLDER.recording
+											? t(COMPOSER_PLACEHOLDER.recording)
 											: composerPlaceholder({
 													unavailable,
 													secretAnswer: secretAnswerPending,
@@ -10505,7 +10518,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 											band={band}
 											splash={splash}
 											foot={foot}
-											suggestions={suggestions}
+											suggestions={suggestionLabels}
 											disabled={suggestionsDisabled}
 											onRefusedPress={holdCaretOnRefusedPress}
 											onSelect={handleSuggestionClick}

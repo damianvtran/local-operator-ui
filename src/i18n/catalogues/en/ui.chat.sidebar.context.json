@@ -293,6 +293,13 @@
 		"note": "Renders under the field when the conversation search request errored; a Retry button follows it outside this message, separated by a space, so the sentence must not end with one.",
 		"placeholders": {}
 	},
+	"ui.chat.sidebar.section.current_chat": {
+		"role": "heading of the one-row section that holds the conversation being viewed",
+		"tone": "noun phrase, sentence case, no trailing punctuation",
+		"length": "Two words.",
+		"note": "Section heading, upper-cased by CSS. It names a single row that the page bound would otherwise withhold, so it is a place in the list, not a second list or a chip. Uses the same wording as UI copy elsewhere that names the open conversation.",
+		"placeholders": {}
+	},
 	"ui.chat.sidebar.teams.create": {
 		"role": "row that opens the team authoring page",
 		"tone": "verb phrase, sentence case, no trailing punctuation",

@@ -66,6 +66,8 @@
  */
 
 import { Button, Input } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { MessageCircleQuestion } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -283,11 +285,12 @@ const SecretAnswer = ({
 	/** Submit the typed value; absent where the surface cannot answer. */
 	onAnswer?: (value: string) => void;
 }) => {
+	useI18nLocale();
 	const ready = value.trim().length > 0 && !busy && Boolean(onAnswer);
 	return (
 		<form
 			data-ask-secret=""
-			aria-label="Secret answer"
+			aria-label={t("ui.chat.question_dock.secret_answer_label")}
 			className="flex flex-col gap-2"
 			onSubmit={(event) => {
 				event.preventDefault();
@@ -306,13 +309,13 @@ const SecretAnswer = ({
 			 * paints no record of it in the transcript.
 			 */}
 			<p className="text-ink-dim text-meta">
-				Hidden as you type — sent to the agent, not shown in the transcript.
+				{t("ui.chat.question_dock.secret_note")}
 			</p>
 			<div className="flex items-center gap-2">
 				<Input
 					type="password"
-					aria-label="Secret value"
-					placeholder="Paste the secret"
+					aria-label={t("ui.chat.question_dock.secret_value_label")}
+					placeholder={t("ui.chat.question_dock.secret_placeholder")}
 					autoComplete="off"
 					autoCapitalize="none"
 					autoCorrect="off"
@@ -325,7 +328,7 @@ const SecretAnswer = ({
 					className="min-w-0 flex-1"
 				/>
 				<Button type="submit" variant="primary" disabled={!ready}>
-					Send
+					{t("ui.chat.question_dock.send")}
 				</Button>
 			</div>
 		</form>
@@ -341,6 +344,7 @@ export const QuestionDock = ({
 	sessionId,
 	className,
 }: QuestionDockProps) => {
+	useI18nLocale();
 	const key = questionKeyOf(gate);
 	const [collapsedKey, setCollapsedKey] = useState<string | null>(null);
 	const collapsed = collapsedKey === key;
@@ -485,7 +489,7 @@ export const QuestionDock = ({
 				 */}
 				<button
 					type="button"
-					aria-label="Show the agent's question"
+					aria-label={t("ui.chat.question_dock.show_question_label")}
 					onClick={() => {
 						setCollapsedKey(null);
 						setExpandedByPress(true);
@@ -499,11 +503,13 @@ export const QuestionDock = ({
 						aria-hidden={true}
 						className="size-3.5 text-accent"
 					/>
-					<span>The agent is asking</span>
+					<span>{t("ui.chat.question_dock.asking")}</span>
 					<span aria-hidden={true} className="text-ink-dim">
 						·
 					</span>
-					<span className="text-ink-muted">Show</span>
+					<span className="text-ink-muted">
+						{t("ui.chat.question_dock.show")}
+					</span>
 				</button>
 			</div>
 		);
@@ -513,7 +519,7 @@ export const QuestionDock = ({
 		<div className={cn("pb-2", className)} data-lo-question-dock="expanded">
 			<section
 				ref={cardRef}
-				aria-label="Question from the agent"
+				aria-label={t("ui.chat.question_dock.from_agent_label")}
 				/*
 				 * Focusable by pointer (`-1`, not in the Tab order): a press anywhere on
 				 * the card makes it the focus scope, so Escape reaches the handler

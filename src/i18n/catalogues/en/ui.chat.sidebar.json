@@ -40,6 +40,7 @@
 	"ui.chat.sidebar.search.searching": "Searching conversations…",
 	"ui.chat.sidebar.search.too_long": "Search terms are limited to {max, number, ::group-off} characters. This one is longer, so only chat names are being searched.",
 	"ui.chat.sidebar.search.unavailable": "Conversation search is unavailable, so these are name matches.",
+	"ui.chat.sidebar.section.current_chat": "Current chat",
 	"ui.chat.sidebar.teams.create": "Create team",
 	"ui.chat.sidebar.teams.loading": "Loading teams…"
 }

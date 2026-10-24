@@ -22,6 +22,7 @@
  */
 
 import type { DesktopFeatureState } from "@shared/api/local-operator/desktop-hooks";
+import { t } from "@shared/i18n";
 import type { MovePlan } from "../../mesh/mesh-drop";
 import { lossSentence } from "../../mesh/mesh-drop";
 import type { NetworkSummary, PeerRow } from "../../mesh/mesh-types";
@@ -109,15 +110,15 @@ export function placementLabel(placement: DevicePlacement): string {
 	switch (placement.kind) {
 		case "draft":
 			return placement.deviceId
-				? `New on ${placement.name}`
-				: "New on this device";
+				? t("ui.chat.device.label.new_on", { name: placement.name })
+				: t("ui.chat.device.label.new_on_this_device");
 		case "local":
-			return "On this device";
+			return t("ui.chat.device.label.on_this_device");
 		case "remote":
 		case "gone":
-			return `On ${placement.name}`;
+			return t("ui.chat.device.label.on", { name: placement.name });
 		case "moving":
-			return `Moving to ${placement.name}`;
+			return t("ui.chat.device.label.moving_to", { name: placement.name });
 	}
 }
 
@@ -133,8 +134,10 @@ export function placementSentence(placement: DevicePlacement): string {
 	switch (placement.kind) {
 		case "draft":
 			return placement.deviceId
-				? `New conversations are created on ${placement.name}. Click to choose a different device.`
-				: "New conversations are created on this device. Click to choose a different device.";
+				? t("ui.chat.device.sentence.draft_elsewhere", {
+						name: placement.name,
+					})
+				: t("ui.chat.device.sentence.draft_here");
 		case "local":
 			/*
 			 * `OR RECALL IT LATER` IS THE SECOND HALF OF THE AFFORDANCE (agent review round
@@ -142,7 +145,7 @@ export function placementSentence(placement: DevicePlacement): string {
 			 * take from this control, which is the design's own reading of it, because the
 			 * chip's five visible words cannot say either one.
 			 */
-			return "This conversation runs on this device. Click to move it to another device or recall it later.";
+			return t("ui.chat.device.sentence.local");
 		case "remote":
 			/*
 			 * `reachable` IS TRI-STATE AND THE THIRD VALUE IS NOT A FAILURE (agent review
@@ -154,10 +157,16 @@ export function placementSentence(placement: DevicePlacement): string {
 			 * wire gave one, so the sentence can never end in `()`.
 			 */
 			if (placement.reachable === false) {
-				const because = placement.reason ? ` (${placement.reason})` : "";
-				return `This conversation runs on ${placement.name}, which did not answer the last read${because}.`;
+				return placement.reason
+					? t("ui.chat.device.sentence.remote_did_not_answer_reason", {
+							name: placement.name,
+							reason: placement.reason,
+						})
+					: t("ui.chat.device.sentence.remote_did_not_answer", {
+							name: placement.name,
+						});
 			}
-			return `This conversation runs on ${placement.name}. Click to recall it here or move it on.`;
+			return t("ui.chat.device.sentence.remote", { name: placement.name });
 		case "gone":
 			/*
 			 * THE TOMBSTONE NAMES AN ACTION THIS CONTROL CAN TAKE. It used to end "Click to
@@ -177,11 +186,13 @@ export function placementSentence(placement: DevicePlacement): string {
 			 * round 1's D4 settled).
 			 */
 			if (placement.reachable === false) {
-				return `This conversation moved to ${placement.name}, which did not answer the last read. The copy that was here was deleted. Click to bring it back here.`;
+				return t("ui.chat.device.sentence.gone_did_not_answer", {
+					name: placement.name,
+				});
 			}
-			return `This conversation moved to ${placement.name}. The copy that was here was deleted. Click to bring it back here.`;
+			return t("ui.chat.device.sentence.gone", { name: placement.name });
 		case "moving":
-			return `Moving this conversation to ${placement.name}.`;
+			return t("ui.chat.device.sentence.moving", { name: placement.name });
 	}
 }
 

@@ -218,7 +218,8 @@ const composerBundle = await build({
 				settleOffRecordPayload,
 				composerPlaceholder,
 				COMPOSER_PLACEHOLDER,
-			} from "./src/renderer/src/shared/hooks/use-message-input";`,
+			} from "./src/renderer/src/shared/hooks/use-message-input";
+			export { t } from "@shared/i18n";`,
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -300,6 +301,7 @@ const {
 	settleOffRecordPayload,
 	composerPlaceholder,
 	COMPOSER_PLACEHOLDER,
+	t,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(composerBundle.outputFiles[0].text).toString("base64")}`
 );
@@ -1617,27 +1619,33 @@ test("the placeholder names the destination the press actually reaches", () => {
 		sendingUnsettled: false,
 		awaitingReply: false,
 	};
+	/*
+	 * THE TABLE HOLDS KEYS: `t()` resolves the sentence the box actually shows.
+	 * Comparing the key to the English sentence would pin a copy the catalogue
+	 * owns; comparing the resolved sentence to the ladder's return value is what
+	 * proves the two agree on ONE message.
+	 */
 	assert.equal(
-		COMPOSER_PLACEHOLDER.aside,
+		t(COMPOSER_PLACEHOLDER.aside),
 		"Ask off the record — Esc closes the aside",
 	);
 	assert.equal(
 		composerPlaceholder({ ...idle, asideAttached: true }),
-		COMPOSER_PLACEHOLDER.aside,
+		t(COMPOSER_PLACEHOLDER.aside),
 	);
 	assert.equal(
 		composerPlaceholder({ ...idle, asideAttached: true, awaitingAnswer: true }),
-		COMPOSER_PLACEHOLDER.answer,
+		t(COMPOSER_PLACEHOLDER.answer),
 		"the gate's placeholder term must precede the aside's: while a gate is unanswered the press answers the GATE",
 	);
 	// A box that takes no keystrokes is not invited to take one.
 	assert.equal(
 		composerPlaceholder({ ...idle, asideAttached: true, inputDisabled: true }),
-		COMPOSER_PLACEHOLDER.busy,
+		t(COMPOSER_PLACEHOLDER.busy),
 	);
 	assert.equal(
 		composerPlaceholder({ ...idle, asideAttached: true, unavailable: true }),
-		COMPOSER_PLACEHOLDER.unavailable,
+		t(COMPOSER_PLACEHOLDER.unavailable),
 	);
 	/*
 	 * And the attached aside outranks BOTH send-state sentences: the next Enter
@@ -1652,7 +1660,7 @@ test("the placeholder names the destination the press actually reaches", () => {
 			sendingUnsettled: true,
 			awaitingReply: true,
 		}),
-		COMPOSER_PLACEHOLDER.aside,
+		t(COMPOSER_PLACEHOLDER.aside),
 	);
 	// The wiring: the composer hands the attached panel to the function.
 	assert.match(
