@@ -1015,6 +1015,66 @@ test("S4b: a presentation-only flip lowers nothing, and the child comes back", a
 	controller.dispose("test");
 });
 
+test("S5: a narrow anchor that precedes its page rect resizes the hidden reusable child", async () => {
+	const events = [];
+	const {
+		controller,
+		views,
+		window: host,
+	} = makeController({
+		product: true,
+		onEvent: (event) => events.push(event),
+	});
+	host.webContents.getZoomFactor = () => 1;
+	controller.onLayout(layout());
+	const pending = controller.showOverlay();
+	await tick();
+	const view = views[0];
+	view.webContents.emit("dom-ready");
+	view.webContents.emit("did-finish-load");
+	assert.equal((await pending).shown, true);
+	controller.hide("test");
+
+	// Q-3: the row observer can publish x0/360 while main still owns the old
+	// x260/1120 page rect. Their 100px intersection is invalid, so the projection
+	// is refused and the child is hidden before the matching rect arrives.
+	const answer = await controller.project({
+		v: 2,
+		seq: 900,
+		tabId: 1,
+		visible: true,
+		pageRect: { ...RECT },
+		anchor: { x: 0, width: 360 },
+		active: 0,
+		view: { kind: "rows", rows: [{ text: "example.com", title: "Example" }] },
+		label: "From this browser session",
+		dir: "ltr",
+	});
+	assert.equal(answer.accepted, false);
+	assert.equal(answer.reason, "anchor_inconsistent");
+	assert.equal(view.visible, false);
+
+	const narrowRect = { ...RECT, x: 0, width: 360 };
+	controller.onLayout(layout({ contentRect: narrowRect, revision: 2 }));
+	assert.equal(
+		view.bounds.x,
+		0,
+		"the deferred narrow projection must use the matching new page rect",
+	);
+	assert.equal(view.bounds.width, 360);
+	assert.equal(
+		view.visible,
+		false,
+		"resizing must not re-open a dismissed list",
+	);
+	assert.deepEqual(
+		events.map((event) => [event.type, event.reason]),
+		[["dismiss", "layout"]],
+		"the real rect change keeps its intentional product dismissal",
+	);
+	controller.dispose("test");
+});
+
 test("S4b: a presentation-only flip does not drop a projection that arrives meanwhile", async () => {
 	const events = [];
 	const { controller, views } = makeController({
