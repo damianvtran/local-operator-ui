@@ -58,6 +58,10 @@ const LAYOUT = "src/renderer/src/features/chat/chat-sidebar-layout.ts";
 // #677 review (D2): the slot's resolver holds the shared width to it and
 // cannot import the component that consumes it.
 const PREFS = "src/renderer/src/shared/store/ui-preferences-store.ts";
+const DIVIDER =
+	"src/renderer/src/shared/components/common/resizable-divider.tsx";
+const SCROLLBARS =
+	"src/renderer/src/shared/components/common/global-scrollbar-styles.tsx";
 
 const read = (file) => readFileSync(file, "utf8");
 
@@ -80,6 +84,7 @@ const bundle = await build({
 
 const {
 	CHAT_PANE_MIN_PX,
+	CHAT_SEAM_INSET_PX,
 	CHAT_PANE_WITH_DOCK_MIN_PX,
 	SIDEBAR_COLLAPSED_WIDTH,
 	SIDEBAR_DEFAULT_WIDTH,
@@ -441,4 +446,165 @@ test("the layout module owns the bands the shell reads", () => {
 			new RegExp(`export const ${name}\\b`),
 			`${name} is no longer exported from \`chat-sidebar-layout.ts\`; the bands and this test read it from there`,
 		);
+});
+
+/* --------------------------- the seam's clearance --------------------------- */
+
+/**
+ * Tailwind's spacing scale, in pixels: one step is 0.25rem at the 16px root the
+ * renderer runs at. The band's classes are the source - there is no constant to
+ * import for them - so the parse is what makes them readable by a test at all.
+ */
+const tailwindPx = (suffix) => Number(suffix) * 4;
+
+/*
+ * The patterns the readers below share, named at module scope so each match says
+ * what it is FOR at the site that uses it.
+ */
+const BAND_WIDTH = /"top-0 h-full w-(\d+(?:\.\d+)?) cursor-col-resize"/;
+const BAND_LEFT = /"-left-(\d+(?:\.\d+)?)"/;
+const BAND_RIGHT = /"-right-(\d+(?:\.\d+)?)"/;
+const SCROLLBAR_DECLARATION = /\*::-webkit-scrollbar \{\n\twidth: 8px;/;
+const RIGHT_PANE_DOCKED = /const rightPaneDocked =([\s\S]*?);\n/;
+/*
+ * The chat column's inner surface: from its ref to the close of that element's
+ * own opening tag. The slice is the tag rather than a window to `className="`,
+ * because the prose above the attribute legitimately NAMES that attribute and a
+ * lazy window would stop inside the comment (measured: the first draft did).
+ */
+const seamSurface = () => {
+	const source = read(CONTENT);
+	const from = source.indexOf("ref={chatContainerRef}");
+	assert.notEqual(from, -1, "the chat column's inner surface lost its ref");
+	const close = source.indexOf(">", from);
+	assert.notEqual(
+		close,
+		-1,
+		"the chat column's inner surface has no tag close",
+	);
+	const tag = source.slice(from, close);
+	assert.ok(
+		tag.includes('className="panel-top-pad'),
+		"the chat column's inner surface no longer wears its literal `panel-top-pad` class list; `lane-leading.test.mjs` matches that string to keep every full-height column padded off the lane",
+	);
+	return tag;
+};
+/* The inset as the element applies it: a named pixel, conditional on the gate. */
+const SEAM_STYLE =
+	/rightPaneDocked\s*\?\s*\{ paddingRight: CHAT_SEAM_INSET_PX \}\s*: undefined/;
+
+/** The separator's vertical hit band: its width and how far it reaches in. */
+const verticalBand = () => {
+	const source = read(DIVIDER);
+	const width = BAND_WIDTH.exec(source);
+	assert.ok(
+		width,
+		"the separator no longer declares its vertical band (`top-0 h-full w-N cursor-col-resize`), so the width the chat column must clear cannot be read",
+	);
+	const left = BAND_LEFT.exec(source);
+	const right = BAND_RIGHT.exec(source);
+	assert.ok(
+		left && right,
+		"the separator no longer declares both vertical offsets (`-left-N`/`-right-N`), so the band is no longer known to be centred and half its width is not its reach",
+	);
+	/*
+	 * The reach is HALF the width only while the band is centred. Asserted rather
+	 * than assumed: an asymmetric band (all of it on one side) is a different
+	 * geometry and would quietly invalidate the clearance below.
+	 */
+	assert.equal(
+		tailwindPx(left[1]),
+		tailwindPx(right[1]),
+		`the separator's vertical band is no longer centred (left ${left[1]} vs right ${right[1]}), so half its width is not the reach the seam inset has to clear`,
+	);
+	return {
+		width: tailwindPx(width[1]),
+		reach: tailwindPx(left[1]),
+	};
+};
+
+test("the separator's reach into the chat column is cleared before the scrollbar", () => {
+	const band = verticalBand();
+	/*
+	 * THE INVARIANT, and it is the operator's report as arithmetic: the band
+	 * reaches `band.reach` px into the chat column, and the transcript's
+	 * scrollbar is 8px wide (`*::-webkit-scrollbar { width: 8px }`) and sits
+	 * flush against the seam. Anything at or below `band.reach` puts the band on
+	 * top of the bar - a drag that starts on the bar resizes the pane instead of
+	 * scrolling - so the clearance must EXCEED the reach, not merely meet it.
+	 *
+	 * The number is IMPORTED (`CHAT_SEAM_INSET_PX`, beside `CHAT_PANE_MIN_PX` in
+	 * the layout module), not parsed: a pixel the band is measured against is a
+	 * value, and a value belongs in one place.
+	 */
+	assert.ok(
+		Number.isFinite(CHAT_SEAM_INSET_PX),
+		"`CHAT_SEAM_INSET_PX` is no longer exported from `chat-sidebar-layout.ts`; the chat column's seam clearance has no named value, so the band's reach is checked against nothing",
+	);
+	assert.ok(
+		CHAT_SEAM_INSET_PX > band.reach,
+		`the separator's band reaches ${band.reach}px into the chat column (${band.width}px wide, centred) but the column only gives back ${CHAT_SEAM_INSET_PX}px: the band covers the transcript's scrollbar again`,
+	);
+	assert.match(
+		read(SCROLLBARS),
+		SCROLLBAR_DECLARATION,
+		"the app's classic scrollbar is no longer declared as 8px in `global-scrollbar-styles.tsx`; the seam inset above was measured against it",
+	);
+	const surface = seamSurface();
+	/*
+	 * The inset is CONDITIONAL on a separator being drawn: with no pane open there
+	 * is nothing to clear, and an unconditional inset would move every chat
+	 * surface off the seam for no reason. Round 1 shipped the wrong gate
+	 * (`canvasDocked` alone) and this case plus the gate's own case below are what
+	 * closed it.
+	 */
+	assert.match(
+		surface,
+		SEAM_STYLE,
+		"the chat column's inner surface no longer applies `CHAT_SEAM_INSET_PX` as `rightPaneDocked ? { paddingRight: … } : undefined`; applied unconditionally it narrows every chat surface when no pane is open",
+	);
+});
+
+/*
+ * THE GATE'S DEFINITION, not just its name (review round 1, BLOCKER). Round 1
+ * shipped `rightPaneDocked = canvasDocked || ...`, and `canvasDocked` only says
+ * the row is WIDE ENOUGH to dock a canvas - so the inset applied with every pane
+ * closed, on every window wide enough to dock one. The cases below read the
+ * definition and require the two canvas families to carry their OPEN flag, the
+ * way the divider blocks themselves do (`{isCanvasOpen && (` around
+ * `{canvasDocked && <ResizableDivider`), and refuse a bare `canvasDocked`
+ * anywhere else (review round 2's MINOR).
+ */
+test("the seam inset is gated on a separator actually being drawn", () => {
+	const definition = read(CONTENT).match(RIGHT_PANE_DOCKED);
+	assert.ok(
+		definition,
+		"`rightPaneDocked` is no longer a named constant in `chat-content.tsx`; the seam inset's gate cannot be read",
+	);
+	const flattened = definition[1].replace(/\s+/g, " ");
+	for (const pair of [
+		"isCanvasOpen && canvasDocked",
+		"sessionAsksOpen && canvasDocked",
+	])
+		assert.ok(
+			flattened.includes(pair),
+			`\`rightPaneDocked\` no longer carries \`${pair}\`: \`canvasDocked\` alone means the row is wide enough to dock, which is true with the canvas closed - the inset then applies to every chat on a wide window (review round 1, BLOCKER)`,
+		);
+	for (const flag of [
+		"isRunPanelOpen",
+		"isBrowserPaneOpen",
+		"isConsolePaneOpen",
+		"isCodeReviewPaneOpen",
+	])
+		assert.ok(
+			definition[1].includes(flag),
+			`\`rightPaneDocked\` dropped \`${flag}\`, so a docked pane no longer earns the inset and its scrollbar goes back under the separator's band`,
+		);
+	const stripped = definition[1]
+		.replace(/\(\s*isCanvasOpen && canvasDocked\s*\)/g, "")
+		.replace(/\(\s*sessionAsksOpen && canvasDocked\s*\)/g, "");
+	assert.ok(
+		!/\bcanvasDocked\b/.test(stripped),
+		"`rightPaneDocked` still reads `canvasDocked` outside the canvas families' open pairs; a bare `canvasDocked` is true with every pane closed and insets every chat on a wide window",
+	);
 });

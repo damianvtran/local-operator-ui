@@ -14,6 +14,7 @@ import { withOriginGate } from "./actions/gate";
 import * as geometryActions from "./actions/geometry";
 import * as inputActions from "./actions/input";
 import * as pageActions from "./actions/page";
+import * as queryActions from "./actions/query";
 import * as tabActions from "./actions/tabs";
 import * as uploadActions from "./actions/upload";
 import { collectAddressHistory, mergeAddressHistory } from "./address-history";
@@ -67,6 +68,12 @@ const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	"hit_test",
 	"ancestors",
 	"snapshot",
+	// `query` is a read of the CURRENT document's DOM (CSS in, descriptors out),
+	// so it is authorized against that document on entry and again on the result
+	// exactly as `read` is: an answer that raced a navigation it did not cause
+	// must be discarded, not reported as the new page's (agent review round 2 on
+	// the query slice — the action was missing from BOTH sets).
+	"query",
 	"screenshot",
 	"click",
 	"type",
@@ -168,6 +175,7 @@ const TAB_SCOPED: ReadonlySet<string> = new Set([
 	"hit_test",
 	"ancestors",
 	"snapshot",
+	"query",
 	"screenshot",
 	"click",
 	"type",
@@ -621,6 +629,8 @@ export class BrowserHost implements BrowserActionContext {
 				return geometryActions.hitTest(this, params);
 			case "ancestors":
 				return geometryActions.ancestors(this, params);
+			case "query":
+				return queryActions.query(this, params);
 			case "snapshot":
 				return pageActions.snapshot(this, params);
 			case "scroll":

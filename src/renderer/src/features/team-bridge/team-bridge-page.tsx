@@ -1,4 +1,9 @@
 import { useMembershipsQuery } from "@features/agent-hub/hooks/use-memberships-query";
+import {
+	type DesktopFeatureState,
+	desktopFeatureState,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
 import { Spinner } from "@shared/components/common/spinner";
 import { Button } from "@shared/components/ui/button";
@@ -55,6 +60,7 @@ import {
 	visibleConversationRows,
 } from "./team-bridge-model";
 import { TeamBridgeOrgSwitcher } from "./team-bridge-org-switcher";
+import { useBridgeOwner, useTeamBridgeAccount } from "./team-bridge-owner";
 import {
 	ChiefRailRow,
 	ConversationRailRow,
@@ -63,6 +69,11 @@ import {
 	RailSection,
 	isTargetRow,
 } from "./team-bridge-rail";
+import { teamBridgeReactionsAvailable } from "./team-bridge-reaction-gate";
+import {
+	TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD,
+	teamBridgeThreadsAvailable,
+} from "./team-bridge-thread-gate";
 import { TeamBridgeThreadPane } from "./team-bridge-thread-pane";
 import {
 	type ThreadTarget,
@@ -106,6 +117,24 @@ import {
  * THE VIEW IS PURE. `TeamBridgePageView` takes its state as props; the
  * container below is the only place that knows about queries, which is what
  * lets the stories render every state without a backend.
+ *
+ * THE THREAD SURFACE IS HELD CLOSED IN THIS BUILD. The pane and the
+ * reply-in-thread affordance mount only when `teamBridgeThreadsAvailable` says
+ * so, which requires BOTH the shipped-in-this-build constant and a
+ * `team_bridge_threads` capability answer of exactly `enabled`. The reason and
+ * the fail-closed rule live in `team-bridge-thread-gate.ts`; the short version
+ * is that the thread cache/retry paths inherit the #1304 cross-account
+ * isolation defects, so a runtime advertising the route is not clearance to
+ * run them. `unknown` (no answer yet, or the read failed), `below-version` and
+ * `unpaired` hide the surface too - never infer `enabled` from the absence of
+ * an error.
+ *
+ * REACTIONS ARE HELD IN THIS BUILD. The shipped runtime serves no reaction
+ * path, and the old reaction path is not reviewed for account/retry safety, so
+ * the reaction context is withheld even when `team_bridge_reactions` answers
+ * `enabled`: no chips, no toolbar react button and no picker, rather than
+ * controls that fail. The constant dominates the capability
+ * (`team-bridge-reaction-gate.ts`); enabling reactions is a deliberate flip.
  *
  * LAYOUT. Panels run the full height of the window and are separated by
  * ground (`canvas` rail, `surface` thread), never by a rule; the top inset is
@@ -274,7 +303,15 @@ export function relative(iso: string, locale: string): string {
 	);
 }
 
+type OwnedDraft = {
+	body: string;
+	pending: { body: string; clientRef: string } | null;
+};
+
 export type TeamBridgePageViewProps = {
+	/** Page-lifetime data journal; no live mutation closure survives an auth epoch. */
+	draftJournal?: OwnedDraft;
+	isDraftCurrent?: () => boolean;
 	/** Presentation-only fixtures can render pane states without dispatching live queries. */
 	renderThreadPane?: (target: ThreadTarget, close: () => void) => ReactNode;
 	threadLink?: ThreadTarget | null;
@@ -305,6 +342,19 @@ export type TeamBridgePageViewProps = {
 	notifyFailed?: boolean;
 	onJoin?: () => void;
 	onNotifyChange?: (notify: TeamBridgeNotify) => void;
+	/**
+	 * The `team_bridge_threads` capability answer, computed by the container from
+	 * `useDesktopCapabilities()`. Defaults to `unknown` so a caller that has not
+	 * asked - a story, a test, a mount without a capabilities provider - gets the
+	 * held, fail-closed surface rather than an assumed one.
+	 */
+	threadsCapabilityState?: DesktopFeatureState;
+	/**
+	 * The `team_bridge_reactions` capability answer, computed by the container.
+	 * Defaults to `unknown`, so a surface that has not asked gets no reaction
+	 * controls rather than an assumed one.
+	 */
+	reactionsCapabilityState?: DesktopFeatureState;
 	/** Story/test seed only: opens the header menu so its rows are visible. */
 	defaultMenuOpen?: boolean;
 	/** Story/test seed only: the page's real draft is user-owned state. */
@@ -364,8 +414,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	notifyFailed = false,
 	onJoin,
 	onNotifyChange,
+	threadsCapabilityState = "unknown",
+	reactionsCapabilityState = "unknown",
 	defaultMenuOpen = false,
 	initialDraft = "",
+	draftJournal,
+	isDraftCurrent = () => true,
 	people = [],
 	directories,
 	selfName,
@@ -384,14 +438,35 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	onRetryMemberships,
 }) => {
 	const locale = useI18nLocale();
-	const [draft, setDraft] = useState(initialDraft);
+	/* THE HOLD. Both halves must agree before any thread state exists, so a deep
+	   link or a reply handler cannot leave a selection behind that a later
+	   render would mount. See `team-bridge-thread-gate.ts`. */
+	const threadsAvailable = teamBridgeThreadsAvailable(threadsCapabilityState);
+	/* THE REACTIONS HOLD. The build constant dominates the capability: the
+	   context is withheld in this build whatever the runtime advertises, so the
+	   message list mounts no reaction state and neither chips nor the toolbar's
+	   react button exist. See `team-bridge-reaction-gate.ts`. */
+	const reactionsAvailable = teamBridgeReactionsAvailable(
+		reactionsCapabilityState,
+	);
+	const [draft, setDraftState] = useState(draftJournal?.body ?? initialDraft);
+	const setDraft = (value: string | ((current: string) => string)) => {
+		if (!isDraftCurrent()) return;
+		if (!draftJournal) {
+			setDraftState(value);
+			return;
+		}
+		const next = typeof value === "function" ? value(draftJournal.body) : value;
+		draftJournal.body = next;
+		setDraftState(next);
+	};
 	// Thread identity is checked against the current selection before mounting.
 	const [threadSelection, setThreadSelection] = useState<ThreadTarget | null>(
-		threadLink ?? null,
+		threadsAvailable ? (threadLink ?? null) : null,
 	);
 	useEffect(() => {
-		if (threadLink) setThreadSelection(threadLink);
-	}, [threadLink]);
+		if (threadsAvailable && threadLink) setThreadSelection(threadLink);
+	}, [threadLink, threadsAvailable]);
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
 	const identityKnown = selfAccountId !== undefined;
 
@@ -504,7 +579,8 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	// (`targetConversation`), so the view and the container agree on it.
 	const shown = selected;
 	const threadIsOpen = Boolean(
-		threadSelection &&
+		threadsAvailable &&
+			threadSelection &&
 			shown &&
 			threadSelection.conversationId === shown.id &&
 			threadSelection.tenantId === shown.tenant_id &&
@@ -513,6 +589,16 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	);
 	// A focused window is quiet only for the conversation actually on screen.
 	useReportTeamBridgeViewing(shown?.id);
+	/* The reply route: only ever handed to the timeline while the hold permits
+	   it (see the `onReply` site), never mounted from stale state. */
+	const openThreadFor = (message: TeamBridgeMessage) => {
+		if (!shown) return;
+		setThreadSelection({
+			tenantId: shown.tenant_id,
+			conversationId: shown.id,
+			rootId: message.id,
+		});
+	};
 	const canCompose =
 		!readOnly &&
 		!previewSelected &&
@@ -522,9 +608,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 			((target?.type === "person" || target?.type === "chief") &&
 				draftPerson !== null));
 	/* One reaction context for the timeline AND the thread pane, so a reply can
-	   be reacted to under exactly the rules its root is. */
+	   be reacted to under exactly the rules its root is. WITHHELD - not passed
+	   disabled - when the runtime does not advertise reactions: a chip or picker
+	   that cannot work is the dead end the fail-closed rule forbids. */
 	const reactionContext =
-		selfAccountId && selected
+		reactionsAvailable && selfAccountId && selected
 			? {
 					accountId: selfAccountId,
 					tenantId: selected.tenant_id,
@@ -535,22 +623,29 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 	// The retry's idempotency key: a failed send is retried with the SAME
 	// `client_ref`, so an ambiguous failure (request landed, answer lost) cannot
 	// post the message twice. A genuinely different draft gets a fresh key.
-	const pendingSend = useRef<{ body: string; clientRef: string } | null>(null);
+	const pendingSend = useRef<{ body: string; clientRef: string } | null>(
+		draftJournal?.pending ?? null,
+	);
 	const submit = () => {
 		const body = draft.trim();
-		if (!body || sending || !canCompose) return;
+		if (!isDraftCurrent() || !body || sending || !canCompose) return;
 		const clientRef =
 			pendingSend.current?.body === body
 				? pendingSend.current.clientRef
 				: crypto.randomUUID();
 		const entry = { body, clientRef };
 		pendingSend.current = entry;
+		if (draftJournal) draftJournal.pending = entry;
 		// Keep the draft until the send resolves: a refused send must not erase
 		// what the person wrote. Clear only if the field still holds what was
 		// sent — text typed while it was in flight is not the send's to discard.
 		const result = onSend(body, clientRef);
 		const settle = () => {
-			if (pendingSend.current === entry) pendingSend.current = null;
+			if (!isDraftCurrent()) return;
+			if (pendingSend.current === entry) {
+				pendingSend.current = null;
+				if (draftJournal) draftJournal.pending = null;
+			}
 			setDraft((current) => (current.trim() === body ? "" : current));
 		};
 		if (result instanceof Promise) {
@@ -1041,14 +1136,11 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											labelFor(sender, shown?.tenant_id ?? "")
 										}
 										reactionContext={reactionContext}
-										onReply={(message) => {
-											if (shown)
-												setThreadSelection({
-													tenantId: shown.tenant_id,
-													conversationId: shown.id,
-													rootId: message.id,
-												});
-										}}
+										/* HIDDEN, not inert, while the thread surface is held: the toolbar's
+										   reply button and the "N replies" summary are both rendered from this
+										   prop, and a visible Reply that opens nothing is the dead end the
+										   fail-closed rule forbids. */
+										onReply={threadsAvailable ? openThreadFor : undefined}
 									/>
 								)}
 							</div>
@@ -1153,8 +1245,12 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					</>
 				)}
 			</section>
-			{/* Threads: a ground-separated sibling; no rail or compose routing changes. */}
-			{threadSelection &&
+			{/* Threads: a ground-separated sibling; no rail or compose routing changes.
+			    THE HOLD IS THE FIRST TERM: `threadsAvailable` is false in this
+			    build whatever the runtime advertises, so no selection - deep link,
+			    reply click, story fixture - can mount the pane. */}
+			{threadsAvailable &&
+				threadSelection &&
 				shown &&
 				threadSelection.conversationId === shown.id &&
 				threadSelection.tenantId === shown.tenant_id &&
@@ -1254,6 +1350,34 @@ export const TeamBridgePreviewBanner: FC<{
  * the server applies `$max`, so a re-render cannot move the cursor backwards.
  */
 export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
+	const account = useTeamBridgeAccount();
+	const drafts = useRef(new Map<string, OwnedDraft>());
+	const receipts = useRef(
+		new Map<
+			string,
+			Map<string, { id: string; tenantId: string | undefined }>
+		>(),
+	);
+	// Remount immediately at the real auth transition, before stale TB status can
+	// render. Retain only original-owner data; never carry an A callback into B.
+	return (
+		<TeamBridgeOwnedPage
+			key={account.token}
+			accountId={account.accountId}
+			drafts={drafts.current}
+			receipts={receipts.current}
+		/>
+	);
+};
+
+const TeamBridgeOwnedPage: FC<{
+	accountId?: string;
+	drafts: Map<string, OwnedDraft>;
+	receipts: Map<
+		string,
+		Map<string, { id: string; tenantId: string | undefined }>
+	>;
+}> = ({ accountId, drafts, receipts }) => {
 	/*
 	 * A banner click lands here with `?tenant=…&conversation=…`. The parameters
 	 * seed the FIRST render so the clicked conversation wins over the landing
@@ -1264,7 +1388,13 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	const requestedTenant = searchParams.get("tenant");
 	const requestedRoot = searchParams.get("thread");
 	const [threadLink, setThreadLink] = useState<ThreadTarget | null>(() =>
-		threadTargetFromSearch(searchParams),
+		/* THE HOLD: a `?thread=` deep link (a notification click, a shared link)
+		   must not become a thread target in this build. The conversation still
+		   opens - that is the click's other half - and no selection is left
+		   behind for a later render to mount. */
+		TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD
+			? threadTargetFromSearch(searchParams)
+			: null,
 	);
 	const [scope, setScope] = useState<TeamBridgeScope>(() =>
 		requestedTenant
@@ -1275,11 +1405,40 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	// THE GATE IS THE FIRST READ (round-1 U-6): until it answers, every other
 	// read is disabled, so an ineligible account issues no refused requests.
 	const status = useTeamBridgeStatus();
-	const eligibility = status.data ? teamBridgeEligibility(status.data) : null;
-	const gatePending = status.isPending;
-	const readsEnabled = !gatePending && eligibility === null;
-	const selfAccountId = status.data?.account_id ?? undefined;
-	const readOnly = status.data?.read_only === true;
+	const auth = useRadientAuth();
+	const capabilities = useDesktopCapabilities();
+	const ownerGuard =
+		(capabilities.data?.features?.team_bridge_conversation_owner_guard ?? 0) >=
+		1;
+	const eligibility =
+		(status.data ? teamBridgeEligibility(status.data) : null) ??
+		(!accountId && auth.accountRead === "signed-out"
+			? "signed_out"
+			: auth.unavailable
+				? "update_required"
+				: auth.error || status.isError || capabilities.isError
+					? "unavailable"
+					: capabilities.data && !ownerGuard
+						? "update_required"
+						: null);
+	const gatePending =
+		eligibility === null &&
+		(!accountId || status.isPending || capabilities.isPending);
+	const readsEnabled =
+		!gatePending &&
+		eligibility === null &&
+		status.data?.account_id === accountId;
+	const selfAccountId = readsEnabled ? accountId : undefined;
+	const readOnly = status.data?.read_only === true || !ownerGuard;
+	const owner = useBridgeOwner(accountId);
+	const isCurrentOwner = () => owner.isCurrent() && ownerGuard;
+	/*
+	 * THE THREAD CAPABILITY, ASKED AND THEN HELD. The key is read here so the
+	 * plumbing the feature returns on exists and is exercised; the build's own
+	 * hold (`team-bridge-thread-gate.ts`) is what keeps the surface closed
+	 * whatever this answers. An absent or failed capabilities read answers
+	 * `unknown`, which the view treats as hidden.
+	 */
 	// The hub's status `tenants[]` is the switcher's and the merged filter's
 	// authoritative source; memberships only label it (and stand in when the
 	// status has no tenant list). Filtering by memberships alone dropped every
@@ -1288,7 +1447,9 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	// sidebar badge spends. Per-org counts are joined from that payload, never
 	// fetched per org.
 	const memberships = useMembershipsQuery({ enabled: readsEnabled });
-	const unread = useTeamBridgeUnread(readsEnabled, TEAM_BRIDGE_ALL_SCOPE);
+	const unread = useTeamBridgeUnread(readsEnabled, TEAM_BRIDGE_ALL_SCOPE, {
+		accountId,
+	});
 	const hubTenants = hubTenantList(status.data);
 	const organizations = useMemo(
 		() =>
@@ -1301,10 +1462,11 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	);
 	const { pending: organizationsPending, failed: organizationsFailed } =
 		organizationsReadState(hubTenants, memberships);
-	const list = useTeamBridgeConversations(scope, readsEnabled);
+	const list = useTeamBridgeConversations(scope, readsEnabled, accountId);
 	const directory = useTeamBridgeDirectory(
 		scope === TEAM_BRIDGE_ALL_SCOPE ? null : scope,
 		readsEnabled,
+		accountId,
 	);
 	const mergedView = scope === TEAM_BRIDGE_ALL_SCOPE;
 	// Names only (see `useTeamBridgeDirectories`): the merged view lists no
@@ -1314,10 +1476,11 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 			? organizations.map((organization) => organization.tenantId)
 			: [],
 		readsEnabled,
+		accountId,
 	);
 	// The reader's own name for their own messages; `user` is null until the
 	// account read answers, never the user store's placeholder name.
-	const selfName = useRadientAuth().user?.name ?? undefined;
+	const selfName = auth.user?.name ?? undefined;
 	const conversations = list.data?.conversations ?? [];
 	const people = directory.data?.members ?? [];
 	// The channel form offers the same people and chiefs of staff as the To: bar.
@@ -1340,13 +1503,15 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		setScope(asTeamBridgeTenantId(requestedTenant));
 		setTarget({ type: "conversation", id: requestedConversation });
 		setThreadLink(
-			threadTargetFromSearch(
-				new URLSearchParams({
-					tenant: requestedTenant,
-					conversation: requestedConversation,
-					...(requestedRoot ? { thread: requestedRoot } : {}),
-				}),
-			),
+			TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD
+				? threadTargetFromSearch(
+						new URLSearchParams({
+							tenant: requestedTenant,
+							conversation: requestedConversation,
+							...(requestedRoot ? { thread: requestedRoot } : {}),
+						}),
+					)
+				: null,
 		);
 		setChannelFormOpen(false);
 		setSearchParams({}, { replace: true });
@@ -1400,6 +1565,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 		previewSelected ? null : (selected?.id ?? null),
 		selected?.tenant_id,
 		readsEnabled,
+		accountId,
 	);
 	const send = useSendTeamBridgeMessage(
 		selected?.id ?? "",
@@ -1407,6 +1573,7 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	);
 	const create = useCreateTeamBridgeConversation(
 		mergedView ? undefined : scope,
+		isCurrentOwner,
 	);
 	const markRead = useMarkTeamBridgeRead(
 		selected?.id ?? "",
@@ -1484,9 +1651,12 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	 * remembered id instead, so a group draft creates at most one group however
 	 * many times the post is retried. A ref, not state: nothing renders from it.
 	 */
-	const createdForDraft = useRef(
-		new Map<string, { id: string; tenantId: string | undefined }>(),
-	);
+	const receiptOwner = accountId ?? "unresolved-owner";
+	const receiptMap =
+		receipts.get(receiptOwner) ??
+		new Map<string, { id: string; tenantId: string | undefined }>();
+	receipts.set(receiptOwner, receiptMap);
+	const createdForDraft = { current: receiptMap };
 	/*
 	 * The target the reader is looking at NOW, for an async send to compare
 	 * against after it resolves (review round 1, R1-6): the closure's `target`
@@ -1496,6 +1666,8 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	targetRef.current = target;
 
 	const sendBody = async (body: string, clientRef: string) => {
+		if (!isCurrentOwner())
+			throw new Error("Team Bridge write authority changed");
 		if (selected !== null) return send.mutateAsync({ clientRef, body });
 		const recipients = draftRecipients();
 		const input = draftCreateInput(recipients);
@@ -1523,23 +1695,31 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				// Straight to the API rather than the selected conversation's
 				// mutation hook: that hook is bound to the conversation selected at
 				// RENDER time, which a just-created row is not yet.
-				post: (id, message) => TeamBridgeApi.send(id, message),
+				post: (id, message) => {
+					if (!isCurrentOwner())
+						throw new Error("Team Bridge write authority changed");
+					return TeamBridgeApi.send(id, {
+						...message,
+						expectedAccountId: accountId,
+					});
+				},
 			});
 			/*
 			 * Move to the new group only if the reader is STILL on the draft that
 			 * sent it. A person or chief target needs no move: once the list
 			 * refetches, the same target resolves to the new DM by itself.
 			 */
+			if (!isCurrentOwner()) return;
 			if (startedOn?.type === "compose" && targetRef.current === startedOn) {
 				setTarget({ type: "conversation", id: conversationId });
 			}
 			await list.refetch();
 			return { id: conversationId };
 		} catch (error) {
-			setFirstSendFailed(true);
+			if (isCurrentOwner()) setFirstSendFailed(true);
 			throw error;
 		} finally {
-			setCreating(false);
+			if (isCurrentOwner()) setCreating(false);
 		}
 	};
 
@@ -1559,15 +1739,33 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 	);
 	// biome-ignore lint/correctness/useExhaustiveDependencies: advance the cursor only when the conversation or its newest seq changes.
 	useEffect(() => {
-		if (selected === null || newest === undefined) return;
+		if (!isCurrentOwner() || selected === null || newest === undefined) return;
 		if (newest <= selected.last_read_seq) return;
 		markRead.mutate({ seq: newest });
 	}, [selected?.id, newest]);
 
+	const draftKey = JSON.stringify([
+		accountId,
+		selected?.tenant_id ?? scope,
+		target,
+	]);
+	const draftJournal = drafts.get(draftKey) ?? { body: "", pending: null };
+	drafts.set(draftKey, draftJournal);
 	return (
 		<>
 			<TeamBridgePageView
+				key={draftKey}
+				draftJournal={draftJournal}
+				isDraftCurrent={isCurrentOwner}
 				threadLink={threadLink}
+				threadsCapabilityState={desktopFeatureState(
+					capabilities.data,
+					"team_bridge_threads",
+				)}
+				reactionsCapabilityState={desktopFeatureState(
+					capabilities.data,
+					"team_bridge_reactions",
+				)}
 				onCloseThread={() => setThreadLink(null)}
 				listState={
 					list.isPending || (mergedView && organizationsPending)
@@ -1599,9 +1797,11 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				joining={join.isPending}
 				joinFailed={join.isError}
 				notifyFailed={notifyFailureIsVisible(notify, selected?.id ?? null)}
-				onJoin={() => join.mutate()}
+				onJoin={() => {
+					if (isCurrentOwner()) join.mutate();
+				}}
 				onNotifyChange={(next) => {
-					if (selected === null) return;
+					if (!isCurrentOwner() || selected === null) return;
 					notify.mutate({
 						conversationId: selected.id,
 						tenantId: selected.tenant_id,
@@ -1652,8 +1852,10 @@ export const TeamBridgePage: FC<{ selfAccountId?: string }> = () => {
 				error={create.isError ? t("ui.teamBridge.create.error") : undefined}
 				onClose={() => setChannelFormOpen(false)}
 				onCreate={(input) => {
+					if (!isCurrentOwner()) return;
 					create.mutate(input, {
 						onSuccess: (created) => {
+							if (!isCurrentOwner()) return;
 							setChannelFormOpen(false);
 							const conversation = created as { id?: string };
 							if (conversation.id)

@@ -61,7 +61,12 @@ import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type ThemeName, themes } from "@shared/themes";
-import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
+import {
+	showErrorToast,
+	showInfoToast,
+	showSuccessToast,
+	showWarningToast,
+} from "@shared/utils/toast-manager";
 import {
 	keepPreviousData,
 	useQuery,
@@ -3596,8 +3601,10 @@ export const ApprovalsPicker: FC<PickerContext> = ({
 				await command.run("approvals", value);
 				return;
 			}
-			// Default scope writes the typed settings key and leaves the current
-			// session's mode alone, exactly as `/approvals default` does.
+			// Default scope writes the typed settings key. The saved default applies
+			// to live conversations that follow it; a conversation with its own
+			// explicit choice keeps it — the result sentence says both, rather than
+			// asserting this session was left unchanged.
 			await settingsOp.perform(
 				() =>
 					desktopResult<{ key: string; value: unknown }>({
@@ -3607,7 +3614,7 @@ export const ApprovalsPicker: FC<PickerContext> = ({
 					}),
 				(row) => ({
 					tone: "success",
-					text: `Default approvals for new sessions: ${String(row?.value ?? value)}. This session is unchanged.`,
+					text: `Default approvals for all sessions that follow it: ${String(row?.value ?? value)}. This session follows it unless it has its own choice.`,
 				}),
 				"The default was not saved",
 			);
@@ -3631,7 +3638,10 @@ export const ApprovalsPicker: FC<PickerContext> = ({
 					onChange={setScope}
 					options={[
 						{ value: "session", label: "This session" },
-						{ value: "default", label: "Default for new sessions" },
+						{
+							value: "default",
+							label: "Default for all sessions that follow it",
+						},
 					]}
 				/>
 			}
@@ -3769,6 +3779,28 @@ export const RenamePicker: FC<PickerContext> = ({
 	 * first render's, which is exactly the mount-time seed.
 	 */
 	const [openedWith] = useState(name);
+	/*
+	 * WHETHER THIS DIALOG IS STILL THE ONE ON SCREEN. The submit below reports
+	 * its outcome to an owner that renders ONE picker at a time (`closePicker` is
+	 * `setPicker(null)`, `slash-dispatch.ts`), so a reader can dismiss this dialog
+	 * while the rename is in flight and open another in the same slot; a success
+	 * that then called `onClose()` would dismiss the picker they had just opened.
+	 * `closed` is set at unmount, the only moment the dialog is definitively gone -
+	 * the same latch `ReloadPicker` keeps for a failure that lands after its
+	 * dialog is gone (review U6).
+	 *
+	 * ARMED AT SETUP, not only disarmed at unmount: StrictMode's development
+	 * mount/unmount/mount runs this cleanup and then mounts the SAME instance in
+	 * the same slot, so a latch that only ever closed would keep a dev build's
+	 * dialog from ever closing on success.
+	 */
+	const closed = useRef(false);
+	useEffect(() => {
+		closed.current = false;
+		return () => {
+			closed.current = true;
+		};
+	}, []);
 	const command = useSessionCommand(sessionId);
 	return (
 		<PickerHost
@@ -3785,7 +3817,7 @@ export const RenamePicker: FC<PickerContext> = ({
 					/>
 				</PickerField>
 			}
-			onSubmit={() => {
+			onSubmit={async () => {
 				const next = renameSubmission({ name, openedWith });
 				/*
 				 * A no-op submit CLOSES without a command - the header editor's exit
@@ -3795,7 +3827,44 @@ export const RenamePicker: FC<PickerContext> = ({
 					onClose();
 					return;
 				}
-				void command.run("rename", next);
+				const { result } = await command.run("rename", next);
+				/*
+				 * SUCCESS ENDS THE DIALOG, and the receipt becomes a toast: closing is
+				 * otherwise the end of the one confirmation a rename ever prints.
+				 * Failure, warning and a "needs more input" answer keep the dialog and
+				 * its inline reason; an unchanged submit closed above without a write.
+				 *
+				 * THE CLOSE BELONGS TO THE DIALOG THAT IS STILL THERE. The receipt is
+				 * unconditional - it has to survive the dialog - but `onClose` names the
+				 * pane's single slot, so a reader who dismissed this dialog mid-flight
+				 * and opened another picker must not have that one closed by this rename
+				 * (see `closed`).
+				 *
+				 * AND A NON-SUCCESS HAS TO LAND SOMEWHERE TOO (agent review round 1,
+				 * R1-1). The strip that carries a refusal lives inside the dialog, and
+				 * the footer's busy-state Close does not cancel the command - so a refusal
+				 * that lands after the reader dismissed this dialog would otherwise be
+				 * reported NOWHERE, and the signature of a rename that did not happen is
+				 * silence.
+				 *
+				 * THE CARRIER FOLLOWS THE TONE because a warning's colour and a warning's
+				 * de-dupe behaviour are not an error's: `showErrorToast` drops a repeat of
+				 * the same sentence for five seconds, so a warning that rode it could lose
+				 * exactly the retry this branch exists to announce. `info` is a
+				 * `native_action`/`block` receipt - no `_rename_slash` branch returns one
+				 * today, but this branch should not speak for a tone it does not have.
+				 * `ReloadPicker`'s late failure (review U6) is the same carrier decision on
+				 * an error-only path. While the dialog is up the strip carries it, so this
+				 * branch is the only one that speaks.
+				 */
+				if (result.tone === "success") {
+					showSuccessToast(result.text);
+					if (!closed.current) onClose();
+				} else if (closed.current) {
+					if (result.tone === "warning") showWarningToast(result.text);
+					else if (result.tone === "error") showErrorToast(result.text);
+					else showInfoToast(result.text);
+				}
 			}}
 			submitLabel="Rename"
 			submitDisabled={!name.trim()}
