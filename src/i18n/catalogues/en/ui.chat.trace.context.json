@@ -1792,16 +1792,6 @@
 			"formatDurationValue": "string"
 		}
 	},
-	"ui.chat.trace.ask_options.requestid_stringvalue": {
-		"role": "visible interface copy in chat components/trace/ask-options.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/trace/ask-options.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"requestId": "string",
-			"StringValue": "string"
-		}
-	},
 	"ui.chat.trace.question_dock.1_value_to_answer": {
 		"role": "visible interface copy in chat components/trace/question-dock.tsx",
 		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
@@ -1968,5 +1958,6 @@
 			"actionCount": "number",
 			"At": "string"
 		}
-	}
+	},
+	"ui.chat.trace.agent_reasoning.reasoning": "Default trigger label for the agent reasoning row in the transcript. A reflection turn may pass its own label; this one is used when none is given."
 }

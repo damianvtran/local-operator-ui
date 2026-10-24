@@ -273,7 +273,12 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	swapRef,
 	markSwap,
 }) => {
-	useI18nLocale();
+	/*
+	 * The roster options memo labels and explains rows with `t()`, so the locale
+	 * must be a dependency and not merely a subscription: otherwise a language
+	 * switch re-renders the panel around rows still built in the old language.
+	 */
+	const locale = useI18nLocale();
 	/*
 	 * A CLOSED SEAT LISTS NOTHING (the runtime's strict rule): no row can be
 	 * picked, so the roster is not fetched for a panel that will not show it.
@@ -381,6 +386,7 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	 * reason: the roster is the same roster, and the reader who needs one needs it
 	 * on both surfaces.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is the re-label TRIGGER; the rows read it through `t()`, which the rule cannot follow into a call.
 	const options = useMemo<PickerOption[]>(
 		() =>
 			items.map((row) => {
@@ -452,7 +458,7 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					blocked,
 				};
 			}),
-		[items, current, busy, constraint],
+		[items, current, busy, constraint, locale],
 	);
 
 	/*

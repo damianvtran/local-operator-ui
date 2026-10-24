@@ -261,10 +261,7 @@ export const AskOptions = ({
 				const presented = presentedOption(option);
 				return (
 					<button
-						key={t("ui.chat.trace.ask_options.requestid_stringvalue", {
-							requestId: requestId,
-							StringValue: String(index),
-						})}
+						key={`${requestId}-${String(index)}`}
 						type="button"
 						data-ask-option=""
 						disabled={busy}

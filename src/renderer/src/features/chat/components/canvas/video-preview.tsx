@@ -15,6 +15,7 @@ import {
 import type { CanvasDocument } from "../../types/canvas";
 import { artifactFileName } from "../../utils/artifact-identity";
 import { mimeTypeForPath } from "../../utils/file-kind";
+import { documentNameForDisplay } from "../../utils/get-file-name";
 import { ImageActionsMenu } from "../image-actions-menu";
 import {
 	FileViewerState,
@@ -107,7 +108,7 @@ const ArtifactVideoPreview: FC<{ document: CanvasDocument }> = ({
 				{artifact ? (
 					<ImageActionsMenu
 						file={document.path}
-						label={document.title}
+						label={documentNameForDisplay(document)}
 						mediaKind="video"
 						saveName={artifactFileName(artifact)}
 						resolveBytes={() =>
@@ -131,7 +132,7 @@ const ArtifactVideoPreview: FC<{ document: CanvasDocument }> = ({
 							? "This video could not be played"
 							: "This video is no longer in the session"
 					}
-					detail={document.title}
+					detail={documentNameForDisplay(document)}
 				/>
 			) : (
 				<div

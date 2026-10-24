@@ -114,10 +114,7 @@ export function HubLinkSidebarMark({
 						ref={button}
 						type="button"
 						data-hub-mark={actions.isPending ? "busy" : mark.kind}
-						data-testid={t(
-							"ui.chat.sidebar.hub_link_sidebar_mark.hub_mark_kind_name",
-							{ kind: link.kind, name: link.name },
-						)}
+						data-testid={`hub-mark-${link.kind}-${link.name}`}
 						aria-label={actionLabel}
 						aria-disabled={
 							(!actions.canWrite &&

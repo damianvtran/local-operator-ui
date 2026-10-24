@@ -34,7 +34,7 @@ import { type FC, memo, useCallback } from "react";
 import { t } from "../../../../../../i18n/messages";
 import type { Message } from "../../types/message";
 import { mimeTypeForPath } from "../../utils/file-kind";
-import { getFileName } from "../../utils/get-file-name";
+import { fileNameForDisplay } from "../../utils/get-file-name";
 import { isMessageHidden } from "../../utils/message-grouping";
 import {
 	AgentQuestion,
@@ -180,7 +180,7 @@ const ImageFileAttachment: FC<{
 			</div>
 		);
 	}
-	return <BrokenAttachment name={getFileName(file)} />;
+	return <BrokenAttachment name={fileNameForDisplay(file)} />;
 };
 
 /**
@@ -331,7 +331,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 				showErrorToast(
 					t(
 						"ui.chat.message.index.could_not_open_getfilenamevalue_the_file_may_have_been_moved",
-						{ getFileNameValue: getFileName(filePath) },
+						{ getFileNameValue: fileNameForDisplay(filePath) },
 					),
 				);
 			}
@@ -367,10 +367,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 					<div className="mb-2 flex flex-col gap-2">
 						{imageFiles.map((file) => (
 							<ImageFileAttachment
-								key={t("ui.chat.message.index.id_file", {
-									id: message.id,
-									file: file,
-								})}
+								key={`${message.id}-${file}`}
 								file={file}
 								conversationId={conversationId}
 							/>
@@ -381,10 +378,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 					<div className="mb-2 flex flex-col gap-2">
 						{videoFiles.map((file) => (
 							<VideoFileAttachment
-								key={t("ui.chat.message.index.id_file", {
-									id: message.id,
-									file: file,
-								})}
+								key={`${message.id}-${file}`}
 								file={file}
 								onClick={handleFileClick}
 								conversationId={conversationId}
@@ -396,10 +390,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 					<div className="mb-2 flex flex-col gap-2">
 						{audioFiles.map((file) => (
 							<AudioFileAttachment
-								key={t("ui.chat.message.index.id_file", {
-									id: message.id,
-									file: file,
-								})}
+								key={`${message.id}-${file}`}
 								file={file}
 								isUser={isUser}
 							/>
@@ -410,10 +401,7 @@ export const MessageItem: FC<MessageItemProps> = memo(
 					<div className="flex flex-col gap-2">
 						{otherFiles.map((file) => (
 							<FileAttachment
-								key={t("ui.chat.message.index.id_file", {
-									id: message.id,
-									file: file,
-								})}
+								key={`${message.id}-${file}`}
 								file={file}
 								onClick={handleFileClick}
 								conversationId={conversationId}

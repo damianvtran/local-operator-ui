@@ -253,7 +253,6 @@
 	"ui.chat.trace.receipt_row_model.cancel_with_wake": " — cancel with wake(",
 	"ui.chat.trace.tool_detail_model.deeper_values_not_shown": "… deeper values not shown",
 	"ui.chat.trace.agent_reasoning.label_for_formatdurationvalue": "{label} for {formatDurationValue}",
-	"ui.chat.trace.ask_options.requestid_stringvalue": "{requestId}-{StringValue}",
 	"ui.chat.trace.question_dock.1_value_to_answer": "1-{value, number, ::group-off} to answer",
 	"ui.chat.trace.trace_fold.verb_object": "{verb} {object}",
 	"ui.chat.trace.trace_labels.length_files": "{length, number, ::group-off} files",
@@ -272,5 +271,6 @@
 	"ui.chat.trace.tool_row_model.wake_unconfirmed": "wake unconfirmed",
 	"ui.chat.trace.tool_row_model.more_diff_lines": "{hidden, plural, one {… # more diff line} other {… # more diff lines}}",
 	"ui.chat.trace.tool_detail_model.more_lines": "{hidden, plural, one {… # more line} other {… # more lines}}",
-	"ui.chat.trace.turn_summary.at_least_actions_unloaded": "{actionCount, plural, one {At least # action — earlier rows of this turn are not loaded} other {At least # actions — earlier rows of this turn are not loaded}}"
+	"ui.chat.trace.turn_summary.at_least_actions_unloaded": "{actionCount, plural, one {At least # action — earlier rows of this turn are not loaded} other {At least # actions — earlier rows of this turn are not loaded}}",
+	"ui.chat.trace.agent_reasoning.reasoning": "Reasoning"
 }

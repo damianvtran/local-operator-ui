@@ -515,13 +515,7 @@ const API_EQUIVALENT_UNIT =
 function basisTooltipText(text: string | null): ReactNode {
 	return text?.split(API_EQUIVALENT_UNIT).map((part, index) =>
 		index % 2 === 1 ? (
-			<span
-				key={t("ui.chat.session_status.session_status_strip.index_part", {
-					index,
-					part,
-				})}
-				className="whitespace-nowrap"
-			>
+			<span key={`${index}:${part}`} className="whitespace-nowrap">
 				{part}
 			</span>
 		) : (
@@ -593,10 +587,7 @@ const ChannelTooltipBody: FC<{
 				<span className="mt-1 flex flex-col gap-1">
 					{breakdown.byAgent.map((entry, index) => (
 						<span
-							key={t(
-								"ui.chat.session_status.session_status_strip.index_channel",
-								{ index: index, channel: entry.channel },
-							)}
+							key={`${index}:${entry.channel}`}
 							className="flex items-baseline justify-between gap-3"
 						>
 							<span className="min-w-0">{entry.name}</span>
@@ -635,13 +626,7 @@ const ChannelTooltipBody: FC<{
 			{breakdown.bySource.length > 0 && (
 				<span className="mt-1 flex flex-col gap-1.5">
 					{breakdown.bySource.map((entry, index) => (
-						<span
-							key={t(
-								"ui.chat.session_status.session_status_strip.index_channel",
-								{ index: index, channel: entry.channel },
-							)}
-							className="flex flex-col"
-						>
+						<span key={`${index}:${entry.channel}`} className="flex flex-col">
 							<span className="flex items-baseline justify-between gap-3">
 								<span className="min-w-0">{entry.name}</span>
 								<span className="shrink-0 font-mono text-mono-sm">
@@ -663,13 +648,7 @@ const ChannelTooltipBody: FC<{
 			 * session renders none — the pass an API-key user must get.
 			 */}
 			{breakdown.notes.map((note, index) => (
-				<span
-					key={t("ui.chat.session_status.session_status_strip.index_note", {
-						index,
-						note,
-					})}
-					className="text-ink-muted"
-				>
+				<span key={`${index}:${note}`} className="text-ink-muted">
 					{note}
 				</span>
 			))}
@@ -693,13 +672,7 @@ const ChannelTooltipBody: FC<{
 			{breakdown.rows.length > 0 && (
 				<span className="mt-1 flex flex-col gap-1.5">
 					{breakdown.rows.map((row, index) => (
-						<span
-							key={t("ui.chat.session_status.session_status_strip.index_name", {
-								index: index,
-								name: row.name,
-							})}
-							className="flex flex-col"
-						>
+						<span key={`${index}:${row.name}`} className="flex flex-col">
 							<span className="flex items-baseline justify-between gap-3">
 								<span className="min-w-0">{row.name}</span>
 								<span className="shrink-0 font-mono text-mono-sm">
@@ -1081,7 +1054,10 @@ const DRAFT_CONTEXT_LINE = () =>
 	t(
 		"ui.chat.session_status.session_status_strip.nothing_measured_yet_the_window_fills_as_the_conversation_runs",
 	);
-const DRAFT_CONTEXT_TOOLTIP = ["Context", DRAFT_CONTEXT_LINE()];
+const DRAFT_CONTEXT_TOOLTIP = [
+	t("ui.chat.session_status.session_context.context"),
+	DRAFT_CONTEXT_LINE(),
+];
 // The same sentence as one utterance, which is why it starts lower-case.
 const DRAFT_CONTEXT_LABEL = () =>
 	t(

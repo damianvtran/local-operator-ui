@@ -1,4 +1,5 @@
 import { ImageLightbox } from "@shared/components/common/image-lightbox";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -213,6 +214,12 @@ const getFileName = (path: string): string => {
  */
 export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 	({ file, src, conversationId, label, size = "full", overlay, press }) => {
+		/*
+		 * `memo` blocks a parent re-render, so the accessible name and the
+		 * expansion labels below would stay in the old language after a switch
+		 * without a subscription of this component's own.
+		 */
+		useI18nLocale();
 		const [hasError, setHasError] = useState(false);
 		const [isLoaded, setIsLoaded] = useState(false);
 		/**

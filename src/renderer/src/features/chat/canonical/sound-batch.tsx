@@ -56,14 +56,7 @@ export function SoundBatch({
 						) : item.audio ? (
 							<CanonicalAudio
 								audio={item.audio}
-								ownerId={t(
-									"ui.chat.canonical.sound_batch.soundowneridvalue_batch_id_id2",
-									{
-										soundOwnerIdValue: soundOwnerId(item.audio),
-										id: item.audio.id,
-										id2: item.id,
-									},
-								)}
+								ownerId={`${soundOwnerId(item.audio)}:batch:${item.audio.id}:${item.id}`}
 								scope={scope}
 								label={item.label}
 							/>

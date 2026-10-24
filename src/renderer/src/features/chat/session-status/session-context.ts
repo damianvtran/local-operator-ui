@@ -288,7 +288,7 @@ export function contextTooltipLines(
 ): string[] {
 	if (reading.status === "no-reading")
 		return [
-			"Context",
+			t("ui.chat.session_status.session_context.context"),
 			t(
 				"ui.chat.session_status.session_context.no_reading_yet_the_first_turn_reports_what_the_request",
 			),

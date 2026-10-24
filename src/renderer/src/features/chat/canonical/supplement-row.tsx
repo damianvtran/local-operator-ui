@@ -248,9 +248,7 @@ const SupplementSoundLine = memo(function SupplementSoundLine({
 			) : (
 				<SoundPlayer
 					variant="compact"
-					ownerId={t("ui.chat.canonical.supplement_row.sound_attachment", {
-						attachment: sound.attachment,
-					})}
+					ownerId={`sound:${sound.attachment}`}
 					src={source.url}
 					label={label}
 					peaks={peaks}
@@ -697,10 +695,7 @@ export const SupplementRow = memo(function SupplementRow({
 					const { name, path, size } = fileRowParts(file);
 					return (
 						<SupplementFileLine
-							key={t("ui.chat.canonical.supplement_row.path_name", {
-								path: file.path,
-								name: file.name,
-							})}
+							key={`${file.path}:${file.name}`}
 							actionPath={file.path}
 							cwd={cwd}
 							label={name || path}

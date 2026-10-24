@@ -98,8 +98,6 @@
 	"ui.chat.session_status.session_model.this_session_could_not_resolve_label_access_from_owner_previous": "This session could not resolve {label} access from {owner}. Previous access cannot be reused. Retry after owner access is restored, or choose another model.",
 	"ui.chat.session_status.session_model.this_session_may_borrow_label_access_but_it_has_not": "This session may borrow {label} access, but it has not resolved it yet. The next request verifies {owner} automatically.",
 	"ui.chat.session_status.session_model.this_session_runs_label_without_a_working_sign_in_so": "This session runs {label} without a working sign-in, so it cannot answer until you connect it.",
-	"ui.chat.session_status.session_status_strip.index_note": "{index, number, ::group-off}:{note}",
-	"ui.chat.session_status.session_status_strip.index_part": "{index, number, ::group-off}:{part}",
 	"ui.chat.session_status.session_status_strip.session_readings_last_reading_note": "Session readings. {LAST_READING_NOTE}",
 	"ui.chat.session_status.session_model.auto": "Auto",
 	"ui.chat.session_status.session_status_strip.context_nothing_measured_yet_the_window_fills_as_the_conversation": "Context: nothing measured yet. The window fills as the conversation runs.",
@@ -135,7 +133,6 @@
 	"ui.chat.session_status.chat_device_model.this_conversation_runs_on_name_click_to_recall_it_here": "This conversation runs on {name}. Click to recall it here or move it on.",
 	"ui.chat.session_status.chat_device_model.this_conversation_runs_on_name_which_did_not_answer_the": "This conversation runs on {name}, which did not answer the last read{because}.",
 	"ui.chat.session_status.chat_device_notice.moving_to_name": "Moving to {name}",
-	"ui.chat.session_status.context_wheel.0_0_size_size2": "0 0 {SIZE, number, ::group-off} {SIZE2, number, ::group-off}",
 	"ui.chat.session_status.session_context.formatcontexttokensvalue_tokens_in_use_the_window_this_model_allows_is": "{formatContextTokensValue} tokens in use. The window this model allows is not known, so there is no percentage to show.",
 	"ui.chat.session_status.session_context.model_maximum_formatwindowvalue": "Model maximum: {formatWindowValue}",
 	"ui.chat.session_status.session_cost.includes_moneyvalue_plan_covered_api_equivalent_not_charged": "Includes {moneyValue} plan-covered (API-equivalent, not charged).",
@@ -148,8 +145,6 @@
 	"ui.chat.session_status.session_model.reasoning_effort_this_model_offers_value": "Reasoning effort. This model offers {value}.",
 	"ui.chat.session_status.session_model.recorded_grant_expiry_accesstimevalue": "Recorded grant expiry: {accessTimeValue}.",
 	"ui.chat.session_status.session_status_strip.context_no_reading_yet_contextbreakdownlinevalue": "Context: no reading yet. {contextBreakdownLineValue}",
-	"ui.chat.session_status.session_status_strip.index_channel": "{index, number, ::group-off}:{channel}",
-	"ui.chat.session_status.session_status_strip.index_name": "{index, number, ::group-off}:{name}",
 	"ui.chat.session_status.session_status_strip.reasoning_effort_effortdisplayvalue": "Reasoning effort: {effortDisplayValue}.",
 	"ui.chat.session_status.session_cost.not_tracked": "not tracked",
 	"ui.chat.session_status.session_status_strip.model_switching": "Model: {selector}{fastMode}. Switching; waiting for the session to confirm it.",
@@ -160,5 +155,10 @@
 	"ui.chat.session_status.session_status_strip.fast_mode_suffix": ", fast mode on",
 	"ui.chat.session_status.chat_device_model.this_device_label": "This device",
 	"ui.chat.session_status.session_model.auto_detail": "No level is set, so this model runs at its own default{fallbackDefault}. It offers {ladder}.",
-	"ui.chat.session_status.session_cost.unpriced_records": "{count, plural, one {# record without a price} other {# records without a price}}"
+	"ui.chat.session_status.session_cost.unpriced_records": "{count, plural, one {# record without a price} other {# records without a price}}",
+	"ui.chat.session_status.session_cost.basis_billed": "billed",
+	"ui.chat.session_status.session_cost.basis_included": "Included",
+	"ui.chat.session_status.session_cost.basis_estimated": "estimated",
+	"ui.chat.session_status.session_cost.subagents_amount": "Subagents {amount}",
+	"ui.chat.session_status.session_context.context": "Context"
 }

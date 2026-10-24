@@ -521,10 +521,7 @@ export function SkillSuggestionsPopup({
 							/* biome-ignore lint/a11y/useKeyWithClickEvents: the keyboard is handled on the textarea, not on the option. */
 							<li
 								key={skillRowId(row.name)}
-								id={t("ui.chat.skill_picker.listid_skillrowidvalue", {
-									listId: state.listId,
-									skillRowIdValue: skillRowId(row.name),
-								})}
+								id={`${state.listId}-${skillRowId(row.name)}`}
 								ref={index === state.active ? activeRef : null}
 								// biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea.
 								// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a combobox option cannot be a native <option> here.

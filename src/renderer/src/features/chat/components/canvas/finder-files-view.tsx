@@ -42,7 +42,10 @@ import {
 	formatDateTime,
 	formatNumber,
 } from "../../../../../../i18n/format";
-import type { FileIndexState } from "../../canonical/use-session-files";
+import {
+	type FileIndexState,
+	fileIndexErrorMessage,
+} from "../../canonical/use-session-files";
 import type { CanvasDocument } from "../../types/canvas";
 import {
 	artifactFileName,
@@ -617,9 +620,9 @@ export function FinderFilesView({
 						</Button>
 					</div>
 				)}
-				{index.error && narrowed.length > 0 && (
+				{fileIndexErrorMessage(index.error) && narrowed.length > 0 && (
 					<output className={cn("text-body-sm text-ink-muted")}>
-						{index.error}
+						{fileIndexErrorMessage(index.error)}
 						<Button variant="ghost" size="sm" onClick={index.refresh}>
 							{index.state === "building"
 								? t("ui.canvas.files.continue")
@@ -682,9 +685,11 @@ export function FinderFilesView({
 					>
 						<p className={cn("text-heading text-ink")}>
 							{index.state === "error"
-								? (index.error ?? t("ui.canvas.files.error"))
+								? (fileIndexErrorMessage(index.error) ??
+									t("ui.canvas.files.error"))
 								: index.state === "unsupported"
-									? (index.error ?? t("ui.canvas.files.remote"))
+									? (fileIndexErrorMessage(index.error) ??
+										t("ui.canvas.files.remote"))
 									: index.state === "loading"
 										? t("ui.canvas.files.loading")
 										: index.state === "building"

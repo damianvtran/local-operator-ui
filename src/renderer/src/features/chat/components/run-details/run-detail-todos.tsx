@@ -250,10 +250,7 @@ export const RunDetailTodos = ({
 				const leadsThePlan = phaseIndex === 0;
 				return (
 					<div
-						key={t("ui.chat.run_details.run_detail_todos.phaseindex_value", {
-							phaseIndex: phaseIndex,
-							value: phase.name ?? "__flat",
-						})}
+						key={`${phaseIndex}-${phase.name ?? "__flat"}`}
 						className={cn("flex flex-col")}
 					>
 						{phase.name === null && !leadsThePlan && <Separator />}
@@ -297,13 +294,7 @@ export const RunDetailTodos = ({
 						)}
 						<ul className={cn("flex flex-col")}>
 							{phase.items.map((item, index) => (
-								<TodoRow
-									key={t("ui.chat.run_details.run_detail_todos.index_text", {
-										index: index,
-										text: item.text,
-									})}
-									item={item}
-								/>
+								<TodoRow key={`${index}-${item.text}`} item={item} />
 							))}
 							{/*
 							 * Disclosed INSIDE the phase that lost the rows (`§6.3`), so the

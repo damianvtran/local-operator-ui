@@ -1,9 +1,11 @@
 import { getHtmlUrl } from "@shared/api/local-operator/static-api";
 import { Button } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type FC, memo, useCallback, useMemo, useState } from "react";
 import type { CanvasDocument } from "../../types/canvas";
+import { documentNameForDisplay } from "../../utils/get-file-name";
 import { CodeEditor } from "./code-editor";
 import { useSignedStaticUrl } from "./use-signed-static-url";
 
@@ -114,6 +116,9 @@ const HtmlPreviewComponent: FC<HtmlPreviewProps> = ({
 	document,
 	conversationId,
 }) => {
+	/* A pasted document's name is derived from its path with `t()` at render
+	 * time, so the memoised preview subscribes to the locale itself. */
+	useI18nLocale();
 	const [isEditMode, setIsEditMode] = useState(false);
 
 	const handleToggleMode = useCallback(() => {
@@ -189,7 +194,7 @@ const HtmlPreviewComponent: FC<HtmlPreviewProps> = ({
 					<iframe
 						key={version}
 						src={htmlUrl}
-						title={`HTML Preview: ${document.title}`}
+						title={`HTML Preview: ${documentNameForDisplay(document)}`}
 						sandbox={PREVIEW_SANDBOX}
 						className={cn("h-full w-full border-0 bg-surface")}
 					/>

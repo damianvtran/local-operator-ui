@@ -1793,7 +1793,6 @@ export type MessageParams = {
 		dropped: number;
 	};
 	"ui.chat.asks.ask_panel.filter_asks": undefined;
-	"ui.chat.asks.ask_panel.index_value": { index: number; value: string };
 	"ui.chat.asks.ask_panel.label_count": { label: string; count: number };
 	"ui.chat.asks.ask_panel.length_questions_timed_out": { length: number };
 	"ui.chat.asks.ask_panel.no_answer_given": undefined;
@@ -1954,7 +1953,6 @@ export type MessageParams = {
 	"ui.chat.canonical.canonical_transcript.sound": undefined;
 	"ui.chat.canonical.canonical_transcript.sound_value": { value: number };
 	"ui.chat.canonical.canonical_transcript.turn_condensed": undefined;
-	"ui.chat.canonical.canonical_transcript.turn_summary_key": { key: string };
 	"ui.chat.canonical.canonical_transcript.worked": undefined;
 	"ui.chat.canonical.canonical_transcript.worked_for_formatdurationvalue": {
 		formatDurationValue: string;
@@ -2004,6 +2002,9 @@ export type MessageParams = {
 		value: number;
 	};
 	"ui.chat.canonical.image_gen_card.requests_a_stop_the_provider_may_finish_anyway": undefined;
+	"ui.chat.canonical.image_gen_card.restart": undefined;
+	"ui.chat.canonical.image_gen_card.retry": undefined;
+	"ui.chat.canonical.image_gen_card.stop": undefined;
 	"ui.chat.canonical.image_gen_card.stops_before_the_provider_is_called": undefined;
 	"ui.chat.canonical.image_gen_card.the_imagegenmaterialnounvalue_could_not_be_generated": {
 		imageGenMaterialNounValue: string;
@@ -2046,11 +2047,6 @@ export type MessageParams = {
 	"ui.chat.canonical.sound.stop.warning": undefined;
 	"ui.chat.canonical.sound_batch.cost_not_yet_known": undefined;
 	"ui.chat.canonical.sound_batch.failed": undefined;
-	"ui.chat.canonical.sound_batch.soundowneridvalue_batch_id_id2": {
-		soundOwnerIdValue: string;
-		id: string;
-		id2: string;
-	};
 	"ui.chat.canonical.sound_batch.status_unknown": undefined;
 	"ui.chat.canonical.sound_batch.stopped": undefined;
 	"ui.chat.canonical.sound_batch_model.estimated_cost_0_final_charge_not_confirmed": undefined;
@@ -2139,9 +2135,7 @@ export type MessageParams = {
 	"ui.chat.canonical.supplement_row.failedcause": { failedCause: string };
 	"ui.chat.canonical.supplement_row.generated_sound": undefined;
 	"ui.chat.canonical.supplement_row.highlights_could_not_be_updated": undefined;
-	"ui.chat.canonical.supplement_row.path_name": { path: string; name: string };
 	"ui.chat.canonical.supplement_row.show_fewer": undefined;
-	"ui.chat.canonical.supplement_row.sound_attachment": { attachment: string };
 	"ui.chat.canonical.thread_search.building": undefined;
 	"ui.chat.canonical.thread_search.building_hint": undefined;
 	"ui.chat.canonical.thread_search.close_label": undefined;
@@ -2434,7 +2428,6 @@ export type MessageParams = {
 	"ui.chat.directory.directory_indicator.program_files_x86": undefined;
 	"ui.chat.directory.directory_indicator.programdata": undefined;
 	"ui.chat.directory.directory_indicator.recent_directories": undefined;
-	"ui.chat.directory.directory_indicator.recent_path": { path: string };
 	"ui.chat.directory.directory_indicator.remove_formatted_from_recent_directories": {
 		formatted: string;
 	};
@@ -2530,18 +2523,10 @@ export type MessageParams = {
 	"ui.chat.header.chat_header_identity_menu.closednoteid_title": {
 		closedNoteId: string;
 	};
-	"ui.chat.header.chat_header_identity_menu.listid_index": {
-		listId: string;
-		index: number;
-	};
 	"ui.chat.header.chat_header_identity_menu.loading": undefined;
 	"ui.chat.header.chat_header_identity_menu.nothing_matches": undefined;
 	"ui.chat.header.chat_header_identity_menu.search_noun": { noun: string };
 	"ui.chat.header.chat_header_identity_menu.teams": undefined;
-	"ui.chat.header.chat_header_identity_menu.value_index": {
-		value: string;
-		index: number;
-	};
 	"ui.chat.header.chat_header_identity_menu_model.agent_seat_closed_by_teamlabel": {
 		teamLabel: string;
 	};
@@ -2614,10 +2599,6 @@ export type MessageParams = {
 	"ui.chat.at_picker.directory": undefined;
 	"ui.chat.at_picker.file": undefined;
 	"ui.chat.at_picker.files": undefined;
-	"ui.chat.at_picker.listid_atrowidvalue": {
-		listId: string;
-		atRowIdValue: string;
-	};
 	"ui.chat.at_picker.project": undefined;
 	"ui.chat.at_picker.projects": undefined;
 	"ui.chat.attachment_read.this_draft_carries_total_images_and_one": {
@@ -2634,10 +2615,6 @@ export type MessageParams = {
 	};
 	"ui.chat.attachment_read.value_could_not_be_read_they_may_have_been_moved": {
 		value: string;
-	};
-	"ui.chat.attachments_preview.index_attachment": {
-		index: number;
-		attachment: string;
 	};
 	"ui.chat.chat_archived.this_backend_cannot_archive_conversations_update_the_backend_and_try": undefined;
 	"ui.chat.chat_archived.this_conversation_is_already_archived_use_unarchive_to_restore_it": undefined;
@@ -2719,16 +2696,9 @@ export type MessageParams = {
 	"ui.chat.chat_status_strip.still_unreachable": undefined;
 	"ui.chat.chat_status_strip.the_server_is_running_but_this_apps_credential_is_still": undefined;
 	"ui.chat.chat_tag_groups.untagged": undefined;
-	"ui.chat.chat_tag_header.errorid_description": { errorId: string };
-	"ui.chat.chat_tag_header.errorid_title": { errorId: string };
 	"ui.chat.chat_title.new_chat": undefined;
 	"ui.chat.chat_title.new_chat_with_drafttarget": { draftTarget: string };
 	"ui.chat.chat_title.untitled_chat": undefined;
-	"ui.chat.composer.composer_highlight.kind_start": {
-		kind: string;
-		start: number;
-	};
-	"ui.chat.composer.composer_highlight.prose_start": { start: number };
 	"ui.chat.composer.composer_status_row.askdeadlinesubject": {
 		askDeadlineSubject: string;
 	};
@@ -2910,8 +2880,6 @@ export type MessageParams = {
 	"ui.chat.hub_update_mark.detail_action": { detail: string; action: string };
 	"ui.chat.hub_update_mark.dismiss": undefined;
 	"ui.chat.hub_update_mark.dismiss_update_summary": undefined;
-	"ui.chat.hub_update_mark.hub_mark_kind_name": { kind: string; name: string };
-	"ui.chat.hub_update_mark.hub_update_all_kind": { kind: string };
 	"ui.chat.hub_update_mark.update_all_available": { available: number };
 	"ui.chat.hub_update_mark.update_all_available_noun_updates_from_the_hub": {
 		available: number;
@@ -2975,10 +2943,12 @@ export type MessageParams = {
 		base: string;
 	};
 	"ui.chat.link_actions.no_file_at_target": { target: string };
+	"ui.chat.link_actions.open": undefined;
 	"ui.chat.link_actions.open_folder": undefined;
 	"ui.chat.link_actions.open_in_browser": undefined;
 	"ui.chat.link_actions.open_in_canvas": undefined;
 	"ui.chat.link_actions.open_in_default_app": undefined;
+	"ui.chat.link_actions.quote": undefined;
 	"ui.chat.link_actions.too_large_for_the_canvas_preview": undefined;
 	"ui.chat.link_actions.too_large_for_the_canvas_preview_so_open_uses_the": undefined;
 	"ui.chat.link_open.could_not_open_getfilenamevalue_the_file_may_have_been_moved": {
@@ -3001,11 +2971,6 @@ export type MessageParams = {
 	"ui.chat.mark_all_read.nothing_was_cleared": undefined;
 	"ui.chat.mark_all_read.tokenless_marks": { count: number };
 	"ui.chat.mark_all_read.unknown_unread": { count: number };
-	"ui.chat.markdown_math_guarded.lineending": undefined;
-	"ui.chat.markdown_math_guarded.mathtext": undefined;
-	"ui.chat.markdown_math_guarded.mathtextdata": undefined;
-	"ui.chat.markdown_math_guarded.mathtextsequence": undefined;
-	"ui.chat.markdown_renderer.noopener_noreferrer": undefined;
 	"ui.chat.mermaid_diagram.an_unexpected_error_occurred_while_rendering_the_diagram": undefined;
 	"ui.chat.mermaid_diagram.chart": undefined;
 	"ui.chat.mermaid_diagram.close_fullscreen": undefined;
@@ -3252,12 +3217,6 @@ export type MessageParams = {
 	"ui.chat.sidebar.chat_sidebar_view.this_week": undefined;
 	"ui.chat.sidebar.chat_sidebar_view.today": undefined;
 	"ui.chat.sidebar.chat_sidebar_view.ungrouped": undefined;
-	"ui.chat.sidebar.chat_sidebar_view_menu.key_down": { key: string };
-	"ui.chat.sidebar.chat_sidebar_view_menu.key_up": { key: string };
-	"ui.chat.sidebar.hub_link_sidebar_mark.hub_mark_kind_name": {
-		kind: string;
-		name: string;
-	};
 	"ui.chat.sidebar.sidebar_catalogue_gate.backend_notice": {
 		lastKnown: string;
 	};
@@ -3273,10 +3232,6 @@ export type MessageParams = {
 	"ui.chat.sidebar.sidebar_scope_paging.they_may_be_archived_search_with_include_archived": undefined;
 	"ui.chat.skill_invocation.instructions_label": undefined;
 	"ui.chat.skill_invocation.trigger_label": { token: string };
-	"ui.chat.skill_picker.listid_skillrowidvalue": {
-		listId: string;
-		skillRowIdValue: string;
-	};
 	"ui.chat.skill_picker.skills": undefined;
 	"ui.chat.slash.arguments.a_session_model_is_required_before_this_action_can_save": undefined;
 	"ui.chat.slash.arguments.api_key": undefined;
@@ -3307,7 +3262,6 @@ export type MessageParams = {
 	"ui.chat.slash.contract.click_completes": { label: string };
 	"ui.chat.slash.contract.click_completes_this_value": undefined;
 	"ui.chat.slash.contract.click_connects": { connect: string };
-	"ui.chat.slash.contract.click_runs": { label: string };
 	"ui.chat.slash.contract.click_runs_label": { label: string };
 	"ui.chat.slash.contract.click_runs_the_command": undefined;
 	"ui.chat.slash.contract.click_runs_value": { command: string; value: string };
@@ -3358,10 +3312,6 @@ export type MessageParams = {
 	"ui.chat.slash_commands.current": undefined;
 	"ui.chat.slash_commands.enter_sets_the_current_model_as_the_default_for_new": undefined;
 	"ui.chat.slash_commands.enter_tagverb": { tagVerb: string };
-	"ui.chat.slash_commands.listid_rowidvalue": {
-		listId: string;
-		rowIdValue: string;
-	};
 	"ui.chat.slash_commands.no_commands_match": undefined;
 	"ui.chat.slash_commands.no_profiles_found": undefined;
 	"ui.chat.slash_commands.no_stored_credential_to_remove": undefined;
@@ -3422,8 +3372,6 @@ export type MessageParams = {
 	};
 	"ui.chat.message.file_attachment.expand_name": { name: string };
 	"ui.chat.message.file_attachment.file_actions": undefined;
-	"ui.chat.message.file_attachment.pasted_file": undefined;
-	"ui.chat.message.file_attachment.pasted_image": undefined;
 	"ui.chat.message.file_attachment.unknown_error_reading_file": undefined;
 	"ui.chat.message.image_attachment.click_to_expand_name": { name: string };
 	"ui.chat.message.image_attachment.expand_name": { name: string };
@@ -3432,7 +3380,6 @@ export type MessageParams = {
 	"ui.chat.message.index.could_not_open_getfilenamevalue_the_file_may_have_been_moved": {
 		getFileNameValue: string;
 	};
-	"ui.chat.message.index.id_file": { id: string; file: string };
 	"ui.chat.message.index.is_value": { value: string };
 	"ui.chat.message.index.replacements_header": undefined;
 	"ui.chat.message.index.technical_details": undefined;
@@ -3672,14 +3619,6 @@ export type MessageParams = {
 	"ui.chat.run_details.run_detail_subagents.subagents": undefined;
 	"ui.chat.run_details.run_detail_todos.hidden": undefined;
 	"ui.chat.run_details.run_detail_todos.hidden_hidden": { hidden: number };
-	"ui.chat.run_details.run_detail_todos.index_text": {
-		index: number;
-		text: string;
-	};
-	"ui.chat.run_details.run_detail_todos.phaseindex_value": {
-		phaseIndex: number;
-		value: string;
-	};
 	"ui.chat.run_details.run_detail_todos.to_dos": undefined;
 	"ui.chat.run_details.run_detail_wakes.cadence": { cadence: string };
 	"ui.chat.run_details.run_detail_wakes.cancel_the_wake_that_fires_duelabel": {
@@ -3816,10 +3755,6 @@ export type MessageParams = {
 	"ui.chat.session_status.chat_device_notice.moving_to_name": { name: string };
 	"ui.chat.session_status.chat_device_slot.this_device": undefined;
 	"ui.chat.session_status.chat_header_device.check_again": undefined;
-	"ui.chat.session_status.context_wheel.0_0_size_size2": {
-		SIZE: number;
-		SIZE2: number;
-	};
 	"ui.chat.session_status.quota_notice.checked_just_now_no_change_yet": undefined;
 	"ui.chat.session_status.quota_notice.checking": undefined;
 	"ui.chat.session_status.quota_notice.could_not_check_try_again": undefined;
@@ -3828,6 +3763,7 @@ export type MessageParams = {
 	"ui.chat.session_status.quota_notice.sending": undefined;
 	"ui.chat.session_status.quota_notice.sent_check_your_inbox_and_spam_folder": undefined;
 	"ui.chat.session_status.quota_notice_line.dismiss": undefined;
+	"ui.chat.session_status.session_context.context": undefined;
 	"ui.chat.session_status.session_context.estimate_counted_by_the_app_not_reported_by_the_provider": undefined;
 	"ui.chat.session_status.session_context.formatcontexttokensvalue_tokens_in_use_the_window_this_model_allows_is": {
 		formatContextTokensValue: string;
@@ -3836,6 +3772,9 @@ export type MessageParams = {
 		formatWindowValue: string;
 	};
 	"ui.chat.session_status.session_context.no_reading_yet_the_first_turn_reports_what_the_request": undefined;
+	"ui.chat.session_status.session_cost.basis_billed": undefined;
+	"ui.chat.session_status.session_cost.basis_estimated": undefined;
+	"ui.chat.session_status.session_cost.basis_included": undefined;
 	"ui.chat.session_status.session_cost.basis_unavailable": undefined;
 	"ui.chat.session_status.session_cost.channels_are_not_tracked_for_this_conversation_so_this_covers": undefined;
 	"ui.chat.session_status.session_cost.includes_moneyvalue_plan_covered_api_equivalent_not_charged": {
@@ -3862,6 +3801,7 @@ export type MessageParams = {
 		formatCostValue: string;
 	};
 	"ui.chat.session_status.session_cost.some_spend_in_this_conversation_could_not_be_priced_so": undefined;
+	"ui.chat.session_status.session_cost.subagents_amount": { amount: string };
 	"ui.chat.session_status.session_cost.text_cue": { text: string; cue: string };
 	"ui.chat.session_status.session_cost.this_session_billed_tokens_on_a_model_with_no_published": undefined;
 	"ui.chat.session_status.session_cost.unpriced_records": { count: number };
@@ -3976,22 +3916,6 @@ export type MessageParams = {
 	"ui.chat.session_status.session_status_strip.estimated_now_click_for_the_full_breakdown_which_estimates_your": undefined;
 	"ui.chat.session_status.session_status_strip.fast_mode_badge": undefined;
 	"ui.chat.session_status.session_status_strip.fast_mode_suffix": undefined;
-	"ui.chat.session_status.session_status_strip.index_channel": {
-		index: number;
-		channel: string;
-	};
-	"ui.chat.session_status.session_status_strip.index_name": {
-		index: number;
-		name: string;
-	};
-	"ui.chat.session_status.session_status_strip.index_note": {
-		index: number;
-		note: string;
-	};
-	"ui.chat.session_status.session_status_strip.index_part": {
-		index: number;
-		part: string;
-	};
 	"ui.chat.session_status.session_status_strip.last_reading": undefined;
 	"ui.chat.session_status.session_status_strip.last_reading_from_before_the_reconnect": undefined;
 	"ui.chat.session_status.session_status_strip.measured_now_click_for_the_full_breakdown_which_estimates_your": undefined;
@@ -4177,6 +4101,7 @@ export type MessageParams = {
 		label: string;
 		formatDurationValue: string;
 	};
+	"ui.chat.trace.agent_reasoning.reasoning": undefined;
 	"ui.chat.trace.approval.approve_description": undefined;
 	"ui.chat.trace.approval.deny_description": undefined;
 	"ui.chat.trace.approval_escape.approvals_mode_global_default": {
@@ -4200,10 +4125,6 @@ export type MessageParams = {
 	"ui.chat.trace.approval_escape.the_mode_was_not_changed": undefined;
 	"ui.chat.trace.approval_escape.unchanged_detail": { detail: string };
 	"ui.chat.trace.ask_options.answer_options": undefined;
-	"ui.chat.trace.ask_options.requestid_stringvalue": {
-		requestId: string;
-		StringValue: string;
-	};
 	"ui.chat.trace.question_dock.1_to_answer": undefined;
 	"ui.chat.trace.question_dock.1_value_to_answer": { value: number };
 	"ui.chat.trace.question_dock.answer_from_the_composer_instead_type_yes_no_1_or": undefined;

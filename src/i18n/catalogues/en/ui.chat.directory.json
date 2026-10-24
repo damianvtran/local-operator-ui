@@ -29,7 +29,6 @@
 	"ui.chat.directory.directory_indicator.videos": "Videos",
 	"ui.chat.directory.directory_indicator.volumes": "Volumes",
 	"ui.chat.directory.directory_indicator.moving_to_shown": "Moving to {shown}…",
-	"ui.chat.directory.directory_indicator.recent_path": "recent-{path}",
 	"ui.chat.directory.directory_indicator.remove_formatted_from_recent_directories": "Remove {formatted} from recent directories",
 	"ui.chat.directory.directory_indicator.shown_is_not_a_directory_on_this_computer": "{shown} is not a directory on this computer",
 	"ui.chat.directory.directory_indicator.shown_move_cost_sentence": "{shown} - {MOVE_COST_SENTENCE}",

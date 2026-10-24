@@ -5,7 +5,7 @@ import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type FC, memo, useCallback, useState } from "react";
 import { t } from "../../../../../../i18n/messages";
 import { getFileTypeFromPath } from "../../utils/file-types";
-import { getFileName } from "../../utils/get-file-name";
+import { fileNameForDisplay, getFileName } from "../../utils/get-file-name";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
 import { InvalidAttachment } from "./invalid-attachment";
 
@@ -187,7 +187,7 @@ export const VideoAttachment: FC<VideoAttachmentProps> = memo(
 					onError={handleError}
 					title={t(
 						"ui.chat.message.video_attachment.click_to_open_getfilenamevalue",
-						{ getFileNameValue: getFileName(file) },
+						{ getFileNameValue: fileNameForDisplay(file) },
 					)}
 				/>
 				{isLocalFile && (

@@ -914,10 +914,7 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 								{/* biome-ignore lint/a11y/useKeyWithClickEvents: the keyboard is handled on the textarea, not on the option. */}
 								<li
 									key={row.path}
-									id={t("ui.chat.at_picker.listid_atrowidvalue", {
-										listId: state.listId,
-										atRowIdValue: atRowId(row),
-									})}
+									id={`${state.listId}-${atRowId(row)}`}
 									ref={index === state.active ? activeRef : null}
 									// biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea; the active option is announced through aria-activedescendant.
 									// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a combobox option cannot be a native <option> here.

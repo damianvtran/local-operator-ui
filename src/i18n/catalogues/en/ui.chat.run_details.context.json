@@ -990,26 +990,6 @@
 			"hidden": "number"
 		}
 	},
-	"ui.chat.run_details.run_detail_todos.index_text": {
-		"role": "visible interface copy in chat components/run-details/run-detail-todos.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/run-details/run-detail-todos.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"index": "number",
-			"text": "string"
-		}
-	},
-	"ui.chat.run_details.run_detail_todos.phaseindex_value": {
-		"role": "visible interface copy in chat components/run-details/run-detail-todos.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/run-details/run-detail-todos.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"phaseIndex": "number",
-			"value": "string"
-		}
-	},
 	"ui.chat.run_details.run_detail_wakes.cadence": {
 		"role": "visible interface copy in chat components/run-details/run-detail-wakes.tsx",
 		"tone": "sentence case; preserve the English meaning and any trailing punctuation",

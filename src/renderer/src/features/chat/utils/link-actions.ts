@@ -716,8 +716,9 @@ export function linkToolbarModel(input: {
 }): LinkToolbarModel | null {
 	const { kind, target, probe, quotable, canOpenInCanvas } = input;
 	if (kind === "other") return null;
-	const leading = quotable ? [action("quote", "Quote")] : [];
-	const trailing = quotable ? [] : [action("quote", "Quote")];
+	const quote = action("quote", t("ui.chat.link_actions.quote"));
+	const leading = quotable ? [quote] : [];
+	const trailing = quotable ? [] : [quote];
 	const name = baseName(target) || target;
 
 	if (kind === "url") {
@@ -864,7 +865,8 @@ function actionListFor(input: {
 	probe: ProbedTarget;
 	canOpenInCanvas: boolean;
 }): LinkAction[] {
-	if (input.isDirectory) return [action("open", "Open")];
+	if (input.isDirectory)
+		return [action("open", t("ui.chat.link_actions.open"))];
 	/*
 	 * Where the app can show the file itself, the canvas is what `Open` means and
 	 * the OS gets a press of its own: the operator's ask is that a supported file
@@ -881,7 +883,7 @@ function actionListFor(input: {
 		];
 	}
 	return [
-		action("open", "Open"),
+		action("open", t("ui.chat.link_actions.open")),
 		action("open-folder", t("ui.chat.link_actions.open_folder")),
 	];
 }

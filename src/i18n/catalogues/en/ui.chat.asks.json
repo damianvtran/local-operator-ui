@@ -39,7 +39,6 @@
 	"ui.chat.asks.fleet_ask_drawer.declined_the_ask_in": "Declined the ask in",
 	"ui.chat.asks.fleet_ask_drawer.dismissed_the_ask_in": "Dismissed the ask in",
 	"ui.chat.asks.ask_panel.dropped_questions_timed_out_your_answers_were_not_sent": "{dropped, number, ::group-off} questions timed out; your answers were not sent.",
-	"ui.chat.asks.ask_panel.index_value": "{index, number, ::group-off}:{value}",
 	"ui.chat.asks.ask_panel.label_count": "{label} · {count, number, ::group-off}",
 	"ui.chat.asks.ask_panel.word_question": "{word} - {question}",
 	"ui.chat.asks.fleet_ask_drawer.verb_name": "{verb} {name}",

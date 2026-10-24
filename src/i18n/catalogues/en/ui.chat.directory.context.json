@@ -211,15 +211,6 @@
 			"shown": "string"
 		}
 	},
-	"ui.chat.directory.directory_indicator.recent_path": {
-		"role": "visible interface copy in chat components/directory-indicator.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"path": "string"
-		}
-	},
 	"ui.chat.directory.directory_indicator.remove_formatted_from_recent_directories": {
 		"role": "visible interface copy in chat components/directory-indicator.tsx",
 		"tone": "sentence case; preserve the English meaning and any trailing punctuation",

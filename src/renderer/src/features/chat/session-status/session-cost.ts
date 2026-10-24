@@ -395,9 +395,15 @@ function microUsdText(micro: number): string {
  * plan.
  */
 const BASIS_WORDS: Record<string, string> = {
-	billed: "billed",
-	subscription_api_equivalent: "Included",
-	estimated: "estimated",
+	get billed() {
+		return t("ui.chat.session_status.session_cost.basis_billed");
+	},
+	get subscription_api_equivalent() {
+		return t("ui.chat.session_status.session_cost.basis_included");
+	},
+	get estimated() {
+		return t("ui.chat.session_status.session_cost.basis_estimated");
+	},
 	get not_tracked() {
 		return t("ui.chat.session_status.session_cost.not_tracked");
 	},
@@ -628,7 +634,9 @@ export function childBasisLine(reading: SpendChannelsReading): string | null {
 			? t("ui.chat.session_status.session_cost.without_a_tracked_basis_yet")
 			: `${capitalise(channelBasisLabel(basis, reading.vocabulary))}${basis === "subscription_api_equivalent" && !/api-equivalent/i.test(channelBasisLabel(basis, reading.vocabulary)) ? " (API-equivalent)" : ""}`,
 	);
-	return `Subagents ${isFloorKnowledge(reading.childrenKnowledge) ? FLOOR_MARK : ""}${microUsdText(reading.childrenMicro)} · ${words?.length ? words.join(" · ") : bases === null ? t("ui.chat.session_status.session_cost.without_a_tracked_basis_yet") : t("ui.chat.session_status.session_cost.basis_unavailable")}`;
+	return t("ui.chat.session_status.session_cost.subagents_amount", {
+		amount: `${isFloorKnowledge(reading.childrenKnowledge) ? FLOOR_MARK : ""}${microUsdText(reading.childrenMicro)} · ${words?.length ? words.join(" · ") : bases === null ? t("ui.chat.session_status.session_cost.without_a_tracked_basis_yet") : t("ui.chat.session_status.session_cost.basis_unavailable")}`,
+	});
 }
 
 /** One published row as a `ChannelBreakdownRow`. */

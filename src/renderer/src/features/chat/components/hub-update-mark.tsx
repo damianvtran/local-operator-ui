@@ -174,10 +174,7 @@ export function HubUpdateMark({
 			<button
 				type="button"
 				data-hub-mark={shown}
-				data-testid={t("ui.chat.hub_update_mark.hub_mark_kind_name", {
-					kind: item.kind,
-					name: item.name,
-				})}
+				data-testid={`hub-mark-${item.kind}-${item.name}`}
 				className={cn(
 					"flex size-6 shrink-0 items-center justify-center rounded-md",
 					INK_BY_MARK[shown],
@@ -265,9 +262,7 @@ export function HubHeadingControls({
 			{offerAll && (
 				<button
 					type="button"
-					data-testid={t("ui.chat.hub_update_mark.hub_update_all_kind", {
-						kind,
-					})}
+					data-testid={`hub-update-all-${kind}`}
 					aria-label={t(
 						"ui.chat.hub_update_mark.update_all_available_noun_updates_from_the_hub",
 						{ available, noun },

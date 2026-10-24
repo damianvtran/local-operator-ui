@@ -519,10 +519,7 @@ export function ChatSidebarViewMenu({
 									<Button
 										variant="ghost"
 										size="icon-sm"
-										data-sidebar-view-move={t(
-											"ui.chat.sidebar.chat_sidebar_view_menu.key_up",
-											{ key },
-										)}
+										data-sidebar-view-move={`${key}:up`}
 										aria-label={t("ui.chat.sidebar_view.move_up", {
 											section: sectionLabel(key),
 										})}
@@ -535,10 +532,7 @@ export function ChatSidebarViewMenu({
 									<Button
 										variant="ghost"
 										size="icon-sm"
-										data-sidebar-view-move={t(
-											"ui.chat.sidebar.chat_sidebar_view_menu.key_down",
-											{ key },
-										)}
+										data-sidebar-view-move={`${key}:down`}
 										aria-label={t("ui.chat.sidebar_view.move_down", {
 											section: sectionLabel(key),
 										})}

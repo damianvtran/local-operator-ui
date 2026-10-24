@@ -466,13 +466,8 @@ export function ChatTagHeader({
 								role="alertdialog"
 								align="end"
 								className="w-64 space-y-2 p-3"
-								aria-labelledby={t("ui.chat.chat_tag_header.errorid_title", {
-									errorId,
-								})}
-								aria-describedby={t(
-									"ui.chat.chat_tag_header.errorid_description",
-									{ errorId },
-								)}
+								aria-labelledby={`${errorId}-title`}
+								aria-describedby={`${errorId}-description`}
 								onOpenAutoFocus={(event) => {
 									// Cancel is focused: the safe answer is the default one.
 									event.preventDefault();
@@ -486,16 +481,11 @@ export function ChatTagHeader({
 									if (event.key === "Escape") event.stopPropagation();
 								}}
 							>
-								<p
-									id={t("ui.chat.chat_tag_header.errorid_title", { errorId })}
-									className="text-body-sm text-ink"
-								>
+								<p id={`${errorId}-title`} className="text-body-sm text-ink">
 									{t("ui.chat.tags.delete_title", { name: label })}
 								</p>
 								<p
-									id={t("ui.chat.chat_tag_header.errorid_description", {
-										errorId,
-									})}
+									id={`${errorId}-description`}
 									className="text-meta text-ink-dim"
 								>
 									{t("ui.chat.tags.delete_description", {

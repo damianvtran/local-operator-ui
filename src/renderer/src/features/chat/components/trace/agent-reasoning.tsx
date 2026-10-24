@@ -63,13 +63,19 @@ export type AgentReasoningProps = {
 };
 
 export const AgentReasoning = ({
-	label = "Reasoning",
+	label,
 	content,
 	durationS = null,
 }: AgentReasoningProps) => {
 	const showAgentReasoning = useUiPreferencesStore(
 		(state) => state.showAgentReasoning,
 	);
+	/*
+	 * Resolved here rather than as a parameter default: a default is evaluated
+	 * when the component is called, which is fine, but keeping the `t()` call in
+	 * the body next to the subscription makes the locale dependency visible.
+	 */
+	const shownLabel = label ?? t("ui.chat.trace.agent_reasoning.reasoning");
 
 	if (!showAgentReasoning || !content) {
 		return null;
@@ -96,11 +102,11 @@ export const AgentReasoning = ({
 								? t(
 										"ui.chat.trace.agent_reasoning.label_for_formatdurationvalue",
 										{
-											label: label,
+											label: shownLabel,
 											formatDurationValue: formatDuration(durationS),
 										},
 									)
-								: label}
+								: shownLabel}
 						</span>
 					</span>
 				</span>

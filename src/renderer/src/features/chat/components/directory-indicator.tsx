@@ -1417,10 +1417,7 @@ export const DirectoryIndicator = forwardRef<
 								const formatted = formatDirectory(path);
 								return (
 									<DropdownMenuItem
-										key={t(
-											"ui.chat.directory.directory_indicator.recent_path",
-											{ path },
-										)}
+										key={`recent-${path}`}
 										className={cn("group")}
 										disabled={pending}
 										onClick={() => handleSelectDirectory(path)}

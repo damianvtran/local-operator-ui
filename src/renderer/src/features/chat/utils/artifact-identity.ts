@@ -1,4 +1,5 @@
 import { t } from "../../../../../i18n/messages";
+import { documentNameForDisplay } from "./get-file-name";
 /**
  * The identity of a session ARTIFACT: media the harness generated and filed in
  * its attachment store, which has bytes and a digest but no path on the user's
@@ -232,6 +233,14 @@ export function artifactTabLabels(
 	documents: ReadonlyArray<{
 		id: string;
 		title: string;
+		/**
+		 * The document's source. A PASTED document (a `data:` path with no
+		 * `name=`) has no filename of its own, so its label is derived from this
+		 * at render time — a title stored by an older build holds the language
+		 * that was active when the picture was pasted, and a stored string cannot
+		 * be re-translated (`documentNameForDisplay` carries the rule).
+		 */
+		path?: string;
 		artifact?: { digest: string } | undefined;
 	}>,
 ): Map<string, string> {
@@ -241,11 +250,15 @@ export function artifactTabLabels(
 	const labels = new Map<string, string>();
 	for (const doc of documents) {
 		const clash = doc.artifact && (counts.get(doc.title) ?? 0) > 1;
+		const name =
+			doc.path === undefined
+				? doc.title
+				: documentNameForDisplay({ path: doc.path, title: doc.title });
 		labels.set(
 			doc.id,
 			clash && doc.artifact
-				? `${doc.title} \u00b7 ${doc.artifact.digest.slice(0, ARTIFACT_HEAD_LENGTH)}`
-				: doc.title,
+				? `${name} \u00b7 ${doc.artifact.digest.slice(0, ARTIFACT_HEAD_LENGTH)}`
+				: name,
 		);
 	}
 	return labels;

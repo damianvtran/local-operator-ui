@@ -4,9 +4,9 @@ import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-stor
 import { type FC, useEffect, useRef } from "react";
 import { t } from "../../../../../i18n/messages";
 import {
-	ARCHIVE_CONFIRM_MESSAGE,
-	ARCHIVE_CONFIRM_UNNAMED,
-	ARCHIVE_CONFIRM_VERB,
+	archiveConfirmMessage,
+	archiveConfirmUnnamed,
+	archiveConfirmVerb,
 	archiveRowBox,
 	focusRowAfterRemoval,
 } from "../archive-confirm";
@@ -173,17 +173,17 @@ export const ArchiveConversationDialog: FC = () => {
 			title={
 				<span className="flex min-w-0 items-center">
 					<span className="shrink-0">
-						{`${ARCHIVE_CONFIRM_VERB}\u00a0${candidateTitle === null ? "" : "\u201c"}`}
+						{`${archiveConfirmVerb()}\u00a0${candidateTitle === null ? "" : "\u201c"}`}
 					</span>
 					<span className="min-w-0 truncate">
-						{candidateTitle === null ? ARCHIVE_CONFIRM_UNNAMED : candidateTitle}
+						{candidateTitle === null ? archiveConfirmUnnamed() : candidateTitle}
 					</span>
 					<span className="shrink-0">
 						{candidateTitle === null ? "?" : "\u201d?"}
 					</span>
 				</span>
 			}
-			message={<p>{ARCHIVE_CONFIRM_MESSAGE}</p>}
+			message={<p>{archiveConfirmMessage()}</p>}
 			confirmText={t("ui.chat.dialogs.archive_action")}
 			cancelText={t("ui.chat.dialogs.cancel")}
 			/*
