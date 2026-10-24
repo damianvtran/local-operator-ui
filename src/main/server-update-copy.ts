@@ -8,187 +8,7 @@
  * `update-service.ts` would put a module that imports Electron between the test and the
  * string it has to hold to that promise, so they live here, import nothing, and are
  * re-exported from the service for callers that already have it.
- *
- * THE ONE EXCEPTION IS A TYPE: the structured failure the updater reports (contract
- * 2026-10-24) is imported type-only, so the bundle still has no runtime dependency
- * and the vocabulary of steps and kinds has one definition rather than two.
  */
-
-import type {
-	UpdateReportFailureKind,
-	UpdateReportFailureStep,
-} from "./update-rollover";
-
-/**
- * The structured cause, as the failing branch receives it from `parseUpdateReport`.
- *
- * `exitCode` is deliberately absent: the headline already carries the exit code,
- * and a second rendering of it in the cause clause would be a number the reader
- * has to reconcile with the one above.
- */
-export type ServerUpdateFailureCause = {
-	step: UpdateReportFailureStep;
-	kind: UpdateReportFailureKind;
-	error: string;
-};
-
-/**
- * The step, in the words a reader uses for it rather than the updater's key.
- *
- * WHY A CLOSED MAP. `step` is a contract enum (`update-rollover.ts` validates it),
- * but the sentence is copy this app owns: interpolating an unrecognised value
- * would put the updater's vocabulary on the panel. The parser drops a failure
- * block whose step it does not know, so every branch here is reachable; the
- * default exists for the one day a caller passes a hand-built cause.
- */
-function failureStepClause(step: UpdateReportFailureStep): string {
-	switch (step) {
-		case "check":
-			return "It stopped at the check step";
-		case "publish":
-			return "It stopped at the publish step";
-		case "download":
-			return "It stopped at the download step";
-		case "environment":
-			return "It stopped at the environment step";
-		case "install":
-			return "It stopped at the install step";
-		case "promote":
-			return "It stopped at the switch-over step";
-		case "services":
-			return "It stopped at the services step";
-		case "lock":
-			return "It stopped at the lock step";
-		case "report":
-			return "It stopped at the reporting step";
-		default:
-			return "It stopped during the update";
-	}
-}
-
-/**
- * What went wrong, in plain language.
- *
- * The updater's own sentence is quoted beside this and is the specific cause; this
- * clause is what makes the KIND legible without decoding its error text. The
- * `publication` arm names the target because that is the fact the incident's
- * reader needed (the release existed locally and PyPI had not caught up yet).
- */
-function failureCauseClause(
-	kind: UpdateReportFailureKind,
-	target: string | null,
-): string {
-	switch (kind) {
-		case "network":
-			return "a network request failed";
-		case "publication":
-			return target
-				? `PyPI did not yet offer ${target}`
-				: "the release was still publishing";
-		case "lock":
-			return "another update held the lock";
-		case "disk":
-			return "the disk ran out of space";
-		case "ownership":
-			return "the install is owned by another user";
-		case "serve":
-			return "the install landed but the server did not move onto it";
-		case "refused":
-			return "the updater refused to continue";
-		default:
-			return "the updater could not classify the failure";
-	}
-}
-
-/**
- * What the reader can do about THIS kind, and the one place the remedy differs.
- *
- * WHY EACH KIND GETS ITS OWN. "Try again" is wrong for three of them: a publish
- * that has not propagated needs minutes, a held lock needs the other updater to
- * finish, and a serve that did not move needs a restart rather than another
- * install. One generic retry sentence would send the reader back into the same
- * wait - the defect this change exists to end, one level below the cause.
- *
- * `unknown` returns null deliberately: the cause clause already says the updater
- * named no cause, and the pointer that follows names where the record is. A
- * remedy invented for it would be the guess the report refused to make.
- */
-function failureRemedyClause(kind: UpdateReportFailureKind): string | null {
-	switch (kind) {
-		case "network":
-			return "Check the network connection, then try again.";
-		case "publication":
-			return "The release is still publishing; try again in a few minutes.";
-		case "lock":
-			return "Another update is running; wait for it to finish, then try again.";
-		case "disk":
-			return "Free some disk space, then try again.";
-		case "ownership":
-			return "Correct the install's ownership, then try again.";
-		case "serve":
-			return "Restart the server.";
-		case "refused":
-			return "Resolve what it refused, then try again.";
-		default:
-			return null;
-	}
-}
-
-/**
- * How much of the updater's own sentence the cause clause quotes.
- *
- * The full sentence is in the raw output and the log, so this cap costs nothing a
- * reader cannot find; what it buys is the copy budget (`AUTHORED_SENTENCE_MAX_LENGTH`
- * is 400, and the panel is read as one sentence). Newlines collapse to spaces for
- * the same reason - the clause is prose, not a transcript.
- */
-const MAX_QUOTED_ERROR_CHARS = 140;
-
-function quotedFailureError(error: string): string {
-	const flattened = error.replace(/\s+/g, " ").trim();
-	if (flattened === "") return "";
-	const clipped =
-		flattened.length > MAX_QUOTED_ERROR_CHARS
-			? `${flattened.slice(0, MAX_QUOTED_ERROR_CHARS - 3)}...`
-			: flattened;
-	return ` (\`${clipped}\`)`;
-}
-
-/**
- * The cause half of a failed update's sentence, or empty when there is none.
- *
- * WHY THIS IS THE PRODUCER'S JOB AND NOT THE RENDERER'S. The panel renders the
- * `message` verbatim (`serverUpdateFailureCopy`), and that is the contract that
- * keeps a composed sentence from being classified as a machine dump. Composing
- * the cause here keeps one author for the whole sentence; the renderer receives
- * the structured fields beside it for surfaces that need to key on them without
- * parsing English.
- */
-export function serverUpdateFailureCause(input: {
-	failure: ServerUpdateFailureCause | null | undefined;
-	target: string | null;
-}): string {
-	const failure = input.failure;
-	if (!failure) return "";
-	const cause = `${failureStepClause(failure.step)}: ${failureCauseClause(
-		failure.kind,
-		input.target,
-	)}${quotedFailureError(failure.error)}.`;
-	const remedy = failureRemedyClause(failure.kind);
-	/*
-	 * THE CONSEQUENCE STAYS, EXCEPT WHERE IT WOULD BE FALSE. Every other arm stops
-	 * before the install is promoted, so the build that was serving is still
-	 * serving; `serve` is the arm where the install LANDED and something else is
-	 * true, and its remedy already says what that is.
-	 */
-	const consequence = failure.kind === "serve" ? "" : " Nothing was restarted.";
-	/*
-	 * `unknown` gets no remedy clause; the pointer in the sentence says whether the
-	 * raw output or the log holds the record, so the cause clause and that pointer
-	 * are the whole answer and neither invents a next step.
-	 */
-	return `${cause}${remedy ? ` ${remedy}` : ""}${consequence}`;
-}
 
 /**
  * What the reader can actually DO when an attempt failed, in the app's voice.
@@ -226,6 +46,40 @@ export function serverUpdateFailureRemedy(input: {
 }
 
 /**
+ * The installer's output without the cause sentence it duplicates.
+ *
+ * WHY THIS EXISTS (review F2). The updater prints its verdict to stderr as well
+ * as into the report, so `installDiagnosisLines` already returns that sentence on
+ * a by-hand failing run. The panel now shows the cause in its own primary line;
+ * leaving the same sentence in the raw block repeats it in a second register and
+ * makes the block look like the diagnosis. The line is dropped only when it is
+ * the report's own `error`; every other line of the installer's output survives,
+ * because the raw block is the fallback record.
+ *
+ * An empty result is a real answer: it means the stream carried nothing but the
+ * cause, so the caller sends no block rather than an empty one.
+ */
+export function stripFailureSentence(
+	output: string,
+	error: string | null,
+): string {
+	const needle = error?.trim();
+	if (!needle) return output;
+	/*
+	 * WHOLE LINES ONLY (review round 2, R2-F1). `includes` deleted any line that
+	 * happened to contain the verdict as a substring - a serve warning that quoted
+	 * it lost its surrounding context - and a stream whose only line was the cause
+	 * became empty. The duplicate is the line that IS the sentence; every other
+	 * line, including one that mentions it, is the reader's record.
+	 */
+	return output
+		.split("\n")
+		.filter((line) => line.trim() !== needle)
+		.join("\n")
+		.trim();
+}
+
+/**
  * The whole sentence `backend-update-error` carries for a failed attempt.
  *
  * WHY IT IS A FUNCTION AND NOT A TEMPLATE AT THE CALL SITE. Two things have to hold at
@@ -257,15 +111,6 @@ export function serverUpdateFailureSentence(input: {
 	after: string | null;
 	before: string | null;
 	updateCommand: string | null;
-	/**
-	 * The updater's structured cause, when this build emits one.
-	 *
-	 * ABSENT IS THE OLDER-BUILD PATH, and it must produce today's sentence
-	 * byte-for-byte: the panel is the same surface, and a user on a backend that
-	 * predates the contract is not owed a new wording. `null` and `undefined`
-	 * both mean absent here.
-	 */
-	failure?: ServerUpdateFailureCause | null;
 }): string {
 	const headline = !input.ran
 		? "The server update did not finish: the installer could not be run to a verdict."
@@ -293,17 +138,5 @@ export function serverUpdateFailureSentence(input: {
 	const escapeHatch = input.rebuildRoute
 		? ` You can also run \`${input.updateCommand || "lop-update"}\` yourself in a terminal.`
 		: "";
-	/*
-	 * THE STRUCTURED CAUSE REPLACES THE GENERIC REMEDY CLAUSE, not sits beside it.
-	 * Both name what to do next, and a sentence carrying "the build that was serving
-	 * is the build still serving" followed by "try again in a few minutes" reads as
-	 * two authors arguing. The `Nothing was restarted` consequence survives inside
-	 * `serverUpdateFailureCause`, which is where the kind decides whether it is true.
-	 */
-	const cause = serverUpdateFailureCause({
-		failure: input.failure,
-		target: input.target,
-	});
-	const remedy = cause ? "" : serverUpdateFailureRemedy(input);
-	return `${headline}${stopped} ${cause || remedy}${pointer}${escapeHatch}`;
+	return `${headline}${stopped} ${serverUpdateFailureRemedy(input)}${pointer}${escapeHatch}`;
 }

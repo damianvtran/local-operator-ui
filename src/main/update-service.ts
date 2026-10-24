@@ -122,7 +122,10 @@ import {
 	type ServerReleaseNotes,
 	fetchServerReleaseNotes,
 } from "./server-release-notes";
-import { serverUpdateFailureSentence } from "./server-update-copy";
+import {
+	serverUpdateFailureSentence,
+	stripFailureSentence,
+} from "./server-update-copy";
 import {
 	type UpdateChannelStatus,
 	type UpdateCheckVerdict,
@@ -1227,6 +1230,29 @@ export type BackendUpdateErrorReport = {
 		exitCode: number;
 		/** One sentence naming the cause, in the updater's own words. */
 		error: string;
+		/**
+		 * The version this attempt was moving to, for the publication/serve copy.
+		 * Null when the failing branch had no target (a check-like arm).
+		 */
+		target?: string | null;
+		/** The version the INSTALL reports after the attempt (`after`). */
+		installVersion?: string | null;
+		/** The version the serving process reports, when it could be read. */
+		runningVersion?: string | null;
+		/**
+		 * Whether the app may bounce the daemon: the serve kind keys its primary
+		 * action on this, so a restart label is never shown beside an install press.
+		 */
+		restartable?: boolean;
+		/** Whether the install `update-backend` moved is the app's own environment. */
+		appOwnedEnvironment?: boolean;
+		/** The by-hand update command, for the refused arm's escape hatch. */
+		command?: string | null;
+		/**
+		 * Whether the stopped updater's process group was still alive afterwards.
+		 * The structured arm renders the legacy safety clause from this reading.
+		 */
+		groupSurvived?: boolean;
 	};
 	/**
 	 * Set when this report is a REFUSAL rather than a failure: the fleet did not
@@ -9272,42 +9298,76 @@ export class UpdateService {
 			 * the panel. The diagnosis is still the raw-output fallback; it cannot be the
 			 * diagnosis when its budget is spent before the verdict arrives.
 			 *
-			 * `parseUpdateReport` returns null for a build that predates the contract, and
-			 * the sentence then composes exactly as before - the older-backend path.
+			 * `parseUpdateReport` returns null for a build that predates the contract.
+			 * The `message` is the legacy sentence either way: when `failure` is present
+			 * the renderer composes the localized cause and remedy from it, and when it
+			 * is absent the renderer shows that sentence exactly as before.
 			 */
 			const failedReport = parseUpdateReport(run.stdout)?.failure ?? null;
+			/*
+			 * The serve arm's restart action needs the same ownership readings the
+			 * skew panel takes, so they travel with the cause rather than being
+			 * guessed in the renderer. `after` is the install reading and `running`
+			 * is the process the reader is talking to.
+			 */
+			const failureStartupMode = this.backendService?.getStartupMode();
+			const failureAppOwnedEnvironment = failureStartupMode
+				? this.appOwnsInstall(failureStartupMode, serving)
+				: false;
 			logger.error(
 				`${rebuildRoute ? "Source rebuild" : "Global install update"} did not land (exited ${run.exitCode}, ran ${run.ran}${groupSurvived ? `, group ${run.groupPid} still alive` : ""}): ${before ?? "unknown"} -> ${after ?? "unknown"}${rebuildRoute ? `, marker ${markerBefore?.ref ?? "none"} -> ${markerAfter?.ref ?? "none"}` : ""}, running backend reports ${running ?? "no reading"}`,
 				LogFileType.UPDATE_SERVICE,
 			);
+			const failureMessage = serverUpdateFailureSentence({
+				rebuildRoute,
+				ran: run.ran,
+				exitCode: run.exitCode,
+				groupSurvived,
+				diagnosis,
+				target,
+				after,
+				before,
+				updateCommand: freshPlan.updateCommand ?? null,
+			});
 			// Nothing moved, so nothing is restarted: the daemon that was serving is
 			// still serving, on the build it loaded.
 			this.sendToRenderer("backend-update-error", {
-				message: serverUpdateFailureSentence({
-					rebuildRoute,
-					ran: run.ran,
-					exitCode: run.exitCode,
-					groupSurvived,
-					diagnosis,
-					target,
-					after,
-					before,
-					updateCommand: freshPlan.updateCommand ?? null,
-					failure: failedReport
-						? {
-								step: failedReport.step,
-								kind: failedReport.kind,
-								error: failedReport.error,
-							}
-						: null,
-				}),
-				installerOutput: diagnosis || undefined,
+				message: failureMessage,
+				/*
+				 * THE STRUCTURED ARM KEEPS THE VERBATIM RECORD (QA round 2 decision). The
+				 * primary block paraphrases the cause and never quotes it, and the record
+				 * is collapsed, so there is no duplicate on screen; a reader who expands
+				 * it is asking for the updater's exact sentence, including the verdict.
+				 *
+				 * THE LEGACY ARM has no structured cause and its sentence is the one that
+				 * can quote the same text; the only duplicate identifiable there is a raw
+				 * line equal to the message itself, and whole-line matching leaves an
+				 * unrelated warning that merely contains it intact (R2-F1).
+				 */
+				installerOutput: failedReport
+					? /*
+						 * The whole stream, not the diagnosis head: the record keeps the
+						 * updater's exact sentence even when it sat past the 800-character
+						 * head the old panel sliced (the incident's line 6). The stderr is
+						 * the installer's own record; `diagnosis` is the fallback when the
+						 * stream is empty and the report arrived on stdout.
+						 */
+						run.stderr.trim() || diagnosis || undefined
+					: stripFailureSentence(diagnosis, failureMessage) || undefined,
 				failure: failedReport
 					? {
 							step: failedReport.step,
 							kind: failedReport.kind,
 							exitCode: failedReport.exit_code,
 							error: failedReport.error,
+							target,
+							installVersion: after,
+							runningVersion: running,
+							restartable: this.backendIsAppOwned(),
+							appOwnedEnvironment: failureAppOwnedEnvironment,
+							command: freshPlan.updateCommand ?? null,
+							// A boolean, not the short-circuit's `undefined` on a test double.
+							groupSurvived: Boolean(groupSurvived),
 						}
 					: undefined,
 				phase: "update",

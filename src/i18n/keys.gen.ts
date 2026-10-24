@@ -2490,6 +2490,42 @@ export type MessageParams = {
 	"ui.common.updates.update_notification.error_starting_the_update": {
 		detail: string;
 	};
+	"ui.common.updates.update_notification.failure_cause_disk": undefined;
+	"ui.common.updates.update_notification.failure_cause_lock": undefined;
+	"ui.common.updates.update_notification.failure_cause_network": undefined;
+	"ui.common.updates.update_notification.failure_cause_ownership": undefined;
+	"ui.common.updates.update_notification.failure_cause_publication": {
+		target: string;
+	};
+	"ui.common.updates.update_notification.failure_cause_publication_no_version": undefined;
+	"ui.common.updates.update_notification.failure_cause_refused": undefined;
+	"ui.common.updates.update_notification.failure_cause_serve": {
+		version: string;
+	};
+	"ui.common.updates.update_notification.failure_cause_serve_no_version": undefined;
+	"ui.common.updates.update_notification.failure_cause_unknown": undefined;
+	"ui.common.updates.update_notification.failure_consequence_group_survived": undefined;
+	"ui.common.updates.update_notification.failure_consequence_nothing_restarted": undefined;
+	"ui.common.updates.update_notification.failure_heading_serve": undefined;
+	"ui.common.updates.update_notification.failure_remedy_disk": undefined;
+	"ui.common.updates.update_notification.failure_remedy_lock": undefined;
+	"ui.common.updates.update_notification.failure_remedy_network": undefined;
+	"ui.common.updates.update_notification.failure_remedy_ownership": undefined;
+	"ui.common.updates.update_notification.failure_remedy_publication": undefined;
+	"ui.common.updates.update_notification.failure_remedy_refused": undefined;
+	"ui.common.updates.update_notification.failure_remedy_refused_checkout": undefined;
+	"ui.common.updates.update_notification.failure_remedy_serve_external": undefined;
+	"ui.common.updates.update_notification.failure_remedy_serve_restartable": undefined;
+	"ui.common.updates.update_notification.failure_remedy_unknown": undefined;
+	"ui.common.updates.update_notification.failure_step_check": undefined;
+	"ui.common.updates.update_notification.failure_step_download": undefined;
+	"ui.common.updates.update_notification.failure_step_environment": undefined;
+	"ui.common.updates.update_notification.failure_step_install": undefined;
+	"ui.common.updates.update_notification.failure_step_lock": undefined;
+	"ui.common.updates.update_notification.failure_step_promote": undefined;
+	"ui.common.updates.update_notification.failure_step_publish": undefined;
+	"ui.common.updates.update_notification.failure_step_report": undefined;
+	"ui.common.updates.update_notification.failure_step_services": undefined;
 	"ui.common.updates.update_notification.has_been_downloaded_you_are_currently_using_version": undefined;
 	"ui.common.updates.update_notification.has_failed_to_install": undefined;
 	"ui.common.updates.update_notification.install_now": undefined;
