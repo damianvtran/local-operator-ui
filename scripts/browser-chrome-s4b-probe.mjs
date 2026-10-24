@@ -1218,6 +1218,11 @@ plan(
 	"driven",
 );
 plan(
+	"R2-NC",
+	"the band predicate rejects an injected dock or extra occupant, and passes again after removal",
+	"driven",
+);
+plan(
 	"P1",
 	"Cmd+L raises the popout over the strip at the strip's width",
 	"driven",
