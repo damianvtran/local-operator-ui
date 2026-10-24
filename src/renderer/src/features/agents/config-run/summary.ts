@@ -164,17 +164,30 @@ export type CatalogueSnapshot = {
 };
 
 /** The operator's words for a field, so the summary never says `tools`. */
-const FIELD_LABEL: Record<string, WithoutParams> = {
-	description: "ui.agents.config.summary_field_description",
-	kind: "ui.agents.config.summary_field_kind",
-	tools: "ui.agents.config.summary_field_tools",
-	effort: "ui.agents.config.summary_field_effort",
-	delegate: "ui.agents.config.summary_field_delegate",
-	action_class: "ui.agents.config.summary_field_class",
-	manager: "ui.agents.config.summary_field_manager",
-	members: "ui.agents.config.summary_field_members",
-	instructions: "ui.agents.config.summary_field_instructions",
-};
+function fieldLabelKey(field: string): WithoutParams | undefined {
+	switch (field) {
+		case "description":
+			return "ui.agents.config.summary_field_description";
+		case "kind":
+			return "ui.agents.config.summary_field_kind";
+		case "tools":
+			return "ui.agents.config.summary_field_tools";
+		case "effort":
+			return "ui.agents.config.summary_field_effort";
+		case "delegate":
+			return "ui.agents.config.summary_field_delegate";
+		case "action_class":
+			return "ui.agents.config.summary_field_class";
+		case "manager":
+			return "ui.agents.config.summary_field_manager";
+		case "members":
+			return "ui.agents.config.summary_field_members";
+		case "instructions":
+			return "ui.agents.config.summary_field_instructions";
+		default:
+			return undefined;
+	}
+}
 
 function agentSignature(profile: ReusableProfile): Signature {
 	return {
@@ -275,7 +288,7 @@ function describeField(field: string, before: string, after: string): string {
 			after: count(after),
 		});
 	}
-	const label = FIELD_LABEL[field];
+	const label = fieldLabelKey(field);
 	return t("ui.agents.config.summary_field_changed", {
 		field: label ? t(label) : field,
 	});

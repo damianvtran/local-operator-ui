@@ -62,12 +62,18 @@ export type PublicationDraft = {
 };
 
 /** How each field is named in a sentence a person reads. */
-const FIELD_LABEL: Record<PublicationField, WithoutParams> = {
-	name: "ui.agents.publication.field_name",
-	description: "ui.agents.publication.field_description",
-	instructions: "ui.agents.publication.field_instructions",
-	tools: "ui.agents.publication.field_tools",
-};
+function publicationFieldLabelKey(field: PublicationField): WithoutParams {
+	switch (field) {
+		case "name":
+			return "ui.agents.publication.field_name";
+		case "description":
+			return "ui.agents.publication.field_description";
+		case "instructions":
+			return "ui.agents.publication.field_instructions";
+		case "tools":
+			return "ui.agents.publication.field_tools";
+	}
+}
 
 /**
  * Every reason the document as it stands cannot be published.
@@ -83,7 +89,7 @@ export function publicationIssues(draft: PublicationDraft): PublicationIssue[] {
 			issues.push({
 				field,
 				message: t("ui.agents.publication.local_validation", {
-					label: t(FIELD_LABEL[field]),
+					label: t(publicationFieldLabelKey(field)),
 					rule,
 				}),
 			});

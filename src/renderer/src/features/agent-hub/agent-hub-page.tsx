@@ -69,43 +69,43 @@ import { orgSurfaceNotice, orgSurfaceReady } from "./org-surface-gate";
  */
 const SORT_OPTIONS: {
 	value: string;
-	label: WithoutParams;
+	labelKey: WithoutParams;
 	sort: PublicAgentSort;
 	order: "asc" | "desc";
 }[] = [
 	{
 		value: "download_count:desc",
-		label: "ui.hub.agents.sort_most_downloaded",
+		labelKey: "ui.hub.agents.sort_most_downloaded",
 		sort: "download_count",
 		order: "desc",
 	},
 	{
 		value: "like_count:desc",
-		label: "ui.hub.agents.sort_most_liked",
+		labelKey: "ui.hub.agents.sort_most_liked",
 		sort: "like_count",
 		order: "desc",
 	},
 	{
 		value: "favourite_count:desc",
-		label: "ui.hub.agents.sort_most_favourited",
+		labelKey: "ui.hub.agents.sort_most_favourited",
 		sort: "favourite_count",
 		order: "desc",
 	},
 	{
 		value: "created_at:desc",
-		label: "ui.hub.agents.sort_newest",
+		labelKey: "ui.hub.agents.sort_newest",
 		sort: "created_at",
 		order: "desc",
 	},
 	{
 		value: "updated_at:desc",
-		label: "ui.hub.agents.sort_recently_updated",
+		labelKey: "ui.hub.agents.sort_recently_updated",
 		sort: "updated_at",
 		order: "desc",
 	},
 	{
 		value: "name:asc",
-		label: "ui.hub.agents.sort_name_ascending",
+		labelKey: "ui.hub.agents.sort_name_ascending",
 		sort: "name",
 		order: "asc",
 	},
@@ -121,8 +121,8 @@ const SORT_OPTIONS: {
  * the control that says which question is being asked.
  */
 const SEARCH_SCOPES = [
-	{ value: "name", label: "ui.hub.agents.search_name" },
-	{ value: "description", label: "ui.hub.agents.search_description" },
+	{ value: "name", labelKey: "ui.hub.agents.search_name" },
+	{ value: "description", labelKey: "ui.hub.agents.search_description" },
 ] as const;
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -1069,7 +1069,7 @@ export const AgentHubPage: React.FC = () => {
 											<SelectContent>
 												{SEARCH_SCOPES.map((scope) => (
 													<SelectItem key={scope.value} value={scope.value}>
-														{t(scope.label)}
+														{t(scope.labelKey)}
 													</SelectItem>
 												))}
 											</SelectContent>
@@ -1086,7 +1086,7 @@ export const AgentHubPage: React.FC = () => {
 										<SelectContent>
 											{SORT_OPTIONS.map((option) => (
 												<SelectItem key={option.value} value={option.value}>
-													{t(option.label)}
+													{t(option.labelKey)}
 												</SelectItem>
 											))}
 										</SelectContent>
