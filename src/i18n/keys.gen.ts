@@ -340,7 +340,9 @@ import ruUiChatCanonical from "./catalogues/ru/ui.chat.canonical.json";
 import ruUiChatCommentaryActions from "./catalogues/ru/ui.chat.commentary_actions.json";
 import ruUiChatComposer from "./catalogues/ru/ui.chat.composer.json";
 import ruUiChatComposerMedia from "./catalogues/ru/ui.chat.composer_media.json";
+import ruUiChatDevice from "./catalogues/ru/ui.chat.device.json";
 import ruUiChatDialogs from "./catalogues/ru/ui.chat.dialogs.json";
+import ruUiChatDirectory from "./catalogues/ru/ui.chat.directory.json";
 import ruUiChatHeader from "./catalogues/ru/ui.chat.header.json";
 import ruUiChat from "./catalogues/ru/ui.chat.json";
 import ruUiChatLiveUpdates from "./catalogues/ru/ui.chat.live_updates.json";
@@ -949,7 +951,9 @@ export const bundledCatalogues: Readonly<
 		...ruUiChatCommentaryActions,
 		...ruUiChatComposer,
 		...ruUiChatComposerMedia,
+		...ruUiChatDevice,
 		...ruUiChatDialogs,
+		...ruUiChatDirectory,
 		...ruUiChatHeader,
 		...ruUiChat,
 		...ruUiChatLiveUpdates,

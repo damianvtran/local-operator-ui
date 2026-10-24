@@ -41,5 +41,6 @@
 	"ui.chat.sidebar.search.too_long": "Запрос слишком длинный: ограничение — {max, number, ::group-off} символов. Поиск выполняется только по названиям чатов.",
 	"ui.chat.sidebar.search.unavailable": "Поиск по разговорам недоступен, поэтому показаны совпадения только в названиях.",
 	"ui.chat.sidebar.teams.create": "Создать команду",
-	"ui.chat.sidebar.teams.loading": "Загрузка команд…"
+	"ui.chat.sidebar.teams.loading": "Загрузка команд…",
+	"ui.chat.sidebar.section.current_chat": "Текущий чат"
 }
