@@ -120,6 +120,7 @@
 import { Tooltip } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type AskDrawerCloseOptions,
@@ -1376,6 +1377,8 @@ export const ComposerStatusRow = ({
 	onNote,
 	nowMs,
 }: ComposerStatusRowProps) => {
+	// The row's own copy follows a backend locale change.
+	useI18nLocale();
 	/*
 	 * CONTROLLED WHEN THE CALLER SUPPLIES IT (see `askExpanded` on the props). The
 	 * uncontrolled fallback exists for stories only: in the app chat-page always

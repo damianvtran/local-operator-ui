@@ -33,6 +33,7 @@ import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /*
  * The mode-dependent classes on the canvas's wrapper below are the first
  * conditional class list in this file: every other one is a literal. `cn` rather
@@ -936,6 +937,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		mentionsUnsupported = false,
 		pulses,
 	}) => {
+		// Copy stays live across a backend locale change without touching tab state.
+		useI18nLocale();
 		const [isSmallView, setIsSmallView] = useState(false);
 		/*
 		 * THE COMPOSER'S TWO HOST SEAMS (the shared-composer lift). The credential

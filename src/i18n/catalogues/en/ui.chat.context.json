@@ -186,8 +186,9 @@
 	"ui.chat.session_status.choose_model": {
 		"role": "model chip caption when no model is resolved",
 		"tone": "verb phrase, sentence case",
-		"note": "Invites the reader to pick the model this conversation will run on; the chip opens the model picker.",
-		"placeholders": {}
+		"note": "Invites the reader to pick the model this conversation will run on; the chip opens the model picker. The chip truncates at narrow widths; maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {},
+		"maxCells": 18
 	},
 	"ui.chat.session_status.choose_model_tooltip": {
 		"role": "tooltip on the model chip when no model is resolved",
@@ -204,8 +205,9 @@
 	"ui.chat.session_status.last_reading": {
 		"role": "mark beside a reading taken before a reconnect",
 		"tone": "noun phrase, sentence case, no trailing punctuation",
-		"note": "Qualifies the numbers beside it: they were measured before the connection dropped and are not live.",
-		"placeholders": {}
+		"note": "Qualifies the numbers beside it: they were measured before the connection dropped and are not live. The chip truncates at narrow widths; maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {},
+		"maxCells": 16
 	},
 	"ui.chat.session_status.no_model_resolved": {
 		"role": "tooltip when a conversation has no model yet",

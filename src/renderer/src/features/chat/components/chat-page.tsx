@@ -43,6 +43,7 @@ import {
 	useWarmSession,
 } from "@shared/hooks/use-warm-session";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
@@ -5000,6 +5001,8 @@ function SessionPanel({
 }
 
 export function ChatPage() {
+	// The pane's own copy follows a backend locale change like every other surface.
+	useI18nLocale();
 	const { agentId: routeIdentity } = useParams<{ agentId?: string }>();
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
