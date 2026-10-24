@@ -40,6 +40,7 @@
 	"ui.chat.sidebar.search.searching": "बातचीतें खोजी जा रही हैं…",
 	"ui.chat.sidebar.search.too_long": "खोज में अधिकतम {max, number, ::group-off} अक्षर हो सकते हैं। यह खोज लंबी है, इसलिए सिर्फ़ चैट के नाम खोजे जा रहे हैं।",
 	"ui.chat.sidebar.search.unavailable": "बातचीत खोज उपलब्ध नहीं है, इसलिए ये परिणाम नामों के मिलान हैं।",
+	"ui.chat.sidebar.section.current_chat": "मौजूदा चैट",
 	"ui.chat.sidebar.teams.create": "टीम बनाएँ",
 	"ui.chat.sidebar.teams.loading": "टीमें लोड हो रही हैं…"
 }
