@@ -10,6 +10,7 @@ import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { withNotificationsOff } from "./notifications-off.mjs";
+import { withTelemetryOff } from "./telemetry-off.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const requireFromRepo = createRequire(join(ROOT, "package.json"));
@@ -115,6 +116,7 @@ const env = withNotificationsOff({
 });
 for (const key of Object.keys(env))
 	if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
+withTelemetryOff(env);
 const child = spawn(ELECTRON_BIN, [MAIN], {
 	env,
 	stdio: ["ignore", "pipe", "pipe"],
