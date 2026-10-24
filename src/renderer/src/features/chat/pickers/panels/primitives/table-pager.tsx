@@ -62,7 +62,13 @@ export type TablePagerProps = {
 	to: number;
 	/** Rows in the narrowed set. */
 	total: number;
-	/** Singular and plural counted nouns; ICU selects between them. */
+	/**
+	 * Singular and plural counted nouns, in the forms the RANGE message places
+	 * them. It prints `{from}–{to} of {totaltext} …` and selects one branch by
+	 * `total`, so a locale whose grammar inflects the noun after that count
+	 * supplies those forms rather than its standalone nominative: Russian passes
+	 * the genitive («сессии»/«сессий») because «из 50 сессий» governs the case.
+	 */
 	label: string;
 	pluralLabel: string;
 	onPage: (page: number) => void;
