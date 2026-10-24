@@ -341,6 +341,20 @@ export const FAST_UNAVAILABLE_SENTENCE =
 	"Fast mode is off: this version of the Local Operator service cannot carry it.";
 
 /**
+ * The notice's own code, so the statement survives the machinery that retires the
+ * lock answer (QA round 2, Q1).
+ *
+ * The sentence above goes into the composer's `muted` register, the same one the
+ * lock answer uses, and the retirement effect keyed on `muted` alone - so on a
+ * restored draft, where nothing is pending, admitting or gated, the line was
+ * cleared in the commit after it was set and never reached the screen.
+ * `lockAnswerOutlived` retires only the lock answer now, which is the one muted
+ * notice that names no code; this states which condition this one is rather than
+ * borrowing the lock's silence.
+ */
+export const FAST_UNAVAILABLE_CODE = "fast_unavailable";
+
+/**
  * The selection a draft may SEND, given whether this backend carries the dial.
  *
  * `DraftModel` is `extra="forbid"` on the core, so a persisted `fast_mode` meets
