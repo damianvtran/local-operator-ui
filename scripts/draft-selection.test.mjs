@@ -19,6 +19,8 @@ const PICKERS_ENGLISH = JSON.parse(
 /** The shipped picker module, for the call-site facts this file pins as source. */
 const PICKERS =
 	"src/renderer/src/features/chat/pickers/destination-pickers.tsx";
+/** The dispatcher, for the two sessionless doors and the premium flag they carry. */
+const DISPATCH = "src/renderer/src/features/chat/components/slash-dispatch.ts";
 
 /*
  * A NEW conversation's model and effort pick: what it resolves through, what it
@@ -76,10 +78,15 @@ const bundle = await build({
 				draftPreviewKey,
 				draftPreviewQuery,
 				effortCarry,
+				fastModelPickNotice,
+				fastPickFailure,
 				fetchDraftPreview,
 				selectionFromModel,
 				selectionSelector,
 			} from "./src/renderer/src/features/chat/draft-selection";
+			export {
+				DesktopControlError,
+			} from "./src/renderer/src/shared/api/local-operator/desktop-api";
 			export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";
 			export {
 				bandReadings,
@@ -97,6 +104,11 @@ const bundle = await build({
 			} from "./src/renderer/src/shared/store/canonical-sessions-store";
 			export { panePlacement } from "./src/renderer/src/features/chat/device/chat-device-model";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
+			export {
+				draftRouteRefusal,
+				sessionlessActionData,
+			} from "./src/renderer/src/features/chat/components/slash-dispatch";
+			export { draftFastReading } from "./src/renderer/src/features/chat/pickers/destination-pickers";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -118,6 +130,14 @@ const bundle = await build({
 	],
 	loader: { ".css": "empty" },
 	jsx: "automatic",
+	/*
+	 * The slash-dispatch module graph reaches CJS interop (`require("react")`)
+	 * through the dispatcher and the router, and a data-free ESM bundle has no
+	 * `require` of its own; the banner is the same one the identity suite uses.
+	 */
+	banner: {
+		js: 'import { createRequire } from "node:module"; const require = createRequire(import.meta.url);',
+	},
 	write: false,
 });
 
@@ -125,23 +145,29 @@ const bundlePath = new URL("./_draft-selection.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	NO_DRAFT_TARGET,
+	DesktopControlError,
 	admitChatDraft,
 	bandReadings,
 	desktopEndpoint,
 	desktopRequestSchema,
+	draftFastReading,
 	draftPreviewKey,
 	draftPreviewQuery,
+	draftRouteRefusal,
 	effortCarry,
 	effortDisplay,
 	effortLadder,
 	effortLevel,
 	effortState,
 	errorText,
+	fastModelPickNotice,
+	fastPickFailure,
 	fetchDraftPreview,
 	modelSelector,
 	panePlacement,
 	selectionFromModel,
 	selectionSelector,
+	sessionlessActionData,
 	specUnresolved,
 	useConversationInputStore,
 	useCanonicalSessionsStore,
@@ -879,10 +905,100 @@ test("each picker routes a draft's pick through one resolver, and never through 
 				resolve.indexOf("draft.select(chosen)"),
 		"a resolution that does not show the pick applied must be refused BEFORE it is recorded",
 	);
-	// The premium acknowledgement is the session picker's rule and it stays on a
-	// draft, where `native_action`'s own flag cannot be asked for.
-	assert.match(picker, /const premium = Boolean\(/);
+	/*
+	 * THE PREMIUM ACKNOWLEDGEMENT'S REAL CARRIER (agent review round 1, F3).
+	 *
+	 * The two assertions that stood here matched `const premium = Boolean(` and
+	 * `premium_acknowledgement` - pre-existing lines of the SESSION path - so the
+	 * gate could have been deleted with this suite green. A draft cannot ask the
+	 * owner for the flag, and exactly one thing supplies it: `sessionlessActionData`,
+	 * which the dispatcher puts on the `action.data` BOTH sessionless doors pass.
+	 * Asserted as an executable value, because it is a pure function of the
+	 * destination - and then as the two call sites that carry it, because a row
+	 * that gained the flag through one door and lost it through the other is the
+	 * drift that function's own note exists to prevent.
+	 */
+	assert.deepEqual(
+		sessionlessActionData("session.fast"),
+		{ premium_pricing: true },
+		"a draft's /fast must carry the flag a session's owner answer would",
+	);
+	for (const destination of [
+		"session.model",
+		"session.effort",
+		"help",
+		"theme",
+	]) {
+		assert.deepEqual(
+			sessionlessActionData(destination),
+			{},
+			`${destination} states no premium flag`,
+		);
+	}
+	const dispatchSource = readFileSync(join(ROOT, DISPATCH), "utf8");
+	assert.equal(
+		[...dispatchSource.matchAll(/data: sessionlessActionData\(/g)].length,
+		2,
+		"both sessionless doors (the typed command and openDraftPicker) carry the flag",
+	);
+	/*
+	 * And the picker HELDS the one row that costs more until it is ticked: this is
+	 * the gate expression, not a mention of the checkbox's label key.
+	 */
+	assert.match(
+		picker,
+		/option\.value === "on" && premium && !acknowledged/,
+		"the On row must stay disabled until the premium acknowledgement is ticked",
+	);
 	assert.match(picker, /premium_acknowledgement/);
+});
+
+test("a draft's refusal names the form that works, and only where it would work (design round 1, D2; agent round 1, F1)", () => {
+	/*
+	 * `/fast on` on a new chat used to answer "needs an open conversation. Start one
+	 * first" - a diagnosis the pane contradicts (it has everything the bare form
+	 * needs) and an instruction that IS the dummy-message workaround issue #1265
+	 * exists to remove (design review round 1, D2).
+	 *
+	 * The sentence now points at the form that works, and only does so where
+	 * `draftSelectionRoute` would accept that form: the same capability that closes
+	 * the door is what suppresses the advice, so a core older than the field says
+	 * to update instead of naming a command it would also refuse (agent review
+	 * round 1, F1).
+	 */
+	const draft = { target: { cwd: "/tmp/example" }, select: () => undefined };
+	const CAPABLE = {
+		desktop_available: true,
+		features: { draft_selection: 1, draft_fast: 1 },
+	};
+	const NO_FAST = {
+		desktop_available: true,
+		features: { draft_selection: 1 },
+	};
+	assert.equal(
+		draftRouteRefusal("fast", "session.fast", draft, CAPABLE),
+		"/fast takes no argument on a new chat. Type /fast on its own to set it for the first message.",
+	);
+	assert.equal(
+		draftRouteRefusal("fast", "session.fast", draft, NO_FAST),
+		"/fast is not available on this version of the Local Operator service. Update Local Operator, then try again.",
+	);
+	/* No draft context, and a row that declares no draft route: the ordinary
+	 * refusal is still the honest one. */
+	assert.equal(
+		draftRouteRefusal("fast", "session.fast", undefined, CAPABLE),
+		"/fast needs an open conversation. Start one first.",
+	);
+	assert.equal(
+		draftRouteRefusal("goal", "session.goal", draft, CAPABLE),
+		"/goal needs an open conversation. Start one first.",
+	);
+	/* And the sentence names the command the user actually typed: nothing about
+	 * `/fast` may appear for another row. */
+	assert.doesNotMatch(
+		draftRouteRefusal("goal", "session.goal", draft, CAPABLE),
+		/fast/,
+	);
 });
 
 /* ---- 3b. a model pick may not silently discard the chosen effort rung ------ */
@@ -1014,6 +1130,173 @@ test("the comparison is case-insensitive and padded, and the ladder's own spelli
 	});
 	assert.equal(carry.rung, "high");
 	assert.equal(carry.checked, true);
+});
+
+/* ---- 3c. a model pick may not silently discard the chosen fast dial ------ */
+/*
+ * Agent review round 1, F2 and design review round 1, D1 - one defect read from
+ * the flow side and the copy side. A draft's model pick builds a fresh selection
+ * (`{provider, model_id, reasoning_effort: null}`) because a new model has its
+ * own ladder and its own fast tier, so the dial does not ride it. Carrying
+ * `fast_mode: true` unconditionally is not the fix (a model without the tier
+ * refuses the whole pick with `fast_mode_unsupported`), so the pick says what
+ * happened instead - read off the RESOLVED dial, the one the first turn will
+ * actually get.
+ */
+test("a model pick that resets the fast dial says so, in the resolved dial's own terms", () => {
+	assert.equal(
+		fastModelPickNotice(null, "off"),
+		null,
+		"a pane that never picked a dial has nothing to report",
+	);
+	assert.equal(
+		fastModelPickNotice(false, "off"),
+		null,
+		"an explicit Off was not a choice lost by the pick",
+	);
+	assert.equal(
+		fastModelPickNotice(true, "off"),
+		"Fast mode is off for this model.",
+		"the dial the pane held, and the dial the first turn will get",
+	);
+	assert.equal(
+		fastModelPickNotice(true, null),
+		"This model does not support fast mode, so it stays off.",
+		"a model with no tier says that rather than claiming an off dial",
+	);
+	assert.equal(
+		fastModelPickNotice(true, "on"),
+		"Fast mode stays on for this model.",
+		"nothing is reported as lost when the resolution kept the dial",
+	);
+});
+
+test("the model pick's confirmation is where that sentence is printed", () => {
+	/*
+	 * The helper above is pure, so a suite could be green over a call site that
+	 * never reaches it. These are the two lines a later edit would have to delete
+	 * first: the dial read off the LIVE selection (the dialog's own receipt, not
+	 * the snapshot it opened on) and its use inside `describe`, which is the
+	 * sentence the result strip shows once the backend answered.
+	 */
+	const picker = readFileSync(join(ROOT, PICKERS), "utf8");
+	assert.match(
+		picker,
+		/const carriedFast = draftPick\.selection\?\.fast_mode \?\? null;/,
+	);
+	assert.match(
+		picker,
+		/fastModelPickNotice\(\s*carriedFast,/,
+		"the model pick's confirmation must state the dial it reset",
+	);
+});
+
+/* ---- 3d. a failed fast pick says what the reader can do ------------------- */
+/*
+ * Design review round 1, D4. The catch printed `${refused} ${errorText(error)}`,
+ * so the one state a capture against today's core can produce read "The fast
+ * dial could not be set. The request has invalid fields." - the daemon's words,
+ * naming nothing the reader can act on. Three outcomes, told apart by what the
+ * backend said.
+ */
+test("a failed fast pick names the reader's next act, never the daemon's words", () => {
+	const unsupported = new DesktopControlError(
+		422,
+		"The request has invalid fields.",
+		undefined,
+		"fast_mode_unsupported",
+	);
+	assert.equal(
+		fastPickFailure(unsupported),
+		"This model cannot run fast mode. Pick a model that can.",
+	);
+	/*
+	 * The cross-repo state: a core older than `DraftModel.fast_mode` refuses the
+	 * whole body with a 422 that carries a STRING detail and no vetted code.
+	 */
+	const oldCore = new DesktopControlError(
+		422,
+		"The request has invalid fields.",
+	);
+	assert.equal(
+		fastPickFailure(oldCore),
+		"Fast mode is not available on this version of the Local Operator service. Update Local Operator, then try again.",
+	);
+	const unreachable = new DesktopControlError(
+		null,
+		"Desktop controls could not reach the backend process.",
+	);
+	assert.equal(
+		fastPickFailure(unreachable),
+		"Fast mode was not changed. Try again.",
+	);
+	for (const error of [unsupported, oldCore, unreachable]) {
+		assert.doesNotMatch(
+			fastPickFailure(error),
+			/invalid fields|Desktop controls/i,
+			"the transport's own words are never the product's",
+		);
+	}
+});
+
+test("the fast pick reaches that mapping, so a failure cannot fall back to the raw message", () => {
+	const picker = readFileSync(join(ROOT, PICKERS), "utf8");
+	assert.match(
+		picker,
+		/failure: fastPickFailure,/,
+		"the draft's fast pick must own its failure sentence",
+	);
+	/*
+	 * And the hook honours it BEFORE appending the transport text: the `refused`
+	 * prefix with `errorText` is the fallback for the picks whose reason is the
+	 * useful half (model, effort), not the fast dial's path.
+	 */
+	assert.match(
+		picker,
+		/reading\.failure\s*\? reading\.failure\(error\)\s*: `\$\{reading\.refused\} \$\{errorText\(error\)\}`/,
+	);
+});
+
+test("a fast pick's refusal names the resolved dial, and the direction it failed in", () => {
+	/*
+	 * Design review round 1, D4's other half: the sentences the `applied` gate
+	 * refuses with. The direction is read from BOTH dials, because a pick of `off`
+	 * that resolved `on` must not be told it "was not turned on" - the class of
+	 * sentence that is false in the one state nobody photographs.
+	 */
+	const off = draftFastReading(
+		frame({ ...SPEC, supports_fast_mode: true, fast_mode: false }),
+		"on",
+	);
+	assert.equal(off.applied, false);
+	assert.equal(
+		off.sentence,
+		"Fast mode is off for this model, so it was not turned on.",
+	);
+	const on = draftFastReading(
+		frame({ ...SPEC, supports_fast_mode: true, fast_mode: true }),
+		"off",
+	);
+	assert.equal(on.applied, false);
+	assert.equal(
+		on.sentence,
+		"Fast mode is on for this model, so it was not turned off.",
+	);
+	const noTier = draftFastReading(
+		frame({ ...SPEC, supports_fast_mode: false }),
+		"on",
+	);
+	assert.equal(noTier.applied, false);
+	assert.equal(
+		noTier.sentence,
+		"This model does not support fast mode, so it stays off.",
+	);
+	const applied = draftFastReading(
+		frame({ ...SPEC, supports_fast_mode: true, fast_mode: true }),
+		"on",
+	);
+	assert.equal(applied.applied, true);
+	assert.equal(applied.sentence, "Fast mode is on for the first message.");
 });
 
 test("the affordance is gated on all three capabilities the pickers depend on", () => {

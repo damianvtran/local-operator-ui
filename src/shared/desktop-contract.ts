@@ -373,18 +373,22 @@ const modelSelection = z
 		 * fast" is the backend's own `supports_fast_mode` clamp, which refuses
 		 * `true` with a 422.
 		 *
-		 * THIS IS THE RENDERER HALF OF A TWO-REPO CHANGE, and the backend half is
-		 * not in `local-operator` yet: its `DraftModel`
-		 * (`server/routes/desktop_sessions.py`) still carries only `provider`,
-		 * `model_id` and `reasoning_effort`, and that module's `Input` is
-		 * `extra="forbid"` - measured against the field: a `sessions.preview` body
-		 * with `fast_mode` on it answers `422 {"detail": "The request has invalid
-		 * fields."}`. So a draft pick on today's backend is REFUSED OUT LOUD by
-		 * `FastPicker`'s catch and nothing is recorded on the pane, which is the
-		 * honest reading of "this build cannot do it yet" rather than a dial the
-		 * first turn would never get. The field stays declared here because the
-		 * draft route's own round trip is the one the backend must answer, and a
-		 * renderer that had to be rewritten for it would be the second spelling
+		 * THIS IS THE RENDERER HALF OF A TWO-REPO CHANGE. The backend half is
+		 * `DraftModel.fast_mode` in `local-operator` (damianvtran/local-operator#2848,
+		 * `server/routes/desktop_sessions.py`), published as the capability
+		 * `features.draft_fast` (`server/features.py`) - the key this renderer reads
+		 * before it offers `/fast` on a draft (`DesktopFeature` in
+		 * `desktop-hooks.ts`, `draftSelectionRoute` in `picker-registry.tsx`).
+		 * VERIFY IT THERE, NOT BY DATE: the core's draft model is
+		 * `extra="forbid"`, so a backend that does not advertise `draft_fast`
+		 * refuses the WHOLE body - `422 {"detail": "The request has invalid
+		 * fields."}` against a core without the field - taking the model and the
+		 * effort rung down with the dial. A draft pick on such a backend is
+		 * prevented at the route rather than attempted, and a request that still
+		 * fails is REFUSED OUT LOUD by `FastPicker` (see `fastPickFailure`) and
+		 * nothing is recorded on the pane. The field stays declared here because
+		 * the draft route's own round trip is the one the backend must answer, and
+		 * a renderer that had to be rewritten for it would be the second spelling
 		 * this contract exists to prevent.
 		 *
 		 * `null` is accepted because a backend that carries the field spells "no

@@ -25,7 +25,10 @@
  * the pickers means one cache entry either can read.
  */
 
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	DesktopControlError,
+	desktopResult,
+} from "@shared/api/local-operator/desktop-api";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 import { keepPreviousData } from "@tanstack/react-query";
 import type { DesktopModelSelection } from "../../../../shared/desktop-contract";
@@ -285,6 +288,65 @@ export function effortCarry(
 				? `This conversation will run ${selector}. Its effort is now ${target.level}, because ${wanted} is not one of that model's levels.`
 				: `This conversation will run ${selector}. No effort level is set on it, because ${wanted} is not one of that model's levels.`,
 	};
+}
+
+/**
+ * What a MODEL pick on a draft says about a fast dial the user had already set.
+ *
+ * The model pick builds a FRESH selection (`{provider, model_id,
+ * reasoning_effort: null}`), because a new model has its own ladder and its own
+ * tier; the fast dial is not part of the new model's identity, so it does not
+ * ride the pick. That is the same act the effort carry refuses to do in
+ * silence (UX U1, design D7), and it is what design review round 1's D1 and
+ * agent review round 1's F2 both filed: set `/fast` On, pick another model from
+ * the chip one click away, and the pane is born standard with nothing said.
+ *
+ * CARRYING THE DIAL IS NOT THE ANSWER, and the review says why: `fast_mode:
+ * true` on a model without the tier is a 422 that refuses the WHOLE pick (the
+ * core raises `fast_mode_unsupported`), so a carry would turn "change model"
+ * into "you cannot change model". So the pick states what happened instead,
+ * read off the RESOLUTION rather than the request - the sentence names the dial
+ * the first turn will actually get.
+ *
+ * The clause is only printed when the pane HAD the dial on: a pane that never
+ * picked one has nothing to report, and an explicit `Off` is not a loss.
+ */
+export function fastModelPickNotice(
+	carried: boolean | null | undefined,
+	dial: "on" | "off" | null,
+): string | null {
+	if (carried !== true) return null;
+	if (dial === "on") return "Fast mode stays on for this model.";
+	if (dial === "off") return "Fast mode is off for this model.";
+	return "This model does not support fast mode, so it stays off.";
+}
+
+/**
+ * What a fast pick says when the REQUEST itself failed.
+ *
+ * The catch used to print `The fast dial could not be set. <error.message>`,
+ * which put the daemon's own text on screen - and on the one deployment the
+ * route meets in the field it put `The request has invalid fields.` there: a
+ * core older than `DraftModel.fast_mode` (local-operator#2848) refuses the whole
+ * body, because that model is `extra="forbid"` (design review round 1, D4).
+ *
+ * Three outcomes, distinguished by what the backend said rather than by the
+ * status alone:
+ *  - `fast_mode_unsupported` is the core's own code for a model without the
+ *    tier, and the reader's next act is to pick another model, not to update
+ *    anything;
+ *  - a 422 WITHOUT a code is the older core that has never heard of the field,
+ *    and that is the update sentence;
+ *  - anything else (a dropped connection, a timeout) names the failure and the
+ *    one thing to try.
+ */
+export function fastPickFailure(error: unknown): string {
+	const refusal = error instanceof DesktopControlError ? error : null;
+	if (refusal?.code === "fast_mode_unsupported")
+		return "This model cannot run fast mode. Pick a model that can.";
+	if (refusal?.status === 422)
+		return "Fast mode is not available on this version of the Local Operator service. Update Local Operator, then try again.";
+	return "Fast mode was not changed. Try again.";
 }
 
 /**
