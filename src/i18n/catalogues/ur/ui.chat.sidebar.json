@@ -37,7 +37,7 @@
 	"ui.chat.sidebar.search.names_only": "صرف چیٹ کے نام تلاش کیے جا رہے ہیں۔ گفتگوؤں کے اندر تلاش کرنے کے لیے Local Operator اپ ڈیٹ کریں۔",
 	"ui.chat.sidebar.search.no_match": "آپ کی چیٹس میں “{query}” سے کچھ نہیں ملتا۔",
 	"ui.chat.sidebar.search.placeholder": "چیٹس اور ایجنٹ فلٹر کریں",
-	"ui.chat.sidebar.search.searching": "گفتگوؤں میں تلاش جاری ہے…",
+	"ui.chat.sidebar.search.searching": "گفتگو میں تلاش جاری ہے…",
 	"ui.chat.sidebar.search.too_long": "تلاش {max, number, ::group-off} حروف تک محدود ہے۔ یہ تلاش اس سے لمبی ہے، اس لیے صرف چیٹ کے نام تلاش کیے جا رہے ہیں۔",
 	"ui.chat.sidebar.search.unavailable": "گفتگو کی تلاش دستیاب نہیں، اس لیے یہ صرف نام سے ملے ہوئے نتائج ہیں۔",
 	"ui.chat.sidebar.teams.create": "ٹیم بنائیں",
