@@ -97,6 +97,12 @@ export interface ApprovalsOverlayDeps {
 	opaque?: boolean;
 	/** The palette the host last resolved; the model carries it to the document. */
 	theme?: "light" | "dark";
+	/** The app's exact palette name (`data-theme`); null means the mode default. */
+	palette?: string | null;
+	/** Display labels keyed by the queue's `requesterSessionId`. */
+	requesterLabels?: Readonly<Record<string, string>>;
+	/** Called whenever the card's chrome-visible state changes (dismiss, open, close). */
+	onChanged?: () => void;
 	/** The resolved locale/direction the app renderer last reported. */
 	locale?: string;
 	dir?: "ltr" | "rtl";
@@ -115,6 +121,22 @@ export interface ApprovalsOverlayDeps {
 	 */
 	focusTarget?: (target: { isDestroyed(): boolean; focus(): void }) => void;
 	log?: (message: string) => void;
+}
+
+/** Labels are display strings keyed by a session id; bound both sides. */
+function sanitizeRequesterLabels(
+	input: Readonly<Record<string, string>>,
+): Record<string, string> {
+	const labels: Record<string, string> = {};
+	for (const [key, value] of Object.entries(input)) {
+		if (Object.keys(labels).length >= 64) break;
+		if (typeof key !== "string" || key.length === 0 || key.length > 128) {
+			continue;
+		}
+		if (typeof value !== "string" || value.trim() === "") continue;
+		labels[key] = value.trim().slice(0, 256);
+	}
+	return labels;
 }
 
 /** The exact opt-in for S6a. Absent or not exactly `1` is off. */
@@ -188,6 +210,7 @@ export class ApprovalsOverlayController {
 	private readonly focusTarget:
 		| ((target: { isDestroyed(): boolean; focus(): void }) => void)
 		| null;
+	private readonly onChanged: (() => void) | null;
 	private readonly log: (message: string) => void;
 	private readonly onDismissAction: (
 		event: IpcMainEvent,
@@ -201,8 +224,17 @@ export class ApprovalsOverlayController {
 	private view: WebContentsView | null;
 	private childListeners: Array<() => void>;
 	private model: ApprovalsCardModel | null;
+	/**
+	 * THE RAW QUEUE, not the painted pending list. A rebuild after a dismissal or
+	 * a context change must still know each entry's session id and broad grant;
+	 * rebuilding from `model.pending` lost both (round-2 F2).
+	 */
+	private entries: ApprovalsCardModelInput["entries"];
 	private modelSeq: number;
 	private dismissed: Set<string>;
+	private requesterLabels: Record<string, string>;
+	private palette: string | null;
+	private actionError: "stale" | "unavailable" | null;
 	private explicitOpen: boolean;
 	private pendingFocus: boolean;
 	private locale: string;
@@ -226,12 +258,17 @@ export class ApprovalsOverlayController {
 		this.respond = deps.respond ?? null;
 		this.pageWebContents = deps.pageWebContents ?? null;
 		this.focusTarget = deps.focusTarget ?? null;
+		this.onChanged = deps.onChanged ?? null;
 		this.log = deps.log ?? (() => {});
 		this.view = null;
 		this.childListeners = [];
 		this.model = null;
+		this.entries = [];
 		this.modelSeq = 0;
 		this.dismissed = new Set();
+		this.requesterLabels = { ...(deps.requesterLabels ?? {}) };
+		this.palette = deps.palette ?? null;
+		this.actionError = null;
 		this.explicitOpen = false;
 		this.pendingFocus = false;
 		this.locale = deps.locale ?? "en";
@@ -306,6 +343,8 @@ export class ApprovalsOverlayController {
 		locale?: string;
 		dir?: "ltr" | "rtl";
 		theme?: "light" | "dark";
+		palette?: string | null;
+		requesterLabels?: Readonly<Record<string, string>>;
 		busy?: boolean;
 		error?: "stale" | "unavailable" | null;
 	}): void {
@@ -317,12 +356,20 @@ export class ApprovalsOverlayController {
 		if (input.theme === "light" || input.theme === "dark") {
 			this.theme = input.theme;
 		}
+		if ("palette" in input) this.palette = input.palette ?? null;
+		if (input.requesterLabels) {
+			this.requesterLabels = { ...input.requesterLabels };
+		}
+		this.entries = input.entries;
+		this.actionError = null;
 		const model = approvalsCardModelFrom({
 			seq: ++this.modelSeq,
-			entries: input.entries,
+			entries: this.entries,
 			locale: this.locale,
 			dir: this.dir,
 			theme: this.theme,
+			palette: this.palette,
+			requesterLabels: this.requesterLabels,
 			view: this.model?.view ?? "request",
 			focus: false,
 			busy: input.busy === true,
@@ -347,6 +394,7 @@ export class ApprovalsOverlayController {
 			this.explicitOpen = false;
 			this.pendingFocus = false;
 			this.hide();
+			this.onChanged?.();
 			return;
 		}
 		this.maybeShow();
@@ -371,6 +419,8 @@ export class ApprovalsOverlayController {
 			locale?: string;
 			dir?: "ltr" | "rtl";
 			theme?: "light" | "dark";
+			palette?: string | null;
+			requesterLabels?: Readonly<Record<string, string>>;
 		} = {},
 	): void {
 		if (this.disposed) return;
@@ -380,6 +430,10 @@ export class ApprovalsOverlayController {
 		if (input.dir === "ltr" || input.dir === "rtl") this.dir = input.dir;
 		if (input.theme === "light" || input.theme === "dark") {
 			this.theme = input.theme;
+		}
+		if ("palette" in input) this.palette = input.palette ?? null;
+		if (input.requesterLabels) {
+			this.requesterLabels = { ...input.requesterLabels };
 		}
 		/*
 		 * NOTHING TO OPEN: return before arming. Arming `explicitOpen` for an empty
@@ -397,10 +451,12 @@ export class ApprovalsOverlayController {
 			this.dismissed.clear();
 			this.model = approvalsCardModelFrom({
 				seq: ++this.modelSeq,
-				entries: this.model.pending,
+				entries: this.entries,
 				locale: this.locale,
 				dir: this.dir,
 				theme: this.theme,
+				palette: this.palette,
+				requesterLabels: this.requesterLabels,
 				view: "request",
 				focus: false,
 				busy: false,
@@ -412,6 +468,7 @@ export class ApprovalsOverlayController {
 		this.explicitOpen = true;
 		this.pendingFocus = input.focus !== false;
 		this.pushModel(false);
+		this.onChanged?.();
 		this.maybeShow();
 		// An explicit open follows a locale/width change; re-measure so the card is
 		// not stuck at the height it had while hidden (U minor).
@@ -428,6 +485,8 @@ export class ApprovalsOverlayController {
 		locale?: string;
 		dir?: "ltr" | "rtl";
 		theme?: "light" | "dark";
+		palette?: string | null;
+		requesterLabels?: Readonly<Record<string, string>>;
 	}): void {
 		if (this.disposed) return;
 		let changed = false;
@@ -453,18 +512,31 @@ export class ApprovalsOverlayController {
 			this.theme = input.theme;
 			changed = true;
 		}
+		if ("palette" in input && (input.palette ?? null) !== this.palette) {
+			this.palette = input.palette ?? null;
+			changed = true;
+		}
+		if (input.requesterLabels) {
+			const labels = sanitizeRequesterLabels(input.requesterLabels);
+			if (JSON.stringify(labels) !== JSON.stringify(this.requesterLabels)) {
+				this.requesterLabels = labels;
+				changed = true;
+			}
+		}
 		if (!changed) return;
 		if (this.model) {
 			this.model = approvalsCardModelFrom({
 				seq: ++this.modelSeq,
-				entries: this.model.pending,
+				entries: this.entries,
 				locale: this.locale,
 				dir: this.dir,
 				theme: this.theme,
+				palette: this.palette,
+				requesterLabels: this.requesterLabels,
 				view: this.model.view,
 				focus: false,
 				busy: this.model.busy,
-				error: this.model.error,
+				error: this.actionError,
 				dismissed: this.dismissed,
 			});
 		}
@@ -482,10 +554,10 @@ export class ApprovalsOverlayController {
 		this.pendingFocus = false;
 		this.hide();
 		this.returnFocus();
+		this.onChanged?.();
 		this.log(`[browser] approvals card closed: ${reason}`);
 	}
 
-	/** The registry's copied layout snapshot, after every page layout pass. */
 	/** The registry's copied layout snapshot, after every page layout pass. */
 	onLayout(snapshot: ApprovalsOverlayLayout): void {
 		if (this.disposed) return;
@@ -624,11 +696,28 @@ export class ApprovalsOverlayController {
 	private dropAction(): void {
 		this.actionCounts.dropped += 1;
 		/*
-		 * A dropped action is not silent to the operator: re-push the live model so
-		 * the card repaints at its current state instead of leaving the click with
-		 * no visible consequence (minor, round 1).
+		 * A dropped action is not silent to the operator: the model is rebuilt with
+		 * the stale error and pushed, so the card states that the request moved on
+		 * instead of leaving the click with no visible consequence (round-2 minor).
 		 */
-		this.pushModel(false);
+		this.actionError = "stale";
+		if (this.model) {
+			this.model = approvalsCardModelFrom({
+				seq: ++this.modelSeq,
+				entries: this.entries,
+				locale: this.locale,
+				dir: this.dir,
+				theme: this.theme,
+				palette: this.palette,
+				requesterLabels: this.requesterLabels,
+				view: this.model.view,
+				focus: false,
+				busy: this.model.busy,
+				error: this.actionError,
+				dismissed: this.dismissed,
+			});
+			this.pushModel(false);
+		}
 	}
 
 	/** Close the card's current entry without deciding it. */
@@ -637,10 +726,12 @@ export class ApprovalsOverlayController {
 		if (!this.model) return;
 		const model = approvalsCardModelFrom({
 			seq: ++this.modelSeq,
-			entries: this.model.pending,
+			entries: this.entries,
 			locale: this.locale,
 			dir: this.dir,
 			theme: this.theme,
+			palette: this.palette,
+			requesterLabels: this.requesterLabels,
 			view: this.model.view,
 			focus: false,
 			busy: false,
@@ -658,6 +749,10 @@ export class ApprovalsOverlayController {
 			this.maybeShow();
 		}
 		this.returnFocus();
+		// The shield's aria-expanded/toggle must follow a dismissal, not only an
+		// explicit open/close: otherwise the first press after Close/Escape is a
+		// stale no-op (round-2 F1/U1).
+		this.onChanged?.();
 	}
 
 	/**
@@ -915,13 +1010,14 @@ export class ApprovalsOverlayController {
 		const view = this.view;
 		if (!view || view.webContents.isDestroyed()) return;
 		/*
-		 * PAINT THE MODEL FIRST. The document's height is content-driven, so a
-		 * measurement taken before the model arrives measures the empty card and
-		 * the settled view would clip every button below the fold. Both calls are
-		 * queued on the same webContents, so the model's paint lands before the
-		 * measurement's read.
+		 * THE MODEL AND THE READ ARE ONE SCRIPT. Two separate
+		 * `executeJavaScript` calls are not ordered by contract; under load the
+		 * read could land first and measure the empty 96 DIP card, which then
+		 * stayed at that height until the next push (measured in the round-3
+		 * probe). Applying the model in the same task removes the race.
 		 */
-		this.pushModel(false);
+		const payload = this.modelPayload(false);
+		if (!payload) return;
 		/*
 		 * A measurement with no width is not the card's height: at 0 DIP the
 		 * text wraps word by word and reports ~150 DIP, which is neither the
@@ -931,6 +1027,11 @@ export class ApprovalsOverlayController {
 		 * first trustworthy measurement is the one taken there.
 		 */
 		if (view.getBounds().width <= 0) {
+			// A provisional zero-width child still needs the model for the moment it
+			// is rebuilt at real bounds; the combined read below waits for a width.
+			void view.webContents
+				.executeJavaScript(`window.__approvalsCard?.setModel(${payload})`)
+				.catch(() => {});
 			this.maybeShow();
 			return;
 		}
@@ -941,6 +1042,7 @@ export class ApprovalsOverlayController {
 		 */
 		const measured = view.webContents.executeJavaScript(
 			`new Promise((resolve) => {
+				window.__approvalsCard?.setModel(${payload});
 				const read = () => {
 					const el = document.getElementById('approvals-card');
 					if (!el) { resolve(0); return; }
@@ -956,8 +1058,16 @@ export class ApprovalsOverlayController {
 					el.style.maxHeight = previous;
 					resolve(height);
 				};
-				if (document.readyState === 'complete') read();
-				else addEventListener('load', read, { once: true });
+				/*
+				 * A timer, not requestAnimationFrame: the probe's window is HIDDEN,
+				 * and an occluded window does not run animation frames, so an rAF
+				 * gate never fires and the measurement falls to the 1500ms zero.
+				 * setModel ran in this same task, so the next task reads the
+				 * painted model.
+				 */
+				const afterPaint = () => setTimeout(read, 0);
+				if (document.readyState === 'complete') afterPaint();
+				else addEventListener('load', afterPaint, { once: true });
 			})`,
 		);
 		const timer = new Promise<number>((resolve) => {
@@ -996,19 +1106,26 @@ export class ApprovalsOverlayController {
 	 * in the card direction. Every push carries the current `seq`; the document
 	 * echoes it on its next action.
 	 */
-	private pushModel(focus: boolean): void {
-		const view = this.view;
-		if (!view || !this.model || view.webContents.isDestroyed()) return;
+	/** Serialize the next model, applying the controller's current context. */
+	private modelPayload(focus: boolean): string | null {
+		if (!this.model) return null;
 		const model: ApprovalsCardModel = {
 			...this.model,
 			locale: this.locale,
 			dir: this.dir,
 			theme: this.theme,
+			palette: this.palette,
 			focus: focus === true,
 		};
 		this.model = model;
 		if (focus) this.pendingFocus = false;
-		const payload = JSON.stringify(model);
+		return JSON.stringify(model);
+	}
+
+	private pushModel(focus: boolean): void {
+		const view = this.view;
+		const payload = this.modelPayload(focus);
+		if (!view || !payload || view.webContents.isDestroyed()) return;
 		void view.webContents
 			.executeJavaScript(`window.__approvalsCard?.setModel(${payload})`)
 			.catch(() => {

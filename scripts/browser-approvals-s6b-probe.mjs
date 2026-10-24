@@ -35,9 +35,10 @@ const THEME =
 		: "dark";
 if (!OUT || OUT.startsWith("--")) throw new Error("--out required");
 mkdirSync(OUT, { recursive: true });
-// The isolated HOME must exist before Electron starts: a missing home hangs the
-// network service (measured: `loadURL` never settles) rather than failing loudly.
-mkdirSync(join(OUT, "home"), { recursive: true });
+// No HOME override: Electron resolves its profile from NSHomeDirectory on
+// macOS, and a scratch HOME is what made the child view fail in the round-2
+// investigation. The private --user-data-dir below is the isolation that
+// matters; the mock-keychain switch (applied in the fixture) keeps the keychain out.
 
 const MAIN = join(OUT, "s6b-main.mjs");
 const FIXTURE = join(OUT, "fixture.html");
@@ -108,7 +109,9 @@ app.whenReady().then(async () => {
       allowOnce: (() => { const b = document.getElementById('approvals-allow-once'); if (!b) return null; const r = b.getBoundingClientRect(); return { text: b.textContent, disabled: b.disabled, x: r.x + r.width / 2, y: r.y + r.height / 2 }; })(),
       buttons: [...document.querySelectorAll('button')].map((b) => ({ id: b.id, text: b.textContent, disabled: b.disabled })),
       cardHeight: (() => { const el = document.getElementById('approvals-card'); return el ? el.clientHeight : null; })(),
+      cardRectHeight: (() => { const el = document.getElementById('approvals-card'); return el ? el.getBoundingClientRect().height : null; })(),
       footerHeight: (() => { const el = document.querySelector('.card-footer'); return el ? el.getBoundingClientRect().height : 0; })(),
+      footerTop: (() => { const el = document.querySelector('.card-footer'); const card = document.getElementById('approvals-card'); if (!el || !card) return null; return Math.round(el.getBoundingClientRect().top - card.getBoundingClientRect().top); })(),
       decisionRects: [...document.querySelectorAll('#approvals-secondary button')].map((b) => { const r = b.getBoundingClientRect(); const c = document.getElementById('approvals-card').getBoundingClientRect(); return { text: b.textContent, top: Math.round(r.top - c.top), bottom: Math.round(r.bottom - c.top) }; }),
     }))()\`);
   const settle = async (predicate, label, timeout = 20000) => {
@@ -119,17 +122,26 @@ app.whenReady().then(async () => {
     }
     return false;
   };
+  // PRODUCTION-SHAPED: displayAuthority is the requested site's host, and the
+  // requester identity is the opaque queue field. The display label arrives
+  // through the renderer-pushed requesterLabels map.
   const entry = (index) => ({
     entryId: "entry-" + index,
     origin: "https://example" + index + ".test",
-    displayAuthority: "The agent in 'probe " + index + "'",
+    displayAuthority: "example" + index + ".test",
+    requester: "session:entry-" + index,
+    requesterSessionId: "entry-" + index,
     expiresAt: Date.now() + 9 * 60000,
     ...(index === 0 ? { broad: { scope: "domain", key: "example0.test" } } : {}),
   });
+  const requesterLabels = {
+    "entry-0": "Fix the login flow",
+    "entry-1": "Draft a release note",
+  };
   const entries = [entry(0), entry(1)];
   const rows = {};
   const record = (id, pass, detail, blocked = false) => { rows[id] = { status: blocked ? "BLOCKED" : pass ? "PASS" : "FAIL", detail }; };
-  const waitFor = async (predicate, timeout = 4000) => {
+  const waitFor = async (predicate, timeout = 15000) => {
     const started = Date.now();
     while (Date.now() - started < timeout) {
       if (predicate()) return true;
@@ -141,7 +153,7 @@ app.whenReady().then(async () => {
   const pageBefore = { bounds: page.getBounds(), visible: page.getVisible(), probe: await page.webContents.executeJavaScript("window.__probe()") };
   const focusBefore = webContents.getFocusedWebContents()?.id ?? null;
   controller.onLayout({ presented: true, contentRect: pageRect, revision: 1 });
-  controller.setModel({ entries, locale: "fr", dir: "ltr", theme: THEME });
+  controller.setModel({ entries, locale: "fr", dir: "ltr", theme: THEME, requesterLabels });
   const autoSettled = await settle((f) => f.ready && f.visible, "auto-present");
   // A content-driven card grows after the model paints; the focus proof must be
   // read once the height has stopped changing, not on the first visible frame.
@@ -160,11 +172,27 @@ app.whenReady().then(async () => {
   // Snapshot the controller AT the auto-present moment; the end-state facts are
   // after explicit opens and decisions and must not be cited as A1 (round-1 A1/Q-3).
   const factsAtAuto = controller.facts();
-  const visibleFloor = autoDoc && autoDoc.cardHeight != null ? autoDoc.cardHeight - autoDoc.footerHeight : 0;
+  /*
+   * Above the footer's TOP, in the card's own border-box coordinates. The old
+   * check subtracted the footer height from clientHeight (which excludes the
+   * 2px border and the footer's own box), so a button that cleared the footer
+   * by 1px failed the arithmetic (round-2 Q2).
+   */
+  const footerTop = autoDoc?.footerTop ?? null;
   record(
     "Q2-decisions-above-fold",
-    Boolean(autoDoc && autoDoc.decisionRects.length === 4 && autoDoc.decisionRects.every((entry) => entry.bottom <= visibleFloor)),
-    { cardHeight: autoDoc?.cardHeight, footerHeight: autoDoc?.footerHeight, decisions: autoDoc?.decisionRects },
+    Boolean(
+      autoDoc &&
+        autoDoc.decisionRects.length === 4 &&
+        footerTop != null &&
+        autoDoc.decisionRects.every((entry) => entry.bottom <= footerTop),
+    ),
+    {
+      cardHeight: autoDoc?.cardHeight,
+      cardRectHeight: autoDoc?.cardRectHeight,
+      footerTop,
+      decisions: autoDoc?.decisionRects,
+    },
   );
   record("A1-auto-present-unfocused", Boolean(autoSettled && autoDoc && !factsAtAuto.explicitOpen && focusTargets.length === 0 && pageAfterAuto.probe.focusEvents === pageBefore.probe.focusEvents && pageAfterAuto.probe.blurEvents === pageBefore.probe.blurEvents && pageAfterAuto.probe.activeElement === pageBefore.probe.activeElement && JSON.stringify(pageAfterAuto.bounds) === JSON.stringify(pageBefore.bounds) && pageAfterAuto.visible === pageBefore.visible && focusAfterAuto === focusBefore), { autoSettled, facts: factsAtAuto, pageBefore, pageAfterAuto, focusBefore, focusAfterAuto, focusTargets: [...focusTargets], doc: autoDoc });
 
@@ -316,7 +344,6 @@ await build({
 });
 const env = withNotificationsOff({
 	...process.env,
-	HOME: join(OUT, "home"),
 	LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_S6A: "1",
 });
 for (const key of Object.keys(env))
@@ -330,10 +357,17 @@ const child = spawn(
 		// (it resolves from NSHomeDirectory), so two probe cells shared a singleton
 		// profile and the second `loadURL` hung. This flag is the isolation.
 		`--user-data-dir=${join(OUT, "userdata")}`,
+		// QA's working recipe for this host: the GPU process is not needed to paint
+		// a hidden document and its absence avoids the GL init path that wedged the
+		// child view in the round-2 investigation.
+		"--disable-gpu",
 	],
 	{
 		env,
 		stdio: ["ignore", "pipe", "pipe"],
+		// The group is killed as a unit: a bare `child.kill` leaves the Chromium
+		// helpers (four processes, measured) behind on a timeout (F4).
+		detached: true,
 	},
 );
 let err = "";
@@ -341,15 +375,27 @@ child.stderr.on("data", (chunk) => {
 	err += chunk;
 });
 const code = await new Promise((resolveExit) => {
+	const reap = () => {
+		try {
+			process.kill(-child.pid, "SIGKILL");
+		} catch {
+			// The group is already gone; nothing to reap.
+		}
+	};
 	const kill = setTimeout(() => {
-		child.kill("SIGTERM");
+		reap();
 		resolveExit("timeout");
-	}, 300000);
+	}, 180000);
 	child.on("exit", (exitCode) => {
 		clearTimeout(kill);
+		// Chromium helpers can outlive the main process; this exact-pid group kill
+		// is what stops a failed cell from leaving an Electron behind.
+		reap();
 		resolveExit(exitCode);
 	});
 });
+child.on("error", () => {});
+
 if (code !== 0) {
 	writeFileSync(join(OUT, "s6b-app-stderr.txt"), err);
 	console.error("electron", code, err.slice(-3000));
