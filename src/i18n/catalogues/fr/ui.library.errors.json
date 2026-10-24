@@ -1,0 +1,5 @@
+{
+	"ui.library.errors.preview_load": "Cet aperçu n’a pas pu être chargé.",
+	"ui.library.errors.asset_read": "Le contenu de la ressource n’a pas pu être lu.",
+	"ui.library.errors.empty_bytes": "Les octets étaient vides."
+}

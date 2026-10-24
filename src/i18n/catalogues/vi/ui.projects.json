@@ -360,8 +360,8 @@
 	"ui.projects.project_updates.preview_failed": "Không thể mở tệp này.",
 	"ui.projects.project_updates.preview_loading": "Đang tải bản xem trước…",
 	"ui.projects.project_updates.preview_moved": "Bản sao đã lưu của tệp có thể đã bị di chuyển hoặc xóa.",
-	"ui.projects.project_updates.preview_name": "Xem trước {name}",
 	"ui.projects.project_updates.preview_unavailable": "Bản xem trước không khả dụng ngoài ứng dụng máy tính.",
+	"ui.projects.project_updates.preview_name": "Xem trước {name}",
 	"ui.projects.project_updates.show_asset_name": "Hiển thị {name}, tài sản {index} trên {count}",
 	"ui.projects.project_updates.updates": "Cập nhật",
 	"ui.projects.projects_page.checking_the_server_s_projects_support": "Đang kiểm tra khả năng hỗ trợ Dự án của máy chủ",
@@ -422,5 +422,8 @@
 	"ui.projects.request_update.value1_could_not_be_reached": " Không thể liên hệ {value1}.",
 	"ui.projects.timeline.read_failed": "Không thể đọc các mốc của {count, plural, other {{count, number, ::group-off} dự án}}.",
 	"ui.projects.use_request_update.could_not_request_updates_endedsentence_message": "Không thể yêu cầu cập nhật: {endedSentence_message}",
-	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "Không thể xác nhận yêu cầu."
+	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "Không thể xác nhận yêu cầu.",
+	"ui.projects.project_model.milestone_summary": "{completed, number, ::group-off} / {total, number, ::group-off} đã hoàn tất",
+	"ui.projects.project_model.todos_summary": "{open, number, ::group-off} đang mở trong tổng số {total, number, ::group-off}",
+	"ui.projects.project_model.done_gate_tail": "hoàn tất hoặc xóa các cột mốc chưa hoàn tất, rồi đánh dấu dự án là đã hoàn tất"
 }

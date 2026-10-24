@@ -34,5 +34,16 @@
 	"ui.chat.composer.stop": "Остановить",
 	"ui.chat.composer.stop_agent": "Остановить агента",
 	"ui.chat.composer.stop_work_hint": "Остановить текущую работу сессии (Esc)",
-	"ui.chat.composer.welcome": "Чем я могу помочь сегодня?"
+	"ui.chat.composer.welcome": "Чем я могу помочь сегодня?",
+	"ui.chat.composer.placeholder.unavailable": "Этого разговора больше нет",
+	"ui.chat.composer.placeholder.busy": "Агент занят",
+	"ui.chat.composer.placeholder.answer": "Введите свой ответ…",
+	"ui.chat.composer.placeholder.secret_answer": "Ответьте на запрос секрета на панели запросов",
+	"ui.chat.composer.placeholder.aside": "Спросите отдельно — Esc закрывает вопрос",
+	"ui.chat.composer.placeholder.sending": "Отправка сообщения",
+	"ui.chat.composer.placeholder.stopping": "Остановка хода",
+	"ui.chat.composer.placeholder.recording": "Запись",
+	"ui.chat.composer.placeholder.waiting": "Направьте агента. Enter отправляет · Esc останавливает",
+	"ui.chat.composer.placeholder.no_provider": "Подключите провайдера, чтобы начать чат",
+	"ui.chat.composer.placeholder.idle": "Спросите о чём угодно. @ добавляет файлы, / запускает команды"
 }

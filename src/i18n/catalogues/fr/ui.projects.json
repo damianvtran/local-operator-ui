@@ -422,5 +422,8 @@
 	"ui.projects.request_update.value1_could_not_be_reached": " {value1} n’a pas pu être joint.",
 	"ui.projects.timeline.read_failed": "Les jalons n’ont pas pu être lus pour {count, plural, one {{count, number, ::group-off} projet} many {{count, number, ::group-off} de projets} other {{count, number, ::group-off} projets}}.",
 	"ui.projects.use_request_update.could_not_request_updates_endedsentence_message": "Impossible de demander les mises à jour : {endedSentence_message}",
-	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "La demande n’a pas pu être confirmée."
+	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "La demande n’a pas pu être confirmée.",
+	"ui.projects.project_model.milestone_summary": "{completed, plural, one {{completed, number, ::group-off} sur {total, number, ::group-off} terminé} many {{completed, number, ::group-off} sur {total, number, ::group-off} terminés} other {{completed, number, ::group-off} sur {total, number, ::group-off} terminés}}",
+	"ui.projects.project_model.todos_summary": "{open, plural, one {{open, number, ::group-off} ouverte sur {total, number, ::group-off}} many {{open, number, ::group-off} ouvertes sur {total, number, ::group-off}} other {{open, number, ::group-off} ouvertes sur {total, number, ::group-off}}}",
+	"ui.projects.project_model.done_gate_tail": "terminez ou supprimez les jalons incomplets, puis marquez-le comme terminé"
 }

@@ -125,5 +125,16 @@
 	"ui.common.updates.update_quiet_indicator.server_update": "سرور کی اپ ڈیٹ",
 	"ui.common.updates.wait.minutes": "اب تک {minutes, plural, one {{minutes, number, ::group-off} منٹ} other {{minutes, number, ::group-off} منٹ}} انتظار ہوا",
 	"ui.common.updates.wait.minutes_seconds": "اب تک {minutes, plural, one {{minutes, number, ::group-off} منٹ} other {{minutes, number, ::group-off} منٹ}} {seconds, plural, one {{seconds, number, ::group-off} سیکنڈ} other {{seconds, number, ::group-off} سیکنڈ}} انتظار ہوا",
-	"ui.common.updates.wait.seconds": "اب تک {seconds, plural, one {{seconds, number, ::group-off} سیکنڈ} other {{seconds, number, ::group-off} سیکنڈ}} انتظار ہوا"
+	"ui.common.updates.wait.seconds": "اب تک {seconds, plural, one {{seconds, number, ::group-off} سیکنڈ} other {{seconds, number, ::group-off} سیکنڈ}} انتظار ہوا",
+	"ui.common.updates.install.verifying": "جس ایپ کو بدلا جائے گا اس کے مطابق اپ ڈیٹ کی تصدیق کی جا رہی ہے…",
+	"ui.common.updates.install.staging": "جس ایپ کو بدلا جائے گا اس کے پاس اپ ڈیٹ رکھا جا رہا ہے…",
+	"ui.common.updates.install.starting": "انسٹالر شروع ہو رہا ہے۔ ایپ کچھ دیر کے لیے بند ہو گی…",
+	"ui.common.updates.install.preparing": "تنصیب کی تیاری ہو رہی ہے…",
+	"ui.common.updates.install.succeeded": "Local Operator اب v{version} پر ہے۔",
+	"ui.common.updates.error.server_unreachable": "اپ ڈیٹ سرور تک رسائی نہیں ہو سکی۔ اس مشین کا کنکشن چیک کریں، پھر دوبارہ کوشش کریں۔",
+	"ui.common.updates.error.download": "اپ ڈیٹ ڈاؤن لوڈ نہیں ہو سکی۔ اس مشین کا کنکشن چیک کریں، پھر ڈاؤن لوڈ دوبارہ شروع کریں۔",
+	"ui.common.updates.error.install": "اپ ڈیٹ نصب نہیں ہو سکی۔ اس مشین کا کنکشن چیک کریں، پھر اپ ڈیٹ پینل سے دوبارہ شروع کریں۔",
+	"ui.common.updates.error.quit": "تنصیب مکمل کرنے کے لیے ایپ بند نہیں ہو سکی۔ ایپ خود بند کریں، پھر اپ ڈیٹ مکمل ہونے دیں۔",
+	"ui.common.updates.error.check_incomplete": "اپ ڈیٹ کی جانچ مکمل نہیں ہو سکی۔ ایپ اگلی جانچ پر دوبارہ کوشش کرے گی۔",
+	"ui.common.updates.error.version_unknown_required": "نامعلوم (اپ ڈیٹ درکار)"
 }

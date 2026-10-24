@@ -113,10 +113,12 @@ import esUiAgentsRefusals from "./catalogues/es/ui.agents.refusals.json";
 import esUiAgentsSettings from "./catalogues/es/ui.agents.settings.json";
 import esUiAgentsStarters from "./catalogues/es/ui.agents.starters.json";
 import esUiBrowserChrome from "./catalogues/es/ui.browser.chrome.json";
+import esUiBrowserErrors from "./catalogues/es/ui.browser.errors.json";
 import esUiBrowser from "./catalogues/es/ui.browser.json";
 import esUiCanvas from "./catalogues/es/ui.canvas.json";
 import esUiChatAsks from "./catalogues/es/ui.chat.asks.json";
 import esUiChatAttachments from "./catalogues/es/ui.chat.attachments.json";
+import esUiChatCanonical from "./catalogues/es/ui.chat.canonical.json";
 import esUiChatComposer from "./catalogues/es/ui.chat.composer.json";
 import esUiChatComposerMedia from "./catalogues/es/ui.chat.composer_media.json";
 import esUiChatDialogs from "./catalogues/es/ui.chat.dialogs.json";
@@ -137,18 +139,27 @@ import esUiCommonErrors from "./catalogues/es/ui.common.errors.json";
 import esUiCommonForms from "./catalogues/es/ui.common.forms.json";
 import esUiCommonLoading from "./catalogues/es/ui.common.loading.json";
 import esUiCommonModels from "./catalogues/es/ui.common.models.json";
+import esUiCommonSpeech from "./catalogues/es/ui.common.speech.json";
+import esUiCommonTime from "./catalogues/es/ui.common.time.json";
 import esUiCommonUpdates from "./catalogues/es/ui.common.updates.json";
+import esUiCommonViewer from "./catalogues/es/ui.common.viewer.json";
+import esUiConsoleErrors from "./catalogues/es/ui.console.errors.json";
 import esUiConsole from "./catalogues/es/ui.console.json";
 import esUiHubComments from "./catalogues/es/ui.hub.comments.json";
 import esUiHub from "./catalogues/es/ui.hub.json";
 import esUiHubTaxonomy from "./catalogues/es/ui.hub.taxonomy.json";
+import esUiHubUpdates from "./catalogues/es/ui.hub.updates.json";
 import esUiInstaller from "./catalogues/es/ui.installer.json";
+import esUiLibraryErrors from "./catalogues/es/ui.library.errors.json";
 import esUiLibrary from "./catalogues/es/ui.library.json";
+import esUiMeshErrors from "./catalogues/es/ui.mesh.errors.json";
 import esUiMesh from "./catalogues/es/ui.mesh.json";
+import esUiMiniView from "./catalogues/es/ui.miniView.json";
 import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
 import esUiPresence from "./catalogues/es/ui.presence.json";
 import esUiProjects from "./catalogues/es/ui.projects.json";
 import esUiProviders from "./catalogues/es/ui.providers.json";
+import esUiSchedulesErrors from "./catalogues/es/ui.schedules.errors.json";
 import esUiSchedules from "./catalogues/es/ui.schedules.json";
 import esUiSettingsAccount from "./catalogues/es/ui.settings.account.json";
 import esUiSettingsAppearance from "./catalogues/es/ui.settings.appearance.json";
@@ -177,10 +188,12 @@ import frUiAgentsRefusals from "./catalogues/fr/ui.agents.refusals.json";
 import frUiAgentsSettings from "./catalogues/fr/ui.agents.settings.json";
 import frUiAgentsStarters from "./catalogues/fr/ui.agents.starters.json";
 import frUiBrowserChrome from "./catalogues/fr/ui.browser.chrome.json";
+import frUiBrowserErrors from "./catalogues/fr/ui.browser.errors.json";
 import frUiBrowser from "./catalogues/fr/ui.browser.json";
 import frUiCanvas from "./catalogues/fr/ui.canvas.json";
 import frUiChatAsks from "./catalogues/fr/ui.chat.asks.json";
 import frUiChatAttachments from "./catalogues/fr/ui.chat.attachments.json";
+import frUiChatCanonical from "./catalogues/fr/ui.chat.canonical.json";
 import frUiChatComposer from "./catalogues/fr/ui.chat.composer.json";
 import frUiChatComposerMedia from "./catalogues/fr/ui.chat.composer_media.json";
 import frUiChatDialogs from "./catalogues/fr/ui.chat.dialogs.json";
@@ -201,18 +214,27 @@ import frUiCommonErrors from "./catalogues/fr/ui.common.errors.json";
 import frUiCommonForms from "./catalogues/fr/ui.common.forms.json";
 import frUiCommonLoading from "./catalogues/fr/ui.common.loading.json";
 import frUiCommonModels from "./catalogues/fr/ui.common.models.json";
+import frUiCommonSpeech from "./catalogues/fr/ui.common.speech.json";
+import frUiCommonTime from "./catalogues/fr/ui.common.time.json";
 import frUiCommonUpdates from "./catalogues/fr/ui.common.updates.json";
+import frUiCommonViewer from "./catalogues/fr/ui.common.viewer.json";
+import frUiConsoleErrors from "./catalogues/fr/ui.console.errors.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
 import frUiHubComments from "./catalogues/fr/ui.hub.comments.json";
 import frUiHub from "./catalogues/fr/ui.hub.json";
 import frUiHubTaxonomy from "./catalogues/fr/ui.hub.taxonomy.json";
+import frUiHubUpdates from "./catalogues/fr/ui.hub.updates.json";
 import frUiInstaller from "./catalogues/fr/ui.installer.json";
+import frUiLibraryErrors from "./catalogues/fr/ui.library.errors.json";
 import frUiLibrary from "./catalogues/fr/ui.library.json";
+import frUiMeshErrors from "./catalogues/fr/ui.mesh.errors.json";
 import frUiMesh from "./catalogues/fr/ui.mesh.json";
+import frUiMiniView from "./catalogues/fr/ui.miniView.json";
 import frUiOnboarding from "./catalogues/fr/ui.onboarding.json";
 import frUiPresence from "./catalogues/fr/ui.presence.json";
 import frUiProjects from "./catalogues/fr/ui.projects.json";
 import frUiProviders from "./catalogues/fr/ui.providers.json";
+import frUiSchedulesErrors from "./catalogues/fr/ui.schedules.errors.json";
 import frUiSchedules from "./catalogues/fr/ui.schedules.json";
 import frUiSettingsAccount from "./catalogues/fr/ui.settings.account.json";
 import frUiSettingsAppearance from "./catalogues/fr/ui.settings.appearance.json";
@@ -241,10 +263,12 @@ import hiUiAgentsRefusals from "./catalogues/hi/ui.agents.refusals.json";
 import hiUiAgentsSettings from "./catalogues/hi/ui.agents.settings.json";
 import hiUiAgentsStarters from "./catalogues/hi/ui.agents.starters.json";
 import hiUiBrowserChrome from "./catalogues/hi/ui.browser.chrome.json";
+import hiUiBrowserErrors from "./catalogues/hi/ui.browser.errors.json";
 import hiUiBrowser from "./catalogues/hi/ui.browser.json";
 import hiUiCanvas from "./catalogues/hi/ui.canvas.json";
 import hiUiChatAsks from "./catalogues/hi/ui.chat.asks.json";
 import hiUiChatAttachments from "./catalogues/hi/ui.chat.attachments.json";
+import hiUiChatCanonical from "./catalogues/hi/ui.chat.canonical.json";
 import hiUiChatComposer from "./catalogues/hi/ui.chat.composer.json";
 import hiUiChatComposerMedia from "./catalogues/hi/ui.chat.composer_media.json";
 import hiUiChatDialogs from "./catalogues/hi/ui.chat.dialogs.json";
@@ -256,6 +280,7 @@ import hiUiChatSidebarView from "./catalogues/hi/ui.chat.sidebar_view.json";
 import hiUiChatTags from "./catalogues/hi/ui.chat.tags.json";
 import hiUiCodeReview from "./catalogues/hi/ui.code_review.json";
 import hiUiCommandPalette from "./catalogues/hi/ui.command_palette.json";
+import hiUiCommonAccount from "./catalogues/hi/ui.common.account.json";
 import hiUiCommonActions from "./catalogues/hi/ui.common.actions.json";
 import hiUiCommonConnection from "./catalogues/hi/ui.common.connection.json";
 import hiUiCommonEditing from "./catalogues/hi/ui.common.editing.json";
@@ -263,17 +288,26 @@ import hiUiCommonErrors from "./catalogues/hi/ui.common.errors.json";
 import hiUiCommonForms from "./catalogues/hi/ui.common.forms.json";
 import hiUiCommonLoading from "./catalogues/hi/ui.common.loading.json";
 import hiUiCommonModels from "./catalogues/hi/ui.common.models.json";
+import hiUiCommonSpeech from "./catalogues/hi/ui.common.speech.json";
+import hiUiCommonTime from "./catalogues/hi/ui.common.time.json";
 import hiUiCommonUpdates from "./catalogues/hi/ui.common.updates.json";
+import hiUiCommonViewer from "./catalogues/hi/ui.common.viewer.json";
+import hiUiConsoleErrors from "./catalogues/hi/ui.console.errors.json";
 import hiUiConsole from "./catalogues/hi/ui.console.json";
 import hiUiHubComments from "./catalogues/hi/ui.hub.comments.json";
 import hiUiHub from "./catalogues/hi/ui.hub.json";
 import hiUiHubTaxonomy from "./catalogues/hi/ui.hub.taxonomy.json";
+import hiUiHubUpdates from "./catalogues/hi/ui.hub.updates.json";
 import hiUiInstaller from "./catalogues/hi/ui.installer.json";
+import hiUiLibraryErrors from "./catalogues/hi/ui.library.errors.json";
 import hiUiLibrary from "./catalogues/hi/ui.library.json";
+import hiUiMeshErrors from "./catalogues/hi/ui.mesh.errors.json";
 import hiUiMesh from "./catalogues/hi/ui.mesh.json";
+import hiUiMiniView from "./catalogues/hi/ui.miniView.json";
 import hiUiOnboarding from "./catalogues/hi/ui.onboarding.json";
 import hiUiProjects from "./catalogues/hi/ui.projects.json";
 import hiUiProviders from "./catalogues/hi/ui.providers.json";
+import hiUiSchedulesErrors from "./catalogues/hi/ui.schedules.errors.json";
 import hiUiSchedules from "./catalogues/hi/ui.schedules.json";
 import hiUiSettingsAccount from "./catalogues/hi/ui.settings.account.json";
 import hiUiSettingsAppearance from "./catalogues/hi/ui.settings.appearance.json";
@@ -302,10 +336,12 @@ import ruUiAgentsRefusals from "./catalogues/ru/ui.agents.refusals.json";
 import ruUiAgentsSettings from "./catalogues/ru/ui.agents.settings.json";
 import ruUiAgentsStarters from "./catalogues/ru/ui.agents.starters.json";
 import ruUiBrowserChrome from "./catalogues/ru/ui.browser.chrome.json";
+import ruUiBrowserErrors from "./catalogues/ru/ui.browser.errors.json";
 import ruUiBrowser from "./catalogues/ru/ui.browser.json";
 import ruUiCanvas from "./catalogues/ru/ui.canvas.json";
 import ruUiChatAsks from "./catalogues/ru/ui.chat.asks.json";
 import ruUiChatAttachments from "./catalogues/ru/ui.chat.attachments.json";
+import ruUiChatCanonical from "./catalogues/ru/ui.chat.canonical.json";
 import ruUiChatComposer from "./catalogues/ru/ui.chat.composer.json";
 import ruUiChatComposerMedia from "./catalogues/ru/ui.chat.composer_media.json";
 import ruUiChatDialogs from "./catalogues/ru/ui.chat.dialogs.json";
@@ -325,17 +361,26 @@ import ruUiCommonErrors from "./catalogues/ru/ui.common.errors.json";
 import ruUiCommonForms from "./catalogues/ru/ui.common.forms.json";
 import ruUiCommonLoading from "./catalogues/ru/ui.common.loading.json";
 import ruUiCommonModels from "./catalogues/ru/ui.common.models.json";
+import ruUiCommonSpeech from "./catalogues/ru/ui.common.speech.json";
+import ruUiCommonTime from "./catalogues/ru/ui.common.time.json";
 import ruUiCommonUpdates from "./catalogues/ru/ui.common.updates.json";
+import ruUiCommonViewer from "./catalogues/ru/ui.common.viewer.json";
+import ruUiConsoleErrors from "./catalogues/ru/ui.console.errors.json";
 import ruUiConsole from "./catalogues/ru/ui.console.json";
 import ruUiHubComments from "./catalogues/ru/ui.hub.comments.json";
 import ruUiHub from "./catalogues/ru/ui.hub.json";
 import ruUiHubTaxonomy from "./catalogues/ru/ui.hub.taxonomy.json";
+import ruUiHubUpdates from "./catalogues/ru/ui.hub.updates.json";
 import ruUiInstaller from "./catalogues/ru/ui.installer.json";
+import ruUiLibraryErrors from "./catalogues/ru/ui.library.errors.json";
 import ruUiLibrary from "./catalogues/ru/ui.library.json";
+import ruUiMeshErrors from "./catalogues/ru/ui.mesh.errors.json";
 import ruUiMesh from "./catalogues/ru/ui.mesh.json";
+import ruUiMiniView from "./catalogues/ru/ui.miniView.json";
 import ruUiOnboarding from "./catalogues/ru/ui.onboarding.json";
 import ruUiProjects from "./catalogues/ru/ui.projects.json";
 import ruUiProviders from "./catalogues/ru/ui.providers.json";
+import ruUiSchedulesErrors from "./catalogues/ru/ui.schedules.errors.json";
 import ruUiSchedules from "./catalogues/ru/ui.schedules.json";
 import ruUiSettingsAccount from "./catalogues/ru/ui.settings.account.json";
 import ruUiSettingsAppearance from "./catalogues/ru/ui.settings.appearance.json";
@@ -364,10 +409,12 @@ import urUiAgentsRefusals from "./catalogues/ur/ui.agents.refusals.json";
 import urUiAgentsSettings from "./catalogues/ur/ui.agents.settings.json";
 import urUiAgentsStarters from "./catalogues/ur/ui.agents.starters.json";
 import urUiBrowserChrome from "./catalogues/ur/ui.browser.chrome.json";
+import urUiBrowserErrors from "./catalogues/ur/ui.browser.errors.json";
 import urUiBrowser from "./catalogues/ur/ui.browser.json";
 import urUiCanvas from "./catalogues/ur/ui.canvas.json";
 import urUiChatAsks from "./catalogues/ur/ui.chat.asks.json";
 import urUiChatAttachments from "./catalogues/ur/ui.chat.attachments.json";
+import urUiChatCanonical from "./catalogues/ur/ui.chat.canonical.json";
 import urUiChatComposer from "./catalogues/ur/ui.chat.composer.json";
 import urUiChatComposerMedia from "./catalogues/ur/ui.chat.composer_media.json";
 import urUiChatDialogs from "./catalogues/ur/ui.chat.dialogs.json";
@@ -387,17 +434,26 @@ import urUiCommonErrors from "./catalogues/ur/ui.common.errors.json";
 import urUiCommonForms from "./catalogues/ur/ui.common.forms.json";
 import urUiCommonLoading from "./catalogues/ur/ui.common.loading.json";
 import urUiCommonModels from "./catalogues/ur/ui.common.models.json";
+import urUiCommonSpeech from "./catalogues/ur/ui.common.speech.json";
+import urUiCommonTime from "./catalogues/ur/ui.common.time.json";
 import urUiCommonUpdates from "./catalogues/ur/ui.common.updates.json";
+import urUiCommonViewer from "./catalogues/ur/ui.common.viewer.json";
+import urUiConsoleErrors from "./catalogues/ur/ui.console.errors.json";
 import urUiConsole from "./catalogues/ur/ui.console.json";
 import urUiHubComments from "./catalogues/ur/ui.hub.comments.json";
 import urUiHub from "./catalogues/ur/ui.hub.json";
 import urUiHubTaxonomy from "./catalogues/ur/ui.hub.taxonomy.json";
+import urUiHubUpdates from "./catalogues/ur/ui.hub.updates.json";
 import urUiInstaller from "./catalogues/ur/ui.installer.json";
+import urUiLibraryErrors from "./catalogues/ur/ui.library.errors.json";
 import urUiLibrary from "./catalogues/ur/ui.library.json";
+import urUiMeshErrors from "./catalogues/ur/ui.mesh.errors.json";
 import urUiMesh from "./catalogues/ur/ui.mesh.json";
+import urUiMiniView from "./catalogues/ur/ui.miniView.json";
 import urUiOnboarding from "./catalogues/ur/ui.onboarding.json";
 import urUiProjects from "./catalogues/ur/ui.projects.json";
 import urUiProviders from "./catalogues/ur/ui.providers.json";
+import urUiSchedulesErrors from "./catalogues/ur/ui.schedules.errors.json";
 import urUiSchedules from "./catalogues/ur/ui.schedules.json";
 import urUiSettingsAccount from "./catalogues/ur/ui.settings.account.json";
 import urUiSettingsAppearance from "./catalogues/ur/ui.settings.appearance.json";
@@ -426,10 +482,12 @@ import viUiAgentsRefusals from "./catalogues/vi/ui.agents.refusals.json";
 import viUiAgentsSettings from "./catalogues/vi/ui.agents.settings.json";
 import viUiAgentsStarters from "./catalogues/vi/ui.agents.starters.json";
 import viUiBrowserChrome from "./catalogues/vi/ui.browser.chrome.json";
+import viUiBrowserErrors from "./catalogues/vi/ui.browser.errors.json";
 import viUiBrowser from "./catalogues/vi/ui.browser.json";
 import viUiCanvas from "./catalogues/vi/ui.canvas.json";
 import viUiChatAsks from "./catalogues/vi/ui.chat.asks.json";
 import viUiChatAttachments from "./catalogues/vi/ui.chat.attachments.json";
+import viUiChatCanonical from "./catalogues/vi/ui.chat.canonical.json";
 import viUiChatComposer from "./catalogues/vi/ui.chat.composer.json";
 import viUiChatComposerMedia from "./catalogues/vi/ui.chat.composer_media.json";
 import viUiChatDialogs from "./catalogues/vi/ui.chat.dialogs.json";
@@ -449,16 +507,25 @@ import viUiCommonErrors from "./catalogues/vi/ui.common.errors.json";
 import viUiCommonForms from "./catalogues/vi/ui.common.forms.json";
 import viUiCommonLoading from "./catalogues/vi/ui.common.loading.json";
 import viUiCommonModels from "./catalogues/vi/ui.common.models.json";
+import viUiCommonSpeech from "./catalogues/vi/ui.common.speech.json";
+import viUiCommonTime from "./catalogues/vi/ui.common.time.json";
 import viUiCommonUpdates from "./catalogues/vi/ui.common.updates.json";
+import viUiCommonViewer from "./catalogues/vi/ui.common.viewer.json";
+import viUiConsoleErrors from "./catalogues/vi/ui.console.errors.json";
 import viUiConsole from "./catalogues/vi/ui.console.json";
 import viUiHubComments from "./catalogues/vi/ui.hub.comments.json";
 import viUiHub from "./catalogues/vi/ui.hub.json";
 import viUiHubTaxonomy from "./catalogues/vi/ui.hub.taxonomy.json";
+import viUiHubUpdates from "./catalogues/vi/ui.hub.updates.json";
 import viUiInstaller from "./catalogues/vi/ui.installer.json";
+import viUiLibraryErrors from "./catalogues/vi/ui.library.errors.json";
 import viUiLibrary from "./catalogues/vi/ui.library.json";
+import viUiMeshErrors from "./catalogues/vi/ui.mesh.errors.json";
 import viUiMesh from "./catalogues/vi/ui.mesh.json";
+import viUiMiniView from "./catalogues/vi/ui.miniView.json";
 import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
 import viUiProjects from "./catalogues/vi/ui.projects.json";
+import viUiSchedulesErrors from "./catalogues/vi/ui.schedules.errors.json";
 import viUiSchedules from "./catalogues/vi/ui.schedules.json";
 import viUiSettingsAccount from "./catalogues/vi/ui.settings.account.json";
 import viUiSettingsAppearance from "./catalogues/vi/ui.settings.appearance.json";
@@ -487,10 +554,12 @@ import zhCNUiAgentsRefusals from "./catalogues/zh-CN/ui.agents.refusals.json";
 import zhCNUiAgentsSettings from "./catalogues/zh-CN/ui.agents.settings.json";
 import zhCNUiAgentsStarters from "./catalogues/zh-CN/ui.agents.starters.json";
 import zhCNUiBrowserChrome from "./catalogues/zh-CN/ui.browser.chrome.json";
+import zhCNUiBrowserErrors from "./catalogues/zh-CN/ui.browser.errors.json";
 import zhCNUiBrowser from "./catalogues/zh-CN/ui.browser.json";
 import zhCNUiCanvas from "./catalogues/zh-CN/ui.canvas.json";
 import zhCNUiChatAsks from "./catalogues/zh-CN/ui.chat.asks.json";
 import zhCNUiChatAttachments from "./catalogues/zh-CN/ui.chat.attachments.json";
+import zhCNUiChatCanonical from "./catalogues/zh-CN/ui.chat.canonical.json";
 import zhCNUiChatComposer from "./catalogues/zh-CN/ui.chat.composer.json";
 import zhCNUiChatComposerMedia from "./catalogues/zh-CN/ui.chat.composer_media.json";
 import zhCNUiChatDialogs from "./catalogues/zh-CN/ui.chat.dialogs.json";
@@ -511,18 +580,27 @@ import zhCNUiCommonErrors from "./catalogues/zh-CN/ui.common.errors.json";
 import zhCNUiCommonForms from "./catalogues/zh-CN/ui.common.forms.json";
 import zhCNUiCommonLoading from "./catalogues/zh-CN/ui.common.loading.json";
 import zhCNUiCommonModels from "./catalogues/zh-CN/ui.common.models.json";
+import zhCNUiCommonSpeech from "./catalogues/zh-CN/ui.common.speech.json";
+import zhCNUiCommonTime from "./catalogues/zh-CN/ui.common.time.json";
 import zhCNUiCommonUpdates from "./catalogues/zh-CN/ui.common.updates.json";
+import zhCNUiCommonViewer from "./catalogues/zh-CN/ui.common.viewer.json";
+import zhCNUiConsoleErrors from "./catalogues/zh-CN/ui.console.errors.json";
 import zhCNUiConsole from "./catalogues/zh-CN/ui.console.json";
 import zhCNUiHubComments from "./catalogues/zh-CN/ui.hub.comments.json";
 import zhCNUiHub from "./catalogues/zh-CN/ui.hub.json";
 import zhCNUiHubTaxonomy from "./catalogues/zh-CN/ui.hub.taxonomy.json";
+import zhCNUiHubUpdates from "./catalogues/zh-CN/ui.hub.updates.json";
 import zhCNUiInstaller from "./catalogues/zh-CN/ui.installer.json";
+import zhCNUiLibraryErrors from "./catalogues/zh-CN/ui.library.errors.json";
 import zhCNUiLibrary from "./catalogues/zh-CN/ui.library.json";
+import zhCNUiMeshErrors from "./catalogues/zh-CN/ui.mesh.errors.json";
 import zhCNUiMesh from "./catalogues/zh-CN/ui.mesh.json";
+import zhCNUiMiniView from "./catalogues/zh-CN/ui.miniView.json";
 import zhCNUiOnboarding from "./catalogues/zh-CN/ui.onboarding.json";
 import zhCNUiPresence from "./catalogues/zh-CN/ui.presence.json";
 import zhCNUiProjects from "./catalogues/zh-CN/ui.projects.json";
 import zhCNUiProviders from "./catalogues/zh-CN/ui.providers.json";
+import zhCNUiSchedulesErrors from "./catalogues/zh-CN/ui.schedules.errors.json";
 import zhCNUiSchedules from "./catalogues/zh-CN/ui.schedules.json";
 import zhCNUiSettingsAccount from "./catalogues/zh-CN/ui.settings.account.json";
 import zhCNUiSettingsAppearance from "./catalogues/zh-CN/ui.settings.appearance.json";
@@ -644,10 +722,12 @@ export const bundledCatalogues: Readonly<
 		...esUiAgentsSettings,
 		...esUiAgentsStarters,
 		...esUiBrowserChrome,
+		...esUiBrowserErrors,
 		...esUiBrowser,
 		...esUiCanvas,
 		...esUiChatAsks,
 		...esUiChatAttachments,
+		...esUiChatCanonical,
 		...esUiChatComposer,
 		...esUiChatComposerMedia,
 		...esUiChatDialogs,
@@ -668,18 +748,27 @@ export const bundledCatalogues: Readonly<
 		...esUiCommonForms,
 		...esUiCommonLoading,
 		...esUiCommonModels,
+		...esUiCommonSpeech,
+		...esUiCommonTime,
 		...esUiCommonUpdates,
+		...esUiCommonViewer,
+		...esUiConsoleErrors,
 		...esUiConsole,
 		...esUiHubComments,
 		...esUiHub,
 		...esUiHubTaxonomy,
+		...esUiHubUpdates,
 		...esUiInstaller,
+		...esUiLibraryErrors,
 		...esUiLibrary,
+		...esUiMeshErrors,
 		...esUiMesh,
+		...esUiMiniView,
 		...esUiOnboarding,
 		...esUiPresence,
 		...esUiProjects,
 		...esUiProviders,
+		...esUiSchedulesErrors,
 		...esUiSchedules,
 		...esUiSettingsAccount,
 		...esUiSettingsAppearance,
@@ -710,10 +799,12 @@ export const bundledCatalogues: Readonly<
 		...frUiAgentsSettings,
 		...frUiAgentsStarters,
 		...frUiBrowserChrome,
+		...frUiBrowserErrors,
 		...frUiBrowser,
 		...frUiCanvas,
 		...frUiChatAsks,
 		...frUiChatAttachments,
+		...frUiChatCanonical,
 		...frUiChatComposer,
 		...frUiChatComposerMedia,
 		...frUiChatDialogs,
@@ -734,18 +825,27 @@ export const bundledCatalogues: Readonly<
 		...frUiCommonForms,
 		...frUiCommonLoading,
 		...frUiCommonModels,
+		...frUiCommonSpeech,
+		...frUiCommonTime,
 		...frUiCommonUpdates,
+		...frUiCommonViewer,
+		...frUiConsoleErrors,
 		...frUiConsole,
 		...frUiHubComments,
 		...frUiHub,
 		...frUiHubTaxonomy,
+		...frUiHubUpdates,
 		...frUiInstaller,
+		...frUiLibraryErrors,
 		...frUiLibrary,
+		...frUiMeshErrors,
 		...frUiMesh,
+		...frUiMiniView,
 		...frUiOnboarding,
 		...frUiPresence,
 		...frUiProjects,
 		...frUiProviders,
+		...frUiSchedulesErrors,
 		...frUiSchedules,
 		...frUiSettingsAccount,
 		...frUiSettingsAppearance,
@@ -776,10 +876,12 @@ export const bundledCatalogues: Readonly<
 		...hiUiAgentsSettings,
 		...hiUiAgentsStarters,
 		...hiUiBrowserChrome,
+		...hiUiBrowserErrors,
 		...hiUiBrowser,
 		...hiUiCanvas,
 		...hiUiChatAsks,
 		...hiUiChatAttachments,
+		...hiUiChatCanonical,
 		...hiUiChatComposer,
 		...hiUiChatComposerMedia,
 		...hiUiChatDialogs,
@@ -791,6 +893,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatTags,
 		...hiUiCodeReview,
 		...hiUiCommandPalette,
+		...hiUiCommonAccount,
 		...hiUiCommonActions,
 		...hiUiCommonConnection,
 		...hiUiCommonEditing,
@@ -798,17 +901,26 @@ export const bundledCatalogues: Readonly<
 		...hiUiCommonForms,
 		...hiUiCommonLoading,
 		...hiUiCommonModels,
+		...hiUiCommonSpeech,
+		...hiUiCommonTime,
 		...hiUiCommonUpdates,
+		...hiUiCommonViewer,
+		...hiUiConsoleErrors,
 		...hiUiConsole,
 		...hiUiHubComments,
 		...hiUiHub,
 		...hiUiHubTaxonomy,
+		...hiUiHubUpdates,
 		...hiUiInstaller,
+		...hiUiLibraryErrors,
 		...hiUiLibrary,
+		...hiUiMeshErrors,
 		...hiUiMesh,
+		...hiUiMiniView,
 		...hiUiOnboarding,
 		...hiUiProjects,
 		...hiUiProviders,
+		...hiUiSchedulesErrors,
 		...hiUiSchedules,
 		...hiUiSettingsAccount,
 		...hiUiSettingsAppearance,
@@ -839,10 +951,12 @@ export const bundledCatalogues: Readonly<
 		...ruUiAgentsSettings,
 		...ruUiAgentsStarters,
 		...ruUiBrowserChrome,
+		...ruUiBrowserErrors,
 		...ruUiBrowser,
 		...ruUiCanvas,
 		...ruUiChatAsks,
 		...ruUiChatAttachments,
+		...ruUiChatCanonical,
 		...ruUiChatComposer,
 		...ruUiChatComposerMedia,
 		...ruUiChatDialogs,
@@ -862,17 +976,26 @@ export const bundledCatalogues: Readonly<
 		...ruUiCommonForms,
 		...ruUiCommonLoading,
 		...ruUiCommonModels,
+		...ruUiCommonSpeech,
+		...ruUiCommonTime,
 		...ruUiCommonUpdates,
+		...ruUiCommonViewer,
+		...ruUiConsoleErrors,
 		...ruUiConsole,
 		...ruUiHubComments,
 		...ruUiHub,
 		...ruUiHubTaxonomy,
+		...ruUiHubUpdates,
 		...ruUiInstaller,
+		...ruUiLibraryErrors,
 		...ruUiLibrary,
+		...ruUiMeshErrors,
 		...ruUiMesh,
+		...ruUiMiniView,
 		...ruUiOnboarding,
 		...ruUiProjects,
 		...ruUiProviders,
+		...ruUiSchedulesErrors,
 		...ruUiSchedules,
 		...ruUiSettingsAccount,
 		...ruUiSettingsAppearance,
@@ -903,10 +1026,12 @@ export const bundledCatalogues: Readonly<
 		...urUiAgentsSettings,
 		...urUiAgentsStarters,
 		...urUiBrowserChrome,
+		...urUiBrowserErrors,
 		...urUiBrowser,
 		...urUiCanvas,
 		...urUiChatAsks,
 		...urUiChatAttachments,
+		...urUiChatCanonical,
 		...urUiChatComposer,
 		...urUiChatComposerMedia,
 		...urUiChatDialogs,
@@ -926,17 +1051,26 @@ export const bundledCatalogues: Readonly<
 		...urUiCommonForms,
 		...urUiCommonLoading,
 		...urUiCommonModels,
+		...urUiCommonSpeech,
+		...urUiCommonTime,
 		...urUiCommonUpdates,
+		...urUiCommonViewer,
+		...urUiConsoleErrors,
 		...urUiConsole,
 		...urUiHubComments,
 		...urUiHub,
 		...urUiHubTaxonomy,
+		...urUiHubUpdates,
 		...urUiInstaller,
+		...urUiLibraryErrors,
 		...urUiLibrary,
+		...urUiMeshErrors,
 		...urUiMesh,
+		...urUiMiniView,
 		...urUiOnboarding,
 		...urUiProjects,
 		...urUiProviders,
+		...urUiSchedulesErrors,
 		...urUiSchedules,
 		...urUiSettingsAccount,
 		...urUiSettingsAppearance,
@@ -967,10 +1101,12 @@ export const bundledCatalogues: Readonly<
 		...viUiAgentsSettings,
 		...viUiAgentsStarters,
 		...viUiBrowserChrome,
+		...viUiBrowserErrors,
 		...viUiBrowser,
 		...viUiCanvas,
 		...viUiChatAsks,
 		...viUiChatAttachments,
+		...viUiChatCanonical,
 		...viUiChatComposer,
 		...viUiChatComposerMedia,
 		...viUiChatDialogs,
@@ -990,16 +1126,25 @@ export const bundledCatalogues: Readonly<
 		...viUiCommonForms,
 		...viUiCommonLoading,
 		...viUiCommonModels,
+		...viUiCommonSpeech,
+		...viUiCommonTime,
 		...viUiCommonUpdates,
+		...viUiCommonViewer,
+		...viUiConsoleErrors,
 		...viUiConsole,
 		...viUiHubComments,
 		...viUiHub,
 		...viUiHubTaxonomy,
+		...viUiHubUpdates,
 		...viUiInstaller,
+		...viUiLibraryErrors,
 		...viUiLibrary,
+		...viUiMeshErrors,
 		...viUiMesh,
+		...viUiMiniView,
 		...viUiOnboarding,
 		...viUiProjects,
+		...viUiSchedulesErrors,
 		...viUiSchedules,
 		...viUiSettingsAccount,
 		...viUiSettingsAppearance,
@@ -1030,10 +1175,12 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiAgentsSettings,
 		...zhCNUiAgentsStarters,
 		...zhCNUiBrowserChrome,
+		...zhCNUiBrowserErrors,
 		...zhCNUiBrowser,
 		...zhCNUiCanvas,
 		...zhCNUiChatAsks,
 		...zhCNUiChatAttachments,
+		...zhCNUiChatCanonical,
 		...zhCNUiChatComposer,
 		...zhCNUiChatComposerMedia,
 		...zhCNUiChatDialogs,
@@ -1054,18 +1201,27 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiCommonForms,
 		...zhCNUiCommonLoading,
 		...zhCNUiCommonModels,
+		...zhCNUiCommonSpeech,
+		...zhCNUiCommonTime,
 		...zhCNUiCommonUpdates,
+		...zhCNUiCommonViewer,
+		...zhCNUiConsoleErrors,
 		...zhCNUiConsole,
 		...zhCNUiHubComments,
 		...zhCNUiHub,
 		...zhCNUiHubTaxonomy,
+		...zhCNUiHubUpdates,
 		...zhCNUiInstaller,
+		...zhCNUiLibraryErrors,
 		...zhCNUiLibrary,
+		...zhCNUiMeshErrors,
 		...zhCNUiMesh,
+		...zhCNUiMiniView,
 		...zhCNUiOnboarding,
 		...zhCNUiPresence,
 		...zhCNUiProjects,
 		...zhCNUiProviders,
+		...zhCNUiSchedulesErrors,
 		...zhCNUiSchedules,
 		...zhCNUiSettingsAccount,
 		...zhCNUiSettingsAppearance,

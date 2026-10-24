@@ -34,5 +34,16 @@
 	"ui.chat.composer.secret_fill_gone": "No se puso en el campo secreto: esa solicitud ya no está en espera. Tu texto se conserva.",
 	"ui.chat.composer.secret_fill_refused": "El campo secreto no aceptó ese valor. Tu texto se conserva; el panel de consultas explica por qué.",
 	"ui.chat.composer.secret_fill_unavailable": "No se pudo acceder al campo secreto. Tu texto se conserva.",
-	"ui.chat.composer.secret_fill_multi": "Esta solicitud pide más de un secreto. Tu texto se conserva; elige el campo en el panel de consultas."
+	"ui.chat.composer.secret_fill_multi": "Esta solicitud pide más de un secreto. Tu texto se conserva; elige el campo en el panel de consultas.",
+	"ui.chat.composer.placeholder.unavailable": "Esta conversación ya no existe",
+	"ui.chat.composer.placeholder.busy": "Agente ocupado",
+	"ui.chat.composer.placeholder.answer": "Escribe tu propia respuesta…",
+	"ui.chat.composer.placeholder.secret_answer": "Responde a la solicitud de secreto en el panel de consultas",
+	"ui.chat.composer.placeholder.aside": "Pregunta al margen — Esc cierra la consulta",
+	"ui.chat.composer.placeholder.sending": "Enviando tu mensaje",
+	"ui.chat.composer.placeholder.stopping": "Deteniendo el turno",
+	"ui.chat.composer.placeholder.recording": "Grabando",
+	"ui.chat.composer.placeholder.waiting": "Dirige al agente. Intro envía ahora · Esc detiene",
+	"ui.chat.composer.placeholder.no_provider": "Conecta un proveedor para empezar a chatear",
+	"ui.chat.composer.placeholder.idle": "Pregunta lo que quieras. @ añade archivos, / ejecuta comandos"
 }

@@ -37,5 +37,11 @@
 	"ui.settings.profile.account_read_failed_retry": "Votre compte Radient n’a pas pu être lu ; le nom et l’adresse e-mail ci-dessous sont donc des valeurs par défaut, et non les informations de votre compte. Réessayez.",
 	"ui.settings.profile.account_read_failed_refused": "Votre compte Radient n’a pas pu être lu ; le nom et l’adresse e-mail ci-dessous sont donc des valeurs par défaut, et non les informations de votre compte. Réessayez, ou reconnectez-vous à Radient.",
 	"ui.settings.profile.retry": "Réessayer",
-	"ui.settings.profile.retrying": "Nouvel essai"
+	"ui.settings.profile.retrying": "Nouvel essai",
+	"ui.settings.section.delegated_enabled.gate_label": "suppression automatique",
+	"ui.settings.section.delegated_enabled.help": "Réservé aux exécutions de sous-agents, shells d’agents et tâches en arrière-plan.",
+	"ui.settings.section.delegated_enabled.label": "Supprimer automatiquement les sessions déléguées",
+	"ui.settings.section.delegated_max_age.help": "Durée de conservation : temps pendant lequel une session déléguée (un sous-agent ou une exécution en arrière-plan) peut rester inactive avant d’être supprimée.",
+	"ui.settings.section.delegated_max_age.label": "Supprimer après",
+	"ui.settings.section.session_delegated.title": "Travail délégué : sous-agents et sessions en arrière-plan"
 }

@@ -1,0 +1,5 @@
+{
+	"ui.library.errors.preview_load": "No se pudo cargar esta vista previa.",
+	"ui.library.errors.asset_read": "No se pudo leer el contenido del recurso.",
+	"ui.library.errors.empty_bytes": "Los bytes estaban vacíos."
+}

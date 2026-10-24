@@ -34,5 +34,16 @@
 	"ui.chat.composer.secret_fill_gone": "Non placé dans le champ secret : cette demande n’est plus en attente. Votre texte est conservé.",
 	"ui.chat.composer.secret_fill_refused": "Le champ secret n’a pas accepté cette valeur. Votre texte est conservé — le panneau des demandes en indique la raison.",
 	"ui.chat.composer.secret_fill_unavailable": "Impossible d’atteindre le champ secret. Votre texte est conservé.",
-	"ui.chat.composer.secret_fill_multi": "Cette demande exige plusieurs secrets. Votre texte est conservé — choisissez le champ dans le panneau des demandes."
+	"ui.chat.composer.secret_fill_multi": "Cette demande exige plusieurs secrets. Votre texte est conservé — choisissez le champ dans le panneau des demandes.",
+	"ui.chat.composer.placeholder.unavailable": "Cette conversation n’existe plus",
+	"ui.chat.composer.placeholder.busy": "Agent occupé",
+	"ui.chat.composer.placeholder.answer": "Saisissez votre propre réponse…",
+	"ui.chat.composer.placeholder.secret_answer": "Répondez à la demande de secret dans le panneau des demandes",
+	"ui.chat.composer.placeholder.aside": "Posez votre question en aparté — Esc ferme l’aparté",
+	"ui.chat.composer.placeholder.sending": "Envoi de votre message",
+	"ui.chat.composer.placeholder.stopping": "Arrêt du tour",
+	"ui.chat.composer.placeholder.recording": "Enregistrement",
+	"ui.chat.composer.placeholder.waiting": "Orientez l’agent. Entrée envoie · Esc arrête",
+	"ui.chat.composer.placeholder.no_provider": "Connectez un fournisseur pour commencer à discuter",
+	"ui.chat.composer.placeholder.idle": "Posez votre question. @ ajoute des fichiers, / exécute des commandes"
 }

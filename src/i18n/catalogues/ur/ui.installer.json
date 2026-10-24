@@ -16,5 +16,9 @@
 	"ui.installer.phase.label.python": "تیاری ہو رہی ہے",
 	"ui.installer.phase.label.verify": "شروع کیا جا رہا ہے",
 	"ui.installer.status.elapsed": "{step} · {elapsed} گزر گیا · {eta}",
-	"ui.installer.status.step": "مرحلہ {step} / {total}"
+	"ui.installer.status.step": "مرحلہ {step} / {total}",
+	"ui.installer.phase.state.finished": " - مکمل",
+	"ui.installer.phase.state.active": " - جاری ہے",
+	"ui.installer.phase.state.failed": " - ناکام",
+	"ui.installer.phase.state.waiting": " - منتظر"
 }

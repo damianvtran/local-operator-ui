@@ -422,5 +422,8 @@
 	"ui.projects.request_update.value1_could_not_be_reached": " {value1} تک رسائی نہیں ہو سکی۔",
 	"ui.projects.timeline.read_failed": "{count, plural, one {{count, number, ::group-off} پروجیکٹ} other {{count, number, ::group-off} پروجیکٹ}} کے سنگ میل پڑھے نہیں جا سکے۔",
 	"ui.projects.use_request_update.could_not_request_updates_endedsentence_message": "اپ ڈیٹس طلب نہیں کی جا سکیں؛ {endedSentence_message}",
-	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "درخواست کی تصدیق نہیں ہو سکی۔"
+	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "درخواست کی تصدیق نہیں ہو سکی۔",
+	"ui.projects.project_model.milestone_summary": "{total, number, ::group-off} میں سے {completed, number, ::group-off} مکمل",
+	"ui.projects.project_model.todos_summary": "{total, number, ::group-off} میں سے {open, number, ::group-off} باقی",
+	"ui.projects.project_model.done_gate_tail": "نامکمل سنگ میل مکمل کریں یا ہٹائیں، پھر اسے مکمل قرار دیں"
 }

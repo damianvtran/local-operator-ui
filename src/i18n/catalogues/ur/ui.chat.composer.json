@@ -34,5 +34,16 @@
 	"ui.chat.composer.secret_fill_gone": "راز کے خانے میں نہیں ڈالا گیا؛ وہ درخواست اب منتظر نہیں ہے۔ آپ کا متن محفوظ ہے۔",
 	"ui.chat.composer.secret_fill_refused": "راز کے خانے نے یہ قدر قبول نہیں کی۔ آپ کا متن محفوظ ہے — سوالات کے پینل میں وجہ دیکھیں۔",
 	"ui.chat.composer.secret_fill_unavailable": "راز کے خانے تک رسائی نہیں ہو سکی۔ آپ کا متن محفوظ ہے۔",
-	"ui.chat.composer.secret_fill_multi": "اس درخواست میں ایک سے زیادہ راز درکار ہیں۔ آپ کا متن محفوظ ہے — سوالات کے پینل میں خانہ منتخب کریں۔"
+	"ui.chat.composer.secret_fill_multi": "اس درخواست میں ایک سے زیادہ راز درکار ہیں۔ آپ کا متن محفوظ ہے — سوالات کے پینل میں خانہ منتخب کریں۔",
+	"ui.chat.composer.placeholder.unavailable": "یہ گفتگو اب موجود نہیں",
+	"ui.chat.composer.placeholder.busy": "ایجنٹ مصروف ہے",
+	"ui.chat.composer.placeholder.answer": "اپنا جواب لکھیں…",
+	"ui.chat.composer.placeholder.secret_answer": "سوالات کے پینل میں راز کی درخواست کا جواب دیں",
+	"ui.chat.composer.placeholder.aside": "ریکارڈ سے باہر پوچھیں — Esc ضمنی گفتگو بند کرتا ہے",
+	"ui.chat.composer.placeholder.sending": "پیغام بھیجا جا رہا ہے",
+	"ui.chat.composer.placeholder.stopping": "باری روکی جا رہی ہے",
+	"ui.chat.composer.placeholder.recording": "ریکارڈنگ",
+	"ui.chat.composer.placeholder.waiting": "ایجنٹ کو ہدایت دیں۔ Enter ابھی بھیجتا ہے · Esc روکتا ہے",
+	"ui.chat.composer.placeholder.no_provider": "چیٹ شروع کرنے کے لیے فراہم کنندہ منسلک کریں",
+	"ui.chat.composer.placeholder.idle": "کچھ بھی پوچھیں۔ @ فائلیں شامل کرتا ہے، / کمانڈز چلاتا ہے"
 }

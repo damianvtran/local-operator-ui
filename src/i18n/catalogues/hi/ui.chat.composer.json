@@ -34,5 +34,16 @@
 	"ui.chat.composer.secret_fill_gone": "गोपनीय फ़ील्ड में नहीं डाला गया: वह अनुरोध अब जवाब का इंतज़ार नहीं कर रहा। आपका टेक्स्ट रखा गया है।",
 	"ui.chat.composer.secret_fill_refused": "गोपनीय फ़ील्ड ने वह मान स्वीकार नहीं किया। आपका टेक्स्ट रखा गया है — वजह सवालों के पैनल में दी गई है।",
 	"ui.chat.composer.secret_fill_unavailable": "गोपनीय फ़ील्ड तक नहीं पहुँचा जा सका। आपका टेक्स्ट रखा गया है।",
-	"ui.chat.composer.secret_fill_multi": "इस अनुरोध में एक से ज़्यादा गोपनीय जानकारियाँ माँगी गई हैं। आपका टेक्स्ट रखा गया है — सवालों के पैनल में फ़ील्ड चुनें।"
+	"ui.chat.composer.secret_fill_multi": "इस अनुरोध में एक से ज़्यादा गोपनीय जानकारियाँ माँगी गई हैं। आपका टेक्स्ट रखा गया है — सवालों के पैनल में फ़ील्ड चुनें।",
+	"ui.chat.composer.placeholder.unavailable": "यह बातचीत अब मौजूद नहीं है",
+	"ui.chat.composer.placeholder.busy": "एजेंट व्यस्त है",
+	"ui.chat.composer.placeholder.answer": "अपना जवाब टाइप करें…",
+	"ui.chat.composer.placeholder.secret_answer": "सवालों के पैनल में गोपनीय अनुरोध का जवाब दें",
+	"ui.chat.composer.placeholder.aside": "रिकॉर्ड से बाहर पूछें — Esc अलग बातचीत बंद करता है",
+	"ui.chat.composer.placeholder.sending": "आपका संदेश भेजा जा रहा है",
+	"ui.chat.composer.placeholder.stopping": "टर्न रोका जा रहा है",
+	"ui.chat.composer.placeholder.recording": "रिकॉर्डिंग जारी है",
+	"ui.chat.composer.placeholder.waiting": "एजेंट को निर्देश दें। Enter अभी भेजता है · Esc रोकता है",
+	"ui.chat.composer.placeholder.no_provider": "चैट शुरू करने के लिए प्रोवाइडर कनेक्ट करें",
+	"ui.chat.composer.placeholder.idle": "कुछ भी पूछें। @ फ़ाइलें जोड़ता है, / कमांड चलाता है"
 }

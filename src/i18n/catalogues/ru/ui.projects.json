@@ -422,5 +422,8 @@
 	"ui.projects.request_update.value1_could_not_be_reached": " Не удалось связаться с {value1}.",
 	"ui.projects.timeline.read_failed": "Не удалось прочитать этапы для {count, plural, one {{count, number, ::group-off} проекта} few {{count, number, ::group-off} проектов} many {{count, number, ::group-off} проектов} other {{count, number, ::group-off} проекта}}.",
 	"ui.projects.use_request_update.could_not_request_updates_endedsentence_message": "Не удалось запросить обновления: {endedSentence_message}",
-	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "Не удалось подтвердить запрос."
+	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "Не удалось подтвердить запрос.",
+	"ui.projects.project_model.milestone_summary": "Завершено: {completed, number, ::group-off} из {total, number, ::group-off}",
+	"ui.projects.project_model.todos_summary": "Открыто: {open, number, ::group-off} из {total, number, ::group-off}",
+	"ui.projects.project_model.done_gate_tail": "завершите или удалите незавершённые этапы, затем отметьте проект готовым"
 }
