@@ -41,5 +41,6 @@
 	"ui.chat.sidebar.search.too_long": "Từ khóa tìm kiếm không được dài quá {max, number, ::group-off} ký tự. Từ khóa này dài hơn nên chỉ tìm theo tên cuộc trò chuyện.",
 	"ui.chat.sidebar.search.unavailable": "Không thể tìm trong nội dung cuộc trò chuyện, nên chỉ có kết quả khớp theo tên.",
 	"ui.chat.sidebar.teams.create": "Tạo nhóm",
-	"ui.chat.sidebar.teams.loading": "Đang tải nhóm…"
+	"ui.chat.sidebar.teams.loading": "Đang tải nhóm…",
+	"ui.chat.sidebar.section.current_chat": "Cuộc trò chuyện hiện tại"
 }
