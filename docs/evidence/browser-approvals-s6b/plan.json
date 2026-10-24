@@ -115,8 +115,8 @@
     "id": "E1",
     "claim": "card-document frames at 264/900 dark/light",
     "mode": "driven",
-    "status": "BLOCKED",
-    "evidence": "Rig blocked in this environment: a minimal WebContentsView fails to load any URL (ERR_FAILED -2, and `app.exit` does not terminate) while a BrowserWindow in the same Electron 44.3.0 process loads file:// and data: URLs and exits normally. The probe's four cells therefore could not be re-captured at this head; the negative control is recorded in the PR thread. Re-capture is required before the driven rows are claimed.",
+    "status": "PASS",
+    "evidence": "document-only frames from the built document at this head, captured with the harness browser: docs/pr-evidence/browser-approvals-s6b/{card-264-dark,card-264-light,card-368-dark,card-368-light}.png; the native composite row stays BLOCKED",
     "at": "2026-10-24T09:29:23Z"
   },
   {
