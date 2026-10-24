@@ -265,7 +265,9 @@ import hiUiChatCanonical from "./catalogues/hi/ui.chat.canonical.json";
 import hiUiChatCommentaryActions from "./catalogues/hi/ui.chat.commentary_actions.json";
 import hiUiChatComposer from "./catalogues/hi/ui.chat.composer.json";
 import hiUiChatComposerMedia from "./catalogues/hi/ui.chat.composer_media.json";
+import hiUiChatDevice from "./catalogues/hi/ui.chat.device.json";
 import hiUiChatDialogs from "./catalogues/hi/ui.chat.dialogs.json";
+import hiUiChatDirectory from "./catalogues/hi/ui.chat.directory.json";
 import hiUiChatHeader from "./catalogues/hi/ui.chat.header.json";
 import hiUiChat from "./catalogues/hi/ui.chat.json";
 import hiUiChatLiveUpdates from "./catalogues/hi/ui.chat.live_updates.json";
@@ -870,7 +872,9 @@ export const bundledCatalogues: Readonly<
 		...hiUiChatCommentaryActions,
 		...hiUiChatComposer,
 		...hiUiChatComposerMedia,
+		...hiUiChatDevice,
 		...hiUiChatDialogs,
+		...hiUiChatDirectory,
 		...hiUiChatHeader,
 		...hiUiChat,
 		...hiUiChatLiveUpdates,
