@@ -89,7 +89,6 @@
 	"ui.chat.pickers.destination_pickers.switching_the_effort": "Switching the effort…",
 	"ui.chat.pickers.destination_pickers.resolving_the_effortd0fa08": "Resolving the effort",
 	"ui.chat.pickers.destination_pickers.switching_the_effort87b64b": "Switching the effort",
-	"ui.chat.pickers.destination_pickers.localoperator": "localOperator",
 	"ui.chat.pickers.destination_pickers.ports": "Ports",
 	"ui.chat.pickers.destination_pickers.theme": "Theme: {name}",
 	"ui.chat.pickers.destination_pickers.no_desktop_theme_named": "No desktop theme named \"{wanted}\".",

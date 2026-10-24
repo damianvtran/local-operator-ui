@@ -980,9 +980,8 @@ export function mcpSummary(frontend: InfoFrontend | null): McpSummary {
  * which is not mounted there. What is true in both is that THIS presentation read
  * nothing, and that is the claim the note makes.
  */
-export const MCP_NOT_READ_NOTE = t(
-	"ui.chat.pickers.info_model.not_read_in_this_view",
-);
+export const MCP_NOT_READ_NOTE = (): string =>
+	t("ui.chat.pickers.info_model.not_read_in_this_view");
 
 /** Section 6's rows: everything except the terminal-only half. */
 export function environmentRows(
@@ -1018,7 +1017,7 @@ export function environmentRows(
 			 * files a bug about a server that came up a second later.
 			 */
 			note: !mcp.measured
-				? MCP_NOT_READ_NOTE
+				? MCP_NOT_READ_NOTE()
 				: mcp.settling
 					? t("ui.chat.pickers.info_model.still_connecting_deferred_servers")
 					: undefined,

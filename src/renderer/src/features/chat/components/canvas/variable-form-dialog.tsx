@@ -31,7 +31,7 @@ import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Info, Save, SquareX } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { isWritableVariableKey } from "../../../../../../shared/desktop-contract";
 
 /**
@@ -241,7 +241,7 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 				}
 			>
 				{isSubmitting
-					? "Saving…"
+					? t("ui.canvas.variable_form_dialog.saving")
 					: isEditMode
 						? t("ui.canvas.variable_form_dialog.save")
 						: t("ui.canvas.variable_form_dialog.create")}
@@ -249,7 +249,7 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 		</>
 	);
 
-	const valueFieldLabel = useMemo(() => {
+	const valueFieldLabel = (() => {
 		switch (formData.type) {
 			case "dict":
 				return t("ui.canvas.variable_form_dialog.value_json_object");
@@ -260,7 +260,7 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 			default:
 				return t("ui.canvas.variable_form_dialog.value");
 		}
-	}, [formData.type]);
+	})();
 
 	const isJsonValue = formData.type === "dict" || formData.type === "list";
 

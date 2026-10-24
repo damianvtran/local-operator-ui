@@ -197,9 +197,10 @@ export const CACHE_HIT_LABEL = () =>
  * captured frame — so neither the denominator nor the difference between `0%`
  * and `—` was ever stated anywhere a reader could find it.
  */
-export const CACHE_HIT_MEANING = t(
-	"ui.chat.pickers.analytics_model.cache_reads_as_a_share_of_read_context_tokens_means_no_call_reported_a_c",
-);
+export const CACHE_HIT_MEANING = (): string =>
+	t(
+		"ui.chat.pickers.analytics_model.cache_reads_as_a_share_of_read_context_tokens_means_no_call_reported_a_c",
+	);
 
 /**
  * `cache_read_tokens / context_tokens`, or `null` when there is no denominator.

@@ -1529,5 +1529,15 @@
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve technical tokens.",
 		"note": "Complete message for the wysiwyg markdown editor surface."
+	},
+	"ui.canvas.create_file_dialog.creating": {
+		"role": "button label",
+		"tone": "Plain, concise product language; preserve raw identifiers.",
+		"note": "Shown while the new canvas file is being created; preserve the three ASCII periods."
+	},
+	"ui.canvas.variable_form_dialog.saving": {
+		"role": "button label",
+		"tone": "Plain, concise product language; preserve raw identifiers.",
+		"note": "Shown while a canvas variable create/update is in flight."
 	}
 }

@@ -200,7 +200,7 @@ const Legend = ({ text }: { text: string }) => (
 	<p className={cn("pt-1 text-balance text-ink-dim text-meta")}>{text}</p>
 );
 
-const CacheHitLegend = () => <Legend text={CACHE_HIT_MEANING} />;
+const CacheHitLegend = () => <Legend text={CACHE_HIT_MEANING()} />;
 
 /**
  * The rate column's footnote, or nothing.
@@ -287,7 +287,7 @@ const ProviderTable: FC<{ data: AnalyticsData; metric: AnalyticsMetric }> = ({
 			<DataTable<(typeof rows)[number]>
 				label={t(
 					"ui.chat.pickers.analytics_panel.usage_by_provider_in_this_window",
-					{ cache_hit_meaning: CACHE_HIT_MEANING },
+					{ cache_hit_meaning: CACHE_HIT_MEANING() },
 				)}
 				columns={columns}
 				rows={rows}
@@ -642,7 +642,7 @@ const SessionTable: FC<{
 					<DataTable<(typeof pageRows)[number]>
 						label={t(
 							"ui.chat.pickers.analytics_panel.usage_by_session_in_this_window",
-							{ cache_hit_meaning: CACHE_HIT_MEANING },
+							{ cache_hit_meaning: CACHE_HIT_MEANING() },
 						)}
 						columns={columns}
 						rows={pageRows}

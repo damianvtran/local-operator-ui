@@ -300,18 +300,20 @@ const LimitRowView: FC<{ row: LimitRow; degraded: boolean }> = ({
 };
 
 /** One provider: heading, the window that binds, any note, then every window. */
-const ProviderBlockView: FC<{ block: ProviderBlock }> = ({ block }) => (
-	<section className="rounded-md border border-hairline bg-surface px-3 py-2.5">
-		<div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-			<h3 className="font-medium text-body-sm text-ink">
-				{block.report.provider}
-			</h3>
-			{block.report.identity && (
-				<span className="truncate text-ink-muted text-meta">
-					{block.report.identity}
-				</span>
-			)}
-			{/* The binding window is stated on the block's FIRST row because "can I
+export const ProviderBlockView: FC<{ block: ProviderBlock }> = ({ block }) => {
+	useI18nLocale();
+	return (
+		<section className="rounded-md border border-hairline bg-surface px-3 py-2.5">
+			<div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+				<h3 className="font-medium text-body-sm text-ink">
+					{block.report.provider}
+				</h3>
+				{block.report.identity && (
+					<span className="truncate text-ink-muted text-meta">
+						{block.report.identity}
+					</span>
+				)}
+				{/* The binding window is stated on the block's FIRST row because "can I
 			    keep working" is the question the view is opened to answer; leaving
 			    it to be found among equals is what the TUI's header fixed.
 
@@ -322,85 +324,85 @@ const ProviderBlockView: FC<{ block: ProviderBlock }> = ({ block }) => (
 			    entirely — so reading down the first line of each block, the number
 			    jumped horizontally and once changed which column it was in. That
 			    undercuts the one-table scan the layout is built for. */}
-			{block.binding && (
-				<span className={cn("ml-auto flex items-baseline gap-x-2")}>
-					<span
-						className={cn(
-							AMOUNT_COLUMN,
-							"truncate text-right text-meta",
-							TINT_CLASS[statusTone(block.binding.status)],
-						)}
-					>
-						{block.binding.label}{" "}
-						<span className={cn("font-mono text-mono-sm tabular-nums")}>
-							{block.binding.percent}
+				{block.binding && (
+					<span className={cn("ml-auto flex items-baseline gap-x-2")}>
+						<span
+							className={cn(
+								AMOUNT_COLUMN,
+								"truncate text-right text-meta",
+								TINT_CLASS[statusTone(block.binding.status)],
+							)}
+						>
+							{block.binding.label}{" "}
+							<span className={cn("font-mono text-mono-sm tabular-nums")}>
+								{block.binding.percent}
+							</span>
+						</span>
+						<span
+							className={cn(
+								COUNTDOWN_COLUMN,
+								"truncate text-right text-ink-dim text-meta",
+							)}
+						>
+							{block.binding.countdown ? (
+								<>
+									{t("ui.chat.pickers.usage_view.resets_in")}{" "}
+									<span className={cn("font-mono text-mono-sm tabular-nums")}>
+										{block.binding.countdown}
+									</span>
+								</>
+							) : (
+								""
+							)}
 						</span>
 					</span>
-					<span
-						className={cn(
-							COUNTDOWN_COLUMN,
-							"truncate text-right text-ink-dim text-meta",
-						)}
-					>
-						{block.binding.countdown ? (
-							<>
-								{t("ui.chat.pickers.usage_view.resets_in")}{" "}
-								<span className={cn("font-mono text-mono-sm tabular-nums")}>
-									{block.binding.countdown}
-								</span>
-							</>
-						) : (
-							""
-						)}
-					</span>
-				</span>
-			)}
-			{/* With no meters at all there is no binding window to protect, so the
+				)}
+				{/* With no meters at all there is no binding window to protect, so the
 			    heading may carry the probe failure itself. */}
-			{!block.binding &&
-				block.report.state === "unavailable" &&
-				!hasMuseAllowanceNote(block.report) && (
-					<span className={cn("ml-auto text-ink-dim text-meta")}>
-						{t("ui.chat.pickers.usage_view.usage_unavailable")}
-					</span>
-				)}
-		</div>
-		{block.note && (
-			<p
-				className={cn(
-					"pt-1 text-meta",
-					// A dead grant names a remedy the user can act on, so it is the one
-					// note that earns the danger role; staleness is a fact, not a fault.
-					block.report.state === "reauth_required"
-						? "text-danger"
-						: "text-ink-dim",
-				)}
-			>
-				{block.note}
-			</p>
-		)}
-		{block.rows.length > 0 ? (
-			<ul className={cn("pt-1.5")}>
-				{block.rows.map((row) => {
-					useI18nLocale();
-					return (
+				{!block.binding &&
+					block.report.state === "unavailable" &&
+					!hasMuseAllowanceNote(block.report) && (
+						<span className={cn("ml-auto text-ink-dim text-meta")}>
+							{t("ui.chat.pickers.usage_view.usage_unavailable")}
+						</span>
+					)}
+			</div>
+			{block.note && (
+				<p
+					className={cn(
+						"pt-1 text-meta",
+						// A dead grant names a remedy the user can act on, so it is the one
+						// note that earns the danger role; staleness is a fact, not a fault.
+						block.report.state === "reauth_required"
+							? "text-danger"
+							: "text-ink-dim",
+					)}
+				>
+					{block.note}
+				</p>
+			)}
+			{block.rows.length > 0 ? (
+				<ul className={cn("pt-1.5")}>
+					{block.rows.map((row) => (
 						<LimitRowView
 							key={row.limit.id}
 							row={row}
 							degraded={block.degraded}
 						/>
-					);
-				})}
-			</ul>
-		) : (
-			/* A block holding only its heading reads as a rendering defect rather
+					))}
+				</ul>
+			) : (
+				/* A block holding only its heading reads as a rendering defect rather
 			   than as an answer, which is why the TUI prints the same line. */
-			block.emptyNote && (
-				<p className={cn("pt-1.5 text-ink-dim text-meta")}>{block.emptyNote}</p>
-			)
-		)}
-	</section>
-);
+				block.emptyNote && (
+					<p className={cn("pt-1.5 text-ink-dim text-meta")}>
+						{block.emptyNote}
+					</p>
+				)
+			)}
+		</section>
+	);
+};
 
 export type UsageReportsProps = {
 	reports: UsageReport[];

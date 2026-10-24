@@ -3297,9 +3297,7 @@ export const UpdateNotification = ({
 									<a
 										href={getReleaseUrl(updateInfo)}
 										target="_blank"
-										rel={t(
-											"ui.common.updates.update_notification.noopener_noreferrer",
-										)}
+										rel="noopener noreferrer"
 										className="ml-2"
 									>
 										{t(
@@ -3312,9 +3310,7 @@ export const UpdateNotification = ({
 							<a
 								href={getReleaseUrl(updateInfo)}
 								target="_blank"
-								rel={t(
-									"ui.common.updates.update_notification.noopener_noreferrer",
-								)}
+								rel="noopener noreferrer"
 							>
 								{t(
 									"ui.common.updates.update_notification.see_release_notes_on_github",
@@ -3826,9 +3822,7 @@ export const UpdateNotification = ({
 						<a
 							href={offerNotes.url}
 							target="_blank"
-							rel={t(
-								"ui.common.updates.update_notification.noopener_noreferrer",
-							)}
+							rel="noopener noreferrer"
 							className="whitespace-nowrap"
 						>
 							{t(

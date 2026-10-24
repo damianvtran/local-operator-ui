@@ -1676,6 +1676,7 @@ export type MessageParams = {
 	"ui.canvas.create_file_dialog.configuration": undefined;
 	"ui.canvas.create_file_dialog.create_file": undefined;
 	"ui.canvas.create_file_dialog.create_new_file": undefined;
+	"ui.canvas.create_file_dialog.creating": undefined;
 	"ui.canvas.create_file_dialog.css_css": undefined;
 	"ui.canvas.create_file_dialog.dockerfile": undefined;
 	"ui.canvas.create_file_dialog.enter_file_name_e_g_my_new_script": undefined;
@@ -1943,6 +1944,7 @@ export type MessageParams = {
 	"ui.canvas.variable_form_dialog.name_key": undefined;
 	"ui.canvas.variable_form_dialog.new_variable": undefined;
 	"ui.canvas.variable_form_dialog.save": undefined;
+	"ui.canvas.variable_form_dialog.saving": undefined;
 	"ui.canvas.variable_form_dialog.the_unique_identifier_for_the_variable_e_g_api_key_user_preference_canno": undefined;
 	"ui.canvas.variable_form_dialog.the_variable_could_not_be_saved_try_again": undefined;
 	"ui.canvas.variable_form_dialog.this_name_cannot_be_sent_use_up_to_128_characters_without_control_charac": undefined;
@@ -2493,7 +2495,6 @@ export type MessageParams = {
 	"ui.chat.pickers.destination_pickers.judge": undefined;
 	"ui.chat.pickers.destination_pickers.k": { value: number };
 	"ui.chat.pickers.destination_pickers.lines": { length: number };
-	"ui.chat.pickers.destination_pickers.localoperator": undefined;
 	"ui.chat.pickers.destination_pickers.loop_mode": undefined;
 	"ui.chat.pickers.destination_pickers.masked_cleared_after_storing": undefined;
 	"ui.chat.pickers.destination_pickers.message": undefined;
@@ -3561,6 +3562,7 @@ export type MessageParams = {
 	"ui.common.forms.autocomplete_field.save_changes": undefined;
 	"ui.common.forms.autocomplete_field.saving": { label: string };
 	"ui.common.forms.categories_input_chips.add_category": undefined;
+	"ui.common.forms.categories_input_chips.category": { category: string };
 	"ui.common.forms.categories_input_chips.no_categories_selected": undefined;
 	"ui.common.forms.categories_input_chips.remove_category": { value: string };
 	"ui.common.forms.compact_pagination.next_page": undefined;
@@ -3706,7 +3708,6 @@ export type MessageParams = {
 	"ui.common.updates.update_notification.installing_closes_the_app_while_the_update_is_verified_and_put_in": undefined;
 	"ui.common.updates.update_notification.is_available_you_are_currently_using_version": undefined;
 	"ui.common.updates.update_notification.keep_using_local_operator_cancels_the_install": undefined;
-	"ui.common.updates.update_notification.noopener_noreferrer": undefined;
 	"ui.common.updates.update_notification.not_enough_disk_space_to_update": undefined;
 	"ui.common.updates.update_notification.nothing_is_serving_this_conversation_until_that_server_is_running": undefined;
 	"ui.common.updates.update_notification.of": undefined;

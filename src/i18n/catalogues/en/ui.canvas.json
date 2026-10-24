@@ -343,5 +343,7 @@
 	"ui.canvas.code_editor_diff.remove": "- Remove:",
 	"ui.canvas.code_editor_diff.add": "+ Add:",
 	"ui.canvas.wysiwyg_markdown_editor.remove": "- Remove",
-	"ui.canvas.wysiwyg_markdown_editor.add": "+ Add"
+	"ui.canvas.wysiwyg_markdown_editor.add": "+ Add",
+	"ui.canvas.create_file_dialog.creating": "Creating...",
+	"ui.canvas.variable_form_dialog.saving": "Saving…"
 }

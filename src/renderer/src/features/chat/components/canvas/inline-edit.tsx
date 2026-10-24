@@ -271,12 +271,10 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		return "Ctrl+Shift+S";
 	}, [platform]);
 
-	const acceptAllTooltipText = useMemo(() => {
-		if (platform === "darwin") {
-			return t("ui.canvas.inline_edit.apply_all_enter");
-		}
-		return t("ui.canvas.inline_edit.apply_all_ctrl_enter");
-	}, [platform]);
+	const acceptAllTooltipText =
+		platform === "darwin"
+			? t("ui.canvas.inline_edit.apply_all_enter")
+			: t("ui.canvas.inline_edit.apply_all_ctrl_enter");
 
 	const acceptAllShortcut = useMemo(() => {
 		if (platform === "darwin") {

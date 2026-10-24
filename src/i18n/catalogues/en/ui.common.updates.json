@@ -128,7 +128,6 @@
 	"ui.common.updates.wait.seconds": "Waiting {seconds, plural, one {{seconds, number, ::group-off} second} other {{seconds, number, ::group-off} seconds}} so far",
 	"ui.common.updates.check_for_updates_button.at_an_unknown_time": "at an unknown time",
 	"ui.common.updates.update_notification.the_new_build": "the new build",
-	"ui.common.updates.update_notification.noopener_noreferrer": "noopener noreferrer",
 	"ui.common.updates.update_quiet_indicator.open_release_details": "{quietoffertext}. Open release details.",
 	"ui.common.updates.update_foot_icon.in_progress": "{subject} in progress{percent}.",
 	"ui.common.updates.update_foot_icon.available_show_the_update_notice": "{joined} available. Show the update notice.",

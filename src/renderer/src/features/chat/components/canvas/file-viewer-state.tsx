@@ -72,18 +72,18 @@ export const FileViewerState: FC<FileViewerStateProps> = ({
 export const OpenInOsButton: FC<{ path: string; label?: string }> = ({
 	path,
 	label = t("ui.canvas.file_viewer_state.open_in_default_app"),
-}) => (
-	<Button
-		variant="secondary"
-		size="sm"
-		onClick={() => {
-			useI18nLocale();
-			return window.api.openFile(path);
-		}}
-	>
-		{label}
-	</Button>
-);
+}) => {
+	useI18nLocale();
+	return (
+		<Button
+			variant="secondary"
+			size="sm"
+			onClick={() => window.api.openFile(path)}
+		>
+			{label}
+		</Button>
+	);
+};
 
 /**
  * The one chrome bar the four media viewers share.

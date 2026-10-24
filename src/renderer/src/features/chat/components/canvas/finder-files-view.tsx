@@ -138,7 +138,7 @@ export function FinderFilesView({
 	materialise,
 	legacyScan,
 }: Props) {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const selectedId = useCanvasStore(
 		(state) => state.conversations[conversationId]?.selectedTabId,
 	);
@@ -188,10 +188,11 @@ export function FinderFilesView({
 			prefs,
 		);
 	}, [displayItems, query, prefs]);
-	const sections = useMemo(
-		() => finderSections(narrowed, prefs, narrowing, closed),
-		[narrowed, prefs, narrowing, closed],
-	);
+	const sections = useMemo(() => {
+		// Section labels are translated inside finderSections, not in these inputs.
+		void locale;
+		return finderSections(narrowed, prefs, narrowing, closed);
+	}, [narrowed, prefs, narrowing, closed, locale]);
 	const layout = useMemo(
 		() => layoutFinder(sections, viewport.width, prefs.group),
 		[sections, viewport.width, prefs.group],
