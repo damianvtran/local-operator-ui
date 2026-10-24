@@ -244,17 +244,29 @@ import hiUiAgentsStarters from "./catalogues/hi/ui.agents.starters.json";
 import hiUiBrowserChrome from "./catalogues/hi/ui.browser.chrome.json";
 import hiUiBrowser from "./catalogues/hi/ui.browser.json";
 import hiUiCanvas from "./catalogues/hi/ui.canvas.json";
+import hiUiChatAside from "./catalogues/hi/ui.chat.aside.json";
 import hiUiChatAsks from "./catalogues/hi/ui.chat.asks.json";
+import hiUiChatAt from "./catalogues/hi/ui.chat.at.json";
 import hiUiChatAttachments from "./catalogues/hi/ui.chat.attachments.json";
+import hiUiChatCanonical from "./catalogues/hi/ui.chat.canonical.json";
+import hiUiChatCanvasPreview from "./catalogues/hi/ui.chat.canvas_preview.json";
 import hiUiChatComposer from "./catalogues/hi/ui.chat.composer.json";
 import hiUiChatComposerMedia from "./catalogues/hi/ui.chat.composer_media.json";
+import hiUiChatCredentialCapture from "./catalogues/hi/ui.chat.credential_capture.json";
 import hiUiChatDialogs from "./catalogues/hi/ui.chat.dialogs.json";
+import hiUiChatDirectory from "./catalogues/hi/ui.chat.directory.json";
 import hiUiChatHeader from "./catalogues/hi/ui.chat.header.json";
 import hiUiChat from "./catalogues/hi/ui.chat.json";
 import hiUiChatLiveUpdates from "./catalogues/hi/ui.chat.live_updates.json";
+import hiUiChatMessage from "./catalogues/hi/ui.chat.message.json";
+import hiUiChatOptions from "./catalogues/hi/ui.chat.options.json";
 import hiUiChatResponseActions from "./catalogues/hi/ui.chat.response_actions.json";
+import hiUiChatRunDetails from "./catalogues/hi/ui.chat.run_details.json";
+import hiUiChatSessionStatus from "./catalogues/hi/ui.chat.session_status.json";
 import hiUiChatSidebarView from "./catalogues/hi/ui.chat.sidebar_view.json";
+import hiUiChatSkill from "./catalogues/hi/ui.chat.skill.json";
 import hiUiChatTags from "./catalogues/hi/ui.chat.tags.json";
+import hiUiChatTrace from "./catalogues/hi/ui.chat.trace.json";
 import hiUiCodeReview from "./catalogues/hi/ui.code_review.json";
 import hiUiCommandPalette from "./catalogues/hi/ui.command_palette.json";
 import hiUiCommonActions from "./catalogues/hi/ui.common.actions.json";
@@ -780,17 +792,29 @@ export const bundledCatalogues: Readonly<
 		...hiUiBrowserChrome,
 		...hiUiBrowser,
 		...hiUiCanvas,
+		...hiUiChatAside,
 		...hiUiChatAsks,
+		...hiUiChatAt,
 		...hiUiChatAttachments,
+		...hiUiChatCanonical,
+		...hiUiChatCanvasPreview,
 		...hiUiChatComposer,
 		...hiUiChatComposerMedia,
+		...hiUiChatCredentialCapture,
 		...hiUiChatDialogs,
+		...hiUiChatDirectory,
 		...hiUiChatHeader,
 		...hiUiChat,
 		...hiUiChatLiveUpdates,
+		...hiUiChatMessage,
+		...hiUiChatOptions,
 		...hiUiChatResponseActions,
+		...hiUiChatRunDetails,
+		...hiUiChatSessionStatus,
 		...hiUiChatSidebarView,
+		...hiUiChatSkill,
 		...hiUiChatTags,
+		...hiUiChatTrace,
 		...hiUiCodeReview,
 		...hiUiCommandPalette,
 		...hiUiCommonActions,

@@ -1,0 +1,9 @@
+{
+	"ui.chat.skill.contract.this_backend_cannot_serve_the_skill_catalogue_update_the_backend": "यह बैकएंड कौशल सूची नहीं दे सकता। बैकएंड अपडेट करें और फिर कोशिश करें।",
+	"ui.chat.skill.contract.skills_arent_available_right_now": "कौशल अभी उपलब्ध नहीं हैं।",
+	"ui.chat.skill.contract.no_skills_found_see_skills": "कोई कौशल नहीं मिला — /skills देखें",
+	"ui.chat.skill.contract.no_skills_found": "कोई कौशल नहीं मिला।",
+	"ui.chat.skill.contract.no_skills_match": "कोई कौशल मेल नहीं खाता।",
+	"ui.chat.skill.contract.enter_completes": "Enter ${name} पूरा करता है; फिर Enter दबाने पर भेजा जाएगा।",
+	"ui.chat.skill.contract.click_completes": "क्लिक करने पर ${name} पूरा होता है।"
+}

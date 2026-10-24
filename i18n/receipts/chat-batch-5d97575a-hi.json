@@ -1,0 +1,273 @@
+{
+  "locale": "hi",
+  "translator": "i18n-translator (chat batch)",
+  "model": "radient/auto",
+  "date": "2026-10-24",
+  "status": "translated",
+  "awaiting": "independent i18n-auditor pass; ledger rows are added after the audit",
+  "base": {
+    "head": "5d97575ac4",
+    "parent": "9c5ddd1839",
+    "note": "Chat-batch base corrected by manager from 23eaaea7b8 to 5d97575ac4; 38 keys pruned by the round-3 remediation were dropped, 15 keys added after the extraction were translated."
+  },
+  "scope": {
+    "batch_keys": 1733,
+    "namespace_completion_keys": 32,
+    "note": "32 pre-existing English keys in ui.chat.canonical (30) and ui.chat.run_details (2) were translated so every touched namespace ships key-complete; they are outside the 1,733 batch count."
+  },
+  "namespaces": {
+    "ui.chat.aside": {
+      "keys_added_by_batch": 35,
+      "keys_in_file": 35,
+      "sha256": {
+        "en": "d8ce04c8e909a73f3050588b2b562b12db3840ae1f4231a66ef3eb5ac76ed1b6",
+        "hi": "4d6c61c4e3237156978d00e9f83fde91b3468ff286c380d69b4f760fc79c7bf0"
+      }
+    },
+    "ui.chat.asks": {
+      "keys_added_by_batch": 89,
+      "keys_in_file": 101,
+      "sha256": {
+        "en": "f5017d10d314fc9e3e94eeff2d5067c559e97ba0c6ffcef4e8ed9d1c39cf67ab",
+        "hi": "0e996bb18011a96c1a45ce15e83119dcf60b411ffc7257ae4de4468a520e25ad"
+      }
+    },
+    "ui.chat.at": {
+      "keys_added_by_batch": 11,
+      "keys_in_file": 11,
+      "sha256": {
+        "en": "685a75115b95770d8d74cc43c2f250c53bed311c0d117cf51849f72041533694",
+        "hi": "839499ee6f5560813e9b38dc04457389341a4a8f4ab488de589d788de074c19c"
+      }
+    },
+    "ui.chat.canonical": {
+      "keys_added_by_batch": 267,
+      "keys_in_file": 297,
+      "sha256": {
+        "en": "522e7fced024ec756b4b93b21952c4abfb232278a3ca32bba67b45978749eb6d",
+        "hi": "47d8e12da2b7ea6418c51d6ac1ce5da379b5f3d85d448f710185a40f984997e4"
+      }
+    },
+    "ui.chat.canvas_preview": {
+      "keys_added_by_batch": 2,
+      "keys_in_file": 2,
+      "sha256": {
+        "en": "4a29d028e7727502fbefd86b995750910ca3760879769ffa1fc537e5893920a9",
+        "hi": "7079cb07771512792b2e8e9b2e5f438ffaa149fac8c3809f277c9b13226d961e"
+      }
+    },
+    "ui.chat.credential_capture": {
+      "keys_added_by_batch": 18,
+      "keys_in_file": 18,
+      "sha256": {
+        "en": "1776a41f5dfa3335b5e390e85870cb55756e25c6a2439cd3f42ea4c864515bdd",
+        "hi": "299b0313910188380bae458aedee67b9e496d03cbb1ca38b5a269cdb632e0514"
+      }
+    },
+    "ui.chat.directory": {
+      "keys_added_by_batch": 42,
+      "keys_in_file": 42,
+      "sha256": {
+        "en": "57540488fb400a9a4ac1040c7d7f91f19f25ab313ec87a50ef527da442d3ec6b",
+        "hi": "cb70a32c5fba43d809a7b04786716185ff67dda9c6abca075cb8b4a10cc3d834"
+      }
+    },
+    "ui.chat.header": {
+      "keys_added_by_batch": 62,
+      "keys_in_file": 72,
+      "sha256": {
+        "en": "ff03f6ca7b3206e77fc260116d2b540cc9f211ea37436863b874770e917158d8",
+        "hi": "31759b89cdd26e67af66ca9bad85b5a3730f4494f92c6d10a5c2ad66b21d02c7"
+      }
+    },
+    "ui.chat": {
+      "keys_added_by_batch": 524,
+      "keys_in_file": 532,
+      "sha256": {
+        "en": "dc5765d20ff846c61f3fe8953e69524393561bc2a39f89fa419958d4e4a67346",
+        "hi": "658b06fd4af4eb9008ba3d87bd6bce630b62f5349d222adedbddfd7e282b35c5"
+      }
+    },
+    "ui.chat.message": {
+      "keys_added_by_batch": 55,
+      "keys_in_file": 55,
+      "sha256": {
+        "en": "95d7b60b2cb1bdc37648cfa896856ce53724e300ed4a6b0448d7562aad452a5a",
+        "hi": "905e5893a7e3e4bc8618a8b771997df5e6fbdc560d99ce0c37c830d76cd6ca5a"
+      }
+    },
+    "ui.chat.options": {
+      "keys_added_by_batch": 33,
+      "keys_in_file": 33,
+      "sha256": {
+        "en": "fdfb1ceae54aa5270dd76b67748f56fa14e5d3f47d7770dad8eba755995a5a79",
+        "hi": "38fc5be447259fa40d5372aeb3835e8b301865aa7c0829cbb5b56d62ee5c442f"
+      }
+    },
+    "ui.chat.run_details": {
+      "keys_added_by_batch": 152,
+      "keys_in_file": 154,
+      "sha256": {
+        "en": "daf3ddc7d9c0904642876bf3db0746b6c0c68c5fe3b87a1a6730b07f67c90c2f",
+        "hi": "f673c42cef2a0a36e2ffd5a9717e9af3ca960d50d51b74d8f32a3c6d89de8326"
+      }
+    },
+    "ui.chat.session_status": {
+      "keys_added_by_batch": 162,
+      "keys_in_file": 162,
+      "sha256": {
+        "en": "05a6e2dd52cd41fb90dbb6756bb8a8f51c5d22e3769edb3fd6228a0d9a059198",
+        "hi": "d10c68a8cde89f1af8034ff326b79b0b40e137960c3c11674d85bc8b50b421b1"
+      }
+    },
+    "ui.chat.skill": {
+      "keys_added_by_batch": 7,
+      "keys_in_file": 7,
+      "sha256": {
+        "en": "919b6643e792d02ed270911df96d96da277bba5b5b91a2d04fac6cf044acfc10",
+        "hi": "d9fb6bf3e20d555d62cb8f94a3877a37f7ebd620f553a3ac0652f20895455e88"
+      }
+    },
+    "ui.chat.trace": {
+      "keys_added_by_batch": 274,
+      "keys_in_file": 274,
+      "sha256": {
+        "en": "52a0fa5ed78ec2f3bbedf5b67f7abf3cc8d72c7a66ff4383d182358e242fb848",
+        "hi": "d387cb832fe06fc677165c92f093dc87e8d93fbe981d176265a6d8e734ea5af8"
+      }
+    }
+  },
+  "checks": {
+    "generate_check": "PASS — node scripts/i18n/generate.mjs --check byte-identical",
+    "check_strings": "PASS — 1343 files scanned, 391 literals at or below baseline",
+    "context_parity": "PASS — 131 allowed gaps in 4 namespaces",
+    "per_key_icu_pseudo": "PASS — 15 namespaces, key-complete, ICU structure/render across 0/1/2/5, NFC, no bidi controls; 88 named language-neutral identical values",
+    "locale_parity_hi": "5 of 6 PASS (ships, unique keys, key-complete, known keys, placeholders). The English-stub check fails only on the 88 named neutral format tokens below; scripts/i18n/locale-parity.test.mjs IDENTICAL_OK was not edited (code out of scope).",
+    "ledger_check": "BLOCKED — new hi namespaces have no auditor ledger rows/receipts yet; audit is the next role, not this pass.",
+    "coverage": "No missing hi keys. Two stale hi allowance pairs now require deletion-only --update: ui.chat.canonical (30) and ui.chat.run_details (2). i18n/coverage-allowance.json was left untouched per scope."
+  },
+  "neutral_identical_values": [
+    "ui.chat.artifact_identity.title_head",
+    "ui.chat.asks.ask_panel.label_count",
+    "ui.chat.asks.ask_panel.word_question",
+    "ui.chat.asks.fleet_ask_drawer.verb_name",
+    "ui.chat.canonical.canonical_transcript.direction",
+    "ui.chat.canonical.fold_media.more",
+    "ui.chat.canonical.image_gen_card.noun_value",
+    "ui.chat.canonical.older_history_slot.min_260px_olderhistory_hidden",
+    "ui.chat.canonical.sound_batch_model.name_suffix",
+    "ui.chat.canonical.sound_player.action_label",
+    "ui.chat.canonical.supplement_row.failedcause",
+    "ui.chat.canonical.transcript_reducer.stringvalue_value",
+    "ui.chat.canvas_preview.pdf_title",
+    "ui.chat.chat_regions.ctrl_shift_l",
+    "ui.chat.chat_regions.l",
+    "ui.chat.chat_status_strip.outcome",
+    "ui.chat.composer.composer_status_row.askdeadlinesubject",
+    "ui.chat.composer.composer_status_row.goal_clear_text_label_seam_goal",
+    "ui.chat.composer.composer_status_row.goal_cleared_text_leading",
+    "ui.chat.composer.composer_status_row.goal_disclosure_label",
+    "ui.chat.composer.composer_status_row.job_actionvalue_label_seam_jobclausevalue_busiestclausevalue",
+    "ui.chat.composer.composer_status_row.loop_labelvalue_loopstatuswordvalue",
+    "ui.chat.composer.composer_status_row.monitor_actionvalue_label_seam_monitorclausevalue",
+    "ui.chat.composer.composer_status_row.plan_actionvalue_label_seam_todoclausevalue",
+    "ui.chat.composer.composer_status_row.stateword",
+    "ui.chat.composer.composer_status_row.subagent_actionvalue_label_seam_childclausevalue_busiestclausevalue",
+    "ui.chat.composer.composer_status_row.text_label_seam_loopclausevalue",
+    "ui.chat.composer.composer_status_row.wake_actionvalue_label_seam_wakeclausevalue",
+    "ui.chat.credential_capture.unconfirmed_chip",
+    "ui.chat.delete_conversation.title",
+    "ui.chat.directory.directory_indicator.c_program_files",
+    "ui.chat.directory.directory_indicator.c_program_files_x86",
+    "ui.chat.directory.directory_indicator.program_files",
+    "ui.chat.directory.directory_indicator.program_files_x86",
+    "ui.chat.directory.directory_indicator.programdata",
+    "ui.chat.directory.directory_indicator.shown_move_cost_sentence",
+    "ui.chat.directory.directory_indicator.state_label",
+    "ui.chat.directory.directory_indicator.users",
+    "ui.chat.draft_rows.draft_row_prefix_draftrowtitlevalue",
+    "ui.chat.draft_rows.value",
+    "ui.chat.header.chat_header.local_operator",
+    "ui.chat.header.chat_header_identity.current",
+    "ui.chat.header.chat_header_identity.label_closedreason",
+    "ui.chat.header.chat_header_identity.label_cuesentence",
+    "ui.chat.header.chat_header_identity.label_current",
+    "ui.chat.header.chat_header_identity.trigger_action_label",
+    "ui.chat.header.chat_header_identity.triggerlabel_label_closedreason",
+    "ui.chat.header.chat_header_identity.value_description",
+    "ui.chat.header.chat_header_identity_menu.closednoteid_title",
+    "ui.chat.hub_update_mark.detail_action",
+    "ui.chat.mermaid_diagram.var_color_warning",
+    "ui.chat.mermaid_diagram.var_color_warning_border",
+    "ui.chat.mermaid_diagram.var_color_warning_wash",
+    "ui.chat.message.attachment_frame.detail",
+    "ui.chat.message.attachment_frame.name_detail",
+    "ui.chat.message.error_block.settings_section_providers",
+    "ui.chat.message.invalid_attachment.getfilenamevalue_reason",
+    "ui.chat.message.turn_timestamp.value_full",
+    "ui.chat.message_grouping.value_value2",
+    "ui.chat.message_grouping.value_value2_b35da6",
+    "ui.chat.options.generation_settings_section.top_k",
+    "ui.chat.options.generation_settings_section.top_p",
+    "ui.chat.run_details.run_detail_mcp.label",
+    "ui.chat.run_details.run_detail_model.value",
+    "ui.chat.run_details.run_detail_monitors.healthlabel",
+    "ui.chat.run_details.run_detail_monitors.interval",
+    "ui.chat.run_details.run_detail_monitors.lastchecklabel",
+    "ui.chat.run_details.run_detail_wakes.cadence",
+    "ui.chat.run_details.run_detail_wakes.trailingclause",
+    "ui.chat.session_status.session_cost.text_cue",
+    "ui.chat.session_status.session_model.fallbackdefault",
+    "ui.chat.sidebar.chat_sidebar.all_kind",
+    "ui.chat.sidebar.chat_sidebar.clause",
+    "ui.chat.sidebar.chat_sidebar.detail",
+    "ui.chat.sidebar.chat_sidebar.displayname_name",
+    "ui.chat.sidebar.chat_sidebar.footname_section_grown_hint",
+    "ui.chat.sidebar.chat_sidebar.pin_label",
+    "ui.chat.sidebar.chat_sidebar.role_menuitem",
+    "ui.chat.sidebar.chat_sidebar.silent_remedy",
+    "ui.chat.sidebar.chat_sidebar_view.label_position",
+    "ui.chat.sidebar.chat_sidebar_view.section_grown_hint_key",
+    "ui.chat.slash_commands.x",
+    "ui.chat.trace.receipt_row_model.base",
+    "ui.chat.trace.trace_fold.verb_object",
+    "ui.chat.trace.turn_summary.receipts",
+    "ui.chat.trace.turn_summary.value",
+    "ui.chat.trace.turn_summary.value_75ced7",
+    "ui.chat.undo_toasts.detail"
+  ],
+  "terms": {
+    "chosen": [
+      "अलग बातचीत (aside, matching existing ui.chat.composer.ask_aside)",
+      "चिप (masked credential pill)",
+      "रीडिंग (usage reading)",
+      "मॉनिटर (stored monitor object)",
+      "जागृति (wake noun)",
+      "ट्रेस / ट्रांसक्रिप्ट",
+      "स्टेज करना (slash-command staging verb)",
+      "पैनिक शुरू करना (raised panic)"
+    ],
+    "kept_english": [
+      "Local Operator",
+      "MCP",
+      "OAuth",
+      "API",
+      "URL",
+      "HTML",
+      "PDF",
+      "SVG",
+      "Top K",
+      "Top P",
+      "Program Files",
+      "ProgramData",
+      "Users",
+      "pull requests",
+      "merge requests",
+      "diff"
+    ]
+  },
+  "overflow_risks": [
+    "ui.chat.asks.queue.short_seconds/minutes/hours/days and expires_* — Devanagari unit words are much wider than s/m/h/d in chips",
+    "ui.chat.asks.queue.open_asks and run_detail_* more_* plural rows — जागृतियाँ/मॉनिटर wider than Wakes/Monitors in rail chips"
+  ]
+}

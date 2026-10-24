@@ -1,0 +1,13 @@
+{
+	"ui.chat.at.contract.this_backend_cannot_carry_file_references_update_the_backend_and": "यह बैकएंड फ़ाइल संदर्भ नहीं ले जा सकता। बैकएंड अपडेट करें और फिर कोशिश करें।",
+	"ui.chat.at.contract.nothing_to_insert_esc_closes": "जोड़ने के लिए कुछ नहीं · Esc बंद करता है",
+	"ui.chat.at.contract.reading_this_folder": "यह फ़ोल्डर पढ़ा जा रहा है…",
+	"ui.chat.at.contract.this_folder_is_empty": "यह फ़ोल्डर खाली है।",
+	"ui.chat.at.contract.could_not_read_this_folder_it_may_need_a_permission": "यह फ़ोल्डर पढ़ा नहीं जा सका। हो सकता है इसे ऐसी अनुमति चाहिए जो इस ऐप के पास नहीं है।",
+	"ui.chat.at.contract.could_not_read_this_folder_check_that_it_exists_and": "यह फ़ोल्डर पढ़ा नहीं जा सका। जाँचें कि यह मौजूद है और आप इसे खोल सकते हैं।",
+	"ui.chat.at.contract.enter_opens": "Enter {path} खोलता है",
+	"ui.chat.at.contract.enter_inserts": "Enter {token} डालता है",
+	"ui.chat.at.contract.footer": "{verb} · Esc बंद करता है",
+	"ui.chat.at.contract.nothing_matches": "\"{query}\" से यहाँ {scope} में कुछ मेल नहीं खाता।",
+	"ui.chat.at.contract.no_files_match": "\"{query}\" से {scope} में कोई फ़ाइल मेल नहीं खाती।"
+}
