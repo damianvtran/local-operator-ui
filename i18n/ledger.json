@@ -4149,8 +4149,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.mesh",
-			"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
-			"target_sha256": "da149ad69d8facc150638a24213c0e3adeb2cbf40024e8a4214365c16094b73c",
+			"source_sha256": "b5f3ede41903cada061a01484ee6be88aa8cac927cb0a9fbe59364d90a8cebc3",
+			"target_sha256": "0866cabf64b9ec2d232f3478b248fea3d265e4b5899b66b56876bb34c3236efb",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -4159,18 +4159,19 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-19",
+					"model": "deepseek/deepseek-chat",
+					"date": "2026-10-24",
 					"result": "clean",
-					"instance": "04112bb1ce33",
+					"instance": "d30b20f4de1e",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/04112bb1ce33.json",
-					"receipt_sha256": "e34b98dcadf107710c6c9d4b149b115cdc22250daade32eb72c9b9c2472e1b8f"
+					"receipt": "i18n/receipts/d30b20f4de1e.json",
+					"receipt_sha256": "9df121c64b5116eaf842c2eaeb05095c10e4b544133f0fdd6f3eb2db771e5e7d",
+					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 				}
 			],
 			"status": "audited",
@@ -4194,6 +4195,28 @@
 							"receipt": "i18n/receipts/ea3629c2a645.json",
 							"receipt_sha256": "1adcf5201c953c8581cc9ebb888ae927bb4547d324f2ae550e1b8ca27f25874d",
 							"scope": "Deterministic semantic sample 106/223; exhaustive mechanical checks; exact keys in receipt."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+					"target_sha256": "da149ad69d8facc150638a24213c0e3adeb2cbf40024e8a4214365c16094b73c",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "04112bb1ce33",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/04112bb1ce33.json",
+							"receipt_sha256": "e34b98dcadf107710c6c9d4b149b115cdc22250daade32eb72c9b9c2472e1b8f"
 						}
 					],
 					"status": "audited"
@@ -6184,8 +6207,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.mesh",
-			"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
-			"target_sha256": "f7e8a7f1d214ce8e5025fac7c80547ab8d6da4b782f23fbf5dc2036bd448b740",
+			"source_sha256": "b5f3ede41903cada061a01484ee6be88aa8cac927cb0a9fbe59364d90a8cebc3",
+			"target_sha256": "322a45cf4ebc3f4ce688119f5d1975600fa0e9ddc90b24708bafd68279352ab8",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6194,18 +6217,19 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-19",
-					"result": "clean-with-findings",
-					"instance": "ca2e127f4069",
+					"model": "deepseek/deepseek-chat",
+					"date": "2026-10-24",
+					"result": "clean",
+					"instance": "3c29edabebe5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ca2e127f4069.json",
-					"receipt_sha256": "8ff69154b561c9e07366990ad591f3f418a8ff7c04f8da36544c518e5c85e1a0"
+					"receipt": "i18n/receipts/3c29edabebe5.json",
+					"receipt_sha256": "2d77ccc6aff873899825b804f93bb1435f2013de51a4e97f3c8c38bbc04ace65",
+					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 				}
 			],
 			"status": "audited",
@@ -6229,6 +6253,28 @@
 								"minor": 0,
 								"nit": 0
 							}
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+					"target_sha256": "f7e8a7f1d214ce8e5025fac7c80547ab8d6da4b782f23fbf5dc2036bd448b740",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-19",
+							"result": "clean-with-findings",
+							"instance": "ca2e127f4069",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ca2e127f4069.json",
+							"receipt_sha256": "8ff69154b561c9e07366990ad591f3f418a8ff7c04f8da36544c518e5c85e1a0"
 						}
 					],
 					"status": "audited"
@@ -6741,8 +6787,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.mesh",
-			"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
-			"target_sha256": "a0751c98be25425317f5d02e8d2b185f8fd7741d712bc5bae97fb4126649c681",
+			"source_sha256": "b5f3ede41903cada061a01484ee6be88aa8cac927cb0a9fbe59364d90a8cebc3",
+			"target_sha256": "3fee61e5b74ae129b817662844c119e35ed375d4c50184fc47195b57070b6c0a",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6751,18 +6797,19 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-19",
-					"result": "clean-with-findings",
-					"instance": "b258b0452d8b",
+					"model": "deepseek/deepseek-chat",
+					"date": "2026-10-24",
+					"result": "clean",
+					"instance": "571e819540ec",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/b258b0452d8b.json",
-					"receipt_sha256": "3685a3ac31bd201a800e15aed0397f2789b798260716d776aac7ca15c341e724"
+					"receipt": "i18n/receipts/571e819540ec.json",
+					"receipt_sha256": "281bf4a428286779c8e6f7dfef8784d3bf22e8004c773d6c1a5e21c9dfe3ad61",
+					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 				}
 			],
 			"status": "audited",
@@ -6786,6 +6833,28 @@
 							"receipt": "i18n/receipts/607e9ab065c8-ru-chunk-b-delta.json",
 							"receipt_sha256": "6107ff4c70340c12a022eddbcdd07145db5aa509398f1de2fc7795a523352761",
 							"scope": "Initial full native read at 65ad12e7 plus remediation delta to 2ee9bcd2; unchanged values proved identical. No rendered-fit certification."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+					"target_sha256": "a0751c98be25425317f5d02e8d2b185f8fd7741d712bc5bae97fb4126649c681",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-19",
+							"result": "clean-with-findings",
+							"instance": "b258b0452d8b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/b258b0452d8b.json",
+							"receipt_sha256": "3685a3ac31bd201a800e15aed0397f2789b798260716d776aac7ca15c341e724"
 						}
 					],
 					"status": "audited"
@@ -8817,8 +8886,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.mesh",
-			"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
-			"target_sha256": "cebfaf04346c840b0830389323f2041e27717edab7b7cbe4d2a10657fb74707e",
+			"source_sha256": "b5f3ede41903cada061a01484ee6be88aa8cac927cb0a9fbe59364d90a8cebc3",
+			"target_sha256": "4f703ca26ff4bb43aa335523d6d808136e29b7915e735fccffaa8ce36decec06",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -8828,18 +8897,19 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-19",
+					"model": "deepseek/deepseek-chat",
+					"date": "2026-10-24",
 					"result": "clean-with-findings",
-					"instance": "d4205b08276b",
+					"instance": "878a55c1f552",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 0
+						"minor": 0,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/d4205b08276b.json",
-					"receipt_sha256": "0fe6106cba78ffc22ec696769d9acbfc8ad5346a5d2619d826c976e8350509a4"
+					"receipt": "i18n/receipts/878a55c1f552.json",
+					"receipt_sha256": "e6962147fb5cc27fff9ccbbf12c5148d4c678ea72e8af2352b0978c51ffa7432",
+					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 				}
 			],
 			"status": "audited",
@@ -8888,6 +8958,28 @@
 							"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
 							"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks; audited bytes are 46420b7eb2's, replayed byte-identically as 30566d8100.",
 							"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+					"target_sha256": "cebfaf04346c840b0830389323f2041e27717edab7b7cbe4d2a10657fb74707e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-19",
+							"result": "clean-with-findings",
+							"instance": "d4205b08276b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d4205b08276b.json",
+							"receipt_sha256": "0fe6106cba78ffc22ec696769d9acbfc8ad5346a5d2619d826c976e8350509a4"
 						}
 					],
 					"status": "audited"
@@ -13157,8 +13249,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.mesh",
-			"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
-			"target_sha256": "db1a9eadeb724933bc12f0fed387188f57906179ec1da9b16fee621ab1d4ceaf",
+			"source_sha256": "b5f3ede41903cada061a01484ee6be88aa8cac927cb0a9fbe59364d90a8cebc3",
+			"target_sha256": "88bc79621df895fe358305b371cc9d40cbe55ce576c026e98281419e7abcc784",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -13167,18 +13259,19 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-19",
-					"result": "clean",
-					"instance": "5bb0b059e0c8",
+					"model": "deepseek/deepseek-chat",
+					"date": "2026-10-24",
+					"result": "clean-with-findings",
+					"instance": "f30162bb4fad",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/5bb0b059e0c8.json",
-					"receipt_sha256": "f0a856b992c2a970f31e4162b70023ca66a39780c5947fcfbdcb89b37e802dcf"
+					"receipt": "i18n/receipts/f30162bb4fad.json",
+					"receipt_sha256": "1fc0a715c0939b0d8ae38b88c9f66c0eb9f826868ae672c20196340ebdf059a3",
+					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 				}
 			],
 			"status": "audited",
@@ -13227,6 +13320,28 @@
 							"receipt_sha256": "7669edd35b9616c1d0b81d73a9cb2c7d8843468980710f3a5169f6552425f727",
 							"scope": "hi ui.mesh vs en source — round 3 review-remediation audit on final bytes",
 							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+					"target_sha256": "db1a9eadeb724933bc12f0fed387188f57906179ec1da9b16fee621ab1d4ceaf",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "5bb0b059e0c8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/5bb0b059e0c8.json",
+							"receipt_sha256": "f0a856b992c2a970f31e4162b70023ca66a39780c5947fcfbdcb89b37e802dcf"
 						}
 					],
 					"status": "audited"
@@ -14286,8 +14401,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.mesh",
-			"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
-			"target_sha256": "16ea2f87e30f53a77b6a5c46282502e0589cb21c1b062ef7bb5f41e710810723",
+			"source_sha256": "b5f3ede41903cada061a01484ee6be88aa8cac927cb0a9fbe59364d90a8cebc3",
+			"target_sha256": "979a27ff6b2c5e95e325ffa146dbb1f0b156d9be18be8e6e58ede725523a6372",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -14296,18 +14411,19 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-19",
+					"model": "deepseek/deepseek-chat",
+					"date": "2026-10-24",
 					"result": "clean",
-					"instance": "07ffa6b6bc78",
+					"instance": "d507767766d2",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/07ffa6b6bc78.json",
-					"receipt_sha256": "d96d0386bf66343aca46c2879e94bbae24261c5f2784b440e8500cae532be196"
+					"receipt": "i18n/receipts/d507767766d2.json",
+					"receipt_sha256": "cd76d055bd56ee30068cf718b8f34d5dfef0f0e27f39ec37ee9d613cec6b14b3",
+					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 				}
 			],
 			"status": "audited",
@@ -14380,6 +14496,28 @@
 							"receipt_sha256": "819784856d07b1483d7d63ba23086812a8b88aeed3f50e9effc533a95d2cfb73",
 							"scope": "review round 3: mesh UI approval/signing prompt sense",
 							"note": "Independent audit of the four UI-dialog prompt values; English AI prompt stays prompt, UI approval/signing dialogs use lời nhắc. Harness-reported served model openai/gpt-6.1-sol."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+					"target_sha256": "16ea2f87e30f53a77b6a5c46282502e0589cb21c1b062ef7bb5f41e710810723",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "07ffa6b6bc78",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/07ffa6b6bc78.json",
+							"receipt_sha256": "d96d0386bf66343aca46c2879e94bbae24261c5f2784b440e8500cae532be196"
 						}
 					],
 					"status": "audited"
@@ -18687,8 +18825,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.mesh",
-			"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
-			"target_sha256": "2c14d7f4ded458aeee1eb8dccca2a91ed7f2535872dd3cfbcd390788a36d3e33",
+			"source_sha256": "b5f3ede41903cada061a01484ee6be88aa8cac927cb0a9fbe59364d90a8cebc3",
+			"target_sha256": "960f26e5f8d68ad5445382f9291c567fe53da9c8fcda06d2af6bb22209422fdf",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -18697,18 +18835,19 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-19",
+					"model": "deepseek/deepseek-chat",
+					"date": "2026-10-24",
 					"result": "clean-with-findings",
-					"instance": "332e346e02ff",
+					"instance": "e73be64ade76",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 3,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/332e346e02ff.json",
-					"receipt_sha256": "6667fc93fd4e89197a00d035d6f686d26fe979581d73926b043424fa55f468ce"
+					"receipt": "i18n/receipts/e73be64ade76.json",
+					"receipt_sha256": "2a43e028991159a5895fbd08e7301d7a275fef29f6cc489507ab44ef506e7dc2",
+					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 				}
 			],
 			"status": "audited",
@@ -18733,6 +18872,28 @@
 							"receipt_sha256": "bd005beafbc42058c1481fc1c7111721d17a446b9f980183d49e08844d4f697f",
 							"scope": "Round-3 single-key audit after the final mesh label fix; zero findings at the final bytes.",
 							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "876ba5b9c176f2ae3070894f90f2da2bff6e707cc85b61fea5f53f3bf74825ad",
+					"target_sha256": "2c14d7f4ded458aeee1eb8dccca2a91ed7f2535872dd3cfbcd390788a36d3e33",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-19",
+							"result": "clean-with-findings",
+							"instance": "332e346e02ff",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 3,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/332e346e02ff.json",
+							"receipt_sha256": "6667fc93fd4e89197a00d035d6f686d26fe979581d73926b043424fa55f468ce"
 						}
 					],
 					"status": "audited"

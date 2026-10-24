@@ -32,12 +32,16 @@
  * tombstone - the run refuses to produce frames without one, because a pair
  * photographed on a clean mesh would not be evidence about this defect at all.
  *
- * Needs `--backend` and `--backend-records` for a daemon this run owns, plus
- * `--theme` in each palette the evidence set claims:
+ * Needs `--backend` (the daemon this run owns, with the token above) and
+ * `--theme` in each palette the evidence set claims. It does NOT take
+ * `--backend-records`: that flag points other scenes at a run's config tree, and
+ * this one reads only the daemon's HTTP API (`/v1/desktop/networks`,
+ * `/v1/desktop/peers`), so a run that passed it would be describing a dependency
+ * the scene does not have.
  *
  *   LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" \
  *   node scripts/renderer-driver.mjs --scene mesh-tab --mesh-expect collapsed \
- *     --backend http://127.0.0.1:<port> --backend-records <config>/run/serve \
+ *     --backend http://127.0.0.1:<port> \
  *     --seed-onboarding-complete --theme localOperatorDark --out <dir>
  */
 
@@ -55,6 +59,31 @@ const PALETTE_SLUG = {
 	localOperatorDark: "dark",
 	localOperatorLight: "light",
 };
+
+/**
+ * IS THIS WIRE MEMBER STILL A MEMBER? (agent review round 1, F1)
+ *
+ * The shipped parser defaults a MISSING `active` to live - `mesh-types.ts` reads
+ * it as `flag(raw.active, true)`, because the backend lists a network's members
+ * and a tombstone would have to be marked as one. This scene used to test
+ * `member.active` for truth, so on a daemon that omits the field it named every
+ * live device a tombstone: its "refuse a mesh with no revoked membership" guard
+ * then PASSED on a clean mesh and the frames were fiction. Asking `!== false` is
+ * the parser's rule read out loud - only an explicit `false` is a tombstone.
+ *
+ * The scene deliberately reads raw wire JSON and not `networkTopology()`, so it
+ * does not import the app's model to check the app; that also means this one
+ * rule has to be held in step with the parser by hand, which is why it has a name.
+ */
+const isLive = (member) => member.active !== false;
+
+/**
+ * The base tree's silence copy. Top level because Biome's `useTopLevelRegex`
+ * asks for it (agent review round 1, F5): a literal inside the per-device
+ * callback is rebuilt on every element, and this one is tested against every
+ * tombstone on every run.
+ */
+const NO_ANSWER = /no answer/i;
 
 /** The mesh reads this run is evidence about, from the daemon itself. */
 async function readMesh(backend, token) {
@@ -85,13 +114,13 @@ async function readMesh(backend, token) {
 	const liveIds = [
 		...new Set(
 			members
-				.filter((member) => member.active)
+				.filter((member) => isLive(member))
 				.map((member) => member.device_id),
 		),
 	];
 	const tombstoneIds = ids.filter((id) => !liveIds.includes(id));
-	const liveMemberships = members.filter((member) => member.active);
-	const revokedMemberships = members.filter((member) => !member.active);
+	const liveMemberships = members.filter((member) => isLive(member));
+	const revokedMemberships = members.filter((member) => !isLive(member));
 	return {
 		peers: peers.peers,
 		ids,
@@ -245,7 +274,7 @@ export async function sceneMeshTab({
 		check(
 			"the base tree draws a revoked tombstone as a peer that did not answer",
 			drawnTombstones.length === mesh.tombstoneIds.length &&
-				drawnTombstones.every((device) => /no answer/i.test(device.text)),
+				drawnTombstones.every((device) => NO_ANSWER.test(device.text)),
 			`tombstone nodes: ${JSON.stringify(drawnTombstones.map((device) => device.text))}`,
 			drawnTombstones
 				.map((device) => `${device.id}: ${device.text}`)
