@@ -647,8 +647,8 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 			 * mounted when the asset has a linked conversation OR a send created one
 			 * this mount; otherwise it renders nothing and the composer sits at the
 			 * foot alone. Bounded by its own `basis`/`max-h` so it can never squeeze
-			 * the viewer out of usable height, and grounded in `canvas` against the
-			 * `surface` panel — a tone step, never a rule between the two.
+			 * the viewer out of usable height, and grounded in `sunken` with the
+			 * viewer and composer — one continuous region, never a rule between them.
 			 */}
 			{chatSessionId && (
 				<LibraryTrajectory

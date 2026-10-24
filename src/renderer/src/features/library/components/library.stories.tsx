@@ -20,7 +20,7 @@ import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, waitFor } from "@storybook/test";
 import type { FC, ReactNode } from "react";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
 import { glassPaintFor } from "../../../../../shared/window-glass";
 import "../../../styles/index.css";
@@ -998,14 +998,18 @@ const ShellLibrary: FC<{ nowMs: number; route?: string }> = ({
 	</div>
 );
 
-const RouteTo: FC<{ path: string; children: ReactNode }> = ({
+const RouteTo: FC<{ path: string; fixed?: boolean; children: ReactNode }> = ({
 	path,
+	fixed = true,
 	children,
 }) => {
 	const navigate = useNavigate();
+	const routed = useRef(false);
 	useEffect(() => {
+		if (routed.current && !fixed) return;
+		routed.current = true;
 		navigate(path, { replace: true });
-	}, [navigate, path]);
+	}, [fixed, navigate, path]);
 	return (
 		<Routes>
 			<Route path="/library" element={children} />
@@ -1021,6 +1025,9 @@ const page = (
 		shell?: boolean;
 		compact?: boolean;
 		docked?: boolean;
+		workspaceWidth?: number;
+		preserveDockWidth?: boolean;
+		freeNavigation?: boolean;
 	},
 ) => {
 	stub = {
@@ -1043,7 +1050,8 @@ const page = (
 	try {
 		if (state.view) localStorage.setItem("library-view", state.view);
 		else localStorage.removeItem("library-view");
-		localStorage.removeItem("library-details-width");
+		if (!state.preserveDockWidth)
+			localStorage.removeItem("library-details-width");
 		sessionStorage.removeItem("library-filters");
 	} catch {
 		/* storage is not what these stories are about */
@@ -1054,8 +1062,9 @@ const page = (
 	) : (
 		<div
 			className={`${state.compact ? "h-[640px]" : "h-screen"} ${state.docked ? "flex" : ""}`}
+			style={{ width: state.workspaceWidth }}
 		>
-			<RouteTo path={route}>
+			<RouteTo path={route} fixed={!state.freeNavigation}>
 				<LibraryPage nowMs={NOW} />
 			</RouteTo>
 		</div>
@@ -1245,13 +1254,9 @@ export const DockedPreviewNarrow: Story = {
 		);
 	},
 };
-export const DockedPreviewWide: Story = {
-	render: () =>
-		page({
-			docked: true,
-			route: "/library/assets/la_0000000000000023",
-		}),
-	play: async () => {
+const playResizeEnd =
+	(expected: string): Story["play"] =>
+	async () => {
 		const separator = await waitFor(() => {
 			const node = document.querySelector<HTMLElement>('[role="separator"]');
 			if (!node) throw new Error("the dock separator is not mounted");
@@ -1263,9 +1268,52 @@ export const DockedPreviewWide: Story = {
 		await waitFor(() =>
 			expect(
 				document.querySelector<HTMLElement>("[data-library-dock]")?.style.width,
-			).toBe("720px"),
+			).toBe(expected),
 		);
-	},
+	};
+
+export const DockedPreviewWide: Story = {
+	render: () =>
+		page({
+			docked: true,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: playResizeEnd("720px"),
+};
+/* The smallest dock-eligible workspaces exercise the real toolbar at its
+ * 320px results floor, rather than leaving a deceptively comfortable surplus. */
+export const DockedPreviewConstrained1152: Story = {
+	render: () =>
+		page({
+			docked: true,
+			workspaceWidth: 1152,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: playResizeEnd("640px"),
+};
+export const DockedPreviewConstrained1200: Story = {
+	render: () =>
+		page({
+			docked: true,
+			workspaceWidth: 1200,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: playResizeEnd("688px"),
+};
+/* These two fixtures deliberately KEEP the stored width: cross-document
+ * restoration and close/reopen need the real preference read, not a reset. */
+export const DockedPreviewPersistent: Story = {
+	render: () =>
+		page({
+			docked: true,
+			preserveDockWidth: true,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: DockedPreview.play,
+};
+export const DockedReopen: Story = {
+	render: () =>
+		page({ docked: true, preserveDockWidth: true, freeNavigation: true }),
 };
 export const DockedEmpty: Story = {
 	render: () =>

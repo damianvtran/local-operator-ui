@@ -612,7 +612,7 @@ const MarkdownAssetView: FC<{
 		return (
 			<div
 				data-lo-pane-edge-cues
-				className="min-h-0 flex-1 overflow-y-auto bg-canvas"
+				className="min-h-0 flex-1 overflow-y-auto bg-sunken"
 			>
 				{/* The centered reading column is Library chrome; the shared editor
 				    inside it is untouched, so Canvas keeps the same component and
