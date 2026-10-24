@@ -177,5 +177,11 @@
 	"ui.hub.skills.public_hub": "Hub public",
 	"ui.hub.skills.count": "{count, plural, one {{count, number, ::group-off} compétence} many {{count, number, ::group-off} de compétences} other {{count, number, ::group-off} compétences}}",
 	"ui.hub.skills.count_shared": "{count, plural, one {{count, number, ::group-off} compétence partagée avec {organization}} many {{count, number, ::group-off} de compétences partagées avec {organization}} other {{count, number, ::group-off} compétences partagées avec {organization}}}",
-	"ui.hub.skills.inventory_unknown": "État du lien indisponible."
+	"ui.hub.skills.inventory_unknown": "État du lien indisponible.",
+	"ui.hub.pager.agent_pages": "Pages d’agents",
+	"ui.hub.pager.previous_page": "Page précédente",
+	"ui.hub.pager.previous": "Précédent",
+	"ui.hub.pager.next_page": "Page suivante",
+	"ui.hub.pager.next": "Suivant",
+	"ui.hub.pager.page_of": "Page {page, number, ::group-off} sur {count, number, ::group-off}"
 }
