@@ -153,8 +153,9 @@ export function approvalsExpiryDelay(
  * THE COUNT IS A FIRST-PAINT FALLBACK ONLY. It rides the URL for the one state
  * that can be visible (a non-empty queue); at zero it is omitted, because a
  * `count=0` document paints "0 approvals waiting" for the load and the child
- * is hidden anyway. The live count arrives through the document's `setCount`
- * bridge, which owns the catalogue lookup and the ICU plural.
+ * is hidden anyway. The live card arrives through the document's
+ * `__approvalsCard.setModel` bridge, which owns the catalogue lookup and the ICU
+ * plural; the URL count is never the source of truth.
  */
 export function approvalsDocumentUrl(
 	documentUrl: string,
@@ -252,7 +253,13 @@ export class ApprovalsOverlayController {
 		this.onDismissAction = (event, payload) => {
 			if (!this.acceptAction(event, payload)) return;
 			const action = payload as ApprovalsCardDismissPayload;
-			if (action.entryId !== this.model?.request?.entryId) {
+			/*
+			 * ANY LIVE ENTRY MAY BE DISMISSED. The list view lets the operator
+			 * select a request other than the oldest one, so membership in the
+			 * card's own pending list is the check — not equality with
+			 * `model.request` (which stays the controller's own selection).
+			 */
+			if (!this.isPendingEntry(action.entryId)) {
 				this.dropAction();
 				return;
 			}
@@ -263,7 +270,7 @@ export class ApprovalsOverlayController {
 			if (!this.acceptAction(event, payload)) return;
 			const action = payload as ApprovalsCardDecidePayload;
 			if (
-				action.entryId !== this.model?.request?.entryId ||
+				!this.isPendingEntry(action.entryId) ||
 				!isApprovalsCardDecision(action.decision)
 			) {
 				this.dropAction();
@@ -334,6 +341,11 @@ export class ApprovalsOverlayController {
 		}
 		this.pushModel(false);
 		if (!model.request) {
+			// An auto-present can empty while the shield still reads the card as
+			// explicitly open. Clearing here keeps the shield's aria-expanded and its
+			// next click coherent (M1).
+			this.explicitOpen = false;
+			this.pendingFocus = false;
 			this.hide();
 			return;
 		}
@@ -369,12 +381,98 @@ export class ApprovalsOverlayController {
 		if (input.theme === "light" || input.theme === "dark") {
 			this.theme = input.theme;
 		}
+		/*
+		 * NOTHING TO OPEN: return before arming. Arming `explicitOpen` for an empty
+		 * queue used to leave the next arrival auto-presented FOCUSED, because the
+		 * latch survived the hide (M3).
+		 */
+		if (!this.model || this.model.count === 0) return;
+		/*
+		 * EVERY LIVE REQUEST MAY HAVE BEEN DISMISSED. The card is hidden then, but
+		 * the shield must still recall it (U3); an explicit open is the operator
+		 * asking to see the queue again, so the presentation-only dismissals are
+		 * cleared and the oldest live request is shown.
+		 */
+		if (!this.model.request) {
+			this.dismissed.clear();
+			this.model = approvalsCardModelFrom({
+				seq: ++this.modelSeq,
+				entries: this.model.pending,
+				locale: this.locale,
+				dir: this.dir,
+				theme: this.theme,
+				view: "request",
+				focus: false,
+				busy: false,
+				error: null,
+				dismissed: this.dismissed,
+			});
+			this.pending = this.model.count;
+		}
 		this.explicitOpen = true;
 		this.pendingFocus = input.focus !== false;
-		if (!this.model?.request) return;
 		this.pushModel(false);
 		this.maybeShow();
+		// An explicit open follows a locale/width change; re-measure so the card is
+		// not stuck at the height it had while hidden (U minor).
+		if (this.ready) this.measureAndShow();
 		this.focusIfPending();
+	}
+
+	/**
+	 * Update the app context the card renders in. The renderer pushes this on
+	 * mount and on every locale/theme change; without it an auto-presented card
+	 * stays in `en` until the first explicit open (U5).
+	 */
+	setContext(input: {
+		locale?: string;
+		dir?: "ltr" | "rtl";
+		theme?: "light" | "dark";
+	}): void {
+		if (this.disposed) return;
+		let changed = false;
+		if (
+			typeof input.locale === "string" &&
+			input.locale.trim() !== "" &&
+			input.locale.trim().slice(0, 35) !== this.locale
+		) {
+			this.locale = input.locale.trim().slice(0, 35);
+			changed = true;
+		}
+		if (
+			(input.dir === "ltr" || input.dir === "rtl") &&
+			input.dir !== this.dir
+		) {
+			this.dir = input.dir;
+			changed = true;
+		}
+		if (
+			(input.theme === "light" || input.theme === "dark") &&
+			input.theme !== this.theme
+		) {
+			this.theme = input.theme;
+			changed = true;
+		}
+		if (!changed) return;
+		if (this.model) {
+			this.model = approvalsCardModelFrom({
+				seq: ++this.modelSeq,
+				entries: this.model.pending,
+				locale: this.locale,
+				dir: this.dir,
+				theme: this.theme,
+				view: this.model.view,
+				focus: false,
+				busy: this.model.busy,
+				error: this.model.error,
+				dismissed: this.dismissed,
+			});
+		}
+		this.pushModel(false);
+		// A locale change changes the copy length, and a direction change moves the
+		// native view; both need the layout pass and a fresh measurement.
+		if (this.layout.presented) this.maybeShow();
+		if (this.ready) this.measureAndShow();
 	}
 
 	/** Close without deciding (Close, Escape, or the shield's second click). */
@@ -397,6 +495,10 @@ export class ApprovalsOverlayController {
 			revision: snapshot.revision,
 		};
 		if (!snapshot.presented || !snapshot.contentRect) {
+			// Route loss / a modal hiding the page: the card is not on screen, so the
+			// shield must not keep claiming it is explicitly open.
+			this.explicitOpen = false;
+			this.pendingFocus = false;
 			this.hide();
 			return;
 		}
@@ -437,10 +539,15 @@ export class ApprovalsOverlayController {
 	}
 
 	/** The chrome projection's view of the card. */
-	state(): { available: boolean; open: boolean } {
+	state(): { available: boolean; open: boolean; visible: boolean } {
 		return {
 			available: !this.disposed && this.failedReason === null,
-			open: this.visible,
+			// The shield button is a TOGGLE for the surface it opens, not a mirror of
+			// auto-present: `visible` is true whenever a request arrived and the card
+			// painted itself, and using that as `open` made the first shield click a
+			// close and a later one a no-op (M1/U1).
+			open: this.explicitOpen,
+			visible: this.visible,
 		};
 	}
 
@@ -495,6 +602,13 @@ export class ApprovalsOverlayController {
 		return true;
 	}
 
+	private isPendingEntry(entryId: unknown): entryId is string {
+		return (
+			typeof entryId === "string" &&
+			Boolean(this.model?.pending.some((entry) => entry.entryId === entryId))
+		);
+	}
+
 	private sameDocument(url: string): boolean {
 		const strip = (value: string): string => value.split("?")[0].split("#")[0];
 		try {
@@ -509,6 +623,12 @@ export class ApprovalsOverlayController {
 
 	private dropAction(): void {
 		this.actionCounts.dropped += 1;
+		/*
+		 * A dropped action is not silent to the operator: re-push the live model so
+		 * the card repaints at its current state instead of leaving the click with
+		 * no visible consequence (minor, round 1).
+		 */
+		this.pushModel(false);
 	}
 
 	/** Close the card's current entry without deciding it. */
@@ -531,6 +651,8 @@ export class ApprovalsOverlayController {
 		this.pending = model.count;
 		this.pushModel(false);
 		if (!model.request) {
+			this.explicitOpen = false;
+			this.pendingFocus = false;
 			this.hide();
 		} else {
 			this.maybeShow();

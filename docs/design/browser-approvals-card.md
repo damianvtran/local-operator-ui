@@ -1,7 +1,8 @@
 # Browser approvals card — S6b
 
-Status (2026-10-24): **S6b, interactive native child under the S6A opt-in. Not a
-shipped product surface until the independent rounds clear.**
+Status (2026-10-24): **S6b, interactive native child under the S6A opt-in. Round-1
+remediation applied; not a shipped product surface until the independent rounds
+clear.**
 
 The approvals card is one native `WebContentsView` over the live page, sized to
 the card and anchored to the content rect's **inline end**: bottom-right in LTR,
@@ -34,11 +35,24 @@ the page.
 - The card identifies itself as app chrome: a localized `Local Operator`
   wordmark from the catalogue (`ui.browser.browser_new_tab.wordmark`) above the
   `Approvals` heading.
+- The request is ONE sentence — requester, the verb and the exact origin inline
+  in monospace — matching the band's consent card; the scoped decisions share
+  one gloss line that follows focus/hover, so five repeated gloss paragraphs no
+  longer push the deny button under the fold (D2/D10/Q2). The broad grant uses
+  the queue's own registrable-domain key (`allow_all_of` + `broad.key`) and is
+  omitted entirely when the entry carries none (D3/Q1).
 - Copy is catalogued. The expiry uses `ui.browser.approval_queue_model.expires_*`
   (ICU plural); the close/back/queue labels reuse the audited generic and
   browser keys. No new English key was added: a new key would require an
   audited translation in every shipped locale, and the card is not allowed to
   ship unaudited copy.
+- The footer is sticky inside the scrolling body, with a hairline and a top
+  scrim: it shares the body's content width (no 15px mismatch), the scroll
+  boundary is explicit, and the failure line lives there so it is never below
+  the 480 ceiling (D5/D6/D7). The close control is on the app's 28px ladder
+  (D8); disabled states are colour treatments, not `opacity: .6` (D4 — the
+  light disabled primary measured 2.53:1 under opacity; `ink-dim` on
+  `elevated` is 6.14:1).
 - The queue's own expiry re-pushes the model at the earliest live `expiresAt`,
   so the card cannot outlive its queue.
 - Opaque-square fallback (`opaque: true`, `PAD = 0`) for platforms where the
@@ -71,15 +85,24 @@ dedicated non-persistent partition, and the pinned deny-all CSP.
 - Shield click: explicit open. `window-raise.ts`'s `focusBrowserChordTarget`
   hands keyboard focus to the card only inside an already-focused window and
   only under the launch's `focus` show mode; a hidden/headless run opens the
-  card without taking anything.
-- Close and Escape dismiss the shown request and return focus to the page. They
-  never decide. A dismissed request stays pending and counted; the next live
-  request may present, and a new arrival may present again.
+  card without taking anything. The shield is a toggle of the EXPLICIT open,
+  not of auto-present visibility: the first press opens and focuses, the second
+  closes; an empty queue clears the latch instead of arming the next arrival
+  (M1/M3). The renderer pushes its resolved locale/theme to main on mount and
+  on change, so an auto-presented card is already in the app's language (U5).
+- Close and Escape dismiss the shown request and return focus to the page; the
+  renderer returns keyboard focus to the shield on the open→closed transition.
+  They never decide. A dismissed request stays pending and counted; an explicit
+  open with every request dismissed clears the presentation-only dismissals and
+  recalls the oldest (U3).
 - A decision returns focus to the page; the store's change builds the next
   model.
 - The card is a non-modal dialog (`role="dialog"`, `aria-modal="false"`,
   `tabindex="-1"`, labelled). Tab order runs Close → Allow once → the four
   scoped decisions → Review all. `aria-busy` follows the model's busy state.
+  Review all is an actionable list: rows carry requester, origin and expiry and
+  select the request in place (D9/U4); the list inherits the request view's
+  height so the native view does not collapse under it (D11).
 - `lang`/`dir` come from the app's resolved locale, not the card's device tag
   (UX U2). `fr` formats French plurals and reads `lang="fr"`; `ur` sets
   `dir="rtl"` and mirrors the native view.
@@ -96,6 +119,11 @@ geometry; the content-driven height and its 480 ceiling; the RTL view mirror
 (view x = 0, card x = 8); Allow once through the document's real button;
 outside-click and page-click non-dismissal; Escape without a decision; the
 shield open/close focus handoff; the Tab order; and a stale `seq` dropping.
+
+**Round-1 driven rows:** the request sentence, broad label, sticky footer,
+recall and above-fold decision geometry are re-captured by the probe; the
+auto-present A1 snapshot is taken AT the auto-present moment (not from the
+end-state facts).
 
 **BLOCKED and not claimed:** native composite/transparency over a sibling page
 (no Screen Recording, hidden window), the 8 DIP ring's native hit routing (no

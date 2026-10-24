@@ -59,6 +59,12 @@ export interface ApprovalsCardRequest {
 	requester: string;
 	/** The locale-independent epoch the card turns into "Expires in 9 min". */
 	expiresAt: number;
+	/**
+	 * The registrable domain the queue's broad grant would cover, present only
+	 * when the entry carries one. The card omits the domain decision when it is
+	 * absent (fail closed, the same rule the consent card follows).
+	 */
+	broadKey?: string;
 }
 
 /** The whole card document state. Text is resolved by the document's catalogue. */
