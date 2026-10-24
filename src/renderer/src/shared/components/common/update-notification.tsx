@@ -520,7 +520,7 @@ export const UpdateContainer = ({
 	}, [onClose]);
 
 	/*
-	 * This card is `fixed top-4 right-4`, so it paints over the top-right of the
+	 * This card is `fixed top-4 end-4`, so it paints over the top-inline-end of the
 	 * content area — which over the browser route is the native view, and a native
 	 * view paints above all DOM (design 11.3). Registering here rather than at each
 	 * caller is the same funnel argument as `BaseDialog`'s: mounting this wrapper IS
@@ -585,7 +585,7 @@ export const UpdateContainer = ({
 					: undefined
 			}
 			className={cn(
-				"fixed top-4 right-4 z-50 w-100 max-w-[calc(100vw-2rem)]",
+				"fixed top-4 end-4 z-50 w-100 max-w-[calc(100vw-2rem)]",
 				"rounded-lg bg-elevated shadow-overlay",
 				"[&_a]:text-accent [&_a]:underline-offset-4 [&_a]:hover:underline",
 				className,
@@ -615,7 +615,7 @@ export const UpdateContainer = ({
 					size="icon-sm"
 					onClick={onClose}
 					aria-label={closeLabel}
-					className="absolute top-2 right-2 z-10"
+					className="absolute top-2 end-2 z-10"
 				>
 					<X aria-hidden="true" />
 				</Button>
@@ -643,8 +643,8 @@ export const UpdateContainer = ({
  *
  * Why an icon and not `text-danger` on the words: the two failure states were
  * typographically identical to the informational one - same 16px `text-ink`
- * heading, same body, same right-aligned buttons - so a user who had learned
- * "top-right panel = an update is available" read a broken install as one more
+ * heading, same body, same inline-end-aligned buttons - so a user who had learned
+ * "top-inline-end panel = an update is available" read a broken install as one more
  * notice (review D1). `danger` as TEXT on `elevated` measures 3.76:1 in monokai
  * and 3.81:1 in dracula, under the 4.5:1 text floor `check-themes` asserts for
  * every theme, while the same ink as a graphical mark clears the 3:1 non-text
@@ -1644,7 +1644,7 @@ export const UpdateNotification = ({
 		 * this step, the band's press and the settings button's check all inherit it
 		 * rather than each re-stating it. Both channels can report available in one
 		 * check - the whole point of the aggregate - and the two cards are
-		 * `fixed top-4 right-4 z-50` in a single early-return chain, so two open flags
+		 * `fixed top-4 end-4 z-50` in a single early-return chain, so two open flags
 		 * painted one card and QUEUED the other. The surface that gives way keeps its
 		 * OFFER, so it comes back as a band item rather than disappearing. The last
 		 * one this check opens holds the card - "show what the press was about", the
@@ -3294,7 +3294,7 @@ export const UpdateNotification = ({
 										href={getReleaseUrl(updateInfo)}
 										target="_blank"
 										rel="noopener noreferrer"
-										className="ml-2"
+										className="ms-2"
 									>
 										{t(
 											"ui.common.updates.update_notification.view_full_release_notes",
@@ -3971,7 +3971,7 @@ export const UpdateNotification = ({
 				)}
 			</UpdateContainer>,
 			/*
-			 * NO NOTICE ON THIS BRANCH (review D6). The panel top-right already says
+			 * NO NOTICE ON THIS BRANCH (review D6). The panel top-inline-end already says
 			 * "Server version X is available", so the toast in the opposite corner was
 			 * the same news twice in two spellings - "v0.56.0" and "0.56.0" - and it
 			 * only ever appeared for the arm that manages the update, i.e. the arm whose

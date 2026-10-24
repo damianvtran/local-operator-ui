@@ -68,13 +68,13 @@ export const TeamBridgeComposeBar: FC<{
 	return (
 		<div className="relative shrink-0 px-5 pt-3 pb-2">
 			<div className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-lg bg-elevated px-2 py-1">
-				<span className="pr-1 text-[13px] text-ink-dim">
+				<span className="pe-1 text-[13px] text-ink-dim">
 					{t("ui.teamBridge.compose.to")}
 				</span>
 				{recipients.map((recipient) => (
 					<span
 						key={recipientKey(recipient)}
-						className="flex h-6 items-center gap-1 rounded-md bg-accent-wash pr-0.5 pl-1.5 text-[13px] text-ink"
+						className="flex h-6 items-center gap-1 rounded-md bg-accent-wash pe-0.5 ps-1.5 text-[13px] text-ink"
 					>
 						{recipient.kind === "agent" && (
 							<Bot size={12} aria-hidden="true" className="text-accent" />
@@ -178,7 +178,7 @@ export const TeamBridgeComposeBar: FC<{
 							onClick={() => add(option)}
 							onMouseEnter={() => setActive(index)}
 							className={cn(
-								"flex h-[30px] w-full cursor-default items-center gap-2 rounded-md px-2 text-left text-[13px]",
+								"flex h-[30px] w-full cursor-default items-center gap-2 rounded-md px-2 text-start text-[13px]",
 								index === active ? "bg-row-hover text-ink" : "text-ink-muted",
 							)}
 						>

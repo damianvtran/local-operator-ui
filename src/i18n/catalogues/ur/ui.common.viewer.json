@@ -1,3 +1,7 @@
 {
-	"ui.common.viewer.image_progress": "{count, number, ::group-off} میں سے تصویر {index, number, ::group-off}"
+	"ui.common.viewer.image_progress": "{count, number, ::group-off} میں سے تصویر {index, number, ::group-off}",
+	"ui.common.viewer.opening": "کھولا جا رہا ہے…",
+	"ui.common.viewer.reset_view": "منظر ری سیٹ کریں",
+	"ui.common.viewer.zoom_in": "زوم بڑھائیں",
+	"ui.common.viewer.zoom_out": "زوم گھٹائیں"
 }

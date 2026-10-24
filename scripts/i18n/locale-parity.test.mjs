@@ -42,6 +42,13 @@ const SOURCE_LOCALE = "en";
  */
 const IDENTICAL_OK = new Map([
 	[
+		"ui.settings.shortcuts.row.canvas",
+		// Product surface name: the glossary keeps "Canvas" verbatim in every
+		// locale, including Urdu, where a transliteration would name a different
+		// object than the one the shortcut opens.
+		"product surface name, preserved verbatim by the programme glossary",
+	],
+	[
 		"ui.console.pane.label",
 		// A shared UI term, not a copy of untranslated English: French uses
 		// « Console » for this surface verbatim, and the English string IS that same

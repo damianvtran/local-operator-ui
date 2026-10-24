@@ -126,7 +126,7 @@ export const DialogContent = forwardRef<
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								className="absolute top-4 right-4"
+								className="absolute top-4 end-4"
 								aria-label={t("ui.common.actions.close")}
 								disabled={closeDisabled}
 							>
@@ -145,7 +145,7 @@ export const DialogHeader = ({
 	className,
 	...props
 }: HTMLAttributes<HTMLDivElement>) => (
-	<div className={cn("flex flex-col gap-1.5 pr-8", className)} {...props} />
+	<div className={cn("flex flex-col gap-1.5 pe-8", className)} {...props} />
 );
 DialogHeader.displayName = "DialogHeader";
 

@@ -1,3 +1,7 @@
 {
-	"ui.common.viewer.image_progress": "Изображение {index, number, ::group-off} из {count, number, ::group-off}"
+	"ui.common.viewer.image_progress": "Изображение {index, number, ::group-off} из {count, number, ::group-off}",
+	"ui.common.viewer.opening": "Открытие…",
+	"ui.common.viewer.reset_view": "Сбросить вид",
+	"ui.common.viewer.zoom_in": "Увеличить",
+	"ui.common.viewer.zoom_out": "Уменьшить"
 }

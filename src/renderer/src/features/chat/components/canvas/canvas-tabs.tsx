@@ -279,7 +279,7 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 							// track, same 24px tab. A half-step taller here would be a
 							// second tab height for no reason a user could name.
 							className={cn(
-								"group flex h-6 shrink-0 items-center rounded-sm pr-0.5",
+								"group flex h-6 shrink-0 items-center rounded-sm pe-0.5",
 								"transition-colors duration-fast ease-out-quart",
 								isSelected ? "bg-surface" : "hover:bg-row-hover",
 							)}
@@ -322,8 +322,8 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 								onClick={() => onChangeActiveDocument(doc.id)}
 								onKeyDown={(event) => handleKeyDown(event, index)}
 								className={cn(
-									"max-w-45 truncate rounded-sm py-1 pr-1 pl-2",
-									"text-left font-medium text-body-sm",
+									"max-w-45 truncate rounded-sm py-1 pe-1 ps-2",
+									"text-start font-medium text-body-sm",
 									"transition-colors duration-fast ease-out-quart",
 									isSelected ? "text-ink" : "text-ink-muted",
 								)}
@@ -369,7 +369,7 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 								// centres inside the 32px strip. Margins here would push
 								// the row past the tab track and make the strip's height
 								// depend on how many documents are open.
-								className={cn("mr-1 shrink-0 self-center")}
+								className={cn("me-1 shrink-0 self-center")}
 							>
 								<ChevronDown aria-hidden="true" />
 							</Button>
