@@ -2,7 +2,7 @@
 	"ui.agents.page.add_agent_manually": "Ajouter un agent manuellement",
 	"ui.agents.page.add_team_manually": "Ajouter une équipe manuellement",
 	"ui.agents.page.agent_run_description": "Un agent est un ensemble réutilisable d’instructions avec lequel vous pouvez démarrer une conversation, ou que d’autres agents peuvent appeler. Décrivez ce que vous voulez et une exécution de configuration le met en place.",
-	"ui.agents.page.agents": "Les agents",
+	"ui.agents.page.agents": "Agents",
 	"ui.agents.page.agents_read_failed": "Impossible de lire les agents",
 	"ui.agents.page.ask_for_agent": "Demander un agent",
 	"ui.agents.page.ask_for_team": "Demander une équipe",
@@ -41,7 +41,7 @@
 	"ui.agents.page.search_teams": "Rechercher des équipes",
 	"ui.agents.page.show_owned_by": "Afficher les définitions de",
 	"ui.agents.page.team_run_description": "Une équipe a un agent qui mène la conversation et des membres à qui il peut confier du travail. Décrivez ce que vous voulez et une exécution de configuration la met en place.",
-	"ui.agents.page.teams": "Les équipes",
+	"ui.agents.page.teams": "Équipes",
 	"ui.agents.page.teams_read_failed": "Impossible de lire les équipes",
 	"ui.agents.page.title": "Agents et équipes",
 	"ui.agents.page.update_backend_description": "Mettez à jour le backend pour gérer les agents et les équipes réutilisables. Les conversations enregistrées restent inchangées."
