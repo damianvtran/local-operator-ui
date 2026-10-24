@@ -1,0 +1,15 @@
+{
+	"ui.agents.editor.cancel": "Отмена",
+	"ui.agents.editor.creating": "Создание…",
+	"ui.agents.editor.discard_changes": "Отменить изменения",
+	"ui.agents.editor.discard_unsaved": "Отменить несохранённые изменения?",
+	"ui.agents.editor.empty": "Здесь пока пусто.",
+	"ui.agents.editor.keep_editing": "Продолжить редактирование",
+	"ui.agents.editor.retry": "Повторить",
+	"ui.agents.editor.retrying": "Повторная попытка…",
+	"ui.agents.editor.save_changes": "Сохранить изменения",
+	"ui.agents.editor.saving": "Сохранение…",
+	"ui.agents.editor.show_all": "Показать все",
+	"ui.agents.editor.show_less": "Свернуть",
+	"ui.agents.editor.unsaved_changes": "Несохранённые изменения"
+}
