@@ -6208,7 +6208,7 @@ export type MessageParams = {
 	};
 	"ui.chat.trace.turn_summary.completed": undefined;
 	"ui.chat.trace.turn_summary.receipts": { receipts: number };
-	"ui.chat.trace.turn_summary.took": undefined;
+	"ui.chat.trace.turn_summary.took": { duration: string };
 	"ui.chat.trace.turn_summary.value": { value: number };
 	"ui.chat.trace.turn_summary.value_75ced7": { value: number };
 	"ui.chat.transcript_copy.menu.copy_markdown": undefined;

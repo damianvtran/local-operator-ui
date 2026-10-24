@@ -6095,7 +6095,7 @@ export function ChatSidebar({
 					 * OUTLINE rather than an inset ring because the current row's own button paints
 					 * an opaque fill over its parent's box-shadow (round 3, D10).
 					 */
-					dragging && "outline outline-1 outline-offset-[-1px] outline-ink-dim",
+					dragging && rowDraggingMark,
 				)}
 			>
 				{/*

@@ -296,7 +296,7 @@ const MARK_ON_SUMMARY_HOLD =
  * settled side of the ternary.
  */
 const SPOKEN_PENDING_ON_SUMMARY_HOLD =
-	/summaryHold\s*\?\s*\(\s*<>\s*<span[^>]*data-label-hold="true"(?:(?!<\/>)[\s\S])*?<span className=\{cn\("sr-only"\)\}>pending<\/span>\s*<\/>/;
+	/summaryHold\s*\?\s*\(\s*<>\s*<span[^>]*data-label-hold="true"(?:(?!<\/>)[\s\S])*?<span className=\{cn\("sr-only"\)\}>\s*\{t\("ui\.chat\.trace\.tool_row\.pending"\)\}\s*<\/span>\s*<\/>/;
 const TITLE_SUPPRESSED_WHILE_HELD =
 	/title=\{summaryHold\s*\?\s*undefined\s*:\s*summaryText\}/;
 /*

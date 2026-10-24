@@ -517,7 +517,7 @@ const RE_PAGE_RAISES_THE_BUSY_CODE =
 const RE_PAGE_RETIRES_THE_BUSY_LINE =
 	/if \(sendErrorCode !== ASIDE_STILL_ANSWERING_CODE\) return;\s*if \(asideBusy\) return;\s*clearError\(\);/;
 const RE_PANEL_REGION_FOCUSABLE =
-	/tabIndex=\{0\}\s+aria-label="The aside exchange"/;
+	/tabIndex=\{0\}\s+aria-label=\{t\("ui\.chat\.aside\.aside_panel\.the_aside_exchange"\)\}/;
 /*
  * F11's effect trigger, pinned by F12: `retireRequest` is bumped by
  * `retireAcceptedPayload` and read by the effect's dependency list, and only those
@@ -1179,8 +1179,14 @@ test("a queued adopt keeps the panel up, read-only, until the pair lands", async
 		ASIDE_ADOPT_QUEUED,
 		"Queued \u2014 this aside joins the conversation when the current turn finishes.",
 	);
-	assert.match(panel, /const blocked = queued\s*\?\s*ASIDE_ADOPT_QUEUED/);
-	assert.match(panel, /const announcement = queued\s*\?\s*ASIDE_ADOPT_QUEUED/);
+	assert.match(
+		panel,
+		/const blocked = queued[\s\S]{0,120}?ui\.chat\.aside\.aside\.queued_this_aside_joins_the_conversation_when_the_current_turn/,
+	);
+	assert.match(
+		panel,
+		/const announcement = queued[\s\S]{0,120}?ui\.chat\.aside\.aside\.queued_this_aside_joins_the_conversation_when_the_current_turn/,
+	);
 	assert.match(
 		panel,
 		/!queued && asideAdoptReady\(stream, sessionStreaming, adoptQueueSupported\)/,
@@ -2938,7 +2944,10 @@ test("the panel names its chord's verb, describes its blocked control, and annou
 	// term (R5-3).
 	assert.match(input, RE_SEND_VERB);
 	assert.match(input, RE_SEND_LABEL);
-	assert.match(panel, /content="Add the aside to the conversation"/);
+	assert.match(
+		panel,
+		/content=\{t\(\s*"ui\.chat\.aside\.aside_panel\.add_the_aside_to_the_conversation",?\s*\)\}/,
+	);
 
 	// The announcement: one sentence per phase, and the answer ONCE, at settle.
 	assert.equal(asideAnnouncement(undefined), null);
@@ -3539,12 +3548,15 @@ test("the question side names its speaker, visibly and for assistive tech", () =
 		"src/renderer/src/features/chat/components/aside-panel.tsx",
 	);
 	// The assistive half stays: `Question: ` is the label a reader hears.
-	assert.match(panel, /<span className="sr-only">Question: <\/span>/);
+	assert.match(
+		panel,
+		/<span className="sr-only">\{t\("ui\.chat\.aside\.aside_panel\.question"\)\}<\/span>/,
+	);
 	// The sighted half: a visible speaker marker, `aria-hidden` so the two
 	// labels do not both reach a screen reader.
 	assert.match(
 		panel,
-		/aria-hidden=\{true\} className="mr-1 text-meta text-ink-dim">\s*You:\s*<\/span>/,
+		/aria-hidden=\{true\} className="mr-1 text-meta text-ink-dim">\s*\{t\("ui\.chat\.aside\.aside_panel\.you"\)\}\s*<\/span>/,
 	);
 	/*
 	 * And it stays box-neutral: no block, no ground, no padding, no vertical
@@ -3556,7 +3568,7 @@ test("the question side names its speaker, visibly and for assistive tech", () =
 	 * spellings proved safe on this line box are the only ones admitted.
 	 */
 	const marker = panel.match(
-		/<span aria-hidden=\{true\} className="([^"]*)">\s*You:/,
+		/<span aria-hidden=\{true\} className="([^"]*)">\s*\{t\("ui\.chat\.aside\.aside_panel\.you"\)\}/,
 	);
 	assert.ok(marker, "the visible marker is one span with its own classes");
 	for (const token of marker[1].split(/\s+/)) {

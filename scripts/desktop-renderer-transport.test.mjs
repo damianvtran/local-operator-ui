@@ -1032,7 +1032,7 @@ test("the send path refuses on an unreadable attachment, before admission", () =
 	);
 	assert.match(
 		encoder,
-		/failures\.push\(\{ name: getFileName\(attachment\), kind: "read" \}\)/,
+		/failures\.push\(\{ name: fileNameForDisplay\(attachment\), kind: "read" \}\)/,
 		"a read that failed no longer reaches the report, so the file vanishes without the sentence that names it",
 	);
 
