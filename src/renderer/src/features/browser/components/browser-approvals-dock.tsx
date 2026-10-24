@@ -213,11 +213,11 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 			data-dock-layout={fullWidth ? "full" : "side"}
 			className={cn(
 				"flex shrink-0 flex-col gap-4 overflow-y-auto px-3 py-3",
-				// The sole boundary between chrome and a live page (§4.2). At full
-				// width there is no live page beside the panel, so the edge is the
-				// row's edge and the border is not a boundary at all.
-				"border-control bg-surface",
-				!fullWidth && "border-l",
+				// The sole boundary between chrome and a live page (§4.2). It stays
+				// floored at full width too: the panel then meets the chrome at the
+				// row's edge, and the contrast contract's structural check treats this
+				// call site's edge as load-bearing rather than as decoration.
+				"border-control border-l bg-surface",
 				// The side form is a fixed width rather than a drag handle: a list of
 				// rows has a natural size (§4.2), 24rem at a 1280px surface and 20rem
 				// below. The cap keeps the 240px page floor; the full form arrives when
