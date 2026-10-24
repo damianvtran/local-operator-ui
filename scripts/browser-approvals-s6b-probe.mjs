@@ -35,6 +35,9 @@ const THEME =
 		: "dark";
 if (!OUT || OUT.startsWith("--")) throw new Error("--out required");
 mkdirSync(OUT, { recursive: true });
+// The isolated HOME must exist before Electron starts: a missing home hangs the
+// network service (measured: `loadURL` never settles) rather than failing loudly.
+mkdirSync(join(OUT, "home"), { recursive: true });
 
 const MAIN = join(OUT, "s6b-main.mjs");
 const FIXTURE = join(OUT, "fixture.html");
@@ -104,6 +107,9 @@ app.whenReady().then(async () => {
       close: document.getElementById('approvals-close')?.textContent ?? null,
       allowOnce: (() => { const b = document.getElementById('approvals-allow-once'); if (!b) return null; const r = b.getBoundingClientRect(); return { text: b.textContent, disabled: b.disabled, x: r.x + r.width / 2, y: r.y + r.height / 2 }; })(),
       buttons: [...document.querySelectorAll('button')].map((b) => ({ id: b.id, text: b.textContent, disabled: b.disabled })),
+      cardHeight: (() => { const el = document.getElementById('approvals-card'); return el ? el.clientHeight : null; })(),
+      footerHeight: (() => { const el = document.querySelector('.card-footer'); return el ? el.getBoundingClientRect().height : 0; })(),
+      decisionRects: [...document.querySelectorAll('#approvals-secondary button')].map((b) => { const r = b.getBoundingClientRect(); const c = document.getElementById('approvals-card').getBoundingClientRect(); return { text: b.textContent, top: Math.round(r.top - c.top), bottom: Math.round(r.bottom - c.top) }; }),
     }))()\`);
   const settle = async (predicate, label, timeout = 20000) => {
     const started = Date.now();
@@ -113,7 +119,13 @@ app.whenReady().then(async () => {
     }
     return false;
   };
-  const entry = (index) => ({ entryId: "entry-" + index, origin: "https://example" + index + ".test", displayAuthority: "The agent in 'probe " + index + "'", expiresAt: Date.now() + 9 * 60000 });
+  const entry = (index) => ({
+    entryId: "entry-" + index,
+    origin: "https://example" + index + ".test",
+    displayAuthority: "The agent in 'probe " + index + "'",
+    expiresAt: Date.now() + 9 * 60000,
+    ...(index === 0 ? { broad: { scope: "domain", key: "example0.test" } } : {}),
+  });
   const entries = [entry(0), entry(1)];
   const rows = {};
   const record = (id, pass, detail, blocked = false) => { rows[id] = { status: blocked ? "BLOCKED" : pass ? "PASS" : "FAIL", detail }; };
@@ -145,7 +157,16 @@ app.whenReady().then(async () => {
   }
   const pageAfterAuto = { bounds: page.getBounds(), visible: page.getVisible(), probe: await page.webContents.executeJavaScript("window.__probe()") };
   const focusAfterAuto = webContents.getFocusedWebContents()?.id ?? null;
-  record("A1-auto-present-unfocused", Boolean(autoSettled && autoDoc && !controller.facts().explicitOpen && focusTargets.length === 0 && pageAfterAuto.probe.focusEvents === pageBefore.probe.focusEvents && pageAfterAuto.probe.blurEvents === pageBefore.probe.blurEvents && pageAfterAuto.probe.activeElement === pageBefore.probe.activeElement && JSON.stringify(pageAfterAuto.bounds) === JSON.stringify(pageBefore.bounds) && pageAfterAuto.visible === pageBefore.visible && focusAfterAuto === focusBefore), { autoSettled, facts: controller.facts(), pageBefore, pageAfterAuto, focusBefore, focusAfterAuto, focusTargets: [...focusTargets], doc: autoDoc });
+  // Snapshot the controller AT the auto-present moment; the end-state facts are
+  // after explicit opens and decisions and must not be cited as A1 (round-1 A1/Q-3).
+  const factsAtAuto = controller.facts();
+  const visibleFloor = autoDoc && autoDoc.cardHeight != null ? autoDoc.cardHeight - autoDoc.footerHeight : 0;
+  record(
+    "Q2-decisions-above-fold",
+    Boolean(autoDoc && autoDoc.decisionRects.length === 4 && autoDoc.decisionRects.every((entry) => entry.bottom <= visibleFloor)),
+    { cardHeight: autoDoc?.cardHeight, footerHeight: autoDoc?.footerHeight, decisions: autoDoc?.decisionRects },
+  );
+  record("A1-auto-present-unfocused", Boolean(autoSettled && autoDoc && !factsAtAuto.explicitOpen && focusTargets.length === 0 && pageAfterAuto.probe.focusEvents === pageBefore.probe.focusEvents && pageAfterAuto.probe.blurEvents === pageBefore.probe.blurEvents && pageAfterAuto.probe.activeElement === pageBefore.probe.activeElement && JSON.stringify(pageAfterAuto.bounds) === JSON.stringify(pageBefore.bounds) && pageAfterAuto.visible === pageBefore.visible && focusAfterAuto === focusBefore), { autoSettled, facts: factsAtAuto, pageBefore, pageAfterAuto, focusBefore, focusAfterAuto, focusTargets: [...focusTargets], doc: autoDoc });
 
   // I6 — shield toggle: the explicit open/close path the renderer's shield calls.
   controller.open({ focus: true, locale: "fr", dir: "ltr", theme: THEME });
@@ -272,7 +293,7 @@ app.whenReady().then(async () => {
       theme: THEME,
       facts: controller.facts(),
       rows,
-      autoPresent: { pageBefore, pageAfterAuto, focusBefore, focusAfterAuto, focusTargets: [...focusTargets], doc: autoDoc },
+      autoPresent: { pageBefore, pageAfterAuto, focusBefore, focusAfterAuto, focusTargets: [...focusTargets], doc: autoDoc, factsAtAuto },
       voiceOver: "BLOCKED: no automated VoiceOver across a second document; manual gate",
       nativeComposite: "BLOCKED: hidden window, no Screen Recording",
       ringNativeRouting: "BLOCKED: hidden window, no sibling-view hit testing",
@@ -301,10 +322,20 @@ const env = withNotificationsOff({
 for (const key of Object.keys(env))
 	if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
 withTelemetryOff(env);
-const child = spawn(ELECTRON_BIN, [MAIN], {
-	env,
-	stdio: ["ignore", "pipe", "pipe"],
-});
+const child = spawn(
+	ELECTRON_BIN,
+	[
+		MAIN,
+		// A PRIVATE PROFILE: HOME alone does not move Electron's userData on macOS
+		// (it resolves from NSHomeDirectory), so two probe cells shared a singleton
+		// profile and the second `loadURL` hung. This flag is the isolation.
+		`--user-data-dir=${join(OUT, "userdata")}`,
+	],
+	{
+		env,
+		stdio: ["ignore", "pipe", "pipe"],
+	},
+);
 let err = "";
 child.stderr.on("data", (chunk) => {
 	err += chunk;
@@ -313,7 +344,7 @@ const code = await new Promise((resolveExit) => {
 	const kill = setTimeout(() => {
 		child.kill("SIGTERM");
 		resolveExit("timeout");
-	}, 180000);
+	}, 300000);
 	child.on("exit", (exitCode) => {
 		clearTimeout(kill);
 		resolveExit(exitCode);

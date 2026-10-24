@@ -1,29 +1,5 @@
 {
-  "at": "2026-10-24T07:05:48Z",
-  "boots": [
-    {
-      "tag": "264-dark",
-      "exitCode": 0,
-      "alive": false,
-      "leftovers": []
-    },
-    {
-      "tag": "264-light",
-      "exitCode": 0,
-      "alive": false,
-      "leftovers": []
-    },
-    {
-      "tag": "900-dark",
-      "exitCode": 0,
-      "alive": false,
-      "leftovers": []
-    },
-    {
-      "tag": "900-light",
-      "exitCode": 0,
-      "alive": false,
-      "leftovers": []
-    }
-  ]
+  "at": "2026-10-24T09:29:23Z",
+  "boots": [],
+  "note": "No probe boot completed at this head; the environment's WebContentsView failure and the BrowserWindow negative control are recorded in the plan."
 }
