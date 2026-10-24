@@ -1095,109 +1095,12 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 }) => {
 	useI18nLocale();
 	/*
-	 * A draft with no snapshot is a pane whose resolution has not answered yet,
-	 * which is a STATE rather than nothing to say (UX U3): it renders the pending
-	 * treatment, or the failure with its retry. Every other pane still renders
-	 * nothing without a snapshot, which is honest about a session that has not
-	 * reported.
-	 */
-	if (!frontend && !(draft && draftResolution)) {
-		/*
-		 * THE READINGS THAT WERE DROPPED STILL SAY SO (task-17, U4). Every other
-		 * empty pane stays silent - a session that has not reported yet has
-		 * nothing to explain - but a pane whose readings were dropped at a spent
-		 * budget was showing values a moment ago, and their disappearance is a
-		 * fact this slot can state in the strip's own register. The `!draft`
-		 * guard is structural rather than a second condition: a draft has no
-		 * stream, so it can never have dropped one.
-		 */
-		if (readingsDropped && !draft) {
-			return (
-				<p
-					data-lo-readings-dropped={true}
-					/* biome-ignore lint/a11y/useSemanticElements: `role="status"` is the polite announcement this sentence wants, and `<output>` - the element the rule suggests - is a form-result element with its own implied semantics; this is neither a form result nor a control. The file's group role carries the same suppression for the same reason. */
-					role="status"
-					className={cn(
-						"order-2 -mx-1.5 min-w-0 text-meta text-ink-dim",
-						className,
-					)}
-				>
-					{t(
-						"ui.chat.session_status.session_status_strip.readings_dropped_when_the_connection_was_lost",
-					)}
-				</p>
-			);
-		}
-		return null;
-	}
-
-	/*
-	 * The dispatcher a reading may use, or `undefined` when nothing here opens.
-	 *
-	 * A draft has no session for a command to address — `slash-dispatch.ts`
-	 * refuses every picker destination without one — and a backend with the
-	 * command surface off supplies none at all. Both render as labels; the copy
-	 * says which of the two it is, because the remedies differ.
-	 *
-	 * A draft pane's opener is a DIFFERENT one, and deliberately not a dispatcher:
-	 * it addresses no session, it opens the same two pickers for a pane that has
-	 * none, and only the two readings with a pre-session answer get it. The
-	 * context breakdown is not one of them — nothing has been measured, so there
-	 * is nothing to break down (R19/R21) — which is why this is a destination-taking
-	 * callback rather than a dispatcher handed to the whole cluster.
-	 */
-	const sessionDispatch = draft ? undefined : onCommand;
-	const draftOpen = draft ? onOpenDraftPicker : undefined;
-
-	// The EFFECTIVE spec is what is answering; see `session-model.ts` for why
-	// this differs from the pickers, which read the selected one on purpose.
-	// `selected_model` is the fallback for an owner that reports no effective
-	// spec (nothing has run yet), which is the state a fresh session is in.
-	//
-	// The user's own unconfirmed paint OUTRANKS both: a pick that pays a cold
-	// runtime bind takes 1.1-4.2 s, and the one thing the user asked is whether
-	// their choice registered. The paint is not a claim that it landed — the
-	// reading is drawn as pending and reverts the moment the owner's frame names
-	// a model of its own (latency U1).
-	const pending = pendingModel !== null;
-	/*
-	 * The identity reading and the effort reading come from different specs on
-	 * purpose — see `bandReadings` for why the paint must not outrank the effort
-	 * chip (reviewer round 1, major 1: `effortState` answers `null` for a row's
-	 * spec, so the chip vanished for the whole 1.1-4.2 s pending window).
-	 */
-	const readings = bandReadings(frontend, pendingModel);
-	const model = readings.identity;
-	const identity = modelIdentity(model);
-	/*
-	 * THE FAST BADGE'S ONE CONDITION, read off the SAME spec the label prints
-	 * (`readings.identity` above), so the bolt can never contradict the name it
-	 * sits beside — the badge qualifies the model the chip is naming, including
-	 * the pending paint's window, where the pick's spec reports no tier and the
-	 * badge correctly hides until the owner's frame lands. The tri-state comes
-	 * from `fastModeState` so this chip and the `/fast` row's slot share ONE
-	 * rule — the chip passes the spec it names (this one, pending window
-	 * included), the row the spec in force; outside an unconfirmed switch those
-	 * are the same fields (operator report, 2026-09-29).
-	 */
-	const fastOn = fastModeState(model) === "on";
-	const effort = reconcileEffort(effortState(readings.effort), effortEntities);
-	/*
-	 * WHY THE CHIP'S LEVEL IS NOT THE ONE THE USER PICKED, when that is the case
-	 * (operator report, 2026-10-21: `Max` read `High` after a send, with nothing
-	 * saying why). The chip keeps naming the level IN FORCE, which is its job.
-	 * This adds the reason beside it: the backend's own displacement sentence,
-	 * on the tooltip and in the accessible name, plus a mark on the chip so the
-	 * difference is visible without hovering. Never on a draft: a draft has no
-	 * serving model to be displaced from.
-	 */
-	const effortNote = draft ? null : effortDisplacementNote(frontend);
-	/*
-	 * The four readings that come off the snapshot, asked for a pane that has no
-	 * snapshot yet. A blank `SessionCostInput` answers the same "no spend" the
-	 * preview's own zeros answer, and `contextReading` of absent tokens is its
-	 * `no-reading` status — so a pending or failed draft shows the empty context
-	 * ring it already showed once resolved, rather than a number nobody measured.
+	 * EVERY HOOK ABOVE THE EARLY RETURNS. The strip renders nothing until a
+	 * snapshot arrives, so a hook registered below that return changes the hook
+	 * order on the frame the snapshot lands - React error #310, a cold chat open
+	 * that crashes the composer (QA blocker on the staging branch). The inputs
+	 * are pure functions of `frontend`, so computing them for an empty pane is
+	 * cheap and side-effect free; only the DRAWN output is conditional.
 	 */
 	const reading = contextReading({
 		context_tokens: frontend?.context_tokens,
@@ -1385,6 +1288,111 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 		document.fonts?.ready.then(measureDurationFit).catch(() => {});
 		return () => observer.disconnect();
 	}, [hasDuration, measureDurationFit]);
+	/*
+	 * A draft with no snapshot is a pane whose resolution has not answered yet,
+	 * which is a STATE rather than nothing to say (UX U3): it renders the pending
+	 * treatment, or the failure with its retry. Every other pane still renders
+	 * nothing without a snapshot, which is honest about a session that has not
+	 * reported.
+	 */
+	if (!frontend && !(draft && draftResolution)) {
+		/*
+		 * THE READINGS THAT WERE DROPPED STILL SAY SO (task-17, U4). Every other
+		 * empty pane stays silent - a session that has not reported yet has
+		 * nothing to explain - but a pane whose readings were dropped at a spent
+		 * budget was showing values a moment ago, and their disappearance is a
+		 * fact this slot can state in the strip's own register. The `!draft`
+		 * guard is structural rather than a second condition: a draft has no
+		 * stream, so it can never have dropped one.
+		 */
+		if (readingsDropped && !draft) {
+			return (
+				<p
+					data-lo-readings-dropped={true}
+					/* biome-ignore lint/a11y/useSemanticElements: `role="status"` is the polite announcement this sentence wants, and `<output>` - the element the rule suggests - is a form-result element with its own implied semantics; this is neither a form result nor a control. The file's group role carries the same suppression for the same reason. */
+					role="status"
+					className={cn(
+						"order-2 -mx-1.5 min-w-0 text-meta text-ink-dim",
+						className,
+					)}
+				>
+					{t(
+						"ui.chat.session_status.session_status_strip.readings_dropped_when_the_connection_was_lost",
+					)}
+				</p>
+			);
+		}
+		return null;
+	}
+
+	/*
+	 * The dispatcher a reading may use, or `undefined` when nothing here opens.
+	 *
+	 * A draft has no session for a command to address — `slash-dispatch.ts`
+	 * refuses every picker destination without one — and a backend with the
+	 * command surface off supplies none at all. Both render as labels; the copy
+	 * says which of the two it is, because the remedies differ.
+	 *
+	 * A draft pane's opener is a DIFFERENT one, and deliberately not a dispatcher:
+	 * it addresses no session, it opens the same two pickers for a pane that has
+	 * none, and only the two readings with a pre-session answer get it. The
+	 * context breakdown is not one of them — nothing has been measured, so there
+	 * is nothing to break down (R19/R21) — which is why this is a destination-taking
+	 * callback rather than a dispatcher handed to the whole cluster.
+	 */
+	const sessionDispatch = draft ? undefined : onCommand;
+	const draftOpen = draft ? onOpenDraftPicker : undefined;
+
+	// The EFFECTIVE spec is what is answering; see `session-model.ts` for why
+	// this differs from the pickers, which read the selected one on purpose.
+	// `selected_model` is the fallback for an owner that reports no effective
+	// spec (nothing has run yet), which is the state a fresh session is in.
+	//
+	// The user's own unconfirmed paint OUTRANKS both: a pick that pays a cold
+	// runtime bind takes 1.1-4.2 s, and the one thing the user asked is whether
+	// their choice registered. The paint is not a claim that it landed — the
+	// reading is drawn as pending and reverts the moment the owner's frame names
+	// a model of its own (latency U1).
+	const pending = pendingModel !== null;
+	/*
+	 * The identity reading and the effort reading come from different specs on
+	 * purpose — see `bandReadings` for why the paint must not outrank the effort
+	 * chip (reviewer round 1, major 1: `effortState` answers `null` for a row's
+	 * spec, so the chip vanished for the whole 1.1-4.2 s pending window).
+	 */
+	const readings = bandReadings(frontend, pendingModel);
+	const model = readings.identity;
+	const identity = modelIdentity(model);
+	/*
+	 * THE FAST BADGE'S ONE CONDITION, read off the SAME spec the label prints
+	 * (`readings.identity` above), so the bolt can never contradict the name it
+	 * sits beside — the badge qualifies the model the chip is naming, including
+	 * the pending paint's window, where the pick's spec reports no tier and the
+	 * badge correctly hides until the owner's frame lands. The tri-state comes
+	 * from `fastModeState` so this chip and the `/fast` row's slot share ONE
+	 * rule — the chip passes the spec it names (this one, pending window
+	 * included), the row the spec in force; outside an unconfirmed switch those
+	 * are the same fields (operator report, 2026-09-29).
+	 */
+	const fastOn = fastModeState(model) === "on";
+	const effort = reconcileEffort(effortState(readings.effort), effortEntities);
+	/*
+	 * WHY THE CHIP'S LEVEL IS NOT THE ONE THE USER PICKED, when that is the case
+	 * (operator report, 2026-10-21: `Max` read `High` after a send, with nothing
+	 * saying why). The chip keeps naming the level IN FORCE, which is its job.
+	 * This adds the reason beside it: the backend's own displacement sentence,
+	 * on the tooltip and in the accessible name, plus a mark on the chip so the
+	 * difference is visible without hovering. Never on a draft: a draft has no
+	 * serving model to be displaced from.
+	 */
+	const effortNote = draft ? null : effortDisplacementNote(frontend);
+	/*
+	 * The four readings that come off the snapshot, asked for a pane that has no
+	 * snapshot yet. A blank `SessionCostInput` answers the same "no spend" the
+	 * preview's own zeros answer, and `contextReading` of absent tokens is its
+	 * `no-reading` status — so a pending or failed draft shows the empty context
+	 * ring it already showed once resolved, rather than a number nobody measured.
+	 */
 	/*
 	 * Which readings can open, and through which opener.
 	 *
