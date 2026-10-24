@@ -308,7 +308,7 @@ const LIVE_CONTROL =
  * that a user meets in sequence (the row's hint, then the field's placeholder once
  * pressed) are the ones that must agree.
  */
-const OTHER_PROMPT = "Type your answer";
+const OTHER_PROMPT = () => t("ui.chat.asks.ask_panel.type_your_answer");
 
 /**
  * Focus a control the user's own press asked for, with the CARET AFTER ITS TEXT when it
@@ -507,7 +507,9 @@ const AskQuestionField = ({
 					 * than an association (`dom_audit` reported `fail input-label`; design
 					 * round 1, D8).
 					 */
-					aria-label={`Your answer to: ${question.question}`}
+					aria-label={t("ui.chat.asks.ask_panel.your_answer_to_question", {
+						question: question.question,
+					})}
 					/*
 					 * The placeholder pair `ui/input.tsx` uses: the placeholder is where the skip
 					 * rule is stated, and the browser default measured 2.81:1 on Linen against
@@ -704,7 +706,7 @@ const AskQuestionField = ({
 					>
 						<AskMark chosen={other.open} multi={multi} />
 						<span className="min-w-0 flex-1">
-							<span>Other</span>
+							<span>{t("ui.chat.asks.ask_panel.other")}</span>
 							{/*
 							 * A REAL SPACE between the label and the hint, not just the `ml-1.5`
 							 * margin: a margin is invisible to the accessible-name computation,
@@ -715,7 +717,7 @@ const AskQuestionField = ({
 							 * judge.
 							 */} {other.open ? null : (
 								<span className="ml-1.5 text-ink-muted text-xs">
-									{OTHER_PROMPT}
+									{OTHER_PROMPT()}
 								</span>
 							)}
 						</span>
@@ -727,8 +729,10 @@ const AskQuestionField = ({
 								fieldRef={otherField}
 								value={other.text}
 								disabled={disabled}
-								ariaLabel={`Your answer to: ${question.question}`}
-								placeholder={OTHER_PROMPT}
+								ariaLabel={t("ui.chat.asks.ask_panel.your_answer_to_question", {
+									question: question.question,
+								})}
+								placeholder={OTHER_PROMPT()}
 								onChange={(text) => writeOther({ open: true, text })}
 								onEnter={() => onAdvance(question.id)}
 							/>
@@ -750,8 +754,10 @@ const AskQuestionField = ({
 					fieldRef={otherField}
 					value={other.text}
 					disabled={disabled}
-					ariaLabel={`Your answer to: ${question.question}`}
-					placeholder={OTHER_PROMPT}
+					ariaLabel={t("ui.chat.asks.ask_panel.your_answer_to_question", {
+						question: question.question,
+					})}
+					placeholder={OTHER_PROMPT()}
 					onChange={(text) => writeOther({ open: true, text })}
 					onEnter={() => onAdvance(question.id)}
 				/>
@@ -1217,7 +1223,11 @@ const AskRow = ({
 					size={16}
 				/>
 				<span className="min-w-0 flex-1 text-ink text-xs">
-					{urgent ? <span className="sr-only">Urgent. </span> : null}
+					{urgent ? (
+						<span className="sr-only">
+							{t("ui.chat.asks.ask_panel.urgent")}
+						</span>
+					) : null}
 					{statusDismissReason === null
 						? askStatusText(ask, nowMs)
 						: dismissReceipt(statusDismissReason)}
@@ -1295,13 +1305,15 @@ const AskRow = ({
 												 */
 												<span className="text-ink-muted text-xs">
 													<span aria-hidden="true">{" \u00b7 "}</span>
-													Other
+													{t("ui.chat.asks.ask_panel.other")}
 												</span>
 											) : null}
 										</span>
 									))
 								) : (
-									<span className="text-ink text-sm">No answer given</span>
+									<span className="text-ink text-sm">
+										{t("ui.chat.asks.ask_panel.no_answer_given")}
+									</span>
 								)}
 							</div>
 						);
@@ -1394,7 +1406,9 @@ const AskRow = ({
 						className="mt-0.5 shrink-0 text-success"
 					/>
 					<span className="text-ink">
-						Changed — the agent has not been handed it yet.
+						{t(
+							"ui.chat.asks.ask_panel.changed_the_agent_has_not_been_handed_it_yet",
+						)}
 					</span>
 				</p>
 			) : null}
@@ -1445,7 +1459,7 @@ const AskRow = ({
 								: "border border-transparent bg-accent text-on-accent hover:bg-accent-hover",
 						)}
 					>
-						Send answer
+						{t("ui.chat.asks.ask_panel.send_answer")}
 					</button>
 					{canDecline ? (
 						/*
@@ -1463,7 +1477,7 @@ const AskRow = ({
 							onClick={() => onDecline(ask)}
 							className="rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken hover:text-ink"
 						>
-							Decline
+							{t("ui.chat.asks.ask_panel.decline")}
 						</button>
 					) : null}
 				</div>
@@ -1520,7 +1534,7 @@ const AskRow = ({
 									 * `Send answer` as the same act done twice rather than as a second
 									 * mechanic with its own vocabulary.
 									 */}
-									Update answer
+									{t("ui.chat.asks.ask_panel.update_answer")}
 								</button>
 								<button
 									type="button"
@@ -1533,7 +1547,7 @@ const AskRow = ({
 									 */
 									className="rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken hover:text-ink"
 								>
-									Cancel
+									{t("ui.common.actions.cancel")}
 								</button>
 							</div>
 						</>
@@ -1558,7 +1572,7 @@ const AskRow = ({
 							}}
 							className="self-start rounded-md border border-control px-3 py-1.5 text-ink text-sm hover:bg-sunken"
 						>
-							Change answer
+							{t("ui.chat.asks.ask_panel.change_answer")}
 						</button>
 					)}
 				</div>
@@ -2043,8 +2057,13 @@ export const AskPanel = ({
 				seq: note.seq + 1,
 				text:
 					dropped === 1
-						? "That question timed out; your answer was not sent."
-						: `${dropped} questions timed out; your answers were not sent.`,
+						? t(
+								"ui.chat.asks.ask_panel.that_question_timed_out_your_answer_was_not_sent",
+							)
+						: t(
+								"ui.chat.asks.ask_panel.dropped_questions_timed_out_your_answers_were_not_sent",
+								{ dropped },
+							),
 			}));
 		const id = focusedAsk;
 		if (id === null || !heldIds.has(id) || held.has(id)) return;
@@ -2056,8 +2075,10 @@ export const AskPanel = ({
 				seq: current.seq + 1,
 				text:
 					newlyHeld.length === 1
-						? "Question timed out"
-						: `${newlyHeld.length} questions timed out`,
+						? t("ui.chat.asks.ask_panel.question_timed_out")
+						: t("ui.chat.asks.ask_panel.length_questions_timed_out", {
+								length: newlyHeld.length,
+							}),
 				from: id,
 			}));
 			return;
@@ -2121,7 +2142,8 @@ export const AskPanel = ({
 		 */
 		const word = askStatusWord(presentation.status);
 		const question =
-			presentation.ask.questions[0]?.question ?? "No question text";
+			presentation.ask.questions[0]?.question ??
+			t("ui.chat.asks.ask_panel.no_question_text");
 		/*
 		 * THE REFUSAL TRAVELS WITH THE ROW (UX round 1, U1 = design round 1, D1).
 		 *
@@ -2152,7 +2174,10 @@ export const AskPanel = ({
 				)}
 				chevronClassName="text-ink-dim"
 				rowClassName="min-h-7 py-1"
-				triggerLabel={`${word} - ${question}`}
+				triggerLabel={t("ui.chat.asks.ask_panel.word_question", {
+					word,
+					question,
+				})}
 				summary={
 					<span className="flex min-w-0 flex-col gap-0.5">
 						<span className="flex min-w-0 items-start gap-1.5">
@@ -2227,12 +2252,12 @@ export const AskPanel = ({
 		 */
 		<fieldset
 			data-lo-ask-filter={filter}
-			aria-label="Filter asks"
+			aria-label={t("ui.chat.asks.ask_panel.filter_asks")}
 			className="m-0 flex items-center gap-1 border-0 p-0 px-1"
 		>
 			{(
 				[
-					["all", "All", view.rows.length],
+					["all", t("ui.chat.asks.ask_panel.all"), view.rows.length],
 					/*
 					 * `Pending`, the panel's own word for the half (`askPanelHalves`) and the
 					 * opposite of `Settled` (design round 1 on #1116, D1). It replaced
@@ -2240,8 +2265,8 @@ export const AskPanel = ({
 					 * since D11 that ask is settled, so the old label named a set the half no
 					 * longer held. The backend's TUI filter takes the same word (#2481).
 					 */
-					["outstanding", "Pending", pending.length],
-					["settled", "Settled", settled.length],
+					["outstanding", t("ui.chat.asks.ask_panel.pending"), pending.length],
+					["settled", t("ui.chat.asks.ask_panel.settled"), settled.length],
 				] as const
 			).map(([value, label, count]) => (
 				<button
@@ -2259,7 +2284,10 @@ export const AskPanel = ({
 							: "text-ink-muted hover:bg-row-hover hover:text-ink",
 					)}
 				>
-					{`${label} · ${count}`}
+					{t("ui.chat.asks.ask_panel.label_count", {
+						label,
+						count,
+					})}
 				</button>
 			))}
 		</fieldset>
@@ -2296,17 +2324,25 @@ export const AskPanel = ({
 	const emptySlice =
 		view.rows.length === 0
 			? view.open > 0
-				? "The details for these asks could not be loaded."
-				: "No asks outstanding. The agent is not waiting on anything."
+				? t(
+						"ui.chat.asks.ask_panel.the_details_for_these_asks_could_not_be_loaded",
+					)
+				: t(
+						"ui.chat.asks.ask_panel.no_asks_outstanding_the_agent_is_not_waiting_on_anything",
+					)
 			: /*
 				 * The TRUE pending count, not the drawn one (m1): a held ask is settled, so
 				 * `Pending · 0` owes its sentence even while a spacer still holds a slot. It
 				 * is drawn only when nothing is pending, so it cannot push a live card down.
 				 */
 				filter === "outstanding" && pending.length === 0
-				? "No asks are pending. They have all settled — see Settled."
+				? t(
+						"ui.chat.asks.ask_panel.no_asks_are_pending_they_have_all_settled_see_settled",
+					)
 				: filter === "settled" && settled.length === 0
-					? "No asks have settled yet. They are all still pending."
+					? t(
+							"ui.chat.asks.ask_panel.no_asks_have_settled_yet_they_are_all_still_pending",
+						)
 					: null;
 
 	return (
@@ -2376,7 +2412,11 @@ export const AskPanel = ({
 						if (!heldIds.has(id)) return askRow(presentation);
 						const height = cardHeights.current.get(id);
 						const reserve =
-							height === undefined ? undefined : { minHeight: `${height}px` };
+							height === undefined
+								? undefined
+								: {
+										minHeight: `${height}px`,
+									};
 						return filter === "outstanding" ? (
 							<div
 								key={id}
@@ -2418,7 +2458,9 @@ export const AskPanel = ({
 					 * row, a legend above them names twice what the rows already say.
 					 */}
 					{showPending && shown.pending.length > 0 ? (
-						<p className="px-3 pt-1 text-ink-dim text-meta">Settled</p>
+						<p className="px-3 pt-1 text-ink-dim text-meta">
+							{t("ui.chat.asks.ask_panel.settled")}
+						</p>
 					) : null}
 					{(showPending ? shown.settled : settled).map((presentation) =>
 						collapsedRow(presentation),

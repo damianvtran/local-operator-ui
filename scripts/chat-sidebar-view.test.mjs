@@ -1541,8 +1541,8 @@ test("the component draws the band's controls and the popover's four groups", ()
 		"the Time basis rows do not write the view's basis on press",
 	);
 	assert.ok(
-		source.includes('navigate("/agents?create=agent")') &&
-			source.includes('navigate("/agents?create=team")'),
+		/navigate\(\s*"\/agents\?create=agent"\s*\)/.test(source) &&
+			/navigate\(\s*"\/agents\?create=team"\s*\)/.test(source),
 		"the create menu is not wired to the two existing authoring flows",
 	);
 	/*
@@ -1678,7 +1678,9 @@ test("the pin's label is the subject and the state is aria-pressed", () => {
 	);
 	const control = source.slice(tooltipAt, at + 900);
 	assert.ok(
-		control.includes("aria-label={`Pin “${name}”`}"),
+		/aria-label=\{t\("ui\.chat\.sidebar\.chat_sidebar\.pin_name",\s*\{\s*name,\s*\}\)/.test(
+			control,
+		),
 		"the pin's label no longer names the agent it pins",
 	);
 	assert.ok(

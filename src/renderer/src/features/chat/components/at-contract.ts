@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { AtSpan } from "./at-token";
 
 /**
@@ -367,8 +368,9 @@ export function atCandidateKey(rows: readonly { path: string }[]): string {
  * transcript exactly as the list it stands in for does, and no row of the composer
  * moves.
  */
-export const AT_UNAVAILABLE_REASON =
-	"This backend cannot carry file references. Update the backend and try again.";
+export const AT_UNAVAILABLE_REASON = t(
+	"ui.chat.at.contract.this_backend_cannot_carry_file_references_update_the_backend_and",
+);
 
 /**
  * The footer's left line, read off the ACTIVE ROW.
@@ -401,11 +403,13 @@ export const AT_UNAVAILABLE_REASON =
 export function atFooter(
 	row: { path: string; directory: boolean } | undefined,
 ): string {
-	if (!row) return "Nothing to insert · Esc closes";
+	if (!row) return t("ui.chat.at.contract.nothing_to_insert_esc_closes");
 	const verb = row.directory
-		? `Enter opens ${row.path}`
-		: `Enter inserts ${atFooterToken(row.path)}`;
-	return `${verb} · Esc closes`;
+		? t("ui.chat.at.contract.enter_opens", { path: row.path })
+		: t("ui.chat.at.contract.enter_inserts", {
+				token: atFooterToken(row.path),
+			});
+	return t("ui.chat.at.contract.footer", { verb });
 }
 
 /** The token a footer line names: the write minus the space that closes it. */
@@ -491,16 +495,23 @@ export function atEmptyCopy(state: {
 	projects?: boolean;
 }): string {
 	if (state.error) return unreadableCopy(state.error);
-	if (state.loading && state.entries === 0) return "Reading this folder…";
-	if (state.entries === 0) return "This folder is empty.";
+	if (state.loading && state.entries === 0)
+		return t("ui.chat.at.contract.reading_this_folder");
+	if (state.entries === 0) return t("ui.chat.at.contract.this_folder_is_empty");
 	if (state.matched === 0)
 		return state.projects
-			? `Nothing here matches "${state.query}" in ${state.scope}.`
-			: `No files match "${state.query}" in ${state.scope}.`;
+			? t("ui.chat.at.contract.nothing_matches", {
+					query: state.query,
+					scope: state.scope,
+				})
+			: t("ui.chat.at.contract.no_files_match", {
+					query: state.query,
+					scope: state.scope,
+				});
 	// Unreachable while the caller renders a notice only when it has no rows, and
 	// stated rather than left undefined so a future caller that asks anyway gets a
 	// sentence instead of an empty div.
-	return "This folder is empty.";
+	return t("ui.chat.at.contract.this_folder_is_empty");
 }
 
 /*
@@ -523,8 +534,12 @@ const PERMISSION_ERRNO = /\bEACCES\b|\bEPERM\b/;
  */
 export function unreadableCopy(error: string): string {
 	if (PERMISSION_ERRNO.test(error))
-		return "Could not read this folder. It may need a permission this app does not have.";
-	return "Could not read this folder. Check that it exists and that you can open it.";
+		return t(
+			"ui.chat.at.contract.could_not_read_this_folder_it_may_need_a_permission",
+		);
+	return t(
+		"ui.chat.at.contract.could_not_read_this_folder_check_that_it_exists_and",
+	);
 }
 
 /**

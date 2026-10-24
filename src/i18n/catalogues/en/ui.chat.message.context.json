@@ -1,0 +1,432 @@
+{
+	"ui.chat.message.audio_attachment.playback_rate": {
+		"role": "accessible name or tooltip in chat components/message-item/audio-attachment.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/audio-attachment.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.audio_attachment.time_indicator": {
+		"role": "accessible name or tooltip in chat components/message-item/audio-attachment.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/audio-attachment.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.audio_attachment.volume_control": {
+		"role": "accessible name or tooltip in chat components/message-item/audio-attachment.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/audio-attachment.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.file_attachment.file_actions": {
+		"role": "accessible name or tooltip in chat components/message-item/file-attachment.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/file-attachment.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.index.technical_details": {
+		"role": "visible interface copy in chat components/message-item/index.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/index.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.invalid_attachment.open": {
+		"role": "visible interface copy in chat components/message-item/invalid-attachment.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/invalid-attachment.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.log_block.logs": {
+		"role": "visible interface copy in chat components/message-item/log-block.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/log-block.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.message_avatar.assistant": {
+		"role": "accessible name or tooltip in chat components/message-item/message-avatar.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/message-avatar.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.output_block.output": {
+		"role": "visible interface copy in chat components/message-item/output-block.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/output-block.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.video_attachment.file_actions": {
+		"role": "accessible name or tooltip in chat components/message-item/video-attachment.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/video-attachment.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.code_block.code": {
+		"role": "visible interface copy in chat components/message-item/code-block.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/code-block.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.error_block.settings_section_providers": {
+		"role": "visible interface copy in chat components/message-item/error-block.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/error-block.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.file_attachment.unknown_error_reading_file": {
+		"role": "visible interface copy in chat components/message-item/file-attachment.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/file-attachment.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.image_attachment.unknown_error_reading_file": {
+		"role": "visible interface copy in chat components/message-item/image-attachment.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/image-attachment.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.message_controls.copied": {
+		"role": "visible interface copy in chat components/message-item/message-controls.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/message-controls.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.message_controls.copy_message": {
+		"role": "visible interface copy in chat components/message-item/message-controls.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/message-controls.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.message_paper.thinking": {
+		"role": "visible interface copy in chat components/message-item/message-paper.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/message-paper.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.video_attachment.unknown_error_reading_file": {
+		"role": "visible interface copy in chat components/message-item/video-attachment.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/video-attachment.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.turn_timestamp.answered": {
+		"role": "visible interface copy in chat components/message-item/turn-timestamp.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/turn-timestamp.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.attachment_frame.detail": {
+		"role": "visible interface copy in chat components/message-item/attachment-frame.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/attachment-frame.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"detail": "string"
+		}
+	},
+	"ui.chat.message.attachment_frame.name_detail": {
+		"role": "visible interface copy in chat components/message-item/attachment-frame.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/attachment-frame.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string",
+			"detail": "string"
+		}
+	},
+	"ui.chat.message.file_attachment.click_to_expand_name": {
+		"role": "visible interface copy in chat components/message-item/file-attachment.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/file-attachment.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.message.file_attachment.expand_name": {
+		"role": "visible interface copy in chat components/message-item/file-attachment.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/file-attachment.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.message.image_attachment.click_to_expand_name": {
+		"role": "visible interface copy in chat components/message-item/image-attachment.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/image-attachment.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.message.image_attachment.expand_name": {
+		"role": "visible interface copy in chat components/message-item/image-attachment.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/image-attachment.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.message.attachment_frame.could_not_be_displayed_it_may_have_been_moved_renamed": {
+		"role": "visible interface copy in chat components/message-item/attachment-frame.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/attachment-frame.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.attachment_frame.could_not_be_displayed_its_stored_copy_is_not_available": {
+		"role": "visible interface copy in chat components/message-item/attachment-frame.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/message-item/attachment-frame.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.attachment_frame.could_not_be_played_its_stored_copy_is_not_available": {
+		"role": "visible interface copy in chat components/message-item/attachment-frame.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/attachment-frame.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.file_attachment.click_to_open_getfilenamevalue": {
+		"role": "visible interface copy in chat components/message-item/file-attachment.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/file-attachment.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"getFileNameValue": "string"
+		}
+	},
+	"ui.chat.message.index.could_not_open_getfilenamevalue_the_file_may_have_been_moved": {
+		"role": "visible interface copy in chat components/message-item/index.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/message-item/index.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"getFileNameValue": "string"
+		}
+	},
+	"ui.chat.message.index.is_value": {
+		"role": "visible interface copy in chat components/message-item/index.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/index.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"value": "string"
+		}
+	},
+	"ui.chat.message.invalid_attachment.file_not_viewable_getfilenamevalue": {
+		"role": "visible interface copy in chat components/message-item/invalid-attachment.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/invalid-attachment.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"getFileNameValue": "string"
+		}
+	},
+	"ui.chat.message.invalid_attachment.getfilenamevalue_is_not_viewable_file_may_be_incomplete_deleted_or": {
+		"role": "visible interface copy in chat components/message-item/invalid-attachment.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/message-item/invalid-attachment.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"getFileNameValue": "string"
+		}
+	},
+	"ui.chat.message.invalid_attachment.getfilenamevalue_reason": {
+		"role": "visible interface copy in chat components/message-item/invalid-attachment.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/invalid-attachment.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"getFileNameValue": "string",
+			"reason": "string"
+		}
+	},
+	"ui.chat.message.turn_timestamp.value_full": {
+		"role": "visible interface copy in chat components/message-item/turn-timestamp.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/turn-timestamp.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"value": "string",
+			"full": "string"
+		}
+	},
+	"ui.chat.message.video_attachment.click_to_open_getfilenamevalue": {
+		"role": "visible interface copy in chat components/message-item/video-attachment.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/video-attachment.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"getFileNameValue": "string"
+		}
+	},
+	"ui.chat.message.turn_timestamp.ran": {
+		"role": "visible interface copy in chat components/message-item/turn-timestamp.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/turn-timestamp.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.turn_timestamp.sent": {
+		"role": "visible interface copy in chat components/message-item/turn-timestamp.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/message-item/turn-timestamp.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.message.error_block.error": {
+		"role": "rendered product copy in chat components/message-item/error-block.tsx",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.message.error_block.hosting": {
+		"role": "rendered product copy in chat components/message-item/error-block.tsx",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"settings": "string"
+		}
+	},
+	"ui.chat.message.error_block.model": {
+		"role": "rendered product copy in chat components/message-item/error-block.tsx",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"settings": "string"
+		}
+	},
+	"ui.chat.message.error_block.rate_limit": {
+		"role": "rendered product copy in chat components/message-item/error-block.tsx",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"settings": "string"
+		}
+	},
+	"ui.chat.message.error_block.rate_limit_all": {
+		"role": "rendered product copy in chat components/message-item/error-block.tsx",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"settings": "string"
+		}
+	},
+	"ui.chat.message.error_block.invalid_key": {
+		"role": "rendered product copy in chat components/message-item/error-block.tsx",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"settings": "string"
+		}
+	},
+	"ui.chat.message.error_block.model_unavailable": {
+		"role": "rendered product copy in chat components/message-item/error-block.tsx",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"settings": "string"
+		}
+	},
+	"ui.chat.message.error_block.schema_explanation": {
+		"role": "rendered product copy in chat components/message-item/error-block.tsx",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.message.error_block.schema_remedy": {
+		"role": "rendered product copy in chat components/message-item/error-block.tsx",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"settings": "string"
+		}
+	},
+	"ui.chat.message.audio_attachment.pause": {
+		"role": "button that pauses audio playback",
+		"tone": "sentence case; concise label",
+		"length": "one short label",
+		"note": "Preserve the existing action or destination; do not add punctuation.",
+		"placeholders": {}
+	},
+	"ui.chat.message.audio_attachment.play": {
+		"role": "button that starts audio playback",
+		"tone": "sentence case; concise label",
+		"length": "one short label",
+		"note": "Preserve the existing action or destination; do not add punctuation.",
+		"placeholders": {}
+	},
+	"ui.chat.message.audio_attachment.unmute": {
+		"role": "button that restores audio volume",
+		"tone": "sentence case; concise label",
+		"length": "one short label",
+		"note": "Preserve the existing action or destination; do not add punctuation.",
+		"placeholders": {}
+	},
+	"ui.chat.message.audio_attachment.mute": {
+		"role": "button that mutes audio",
+		"tone": "sentence case; concise label",
+		"length": "one short label",
+		"note": "Preserve the existing action or destination; do not add punctuation.",
+		"placeholders": {}
+	},
+	"ui.chat.message.error_block.providers_section": {
+		"role": "inline router link to Providers settings",
+		"tone": "sentence case; concise label",
+		"length": "one short label",
+		"note": "Preserve the existing action or destination; do not add punctuation.",
+		"placeholders": {}
+	},
+	"ui.chat.message.error_block.settings_page": {
+		"role": "inline router link to the settings page",
+		"tone": "sentence case; concise label",
+		"length": "one short label",
+		"note": "Preserve the existing action or destination; do not add punctuation.",
+		"placeholders": {}
+	},
+	"ui.chat.message.index.content_header": {
+		"role": "rendered product copy in chat components/message-item/index.tsx",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.message.index.replacements_header": {
+		"role": "rendered product copy in chat components/message-item/index.tsx",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	}
+}

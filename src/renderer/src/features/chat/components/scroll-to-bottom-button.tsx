@@ -1,8 +1,10 @@
 import { Button } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ArrowDown } from "lucide-react";
 import { useCallback } from "react";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 
 /**
  * Props for the ScrollToBottomButton component
@@ -45,6 +47,7 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 	className,
 	hasNewActivity = false,
 }) => {
+	useI18nLocale();
 	const handleClick = useCallback(() => {
 		onClick();
 	}, [onClick]);
@@ -112,13 +115,17 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 					visible ? "pointer-events-auto" : "pointer-events-none",
 				)}
 				aria-label={
-					hasNewActivity ? "New activity, scroll to bottom" : "Scroll to bottom"
+					hasNewActivity
+						? t("ui.chat.scroll_to_bottom_button.new_activity_scroll_to_bottom")
+						: t("ui.chat.scroll_to_bottom_button.scroll_to_bottom")
 				}
 				onClick={handleClick}
 				tabIndex={visible ? 0 : -1}
 			>
 				<ArrowDown aria-hidden="true" />
-				{hasNewActivity ? "New activity" : null}
+				{hasNewActivity
+					? t("ui.chat.scroll_to_bottom_button.new_activity")
+					: null}
 			</Button>
 		</div>
 	);

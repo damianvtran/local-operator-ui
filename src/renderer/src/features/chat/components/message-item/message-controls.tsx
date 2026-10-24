@@ -31,12 +31,14 @@ import {
 	useSpeakControl,
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useSpeechBindingFor } from "@shared/lib/speech-target";
 import { cn } from "@shared/lib/utils";
 import { messageSpeechKey, useSpeechStore } from "@shared/store/speech-store";
 import { Copy } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
+import { t } from "../../../../../../i18n/messages";
 import { actionRowVisibility } from "../../canonical/message-actions";
 import { MessageTimestamp } from "./message-timestamp";
 
@@ -61,6 +63,7 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	inline = false,
 	timestamp,
 }) => {
+	useI18nLocale();
 	const [copied, setCopied] = useState(false);
 	const { playSpeech } = useSpeechStore();
 	/*
@@ -134,11 +137,22 @@ export const MessageControls: FC<MessageControlsProps> = ({
 			{timestamp && <MessageTimestamp timestamp={timestamp} className="px-1" />}
 			{showCopyButton && (
 				<div className="flex items-center">
-					<Tooltip content={copied ? "Copied" : "Copy message"} side="top">
+					<Tooltip
+						content={
+							copied
+								? t("ui.chat.message.message_controls.copied")
+								: t("ui.chat.message.message_controls.copy_message")
+						}
+						side="top"
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label={copied ? "Copied" : "Copy message"}
+							aria-label={
+								copied
+									? t("ui.chat.message.message_controls.copied")
+									: t("ui.chat.message.message_controls.copy_message")
+							}
 							className={buttonClass}
 							onClick={handleCopy}
 						>

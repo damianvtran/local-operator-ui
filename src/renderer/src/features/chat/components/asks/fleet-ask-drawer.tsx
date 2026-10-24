@@ -73,10 +73,12 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import type { AskDrawerCloseOptions } from "@shared/store/ui-preferences-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { t } from "../../../../../../i18n/messages";
 import {
 	type AnswerOutcome,
 	answerQueuedAsk,
@@ -118,6 +120,7 @@ export const FleetAskDrawer = ({
 	 */
 	onClose: (options?: AskDrawerCloseOptions) => void;
 }) => {
+	useI18nLocale();
 	const { rows, frontend } = useFleetAsks();
 	const { client } = useOptionalQueryClient();
 	/*
@@ -227,7 +230,11 @@ export const FleetAskDrawer = ({
 	const receipt = useCallback(
 		(verb: string, askId: string) => {
 			const name = labels.get(askId);
-			showSuccessToast(name ? `${verb} ${name}` : verb);
+			showSuccessToast(
+				name
+					? t("ui.chat.asks.fleet_ask_drawer.verb_name", { verb, name })
+					: verb,
+			);
 		},
 		[labels],
 	);
@@ -289,7 +296,11 @@ export const FleetAskDrawer = ({
 				} finally {
 					setAnswering(false);
 				}
-				settle(askId, outcome, "Answer sent to");
+				settle(
+					askId,
+					outcome,
+					t("ui.chat.asks.fleet_ask_drawer.answer_sent_to"),
+				);
 			})();
 		},
 		[lock, rows, settle],
@@ -325,7 +336,12 @@ export const FleetAskDrawer = ({
 				} finally {
 					setAnswering(false);
 				}
-				settle(askId, outcome, "Answer changed for", true);
+				settle(
+					askId,
+					outcome,
+					t("ui.chat.asks.fleet_ask_drawer.answer_changed_for"),
+					true,
+				);
 			})();
 		},
 		[lock, rows, settle],
@@ -350,7 +366,11 @@ export const FleetAskDrawer = ({
 				} finally {
 					setAnswering(false);
 				}
-				settle(askId, outcome, "Declined the ask in");
+				settle(
+					askId,
+					outcome,
+					t("ui.chat.asks.fleet_ask_drawer.declined_the_ask_in"),
+				);
 			})();
 		},
 		[lock, rows, settle],
@@ -391,14 +411,18 @@ export const FleetAskDrawer = ({
 					 * transport failure carries the owner's words, and a `refused` outcome
 					 * reached nothing and records neither.
 					 */
-					settle(askId, outcome, "Dismissed the ask in");
+					settle(
+						askId,
+						outcome,
+						t("ui.chat.asks.fleet_ask_drawer.dismissed_the_ask_in"),
+					);
 					return;
 				}
 				setOutcomes((current) => ({
 					...current,
 					[askId]: { sending: false, refused: null, dismissed: reason },
 				}));
-				receipt("Dismissed the ask in", askId);
+				receipt(t("ui.chat.asks.fleet_ask_drawer.dismissed_the_ask_in"), askId);
 				refresh();
 			})();
 		},

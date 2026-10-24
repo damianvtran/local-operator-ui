@@ -2130,7 +2130,10 @@ test("the handle reconciles the paint against the owner's own frames", () => {
 		"the effort reading cannot be taken off the paint",
 	);
 	// The pending state is no longer colour-and-tooltip only (U3).
-	assert.match(strip, /Switching the model/);
+	assert.match(
+		strip,
+		/ui\.chat\.session_status\.session_status_strip\.switching_the_model/,
+	);
 });
 
 test("the band does not take a reading off the optimistic paint", async () => {

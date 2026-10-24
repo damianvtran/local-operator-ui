@@ -34,8 +34,10 @@
  */
 
 import { Button } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { ReactNode, Ref } from "react";
+import { t } from "../../../../../../i18n/messages";
 import {
 	type RunDetails,
 	type SubagentRow,
@@ -102,6 +104,7 @@ export const SubagentRowView = ({
 	 */
 	rowHook?: string;
 }) => {
+	useI18nLocale();
 	/*
 	 * The row's content, shared verbatim by both branches so the interactive and
 	 * the degraded row cannot drift: the difference between them is the control
@@ -207,6 +210,7 @@ export const RunDetailSubagents = ({
 	 */
 	paneWidth: number;
 }) => {
+	useI18nLocale();
 	/*
 	 * The rows come from the model's `panelSlice`, never from a local narrowing:
 	 * the acknowledgement predicates count failures out of the SAME call, so a
@@ -236,7 +240,7 @@ export const RunDetailSubagents = ({
 				)}
 			>
 				<span className={cn("shrink-0 text-meta text-ink-muted")}>
-					Subagents
+					{t("ui.chat.run_details.run_detail_subagents.subagents")}
 				</span>
 				<span
 					className={cn(
@@ -278,7 +282,9 @@ export const RunDetailSubagents = ({
 					onClick={onToggleExpanded}
 					data-run-panel-disclosure={expanded ? "expanded" : "collapsed"}
 				>
-					{`Show ${hidden} more`}
+					{t("ui.chat.run_details.run_detail_subagents.show_hidden_more", {
+						hidden,
+					})}
 				</Button>
 			)}
 		</section>

@@ -1,19 +1,18 @@
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
 import { ImageLightbox } from "@shared/components/common/image-lightbox";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { File } from "lucide-react";
 import type { FC } from "react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { t } from "../../../../../../i18n/messages";
 import { getFileTypeFromPath } from "../../utils/file-types";
+import { fileNameForDisplay, getFileName } from "../../utils/get-file-name";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
 import { isSpreadsheetFile } from "../../utils/is-spreadsheet-file";
-import {
-	ATTACHMENT_UNAVAILABLE_COPY,
-	AttachmentFrame,
-	BrokenAttachment,
-} from "./attachment-frame";
+import { AttachmentFrame, BrokenAttachment } from "./attachment-frame";
 /**
  * Props for the FileAttachment component (base)
  */
@@ -26,51 +25,13 @@ type FileAttachmentProps = BaseFileAttachmentProps & {
 	conversationId: string;
 };
 
-const RESOURCE_NAME_REGEX = /name=([^;,]+)/;
-
-/**
- * Extracts the filename from a path
- * @param path - The file path or URL
- * @returns The extracted filename
- */
-const PATH_SEPARATOR_REGEX = /[/\\]/;
-const getFileName = (path: string): string => {
-	if (path.startsWith("data:image/")) {
-		// Attempt to get a name from the data URI if it's there (e.g., from a download attribute)
-		// This is a basic heuristic and might not always work.
-		const nameMatch = path.match(RESOURCE_NAME_REGEX);
-		if (nameMatch?.[1]) {
-			try {
-				return decodeURIComponent(nameMatch[1]);
-			} catch (_) {
-				// Fallback if decoding fails
-				return "Pasted image";
-			}
-		}
-		return "Pasted image";
-	}
-	if (path.startsWith("data:")) {
-		const nameMatch = path.match(RESOURCE_NAME_REGEX);
-		if (nameMatch?.[1]) {
-			try {
-				return decodeURIComponent(nameMatch[1]);
-			} catch (_) {
-				return "Pasted file";
-			}
-		}
-		return "Pasted file";
-	}
-	// Handle both local paths and URLs
-	const parts = path.split(PATH_SEPARATOR_REGEX);
-	return parts[parts.length - 1];
-};
-
 /**
  * A file the conversation carries: a named card for anything with a path, and
  * the same reserved picture frame as `image-attachment` for a pasted image.
  */
 export const FileAttachment: FC<FileAttachmentProps> = memo(
 	({ file, onClick, conversationId }) => {
+		useI18nLocale();
 		const [hasError, setHasError] = useState(false);
 		const [isLoaded, setIsLoaded] = useState(false);
 		/**
@@ -202,7 +163,9 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 						}
 					} catch (error) {
 						console.error(
-							`Failed to auto-refresh file in canvas: ${normalizedPath}`,
+							t("ui.chat.message.file_attachment.auto_refresh_failed", {
+								path: normalizedPath,
+							}),
 							error,
 						);
 					}
@@ -324,13 +287,18 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 							? result.error instanceof Error
 								? result.error.message
 								: String(result.error)
-							: "Unknown error reading file";
+							: t("ui.chat.message.file_attachment.unknown_error_reading_file");
 					return fallbackAction(errorMessage);
 				} catch (error: unknown) {
 					const message =
 						error instanceof Error
 							? error.message
-							: String(error ?? "Unknown error reading file");
+							: String(
+									error ??
+										t(
+											"ui.chat.message.file_attachment.unknown_error_reading_file",
+										),
+								);
 					return fallbackAction(message);
 				}
 			}
@@ -353,7 +321,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 		// `<img>` inside a 200px card with no minimum, which is how an 8x6 pasted
 		// PNG turned into an 8px speck at the top of a message.
 		if (isPastedImage) {
-			const name = getFileName(file);
+			const name = fileNameForDisplay(file);
 			return (
 				<div className="group relative inline-block max-w-full">
 					{hasError ? (
@@ -380,8 +348,13 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 								type="button"
 								className={cn("block max-w-full cursor-pointer")}
 								onClick={() => setExpanded(true)}
-								aria-label={`Expand ${name}`}
-								title={`Click to expand ${name}`}
+								aria-label={t("ui.chat.message.file_attachment.expand_name", {
+									name,
+								})}
+								title={t(
+									"ui.chat.message.file_attachment.click_to_expand_name",
+									{ name },
+								)}
 							>
 								<AttachmentFrame>
 									<img
@@ -410,7 +383,9 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 								fallback={
 									<BrokenAttachment
 										name={name}
-										detail={ATTACHMENT_UNAVAILABLE_COPY}
+										detail={t(
+											"ui.chat.message.attachment_frame.could_not_be_displayed_its_stored_copy_is_not_available",
+										)}
 									/>
 								}
 							/>
@@ -435,22 +410,25 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 					type="button"
 					className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
 					onClick={handleClick}
-					title={`Click to open ${getFileName(file)}`}
+					title={t(
+						"ui.chat.message.file_attachment.click_to_open_getfilenamevalue",
+						{ getFileNameValue: fileNameForDisplay(file) },
+					)}
 				>
 					{/* Neutral, not accent. A conversation can carry a dozen of these
 					 * and § 2 budgets the accent at about three spends per screen —
 					 * the file glyph is identification, not an action. */}
 					<File className="size-4 shrink-0 text-ink-dim" aria-hidden={true} />
 					<span className="truncate text-body-sm text-ink">
-						{getFileName(file)}
+						{fileNameForDisplay(file)}
 					</span>
 				</button>
 				{isLocalFile && (
 					<div className="file-actions-menu invisible opacity-0 transition-[opacity,visibility] duration-fast ease-out-quart group-hover:visible group-hover:opacity-100">
 						<FileActionsMenu
 							filePath={normalizedPath}
-							tooltip="File actions"
-							aria-label="File actions"
+							tooltip={t("ui.chat.message.file_attachment.file_actions")}
+							aria-label={t("ui.chat.message.file_attachment.file_actions")}
 							onShowInCanvas={handleClick}
 						/>
 					</div>

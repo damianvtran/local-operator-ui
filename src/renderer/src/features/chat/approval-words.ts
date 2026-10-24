@@ -14,6 +14,7 @@
  * landed; only their home changed.
  */
 
+import { t } from "../../../../i18n/messages";
 import type { PendingDesktopGate } from "../../../../shared/desktop-session-contract";
 
 /**
@@ -46,8 +47,24 @@ export const BARE_OPTION_ORDINAL = /^([1-9])\.?$/;
  * lie.
  */
 export const APPROVAL_OPTIONS: PendingDesktopGate["options"] = [
-	{ label: "Approve", description: "Run the action and continue the turn." },
-	{ label: "Deny", description: "Refuse the action; the turn continues." },
+	/* Labels and descriptions remain the stable client-owned option pair;
+	 * presentation localizes the exact pair without changing answer resolution. */
+	{
+		get label() {
+			return t("ui.chat.approval_words.approve");
+		},
+		get description() {
+			return t("ui.chat.trace.approval.approve_description");
+		},
+	},
+	{
+		get label() {
+			return t("ui.chat.approval_words.deny");
+		},
+		get description() {
+			return t("ui.chat.trace.approval.deny_description");
+		},
+	},
 ];
 
 /**

@@ -19,13 +19,14 @@
 
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 import { MoveNotice } from "../../mesh/mesh-actions";
 import {
 	useMeshNetworks,
 	useMeshPeers,
 	useMeshTransfer,
 } from "../../mesh/mesh-store";
-import { MOVE_HOLD_DETAIL, arrivalCopy } from "./chat-device-model";
+import { arrivalCopy } from "./chat-device-model";
 import { useChatDeviceStore } from "./chat-device-store";
 
 /** The row the notice lives in: one line of chrome under the header's own band. */
@@ -167,7 +168,10 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 					canWait={false}
 					refusal={null}
 					receipt={{
-						verb: `Moving to ${move.name}`,
+						verb: t(
+							"ui.chat.session_status.chat_device_notice.moving_to_name",
+							{ name: move.name },
+						),
 						/*
 						 * NO INVENTED PROGRESS: the route answers once, when the move settles, and
 						 * streams nothing - so there is no percentage to show. What is true
@@ -176,7 +180,9 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 						 * turn in flight, a state the accepted path cannot be in - a busy session
 						 * is REFUSED, not drained).
 						 */
-						detail: MOVE_HOLD_DETAIL,
+						detail: t(
+							"ui.chat.session_status.chat_device_model.handing_off_it_continues_there_this_cannot_be_stopped_from",
+						),
 						undo: null,
 					}}
 					onWait={() => undefined}

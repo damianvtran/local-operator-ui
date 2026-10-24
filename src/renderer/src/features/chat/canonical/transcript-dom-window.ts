@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { AnchorSample } from "./scroll-paging";
 
 /** Exact sizes belong to one content signature and width, never just a key. */
@@ -33,7 +34,12 @@ export function buildHeightIndex(
 	const prefix = [0];
 	for (const entry of entries) {
 		if (seen.has(entry.key))
-			throw new Error(`Duplicate transcript entry: ${entry.key}`);
+			throw new Error(
+				t(
+					"ui.chat.canonical.transcript_dom_window.duplicate_transcript_entry_key",
+					{ key: entry.key },
+				),
+			);
 		seen.add(entry.key);
 		const measured = measurements.get(entry.key);
 		const height =
@@ -41,7 +47,12 @@ export function buildHeightIndex(
 				? measured.height
 				: entry.estimate;
 		if (!Number.isFinite(height) || height < 0)
-			throw new Error(`Invalid transcript extent: ${entry.key}`);
+			throw new Error(
+				t(
+					"ui.chat.canonical.transcript_dom_window.invalid_transcript_extent_key",
+					{ key: entry.key },
+				),
+			);
 		prefix.push(prefix[prefix.length - 1] + height);
 	}
 	return prefix;

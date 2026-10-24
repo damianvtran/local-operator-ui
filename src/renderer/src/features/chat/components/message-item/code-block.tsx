@@ -1,3 +1,4 @@
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 import armasm from "react-syntax-highlighter/dist/esm/languages/hljs/armasm";
@@ -42,6 +43,7 @@ import yaml from "react-syntax-highlighter/dist/esm/languages/hljs/yaml";
 // light build registers nothing by default, so only the grammars below ship.
 import SyntaxHighlighter from "react-syntax-highlighter/dist/esm/light";
 import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import { t } from "../../../../../../i18n/messages";
 
 /**
  * Props for the CodeBlock component
@@ -132,12 +134,13 @@ export const CodeBlock: FC<CodeBlockProps> = ({
 	header,
 	flexDirection = "column",
 }) => {
+	useI18nLocale();
 	if (!code) return null;
 
 	return (
 		<div className="mb-4 w-full">
 			<span className="mb-1 block text-ink-dim text-meta">
-				{header || "Code"}
+				{header || t("ui.chat.message.code_block.code")}
 			</span>
 			<div
 				className={cn(

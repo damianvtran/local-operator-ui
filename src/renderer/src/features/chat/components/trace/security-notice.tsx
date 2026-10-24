@@ -27,9 +27,11 @@
  */
 
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ShieldAlert } from "lucide-react";
 import type { ReactNode } from "react";
+import { t } from "../../../../../../i18n/messages";
 
 export type SecurityNoticeProps = {
 	/** The notice text recorded by the security check. */
@@ -44,32 +46,39 @@ export const SecurityNotice = ({
 	content,
 	details,
 	className,
-}: SecurityNoticeProps) => (
-	<section
-		aria-label="Security notice"
-		className={cn(
-			"flex gap-3 border-warning border-l-2 py-0.5 pl-3",
-			className,
-		)}
-	>
-		<ShieldAlert
-			className="mt-0.5 size-4 shrink-0 text-warning"
-			aria-hidden={true}
-		/>
-		<div className="flex min-w-0 flex-1 flex-col gap-0.5">
-			<p className="font-medium text-body-sm text-warning">
-				Blocked a risky action
-			</p>
-			{content ? (
-				<p className="text-body-sm text-ink-muted">{content}</p>
-			) : null}
-			{details ? (
-				<Disclosure
-					summary={<span className="text-meta">Show the reviewed code</span>}
-				>
-					{details}
-				</Disclosure>
-			) : null}
-		</div>
-	</section>
-);
+}: SecurityNoticeProps) => {
+	useI18nLocale();
+	return (
+		<section
+			aria-label={t("ui.chat.trace.security_notice.security_notice")}
+			className={cn(
+				"flex gap-3 border-warning border-l-2 py-0.5 pl-3",
+				className,
+			)}
+		>
+			<ShieldAlert
+				className="mt-0.5 size-4 shrink-0 text-warning"
+				aria-hidden={true}
+			/>
+			<div className="flex min-w-0 flex-1 flex-col gap-0.5">
+				<p className="font-medium text-body-sm text-warning">
+					{t("ui.chat.trace.security_notice.blocked_a_risky_action")}
+				</p>
+				{content ? (
+					<p className="text-body-sm text-ink-muted">{content}</p>
+				) : null}
+				{details ? (
+					<Disclosure
+						summary={
+							<span className="text-meta">
+								{t("ui.chat.trace.security_notice.show_the_reviewed_code")}
+							</span>
+						}
+					>
+						{details}
+					</Disclosure>
+				) : null}
+			</div>
+		</section>
+	);
+};

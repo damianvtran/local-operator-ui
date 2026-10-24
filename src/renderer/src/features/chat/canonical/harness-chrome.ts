@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 /**
  * Legacy harness-chrome recognition for user rows that carry no marker.
  *
@@ -38,7 +39,8 @@
  */
 
 /** `goal_judge.GOAL_CONTINUATION_HEAD` — the judge continuation's fixed head. */
-const GOAL_CONTINUATION_HEAD = "Continue working toward this goal:\n\n";
+const GOAL_CONTINUATION_HEAD = () =>
+	t("ui.chat.canonical.harness_chrome.continue_working_toward_this_goal");
 
 /** `goal_judge.GOAL_CONTINUATION_TAIL` — its fixed tail. */
 const GOAL_CONTINUATION_TAIL =
@@ -81,7 +83,7 @@ export function isHarnessChromeText(text: string): boolean {
 	const stripped = text.trim();
 	return (
 		stripped === LOOP_PROMPT ||
-		(stripped.startsWith(GOAL_CONTINUATION_HEAD) &&
+		(stripped.startsWith(GOAL_CONTINUATION_HEAD()) &&
 			stripped.endsWith(GOAL_CONTINUATION_TAIL)) ||
 		(stripped.startsWith(LOOP_GOAL_HEAD.trim()) &&
 			stripped.endsWith(LOOP_GOAL_TAIL.trim()))

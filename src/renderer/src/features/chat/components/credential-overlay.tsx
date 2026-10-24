@@ -1,3 +1,4 @@
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type MutableRefObject,
@@ -151,6 +152,7 @@ export const CredentialOverlay = ({
 	mirrorRef,
 	isSmallView,
 }: CredentialOverlayProps) => {
+	useI18nLocale();
 	const ownRef = useRef<HTMLDivElement | null>(null);
 	const overlayRef = mirrorRef ?? ownRef;
 	const plan = paintPlan(text, payloads.values(), capture);

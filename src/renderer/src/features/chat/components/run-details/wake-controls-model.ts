@@ -1,3 +1,4 @@
+import { t } from "../../../../../../i18n/messages";
 /**
  * The Wakes section's control model: which rows may be cancelled, which ask
  * first, and which are not this app's to stop.
@@ -133,7 +134,9 @@ export const wakeRefusalSentence = (error: unknown): string | null => {
 		typeof error === "object" && error !== null
 			? (error as { code?: unknown }).code
 			: null;
-	return code === "wake_not_found" ? "This wake is already gone." : null;
+	return code === "wake_not_found"
+		? t("ui.chat.run_details.wake_controls_model.this_wake_is_already_gone")
+		: null;
 };
 
 export const WAKE_CONTROL_MODES = ["managed", "confirm", "one-click"] as const;
@@ -196,7 +199,7 @@ export const wakeConfirmNamesChief = (context: WakeControlContext): boolean =>
 
 /** The quiet state word in a managed row's control column. */
 export const managedWakeShortLabel = (name: string): string =>
-	`managed by ${name}`;
+	t("ui.chat.run_details.wake_controls_model.managed_by_name", { name });
 
 /**
  * The managed row's sentence: why there is no cancel, and the lever that works.
@@ -211,7 +214,10 @@ export const managedWakeShortLabel = (name: string): string =>
  * the state's `title`, so there is one copy in two places rather than two.
  */
 export const managedWakeNote = (name: string): string =>
-	`This wake is ${name}'s own schedule, so it can't be cancelled here. To stop these check-ins, use /aida pause.`;
+	t(
+		"ui.chat.run_details.wake_controls_model.this_wake_is_name_s_own_schedule_so_it_cant",
+		{ name },
+	);
 
 /**
  * The confirmation's three strings, ONE home for both surfaces that ask.
@@ -224,7 +230,11 @@ export const managedWakeNote = (name: string): string =>
  * prompt head, which is what "this" points at.
  */
 export const wakeConfirmTitle = (named: boolean, name: string): string =>
-	named ? `Cancel ${name}'s check-in?` : "Cancel this wake?";
+	named
+		? t("ui.chat.run_details.wake_controls_model.cancel_name_s_check_in", {
+				name,
+			})
+		: t("ui.chat.run_details.wake_controls_model.cancel_this_wake");
 
 export const wakeConfirmSentence = ({
 	named,
@@ -236,14 +246,24 @@ export const wakeConfirmSentence = ({
 	/** The wake's prompt head; empty for a message-less schedule. */
 	head: string;
 }): string => {
-	const subject = head ? `“${head}”` : "This wake";
+	const subject = head
+		? `“${head}”`
+		: t("ui.chat.run_details.wake_controls_model.this_wake");
 	return named
-		? `${subject} will not fire again, and nothing re-creates it. ${name}'s own cadence is unaffected.`
-		: `${subject} will not fire again, and nothing re-creates it. The conversation stays.`;
+		? t(
+				"ui.chat.run_details.wake_controls_model.subject_will_not_fire_again_and_nothing_re_creates_it",
+				{ subject, name },
+			)
+		: t(
+				"ui.chat.run_details.wake_controls_model.subject_will_not_fire_again_and_nothing_re_creates_it_9db5ac",
+				{ subject },
+			);
 };
 
 export const wakeConfirmActionLabel = (named: boolean): string =>
-	named ? "Cancel check-in" : "Cancel wake";
+	named
+		? t("ui.chat.run_details.wake_controls_model.cancel_check_in")
+		: t("ui.chat.run_details.wake_controls_model.cancel_wake");
 
 /** What a cancel answered: applied, or the sentence to render where it was asked. */
 export type WakeCancelOutcome = { ok: true } | { ok: false; detail: string };

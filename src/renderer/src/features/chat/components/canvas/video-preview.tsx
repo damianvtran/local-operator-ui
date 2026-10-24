@@ -15,6 +15,7 @@ import {
 import type { CanvasDocument } from "../../types/canvas";
 import { artifactFileName } from "../../utils/artifact-identity";
 import { mimeTypeForPath } from "../../utils/file-kind";
+import { documentNameForDisplay } from "../../utils/get-file-name";
 import { ImageActionsMenu } from "../image-actions-menu";
 import {
 	FileViewerState,
@@ -107,7 +108,7 @@ const ArtifactVideoPreview: FC<{ document: CanvasDocument }> = ({
 				{artifact ? (
 					<ImageActionsMenu
 						file={document.path}
-						label={document.title}
+						label={documentNameForDisplay(document)}
 						mediaKind="video"
 						saveName={artifactFileName(artifact)}
 						resolveBytes={() =>
@@ -133,7 +134,7 @@ const ArtifactVideoPreview: FC<{ document: CanvasDocument }> = ({
 									"ui.canvas.video_preview.this_video_is_no_longer_in_the_session",
 								)
 					}
-					detail={document.title}
+					detail={documentNameForDisplay(document)}
 				/>
 			) : (
 				<div

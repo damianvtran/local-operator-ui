@@ -1,6 +1,7 @@
 import { NOTICE_BAND } from "@shared/components/common/notice-band";
 import { Alert, Button } from "@shared/components/ui";
 import { useConnectivityStatus } from "@shared/hooks/use-connectivity-status";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type OfflineConfirmation,
@@ -9,6 +10,7 @@ import {
 } from "@shared/utils/offline-confirmation";
 import { Loader2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import type { ChatStatusDisplay } from "../chat-status";
 import { chatStatusDisplay, chatStatusKey } from "../chat-status";
 import { setChatStatusStripPresent } from "../chat-status-presence";
@@ -70,6 +72,7 @@ export const ChatStatusStripView = ({
 	outcome = null,
 	onRetry,
 }: ChatStatusStripViewProps) => {
+	useI18nLocale();
 	const key = chatStatusKey(display);
 	const collapsed = key !== null && dismissedKey === key;
 
@@ -110,9 +113,12 @@ export const ChatStatusStripView = ({
 					 * that answers "did that button do anything". Both lines are in the name now,
 					 * in the order the strip draws them, so collapsing cannot lose one.
 					 */
-					aria-label={`Connection status: ${display.title}${
-						outcome ? ` ${outcome}` : ""
-					} Show details`}
+					aria-label={t("ui.chat.chat_status_strip.details_label", {
+						title: display.title,
+						outcome: outcome
+							? t("ui.chat.chat_status_strip.outcome", { outcome })
+							: "",
+					})}
 				>
 					<span
 						aria-hidden="true"
@@ -121,7 +127,9 @@ export const ChatStatusStripView = ({
 							display.dot === "danger" ? "bg-danger" : "bg-warning",
 						)}
 					/>
-					{display.kind === "internet-offline" ? "Offline" : "Connection"}
+					{display.kind === "internet-offline"
+						? t("ui.chat.chat_status_strip.offline")
+						: t("ui.chat.chat_status_strip.connection")}
 				</button>
 			</div>
 		);
@@ -176,7 +184,9 @@ export const ChatStatusStripView = ({
 								{retrying ? (
 									<Loader2 aria-hidden="true" className="animate-spin" />
 								) : null}
-								{retrying ? "Retrying…" : (display.actionLabel ?? "Retry")}
+								{retrying
+									? t("ui.chat.chat_status_strip.retrying")
+									: (display.actionLabel ?? t("ui.common.actions.retry"))}
 							</Button>
 							<button
 								type="button"
@@ -186,7 +196,7 @@ export const ChatStatusStripView = ({
 									"text-ink-muted hover:text-ink",
 									"focus-visible:outline-2 focus-visible:outline-accent",
 								)}
-								aria-label="Dismiss"
+								aria-label={t("ui.chat.chat_status_strip.dismiss")}
 							>
 								<X aria-hidden="true" className="size-3.5" />
 							</button>
@@ -206,6 +216,7 @@ export const ChatStatusStripView = ({
  * reconnect IPC - and nothing about how the strip looks.
  */
 export const ChatStatusStrip = () => {
+	useI18nLocale();
 	const { connectivityIssue, serverSnapshot, refetchServerStatus } =
 		useConnectivityStatus();
 
@@ -332,8 +343,10 @@ export const ChatStatusStrip = () => {
 			 */
 			setOutcome(
 				key?.startsWith("credential-refused")
-					? "The server is running, but this app's credential is still refused."
-					: "Still unreachable.",
+					? t(
+							"ui.chat.chat_status_strip.the_server_is_running_but_this_apps_credential_is_still",
+						)
+					: t("ui.chat.chat_status_strip.still_unreachable"),
 			);
 			void refetchServerStatus();
 		}

@@ -37,6 +37,7 @@
  * message.
  */
 
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type RefObject,
@@ -181,6 +182,7 @@ export const AtMentionOverlay = ({
 	fieldRef,
 	isSmallView,
 }: AtMentionOverlayProps) => {
+	useI18nLocale();
 	const mirrorRef = useRef<HTMLDivElement | null>(null);
 	const markers = useRef(new Map<string, HTMLSpanElement | null>());
 	const [fills, setFills] = useState<FillRect[]>([]);

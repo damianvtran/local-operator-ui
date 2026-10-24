@@ -37,6 +37,7 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { FC, KeyboardEvent } from "react";
@@ -50,6 +51,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
 import {
 	AT_ROWS_MIN,
@@ -685,6 +687,7 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 	state,
 	onPick,
 }) => {
+	useI18nLocale();
 	/*
 	 * `HTMLDivElement & HTMLOutputElement`: the shell is a `div` when it holds the list
 	 * and an `<output>` when it says why the harness cannot carry a mention — the
@@ -823,7 +826,7 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 			// biome-ignore lint/a11y/useFocusableInteractive: the textarea keeps focus; the listbox is reached through aria-activedescendant, so it is not in the tab order.
 			// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>.
 			role="listbox"
-			aria-label="Files"
+			aria-label={t("ui.chat.at_picker.files")}
 			className={cn(
 				"@container/at absolute bottom-full left-0 right-0 z-20 mb-1",
 				// `overflow-hidden`, not `overflow-y-auto`: the SCROLL belongs to the row
@@ -902,7 +905,9 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 											role="presentation"
 											className="px-3 pt-2 pb-1 text-meta text-ink-muted"
 										>
-											{row.section === "project" ? "Projects" : "Files"}
+											{row.section === "project"
+												? t("ui.chat.at_picker.projects")
+												: t("ui.chat.at_picker.files")}
 										</li>
 									)}
 								{/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea; the active option is announced through aria-activedescendant. */}
@@ -1008,10 +1013,10 @@ export const AtSuggestionsPopup: FC<AtSuggestionsPopupProps> = ({
 									 */}
 									<span className="shrink-0 text-meta text-ink-dim">
 										{row.section === "project"
-											? "Project"
+											? t("ui.chat.at_picker.project")
 											: row.directory
-												? "Directory"
-												: "File"}
+												? t("ui.chat.at_picker.directory")
+												: t("ui.chat.at_picker.file")}
 									</span>
 								</li>
 							</Fragment>

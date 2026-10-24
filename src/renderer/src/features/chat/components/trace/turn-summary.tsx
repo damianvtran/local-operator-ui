@@ -40,9 +40,11 @@
  */
 
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { CircleCheck } from "lucide-react";
 import { type FC, type ReactNode, useRef } from "react";
+import { t } from "../../../../../../i18n/messages";
 import { foldMediaClause } from "../../canonical/trace-fold-model";
 import { TurnTimestamp } from "../message-item/turn-timestamp";
 import { formatDuration } from "./tool-row-model";
@@ -203,11 +205,14 @@ export type TurnSummaryProps = {
 };
 
 /** The `·` the line joins its facts with — a flex child, never nested text. */
-const Dot: FC = () => (
-	<span aria-hidden={true} className={cn("text-ink-dim text-meta")}>
-		·
-	</span>
-);
+const Dot: FC = () => {
+	useI18nLocale();
+	return (
+		<span aria-hidden={true} className={cn("text-ink-dim text-meta")}>
+			·
+		</span>
+	);
+};
 
 export const TurnSummary: FC<TurnSummaryProps> = ({
 	recordIds,
@@ -229,6 +234,7 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 	group = null,
 	episode = null,
 }) => {
+	useI18nLocale();
 	/*
 	 * The count clause and the sentence behind it, derived once: the visible words
 	 * carry the marker the model's `partial` fact asks for, and the title/name say
@@ -240,9 +246,10 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 		: actionCount === 1
 			? "1 action"
 			: `${actionCount} actions`;
-	const actionClauseTitle = `At least ${
-		actionCount === 1 ? "1 action" : `${actionCount} actions`
-	} — earlier rows of this turn are not loaded`;
+	const actionClauseTitle = t(
+		"ui.chat.trace.turn_summary.at_least_actions_unloaded",
+		{ actionCount },
+	);
 	/*
 	 * The group count's own words for hover and AT: the visible line carries a
 	 * bare number (the copy is `Peer messages · 12 · 2h 14m`), so the "at least"
@@ -253,7 +260,10 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 	const groupClauseTitle =
 		receiptCount === undefined
 			? null
-			: `At least ${receiptCount} messages — earlier rows are not loaded`;
+			: t(
+					"ui.chat.trace.turn_summary.at_least_receiptcount_messages_earlier_rows_are",
+					{ receiptCount },
+				);
 
 	/*
 	 * The bar's root, held so the strip's `+N` press can hand focus to the bar's
@@ -430,7 +440,11 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 										partial ? (groupClauseTitle ?? undefined) : undefined
 									}
 								>
-									{partial ? `${episode.receipts}+` : episode.receipts}
+									{partial
+										? t("ui.chat.trace.turn_summary.receipts", {
+												receipts: episode.receipts,
+											})
+										: episode.receipts}
 								</span>
 								{actionCount > 0 && (
 									<>
@@ -467,8 +481,12 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 									}
 								>
 									{partial
-										? `${episode?.receipts ?? group.count}+`
-										: `${episode?.receipts ?? group.count}`}
+										? t("ui.chat.trace.turn_summary.value", {
+												value: episode?.receipts ?? group.count,
+											})
+										: t("ui.chat.trace.turn_summary.value_75ced7", {
+												value: episode?.receipts ?? group.count,
+											})}
 								</span>
 								{group.spanS !== null && (
 									<>
@@ -488,7 +506,8 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 								)}
 								{durationS !== null && (
 									<span className={cn("shrink-0 text-body-sm text-ink-muted")}>
-										Took {formatDuration(durationS)}
+										{t("ui.chat.trace.turn_summary.took")}
+										{formatDuration(durationS)}
 									</span>
 								)}
 								{durationS !== null && actionCount > 0 && <Dot />}
@@ -538,7 +557,9 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 							 * off the AX tree. A second live region would say the same fact twice,
 							 * in a surface that already has one voice for the list.
 							 */
-							<span className={cn("sr-only")}>completed</span>
+							<span className={cn("sr-only")}>
+								{t("ui.chat.trace.turn_summary.completed")}
+							</span>
 						)}
 						{stampTs !== null && (
 							/*

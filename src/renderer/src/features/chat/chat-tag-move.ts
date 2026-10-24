@@ -1,4 +1,3 @@
-import { t } from "@shared/i18n";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import {
 	isTagsConflict,
@@ -8,6 +7,7 @@ import {
 	showSuccessToast,
 	showWarningToast,
 } from "@shared/utils/toast-manager";
+import { t } from "../../../../i18n/messages";
 import { movedTagAssignment } from "./chat-tag-drag";
 
 /** All three entry points share the shipped optimistic assignment and the same

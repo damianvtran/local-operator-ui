@@ -39,6 +39,7 @@ import {
 	DesktopControlError,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
+import { t } from "../../../../../../i18n/messages";
 import type { CancelCardAnchor } from "./cancel-card-placement";
 import { type SubagentRow, isOpenRow } from "./run-detail-model";
 
@@ -63,8 +64,9 @@ export const jobRowCanCancel = (row: SubagentRow): boolean =>
  * without the engine's own sentence (see the header). Spelled with the map's
  * own words, em dash included, because it is quoted copy rather than ours.
  */
-export const JOB_CANCEL_NOT_FOUND_COPY =
-	"not cancelled — the provider no longer knows the job";
+export const JOB_CANCEL_NOT_FOUND_COPY = t(
+	"ui.chat.run_details.job_controls_model.not_cancelled_the_provider_no_longer_knows_the_job",
+);
 
 /** What a cancel answered: acknowledged, or the sentence to render where it was asked. */
 export type JobCancelOutcome = { ok: true } | { ok: false; detail: string };
@@ -134,6 +136,11 @@ export const refusalDetail = (error: unknown): string => {
 		error.status === 404 &&
 		error.message === DESKTOP_REFUSAL_PLACEHOLDER
 	)
-		return JOB_CANCEL_NOT_FOUND_COPY;
-	return userFacingMessage(error, "Could not cancel the job.");
+		return t(
+			"ui.chat.run_details.job_controls_model.not_cancelled_the_provider_no_longer_knows_the_job",
+		);
+	return userFacingMessage(
+		error,
+		t("ui.chat.run_details.job_controls_model.could_not_cancel_the_job"),
+	);
 };

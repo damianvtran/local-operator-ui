@@ -1,0 +1,1963 @@
+{
+	"ui.chat.trace.agent_question.question_from_the_agent": {
+		"role": "accessible name or tooltip in chat components/trace/agent-question.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/agent-question.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.ask_options.answer_options": {
+		"role": "accessible name or tooltip in chat components/trace/ask-options.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/ask-options.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.question_dock.hidden_as_you_type_sent_to_the_agent_not_shown": {
+		"role": "visible interface copy in chat components/trace/question-dock.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/question-dock.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.question_dock.paste_the_secret": {
+		"role": "accessible name or tooltip in chat components/trace/question-dock.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/question-dock.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.question_dock.question_from_the_agent": {
+		"role": "accessible name or tooltip in chat components/trace/question-dock.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/question-dock.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.question_dock.secret_answer": {
+		"role": "accessible name or tooltip in chat components/trace/question-dock.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/question-dock.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.question_dock.secret_value": {
+		"role": "accessible name or tooltip in chat components/trace/question-dock.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/question-dock.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.question_dock.send": {
+		"role": "visible interface copy in chat components/trace/question-dock.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/question-dock.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.question_dock.show": {
+		"role": "visible interface copy in chat components/trace/question-dock.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/question-dock.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.question_dock.show_the_agents_question": {
+		"role": "accessible name or tooltip in chat components/trace/question-dock.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/question-dock.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.question_dock.the_agent_is_asking": {
+		"role": "visible interface copy in chat components/trace/question-dock.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/question-dock.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.security_notice.blocked_a_risky_action": {
+		"role": "visible interface copy in chat components/trace/security-notice.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/security-notice.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.security_notice.security_notice": {
+		"role": "accessible name or tooltip in chat components/trace/security-notice.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/security-notice.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.security_notice.show_the_reviewed_code": {
+		"role": "visible interface copy in chat components/trace/security-notice.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/security-notice.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row.pending": {
+		"role": "visible interface copy in chat components/trace/tool-row.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.turn_summary.completed": {
+		"role": "visible interface copy in chat components/trace/turn-summary.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/turn-summary.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.turn_summary.took": {
+		"role": "visible interface copy in chat components/trace/turn-summary.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/turn-summary.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.agent_question.sending_your_answer": {
+		"role": "visible interface copy in chat components/trace/agent-question.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/agent-question.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.agent_question.waiting_for_your_answer": {
+		"role": "visible interface copy in chat components/trace/agent-question.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/agent-question.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.question_dock.1_to_answer": {
+		"role": "visible interface copy in chat components/trace/question-dock.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/question-dock.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.question_dock.answer_from_the_composer_instead_type_yes_no_1_or": {
+		"role": "visible interface copy in chat components/trace/question-dock.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/trace/question-dock.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.question_dock.choose_approve_or_deny_above_type_yes_no_1_or": {
+		"role": "visible interface copy in chat components/trace/question-dock.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/trace/question-dock.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.question_dock.sending_your_answer": {
+		"role": "visible interface copy in chat components/trace/question-dock.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/question-dock.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.receipt_row_model.another_session": {
+		"role": "visible interface copy in chat components/trace/receipt-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/receipt-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.receipt_row_model.reply_requested": {
+		"role": "visible interface copy in chat components/trace/receipt-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/receipt-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.receipt_row_model.scheduled_wake": {
+		"role": "visible interface copy in chat components/trace/receipt-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/receipt-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_detail.error": {
+		"role": "visible interface copy in chat components/trace/tool-detail.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-detail.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_detail.interrupted": {
+		"role": "visible interface copy in chat components/trace/tool-detail.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-detail.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_detail.output": {
+		"role": "visible interface copy in chat components/trace/tool-detail.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-detail.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.called": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.calling": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.asked": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.asking": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.browsed": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.browsing": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.cancelled": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.cancelled_job": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.cancelled_wake": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.cancelling": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.cancelling_job": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.cancelling_wake": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.captured_console": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.capturing_console": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.checked_console": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.checked_network_status": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.checking_console": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.checking_network_status": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.closed_console": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.closing_console": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.created_agent": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.created_network": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.created_project": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.created_team": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.creating_agent": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.creating_network": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.creating_project": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.creating_team": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.delegated": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.delegating": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.deleted_project": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.deleted_secret": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.deleted_team": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.deleting_project": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.deleting_secret": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.deleting_team": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.delivery_unconfirmed": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.delivery_unconfirmed_it_may_still_arrive_so_check_before_resending": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.described_secret": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.describing_secret": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.diagnosed_network": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.diagnosing_network": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.edited": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.editing": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.fetched": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.fetching": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.finding_definition": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.finding_references": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.found_definition": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.found_references": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.installed_agent": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.installing_agent": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.invited_device": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.inviting_device": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.joined_network": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.joining_network": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.leaving_network": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.left_network": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.linked_session_to": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.linking_session_to": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listed": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listed_agents": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listed_consoles": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listed_jobs": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listed_network_peers": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listed_networks": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listed_projects": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listed_secrets": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listed_sessions": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listed_subagents": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listed_symbols": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listed_teams": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listed_variables": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listed_wakes": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listing": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listing_agents": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listing_consoles": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listing_jobs": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listing_network_peers": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listing_networks": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listing_projects": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listing_secrets": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listing_sessions": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listing_subagents": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listing_symbols": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listing_teams": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listing_variables": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.listing_wakes": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.messaged": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.messaging": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.no_wake_answer_and_not_yet_in_their_transcript_it": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.not_confirmed_there_was_no_answer_and_the_message_is": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.not_delivered": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.nothing_was_delivered_fix_the_cause_named_below_or_retry": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.opened_console": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.opening_console": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.paused": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.pausing": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.peeked_at": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.peeked_at_session": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.peeking_at": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.peeking_at_session": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.previewed_rename": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.previewing_rename": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.raised_panic": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.raising_panic": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.ran": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.ran_python": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.read": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.read_console": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.read_network_log": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.read_todos": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.read_variable": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.reading": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.reading_console": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.reading_network_log": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.reading_todos": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.reading_variable": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.received": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.receiving": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.removed_device": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.removed_milestone": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.removing_device": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.removing_milestone": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.reset_agent": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.resetting_agent": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.resized_console": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.resizing_console": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.resumed": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.resumed_session": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.resuming": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.resuming_session": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.retrieved_secret": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.retrieving_secret": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.running": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.running_python": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.scheduled": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.scheduling": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.searched": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.searched_agents": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.searched_the_web": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.searching": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.searching_agents": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.searching_the_web": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.sending": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.sending_keys": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.sent": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.sent_keys": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.spawned_session": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.spawning_session": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.steered": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.steering": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.stopped_session": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.stopping_session": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.stored_secret": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.storing_secret": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.synced_agents": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.syncing_agents": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.typed_in_console": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.typing_in_console": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.unlinked_session_from": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.unlinking_session_from": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.updated_agent": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.updated_milestone": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.updated_project": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.updated_secret": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.updated_secure_input": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.updated_team": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.updated_todos": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.updating_agent": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.updating_milestone": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.updating_project": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.updating_secret": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.updating_secure_input": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.updating_team": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.updating_todos": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.viewed_agent": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.viewed_network": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.viewed_project": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.viewed_session": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.viewed_team": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.viewing_agent": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.viewing_network": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.viewing_project": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.viewing_session": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.viewing_team": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.waited_for_jobs": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.waiting_for_jobs": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.writing": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.wrote": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.trace_labels.asked": {
+		"role": "visible interface copy in chat components/trace/trace-labels.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/trace-labels.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.trace_labels.asking": {
+		"role": "visible interface copy in chat components/trace/trace-labels.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/trace-labels.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.trace_labels.delegated_work": {
+		"role": "visible interface copy in chat components/trace/trace-labels.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/trace-labels.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.trace_labels.delegating_work": {
+		"role": "visible interface copy in chat components/trace/trace-labels.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/trace-labels.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.trace_labels.edited": {
+		"role": "visible interface copy in chat components/trace/trace-labels.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/trace-labels.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.trace_labels.editing": {
+		"role": "visible interface copy in chat components/trace/trace-labels.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/trace-labels.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.trace_labels.ended_the_conversation": {
+		"role": "visible interface copy in chat components/trace/trace-labels.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/trace-labels.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.trace_labels.ending": {
+		"role": "visible interface copy in chat components/trace/trace-labels.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/trace-labels.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.trace_labels.finished": {
+		"role": "visible interface copy in chat components/trace/trace-labels.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/trace-labels.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.trace_labels.finishing": {
+		"role": "visible interface copy in chat components/trace/trace-labels.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/trace-labels.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.trace_labels.ran_code": {
+		"role": "visible interface copy in chat components/trace/trace-labels.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/trace-labels.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.trace_labels.read": {
+		"role": "visible interface copy in chat components/trace/trace-labels.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/trace-labels.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.trace_labels.reading": {
+		"role": "visible interface copy in chat components/trace/trace-labels.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/trace-labels.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.trace_labels.running_code": {
+		"role": "visible interface copy in chat components/trace/trace-labels.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/trace-labels.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.trace_labels.worked_on_the_request": {
+		"role": "visible interface copy in chat components/trace/trace-labels.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/trace-labels.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.trace_labels.working_on_the_request": {
+		"role": "visible interface copy in chat components/trace/trace-labels.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/trace-labels.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.trace_labels.writing": {
+		"role": "visible interface copy in chat components/trace/trace-labels.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/trace-labels.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.trace_labels.wrote": {
+		"role": "visible interface copy in chat components/trace/trace-labels.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/trace-labels.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.approval_escape.approvals_mode_global_default": {
+		"role": "visible interface copy in chat components/trace/approval-escape.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/approval-escape.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"mode": "string"
+		}
+	},
+	"ui.chat.trace.approval_escape.approvals_mode_session_override": {
+		"role": "visible interface copy in chat components/trace/approval-escape.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/approval-escape.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"mode": "string"
+		}
+	},
+	"ui.chat.trace.approval_escape.approvals_mode_session_override_global_globalmode": {
+		"role": "visible interface copy in chat components/trace/approval-escape.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/approval-escape.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"mode": "string",
+			"globalMode": "string"
+		}
+	},
+	"ui.chat.trace.approval_escape.approvals_mode_this_run": {
+		"role": "visible interface copy in chat components/trace/approval-escape.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/approval-escape.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"mode": "string"
+		}
+	},
+	"ui.chat.trace.approval_escape.auto_saved_as_the_default_for_sessions_that_follow_it": {
+		"role": "visible interface copy in chat components/trace/approval-escape.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/trace/approval-escape.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"detail": "string"
+		}
+	},
+	"ui.chat.trace.approval_escape.unchanged_detail": {
+		"role": "visible interface copy in chat components/trace/approval-escape.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/approval-escape.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"detail": "string"
+		}
+	},
+	"ui.chat.trace.question_dock.prefix_held_while_this_answers_fate_is_unknown_it_may": {
+		"role": "visible interface copy in chat components/trace/question-dock.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/trace/question-dock.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"prefix": "string"
+		}
+	},
+	"ui.chat.trace.question_dock.prefix_type_or_paste_the_secret_above_enter_sends_esc": {
+		"role": "visible interface copy in chat components/trace/question-dock.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/question-dock.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"prefix": "string"
+		}
+	},
+	"ui.chat.trace.question_dock.prefix_type_your_answer_below": {
+		"role": "visible interface copy in chat components/trace/question-dock.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/question-dock.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"prefix": "string"
+		}
+	},
+	"ui.chat.trace.question_dock.prefix_up_down_choose_enter_or_digits_answers_esc_hides": {
+		"role": "visible interface copy in chat components/trace/question-dock.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/trace/question-dock.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"prefix": "string",
+			"digits": "string"
+		}
+	},
+	"ui.chat.trace.receipt_row_model.base": {
+		"role": "visible interface copy in chat components/trace/receipt-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/receipt-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"base": "string"
+		}
+	},
+	"ui.chat.trace.turn_summary.at_least_receiptcount_messages_earlier_rows_are": {
+		"role": "visible interface copy in chat components/trace/turn-summary.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/trace/turn-summary.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"receiptCount": "number"
+		}
+	},
+	"ui.chat.trace.receipt_row_model.cancel_with_wake": {
+		"role": "visible interface copy in chat components/trace/receipt-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/receipt-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_detail_model.deeper_values_not_shown": {
+		"role": "visible interface copy in chat components/trace/tool-detail-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-detail-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.agent_reasoning.label_for_formatdurationvalue": {
+		"role": "visible interface copy in chat components/trace/agent-reasoning.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/agent-reasoning.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"label": "string",
+			"formatDurationValue": "string"
+		}
+	},
+	"ui.chat.trace.question_dock.1_value_to_answer": {
+		"role": "visible interface copy in chat components/trace/question-dock.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/question-dock.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"value": "number"
+		}
+	},
+	"ui.chat.trace.trace_fold.verb_object": {
+		"role": "visible interface copy in chat components/trace/trace-fold.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/trace-fold.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"verb": "string",
+			"object": "string"
+		}
+	},
+	"ui.chat.trace.trace_labels.length_files": {
+		"role": "visible interface copy in chat components/trace/trace-labels.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/trace-labels.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"length": "number"
+		}
+	},
+	"ui.chat.trace.turn_summary.receipts": {
+		"role": "visible interface copy in chat components/trace/turn-summary.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/turn-summary.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"receipts": "number"
+		}
+	},
+	"ui.chat.trace.turn_summary.value": {
+		"role": "visible interface copy in chat components/trace/turn-summary.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/turn-summary.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"value": "number"
+		}
+	},
+	"ui.chat.trace.turn_summary.value_75ced7": {
+		"role": "visible interface copy in chat components/trace/turn-summary.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/turn-summary.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"value": "number"
+		}
+	},
+	"ui.chat.trace.approval_escape.auto_for_this_session_this_request_still_needs_an_answer": {
+		"role": "visible interface copy in chat components/trace/approval-escape.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/approval-escape.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.approval_escape.auto_set_for_this_conversation_saved_as_the_default_for": {
+		"role": "visible interface copy in chat components/trace/approval-escape.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/trace/approval-escape.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.approval_escape.set_auto_for_all_sessions": {
+		"role": "visible interface copy in chat components/trace/approval-escape.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/approval-escape.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.approval_escape.set_auto_for_this_session": {
+		"role": "visible interface copy in chat components/trace/approval-escape.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/approval-escape.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.approval_escape.the_mode_was_not_changed": {
+		"role": "visible interface copy in chat components/trace/approval-escape.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/approval-escape.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row.never_ran": {
+		"role": "visible interface copy in chat components/trace/tool-row.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.delivered_to_their_mailbox_the_wake_got_no_answer_so": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.delivered_wake_unconfirmed": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.in_their_mailbox_the_wake_got_no_answer_so_they": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.wake_unconfirmed": {
+		"role": "visible interface copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/trace/tool-row-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.approval.approve_description": {
+		"role": "rendered product copy in chat components/trace/ask-options.tsx",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.approval.deny_description": {
+		"role": "rendered product copy in chat components/trace/ask-options.tsx",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.trace.tool_row_model.more_diff_lines": {
+		"role": "rendered product copy in chat components/trace/tool-row-model.ts",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"hidden": "number"
+		}
+	},
+	"ui.chat.trace.tool_detail_model.more_lines": {
+		"role": "rendered product copy in chat components/trace/tool-detail-model.ts",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"hidden": "number"
+		}
+	},
+	"ui.chat.trace.turn_summary.at_least_actions_unloaded": {
+		"role": "rendered product copy in chat components/trace/turn-summary.tsx",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"actionCount": "number",
+			"At": "string"
+		}
+	},
+	"ui.chat.trace.agent_reasoning.reasoning": "Default trigger label for the agent reasoning row in the transcript. A reflection turn may pass its own label; this one is used when none is given."
+}
