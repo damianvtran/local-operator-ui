@@ -45,14 +45,20 @@
           <p class="card-expiry" id="approvals-expiry"></p>
           <button type="button" class="card-primary" id="approvals-allow-once"></button>
           <div class="card-secondary" id="approvals-secondary"></div>
-          <button type="button" class="card-review" id="approvals-review"></button>
         </section>
         <section id="approvals-list" hidden>
           <ul class="card-rows" id="approvals-rows"></ul>
-          <button type="button" class="card-review" id="approvals-back"></button>
         </section>
         <p class="card-error" id="approvals-error" role="alert" hidden></p>
       </div>
+      <!--
+        The footer is outside the scrolling body so the way into the queue (or
+        back out of it) is never clipped when the card hits its height ceiling.
+      -->
+      <footer class="card-footer">
+        <button type="button" class="card-review" id="approvals-review"></button>
+        <button type="button" class="card-review" id="approvals-back" hidden></button>
+      </footer>
     </main>
     <script type="module" src="/src/approvals-overlay/main.ts"></script>
   </body>

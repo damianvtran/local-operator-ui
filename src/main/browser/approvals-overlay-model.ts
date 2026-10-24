@@ -21,15 +21,31 @@ import {
 	type ApprovalsCardRequest,
 } from "../../shared/browser-approvals-overlay";
 
-/** A display string, capped. Never HTML: the document writes `textContent`. */
+/**
+ * A display string, capped. Never HTML: the document writes `textContent`.
+ *
+ * CONTROL AND BIDI CHARACTERS ARE FILTERED BY CODE POINT, not by a regex: a
+ * queue field must not smuggle a line break or a right-to-left override into a
+ * one-line label, and the linter (rightly) refuses a control-character range in
+ * a regular expression. Strings crossing here are already capped at 2 KiB, so
+ * the code-point pass is cheap.
+ */
 function text(value: unknown, max: number): string {
 	if (typeof value !== "string") return "";
-	// Control characters are stripped so a queue field cannot smuggle line
-	// breaks or bidi overrides into a one-line label.
-	const cleaned = value
-		.replace(/[\u0000-\u001f\u007f]/g, " ")
-		.replace(/[\u202a-\u202e\u2066-\u2069]/g, "")
-		.trim();
+	let cleaned = "";
+	for (const character of value) {
+		const code = character.codePointAt(0) ?? 0;
+		if (code <= 0x1f || code === 0x7f) {
+			cleaned += " ";
+		} else if (code >= 0x202a && code <= 0x202e) {
+			// Bidi embedding/override controls.
+		} else if (code >= 0x2066 && code <= 0x2069) {
+			// Bidi isolate controls.
+		} else {
+			cleaned += character;
+		}
+	}
+	cleaned = cleaned.trim();
 	return cleaned.length > max ? cleaned.slice(0, max) : cleaned;
 }
 
@@ -45,14 +61,12 @@ function httpOrigin(value: unknown): string | null {
 }
 
 /** One queue entry → one card request, or `null` when it cannot be displayed. */
-export function approvalsCardRequestFrom(
-	entry: {
-		entryId?: unknown;
-		origin?: unknown;
-		displayAuthority?: unknown;
-		expiresAt?: unknown;
-	},
-): ApprovalsCardRequest | null {
+export function approvalsCardRequestFrom(entry: {
+	entryId?: unknown;
+	origin?: unknown;
+	displayAuthority?: unknown;
+	expiresAt?: unknown;
+}): ApprovalsCardRequest | null {
 	const entryId = text(entry.entryId, APPROVALS_CARD_MODEL_LIMITS.entryId);
 	const origin = httpOrigin(entry.origin);
 	if (!entryId || !origin) return null;
@@ -64,10 +78,7 @@ export function approvalsCardRequestFrom(
 		entryId,
 		origin,
 		requester:
-			text(
-				entry.displayAuthority,
-				APPROVALS_CARD_MODEL_LIMITS.requester,
-			) || "",
+			text(entry.displayAuthority, APPROVALS_CARD_MODEL_LIMITS.requester) || "",
 		expiresAt,
 	};
 }
@@ -108,10 +119,7 @@ export function approvalsCardModelFrom(
 		pending.find((entry) => !input.dismissed?.has(entry.entryId)) ?? null;
 	const model: ApprovalsCardModel = {
 		v: 1,
-		seq:
-			Number.isInteger(input.seq) && input.seq >= 0
-				? input.seq
-				: 0,
+		seq: Number.isInteger(input.seq) && input.seq >= 0 ? input.seq : 0,
 		locale: text(input.locale, 35) || "en",
 		dir: modelDirection(input.dir),
 		theme: input.theme === "light" ? "light" : "dark",
