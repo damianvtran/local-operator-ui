@@ -1,4 +1,4 @@
-# S6b approvals card frames — round-3 head
+# S6b approvals card frames — round-4 head
 
 **Document-only frames.** These are cropped screenshots of the BUILT card
 document (`out/renderer/browser-approvals-overlay.html`) loaded in an iframe
