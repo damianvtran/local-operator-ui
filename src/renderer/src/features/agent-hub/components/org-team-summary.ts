@@ -1,6 +1,5 @@
 import type { HubTeam, HubTeamMember } from "@shared/api/radient/types";
-import { formatNumber, t } from "@shared/i18n";
-import { format } from "date-fns";
+import { formatDate, formatNumber, t } from "@shared/i18n";
 import { commentAge } from "../comment-age";
 
 /**
@@ -132,7 +131,7 @@ export const announcedDescription = (
 
 /** A date the way the expanded body and the tooltip both print it. */
 export const formatTeamDate = (date: Date): string =>
-	format(date, "d MMM yyyy");
+	formatDate(date, { day: "numeric", month: "short", year: "numeric" });
 
 const parseDate = (raw: string | undefined): Date | null => {
 	if (!raw) return null;

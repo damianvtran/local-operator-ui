@@ -18,12 +18,12 @@ import {
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { TEXT_SURFACE_PROPS } from "@shared/components/ui/text-surface";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type KeyboardEvent as ReactKeyboardEvent,
 	type ReactNode,
 	useEffect,
-	useMemo,
 	useRef,
 	useState,
 } from "react";
@@ -101,6 +101,7 @@ export const OrgTeamsList: React.FC<{
 	tenantId: string;
 	orgName: string | null;
 }> = ({ tenantId, orgName }) => {
+	useI18nLocale();
 	const { teams, isLoading, isFetching, isError, error, refetch } =
 		useOrgTeamsQuery({ tenantId });
 	/* The refusal the read is answered with, when it is one (§2.2). */
@@ -171,24 +172,23 @@ export const OrgTeamsList: React.FC<{
 	 * reach — a treatment pinned by a test and rendered by nobody. The name in the
 	 * context is the failed row's, because the sentence is about that document.
 	 */
-	const pullTreatment = useMemo(() => {
-		if (!isPublicationError(pull.error)) return null;
-		const failed = teams.find((team) => team.id === failedTeamId);
-		return publicationTreatment(
-			{
-				code: pull.error.code,
-				message: pull.error.message,
-				details: pull.error.details,
-			},
-			// `surface: "pull"`: the table is shared with the publish dialog, and its
-			// verb-bearing bodies must name the act this surface performed (C7).
-			{
-				name: failed?.name ?? t("ui.hub.teams.this_team"),
-				hubAgentId: null,
-				surface: "pull",
-			},
-		);
-	}, [pull.error, failedTeamId, teams]);
+	const failed = teams.find((team) => team.id === failedTeamId);
+	const pullTreatment = isPublicationError(pull.error)
+		? publicationTreatment(
+				{
+					code: pull.error.code,
+					message: pull.error.message,
+					details: pull.error.details,
+				},
+				// `surface: "pull"`: the table is shared with the publish dialog, and its
+				// verb-bearing bodies must name the act this surface performed (C7).
+				{
+					name: failed?.name ?? t("ui.hub.teams.this_team"),
+					hubAgentId: null,
+					surface: "pull",
+				},
+			)
+		: null;
 
 	/*
 	 * One action, one act. `default` renders nothing at all (see ROSTER_ACTIONS):

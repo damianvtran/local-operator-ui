@@ -1,5 +1,5 @@
 {
-	"ui.agents.upload.agent_label": "Agent:",
+	"ui.agents.upload.agent_label": "Agent: {name}",
 	"ui.agents.upload.cancel": "Cancel",
 	"ui.agents.upload.cannot_publish": "This agent cannot be published yet",
 	"ui.agents.upload.checking_name": "Checking whether this name is free…",

@@ -1,4 +1,5 @@
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The configuration run: how it starts, how it is watched, how it is stopped,
  * and what it is allowed to touch.
@@ -68,7 +69,9 @@ import {
 	type CatalogueSnapshot,
 	RUN_TOOL_NAMES,
 	type RunToolRow,
+	type RunToolVerb,
 	diffCatalogue,
+	formatRunToolVerb,
 	projectRunToolRow,
 	snapshotCatalogue,
 } from "./summary";
@@ -205,7 +208,7 @@ export type ConfigRunHandle = {
 	elapsed: string;
 	/** Live activity, for the Watch panel (the run's own tool rows). */
 	activity: {
-		verb: string;
+		verb: RunToolVerb;
 		target: RunTarget | null;
 		/** Whether this call writes the registry rather than reading it. */
 		writes: boolean;
@@ -258,6 +261,9 @@ export type ConfigRunHandle = {
 };
 
 export function useConfigRun(): ConfigRunHandle {
+	// `step` is formatted below, so this hook must re-render even when its parent
+	// does not otherwise subscribe to the active locale.
+	useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	const enabled = configRunEnabled(capabilities.data);
 	const client = useQueryClient();
@@ -350,7 +356,9 @@ export function useConfigRun(): ConfigRunHandle {
 	}, [activity, live, store]);
 
 	const step =
-		live && activity.length > 0 ? activity[activity.length - 1].verb : null;
+		live && activity.length > 0
+			? formatRunToolVerb(activity[activity.length - 1].verb)
+			: null;
 	const elapsed = formatElapsed(useElapsed(store.startedAt, live));
 
 	/**

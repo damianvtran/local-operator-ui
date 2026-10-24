@@ -329,8 +329,69 @@
 		"tone": "Concise, plain product language",
 		"length_hint": "Short label",
 		"placeholders": {
-			"label": "Dynamic value; preserve verbatim",
-			"rule": "Backend/shared-contract validation rule; preserve its leading space when present"
+			"label": "Localized field label",
+			"rule": "Localized predicate from a stable PublicationRule descriptor"
+		}
+	},
+	"ui.agents.publication.rule_empty": {
+		"role": "Local publication validation rule",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short predicate following a field label"
+	},
+	"ui.agents.publication.rule_max_characters": {
+		"role": "Local publication validation rule",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short predicate following a field label",
+		"placeholders": {
+			"max": "Maximum Unicode character count as a numeric ICU argument"
+		}
+	},
+	"ui.agents.publication.rule_name_bidi_override": {
+		"role": "Local publication name validation rule",
+		"tone": "Concise, plain product language",
+		"length_hint": "One wrapped line"
+	},
+	"ui.agents.publication.rule_name_control": {
+		"role": "Local publication name validation rule",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short predicate following a field label"
+	},
+	"ui.agents.publication.rule_name_edge_punctuation": {
+		"role": "Local publication name validation rule",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short predicate following a field label"
+	},
+	"ui.agents.publication.rule_name_format": {
+		"role": "Local publication name validation rule",
+		"tone": "Concise, plain product language",
+		"length_hint": "One wrapped line"
+	},
+	"ui.agents.publication.rule_name_separators": {
+		"role": "Local publication name validation rule",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short predicate following a field label",
+		"note": "Preserve the literal slash, backslash, and colon characters exactly."
+	},
+	"ui.agents.publication.rule_name_whitespace": {
+		"role": "Local publication name validation rule",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short predicate following a field label"
+	},
+	"ui.agents.publication.rule_tool_item_characters": {
+		"role": "Local publication tools validation rule",
+		"tone": "Concise, plain product language",
+		"length_hint": "One wrapped line",
+		"placeholders": {
+			"min": "Minimum characters per tool name as a numeric ICU argument",
+			"max": "Maximum characters per tool name as a numeric ICU argument"
+		}
+	},
+	"ui.agents.publication.rule_tools_max_items": {
+		"role": "Local publication tools validation rule",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short predicate following a field label",
+		"placeholders": {
+			"max": "Maximum tool count as a numeric ICU argument"
 		}
 	},
 	"ui.agents.publication.moderation_credential_theft": {

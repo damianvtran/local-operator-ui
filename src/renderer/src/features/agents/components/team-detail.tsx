@@ -767,8 +767,11 @@ export function TeamDetail({
 						 */}
 						{team ? (
 							<p className="text-body-sm text-ink-muted">
-								{memberCountLabel(shownMembers)}
-								{includesTeam ? t("ui.agents.team.includes_team") : ""}
+								{includesTeam
+									? t("ui.agents.team.member_count_with_team", {
+											count: memberCount(shownMembers),
+										})
+									: memberCountLabel(shownMembers)}
 							</p>
 						) : null}
 					</div>
@@ -950,8 +953,9 @@ export function TeamDetail({
 									(option) => option.id === draft.manager,
 								) ? (
 									<Badge variant="warning" data-testid="team-manager-missing">
-										{t("ui.agents.team.not_found_prefix")}
-										{draft.manager}
+										{t("ui.agents.team.not_found_prefix", {
+											role: draft.manager,
+										})}
 									</Badge>
 								) : null}
 							</div>
@@ -1161,8 +1165,9 @@ export function TeamDetail({
 													variant="warning"
 													className="col-span-full w-fit"
 												>
-													{t("ui.agents.team.not_found_prefix")}
-													{member.role}
+													{t("ui.agents.team.not_found_prefix", {
+														role: member.role,
+													})}
 												</Badge>
 											) : null}
 											{/*

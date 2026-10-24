@@ -19,6 +19,7 @@ import {
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { TEXT_SURFACE_PROPS } from "@shared/components/ui/text-surface";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Search } from "lucide-react";
 import { type FC, useEffect, useMemo, useRef, useState } from "react";
@@ -87,6 +88,7 @@ export const PublicTeamsLibrary: FC<{
 	signedIn: boolean;
 	onOpenSettings: () => void;
 }> = ({ signedIn, onOpenSettings }) => {
+	useI18nLocale();
 	const [page, setPage] = useState(1);
 	const [searchText, setSearchText] = useState("");
 
@@ -154,22 +156,21 @@ export const PublicTeamsLibrary: FC<{
 	 * credential refusal names the sign-in, and the body's verb comes from the
 	 * `pull` surface rather than the publish dialog's.
 	 */
-	const pullTreatment = useMemo(() => {
-		if (!isPublicationError(pull.error)) return null;
-		const failed = teams.find((team) => team.id === failedTeamId);
-		return publicationTreatment(
-			{
-				code: pull.error.code,
-				message: pull.error.message,
-				details: pull.error.details,
-			},
-			{
-				name: failed?.name ?? t("ui.hub.teams.this_team"),
-				hubAgentId: null,
-				surface: "pull",
-			},
-		);
-	}, [pull.error, failedTeamId, teams]);
+	const failed = teams.find((team) => team.id === failedTeamId);
+	const pullTreatment = isPublicationError(pull.error)
+		? publicationTreatment(
+				{
+					code: pull.error.code,
+					message: pull.error.message,
+					details: pull.error.details,
+				},
+				{
+					name: failed?.name ?? t("ui.hub.teams.this_team"),
+					hubAgentId: null,
+					surface: "pull",
+				},
+			)
+		: null;
 
 	/*
 	 * WHAT A FAILED PULL SAYS.
@@ -535,8 +536,7 @@ const PublicTeamCard: FC<{
 					</p>
 					{author ? (
 						<p className="mt-1 text-ink-dim text-meta">
-							{t("ui.hub.teams.published_by")}
-							<span className="text-ink-muted">{author}</span>
+							{t("ui.hub.teams.published_by", { author })}
 						</p>
 					) : null}
 				</div>
@@ -728,10 +728,10 @@ const TeamBrief: FC<{
 								className="flex items-baseline gap-1.5"
 							>
 								<span className="text-body-sm text-ink-muted">
-									{slotLabel(slot)}
-								</span>
-								<span className="text-ink-dim text-meta">
-									{t("ui.hub.teams.member_kind", { kind: slot.kind })}
+									{t("ui.hub.teams.member_with_kind", {
+										name: slotLabel(slot),
+										kind: slot.kind,
+									})}
 								</span>
 							</li>
 						))

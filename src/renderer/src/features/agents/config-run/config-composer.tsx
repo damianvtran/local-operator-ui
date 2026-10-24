@@ -60,6 +60,7 @@ import { useConversationInputStore } from "@shared/store/conversation-input-stor
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Square } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { formatRunChange, formatRunToolVerb } from "./summary";
 import type { ConfigRunHandle } from "./use-config-run";
 
 /**
@@ -145,7 +146,7 @@ function RunActivity({ run }: { run: ConfigRunHandle }) {
 				<li
 					// The row's own instant is its identity: a run may call the same tool
 					// on the same target twice, and an index-only key would mis-reconcile.
-					key={`${row.ts}:${row.verb}:${index}`}
+					key={`${row.ts}:${index}`}
 					className="flex items-baseline gap-2 text-body-sm"
 				>
 					<span className="text-ink-dim tabular-nums">
@@ -154,7 +155,7 @@ function RunActivity({ run }: { run: ConfigRunHandle }) {
 							minute: "2-digit",
 						})}
 					</span>
-					<span className="text-ink">{row.verb}</span>
+					<span className="text-ink">{formatRunToolVerb(row.verb)}</span>
 				</li>
 			))}
 		</ul>
@@ -784,8 +785,7 @@ function RunSummary({ run }: { run: ConfigRunHandle }) {
 				) : null}
 				{run.topic ? (
 					<p className="mt-1 text-meta text-ink-muted">
-						{t("ui.agents.config.you_asked")}
-						{run.topic}
+						{t("ui.agents.config.you_asked", { topic: run.topic })}
 					</p>
 				) : null}
 			</div>
@@ -800,18 +800,21 @@ function RunSummary({ run }: { run: ConfigRunHandle }) {
 							{result.created
 								? t("ui.agents.config.result_created", {
 										name: result.target.name,
+										kind: result.target.kind,
 									})
 								: t("ui.agents.config.result_updated", {
 										name: result.target.name,
+										kind: result.target.kind,
 									})}
-						</span>
-						<span className="text-ink-muted">
-							{t("ui.agents.config.result_kind", { kind: result.target.kind })}
 						</span>
 						{result.changes.length > 0 ? (
 							<span className="text-ink-muted">
 								{": "}
-								{result.changes.map((change) => change.label).join(", ")}
+								{result.changes
+									.map((change) =>
+										formatRunChange(change.field, change.before, change.after),
+									)
+									.join(", ")}
 							</span>
 						) : result.created ? null : (
 							<span className="text-ink-muted">

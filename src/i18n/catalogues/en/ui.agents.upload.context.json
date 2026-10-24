@@ -2,7 +2,10 @@
 	"ui.agents.upload.agent_label": {
 		"role": "Field, section, state, or status copy in the Agent Hub publication dialog",
 		"tone": "Concise, plain product language",
-		"length_hint": "Short label"
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "Agent name; preserve verbatim"
+		}
 	},
 	"ui.agents.upload.cancel": {
 		"role": "Action or accessible label in the Agent Hub publication dialog",

@@ -98,6 +98,7 @@ import {
 	publicationTreatment,
 } from "../utils/publication-failure";
 import {
+	formatPublicationIssue,
 	isReservedBuiltinName,
 	publicationIssues,
 	toolsFromAgentTags,
@@ -320,27 +321,26 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	 * come back as a treatment below instead, because they arrive with a code and a
 	 * different next step.
 	 */
-	const issues = useMemo(() => {
-		const list = publicationIssues({
-			name,
-			description: agent?.description ?? "",
-			// `null` while the body is still loading, which is not a violation.
-			instructions: instructions ?? null,
-			tools: toolsFromAgentTags(agent?.tags),
-		});
-		if (reserved) {
-			// The same sentence the hub's `name_reserved_builtin` refusal gets, taken
-			// from the treatment table rather than written twice.
-			list.unshift({
-				field: "name",
-				message: publicationTreatment(
-					{ code: "name_reserved_builtin", message: "" },
-					{ name, hubAgentId: null },
-				).body,
-			});
-		}
-		return list;
-	}, [name, agent?.description, agent?.tags, instructions, reserved]);
+	const issues = useMemo(
+		() =>
+			publicationIssues({
+				name,
+				description: agent?.description ?? "",
+				// `null` while the body is still loading, which is not a violation.
+				instructions: instructions ?? null,
+				tools: toolsFromAgentTags(agent?.tags),
+			}),
+		[name, agent?.description, agent?.tags, instructions],
+	);
+	// Translate during this render rather than retaining the descriptor memo's
+	// locale in the reserved-name treatment.
+	const reservedMessage = reserved
+		? publicationTreatment(
+				{ code: "name_reserved_builtin", message: "" },
+				{ name, hubAgentId: null },
+			).body
+		: null;
+	const issueCount = issues.length + (reservedMessage ? 1 : 0);
 
 	const treatment = failure
 		? publicationTreatment(failure, {
@@ -366,7 +366,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 		if (
 			!agent ||
 			submitting ||
-			issues.length > 0 ||
+			issueCount > 0 ||
 			(targetIsOrg && !targetOrganization)
 		)
 			return;
@@ -703,7 +703,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					disabled={
 						(targetIsOrg && !targetOrganization) ||
 						!agreedToTerms ||
-						issues.length > 0 ||
+						issueCount > 0 ||
 						!name.trim() ||
 						submitting ||
 						(linksEnabled &&
@@ -1025,16 +1025,17 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 							</p>
 						) : null}
 
-						{issues.length > 0 && (
+						{issueCount > 0 && (
 							// The one boundary inside the dialog: this list has to read as a
 							// blocker rather than as more body copy, and it is what disables
 							// the submit button.
 							<Alert variant="danger">
 								<AlertTitle>{t("ui.agents.upload.cannot_publish")}</AlertTitle>
 								<ul className="list-disc space-y-1 pl-5">
+									{reservedMessage ? <li>{reservedMessage}</li> : null}
 									{issues.map((issue) => (
-										<li key={`${issue.field}:${issue.message}`}>
-											{issue.message}
+										<li key={`${issue.field}:${issue.rule.id}`}>
+											{formatPublicationIssue(issue)}
 										</li>
 									))}
 								</ul>
@@ -1052,7 +1053,9 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 								onChange={(event) => setName(event.target.value)}
 								autoComplete="off"
 								spellCheck={false}
-								aria-invalid={issues.some((issue) => issue.field === "name")}
+								aria-invalid={
+									reserved || issues.some((issue) => issue.field === "name")
+								}
 								aria-describedby={`${nameInputId}-hint`}
 							/>
 							<p
@@ -1124,8 +1127,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 					// only other place that says which one — worth restating once the
 					// title has scrolled out of the reader's attention.
 					<p className="text-meta text-ink-muted">
-						{t("ui.agents.upload.agent_label")}
-						{agentName}
+						{t("ui.agents.upload.agent_label", { name: agentName })}
 					</p>
 				)}
 			</div>

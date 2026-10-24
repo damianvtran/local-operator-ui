@@ -26,9 +26,9 @@
 	"ui.agents.config.no_tool_activity": "Nothing to show yet — the run has not called a tool.",
 	"ui.agents.config.request_unsent": "The request could not be sent. It is still in the box.",
 	"ui.agents.config.request_unsent_after_create": "The run was set up, but your request could not be sent. It is still in the box — send it again when the backend is reachable.",
-	"ui.agents.config.result_created": "Created {name}",
+	"ui.agents.config.result_created": "Created {name} ({kind, select, agent {agent} team {team} other {{kind}}})",
 	"ui.agents.config.result_kind": "({kind, select, agent {agent} team {team} other {{kind}}})",
-	"ui.agents.config.result_updated": "Updated {name}",
+	"ui.agents.config.result_updated": "Updated {name} ({kind, select, agent {agent} team {team} other {{kind}}})",
 	"ui.agents.config.results_read_failed": "The run finished, but the agents and teams lists could not be read to describe what changed.",
 	"ui.agents.config.retry": "Retry",
 	"ui.agents.config.run_details": "Run details",
@@ -83,5 +83,5 @@
 	"ui.agents.config.watch": "Watch",
 	"ui.agents.config.working": "Working on your request",
 	"ui.agents.config.working_ellipsis": "Working on your request…",
-	"ui.agents.config.you_asked": "You asked:"
+	"ui.agents.config.you_asked": "You asked: {topic}"
 }
