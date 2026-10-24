@@ -2074,6 +2074,9 @@ export function seedPendingSends(
 			entry.id,
 			entry.text,
 			entry.images,
+			// The clock stays the default (`now` = `Date.now()`); `documents` is the
+			// sixth parameter, after it, so passing the list here must not be read as
+			// a stamp - the sibling `applyPendingSend` says the same at its own call.
 			undefined,
 			entry.documents,
 		);
