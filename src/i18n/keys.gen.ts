@@ -106,16 +106,23 @@ import esUiAgentsStarters from "./catalogues/es/ui.agents.starters.json";
 import esUiBrowserChrome from "./catalogues/es/ui.browser.chrome.json";
 import esUiBrowser from "./catalogues/es/ui.browser.json";
 import esUiCanvas from "./catalogues/es/ui.canvas.json";
+import esUiChatAnalytics from "./catalogues/es/ui.chat.analytics.json";
 import esUiChatAsks from "./catalogues/es/ui.chat.asks.json";
 import esUiChatAttachments from "./catalogues/es/ui.chat.attachments.json";
+import esUiChatCanonical from "./catalogues/es/ui.chat.canonical.json";
+import esUiChatCommentaryActions from "./catalogues/es/ui.chat.commentary_actions.json";
 import esUiChatComposer from "./catalogues/es/ui.chat.composer.json";
 import esUiChatComposerMedia from "./catalogues/es/ui.chat.composer_media.json";
 import esUiChatDialogs from "./catalogues/es/ui.chat.dialogs.json";
 import esUiChatHeader from "./catalogues/es/ui.chat.header.json";
 import esUiChat from "./catalogues/es/ui.chat.json";
 import esUiChatLiveUpdates from "./catalogues/es/ui.chat.live_updates.json";
+import esUiChatPickers from "./catalogues/es/ui.chat.pickers.json";
 import esUiChatResponseActions from "./catalogues/es/ui.chat.response_actions.json";
+import esUiChatRunDetails from "./catalogues/es/ui.chat.run_details.json";
+import esUiChatSidebar from "./catalogues/es/ui.chat.sidebar.json";
 import esUiChatSidebarView from "./catalogues/es/ui.chat.sidebar_view.json";
+import esUiChatTagDialogs from "./catalogues/es/ui.chat.tag_dialogs.json";
 import esUiChatTags from "./catalogues/es/ui.chat.tags.json";
 import esUiChatTranscriptCopy from "./catalogues/es/ui.chat.transcript_copy.json";
 import esUiCodeReview from "./catalogues/es/ui.code_review.json";
@@ -125,10 +132,12 @@ import esUiCommonActions from "./catalogues/es/ui.common.actions.json";
 import esUiCommonConnection from "./catalogues/es/ui.common.connection.json";
 import esUiCommonEditing from "./catalogues/es/ui.common.editing.json";
 import esUiCommonErrors from "./catalogues/es/ui.common.errors.json";
+import esUiCommonFileActions from "./catalogues/es/ui.common.file_actions.json";
 import esUiCommonForms from "./catalogues/es/ui.common.forms.json";
 import esUiCommonLoading from "./catalogues/es/ui.common.loading.json";
 import esUiCommonModels from "./catalogues/es/ui.common.models.json";
 import esUiCommonUpdates from "./catalogues/es/ui.common.updates.json";
+import esUiCommonViewer from "./catalogues/es/ui.common.viewer.json";
 import esUiConsole from "./catalogues/es/ui.console.json";
 import esUiHubComments from "./catalogues/es/ui.hub.comments.json";
 import esUiHub from "./catalogues/es/ui.hub.json";
@@ -637,16 +646,23 @@ export const bundledCatalogues: Readonly<
 		...esUiBrowserChrome,
 		...esUiBrowser,
 		...esUiCanvas,
+		...esUiChatAnalytics,
 		...esUiChatAsks,
 		...esUiChatAttachments,
+		...esUiChatCanonical,
+		...esUiChatCommentaryActions,
 		...esUiChatComposer,
 		...esUiChatComposerMedia,
 		...esUiChatDialogs,
 		...esUiChatHeader,
 		...esUiChat,
 		...esUiChatLiveUpdates,
+		...esUiChatPickers,
 		...esUiChatResponseActions,
+		...esUiChatRunDetails,
+		...esUiChatSidebar,
 		...esUiChatSidebarView,
+		...esUiChatTagDialogs,
 		...esUiChatTags,
 		...esUiChatTranscriptCopy,
 		...esUiCodeReview,
@@ -656,10 +672,12 @@ export const bundledCatalogues: Readonly<
 		...esUiCommonConnection,
 		...esUiCommonEditing,
 		...esUiCommonErrors,
+		...esUiCommonFileActions,
 		...esUiCommonForms,
 		...esUiCommonLoading,
 		...esUiCommonModels,
 		...esUiCommonUpdates,
+		...esUiCommonViewer,
 		...esUiConsole,
 		...esUiHubComments,
 		...esUiHub,
