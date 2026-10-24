@@ -1,0 +1,284 @@
+{
+  "auditor": "translation-auditor",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "instance": "861658748256-r2",
+  "date": "2026-10-23",
+  "locale": "ur",
+  "status": "passed",
+  "audit_round": "completion round 2, scoped second independent remediation audit",
+  "commit": "eb732d52cbddcc1b4a6023523a88c0852a5b1bc9",
+  "base_commit": "8e1814b92ea7c7afa809997e77e157781c73eaa0",
+  "scope": {
+    "changed_namespaces": [
+      "ui.presence",
+      "ui.chat.sidebar"
+    ],
+    "changed_values": 2,
+    "mechanical_keys_checked": 52,
+    "semantic_keys_checked": 13,
+    "unchanged_namespaces_reaudited": false
+  },
+  "independence": {
+    "authored_translation": false,
+    "authored_remediation": false,
+    "translator_session": "a8963d4aa6bf",
+    "auditor_session": "861658748256",
+    "audit_run_instance": "861658748256-r2",
+    "round1_receipt_instance": "861658748256",
+    "basis": "Scoped only to the two changed values and their direct presence/search neighbors; no unchanged namespace was re-audited."
+  },
+  "fallback": "None; actual served model recorded from this session.",
+  "terminology_sources": {
+    "glossary": {
+      "path": "/Users/damian/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "ur_style_guide": {
+      "path": "/Users/damian/local-operator/i18n/style-guides/ur.md",
+      "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+    }
+  },
+  "namespaces": {
+    "ui.presence": {
+      "status": "passed",
+      "keys_read": 9,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.presence.json",
+        "ur": "src/i18n/catalogues/ur/ui.presence.json",
+        "context": "src/i18n/catalogues/en/ui.presence.context.json"
+      },
+      "sha256": {
+        "en": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
+        "ur": "d9a74ddecafc812311a97695780ce283f81c959f7119041522c80e7eaf32b395"
+      },
+      "context_sha256": "f78dc27ea4c00befbb3b48ce6723230a23c6e4388bf5ace429c2b445447aae44",
+      "findings": []
+    },
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "keys_read": 43,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+        "ur": "src/i18n/catalogues/ur/ui.chat.sidebar.json",
+        "context": "src/i18n/catalogues/en/ui.chat.sidebar.context.json"
+      },
+      "sha256": {
+        "en": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+        "ur": "872f25eb7db98a41750a371a079d666165b5f4c9a82655a5536260b116fb933d"
+      },
+      "context_sha256": "fe5dc2a0fa4cb9b95ef5c1a30d57aee030fa5edf2b6b54b323562a1c63b8eb3a",
+      "findings": []
+    }
+  },
+  "findings": [],
+  "summary": {
+    "overall": "clean",
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0,
+    "round1_major_resolved": true,
+    "round1_minor_resolved": true
+  },
+  "evidence": {
+    "delta": "Exactly two catalogue values changed: ui.presence.hours_ago and ui.chat.sidebar.search.searching. The translator receipt also changed; it was not used as audit evidence.",
+    "hours_ago": {
+      "current": "{count, plural, one {{count, number} گھنٹہ پہلے} other {{count, number} گھنٹے پہلے}}",
+      "pass": true,
+      "expected": [
+        "0 گھنٹے پہلے",
+        "1 گھنٹہ پہلے",
+        "2 گھنٹے پہلے",
+        "1,234 گھنٹے پہلے"
+      ],
+      "samples": [
+        {
+          "count": 0,
+          "category": "other",
+          "formatted": "0 گھنٹے پہلے"
+        },
+        {
+          "count": 1,
+          "category": "one",
+          "formatted": "1 گھنٹہ پہلے"
+        },
+        {
+          "count": 2,
+          "category": "other",
+          "formatted": "2 گھنٹے پہلے"
+        },
+        {
+          "count": 1234,
+          "category": "other",
+          "formatted": "1,234 گھنٹے پہلے"
+        }
+      ]
+    },
+    "sidebar_searching": {
+      "current": "گفتگو میں تلاش جاری ہے…",
+      "commandPalette": "گفتگو میں تلاش جاری ہے…",
+      "paletteSearch": "گفتگو میں تلاش جاری ہے…",
+      "pass": true
+    },
+    "direct_neighbors": {
+      "semantic_review": "Read 11 unchanged direct neighbors beside the 2 remediated values; no new semantic, register, terminology or mixed-direction finding.",
+      "formatted_samples": [
+        {
+          "key": "ui.presence.minutes_ago",
+          "params": {
+            "count": 1
+          },
+          "formatted": "1 منٹ پہلے"
+        },
+        {
+          "key": "ui.presence.days_ago",
+          "params": {
+            "count": 1
+          },
+          "formatted": "1 دن پہلے"
+        },
+        {
+          "key": "ui.presence.link_down_compact",
+          "params": {
+            "age": "1 گھنٹہ پہلے"
+          },
+          "formatted": "لنک منقطع · 1 گھنٹہ پہلے"
+        },
+        {
+          "key": "ui.presence.link_down_last_seen",
+          "params": {
+            "age": "1 گھنٹہ پہلے"
+          },
+          "formatted": "لنک منقطع · آخری بار 1 گھنٹہ پہلے دیکھا گیا"
+        },
+        {
+          "key": "ui.presence.device_link_down",
+          "params": {
+            "reason": "timeout",
+            "age": "1 گھنٹہ پہلے"
+          },
+          "formatted": "لنک منقطع · timeout · آخری بار 1 گھنٹہ پہلے دیکھا گیا"
+        },
+        {
+          "key": "ui.chat.sidebar.search.no_match",
+          "params": {
+            "query": "API_KEY"
+          },
+          "formatted": "آپ کی چیٹس میں “API_KEY” سے کچھ نہیں ملتا۔"
+        },
+        {
+          "key": "ui.chat.sidebar.search.too_long",
+          "params": {
+            "max": 1234
+          },
+          "formatted": "تلاش 1234 حروف تک محدود ہے۔ یہ تلاش اس سے لمبی ہے، اس لیے صرف چیٹ کے نام تلاش کیے جا رہے ہیں۔"
+        }
+      ]
+    },
+    "mechanical": {
+      "keys": 52,
+      "key_set_mismatch": 0,
+      "key_order_mismatch": 0,
+      "interpolation_mismatch": 0,
+      "select_branch_mismatch": 0,
+      "invalid_plural_categories": 0,
+      "nfc_failures": 0,
+      "bidi_control_failures": 0,
+      "pseudo_failures": 0
+    },
+    "icu_contract": "Placeholder names, argument types/styles and markup match English; select branches match exactly. Target-only plural structure is allowed when required by Urdu and every branch is a valid Urdu CLDR category with other present.",
+    "unicode_rtl_static": {
+      "nfc_failures": 0,
+      "manual_bidi_controls": 0,
+      "rendered_rtl_claimed": false,
+      "mixed_direction_neighbor_outputs": "API_KEY, timeout, ungrouped 1234 and singular-hour age fragments preserved in logical order."
+    },
+    "pseudo_localization": {
+      "processed": 52,
+      "failures": 0,
+      "samples": [
+        {
+          "key": "ui.presence.hours_ago",
+          "original": "{count, plural, one {{count, number} گھنٹہ پہلے} other {{count, number} گھنٹے پہلے}}",
+          "pseudo": "⟦{count, plural, one {{count, number} گھنٹہ پہلے} other {{count, number} گھنٹے پہلے}}⟧"
+        },
+        {
+          "key": "ui.chat.sidebar.search.searching",
+          "original": "گفتگو میں تلاش جاری ہے…",
+          "pseudo": "⟦گفتگو﹏﹏ میں﹏﹏ تلاش﹏﹏ جاری﹏﹏ ہے﹏…⟧"
+        },
+        {
+          "key": "ui.chat.sidebar.search.too_long",
+          "original": "تلاش {max, number, ::group-off} حروف تک محدود ہے۔ یہ تلاش اس سے لمبی ہے، اس لیے صرف چیٹ کے نام تلاش کیے جا رہے ہیں۔",
+          "pseudo": "⟦تلاش﹏﹏ {max, number, ::group-off} حروف﹏﹏ تک﹏ محدود﹏﹏ ہے﹏۔ یہ﹏ تلاش﹏﹏ اس﹏ سے﹏ لمبی﹏﹏ ہے﹏، اس﹏ لیے﹏﹏ صرف﹏﹏ چیٹ﹏﹏ کے﹏ نام﹏﹏ تلاش﹏﹏ کیے﹏﹏ جا﹏ رہے﹏﹏ ہیں﹏﹏۔⟧"
+        }
+      ],
+      "method": "Delimit and expand literal text while preserving complete ICU expressions and allowed technical tokens; parse and compare against target interpolation signatures."
+    },
+    "english_leakage": {
+      "latin_runs": [
+        {
+          "key": "ui.chat.sidebar.pins.drag_title",
+          "token": "Esc",
+          "allowed": true
+        },
+        {
+          "key": "ui.chat.sidebar.row_menu.copy_id",
+          "token": "ID",
+          "allowed": true
+        },
+        {
+          "key": "ui.chat.sidebar.search.names_only",
+          "token": "Local Operator",
+          "allowed": true
+        }
+      ],
+      "untranslated_prose": []
+    },
+    "minutes_ago": {
+      "current": "{count, number} منٹ پہلے",
+      "disposition": "Unchanged intentionally; rendered-fit watch only, not an unresolved copy MAJOR."
+    },
+    "duplicate_json_members": {
+      "files_checked": 6,
+      "duplicates": 0
+    },
+    "generated_freshness": {
+      "command": "node scripts/i18n/generate.mjs --check",
+      "result": "PASS — src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+    }
+  },
+  "commands": [
+    {
+      "command": "node ur-round2-audit.mjs",
+      "actual_result": "exit 0; 52 keys; all mechanical mismatch/failure counters zero; hoursPass=true; sidebarTerminology.pass=true"
+    },
+    {
+      "command": "python3 duplicate-member probe over scoped en/ur/context files",
+      "actual_result": "PASS — 6 JSON files, 0 duplicate keys"
+    },
+    {
+      "command": "node scripts/i18n/generate.mjs --check",
+      "actual_result": "exit 0; generated keys byte-identical"
+    }
+  ],
+  "unverified": [
+    "Rendered RTL direction, glyph shaping and visual ordering",
+    "Actual clipping/truncation; minutes_ago remains a rendered-fit watch by instruction"
+  ],
+  "repository_writes": "None. Probe, evidence and receipt are in the auditor session scratchpad.",
+  "artifacts": [
+    {
+      "path": "/Users/damian/.local-operator/sessions/861658748256/scratchpad/ur-round2-audit-evidence.json",
+      "sha256": "4ef07176e1cbfd9971eee82c90236a9a245464962a9e67a3a3e8ba6390728c94"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/861658748256/scratchpad/ur-round2-audit.mjs",
+      "sha256": "62af84b37d601809366df3cc77a529b186bc80c6184328881e809c8eb17c3e23"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/861658748256/scratchpad/ur-round2-audit-run.log",
+      "sha256": "8d8b939c856e968c93fe2e5f0298d7c98a8045c2ca3fb993086aea69fb12dd91"
+    }
+  ]
+}
