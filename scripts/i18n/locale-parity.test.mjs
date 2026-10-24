@@ -1083,6 +1083,51 @@ const IDENTICAL_OK = new Map([
 		"ui.settings.shortcuts.row.canvas",
 		"product surface name: Canvas is preserved verbatim by the glossary",
 	],
+	// --- ui.chat.directory folder quick-picks. These rows name a filesystem
+	// location, not prose: the chip shows the folder's friendly name beside its
+	// real path, so the label must stay the literal segment the OS uses. The
+	// English sidecars say the same for each: "the literal path segment rather
+	// than prose: an allowed exception, do NOT translate it."
+	[
+		"ui.chat.directory.folder.etc",
+		"literal filesystem directory name (path segment), byte-identical in every locale by design",
+	],
+	[
+		"ui.chat.directory.folder.media",
+		"literal filesystem directory name (path segment), byte-identical in every locale by design",
+	],
+	[
+		"ui.chat.directory.folder.mnt",
+		"literal filesystem directory name (path segment), byte-identical in every locale by design",
+	],
+	[
+		"ui.chat.directory.folder.opt",
+		"literal filesystem directory name (path segment), byte-identical in every locale by design",
+	],
+	[
+		"ui.chat.directory.folder.srv",
+		"literal filesystem directory name (path segment), byte-identical in every locale by design",
+	],
+	[
+		"ui.chat.directory.folder.usr",
+		"literal filesystem directory name (path segment), byte-identical in every locale by design",
+	],
+	[
+		"ui.chat.directory.folder.var",
+		"literal filesystem directory name (path segment), byte-identical in every locale by design",
+	],
+	[
+		"ui.chat.directory.folder.program_data",
+		"Windows system directory name: Explorer shows it in Latin in every locale",
+	],
+	[
+		"ui.chat.directory.folder.program_files",
+		"Windows system directory name: Explorer shows it in Latin in every locale",
+	],
+	[
+		"ui.chat.directory.folder.program_files_x86",
+		"Windows system directory name plus the literal `x86` token: Explorer shows it in Latin in every locale",
+	],
 ]);
 
 function localeDirs() {
