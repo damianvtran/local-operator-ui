@@ -522,7 +522,12 @@ export const Disclosure = ({
 	const glyph = isOpen ? (
 		<ChevronDown className="size-3.5" aria-hidden={true} />
 	) : (
-		<ChevronRight className="size-3.5" aria-hidden={true} />
+		/*
+		 * The closed chevron points along the inline axis; the open one is vertical
+		 * and direction-neutral. Mirrored so the collapsed row's glyph points into
+		 * the text in both directions (design round 1, D3).
+		 */
+		<ChevronRight className="size-3.5 rtl:-scale-x-100" aria-hidden={true} />
 	);
 
 	/*

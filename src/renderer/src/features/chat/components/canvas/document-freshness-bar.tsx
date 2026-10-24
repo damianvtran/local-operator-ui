@@ -101,10 +101,21 @@ export const DocumentFreshnessBar: FC<{
 	 * a build with no local-file bridge stays here, which is true: nothing was
 	 * read from a disk).
 	 */
-	const stamp =
+	/*
+	 * THE STAMP IS TWO RUNS (design round 1, D4c). `Modified` is app copy and the
+	 * date is the locale's own string; glued into one text node inside an RTL
+	 * paragraph, the two swapped and the localized date's words scattered
+	 * (`AM 4:07 کو 2026 اکتوبر، Modified 24`). Each run is isolated at the render
+	 * site below; this string stays whole for the tooltip, which is one sentence.
+	 */
+	const modifiedText =
 		lastModifiedMs === null
+			? null
+			: formatCalendarDateTime(new Date(lastModifiedMs));
+	const stamp =
+		modifiedText === null
 			? "Not read from disk yet"
-			: `Modified ${formatCalendarDateTime(new Date(lastModifiedMs))}`;
+			: `Modified ${modifiedText}`;
 
 	/*
 	 * THE NAME FOLLOWS THE STATE (UX round 1 U7, round 2 U1). "Re-read from disk"
@@ -194,7 +205,13 @@ export const DocumentFreshnessBar: FC<{
 						)}
 						data-tour-tag="canvas-document-modified"
 					>
-						{stamp}
+						{modifiedText === null ? (
+							stamp
+						) : (
+							<>
+								<bdi>Modified</bdi> <bdi>{modifiedText}</bdi>
+							</>
+						)}
 					</span>
 					{/*
 					 * THE ANNOUNCEMENT IS A SEPARATE, ALWAYS-MOUNTED REGION (UX round 1,

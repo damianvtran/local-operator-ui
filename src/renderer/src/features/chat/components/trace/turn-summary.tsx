@@ -439,7 +439,13 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 											className="shrink-0 text-body-sm text-ink-muted"
 											title={partial ? actionClauseTitle : undefined}
 										>
-											{actionClause}
+											{/*
+											 * The clause is an English count (`1 action`) rendered inside the
+											 * locale's paragraph; isolated so an RTL base cannot reorder the
+											 * number and its noun (design round 1, D4b). Translation of these
+											 * two strings is a catalogue change and out of this round.
+											 */}
+											<bdi>{actionClause}</bdi>
 										</span>
 									</>
 								)}
@@ -504,7 +510,7 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 										title={partial ? actionClauseTitle : undefined}
 										aria-label={partial ? actionClauseTitle : undefined}
 									>
-										{actionClause}
+										<bdi>{actionClause}</bdi>
 									</span>
 								)}
 							</>
