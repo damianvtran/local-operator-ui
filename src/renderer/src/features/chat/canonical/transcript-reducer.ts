@@ -5306,6 +5306,29 @@ export function applyEvent(
 				 */
 				const keepsHold =
 					current?.kind === "user" && current.provisional === true;
+				/*
+				 * THE FILE THE MESSAGE WAS SENT WITH SURVIVES ITS OWN RESTATEMENT.
+				 *
+				 * The press paints the row with the document blocks it already uploaded
+				 * (`appendPendingUser`), and this frame lands SECOND for the same id. An
+				 * upsert replaces the record wholesale, so an arm that rebuilt text and
+				 * images only silently deleted the file: the message on screen read as if
+				 * nothing had been attached while the model had the document (reproduced
+				 * from the operator's own session, 2026-10-24: the echo carried the block,
+				 * this frame dropped it, and only a reload - which reads the durable row
+				 * through `durableRecord` - painted the card again).
+				 *
+				 * `previous` is the echo's own list for a restatement, and the frame's own
+				 * content for a frame replayed onto an empty transcript (a reconnect, or a
+				 * second viewer joining mid-turn): `extractDocuments` prefers the content
+				 * when it has document blocks and falls back to `previous` otherwise, so
+				 * neither case loses the file and a text-only frame invents none.
+				 */
+				const documents = extractDocuments(
+					message,
+					messageId,
+					current?.kind === "user" ? current.documents : undefined,
+				);
 				/* The live half of the `skill` derivation; the durable half is in
 				 * `durableRecord`, and both are needed for the same reason the harness
 				 * suppression above spells out: they are different arms over different
@@ -5325,6 +5348,7 @@ export function applyEvent(
 						messageId,
 						current?.kind === "user" ? current.images : undefined,
 					),
+					...(documents.length ? { documents } : {}),
 					...(keepsHold ? { provisional: true } : {}),
 					...(skill ? { skill } : {}),
 				});
