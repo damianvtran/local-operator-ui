@@ -19,7 +19,7 @@
 	"ui.chat.pickers.loop.cancel": "Hủy vòng lặp",
 	"ui.chat.pickers.loop.title": "Vòng lặp",
 	"ui.chat.pickers.models.connect_provider": "Kết nối nhà cung cấp",
-	"ui.chat.pickers.models.native_details": "Chi tiết native — {name}",
+	"ui.chat.pickers.models.native_details": "Chi tiết gốc — {name}",
 	"ui.chat.pickers.models.set_as_default": "Đặt mô hình hiện tại làm mặc định",
 	"ui.chat.pickers.models.title": "Mô hình",
 	"ui.chat.pickers.new_session.title": "Cuộc trò chuyện mới",
@@ -30,7 +30,7 @@
 	"ui.chat.pickers.skills.loading": "Đang tải",
 	"ui.chat.pickers.skills.title": "Kỹ năng",
 	"ui.chat.pickers.stop.all_sessions": "Tất cả phiên ({count, number, ::group-off})",
-	"ui.chat.pickers.stop.confirm": "Dừng {count, plural, other {{count, number, ::group-off} phiên}} ngay",
+	"ui.chat.pickers.stop.confirm": "Dừng {count, plural, =1 {phiên này} other {{count, number, ::group-off} phiên}} ngay",
 	"ui.chat.pickers.stop.title": "Dừng",
 	"ui.chat.pickers.theme.title": "Giao diện"
 }
