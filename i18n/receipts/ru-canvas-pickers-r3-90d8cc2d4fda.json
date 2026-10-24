@@ -1,0 +1,270 @@
+{
+  "schema": 1,
+  "audit_kind": "independent-namespace-reaudit",
+  "date": "2026-10-24",
+  "locale": "ru",
+  "locale_name": "Russian",
+  "batch": "canvas",
+  "pr": "#1388",
+  "branch": "feat/i18n-canvas-batch",
+  "audited_head": "30fa931f77bbd2e6ff9719f3207ecf413aefde2f",
+  "audited_head_short": "30fa931f77",
+  "previous_audit": {
+    "receipt": "i18n/receipts/23463a773a32-canvas.json",
+    "receipt_sha256": "d5e7cddbe80bae8dbee4ade1a2a8c28d75f5608c27e9270bd7a9800abd7b696a",
+    "head": "82209cab3a9eeee4d6649d4b0015b73501b122e8",
+    "target_sha256": "0c72dba18eae33e6c51cde626bf4bd89dd6992322b9e3624624de2caf0c1a4e2",
+    "note": "Round 2 passed at the older ru bytes; the completion wave and the remediation changed values after that audit."
+  },
+  "translator": {
+    "agent": "i18n-translator",
+    "session": "ef600dd9bdd0",
+    "served_model": "radient/auto",
+    "model_history": [
+      "openrouter/moonshotai/kimi-k3.1-pro",
+      "radient/auto"
+    ],
+    "date": "2026-10-24",
+    "receipt": "i18n/receipts/ui-ru-canvas-batch.json"
+  },
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "team_role": "translation-auditor",
+  "instance": "90d8cc2d4fda",
+  "session": "90d8cc2d4fda",
+  "model": "radient/auto",
+  "served_model": "radient/auto",
+  "fallback": null,
+  "independence": "This auditor did not author or translate the lane and is a different session from translator ef600dd9bdd0. No catalogue, source, context, ledger, allowance, generated or other repository file was edited; this receipt is the only artefact and it was committed by the audit session. No model fallback was used.",
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+    },
+    "ui_howto": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    },
+    "receipt_contract": {
+      "path": "scripts/i18n/ledger-assemble.mjs",
+      "note": "receipt contract lines 43-57; ledger-rules.mjs deriveReceiptAudit at the audited head"
+    }
+  },
+  "scope": "ONLY ui.chat.pickers at 30fa931f77, all 720 keys, English source and en context sidecar read side by side with the Russian catalogue. Every value changed by main's completion wave or the remediation was re-checked semantically (23 values: 22 wave changes, 10 remediation changes, 9 in both). The 34 pre-existing chrome keys are byte-identical to the prior audited values. Catalogue audit only; no rendered frame and no native-speaker sign-off are claimed.",
+  "method": [
+    "Read 720/720 Russian values against the English catalogue and the en context sidecar.",
+    "Parsed every message as ICU with @formatjs/icu-messageformat-parser: arguments, plural and select arms, number/date skeletons, tags and pound tokens compared branch by branch.",
+    "Rendered all 27 plural messages with IntlMessageFormat at counts 0, 1, 2, 5, 21 and 1.5; checked the tally composition `${term.count} ${term.label}` against the labels.",
+    "Checked Russian CLDR categories one/few/many/other in every plural message; checked placement and case of the counted noun after the externally prepended count.",
+    "Checked NFC, manual bidi controls (none expected), invisible characters, duplicate keys, key-set/order parity, identical values, and the glossary/style-guide terminology.",
+    "Re-checked the prior round-2 open findings R2-RU-CAN-02, -03 and -04 at the current bytes; carried them only where the bytes still show the defect."
+  ],
+  "delta": {
+    "keys_read": 720,
+    "batch_keys": 686,
+    "values_changed_by_completion_wave": 22,
+    "values_changed_by_remediation": 10,
+    "values_changed_since_prior_audit": 23,
+    "note": "The wave changes are deliberate overflow fixes proposed by the previous audit (use_team, default_effort, last_known) and blocker/major fixes; the audit re-verified each and found one wave regression (of_did_not_report lost «всего:») and one drift created by the refresh label change."
+  },
+  "namespaces": {
+    "ui.chat.pickers": {
+      "namespace": "ui.chat.pickers",
+      "status": "changes_requested",
+      "result": "changes_requested",
+      "verdict": "changes_requested — 1 MAJOR, 8 MINOR, 1 NIT, 0 BLOCKER; 720/720 keys read. ICU structure, placeholders, skeletons, plural categories, register and glossary are otherwise clean.",
+      "keys_read": 720,
+      "batch_keys": 686,
+      "sha256": {
+        "en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+        "ru": "35af870130a99a5cfbd84c28863c4ccc128c77d3a4b77487e2493ebaf9fee6a8",
+        "context": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+        "target": "src/i18n/catalogues/ru/ui.chat.pickers.json",
+        "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+      },
+      "mechanical": {
+        "key_set_equals_en": true,
+        "missing_keys": [],
+        "extra_keys": [],
+        "exact_en_target_key_order": false,
+        "key_order_note": "The key SETS are equal and locale-parity.test.mjs passes; file order differs from English and is not a gate.",
+        "icu_parse": "720/720 messages parse",
+        "placeholder_argument_mismatches": 0,
+        "number_date_skeleton_mismatches": 0,
+        "markup_tag_mismatches": 0,
+        "select_arm_missing": 0,
+        "plural_categories": "one/few/many/other present in all 27 plural messages; no missing «other»",
+        "plural_messages_rendered": "27/27 at 0, 1, 2, 5, 21, 1.5",
+        "nfc": true,
+        "manual_bidi_controls": 0,
+        "identical_values": 10,
+        "identical_values_note": "All ten are technical/template values: skill://, MY_API_KEY, TERM, COLORTERM, Python {python_version}, pid {pid}, pid {pid} duplicate, {note}., {completed}, {runtimecount} · {bound}{trajectorycount}.",
+        "ascii_double_quotes_in_prose": 0,
+        "nbsp_nnbsp_zwsp_bom_shy": 0,
+        "duplicate_keys": 0
+      },
+      "findings": [
+        {
+          "id": "R3-RU-PICKERS-01",
+          "severity": "major",
+          "category": "accuracy/plural-branch",
+          "key": "ui.chat.pickers.table_pager.range",
+          "source": "{from}–{to} of {totaltext} {total, plural, one {{label}} other {{plurallabel}}}",
+          "current": "{from}–{to} из {totaltext} {total, plural, one {{label}} few {{plurallabel}} many {шт.} other {{plurallabel}}}",
+          "proposed": "source-level: give the pager genitive label forms (or a pager-specific noun pair) and use them in every branch; with the current sole caller (sessions) the text is {from}–{to} из {totaltext} {total, plural, one {сессии} few {сессий} many {сессий} other {сессии}}. A text-only branch change to {plurallabel} is not sufficient because the caller passes the nominative «сессии».",
+          "reason": "The many branch (5-20, 25-30, …) ignores the caller's {plurallabel} and emits the literal «шт.», and the few/other branches emit the caller's nominative plural, so the pager renders «1–10 из 50 шт.» and «1–3 из 3 сессии» instead of the genitive «сессий». The only caller passes label=«сессия», plurallabel=«сессии» (analytics-panel.tsx:687-694), so the current branches cannot form the genitive Russian requires; {label} is a defined placeholder present in every English branch.",
+          "evidence": "Rendered with IntlMessageFormat at total=50: «1–10 из 50 шт.»; at total=3: «1–3 из 3 сессии». Source-level alternative: pass genitive forms (or a pager-specific noun pair) into the primitive and use {plurallabel} in every branch.",
+          "status": "open"
+        },
+        {
+          "id": "R3-RU-PICKERS-02",
+          "severity": "minor",
+          "category": "accuracy/clarity",
+          "key": "ui.chat.pickers.info_model.of_did_not_report",
+          "source": "{formatcount} of {plural} did not report",
+          "current": "Без ответа: {formatcount}; {plural}",
+          "proposed": "{plural} · без ответа: {formatcount}",
+          "reason": "The completion wave dropped «всего:», leaving a bare nominative fragment after the semicolon; the English «N of M did not report» relation is no longer explicit. {plural} is the label-first plural() output (e.g. «рантаймы: 3»), so the proposed label-first shape reads «рантаймы: 3 · без ответа: 2» and matches the other label-first status lines.",
+          "evidence": "Rendered: «Без ответа: 2; рантаймы: 3». Wave diff: «Без ответа: 2; всего: 3 …» → current.",
+          "status": "open"
+        },
+        {
+          "id": "R3-RU-PICKERS-03",
+          "severity": "minor",
+          "category": "plural-case",
+          "key": "ui.chat.pickers.usage_view_model.model_cap_exhausted",
+          "source": "{count, plural, one {model cap exhausted} other {model caps exhausted}}",
+          "current": "{count, plural, one {лимит модели исчерпан} few {лимиты моделей исчерпаны} many {лимиты моделей исчерпаны} other {лимиты моделей исчерпаны}}",
+          "proposed": "{count, plural, one {лимит модели исчерпан} few {лимита моделей исчерпаны} many {лимитов моделей исчерпано} other {лимита моделей исчерпано}}",
+          "reason": "statsTerms renders `${term.count} ${term.label}` (usage-view-model.ts:724-774), so the label must inflect after the externally prepended numeral. The few/many branches use nominative plural «лимиты», producing «2 лимиты моделей исчерпаны» / «5 лимиты моделей исчерпаны»; the proposed forms produce «2 лимита моделей исчерпаны» / «5 лимитов моделей исчерпано».",
+          "evidence": "Rendered tally term at count=2: «2 лимиты моделей исчерпаны»; at count=5: «5 лимиты моделей исчерпаны».",
+          "status": "open"
+        },
+        {
+          "id": "R3-RU-PICKERS-04",
+          "severity": "minor",
+          "category": "plural-case",
+          "key": "ui.chat.pickers.usage_view_model.reported_balance",
+          "source": "{count, plural, one {reported balance} other {reported balances}}",
+          "current": "{count, plural, one {указан баланс} few {указаны балансы} many {указаны балансы} other {указан баланс}}",
+          "proposed": "{count, plural, one {указанный баланс} few {указанных баланса} many {указанных балансов} other {указанного баланса}}",
+          "reason": "Same externally prepended count: «2 указаны балансы» is ungrammatical; an agreeing noun phrase gives «2 указанных баланса» / «5 указанных балансов».",
+          "evidence": "Rendered tally term at count=2: «2 указаны балансы»; at count=5: «5 указаны балансы».",
+          "status": "open"
+        },
+        {
+          "id": "R3-RU-PICKERS-05",
+          "severity": "minor",
+          "category": "agreement",
+          "key": "ui.chat.pickers.usage_view_model.exhausted",
+          "related_keys": [
+            {
+              "key": "ui.chat.pickers.usage_view_model.near_limit",
+              "current": "почти исчерпан",
+              "proposed": "почти исчерпано"
+            }
+          ],
+          "source": "exhausted / near limit",
+          "current": "исчерпан",
+          "proposed": "исчерпано",
+          "reason": "The tally prepends the count, so the masculine singular short adjective reads «2 исчерпан» / «2 почти исчерпан». Neuter short forms are invariant in this telegraphic tally («1 исчерпано», «2 исчерпано», «5 исчерпано»); a source-side plural would be cleaner but is not needed for grammatical output.",
+          "evidence": "statsTerms composition at count=2: «2 исчерпан · 2 почти исчерпан».",
+          "status": "open"
+        },
+        {
+          "id": "R3-RU-PICKERS-06",
+          "severity": "minor",
+          "category": "glossary-consistency",
+          "key": "ui.chat.pickers.model_catalogue_listing.the_provider_listing_failed_the_rows_below_are_refresh_from_providers_tr",
+          "source": "The provider listing failed. The rows below are {value}; Refresh from providers tries again.",
+          "current": "Не удалось получить список провайдеров. Ниже — {value}. Кнопка «Обновить от провайдеров» повторяет попытку.",
+          "proposed": "Не удалось получить список провайдеров. Ниже — {value}. Кнопка «Обновить у провайдеров» повторяет попытку.",
+          "reason": "The completion wave changed the button key to «Обновить у провайдеров» but did not update the quoted label in this sentence, so the notice quotes a control that does not exist. The English comment in model-catalogue-listing.ts says a rename must come back through this string.",
+          "evidence": "destination_pickers.refresh_from_providers = «Обновить у провайдеров» at the same head.",
+          "status": "open"
+        },
+        {
+          "id": "R3-RU-PICKERS-07",
+          "severity": "minor",
+          "category": "grammar",
+          "key": "ui.chat.pickers.info_model.count_noun",
+          "prior_id": "R2-RU-CAN-02",
+          "prior_receipt": "i18n/receipts/23463a773a32-canvas.json",
+          "source": "{count, plural, one {{count, number, ::group-off} {noun}} other {{count, number, ::group-off} {pluralnoun}}}",
+          "current": "{count, plural, one {{noun}: {count, number, ::group-off}} few {{pluralnoun}: {count, number, ::group-off}} many {{pluralnoun}: {count, number, ::group-off}} other {{pluralnoun}: {count, number, ::group-off}}}",
+          "proposed": "{count, plural, one {{pluralnoun}: {count, number, ::group-off}} few {{pluralnoun}: {count, number, ::group-off}} many {{pluralnoun}: {count, number, ::group-off}} other {{pluralnoun}: {count, number, ::group-off}}}",
+          "reason": "Russian one covers 21/31/101, so the one branch renders the singular label with a plural count («рантайм: 21») while every other count gets the plural label. Using {pluralnoun} in the one branch as well gives the consistent label-first «рантаймы: 21». The prior round-2 minor remains open at the current bytes.",
+          "status": "open"
+        },
+        {
+          "id": "R3-RU-PICKERS-08",
+          "severity": "minor",
+          "category": "glossary-consistency",
+          "key": "ui.chat.pickers.usage_view_model.sign_in_expired_run_login",
+          "prior_id": "R2-RU-CAN-03",
+          "prior_receipt": "i18n/receipts/23463a773a32-canvas.json",
+          "source": "Sign-in expired — run /login {provider}",
+          "current": "Срок авторизации истёк — выполните /login {provider}",
+          "proposed": "Срок входа истёк — выполните /login {provider}",
+          "reason": "The locale uses «вход» for sign-in everywhere else (Выполнен вход, Состояние входа, Войти в учётную запись), and this is now the only «авторизац» left in the audited namespace. The prior round-2 minor remains open.",
+          "status": "open"
+        },
+        {
+          "id": "R3-RU-PICKERS-09",
+          "severity": "minor",
+          "category": "composition",
+          "key": "ui.chat.pickers.info_model.runtime_trajectories",
+          "prior_id": "R2-RU-CAN-04",
+          "prior_receipt": "i18n/receipts/23463a773a32-canvas.json",
+          "source": "{runtimecount} · {bound}{trajectorycount}",
+          "current": "{runtimecount} · {bound}{trajectorycount}",
+          "proposed": "source-level: pass the bound inside the trajectory phrase, e.g. {runtimecount} · траектории: {bound}{count}, or drop {bound} from this composite",
+          "reason": "{trajectorycount} is already the label-first plural() output («траектории: 12»), so prefixing {bound} yields «≥траектории: 12» in the rare unreported state. The prior round-2 minor remains open.",
+          "status": "open"
+        },
+        {
+          "id": "R3-RU-PICKERS-10",
+          "severity": "nit",
+          "category": "typography",
+          "key": "ui.chat.pickers.usage_view_model.d_ago",
+          "source": "{trunc, number, ::group-off}d ago",
+          "current": "{trunc, number, ::group-off} д назад",
+          "proposed": "{trunc, number, ::group-off} дн. назад",
+          "reason": "«д» is not a conventional Russian abbreviation for days in this locale («мин» and «ч» are conventional); «дн.» is the standard form.",
+          "status": "open"
+        },
+        {
+          "id": "R3-RU-PICKERS-11",
+          "severity": "minor",
+          "category": "register",
+          "key": "ui.chat.pickers.destination_pickers.forgot",
+          "source": "Forgot {value}.",
+          "current": "Забыли {value}.",
+          "proposed": "Забыто: {value}.",
+          "reason": "The finite plural «Забыли» reads as a personal «you/they forgot» and breaks the impersonal status register used by the sibling toasts («сохранено», «работа возобновлена»); the style guide prefers impersonal constructions.",
+          "status": "open"
+        }
+      ]
+    }
+  },
+  "totals": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 9,
+    "nit": 1
+  },
+  "status": "changes_requested",
+  "verdict": "changes_requested — 1 MAJOR, 9 MINOR, 1 NIT, 0 BLOCKER in ui.chat.pickers at 30fa931f77; 720/720 keys read. The MAJOR is the table pager's hardcoded «шт.» and wrong genitive in every non-empty branch; ICU structure, placeholders, number/date skeletons and plural categories are clean. The minors are wording, case and consistency defects recorded for one remediation round, not blockers.",
+  "notes": [
+    "Catalogue audit only; no rendered frame, no native-speaker sign-off, no design/QA approval.",
+    "The completion-wave changes were re-checked as deliberate overflow fixes: use_team «Использовать», default_effort «Рассуждения по умолчанию» and last_known «Последние данные» match the previous audit's own recommendations and are not re-opened.",
+    "No source, catalogue, context, ledger, allowance, generated or repository file was edited by this audit."
+  ]
+}
