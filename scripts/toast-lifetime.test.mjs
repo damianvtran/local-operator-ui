@@ -60,6 +60,10 @@ const bundle = await build({
 						export const jsxs = jsx;
 						export const forwardRef = fn => fn;
 						export const useState = initial => [typeof initial === "function" ? initial() : initial, () => {}];
+						/* The container reads the locale through useSyncExternalStore;
+						   it is a pass-through here, so the theme's shape is what is under
+						   test rather than the store. */
+						export const useSyncExternalStore = (_subscribe, getSnapshot) => getSnapshot();
 						export const useRef = current => ({current});
 						export const useMemo = fn => fn();
 						export const useCallback = fn => fn;

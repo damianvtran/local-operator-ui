@@ -69,7 +69,10 @@ const layoutBundle = buildSync({
 	},
 	logLevel: "silent",
 });
-const layoutFile = join(process.cwd(), "scripts/.cache/finder-layout.mjs");
+const layoutFile = join(
+	process.cwd(),
+	"node_modules/.cache/canvas-batch/finder-layout.mjs",
+);
 mkdirSync(dirname(layoutFile), { recursive: true });
 writeFileSync(layoutFile, layoutBundle.outputFiles[0].text);
 const { FINDER_HEADER_BAND, FOCUS_RING_GAP } = await import(

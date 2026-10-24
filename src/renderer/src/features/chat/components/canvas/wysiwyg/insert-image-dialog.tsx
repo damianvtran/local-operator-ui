@@ -119,7 +119,7 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 								size={16}
 								aria-hidden="true"
 								className={cn(
-									"pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-ink-dim",
+									"pointer-events-none absolute top-1/2 start-3 -translate-y-1/2 text-ink-dim",
 								)}
 							/>
 							<Input
@@ -132,7 +132,7 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 								value={path}
 								onChange={(e) => setPath(e.target.value)}
 								onKeyDown={handleKeyDown}
-								className={cn("pl-9")}
+								className={cn("ps-9")}
 							/>
 						</div>
 						<Button

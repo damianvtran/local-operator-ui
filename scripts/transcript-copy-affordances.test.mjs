@@ -895,7 +895,7 @@ test("a non-closing FINAL response states its own time on its meta row", async (
 	 * ones."
 	 *
 	 * The stamp rides the meta row this response already reserves - AFTER the
-	 * action row, inside the same `ml-auto` span - so the arrival of the pointer
+	 * action row, inside the same `ms-auto` span - so the arrival of the pointer
 	 * fades the icons in beside a stamp that was already painted, and the icons
 	 * never move it. No `Worked for` caption and no bar: those are facts about a
 	 * TURN that finished, and this row is a mid-turn handover.
@@ -913,9 +913,9 @@ test("a non-closing FINAL response states its own time on its meta row", async (
 		"it rides the meta row, in the same span as the icons",
 	);
 	assert.equal(
-		control.parentElement.className.includes("ml-auto"),
+		control.parentElement.className.includes("ms-auto"),
 		true,
-		"right-aligned with them, at the row's trailing edge",
+		"inline-end with them, at the row's trailing edge",
 	);
 	assert.equal(
 		stamp.closest(".opacity-0") ?? null,
