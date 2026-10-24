@@ -135,6 +135,7 @@
 	"ui.library.page.loaded_count": "{loaded}/{total}个资源",
 	"ui.library.page.preview": "资源预览",
 	"ui.library.page.results": "资源库结果",
+	"ui.library.page.resize_preview": "调整详情抽屉宽度。双击可重置。",
 	"ui.library.preview.unavailable": "此资源不可用",
 	"ui.library.preview.unavailable_detail": "该资源可能已不在目录中。",
 	"ui.library.preview.pptx_preparing": "正在准备演示文稿……",

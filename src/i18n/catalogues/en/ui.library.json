@@ -135,6 +135,7 @@
 	"ui.library.page.loaded_count": "{loaded} of {total} assets",
 	"ui.library.page.preview": "Asset preview",
 	"ui.library.page.results": "Library results",
+	"ui.library.page.resize_preview": "Resize details drawer. Double-click to reset.",
 	"ui.library.preview.unavailable": "This asset isn't available",
 	"ui.library.preview.unavailable_detail": "It may no longer be in the catalog.",
 	"ui.library.preview.pptx_preparing": "Preparing presentation…",

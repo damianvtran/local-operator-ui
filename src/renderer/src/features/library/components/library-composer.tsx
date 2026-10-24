@@ -384,7 +384,9 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 	const linked = asset.chat;
 	return (
 		<div
-			className="flex flex-col gap-2 px-4 pb-3"
+			/* MessageInput contributes pt-2/pb-4: these outer tracks leave the
+			 * visible form with 20px above and below, not 20px/28px. */
+			className="flex flex-col gap-2 bg-sunken px-4 pt-3 pb-1"
 			data-library-composer=""
 			data-sending={sending ? "" : undefined}
 		>
