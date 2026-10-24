@@ -1,7 +1,7 @@
 {
-  "at": "2026-10-24T19:36:26.515Z",
-  "head": "5cc37427d6b15ed0f38eb4de8baac5b1490816b3",
-  "scratch": "/Users/damian/.local-operator/sessions/c4aaba06f9e9/scratchpad/narrow-panel-proof-GtpPR8",
+  "at": "2026-10-24T20:01:55.827Z",
+  "head": "40c3671dd23c23bdc66a2e579e9ff6e653e42d45",
+  "scratch": "/Users/damian/.local-operator/sessions/c4aaba06f9e9/scratchpad/narrow-panel-proof-q3hYwg",
   "rows": [
     {
       "id": "L-populated-light-full-width",
@@ -47,8 +47,8 @@
         "reason": {
           "text": "An agent from another session wants to open a-very-long-subdomain-for-the-narrow-panel-proof.example.test.",
           "length": 106,
-          "clientWidth": 190,
-          "scrollWidth": 190,
+          "clientWidth": 189,
+          "scrollWidth": 189,
           "overflowWrap": "anywhere",
           "lineWidths": [
             {
@@ -103,11 +103,11 @@
           "text": "Allow once",
           "disabled": false,
           "rect": {
-            "x": 45,
+            "x": 46,
             "y": 534.37,
             "width": 78.75,
             "height": 28,
-            "right": 123.75,
+            "right": 124.75,
             "bottom": 562.37
           },
           "panel": {
@@ -181,9 +181,9 @@
           "text": "Revoke all site approvals",
           "disabled": false,
           "rect": {
-            "x": 12,
+            "x": 13,
             "y": 535.53,
-            "width": 232,
+            "width": 231,
             "height": 28,
             "right": 244,
             "bottom": 563.53
@@ -253,8 +253,8 @@
         "reason": {
           "text": "An agent from another session wants to open a-very-long-subdomain-for-the-narrow-panel-proof.example.test.",
           "length": 106,
-          "clientWidth": 190,
-          "scrollWidth": 190,
+          "clientWidth": 189,
+          "scrollWidth": 189,
           "overflowWrap": "anywhere",
           "lineWidths": [
             {
@@ -309,11 +309,11 @@
           "text": "Allow once",
           "disabled": false,
           "rect": {
-            "x": 45,
+            "x": 46,
             "y": 521.47,
             "width": 78.75,
             "height": 28,
-            "right": 123.75,
+            "right": 124.75,
             "bottom": 549.47
           },
           "panel": {
@@ -387,9 +387,9 @@
           "text": "Revoke all site approvals",
           "disabled": false,
           "rect": {
-            "x": 12,
+            "x": 13,
             "y": 535.84,
-            "width": 232,
+            "width": 231,
             "height": 28,
             "right": 244,
             "bottom": 563.84
@@ -447,9 +447,9 @@
           "layout": "full",
           "position": "static",
           "display": "flex",
-          "panelClientWidth": 256,
+          "panelClientWidth": 255,
           "panelClientHeight": 794,
-          "panelScrollWidth": 256,
+          "panelScrollWidth": 255,
           "panelScrollHeight": 938,
           "theme": "localOperatorDark",
           "dark": true,
@@ -484,9 +484,9 @@
           "layout": "full",
           "position": "static",
           "display": "flex",
-          "panelClientWidth": 256,
+          "panelClientWidth": 255,
           "panelClientHeight": 794,
-          "panelScrollWidth": 256,
+          "panelScrollWidth": 255,
           "panelScrollHeight": 938,
           "theme": "localOperatorLight",
           "dark": false,
