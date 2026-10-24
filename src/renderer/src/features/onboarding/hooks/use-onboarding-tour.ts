@@ -7,6 +7,7 @@ import tourChatFullViewImage from "@assets/images/tour/chat-full-view.png";
 import tourChatInputImage from "@assets/images/tour/chat-input.png";
 import tourInlineEditCanvasImage from "@assets/images/tour/inline-edit-canvas.png";
 import { paletteDoorLabel } from "@features/command-palette/palette-shortcut";
+import { t } from "@shared/i18n";
 import { useOnboardingStore } from "@shared/store/onboarding-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useContext } from "react";
@@ -47,14 +48,18 @@ const pressTourAction = (action: string): void => {
 		?.click();
 };
 
-const tourSteps: StepOptions[] = [
+// Build at tour start: module-scope messages freeze the bootstrap locale and a
+// live language switch would otherwise leave Shepherd holding the old catalogue.
+export const createTourSteps = (): StepOptions[] => [
 	{
 		id: "welcome",
-		title: "Welcome to Local Operator",
-		text: `Local Operator is an AI agents platform that allows you to create a team of proactive AI agents that support you and help to reduce your daily workload.<br/><img src="${tourChatFullViewImage}" alt="Chat full view" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/><br />These agents are different from simple chatbots because they can actually do things for you on your computer like create files, run code and analytics, edit images, videos, and PDFs, organize your system, and much more.<br/><br/>In this walkthrough we'll cover:<ul><li>Creating agents</li><li>Making agents do things</li><li>The canvas workspace</li><li>Customizing agents</li><li>Agent Hub for sharing and collaborating</li><li>Schedules for proactive agents</li><li>Settings for customization</li></ul>Let's explore how it works.`,
+		title: t("ui.onboarding.tour.welcome.title"),
+		text: t("ui.onboarding.tour.welcome.body", {
+			chat_full_view_image: `<img src="${tourChatFullViewImage}" alt="${t("ui.onboarding.tour.alt.welcome")}" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/>`,
+		}),
 		buttons: [
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -65,18 +70,18 @@ const tourSteps: StepOptions[] = [
 	{
 		id: "agent-list",
 		attachTo: { element: '[data-tour-tag="agent-list-panel"]', on: "right" },
-		title: "Your agents",
-		text: "On the left, you'll see a list of your available AI agents. You can select an agent to start a conversation or manage its settings.  Think of this as your messenger contacts list, but for AI agents.  There are no limits to how many agents you can have, so create as many as you need to handle all your daily tasks.<br/><br/>Use the create agents button at the top of the toolbar to create a new agent at any time.  You can also import agents from the Agent Hub, which we will cover later in this tour.",
+		title: t("ui.onboarding.tour.agent_list.title"),
+		text: t("ui.onboarding.tour.agent_list.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -91,18 +96,18 @@ const tourSteps: StepOptions[] = [
 			element: '[data-tour-tag="agent-list-item-button-0"]',
 			on: "right",
 		},
-		title: "Select an agent",
-		text: "Click on an agent to open the chat window to pull up your conversation with it.  This will show the messages that you have sent them and the responses and actions that they have taken.",
+		title: t("ui.onboarding.tour.select_agent.title"),
+		text: t("ui.onboarding.tour.select_agent.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -125,18 +130,20 @@ const tourSteps: StepOptions[] = [
 			element: '[data-tour-tag="chat-input-textarea"]',
 			on: "top",
 		},
-		title: "Ask your agent anything",
-		text: `Type your request here. Agents can answer questions, perform tasks, search the web, and much more. When you create a new agent, you\'ll see suggested prompts for ideas.<br /><br />Some powerful requests that you can try:<br /><br /><ul><li>"Create a spreadsheet in my Documents folder with all the major cities in Canada."</li><li>"Search the web for the latest news on AI and make a thorough report."</li><li>Select an attachment and then "translate this document to French."</li></ul><br /><img src="${tourChatInputImage}" alt="Chat input" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/><br />You can also attach files to your message by clicking the paperclip button, which we will cover in the next step.`,
+		title: t("ui.onboarding.tour.chat_input.title"),
+		text: t("ui.onboarding.tour.chat_input.body", {
+			chat_input_image: `<img src="${tourChatInputImage}" alt="${t("ui.onboarding.tour.alt.chat_input")}" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/>`,
+		}),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -150,18 +157,20 @@ const tourSteps: StepOptions[] = [
 			element: 'button[data-tour-tag="chat-input-attach-file-button"]',
 			on: "top",
 		},
-		title: "Attach files to your message",
-		text: `You can attach any files, images, or documents to your message by clicking this paperclip button, there are no limitations on the file types. Your agent can process, analyze, or translate these attachments as part of your request.<br /><br />Try attaching a PDF, image, or text file and then ask your agent to summarize, translate, or extract information from it.<br /><img src="${tourChatAttachmentsImage}" alt="Chat attachments" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/><br />Images like PNGs, JPGs, and PDFs are natively streamed into the model context window, so they can understand them directly without needing to run any code.  Other files like Excel, Word, and CSV files are included as file paths on your device to direct the model's attention to work with them using code.  You can attach massive files like million line CSVs and have the agent work with them using code.<br /><br />You can also paste images into the chat input, and attach multiple files at once to achieve more complex tasks.  Try taking a screenshot of a website and then asking your agent to try to code it.`,
+		title: t("ui.onboarding.tour.attachments.title"),
+		text: t("ui.onboarding.tour.attachments.body", {
+			chat_attachments_image: `<img src="${tourChatAttachmentsImage}" alt="${t("ui.onboarding.tour.alt.attachments")}" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/>`,
+		}),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -172,18 +181,20 @@ const tourSteps: StepOptions[] = [
 	{
 		id: "agent-capabilities",
 		attachTo: { element: '[data-tour-tag="chat-header"]', on: "top" },
-		title: "More than just chat",
-		text: `Local Operator agents are different from simple chatbots. They can perform actions on your computer, like creating files, running code, or browsing the web, based on your instructions. You'll see them use "tools" like reading, writing, and executing code to get things done.  Agents have memory of the conversation, previous steps, learnings, and even store the execution variables of previous steps in code to be able to use them later in the conversation.<br /><img src="${tourAgenticSequenceImage}" alt="Agentic sequence" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/><br />Local Operator agents are extremely flexible, so they can bounce back and forth with you for simple chatting, and know when they need to embark on a work journey to get things done in multiple steps with tool use.`,
+		title: t("ui.onboarding.tour.agent_capabilities.title"),
+		text: t("ui.onboarding.tour.agent_capabilities.body", {
+			agentic_sequence_image: `<img src="${tourAgenticSequenceImage}" alt="${t("ui.onboarding.tour.alt.agent_capabilities")}" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/>`,
+		}),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const { openCommandPalette } = useUiPreferencesStore.getState();
@@ -198,15 +209,22 @@ const tourSteps: StepOptions[] = [
 	},
 	{
 		id: "pre-command-palette-open-canvas",
-		title: "Command palette",
+		title: t("ui.onboarding.tour.pre_command_palette_open_canvas.title"),
 		attachTo: {
 			element: '[data-tour-tag="command-palette-dialog"]',
 			on: "right",
 		},
-		text: `Let's quickly look at another powerful feature: the Command Palette. You can open it anywhere in the app by pressing <code>${paletteDoorLabel("everything", true)}</code> on Mac and <code>${paletteDoorLabel("everything", false)}</code> on Windows or Linux. This is a helpful window that you can open from anywhere in the app to be able to access your chats, agents, settings, pages and actions, and much more, using your keyboard. It can often be faster to access sections in the app this way instead of clicking through menus. Type a word to search everything at once, or start with a prefix to narrow it: <code>#</code> for chats, <code>@</code> for agents and teams, <code>,</code> for settings, and <code>&gt;</code> for commands and pages.<br /><br />In a hurry for a conversation? Press <code>${paletteDoorLabel("chats", true)}</code> on Mac and <code>${paletteDoorLabel("chats", false)}</code> on Windows or Linux and the palette opens already searching your chats, so you can jump straight to one — and <code>${paletteDoorLabel("commands", true)}</code> on Mac and <code>${paletteDoorLabel("commands", false)}</code> on Windows or Linux opens it on the app's own commands and pages when that is what you are after. You can also just click Search in the sidebar to open it.`,
+		text: t("ui.onboarding.tour.pre_command_palette_open_canvas.body", {
+			everything_mac: paletteDoorLabel("everything", true),
+			everything_windows: paletteDoorLabel("everything", false),
+			chats_mac: paletteDoorLabel("chats", true),
+			chats_windows: paletteDoorLabel("chats", false),
+			commands_mac: paletteDoorLabel("commands", true),
+			commands_windows: paletteDoorLabel("commands", false),
+		}),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const { closeCommandPalette } = useUiPreferencesStore.getState();
@@ -218,7 +236,7 @@ const tourSteps: StepOptions[] = [
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const { closeCommandPalette } = useUiPreferencesStore.getState();
@@ -237,11 +255,11 @@ const tourSteps: StepOptions[] = [
 			element: 'button[data-tour-tag="open-canvas-button"]',
 			on: "left",
 		},
-		title: "Open the canvas",
-		text: "Click here to open the Canvas, a workspace for files and dynamic visualizations where you can organize, plan, and interact with your agents in a more flexible way.",
+		title: t("ui.onboarding.tour.canvas_open_button.title"),
+		text: t("ui.onboarding.tour.canvas_open_button.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const { openCommandPalette } = useUiPreferencesStore.getState();
@@ -253,7 +271,7 @@ const tourSteps: StepOptions[] = [
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -272,11 +290,13 @@ const tourSteps: StepOptions[] = [
 	{
 		id: "canvas-feature",
 		attachTo: { element: '[data-tour-tag="canvas-container"]', on: "left" },
-		title: "The canvas: your visual workspace",
-		text: `This is the Canvas, your workspace for files and dynamic visualizations where you can organize, plan, and interact with your agents in a more flexible way.  Any files that your agents create on your device can be opened here by clicking on the file icons that you see as they work.<br/><br/>Agents can make dynamic visualizations like games, charts, maps, and more in HTML files.  Any HTML files you open will be rendered dynamically in an iframe.  Any markdown files that you open will be rendered in full markdown viewer with support for code blocks, tables, mermaid diagrams, and more.<br/><img src="${tourCanvasOverviewImage}" alt="Canvas overview" style="width: 100%; height: 300px; object-fit: contain; border-radius: 8px;"/>`,
+		title: t("ui.onboarding.tour.canvas_feature.title"),
+		text: t("ui.onboarding.tour.canvas_feature.body", {
+			canvas_overview_image: `<img src="${tourCanvasOverviewImage}" alt="${t("ui.onboarding.tour.alt.canvas_feature")}" style="width: 100%; height: 300px; object-fit: contain; border-radius: 8px;"/>`,
+		}),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -291,7 +311,7 @@ const tourSteps: StepOptions[] = [
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -313,19 +333,21 @@ const tourSteps: StepOptions[] = [
 			element: 'button[data-tour-tag="canvas-documents-view-button"]',
 			on: "top",
 		},
-		title: "Documents view",
-		text: `The Documents view shows all your open notes, blog articles, code, and visualizations as tabs. You can switch between documents to edit them and see dynamic visualizations in HTML created by your agents. Use this view to work with your notes, reports, and agent-generated content.<br /><br />This is where you can get more precise around your agents' work.<br/><img src="${tourInlineEditCanvasImage}" alt="Inline edit canvas" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/><br />In your documents, highlight any text that you want your agent to improve and press Cmd/Ctrl+K to bring up the inline AI editor.  
-    <br /><img src="${tourCanvasCodeInlineEditImage}" alt="Canvas code inline edit" style="width: 100%; height: 200px; object-fit: cover; object-position: top; border-radius: 8px;"/><br />You can be as precise as you want and the agent will edit the document for you in place, using its memories and context so you don't have to re-explain things.`,
+		title: t("ui.onboarding.tour.canvas_documents_view.title"),
+		text: t("ui.onboarding.tour.canvas_documents_view.body", {
+			inline_edit_canvas_image: `<img src="${tourInlineEditCanvasImage}" alt="${t("ui.onboarding.tour.alt.canvas_documents_view")}" style="width: 100%; height: 200px; object-fit: contain; border-radius: 8px;"/>`,
+			canvas_code_inline_edit_image: `<img src="${tourCanvasCodeInlineEditImage}" alt="${t("ui.onboarding.tour.alt.canvas_documents_view")}" style="width: 100%; height: 200px; object-fit: cover; object-position: top; border-radius: 8px;"/>`,
+		}),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -347,11 +369,11 @@ const tourSteps: StepOptions[] = [
 			element: 'button[data-tour-tag="canvas-files-view-button"]',
 			on: "top",
 		},
-		title: "Files view",
-		text: "The Files view lets you browse and open files that your agents have created or that are relevant to your current conversation. Use this to quickly access, preview, and open files in the Canvas workspace.",
+		title: t("ui.onboarding.tour.canvas_files_view.title"),
+		text: t("ui.onboarding.tour.canvas_files_view.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -366,7 +388,7 @@ const tourSteps: StepOptions[] = [
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -388,11 +410,13 @@ const tourSteps: StepOptions[] = [
 			element: 'button[data-tour-tag="canvas-variables-view-button"]',
 			on: "top",
 		},
-		title: "Variables view",
-		text: `The Variables view displays the "code memory" that agents have stored during their work. These are technical variables that include results, intermediate values, and other data that agents use to perform tasks. You can inspect and manage these variables here.<br /><br />This section will be most helpful for more technical users who want to understand how agents are working and what they are doing.<br/><img src="${tourCanvasVariablesImage}" alt="Canvas variables" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/>`,
+		title: t("ui.onboarding.tour.canvas_variables_view.title"),
+		text: t("ui.onboarding.tour.canvas_variables_view.body", {
+			canvas_variables_image: `<img src="${tourCanvasVariablesImage}" alt="${t("ui.onboarding.tour.alt.canvas_variables_view")}" style="width: 100%; height: 350px; object-fit: contain; border-radius: 8px;"/>`,
+		}),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -407,7 +431,7 @@ const tourSteps: StepOptions[] = [
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const closeButton = document.querySelector(
@@ -429,11 +453,11 @@ const tourSteps: StepOptions[] = [
 			element: 'button[data-tour-tag="agent-options-button"]',
 			on: "right",
 		},
-		title: "Agent options",
-		text: "Click here to see options for the currently selected agent, like viewing its settings, exporting it, or deleting it.",
+		title: t("ui.onboarding.tour.agent_options.title"),
+		text: t("ui.onboarding.tour.agent_options.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -448,7 +472,7 @@ const tourSteps: StepOptions[] = [
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -473,18 +497,18 @@ const tourSteps: StepOptions[] = [
 				'[role="menuitem"][data-tour-tag="view-agent-settings-menu-item"]',
 			on: "right",
 		},
-		title: "View configuration",
-		text: 'Click "View agent settings" to see and change how this agent works and change things like its name, description, hosting provider, and AI model.',
+		title: t("ui.onboarding.tour.click_view_settings_from_chat.title"),
+		text: t("ui.onboarding.tour.click_view_settings_from_chat.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -508,11 +532,11 @@ const tourSteps: StepOptions[] = [
 			element: 'div[data-tour-tag="agent-settings-details-paper"]',
 			on: "left",
 		},
-		title: "Agent configuration",
-		text: "This is where you can customize and configure your agent. You can change its name, description, the AI model it uses, its temperature for creativity, and other chat settings.<br /><br />The agents will already have default settings that work well for most use cases, but if you want to roll up your sleeves and customize, you can do so here.",
+		title: t("ui.onboarding.tour.view_agent_settings.title"),
+		text: t("ui.onboarding.tour.view_agent_settings.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -538,7 +562,7 @@ const tourSteps: StepOptions[] = [
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -552,18 +576,18 @@ const tourSteps: StepOptions[] = [
 			element: '[data-tour-tag="agent-settings-hosting-select"]',
 			on: "left",
 		},
-		title: "Select hosting provider",
-		text: 'Choose an AI provider for your agent. If you don\'t pick one here, then the default provider from the settings page will be used.  Providers offer different AI models and pricing. Radient is recommended for Local Operator as its "Automatic" mode is optimized for the lowest cost and best performance.',
+		title: t("ui.onboarding.tour.select_provider.title"),
+		text: t("ui.onboarding.tour.select_provider.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			}, // Goes to view-agent-settings
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -577,18 +601,18 @@ const tourSteps: StepOptions[] = [
 			element: '[data-tour-tag="agent-settings-model-select"]',
 			on: "left",
 		},
-		title: "Select AI model",
-		text: "After selecting a provider, choose an AI model. Models marked as 'Recommended' are known to work well with Local Operator. Other models might have inconsistent performance. If a model you expect to be recommended isn't listed, please let us know if it works well for you in Local Operator via GitHub Issues or email.",
+		title: t("ui.onboarding.tour.select_model.title"),
+		text: t("ui.onboarding.tour.select_model.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			}, // Goes to select-provider
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -602,18 +626,18 @@ const tourSteps: StepOptions[] = [
 			element: '[data-tour-tag="agent-settings-security"]',
 			on: "left",
 		}, // Attaching to the broader "Model Settings" card as a proxy
-		title: "Customize security behaviors",
-		text: "This prompt provides separate instructions to the security agent that reviews this agent's work. You can explicitly allow certain actions that would normally be blocked. If you encounter frequent security interventions, consider adding a note here for the security agent.",
+		title: t("ui.onboarding.tour.modify_security_prompt.title"),
+		text: t("ui.onboarding.tour.modify_security_prompt.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			}, // Goes to select-model
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -627,18 +651,18 @@ const tourSteps: StepOptions[] = [
 			element: '[data-tour-tag="agent-settings-system-prompt"]',
 			on: "left",
 		},
-		title: "Customize the agent's behavior",
-		text: "This prompt allows you to customize the baseline behavior of the agent. While most customization can happen by talking to the agent (it records learnings in its notebook), you can provide specific workflow instructions here that will be followed separately.",
+		title: t("ui.onboarding.tour.modify_agent_prompt.title"),
+		text: t("ui.onboarding.tour.modify_agent_prompt.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			}, // Goes to modify-security-prompt
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -652,11 +676,11 @@ const tourSteps: StepOptions[] = [
 			element: 'button[data-tour-tag="create-new-agent-button"]',
 			on: "bottom",
 		},
-		title: "Create a new agent",
-		text: 'Click the "+" button to create a brand new agent from scratch. You can then customize its behavior and capabilities.',
+		title: t("ui.onboarding.tour.create_new_agent.title"),
+		text: t("ui.onboarding.tour.create_new_agent.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					// We are on the main page (agent list/chat). Need to go to agent settings page.
@@ -696,7 +720,7 @@ const tourSteps: StepOptions[] = [
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -716,12 +740,11 @@ const tourSteps: StepOptions[] = [
 	{
 		id: "agent-naming-guidelines",
 		attachTo: { element: '[data-tour-tag="create-agent-dialog"]', on: "right" },
-		title: "Naming and describing your agent",
-		text: `Give your agent a clear, descriptive name that reflects its purpose (e.g., "File Organizer" or "Web Researcher"). 
-A good description helps you and others understand what the agent does and any special instructions. The descriptions are also used by other agents to help them understand how to tag each other in for certain tasks.<br /><br />If you want this agent to be part of the agent-to-agent communication network, it will need to have a description that captures its purpose and capabilities.  Be concise and specific.`,
+		title: t("ui.onboarding.tour.agent_naming_guidelines.title"),
+		text: t("ui.onboarding.tour.agent_naming_guidelines.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -737,7 +760,7 @@ A good description helps you and others understand what the agent does and any s
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -758,11 +781,11 @@ A good description helps you and others understand what the agent does and any s
 		id: "navigate-agent-hub",
 		// Targets the NavItemButton for Agent Hub via its icon's aria-label
 		attachTo: { element: '[data-tour-tag="nav-item-agent-hub"]', on: "right" },
-		title: "Discover more agents",
-		text: 'Let\'s visit the Agent Hub to find community-created agents. Click on the "Agent Hub" icon in the navigation bar.',
+		title: t("ui.onboarding.tour.navigate_agent_hub.title"),
+		text: t("ui.onboarding.tour.navigate_agent_hub.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -786,7 +809,7 @@ A good description helps you and others understand what the agent does and any s
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -810,18 +833,18 @@ A good description helps you and others understand what the agent does and any s
 			element: '[data-tour-tag="agent-hub-sidebar-container"]',
 			on: "right",
 		},
-		title: "The Agent Hub",
-		text: "Here you can browse agents by category or search for specific ones. These agents are shared by the community and can perform various specialized tasks.",
+		title: t("ui.onboarding.tour.agent_hub_view.title"),
+		text: t("ui.onboarding.tour.agent_hub_view.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -836,18 +859,18 @@ A good description helps you and others understand what the agent does and any s
 			element: 'button[data-tour-tag="agent-hub-download-button"]',
 			on: "bottom",
 		},
-		title: "Download an agent",
-		text: 'Find an agent that interests you and click the "Get" button to add it to your local agent list.',
+		title: t("ui.onboarding.tour.download_agent.title"),
+		text: t("ui.onboarding.tour.download_agent.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -870,11 +893,11 @@ A good description helps you and others understand what the agent does and any s
 			element: () => visibleTourTarget("upload-to-hub-header-button"),
 			on: "bottom",
 		},
-		title: "Share your agents",
-		text: "If you create a useful agent, you can also share it with the community by uploading it to the Agent Hub from the agent options menu.",
+		title: t("ui.onboarding.tour.upload_agent_hub.title"),
+		text: t("ui.onboarding.tour.upload_agent_hub.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -889,7 +912,7 @@ A good description helps you and others understand what the agent does and any s
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					pressTourAction("open-upload-dialog");
@@ -904,7 +927,7 @@ A good description helps you and others understand what the agent does and any s
 		id: "upload-agent-hub-dialog",
 		// Targets the UploadAgentDialog modal, which should be open after clicking "Upload to Hub"
 		attachTo: { element: '[data-tour-tag="upload-agent-dialog"]', on: "right" },
-		title: "Upload agent to hub",
+		title: t("ui.onboarding.tour.upload_agent_hub_dialog.title"),
 		/*
 		 * The same correction the dialog itself carries: this step used to
 		 * promise that "any conversation history and learnings for this agent
@@ -914,10 +937,10 @@ A good description helps you and others understand what the agent does and any s
 		 * publication cannot disagree about what leaves the machine, and the
 		 * wrong one here was the more alarming of the two.
 		 */
-		text: "This dialog publishes your agent's instruction set to the community. You need a Radient account to publish, which is free to create and costs nothing per agent. You can review the details before confirming. What is published is what describes the agent - its name, description, instructions and tool surface; no conversation, execution history, memory, plan or machine-specific configuration leaves your computer. Make sure your agent meets the required criteria before submitting.",
+		text: t("ui.onboarding.tour.upload_agent_hub_dialog.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -933,7 +956,7 @@ A good description helps you and others understand what the agent does and any s
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -953,11 +976,11 @@ A good description helps you and others understand what the agent does and any s
 	{
 		id: "navigate-schedules",
 		attachTo: { element: '[data-tour-tag="nav-item-schedules"]', on: "right" },
-		title: "Automate tasks with schedules",
-		text: "Local Operator can run tasks for you on a regular basis. Let's check out the Schedules section.",
+		title: t("ui.onboarding.tour.navigate_schedules.title"),
+		text: t("ui.onboarding.tour.navigate_schedules.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -975,7 +998,7 @@ A good description helps you and others understand what the agent does and any s
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -994,18 +1017,18 @@ A good description helps you and others understand what the agent does and any s
 	},
 	{
 		id: "schedules-overview",
-		title: "Proactive agents with schedules",
-		text: "A powerful feature of Local Operator is the ability to ask agents to perform tasks on their own on a recurring basis.  This turns them from reactive agent bots to proactive agents that work on their own in the background to support you without you needing to continually ask them to do things.<br /><br />You can simply ask any agent to do something at some point in the future, or to handle some daily task at a certain time, and it will create a prompt for itself that will be executed at the specified times.<br /><br />Here, you can view, create, and manage all your scheduled tasks in one place to streamline your workflow and ensure important actions happen automatically.",
+		title: t("ui.onboarding.tour.schedules_overview.title"),
+		text: t("ui.onboarding.tour.schedules_overview.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -1020,18 +1043,18 @@ A good description helps you and others understand what the agent does and any s
 			element: 'button[data-tour-tag="create-schedule-button"]',
 			on: "bottom",
 		},
-		title: "Set up a recurring task",
-		text: 'Click "Create schedule" to ask an agent to perform a task for you regularly, like sending a daily report or checking for news updates.<br /><br />You can also create one-off tasks that only run once at some point in the future.',
+		title: t("ui.onboarding.tour.create_schedule.title"),
+		text: t("ui.onboarding.tour.create_schedule.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -1053,11 +1076,11 @@ A good description helps you and others understand what the agent does and any s
 			element: '[data-tour-tag="create-schedule-dialog"]',
 			on: "right",
 		},
-		title: "Configure your schedule",
-		text: "While it is often much easier to simply ask the agent to do a task on a recurring basis for you, you can also manually set up a schedule for a task here or update existing tasks.<br /><br />The prompt is the message that will be sent to the agent at the predefined schedule.  You can update the time of day in your local timezone, the frequency of the task, and even specify a specific date or time that the task should stop running at.<br /><br />You can also schedule one-off tasks that only run once at some point in the future.",
+		title: t("ui.onboarding.tour.create_schedule_dialog.title"),
+		text: t("ui.onboarding.tour.create_schedule_dialog.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					// Close dialog if open, then go back
@@ -1073,7 +1096,7 @@ A good description helps you and others understand what the agent does and any s
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					// Optionally close dialog before moving on
@@ -1093,11 +1116,11 @@ A good description helps you and others understand what the agent does and any s
 	{
 		id: "navigate-settings",
 		attachTo: { element: '[data-tour-tag="nav-item-settings"]', on: "right" },
-		title: "Personalize your experience",
-		text: "Now, let's explore the Settings menu to customize Local Operator to your liking.",
+		title: t("ui.onboarding.tour.navigate_settings.title"),
+		text: t("ui.onboarding.tour.navigate_settings.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					const button = document.querySelector(
@@ -1121,7 +1144,7 @@ A good description helps you and others understand what the agent does and any s
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					const button = document.querySelector(
@@ -1145,18 +1168,18 @@ A good description helps you and others understand what the agent does and any s
 			element: 'div[data-tour-tag="settings-general-section"]',
 			on: "right",
 		},
-		title: "General settings",
-		text: "Here you can update your user profile and configure model settings (like default hosting provider and model).",
+		title: t("ui.onboarding.tour.general_settings.title"),
+		text: t("ui.onboarding.tour.general_settings.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -1170,18 +1193,18 @@ A good description helps you and others understand what the agent does and any s
 			element: '[data-tour-tag="settings-appearance-section"]',
 			on: "right",
 		},
-		title: "Customize appearance",
-		text: "Choose from various themes to change the look and feel of Local Operator. Find one that suits your style.",
+		title: t("ui.onboarding.tour.appearance_settings.title"),
+		text: t("ui.onboarding.tour.appearance_settings.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -1195,18 +1218,18 @@ A good description helps you and others understand what the agent does and any s
 			element: '[data-tour-tag="settings-radient-account-section"]',
 			on: "right",
 		},
-		title: "Radient account",
-		text: "Connect your Radient account to access your Radient Pass details, credits, and unlock unified access to models and tools.  Radient is the best way to use Local Operator since it powers the AI models, web search, image generation, and much more with a single integration.  You get free credits when you sign up to try it out and bonus credits when you top up.<br /><br />When you sign in for the first time, it will automatically create a Radient Pass for you and save it securely to your computer.  This will power your Local Operator agents with Radient Automatic, which mixes and matches AI models to get you the best balance of speed, accuracy, and cost in every step of your agents' workflows.",
+		title: t("ui.onboarding.tour.radient_account_settings.title"),
+		text: t("ui.onboarding.tour.radient_account_settings.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -1220,18 +1243,18 @@ A good description helps you and others understand what the agent does and any s
 			element: '[data-tour-tag="settings-integrations-section"]',
 			on: "right",
 		},
-		title: "Connect your services",
-		text: "Enhance your agents' capabilities by connecting your Google services like Gmail, Calendar, and Drive. This allows agents to access and manage your information with your permission.<br /><br />You need to be logged in to a Radient account to use this feature, however it is free to use and doesn't cost any additional Radient credits per action.",
+		title: t("ui.onboarding.tour.integrations_settings.title"),
+		text: t("ui.onboarding.tour.integrations_settings.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -1245,18 +1268,18 @@ A good description helps you and others understand what the agent does and any s
 			element: '[data-tour-tag="settings-app-updates-section"]',
 			on: "right",
 		},
-		title: "Stay up to date",
-		text: "Check for updates to Local Operator here to ensure you have the latest features and improvements. You can see your current version information below.",
+		title: t("ui.onboarding.tour.application_updates_settings.title"),
+		text: t("ui.onboarding.tour.application_updates_settings.body"),
 		buttons: [
 			{
-				text: "Back",
+				text: t("ui.onboarding.tour.action.back"),
 				classes: "shepherd-button-secondary",
 				action: function () {
 					this.back();
 				},
 			},
 			{
-				text: "Next",
+				text: t("ui.onboarding.tour.action.next"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.next();
@@ -1266,11 +1289,11 @@ A good description helps you and others understand what the agent does and any s
 	},
 	{
 		id: "tour-complete",
-		title: "Tour complete",
-		text: "You've now seen the main features of Local Operator. Feel free to explore further and discover all the ways your AI agents can assist you. Happy automating.",
+		title: t("ui.onboarding.tour.tour_complete.title"),
+		text: t("ui.onboarding.tour.tour_complete.body"),
 		buttons: [
 			{
-				text: "Finish",
+				text: t("ui.onboarding.tour.action.finish"),
 				classes: "shepherd-button-primary",
 				action: function () {
 					this.complete();
@@ -1389,6 +1412,7 @@ export const useOnboardingTour = () => {
 		tourInstance.off("cancel", completeTourOnboarding); // Remove first
 		tourInstance.on("cancel", completeTourOnboarding);
 
+		const tourSteps = createTourSteps();
 		// Manage steps:
 		// If forcing (e.g., "Resume Tour" button) or if the tour isn't active (fresh start),
 		// clear existing steps and add the current `tourSteps`.

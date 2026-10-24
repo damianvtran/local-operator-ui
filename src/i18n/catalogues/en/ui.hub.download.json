@@ -1,0 +1,6 @@
+{
+	"ui.hub.download.collision": "Downloaded \"{name}\". You already have an agent called \"{collision}\", so two agents now answer to that name and either may be picked. Rename one of them.",
+	"ui.hub.download.fallback_agent": "Agent",
+	"ui.hub.download.renamed": "Downloaded \"{name}\" — you already have an agent called \"{previous}\".",
+	"ui.hub.download.succeeded": "Downloaded \"{name}\" from the hub."
+}

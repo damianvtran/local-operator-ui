@@ -18,6 +18,8 @@ import {
 } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { TEXT_SURFACE_PROPS } from "@shared/components/ui/text-surface";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Search } from "lucide-react";
 import { type FC, useEffect, useMemo, useRef, useState } from "react";
@@ -32,6 +34,7 @@ import { publicHubFailureMessage } from "../public-hub-failure";
 import { HubPager } from "./hub-pager";
 import {
 	memberCount,
+	slotLabel,
 	slotList,
 	teamAuthor,
 	teamVersion,
@@ -85,6 +88,7 @@ export const PublicTeamsLibrary: FC<{
 	signedIn: boolean;
 	onOpenSettings: () => void;
 }> = ({ signedIn, onOpenSettings }) => {
+	useI18nLocale();
 	const [page, setPage] = useState(1);
 	const [searchText, setSearchText] = useState("");
 
@@ -152,18 +156,21 @@ export const PublicTeamsLibrary: FC<{
 	 * credential refusal names the sign-in, and the body's verb comes from the
 	 * `pull` surface rather than the publish dialog's.
 	 */
-	const pullTreatment = useMemo(() => {
-		if (!isPublicationError(pull.error)) return null;
-		const failed = teams.find((team) => team.id === failedTeamId);
-		return publicationTreatment(
-			{
-				code: pull.error.code,
-				message: pull.error.message,
-				details: pull.error.details,
-			},
-			{ name: failed?.name ?? "this team", hubAgentId: null, surface: "pull" },
-		);
-	}, [pull.error, failedTeamId, teams]);
+	const failed = teams.find((team) => team.id === failedTeamId);
+	const pullTreatment = isPublicationError(pull.error)
+		? publicationTreatment(
+				{
+					code: pull.error.code,
+					message: pull.error.message,
+					details: pull.error.details,
+				},
+				{
+					name: failed?.name ?? t("ui.hub.teams.this_team"),
+					hubAgentId: null,
+					surface: "pull",
+				},
+			)
+		: null;
 
 	/*
 	 * WHAT A FAILED PULL SAYS.
@@ -195,8 +202,8 @@ export const PublicTeamsLibrary: FC<{
 				 * because a reader of this window can act on the settings page and not on a
 				 * CLI.
 				 */
-				"The team could not be pulled: this machine has no Radient sign-in for the hub. Sign in on the settings page, then pull again."
-			: "The team could not be pulled.");
+				t("ui.hub.teams.pull_sign_in_required")
+			: t("ui.hub.teams.pull_failed"));
 
 	const [reauthenticating, setReauthenticating] = useState(false);
 	const runTreatmentAction = (action: PublicationAction, team: HubTeamRow) => {
@@ -242,11 +249,11 @@ export const PublicTeamsLibrary: FC<{
 			 * fixes the outline (`h1 -> h2 -> h3`); the label keeps the landmark, which
 			 * the sibling `org-teams-list.tsx` also keeps.
 			 */
-			aria-label="Public teams"
+			aria-label={t("ui.hub.teams.public_teams")}
 			className="flex flex-col"
 			data-testid="agent-hub-public-teams"
 		>
-			<h2 className="sr-only">Public teams</h2>
+			<h2 className="sr-only">{t("ui.hub.teams.public_teams")}</h2>
 			{/*
 			 * WHAT THE PUBLIC LIBRARY IS, in the app's own voice: published teams
 			 * anyone can read, and the one act this surface owns. It replaces the
@@ -254,9 +261,7 @@ export const PublicTeamsLibrary: FC<{
 			 * the thing that stopped being true.
 			 */}
 			<p className="mb-3 max-w-3xl text-body-sm text-ink-muted">
-				Public teams are published to the hub by anyone and can be read here
-				without signing in. Pulling one copies it into this machine's local team
-				registry.
+				{t("ui.hub.teams.public_intro")}
 			</p>
 
 			{signedIn ? null : (
@@ -265,10 +270,10 @@ export const PublicTeamsLibrary: FC<{
 					data-testid="agent-hub-public-teams-signed-out"
 				>
 					<span className="text-meta text-ink-dim">
-						Sign in to Radient to pull a team into this machine.
+						{t("ui.hub.teams.sign_in_to_pull")}
 					</span>
 					<Button variant="secondary" size="sm" onClick={onOpenSettings}>
-						Open settings to sign in
+						{t("ui.hub.teams.open_settings_sign_in")}
 					</Button>
 				</div>
 			)}
@@ -288,8 +293,8 @@ export const PublicTeamsLibrary: FC<{
 						type="search"
 						value={searchText}
 						onChange={(event) => handleSearchChange(event.target.value)}
-						placeholder="Search teams"
-						aria-label="Search teams"
+						placeholder={t("ui.hub.teams.search_teams")}
+						aria-label={t("ui.hub.teams.search_teams")}
 						className="h-8 min-w-0 flex-1 border-0 bg-transparent outline-none"
 						data-testid="agent-hub-public-teams-search"
 					/>
@@ -314,10 +319,10 @@ export const PublicTeamsLibrary: FC<{
 					className="w-auto max-w-2xl"
 					data-testid="agent-hub-public-teams-error"
 				>
-					<AlertTitle>Public teams could not be loaded</AlertTitle>
+					<AlertTitle>{t("ui.hub.teams.public_load_failed")}</AlertTitle>
 					<AlertDescription>
 						{publicHubFailureMessage(
-							"The public team catalogue could not be read.",
+							t("ui.hub.teams.public_read_failed_body"),
 							error,
 						)}
 					</AlertDescription>
@@ -329,7 +334,9 @@ export const PublicTeamsLibrary: FC<{
 							disabled={isFetching}
 							aria-busy={isFetching}
 						>
-							{isFetching ? "Trying…" : "Try again"}
+							{isFetching
+								? t("ui.hub.teams.trying")
+								: t("ui.hub.teams.try_again")}
 						</Button>
 					</div>
 				</Alert>
@@ -340,7 +347,7 @@ export const PublicTeamsLibrary: FC<{
 					className="max-w-2xl text-body-sm text-ink-muted"
 					data-testid="agent-hub-public-teams-empty"
 				>
-					No teams have been published to the public hub yet.
+					{t("ui.hub.teams.public_empty")}
 				</p>
 			)}
 
@@ -360,14 +367,12 @@ export const PublicTeamsLibrary: FC<{
 							data-testid="agent-hub-public-teams-status"
 						>
 							{query
-								? `${visibleTeams.length} of ${teams.length} teams on this page match "${searchText.trim()}"`
-								: `${totalRecords} ${totalRecords === 1 ? "team" : "teams"} in the public hub`}
-							{query ? (
-								<span className="text-ink-dim">
-									{" "}
-									· search covers the teams loaded here
-								</span>
-							) : null}
+								? t("ui.hub.teams.search_status", {
+										visible: visibleTeams.length,
+										total: teams.length,
+										search: searchText.trim(),
+									})
+								: t("ui.hub.teams.public_count", { count: totalRecords })}
 						</p>
 					) : null}
 					{visibleTeams.length === 0 ? (
@@ -375,7 +380,9 @@ export const PublicTeamsLibrary: FC<{
 							className="max-w-2xl text-body-sm text-ink-muted"
 							data-testid="agent-hub-public-teams-search-miss"
 						>
-							{`No team on this page matches "${searchText.trim()}".`}
+							{t("ui.hub.teams.no_search_match", {
+								search: searchText.trim(),
+							})}
 						</p>
 					) : (
 						<ul className="flex max-w-4xl flex-col gap-3">
@@ -479,7 +486,7 @@ const PublicTeamCard: FC<{
 						</h3>
 						{version ? (
 							<span className="ml-2 shrink-0 text-ink-dim text-meta">
-								v{version}
+								{t("ui.hub.teams.version", { version })}
 							</span>
 						) : null}
 					</div>
@@ -496,17 +503,23 @@ const PublicTeamCard: FC<{
 							{description}
 						</p>
 					) : (
-						<p className="mt-1 text-body-sm text-ink-dim">No description</p>
+						<p className="mt-1 text-body-sm text-ink-dim">
+							{t("ui.hub.teams.no_description")}
+						</p>
 					)}
 					<p className="mt-2 flex flex-wrap items-baseline gap-x-2 text-meta">
 						{manager ? (
 							<>
-								<span className="text-ink-dim">Manager:</span>
+								<span className="text-ink-dim">
+									{t("ui.hub.teams.manager_prefix")}
+								</span>
 								<span className="text-ink-muted">{manager}</span>
 							</>
 						) : null}
 						{team.members.length === 0 ? (
-							<span className="text-ink-dim">No members</span>
+							<span className="text-ink-dim">
+								{t("ui.hub.teams.no_members")}
+							</span>
 						) : (
 							<>
 								<span className="text-ink-dim">
@@ -523,7 +536,7 @@ const PublicTeamCard: FC<{
 					</p>
 					{author ? (
 						<p className="mt-1 text-ink-dim text-meta">
-							Published by <span className="text-ink-muted">{author}</span>
+							{t("ui.hub.teams.published_by", { author })}
 						</p>
 					) : null}
 				</div>
@@ -551,9 +564,9 @@ const PublicTeamCard: FC<{
 						size="sm"
 						onClick={() => onPull(team)}
 						disabled={pullPending}
-						aria-label={`Pull team ${displayName}`}
+						aria-label={t("ui.hub.teams.pull_named", { name: displayName })}
 					>
-						{pulling ? "Pulling…" : "Pull"}
+						{pulling ? t("ui.hub.teams.pulling") : t("ui.hub.teams.pull")}
 					</Button>
 					{failed && (
 						<div
@@ -572,13 +585,13 @@ const PublicTeamCard: FC<{
 										size="sm"
 										onClick={() => onTreatmentAction(action, team)}
 									>
-										{PUBLICATION_ACTION_LABEL[action]}
+										{t(PUBLICATION_ACTION_LABEL[action])}
 									</Button>
 								))}
 							{reauthenticating && (
 								<div data-testid="agent-hub-public-team-pull-reauth">
 									<RadientAuthButtons
-										titleText="Sign in again"
+										titleText={t("ui.hub.teams.sign_in_again")}
 										descriptionText=""
 										onSignInSuccess={onReauthenticated}
 									/>
@@ -595,12 +608,12 @@ const PublicTeamCard: FC<{
 				 * the word the reader is choosing; the accessible name says which team's.
 				 */}
 				<Disclosure
-					summary="Brief"
+					summary={t("ui.hub.teams.brief")}
 					open={open}
 					onOpenChange={setOpen}
 					className="w-full"
 					triggerClassName="w-full"
-					triggerLabel={`View the brief for ${displayName}`}
+					triggerLabel={t("ui.hub.teams.view_brief", { name: displayName })}
 					chevronClassName="text-ink-dim"
 				>
 					<TeamBrief detail={detail} />
@@ -634,7 +647,7 @@ const TeamBrief: FC<{
 			<div className="flex flex-col items-start gap-1">
 				<output className="text-meta text-danger">
 					{publicHubFailureMessage(
-						"This team's brief could not be read.",
+						t("ui.hub.teams.brief_read_failed"),
 						detail.error,
 					)}
 				</output>
@@ -645,7 +658,9 @@ const TeamBrief: FC<{
 					disabled={detail.isFetching}
 					aria-busy={detail.isFetching}
 				>
-					{detail.isFetching ? "Trying…" : "Try again"}
+					{detail.isFetching
+						? t("ui.hub.teams.trying")
+						: t("ui.hub.teams.try_again")}
 				</Button>
 			</div>
 		);
@@ -660,7 +675,9 @@ const TeamBrief: FC<{
 			data-testid="agent-hub-public-team-brief"
 		>
 			<div className="flex flex-col gap-1">
-				<p className="text-ink-dim text-meta">Collaboration brief</p>
+				<p className="text-ink-dim text-meta">
+					{t("ui.hub.teams.collaboration_brief")}
+				</p>
 				{brief ? (
 					<p
 						{...TEXT_SURFACE_PROPS}
@@ -669,11 +686,15 @@ const TeamBrief: FC<{
 						{brief}
 					</p>
 				) : (
-					<p className="text-ink-dim">This team has no collaboration brief.</p>
+					<p className="text-ink-dim">
+						{t("ui.hub.teams.no_collaboration_brief")}
+					</p>
 				)}
 			</div>
 			<div className="flex flex-col gap-1">
-				<p className="text-ink-dim text-meta">Project brief</p>
+				<p className="text-ink-dim text-meta">
+					{t("ui.hub.teams.project_brief")}
+				</p>
 				{project ? (
 					<p
 						{...TEXT_SURFACE_PROPS}
@@ -682,22 +703,24 @@ const TeamBrief: FC<{
 						{project}
 					</p>
 				) : (
-					<p className="text-ink-dim">This team has no project brief.</p>
+					<p className="text-ink-dim">{t("ui.hub.teams.no_project_brief")}</p>
 				)}
 			</div>
 			<div className="flex flex-col gap-1">
-				<p className="text-ink-dim text-meta">Roster</p>
+				<p className="text-ink-dim text-meta">{t("ui.hub.teams.roster")}</p>
 				<ul className="flex flex-col gap-0.5">
 					{team.manager?.trim() ? (
 						<li className="flex items-baseline gap-1.5">
 							<span className="text-body-sm text-ink-muted">
 								{team.manager.trim()}
 							</span>
-							<span className="text-ink-dim text-meta">Manager</span>
+							<span className="text-ink-dim text-meta">
+								{t("ui.hub.teams.manager")}
+							</span>
 						</li>
 					) : null}
 					{team.members.length === 0 ? (
-						<li className="text-ink-dim">No members</li>
+						<li className="text-ink-dim">{t("ui.hub.teams.no_members")}</li>
 					) : (
 						team.members.map((slot) => (
 							<li
@@ -705,9 +728,11 @@ const TeamBrief: FC<{
 								className="flex items-baseline gap-1.5"
 							>
 								<span className="text-body-sm text-ink-muted">
-									{slot.count > 1 ? `${slot.role} ×${slot.count}` : slot.role}
+									{t("ui.hub.teams.member_with_kind", {
+										name: slotLabel(slot),
+										kind: slot.kind,
+									})}
 								</span>
-								<span className="text-ink-dim text-meta">{slot.kind}</span>
 							</li>
 						))
 					)}

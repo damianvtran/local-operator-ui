@@ -555,7 +555,7 @@ const SeedRun: FC<{
 					{
 						target: { kind: "team", name: "content" },
 						created: false,
-						changes: [{ label: "members", before: "5", after: "6" }],
+						changes: [{ field: "members", before: "5", after: "6" }],
 					},
 				],
 				"done",

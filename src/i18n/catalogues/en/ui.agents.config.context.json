@@ -1,0 +1,551 @@
+{
+	"ui.agents.config.about": {
+		"role": "Field, section, state, or status copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.about_named": {
+		"role": "Dynamic status or complete sentence in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"kind": "Definition kind selector: agent or team",
+			"agent": "Dynamic value; preserve verbatim",
+			"team": "Dynamic value; preserve verbatim",
+			"name": "User-supplied definition or member name; preserve verbatim"
+		},
+		"note": "Preserve all ICU select arms and machine selector values; translate only the rendered prose."
+	},
+	"ui.agents.config.answered_unchanged": {
+		"role": "Field, section, state, or status copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.config.attached_existing": {
+		"role": "Field, section, state, or status copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.config.backend_unreachable": {
+		"role": "Validation or failure feedback in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.config.background_description": {
+		"role": "Explanatory or consent copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.config.change_named_placeholder": {
+		"role": "Dynamic status or complete sentence in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "User-supplied definition or member name; preserve verbatim"
+		}
+	},
+	"ui.agents.config.change_or_new_placeholder": {
+		"role": "Field, section, state, or status copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.config.clear": {
+		"role": "Action or accessible label in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.configured": {
+		"role": "Field, section, state, or status copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.configured_definitions": {
+		"role": "Dynamic status or complete sentence in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"count": "Non-negative integer count"
+		},
+		"note": "Screen-reader completion sentence next to a separate visible definition count; retain the leading period."
+	},
+	"ui.agents.config.connecting_backend": {
+		"role": "Field, section, state, or status copy in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.definition_count": {
+		"role": "Dynamic status or complete sentence in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"count": "Non-negative integer count"
+		},
+		"note": "Preserve the ICU plural and number formatting; translators add the locale CLDR categories required by the glossary."
+	},
+	"ui.agents.config.disabled_gate": {
+		"role": "Field, section, state, or status copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.dismiss": {
+		"role": "Action or accessible label in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.example_duplicate_coder": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"note": "Visible one-press configuration request; translation is inserted into the user-editable request box, not a hidden system prompt."
+	},
+	"ui.agents.config.example_readonly_reviewer": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"note": "Visible one-press configuration request; translation is inserted into the user-editable request box, not a hidden system prompt."
+	},
+	"ui.agents.config.example_shipping_team": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "One wrapped suggestion or sentence",
+		"note": "Visible one-press configuration request; translation is inserted into the user-editable request box, not a hidden system prompt."
+	},
+	"ui.agents.config.finished": {
+		"role": "Field, section, state, or status copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.finished_error": {
+		"role": "Validation or failure feedback in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.finished_unchanged": {
+		"role": "Field, section, state, or status copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.new_request_placeholder": {
+		"role": "Field, section, state, or status copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.newer_backend_required": {
+		"role": "Validation or failure feedback in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.config.no_other_changes": {
+		"role": "Field, section, state, or status copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.config.no_tool_activity": {
+		"role": "Field, section, state, or status copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.config.request_unsent": {
+		"role": "Field, section, state, or status copy in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.config.request_unsent_after_create": {
+		"role": "Field, section, state, or status copy in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.config.result_created": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "Definition name; preserve verbatim",
+			"kind": "ICU selector: agent, team, or stored fallback",
+			"agent": "Rendered agent noun",
+			"team": "Rendered team noun"
+		},
+		"note": "Preserve ICU select arms and machine selector values; translate rendered nouns only."
+	},
+	"ui.agents.config.result_kind": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "One wrapped suggestion or sentence",
+		"placeholders": {
+			"kind": "ICU selector: agent, team, or stored fallback",
+			"agent": "Dynamic value; preserve verbatim",
+			"team": "Dynamic value; preserve verbatim"
+		},
+		"note": "Preserve ICU select arms and machine selector values; translate rendered nouns only."
+	},
+	"ui.agents.config.result_updated": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "Definition name; preserve verbatim",
+			"kind": "ICU selector: agent, team, or stored fallback",
+			"agent": "Rendered agent noun",
+			"team": "Rendered team noun"
+		},
+		"note": "Preserve ICU select arms and machine selector values; translate rendered nouns only."
+	},
+	"ui.agents.config.results_read_failed": {
+		"role": "Validation or failure feedback in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.config.retry": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.run_details": {
+		"role": "Field, section, state, or status copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.run_finished_changed": {
+		"role": "Dynamic status or complete sentence in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"count": "Non-negative integer count"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.agents.config.run_finished_updated": {
+		"role": "Dynamic status or complete sentence in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"count": "Non-negative integer count"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.agents.config.sending": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.settings_changed_suffix": {
+		"role": "Field, section, state, or status copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "Suffix after a definition name in a changed-items list; retain the leading colon and instruction-list limitation."
+	},
+	"ui.agents.config.start_failed": {
+		"role": "Validation or failure feedback in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.config.stop": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.stop_failed": {
+		"role": "Validation or failure feedback in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.config.stop_unacknowledged": {
+		"role": "Field, section, state, or status copy in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.config.stopped": {
+		"role": "Field, section, state, or status copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.stopped_changes_kept": {
+		"role": "Field, section, state, or status copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.config.stopped_error": {
+		"role": "Validation or failure feedback in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.stopped_unchanged": {
+		"role": "Field, section, state, or status copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.config.stopping": {
+		"role": "Field, section, state, or status copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.stopping_action": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.submit_label": {
+		"role": "Action or accessible label in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.summary_checked_kind": {
+		"role": "Dynamic status or complete sentence in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"kind": "ICU selector: agent or team",
+			"agents": "Dynamic value; preserve verbatim",
+			"teams": "Dynamic value; preserve verbatim"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.agents.config.summary_class_proactive": {
+		"role": "Field, section, state, or status copy in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.summary_class_reactive": {
+		"role": "Field, section, state, or status copy in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.config.summary_creating_kind": {
+		"role": "Dynamic status or complete sentence in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"kind": "ICU selector: agent or team",
+			"agent": "Dynamic value; preserve verbatim",
+			"team": "Dynamic value; preserve verbatim"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.agents.config.summary_creating_named": {
+		"role": "Dynamic status or complete sentence in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"kind": "ICU selector: agent or team",
+			"agent": "Dynamic value; preserve verbatim",
+			"team": "Dynamic value; preserve verbatim",
+			"name": "User-supplied definition name; preserve verbatim"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.agents.config.summary_delegation_off": {
+		"role": "Field, section, state, or status copy in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.summary_delegation_on": {
+		"role": "Field, section, state, or status copy in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.summary_field_changed": {
+		"role": "Dynamic status or complete sentence in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"field": "Field label or technical field name"
+		}
+	},
+	"ui.agents.config.summary_field_class": {
+		"role": "Field, section, state, or status copy in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.summary_field_delegate": {
+		"role": "Field, section, state, or status copy in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.summary_field_description": {
+		"role": "Explanatory or refusal detail in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.summary_field_effort": {
+		"role": "Field, section, state, or status copy in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.summary_field_instructions": {
+		"role": "Field, section, state, or status copy in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.summary_field_kind": {
+		"role": "Field, section, state, or status copy in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.summary_field_manager": {
+		"role": "Field, section, state, or status copy in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.summary_field_members": {
+		"role": "Field, section, state, or status copy in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.summary_field_tools": {
+		"role": "Field, section, state, or status copy in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.summary_installing_agent": {
+		"role": "Action or accessible label in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.summary_installing_named": {
+		"role": "Action or accessible label in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "User-supplied definition name; preserve verbatim"
+		}
+	},
+	"ui.agents.config.summary_members_changed": {
+		"role": "Dynamic status or complete sentence in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"before": "Member count before the change",
+			"after": "Member count after the change"
+		}
+	},
+	"ui.agents.config.summary_reading_kind": {
+		"role": "Dynamic status or complete sentence in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"kind": "ICU selector: agent or team",
+			"agents": "Dynamic value; preserve verbatim",
+			"teams": "Dynamic value; preserve verbatim"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.agents.config.summary_reading_named": {
+		"role": "Dynamic status or complete sentence in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "User-supplied definition name; preserve verbatim"
+		}
+	},
+	"ui.agents.config.summary_tool_added": {
+		"role": "Dynamic status or complete sentence in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"tool": "Tool identifier; keep English"
+		}
+	},
+	"ui.agents.config.summary_tool_removed": {
+		"role": "Dynamic status or complete sentence in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"tool": "Tool identifier; keep English"
+		}
+	},
+	"ui.agents.config.summary_tools": {
+		"role": "Field, section, state, or status copy in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.summary_tools_added": {
+		"role": "Dynamic status or complete sentence in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"count": "Non-negative integer count"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.agents.config.summary_tools_changed": {
+		"role": "Field, section, state, or status copy in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.summary_tools_narrowed": {
+		"role": "Field, section, state, or status copy in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.summary_tools_removed": {
+		"role": "Dynamic status or complete sentence in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"count": "Non-negative integer count"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.agents.config.summary_tools_widened": {
+		"role": "Field, section, state, or status copy in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.summary_updating_kind": {
+		"role": "Dynamic status or complete sentence in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"kind": "ICU selector: agent or team",
+			"agent": "Dynamic value; preserve verbatim",
+			"team": "Dynamic value; preserve verbatim"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.agents.config.summary_updating_named": {
+		"role": "Dynamic status or complete sentence in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"kind": "ICU selector: agent or team",
+			"agent": "Dynamic value; preserve verbatim",
+			"team": "Dynamic value; preserve verbatim",
+			"name": "User-supplied definition name; preserve verbatim"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.agents.config.summary_working_kind": {
+		"role": "Dynamic status or complete sentence in configuration summaries and run status",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"kind": "ICU selector: agent or team",
+			"agents": "Dynamic value; preserve verbatim",
+			"teams": "Dynamic value; preserve verbatim"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.agents.config.watch": {
+		"role": "Action or accessible label in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.working": {
+		"role": "Field, section, state, or status copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.working_ellipsis": {
+		"role": "Field, section, state, or status copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.config.you_asked": {
+		"role": "Field, section, state, or status copy in the agent and team configuration composer",
+		"tone": "Concise, plain product language",
+		"length_hint": "One wrapped line",
+		"placeholders": {
+			"topic": "The operator's original request; preserve verbatim"
+		}
+	}
+}
