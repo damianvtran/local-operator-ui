@@ -1,0 +1,1317 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "batch": "chat",
+ "head": "d4e09c86800a155cf662d02cd4fbeb961c17fb5d",
+ "base": "5d97575ac4388522267291ffee74d12bd9675b12",
+ "locale": "vi",
+ "auditor": "translation-auditor",
+ "model": "radient/auto",
+ "session": "74305114d654",
+ "instance": "74305114d654-chat-vi",
+ "date": "2026-10-24",
+ "independence": "Independent session/agent from the i18n translator: translator session cff0e8cad25d, this audit session 74305114d654. No translator ran in this audit; no catalogue, ledger, allowance or generated file was edited.",
+ "source_dir": "src/i18n/catalogues/en",
+ "target_dir": "src/i18n/catalogues/vi",
+ "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+ "style_guide_sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97",
+ "docs_sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca",
+ "method": "Read all 1,733 batch keys in the 15 touched namespaces at d4e09c8680 via git show (no checkout), namespace by namespace, against the English catalogue and the en context sidecars. Automated checks: a brace-matching ICU parser compared argument names, types and styles (including ::group-off and number skeletons), select arms, plural selectors and exact =N arms; Unicode NFC and manual bidi-control scans; placeholder-adjacent punctuation and leading/trailing whitespace; identical-to-English values; and code-point length ratios. vi CLDR exposes only the other category. No compiled Electron render and no rendered-frame pass; overflow is character-cell arithmetic on the raw templates and is flagged for a rendered check.",
+ "keys_audited": 1733,
+ "namespaces": {
+  "ui.chat": {
+   "namespace": "ui.chat",
+   "status": "changes_requested",
+   "keys_audited": 524,
+   "counts": {
+    "blocker": 0,
+    "major": 2,
+    "minor": 9,
+    "nit": 1
+   },
+   "sha256": {
+    "en": "dc5765d20ff846c61f3fe8953e69524393561bc2a39f89fa419958d4e4a67346",
+    "target": "47f17e7a9d7f45577d09fd91309f1a727fb0d47e5bdbc7ff93cabb73f99acb5a"
+   },
+   "context_sha256": "f95436a7c1e91f17b47a5f45059f58ef63749cedef54b02d10b29260477be426",
+   "findings": [
+    {
+     "severity": "major",
+     "category": "accuracy",
+     "key": "ui.chat.interrupt_turn.this_backend_predates_the_stop_control_so_this_turn_cannot",
+     "source": "This backend predates the stop control, so this turn cannot be stopped from here - /stop ends the session and everything in it.",
+     "current": "Không thể dừng lượt này từ đây — hãy dùng /stop để kết thúc phiên và mọi thứ trong đó.",
+     "proposed": "Backend này chưa có nút dừng, nên không thể dừng lượt này từ đây — /stop sẽ kết thúc phiên và mọi thứ trong đó.",
+     "reason": "The translation drops the reason clause (the backend predates the stop control) and turns the source's warning into an instruction: «hãy dùng /stop» tells the user to run a command that the source only warns will end the session and everything in it. The en sidecar's note says not to add a status or action the source does not state.",
+     "disposition": "open"
+    },
+    {
+     "severity": "major",
+     "category": "accuracy",
+     "key": "ui.chat.attachment_read.this_draft_carries_total_images_and_one",
+     "source": "This draft carries {total, number, ::group-off} images and one message carries up to {cap, number, ::group-off}, so this message was not sent. Remove the extra image, or send it in a second message.",
+     "current": "Bản nháp này có {total, number, ::group-off} hình ảnh và mỗi tin nhắn chỉ chứa tối đa {cap, number, ::group-off}, nên tin nhắn này không được gửi. Hãy bỏ bớt hình ảnh.",
+     "proposed": "Bản nháp này có {total, number, ::group-off} hình ảnh và mỗi tin nhắn chỉ chứa tối đa {cap, number, ::group-off}, nên tin nhắn này không được gửi. Hãy bỏ hình thừa, hoặc gửi nó trong tin nhắn thứ hai.",
+     "reason": "The second remedy — «or send it in a second message» — is dropped. Its sibling `ui.chat.attachment_read.this_draft_carries_total_images_and_one_721f14` keeps that remedy, so the single-extra-image path gives less guidance than the multi-image path for the same failure.",
+     "disposition": "open"
+    },
+    {
+     "severity": "minor",
+     "category": "idiom",
+     "key": "ui.chat.slash.contract.staged",
+     "source": "Staged {sentence} Enter again runs it.",
+     "current": "Đã dàn {sentence} Enter lần nữa để chạy.",
+     "proposed": "Đã nạp {sentence} Enter lần nữa để chạy.",
+     "reason": "«Dàn» is a calque of stage (dàn dựng); a command is not «dàn» in Vietnamese software. The same six command-palette strings use it for the core staging action; «nạp»/«chuẩn bị» is the idiomatic verb. The rest of the sentence still explains the behaviour, so this is an idiom defect rather than a comprehension blocker.",
+     "disposition": "open",
+     "related_keys": [
+      "ui.chat.slash.contract.enter_stages",
+      "ui.chat.slash.contract.enter_stages_needs_chat",
+      "ui.chat.slash.contract.click_stages",
+      "ui.chat.slash.contract.staged_no_chat",
+      "ui.chat.slash.contract.staged_armed"
+     ]
+    },
+    {
+     "severity": "minor",
+     "category": "terminology",
+     "key": "ui.chat.approval_words.approve",
+     "source": "Approve",
+     "current": "Chấp thuận",
+     "proposed": "Phê duyệt",
+     "reason": "The glossary fixes approvals as «phê duyệt», and the trace strings already say «Phê duyệt: {mode}» and «yêu cầu phê duyệt»; the new button says «Chấp thuận», and the instruction string `ui.chat.trace.question_dock.choose_approve_or_deny_above_type_yes_no_1_or` repeats it («Chọn Chấp thuận hoặc Từ chối»). Use «Phê duyệt» in both places for one term across the screen.",
+     "disposition": "open",
+     "related_keys": [
+      "ui.chat.trace.question_dock.choose_approve_or_deny_above_type_yes_no_1_or"
+     ]
+    },
+    {
+     "severity": "minor",
+     "category": "idiom",
+     "key": "ui.chat.radient_session_issue.message_this_surface_cannot_take_the_pasted_code_so_finish",
+     "source": "{message} This surface cannot take the pasted code, so finish the sign-in from Settings, under Providers.",
+     "current": "{message} Bề mặt này không nhận được mã dán, nên hãy hoàn tất đăng nhập trong Cài đặt, mục Nhà cung cấp.",
+     "proposed": "{message} Cửa sổ này không nhận được mã dán, nên hãy hoàn tất đăng nhập trong Cài đặt, mục Nhà cung cấp.",
+     "reason": "«Bề mặt» is the literal noun for a physical surface; a UI surface is «cửa sổ»/«màn hình»/«giao diện» in Vietnamese. The rest of the message already talks about the settings page, so «cửa sổ này» is the natural referent.",
+     "disposition": "open"
+    },
+    {
+     "severity": "minor",
+     "category": "grammar",
+     "key": "ui.chat.chat_tag_groups.untagged",
+     "source": "Untagged",
+     "current": "Không nhãn",
+     "proposed": "Chưa gắn nhãn",
+     "reason": "«Không nhãn» is a telegraphic calque; Vietnamese needs a verb or «không có»: «Chưa gắn nhãn» (not yet tagged) is the natural filter label and matches `ungrouped` → «Chưa nhóm» in the same batch.",
+     "disposition": "open"
+    },
+    {
+     "severity": "minor",
+     "category": "accuracy",
+     "key": "ui.chat.ask_answer.that_question_had_already_been_settled_or_moved_on_so",
+     "source": "That question had already been settled or moved on, so your answer was not sent.",
+     "current": "Câu hỏi đó đã được xử lý hoặc đã chuyển tiếp nên câu trả lời của bạn chưa được gửi.",
+     "proposed": "Câu hỏi đó đã được xử lý hoặc không còn chờ câu trả lời nên câu trả lời của bạn chưa được gửi.",
+     "reason": "«Moved on» means the conversation/agent moved past the question, not that it was forwarded. «Đã chuyển tiếp» says forwarded, which is a different event.",
+     "disposition": "open"
+    },
+    {
+     "severity": "minor",
+     "category": "accuracy",
+     "key": "ui.chat.chat_session_status.asksoutstandinglabelvalue_outstanding_the_agent_is_not_blocked_on_you",
+     "source": "{asksOutstandingLabelValue} outstanding. The agent is not blocked on you.",
+     "current": "{asksOutstandingLabelValue} đang chờ. Tác nhân không bị chặn bởi bạn.",
+     "proposed": "{asksOutstandingLabelValue} đang chờ. Tác nhân không chờ bạn.",
+     "reason": "«Blocked on you» means the agent is waiting for your answer; «bị chặn bởi bạn» says you are blocking the agent, reversing the direction. The sentence already talks about outstanding asks, so «không chờ bạn» is the intended meaning.",
+     "disposition": "open"
+    },
+    {
+     "severity": "minor",
+     "category": "typography",
+     "key": "ui.chat.interrupt_turn.stopped_this_turn_subagents_and_backgroundjobs_are",
+     "source": "Stopped this turn. {subagents} and {backgroundJobs} are still running - open Run details to watch them, and use /stop to end the session and its jobs.",
+     "current": "Đã dừng lượt này. {subagents} và {backgroundJobs} vẫn đang chạy - mở Chi tiết lượt chạy để theo dõi, và dùng /stop để kết thúc phiên cùng các tác vụ của nó.",
+     "proposed": "Đã dừng lượt này. {subagents} và {backgroundJobs} vẫn đang chạy — mở Chi tiết lượt chạy để theo dõi, và dùng /stop để kết thúc phiên cùng các tác vụ của nó.",
+     "reason": "The vi style guide fixes the em dash as « — » with spaces, and the same files already use it elsewhere. Seven strings kept the source's ASCII « - » instead; replace every « - » with « — ».",
+     "disposition": "open",
+     "related_keys": [
+      "ui.chat.sidebar.chat_sidebar.drafts_are_sending_they_can_be_cleared_when_the_sends",
+      "ui.chat.sidebar.chat_sidebar.sending_this_draft_can_be_discarded_when_the_send_settles",
+      "ui.chat.chat_archived.this_window_cannot_tell_whether_that_conversation_is_archived_it",
+      "ui.chat.delete_conversation.the_guard_above_is_the_daemons_own_and_nothing_in",
+      "ui.chat.interrupt_turn.subagents_running",
+      "ui.chat.interrupt_turn.background_jobs_running"
+     ]
+    },
+    {
+     "severity": "minor",
+     "category": "icu-structure",
+     "key": "ui.chat.sidebar.chat_sidebar.builtin_offer",
+     "source": "{count, plural, =0 {No} one {One} =2 {Two} =3 {Three} =4 {Four} =5 {Five} =6 {Six} other {#}} built-in {count, plural, one {agent is} other {agents are}} ready to install — {list}. You can edit {count, plural, one {it} other {them}} once installed.",
+     "current": "{count, plural, =0 {Không có tác nhân có sẵn nào} other {# tác nhân có sẵn}} để cài đặt — {list}. Bạn có thể sửa sau khi cài.",
+     "proposed": "{count, plural, =0 {Không có} other {#}} tác nhân có sẵn đã sẵn sàng cài đặt — {list}. Bạn có thể sửa {count, plural, =1 {nó} other {chúng}} sau khi cài.",
+     "reason": "The source has three `{count, plural}` blocks (spelled-out 0–6, the agent/agents agreement, and the it/them object); the translation collapses them into one, dropping the =2…=6 arms and the third count use. It still renders correctly and loses no placeholder, but it does not preserve branch structure as the audit contract requires. The translator receipt's ICU check claims argument names and skeletons match, which this key contradicts.",
+     "disposition": "open"
+    },
+    {
+     "severity": "minor",
+     "category": "idiom",
+     "key": "ui.chat.message_budget.this_command_is_size_more_than_the",
+     "source": "This command is {size}, more than the {limit} one command can carry. Shorten it, or put the text in a message instead.",
+     "current": "Lệnh này là {size}, vượt {limit} mà một lệnh có thể mang. Hãy rút ngắn, hoặc đặt văn bản vào tin nhắn thay thế.",
+     "proposed": "Lệnh này có kích thước {size}, vượt quá giới hạn {limit} của một lệnh. Hãy rút ngắn, hoặc đặt văn bản vào tin nhắn thay thế.",
+     "reason": "«X là {size}» is not idiomatic for a size («X có kích thước {size}»), and «mang» is a literal carry for a capacity limit. The same frame repeats across the nine message-budget strings, including the character-count variants.",
+     "disposition": "open",
+     "related_keys": [
+      "ui.chat.message_budget.these_images_total_size_more_than_the",
+      "ui.chat.message_budget.this_first_message_is_size_more_than",
+      "ui.chat.message_budget.this_message_is_size_of_text_more",
+      "ui.chat.message_budget.this_system_prompt_is_size_more_than",
+      "ui.chat.message_budget.this_command_is_value_characters_more_than_the_value2_one",
+      "ui.chat.message_budget.this_first_message_is_value_characters_more_than_the_value2",
+      "ui.chat.message_budget.this_message_is_value_characters_more_than_the_value2_one",
+      "ui.chat.message_budget.this_system_prompt_is_value_characters_more_than_the_value2"
+     ]
+    },
+    {
+     "severity": "nit",
+     "category": "idiom",
+     "key": "ui.chat.composer.tips.ask_for_parallel_work_and_the_agent_fans_out_subagents",
+     "source": "ask for parallel work and the agent fans out subagents",
+     "current": "yêu cầu làm việc song song và tác nhân sẽ tỏa ra các tác nhân con",
+     "proposed": "yêu cầu làm việc song song và tác nhân sẽ chia việc cho các tác nhân con",
+     "reason": "«Tỏa ra» is a literal fan-out (radiate); Vietnamese reads «chia việc»/«phân nhánh» for delegating work to subagents.",
+     "disposition": "open"
+    }
+   ]
+  },
+  "ui.chat.aside": {
+   "namespace": "ui.chat.aside",
+   "status": "clean",
+   "keys_audited": 35,
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "sha256": {
+    "en": "d8ce04c8e909a73f3050588b2b562b12db3840ae1f4231a66ef3eb5ac76ed1b6",
+    "target": "d3f4d80e66f674277b2683ede8bff3c9bfb81f1b8d114ea8855b1e9fda9d1fc3"
+   },
+   "context_sha256": "522fcbc0c965224e7d4fb8cb8200e7c68889c9ee73d073b09c6cb2af827b8431",
+   "findings": []
+  },
+  "ui.chat.asks": {
+   "namespace": "ui.chat.asks",
+   "status": "clean",
+   "keys_audited": 89,
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "sha256": {
+    "en": "f5017d10d314fc9e3e94eeff2d5067c559e97ba0c6ffcef4e8ed9d1c39cf67ab",
+    "target": "49d4dd8e86d952330321cfc7a43b52a3254c965b5335aac11f4df02e4827ec7a"
+   },
+   "context_sha256": "0e1f544932e7c9c6c94bbb0d4e2066910d80e33060ad23bbbb57d5bb9c1b637c",
+   "findings": []
+  },
+  "ui.chat.at": {
+   "namespace": "ui.chat.at",
+   "status": "clean",
+   "keys_audited": 11,
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "sha256": {
+    "en": "685a75115b95770d8d74cc43c2f250c53bed311c0d117cf51849f72041533694",
+    "target": "69c1357ce6e5c66a856a41f991d32d11e549bc2fecfe7be0a339094c71702fdf"
+   },
+   "context_sha256": "da529439f1aa5970aff5b833b40900524c2cfd465abe96296e3b9cecf5ec555e",
+   "findings": []
+  },
+  "ui.chat.canonical": {
+   "namespace": "ui.chat.canonical",
+   "status": "clean-with-findings",
+   "keys_audited": 267,
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+   },
+   "sha256": {
+    "en": "522e7fced024ec756b4b93b21952c4abfb232278a3ca32bba67b45978749eb6d",
+    "target": "23c58879f022ecc96bd105d5ab06687399341ba87924f447f29f0c0ae75c8b24"
+   },
+   "context_sha256": "af353a188112ef28df7dfda8c7139fa5bd33506a40b112392e1e40fbe32116f2",
+   "findings": [
+    {
+     "severity": "minor",
+     "category": "grammar",
+     "key": "ui.chat.canonical.sound_player.label_position",
+     "source": "{label} position",
+     "current": "{label} vị trí",
+     "proposed": "Vị trí {label}",
+     "reason": "Vietnamese noun-phrase order puts the head noun first. «{label} vị trí» is word-for-word English; with a label such as Playback it renders «Playback vị trí» rather than «Vị trí phát».",
+     "disposition": "open"
+    }
+   ]
+  },
+  "ui.chat.canvas_preview": {
+   "namespace": "ui.chat.canvas_preview",
+   "status": "clean",
+   "keys_audited": 2,
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "sha256": {
+    "en": "4a29d028e7727502fbefd86b995750910ca3760879769ffa1fc537e5893920a9",
+    "target": "926e6d57c3e894d551db77fcb9b674bf5d3800bf099f16d08869bd240bba18bf"
+   },
+   "context_sha256": "5f336900e740bf4ebc7819837676fc2eeffe6deb69b8181ebc440e962d580a06",
+   "findings": []
+  },
+  "ui.chat.credential_capture": {
+   "namespace": "ui.chat.credential_capture",
+   "status": "clean-with-findings",
+   "keys_audited": 18,
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+   },
+   "sha256": {
+    "en": "1776a41f5dfa3335b5e390e85870cb55756e25c6a2439cd3f42ea4c864515bdd",
+    "target": "84ca938fd573189dfb2ad92069e12a746d94a0fd56df4efde1ebe64e6cd6066f"
+   },
+   "context_sha256": "bf6e3bb8cd70e39cba3aad66b0d92aa38ebad880ac49405fb1affd032f6f3b1f",
+   "findings": [
+    {
+     "severity": "minor",
+     "category": "grammar",
+     "key": "ui.chat.credential_capture.store_unconfirmed",
+     "source": "store unconfirmed",
+     "current": "chưa xác nhận lưu",
+     "proposed": "chưa xác nhận đã lưu",
+     "reason": "«Chưa xác nhận lưu» reads as «not confirm save»; Vietnamese needs the completed-state marker. Use «chưa xác nhận đã lưu» here and «Chưa xác nhận đã lưu thông tin xác thực» in the related `credential_store_unconfirmed`.",
+     "disposition": "open",
+     "related_keys": [
+      "ui.chat.credential_capture.credential_store_unconfirmed"
+     ]
+    }
+   ]
+  },
+  "ui.chat.directory": {
+   "namespace": "ui.chat.directory",
+   "status": "clean",
+   "keys_audited": 42,
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "sha256": {
+    "en": "57540488fb400a9a4ac1040c7d7f91f19f25ab313ec87a50ef527da442d3ec6b",
+    "target": "9f7ca9738b300cd3896440e3b62c31a3a7789c4b4a505035122b5a5784a2de15"
+   },
+   "context_sha256": "4bfdbc219bccc88fbdcaf3c62897b168d5604d5acbbb5f70f040c95c941c2daa",
+   "findings": []
+  },
+  "ui.chat.header": {
+   "namespace": "ui.chat.header",
+   "status": "clean-with-findings",
+   "keys_audited": 62,
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+   },
+   "sha256": {
+    "en": "ff03f6ca7b3206e77fc260116d2b540cc9f211ea37436863b874770e917158d8",
+    "target": "e957eb55b1c784daec89fdfec08e603d0b80cfdafbbb5846ab575bd709f58448"
+   },
+   "context_sha256": "0d601a99861fc8b23207f117b90b697ba88ddd4f6419a68021f34c177158ea2e",
+   "findings": [
+    {
+     "severity": "minor",
+     "category": "terminology",
+     "key": "ui.chat.header.chat_header_identity_menu_model.agent_seat_closed_by_teamlabel",
+     "source": "Agent seat closed by {teamLabel}",
+     "current": "Ghế tác nhân bị đóng bởi {teamLabel}",
+     "proposed": "Vị trí tác nhân bị đóng bởi {teamLabel}",
+     "reason": "Seat is translated «ghế» here but «vị trí» in the other five seat strings on the same menu (`label_cannot_take_the_seat`, `no_profile_can_take_the_seat_switch_the_team`, `no_profile_here_can_take_the_seat_clear_the_search`, `teamlabel_is_led_by_its_manager_only_the_manager_and`). Same term, two renderings.",
+     "disposition": "open",
+     "related_keys": [
+      "ui.chat.header.chat_header_identity_menu_model.label_cannot_take_the_seat",
+      "ui.chat.header.chat_header_identity_menu_model.no_profile_can_take_the_seat_switch_the_team",
+      "ui.chat.header.chat_header_identity_menu_model.no_profile_here_can_take_the_seat_clear_the_search",
+      "ui.chat.header.chat_header_identity_menu_model.teamlabel_is_led_by_its_manager_only_the_manager_and"
+     ]
+    }
+   ]
+  },
+  "ui.chat.message": {
+   "namespace": "ui.chat.message",
+   "status": "clean",
+   "keys_audited": 55,
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "sha256": {
+    "en": "95d7b60b2cb1bdc37648cfa896856ce53724e300ed4a6b0448d7562aad452a5a",
+    "target": "4444c0fe81e24721a7859178fc931f51865bb3ebcf352259a4c4e914b8ab0132"
+   },
+   "context_sha256": "0278baa63867980cd08d18e47e282af12a6330b7c6a785f0157e7a01cceb4230",
+   "findings": []
+  },
+  "ui.chat.options": {
+   "namespace": "ui.chat.options",
+   "status": "clean-with-findings",
+   "keys_audited": 33,
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+   },
+   "sha256": {
+    "en": "fdfb1ceae54aa5270dd76b67748f56fa14e5d3f47d7770dad8eba755995a5a79",
+    "target": "d11a2d8fa67c5b95ed3d66ae16ed3b336c719cad79ebbffd1c1d2d433b0a6f8c"
+   },
+   "context_sha256": "4609f41205d7d0b14dd07e98a629b9fb40f74f870106e78b30a3b210eb7f13db",
+   "findings": [
+    {
+     "severity": "minor",
+     "category": "accuracy",
+     "key": "ui.chat.options.chat_options_sidebar.clear_conversation",
+     "source": "Clear conversation",
+     "current": "Xóa cuộc trò chuyện",
+     "proposed": "Xóa toàn bộ tin nhắn",
+     "reason": "The control clears the message history and keeps the conversation (the warning says every message is deleted and the agent is unaffected). «Xóa cuộc trò chuyện» is the Vietnamese phrase for deleting the chat itself, so the destructive button overstates its scope; use «Xóa toàn bộ tin nhắn» and «Xóa toàn bộ tin nhắn trong cuộc trò chuyện này?». The command palette already uses the same wording, so remediation is cross-namespace.",
+     "disposition": "open",
+     "related_keys": [
+      "ui.chat.options.chat_options_sidebar.clear_this_conversation"
+     ]
+    }
+   ]
+  },
+  "ui.chat.run_details": {
+   "namespace": "ui.chat.run_details",
+   "status": "clean",
+   "keys_audited": 152,
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "sha256": {
+    "en": "daf3ddc7d9c0904642876bf3db0746b6c0c68c5fe3b87a1a6730b07f67c90c2f",
+    "target": "306f996134c4ccafff29fcb90858b1329f6ae0bca6f97b70adc669a92372d8f3"
+   },
+   "context_sha256": "dcb2cf6f636814a1866186e8864fd6817033fa8de027049b365f362c53b5d384",
+   "findings": []
+  },
+  "ui.chat.session_status": {
+   "namespace": "ui.chat.session_status",
+   "status": "changes_requested",
+   "keys_audited": 162,
+   "counts": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 0,
+    "nit": 0
+   },
+   "sha256": {
+    "en": "05a6e2dd52cd41fb90dbb6756bb8a8f51c5d22e3769edb3fd6228a0d9a059198",
+    "target": "0b77ac724d9728021f0854726cbecd0823d6cc13e54fcbf5eb4e2b908a18b071"
+   },
+   "context_sha256": "91544a1523e2ccd3a50041e3530ded39255a614f571c50264991ed8e92ca90e7",
+   "findings": [
+    {
+     "severity": "major",
+     "category": "accuracy",
+     "key": "ui.chat.session_status.session_model.the_owner_cannot_currently_provide_borrowed_access_or_borrowing_permission",
+     "source": "The owner cannot currently provide borrowed access, or borrowing permission is unavailable. Restore owner access or permission before retrying, or choose another model.",
+     "current": "Chủ sở hữu hiện không thể cấp quyền truy cập mượn, hoặc không có quyền cho mượn. Hãy khôi phục quyền truy cập hoặc quyền của chủ sở hữu trước khi thử lại.",
+     "proposed": "Chủ sở hữu hiện không thể cấp quyền truy cập mượn, hoặc không có quyền cho mượn. Hãy khôi phục quyền truy cập hoặc quyền của chủ sở hữu trước khi thử lại, hoặc chọn mô hình khác.",
+     "reason": "The source offers two remedies: restore owner access/permission, or choose another model. The translation drops «or choose another model», leaving the user with only the blocked path. The sibling access errors keep that alternative.",
+     "disposition": "open"
+    }
+   ]
+  },
+  "ui.chat.skill": {
+   "namespace": "ui.chat.skill",
+   "status": "clean",
+   "keys_audited": 7,
+   "counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "sha256": {
+    "en": "919b6643e792d02ed270911df96d96da277bba5b5b91a2d04fac6cf044acfc10",
+    "target": "cced77e6255997ceec7f077003e01e8b7b8545dcc0386d35af87c8b7c29fc122"
+   },
+   "context_sha256": "012b41d3b048ae9575012522051687b87e3b3a8189dab9121985052ea04f965d",
+   "findings": []
+  },
+  "ui.chat.trace": {
+   "namespace": "ui.chat.trace",
+   "status": "changes_requested",
+   "keys_audited": 274,
+   "counts": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 2,
+    "nit": 1
+   },
+   "sha256": {
+    "en": "52a0fa5ed78ec2f3bbedf5b67f7abf3cc8d72c7a66ff4383d182358e242fb848",
+    "target": "707f567b09fcef170ddafa9d30621e27e14d43e047278e8e0f9ccf3442ecf940"
+   },
+   "context_sha256": "b54b6acb4399743d207d8a793080555f1cab291761de90cf3e6e9f3ce9c70016",
+   "findings": [
+    {
+     "severity": "major",
+     "category": "terminology",
+     "key": "ui.chat.trace.tool_row_model.sent_keys",
+     "source": "Sent keys",
+     "current": "Đã gửi khóa",
+     "proposed": "Đã gửi phím",
+     "reason": "In `tool-row-model.ts` this branch is the console `keys` action (keystrokes); the adjacent verbs are `typed_in_console`/`typing_in_console`. Translating keys as «khóa» makes the trace read as sending an API/credential key (the product uses «khóa» for API keys and MCP keys).",
+     "disposition": "open",
+     "related_keys": [
+      "ui.chat.trace.tool_row_model.sending_keys"
+     ]
+    },
+    {
+     "severity": "minor",
+     "category": "grammar",
+     "key": "ui.chat.trace.trace_labels.delegated_work",
+     "source": "Delegated work",
+     "current": "Đã ủy quyền việc",
+     "proposed": "Đã ủy quyền công việc",
+     "reason": "«Việc» alone is a bare noun after the verb; the object needs «công việc» to read as a completed action. The sibling `delegating_work` uses the same frame.",
+     "disposition": "open"
+    },
+    {
+     "severity": "minor",
+     "category": "grammar",
+     "key": "ui.chat.trace.tool_row_model.updated_secure_input",
+     "source": "Updated secure input",
+     "current": "Đã cập nhật nhập bảo mật",
+     "proposed": "Đã cập nhật ô nhập bảo mật",
+     "reason": "«Nhập bảo mật» is a verb phrase used as a noun; the tool row names the secure input field. Use «ô nhập bảo mật» in both states: «Đã cập nhật ô nhập bảo mật» / «Đang cập nhật ô nhập bảo mật».",
+     "disposition": "open",
+     "related_keys": [
+      "ui.chat.trace.tool_row_model.updating_secure_input"
+     ]
+    },
+    {
+     "severity": "nit",
+     "category": "idiom",
+     "key": "ui.chat.trace.question_dock.prefix_held_while_this_answers_fate_is_unknown_it_may",
+     "source": "{prefix}Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it",
+     "current": "{prefix}Đang giữ vì chưa rõ phận của câu trả lời này — nó có thể đã đến, nên không thể gửi lại · Esc trong thẻ để ẩn",
+     "proposed": "{prefix}Đang giữ vì chưa biết câu trả lời này có đến hay không — nó có thể đã đến, nên không thể gửi lại · Esc trong thẻ để ẩn",
+     "reason": "«Chưa rõ phận» uses the literary «phận» (fate) and is vague; the source means the delivery outcome is unknown. The explicit clause is clearer and keeps the same length.",
+     "disposition": "open"
+    }
+   ]
+  }
+ },
+ "identical_values": [
+  {
+   "key": "ui.chat.chat_regions.ctrl_shift_l",
+   "value": "Ctrl+Shift+L",
+   "classification": "IDENTICAL_OK",
+   "reason": "Keyboard shortcut token kept byte-identical (glossary §1)."
+  },
+  {
+   "key": "ui.chat.chat_regions.l",
+   "value": "⌘⇧L",
+   "classification": "IDENTICAL_OK",
+   "reason": "Accessibility or keyboard token kept byte-identical (glossary §1)."
+  },
+  {
+   "key": "ui.chat.sidebar.chat_sidebar.role_menuitem",
+   "value": "[role=\"menuitem\"]",
+   "classification": "IDENTICAL_OK",
+   "reason": "Accessibility or keyboard token kept byte-identical (glossary §1)."
+  },
+  {
+   "key": "ui.chat.slash_commands.x",
+   "value": "[x]",
+   "classification": "IDENTICAL_OK",
+   "reason": "Accessibility or keyboard token kept byte-identical (glossary §1)."
+  },
+  {
+   "key": "ui.chat.chat_status_strip.outcome",
+   "value": " {outcome}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.composer.composer_status_row.askdeadlinesubject",
+   "value": "{askDeadlineSubject} ",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.composer.composer_status_row.goal_clear_text_label_seam_goal",
+   "value": "{GOAL_CLEAR_TEXT}{LABEL_SEAM}{goal}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.composer.composer_status_row.goal_cleared_text_leading",
+   "value": "{GOAL_CLEARED_TEXT} · {leading}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.composer.composer_status_row.stateword",
+   "value": "{stateWord}, ",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.delete_conversation.title",
+   "value": "“{title}”",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.hub_update_mark.detail_action",
+   "value": "{detail} {action}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.sidebar.chat_sidebar.all_kind",
+   "value": "all:{kind}",
+   "classification": "IDENTICAL_OK",
+   "reason": "CSS custom property, selector, hint id or route literal kept byte-identical; translating it would break the style or target."
+  },
+  {
+   "key": "ui.chat.sidebar.chat_sidebar.displayname_name",
+   "value": "{displayName} ({name})",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.sidebar.chat_sidebar.silent_remedy",
+   "value": " · {SILENT_REMEDY}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.sidebar.chat_sidebar_view.label_position",
+   "value": "{label} · {position}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.sidebar.chat_sidebar_view.section_grown_hint_key",
+   "value": "section-grown-hint-{key}",
+   "classification": "IDENTICAL_OK",
+   "reason": "CSS custom property, selector, hint id or route literal kept byte-identical; translating it would break the style or target."
+  },
+  {
+   "key": "ui.chat.mermaid_diagram.var_color_warning",
+   "value": "var(--color-warning)",
+   "classification": "IDENTICAL_OK",
+   "reason": "CSS custom property, selector, hint id or route literal kept byte-identical; translating it would break the style or target."
+  },
+  {
+   "key": "ui.chat.mermaid_diagram.var_color_warning_border",
+   "value": "var(--color-warning-border)",
+   "classification": "IDENTICAL_OK",
+   "reason": "CSS custom property, selector, hint id or route literal kept byte-identical; translating it would break the style or target."
+  },
+  {
+   "key": "ui.chat.mermaid_diagram.var_color_warning_wash",
+   "value": "var(--color-warning-wash)",
+   "classification": "IDENTICAL_OK",
+   "reason": "CSS custom property, selector, hint id or route literal kept byte-identical; translating it would break the style or target."
+  },
+  {
+   "key": "ui.chat.artifact_identity.title_head",
+   "value": "{title} · {head}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.ask_open_policy.askchipcountclausevalue",
+   "value": "{askChipCountClauseValue}.",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.composer.composer_status_row.job_actionvalue_label_seam_jobclausevalue_busiestclausevalue",
+   "value": "{JOB_ACTIONValue}{LABEL_SEAM}{jobClauseValue}{busiestClauseValue}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.composer.composer_status_row.loop_labelvalue_loopstatuswordvalue",
+   "value": "{LOOP_LABELValue} {loopStatusWordValue}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.composer.composer_status_row.monitor_actionvalue_label_seam_monitorclausevalue",
+   "value": "{MONITOR_ACTIONValue}{LABEL_SEAM}{monitorClauseValue}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.composer.composer_status_row.plan_actionvalue_label_seam_todoclausevalue",
+   "value": "{PLAN_ACTIONValue}{LABEL_SEAM}{todoClauseValue}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.composer.composer_status_row.subagent_actionvalue_label_seam_childclausevalue_busiestclausevalue",
+   "value": "{SUBAGENT_ACTIONValue}{LABEL_SEAM}{childClauseValue}{busiestClauseValue}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.composer.composer_status_row.text_label_seam_loopclausevalue",
+   "value": "{text}{LABEL_SEAM}{loopClauseValue}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.composer.composer_status_row.wake_actionvalue_label_seam_wakeclausevalue",
+   "value": "{WAKE_ACTIONValue}{LABEL_SEAM}{wakeClauseValue}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.draft_rows.draft_row_prefix_draftrowtitlevalue",
+   "value": "{DRAFT_ROW_PREFIX}{draftRowTitleValue}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.draft_rows.value",
+   "value": "{value}…",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.message_grouping.value_value2",
+   "value": "{value} {value2}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.message_grouping.value_value2_b35da6",
+   "value": "{value}, {value2}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.sidebar.chat_sidebar.clause",
+   "value": " · {clause}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.sidebar.chat_sidebar.detail",
+   "value": " {detail}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.undo_toasts.detail",
+   "value": " {detail}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.sidebar.chat_sidebar.pin_label",
+   "value": "{action} “{label}”",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.composer.composer_status_row.goal_disclosure_label",
+   "value": "{action} {name}{labelSeam}{state}{goal}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.asks.ask_panel.label_count",
+   "value": "{label} · {count, number, ::group-off}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.asks.fleet_ask_drawer.verb_name",
+   "value": "{verb} {name}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.asks.queue.short_seconds",
+   "value": "{count, number}s",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.asks.queue.short_minutes",
+   "value": "{count, number}m",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.asks.queue.short_hours",
+   "value": "{count, number}h",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.asks.queue.short_days",
+   "value": "{count, number}d",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.canonical.fold_media.more",
+   "value": "+{more, number, ::group-off}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.canonical.sound_batch_model.name_suffix",
+   "value": "{name} ({suffix, number, ::group-off})",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.canonical.supplement_row.failedcause",
+   "value": " — {failedCause}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.canonical.older_history_slot.min_260px_olderhistory_hidden",
+   "value": "@min-[260px]/olderhistory:hidden",
+   "classification": "IDENTICAL_OK",
+   "reason": "CSS custom property, selector, hint id or route literal kept byte-identical; translating it would break the style or target."
+  },
+  {
+   "key": "ui.chat.canonical.canonical_transcript.direction",
+   "value": " · {direction}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.canonical.image_gen_card.noun_value",
+   "value": "{noun} {value, number, ::group-off}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.canonical.transcript_reducer.stringvalue_value",
+   "value": "{StringValue} {value}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.canonical.sound_player.action_label",
+   "value": "{action} {label}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.canvas_preview.pdf_title",
+   "value": "PDF: {name}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Product or file-format name kept as-is (glossary §1)."
+  },
+  {
+   "key": "ui.chat.credential_capture.unconfirmed_chip",
+   "value": "{key} · {unconfirmed}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.directory.directory_indicator.program_files",
+   "value": "Program Files",
+   "classification": "IDENTICAL_OK",
+   "reason": "Literal platform folder name; the OS displays this exact spelling, so translating it would misname the folder."
+  },
+  {
+   "key": "ui.chat.directory.directory_indicator.program_files_x86",
+   "value": "Program Files (x86)",
+   "classification": "IDENTICAL_OK",
+   "reason": "Literal platform folder name; the OS displays this exact spelling, so translating it would misname the folder."
+  },
+  {
+   "key": "ui.chat.directory.directory_indicator.programdata",
+   "value": "ProgramData",
+   "classification": "IDENTICAL_OK",
+   "reason": "Literal platform folder name; the OS displays this exact spelling, so translating it would misname the folder."
+  },
+  {
+   "key": "ui.chat.directory.directory_indicator.users",
+   "value": "Users",
+   "classification": "IDENTICAL_OK",
+   "reason": "Literal platform folder name; the OS displays this exact spelling, so translating it would misname the folder."
+  },
+  {
+   "key": "ui.chat.directory.directory_indicator.volumes",
+   "value": "Volumes",
+   "classification": "IDENTICAL_OK",
+   "reason": "Literal platform folder name; the OS displays this exact spelling, so translating it would misname the folder."
+  },
+  {
+   "key": "ui.chat.directory.directory_indicator.c_program_files",
+   "value": "C:\\Program Files",
+   "classification": "IDENTICAL_OK",
+   "reason": "Literal platform folder name; the OS displays this exact spelling, so translating it would misname the folder."
+  },
+  {
+   "key": "ui.chat.directory.directory_indicator.c_program_files_x86",
+   "value": "C:\\Program Files (x86)",
+   "classification": "IDENTICAL_OK",
+   "reason": "Literal platform folder name; the OS displays this exact spelling, so translating it would misname the folder."
+  },
+  {
+   "key": "ui.chat.directory.directory_indicator.state_label",
+   "value": "{state}: {shown}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.header.chat_header.local_operator",
+   "value": "Local Operator",
+   "classification": "IDENTICAL_OK",
+   "reason": "Product or file-format name kept as-is (glossary §1)."
+  },
+  {
+   "key": "ui.chat.header.chat_header_identity.current",
+   "value": " ({current})",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.header.chat_header_identity.label_closedreason",
+   "value": "{label} — {closedReason}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.header.chat_header_identity.label_cuesentence",
+   "value": "{label} — {cueSentence}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.header.chat_header_identity.triggerlabel_label_closedreason",
+   "value": "{triggerLabel}: {label}. {closedReason}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.header.chat_header_identity_menu.closednoteid_title",
+   "value": "{closedNoteId}-title",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.header.chat_header_identity.value_description",
+   "value": "{value} · {description}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.header.chat_header_identity.trigger_action_label",
+   "value": "{triggerLabel}: {label}. {action}{cue}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.header.chat_header_identity.cue_clause",
+   "value": ". {cueSentence}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.header.chat_header_identity.label_current",
+   "value": "{label}{current}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.message.audio_attachment.time_indicator",
+   "value": "time-indicator",
+   "classification": "IDENTICAL_OK",
+   "reason": "Machine identifier used as an accessible name; kept byte-identical."
+  },
+  {
+   "key": "ui.chat.message.audio_attachment.volume_control",
+   "value": "volume-control",
+   "classification": "IDENTICAL_OK",
+   "reason": "Machine identifier used as an accessible name; kept byte-identical."
+  },
+  {
+   "key": "ui.chat.message.error_block.settings_section_providers",
+   "value": "/settings?section=providers",
+   "classification": "IDENTICAL_OK",
+   "reason": "CSS custom property, selector, hint id or route literal kept byte-identical; translating it would break the style or target."
+  },
+  {
+   "key": "ui.chat.message.attachment_frame.detail",
+   "value": " {detail}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.message.attachment_frame.name_detail",
+   "value": "{name} {detail}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.message.invalid_attachment.getfilenamevalue_reason",
+   "value": "{getFileNameValue} {reason}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.message.turn_timestamp.value_full",
+   "value": "{value} {full}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.options.generation_settings_section.frequency_penalty",
+   "value": "Frequency penalty",
+   "classification": "IDENTICAL_OK",
+   "reason": "Generation parameter name kept English across the product (same as pre-existing vi ui.agents.settings); translating it would break the parameter vocabulary."
+  },
+  {
+   "key": "ui.chat.options.generation_settings_section.presence_penalty",
+   "value": "Presence penalty",
+   "classification": "IDENTICAL_OK",
+   "reason": "Generation parameter name kept English across the product (same as pre-existing vi ui.agents.settings); translating it would break the parameter vocabulary."
+  },
+  {
+   "key": "ui.chat.options.generation_settings_section.seed",
+   "value": "Seed",
+   "classification": "IDENTICAL_OK",
+   "reason": "Generation parameter name kept English across the product (same as pre-existing vi ui.agents.settings); translating it would break the parameter vocabulary."
+  },
+  {
+   "key": "ui.chat.options.generation_settings_section.temperature",
+   "value": "Temperature",
+   "classification": "IDENTICAL_OK",
+   "reason": "Generation parameter name kept English across the product (same as pre-existing vi ui.agents.settings); translating it would break the parameter vocabulary."
+  },
+  {
+   "key": "ui.chat.options.generation_settings_section.top_k",
+   "value": "Top K",
+   "classification": "IDENTICAL_OK",
+   "reason": "Generation parameter name kept English across the product (same as pre-existing vi ui.agents.settings); translating it would break the parameter vocabulary."
+  },
+  {
+   "key": "ui.chat.options.generation_settings_section.top_p",
+   "value": "Top P",
+   "classification": "IDENTICAL_OK",
+   "reason": "Generation parameter name kept English across the product (same as pre-existing vi ui.agents.settings); translating it would break the parameter vocabulary."
+  },
+  {
+   "key": "ui.chat.run_details.run_detail_mcp.label",
+   "value": "— {label}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.run_details.run_detail_wakes.trailingclause",
+   "value": " · {trailingClause}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.run_details.mcp_failure.lead",
+   "value": "{lead}.",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.run_details.mcp_failure.lead_value",
+   "value": "{lead}. {value}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.run_details.run_detail_model.value",
+   "value": "{value, number, ::group-off}%",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.run_details.run_detail_monitors.healthlabel",
+   "value": "· {healthLabel}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.run_details.run_detail_monitors.interval",
+   "value": "· {interval}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.run_details.run_detail_monitors.lastchecklabel",
+   "value": "· {lastCheckLabel}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.run_details.run_detail_wakes.cadence",
+   "value": "· {cadence}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.session_status.session_cost.text_cue",
+   "value": "{text}{cue}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.session_status.session_model.fallbackdefault",
+   "value": " ({fallbackDefault})",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.trace.receipt_row_model.base",
+   "value": "{base}/",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.trace.trace_fold.verb_object",
+   "value": "{verb} {object}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.trace.turn_summary.receipts",
+   "value": "{receipts, number, ::group-off}+",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.trace.turn_summary.value",
+   "value": "{value, number, ::group-off}+",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  },
+  {
+   "key": "ui.chat.trace.turn_summary.value_75ced7",
+   "value": "{value, number, ::group-off}",
+   "classification": "IDENTICAL_OK",
+   "reason": "Placeholder-only composition template (arguments, separators and punctuation); no translatable prose."
+  }
+ ],
+ "identical_stub_count": 0,
+ "counts": {
+  "blocker": 0,
+  "major": 4,
+  "minor": 15,
+  "nit": 2
+ },
+ "overflow_risks": [
+  {
+   "key": "ui.chat.trace.tool_row_model.resizing_console",
+   "english_cells": 16,
+   "vietnamese_cells": 35,
+   "ratio": 2.19,
+   "note": "Trace row verb rendered in a compact row; the raw template is materially longer than English, so a rendered row-width check is required."
+  },
+  {
+   "key": "ui.chat.trace.tool_row_model.resized_console",
+   "english_cells": 15,
+   "vietnamese_cells": 33,
+   "ratio": 2.2,
+   "note": "Trace row verb rendered in a compact row; the raw template is materially longer than English, so a rendered row-width check is required."
+  },
+  {
+   "key": "ui.chat.trace.tool_row_model.listing_network_peers",
+   "english_cells": 21,
+   "vietnamese_cells": 32,
+   "ratio": 1.52,
+   "note": "Trace row verb rendered in a compact row; the raw template is materially longer than English, so a rendered row-width check is required."
+  },
+  {
+   "key": "ui.chat.trace.tool_row_model.typing_in_console",
+   "english_cells": 17,
+   "vietnamese_cells": 31,
+   "ratio": 1.82,
+   "note": "Trace row verb rendered in a compact row; the raw template is materially longer than English, so a rendered row-width check is required."
+  },
+  {
+   "key": "ui.chat.trace.tool_row_model.listed_network_peers",
+   "english_cells": 20,
+   "vietnamese_cells": 30,
+   "ratio": 1.5,
+   "note": "Trace row verb rendered in a compact row; the raw template is materially longer than English, so a rendered row-width check is required."
+  },
+  {
+   "key": "ui.chat.canonical.supplement_model.provider_timed_out",
+   "english_cells": 18,
+   "vietnamese_cells": 30,
+   "ratio": 1.67,
+   "note": "Longest provider reason clause in the supplement card; wraps, but flag for a rendered check."
+  },
+  {
+   "key": "ui.chat.trace.tool_row_model.checking_console",
+   "english_cells": 16,
+   "vietnamese_cells": 29,
+   "ratio": 1.81,
+   "note": "Trace row verb rendered in a compact row; the raw template is materially longer than English, so a rendered row-width check is required."
+  },
+  {
+   "key": "ui.chat.trace.tool_row_model.typed_in_console",
+   "english_cells": 16,
+   "vietnamese_cells": 29,
+   "ratio": 1.81,
+   "note": "Trace row verb rendered in a compact row; the raw template is materially longer than English, so a rendered row-width check is required."
+  },
+  {
+   "key": "ui.chat.trace.tool_row_model.listing_consoles",
+   "english_cells": 16,
+   "vietnamese_cells": 28,
+   "ratio": 1.75,
+   "note": "Trace row verb rendered in a compact row; the raw template is materially longer than English, so a rendered row-width check is required."
+  },
+  {
+   "key": "ui.chat.trace.tool_row_model.checked_console",
+   "english_cells": 15,
+   "vietnamese_cells": 27,
+   "ratio": 1.8,
+   "note": "Trace row verb rendered in a compact row; the raw template is materially longer than English, so a rendered row-width check is required."
+  },
+  {
+   "key": "ui.chat.trace.tool_row_model.listing_wakes",
+   "english_cells": 13,
+   "vietnamese_cells": 27,
+   "ratio": 2.08,
+   "note": "Trace row verb rendered in a compact row; the raw template is materially longer than English, so a rendered row-width check is required."
+  },
+  {
+   "key": "ui.chat.trace.tool_row_model.listed_consoles",
+   "english_cells": 15,
+   "vietnamese_cells": 26,
+   "ratio": 1.73,
+   "note": "Trace row verb rendered in a compact row; the raw template is materially longer than English, so a rendered row-width check is required."
+  },
+  {
+   "key": "ui.chat.trace.tool_row_model.updating_todos",
+   "english_cells": 14,
+   "vietnamese_cells": 26,
+   "ratio": 1.86,
+   "note": "Trace row verb rendered in a compact row; the raw template is materially longer than English, so a rendered row-width check is required."
+  },
+  {
+   "key": "ui.chat.trace.tool_row_model.closing_console",
+   "english_cells": 15,
+   "vietnamese_cells": 25,
+   "ratio": 1.67,
+   "note": "Trace row verb rendered in a compact row; the raw template is materially longer than English, so a rendered row-width check is required."
+  },
+  {
+   "key": "ui.chat.trace.tool_row_model.listed_wakes",
+   "english_cells": 12,
+   "vietnamese_cells": 25,
+   "ratio": 2.08,
+   "note": "Trace row verb rendered in a compact row; the raw template is materially longer than English, so a rendered row-width check is required."
+  },
+  {
+   "key": "ui.chat.trace.tool_row_model.reading_console",
+   "english_cells": 15,
+   "vietnamese_cells": 24,
+   "ratio": 1.6,
+   "note": "Trace row verb rendered in a compact row; the raw template is materially longer than English, so a rendered row-width check is required."
+  },
+  {
+   "key": "ui.chat.trace.tool_row_model.updated_todos",
+   "english_cells": 13,
+   "vietnamese_cells": 24,
+   "ratio": 1.85,
+   "note": "Trace row verb rendered in a compact row; the raw template is materially longer than English, so a rendered row-width check is required."
+  }
+ ],
+ "terminology_notes": [
+  {
+   "term": "wake",
+   "observation": "The batch uses the noun «lịch đánh thức» (23 strings) and the verb «đánh thức» (29 strings, including the correct transitive «Đánh thức tôi» for “Wake me tomorrow”). The vi style guide's blanket wake → «thức dậy» (intransitive) conflicts with the noun, and pre-existing ui.schedules already uses «lịch đánh thức» 27×. Recommend recording the noun exception in i18n/style-guides/vi.md; no catalogue change is proposed here."
+  },
+  {
+   "term": "rate limit",
+   "observation": "«giới hạn tốc độ» (3×) is consistent and understandable but calques “rate limit”; «giới hạn tần suất» is the more precise term. Not counted as a finding because it is not misleading and there is no glossary row."
+  },
+  {
+   "term": "render",
+   "observation": "«dựng» is used for diagram rendering (4×) and «hiển thị» once; both are understandable, but the mixed rendering is noted for the next style-guide pass."
+  }
+ ],
+ "translator_receipt_check": {
+  "status": "inaccurate",
+  "items": [
+   {
+    "field": "plural_policy.arms_used",
+    "claim": "other 57, =0 8, =1 1",
+    "actual": "In the 1,733 batch keys: 43 plural messages, 43 other arms, three =0 arms (one in ui.chat.sidebar.chat_sidebar.builtin_offer and two in ui.chat.canonical.sound_batch_model.summary) and one =1 arm (ui.chat.canonical.thread_search.truncated). No one/few/many arms exist, so the policy is valid but the count is wrong."
+   },
+   {
+    "field": "not_touched[1]",
+    "claim": "the vi coverage-allowance entries for ui.chat.canonical (30) and ui.chat.run_details (2) are now exactly filled and must be shrunk",
+    "actual": "The vi missing sets still equal those allowance entries exactly (30 and 2). They are pre-existing debt, not filled by this batch; running check-coverage --update would not shrink them. Do not remove the allowance rows."
+   },
+   {
+    "field": "checks[3]",
+    "claim": "ICU check over 1,733 keys: problems 0, argument names and ::skeletons match",
+    "actual": "ui.chat.sidebar.chat_sidebar.builtin_offer has three {count, plural} blocks in English and one in vi; the argument list and exact arms do not match. The checker missed this structural collapse (see the minor finding)."
+   },
+   {
+    "field": "overflow_risks[6].key",
+    "claim": "ui.chat.trace.supplement_model.provider_timed_out",
+    "actual": "The key is ui.chat.canonical.supplement_model.provider_timed_out; no such key exists in ui.chat.trace."
+   }
+  ]
+ },
+ "limitations": [
+  "No rendered Electron pass was run; overflow findings are code-point cell arithmetic, not measured clipping.",
+  "No native-speaker sign-off; this is an independent agent audit.",
+  "The 30 pre-existing vi values in ui.chat.json, ui.chat.asks.json and ui.chat.header.json were read for consistency and verified byte-identical to the pre-batch head, but are not counted in the 1,733 batch keys."
+ ],
+ "verdict": "changes_requested",
+ "status": "changes_requested"
+}
