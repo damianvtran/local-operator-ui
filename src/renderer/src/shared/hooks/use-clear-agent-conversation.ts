@@ -7,6 +7,7 @@ import { useChatStore } from "@shared/store/chat-store";
 import { useMessageHistoryStore } from "@shared/store/message-history-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { t } from "../../../../i18n/messages";
 
 /**
  * Hook that provides a mutation for clearing an agent's conversation history
@@ -43,12 +44,17 @@ export const useClearAgentConversation = () => {
 			clearMessageHistory(variables.agentId);
 
 			// Show success toast
-			showSuccessToast("Conversation cleared");
+			showSuccessToast(t("ui.common.actions.conversation_cleared"));
 		},
 		onError: (error) => {
 			console.error("Error clearing agent conversation:", error);
 			showErrorToast(
-				`Failed to clear conversation: ${error instanceof Error ? error.message : "Unknown error"}`,
+				t("ui.common.errors.conversation_clear", {
+					error:
+						error instanceof Error
+							? error.message
+							: t("ui.common.errors.unknown"),
+				}),
 			);
 		},
 	});

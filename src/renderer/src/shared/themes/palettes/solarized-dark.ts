@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -42,8 +43,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const solarizedDark: ThemeDefinition = {
 	id: "solarizedDark",
 	name: "Solarized Dark",
-	description:
-		"Schoonover's precision dark — deep teal-black with a cyan accent.",
+	get description() {
+		return t("ui.settings.appearance.theme.solarized_dark");
+	},
 	palette: {
 		mode: "dark",
 

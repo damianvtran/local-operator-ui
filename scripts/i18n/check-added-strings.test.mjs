@@ -67,6 +67,7 @@ test("all newly added static copy shapes are visible to the guard", () => {
 		"Added enabled alt",
 		"Added disabled alt",
 		"template title",
+		"ui.fixture.raw_key",
 	]) {
 		assert.ok(texts.has(expected), `missing ${expected}`);
 	}

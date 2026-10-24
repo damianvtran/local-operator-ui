@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -39,7 +40,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const rosewood: ThemeDefinition = {
 	id: "rosewood",
 	name: "Rosewood",
-	description: "Dark rosewood with dried-rose reds and a glint of brass.",
+	get description() {
+		return t("ui.settings.appearance.theme.rosewood");
+	},
 	palette: {
 		mode: "dark",
 		/*

@@ -212,7 +212,9 @@ export const IntegrationRow: FC<IntegrationRowProps> = ({
 								{index > 0 ? " · " : null}
 								{/* The source file is the tooltip of the "Imported from" part:
 								    the path is where it is fixed, and quiet until asked for. */}
-								{part.startsWith("Imported from") && row.source.path ? (
+								{/* The origin is the final metadata item; use that structural fact rather
+								    than parsing a localized "Imported from" prefix. */}
+								{index === meta.length - 1 && row.source.path ? (
 									<Tooltip content={compactPath(row.source.path)}>
 										<span className="underline decoration-dotted underline-offset-2">
 											{part}

@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -27,7 +28,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const dune: ThemeDefinition = {
 	id: "dune",
 	name: "Dune",
-	description: "Desert night: warm near-black with a vivid orange.",
+	get description() {
+		return t("ui.settings.appearance.theme.dune");
+	},
 	palette: {
 		mode: "dark",
 

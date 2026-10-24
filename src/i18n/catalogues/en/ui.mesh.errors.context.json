@@ -1,0 +1,8 @@
+{
+	"ui.mesh.errors.move_refused": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: the move was refused"
+	}
+}

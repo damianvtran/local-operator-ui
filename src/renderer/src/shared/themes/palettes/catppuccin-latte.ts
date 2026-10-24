@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -40,8 +41,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const catppuccinLatte: ThemeDefinition = {
 	id: "catppuccinLatte",
 	name: "Catppuccin Latte",
-	description:
-		"The light flavour — cool paper under the same Catppuccin pastels.",
+	get description() {
+		return t("ui.settings.appearance.theme.catppuccin_latte");
+	},
 	palette: {
 		mode: "light",
 

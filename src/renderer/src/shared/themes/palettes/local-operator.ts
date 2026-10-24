@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -60,7 +61,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const localOperatorDark: ThemeDefinition = {
 	id: "localOperatorDark",
 	name: "Local Operator Dark",
-	description: "The default. Warm near-black with the brand green.",
+	get description() {
+		return t("ui.settings.appearance.theme.local_operator_dark");
+	},
 	palette: {
 		mode: "dark",
 
@@ -231,7 +234,9 @@ export const localOperatorDark: ThemeDefinition = {
 export const localOperatorLight: ThemeDefinition = {
 	id: "localOperatorLight",
 	name: "Local Operator Light",
-	description: "Warm paper and ink, with the brand green.",
+	get description() {
+		return t("ui.settings.appearance.theme.local_operator_light");
+	},
 	palette: {
 		mode: "light",
 

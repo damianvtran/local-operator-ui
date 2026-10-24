@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -38,7 +39,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const ayuDark: ThemeDefinition = {
 	id: "ayuDark",
 	name: "Ayu Dark",
-	description: "Ayu's night: near-black blue with a bright azure accent.",
+	get description() {
+		return t("ui.settings.appearance.theme.ayu_dark");
+	},
 	palette: {
 		mode: "dark",
 
