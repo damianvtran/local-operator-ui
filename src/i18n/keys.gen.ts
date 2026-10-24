@@ -565,7 +565,9 @@ import zhCNUiChatCanonical from "./catalogues/zh-CN/ui.chat.canonical.json";
 import zhCNUiChatCommentaryActions from "./catalogues/zh-CN/ui.chat.commentary_actions.json";
 import zhCNUiChatComposer from "./catalogues/zh-CN/ui.chat.composer.json";
 import zhCNUiChatComposerMedia from "./catalogues/zh-CN/ui.chat.composer_media.json";
+import zhCNUiChatDevice from "./catalogues/zh-CN/ui.chat.device.json";
 import zhCNUiChatDialogs from "./catalogues/zh-CN/ui.chat.dialogs.json";
+import zhCNUiChatDirectory from "./catalogues/zh-CN/ui.chat.directory.json";
 import zhCNUiChatHeader from "./catalogues/zh-CN/ui.chat.header.json";
 import zhCNUiChat from "./catalogues/zh-CN/ui.chat.json";
 import zhCNUiChatLiveUpdates from "./catalogues/zh-CN/ui.chat.live_updates.json";
@@ -1186,7 +1188,9 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiChatCommentaryActions,
 		...zhCNUiChatComposer,
 		...zhCNUiChatComposerMedia,
+		...zhCNUiChatDevice,
 		...zhCNUiChatDialogs,
+		...zhCNUiChatDirectory,
 		...zhCNUiChatHeader,
 		...zhCNUiChat,
 		...zhCNUiChatLiveUpdates,
