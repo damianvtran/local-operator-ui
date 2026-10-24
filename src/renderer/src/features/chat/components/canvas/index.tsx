@@ -295,7 +295,7 @@ const VIEWS: {
 const canvasViews = (goalCapable: boolean): typeof VIEWS =>
 	goalCapable ? VIEWS : VIEWS.filter((view) => view.value !== "goals");
 
-const ViewSwitcher: FC<{
+export const ViewSwitcher: FC<{
 	current: CanvasViewMode;
 	onChange: (view: CanvasViewMode) => void;
 	/**
@@ -316,89 +316,91 @@ const ViewSwitcher: FC<{
 	 * rule, and the reason it is a prop: only the caller holding the frame knows.
 	 */
 	goalTruncated: boolean;
-}> = ({ current, onChange, views, fileCount, goalCount, goalTruncated }) => (
-	// A `fieldset` rather than a div with `role="group"`: the element already
-	// means "these controls belong together", and it is the only way the group
-	// gets an accessible name without inventing ARIA for it. Its UA border and
-	// margin are reset by the utilities below.
-	//
-	// No track behind it. Selection is the same `sunken`-strip-with-a-`surface`
-	// -chip step the tab row six pixels below already uses, so a second recessed
-	// well would be a box drawn around a pattern the panel has already taught.
-	<fieldset
-		className={cn("inline-flex h-7 shrink-0 items-center gap-0.5 border-0 p-0")}
-	>
-		<legend className={cn("sr-only")}>
-			{t("ui.canvas.shell.canvas_view")}
-		</legend>
-		{views.map(({ value, label, tourTag, Icon }) => {
-			const isActive = current === value;
-			/*
-			 * The count rides the Files and Goals segments' names, not a badge. This is
-			 * where a user who already knows the canvas exists looks for "is there
-			 * anything here", and the segment is the one control that is on screen in
-			 * every view; a number rendered inside a 24px icon button would either clip
-			 * or push the row apart.
-			 *
-			 * Only these two can say a number: a count of documents is a count of open
-			 * tabs the strip below already prints, and a count of variables is not known
-			 * to this component at all (its viewer fetches). A segment with no number is
-			 * simply its own name.
-			 */
-			const counted =
-				value === "files" ? fileCount : value === "goals" ? goalCount : 0;
-			const noun =
-				value === "files"
-					? t("ui.canvas.shell.file")
-					: t("ui.canvas.shell.goal");
-			/*
-			 * The name is DERIVED OUTSIDE, because the number it speaks is a claim about a
-			 * list and the Goals segment's list can be capped. `goalTruncated` is read only
-			 * for that segment: the documents count is the open tabs the strip below already
-			 * prints, so it has no cap to admit.
-			 */
-			const name =
-				counted === null
-					? label
-					: viewSegmentName(
-							label,
-							noun,
-							counted,
-							value === "goals" && goalTruncated,
-						);
-			return (
-				<Tooltip key={value} content={name}>
-					<button
-						type="button"
-						aria-pressed={isActive}
-						aria-label={name}
-						data-tour-tag={tourTag}
-						onClick={() => {
-							useI18nLocale();
-							return onChange(value);
-						}}
-						className={cn(
-							"inline-flex h-6 items-center justify-center rounded-sm px-2",
-							"transition-colors duration-fast ease-out-quart",
-							"[&_svg]:size-3.5",
-							isActive
-								? "bg-surface text-ink"
-								: "text-ink-muted hover:text-ink",
-						)}
-					>
-						<Icon aria-hidden="true" />
-						{value === "files" && (
-							<span className={cn("ml-1 text-meta")}>
-								{label}
-								{counted === null ? "" : ` ${formatNumber(counted)}`}
-							</span>
-						)}
-					</button>
-				</Tooltip>
-			);
-		})}
-	</fieldset>
-);
+}> = ({ current, onChange, views, fileCount, goalCount, goalTruncated }) => {
+	useI18nLocale();
+	return (
+		// A `fieldset` rather than a div with `role="group"`: the element already
+		// means "these controls belong together", and it is the only way the group
+		// gets an accessible name without inventing ARIA for it. Its UA border and
+		// margin are reset by the utilities below.
+		//
+		// No track behind it. Selection is the same `sunken`-strip-with-a-`surface`
+		// -chip step the tab row six pixels below already uses, so a second recessed
+		// well would be a box drawn around a pattern the panel has already taught.
+		<fieldset
+			className={cn(
+				"inline-flex h-7 shrink-0 items-center gap-0.5 border-0 p-0",
+			)}
+		>
+			<legend className={cn("sr-only")}>
+				{t("ui.canvas.shell.canvas_view")}
+			</legend>
+			{views.map(({ value, label, tourTag, Icon }) => {
+				const isActive = current === value;
+				/*
+				 * The count rides the Files and Goals segments' names, not a badge. This is
+				 * where a user who already knows the canvas exists looks for "is there
+				 * anything here", and the segment is the one control that is on screen in
+				 * every view; a number rendered inside a 24px icon button would either clip
+				 * or push the row apart.
+				 *
+				 * Only these two can say a number: a count of documents is a count of open
+				 * tabs the strip below already prints, and a count of variables is not known
+				 * to this component at all (its viewer fetches). A segment with no number is
+				 * simply its own name.
+				 */
+				const counted =
+					value === "files" ? fileCount : value === "goals" ? goalCount : 0;
+				const noun =
+					value === "files"
+						? t("ui.canvas.shell.file")
+						: t("ui.canvas.shell.goal");
+				/*
+				 * The name is DERIVED OUTSIDE, because the number it speaks is a claim about a
+				 * list and the Goals segment's list can be capped. `goalTruncated` is read only
+				 * for that segment: the documents count is the open tabs the strip below already
+				 * prints, so it has no cap to admit.
+				 */
+				const name =
+					counted === null
+						? label
+						: viewSegmentName(
+								label,
+								noun,
+								counted,
+								value === "goals" && goalTruncated,
+							);
+				return (
+					<Tooltip key={value} content={name}>
+						<button
+							type="button"
+							aria-pressed={isActive}
+							aria-label={name}
+							data-tour-tag={tourTag}
+							onClick={() => onChange(value)}
+							className={cn(
+								"inline-flex h-6 items-center justify-center rounded-sm px-2",
+								"transition-colors duration-fast ease-out-quart",
+								"[&_svg]:size-3.5",
+								isActive
+									? "bg-surface text-ink"
+									: "text-ink-muted hover:text-ink",
+							)}
+						>
+							<Icon aria-hidden="true" />
+							{value === "files" && (
+								<span className={cn("ml-1 text-meta")}>
+									{label}
+									{counted === null ? "" : ` ${formatNumber(counted)}`}
+								</span>
+							)}
+						</button>
+					</Tooltip>
+				);
+			})}
+		</fieldset>
+	);
+};
 
 /**
  * The canvas panel.

@@ -24,17 +24,11 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, FC, KeyboardEvent } from "react";
 
 /**
- * Map snake_case category to Normal Capital Case for display.
+ * Raw category ids remain the form values and ICU selectors; only their display
+ * labels are localized. The select's other arm preserves an unknown id verbatim.
  */
-const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
-	ALLOWED_AGENT_CATEGORIES.map((cat) => [
-		cat,
-		cat
-			.split("_")
-			.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-			.join(" "),
-	]),
-);
+const categoryLabel = (category: string): string =>
+	t("ui.common.forms.categories_input_chips.category", { category });
 
 type CategoriesInputChipsProps = {
 	/** Current categories */
@@ -59,7 +53,7 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 	disabled = false,
 	icon,
 }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const [inputValue, setInputValue] = useState("");
 	const [isOpen, setIsOpen] = useState(false);
 	const [activeIndex, setActiveIndex] = useState(0);
@@ -70,13 +64,15 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 	const listboxId = useId();
 
 	const availableOptions = useMemo(() => {
+		// Localized search must recompute even when the raw category ids are unchanged.
+		void locale;
 		const query = inputValue.trim().toLowerCase();
 		return ALLOWED_AGENT_CATEGORIES.filter(
 			(opt) =>
 				!value.includes(opt) &&
-				(!query || CATEGORY_LABELS[opt].toLowerCase().includes(query)),
+				(!query || categoryLabel(opt).toLowerCase().includes(query)),
 		);
-	}, [value, inputValue]);
+	}, [value, inputValue, locale]);
 
 	// Keep the active row inside the scroll viewport.
 	useEffect(() => {
@@ -202,12 +198,12 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 			>
 				{value.map((cat) => (
 					<Badge key={cat} className="gap-1 pr-1 text-ink">
-						{CATEGORY_LABELS[cat] || cat}
+						{categoryLabel(cat)}
 						<button
 							type="button"
 							aria-label={t(
 								"ui.common.forms.categories_input_chips.remove_category",
-								{ value: CATEGORY_LABELS[cat] || cat },
+								{ value: categoryLabel(cat) },
 							)}
 							disabled={disabled}
 							onClick={() => handleDelete(cat)}
@@ -285,7 +281,7 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 										"text-ink",
 									)}
 								>
-									{CATEGORY_LABELS[option] || option}
+									{categoryLabel(option)}
 								</div>
 							))}
 						</div>

@@ -782,11 +782,6 @@
 		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
 		"note": "Shown in update-notification.tsx; status explanation in the update notification surface."
 	},
-	"ui.common.updates.update_notification.noopener_noreferrer": {
-		"role": "interface copy",
-		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
-		"note": "Shown in update-notification.tsx; interface copy in the update notification surface."
-	},
 	"ui.common.updates.update_quiet_indicator.open_release_details": {
 		"role": "accessible label",
 		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",

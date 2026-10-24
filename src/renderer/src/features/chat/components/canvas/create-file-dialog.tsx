@@ -14,7 +14,7 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Code, File, Folder } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { FC } from "react";
 import { DirectoryIndicator } from "../directory-indicator";
 
@@ -251,12 +251,9 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 	 * choice, so it is shown back as its own row rather than clearing the
 	 * field.
 	 */
-	const selectedFileType = useMemo(
-		() =>
-			fileTypeOptions().find((option) => option.id === fileType) ??
-			(fileType ? { id: fileType, name: fileType } : null),
-		[fileType],
-	);
+	const selectedFileType =
+		fileTypeOptions().find((option) => option.id === fileType) ??
+		(fileType ? { id: fileType, name: fileType } : null);
 
 	const canSave = fileName.trim() !== "" && !isSaving;
 
@@ -292,7 +289,7 @@ export const CreateFileDialog: FC<CreateFileDialogProps> = ({
 				startIcon={isSaving ? <Spinner /> : null}
 			>
 				{isSaving
-					? "Creating..."
+					? t("ui.canvas.create_file_dialog.creating")
 					: t("ui.canvas.create_file_dialog.create_file")}
 			</PrimaryButton>
 		</>

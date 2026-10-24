@@ -443,7 +443,7 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	 * for a document the owner has never seen.
 	 */
 
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const [content, setContent] = useState(
 		() => bufferText(document.id) ?? document.content,
 	);
@@ -1650,85 +1650,92 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 	 */
 	const showDiffInline = useCallback<
 		(diff: EditDiff, markdownContent: string) => void
-	>((diff, markdownContent) => {
-		if (!editorRef.current) return;
+	>(
+		(diff, markdownContent) => {
+			void locale;
+			if (!editorRef.current) return;
 
-		try {
-			const normalizedMarkdown = markdownContent.replace(/\r\n/g, "\n");
-			const normalizedFind = diff.find.replace(/\r\n/g, "\n");
+			try {
+				const normalizedMarkdown = markdownContent.replace(/\r\n/g, "\n");
+				const normalizedFind = diff.find.replace(/\r\n/g, "\n");
 
-			const startIndex = normalizedMarkdown.indexOf(normalizedFind);
-			if (startIndex === -1) {
-				console.error("Diff not found in markdown content", { diff });
-				return;
-			}
-
-			const getLineNumber = (text: string, index: number) => {
-				const lines = text.slice(0, index).split("\n");
-				return lines.length;
-			};
-
-			const startLine = getLineNumber(normalizedMarkdown, startIndex);
-			const endLine = getLineNumber(
-				normalizedMarkdown,
-				startIndex + normalizedFind.length,
-			);
-
-			// Look for elements with data-line attributes that match our line range
-			const allElements =
-				editorRef.current.querySelectorAll<HTMLElement>("[data-line]");
-			const elementsInRange: HTMLElement[] = [];
-
-			for (const el of allElements) {
-				const lineAttr = el.getAttribute("data-line");
-				if (!lineAttr) continue;
-
-				const elementLine = Number.parseInt(lineAttr, 10);
-				if (elementLine >= startLine && elementLine <= endLine) {
-					elementsInRange.push(el);
+				const startIndex = normalizedMarkdown.indexOf(normalizedFind);
+				if (startIndex === -1) {
+					console.error("Diff not found in markdown content", { diff });
+					return;
 				}
-			}
 
-			// If no elements found with exact line match, try to find elements containing the diff text
-			if (elementsInRange.length === 0) {
-				const allTextElements = editorRef.current.querySelectorAll<HTMLElement>(
-					"p, h1, h2, h3, h4, h5, h6, li, td, th",
+				const getLineNumber = (text: string, index: number) => {
+					const lines = text.slice(0, index).split("\n");
+					return lines.length;
+				};
+
+				const startLine = getLineNumber(normalizedMarkdown, startIndex);
+				const endLine = getLineNumber(
+					normalizedMarkdown,
+					startIndex + normalizedFind.length,
 				);
-				for (const el of allTextElements) {
-					if (el.textContent?.includes(normalizedFind.trim())) {
+
+				// Look for elements with data-line attributes that match our line range
+				const allElements =
+					editorRef.current.querySelectorAll<HTMLElement>("[data-line]");
+				const elementsInRange: HTMLElement[] = [];
+
+				for (const el of allElements) {
+					const lineAttr = el.getAttribute("data-line");
+					if (!lineAttr) continue;
+
+					const elementLine = Number.parseInt(lineAttr, 10);
+					if (elementLine >= startLine && elementLine <= endLine) {
 						elementsInRange.push(el);
-						break; // Take the first match
 					}
 				}
-			}
 
-			if (elementsInRange.length === 0) {
-				console.warn("No HTML elements match diff range", {
-					startLine,
-					endLine,
-					diff,
-				});
-				// Fallback: insert at the end of the editor
+				// If no elements found with exact line match, try to find elements containing the diff text
+				if (elementsInRange.length === 0) {
+					const allTextElements =
+						editorRef.current.querySelectorAll<HTMLElement>(
+							"p, h1, h2, h3, h4, h5, h6, li, td, th",
+						);
+					for (const el of allTextElements) {
+						if (el.textContent?.includes(normalizedFind.trim())) {
+							elementsInRange.push(el);
+							break; // Take the first match
+						}
+					}
+				}
+
+				if (elementsInRange.length === 0) {
+					console.warn("No HTML elements match diff range", {
+						startLine,
+						endLine,
+						diff,
+					});
+					// Fallback: insert at the end of the editor
+					const diffContainer = buildDiffContainer(diff);
+
+					editorRef.current.appendChild(diffContainer);
+					diffContainer.scrollIntoView({ behavior: "smooth", block: "center" });
+					return;
+				}
+
+				const rangeObj = window.document.createRange();
+				rangeObj.setStartBefore(elementsInRange[0]);
+				rangeObj.setEndAfter(elementsInRange[elementsInRange.length - 1]);
+
 				const diffContainer = buildDiffContainer(diff);
 
-				editorRef.current.appendChild(diffContainer);
+				rangeObj.deleteContents();
+				rangeObj.insertNode(diffContainer);
 				diffContainer.scrollIntoView({ behavior: "smooth", block: "center" });
-				return;
+			} catch (error) {
+				console.error("Failed to show diff inline:", error, { diff });
 			}
-
-			const rangeObj = window.document.createRange();
-			rangeObj.setStartBefore(elementsInRange[0]);
-			rangeObj.setEndAfter(elementsInRange[elementsInRange.length - 1]);
-
-			const diffContainer = buildDiffContainer(diff);
-
-			rangeObj.deleteContents();
-			rangeObj.insertNode(diffContainer);
-			diffContainer.scrollIntoView({ behavior: "smooth", block: "center" });
-		} catch (error) {
-			console.error("Failed to show diff inline:", error, { diff });
-		}
-	}, []);
+			// buildDiffContainer is raw DOM, so locale must re-arm this callback and
+			// the effect below to rebuild the visible review labels.
+		},
+		[locale],
+	);
 
 	useEffect(() => {
 		if (!reviewState || !editorRef.current) return;

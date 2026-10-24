@@ -743,7 +743,7 @@ export const ModelPicker: FC<PickerContext> = ({
 	note,
 	draft,
 }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	/*
 	 * `false` is the shipped registry's own document; the live listing is a
 	 * SEPARATE key (see the promotion beside the query, and why it is the second
@@ -1176,6 +1176,8 @@ export const ModelPicker: FC<PickerContext> = ({
 		(row) => selectorOf(row) === shownSelector,
 	);
 	const options = useMemo<PickerOption[]>(() => {
+		// t() reads at call time; locale is therefore a real invalidation input.
+		void locale;
 		// `connected` is also true when the credential store could not be read,
 		// which is why every model once sat under "Connected" on a fixture with
 		// no credentials at all (D5). With that unknown, the picker still lists
@@ -1186,7 +1188,7 @@ export const ModelPicker: FC<PickerContext> = ({
 			credentialsKnown: known,
 			shownSelector,
 		});
-	}, [catalogueDocument, scoped, shownSelector]);
+	}, [catalogueDocument, scoped, shownSelector, locale]);
 
 	/*
 	 * The listing call takes the provenance `drawnCatalogue` decided above — one
@@ -2401,7 +2403,7 @@ export const EffortPicker: FC<PickerContext> = ({
 // ------------------------------------------------------------------ theme
 
 export const ThemePicker: FC<PickerContext> = ({ onClose, action }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const themeName = useUiPreferencesStore((state) => state.themeName);
 	const setTheme = useUiPreferencesStore((state) => state.setTheme);
 	const [result, setResult] = useState<PickerResult | null>(null);
@@ -2432,21 +2434,18 @@ export const ThemePicker: FC<PickerContext> = ({ onClose, action }) => {
 			) ?? null
 		);
 	}, [action.args]);
-	const options = useMemo<PickerOption[]>(
-		() =>
-			Object.values(themes).map((theme) => ({
-				value: theme.id,
-				label: theme.name,
-				description: theme.description,
-				current: theme.id === themeName,
-				group: theme.id.startsWith(
-					t("ui.chat.pickers.destination_pickers.localoperator"),
-				)
-					? "Local Operator"
-					: t("ui.chat.pickers.destination_pickers.ports"),
-			})),
-		[themeName],
-	);
+	const options = useMemo<PickerOption[]>(() => {
+		void locale;
+		return Object.values(themes).map((theme) => ({
+			value: theme.id,
+			label: theme.name,
+			description: theme.description,
+			current: theme.id === themeName,
+			group: theme.id.startsWith("localOperator")
+				? "Local Operator"
+				: t("ui.chat.pickers.destination_pickers.ports"),
+		}));
+	}, [themeName, locale]);
 	// A typed argument (`/theme dracula`) is a direct pick when it names a theme.
 	useEffect(() => {
 		const wanted = action.args.trim();
@@ -2954,9 +2953,10 @@ function readForkEntryExcerpt(data: Record<string, unknown>): string | null {
  * gap. The typed-code mapping that would replace this note lands with the core
  * slice (in flight in `damianvtran/local-operator`) and is declared on the PR.
  */
-export const FORK_CUT_NOTE = t(
-	"ui.chat.pickers.destination_pickers.if_that_message_was_sent_just_now_it_may_not_be_in_the_conversation_s_hi",
-);
+export const FORK_CUT_NOTE = (): string =>
+	t(
+		"ui.chat.pickers.destination_pickers.if_that_message_was_sent_just_now_it_may_not_be_in_the_conversation_s_hi",
+	);
 
 /**
  * Fork the conversation - all of it, or the prefix that ends at one message.
@@ -3104,7 +3104,7 @@ export const ForkPicker: FC<PickerContext> = ({
 			 * `FORK_CUT_NOTE` for the two reasons and for what the note deliberately
 			 * does NOT say.
 			 */
-			cutEntryId ? FORK_CUT_NOTE : undefined,
+			cutEntryId ? FORK_CUT_NOTE() : undefined,
 		);
 		if (value) rebind(value.data.session_id);
 	}, [op, sessionId, message, rebind, cutEntryId, capabilities.data]);
@@ -3270,7 +3270,7 @@ export const StopPicker: FC<PickerContext> = ({
 	onClose,
 	action,
 }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const rows = useSessionRows();
 	const [targets, setTargets] = useState<Set<string>>(
 		() => new Set(action.args.trim() === "all" ? [] : [sessionId]),
@@ -3278,20 +3278,19 @@ export const StopPicker: FC<PickerContext> = ({
 	const [all, setAll] = useState(action.args.trim() === "all");
 	const [confirmed, setConfirmed] = useState(false);
 	const op = useOperation();
-	const options = useMemo<PickerOption[]>(
-		() =>
-			(rows.data ?? []).map((row) => ({
-				value: row.id,
-				label: sessionLabel(row),
-				description: sessionActivity(
-					row,
-					t("ui.chat.pickers.destination_pickers.cold_no_owner_running"),
-				),
-				meta: row.id,
-				current: targets.has(row.id) || all,
-			})),
-		[rows.data, targets, all],
-	);
+	const options = useMemo<PickerOption[]>(() => {
+		void locale;
+		return (rows.data ?? []).map((row) => ({
+			value: row.id,
+			label: sessionLabel(row),
+			description: sessionActivity(
+				row,
+				t("ui.chat.pickers.destination_pickers.cold_no_owner_running"),
+			),
+			meta: row.id,
+			current: targets.has(row.id) || all,
+		}));
+	}, [rows.data, targets, all, locale]);
 	const chosen = all ? (rows.data ?? []).map((row) => row.id) : [...targets];
 	const submit = useCallback(async () => {
 		if (chosen.length === 0 || !confirmed) return;
@@ -3373,9 +3372,11 @@ export const StopPicker: FC<PickerContext> = ({
 // -------------------------------------------------------------------- copy
 
 export const CopyPicker: FC<PickerContext> = ({ canonical, onClose }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const [result, setResult] = useState<PickerResult | null>(null);
 	const options = useMemo<PickerOption[]>(() => {
+		// t() reads at call time; locale is therefore a real invalidation input.
+		void locale;
 		const rows: PickerOption[] = [];
 		const records = canonical.transcript.records;
 		for (let i = records.length - 1; i >= 0 && rows.length < 60; i--) {
@@ -3422,7 +3423,7 @@ export const CopyPicker: FC<PickerContext> = ({ canonical, onClose }) => {
 			}
 		}
 		return rows;
-	}, [canonical.transcript.records]);
+	}, [canonical.transcript.records, locale]);
 
 	const onPick = useCallback(
 		async (value: string) => {
@@ -3488,29 +3489,28 @@ export const ResumePicker: FC<PickerContext> = ({
 	rebind,
 	action,
 }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const rows = useSessionRows();
 	const [result, setResult] = useState<PickerResult | null>(null);
-	const options = useMemo<PickerOption[]>(
-		() =>
-			(rows.data ?? [])
-				.slice()
-				.sort((a, b) => (b.mtime ?? 0) - (a.mtime ?? 0))
-				.map((row) => ({
-					value: row.id,
-					label: sessionLabel(row),
-					description: sessionActivity(
-						row,
-						t(
-							"ui.chat.pickers.destination_pickers.cold_reopens_on_the_next_message",
-						),
+	const options = useMemo<PickerOption[]>(() => {
+		void locale;
+		return (rows.data ?? [])
+			.slice()
+			.sort((a, b) => (b.mtime ?? 0) - (a.mtime ?? 0))
+			.map((row) => ({
+				value: row.id,
+				label: sessionLabel(row),
+				description: sessionActivity(
+					row,
+					t(
+						"ui.chat.pickers.destination_pickers.cold_reopens_on_the_next_message",
 					),
-					meta: new Date((row.mtime ?? 0) * 1000).toLocaleString(),
-					current: row.id === sessionId,
-					keywords: [row.id],
-				})),
-		[rows.data, sessionId],
-	);
+				),
+				meta: new Date((row.mtime ?? 0) * 1000).toLocaleString(),
+				current: row.id === sessionId,
+				keywords: [row.id],
+			}));
+	}, [rows.data, sessionId, locale]);
 	// `/resume <id>` with a known id is a direct pick.
 	useEffect(() => {
 		const wanted = action.args.trim();
@@ -4289,7 +4289,7 @@ export const LoopPicker: FC<PickerContext> = ({
 };
 
 export const CredentialPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const [key, setKey] = useState("");
 	const [value, setValue] = useState("");
 	const [confirmForget, setConfirmForget] = useState(false);
@@ -4312,16 +4312,15 @@ export const CredentialPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 	 * round 1, Q3). The reading lives in `credential-capture.ts` beside the mint
 	 * guard that needs the same names, so the two cannot drift apart again.
 	 */
-	const options = useMemo<PickerOption[]>(
-		() =>
-			credentialNamesFrom(list.data).map((name) => ({
-				value: name,
-				label: name,
-				meta: t("ui.chat.pickers.destination_pickers.stored"),
-				current: name === key,
-			})),
-		[list.data, key],
-	);
+	const options = useMemo<PickerOption[]>(() => {
+		void locale;
+		return credentialNamesFrom(list.data).map((name) => ({
+			value: name,
+			label: name,
+			meta: t("ui.chat.pickers.destination_pickers.stored"),
+			current: name === key,
+		}));
+	}, [list.data, key, locale]);
 	const store = useCallback(async () => {
 		if (!key.trim() || !value) return;
 		await op.perform(
@@ -4444,30 +4443,29 @@ export const CredentialPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 // ------------------------------------------------------------ auth flows
 
 export const LoginPicker: FC<PickerContext> = ({ onClose, action }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const navigate = useNavigate();
 	const providers = useDesktopProviders(true);
-	const options = useMemo<PickerOption[]>(
-		() =>
-			(providers.data ?? []).map((provider: DesktopProvider) => ({
-				value: provider.id,
-				label: provider.name,
-				description: provider.auth_methods
-					.map((method) => method.label)
-					.join(", "),
-				meta: provider.configured
-					? t("ui.chat.pickers.destination_pickers.stored54112c", {
-							stored_credentials: provider.stored_credentials,
-						})
-					: undefined,
-				current: provider.configured,
-				keywords: provider.search_aliases,
-				group: provider.configured
-					? t("ui.chat.pickers.destination_pickers.signed_in")
-					: t("ui.chat.pickers.destination_pickers.available"),
-			})),
-		[providers.data],
-	);
+	const options = useMemo<PickerOption[]>(() => {
+		void locale;
+		return (providers.data ?? []).map((provider: DesktopProvider) => ({
+			value: provider.id,
+			label: provider.name,
+			description: provider.auth_methods
+				.map((method) => method.label)
+				.join(", "),
+			meta: provider.configured
+				? t("ui.chat.pickers.destination_pickers.stored54112c", {
+						stored_credentials: provider.stored_credentials,
+					})
+				: undefined,
+			current: provider.configured,
+			keywords: provider.search_aliases,
+			group: provider.configured
+				? t("ui.chat.pickers.destination_pickers.signed_in")
+				: t("ui.chat.pickers.destination_pickers.available"),
+		}));
+	}, [providers.data, locale]);
 	// `/login <provider>` opens that provider directly.
 	useEffect(() => {
 		const wanted = action.args.trim();
@@ -4646,32 +4644,31 @@ export const HelpPalette: FC<PickerContext> = ({
 	onClose,
 	dispatch,
 }) => {
-	useI18nLocale();
-	const options = useMemo<PickerOption[]>(
-		() =>
-			commands.map((command) => ({
-				value: command.name,
-				label: `/${command.name}${command.aliases.length ? `  (${command.aliases.map((a) => `/${a}`).join(", ")})` : ""}`,
-				description: command.description,
-				// The right-hand column used to print the routing id
-				// (`transcript.clear`, `radient.mobile`) as the most prominent
-				// thing on every row. That is internal vocabulary, not something a
-				// user can act on, so the meta now says only what the command
-				// TAKES. Destinations remain searchable below.
-				meta:
-					command.arguments === "none"
-						? ""
-						: command.arguments === "required"
-							? t("ui.chat.pickers.destination_pickers.needs_an_argument")
-							: t("ui.chat.pickers.destination_pickers.takes_an_argument"),
-				keywords: [...command.aliases, command.destination, command.execution],
-				group:
-					command.execution === "owner"
-						? t("ui.chat.pickers.destination_pickers.session_runs_on_the_owner")
-						: t("ui.chat.pickers.destination_pickers.desktop"),
-			})),
-		[commands],
-	);
+	const locale = useI18nLocale();
+	const options = useMemo<PickerOption[]>(() => {
+		void locale;
+		return commands.map((command) => ({
+			value: command.name,
+			label: `/${command.name}${command.aliases.length ? `  (${command.aliases.map((a) => `/${a}`).join(", ")})` : ""}`,
+			description: command.description,
+			// The right-hand column used to print the routing id
+			// (`transcript.clear`, `radient.mobile`) as the most prominent
+			// thing on every row. That is internal vocabulary, not something a
+			// user can act on, so the meta now says only what the command
+			// TAKES. Destinations remain searchable below.
+			meta:
+				command.arguments === "none"
+					? ""
+					: command.arguments === "required"
+						? t("ui.chat.pickers.destination_pickers.needs_an_argument")
+						: t("ui.chat.pickers.destination_pickers.takes_an_argument"),
+			keywords: [...command.aliases, command.destination, command.execution],
+			group:
+				command.execution === "owner"
+					? t("ui.chat.pickers.destination_pickers.session_runs_on_the_owner")
+					: t("ui.chat.pickers.destination_pickers.desktop"),
+		}));
+	}, [commands, locale]);
 	return (
 		<PickerHost
 			open

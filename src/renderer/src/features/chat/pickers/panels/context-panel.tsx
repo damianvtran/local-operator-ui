@@ -82,29 +82,29 @@ const ESTIMATE_COLUMNS = (): Column<EstimateTableRow>[] => [
 ];
 
 /** The pre-`numbers` fallback: the owner's pairs, two columns, no bars. */
-const OwnerRowsTable: FC<{ rows: [string, string][] }> = ({ rows }) => (
-	<DataTable<[string, string]>
-		label={t("ui.chat.pickers.context_panel.next_request_estimate")}
-		columns={[
-			{
-				key: "row",
-				header: t("ui.chat.pickers.context_panel.block"),
-				cell: (row) => row[0],
-			},
-			{
-				key: "tokens",
-				header: t("ui.chat.pickers.context_panel.tokens"),
-				numeric: true,
-				cell: (row) => row[1],
-			},
-		]}
-		rows={rows}
-		rowKey={(row) => {
-			useI18nLocale();
-			return row[0];
-		}}
-	/>
-);
+export const OwnerRowsTable: FC<{ rows: [string, string][] }> = ({ rows }) => {
+	useI18nLocale();
+	return (
+		<DataTable<[string, string]>
+			label={t("ui.chat.pickers.context_panel.next_request_estimate")}
+			columns={[
+				{
+					key: "row",
+					header: t("ui.chat.pickers.context_panel.block"),
+					cell: (row) => row[0],
+				},
+				{
+					key: "tokens",
+					header: t("ui.chat.pickers.context_panel.tokens"),
+					numeric: true,
+					cell: (row) => row[1],
+				},
+			]}
+			rows={rows}
+			rowKey={(row) => row[0]}
+		/>
+	);
+};
 
 const EstimateRows: FC<{ block: ContextBlock }> = ({ block }) => {
 	useI18nLocale();

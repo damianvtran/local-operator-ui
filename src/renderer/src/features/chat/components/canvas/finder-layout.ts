@@ -170,7 +170,9 @@ export function finderSections(
 		});
 	if (highlights.length && working.length) {
 		sections.push({
-			id: t("ui.canvas.finder_layout.working_files"),
+			// Preferences, closedSections and band identity use this stable id;
+			// only the human-facing label is localized.
+			id: "Working files",
 			label: t("ui.canvas.finder_layout.working_files"),
 			items: [],
 			open: prefs.workingOpen || narrowing,
