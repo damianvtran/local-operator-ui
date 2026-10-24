@@ -1,0 +1,13 @@
+{
+	"ui.chat.at.contract.this_backend_cannot_carry_file_references_update_the_backend_and": "یہ بیک اینڈ فائل حوالہ جات نہیں لے جا سکتا۔ بیک اینڈ اپ ڈیٹ کریں اور دوبارہ کوشش کریں۔",
+	"ui.chat.at.contract.nothing_to_insert_esc_closes": "داخل کرنے کو کچھ نہیں · Esc بند کرتا ہے",
+	"ui.chat.at.contract.reading_this_folder": "یہ فولڈر پڑھا جا رہا ہے…",
+	"ui.chat.at.contract.this_folder_is_empty": "یہ فولڈر خالی ہے۔",
+	"ui.chat.at.contract.could_not_read_this_folder_it_may_need_a_permission": "یہ فولڈر پڑھا نہیں جا سکا۔ ہو سکتا ہے اسے ایسی اجازت درکار ہو جو اس ایپ کے پاس نہیں۔",
+	"ui.chat.at.contract.could_not_read_this_folder_check_that_it_exists_and": "یہ فولڈر پڑھا نہیں جا سکا۔ جانچیں کہ یہ موجود ہے اور آپ اسے کھول سکتے ہیں۔",
+	"ui.chat.at.contract.enter_opens": "Enter {path} کھولتا ہے",
+	"ui.chat.at.contract.enter_inserts": "Enter {token} داخل کرتا ہے",
+	"ui.chat.at.contract.footer": "{verb} · Esc بند کرتا ہے",
+	"ui.chat.at.contract.nothing_matches": "یہاں {scope} میں “{query}” سے کچھ مطابقت نہیں رکھتا۔",
+	"ui.chat.at.contract.no_files_match": "{scope} میں “{query}” سے کوئی فائل مطابقت نہیں رکھتی۔"
+}

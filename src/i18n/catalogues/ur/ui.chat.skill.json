@@ -1,0 +1,9 @@
+{
+	"ui.chat.skill.contract.this_backend_cannot_serve_the_skill_catalogue_update_the_backend": "یہ بیک اینڈ مہارتوں کی فہرست فراہم نہیں کر سکتا۔ بیک اینڈ اپ ڈیٹ کریں اور دوبارہ کوشش کریں۔",
+	"ui.chat.skill.contract.skills_arent_available_right_now": "مہارتیں ابھی دستیاب نہیں ہیں۔",
+	"ui.chat.skill.contract.no_skills_found_see_skills": "کوئی مہارت نہیں ملی — /skills دیکھیں",
+	"ui.chat.skill.contract.no_skills_found": "کوئی مہارت نہیں ملی۔",
+	"ui.chat.skill.contract.no_skills_match": "کوئی مہارت مطابقت نہیں رکھتی۔",
+	"ui.chat.skill.contract.enter_completes": "Enter ${name} مکمل کرتا ہے؛ دوبارہ Enter اسے بھیجتا ہے۔",
+	"ui.chat.skill.contract.click_completes": "کلک ${name} مکمل کرتا ہے۔"
+}

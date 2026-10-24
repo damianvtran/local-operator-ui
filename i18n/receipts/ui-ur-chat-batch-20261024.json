@@ -1,0 +1,540 @@
+{
+ "schema": 1,
+ "kind": "translator-receipt",
+ "locale": "ur",
+ "locale_name": "Urdu",
+ "status": "translated",
+ "awaiting": "independent i18n-auditor review; ledger rows, IDENTICAL_OK entries and coverage reconciliation are integration tasks",
+ "translator": {
+  "agent": "translator",
+  "harness": "Local Operator",
+  "team": "lopdev",
+  "session": "8bbe0897c75f",
+  "model": "radient/auto",
+  "model_provenance": "Served model tag reported by the harness for this session at translation time (radient/auto). No narrower underlying model id was exposed and no separate fallback was observed; no other model is claimed.",
+  "date": "2026-10-24"
+ },
+ "source": {
+  "branch": "feat/i18n-extract-chat",
+  "base_head": "5d97575ac4388522267291ffee74d12bd9675b12",
+  "brief_pinned_head": "23eaaea7b8",
+  "base_pin_correction": "The brief pinned 23eaaea7b8 but named 1,733 added keys; that count exists only at the extraction branch tip 5d97575ac4 (23eaaea7b8 has 1,758: 38 machine-token keys were pruned and 13 real keys added by the two source-fix commits). The branch is based on 5d97575ac4 and translates exactly its added-key set; no key absent from the 5d97575ac4 English catalogues is written.",
+  "worktree": "/Users/damian/local-operator-ui/.worktrees/i18n-chat-ur",
+  "translation_branch": "feat/i18n-chat-ur",
+  "batch_added_keys": 1733,
+  "target_keys": 1795,
+  "pre_existing_values_preserved": 30,
+  "pre_existing_english_keys_filled": 32
+ },
+ "namespaces": {
+  "ui.chat.aside": {
+   "english_keys": 35,
+   "target_keys": 35,
+   "added_keys": 35,
+   "pre_existing_values": 35,
+   "filled_preexisting_english_keys": 0,
+   "sha256": {
+    "en": "d8ce04c8e909a73f3050588b2b562b12db3840ae1f4231a66ef3eb5ac76ed1b6",
+    "target": "5db6e9445d4f665f850262dc80c246ba448974396c4612cd24d2473172b23874",
+    "context": "522fcbc0c965224e7d4fb8cb8200e7c68889c9ee73d073b09c6cb2af827b8431"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.aside.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.aside.json",
+    "context": "src/i18n/catalogues/en/ui.chat.aside.context.json"
+   }
+  },
+  "ui.chat.asks": {
+   "english_keys": 101,
+   "target_keys": 101,
+   "added_keys": 89,
+   "pre_existing_values": 101,
+   "filled_preexisting_english_keys": 0,
+   "sha256": {
+    "en": "f5017d10d314fc9e3e94eeff2d5067c559e97ba0c6ffcef4e8ed9d1c39cf67ab",
+    "target": "d6b35c493d6220235be4d4a4090e102bb9ecc9ce536fc4bbce3d504645d89427",
+    "context": "0e1f544932e7c9c6c94bbb0d4e2066910d80e33060ad23bbbb57d5bb9c1b637c"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.asks.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.asks.json",
+    "context": "src/i18n/catalogues/en/ui.chat.asks.context.json"
+   }
+  },
+  "ui.chat.at": {
+   "english_keys": 11,
+   "target_keys": 11,
+   "added_keys": 11,
+   "pre_existing_values": 11,
+   "filled_preexisting_english_keys": 0,
+   "sha256": {
+    "en": "685a75115b95770d8d74cc43c2f250c53bed311c0d117cf51849f72041533694",
+    "target": "f6386b661e1e61fc26c5412ca2d1265fb07e60203593b22a4fb2eea14ee2e1ad",
+    "context": "da529439f1aa5970aff5b833b40900524c2cfd465abe96296e3b9cecf5ec555e"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.at.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.at.json",
+    "context": "src/i18n/catalogues/en/ui.chat.at.context.json"
+   }
+  },
+  "ui.chat.canonical": {
+   "english_keys": 297,
+   "target_keys": 297,
+   "added_keys": 267,
+   "pre_existing_values": 297,
+   "filled_preexisting_english_keys": 0,
+   "sha256": {
+    "en": "522e7fced024ec756b4b93b21952c4abfb232278a3ca32bba67b45978749eb6d",
+    "target": "9d568d711e6581471d808e68dfc12c63d19d56b227c97ee4f7b8b78166c0aba2",
+    "context": "af353a188112ef28df7dfda8c7139fa5bd33506a40b112392e1e40fbe32116f2"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+    "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+   }
+  },
+  "ui.chat.canvas_preview": {
+   "english_keys": 2,
+   "target_keys": 2,
+   "added_keys": 2,
+   "pre_existing_values": 2,
+   "filled_preexisting_english_keys": 0,
+   "sha256": {
+    "en": "4a29d028e7727502fbefd86b995750910ca3760879769ffa1fc537e5893920a9",
+    "target": "d372adab47ae0350e4fb71ab8e5de39924f5e93b0d1b06d37cf7c116935407ed",
+    "context": "5f336900e740bf4ebc7819837676fc2eeffe6deb69b8181ebc440e962d580a06"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.canvas_preview.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.canvas_preview.json",
+    "context": "src/i18n/catalogues/en/ui.chat.canvas_preview.context.json"
+   }
+  },
+  "ui.chat.credential_capture": {
+   "english_keys": 18,
+   "target_keys": 18,
+   "added_keys": 18,
+   "pre_existing_values": 18,
+   "filled_preexisting_english_keys": 0,
+   "sha256": {
+    "en": "1776a41f5dfa3335b5e390e85870cb55756e25c6a2439cd3f42ea4c864515bdd",
+    "target": "cecf362e2266f035a29b6b743c758a98eb499c77916dfae9be90bbc2b3cc34bc",
+    "context": "bf6e3bb8cd70e39cba3aad66b0d92aa38ebad880ac49405fb1affd032f6f3b1f"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.credential_capture.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.credential_capture.json",
+    "context": "src/i18n/catalogues/en/ui.chat.credential_capture.context.json"
+   }
+  },
+  "ui.chat.directory": {
+   "english_keys": 42,
+   "target_keys": 42,
+   "added_keys": 42,
+   "pre_existing_values": 42,
+   "filled_preexisting_english_keys": 0,
+   "sha256": {
+    "en": "57540488fb400a9a4ac1040c7d7f91f19f25ab313ec87a50ef527da442d3ec6b",
+    "target": "baa750bd83b806479d4b7ff0a23dd9a150609b6dacf293961a98ae7226a63b64",
+    "context": "4bfdbc219bccc88fbdcaf3c62897b168d5604d5acbbb5f70f040c95c941c2daa"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.directory.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.directory.json",
+    "context": "src/i18n/catalogues/en/ui.chat.directory.context.json"
+   }
+  },
+  "ui.chat.header": {
+   "english_keys": 72,
+   "target_keys": 72,
+   "added_keys": 62,
+   "pre_existing_values": 72,
+   "filled_preexisting_english_keys": 0,
+   "sha256": {
+    "en": "ff03f6ca7b3206e77fc260116d2b540cc9f211ea37436863b874770e917158d8",
+    "target": "8157b2a12e94df8b3904196db1375b543f04f33c06025fe54c7ca217c864853a",
+    "context": "0d601a99861fc8b23207f117b90b697ba88ddd4f6419a68021f34c177158ea2e"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.header.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.header.json",
+    "context": "src/i18n/catalogues/en/ui.chat.header.context.json"
+   }
+  },
+  "ui.chat": {
+   "english_keys": 532,
+   "target_keys": 532,
+   "added_keys": 524,
+   "pre_existing_values": 532,
+   "filled_preexisting_english_keys": 0,
+   "sha256": {
+    "en": "dc5765d20ff846c61f3fe8953e69524393561bc2a39f89fa419958d4e4a67346",
+    "target": "fd1f5c3eb22f5745bd9e110a52910542d608bd4481b5522166af428d724662ec",
+    "context": "f95436a7c1e91f17b47a5f45059f58ef63749cedef54b02d10b29260477be426"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.json",
+    "context": "src/i18n/catalogues/en/ui.chat.context.json"
+   }
+  },
+  "ui.chat.message": {
+   "english_keys": 55,
+   "target_keys": 55,
+   "added_keys": 55,
+   "pre_existing_values": 55,
+   "filled_preexisting_english_keys": 0,
+   "sha256": {
+    "en": "95d7b60b2cb1bdc37648cfa896856ce53724e300ed4a6b0448d7562aad452a5a",
+    "target": "3e844d3eaec502d0ef873bbedd97cc0c7e19f795f0eb52f5a9545c96fc82af95",
+    "context": "0278baa63867980cd08d18e47e282af12a6330b7c6a785f0157e7a01cceb4230"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.message.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.message.json",
+    "context": "src/i18n/catalogues/en/ui.chat.message.context.json"
+   }
+  },
+  "ui.chat.options": {
+   "english_keys": 33,
+   "target_keys": 33,
+   "added_keys": 33,
+   "pre_existing_values": 33,
+   "filled_preexisting_english_keys": 0,
+   "sha256": {
+    "en": "fdfb1ceae54aa5270dd76b67748f56fa14e5d3f47d7770dad8eba755995a5a79",
+    "target": "1ee3712b594d3061944adccd4c8ba354c3ff0c91e9d25942fa8bbb4127ac66ed",
+    "context": "4609f41205d7d0b14dd07e98a629b9fb40f74f870106e78b30a3b210eb7f13db"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.options.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.options.json",
+    "context": "src/i18n/catalogues/en/ui.chat.options.context.json"
+   }
+  },
+  "ui.chat.run_details": {
+   "english_keys": 154,
+   "target_keys": 154,
+   "added_keys": 152,
+   "pre_existing_values": 154,
+   "filled_preexisting_english_keys": 0,
+   "sha256": {
+    "en": "daf3ddc7d9c0904642876bf3db0746b6c0c68c5fe3b87a1a6730b07f67c90c2f",
+    "target": "198725cb28950df60b4a5dc283468a820e64f51c3cef08db7f806c66ece17917",
+    "context": "dcb2cf6f636814a1866186e8864fd6817033fa8de027049b365f362c53b5d384"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.run_details.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.run_details.json",
+    "context": "src/i18n/catalogues/en/ui.chat.run_details.context.json"
+   }
+  },
+  "ui.chat.session_status": {
+   "english_keys": 162,
+   "target_keys": 162,
+   "added_keys": 162,
+   "pre_existing_values": 162,
+   "filled_preexisting_english_keys": 0,
+   "sha256": {
+    "en": "05a6e2dd52cd41fb90dbb6756bb8a8f51c5d22e3769edb3fd6228a0d9a059198",
+    "target": "6db9c4f05e4e1f378172f1d28548de16843ef857d092c74be2233409669239c8",
+    "context": "91544a1523e2ccd3a50041e3530ded39255a614f571c50264991ed8e92ca90e7"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.session_status.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.session_status.json",
+    "context": "src/i18n/catalogues/en/ui.chat.session_status.context.json"
+   }
+  },
+  "ui.chat.skill": {
+   "english_keys": 7,
+   "target_keys": 7,
+   "added_keys": 7,
+   "pre_existing_values": 7,
+   "filled_preexisting_english_keys": 0,
+   "sha256": {
+    "en": "919b6643e792d02ed270911df96d96da277bba5b5b91a2d04fac6cf044acfc10",
+    "target": "e6e2f618041b03504eebd58c940d5873f5b6643d15c2fa73c76d8fa10517787e",
+    "context": "012b41d3b048ae9575012522051687b87e3b3a8189dab9121985052ea04f965d"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.skill.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.skill.json",
+    "context": "src/i18n/catalogues/en/ui.chat.skill.context.json"
+   }
+  },
+  "ui.chat.trace": {
+   "english_keys": 274,
+   "target_keys": 274,
+   "added_keys": 274,
+   "pre_existing_values": 274,
+   "filled_preexisting_english_keys": 0,
+   "sha256": {
+    "en": "52a0fa5ed78ec2f3bbedf5b67f7abf3cc8d72c7a66ff4383d182358e242fb848",
+    "target": "9106f6533627291c89da327384bbcbdc7c3fbc4f5884bab3db06db45fff78f94",
+    "context": "b54b6acb4399743d207d8a793080555f1cab291761de90cf3e6e9f3ce9c70016"
+   },
+   "paths": {
+    "en": "src/i18n/catalogues/en/ui.chat.trace.json",
+    "target": "src/i18n/catalogues/ur/ui.chat.trace.json",
+    "context": "src/i18n/catalogues/en/ui.chat.trace.context.json"
+   }
+  }
+ },
+ "validation": {
+  "generate_check": {
+   "command": "node scripts/i18n/generate.mjs --check",
+   "result": "src/i18n/keys.gen.ts is byte-identical to a fresh generation.",
+   "exit": 0
+  },
+  "per_key_icu_pseudo_check": {
+   "command": "node <scratchpad>/check-i18n-chat.mjs",
+   "result": "namespaces=15 keys=1733 neutral=88 errors=0 warnings=0",
+   "exit": 0,
+   "covers": "every added key: ICU parse on both sides, argument names/select arms/plural categories/offsets/tags identical, NFC, no manual bidi controls, no Hindi danda, no unexplained English stub, leading/trailing whitespace parity"
+  },
+  "locale_parity": {
+   "command": "node <scratchpad>/verify-namespaces.mjs",
+   "result": "checked=1795 errors=0 warnings=0",
+   "exit": 0,
+   "covers": "all 15 touched namespaces: identical key set and key order with English, no duplicate keys on either side, ICU structure on every key (not only the batch's)"
+  },
+  "git_diff_check": {
+   "command": "git diff --check",
+   "exit": 0
+  }
+ },
+ "placeholders": {
+  "occurrences_in_added_english": 657,
+  "verified": "all present and structurally identical per key"
+ },
+ "neutral_identical_keys": [
+  "ui.chat.asks.ask_panel.label_count",
+  "ui.chat.asks.ask_panel.word_question",
+  "ui.chat.asks.fleet_ask_drawer.verb_name",
+  "ui.chat.asks.queue.short_seconds",
+  "ui.chat.asks.queue.short_minutes",
+  "ui.chat.asks.queue.short_hours",
+  "ui.chat.asks.queue.short_days",
+  "ui.chat.canonical.fold_media.more",
+  "ui.chat.canonical.sound_batch_model.name_suffix",
+  "ui.chat.canonical.supplement_row.failedcause",
+  "ui.chat.canonical.older_history_slot.min_260px_olderhistory_hidden",
+  "ui.chat.canonical.canonical_transcript.direction",
+  "ui.chat.canonical.image_gen_card.noun_value",
+  "ui.chat.canonical.transcript_reducer.stringvalue_value",
+  "ui.chat.canonical.sound_player.action_label",
+  "ui.chat.canvas_preview.pdf_title",
+  "ui.chat.credential_capture.unconfirmed_chip",
+  "ui.chat.directory.directory_indicator.shown_move_cost_sentence",
+  "ui.chat.directory.directory_indicator.c_program_files",
+  "ui.chat.directory.directory_indicator.c_program_files_x86",
+  "ui.chat.directory.directory_indicator.state_label",
+  "ui.chat.header.chat_header.local_operator",
+  "ui.chat.header.chat_header_identity.current",
+  "ui.chat.header.chat_header_identity.label_closedreason",
+  "ui.chat.header.chat_header_identity.label_cuesentence",
+  "ui.chat.header.chat_header_identity.triggerlabel_label_closedreason",
+  "ui.chat.header.chat_header_identity_menu.closednoteid_title",
+  "ui.chat.header.chat_header_identity.value_description",
+  "ui.chat.header.chat_header_identity.trigger_action_label",
+  "ui.chat.header.chat_header_identity.cue_clause",
+  "ui.chat.header.chat_header_identity.label_current",
+  "ui.chat.chat_regions.ctrl_shift_l",
+  "ui.chat.sidebar.chat_sidebar.role_menuitem",
+  "ui.chat.chat_status_strip.outcome",
+  "ui.chat.composer.composer_status_row.askdeadlinesubject",
+  "ui.chat.composer.composer_status_row.goal_clear_text_label_seam_goal",
+  "ui.chat.composer.composer_status_row.goal_cleared_text_leading",
+  "ui.chat.composer.composer_status_row.stateword",
+  "ui.chat.delete_conversation.title",
+  "ui.chat.hub_update_mark.detail_action",
+  "ui.chat.sidebar.chat_sidebar.all_kind",
+  "ui.chat.sidebar.chat_sidebar.displayname_name",
+  "ui.chat.sidebar.chat_sidebar.footname_section_grown_hint",
+  "ui.chat.sidebar.chat_sidebar.silent_remedy",
+  "ui.chat.sidebar.chat_sidebar_view.label_position",
+  "ui.chat.sidebar.chat_sidebar_view.section_grown_hint_key",
+  "ui.chat.slash_commands.enter_tagverb",
+  "ui.chat.mermaid_diagram.var_color_warning",
+  "ui.chat.mermaid_diagram.var_color_warning_border",
+  "ui.chat.mermaid_diagram.var_color_warning_wash",
+  "ui.chat.artifact_identity.title_head",
+  "ui.chat.composer.composer_status_row.job_actionvalue_label_seam_jobclausevalue_busiestclausevalue",
+  "ui.chat.composer.composer_status_row.loop_labelvalue_loopstatuswordvalue",
+  "ui.chat.composer.composer_status_row.monitor_actionvalue_label_seam_monitorclausevalue",
+  "ui.chat.composer.composer_status_row.plan_actionvalue_label_seam_todoclausevalue",
+  "ui.chat.composer.composer_status_row.subagent_actionvalue_label_seam_childclausevalue_busiestclausevalue",
+  "ui.chat.composer.composer_status_row.text_label_seam_loopclausevalue",
+  "ui.chat.composer.composer_status_row.wake_actionvalue_label_seam_wakeclausevalue",
+  "ui.chat.draft_rows.draft_row_prefix_draftrowtitlevalue",
+  "ui.chat.draft_rows.value",
+  "ui.chat.message_grouping.value_value2",
+  "ui.chat.message_grouping.value_value2_b35da6",
+  "ui.chat.sidebar.chat_sidebar.clause",
+  "ui.chat.sidebar.chat_sidebar.detail",
+  "ui.chat.undo_toasts.detail",
+  "ui.chat.sidebar.chat_sidebar.pin_label",
+  "ui.chat.composer.composer_status_row.goal_disclosure_label",
+  "ui.chat.message.error_block.settings_section_providers",
+  "ui.chat.message.attachment_frame.detail",
+  "ui.chat.message.attachment_frame.name_detail",
+  "ui.chat.message.invalid_attachment.getfilenamevalue_reason",
+  "ui.chat.message.turn_timestamp.value_full",
+  "ui.chat.options.generation_settings_section.top_k",
+  "ui.chat.options.generation_settings_section.top_p",
+  "ui.chat.run_details.run_detail_mcp.label",
+  "ui.chat.run_details.run_detail_wakes.trailingclause",
+  "ui.chat.run_details.run_detail_model.value",
+  "ui.chat.run_details.run_detail_monitors.healthlabel",
+  "ui.chat.run_details.run_detail_monitors.interval",
+  "ui.chat.run_details.run_detail_monitors.lastchecklabel",
+  "ui.chat.run_details.run_detail_wakes.cadence",
+  "ui.chat.session_status.session_cost.text_cue",
+  "ui.chat.session_status.session_model.fallbackdefault",
+  "ui.chat.trace.receipt_row_model.base",
+  "ui.chat.trace.trace_fold.verb_object",
+  "ui.chat.trace.turn_summary.receipts",
+  "ui.chat.trace.turn_summary.value",
+  "ui.chat.trace.turn_summary.value_75ced7"
+ ],
+ "terms": {
+  "settled_from_glossary_and_existing_copy": [
+   "سیشن (session)",
+   "ایجنٹ (agent)",
+   "ذیلی ایجنٹ (subagent)",
+   "ٹول (tool)",
+   "ٹرانسکرپٹ (transcript)",
+   "ٹریس (trace)",
+   "ورک اسپیس (workspace)",
+   "منظوری/منظوریاں (approval/approvals)",
+   "شیڈول (schedule)",
+   "نگرانی (monitor)",
+   "بیداری (wake)",
+   "ریلے (relay)",
+   "پروجیکٹ (project)",
+   "ماڈل (model)",
+   "پرامپٹ (prompt)",
+   "کمپریشن (compaction)",
+   "استعمال (usage)",
+   "گفتگو (conversation)",
+   "چیٹ (chat)",
+   "باری (turn)",
+   "ڈیوائس (device)",
+   "فراہم کنندہ (provider)",
+   "بیک اینڈ (backend)",
+   "اسناد (credential)",
+   "ڈائریکٹری (directory)"
+  ],
+  "chosen_or_invented": [
+   {
+    "term": "چپ",
+    "english": "pill",
+    "why": "credential token rendered as a pill-shaped inline chip; گولی would read as medicine"
+   },
+   {
+    "term": "ٹمپریچیٹر",
+    "english": "Temperature",
+    "why": "model parameter name, transliterated rather than literal درجہ حرارت"
+   },
+   {
+    "term": "سیڈ",
+    "english": "seed",
+    "why": "sampling parameter, transliterated to stay recognisable"
+   },
+   {
+    "term": "فریکوئنسی پنلٹی / پریزنس پنلٹی",
+    "english": "frequency/presence penalty",
+    "why": "ML parameters kept as settled loanwords"
+   },
+   {
+    "term": "رن",
+    "english": "run",
+    "why": "run entity beside باری (turn), matching the run-details surface"
+   },
+   {
+    "term": "کینونیکل چیٹ",
+    "english": "canonical chat",
+    "why": "product term kept as a loanword"
+   },
+   {
+    "term": "انکرپٹڈ",
+    "english": "encrypted",
+    "why": "encrypted secret store; خفیف was rejected as wrong root"
+   },
+   {
+    "term": "جگہ",
+    "english": "seat",
+    "why": "agent seat in a team; avoided نشست because the style guide reserves it as a meeting"
+   },
+   {
+    "term": "ڈف",
+    "english": "diff",
+    "why": "compact trace label, transliterated"
+   }
+  ],
+  "kept_latin": [
+   "Local Operator",
+   "Radient",
+   "Radient Pass",
+   "Radient Automatic",
+   "MCP",
+   "OAuth",
+   "API",
+   "URL",
+   "HTML",
+   "PDF",
+   "SVG",
+   "Mermaid",
+   "Finder",
+   "Python",
+   "bash",
+   "lop",
+   "Top K",
+   "Top P",
+   "Auto",
+   "Enter",
+   "Esc",
+   "Shift+F10",
+   "Fn",
+   "Mac",
+   "yes/no (literal CLI answers)"
+  ]
+ },
+ "overflow": {
+  "maxCells_budgets_on_added_keys": 0,
+  "over_budget": [],
+  "flagged": [
+   {
+    "key": "ui.chat.composer.composer_status_row.stopped_after",
+    "reason": "source concatenates this prefix with the hardcoded English tail ' continuations'; Urdu cannot place the postposition after the number, so the rendered reason reads 'رکنے کی وجہ: 12 continuations'. Flag for source-side restructuring; translation uses the shortest natural head."
+   },
+   {
+    "key": "ui.chat.chat_status_strip.outcome",
+    "reason": "leading-space fragment ' {outcome}' kept byte-identical; translation is neutral by design."
+   }
+  ]
+ },
+ "files_written": [
+  "src/i18n/catalogues/ur/ui.chat.aside.json",
+  "src/i18n/catalogues/ur/ui.chat.asks.json",
+  "src/i18n/catalogues/ur/ui.chat.at.json",
+  "src/i18n/catalogues/ur/ui.chat.canonical.json",
+  "src/i18n/catalogues/ur/ui.chat.canvas_preview.json",
+  "src/i18n/catalogues/ur/ui.chat.credential_capture.json",
+  "src/i18n/catalogues/ur/ui.chat.directory.json",
+  "src/i18n/catalogues/ur/ui.chat.header.json",
+  "src/i18n/catalogues/ur/ui.chat.json",
+  "src/i18n/catalogues/ur/ui.chat.message.json",
+  "src/i18n/catalogues/ur/ui.chat.options.json",
+  "src/i18n/catalogues/ur/ui.chat.run_details.json",
+  "src/i18n/catalogues/ur/ui.chat.session_status.json",
+  "src/i18n/catalogues/ur/ui.chat.skill.json",
+  "src/i18n/catalogues/ur/ui.chat.trace.json",
+  "src/i18n/keys.gen.ts",
+  "i18n/receipts/ui-ur-chat-batch-20261024.json"
+ ],
+ "receipt_notes": "Existing Urdu values in ui.chat.json, ui.chat.header.json and ui.chat.asks.json were preserved byte-for-byte; only the final-line comma changed to keep JSON valid. Canonical and run_details gained 32 pre-existing English keys that had no Urdu value so the touched namespaces are key-complete. No English catalogue, other locale, ledger, allowance, shipped file or script was edited. keys.gen.ts was regenerated because the new Urdu catalogues are bundled imports."
+}
