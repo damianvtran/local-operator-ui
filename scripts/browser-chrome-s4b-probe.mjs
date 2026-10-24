@@ -1013,23 +1013,44 @@ async function historyScene({ shot, framesDir }) {
 		});
 		await sleep(500);
 		await frameScene(cdp, "owner-narrow-open-tab.png");
+		const narrowOwner = await evaluate(
+			cdp,
+			`(() => {
+				const row = document.querySelector('[data-tour-tag="browser-url-bar"]');
+				const wrapper = row?.parentElement;
+				const rect = (el) => el ? { x: Math.round(el.getBoundingClientRect().left), width: Math.round(el.getBoundingClientRect().width) } : null;
+				return { viewport: window.innerWidth, row: rect(row), wrapper: rect(wrapper) };
+			})()`,
+		);
 		const narrowChild = await childTitleGeometry(two.port, "Already open", 360);
+		let narrowCaptureError = null;
 		if (narrowChild) {
-			writeFileSync(
-				join(framesDir, "child-narrow-open-tab.png"),
-				await shot(narrowChild.child),
-			);
+			try {
+				writeFileSync(
+					join(framesDir, "child-narrow-open-tab.png"),
+					await shot(narrowChild.child),
+				);
+			} catch (error) {
+				// Keep the geometry verdict visible when the capture is the next
+				// casualty of a stale native width; do not turn it into a cascade.
+				narrowCaptureError = String(error);
+			}
 			narrowChild.child.close();
 		}
+		const narrowGeometryOk =
+			(narrowChild?.facts.viewport ?? 0) > 0 &&
+			(narrowChild?.facts.viewport ?? 0) <= 360 &&
+			(narrowChild?.facts.titleWidth ?? 0) >= 100 &&
+			(narrowChild?.facts.titleText ?? "").includes("Already open");
 		record(
 			"H8",
-			(narrowChild?.facts.viewport ?? 0) > 0 &&
-				(narrowChild?.facts.viewport ?? 0) <= 360 &&
-				(narrowChild?.facts.titleWidth ?? 0) >= 100 &&
-				(narrowChild?.facts.titleText ?? "").includes("Already open")
-				? "PASS"
-				: "FAIL",
-			{ child: narrowChild?.facts ?? null },
+			!narrowGeometryOk ? "FAIL" : narrowCaptureError ? "BLOCKED" : "PASS",
+			{
+				owner: narrowOwner,
+				child: narrowChild?.facts ?? null,
+				geometryOk: narrowGeometryOk,
+				captureError: narrowCaptureError,
+			},
 		);
 		await cdp.send("Emulation.clearDeviceMetricsOverride");
 		await sleep(400);
