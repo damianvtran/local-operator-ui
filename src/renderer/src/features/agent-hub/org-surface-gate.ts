@@ -31,6 +31,7 @@
 
 import { backendPairingSentence } from "@shared/api/local-operator/backend-error";
 import type { DesktopFeatureState } from "@shared/api/local-operator/desktop-hooks";
+import { t } from "@shared/i18n";
 import type { DaemonPairingCause } from "../../../../shared/backend-status";
 
 /**
@@ -42,7 +43,7 @@ import type { DaemonPairingCause } from "../../../../shared/backend-status";
  * outage arm records for itself).
  */
 export const ORG_SURFACE_BELOW_VERSION =
-	"Sharing agents with an organization needs a newer Local Operator backend. Update the backend and try again.";
+	"ui.hub.agents.org_backend_update_required" as const;
 
 /** Whether the org reads may be issued at all. */
 export const orgSurfaceReady = (state: DesktopFeatureState): boolean =>
@@ -57,5 +58,5 @@ export const orgSurfaceNotice = (
 	cause: DaemonPairingCause | null,
 ): string | null => {
 	if (state === "enabled" || state === "unknown") return null;
-	return backendPairingSentence(state, cause) ?? ORG_SURFACE_BELOW_VERSION;
+	return backendPairingSentence(state, cause) ?? t(ORG_SURFACE_BELOW_VERSION);
 };

@@ -16,6 +16,7 @@
  * still editable, instead of after a round trip and a moderation review.
  */
 
+import { type WithoutParams, t } from "@shared/i18n";
 import {
 	publicationDescriptionRule,
 	publicationInstructionsRule,
@@ -61,11 +62,11 @@ export type PublicationDraft = {
 };
 
 /** How each field is named in a sentence a person reads. */
-const FIELD_LABEL: Record<PublicationField, string> = {
-	name: "Name",
-	description: "Description",
-	instructions: "The instruction body",
-	tools: "Tools",
+const FIELD_LABEL: Record<PublicationField, WithoutParams> = {
+	name: "ui.agents.publication.field_name",
+	description: "ui.agents.publication.field_description",
+	instructions: "ui.agents.publication.field_instructions",
+	tools: "ui.agents.publication.field_tools",
 };
 
 /**
@@ -78,7 +79,14 @@ const FIELD_LABEL: Record<PublicationField, string> = {
 export function publicationIssues(draft: PublicationDraft): PublicationIssue[] {
 	const issues: PublicationIssue[] = [];
 	const add = (field: PublicationField, rule: string | null) => {
-		if (rule) issues.push({ field, message: `${FIELD_LABEL[field]} ${rule}.` });
+		if (rule)
+			issues.push({
+				field,
+				message: t("ui.agents.publication.local_validation", {
+					label: t(FIELD_LABEL[field]),
+					rule,
+				}),
+			});
 	};
 	add("name", publicationNameRule(draft.name));
 	add("description", publicationDescriptionRule(draft.description));

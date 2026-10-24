@@ -1,3 +1,4 @@
+import { type WithoutParams, t } from "@shared/i18n";
 /**
  * The run's "what changed" summary: a before/after diff over the catalogue
  * fields the LISTS actually carry.
@@ -105,19 +106,25 @@ export function projectRunToolRow(row: RunToolRow): {
 	switch (op) {
 		case "create":
 			return {
-				verb: name ? `Creating ${kind} ${name}` : `Creating a ${kind}`,
+				verb: name
+					? t("ui.agents.config.summary_creating_named", { kind, name })
+					: t("ui.agents.config.summary_creating_kind", { kind }),
 				target,
 				...write(true),
 			};
 		case "update":
 			return {
-				verb: name ? `Updating ${kind} ${name}` : `Updating a ${kind}`,
+				verb: name
+					? t("ui.agents.config.summary_updating_named", { kind, name })
+					: t("ui.agents.config.summary_updating_kind", { kind }),
 				target,
 				...write(true),
 			};
 		case "install":
 			return {
-				verb: name ? `Installing ${name}` : "Installing an agent",
+				verb: name
+					? t("ui.agents.config.summary_installing_named", { name })
+					: t("ui.agents.config.summary_installing_agent"),
 				target,
 				...write(true),
 			};
@@ -125,7 +132,9 @@ export function projectRunToolRow(row: RunToolRow): {
 		case "search":
 		case "show":
 			return {
-				verb: name ? `Reading ${name}` : `Reading ${kind}s`,
+				verb: name
+					? t("ui.agents.config.summary_reading_named", { name })
+					: t("ui.agents.config.summary_reading_kind", { kind }),
 				target,
 				...write(false),
 			};
@@ -137,7 +146,9 @@ export function projectRunToolRow(row: RunToolRow): {
 			 */
 			return {
 				verb:
-					row.phase === "running" ? `Working on ${kind}s` : `Checked ${kind}s`,
+					row.phase === "running"
+						? t("ui.agents.config.summary_working_kind", { kind })
+						: t("ui.agents.config.summary_checked_kind", { kind }),
 				target,
 				...write(true),
 			};
@@ -153,16 +164,16 @@ export type CatalogueSnapshot = {
 };
 
 /** The operator's words for a field, so the summary never says `tools`. */
-const FIELD_LABEL: Record<string, string> = {
-	description: "description",
-	kind: "kind",
-	tools: "tools",
-	effort: "effort tier",
-	delegate: "delegation",
-	action_class: "class",
-	manager: "manager",
-	members: "members",
-	instructions: "instructions",
+const FIELD_LABEL: Record<string, WithoutParams> = {
+	description: "ui.agents.config.summary_field_description",
+	kind: "ui.agents.config.summary_field_kind",
+	tools: "ui.agents.config.summary_field_tools",
+	effort: "ui.agents.config.summary_field_effort",
+	delegate: "ui.agents.config.summary_field_delegate",
+	action_class: "ui.agents.config.summary_field_class",
+	manager: "ui.agents.config.summary_field_manager",
+	members: "ui.agents.config.summary_field_members",
+	instructions: "ui.agents.config.summary_field_instructions",
 };
 
 function agentSignature(profile: ReusableProfile): Signature {
@@ -221,30 +232,32 @@ export function snapshotCatalogue(
 
 /** The tool names/verbs whose edits are worth saying out loud, widened or narrowed. */
 function describeTools(before: string, after: string): string {
-	if (before === after) return "tools";
+	if (before === after) return t("ui.agents.config.summary_tools");
 	const set = (value: string) =>
 		value === "*" ? null : new Set(value.split(","));
 	const first = set(before);
 	const second = set(after);
-	if (second === null) return "tools widened to every tool";
-	if (first === null) return "tools narrowed to a list";
+	if (second === null) return t("ui.agents.config.summary_tools_widened");
+	if (first === null) return t("ui.agents.config.summary_tools_narrowed");
 	const added = [...second].filter((tool) => !first.has(tool));
 	const removed = [...first].filter((tool) => !second.has(tool));
 	if (added.length && !removed.length)
 		return added.length === 1
-			? `tool added: ${added[0]}`
-			: `${added.length} tools added`;
+			? t("ui.agents.config.summary_tool_added", { tool: added[0] })
+			: t("ui.agents.config.summary_tools_added", { count: added.length });
 	if (removed.length && !added.length)
 		return removed.length === 1
-			? `tool removed: ${removed[0]}`
-			: `${removed.length} tools removed`;
-	return "tools changed";
+			? t("ui.agents.config.summary_tool_removed", { tool: removed[0] })
+			: t("ui.agents.config.summary_tools_removed", { count: removed.length });
+	return t("ui.agents.config.summary_tools_changed");
 }
 
 function describeField(field: string, before: string, after: string): string {
 	if (field === "tools") return describeTools(before, after);
 	if (field === "delegate")
-		return after === "true" ? "delegation turned on" : "delegation turned off";
+		return after === "true"
+			? t("ui.agents.config.summary_delegation_on")
+			: t("ui.agents.config.summary_delegation_off");
 	/*
 	 * The class page follows `delegate`'s shape on purpose: the two are the
 	 * definition's BEHAVIOUR switches, and "class changed" would leave the reader
@@ -253,13 +266,19 @@ function describeField(field: string, before: string, after: string): string {
 	 */
 	if (field === "action_class")
 		return after === "proactive"
-			? "class changed to proactive"
-			: "class changed to reactive — proactive messaging stopped";
+			? t("ui.agents.config.summary_class_proactive")
+			: t("ui.agents.config.summary_class_reactive");
 	if (field === "members") {
 		const count = (value: string) => (value ? value.split(",").length : 0);
-		return `members changed (${count(before)} to ${count(after)})`;
+		return t("ui.agents.config.summary_members_changed", {
+			before: count(before),
+			after: count(after),
+		});
 	}
-	return `${FIELD_LABEL[field] ?? field} changed`;
+	const label = FIELD_LABEL[field];
+	return t("ui.agents.config.summary_field_changed", {
+		field: label ? t(label) : field,
+	});
 }
 
 /**

@@ -893,5 +893,39 @@
 		"role": "status",
 		"tone": "plain, precise; safety statements must not weaken or promise success",
 		"note": "Feature-local hub source/policy controls, not settings navigation. Remote Hub catalogue is distinct from installed invocation catalogue. Public/private sources are separate aliases; projected skill manifest is text-only with declared v1 limits, no execution. Pending receipt must not imply atomic local policy success. Placeholders {source}/{organization} are verified labels; {item}/{currentSource}/{newSource} are escaped display bytes, never declassification authority; {address}/{model}/{operation}/{revision}/{state}/{outcome} are stable technical identifiers and not translated. {time} is locale-formatted, {count} numeric ICU plural. Raw preview payload is untrusted authored content shown separately as code, never catalogue copy. No fixed cell/width cap; status and consent body wrap. Shown when the local links inventory (not the catalogue) could not be read. It must not read as 'not installed'; that is a fact only a successful read can establish."
+	},
+	"ui.hub.pager.agent_pages": {
+		"role": "Field, filter, section, or status copy in Agent Hub navigation",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.pager.previous_page": {
+		"role": "Field, filter, section, or status copy in Agent Hub navigation",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.pager.previous": {
+		"role": "Field, filter, section, or status copy in Agent Hub navigation",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.pager.next_page": {
+		"role": "Field, filter, section, or status copy in Agent Hub navigation",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.pager.next": {
+		"role": "Field, filter, section, or status copy in Agent Hub navigation",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.pager.page_of": {
+		"role": "Dynamic status or complete sentence in Agent Hub navigation",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"page": "Dynamic value; preserve verbatim",
+			"count": "Non-negative integer count"
+		}
 	}
 }
