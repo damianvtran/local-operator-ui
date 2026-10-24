@@ -1,0 +1,9 @@
+{
+	"ui.chat.skill.contract.this_backend_cannot_serve_the_skill_catalogue_update_the_backend": "Backend này không thể cung cấp danh mục kỹ năng. Hãy cập nhật backend rồi thử lại.",
+	"ui.chat.skill.contract.skills_arent_available_right_now": "Kỹ năng hiện không khả dụng.",
+	"ui.chat.skill.contract.no_skills_found_see_skills": "Không tìm thấy kỹ năng nào — xem /skills",
+	"ui.chat.skill.contract.no_skills_found": "Không tìm thấy kỹ năng nào.",
+	"ui.chat.skill.contract.no_skills_match": "Không có kỹ năng nào khớp.",
+	"ui.chat.skill.contract.enter_completes": "Enter hoàn tất ${name}; nhấn Enter lần nữa để gửi.",
+	"ui.chat.skill.contract.click_completes": "Nhấp để hoàn tất ${name}."
+}

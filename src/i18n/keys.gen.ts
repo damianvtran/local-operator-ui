@@ -429,17 +429,29 @@ import viUiAgentsStarters from "./catalogues/vi/ui.agents.starters.json";
 import viUiBrowserChrome from "./catalogues/vi/ui.browser.chrome.json";
 import viUiBrowser from "./catalogues/vi/ui.browser.json";
 import viUiCanvas from "./catalogues/vi/ui.canvas.json";
+import viUiChatAside from "./catalogues/vi/ui.chat.aside.json";
 import viUiChatAsks from "./catalogues/vi/ui.chat.asks.json";
+import viUiChatAt from "./catalogues/vi/ui.chat.at.json";
 import viUiChatAttachments from "./catalogues/vi/ui.chat.attachments.json";
+import viUiChatCanonical from "./catalogues/vi/ui.chat.canonical.json";
+import viUiChatCanvasPreview from "./catalogues/vi/ui.chat.canvas_preview.json";
 import viUiChatComposer from "./catalogues/vi/ui.chat.composer.json";
 import viUiChatComposerMedia from "./catalogues/vi/ui.chat.composer_media.json";
+import viUiChatCredentialCapture from "./catalogues/vi/ui.chat.credential_capture.json";
 import viUiChatDialogs from "./catalogues/vi/ui.chat.dialogs.json";
+import viUiChatDirectory from "./catalogues/vi/ui.chat.directory.json";
 import viUiChatHeader from "./catalogues/vi/ui.chat.header.json";
 import viUiChat from "./catalogues/vi/ui.chat.json";
 import viUiChatLiveUpdates from "./catalogues/vi/ui.chat.live_updates.json";
+import viUiChatMessage from "./catalogues/vi/ui.chat.message.json";
+import viUiChatOptions from "./catalogues/vi/ui.chat.options.json";
 import viUiChatResponseActions from "./catalogues/vi/ui.chat.response_actions.json";
+import viUiChatRunDetails from "./catalogues/vi/ui.chat.run_details.json";
+import viUiChatSessionStatus from "./catalogues/vi/ui.chat.session_status.json";
 import viUiChatSidebarView from "./catalogues/vi/ui.chat.sidebar_view.json";
+import viUiChatSkill from "./catalogues/vi/ui.chat.skill.json";
 import viUiChatTags from "./catalogues/vi/ui.chat.tags.json";
+import viUiChatTrace from "./catalogues/vi/ui.chat.trace.json";
 import viUiCodeReview from "./catalogues/vi/ui.code_review.json";
 import viUiCommandPalette from "./catalogues/vi/ui.command_palette.json";
 import viUiCommonAccount from "./catalogues/vi/ui.common.account.json";
@@ -971,17 +983,29 @@ export const bundledCatalogues: Readonly<
 		...viUiBrowserChrome,
 		...viUiBrowser,
 		...viUiCanvas,
+		...viUiChatAside,
 		...viUiChatAsks,
+		...viUiChatAt,
 		...viUiChatAttachments,
+		...viUiChatCanonical,
+		...viUiChatCanvasPreview,
 		...viUiChatComposer,
 		...viUiChatComposerMedia,
+		...viUiChatCredentialCapture,
 		...viUiChatDialogs,
+		...viUiChatDirectory,
 		...viUiChatHeader,
 		...viUiChat,
 		...viUiChatLiveUpdates,
+		...viUiChatMessage,
+		...viUiChatOptions,
 		...viUiChatResponseActions,
+		...viUiChatRunDetails,
+		...viUiChatSessionStatus,
 		...viUiChatSidebarView,
+		...viUiChatSkill,
 		...viUiChatTags,
+		...viUiChatTrace,
 		...viUiCodeReview,
 		...viUiCommandPalette,
 		...viUiCommonAccount,

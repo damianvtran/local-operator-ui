@@ -1,0 +1,13 @@
+{
+	"ui.chat.at.contract.this_backend_cannot_carry_file_references_update_the_backend_and": "Backend này không hỗ trợ tham chiếu tệp. Hãy cập nhật backend rồi thử lại.",
+	"ui.chat.at.contract.nothing_to_insert_esc_closes": "Không có gì để chèn · Esc đóng",
+	"ui.chat.at.contract.reading_this_folder": "Đang đọc thư mục này…",
+	"ui.chat.at.contract.this_folder_is_empty": "Thư mục này trống.",
+	"ui.chat.at.contract.could_not_read_this_folder_it_may_need_a_permission": "Không đọc được thư mục này. Có thể cần một quyền mà ứng dụng không có.",
+	"ui.chat.at.contract.could_not_read_this_folder_check_that_it_exists_and": "Không đọc được thư mục này. Hãy kiểm tra rằng thư mục tồn tại và bạn có thể mở nó.",
+	"ui.chat.at.contract.enter_opens": "Enter mở {path}",
+	"ui.chat.at.contract.enter_inserts": "Enter chèn {token}",
+	"ui.chat.at.contract.footer": "{verb} · Esc đóng",
+	"ui.chat.at.contract.nothing_matches": "Không có gì khớp với “{query}” trong {scope}.",
+	"ui.chat.at.contract.no_files_match": "Không có tệp nào khớp với “{query}” trong {scope}."
+}
