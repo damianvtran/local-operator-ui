@@ -330,7 +330,13 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 										onClick={() => onSelect(row.request.entryId)}
 										aria-expanded={selected}
 										data-tour-tag="browser-approvals-waiting-row"
-										className="flex w-full items-center gap-2 px-2 py-1.5 text-start"
+										// The row's own content can exceed a 264px (or 281px side)
+										// button once the authority, requester and expiry are all
+										// present: the rollup used to spill sideways and the panel's
+										// overflow-y resolved to a horizontal scrollbar. Wrap the
+										// expiry instead of clipping it; `ms-auto` keeps it at the
+										// inline end on both one- and two-line rows.
+										className="flex w-full flex-wrap items-center gap-x-2 gap-y-1 px-2 py-1.5 text-start"
 									>
 										{/* The ordinal the tray's chip and the tab's `Waiting n` chip
 										    both carry (§5.2) — the same number, from the same model. */}
@@ -379,7 +385,7 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 											)}
 										</span>
 										{row.remaining && (
-											<span className="shrink-0 text-meta text-ink-dim">
+											<span className="ms-auto shrink-0 text-meta text-ink-dim">
 												{row.remaining}
 											</span>
 										)}
