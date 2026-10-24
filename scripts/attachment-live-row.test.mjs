@@ -137,7 +137,7 @@ test("the owner restating the row keeps the file card on screen", () => {
 	assert.notEqual(record?.local, true);
 });
 
-test("a restatement that arrives before the press keeps its own file", () => {
+test("a replayed restatement on an empty transcript paints its own file", () => {
 	// The reconnect case: the frame is replayed onto an empty transcript, so it
 	// must paint the card from its own content with no echo to carry it.
 	const restated = applyEvent(EMPTY_TRANSCRIPT, restatingStart(), 2_000);
