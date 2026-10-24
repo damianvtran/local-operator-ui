@@ -382,6 +382,29 @@ export interface BrowserHostOptions {
 	 * is recorded or written. The production wiring passes
 	 * `<userData>/browser-history.json`. */
 	historyFilePath?: string;
+	/**
+	 * S6b: the native approvals card, when the launch opt-in built one. Absent
+	 * means the shield keeps using the DOM tray/dock, so an ordinary launch is
+	 * unchanged.
+	 */
+	approvalsCard?: {
+		open: (input: {
+			locale?: string;
+			dir?: "ltr" | "rtl";
+			theme?: "light" | "dark";
+			palette?: string | null;
+			requesterLabels?: Readonly<Record<string, string>>;
+		}) => void;
+		close: () => void;
+		setContext: (input: {
+			locale?: string;
+			dir?: "ltr" | "rtl";
+			theme?: "light" | "dark";
+			palette?: string | null;
+			requesterLabels?: Readonly<Record<string, string>>;
+		}) => void;
+		state: () => { available: boolean; open: boolean };
+	};
 }
 
 export class BrowserHost implements BrowserActionContext {
@@ -414,6 +437,8 @@ export class BrowserHost implements BrowserActionContext {
 	readonly facts: () => HostFacts;
 	/** The session's per-origin storage clear, injected (see `BrowserHostOptions`). */
 	private readonly forgetSiteData: (origin: string) => Promise<void>;
+	/** S6b's native card, when the launch built one (see `BrowserHostOptions`). */
+	private readonly approvalsCard: BrowserHostOptions["approvalsCard"];
 	/** S4b's popout health, read from the controller (or the launch's platform
 	 * answer when no controller exists). The strip reads this from the same
 	 * projection as the tabs, so the renderer has one source for "child or
@@ -459,6 +484,7 @@ export class BrowserHost implements BrowserActionContext {
 		this.tabAudio = new TabAudioTracker(() => this.onChanged());
 		this.facts = options.facts;
 		this.forgetSiteData = options.forgetSiteData;
+		this.approvalsCard = options.approvalsCard;
 		this.addressOverlayMode =
 			options.addressOverlayMode ??
 			(() => ({ mode: "suspend", reason: "unavailable" }));
@@ -861,6 +887,10 @@ export class BrowserHost implements BrowserActionContext {
 		);
 		return {
 			addressOverlay: this.addressOverlayMode(),
+			approvalsCard: this.approvalsCard?.state() ?? {
+				available: false,
+				open: false,
+			},
 			pageControls: this.pageControls.state(active),
 			tabs: this.chromeTabOrder
 				.project(this.registry.snapshot())
@@ -1889,6 +1919,80 @@ export class BrowserHost implements BrowserActionContext {
 		const result = this.approvals.respond(entryId, decision);
 		this.onChanged();
 		return { ...result, ...this.chromeState() };
+	}
+
+	/**
+	 * Open the native approvals card from the shield (S6b).
+	 *
+	 * The renderer passes the locale and direction it resolved: main has no
+	 * catalogue, and the card is a second document whose `lang`/`dir` must follow
+	 * the app rather than the device tag (UX U2). The theme is the evidence
+	 * palette today; S6b's product path keeps the dark default it was reviewed in.
+	 */
+	openApprovalsCard(input: unknown): Record<string, unknown> {
+		const request =
+			input && typeof input === "object"
+				? (input as Record<string, unknown>)
+				: {};
+		const locale =
+			typeof request.locale === "string" ? request.locale : undefined;
+		const dir =
+			request.dir === "rtl" || request.dir === "ltr" ? request.dir : undefined;
+		const theme =
+			request.theme === "light" || request.theme === "dark"
+				? request.theme
+				: undefined;
+		const palette =
+			request.palette === null
+				? null
+				: typeof request.palette === "string"
+					? request.palette
+					: undefined;
+		this.approvalsCard?.open({ locale, dir, theme, palette });
+		// The renderer discards the returned projection for the shield toggle
+		// (M2); the push is what makes aria-expanded and the button's selected
+		// style follow main. `onChanged` also re-renders a route that mounted
+		// after the card opened (U1).
+		this.onChanged();
+		return { ...this.chromeState() };
+	}
+
+	/** Close the native card without deciding (shield's second click / Escape). */
+	closeApprovalsCard(): Record<string, unknown> {
+		this.approvalsCard?.close();
+		this.onChanged();
+		return { ...this.chromeState() };
+	}
+
+	/** The renderer's resolved locale/theme, pushed on mount and on change (U5). */
+	setApprovalsCardContext(input: unknown): void {
+		const request =
+			input && typeof input === "object"
+				? (input as Record<string, unknown>)
+				: {};
+		const labels =
+			request.requesterLabels &&
+			typeof request.requesterLabels === "object" &&
+			!Array.isArray(request.requesterLabels)
+				? (request.requesterLabels as Record<string, string>)
+				: undefined;
+		this.approvalsCard?.setContext({
+			locale: typeof request.locale === "string" ? request.locale : undefined,
+			dir:
+				request.dir === "rtl" || request.dir === "ltr"
+					? request.dir
+					: undefined,
+			theme:
+				request.theme === "light" || request.theme === "dark"
+					? request.theme
+					: undefined,
+			...(request.palette === null
+				? { palette: null }
+				: typeof request.palette === "string"
+					? { palette: request.palette }
+					: {}),
+			...(labels ? { requesterLabels: labels } : {}),
+		});
 	}
 
 	/** Revoke one origin's approvals (design 9.4). Separate from closing a tab and
