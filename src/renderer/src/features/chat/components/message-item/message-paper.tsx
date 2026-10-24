@@ -38,6 +38,7 @@
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 import { cn } from "@shared/lib/utils";
 import React, { type FC, useMemo, useRef } from "react";
+import { t } from "../../../../../../i18n/messages";
 import type { Message } from "../../types/message";
 import { parseReplies } from "../../utils/reply-utils";
 import { ReplyPreview } from "../reply-preview";
@@ -168,7 +169,10 @@ export const MessagePaper: FC<MessagePaperProps> = React.memo(
 			>
 				{replies.length > 0 && <ReplyPreview replies={replies} />}
 				{message.thinking && !isUser && (
-					<AgentReasoning label="Thinking" content={message.thinking} />
+					<AgentReasoning
+						label={t("ui.chat.message.message_paper.thinking")}
+						content={message.thinking}
+					/>
 				)}
 				{cloneContentChildren(children, remainingContent, markdownStyleProps)}
 				{resolvedConversationId && (

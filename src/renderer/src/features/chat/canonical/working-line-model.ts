@@ -56,6 +56,7 @@
  * the working line's own contract calls out.
  */
 
+import { t } from "../../../../../i18n/messages";
 import { epochMsFromSeconds } from "../../../../../shared/desktop-session-contract";
 import type { ChatDraft } from "../../../shared/store/canonical-sessions-store";
 import { displayName } from "../components/trace/tool-row-model";
@@ -99,7 +100,9 @@ export type WorkingLineState = {
  * harness reporting. It states the waiting and nothing else; see the file
  * comment for why it does not name the runtime or the model.
  */
-export const ADMITTED_SEND_ACTIVITY = "waiting for the agent";
+export const ADMITTED_SEND_ACTIVITY = t(
+	"ui.chat.canonical.working_line_model.waiting_for_the_agent",
+);
 
 /**
  * The label for a send whose SESSION does not exist yet - the create hop.
@@ -118,7 +121,9 @@ export const ADMITTED_SEND_ACTIVITY = "waiting for the agent";
  * comment above calls out for every label change in this row, and the reason
  * the two labels cannot be made different phases that happen to read alike.
  */
-export const STARTING_SESSION_ACTIVITY = "starting the session";
+export const STARTING_SESSION_ACTIVITY = t(
+	"ui.chat.canonical.working_line_model.starting_the_session",
+);
 
 /**
  * The label for a compaction pass in flight, and the phase its clock runs in.
@@ -149,7 +154,9 @@ export const STARTING_SESSION_ACTIVITY = "starting the session";
  * rejected because it makes the row's duration report the TURN while claiming
  * to report the pass.
  */
-export const COMPACTING_ACTIVITY = "compacting context";
+export const COMPACTING_ACTIVITY = t(
+	"ui.chat.canonical.working_line_model.compacting_context",
+);
 
 /**
  * The label for the window between a Stop press and its answer, and the reason
@@ -173,7 +180,9 @@ export const COMPACTING_ACTIVITY = "compacting context";
  * nor jumps if the receipt turns out to say nothing was running. The copy is
  * provisional, pending the design round.
  */
-export const STOPPING_ACTIVITY = "stopping the turn";
+export const STOPPING_ACTIVITY = t(
+	"ui.chat.canonical.working_line_model.stopping_the_turn",
+);
 
 /**
  * The send a pane has admitted, read from the store's own draft row.
@@ -529,7 +538,11 @@ export function deriveWorkingLine(
 	const live = deriveLiveWorkingLine(input);
 	if (live === null) return live;
 	if (input.stopping === true)
-		return { ...live, activity: STOPPING_ACTIVITY, clock: false };
+		return {
+			...live,
+			activity: t("ui.chat.canonical.working_line_model.stopping_the_turn"),
+			clock: false,
+		};
 	/*
 	 * The disputed idle's half (U9): the same overlay shape as `stopping`, one
 	 * rung less - the label stays the live state's own, only the number goes.
@@ -605,7 +618,7 @@ function deriveLiveWorkingLine({
 	if (compacting) {
 		if (unavailable) return null;
 		return {
-			activity: COMPACTING_ACTIVITY,
+			activity: t("ui.chat.canonical.working_line_model.compacting_context"),
 			phase: "compacting",
 			// Spread rather than set, so a caller with no stamp produces the SAME
 			// object shape as before this field existed (`tool-row.test.mjs` compares
@@ -686,7 +699,9 @@ function deriveLiveWorkingLine({
 			// `composing wr` reads as a typo rather than as a state.
 			const since = foldedSeed("composing");
 			return {
-				activity: `composing ${composing === 1 ? "a call" : `${composing} calls`}`,
+				activity: t("ui.chat.canonical.working_line_model.composing_calls", {
+					composing,
+				}),
 				phase: "composing",
 				...(since === null ? {} : { startedAt: since }),
 			};
@@ -711,7 +726,9 @@ function deriveLiveWorkingLine({
 		).length;
 		if (queued > 0) {
 			return {
-				activity: `waiting to run ${queued === 1 ? "a call" : `${queued} calls`}`,
+				activity: t("ui.chat.canonical.working_line_model.queued_calls", {
+					queued,
+				}),
 				phase: "queued",
 				// The TUI's `clock=False` for this arm, and the reason is stated there:
 				// the dictation clock these rows carried has ENDED, the call has no
@@ -768,8 +785,8 @@ function deriveLiveWorkingLine({
 	return {
 		activity:
 			startingSession === true
-				? STARTING_SESSION_ACTIVITY
-				: ADMITTED_SEND_ACTIVITY,
+				? t("ui.chat.canonical.working_line_model.starting_the_session")
+				: t("ui.chat.canonical.working_line_model.waiting_for_the_agent"),
 		phase: "thinking",
 		...(startingSince == null ? {} : { startedAt: startingSince }),
 	};

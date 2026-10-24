@@ -588,7 +588,19 @@ function captureSummary(previous, counts) {
 
 export function main(
 	argv,
-	{ baselinePath = BASELINE, allowlistPath = ALLOWLIST } = {},
+	{
+		baselinePath = BASELINE,
+		allowlistPath = ALLOWLIST,
+		/*
+		 * A test-only corpus: naming fixture paths here scans exactly those
+		 * files instead of the repository's own sources. `--init` and
+		 * `--update` need a tree with counted literals to exercise their
+		 * branches, and after the extraction programme the real tree has
+		 * none - the fixtures are the only corpus that is guaranteed to
+		 * keep some, and they are outside the production scan by design.
+		 */
+		extraScan = [],
+	} = {},
 ) {
 	let mode = "check";
 	let force = false;
@@ -633,9 +645,15 @@ export function main(
 			return 2;
 		}
 		const entries = loadAllowlist(allowlistPath);
-		const { api, snapshot } = openSnapshot(REPO);
+		const { api, snapshot } = openSnapshot(
+			REPO,
+			extraScan.map((rel) => join(REPO, rel)),
+		);
 		try {
-			const counts = countsOf(scanSnapshot(snapshot, REPO), entries);
+			const counts = countsOf(
+				scanSnapshot(snapshot, REPO, { extraScan }),
+				entries,
+			);
 			const preserved = loadBaseline(baselinePath);
 			saveBaseline(baselinePath, counts, BASELINE_NOTE);
 			const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
@@ -660,9 +678,12 @@ export function main(
 			return 2;
 		}
 		const entries = loadAllowlist(allowlistPath);
-		const { api, snapshot } = openSnapshot(REPO);
+		const { api, snapshot } = openSnapshot(
+			REPO,
+			extraScan.map((rel) => join(REPO, rel)),
+		);
 		try {
-			const scanned = scanSnapshot(snapshot, REPO);
+			const scanned = scanSnapshot(snapshot, REPO, { extraScan });
 			const counts = countsOf(scanned, entries);
 			const loaded = loadBaseline(baselinePath);
 			const files = loaded.files;

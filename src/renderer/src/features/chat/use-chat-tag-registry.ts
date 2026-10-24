@@ -3,9 +3,9 @@ import {
 	TAG_REGISTRY_LIMIT,
 	tagNameIssue,
 } from "@features/chat/chat-tag-picker";
-import { t } from "@shared/i18n";
 import { useSessionTagsStore } from "@shared/store/session-tags-store";
 import { useState } from "react";
+import { t } from "../../../../i18n/messages";
 import type {
 	DesiredTag,
 	TagCategory,

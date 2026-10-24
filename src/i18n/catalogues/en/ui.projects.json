@@ -422,5 +422,8 @@
 	"ui.projects.request_update.value1_could_not_be_reached": " {value1} could not be reached.",
 	"ui.projects.timeline.read_failed": "Milestones could not be read for {count, plural, one {{count, number, ::group-off} project} other {{count, number, ::group-off} projects}}.",
 	"ui.projects.use_request_update.could_not_request_updates_endedsentence_message": "Could not request updates: {endedSentence_message}",
-	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "The request could not be confirmed."
+	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "The request could not be confirmed.",
+	"ui.projects.project_model.milestone_summary": "{completed, number, ::group-off} of {total, number, ::group-off} complete",
+	"ui.projects.project_model.todos_summary": "{open, number, ::group-off} open of {total, number, ::group-off}",
+	"ui.projects.project_model.done_gate_tail": "complete or remove the incomplete milestones, then mark it done"
 }

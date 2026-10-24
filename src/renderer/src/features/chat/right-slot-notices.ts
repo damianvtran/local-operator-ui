@@ -21,6 +21,7 @@ import {
 } from "@shared/api/local-operator/backend-error";
 import type { DesktopFeatureState } from "@shared/api/local-operator/desktop-hooks";
 import type { CanonicalSessionStatus } from "@shared/hooks/use-canonical-session";
+import { t } from "../../../../i18n/messages";
 import type { DaemonPairingCause } from "../../../../shared/backend-status";
 
 /**
@@ -50,19 +51,25 @@ export type SlotNotice = {
  * the three draft notices (and the console's own, `ui.console.json`) say it the
  * same way.
  */
-const START_CLAUSE = "Send a message to start this conversation";
-
 export const RUN_NOTICE_DRAFT: SlotNotice = Object.freeze({
 	kind: "run-draft",
 	tone: "empty",
-	title: "Run details need a conversation.",
-	detail: `${START_CLAUSE}; its subagents, plan and scheduled work appear here.`,
+	get title() {
+		return t("ui.chat.right_slot_notices.run_details_need_a_conversation");
+	},
+	get detail() {
+		return t("ui.chat.right_slot_notices.run_details_draft_detail", {
+			startClause: t("ui.chat.right_slot_notices.start_clause"),
+		});
+	},
 });
 
 export const RUN_NOTICE_READING: SlotNotice = Object.freeze({
 	kind: "run-reading",
 	tone: "loading",
-	title: "Reading this conversation's run…",
+	get title() {
+		return t("ui.chat.right_slot_notices.reading_this_conversations_run");
+	},
 });
 
 /*
@@ -78,15 +85,31 @@ export const RUN_NOTICE_READING: SlotNotice = Object.freeze({
 export const RUN_NOTICE_UNREADABLE: SlotNotice = Object.freeze({
 	kind: "run-unreadable",
 	tone: "unavailable",
-	title: "Run details could not be read for this conversation.",
-	detail: "The conversation beside this pane says why and how to reconnect.",
+	get title() {
+		return t(
+			"ui.chat.right_slot_notices.run_details_could_not_be_read_for_this_conversation",
+		);
+	},
+	get detail() {
+		return t(
+			"ui.chat.right_slot_notices.the_conversation_beside_this_pane_says_why_and_how_to",
+		);
+	},
 });
 
 export const RUN_NOTICE_MISSING: SlotNotice = Object.freeze({
 	kind: "run-unreadable",
 	tone: "unavailable",
-	title: "Run details could not be read for this conversation.",
-	detail: "This conversation is no longer on this machine.",
+	get title() {
+		return t(
+			"ui.chat.right_slot_notices.run_details_could_not_be_read_for_this_conversation",
+		);
+	},
+	get detail() {
+		return t(
+			"ui.chat.right_slot_notices.this_conversation_is_no_longer_on_this_machine",
+		);
+	},
 });
 
 /**
@@ -129,8 +152,14 @@ export const SLOT_NOTICE_PROGRESS_DELAY_MS = 200;
 export const CODE_NOTICE_DRAFT: SlotNotice = Object.freeze({
 	kind: "code-draft",
 	tone: "empty",
-	title: "Code review needs a conversation.",
-	detail: `${START_CLAUSE}; the pull requests and merge requests it opens or mentions appear here.`,
+	get title() {
+		return t("ui.chat.right_slot_notices.code_review_needs_a_conversation");
+	},
+	get detail() {
+		return t("ui.chat.right_slot_notices.code_review_draft_detail", {
+			startClause: t("ui.chat.right_slot_notices.start_clause"),
+		});
+	},
 });
 
 /*
@@ -141,19 +170,32 @@ export const CODE_NOTICE_DRAFT: SlotNotice = Object.freeze({
 export const CODE_NOTICE_BELOW_VERSION: SlotNotice = Object.freeze({
 	kind: "code-below-version",
 	tone: "empty",
-	title: "The Local Operator server doesn't serve code review yet.",
-	detail:
-		"Update the server to see the pull requests and merge requests this conversation opens.",
+	get title() {
+		return t(
+			"ui.chat.right_slot_notices.the_local_operator_server_doesnt_serve_code_review_yet",
+		);
+	},
+	get detail() {
+		return t(
+			"ui.chat.right_slot_notices.update_the_server_to_see_the_pull_requests_and_merge",
+		);
+	},
 });
 
 export const CODE_NOTICE_CHECKING: SlotNotice = Object.freeze({
 	kind: "code-checking",
 	tone: "loading",
-	title: "Checking whether the server serves code review…",
+	get title() {
+		return t(
+			"ui.chat.right_slot_notices.checking_whether_the_server_serves_code_review",
+		);
+	},
 });
 
 /** The lead `backendLoadErrorMessage` composes a failed capabilities read with. */
-export const CODE_NOTICE_LOAD_LEAD = "Code review could not be loaded.";
+export const CODE_NOTICE_LOAD_LEAD = t(
+	"ui.chat.right_slot_notices.code_review_could_not_be_loaded",
+);
 
 /**
  * The code review pane's notice, or null when `CodeReviewPane` may mount.
@@ -220,7 +262,7 @@ function codeCapabilityNotice(input: {
 			return {
 				kind: "code-unpaired",
 				tone: "unavailable",
-				title: CODE_NOTICE_LOAD_LEAD,
+				title: t("ui.chat.right_slot_notices.code_review_could_not_be_loaded"),
 				detail: backendPairingSentence("unpaired", input.cause) ?? undefined,
 			};
 		case "unknown": {
@@ -229,7 +271,7 @@ function codeCapabilityNotice(input: {
 			return {
 				kind: "code-unreadable",
 				tone: "unavailable",
-				title: CODE_NOTICE_LOAD_LEAD,
+				title: t("ui.chat.right_slot_notices.code_review_could_not_be_loaded"),
 				...(rest ? { detail: rest } : {}),
 			};
 		}

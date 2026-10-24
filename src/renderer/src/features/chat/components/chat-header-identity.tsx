@@ -66,6 +66,7 @@ import { useTeams } from "@shared/api/local-operator/profile-hooks";
 import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { Spinner } from "@shared/components/common/spinner";
 import { Popover, PopoverTrigger } from "@shared/components/ui/popover";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showErrorToast, showWarningToast } from "@shared/utils/toast-manager";
@@ -80,13 +81,13 @@ import {
 	useState,
 	useSyncExternalStore,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 import type { CanonicalEffectiveIdentity } from "../../../../../shared/desktop-session-contract";
 import { useEntities } from "../pickers/destination-pickers";
 import type { PickerOption } from "../pickers/picker-host";
 import { errorText, useSessionCommand } from "../pickers/use-picker-backend";
 import { IdentityMenu } from "./chat-header-identity-menu";
 import {
-	IDENTITY_AGENT_NOT_SETTABLE_REASON,
 	type IdentityAgentConstraint,
 	identityAgentConstraint,
 	identityAgentSettable,
@@ -273,6 +274,12 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	markSwap,
 }) => {
 	/*
+	 * The roster options memo labels and explains rows with `t()`, so the locale
+	 * must be a dependency and not merely a subscription: otherwise a language
+	 * switch re-renders the panel around rows still built in the old language.
+	 */
+	const locale = useI18nLocale();
+	/*
 	 * A CLOSED SEAT LISTS NOTHING (the runtime's strict rule): no row can be
 	 * picked, so the roster is not fetched for a panel that will not show it.
 	 */
@@ -379,6 +386,7 @@ const IdentityControl: FC<IdentityControlProps> = ({
 	 * reason: the roster is the same roster, and the reader who needs one needs it
 	 * on both surfaces.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is the re-label TRIGGER; the rows read it through `t()`, which the rule cannot follow into a call.
 	const options = useMemo<PickerOption[]>(
 		() =>
 			items.map((row) => {
@@ -423,10 +431,15 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					 * than discovered after the composer fills.
 					 */
 					description: blocked
-						? IDENTITY_AGENT_NOT_SETTABLE_REASON
+						? t(
+								"ui.chat.header.chat_header_identity_menu_model.needs_a_delegating_profile_here",
+							)
 						: shown !== row.value
 							? row.description
-								? `${row.value} · ${row.description}`
+								? t("ui.chat.header.chat_header_identity.value_description", {
+										value: row.value,
+										description: row.description,
+									})
 								: row.value
 							: row.description,
 					meta: row.kind,
@@ -445,7 +458,7 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					blocked,
 				};
 			}),
-		[items, current, busy, constraint],
+		[items, current, busy, constraint, locale],
 	);
 
 	/*
@@ -516,14 +529,29 @@ const IdentityControl: FC<IdentityControlProps> = ({
 						closedReason !== null
 							? /* A closed control offers no "Switch": the name states the
 								 * role and the speaker, and the reason is its own clause. */
-								`${triggerLabel}: ${label}. ${closedReason}`
-							: `${triggerLabel}: ${label}. ${
-									assigned
-										? `Switch ${kind === "team" ? "team" : "agent"}`
+								t(
+									"ui.chat.header.chat_header_identity.triggerlabel_label_closedreason",
+									{ triggerLabel, label, closedReason },
+								)
+							: t("ui.chat.header.chat_header_identity.trigger_action_label", {
+									triggerLabel,
+									label,
+									action: assigned
+										? kind === "team"
+											? t("ui.chat.header.chat_header_identity.switch_team")
+											: t("ui.chat.header.chat_header_identity.switch_agent")
 										: kind === "team"
-											? "Assign a team"
-											: "Assign an agent"
-								}${flagged && cueSentence ? `. ${cueSentence}` : ""}`
+											? t("ui.chat.header.chat_header_identity.assign_a_team")
+											: t(
+													"ui.chat.header.chat_header_identity.assign_an_agent",
+												),
+									cue:
+										flagged && cueSentence
+											? t("ui.chat.header.chat_header_identity.cue_clause", {
+													cueSentence,
+												})
+											: "",
+								})
 					}
 					title={
 						closedReason !== null
@@ -532,7 +560,10 @@ const IdentityControl: FC<IdentityControlProps> = ({
 								 * is about), then the runtime's own closure sentence - the SAME
 								 * string the panel states, as the flagged chip does for its rule.
 								 */
-								`${label} — ${closedReason}`
+								t("ui.chat.header.chat_header_identity.label_closedreason", {
+									label,
+									closedReason,
+								})
 							: flagged && cueSentence
 								? /*
 									 * The flagged chip's tooltip states the rule the pair breaks
@@ -541,7 +572,10 @@ const IdentityControl: FC<IdentityControlProps> = ({
 									 * (`constraint.caption`), not a second paraphrase. The em dash
 									 * makes the two clauses read as two (review round 1, D6).
 									 */
-									`${label} — ${cueSentence}`
+									t("ui.chat.header.chat_header_identity.label_cuesentence", {
+										label,
+										cueSentence,
+									})
 								: assigned
 									? /*
 										 * The identity in the tooltip, `Label (slug)` when the two differ
@@ -550,10 +584,17 @@ const IdentityControl: FC<IdentityControlProps> = ({
 										 * capped chip too (D1). The ACTION words stay in the
 										 * `aria-label` above rather than repeating here.
 										 */
-										`${label}${labelWon ? ` (${current})` : ""}`
+										t("ui.chat.header.chat_header_identity.label_current", {
+											label,
+											current: labelWon
+												? t("ui.chat.header.chat_header_identity.current", {
+														current,
+													})
+												: "",
+										})
 									: kind === "team"
-										? "Assign a team"
-										: "Assign an agent"
+										? t("ui.chat.header.chat_header_identity.assign_a_team")
+										: t("ui.chat.header.chat_header_identity.assign_an_agent")
 					}
 				>
 					{kind === "team" && assigned && (
@@ -664,8 +705,8 @@ const IdentityControl: FC<IdentityControlProps> = ({
 				loadError={rows.isError ? errorText(rows.error) : null}
 				emptyText={
 					kind === "team"
-						? "No teams are registered."
-						: "No agents are registered."
+						? t("ui.chat.header.chat_header_identity.no_teams_are_registered")
+						: t("ui.chat.header.chat_header_identity.no_agents_are_registered")
 				}
 				/*
 				 * The rule the rows were marked by, stated once above the list (issue
@@ -743,6 +784,7 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 	hostKey = null,
 	frameEpoch,
 }) => {
+	useI18nLocale();
 	const rawTeam = activeTeam || boundTeam || null;
 	/*
 	 * THE CAPABILITY RECORD (cold frames). A frame that carries the field proves
@@ -926,8 +968,8 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 				kind,
 				name,
 				kind === "team"
-					? "Could not switch the team"
-					: "Could not switch the agent",
+					? t("ui.chat.header.chat_header_identity.could_not_switch_the_team")
+					: t("ui.chat.header.chat_header_identity.could_not_switch_the_agent"),
 			);
 			/*
 			 * The stream is the success path: the label repaints from the new
@@ -964,7 +1006,7 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 		>
 			<IdentityControl
 				kind="agent"
-				triggerLabel="Agent"
+				triggerLabel={t("ui.chat.header.chat_header_identity.agent_trigger")}
 				label={view.agentLabel}
 				current={view.agentValue}
 				busy={agentCommand.busy}
@@ -981,7 +1023,7 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 			/>
 			<IdentityControl
 				kind="team"
-				triggerLabel="Team"
+				triggerLabel={t("ui.chat.header.chat_header_identity.team_trigger")}
 				label={view.teamLabel}
 				current={view.teamValue}
 				busy={teamCommand.busy}

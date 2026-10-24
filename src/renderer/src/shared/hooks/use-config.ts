@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * Hook for fetching configuration from the Local Operator API
  *
@@ -48,7 +49,7 @@ export const useConfig = () => {
 				// to the user as one that is not running.
 				throw new DesktopControlError(
 					response.status,
-					response.message || "Failed to fetch configuration",
+					response.message || t("ui.common.errors.configuration_fetch"),
 				);
 			}
 

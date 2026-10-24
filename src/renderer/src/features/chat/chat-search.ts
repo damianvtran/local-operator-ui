@@ -16,6 +16,7 @@
  * and can be tested without a browser.
  */
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
+import { t } from "../../../../i18n/messages";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../shared/desktop-contract";
 import type { SessionSearchHit } from "../../../../shared/desktop-session-contract";
 
@@ -656,6 +657,9 @@ export function chatCountAnnouncement(
 ): string {
 	// `clipped` wins over `query`: a clipped answer can only come from a query,
 	// and "at least" is a strictly stronger claim than "matching".
-	if (clipped) return ` At least ${count} matching`;
+	if (clipped)
+		return t("ui.chat.chat_search.at_least_count_matching", {
+			count,
+		});
 	return query ? ` ${count} matching` : ` ${count}`;
 }

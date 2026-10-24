@@ -943,5 +943,11 @@
 		"role": "inline status or explanatory paragraph \u2014 provider sign-in and key panel",
 		"tone": "Plain factual status/explanation; preserve source confidence",
 		"note": "Whole browser-link expiry caption with the same rounded-up minutes calculation; must not imply that a key expires. Length: paragraph can wrap within the existing provider panel. Plural guidance: use the target locale\u2019s complete CLDR cardinal categories (Russian one/few/many/other; Arabic zero/one/two/few/many/other), not an English count === 1 rule. Identical English forms or abbreviations do not limit the categories a translation may need; preserve every count placeholder and the stated action/scope."
+	},
+	"ui.providers.provider_detail.sign_in_again": {
+		"role": "Provider action replacing a refused or unconfirmed sign-in",
+		"tone": "Short account action",
+		"length_hint": "Compact button label",
+		"note": "Distinct from the provider-grid label that includes an ellipsis."
 	}
 }

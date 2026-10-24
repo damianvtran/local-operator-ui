@@ -7,13 +7,13 @@ import {
 	togglePickerTag,
 } from "@features/chat/chat-tag-picker";
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
-import { t } from "@shared/i18n";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
 	isTagsConflict,
 	useSessionTagsStore,
 } from "@shared/store/session-tags-store";
 import { useEffect, useRef, useState } from "react";
+import { t } from "../../../../i18n/messages";
 import type { TagCategory, TagRef } from "../../../../shared/desktop-contract";
 
 export type TagCommitFailure = "failed" | "conflict" | "remote" | "full";
@@ -357,7 +357,9 @@ export function useChatTagAssignment({
 					current.length >= TAG_REGISTRY_LIMIT
 				)
 					throw new Error(
-						"Registry changed before creation acquired ownership",
+						t(
+							"ui.chat.use_chat_tag_assignment.registry_changed_before_creation_acquired_ownership",
+						),
 					);
 				return [
 					...current.map((tag) => ({ id: tag.id, name: tag.name })),

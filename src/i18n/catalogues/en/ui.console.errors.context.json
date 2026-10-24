@@ -1,0 +1,8 @@
+{
+	"ui.console.errors.console_unavailable": {
+		"role": "Product error or empty-state message",
+		"tone": "Factual, concise and actionable where a remedy exists.",
+		"length": "One status line, error band, toast, or preview message.",
+		"note": "English source: This window cannot reach the console."
+	}
+}

@@ -177,5 +177,11 @@
 	"ui.hub.skills.public_hub": "Public hub",
 	"ui.hub.skills.count": "{count, plural, one {{count, number, ::group-off} skill} other {{count, number, ::group-off} skills}}",
 	"ui.hub.skills.count_shared": "{count, plural, one {{count, number, ::group-off} skill shared with {organization}} other {{count, number, ::group-off} skills shared with {organization}}}",
-	"ui.hub.skills.inventory_unknown": "Link state unavailable."
+	"ui.hub.skills.inventory_unknown": "Link state unavailable.",
+	"ui.hub.pager.agent_pages": "Agent pages",
+	"ui.hub.pager.previous_page": "Previous page",
+	"ui.hub.pager.previous": "Previous",
+	"ui.hub.pager.next_page": "Next page",
+	"ui.hub.pager.next": "Next",
+	"ui.hub.pager.page_of": "Page {page, number, ::group-off} of {count, number, ::group-off}"
 }

@@ -509,11 +509,14 @@ test("the approvals picker's default scope describes followers, not an unchanged
 		"src/renderer/src/features/chat/pickers/destination-pickers.tsx",
 		"utf8",
 	);
-	assert.match(picker, /label: "Default for all sessions that follow it"/);
-	assert.match(picker, /Default approvals for all sessions that follow it:/);
 	assert.match(
 		picker,
-		/This session follows it unless it has its own choice\./,
+		/ui\.chat\.pickers\.destination_pickers\.default_for_all_sessions_that_follow_it/,
+	);
+	assert.match(
+		picker,
+		/ui\.chat\.pickers\.destination_pickers\.default_approvals_for_all_sessions_that_follow_it_this_session_follows_i/,
+		"the saved-default sentence carries both the follower claim and this session's exception",
 	);
 	assert.doesNotMatch(picker, /This session is unchanged\./);
 });

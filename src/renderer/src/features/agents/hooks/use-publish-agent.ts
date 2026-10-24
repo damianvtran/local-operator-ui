@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * @file use-publish-agent.ts
  * @description The publish and republish mutation for one local agent.
@@ -77,7 +78,7 @@ export const usePublishAgent = () => {
 			policy,
 		}: PublishAgentRequest) => {
 			if (!apiConfig.baseUrl) {
-				throw new Error("Local Operator API URL is not configured.");
+				throw new Error(t("ui.agents.publication.api_url_missing"));
 			}
 			return hubAgentId
 				? AgentsApi.republishAgentInstructionSet(

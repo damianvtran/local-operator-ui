@@ -62,6 +62,7 @@
  */
 
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
+import { t } from "../../../../i18n/messages";
 import {
 	SIDEBAR_BASES,
 	type SidebarBasis,
@@ -103,13 +104,27 @@ export const SIDEBAR_SECTIONS: readonly SidebarSectionKey[] = [
 
 /** The label each section prints. Sentence case; CSS sets the capitals. */
 export const SIDEBAR_SECTION_LABEL: Record<SidebarSectionKey, string> = {
-	pinned: "Pinned",
-	running: "Running",
-	today: "Today",
-	week: "This week",
-	older: "Older",
-	agents: "Agents",
-	teams: "Teams",
+	get pinned() {
+		return t("ui.chat.sidebar.chat_sidebar_view.pinned");
+	},
+	get running() {
+		return t("ui.chat.sidebar.chat_sidebar_view.running");
+	},
+	get today() {
+		return t("ui.chat.sidebar.chat_sidebar_view.today");
+	},
+	get week() {
+		return t("ui.chat.sidebar.chat_sidebar_view.this_week");
+	},
+	get older() {
+		return t("ui.chat.sidebar.chat_sidebar_view.older");
+	},
+	get agents() {
+		return t("ui.chat.sidebar.chat_sidebar_view.agents");
+	},
+	get teams() {
+		return t("ui.chat.sidebar.chat_sidebar_view.teams");
+	},
 };
 
 /**
@@ -339,8 +354,9 @@ export function rosterFieldShown(
  * component, because `title` alone reaches no keyboard reader and is the channel
  * engines are least reliable about.
  */
-export const SECTION_GROWN_HINT =
-	"Collapse, then reopen, to restore the compact list";
+export const SECTION_GROWN_HINT = t(
+	"ui.chat.sidebar.chat_sidebar_view.collapse_then_reopen_to_restore_the_compact_list",
+);
 
 /**
  * IS THIS SECTION DRAWN PAST THE SHIPPED CAP? The one spelling of the question,
@@ -367,7 +383,8 @@ export function sectionIsGrown(cap: number | undefined): boolean {
  * while it is: a dangling id resolves to no description at all, which is the rule
  * the attribute's own comment in the component states.
  */
-export const sectionGrownHintId = (key: string) => `section-grown-hint-${key}`;
+export const sectionGrownHintId = (key: string) =>
+	t("ui.chat.sidebar.chat_sidebar_view.section_grown_hint_key", { key });
 
 /**
  * THE SECTION FOOT'S VISIBLE LABEL, in one spelling (the singular was inline in
@@ -376,7 +393,9 @@ export const sectionGrownHintId = (key: string) => `section-grown-hint-${key}`;
  * remainders say.
  */
 export const sectionMoreLabel = (hidden: number) =>
-	hidden === 1 ? "Show 1 more" : `Show ${hidden} more`;
+	t("ui.chat.sidebar.chat_sidebar_view.show_hidden_more", {
+		hidden,
+	});
 
 /**
  * THE SECTION FOOT'S ACCESSIBLE NAME (UX round 1's N1): the visible label names
@@ -553,7 +572,7 @@ export function pageLimit(loads: number): number {
 export function pageMoreLabel(loads: number, remaining: number): string {
 	const step = pageLimit(loads + 1) - pageLimit(loads);
 	const add = Math.max(0, Math.min(step, remaining));
-	return add === 1 ? "Show 1 more chat" : `Show ${add} more chats`;
+	return t("ui.chat.sidebar.chat_sidebar_view.show_add_more_chats", { add });
 }
 
 /**
@@ -961,7 +980,11 @@ export function entityMore(args: {
 }): { label: string; aria: string } | null {
 	if (args.add <= 0) return null;
 	const label =
-		args.add === 1 ? "Show 1 more chat" : `Show ${args.add} more chats`;
+		args.add === 1
+			? t("ui.chat.sidebar.chat_sidebar_view.show_1_more_chat")
+			: t("ui.chat.sidebar.chat_sidebar_view.show_add_more_chats", {
+					add: args.add,
+				});
 	/*
 	 * The position appears exactly while the badge states more than the reader is
 	 * looking at, and not otherwise - so it can never contradict the badge, and a
@@ -970,14 +993,20 @@ export function entityMore(args: {
 	if (args.drawn >= args.total) return { label, aria: label };
 	const position = `${args.drawn} of ${args.total}`;
 	return {
-		label: `${label} · ${position}`,
+		label: t("ui.chat.sidebar.chat_sidebar_view.label_position", {
+			label,
+			position,
+		}),
 		/*
 		 * WCAG 2.5.3 (round 1, U4): the accessible name must contain the visible
 		 * label, so the name reuses the label's own ` · ` joining rather than a
 		 * comma - the visible string is then a prefix of the name, and
 		 * `chat-sidebar.tsx` appends only the group's name (`… shown in minervadev`).
 		 */
-		aria: `${label} · ${position} shown`,
+		aria: t("ui.chat.sidebar.chat_sidebar_view.label_position_shown", {
+			label,
+			position,
+		}),
 	};
 }
 
@@ -1094,7 +1123,7 @@ export function groupRows(
 		const key = name || "ungrouped";
 		const group = groups.get(key) ?? {
 			key,
-			label: name || "Ungrouped",
+			label: name || t("ui.chat.sidebar.chat_sidebar_view.ungrouped"),
 			rows: [],
 		};
 		group.rows.push(row);

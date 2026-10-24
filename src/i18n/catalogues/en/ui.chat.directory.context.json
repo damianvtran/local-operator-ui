@@ -1,0 +1,314 @@
+{
+	"ui.chat.directory.directory_indicator.browse_for_directory": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.custom_directory": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.default_directories": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.enter_custom_path": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.enter_directory_path": {
+		"role": "accessible name or tooltip in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.no_recent_directories": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.no_working_directory_set": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.recent_directories": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.set_working_directory": {
+		"role": "accessible name or tooltip in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.working_directory": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.working_directory_path": {
+		"role": "accessible name or tooltip in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.click_to_change_the_working_directory": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.click_to_set_the_working_directory": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.moving_session": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.restarting_this_sessions_runtime": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.applications": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.desktop": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.documents": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.downloads": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.home": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.library": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.music": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.pictures": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.program_files": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.program_files_x86": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.programdata": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.users": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.videos": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.volumes": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.moving_to_shown": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"shown": "string"
+		}
+	},
+	"ui.chat.directory.directory_indicator.remove_formatted_from_recent_directories": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"formatted": "string"
+		}
+	},
+	"ui.chat.directory.directory_indicator.shown_is_not_a_directory_on_this_computer": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"shown": "string"
+		}
+	},
+	"ui.chat.directory.directory_indicator.shown_move_cost_sentence": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"shown": "string",
+			"MOVE_COST_SENTENCE": "string"
+		}
+	},
+	"ui.chat.directory.directory_indicator.trimmed_is_not_a_directory_on_this_computer": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"trimmed": "string"
+		}
+	},
+	"ui.chat.directory.directory_indicator.working_directory_set_to_trimmed": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"trimmed": "string"
+		}
+	},
+	"ui.chat.directory.directory_indicator.working_directory_shown": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"shown": "string"
+		}
+	},
+	"ui.chat.directory.directory_indicator.click_to_change_the_working_directory_a_running_sessions_runtime": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.c_program_files": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.c_program_files_x86": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.state_label": {
+		"role": "rendered product copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"state": "string",
+			"shown": "string"
+		}
+	},
+	"ui.chat.directory.directory_indicator.moving_session_colon": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.directory.directory_indicator.working_directory_colon": {
+		"role": "visible interface copy in chat components/directory-indicator.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/directory-indicator.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	}
+}

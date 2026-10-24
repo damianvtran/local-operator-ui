@@ -46,7 +46,7 @@ const useAgentName = (agentId: string) => {
 		queryFn: async () => {
 			if (!baseUrl) {
 				// eslint-disable-next-line no-console
-				console.warn("Base URL for Local Operator API is not configured.");
+				console.warn(t("ui.schedules.errors.base_url_missing"));
 				return t("ui.schedules.schedule_list_item.agent_id");
 			}
 			const response = await AgentsApi.getAgent(baseUrl, agentId);

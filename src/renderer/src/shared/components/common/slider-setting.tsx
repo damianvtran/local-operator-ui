@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * Slider Setting Component
  *
@@ -119,6 +121,7 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 	icon: Icon,
 	isSaving = false,
 }) => {
+	useI18nLocale();
 	const [sliderValue, setSliderValue] = useState<number>(value);
 	const [inputValue, setInputValue] = useState<string>(value.toString());
 	const [isEditing, setIsEditing] = useState(false);
@@ -297,7 +300,12 @@ export const SliderSetting: FC<SliderSettingProps> = ({
 
 				<div className="flex shrink-0 items-center gap-2">
 					{isSaving ? (
-						<Spinner size="md" label={`Saving ${label}`} />
+						<Spinner
+							size="md"
+							label={t("ui.common.forms.slider_setting.saving", {
+								label: label,
+							})}
+						/>
 					) : (
 						<>
 							<Input

@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -64,7 +65,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const matrix: ThemeDefinition = {
 	id: "matrix",
 	name: "Matrix",
-	description: "Phosphor green rain on a near-black terminal screen.",
+	get description() {
+		return t("ui.settings.appearance.theme.matrix");
+	},
 	palette: {
 		mode: "dark",
 

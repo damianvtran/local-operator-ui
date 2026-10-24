@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type {
 	DesktopMediaRequest,
 	DesktopMediaResponse,
@@ -89,7 +90,7 @@ export async function desktopRequest(
 				);
 			throw new DesktopControlError(
 				null,
-				"Desktop controls could not reach the backend process.",
+				t("ui.common.errors.desktop_backend_offline"),
 				cause,
 			);
 		}
@@ -106,14 +107,14 @@ export async function desktopRequest(
 	} catch (cause) {
 		throw new DesktopControlError(
 			null,
-			"Desktop controls could not reach the backend process.",
+			t("ui.common.errors.desktop_backend_offline"),
 			cause,
 		);
 	}
 	if (!response.ok)
 		throw new DesktopControlError(
 			response.status,
-			"Desktop controls need a compatible backend connection.",
+			t("ui.common.errors.desktop_backend_compatibility"),
 		);
 	return response.json();
 }
@@ -189,8 +190,13 @@ function withDeadline(
  * undefined (QA round 3, Q-4). A second literal at the reader would be a second
  * thing to drift from this one.
  */
+/* Stable missing-prose sentinel: error state and its consumers compare this
+ * value, so only the presentation path may translate it. */
 export const DESKTOP_REFUSAL_PLACEHOLDER =
 	"This server did not answer the request for its desktop controls.";
+
+const desktopRefusalPlaceholder = (): string =>
+	t("ui.common.errors.desktop_refusal_placeholder");
 
 export class DesktopControlError extends Error {
 	/**
@@ -317,6 +323,8 @@ export function userFacingMessage(error: unknown, fallback: string): string {
 		 */
 		if (isDesktopRefusalCode(error.code))
 			return DESKTOP_REFUSAL_SENTENCE[error.code];
+		if (error.message === DESKTOP_REFUSAL_PLACEHOLDER)
+			return desktopRefusalPlaceholder();
 		return error.message;
 	}
 	return fallback;
@@ -629,7 +637,7 @@ export async function openAuthorization(
 		id: operationId,
 	});
 	if (!operation.auth_url)
-		throw new Error("This sign-in is no longer waiting for a browser.");
+		throw new Error(t("ui.common.errors.sign_in_not_waiting"));
 	const url = new URL(operation.auth_url);
 	if (
 		url.username ||
@@ -640,7 +648,7 @@ export async function openAuthorization(
 				["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)
 			))
 	) {
-		throw new Error("The provider returned an invalid sign-in address.");
+		throw new Error(t("ui.common.errors.sign_in_invalid_address"));
 	}
 	window.open(url.href, "_blank", "noopener,noreferrer");
 }
@@ -777,7 +785,7 @@ export async function desktopMedia(
 	});
 	const type = response.headers.get("content-type") ?? "";
 	if (!response.ok) {
-		let detail = "The media request failed.";
+		let detail = t("ui.common.errors.media_request");
 		let declaredCode: string | undefined;
 		if (type.includes("application/json")) {
 			try {
@@ -864,5 +872,5 @@ export function mediaError(result: DesktopMediaResponse): Error {
 			);
 		return new Error(result.detail);
 	}
-	return new Error("The media request returned an unexpected response.");
+	return new Error(t("ui.common.errors.media_unexpected_response"));
 }

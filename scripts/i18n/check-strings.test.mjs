@@ -38,6 +38,10 @@ import {
 
 const REPO = new URL("../..", import.meta.url).pathname;
 const FIXTURE = "scripts/i18n/fixtures/scan/violations.tsx";
+/* Fixtures with baseline-countable copy; `extraScan` names them explicitly so
+ * --init/--update have a corpus that still has counts to classify. */
+const INIT_FIXTURE = "scripts/i18n/fixtures/scan/init-branches.tsx";
+const NARROW_FIXTURE = "scripts/i18n/fixtures/scan/fixture-copy-narrow.tsx";
 
 const fixtureApi = openSnapshot(REPO, [join(REPO, FIXTURE)]);
 after(() => {
@@ -349,23 +353,40 @@ test("--update lowers a ceiling, and refuses every raise", () => {
 	try {
 		const baselinePath = join(dir, "baseline.json");
 		/*
-		 * A REAL, baselined file rather than the excluded fixture: `--update`
-		 * scans the tree's own corpus (fixtures are outside it by design), and
-		 * 99 sits above this file's real count so the update has something to
-		 * lower; the raise-target entry sits BELOW its real count so the raise case
-		 * has something to refuse.
+		 * The corpus is the fixture, not the real tree. After the extraction
+		 * programme the product tree has no counted literals left, so the raise
+		 * half of this test has nothing real to refuse; the fixture keeps that
+		 * branch falsifiable. The lower target is still a real path whose entry
+		 * must PRUNE, because a fully extracted file carries no zero ceiling.
 		 */
 		const lowerTarget =
 			"src/renderer/src/features/agent-hub/agent-details-page.tsx";
-		const raiseTarget =
-			"src/renderer/src/features/agent-hub/agent-hub-page.tsx";
-		saveBaseline(baselinePath, { [lowerTarget]: 99, [raiseTarget]: 1 }, "note");
-		const options = { baselinePath, allowlistPath: ALLOWLIST };
+		const { counts } = runCheck({ extraScan: [FIXTURE] });
+		const raiseTarget = FIXTURE;
+		assert.ok(
+			(counts[raiseTarget] ?? 0) > 0,
+			"the fixture has counted literals for the raise case",
+		);
+		const raiseCeiling = counts[raiseTarget] - 1;
+		saveBaseline(
+			baselinePath,
+			{ [lowerTarget]: 99, [raiseTarget]: raiseCeiling },
+			"note",
+		);
+		const options = {
+			baselinePath,
+			allowlistPath: ALLOWLIST,
+			extraScan: [FIXTURE],
+		};
 		assert.equal(main(["--update", lowerTarget], options), 0);
-		assert.equal(loadBaseline(baselinePath).files[lowerTarget], 16);
-		// A file recorded at 1 while the tree carries 12: refused, entry intact.
+		assert.equal(
+			Object.hasOwn(loadBaseline(baselinePath).files, lowerTarget),
+			false,
+			"a fully extracted file is pruned rather than assigned a zero ceiling",
+		);
+		// A file recorded below its current count: refused, entry intact.
 		assert.equal(main(["--update", raiseTarget], options), 1);
-		assert.equal(loadBaseline(baselinePath).files[raiseTarget], 1);
+		assert.equal(loadBaseline(baselinePath).files[raiseTarget], raiseCeiling);
 		// The preceding refusal proves raiseTarget still has literals. Remove
 		// only its scratch-baseline entry to exercise the missing-entry case;
 		// a translated product file may legitimately have zero literals now.
@@ -403,12 +424,15 @@ test("--init --force reports added, raised, lowered and pruned files", () => {
 	const dir = mkdtempSync(join(tmpdir(), "i18n-init-"));
 	try {
 		const baselinePath = join(dir, "baseline.json");
-		const { counts } = runCheck();
+		const corpus = [FIXTURE, INIT_FIXTURE, NARROW_FIXTURE];
+		const { counts } = runCheck({ extraScan: corpus });
 		const rels = Object.keys(counts).sort();
 		/*
 		 * A scratch baseline that exercises each branch at once: one counted file
 		 * missing (that is the `added` case), one entry below its count, one above,
-		 * and one entry for a file with no literals (pruned).
+		 * and one entry for a file with no literals (pruned). The corpus is the
+		 * three fixtures rather than the tree: the product's copy is fully
+		 * extracted, so the real scan has no counted file left to classify.
 		 */
 		const [added, raised, lowered] = rels;
 		const files = { ...counts };
@@ -419,7 +443,11 @@ test("--init --force reports added, raised, lowered and pruned files", () => {
 		saveBaseline(baselinePath, files, "note");
 
 		const { code, out } = captureStdout(() =>
-			main(["--init", "--force"], { baselinePath, allowlistPath: ALLOWLIST }),
+			main(["--init", "--force"], {
+				baselinePath,
+				allowlistPath: ALLOWLIST,
+				extraScan: corpus,
+			}),
 		);
 		assert.equal(code, 0);
 		assert.ok(out.includes("added 1:"), out);
@@ -440,8 +468,9 @@ test("--init --force reports added, raised, lowered and pruned files", () => {
 			out,
 		);
 		assert.ok(out.includes("  src/i18n/gone.tsx: 4 -> 0"), out);
-		// The capture is the tree, not the seeded scratch baseline, and it
-		// stamps the current note rather than inheriting stale prose.
+		// The capture is the corpus it scanned, not the seeded scratch
+		// baseline, and it stamps the current note rather than inheriting
+		// stale prose.
 		const captured = loadBaseline(baselinePath);
 		assert.deepEqual(captured.files, counts);
 		assert.equal(captured.note, BASELINE_NOTE);
@@ -739,7 +768,7 @@ const PLAN_KEYS = {
 
 const astFiles = [...new Set(BINDING.map(([, , file]) => file))];
 
-const bval = (key) => BINDING.find(([k]) => k === key)[1];
+const _bval = (key) => BINDING.find(([k]) => k === key)[1];
 const slug = (s) => s.replace(/\s+/g, "").replace(/,}/g, "}");
 
 const bslice = (sf, node) => sf.text.slice(node.getStart(sf), node.getEnd());

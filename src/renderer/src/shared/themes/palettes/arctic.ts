@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -42,7 +43,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const arctic: ThemeDefinition = {
 	id: "arctic",
 	name: "Arctic",
-	description: "Slate-blue polar night lit by an aurora-green accent.",
+	get description() {
+		return t("ui.settings.appearance.theme.arctic");
+	},
 	palette: {
 		mode: "dark",
 		canvas: "#1A2431",

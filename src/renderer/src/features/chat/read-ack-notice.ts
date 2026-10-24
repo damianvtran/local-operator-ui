@@ -8,6 +8,7 @@ import {
 	type ReadAckNoticeKind,
 	isStoreWriteRefusal,
 } from "@shared/store/canonical-sessions-store";
+import { t } from "../../../../i18n/messages";
 import { STORE_BUSY_CODE } from "../../../../shared/desktop-session-contract";
 
 /*
@@ -95,10 +96,20 @@ const RETRY_REMEDY_SENTENCE = "Click the chat to try again.";
  *   `readAckCopy` substitutes the device's name when the row knows one.
  */
 export const READ_ACK_NOTICE_CLAUSE: Record<ReadAckNoticeKind, string> = {
-	pending: "marking read",
-	offscreen: "scroll to the result to mark this chat read",
+	get pending() {
+		return t("ui.chat.read_ack_notice.marking_read");
+	},
+	get offscreen() {
+		return t(
+			"ui.chat.read_ack_notice.scroll_to_the_result_to_mark_this_chat_read",
+		);
+	},
 	unsettled: RETRY_REMEDY,
-	remote: "lives on another device, and it clears when that device updates",
+	get remote() {
+		return t(
+			"ui.chat.read_ack_notice.lives_on_another_device_and_it_clears_when_that_device",
+		);
+	},
 };
 
 /**
@@ -114,11 +125,22 @@ export const READ_ACK_NOTICE_CLAUSE: Record<ReadAckNoticeKind, string> = {
  * already implied - the rule `SILENT_REMEDY`'s own span states).
  */
 export const READ_ACK_NOTICE_DESCRIPTION: Record<ReadAckNoticeKind, string> = {
-	pending: "Marking this chat read.",
-	offscreen: "Scroll to the result to mark this chat read.",
-	unsettled: `Not marked read. ${RETRY_REMEDY_SENTENCE}`,
-	remote:
-		"The unread mark lives on another device. It clears when that device updates.",
+	get pending() {
+		return t("ui.chat.read_ack_notice.marking_this_chat_read");
+	},
+	get offscreen() {
+		return t(
+			"ui.chat.read_ack_notice.scroll_to_the_result_to_mark_this_chat_read_495f94",
+		);
+	},
+	unsettled: t("ui.chat.read_ack_notice.unsettled", {
+		remedy: RETRY_REMEDY_SENTENCE,
+	}),
+	get remote() {
+		return t(
+			"ui.chat.read_ack_notice.the_unread_mark_lives_on_another_device_it_clears_when",
+		);
+	},
 };
 
 /**
@@ -138,8 +160,14 @@ const remoteAckCopy = (
 	const name = deviceLabel?.trim();
 	return name
 		? {
-				clause: `lives on ${name}, and it clears when that device updates`,
-				description: `The unread mark lives on ${name}. It clears when that device updates.`,
+				clause: t(
+					"ui.chat.read_ack_notice.lives_on_name_and_it_clears_when_that_device_updates",
+					{ name },
+				),
+				description: t(
+					"ui.chat.read_ack_notice.the_unread_mark_lives_on_name_it_clears_when_that",
+					{ name },
+				),
 			}
 		: {
 				clause: READ_ACK_NOTICE_CLAUSE.remote,
@@ -232,7 +260,8 @@ const refusalOf = (reason: unknown): ReadAckRefusal => {
  * `DesktopControlError` gives it a message ("Desktop controls could not reach the
  * backend process.", `desktop-api.ts`), so this is the floor rather than the copy.
  */
-const UNREACHABLE_FALLBACK = "The app could not reach the backend.";
+const UNREACHABLE_FALLBACK = () =>
+	t("ui.chat.read_ack_notice.the_app_could_not_reach_the_backend");
 
 /**
  * The sentence per CLASS of refusal.
@@ -249,9 +278,14 @@ const UNREACHABLE_FALLBACK = "The app could not reach the backend.";
  */
 const READ_ACK_SENTENCE: Record<ReadAckRefusal, (reason: unknown) => string> = {
 	busy: () =>
-		`The read state is busy, so the unread mark was not cleared. ${RETRY_REMEDY_SENTENCE}`,
+		t("ui.chat.read_ack_notice.the_read_state_is_busy_so_the_unread_mark_was", {
+			RETRY_REMEDY_SENTENCE,
+		}),
 	refused: () =>
-		`The read state could not be written, so the unread mark was not cleared. ${RETRY_REMEDY_SENTENCE}`,
+		t(
+			"ui.chat.read_ack_notice.the_read_state_could_not_be_written_so_the_unread",
+			{ RETRY_REMEDY_SENTENCE },
+		),
 	/*
 	 * THE CLASS THAT DOES NOT ANNOUNCE. The loop publishes this class as the
 	 * quiet kind (`remote`), never `unsettled`, so the sidebar's announcement
@@ -262,8 +296,21 @@ const READ_ACK_SENTENCE: Record<ReadAckRefusal, (reason: unknown) => string> = {
 	 */
 	remote: () => READ_ACK_NOTICE_DESCRIPTION.remote,
 	unreachable: (reason) =>
-		`${userFacingMessage(reason, UNREACHABLE_FALLBACK)} The unread mark was not cleared. ${RETRY_REMEDY_SENTENCE}`,
-	unreported: () => `The unread mark was not cleared. ${RETRY_REMEDY_SENTENCE}`,
+		t(
+			"ui.chat.read_ack_notice.userfacingmessagevalue_the_unread_mark_was_not_cleared_retry_remedy_sentence",
+			{
+				userFacingMessageValue: userFacingMessage(
+					reason,
+					UNREACHABLE_FALLBACK(),
+				),
+				RETRY_REMEDY_SENTENCE: RETRY_REMEDY_SENTENCE,
+			},
+		),
+	unreported: () =>
+		t(
+			"ui.chat.read_ack_notice.the_unread_mark_was_not_cleared_retry_remedy_sentence",
+			{ RETRY_REMEDY_SENTENCE },
+		),
 };
 
 /** The sentence the give-up arm is announced with, for the refusal it met. */

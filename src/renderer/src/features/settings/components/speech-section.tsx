@@ -117,7 +117,9 @@ const BACKEND_OLDER_SENTENCE =
  * asserts it. A reworded sentence that was duplicated in either place would
  * either photograph the wrong arm or assert a string nothing renders.
  */
-export const UNAVAILABLE_SENTENCE = "Speech availability could not be read.";
+export const UNAVAILABLE_SENTENCE = t(
+	"ui.settings.speech.speech_section.copy_unavailable_sentence",
+);
 const UNAVAILABLE_SENTENCE_KEY =
 	"ui.settings.speech.speech_section.copy_unavailable_sentence";
 

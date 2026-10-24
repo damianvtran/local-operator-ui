@@ -1,3 +1,4 @@
+import { t } from "../../../../i18n/messages";
 /**
  * What a typed `/delete` says on a backend with no delete route.
  *
@@ -7,8 +8,9 @@
  * a backend skew the user cannot fix by trying again - they are told what is
  * missing and that an update is the way to get it.
  */
-export const DELETE_UNAVAILABLE_REASON =
-	"This backend cannot delete conversations. Update the backend and try again.";
+export const DELETE_UNAVAILABLE_REASON = t(
+	"ui.chat.delete_conversation.this_backend_cannot_delete_conversations_update_the_backend_and_try",
+);
 
 /**
  * The words a permanent delete asks with, and the ONE place they are written.
@@ -38,15 +40,21 @@ export function deleteConversationMessage(
 	title: string,
 	hasSubagentRuns: boolean,
 ): string {
-	const named = `“${title}”`;
-	const base = `Every message in ${named} is permanently removed from this machine. This cannot be undone.`;
+	const named = t("ui.chat.delete_conversation.title", { title });
+	const base = t(
+		"ui.chat.delete_conversation.every_message_in_named_is_permanently_removed_from_this_machine",
+		{ named },
+	);
 	if (!hasSubagentRuns) return base;
 	/*
 	 * "are kept", not "are unaffected": the children are separate sessions that
 	 * survive this delete, and the user is being told what they will still find
 	 * rather than what will not happen to them.
 	 */
-	return `${base} The subagent runs it started are kept.`;
+	return t(
+		"ui.chat.delete_conversation.base_the_subagent_runs_it_started_are_kept",
+		{ base },
+	);
 }
 
 /**
@@ -74,5 +82,6 @@ export function deleteConversationMessage(
  * The route's sentence above still names the specific remedy, and this one now
  * agrees with it instead of contradicting it.
  */
-export const DELETE_GUARD_REMEDY =
-	"The guard above is the daemon's own, and nothing in this window can clear it: clear it where the session runs - stop it there, or cancel the wake it names - and ask again.";
+export const DELETE_GUARD_REMEDY = t(
+	"ui.chat.delete_conversation.the_guard_above_is_the_daemons_own_and_nothing_in",
+);

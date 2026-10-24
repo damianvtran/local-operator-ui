@@ -524,12 +524,17 @@ test("the chip's accessible name carries the phrase its label slot paints (R3-1,
 	);
 	assert.match(
 		chip,
-		/aria-label=\{`\$\{pending \? "Moving session" : "Working directory"\}: \$\{shown\}`\}/,
+		/aria-label=\{t\(\s*"ui\.chat\.directory\.directory_indicator\.state_label",/,
+		"the accessible name uses the localized state-and-path message",
+	);
+	assert.match(
+		chip,
+		/state:\s*pending\s*\?\s*t\(\s*"ui\.chat\.directory\.directory_indicator\.moving_session",?\s*\)\s*:\s*t\(\s*"ui\.chat\.directory\.directory_indicator\.working_directory",?\s*\)/,
 		"the name is built from the same condition the slot paints",
 	);
 	assert.match(
 		chip,
-		/<bdi dir="auto">\s*\{pending \? "Moving session:" : "Working directory:"\}\s*<\/bdi>/,
+		/<bdi dir="auto">\s*\{pending\s*\?\s*t\(\s*"ui\.chat\.directory\.directory_indicator\.moving_session_colon",?\s*\)\s*:\s*t\(\s*"ui\.chat\.directory\.directory_indicator\.working_directory_colon",?\s*\)\s*\}\s*<\/bdi>/,
 		"and the slot paints the phrase the name carries, in a bidi-isolated run so its colon stays with the phrase under RTL",
 	);
 	/*
@@ -540,7 +545,7 @@ test("the chip's accessible name carries the phrase its label slot paints (R3-1,
 	 */
 	assert.match(
 		chip,
-		/<bdi dir="auto">Working directory:<\/bdi>/,
+		/<bdi dir="auto">\s*\{t\(\s*"ui\.chat\.directory\.directory_indicator\.working_directory_colon",?\s*\)\}\s*<\/bdi>/,
 		"the read-only slot paints its label in the same isolated run",
 	);
 	/*
@@ -549,22 +554,16 @@ test("the chip's accessible name carries the phrase its label slot paints (R3-1,
 	 * is that the name contains the label. Both are read out of the shipped source
 	 * and asked directly.
 	 */
-	const painted = chip.match(
-		/<bdi dir="auto">\s*\{pending \? "(Moving session:)" : "(Working directory:)"\}\s*<\/bdi>/,
+	const messages = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.directory.json", "utf8"),
 	);
-	const named = chip.match(
-		/aria-label=\{`\$\{pending \? "(Moving session)" : "(Working directory)"\}/,
-	);
-	assert.ok(
-		painted && named,
-		"both the slot and the name must be found to be compared",
-	);
-	assert.equal(
-		named[1],
-		painted[1].replace(/:$/, ""),
-		"the in-flight label the user reads is the phrase the accessible name carries",
-	);
-	assert.equal(named[2], painted[2].replace(/:$/, ""));
+	for (const state of ["moving_session", "working_directory"]) {
+		assert.equal(
+			messages[`ui.chat.directory.directory_indicator.${state}_colon`],
+			`${messages[`ui.chat.directory.directory_indicator.${state}`]}:`,
+			`the ${state} slot's label is in the accessible name`,
+		);
+	}
 });
 
 test("the chip re-measures its overflow when the PATH changes (agent review R-1, R3-N2)", () => {

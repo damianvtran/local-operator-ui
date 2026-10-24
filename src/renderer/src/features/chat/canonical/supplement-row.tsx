@@ -68,10 +68,10 @@
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { Disclosure } from "@shared/components/ui/disclosure";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import {
 	AUDIO_UNAVAILABLE_COPY,
 	BrokenAttachment,
@@ -88,12 +88,6 @@ import {
 import { SupplementFrame } from "./supplement-frame";
 import { SupplementImageGrid } from "./supplement-image-grid";
 import {
-	COPY_ADJUST,
-	COPY_CANCEL,
-	COPY_CANCELLED,
-	COPY_FAILED,
-	COPY_PREPARING,
-	COPY_RETRY,
 	STEER_TEXT_MAX_CHARS,
 	type SupplementComponent,
 	type SupplementFile,
@@ -219,7 +213,8 @@ const SupplementSoundLine = memo(function SupplementSoundLine({
 		scope,
 	);
 	const peaks = useWaveform(sound.attachment, scope);
-	const label = sound.title || "Generated sound";
+	const label =
+		sound.title || t("ui.chat.canonical.supplement_row.generated_sound");
 	/*
 	 * THE NAME DOES NOT WAIT FOR THE BYTES. A sound's title is known the moment
 	 * the record arrives (it is the producer's own string), so it is drawn over
@@ -444,7 +439,10 @@ export const SupplementRow = memo(function SupplementRow({
 			 * "Not Found" must never reach a toast).
 			 */
 			showErrorToast(
-				backendLoadErrorMessage("Highlights could not be updated.", error),
+				backendLoadErrorMessage(
+					t("ui.chat.canonical.supplement_row.highlights_could_not_be_updated"),
+					error,
+				),
 			);
 		} finally {
 			setBusy(false);
@@ -539,18 +537,26 @@ export const SupplementRow = memo(function SupplementRow({
 								}
 							/>
 						</span>
-						<span className="text-ink-muted">{COPY_PREPARING}</span>
+						<span className="text-ink-muted">
+							{t("ui.chat.canonical.supplement_model.preparing_highlights")}
+						</span>
 					</>
 				)}
 				{(disposition === "cancelled_retry" ||
 					disposition === "files_cancelled_retry") && (
-					<span className="text-ink-muted">{COPY_CANCELLED}</span>
+					<span className="text-ink-muted">
+						{t("ui.chat.canonical.supplement_model.highlights_cancelled")}
+					</span>
 				)}
 				{(disposition === "failed_retry" ||
 					disposition === "files_failed_retry") && (
 					<span className="text-ink-muted">
-						{COPY_FAILED}
-						{failedCause ? ` — ${failedCause}` : ""}
+						{t("ui.chat.canonical.supplement_model.couldnt_prepare_highlights")}
+						{failedCause
+							? t("ui.chat.canonical.supplement_row.failedcause", {
+									failedCause,
+								})
+							: ""}
 					</span>
 				)}
 				{/*
@@ -573,7 +579,7 @@ export const SupplementRow = memo(function SupplementRow({
 									data-supplement-adjust=""
 									onClick={() => setAdjusting(true)}
 								>
-									{COPY_ADJUST}
+									{t("ui.chat.canonical.supplement_model.adjust")}
 								</button>
 							)}
 							<button
@@ -583,7 +589,7 @@ export const SupplementRow = memo(function SupplementRow({
 								disabled={busy || record.state === "cancelling"}
 								onClick={cancel}
 							>
-								{COPY_CANCEL}
+								{t("ui.chat.canonical.supplement_model.cancel")}
 							</button>
 						</>
 					)}
@@ -602,7 +608,7 @@ export const SupplementRow = memo(function SupplementRow({
 								data-supplement-retry=""
 								onClick={retry}
 							>
-								{COPY_RETRY}
+								{t("ui.chat.canonical.supplement_model.retry")}
 							</button>
 						</>
 					)}
@@ -717,7 +723,9 @@ export const SupplementRow = memo(function SupplementRow({
 						rowClassName="min-h-0 py-0"
 						summary={
 							<span data-supplement-more="">
-								{expandedMore ? "Show fewer" : moreText(moreCount)}
+								{expandedMore
+									? t("ui.chat.canonical.supplement_row.show_fewer")
+									: moreText(moreCount)}
 							</span>
 						}
 					>
@@ -814,7 +822,9 @@ export const SupplementRow = memo(function SupplementRow({
 					rowClassName="min-h-0 py-0"
 					summary={
 						<span data-supplement-show-all="">
-							{showAll ? "Show fewer" : showAllText(tail.length)}
+							{showAll
+								? t("ui.chat.canonical.supplement_row.show_fewer")
+								: showAllText(tail.length)}
 						</span>
 					}
 				>
@@ -862,7 +872,7 @@ export const SupplementRow = memo(function SupplementRow({
 								onOpenChange={setDetailsOpen}
 								rowClassName="min-h-6 py-0"
 								chevronClassName="text-ink-dim"
-								summary="Details"
+								summary={t("ui.chat.canonical.supplement_row.details")}
 							>
 								<div className="max-h-[min(320px,40vh)] overflow-auto break-words font-mono text-ink-dim">
 									{record.model && (

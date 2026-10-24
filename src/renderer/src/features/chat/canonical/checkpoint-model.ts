@@ -19,6 +19,7 @@
  * `entry.ts`. Nothing else in this module reads a clock.
  */
 
+import { t } from "../../../../../i18n/messages";
 import type {
 	Checkpoint,
 	CheckpointManifest,
@@ -27,7 +28,9 @@ import type {
 } from "../../../../../shared/desktop-contract";
 
 /** The card's line while a completion's name is still being generated. */
-export const CHECKPOINT_GENERATING_NAME = "Generating name…";
+export const CHECKPOINT_GENERATING_NAME = t(
+	"ui.chat.canonical.checkpoint_model.generating_name",
+);
 
 /**
  * One mark's visual state, as the rail derives it (dsh ladder, 2026-09-29).
@@ -187,10 +190,18 @@ export function checkpointTurnCount(
  * a liveness claim the manifest cannot make about an abandoned turn.
  */
 export const CHECKPOINT_OUTCOME_LABELS: Record<CheckpointOutcome, string> = {
-	complete: "Complete",
-	error: "Error",
-	interrupted: "Interrupted",
-	open: "Open",
+	get complete() {
+		return t("ui.chat.canonical.checkpoint_model.complete");
+	},
+	get error() {
+		return t("ui.chat.canonical.checkpoint_model.error");
+	},
+	get interrupted() {
+		return t("ui.chat.canonical.checkpoint_model.interrupted");
+	},
+	get open() {
+		return t("ui.chat.canonical.checkpoint_model.open");
+	},
 };
 
 /**
@@ -231,12 +242,25 @@ export function checkpointAriaLabel(
 	if (checkpoint.kind === "user") {
 		const clock = checkpointClockLabel(checkpoint.ts);
 		return clock
-			? `Jump to your message in ${position}, ${clock}`
-			: `Jump to your message in ${position}`;
+			? t(
+					"ui.chat.canonical.checkpoint_model.jump_to_your_message_in_position_clock",
+					{ position: position, clock: clock },
+				)
+			: t(
+					"ui.chat.canonical.checkpoint_model.jump_to_your_message_in_position",
+					{ position: position },
+				);
 	}
 	const name =
 		checkpoint.naming?.state === "ready" ? checkpoint.naming.name?.trim() : "";
-	return name ? `Jump to ${position}, ${name}` : `Jump to ${position}`;
+	return name
+		? t("ui.chat.canonical.checkpoint_model.jump_to_position_name", {
+				position: position,
+				name: name,
+			})
+		: t("ui.chat.canonical.checkpoint_model.jump_to_position", {
+				position: position,
+			});
 }
 
 /**

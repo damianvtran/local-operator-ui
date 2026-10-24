@@ -78,24 +78,14 @@ const ROW_COPY_KEYS: Record<string, RowCopyKeys> = {
 		label: "ui.settings.section.interface_language.label",
 		help: "ui.settings.section.interface_language.help",
 	},
-};
-
-/*
- * Rows NOT yet extracted: their copy is still an English literal, resolved as-is.
- * Keeping them in a separate literal table (rather than feeding a literal to
- * `t()`) is what lets one row migrate to keys at a time without a type lie - the
- * string scanner holds these as known debt, and each later wave moves a row from
- * here into `ROW_COPY_KEYS`.
- */
-const ROW_COPY_LITERALS: Record<string, RowCopy> = {
 	[DELEGATED_ENABLED_KEY]: {
-		label: "Remove delegated sessions automatically",
-		help: "Applies to subagent runs, agent shells and background runs only.",
-		gateLabel: "automatic removal",
+		label: "ui.settings.section.delegated_enabled.label",
+		help: "ui.settings.section.delegated_enabled.help",
+		gateLabel: "ui.settings.section.delegated_enabled.gate_label",
 	},
 	[DELEGATED_MAX_AGE_KEY]: {
-		label: "Remove after",
-		help: "The retention window: how long a delegated session (a subagent or background run) can sit idle before it is removed.",
+		label: "ui.settings.section.delegated_max_age.label",
+		help: "ui.settings.section.delegated_max_age.help",
 	},
 };
 
@@ -107,8 +97,8 @@ const ROW_COPY_LITERALS: Record<string, RowCopy> = {
  * the header its scope tag. This page has the width, and the full phrase is what
  * tells a reader which sessions the group governs before they read a line of it.
  */
-const SECTION_TITLES: Record<string, string> = {
-	session_delegated: "Delegated work: subagents and background sessions",
+const SECTION_TITLE_KEYS: Record<string, WithoutParams> = {
+	session_delegated: "ui.settings.section.session_delegated.title",
 };
 
 /**
@@ -127,12 +117,13 @@ function rowCopyFor(key: string): RowCopy | undefined {
 			...(keys.gateLabel ? { gateLabel: t(keys.gateLabel) } : {}),
 		};
 	}
-	return ROW_COPY_LITERALS[key];
+	return undefined;
 }
 
 /** A section's title as this page shows it. */
 export function sectionTitle(section: { name: string; title: string }): string {
-	return SECTION_TITLES[section.name] ?? section.title;
+	const key = SECTION_TITLE_KEYS[section.name];
+	return key ? t(key) : section.title;
 }
 
 /** The setting with the desktop's words applied, or the same object untouched. */

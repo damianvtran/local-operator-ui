@@ -27,8 +27,8 @@
  */
 
 import { cn } from "@shared/lib/utils";
+import { t } from "../../../../../i18n/messages";
 import {
-	ATTACHMENT_UNAVAILABLE_COPY,
 	AttachmentFrame,
 	BrokenAttachment,
 } from "../components/message-item/attachment-frame";
@@ -166,7 +166,9 @@ export const CanonicalImage = ({
 			<BrokenAttachment
 				name={label}
 				compact={size === "thumbnail"}
-				detail={ATTACHMENT_UNAVAILABLE_COPY}
+				detail={t(
+					"ui.chat.message.attachment_frame.could_not_be_displayed_its_stored_copy_is_not_available",
+				)}
 			/>
 		);
 	}

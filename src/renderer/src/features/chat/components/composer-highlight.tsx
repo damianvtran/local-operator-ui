@@ -68,6 +68,7 @@
  * `scrollHeight` autosize is untouched); and it binds no key of its own.
  */
 
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { FC, ReactNode, RefObject } from "react";
 import { useLayoutEffect, useMemo, useRef } from "react";
@@ -173,6 +174,7 @@ export const ComposerHighlight: FC<ComposerHighlightProps> = ({
 	refused = false,
 	children,
 }) => {
+	useI18nLocale();
 	/*
 	 * TWO nodes, and the split is the point rather than tidiness. `mirrorRef` is
 	 * the GLYPH LAYER: the text column, scrolled by the transform. The element

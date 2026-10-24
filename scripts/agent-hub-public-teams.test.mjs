@@ -56,6 +56,13 @@ import { JSDOM } from "jsdom";
 import React, { act } from "react";
 
 const read = (path) => readFileSync(path, "utf8");
+const englishMessage = (namespace, key) => {
+	const catalogue = JSON.parse(
+		readFileSync(`src/i18n/catalogues/en/${namespace}.json`, "utf8"),
+	);
+	assert.equal(typeof catalogue[key], "string", `missing English key ${key}`);
+	return catalogue[key];
+};
 
 const FEATURE = "src/renderer/src/features/agent-hub";
 
@@ -965,7 +972,14 @@ test("the prose about a name paints the derived form too", async () => {
 		/const displayName = agent \? hubDisplayName\(agent\.name\) : ""/,
 		"the page derives the name once",
 	);
-	assert.match(details, /This takes "\{displayName\}" off the hub/);
+	assert.match(
+		details,
+		/t\("ui\.hub\.agents\.delist_body", \{ name: displayName \}\)/,
+	);
+	assert.match(
+		englishMessage("ui.hub.agents", "ui.hub.agents.delist_body"),
+		/This takes "\{name\}" off the hub/,
+	);
 	assert.match(
 		details,
 		/agentActionFailureMessage\(\s*failure\.action,\s*failure\.error,\s*displayName,/,
@@ -985,10 +999,21 @@ test("the prose about a name paints the derived form too", async () => {
 	const roster = read(
 		"src/renderer/src/features/agent-hub/components/org-teams-list.tsx",
 	);
-	assert.match(roster, /`Pull team \$\{hubDisplayName\(team\.name\)\}`/);
 	assert.match(
 		roster,
-		/`"\$\{hubDisplayName\(team\.name\)\}" could not be pulled\.`/,
+		/t\("ui\.hub\.teams\.pull_named", \{\s*name: hubDisplayName\(team\.name\),/,
+	);
+	assert.match(
+		roster,
+		/t\("ui\.hub\.teams\.pull_named_failed", \{\s*name: hubDisplayName\(team\.name\),/,
+	);
+	assert.equal(
+		englishMessage("ui.hub.teams", "ui.hub.teams.pull_named"),
+		"Pull team {name}",
+	);
+	assert.equal(
+		englishMessage("ui.hub.teams", "ui.hub.teams.pull_named_failed"),
+		'"{name}" could not be pulled.',
 	);
 });
 

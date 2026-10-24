@@ -1,4 +1,5 @@
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
+import { t } from "../../../../../i18n/messages";
 
 /**
  * Creates a new file with the given details.
@@ -20,7 +21,9 @@ export const createFile = async (
 		if (!overwrite) {
 			const exists = await window.api.fileExists(filePath);
 			if (exists) {
-				showErrorToast("File already exists. Creation cancelled.");
+				showErrorToast(
+					t("ui.chat.file_creation.file_already_exists_creation_cancelled"),
+				);
 				return;
 			}
 		}
@@ -29,15 +32,19 @@ export const createFile = async (
 
 		const fileWasCreated = await window.api.fileExists(filePath);
 		if (fileWasCreated) {
-			showSuccessToast(`File "${name}.${type}" created.`);
+			showSuccessToast(
+				t("ui.chat.file_creation.file_name_type_created", { name, type }),
+			);
 		} else {
-			throw new Error("File creation failed.");
+			throw new Error(t("ui.chat.file_creation.file_creation_failed"));
 		}
 	} catch (error) {
 		const errorMessage =
 			error instanceof Error
 				? error.message
-				: "An unknown error occurred while creating the file.";
+				: t(
+						"ui.chat.file_creation.an_unknown_error_occurred_while_creating_the_file",
+					);
 		showErrorToast(errorMessage);
 		throw error;
 	}

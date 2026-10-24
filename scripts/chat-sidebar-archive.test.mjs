@@ -228,7 +228,7 @@ test("the archived row carries a marker that is not in the contested trailing sl
 	// The word reaches a screen reader through the `sr-only` span, and the tooltip
 	// states the same fact - the two channels agree because there is one string.
 	assert.match(marker, /sr-only/);
-	assert.match(rows, /\{archived \? ", archived" : ""\}/);
+	assert.match(rows, /t\("ui\.chat\.sidebar\.row\.archived_suffix"\)/);
 	/*
 	 * AND IT SITS BEFORE THE TITLE, not in the trailing slot. That slot admits
 	 * exactly one statement (`rowTrailingStatement` records the three layouts that
@@ -237,7 +237,7 @@ test("the archived row carries a marker that is not in the contested trailing sl
 	 * query is on screen - or be dropped from the row that most needs both.
 	 */
 	const markerAt = rows.indexOf("<Archive");
-	const titleAt = rows.lastIndexOf('{row.title || "Untitled chat"}');
+	const titleAt = rows.lastIndexOf("{conversationTitleForDisplay(row.title)}");
 	assert.ok(
 		markerAt !== -1 && titleAt !== -1 && markerAt < titleAt,
 		"the marker must precede the title's span, outside the trailing slot's rule",
@@ -432,7 +432,10 @@ test("a refused press is reported once, as an ordinary sonner toast, with a retr
 	 * merged into the dying entry and destroyed inside sonner's own unmount window.
 	 * Both actions therefore only send their write; the replacement is sonner's update.
 	 */
-	for (const label of ['label: "Retry"', 'label: "Undo"']) {
+	for (const label of [
+		'label: t("ui.common.actions.retry")',
+		'label: t("ui.chat.undo_toasts.undo")',
+	]) {
 		const at = failure.indexOf(label);
 		assert.notEqual(at, -1, `${label} is not in the archive effect`);
 		const press = failure.slice(at, failure.indexOf("setSessionArchived", at));
@@ -657,8 +660,8 @@ test("the header's menu is the session's actions, and its delete only ASKS", () 
 	// rather than a menu advertising items that do nothing.
 	assert.match(menu, /<DropdownMenuTrigger/);
 	// Archive and unarchive are one item whose label follows the state.
-	assert.match(menu, /Archive conversation/);
-	assert.match(menu, /Restore conversation/);
+	assert.match(menu, /ui\.chat\.header\.chat_header\.archive_conversation/);
+	assert.match(menu, /ui\.chat\.header\.chat_header\.restore_conversation/);
 	assert.match(menu, /onSetArchived\?\.\(!archived\)/);
 	/*
 	 * Delete is painted in the danger ink and does NOT delete: it asks the pane to
@@ -706,7 +709,10 @@ test("the dialog is the app's one delete confirmation, and it stays open to refu
 	assert.match(source, /focusCancelSignal=\{refusalSeq\}/);
 	assert.match(source, /setRefusalSeq\(\(seq\) => seq \+ 1\)/);
 	assert.match(source, /shownRefusal\?\.guarded && \(/);
-	assert.match(source, /DELETE_GUARD_REMEDY/);
+	assert.match(
+		source,
+		/ui\.chat\.delete_conversation\.the_guard_above_is_the_daemons_own_and_nothing_in/,
+	);
 	// And closing the dialog hands the keyboard back to whatever opened it (the
 	// header's trigger when the menu that hosted the item is gone).
 	assert.match(source, /data-conversation-actions/);
@@ -877,10 +883,24 @@ test("the confirmation asks the reversible question, and the copy is written in 
 	 * `Include archived` control - so a copy edit that quietly dropped one of the three ways
 	 * back would be a claim quietly lost rather than a string quietly changed.
 	 */
+	/*
+	 * A CALL-TIME FUNCTION, not a module constant: `t()` reads the active locale
+	 * when it is called, and a `const` evaluated at import would freeze the boot
+	 * language into an open dialog on a language switch (agent review round 3,
+	 * MAJOR reactivity). The body still leads with the consequence and
+	 * INTERPOLATES the timer.
+	 */
 	assert.match(
 		copy,
-		/export const ARCHIVE_CONFIRM_MESSAGE = `It leaves your lists\. You can undo for \$\{ARCHIVE_UNDO_TOAST_MS \/ 1000\} seconds; after that, search above your chats, turn on \\u201cInclude archived\\u201d, then Unarchive it\.`;/,
-		"the body leads with the consequence and INTERPOLATES the timer, so the copy cannot drift from it",
+		/export const archiveConfirmMessage = \(\): string =>\s*t\(\s*"ui\.chat\.archive_confirm\.undo_explanation",\s*\{\s*seconds: ARCHIVE_UNDO_TOAST_MS \/ 1000,?\s*\},?\s*\)/,
+		"the body is call-time and INTERPOLATES the timer, so the copy cannot drift from it",
+	);
+	const messages = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.json", "utf8"),
+	);
+	assert.equal(
+		messages["ui.chat.archive_confirm.undo_explanation"],
+		"It leaves your lists. You can undo for {seconds, number} seconds; after that, search above your chats, turn on “Include archived”, then Unarchive it.",
 	);
 	assert.match(
 		copy,
@@ -891,10 +911,13 @@ test("the confirmation asks the reversible question, and the copy is written in 
 		false,
 		"a vague 'few seconds' came back where the build can say the number",
 	);
-	assert.match(copy, /export const ARCHIVE_CONFIRM_VERB = "Archive";/);
+	assert.match(
+		copy,
+		/export const archiveConfirmVerb = \(\): string =>\s*t\("ui\.chat\.archive_confirm\.archive"\);/,
+	);
 	// And the dialog RENDERS it rather than restating it: two copies of the sentence would be
 	// two places to keep in step with the three facts it promises.
-	assert.match(dialog, /message=\{<p>\{ARCHIVE_CONFIRM_MESSAGE\}<\/p>\}/);
+	assert.match(dialog, /message=\{<p>\{archiveConfirmMessage\(\)\}<\/p>\}/);
 	/*
 	 * THE TITLE NAMES THE CONVERSATION AND ONLY THE NAME GIVES: the name sits in its own
 	 * `min-w-0 truncate` box between two `shrink-0` halves, so a long name ellipsises while
@@ -903,10 +926,13 @@ test("the confirmation asks the reversible question, and the copy is written in 
 	 * carries for the row's own control label (agent review round 2, R2-3), applied to the
 	 * modal.
 	 */
-	assert.match(dialog, /className="shrink-0">\s*\{`\$\{ARCHIVE_CONFIRM_VERB\}/);
 	assert.match(
 		dialog,
-		/candidateTitle === null \? ARCHIVE_CONFIRM_UNNAMED : candidateTitle/,
+		/className="shrink-0">\s*\{`\$\{archiveConfirmVerb\(\)\}/,
+	);
+	assert.match(
+		dialog,
+		/candidateTitle === null\s*\?\s*archiveConfirmUnnamed\(\)\s*:\s*candidateTitle/,
 	);
 	/*
 	 * THE QUOTES ARE OUTSIDE THE CUT (design round 1, D2, read off the long-name frame): quoted

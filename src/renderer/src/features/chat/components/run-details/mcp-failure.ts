@@ -58,6 +58,7 @@ import {
 	DesktopControlError,
 	UserFacingError,
 } from "@shared/api/local-operator/desktop-api";
+import { t } from "../../../../../../i18n/messages";
 import {
 	DESKTOP_MACHINE_DETAIL,
 	DESKTOP_REFUSAL_SENTENCE,
@@ -96,17 +97,55 @@ export type McpFailurePhase =
  * session's owner, which no surface of this app shows.
  */
 export const MCP_FAILURE_LEAD: Record<McpFailurePhase, string> = {
-	probe: "This server's sign-in method could not be checked",
-	grant: "The sign-in could not be started",
-	reconnect: "The server could not be reconnected",
-	reload: "This server's configuration could not be re-read",
-	add: "The server could not be added",
-	key: "The keys were not saved",
-	cancel: "The cancellation could not be confirmed",
-	status: "The sign-in status could not be refreshed",
-	disconnect: "The server could not be disconnected",
-	remove: "The server could not be removed",
-	test: "The connection test could not be started",
+	get probe() {
+		return t(
+			"ui.chat.run_details.mcp_failure.this_servers_sign_in_method_could_not_be_checked",
+		);
+	},
+	get grant() {
+		return t(
+			"ui.chat.run_details.mcp_failure.the_sign_in_could_not_be_started",
+		);
+	},
+	get reconnect() {
+		return t(
+			"ui.chat.run_details.mcp_failure.the_server_could_not_be_reconnected",
+		);
+	},
+	get reload() {
+		return t(
+			"ui.chat.run_details.mcp_failure.this_servers_configuration_could_not_be_re_read",
+		);
+	},
+	get add() {
+		return t("ui.chat.run_details.mcp_failure.the_server_could_not_be_added");
+	},
+	get key() {
+		return t("ui.chat.run_details.mcp_failure.the_keys_were_not_saved");
+	},
+	get cancel() {
+		return t(
+			"ui.chat.run_details.mcp_failure.the_cancellation_could_not_be_confirmed",
+		);
+	},
+	get status() {
+		return t(
+			"ui.chat.run_details.mcp_failure.the_sign_in_status_could_not_be_refreshed",
+		);
+	},
+	get disconnect() {
+		return t(
+			"ui.chat.run_details.mcp_failure.the_server_could_not_be_disconnected",
+		);
+	},
+	get remove() {
+		return t("ui.chat.run_details.mcp_failure.the_server_could_not_be_removed");
+	},
+	get test() {
+		return t(
+			"ui.chat.run_details.mcp_failure.the_connection_test_could_not_be_started",
+		);
+	},
 };
 
 /**
@@ -201,7 +240,12 @@ export function mcpFailure(
 	if (error instanceof UserFacingError)
 		return { message: error.message, detail: null, cause: "unknown", phase };
 	if (!(error instanceof DesktopControlError))
-		return { message: `${lead}.`, detail: null, cause: "unknown", phase };
+		return {
+			message: t("ui.chat.run_details.mcp_failure.lead", { lead: lead }),
+			detail: null,
+			cause: "unknown",
+			phase,
+		};
 	const message = error.message.trim();
 
 	/*
@@ -219,7 +263,10 @@ export function mcpFailure(
 	 */
 	if (isDesktopRefusalCode(error.code))
 		return {
-			message: `${lead}. ${DESKTOP_REFUSAL_SENTENCE[error.code]}`,
+			message: t("ui.chat.run_details.mcp_failure.lead_value", {
+				lead: lead,
+				value: DESKTOP_REFUSAL_SENTENCE[error.code],
+			}),
 			detail: null,
 			cause: "server",
 			phase,
@@ -228,13 +275,19 @@ export function mcpFailure(
 	if (error.status === 409)
 		return grantRunning
 			? {
-					message: `${lead}: a sign-in is already running for this conversation, and only one can run at a time. Wait for it to finish, or cancel it from the server's row.`,
+					message: t(
+						"ui.chat.run_details.mcp_failure.lead_a_sign_in_is_already_running_for_this_conversation",
+						{ lead: lead },
+					),
 					detail: null,
 					cause: "busy",
 					phase,
 				}
 			: {
-					message: `${lead}: the server refused it without giving a reason, and nothing was changed.`,
+					message: t(
+						"ui.chat.run_details.mcp_failure.lead_the_server_refused_it_without_giving_a_reason_and",
+						{ lead: lead },
+					),
 					detail: null,
 					cause: "refused",
 					phase,
@@ -257,7 +310,10 @@ export function mcpFailure(
 		!MCP_APP_AUTHORED_503.includes(message)
 	)
 		return {
-			message: `${lead} because this conversation's session is not running. Trying again restarts it and repeats this request.`,
+			message: t(
+				"ui.chat.run_details.mcp_failure.lead_because_this_conversations_session_is_not_running_trying_again",
+				{ lead: lead },
+			),
 			cause: "session",
 			phase,
 			detail: message.startsWith(MCP_SESSION_UNAVAILABLE) ? null : message,
@@ -268,7 +324,10 @@ export function mcpFailure(
 	// status no surface can advise on. `lead` carries the surface's own scope, and
 	// the shared module carries the diagnosis and the remedy.
 	return {
-		message: backendLoadErrorMessage(`${lead}.`, error),
+		message: backendLoadErrorMessage(
+			t("ui.chat.run_details.mcp_failure.lead", { lead: lead }),
+			error,
+		),
 		detail: null,
 		cause: "server",
 		phase,
@@ -295,7 +354,9 @@ export const mcpServerSettingsRoute = (name: string): string =>
 	`/settings?section=integrations&mcp=${encodeURIComponent(name)}`;
 
 /** The one label for the route to the row, so two surfaces cannot spell it twice. */
-export const MCP_SETTINGS_ACTION_LABEL = "Open this server in Settings";
+export const MCP_SETTINGS_ACTION_LABEL = t(
+	"ui.chat.run_details.mcp_failure.open_this_server_in_settings",
+);
 
 /**
  * The remedies for a state whose fix is the server's own configuration.
@@ -309,7 +370,10 @@ export const MCP_SETTINGS_ACTION_LABEL = "Open this server in Settings";
  */
 export const mcpConfigActions = (): McpFailureAction[] => [
 	{ kind: "reload", label: MCP_CONTROL_WORD.reload },
-	{ kind: "settings", label: MCP_SETTINGS_ACTION_LABEL },
+	{
+		kind: "settings",
+		label: t("ui.chat.run_details.mcp_failure.open_this_server_in_settings"),
+	},
 ];
 
 /**
@@ -383,6 +447,9 @@ export function mcpFailureActions(input: {
 	// instead of a second press of the identical request.
 	if (input.phase !== "reload")
 		actions.push({ kind: "reload", label: MCP_CONTROL_WORD.reload });
-	actions.push({ kind: "settings", label: MCP_SETTINGS_ACTION_LABEL });
+	actions.push({
+		kind: "settings",
+		label: t("ui.chat.run_details.mcp_failure.open_this_server_in_settings"),
+	});
 	return actions;
 }

@@ -42,8 +42,8 @@ export type RunTarget = { kind: "agent" | "team"; name: string };
 import type { WireImage } from "@features/chat/utils/bound-image";
 import type { ChatFile } from "@shared/store/canonical-sessions-store";
 
-/** A catalogue field that changed, in the operator's words. */
-export type RunChange = { label: string; before: string; after: string };
+/** A language-neutral catalogue field change retained with the settled run. */
+export type RunChange = { field: string; before: string; after: string };
 
 /** One result of the run: a definition it created or changed. */
 export type RunResult = {

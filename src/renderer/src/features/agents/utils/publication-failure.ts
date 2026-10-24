@@ -1,3 +1,4 @@
+import { type WithoutParams, t } from "@shared/i18n";
 /**
  * @file publication-failure.ts
  * @description What the publish dialog shows for each way a publication can be refused.
@@ -96,34 +97,22 @@ export type PublicationContext = {
  * unrecognised value from the wire falls back to `other_harmful`, which is what
  * the reviewer itself does with output it cannot place.
  */
-const MODERATION_CATEGORY_LINE: Record<ModerationCategory, string> = {
-	malware_or_exploitation:
-		"Instructions to build or spread malware, or to attack systems you do not own, cannot be published.",
-	credential_theft:
-		"Instructions to obtain someone else's credentials or tokens cannot be published.",
-	fraud_or_deception:
-		"Instructions to deceive or defraud people cannot be published.",
-	harassment_or_hate:
-		"Instructions to harass, threaten or target people cannot be published.",
-	sexual_content_minors:
-		"This agent cannot be published. If you believe this is a mistake, contact support.",
-	sexual_content: "Explicit sexual content cannot be published.",
-	violence_or_weapons:
-		"Instructions to build weapons or to injure people cannot be published.",
-	drugs_or_controlled_substances:
-		"Instructions to make or traffic illegal drugs cannot be published.",
-	self_harm:
-		"This agent cannot be published. If you believe this is a mistake, contact support.",
+const MODERATION_CATEGORY_LINE: Record<ModerationCategory, WithoutParams> = {
+	malware_or_exploitation: "ui.agents.publication.moderation_malware",
+	credential_theft: "ui.agents.publication.moderation_credential_theft",
+	fraud_or_deception: "ui.agents.publication.moderation_fraud",
+	harassment_or_hate: "ui.agents.publication.moderation_harassment",
+	sexual_content_minors: "ui.agents.publication.moderation_sexual_minors",
+	sexual_content: "ui.agents.publication.moderation_sexual_content",
+	violence_or_weapons: "ui.agents.publication.moderation_violence",
+	drugs_or_controlled_substances: "ui.agents.publication.moderation_drugs",
+	self_harm: "ui.agents.publication.moderation_self_harm",
 	mass_surveillance_or_privacy_abuse:
-		"Instructions to surveil or profile people without their consent cannot be published.",
-	evasion_or_abuse_tooling:
-		"Instructions to evade or defeat safety and anti-abuse systems cannot be published.",
-	prompt_injection:
-		"This instruction set tries to instruct the reviewer rather than describe an agent, so it cannot be published.",
-	unclear_dual_use:
-		"We could not tell whether this is aimed at your own systems or someone else's. Add a sentence stating the scope and target, then publish again.",
-	other_harmful:
-		"This agent was rejected because its instructions would cause harm.",
+		"ui.agents.publication.moderation_surveillance",
+	evasion_or_abuse_tooling: "ui.agents.publication.moderation_evasion",
+	prompt_injection: "ui.agents.publication.moderation_prompt_injection",
+	unclear_dual_use: "ui.agents.publication.moderation_dual_use",
+	other_harmful: "ui.agents.publication.moderation_other",
 };
 
 /**
@@ -152,9 +141,11 @@ const isInformative = (message: string): boolean => {
 /** The line for the first category the reviewer cited, or the fallback. */
 function moderationCategoryLine(details?: PublicationDetails): string {
 	const first = details?.categories?.[0];
-	return first && isModerationCategory(first)
-		? MODERATION_CATEGORY_LINE[first]
-		: MODERATION_CATEGORY_LINE.other_harmful;
+	return t(
+		first && isModerationCategory(first)
+			? MODERATION_CATEGORY_LINE[first]
+			: MODERATION_CATEGORY_LINE.other_harmful,
+	);
 }
 
 /**
@@ -173,26 +164,45 @@ function invalidDocumentBody(
 	switch (details?.field) {
 		case "name":
 			return {
-				body: `Name${rule || " is not acceptable"}.`,
+				body: rule
+					? t("ui.agents.publication.invalid_name_rule", { rule })
+					: t("ui.agents.publication.invalid_name"),
 				field: "name",
 			};
 		case "instructions":
 			return {
 				body: rule
-					? `The instruction body${rule}.`
-					: `The instruction body must be between 1 and ${PUBLICATION_INSTRUCTIONS_MAX_CHARS} characters.`,
+					? t("ui.agents.publication.invalid_instructions_rule", { rule })
+					: t("ui.agents.publication.invalid_instructions_length", {
+							maximum: PUBLICATION_INSTRUCTIONS_MAX_CHARS,
+						}),
 				field: "instructions",
 			};
 		case "description":
-			return { body: `Description${rule}.`, field: "description" };
+			return {
+				body: t("ui.agents.publication.invalid_description_rule", { rule }),
+				field: "description",
+			};
 		case "tools":
-			return { body: `Tools${rule}.`, field: "tools" };
+			return {
+				body: t("ui.agents.publication.invalid_tools_rule", { rule }),
+				field: "tools",
+			};
 		case "when_to_use":
-			return { body: `When to use${rule}.`, field: "when_to_use" };
+			return {
+				body: t("ui.agents.publication.invalid_when_to_use_rule", { rule }),
+				field: "when_to_use",
+			};
 		case "categories":
-			return { body: `Categories${rule}.`, field: "categories" };
+			return {
+				body: t("ui.agents.publication.invalid_categories_rule", { rule }),
+				field: "categories",
+			};
 		case "tags":
-			return { body: `Tags${rule}.`, field: "tags" };
+			return {
+				body: t("ui.agents.publication.invalid_tags_rule", { rule }),
+				field: "tags",
+			};
 		default:
 			// Dialog-level, with the backend's own sentence: the field is one this
 			// dialog has no control for (kind, version, document_type), so pointing at
@@ -214,25 +224,20 @@ export function publicationTreatment(
 	context: PublicationContext,
 ): PublicationTreatment {
 	const pulling = context.surface === "pull";
-	/*
-	 * The two phrases every verb-bearing arm reads, resolved ONCE. A body that
-	 * branched on its own would be half-translated the first time someone added an
-	 * arm — the class of defect the code switch exists to prevent, applied to the
-	 * words rather than to the branch.
-	 */
-	const nothingLanded = pulling
-		? "Nothing was pulled."
-		: "Nothing was published.";
-	const again = pulling ? "pull again" : "publish again";
-	const name = context.name.trim() || (pulling ? "this team" : "this agent");
+	/* Pull and publish need complete, independently translated sentences: the
+	 * outcome clause and retry verb must not be assembled from English fragments. */
+	const surface = pulling ? "pull" : "publish";
+	const name =
+		context.name.trim() ||
+		t("ui.agents.publication.fallback_subject", { surface });
 	switch (failure.code) {
 		case "name_taken": {
 			const owned = failure.details?.owned_by_caller === true;
 			if (owned) {
 				return {
 					variant: "danger",
-					headline: "You already published this agent",
-					body: `You published "${name}" already. Update that listing instead of publishing a second one.`,
+					headline: t("ui.agents.publication.already_published"),
+					body: t("ui.agents.publication.already_published_body", { name }),
 					note: null,
 					// "Update the existing listing" needs a hub id. The REFUSAL'S OWN id is
 					// preferred, because it names the row the hub just told us it holds;
@@ -250,8 +255,8 @@ export function publicationTreatment(
 			}
 			return {
 				variant: "danger",
-				headline: "That name is taken",
-				body: `"${name}" is already published on the hub by another account. Agent names are unique across the hub.`,
+				headline: t("ui.agents.publication.name_taken"),
+				body: t("ui.agents.publication.name_taken_body", { name }),
 				note: null,
 				actions: ["focus-name"],
 			};
@@ -274,8 +279,8 @@ export function publicationTreatment(
 			 */
 			return {
 				variant: "warning",
-				headline: "That name is being published right now",
-				body: `Someone is publishing an agent called "${name}" at this moment. It is not claimed — try again in a moment.`,
+				headline: t("ui.agents.publication.name_in_flight"),
+				body: t("ui.agents.publication.name_in_flight_body", { name }),
 				note: null,
 				actions: ["retry"],
 			};
@@ -306,11 +311,16 @@ export function publicationTreatment(
 				: false;
 			return {
 				variant: "danger",
-				headline: "That name is reserved",
+				headline: t("ui.agents.publication.name_reserved"),
 				body:
 					builtin && !sameName
-						? `"${name}" is reserved by the built-in agent "${builtin}". Built-in names cannot be published to the hub.`
-						: `"${builtin ?? name}" is the name of a built-in agent. Built-in names cannot be published to the hub.`,
+						? t("ui.agents.publication.name_reserved_builtin_body", {
+								name,
+								builtin,
+							})
+						: t("ui.agents.publication.name_reserved_unknown_body", {
+								name: builtin ?? name,
+							}),
 				note: null,
 				actions: ["focus-name", "install-builtin"],
 			};
@@ -318,7 +328,7 @@ export function publicationTreatment(
 		case "moderation_rejected":
 			return {
 				variant: "danger",
-				headline: "This agent was not accepted",
+				headline: t("ui.agents.publication.not_accepted"),
 				// The reviewer's own sentence, unchanged. `reason` when the backend
 				// sent the bare reason, otherwise the composed message - both are the
 				// reviewer's words, and neither is the instruction text.
@@ -331,8 +341,8 @@ export function publicationTreatment(
 				// Warning, not danger: nothing about this agent is wrong, and the
 				// danger register would tell the author their work was rejected.
 				variant: "warning",
-				headline: "Review is temporarily unavailable",
-				body: "We could not review this agent just now. Nothing was published. Try again in a minute.",
+				headline: t("ui.agents.publication.review_unavailable"),
+				body: t("ui.agents.publication.review_unavailable_body"),
 				note: null,
 				actions: ["retry"],
 			};
@@ -343,7 +353,7 @@ export function publicationTreatment(
 			);
 			return {
 				variant: "danger",
-				headline: "The agent document is not valid",
+				headline: t("ui.agents.publication.invalid_document"),
 				body,
 				note: null,
 				/*
@@ -368,10 +378,12 @@ export function publicationTreatment(
 			const limit = failure.details?.limit_bytes;
 			return {
 				variant: "danger",
-				headline: "This agent is too large to publish",
+				headline: t("ui.agents.publication.too_large"),
 				body: limit
-					? `The instruction set is larger than ${Math.round(limit / 1024)} KiB. Shorten the instructions.`
-					: "The instruction set is larger than the hub accepts. Shorten the instructions.",
+					? t("ui.agents.publication.too_large_limit", {
+							size: Math.round(limit / 1024),
+						})
+					: t("ui.agents.publication.too_large_unknown_limit"),
 				note: null,
 				// The same route as `moderation_rejected`: the body says "shorten the
 				// instructions", and this is where the instructions are. An empty
@@ -391,8 +403,8 @@ export function publicationTreatment(
 			 */
 			return {
 				variant: "danger",
-				headline: "You cannot update this listing",
-				body: "This listing belongs to another account.",
+				headline: t("ui.agents.publication.not_owner"),
+				body: t("ui.agents.publication.not_owner_body"),
 				note: null,
 				actions: ["publish-as-new"],
 			};
@@ -404,8 +416,8 @@ export function publicationTreatment(
 			// to see for themselves that it is gone.
 			return {
 				variant: "danger",
-				headline: "That listing no longer exists",
-				body: "It may have been delisted.",
+				headline: t("ui.agents.publication.listing_missing"),
+				body: t("ui.agents.publication.listing_missing_body"),
 				note: null,
 				actions: ["publish-as-new", "refresh-hub"],
 			};
@@ -420,8 +432,8 @@ export function publicationTreatment(
 			 */
 			return {
 				variant: "danger",
-				headline: "The hub refused this machine's sign-in",
-				body: `${nothingLanded} Sign in to Radient again to replace the credential the hub refused, then ${again}.`,
+				headline: t("ui.agents.publication.hub_unauthorized"),
+				body: t("ui.agents.publication.hub_unauthorized_body", { surface }),
 				note: null,
 				actions: ["sign-in"],
 			};
@@ -439,11 +451,11 @@ export function publicationTreatment(
 			return {
 				variant: "warning",
 				headline: pulling
-					? "The pull did not go through"
-					: "The publication did not go through",
+					? t("ui.agents.publication.pull_failed")
+					: t("ui.agents.publication.publish_failed"),
 				body: isInformative(failure.message)
 					? failure.message
-					: `${nothingLanded} Try again in a moment, or update the backend if the hub has moved.`,
+					: t("ui.agents.publication.hub_unavailable_body", { surface }),
 				note: null,
 				actions: ["retry"],
 			};
@@ -451,8 +463,8 @@ export function publicationTreatment(
 			return {
 				variant: "warning",
 				headline: pulling
-					? "The team could not be pulled from this machine"
-					: "The agent could not be published from this machine",
+					? t("ui.agents.publication.local_pull_failed")
+					: t("ui.agents.publication.local_publish_failed"),
 				body: failure.message,
 				note: null,
 				// Safe to retry: the failure happened before the hub was asked
@@ -468,10 +480,10 @@ export function publicationTreatment(
 			 */
 			return {
 				variant: "warning",
-				headline: "That organization needs an active Team plan",
+				headline: t("ui.agents.publication.team_plan_required"),
 				body: pulling
-					? "Reading an organization's teams is part of the Team plan. Ask an owner of the organization to activate it in the Radient console, then pull again."
-					: "Sharing agents inside an organization is part of the Team plan. Ask an owner of the organization to activate it in the Radient console, then publish again.",
+					? t("ui.agents.publication.team_plan_pull_body")
+					: t("ui.agents.publication.team_plan_publish_body"),
 				note: null,
 				// Safe to retry, and the only step this dialog can take: the plan is
 				// activated on the console, and a retry is what a user who has just
@@ -481,8 +493,8 @@ export function publicationTreatment(
 		case "not_a_member":
 			return {
 				variant: "danger",
-				headline: "You are not a member of that organization",
-				body: `${nothingLanded} Ask an owner of the organization to invite you, then ${again}.`,
+				headline: t("ui.agents.publication.not_member"),
+				body: t("ui.agents.publication.not_member_body", { surface }),
 				note: null,
 				/*
 				 * NO ACTION, deliberately. The remedy is somebody else's (an owner has to
@@ -502,10 +514,15 @@ export function publicationTreatment(
 			const required = failure.details?.required;
 			return {
 				variant: "danger",
-				headline: "Your organization role does not allow this",
+				headline: t("ui.agents.publication.insufficient_role"),
 				body: required
-					? `${pulling ? "Reading an organization's teams needs" : "Publishing into an organization needs"} the ${required} role. Ask an owner of the organization to change your role, then ${again}.`
-					: `${pulling ? "Reading an organization's teams needs" : "Publishing into an organization needs"} a higher role than yours. Ask an owner of the organization to change your role, then ${again}.`,
+					? t("ui.agents.publication.insufficient_role_body", {
+							surface,
+							role: required,
+						})
+					: t("ui.agents.publication.insufficient_role_unknown_body", {
+							surface,
+						}),
 				note: null,
 				actions: [],
 			};
@@ -518,15 +535,15 @@ export function publicationTreatment(
 			 */
 			return {
 				variant: "danger",
-				headline: "That team is no longer published",
-				body: "It may have been delisted since this page was loaded.",
+				headline: t("ui.agents.publication.team_missing"),
+				body: t("ui.agents.publication.team_missing_body"),
 				note: null,
 				actions: ["refresh-hub"],
 			};
 		default:
 			return {
 				variant: "danger",
-				headline: "The agent could not be published",
+				headline: t("ui.agents.publication.generic_publish_failed"),
 				body: failure.message,
 				note: null,
 				/*
@@ -643,12 +660,12 @@ export const pullRefusalMessage = (
 ): string => {
 	const subject = requestedName.trim()
 		? `"${requestedName.trim()}"`
-		: "That agent";
+		: t("ui.agents.publication.fallback_agent");
 	if (isPublicationError(error)) {
 		switch (error.code) {
 			case "agent_not_found":
 				// The one refusal where nothing is worth retrying: the listing is gone.
-				return `${subject} is no longer on the hub, so nothing was downloaded.`;
+				return t("ui.agents.publication.download_missing", { subject });
 			case "hub_unavailable":
 				/*
 				 * The typed twin of the arm above, and it serves the same TWO causes -
@@ -660,9 +677,12 @@ export const pullRefusalMessage = (
 				 * names the outcome instead, so it holds for both; the PROSE arm keeps
 				 * its reach-failure wording, because a transport failure really is one.
 				 */
-				return `The hub did not complete the download, so ${subject} was not downloaded.`;
+				return t("ui.agents.publication.download_typed_failure", { subject });
 			default:
-				return `${subject} was not downloaded: ${error.message}`;
+				return t("ui.agents.publication.download_typed_error", {
+					subject,
+					reason: error.message,
+				});
 		}
 	}
 	/*
@@ -676,12 +696,12 @@ export const pullRefusalMessage = (
 		(text, wrapper) => text.replace(wrapper, ""),
 		userFacingMessage(error, "").trim(),
 	).trim();
-	if (!reason) return `${subject} could not be downloaded.`;
+	if (!reason) return t("ui.agents.publication.download_failed", { subject });
 	const status = Number(PULL_HUB_STATUS.exec(reason)?.[1] ?? Number.NaN);
 	if (PULL_GONE_STATUSES.has(status))
-		return `${subject} is no longer on the hub, so nothing was downloaded.`;
+		return t("ui.agents.publication.download_missing", { subject });
 	if (isPullTransportFailure(reason) || status === 408)
-		return `The hub could not be reached, so ${subject} was not downloaded.`;
+		return t("ui.agents.publication.download_unreachable", { subject });
 	/*
 	 * THE STATUSES THAT MEAN THE HUB ANSWERED, said as themselves. Round 2's
 	 * R16/R21 named this defect on the publish side and round 3's M3 found the same
@@ -694,16 +714,16 @@ export const pullRefusalMessage = (
 	 * request timing out with no answer at all) is a reach failure.
 	 */
 	if (status === 429)
-		return `The hub is busy, so ${subject} was not downloaded. Try again in a moment.`;
+		return t("ui.agents.publication.download_busy", { subject });
 	if (status === 401 || status === 403)
-		return `The hub refused this machine's sign-in, so ${subject} was not downloaded.`;
+		return t("ui.agents.publication.download_unauthorized", { subject });
 	if (status >= 500)
-		return `The hub could not complete the download, so ${subject} was not downloaded. Try again in a moment.`;
+		return t("ui.agents.publication.download_hub_error", { subject });
 	if (status >= 400)
-		return `The hub refused the download, so ${subject} is not here.`;
+		return t("ui.agents.publication.download_refused", { subject });
 	// An authored sentence the hub or the backend wrote: shown as it is, which is
 	// what the two arms above exist to avoid doing with machinery.
-	return `${subject} was not downloaded: ${reason}`;
+	return t("ui.agents.publication.download_error", { subject, reason });
 };
 
 /**
@@ -713,7 +733,7 @@ export const pullRefusalMessage = (
  * It asserts no cause on its own: `backendLoadErrorMessage` appends the diagnosis
  * and the remedy for whatever the LOCAL server did.
  */
-const OTHER_ACTION_LEAD = "The action did not complete.";
+const OTHER_ACTION_LEAD = "ui.agents.publication.other_action_failed" as const;
 
 /**
  * The sentence for a failed action on an agent, by which action failed.
@@ -749,7 +769,7 @@ export const agentActionFailureMessage = (
 ): string =>
 	action === "download"
 		? pullRefusalMessage(error, agentName)
-		: backendLoadErrorMessage(OTHER_ACTION_LEAD, error);
+		: backendLoadErrorMessage(t(OTHER_ACTION_LEAD), error);
 
 /**
  * The label one treatment action renders with.
@@ -760,14 +780,17 @@ export const agentActionFailureMessage = (
  * `refresh-hub` arm was wired to it. A second table would let one action read
  * two ways on two surfaces, which is the shape this file exists to prevent.
  */
-export const PUBLICATION_ACTION_LABEL: Record<PublicationAction, string> = {
-	"focus-name": "Choose another name",
-	"update-listing": "Update the existing listing",
-	"install-builtin": "Install the built-in instead",
-	retry: "Try again",
-	"edit-instructions": "Edit the instructions",
-	"edit-agent": "Edit the agent",
-	"publish-as-new": "Publish as a new listing",
-	"sign-in": "Sign in again",
-	"refresh-hub": "Refresh the hub",
+export const PUBLICATION_ACTION_LABEL: Record<
+	PublicationAction,
+	WithoutParams
+> = {
+	"focus-name": "ui.agents.publication.action_choose_name",
+	"update-listing": "ui.agents.publication.action_update_listing",
+	"install-builtin": "ui.agents.publication.action_install_builtin",
+	retry: "ui.agents.publication.action_retry",
+	"edit-instructions": "ui.agents.publication.action_edit_instructions",
+	"edit-agent": "ui.agents.publication.action_edit_agent",
+	"publish-as-new": "ui.agents.publication.action_publish_new",
+	"sign-in": "ui.agents.publication.action_sign_in",
+	"refresh-hub": "ui.agents.publication.action_refresh_hub",
 };

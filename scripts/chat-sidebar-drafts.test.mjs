@@ -393,7 +393,7 @@ test("the discard offer is its own toast: one id, one slot, an Undo that restore
 		false,
 		"the discard offer must not share the archive's id: nothing about this act is an archive",
 	);
-	assert.match(branch, /label: "Undo"/);
+	assert.match(branch, /label: t\("ui\.chat\.undo_toasts\.undo"\)/);
 	assert.match(branch, /restoreDraftsUndo\(\);/);
 	/*
 	 * LIFETIME, CHROME AND SHRINKING ARE SONNER'S (2026-09-27): the offer's own

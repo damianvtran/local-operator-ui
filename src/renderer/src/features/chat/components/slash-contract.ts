@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 /**
  * The popup's own contract, pure and I/O-free: what a key means, when an
  * explicit arrow choice survives, and the copy that tells the user which list is
@@ -396,8 +397,11 @@ export function commandRowSlot(
 	fastState: FastModeState | undefined,
 ): string | null {
 	if (command.destination === "session.fast" && fastState != null)
-		return fastState === "on" ? "currently on" : "currently off";
-	if (command.arguments === "required") return "needs a value";
+		return fastState === "on"
+			? t("ui.chat.slash.contract.currently_on")
+			: t("ui.chat.slash.contract.currently_off");
+	if (command.arguments === "required")
+		return t("ui.chat.slash.contract.needs_a_value");
 	return null;
 }
 
@@ -863,7 +867,7 @@ export function phaseLabel(
  * which is true of any staged armed line.
  */
 const STAGED_PROMISE: Record<string, string> = {
-	"session.goal": "sets the goal and sends the text",
+	"session.goal": t("ui.chat.slash.contract.sets_the_goal_and_sends_the_text"),
 };
 
 /**
@@ -875,7 +879,10 @@ const STAGED_PROMISE: Record<string, string> = {
  * the key the user is about to press.
  */
 export function stagedPromiseVerb(destination: string | undefined): string {
-	return (destination ? STAGED_PROMISE[destination] : undefined) ?? "runs it";
+	return (
+		(destination ? STAGED_PROMISE[destination] : undefined) ??
+		t("ui.chat.slash.contract.runs_it")
+	);
 }
 /**
  * The stop a sentence already ends in, so the note does not double it.
@@ -919,8 +926,9 @@ export function stagedSentence(text: string): string {
  * used to carry it in the same beat as the refusal and was changed to defer to the
  * dispatcher instead of quoting it (`lockedCommandNote`).
  */
-export const NO_CONVERSATION_CLAUSE =
-	"Needs an open conversation; start one first.";
+export const NO_CONVERSATION_CLAUSE = t(
+	"ui.chat.slash.contract.needs_conversation_clause",
+);
 
 /**
  * The staged ARMED line's own receipt (`message-input.tsx`'s `onSlashNote`).
@@ -943,8 +951,14 @@ export function stagedNote(
 	paneHasSession: boolean,
 ): string {
 	return paneHasSession
-		? `Staged ${stagedSentence(text)} Enter ${stagedPromiseVerb(destination)}.`
-		: `Staged ${stagedSentence(text)} ${NO_CONVERSATION_CLAUSE}`;
+		? t("ui.chat.slash.contract.staged_armed", {
+				sentence: stagedSentence(text),
+				verb: stagedPromiseVerb(destination),
+			})
+		: t("ui.chat.slash.contract.staged_no_chat", {
+				sentence: stagedSentence(text),
+				clause: NO_CONVERSATION_CLAUSE,
+			});
 }
 /**
  * The REASSEMBLY's own staged line: the note the composer writes when Enter
@@ -966,8 +980,11 @@ export function stagedNote(
  */
 export function reassembledNote(text: string, paneHasSession: boolean): string {
 	return paneHasSession
-		? `Staged ${stagedSentence(text)} Enter again runs it.`
-		: `Staged ${stagedSentence(text)} ${NO_CONVERSATION_CLAUSE}`;
+		? t("ui.chat.slash.contract.staged", { sentence: stagedSentence(text) })
+		: t("ui.chat.slash.contract.staged_no_chat", {
+				sentence: stagedSentence(text),
+				clause: NO_CONVERSATION_CLAUSE,
+			});
 }
 
 /**
@@ -1033,9 +1050,9 @@ export function lockedCommandNote(
 	},
 	isMac: boolean,
 ): string {
-	const taken = `The words after /${word} were taken as its argument, and a value written on a command line is not stored.`;
+	const taken = t("ui.chat.slash.contract.argument_not_stored", { word });
 	const fields = shape.dialog
-		? `Enter the secret in the dialog's Name and Value fields.`
+		? t("ui.chat.slash.contract.secret_dialog_fields")
 		: "";
 	/*
 	 * AND THE KEY ONLY WHERE THERE IS SOMETHING TO GIVE BACK (UX round 2, U8). A draft
@@ -1047,7 +1064,9 @@ export function lockedCommandNote(
 	 * honest instruction: it has to be entered again.
 	 */
 	const back = shape.undo
-		? `Press ${lockedRunUndoCap(isMac)} in the composer to put the words back.`
+		? t("ui.chat.slash.contract.undo_words", {
+				shortcut: lockedRunUndoCap(isMac),
+			})
 		: "";
 	return [taken, fields, back].filter(Boolean).join(" ");
 }
@@ -1196,8 +1215,9 @@ export type EnterFooterInput = {
  * row (`↓ then Enter runs /analytics`): `↓` moves the highlight OFF that row, so
  * naming it would be the same class of untruth this change removes.
  */
-const ENTER_NEEDS_A_PICK =
-	"Enter needs a row you pick: ↓ then Enter · Tab completes this row.";
+const ENTER_NEEDS_A_PICK = t(
+	"ui.chat.slash.contract.enter_needs_a_row_you_pick_then_enter_tab_completes",
+);
 
 export function enterFooter(input: EnterFooterInput): string | null {
 	// No row to act on: the empty state's own copy names the route it offers
@@ -1233,8 +1253,10 @@ export function enterFooter(input: EnterFooterInput): string | null {
 				})
 			)
 				return input.paneHasSession
-					? `Enter stages /${input.label}; the next Enter runs it.`
-					: `Enter stages /${input.label}; this pane needs an open conversation to run it.`;
+					? t("ui.chat.slash.contract.enter_stages", { label: input.label })
+					: t("ui.chat.slash.contract.enter_stages_needs_chat", {
+							label: input.label,
+						});
 			/*
 			 * The four answers this table carried before the arming, kept exactly as
 			 * the router reads them: unambiguous + a running destination RUNS,
@@ -1244,10 +1266,14 @@ export function enterFooter(input: EnterFooterInput): string | null {
 			 * word instead.
 			 */
 			return input.runs
-				? `Enter runs /${input.label}.`
+				? t("ui.chat.slash.contract.enter_runs_label", { label: input.label })
 				: input.opensList
-					? `Enter completes /${input.label}.`
-					: `Enter completes /${input.label}; Enter again runs it.`;
+					? t("ui.chat.slash.contract.enter_completes_label", {
+							label: input.label,
+						})
+					: t("ui.chat.slash.contract.enter_completes_runs_label", {
+							label: input.label,
+						});
 		}
 		/*
 		 * Ambiguous, so Enter narrows where there is somewhere further to go, and the
@@ -1258,20 +1284,31 @@ export function enterFooter(input: EnterFooterInput): string | null {
 		 */
 		if (input.prefix.length === 0 || input.prefix.length <= input.query.length)
 			return ENTER_NEEDS_A_PICK;
-		return `Enter completes to ${input.prefix}.`;
+		return t("ui.chat.slash.contract.enter_completes", {
+			prefix: input.prefix,
+		});
 	}
-	if (input.nameThenMessage) return "Enter chooses this name.";
+	if (input.nameThenMessage)
+		return t("ui.chat.slash.contract.enter_chooses_this_name");
 	if (!input.runs)
 		return input.complete
-			? "Enter closes the list; Enter again runs."
-			: "Enter completes the value.";
+			? t("ui.chat.slash.contract.enter_closes_the_list_enter_again_runs")
+			: t("ui.chat.slash.contract.enter_completes_the_value");
 	if (!input.unambiguous)
 		return input.connect
-			? `Enter completes; Enter again connects ${input.connect}.`
-			: "Enter completes; Enter again runs.";
-	if (input.connect) return `Enter connects ${input.connect}.`;
+			? t("ui.chat.slash.contract.enter_connects_again", {
+					connect: input.connect,
+				})
+			: t("ui.chat.slash.contract.enter_completes_enter_again_runs");
+	if (input.connect)
+		return t("ui.chat.slash.contract.enter_connects", {
+			connect: input.connect,
+		});
 	const command = input.command ? `/${input.command} ` : "";
-	return `Enter runs ${command}${input.value}.`.trim();
+	return t("ui.chat.slash.contract.enter_runs", {
+		command,
+		value: input.value,
+	}).trim();
 }
 
 export type ClickFooterInput = {
@@ -1342,20 +1379,25 @@ export function clickFooter(input: ClickFooterInput): string | null {
 				hoists: input.hoists,
 			})
 		)
-			return `Click stages /${input.label}.`;
+			return t("ui.chat.slash.contract.click_stages", { label: input.label });
 		return input.runs
-			? `Click runs /${input.label}.`
-			: `Click completes /${input.label}.`;
+			? t("ui.chat.slash.contract.click_runs_label", { label: input.label })
+			: t("ui.chat.slash.contract.click_completes", { label: input.label });
 	}
-	if (input.nameThenMessage) return "Click chooses this name.";
+	if (input.nameThenMessage)
+		return t("ui.chat.slash.contract.click_chooses_this_name");
 	if (input.actionClickText) return input.actionClickText;
-	if (!input.runs) return "Click completes this value.";
-	if (input.connect) return `Click connects ${input.connect}.`;
+	if (!input.runs)
+		return t("ui.chat.slash.contract.click_completes_this_value");
+	if (input.connect)
+		return t("ui.chat.slash.contract.click_connects", {
+			connect: input.connect,
+		});
 	const command = input.command ? `/${input.command}` : "";
-	if (!command) return "Click runs the command.";
+	if (!command) return t("ui.chat.slash.contract.click_runs_the_command");
 	const value = input.value ? ` ${input.value}` : "";
 	// Build from non-empty parts so an empty value never leaves a blank slot.
-	return `Click runs ${command}${value}.`;
+	return t("ui.chat.slash.contract.click_runs_value", { command, value });
 }
 
 /**
@@ -1412,7 +1454,10 @@ export type EmptyArgumentList = {
  * fixture to agree with the component's rule.
  */
 export function argumentEmptyCopy(list: EmptyArgumentList): string {
-	if (list.needsSession) return "Needs an open conversation. Start one first.";
+	if (list.needsSession)
+		return t(
+			"ui.chat.slash.contract.needs_an_open_conversation_start_one_first",
+		);
 	if (list.error) return list.error;
 	if (list.loading) return "Loading…";
 	/*
@@ -1426,6 +1471,7 @@ export function argumentEmptyCopy(list: EmptyArgumentList): string {
 	if (list.emptyCopy) return list.emptyCopy;
 	// Rows exist, the query excluded all of them: "not reported yet" would be a
 	// lie about the source rather than a fact about the filter.
-	if (list.rows.length > 0) return "No matches. Enter runs the command.";
-	return "Not reported yet. Enter runs the command.";
+	if (list.rows.length > 0)
+		return t("ui.chat.slash.contract.no_matches_enter_runs_the_command");
+	return t("ui.chat.slash.contract.not_reported_yet_enter_runs_the_command");
 }

@@ -76,6 +76,7 @@
  */
 
 import { Button, Progress } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	useCallback,
@@ -84,6 +85,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 import {
 	formatBytes,
 	formatDuration,
@@ -93,8 +95,6 @@ import { CanonicalAudio } from "./canonical-audio";
 import { CanonicalImage } from "./canonical-image";
 import { CanonicalVideo } from "./canonical-video";
 import {
-	CANCEL_QUEUED_COPY,
-	CANCEL_RUNNING_COPY,
 	type ImageGenActionKind,
 	type ImageGenCardActions,
 	type ImageGenCardState,
@@ -171,6 +171,7 @@ function useElapsedSeconds(startedAtMs: number | null): number | null {
  * the placeholder dot follows).
  */
 function GeneratingTile() {
+	useI18nLocale();
 	return (
 		<div
 			aria-hidden={true}
@@ -257,6 +258,7 @@ function SoundGeneratingTile({
 }: {
 	state: "queued" | "running" | "failed" | "stopped";
 }) {
+	useI18nLocale();
 	const bars = waveformBars(
 		SOUND_LOADER_PEAKS,
 		SOUND_TILE_WIDTH - SOUND_TILE_PADDING * 2,
@@ -315,12 +317,15 @@ function StateLine({
 	view: ImageGenCardView;
 	elapsed: number | null;
 }) {
+	useI18nLocale();
 	let text: string;
 	let detail: string | null = null;
 	let emphasis = false;
 	switch (view.state) {
 		case "queued":
-			text = view.composing ? "Writing the request…" : "Queued";
+			text = view.composing
+				? t("ui.chat.canonical.image_gen_card.writing_the_request")
+				: "Queued";
 			/*
 			 * The datum slot, one precedence: a STATED queue depth wins (the
 			 * live field's only render, and the fact a waiting reader wants),
@@ -365,7 +370,13 @@ function StateLine({
 			 * and its line says so, including the settlement check that follows.
 			 * Never the no-charge sentence for an in-flight cancel.
 			 */
-			text = view.generating ? CANCEL_RUNNING_COPY : CANCEL_QUEUED_COPY;
+			text = view.generating
+				? t(
+						"ui.chat.canonical.image_gen_card_model.stop_requested_the_provider_has_no_cancellation_endpoint_the_generation",
+					)
+				: t(
+						"ui.chat.canonical.image_gen_card_model.stopped_before_the_provider_was_called_you_will_not_be",
+					);
 			break;
 		case "done":
 			/*
@@ -377,7 +388,7 @@ function StateLine({
 			 */
 			text =
 				view.receipt === "already-finished"
-					? "Already finished."
+					? t("ui.chat.canonical.image_gen_card.already_finished")
 					: view.batch
 						? `${batchMaterialTitle(view.material)} batch`
 						: `Generated ${imageGenMaterialNoun(view.material)}`;
@@ -397,9 +408,15 @@ function StateLine({
 			 * (branding section 8).
 			 */
 			text = view.batch
-				? `${batchMaterialTitle(view.material)} batch failed.`
+				? t(
+						"ui.chat.canonical.image_gen_card.batchmaterialtitlevalue_batch_failed",
+						{ batchMaterialTitleValue: batchMaterialTitle(view.material) },
+					)
 				: (view.message ??
-					`The ${imageGenMaterialNoun(view.material)} could not be generated.`);
+					t(
+						"ui.chat.canonical.image_gen_card.the_imagegenmaterialnounvalue_could_not_be_generated",
+						{ imageGenMaterialNounValue: imageGenMaterialNoun(view.material) },
+					));
 			emphasis = true;
 			break;
 		case "cancelled": {
@@ -416,9 +433,22 @@ function StateLine({
 			 */
 			const line =
 				view.message ??
-				(view.generating ? CANCEL_RUNNING_COPY : CANCEL_QUEUED_COPY);
+				(view.generating
+					? t(
+							"ui.chat.canonical.image_gen_card_model.stop_requested_the_provider_has_no_cancellation_endpoint_the_generation",
+						)
+					: t(
+							"ui.chat.canonical.image_gen_card_model.stopped_before_the_provider_was_called_you_will_not_be",
+						));
 			text = view.batch
-				? `${batchMaterialTitle(view.material ?? "sound-effect")} batch stopped.`
+				? t(
+						"ui.chat.canonical.image_gen_card.batchmaterialtitlevalue_batch_stopped",
+						{
+							batchMaterialTitleValue: batchMaterialTitle(
+								view.material ?? "sound-effect",
+							),
+						},
+					)
 				: view.settlementCaption || view.settled
 					? withoutSettlementClause(line)
 					: line;
@@ -441,6 +471,7 @@ function StateLine({
 
 /** The log tail: ONE line, and only when the producer stated lines at all. */
 function LogTail({ line }: { line: string }) {
+	useI18nLocale();
 	return (
 		<p
 			data-imagegen-log=""
@@ -470,6 +501,7 @@ function NoteLine({
 	line,
 	prominent = false,
 }: { line: string; prominent?: boolean }) {
+	useI18nLocale();
 	return (
 		<p
 			data-imagegen-note=""
@@ -498,12 +530,16 @@ function controlLabel(
 	 * A control labelled "Cancel" would imply a guaranteed stop that the frozen
 	 * contract explicitly does not offer.
 	 */
-	if (kind === "cancel") return "Stop";
-	if (kind === "restart") return state === "failed" ? "Retry" : "Restart";
-	return "Edit and restart";
+	if (kind === "cancel") return t("ui.chat.canonical.image_gen_card.stop");
+	if (kind === "restart")
+		return state === "failed"
+			? t("ui.chat.canonical.image_gen_card.retry")
+			: t("ui.chat.canonical.image_gen_card.restart");
+	return t("ui.chat.canonical.image_gen_card.edit_and_restart");
 }
 
 export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
+	useI18nLocale();
 	const [confirmStop, setConfirmStop] = useState(false);
 	const keepWaiting = useCallback(() => setConfirmStop(false), []);
 	const root = useRef<HTMLDivElement>(null);
@@ -599,7 +635,9 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 				? Boolean(view.batch?.some((item) => item.status === "cancelled")) ||
 					Boolean(view.message)
 				: false)
-			? CANCEL_RUNNING_COPY
+			? t(
+					"ui.chat.canonical.image_gen_card_model.stop_requested_the_provider_has_no_cancellation_endpoint_the_generation",
+				)
 			: null;
 	const logTail =
 		unsettled && view.progress.logs.length > 0
@@ -677,7 +715,7 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 				 * so the card's media column reads as one edge.
 				 */
 				<Progress
-					aria-label="Image generation progress"
+					aria-label={t("ui.chat.canonical.supplement.image_progress")}
 					className={cn("max-w-[240px]")}
 					value={Math.round(
 						Math.min(1, Math.max(0, view.progress.fraction)) * 100,
@@ -691,7 +729,12 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 			view.batch ? (
 				<SoundBatch
 					items={view.batch}
-					summary={view.batchSummary ?? `${view.batch.length} items`}
+					summary={
+						view.batchSummary ??
+						t("ui.chat.canonical.image_gen_card.length_items", {
+							length: view.batch.length,
+						})
+					}
 					scope={scope}
 				/>
 			) : view.state === "done" && view.images.length > 0 ? (
@@ -713,11 +756,23 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 						 * voiceover or a sound effect is the fact `view.material` carries, so
 						 * the label reads `Generated voiceover`, never `Generated audio`.
 						 */
-						const noun = `Generated ${imageGenMaterialNoun(
-							image.kind === "audio" ? view.material : (image.kind ?? "image"),
-						)}`;
+						const noun = t(
+							"ui.chat.canonical.image_gen_card.generated_imagegenmaterialnounvalue",
+							{
+								imageGenMaterialNounValue: imageGenMaterialNoun(
+									image.kind === "audio"
+										? view.material
+										: (image.kind ?? "image"),
+								),
+							},
+						);
 						const label =
-							view.images.length === 1 ? noun : `${noun} ${index + 1}`;
+							view.images.length === 1
+								? noun
+								: t("ui.chat.canonical.image_gen_card.noun_value", {
+										noun: noun,
+										value: index + 1,
+									});
 						return image.kind === "video" ? (
 							<CanonicalVideo
 								key={image.id}
@@ -777,8 +832,12 @@ export const ImageGenCard = ({ view, scope, actions }: ImageGenCardProps) => {
 										 */
 										view.state === "queued" ||
 										(view.state === "cancelling" && !view.generating)
-										? "Stops before the provider is called."
-										: "Requests a stop; the provider may finish anyway."
+										? t(
+												"ui.chat.canonical.image_gen_card.stops_before_the_provider_is_called",
+											)
+										: t(
+												"ui.chat.canonical.image_gen_card.requests_a_stop_the_provider_may_finish_anyway",
+											)
 									: undefined
 							}
 							onClick={

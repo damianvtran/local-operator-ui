@@ -73,6 +73,7 @@ const {
 	publicationProse,
 	MODERATION_CATEGORIES,
 	publicationTreatment,
+	formatPublicationIssue,
 	publicationIssues,
 	isReservedBuiltinName,
 	localNameCollision,
@@ -481,76 +482,36 @@ test("the pre-validation mirrors the hub's name rules, rule for rule", () => {
 	 * dialog's own sentences are quoted from; the bidi-before-whitespace case below
 	 * is what pins that.
 	 */
-	assert.equal(publicationNameRule(""), "must not be empty");
-	assert.equal(publicationNameRule("   "), "must not be empty");
-	assert.equal(
-		publicationNameRule("x".repeat(PUBLICATION_NAME_MAX_CHARS + 1)),
-		`must be at most ${PUBLICATION_NAME_MAX_CHARS} characters`,
-	);
+	const cases = [
+		["", { id: "empty" }],
+		["   ", { id: "empty" }],
+		[
+			"x".repeat(PUBLICATION_NAME_MAX_CHARS + 1),
+			{ id: "max_characters", max: PUBLICATION_NAME_MAX_CHARS },
+		],
+		["code/reviewer", { id: "name_separators" }],
+		["code\\reviewer", { id: "name_separators" }],
+		["code:reviewer", { id: "name_separators" }],
+		["code\u202ereviewer", { id: "name_bidi_override" }],
+		["code\u202ere viewer", { id: "name_bidi_override" }],
+		["code\u0009reviewer", { id: "name_whitespace" }],
+		["code\u0085reviewer", { id: "name_whitespace" }],
+		["code\u0007reviewer", { id: "name_control" }],
+		["code\u200breviewer", { id: "name_format" }],
+		["code\ufeffreviewer", { id: "name_format" }],
+		["-coder", { id: "name_edge_punctuation" }],
+		["coder.", { id: "name_edge_punctuation" }],
+	];
+	for (const [name, rule] of cases) {
+		assert.deepEqual(publicationNameRule(name), rule, JSON.stringify(name));
+	}
 	assert.equal(
 		publicationNameRule("x".repeat(PUBLICATION_NAME_MAX_CHARS)),
 		null,
 		"the cap is inclusive",
 	);
-	assert.equal(
-		publicationNameRule("code/reviewer"),
-		'must not contain "/", "\\" or ":"',
-	);
-	assert.equal(
-		publicationNameRule("code\\reviewer"),
-		'must not contain "/", "\\" or ":"',
-	);
-	assert.equal(
-		publicationNameRule("code:reviewer"),
-		'must not contain "/", "\\" or ":"',
-	);
-	assert.equal(
-		publicationNameRule("code\u202ereviewer"),
-		"must not contain Unicode bidirectional override characters",
-	);
-	assert.equal(
-		publicationNameRule("code\u202ere viewer"),
-		"must not contain Unicode bidirectional override characters",
-		"the ORDER is the hub's: bidi outranks the space it also breaks",
-	);
-	// Whitespace that is ALSO a control character stays refused, with the hub's own
-	// text for it: no legitimate name contains a tab, a form feed or a NEL.
-	assert.equal(
-		publicationNameRule("code\u0009reviewer"),
-		"must not contain whitespace",
-	);
-	assert.equal(
-		publicationNameRule("code\u0085reviewer"),
-		"must not contain whitespace",
-	);
-	assert.equal(
-		publicationNameRule("code\u0007reviewer"),
-		"must not contain control characters",
-	);
-	/*
-	 * Format characters (Cf) render as NOTHING, so `reviewer` with a zero-width
-	 * space inside it draws identically to `reviewer` while being a different key —
-	 * the shadowing an exact local lookup cannot see. This is the class the local
-	 * mirror used to leave entirely to the hub, in the one direction of divergence
-	 * that stays invisible until somebody types an invisible character.
-	 */
-	assert.equal(
-		publicationNameRule("code\u200breviewer"),
-		"must not contain invisible Unicode formatting characters",
-	);
-	assert.equal(
-		publicationNameRule("code\ufeffreviewer"),
-		"must not contain invisible Unicode formatting characters",
-		"U+FEFF is Cf here whatever a JavaScript regex makes of it",
-	);
-	assert.equal(
-		publicationNameRule("-coder"),
-		'must not begin or end with "-" or "."',
-	);
-	assert.equal(
-		publicationNameRule("coder."),
-		'must not begin or end with "-" or "."',
-	);
+	// The bidi-before-whitespace case above pins the hub's order. Format
+	// characters remain distinct cases even when a regex treats them differently.
 
 	/*
 	 * AN ORDINARY SPACE IS NOT REFUSED, and this is the one rule the mirror
@@ -614,7 +575,9 @@ test("the document rules are the hub's bounds, counted in code points", () => {
 		"8000 code points is at the cap, not over it",
 	);
 	assert.match(
-		publicationIssues({ ...base, instructions: `${emoji}🙂` })[0].message,
+		formatPublicationIssue(
+			publicationIssues({ ...base, instructions: `${emoji}🙂` })[0],
+		),
 		new RegExp(
 			`The instruction body must be at most ${PUBLICATION_INSTRUCTIONS_MAX_CHARS} characters.`,
 		),
@@ -638,8 +601,14 @@ test("the document rules are the hub's bounds, counted in code points", () => {
 		many.map((issue) => issue.field),
 		["name", "description", "instructions", "tools"],
 	);
-	assert.equal(many[0].message, 'Name must not begin or end with "-" or ".".');
-	assert.equal(many[1].message, "Description must not be empty.");
+	assert.equal(
+		formatPublicationIssue(many[0]),
+		'Name must not begin or end with "-" or ".".',
+	);
+	assert.equal(
+		formatPublicationIssue(many[1]),
+		"Description must not be empty.",
+	);
 
 	// `null` instructions means the body is not known yet (it is a separate read),
 	// which is not a violation: the hub still checks it.

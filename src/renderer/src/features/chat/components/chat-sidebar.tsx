@@ -74,7 +74,6 @@ import {
 import { Tooltip, TooltipProvider } from "@shared/components/ui/tooltip";
 import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDesktopFeed } from "@shared/hooks/use-desktop-feed";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -82,6 +81,7 @@ import {
 	type CanonicalSessionRow,
 	LEGACY_CATALOGUE_PAGE,
 	catalogueScopeKey,
+	conversationTitleForDisplay,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
@@ -143,6 +143,7 @@ import {
 	useState,
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { t } from "../../../../../i18n/messages";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import { AGENT_ROSTER_SEED } from "../../command-palette/palette-search";
 import {
@@ -237,7 +238,6 @@ import {
 } from "../chat-sidebar-agents";
 import {
 	DEFAULT_SIDEBAR_VIEW,
-	SECTION_GROWN_HINT,
 	SIDEBAR_SECTION_ROWS,
 	type SidebarSectionKey,
 	entityMore,
@@ -406,7 +406,7 @@ const rowBoxStyle = "flex h-8 items-center gap-1 rounded-md";
  * own container for the same reason: the row's height is fixed, so a wrapped
  * line is not an option and the sentence is what has to change length.
  */
-const MARK_ALL_READ_LABEL_SHED = "@max-[253px]/chatheading:sr-only";
+const MARK_ALL_READ_LABEL_SHED = () => "@max-[253px]/chatheading:sr-only";
 
 /**
  * The receipt announcement's own toast id, and it is STABLE ON PURPOSE.
@@ -431,13 +431,17 @@ const READ_ACK_TOAST_ID = "read-ack";
  * control was the pointer-only channel engines are least reliable about, and it
  * reached no keyboard reader at all).
  */
-const SENDING_DISCARD_WHY =
-	"Sending - this draft can be discarded when the send settles";
+const SENDING_DISCARD_WHY = () =>
+	t(
+		"ui.chat.sidebar.chat_sidebar.sending_this_draft_can_be_discarded_when_the_send_settles",
+	);
 /** The sr-only why's id, keyed so each row's control points at its own. */
 const draftWhyId = (key: string) => `draft-discard-why-${key}`;
 /** The disabled Clear all's own why, same two-channel rule. */
-const CLEAR_ALL_WHY =
-	"Drafts are sending - they can be cleared when the sends settle";
+const CLEAR_ALL_WHY = () =>
+	t(
+		"ui.chat.sidebar.chat_sidebar.drafts_are_sending_they_can_be_cleared_when_the_sends",
+	);
 const CLEAR_ALL_WHY_ID = "drafts-clear-all-why";
 
 /*
@@ -816,7 +820,8 @@ const INCLUDE_ARCHIVED_ID = "chat-search-include-archived";
  * name, where a leading " · " would be read as a separator that is already
  * implied.
  */
-const SILENT_REMEDY = "/stop if it stays silent.";
+const SILENT_REMEDY = () =>
+	t("ui.chat.sidebar.chat_sidebar.stop_if_it_stays_silent");
 
 /**
  * The id of a row's remedy sentence, WHEN that row renders one.
@@ -930,8 +935,12 @@ const RowMenuOwner: FC<{
  */
 const rowMenuClause = (isMac: boolean): string =>
 	isMac
-		? "Right-click or press Shift+F10 (with Fn on most Mac keyboards) for its actions."
-		: "Right-click or press Shift+F10 for its actions.";
+		? t(
+				"ui.chat.sidebar.chat_sidebar.right_click_or_press_shift_f10_with_fn_on_most",
+			)
+		: t(
+				"ui.chat.sidebar.chat_sidebar.right_click_or_press_shift_f10_for_its_actions",
+			);
 const rowMenuClauseId = (sessionId: string) => `chat-row-menu-${sessionId}`;
 
 /**
@@ -954,20 +963,6 @@ const pressRowAct = (sessionId: string, act: ChatRowAct) => {
 		?.click();
 };
 
-/*
- * The words this sentence uses for a count of at most six; digits beyond that,
- * because "Eleven built-in agents" is a figure the eye has to translate back.
- */
-const BUILTIN_COUNT_WORDS = [
-	"No",
-	"One",
-	"Two",
-	"Three",
-	"Four",
-	"Five",
-	"Six",
-];
-
 /**
  * The sentence that offers the built-ins, built from the names actually offered.
  *
@@ -985,16 +980,16 @@ const builtinOfferSentence = (
 	builtins: readonly { name: string }[],
 ): string => {
 	const names = builtins.map((builtin) => builtin.name);
-	const count = BUILTIN_COUNT_WORDS[names.length] ?? String(names.length);
-	const plural = names.length === 1 ? "agent" : "agents";
-	const verb = names.length === 1 ? "is" : "are";
-	const list =
-		names.length === 1
-			? names[0]
-			: `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
-	return `${count} built-in ${plural} ${verb} ready to install — ${list}. You can edit ${
-		names.length === 1 ? "it" : "them"
-	} once installed.`;
+	return t("ui.chat.sidebar.chat_sidebar.builtin_offer", {
+		count: names.length,
+		list:
+			names.length === 1
+				? names[0]
+				: t("ui.chat.sidebar.chat_sidebar.builtin_list", {
+						items: names.slice(0, -1).join(", "),
+						last: names.at(-1) ?? "",
+					}),
+	});
 };
 
 /**
@@ -1013,7 +1008,13 @@ export function ChatSidebar({
 	onSelectConversation,
 	onStageDraft,
 }: Props) {
-	useI18nLocale();
+	/*
+	 * The locale is read as a VALUE, not just subscribed to: `heldRows` builds an
+	 * "untitled chat" title with `t()` inside a memo, and a bare subscription
+	 * would re-render the sidebar while leaving that memo's old-language row in
+	 * place. Carrying it into the dependency list makes a switch rebuild it.
+	 */
+	const locale = useI18nLocale();
 	const navigate = useNavigate();
 	const location = useLocation();
 	const requestPanel = usePanelPresentationStore((state) => state.requestPanel);
@@ -2052,7 +2053,15 @@ export function ChatSidebar({
 				raiseBulkReadDeferral(unreadCopy.count);
 			} else {
 				showWarningToast(
-					`${userFacingMessage(failure, "The backend did not answer.")} The unread marks were not cleared.`,
+					t(
+						"ui.chat.sidebar.chat_sidebar.userfacingmessagevalue_the_unread_marks_were_not_cleared",
+						{
+							userFacingMessageValue: userFacingMessage(
+								failure,
+								t("ui.chat.sidebar.chat_sidebar.the_backend_did_not_answer"),
+							),
+						},
+					),
 				);
 			}
 		} finally {
@@ -2179,7 +2188,7 @@ export function ChatSidebar({
 			 * scope suffix are the whole name, and the tooltip is the description rather
 			 * than the name (review R2-1 / UX U2-1).
 			 */}
-			<span className={cn("truncate", MARK_ALL_READ_LABEL_SHED)}>
+			<span className={cn("truncate", MARK_ALL_READ_LABEL_SHED())}>
 				{unreadCopy.label}
 			</span>
 			{/*
@@ -2512,6 +2521,7 @@ export function ChatSidebar({
 	 * the catalogue's own row is the row, and this one would be a second copy on one axis -
 	 * the same defect the partition exists to avoid.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is the re-label TRIGGER for the "untitled chat" title this memo builds with `t()`.
 	const heldRows = useMemo(() => {
 		const listed = new Set(sessions.map((row) => row.session_id));
 		const out: CanonicalSessionRow[] = [];
@@ -2519,13 +2529,13 @@ export function ChatSidebar({
 			if (!fact.pinned || listed.has(id)) continue;
 			out.push({
 				session_id: id,
-				title: fact.title || "Untitled chat",
+				title: fact.title || "",
 				updated_at: fact.updated_at,
 				pinned: true,
 			});
 		}
 		return out;
-	}, [pinFacts, sessions]);
+	}, [pinFacts, sessions, locale]);
 	const {
 		rows: matching,
 		conversationMatches,
@@ -3016,7 +3026,7 @@ export function ChatSidebar({
 			<div className="py-1" aria-live="polite">
 				<p className="line-clamp-2 text-meta text-ink-dim">
 					{tailState.kind === "loading"
-						? "Loading more chats…"
+						? t("ui.chat.sidebar.chat_sidebar.loading_more_chats")
 						: tailState.sentence}
 				</p>
 				{tailState.kind === "error" && (
@@ -3154,7 +3164,9 @@ export function ChatSidebar({
 	 * (round 2, M2). The fallback is the row render's own ("Untitled chat").
 	 */
 	const rowLabel = (id: string): string =>
-		matching.find((row) => row.session_id === id)?.title || "Untitled chat";
+		conversationTitleForDisplay(
+			matching.find((row) => row.session_id === id)?.title,
+		);
 	const orderedPinned = orderPinnedRows(pinned, view.pins);
 	const pinnedDrawnIds = orderedPinned.map((row) => row.session_id);
 	const pinnedIndex = new Map(
@@ -4081,7 +4093,9 @@ export function ChatSidebar({
 	const agentOpenedRow = (row: CanonicalSessionRow) => row.opened_by != null;
 	const openedBySentence = (row: CanonicalSessionRow) => {
 		const agent = row.opened_by?.agent?.trim();
-		return `opened by ${agent || "an agent"}`;
+		return t("ui.chat.sidebar.chat_sidebar.opened_by_value", {
+			value: agent || t("ui.chat.sidebar.chat_sidebar.an_agent"),
+		});
 	};
 	const openedByNote = (row: CanonicalSessionRow) => {
 		if (!row.opened_by) return "";
@@ -4423,7 +4437,7 @@ export function ChatSidebar({
 		/** The row's own name, used by the archive control's accessible name and tooltip
 		 * and by the marker's `sr-only` sentence: one string, so the two channels cannot
 		 * name the same row differently. */
-		const label = row.title || "Untitled chat";
+		const label = conversationTitleForDisplay(row.title);
 		/*
 		 * ARCHIVED, as THIS row knows it: the wire's value, or the client's own when it
 		 * has written one that this row's answer predates (`archiveFacts` - the same
@@ -4613,7 +4627,7 @@ export function ChatSidebar({
 		const rowTooltip = (
 			<>
 				<span className="block">
-					{row.title || "Untitled chat"}
+					{conversationTitleForDisplay(row.title)}
 					{bindingClause(row)}
 				</span>
 				<span className="block">
@@ -4622,13 +4636,23 @@ export function ChatSidebar({
 						: (peerUncertainLabel(row) ??
 							row.status?.label ??
 							(synthesized.has(row.session_id)
-								? "found by search, beyond the chats listed here"
-								: "Recent"))}
-					{silent ? ` · ${SILENT_REMEDY}` : ""}
+								? t(
+										"ui.chat.sidebar.chat_sidebar.found_by_search_beyond_the_chats_listed_here",
+									)
+								: t("ui.chat.sidebar.chat_sidebar.recent")))}
+					{silent
+						? t("ui.chat.sidebar.chat_sidebar.silent_remedy", {
+								SILENT_REMEDY: SILENT_REMEDY(),
+							})
+						: ""}
 					{openedByNote(row)}
-					{unstarted.has(row.session_id) ? ", not sent yet" : ""}
-					{unreadMarkKind(row) !== null ? ", unread" : ""}
-					{archived ? ", archived" : ""}
+					{unstarted.has(row.session_id)
+						? t("ui.chat.sidebar.chat_sidebar.not_sent_yet")
+						: ""}
+					{unreadMarkKind(row) !== null
+						? t("ui.chat.sidebar.chat_sidebar.unread")
+						: ""}
+					{archived ? t("ui.chat.sidebar.chat_sidebar.archived") : ""}
 					{/*
 					 * THE SUBAGENT CLAUSE, from the SAME helper the row's `sr-only` sentence
 					 * reads, and gated by it in exactly the same way: empty on a `delegating`
@@ -4646,7 +4670,11 @@ export function ChatSidebar({
 					 * about the mark on it, so it reads as the actionable last word - the slot
 					 * `SILENT_REMEDY` occupies one fact up.
 					 */}
-					{readAck ? ` · ${readAck.clause}` : ""}
+					{readAck
+						? t("ui.chat.sidebar.chat_sidebar.clause", {
+								clause: readAck.clause,
+							})
+						: ""}
 				</span>
 				{/* THE REMOTE ROW'S OTHER CHANNEL (the shared convention): the SAME
 				    fragments the `sr-only` spans beside the title read, drawn as their
@@ -4873,7 +4901,7 @@ export function ChatSidebar({
 				 * fade and the reduced-motion off switch are all that module's, with the
 				 * reasoning for each.
 				 */}
-				<ChatRowTitle text={row.title || "Untitled chat"} />
+				<ChatRowTitle text={conversationTitleForDisplay(row.title)} />
 				{/*
 				 * THE SUBAGENT INDICATOR, immediately after the title and before the
 				 * trailing statement - the placement `sidebar-row-space.md` §2 forces:
@@ -5145,7 +5173,7 @@ export function ChatSidebar({
 		 */
 		const silentRemedy = silent ? (
 			<span id={silentRemedyId(row.session_id)} className="sr-only">
-				{SILENT_REMEDY}
+				{SILENT_REMEDY()}
 			</span>
 		) : null;
 		/*
@@ -5587,11 +5615,21 @@ export function ChatSidebar({
 						aria-pressed={pinned}
 						/* The action, never the state: `Pin "X"` is what pressing does, and
 					   the pressed state is `aria-pressed`'s to report. */
-						aria-label={`${pinned ? "Unpin" : "Pin"} “${label}”`}
+						aria-label={t("ui.chat.sidebar.chat_sidebar.pin_label", {
+							action: pinned
+								? t("ui.chat.sidebar.chat_sidebar.unpin")
+								: t("ui.chat.sidebar.chat_sidebar.pin"),
+							label,
+						})}
 						/* The same string as the accessible name, matching the entity row's
 					   manage control: it is the affordance a pointer user gets, and it
 					   duplicates the name without being announced twice. */
-						title={`${pinned ? "Unpin" : "Pin"} “${label}”`}
+						title={t("ui.chat.sidebar.chat_sidebar.pin_label", {
+							action: pinned
+								? t("ui.chat.sidebar.chat_sidebar.unpin")
+								: t("ui.chat.sidebar.chat_sidebar.pin"),
+							label,
+						})}
 						onClick={(event) => {
 							/*
 							 * THE GUARD RUNS FIRST (review round 3, MINOR 2). A dropped press must
@@ -6057,7 +6095,7 @@ export function ChatSidebar({
 					 * OUTLINE rather than an inset ring because the current row's own button paints
 					 * an opaque fill over its parent's box-shadow (round 3, D10).
 					 */
-					dragging && rowDraggingMark,
+					dragging && "outline outline-1 outline-offset-[-1px] outline-ink-dim",
 				)}
 			>
 				{/*
@@ -6328,7 +6366,9 @@ export function ChatSidebar({
 								<Archive aria-hidden="true" />
 							)}
 							<span>
-								{archived ? "Unarchive conversation" : "Archive conversation"}
+								{archived
+									? t("ui.chat.sidebar.chat_sidebar.unarchive_conversation")
+									: t("ui.chat.sidebar.chat_sidebar.archive_conversation")}
 							</span>
 							<span className="ms-auto ps-6">
 								<KeyboardShortcut
@@ -6347,7 +6387,11 @@ export function ChatSidebar({
 							) : (
 								<Pin aria-hidden="true" />
 							)}
-							<span>{pinned ? "Unpin conversation" : "Pin conversation"}</span>
+							<span>
+								{pinned
+									? t("ui.chat.sidebar.chat_sidebar.unpin_conversation")
+									: t("ui.chat.sidebar.chat_sidebar.pin_conversation")}
+							</span>
 							<span className="ms-auto ps-6">
 								<KeyboardShortcut
 									shortcut={chatRowActCapJoined("pin", isMac)}
@@ -6447,7 +6491,7 @@ export function ChatSidebar({
 					 * `rename` through `useSessionCommand` - asked for the way the Fork item above
 					 * asks, because the sidebar owns no presenter. The request names THIS row's
 					 * conversation (the pane's own is generally not the row's) AND carries the name
-					 * the row draws (`row.title || "Untitled chat"`), so the dialog's field opens on
+					 * the row draws (`conversationTitleForDisplay(row.title)`), so the dialog's field opens on
 					 * the name the user pointed at rather than on the pane's title - the row is the
 					 * only party that holds its own name (see `PanelRequest.subjectName`). A third
 					 * door to ONE write, not a second mechanism.
@@ -6467,7 +6511,7 @@ export function ChatSidebar({
 									`[data-session-row="${CSS.escape(row.session_id)}"] [data-chat-row]`,
 								),
 								row.session_id,
-								{ subjectName: row.title || "Untitled chat" },
+								{ subjectName: conversationTitleForDisplay(row.title) },
 							);
 							// The palette's own guard, minus its first clause (the Fork item's
 							// reasoning, verbatim): `session.rename` is pane-only, so the request
@@ -6672,7 +6716,9 @@ export function ChatSidebar({
 		<HubHeadingControls
 			kind={kind}
 			available={hubAvailableCount(hubUpdates.data, kind)}
-			busy={hub.pending.has(`all:${kind}`)}
+			busy={hub.pending.has(
+				t("ui.chat.sidebar.chat_sidebar.all_kind", { kind }),
+			)}
 			blocked={!hub.canWrite}
 			onUpdateAll={() => void updateAllHub(kind)}
 			onCheck={
@@ -6702,7 +6748,7 @@ export function ChatSidebar({
 			signInHref="/settings?section=radient"
 			rollup={hub.rollups[kind]}
 			note={
-				hub.notes[`all:${kind}`] ??
+				hub.notes[t("ui.chat.sidebar.chat_sidebar.all_kind", { kind })] ??
 				(kind === "agent" ? hub.notes.check : undefined) ??
 				(kind === "agent" && hubTracked && hub.upgradeMessage
 					? { message: hub.upgradeMessage, tone: "info" }
@@ -6730,7 +6776,12 @@ export function ChatSidebar({
 		 * naming the ACTION it runs.
 		 */
 		const nameTitle =
-			displayName !== name ? `${displayName} (${name})` : displayName;
+			displayName !== name
+				? t("ui.chat.sidebar.chat_sidebar.displayname_name", {
+						displayName,
+						name,
+					})
+				: displayName;
 		const open = Boolean(query) || isOpen(key);
 		/*
 		 * THE BOUND ON THIS GROUP'S OWN ROWS, and all three of its rules - the
@@ -6921,7 +6972,12 @@ export function ChatSidebar({
 					<button
 						type="button"
 						data-disclosure
-						aria-label={`${open ? "Collapse" : "Expand"} ${displayName} chats`}
+						aria-label={t("ui.chat.sidebar.chat_sidebar.group_toggle_label", {
+							action: open
+								? t("ui.chat.sidebar.chat_sidebar.collapse")
+								: t("ui.chat.sidebar.chat_sidebar.expand"),
+							displayName,
+						})}
 						aria-expanded={open}
 						className={cn(
 							"flex size-6 shrink-0 items-center justify-center rounded-md",
@@ -6981,8 +7037,13 @@ export function ChatSidebar({
 						// not using AT. It duplicates the accessible name for screen
 						// reader users, which is redundant but not announced twice —
 						// `aria-label` wins and `title` is ignored as a naming source.
-						aria-label={`New chat with ${displayName}`}
-						title={`New chat with ${displayName}`}
+						aria-label={t(
+							"ui.chat.sidebar.chat_sidebar.new_chat_with_displayname",
+							{ displayName },
+						)}
+						title={t("ui.chat.sidebar.chat_sidebar.new_chat_with_displayname", {
+							displayName,
+						})}
 					>
 						<Icon className="size-4 shrink-0" />
 						<span className="min-w-0 flex-1 truncate" title={nameTitle}>
@@ -7086,7 +7147,11 @@ export function ChatSidebar({
 					 */}
 					{kind === "agent" && (
 						<Tooltip
-							content={pinnedAgent ? `Unpin “${name}”` : `Pin “${name}”`}
+							content={
+								pinnedAgent
+									? t("ui.chat.sidebar.chat_sidebar.unpin_name", { name })
+									: t("ui.chat.sidebar.chat_sidebar.pin_name", { name })
+							}
 						>
 							<button
 								type="button"
@@ -7104,7 +7169,9 @@ export function ChatSidebar({
 									"group-focus-within:opacity-100 group-focus-within:duration-fast",
 								)}
 								aria-pressed={pinnedAgent}
-								aria-label={`Pin “${name}”`}
+								aria-label={t("ui.chat.sidebar.chat_sidebar.pin_name", {
+									name,
+								})}
 								onClick={() =>
 									setChatSidebarView(togglePinnedAgent(sidebarView, pinKey))
 								}
@@ -7168,7 +7235,9 @@ export function ChatSidebar({
 							"flex size-6 shrink-0 items-center justify-center rounded-md text-ink-dim hover:text-ink-muted",
 							!staged && "hover:bg-row-hover",
 						)}
-						aria-label={`Manage ${displayName}`}
+						aria-label={t("ui.chat.sidebar.chat_sidebar.manage_displayname", {
+							displayName,
+						})}
 						onClick={() =>
 							navigate(`/agents?kind=${kind}&name=${encodeURIComponent(name)}`)
 						}
@@ -7203,7 +7272,8 @@ export function ChatSidebar({
 						 * drawn only while the lift is, so a group the bound did not withhold
 						 * this row from pays nothing for it.
 						 */}
-						{page.lifted && sectionLabel("Current chat")}
+						{page.lifted &&
+							sectionLabel(t("ui.chat.sidebar.chat_sidebar.current_chat"))}
 						{shown.map((row) => sessionRow(row, true))} {/*
 						 * THE GROUP'S OWN SENTENCE.
 						 *
@@ -7360,8 +7430,14 @@ export function ChatSidebar({
 									 * evidenced by read.
 									 */
 									data-entity-more={key}
-									aria-label={`${foot.aria} in ${displayName}`}
-									title={`${foot.aria} in ${displayName}`}
+									aria-label={t(
+										"ui.chat.sidebar.chat_sidebar.aria_in_displayname",
+										{ aria: foot.aria, displayName: displayName },
+									)}
+									title={t("ui.chat.sidebar.chat_sidebar.aria_in_displayname", {
+										aria: foot.aria,
+										displayName: displayName,
+									})}
 									className="block w-full py-1 ps-7 text-start text-meta text-ink-dim underline hover:text-ink"
 									onClick={pressEntityMore}
 								>
@@ -7397,7 +7473,10 @@ export function ChatSidebar({
 			className="text-meta tabular-nums"
 			title={
 				query
-					? `${clipped ? "At least " : ""}${count} ${count === 1 ? "chat matches" : "chats match"} this search${clipped ? "; the list stops there" : ""}`
+					? t("ui.chat.sidebar.chat_sidebar.search_match_summary", {
+							count,
+							clipped: clipped ? "true" : "false",
+						})
 					: undefined
 			}
 		>
@@ -7495,7 +7574,9 @@ export function ChatSidebar({
 		 * a screen reader can already hear and a pointer can already read.
 		 */
 		const grownHint = sectionIsGrown(sectionCaps[key])
-			? SECTION_GROWN_HINT
+			? t(
+					"ui.chat.sidebar.chat_sidebar_view.collapse_then_reopen_to_restore_the_compact_list",
+				)
 			: null;
 		return (
 			<div
@@ -7697,7 +7778,15 @@ export function ChatSidebar({
 						aria-label={footName}
 						title={
 							sectionIsGrown(cap)
-								? `${footName} - ${SECTION_GROWN_HINT}`
+								? t(
+										"ui.chat.sidebar.chat_sidebar.footname_section_grown_hint",
+										{
+											footName,
+											SECTION_GROWN_HINT: t(
+												"ui.chat.sidebar.chat_sidebar_view.collapse_then_reopen_to_restore_the_compact_list",
+											),
+										},
+									)
 								: footName
 						}
 						onClick={() => {
@@ -8445,7 +8534,11 @@ export function ChatSidebar({
 					<div className="space-y-1 text-meta text-ink-muted">
 						<p>
 							{capabilities.error.message}
-							{stale ? " Showing the last chats loaded." : ""}
+							{stale
+								? t(
+										"ui.chat.sidebar.chat_sidebar.showing_the_last_chats_loaded",
+									)
+								: ""}
 						</p>
 						<button
 							type="button"
@@ -8526,7 +8619,7 @@ export function ChatSidebar({
 						<section>
 							{heading(
 								"agents",
-								"Agents",
+								t("ui.chat.sidebar.chat_sidebar.agents"),
 								true,
 								undefined,
 								Bot,
@@ -8877,7 +8970,7 @@ export function ChatSidebar({
 						>
 							{heading(
 								"teams",
-								"Teams",
+								t("ui.chat.sidebar.chat_sidebar.teams"),
 								true,
 								undefined,
 								Users,
@@ -8935,9 +9028,13 @@ export function ChatSidebar({
 		<p ref={pinRef} className="pb-2 text-meta text-warning">
 			{t("ui.chat.sidebar.pins.failure", {
 				action: pinFailure.pinned ? "pin" : "unpin",
-				title: pinFailure.title,
+				title: conversationTitleForDisplay(pinFailure.title, "this_chat"),
 			})}
-			{pinFailure.detail ? ` ${pinFailure.detail}` : ""}{" "}
+			{pinFailure.detail
+				? t("ui.chat.sidebar.chat_sidebar.detail", {
+						detail: pinFailure.detail,
+					})
+				: ""}{" "}
 			<button
 				type="button"
 				className="underline"
@@ -9107,7 +9204,7 @@ export function ChatSidebar({
 			 */}
 			{liftedRow && (
 				<section data-chat-section="current">
-					{sectionLabel("Current chat")}
+					{sectionLabel(t("ui.chat.sidebar.chat_sidebar.current_chat"))}
 					{sessionRow(liftedRow)}
 				</section>
 			)}
@@ -9181,7 +9278,9 @@ export function ChatSidebar({
 									type="button"
 									data-chat-row
 									data-draft-row={row.key}
-									aria-label={`Open ${row.label}`}
+									aria-label={t("ui.chat.sidebar.chat_sidebar.open_label", {
+										label: row.label,
+									})}
 									title={row.label}
 									onClick={() => {
 										openDraft(row.key);
@@ -9221,7 +9320,7 @@ export function ChatSidebar({
 								 */}
 								{row.pending && (
 									<span id={draftWhyId(row.key)} className="sr-only">
-										{SENDING_DISCARD_WHY}
+										{SENDING_DISCARD_WHY()}
 									</span>
 								)}
 								{/*
@@ -9260,7 +9359,7 @@ export function ChatSidebar({
 									aria-label={discardDraftLabel(row.label)}
 									title={
 										row.pending
-											? SENDING_DISCARD_WHY
+											? SENDING_DISCARD_WHY()
 											: discardDraftLabel(row.label)
 									}
 									onClick={(event) => {
@@ -9403,8 +9502,8 @@ export function ChatSidebar({
 							aria-label={t("ui.chat.sidebar.drafts.clear_all_label")}
 							title={
 								clearableDraftRows.length === 0
-									? CLEAR_ALL_WHY
-									: "Clear all drafts"
+									? CLEAR_ALL_WHY()
+									: t("ui.chat.sidebar.chat_sidebar.clear_all_drafts")
 							}
 							onClick={(event) => {
 								/*
@@ -9483,7 +9582,7 @@ export function ChatSidebar({
 						 */}
 						{clearableDraftRows.length === 0 && (
 							<span id={CLEAR_ALL_WHY_ID} className="sr-only">
-								{CLEAR_ALL_WHY}
+								{CLEAR_ALL_WHY()}
 							</span>
 						)}
 					</div>
@@ -9559,7 +9658,7 @@ export function ChatSidebar({
 					 */
 					className="relative"
 				>
-					{sectionLabel("Pinned")}
+					{sectionLabel(t("ui.chat.sidebar.chat_sidebar.pinned"))}
 					{taggedRows(orderedPinned)}
 					{/*
 					 * THE INSERTION INDICATOR, and it exists ONLY while a drag does: a 2px line in
@@ -9595,8 +9694,12 @@ export function ChatSidebar({
 								{sectionLabel(CHAT_LIST_SECTION_LABEL[key])}
 								<p className="px-2 text-meta text-ink-dim">
 									{livenessUnread
-										? "The daemon could not read which chats are running, so this list may be incomplete."
-										: "Nothing running right now."}
+										? t(
+												"ui.chat.sidebar.chat_sidebar.the_daemon_could_not_read_which_chats_are_running_so",
+											)
+										: t(
+												"ui.chat.sidebar.chat_sidebar.nothing_running_right_now",
+											)}
 								</p>
 							</section>
 						);
@@ -9906,7 +10009,11 @@ export function ChatSidebar({
 						data-sidebar-band
 						className="mb-2 flex h-7 shrink-0 items-center justify-end gap-0.5"
 					>
-						<Tooltip content="Search chats and agents">
+						<Tooltip
+							content={t(
+								"ui.chat.sidebar.chat_sidebar.search_chats_and_agents",
+							)}
+						>
 							<Button
 								variant="ghost"
 								size="icon-sm"
@@ -9930,7 +10037,7 @@ export function ChatSidebar({
 							</Button>
 						</Tooltip>
 						<Popover open={viewOpen} onOpenChange={setViewOpen}>
-							<Tooltip content="View options">
+							<Tooltip content={t("ui.chat.sidebar.chat_sidebar.view_options")}>
 								<PopoverTrigger asChild>
 									<Button
 										variant="ghost"
@@ -10001,7 +10108,9 @@ export function ChatSidebar({
 							</PopoverContent>
 						</Popover>
 						<Popover open={createOpen} onOpenChange={setCreateOpen}>
-							<Tooltip content="New agent or team">
+							<Tooltip
+								content={t("ui.chat.sidebar.chat_sidebar.new_agent_or_team")}
+							>
 								<PopoverTrigger asChild>
 									<Button
 										variant="ghost"
@@ -10058,7 +10167,7 @@ export function ChatSidebar({
 								</button>
 							</PopoverContent>
 						</Popover>
-						<Tooltip content="Open agent…">
+						<Tooltip content={t("ui.chat.sidebar.chat_sidebar.open_agent")}>
 							{/*
 							 * THE FOURTH BAND CONTROL (issue #663): the roster's jump. The
 							 * section filter above survives a cap-bound roster, but a reader
@@ -10284,9 +10393,12 @@ export function ChatSidebar({
 				<p aria-live="polite" className="sr-only">
 					{awaiting &&
 					lostRowsToStaleAnswer(previous?.rows.length ?? 0, matching.length)
-						? "Searching conversations."
+						? t("ui.chat.sidebar.chat_sidebar.searching_conversations")
 						: query.trim() && showList && !matching.length && answered
-							? `Nothing in your chats matches ${query.trim()}.`
+							? t(
+									"ui.chat.sidebar.chat_sidebar.nothing_in_your_chats_matches_value",
+									{ value: query.trim() },
+								)
 							: ""}
 				</p>
 				{/* ONE SCROLLER, ONE FLOW (operator report, 2026-09-26): the entity

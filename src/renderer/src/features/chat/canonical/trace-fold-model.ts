@@ -52,6 +52,7 @@
  * (`4 files · 3 agents`), which is the same fallback an unknown name takes.
  */
 
+import { t } from "../../../../../i18n/messages";
 import {
 	type InternalReceiptFamily,
 	receiptFamilyOf,
@@ -225,20 +226,37 @@ export function receiptFoldUnits(rows: readonly Row[]): string[] {
 	const count = (n: number, one: string, many: string) => {
 		if (n > 0) units.push(`${n} ${n === 1 ? one : many}`);
 	};
-	count(counts.incoming, "incoming message", "incoming messages");
-	count(counts.job_result, "job result", "job results");
-	count(counts.wake, "wake receipt", "wake receipts");
-	count(counts.monitor_prompt, "monitor prompt", "monitor prompts");
+	count(
+		counts.incoming,
+		t("ui.chat.canonical.trace_fold_model.incoming_message"),
+		t("ui.chat.canonical.trace_fold_model.incoming_messages"),
+	);
+	count(
+		counts.job_result,
+		t("ui.chat.canonical.trace_fold_model.job_result"),
+		t("ui.chat.canonical.trace_fold_model.job_results"),
+	);
+	count(
+		counts.wake,
+		t("ui.chat.canonical.trace_fold_model.wake_receipt"),
+		t("ui.chat.canonical.trace_fold_model.wake_receipts"),
+	);
+	count(
+		counts.monitor_prompt,
+		t("ui.chat.canonical.trace_fold_model.monitor_prompt"),
+		t("ui.chat.canonical.trace_fold_model.monitor_prompts"),
+	);
 	count(
 		rows.length -
 			counts.incoming -
 			counts.job_result -
 			counts.wake -
 			counts.monitor_prompt,
-		"other receipt",
-		"other receipts",
+		t("ui.chat.canonical.trace_fold_model.other_receipt"),
+		t("ui.chat.canonical.trace_fold_model.other_receipts"),
 	);
-	if (replyRequested) units.push("Reply requested");
+	if (replyRequested)
+		units.push(t("ui.chat.canonical.trace_fold_model.reply_requested"));
 	if (steered) units.push("Steered");
 	return units;
 }
@@ -387,7 +405,9 @@ export const foldSummarySpec = (actions: FoldableAction[]): FoldSummarySpec => {
 		if (cls === "searches")
 			parts.push(`${count} search${count === 1 ? "" : "es"}`);
 		if (cls === "web")
-			parts.push(`Searched the web ${count} time${count === 1 ? "" : "s"}`);
+			parts.push(
+				t("ui.chat.canonical.trace_fold_model.searched_web_times", { count }),
+			);
 		if (cls === "commands")
 			parts.push(`Ran ${count} command${count === 1 ? "" : "s"}`);
 		if (cls === "edits")
@@ -463,24 +483,87 @@ export function foldSummary(actions: FoldableAction[]): string {
 const KIND_NOUNS: Record<string, { noun: string; plural: string }> = {
 	agent: { noun: "agent", plural: "agents" },
 	team: { noun: "team", plural: "teams" },
-	team_delete: { noun: "team deletion", plural: "team deletions" },
+	team_delete: {
+		get noun() {
+			return t("ui.chat.canonical.trace_fold_model.team_deletion");
+		},
+		get plural() {
+			return t("ui.chat.canonical.trace_fold_model.team_deletions");
+		},
+	},
 	hub: { noun: "subagent", plural: "subagents" },
 	secret: { noun: "secret", plural: "secrets" },
 	project: { noun: "project", plural: "projects" },
-	project_delete: { noun: "project deletion", plural: "project deletions" },
+	project_delete: {
+		get noun() {
+			return t("ui.chat.canonical.trace_fold_model.project_deletion");
+		},
+		get plural() {
+			return t("ui.chat.canonical.trace_fold_model.project_deletions");
+		},
+	},
 	wake: { noun: "wake", plural: "wakes" },
-	jobs: { noun: "job check", plural: "job checks" },
+	jobs: {
+		get noun() {
+			return t("ui.chat.canonical.trace_fold_model.job_check");
+		},
+		get plural() {
+			return t("ui.chat.canonical.trace_fold_model.job_checks");
+		},
+	},
 	console: { noun: "console", plural: "consoles" },
-	network: { noun: "network call", plural: "network calls" },
-	browser: { noun: "browser action", plural: "browser actions" },
-	todo: { noun: "todo update", plural: "todo updates" },
+	network: {
+		get noun() {
+			return t("ui.chat.canonical.trace_fold_model.network_call");
+		},
+		get plural() {
+			return t("ui.chat.canonical.trace_fold_model.network_calls");
+		},
+	},
+	browser: {
+		get noun() {
+			return t("ui.chat.canonical.trace_fold_model.browser_action");
+		},
+		get plural() {
+			return t("ui.chat.canonical.trace_fold_model.browser_actions");
+		},
+	},
+	todo: {
+		get noun() {
+			return t("ui.chat.canonical.trace_fold_model.todo_update");
+		},
+		get plural() {
+			return t("ui.chat.canonical.trace_fold_model.todo_updates");
+		},
+	},
 	send: { noun: "message", plural: "messages" },
 	ask: { noun: "question", plural: "questions" },
 	wait: { noun: "wait", plural: "waits" },
-	lsp: { noun: "code lookup", plural: "code lookups" },
+	lsp: {
+		get noun() {
+			return t("ui.chat.canonical.trace_fold_model.code_lookup");
+		},
+		get plural() {
+			return t("ui.chat.canonical.trace_fold_model.code_lookups");
+		},
+	},
 	web_read: { noun: "page", plural: "pages" },
-	list_variables: { noun: "variable lookup", plural: "variable lookups" },
-	read_variable: { noun: "variable read", plural: "variable reads" },
+	list_variables: {
+		get noun() {
+			return t("ui.chat.canonical.trace_fold_model.variable_lookup");
+		},
+		get plural() {
+			return t("ui.chat.canonical.trace_fold_model.variable_lookups");
+		},
+	},
+	read_variable: {
+		get noun() {
+			return t("ui.chat.canonical.trace_fold_model.variable_read");
+		},
+		get plural() {
+			return t("ui.chat.canonical.trace_fold_model.variable_reads");
+		},
+	},
 	sessions: { noun: "session", plural: "sessions" },
 };
 
@@ -549,7 +632,7 @@ export const foldCountUnits = (
 		 * work the cap hid, so it is never broken between `and 4` and `other
 		 * actions` - that break is the reader-visible defect D1 measured.
 		 */
-		`and ${other} other action${other === 1 ? "" : "s"}`,
+		t("ui.chat.canonical.trace_fold_model.other_actions", { other }),
 	];
 };
 
@@ -582,7 +665,10 @@ const foldCountSegments = (
 		else if (cls === "searches")
 			bump("class:searches", { noun: "search", plural: "searches" });
 		else if (cls === "web")
-			bump("class:web", { noun: "web search", plural: "web searches" });
+			bump("class:web", {
+				noun: t("ui.chat.canonical.trace_fold_model.web_search"),
+				plural: t("ui.chat.canonical.trace_fold_model.web_searches"),
+			});
 		else if (cls === "edits")
 			bump("class:edits", { noun: "edit", plural: "edits" });
 		else if (cls === "delegated")
@@ -597,7 +683,10 @@ const foldCountSegments = (
 			 * op-less call is the write noun the family already had.
 			 */
 			if ((action.op ?? "").toLowerCase() === "view")
-				bump("kind:todo:view", { noun: "todo read", plural: "todo reads" });
+				bump("kind:todo:view", {
+					noun: t("ui.chat.canonical.trace_fold_model.todo_read"),
+					plural: t("ui.chat.canonical.trace_fold_model.todo_reads"),
+				});
 			else bump("kind:todo", KIND_NOUNS.todo);
 		} else if (n === "jobs") {
 			/*
@@ -608,8 +697,8 @@ const foldCountSegments = (
 			 */
 			if ((action.op ?? "").toLowerCase() === "cancel")
 				bump("kind:jobs:cancel", {
-					noun: "job cancellation",
-					plural: "job cancellations",
+					noun: t("ui.chat.canonical.trace_fold_model.job_cancellation"),
+					plural: t("ui.chat.canonical.trace_fold_model.job_cancellations"),
 				});
 			else bump("kind:jobs", KIND_NOUNS.jobs);
 		} else {

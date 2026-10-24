@@ -32,6 +32,7 @@
  * (`File path copied to clipboard`).
  */
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
+import { t } from "../../../../i18n/messages";
 
 /**
  * The sentence the act reports, in both doors (see the module note: one act, one
@@ -39,7 +40,7 @@ import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
  * test asserts the literal rather than importing it, so the two cannot agree on a
  * wrong string.
  */
-const COPIED_TOAST = "Session ID copied";
+const COPIED_TOAST = () => t("ui.chat.copy_session_id.session_id_copied");
 
 /**
  * Copy a session id to the clipboard, the app's existing way. Returns true on
@@ -58,11 +59,11 @@ export async function copySessionId(id: string): Promise<boolean> {
 	if (id.trim() === "") return false;
 	try {
 		await navigator.clipboard.writeText(id);
-		showSuccessToast(COPIED_TOAST);
+		showSuccessToast(COPIED_TOAST());
 		return true;
 	} catch (error) {
 		console.error("Failed to copy session id: ", error);
-		showErrorToast("Failed to copy session ID");
+		showErrorToast(t("ui.chat.copy_session_id.failed_to_copy_session_id"));
 		return false;
 	}
 }

@@ -101,6 +101,18 @@
 		"note": "Resolved during render; retain the existing control meaning and do not alter key-binding labels. maxCells is an advisory translation target, not measured fit.",
 		"maxCells": 24
 	},
+	"ui.chat.composer.dictation_failed_transient": {
+		"role": "dictation failure toast",
+		"tone": "failure sentence with one closing action, sentence case",
+		"note": "A transient transcription fault after the automatic retries are spent. The toast has no control, so it names the retry itself. Shown only on surfaces with no retained-take row.",
+		"maxCells": 120
+	},
+	"ui.chat.composer.dictation_failed_transient_take_kept": {
+		"role": "dictation failure row beside a Retry control",
+		"tone": "failure sentence that states the take survived, then names the control",
+		"note": "Rendered in the composer and the canvas inline editor next to a control labelled ui.common.actions.retry. Say that the recording is kept and that this control sends it again; do not repeat the toast's imperative on its own. The control label must stay recognisable in the sentence.",
+		"maxCells": 150
+	},
 	"ui.chat.composer.welcome": {
 		"role": "empty conversation heading",
 		"tone": "friendly direct question",
@@ -202,16 +214,70 @@
 		"note": "Resolved during render; maxCells is an advisory translation target, not measured fit.",
 		"maxCells": 120
 	},
-	"ui.chat.composer.dictation_failed_transient": {
-		"role": "dictation failure toast",
-		"tone": "failure sentence with one closing action, sentence case",
-		"note": "A transient transcription fault after the automatic retries are spent. The toast has no control, so it names the retry itself. Shown only on surfaces with no retained-take row.",
-		"maxCells": 120
+	"ui.chat.composer.placeholder.unavailable": {
+		"role": "Composer placeholder",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: This conversation is gone"
 	},
-	"ui.chat.composer.dictation_failed_transient_take_kept": {
-		"role": "dictation failure row beside a Retry control",
-		"tone": "failure sentence that states the take survived, then names the control",
-		"note": "Rendered in the composer and the canvas inline editor next to a control labelled ui.common.actions.retry. Say that the recording is kept and that this control sends it again; do not repeat the toast's imperative on its own. The control label must stay recognisable in the sentence.",
-		"maxCells": 150
+	"ui.chat.composer.placeholder.busy": {
+		"role": "Composer placeholder",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Agent is busy"
+	},
+	"ui.chat.composer.placeholder.answer": {
+		"role": "Composer placeholder",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Type your own answer…"
+	},
+	"ui.chat.composer.placeholder.secret_answer": {
+		"role": "Composer placeholder",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Answer the secret request in the asks panel"
+	},
+	"ui.chat.composer.placeholder.aside": {
+		"role": "Composer placeholder",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Ask off the record — Esc closes the aside"
+	},
+	"ui.chat.composer.placeholder.sending": {
+		"role": "Composer placeholder",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Sending your message"
+	},
+	"ui.chat.composer.placeholder.stopping": {
+		"role": "Composer placeholder",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Stopping the turn"
+	},
+	"ui.chat.composer.placeholder.recording": {
+		"role": "Composer placeholder",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Recording"
+	},
+	"ui.chat.composer.placeholder.waiting": {
+		"role": "Composer placeholder",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Steer the agent. Enter sends now · Esc stops"
+	},
+	"ui.chat.composer.placeholder.no_provider": {
+		"role": "Composer placeholder",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Connect a provider to start chatting"
+	},
+	"ui.chat.composer.placeholder.idle": {
+		"role": "Composer placeholder",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Ask anything. @ adds files, / runs commands"
 	}
 }

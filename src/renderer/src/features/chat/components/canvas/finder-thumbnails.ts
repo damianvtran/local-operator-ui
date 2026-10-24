@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import { createBlobUrl, revokeBlobUrl } from "@shared/lib/blob-url-cache";
 import { useEffect, useState } from "react";
 import { fetchAttachmentBlob } from "../../canonical/use-attachment-url";
@@ -158,7 +159,10 @@ function drain() {
 			} catch (error) {
 				publish(entry, {
 					state: "unavailable",
-					reason: error instanceof Error ? error.message : "Could not be read",
+					reason:
+						error instanceof Error
+							? error.message
+							: t("ui.canvas.finder_thumbnails.could_not_be_read"),
 				});
 			} finally {
 				entry.started = false;

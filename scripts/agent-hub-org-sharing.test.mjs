@@ -71,6 +71,13 @@ import { JSDOM } from "jsdom";
 import React, { act } from "react";
 
 const read = (path) => readFileSync(path, "utf8");
+const englishMessage = (namespace, key) => {
+	const catalogue = JSON.parse(
+		readFileSync(`src/i18n/catalogues/en/${namespace}.json`, "utf8"),
+	);
+	assert.equal(typeof catalogue[key], "string", `missing English key ${key}`);
+	return catalogue[key];
+};
 
 const ORG_OPS = [
 	"memberships.list",
@@ -697,8 +704,21 @@ test("the publish dialog offers the org target and disables a plan-blocked one",
 	);
 	assert.match(
 		dialog,
-		/\{org\.tenant_name \|\| "Organization"\} \(upgrade needed\)/,
-		"the blocked item carries the reason in its own label",
+		/org\.tenant_name \|\| t\("ui\.agents\.upload\.organization"\)/,
+		"the blocked item keeps the translated organization fallback",
+	);
+	assert.match(
+		dialog,
+		/t\("ui\.agents\.upload\.upgrade_needed"\)/,
+		"the blocked item carries the reason in its own keyed label",
+	);
+	assert.equal(
+		englishMessage("ui.agents.upload", "ui.agents.upload.organization"),
+		"Organization",
+	);
+	assert.equal(
+		englishMessage("ui.agents.upload", "ui.agents.upload.upgrade_needed"),
+		"(upgrade needed)",
 	);
 	assert.match(
 		dialog,
@@ -731,13 +751,21 @@ test("the dialog's title and submit label describe the selected target", () => {
 	);
 	assert.match(
 		dialog,
-		/published\.orgName\s*\?\s*`Published "\$\{agentName\}" to \$\{published\.orgName\}`/,
-		"the receipt names the organization, not the hub",
+		/published\.orgName\s*\?\s*t\("ui\.agents\.upload\.published_org_title"/,
+		"the receipt uses the organization-specific keyed title",
 	);
 	assert.match(
 		dialog,
-		/targetIsOrg\s*\?\s*`Publish "\$\{agentName\}" to \$\{targetDisplayName\}\?`/,
-		"the pre-submit title names the organization",
+		/targetIsOrg\s*\?\s*t\("ui\.agents\.upload\.publish_org_title"/,
+		"the pre-submit title uses the selected-target keyed message",
+	);
+	assert.equal(
+		englishMessage("ui.agents.upload", "ui.agents.upload.published_org_title"),
+		'Published "{name}" to {organization}',
+	);
+	assert.equal(
+		englishMessage("ui.agents.upload", "ui.agents.upload.publish_org_title"),
+		'Publish "{name}" to {organization}?',
 	);
 	assert.match(
 		dialog,
@@ -1087,7 +1115,11 @@ test("both refusal sections agree on severity, and both retries are filled contr
 		roster,
 		/aria-hidden="true"\s+className="flex flex-col divide-y divide-hairline"\s+data-testid="org-teams-loading"/,
 	);
-	assert.match(page, /statusSentence = "Loading teams…"/);
+	assert.match(page, /statusSentence = t\("ui\.hub\.agents\.loading_teams"\)/);
+	assert.equal(
+		englishMessage("ui.hub.agents", "ui.hub.agents.loading_teams"),
+		"Loading teams…",
+	);
 });
 
 test("the roster renders a coded pull refusal through the shared treatment", () => {
@@ -1135,18 +1167,36 @@ test("the plan remedy names the Team plan and the console", () => {
 		assert.doesNotMatch(source, /active team plan/);
 	}
 	// C5: plan activation happens in the console, and the sentence says so.
-	assert.match(page, /can activate it in the Radient console/);
-	assert.match(roster, /can activate it in the Radient console/);
-	assert.match(
-		failure,
-		/activate it in the Radient console, then publish again/,
-	);
+	for (const [source, namespace, key] of [
+		[page, "ui.hub.agents", "ui.hub.agents.team_plan_body"],
+		[roster, "ui.hub.teams", "ui.hub.teams.team_plan_body"],
+		[
+			failure,
+			"ui.agents.publication",
+			"ui.agents.publication.team_plan_publish_body",
+		],
+	]) {
+		assert.ok(source.includes(`t("${key}"`), `${key} is the rendered remedy`);
+		assert.match(
+			englishMessage(namespace, key),
+			/activate it in the Radient console/,
+		);
+	}
 	// C4: the plural branch reads as a plural. It lives in the DIALOG, beside the
 	// picker it explains.
 	const dialog = read(
 		"src/renderer/src/features/agents/components/upload-agent-dialog.tsx",
 	);
-	assert.match(dialog, /any of the organizations marked above/);
+	assert.ok(
+		dialog.includes('t("ui.agents.upload.team_plan_required_multiple")'),
+	);
+	assert.match(
+		englishMessage(
+			"ui.agents.upload",
+			"ui.agents.upload.team_plan_required_multiple",
+		),
+		/any of the organizations marked above/,
+	);
 	assert.doesNotMatch(dialog, /An owner of the organizations marked above/);
 });
 
@@ -1595,14 +1645,38 @@ test("each scope reads its own team list, and neither reads the other's", () => 
 
 test("the status sentence names the scope, and the pager keeps its labels", () => {
 	const page = read("src/renderer/src/features/agent-hub/agent-hub-page.tsx");
-	assert.match(page, /"in the public hub"/);
-	assert.match(page, /`shared with \$\{orgName \?\? "this organization"\}`/);
+	for (const key of [
+		"ui.hub.agents.status_count_public",
+		"ui.hub.agents.status_count_organization",
+		"ui.hub.agents.status_teams_organization",
+		"ui.hub.agents.status_agents_public",
+	]) {
+		assert.ok(page.includes(`t("${key}"`), `${key} is used by the status line`);
+	}
+	assert.match(
+		englishMessage("ui.hub.agents", "ui.hub.agents.status_count_public"),
+		/in the public hub/,
+	);
+	assert.match(
+		englishMessage("ui.hub.agents", "ui.hub.agents.status_count_organization"),
+		/shared with \{organization\}/,
+	);
 	assert.match(page, /data-testid="agent-hub-status"/);
 	const pager = read(
 		"src/renderer/src/features/agent-hub/components/hub-pager.tsx",
 	);
-	assert.match(pager, /aria-label="Previous page"/);
-	assert.match(pager, /aria-label="Next page"/);
+	for (const [key, label] of [
+		["ui.hub.pager.previous_page", "Previous page"],
+		["ui.hub.pager.next_page", "Next page"],
+	]) {
+		assert.ok(pager.includes(`t("${key}"`), `${key} labels the pager`);
+		assert.equal(englishMessage("ui.hub", key), label);
+	}
+	assert.ok(pager.includes('t("ui.hub.pager.page_of", { page, count })'));
+	assert.equal(
+		englishMessage("ui.hub", "ui.hub.pager.page_of"),
+		"Page {page, number, ::group-off} of {count, number, ::group-off}",
+	);
 	assert.match(pager, /min-h-13/);
 	// The sidebar's stepper is not the hub's footer any more, and is untouched.
 	assert.doesNotMatch(page, /import \{ CompactPagination \}/);
@@ -1656,7 +1730,15 @@ test("no surface still says the public hub lists agents only", async () => {
 	// The library STATES what the catalogue is and that pulling is the act this
 	// surface owns, which is the copy the notice's premise had replaced.
 	const library = read(`${feature}/components/public-teams-library.tsx`);
-	assert.match(library, /Public teams are published to the hub/);
+	assert.ok(
+		library.includes('t("ui.hub.teams.public_intro")'),
+		"the library uses the public-team introduction key",
+	);
+	assert.match(
+		englishMessage("ui.hub.teams", "ui.hub.teams.public_intro"),
+		/Public teams are published to the hub/,
+		"the library introduces the public team catalogue, not only agents",
+	);
 	assert.match(library, /agent-hub-public-teams-search/);
 });
 

@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -38,7 +39,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const lavender: ThemeDefinition = {
 	id: "lavender",
 	name: "Lavender",
-	description: "Purple-grey dusk lit by a soft lavender glow.",
+	get description() {
+		return t("ui.settings.appearance.theme.lavender");
+	},
 	palette: {
 		mode: "dark",
 		/*

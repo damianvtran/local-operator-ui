@@ -847,12 +847,25 @@ const publicationCollapseWhiteSpace = (value: string): string => {
 	return result;
 };
 
+/** A machine-stable publication refusal; the renderer translates it at display. */
+export type PublicationRule =
+	| { id: "empty" }
+	| { id: "max_characters"; max: number }
+	| { id: "name_separators" }
+	| { id: "name_bidi_override" }
+	| { id: "name_whitespace" }
+	| { id: "name_control" }
+	| { id: "name_format" }
+	| { id: "name_edge_punctuation" }
+	| { id: "tools_max_items"; max: number }
+	| { id: "tool_item_characters"; min: number; max: number };
+
 /**
  * The rule a published NAME breaks, or `null` when it is publishable.
  *
- * Rule text included, because it is what the dialog shows and what the hub's
- * `details.rule` carries — one sentence whichever side refused — and in the
- * HUB'S ORDER, because the order decides which sentence a name that breaks two
+ * A stable rule ID and numeric limits are returned so the dialog can translate
+ * the refusal without parsing English contract text. Rules stay in the HUB'S
+ * ORDER, because the order decides which refusal a name that breaks two
  * rules gets: `code\u202ere viewer` is a bidi override first and a space second,
  * and a client that reported the other one would send its author looking for a
  * character that is not the problem.
@@ -872,29 +885,29 @@ const publicationCollapseWhiteSpace = (value: string): string => {
  * which side has to change. `name_key` still folds whitespace, so the local
  * duplicate and reservation checks keep asking the hub's own question.
  *
- * The sentences and the order are `local_operator/clients/radient.py`'s
+ * The rule IDs and order mirror `local_operator/clients/radient.py`'s
  * `_name_rule`, which is the function to keep this in step with.
  */
-export function publicationNameRule(name: string): string | null {
+export function publicationNameRule(name: string): PublicationRule | null {
 	const trimmed = publicationTrim(name);
-	if (!trimmed) return "must not be empty";
+	if (!trimmed) return { id: "empty" };
 	if (publicationCharCount(trimmed) > PUBLICATION_NAME_MAX_CHARS)
-		return `must be at most ${PUBLICATION_NAME_MAX_CHARS} characters`;
-	if (/[/\\:]/.test(trimmed)) return 'must not contain "/", "\\" or ":"';
+		return { id: "max_characters", max: PUBLICATION_NAME_MAX_CHARS };
+	if (/[/\\:]/.test(trimmed)) return { id: "name_separators" };
 	if (publicationHasCodePoint(trimmed, isPublicationBidiOverride))
-		return "must not contain Unicode bidirectional override characters";
+		return { id: "name_bidi_override" };
 	if (publicationHasCodePoint(trimmed, isPublicationControlWhitespace))
-		return "must not contain whitespace";
+		return { id: "name_whitespace" };
 	if (publicationHasCodePoint(trimmed, isPublicationControl))
-		return "must not contain control characters";
+		return { id: "name_control" };
 	if (publicationHasCodePoint(trimmed, isPublicationFormat))
-		return "must not contain invisible Unicode formatting characters";
+		return { id: "name_format" };
 	const characters = [...trimmed];
 	if (
 		"-.".includes(characters[0]) ||
 		"-.".includes(characters[characters.length - 1])
 	)
-		return 'must not begin or end with "-" or "."';
+		return { id: "name_edge_punctuation" };
 	return null;
 }
 
@@ -922,30 +935,38 @@ export function publicationNameKey(name: string): string {
 }
 
 /** The rule a publication description breaks, or `null` (1..2000 characters). */
-export function publicationDescriptionRule(description: string): string | null {
-	if (!description.trim()) return "must not be empty";
+export function publicationDescriptionRule(
+	description: string,
+): PublicationRule | null {
+	if (!description.trim()) return { id: "empty" };
 	if (publicationCharCount(description) > PUBLICATION_DESCRIPTION_MAX_CHARS)
-		return `must be at most ${PUBLICATION_DESCRIPTION_MAX_CHARS} characters`;
+		return { id: "max_characters", max: PUBLICATION_DESCRIPTION_MAX_CHARS };
 	return null;
 }
 
 /** The rule an instruction body breaks, or `null` (1..8000 characters). */
 export function publicationInstructionsRule(
 	instructions: string,
-): string | null {
-	if (!instructions.trim()) return "must not be empty";
+): PublicationRule | null {
+	if (!instructions.trim()) return { id: "empty" };
 	if (publicationCharCount(instructions) > PUBLICATION_INSTRUCTIONS_MAX_CHARS)
-		return `must be at most ${PUBLICATION_INSTRUCTIONS_MAX_CHARS} characters`;
+		return { id: "max_characters", max: PUBLICATION_INSTRUCTIONS_MAX_CHARS };
 	return null;
 }
 
 /** The rule a tool list breaks, or `null` (<=64 items of 1..64 characters). */
-export function publicationToolsRule(tools: readonly string[]): string | null {
+export function publicationToolsRule(
+	tools: readonly string[],
+): PublicationRule | null {
 	if (tools.length > PUBLICATION_TOOLS_MAX_ITEMS)
-		return `must hold at most ${PUBLICATION_TOOLS_MAX_ITEMS} items`;
+		return { id: "tools_max_items", max: PUBLICATION_TOOLS_MAX_ITEMS };
 	for (const tool of tools) {
 		if (!tool.trim() || publicationCharCount(tool) > PUBLICATION_TOOL_MAX_CHARS)
-			return `must hold items of 1 to ${PUBLICATION_TOOL_MAX_CHARS} characters`;
+			return {
+				id: "tool_item_characters",
+				min: 1,
+				max: PUBLICATION_TOOL_MAX_CHARS,
+			};
 	}
 	return null;
 }

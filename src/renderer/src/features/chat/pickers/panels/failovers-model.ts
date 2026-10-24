@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import { formatModelSpec } from "./formatters";
 
 /**
@@ -40,12 +41,21 @@ export function servingVerdict(
 	const recorded = (model: FailoverModel | null | undefined): boolean =>
 		Boolean(model?.provider && model.model_id);
 	if (!recorded(selected) || !recorded(effective)) {
-		return { tone: "neutral", note: "No model recorded" };
+		return {
+			tone: "neutral",
+			note: t("ui.chat.pickers.failovers_model.no_model_recorded"),
+		};
 	}
 	if (modelLabel(selected) === modelLabel(effective)) {
-		return { tone: "neutral", note: "Same as selected" };
+		return {
+			tone: "neutral",
+			note: t("ui.chat.pickers.failovers_model.same_as_selected"),
+		};
 	}
-	return { tone: "warning", note: "Failover is in force" };
+	return {
+		tone: "warning",
+		note: t("ui.chat.pickers.failovers_model.failover_is_in_force"),
+	};
 }
 
 /** `provider/model_id`; the unknown spelling when nothing was recorded. */

@@ -32,6 +32,7 @@
  */
 
 import { Button } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	Check,
@@ -43,11 +44,9 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { t } from "../../../../../../i18n/messages";
 import { McpAuthDialog } from "./mcp-auth-dialog";
-import {
-	MCP_SETTINGS_ACTION_LABEL,
-	mcpServerSettingsRoute,
-} from "./mcp-failure";
+import { mcpServerSettingsRoute } from "./mcp-failure";
 import {
 	MCP_CONTROL_WORD,
 	type McpServerRow,
@@ -102,9 +101,15 @@ const MCP_UNKNOWN_ICON = CircleHelp;
  * offer the cancel that is the only thing it can usefully do.
  */
 const MCP_GRANT_WORD = {
-	running: "Waiting for your browser",
-	failed: "Sign-in failed",
-	cancelled: "Sign-in cancelled",
+	get running() {
+		return t("ui.chat.run_details.run_detail_mcp.waiting_for_your_browser");
+	},
+	get failed() {
+		return t("ui.chat.run_details.run_detail_mcp.sign_in_failed");
+	},
+	get cancelled() {
+		return t("ui.chat.run_details.run_detail_mcp.sign_in_cancelled");
+	},
 } as const;
 
 /**
@@ -115,8 +120,10 @@ const MCP_GRANT_WORD = {
  * unhelpful-copy class `branding.md` § 8 refuses, because the route replaces
  * every cause with one fixed string (`routes/desktop_lifecycle.py:148-155`).
  */
-const MCP_REFUSED_WORD =
-	"This server refused the sign-in. Check its configuration.";
+const MCP_REFUSED_WORD = () =>
+	t(
+		"ui.chat.run_details.run_detail_mcp.this_server_refused_the_sign_in_check_its_configuration",
+	);
 
 /**
  * Where a server whose credentials this surface cannot set keeps them.
@@ -125,7 +132,10 @@ const MCP_REFUSED_WORD =
  * complete a browser flow (`server_rejects_oauth`), so the row keeps words and
  * names the surface that owns the `env`/`headers` map.
  */
-const MCP_CREDENTIALS_WORD = "Manage this server's credentials in Settings";
+const MCP_CREDENTIALS_WORD = () =>
+	t(
+		"ui.chat.run_details.run_detail_mcp.manage_this_servers_credentials_in_settings",
+	);
 
 /** The sentence form of a remedy, prefixed the way the row's prose lines are. */
 const words = (label: string) => (
@@ -133,7 +143,7 @@ const words = (label: string) => (
 		className={cn("truncate self-start text-ink-muted text-meta leading-4")}
 		title={label}
 	>
-		{`— ${label}`}
+		{t("ui.chat.run_details.run_detail_mcp.label", { label })}
 	</span>
 );
 
@@ -195,6 +205,7 @@ const McpActionLine = ({
 	disabled: boolean;
 	onPress: (row: McpServerRow) => void;
 }) => {
+	useI18nLocale();
 	/** The key remedy, as the control both the remedy and a refusal can reach. */
 	const keyControl = (
 		<Button
@@ -225,7 +236,9 @@ const McpActionLine = ({
 							"min-w-0 truncate text-ink-muted text-meta leading-4",
 						)}
 					>
-						The stored credential was removed.
+						{t(
+							"ui.chat.run_details.run_detail_mcp.the_stored_credential_was_removed",
+						)}
 					</span>
 				)}
 				<Button
@@ -235,7 +248,9 @@ const McpActionLine = ({
 						grant.status === "running" ? remedy.cancel(grant.id) : onPress(row)
 					}
 				>
-					{grant.status === "running" ? "Cancel" : "Try again"}
+					{grant.status === "running"
+						? t("ui.common.actions.cancel")
+						: t("ui.common.actions.retry_again")}
 				</Button>
 			</span>
 		);
@@ -249,7 +264,7 @@ const McpActionLine = ({
 		 * writing the credential its `${NAME}` reference points at. Where it declares
 		 * none, the row keeps the sentence that names the surface that owns them.
 		 */
-		return row.keyNames.length > 0 ? keyControl : words(MCP_CREDENTIALS_WORD);
+		return row.keyNames.length > 0 ? keyControl : words(MCP_CREDENTIALS_WORD());
 	}
 	/*
 	 * An unexplained refusal was the end of the road here: the sentence replaced
@@ -263,7 +278,7 @@ const McpActionLine = ({
 	if (refusal === "refused")
 		return (
 			<span className={cn("flex min-w-0 flex-wrap items-baseline gap-2")}>
-				{words(MCP_REFUSED_WORD)}
+				{words(MCP_REFUSED_WORD())}
 				<Button
 					asChild
 					variant="link"
@@ -272,7 +287,7 @@ const McpActionLine = ({
 					data-mcp-failure-action="settings"
 				>
 					<Link to={mcpServerSettingsRoute(row.name)}>
-						{MCP_SETTINGS_ACTION_LABEL}
+						{t("ui.chat.run_details.mcp_failure.open_this_server_in_settings")}
 					</Link>
 				</Button>
 			</span>
@@ -419,6 +434,7 @@ const McpRow = ({
 	controlDisabled: boolean;
 	onPress: (row: McpServerRow) => void;
 }) => {
+	useI18nLocale();
 	const Mark = iconFor(row.status);
 	/*
 	 * Which of the line's trailing values this width can host, and how much the
@@ -535,7 +551,11 @@ const McpRow = ({
 						<span
 							className={cn("shrink-0 tabular-nums text-meta text-ink-dim")}
 						>
-							{row.toolCount === 1 ? "1 tool" : `${row.toolCount} tools`}
+							{row.toolCount === 1
+								? t("ui.chat.run_details.run_detail_mcp.1_tool")
+								: t("ui.chat.run_details.run_detail_mcp.toolcount_tools", {
+										toolCount: row.toolCount,
+									})}
 						</span>
 					)}
 					{/*
@@ -648,6 +668,7 @@ export const RunDetailMcp = ({
 	 */
 	remedy: McpRemedyControls;
 }) => {
+	useI18nLocale();
 	const [authTarget, setAuthTarget] = useState<McpServerRow | null>(null);
 	if (servers.length === 0) return null;
 	const cold = mcpServersAreCold(servers);
@@ -688,7 +709,9 @@ export const RunDetailMcp = ({
 				 * so nothing here is loud.
 				 */
 				<div className={cn("flex flex-col gap-0.5 px-3 pt-2 pb-1")}>
-					<span className={cn("text-meta text-ink-muted")}>MCP servers</span>
+					<span className={cn("text-meta text-ink-muted")}>
+						{t("ui.chat.run_details.run_detail_mcp.mcp_servers")}
+					</span>
 					<span className={cn("text-meta text-ink-dim")}>
 						{mcpTally(servers)}
 					</span>
@@ -700,7 +723,7 @@ export const RunDetailMcp = ({
 					)}
 				>
 					<span className={cn("shrink-0 text-meta text-ink-muted")}>
-						MCP servers
+						{t("ui.chat.run_details.run_detail_mcp.mcp_servers")}
 					</span>
 					<span
 						className={cn(

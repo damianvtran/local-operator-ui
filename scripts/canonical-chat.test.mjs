@@ -34,7 +34,7 @@ test("the fold header is bound to the group summary, not a member count", () => 
 const RE_STATUSUNAVAILABLE_INCLUDES_LIVENESS =
 	/statusUnavailable\.includes\("liveness"\)/;
 const RE_LIVENESS_UNREAD_SENTENCE =
-	/livenessUnread\s*\?\s*"The daemon could not read which chats are running[^"]*"\s*:\s*"Nothing running right now\."/;
+	/livenessUnread\s*\?\s*t\(\s*"ui\.chat\.sidebar\.chat_sidebar\.the_daemon_could_not_read_which_chats_are_running_so",?\s*\)\s*:\s*t\(\s*"ui\.chat\.sidebar\.chat_sidebar\.nothing_running_right_now",?\s*\)/;
 
 // Exercise the shipped store and closed IPC schema in memory. The transport
 // fixture records effects; this is deterministic state evidence, not a browser.
@@ -224,7 +224,7 @@ const {
 	desktopRequestSchema,
 	DesktopControlError,
 	LEADING_SLASH_CODE,
-	LEADING_SLASH_MESSAGE,
+	leadingSlashMessage,
 	SESSION_UNVALIDATED_CODE,
 	STORE_OUT_OF_SPACE_CODE,
 	STORE_UNAVAILABLE_CODE,
@@ -241,8 +241,6 @@ const {
 	sendFailureCopy,
 	SEND_FAILURE_COPY,
 	normalizeSendText,
-	RETRY_LABEL,
-	CLEAR_LABEL,
 	useConversationInputStore,
 	withholdsRetryHint,
 } = module;
@@ -1649,14 +1647,14 @@ test("a leading-slash refusal is classified, and says what the user can do", asy
 			assert.ok(error instanceof DesktopControlError);
 			assert.equal(error.status, 422);
 			assert.equal(error.code, LEADING_SLASH_CODE);
-			assert.equal(error.message, LEADING_SLASH_MESSAGE);
+			assert.equal(error.message, leadingSlashMessage());
 			assert.equal(error.cause.message, "The request has invalid fields.");
 			return true;
 		},
 	);
 	const draft = store.getState().drafts[key];
 	assert.equal(draft.errorCode, LEADING_SLASH_CODE);
-	assert.equal(draft.error, LEADING_SLASH_MESSAGE);
+	assert.equal(draft.error, leadingSlashMessage());
 	// A validation refusal is decided before anything is admitted, so the draft
 	// is not held and the text is back in the composer — where the fix the
 	// sentence names can actually be carried out.
@@ -1965,7 +1963,7 @@ test("the notice is ONE sentence from ONE place, and the composer renders it rat
 		new DesktopControlError(422, "The request has invalid fields."),
 		LEADING_SLASH_CODE,
 	);
-	assert.equal(slash.message, LEADING_SLASH_MESSAGE);
+	assert.equal(slash.message, leadingSlashMessage());
 	assert.equal(slash.retry, false);
 
 	// THE WIRING, at both ends the sentence travels between. The composer's notice
@@ -2124,13 +2122,13 @@ test("the notice is ONE sentence from ONE place, and the composer renders it rat
 	);
 	assert.match(
 		composer,
-		/\{RETRY_LABEL\}/,
-		"the retry control is no longer labelled from the shared constant, so the sentence and the control can drift apart",
+		/\{retryLabel\(\)\}/,
+		"the retry control no longer resolves the shared keyed label at render time",
 	);
 	assert.match(
 		composer,
-		/\{CLEAR_LABEL\}/,
-		"and the clear control is not either",
+		/\{clearLabel\(\)\}/,
+		"and the clear control does not either",
 	);
 	for (const word of [
 		"Restore message",
@@ -2643,7 +2641,7 @@ test("a leading-slash refusal on the created-session arm hands the payload to th
 	await assert.rejects(admitChatDraft(key, { ...input, text }), (error) => {
 		assert.ok(error instanceof DesktopControlError);
 		assert.equal(error.code, LEADING_SLASH_CODE);
-		assert.equal(error.message, LEADING_SLASH_MESSAGE);
+		assert.equal(error.message, leadingSlashMessage());
 		return true;
 	});
 	const state = store.getState();
@@ -2660,7 +2658,7 @@ test("a leading-slash refusal on the created-session arm hands the payload to th
 	);
 	assert.equal(draft.sessionId, "222222222222");
 	assert.equal(draft.errorCode, LEADING_SLASH_CODE);
-	assert.equal(draft.error, LEADING_SLASH_MESSAGE);
+	assert.equal(draft.error, leadingSlashMessage());
 	assert.equal(draft.admissionAttempted, false);
 	// The flip itself, and why a restore in the composer that pressed cannot be the
 	// only answer: the panel is now keyed on the id this very send minted ...
@@ -3229,7 +3227,7 @@ test("the notice is one sentence above the box, at most Retry and Clear, and not
 		"the sentence no longer wraps, and it is not always this app's own prose - a store refusal names a volume and an unreadable attachment names a file",
 	);
 	assert.ok(
-		region.includes("{RETRY_LABEL}") && region.includes("{CLEAR_LABEL}"),
+		region.includes("{retryLabel()}") && region.includes("{clearLabel()}"),
 		"the notice no longer offers the two labelled actions, so the remedy is somewhere else than the sentence",
 	);
 	const notice = rendered.slice(alertAt, rendered.indexOf("</p>", alertAt));
@@ -3261,15 +3259,17 @@ test("the notice is one sentence above the box, at most Retry and Clear, and not
 		"src/renderer/src/shared/store/canonical-sessions-store.ts",
 		"utf8",
 	);
-	assert.match(
-		store,
-		/export const RETRY_LABEL = "Retry";/,
-		"the retry label is no longer the app's one string",
+	assert.ok(
+		store.includes(
+			'export const retryLabel = (): string => t("ui.common.actions.retry");',
+		),
+		"the retry label no longer resolves its message key at call time",
 	);
-	assert.match(
-		store,
-		/export const CLEAR_LABEL = "Clear";/,
-		"and the clear label is not either",
+	assert.ok(
+		store.includes(
+			'export const clearLabel = (): string => t("ui.common.actions.clear");',
+		),
+		"and the clear label does not either",
 	);
 });
 
@@ -3299,7 +3299,7 @@ test("the header stops announcing that the session has not started once one exis
 	 * the directory the footer names.
 	 */
 	const rung = rendered.match(
-		/starting\s*\?\s*\(loadedTargetDisplay \?\? "Starting the session"\)\s*:\s*draft\?\.sessionId\s*\?\s*([\s\S]{0,200}?)\s*:/,
+		/starting\s*\?\s*\(loadedTargetDisplay \?\?\s*t\("ui\.chat\.chat_page\.starting_the_session"\)\)\s*:\s*draft\?\.sessionId\s*\?\s*([\s\S]{0,200}?)\s*:/,
 	);
 	assert.ok(
 		rung,
@@ -3307,7 +3307,7 @@ test("the header stops announcing that the session has not started once one exis
 	);
 	assert.match(
 		rung[1],
-		/canonical\.frontend\?\.cwd \|\| cwd/,
+		/canonical\.frontend\?\.cwd\s*\|\|\s*cwd/,
 		"the session that exists is not described by its directory, so the header and the immutability note below it are once again about different states",
 	);
 });
@@ -3350,7 +3350,7 @@ test("the pane's unavailable state is centred, clear of the full-bleed bands", (
 	);
 	assert.match(
 		rung[1],
-		/Update the backend to use canonical chats/,
+		/ui\.chat\.chat_page\.update_the_backend_to_use_canonical_chats_your_existing_histories/,
 		"and the sentence itself is still the one the state owes",
 	);
 });
@@ -3413,7 +3413,7 @@ test("a session-creation refusal keeps its own code and copy, even for a leading
 	assert.equal(draft.errorCode, "invalid_cwd");
 	assert.equal(draft.error, "The working directory does not exist.");
 	assert.notEqual(draft.errorCode, LEADING_SLASH_CODE);
-	assert.notEqual(draft.error, LEADING_SLASH_MESSAGE);
+	assert.notEqual(draft.error, leadingSlashMessage());
 	// The generic retry hint is KEPT: a create refusal is not one of the two a
 	// resend cannot answer, and withholding it would be the same
 	// mis-attribution in the opposite direction.
@@ -3456,7 +3456,7 @@ test("a create payload the shipped schema rejects is not relabelled as a slash r
 	await assert.rejects(wire);
 	const draft = store.getState().drafts[key];
 	assert.notEqual(draft.errorCode, LEADING_SLASH_CODE);
-	assert.notEqual(draft.error, LEADING_SLASH_MESSAGE);
+	assert.notEqual(draft.error, leadingSlashMessage());
 	assert.equal(draft.error, "Invalid desktop operation.");
 	assert.equal(withholdsRetryHint(draft.errorCode), false);
 	/*

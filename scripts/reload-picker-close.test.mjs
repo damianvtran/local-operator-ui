@@ -157,7 +157,7 @@ const PICKERS =
  */
 const FORK_WHOLE_CONVERSATION_ADVICE = /fork the whole conversation/i;
 const FORK_CUT_VERB = /(cannot be )?cut\b/i;
-const FORK_CUT_NOTE_CALL_SITE = /cutEntryId \? FORK_CUT_NOTE : undefined/;
+const FORK_CUT_NOTE_CALL_SITE = /cutEntryId \? FORK_CUT_NOTE\(\) : undefined/;
 /*
  * Two more this file already used inside callbacks, hoisted for the same rule
  * now that a change touches this file: every path in this tree is burnt down as
@@ -441,14 +441,14 @@ test("a refused cut keeps the owner's reason and adds only the note this side ca
 		const text = operationFailureText(
 			"The fork was not created",
 			sentence,
-			FORK_CUT_NOTE,
+			FORK_CUT_NOTE(),
 		);
 		assert.ok(
 			text.startsWith(`The fork was not created: ${sentence}`),
 			"the owner's own sentence survives whole, whatever cause it names",
 		);
 		assert.ok(
-			text.endsWith(FORK_CUT_NOTE),
+			text.endsWith(FORK_CUT_NOTE()),
 			"and the note is added, not substituted",
 		);
 		/*
@@ -459,7 +459,7 @@ test("a refused cut keeps the owner's reason and adds only the note this side ca
 		 * is asserted itself rather than left implied by the note's presence.
 		 */
 		assert.ok(
-			text.includes(`\n${FORK_CUT_NOTE}`),
+			text.includes(`\n${FORK_CUT_NOTE()}`),
 			"the note starts on its own line rather than running into the owner's [redacted]",
 		);
 	}
@@ -471,11 +471,11 @@ test("a refused cut keeps the owner's reason and adds only the note this side ca
 	 * including this message"; "cut" enters only on failure).
 	 */
 	assert.ok(
-		!FORK_WHOLE_CONVERSATION_ADVICE.test(FORK_CUT_NOTE),
+		!FORK_WHOLE_CONVERSATION_ADVICE.test(FORK_CUT_NOTE()),
 		"no advice that the route can itself refuse",
 	);
 	assert.ok(
-		!FORK_CUT_VERB.test(FORK_CUT_NOTE),
+		!FORK_CUT_VERB.test(FORK_CUT_NOTE()),
 		"the note does not introduce a third verb for the act",
 	);
 	/*
@@ -632,7 +632,7 @@ test("an in-flight failure after the dialog is gone is raised as a toast", async
  * display fallback into a conversation's real name.
  *
  * The defect this pins is a write, not a wording: `row.title` is optional, the
- * row menu sends `row.title || "Untitled chat"`, and the dialog opens with the
+ * row menu presents an untitled fallback, and the dialog opens with the
  * submit enabled - so before the guard, pressing Rename on an untitled row
  * stored `Untitled chat` as the conversation's explicit, user-set name and
  * retired the naming errand (`chat-title.ts`'s constraint). Pure comparisons,

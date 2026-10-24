@@ -1,6 +1,8 @@
 import { Alert, AlertDescription, AlertTitle } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 
 /**
  * Props for the ErrorView component
@@ -40,13 +42,24 @@ export const ErrorView: FC<ErrorViewProps> = ({
 	message,
 	serverUnreachable = false,
 }) => {
+	useI18nLocale();
 	const description = serverUnreachable
 		? message
-			? `${message} The agent's history is safe — try again once the local server is running.`
-			: "The local server did not answer. The agent's history is safe — try again once it is running."
+			? t(
+					"ui.chat.error_view.message_the_agents_history_is_safe_try_again_once_the",
+					{ message },
+				)
+			: t(
+					"ui.chat.error_view.the_local_server_did_not_answer_the_agents_history_is",
+				)
 		: message
-			? `${message} The agent's history is safe — try again in a moment.`
-			: "The local server returned an error. The agent's history is safe — try again in a moment.";
+			? t(
+					"ui.chat.error_view.message_the_agents_history_is_safe_try_again_in_a",
+					{ message },
+				)
+			: t(
+					"ui.chat.error_view.the_local_server_returned_an_error_the_agents_history_is",
+				);
 	return (
 		<div
 			data-glass-region="canvas"
@@ -55,7 +68,9 @@ export const ErrorView: FC<ErrorViewProps> = ({
 			)}
 		>
 			<Alert variant="danger" role="alert" className={cn("max-w-[480px]")}>
-				<AlertTitle>Could not load this conversation</AlertTitle>
+				<AlertTitle>
+					{t("ui.chat.error_view.could_not_load_this_conversation")}
+				</AlertTitle>
 				<AlertDescription>{description}</AlertDescription>
 			</Alert>
 		</div>

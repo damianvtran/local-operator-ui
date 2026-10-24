@@ -53,6 +53,7 @@
 
 import { togglePanelRailItem } from "@shared/components/navigation/panel-rail-actions";
 import { PanelRailItem } from "@shared/components/navigation/panel-rail-item";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { displayChord } from "@shared/keymap/keymap-chord";
 import { cn } from "@shared/lib/utils";
 import {
@@ -61,6 +62,7 @@ import {
 } from "@shared/store/ui-preferences-store";
 import { Info } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { t } from "../../../../../../i18n/messages";
 import { rendererPlatform } from "../../../../mini-view/renderer-platform";
 import {
 	type McpServerRow,
@@ -115,6 +117,7 @@ export const RunDetailsTrigger = ({
 	listOnScreen,
 	readerChildId,
 }: RunDetailsTriggerProps) => {
+	useI18nLocale();
 	const isRunPanelOpen = useUiPreferencesStore((state) => state.isRunPanelOpen);
 	/*
 	 * LIT AND NAMED FROM WHAT IS DRAWN, NOT FROM THE FLAG (#872). The flag is a
@@ -274,7 +277,10 @@ export const RunDetailsTrigger = ({
 			 * model's sentence, which `run-detail-model.test.mjs` pins verbatim; the
 			 * clauses after the seam (counts, failures) are the name's real content.
 			 */
-			ariaLabel={label.replace(/^(Open|Close) run details/, "Run details")}
+			ariaLabel={label.replace(
+				/^(Open|Close) run details/,
+				t("ui.chat.run_details.run_details_trigger.run_details"),
+			)}
 			pressed={runPanelDrawn}
 			/*
 			 * The pressed GROUND, the hover ground and the lit bar are the rail item's

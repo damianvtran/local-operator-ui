@@ -1,3 +1,4 @@
+import { t } from "../../../../i18n/messages";
 import type { TagCategory, TagRef } from "../../../../shared/desktop-contract";
 import { chatTagBucket } from "./chat-tag-drag";
 
@@ -28,7 +29,7 @@ export function groupChatsByTag<
 	// assignment, not only assignments after some occupied group exists.
 	return [
 		...ordered.map(({ id, name }) => ({ id, name })),
-		{ id: "untagged", name: "Untagged" },
+		{ id: "untagged", name: t("ui.chat.chat_tag_groups.untagged") },
 	].flatMap(({ id, name }) => {
 		const bucket = buckets.get(id);
 		return bucket?.length ? [{ id, name, rows: bucket }] : [];

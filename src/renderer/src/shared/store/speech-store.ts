@@ -1,3 +1,4 @@
+import { t } from "../../../../i18n/messages";
 /**
  * @file speech-store.ts
  * @description
@@ -75,9 +76,9 @@ import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import {
 	SPEECH_FAILURE_DETAIL_PREFIX,
-	SPEECH_PLAYBACK_COPY,
 	isUnknownAgentSpeechRefusal,
 	speechFailureCopy,
+	speechPlaybackCopy,
 } from "@shared/lib/speech-errors";
 import { fetchSpeechAgentId } from "@shared/lib/speech-target";
 import { useAudioEngineStore } from "@shared/store/audio-engine-store";
@@ -357,9 +358,7 @@ export const useSpeechStore = create<SpeechState & SpeechActions>(
 					 */
 					const fetched = await fetchOnce(key, fetcher);
 					if (!fetched) {
-						throw new Error(
-							"Speech generation failed, no audio data received.",
-						);
+						throw new Error(t("ui.common.errors.speech_no_audio"));
 					}
 					/*
 					 * THE CACHE WRITE COMES FIRST, BEFORE THE PRESS-ORDER CHECK, and that
@@ -410,7 +409,7 @@ export const useSpeechStore = create<SpeechState & SpeechActions>(
 							set((state) =>
 								state.audioElement === useAudioEngineStore.getState().element
 									? {
-											error: "Error playing audio.",
+											error: t("ui.common.errors.audio_playback"),
 											playingKey: null,
 											audioElement: null,
 											currentUrl: null,
@@ -426,7 +425,7 @@ export const useSpeechStore = create<SpeechState & SpeechActions>(
 							console.error(
 								`${SPEECH_FAILURE_DETAIL_PREFIX} playback failed for ${key}`,
 							);
-							showErrorToast(SPEECH_PLAYBACK_COPY);
+							showErrorToast(speechPlaybackCopy());
 						},
 					});
 				/*
@@ -459,7 +458,9 @@ export const useSpeechStore = create<SpeechState & SpeechActions>(
 			} catch (err) {
 				if (get().generation !== generation) return;
 				const errorMessage =
-					err instanceof Error ? err.message : "Failed to generate speech";
+					err instanceof Error
+						? err.message
+						: t("ui.common.errors.speech_generation");
 				set({ error: errorMessage, loadingKey: null });
 				/*
 				 * THE READER'S HALF OF A FAILED PRESS (`toast-manager`'s one channel,

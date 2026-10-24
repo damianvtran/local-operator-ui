@@ -30,8 +30,10 @@
  */
 
 import { Separator } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Fragment, type HTMLAttributes, type ReactNode, type Ref } from "react";
+import { t } from "../../../../../../i18n/messages";
 import { JobCancelPopover } from "./job-cancel-popover";
 import type { JobControls } from "./job-controls-model";
 import { MonitorCancelDialog } from "./monitor-cancel-dialog";
@@ -178,6 +180,7 @@ export const RunDetailsPanel = ({
 	className,
 	...props
 }: RunDetailsPanelProps) => {
+	useI18nLocale();
 	/*
 	 * The clock is taken HERE, at the body, and the re-measured model is handed to
 	 * the SUBAGENT rows only. Nothing above this component ticks (see
@@ -427,8 +430,8 @@ export const RunDetailsPanel = ({
 			{sections.length === 0 && (
 				<p className={cn("px-3 py-3 text-body-sm text-ink-muted")}>
 					{hasRunDetails(details)
-						? "Nothing to show yet."
-						: "Nothing in flight."}
+						? t("ui.chat.run_details.run_details_panel.nothing_to_show_yet")
+						: t("ui.chat.run_details.run_details_panel.nothing_in_flight")}
 				</p>
 			)}
 			{sections.map((section, index) => (

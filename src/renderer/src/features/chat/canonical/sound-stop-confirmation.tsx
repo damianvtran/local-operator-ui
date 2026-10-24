@@ -1,5 +1,4 @@
 import { Button } from "@shared/components/ui/button";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	useCallback,
@@ -9,6 +8,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 
 /** Admission for both pane Stop and its Escape accelerator, before any RPC. */
 export function useSoundStopGate({

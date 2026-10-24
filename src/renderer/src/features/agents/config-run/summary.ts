@@ -1,3 +1,4 @@
+import { type WithoutParams, t } from "@shared/i18n";
 /**
  * The run's "what changed" summary: a before/after diff over the catalogue
  * fields the LISTS actually carry.
@@ -55,6 +56,49 @@ export type RunToolRow = {
 	neverSent?: boolean;
 };
 
+/** The stable activity descriptor retained from a transcript row. */
+export type RunToolVerb =
+	| {
+			operation: "create" | "update";
+			kind: RunTarget["kind"];
+			name: string | null;
+	  }
+	| { operation: "install"; name: string | null }
+	| { operation: "read"; kind: RunTarget["kind"]; name: string | null }
+	| { operation: "unknown"; kind: RunTarget["kind"]; running: boolean };
+
+/** Format activity at render time, after any live language switch. */
+export function formatRunToolVerb(verb: RunToolVerb): string {
+	switch (verb.operation) {
+		case "create":
+			return verb.name
+				? t("ui.agents.config.summary_creating_named", {
+						kind: verb.kind,
+						name: verb.name,
+					})
+				: t("ui.agents.config.summary_creating_kind", { kind: verb.kind });
+		case "update":
+			return verb.name
+				? t("ui.agents.config.summary_updating_named", {
+						kind: verb.kind,
+						name: verb.name,
+					})
+				: t("ui.agents.config.summary_updating_kind", { kind: verb.kind });
+		case "install":
+			return verb.name
+				? t("ui.agents.config.summary_installing_named", { name: verb.name })
+				: t("ui.agents.config.summary_installing_agent");
+		case "read":
+			return verb.name
+				? t("ui.agents.config.summary_reading_named", { name: verb.name })
+				: t("ui.agents.config.summary_reading_kind", { kind: verb.kind });
+		case "unknown":
+			return verb.running
+				? t("ui.agents.config.summary_working_kind", { kind: verb.kind })
+				: t("ui.agents.config.summary_checked_kind", { kind: verb.kind });
+	}
+}
+
 /**
  * One tool row's own words for what it is doing, when it names a definition.
  *
@@ -82,7 +126,7 @@ export type RunToolRow = {
  * still paints its step line in the Watch list.
  */
 export function projectRunToolRow(row: RunToolRow): {
-	verb: string;
+	verb: RunToolVerb;
 	target: RunTarget | null;
 	/** Whether this call WRITES the registry rather than reading it. */
 	writes: boolean;
@@ -105,19 +149,19 @@ export function projectRunToolRow(row: RunToolRow): {
 	switch (op) {
 		case "create":
 			return {
-				verb: name ? `Creating ${kind} ${name}` : `Creating a ${kind}`,
+				verb: { operation: "create", kind, name },
 				target,
 				...write(true),
 			};
 		case "update":
 			return {
-				verb: name ? `Updating ${kind} ${name}` : `Updating a ${kind}`,
+				verb: { operation: "update", kind, name },
 				target,
 				...write(true),
 			};
 		case "install":
 			return {
-				verb: name ? `Installing ${name}` : "Installing an agent",
+				verb: { operation: "install", name },
 				target,
 				...write(true),
 			};
@@ -125,7 +169,7 @@ export function projectRunToolRow(row: RunToolRow): {
 		case "search":
 		case "show":
 			return {
-				verb: name ? `Reading ${name}` : `Reading ${kind}s`,
+				verb: { operation: "read", kind, name },
 				target,
 				...write(false),
 			};
@@ -136,8 +180,11 @@ export function projectRunToolRow(row: RunToolRow): {
 			 * the operator will see in the list.
 			 */
 			return {
-				verb:
-					row.phase === "running" ? `Working on ${kind}s` : `Checked ${kind}s`,
+				verb: {
+					operation: "unknown",
+					kind,
+					running: row.phase === "running",
+				},
 				target,
 				...write(true),
 			};
@@ -153,17 +200,30 @@ export type CatalogueSnapshot = {
 };
 
 /** The operator's words for a field, so the summary never says `tools`. */
-const FIELD_LABEL: Record<string, string> = {
-	description: "description",
-	kind: "kind",
-	tools: "tools",
-	effort: "effort tier",
-	delegate: "delegation",
-	action_class: "class",
-	manager: "manager",
-	members: "members",
-	instructions: "instructions",
-};
+function fieldLabelKey(field: string): WithoutParams | undefined {
+	switch (field) {
+		case "description":
+			return "ui.agents.config.summary_field_description";
+		case "kind":
+			return "ui.agents.config.summary_field_kind";
+		case "tools":
+			return "ui.agents.config.summary_field_tools";
+		case "effort":
+			return "ui.agents.config.summary_field_effort";
+		case "delegate":
+			return "ui.agents.config.summary_field_delegate";
+		case "action_class":
+			return "ui.agents.config.summary_field_class";
+		case "manager":
+			return "ui.agents.config.summary_field_manager";
+		case "members":
+			return "ui.agents.config.summary_field_members";
+		case "instructions":
+			return "ui.agents.config.summary_field_instructions";
+		default:
+			return undefined;
+	}
+}
 
 function agentSignature(profile: ReusableProfile): Signature {
 	return {
@@ -221,30 +281,37 @@ export function snapshotCatalogue(
 
 /** The tool names/verbs whose edits are worth saying out loud, widened or narrowed. */
 function describeTools(before: string, after: string): string {
-	if (before === after) return "tools";
+	if (before === after) return t("ui.agents.config.summary_tools");
 	const set = (value: string) =>
 		value === "*" ? null : new Set(value.split(","));
 	const first = set(before);
 	const second = set(after);
-	if (second === null) return "tools widened to every tool";
-	if (first === null) return "tools narrowed to a list";
+	if (second === null) return t("ui.agents.config.summary_tools_widened");
+	if (first === null) return t("ui.agents.config.summary_tools_narrowed");
 	const added = [...second].filter((tool) => !first.has(tool));
 	const removed = [...first].filter((tool) => !second.has(tool));
 	if (added.length && !removed.length)
 		return added.length === 1
-			? `tool added: ${added[0]}`
-			: `${added.length} tools added`;
+			? t("ui.agents.config.summary_tool_added", { tool: added[0] })
+			: t("ui.agents.config.summary_tools_added", { count: added.length });
 	if (removed.length && !added.length)
 		return removed.length === 1
-			? `tool removed: ${removed[0]}`
-			: `${removed.length} tools removed`;
-	return "tools changed";
+			? t("ui.agents.config.summary_tool_removed", { tool: removed[0] })
+			: t("ui.agents.config.summary_tools_removed", { count: removed.length });
+	return t("ui.agents.config.summary_tools_changed");
 }
 
-function describeField(field: string, before: string, after: string): string {
+/** Format one retained change in the locale of the settled result's current render. */
+export function formatRunChange(
+	field: string,
+	before: string,
+	after: string,
+): string {
 	if (field === "tools") return describeTools(before, after);
 	if (field === "delegate")
-		return after === "true" ? "delegation turned on" : "delegation turned off";
+		return after === "true"
+			? t("ui.agents.config.summary_delegation_on")
+			: t("ui.agents.config.summary_delegation_off");
 	/*
 	 * The class page follows `delegate`'s shape on purpose: the two are the
 	 * definition's BEHAVIOUR switches, and "class changed" would leave the reader
@@ -253,13 +320,19 @@ function describeField(field: string, before: string, after: string): string {
 	 */
 	if (field === "action_class")
 		return after === "proactive"
-			? "class changed to proactive"
-			: "class changed to reactive — proactive messaging stopped";
+			? t("ui.agents.config.summary_class_proactive")
+			: t("ui.agents.config.summary_class_reactive");
 	if (field === "members") {
 		const count = (value: string) => (value ? value.split(",").length : 0);
-		return `members changed (${count(before)} to ${count(after)})`;
+		return t("ui.agents.config.summary_members_changed", {
+			before: count(before),
+			after: count(after),
+		});
 	}
-	return `${FIELD_LABEL[field] ?? field} changed`;
+	const label = fieldLabelKey(field);
+	return t("ui.agents.config.summary_field_changed", {
+		field: label ? t(label) : field,
+	});
 }
 
 /**
@@ -298,7 +371,7 @@ export function diffCatalogue(
 		for (const field of Object.keys(afterRow)) {
 			if (afterRow[field] === beforeRow[field]) continue;
 			changes.push({
-				label: describeField(field, beforeRow[field], afterRow[field]),
+				field,
 				before: beforeRow[field],
 				after: afterRow[field],
 			});

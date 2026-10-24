@@ -10,6 +10,7 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type FC, memo, useState } from "react";
+import { documentNameForDisplay } from "../../utils/get-file-name";
 import { ImageActionsMenu } from "../image-actions-menu";
 import {
 	FileViewerState,
@@ -105,7 +106,7 @@ const ArtifactImagePreview: FC<{ document: CanvasDocument }> = ({
 					<ImageActionsMenu
 						file={document.path}
 						src={url ?? undefined}
-						label={document.title}
+						label={documentNameForDisplay(document)}
 						mediaKind="image"
 						saveName={artifactFileName(artifact)}
 						resolveBytes={() =>
@@ -124,7 +125,7 @@ const ArtifactImagePreview: FC<{ document: CanvasDocument }> = ({
 				<div className={cn("flex min-h-0 flex-1 items-center justify-center")}>
 					<img
 						src={url}
-						alt={document.title}
+						alt={documentNameForDisplay(document)}
 						onError={() => setUndecodableUrl(url)}
 						className={cn("h-full w-full bg-sunken object-contain")}
 					/>
@@ -135,10 +136,12 @@ const ArtifactImagePreview: FC<{ document: CanvasDocument }> = ({
 				<FileViewerState
 					title={
 						readyUrl !== null
-							? "This image could not be shown"
-							: "This image is no longer in the session"
+							? t("ui.canvas.image_preview.this_image_could_not_be_shown")
+							: t(
+									"ui.canvas.image_preview.this_image_is_no_longer_in_the_session",
+								)
 					}
-					detail={document.title}
+					detail={documentNameForDisplay(document)}
 				/>
 			)}
 		</div>
@@ -177,11 +180,11 @@ const PathImagePreview: FC<{ document: CanvasDocument }> = ({ document }) => {
 	const title =
 		state.status === "unavailable"
 			? state.code === "too-large"
-				? "Too large to preview"
+				? t("ui.canvas.image_preview.too_large_to_preview")
 				: state.code === "not-found"
-					? "File no longer exists"
-					: "This image could not be opened"
-			: "This image could not be shown";
+					? t("ui.canvas.image_preview.file_no_longer_exists")
+					: t("ui.canvas.image_preview.this_image_could_not_be_opened")
+			: t("ui.canvas.image_preview.this_image_could_not_be_shown");
 
 	return (
 		/* The letterbox wears the PANE's ground (`canvas/index.tsx`): it is the pane's
@@ -206,14 +209,14 @@ const PathImagePreview: FC<{ document: CanvasDocument }> = ({ document }) => {
 				<ImageActionsMenu
 					file={document.path}
 					src={url ?? document.path}
-					label={document.title}
+					label={documentNameForDisplay(document)}
 				/>
 			</ViewerChrome>
 			{url !== null ? (
 				<div className={cn("flex min-h-0 flex-1 items-center justify-center")}>
 					<img
 						src={url}
-						alt={document.title}
+						alt={documentNameForDisplay(document)}
 						onError={() => setUndecodableUrl(url)}
 						className={cn("h-full w-full bg-sunken object-contain")}
 					/>

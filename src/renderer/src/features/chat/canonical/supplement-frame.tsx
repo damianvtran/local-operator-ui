@@ -49,9 +49,9 @@
  * timeout must not tear down another's.
  */
 
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import { supplementMountUrl } from "../../../../../shared/supplement-frame-url";
 import {
 	PING_INTERVAL_MS,
@@ -70,7 +70,7 @@ import {
 } from "./supplement-model";
 
 /** The debug line a torn-down frame logs once, per the memo's "one debug line". */
-const HOSTILE_TEARDOWN_LOG =
+const HOSTILE_TEARDOWN_LOG = () =>
 	"[supplement] frame torn down after a second load (hostile navigation or a blocked attempt)";
 
 export type SupplementFrameProps = {
@@ -467,7 +467,7 @@ export function SupplementFrame({
 			// The second load is a hostile navigation OR a blocked attempt (a
 			// blocked navigation fires a second `load` too, measured on Chrome
 			// 155). Either way this frame is not the document the host mounted.
-			console.debug(HOSTILE_TEARDOWN_LOG);
+			console.debug(HOSTILE_TEARDOWN_LOG());
 			fail("second-load");
 			return;
 		}

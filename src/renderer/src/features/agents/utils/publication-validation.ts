@@ -16,7 +16,9 @@
  * still editable, instead of after a round trip and a moderation review.
  */
 
+import { type WithoutParams, t } from "@shared/i18n";
 import {
+	type PublicationRule,
 	publicationDescriptionRule,
 	publicationInstructionsRule,
 	publicationNameKey,
@@ -31,17 +33,11 @@ export type PublicationField =
 	| "instructions"
 	| "tools";
 
-/** One reason the dialog will not submit, and the field it belongs to. */
+/** One language-neutral reason the dialog will not submit. */
 export type PublicationIssue = {
 	field: PublicationField;
-	/**
-	 * The sentence the blocked-field list shows.
-	 *
-	 * Built from the field's label and the hub's own rule text, so a user reading
-	 * "The instruction body must be at most 8000 characters." here and the hub's
-	 * refusal of the same document reads one rule rather than two.
-	 */
-	message: string;
+	/** Stable contract ID plus numeric limits, formatted only at the display boundary. */
+	rule: PublicationRule;
 };
 
 /**
@@ -61,12 +57,18 @@ export type PublicationDraft = {
 };
 
 /** How each field is named in a sentence a person reads. */
-const FIELD_LABEL: Record<PublicationField, string> = {
-	name: "Name",
-	description: "Description",
-	instructions: "The instruction body",
-	tools: "Tools",
-};
+function publicationFieldLabelKey(field: PublicationField): WithoutParams {
+	switch (field) {
+		case "name":
+			return "ui.agents.publication.field_name";
+		case "description":
+			return "ui.agents.publication.field_description";
+		case "instructions":
+			return "ui.agents.publication.field_instructions";
+		case "tools":
+			return "ui.agents.publication.field_tools";
+	}
+}
 
 /**
  * Every reason the document as it stands cannot be published.
@@ -77,8 +79,8 @@ const FIELD_LABEL: Record<PublicationField, string> = {
  */
 export function publicationIssues(draft: PublicationDraft): PublicationIssue[] {
 	const issues: PublicationIssue[] = [];
-	const add = (field: PublicationField, rule: string | null) => {
-		if (rule) issues.push({ field, message: `${FIELD_LABEL[field]} ${rule}.` });
+	const add = (field: PublicationField, rule: PublicationRule | null) => {
+		if (rule) issues.push({ field, rule });
 	};
 	add("name", publicationNameRule(draft.name));
 	add("description", publicationDescriptionRule(draft.description));
@@ -89,6 +91,55 @@ export function publicationIssues(draft: PublicationDraft): PublicationIssue[] {
 		add("instructions", publicationInstructionsRule(draft.instructions));
 	add("tools", publicationToolsRule(draft.tools ?? []));
 	return issues;
+}
+
+/** Translate a retained rule now, in the locale of the render that displays it. */
+export function formatPublicationIssue(issue: PublicationIssue): string {
+	const { rule } = issue;
+	let message: string;
+	switch (rule.id) {
+		case "empty":
+			message = t("ui.agents.publication.rule_empty");
+			break;
+		case "max_characters":
+			message = t("ui.agents.publication.rule_max_characters", {
+				max: rule.max,
+			});
+			break;
+		case "name_separators":
+			message = t("ui.agents.publication.rule_name_separators");
+			break;
+		case "name_bidi_override":
+			message = t("ui.agents.publication.rule_name_bidi_override");
+			break;
+		case "name_whitespace":
+			message = t("ui.agents.publication.rule_name_whitespace");
+			break;
+		case "name_control":
+			message = t("ui.agents.publication.rule_name_control");
+			break;
+		case "name_format":
+			message = t("ui.agents.publication.rule_name_format");
+			break;
+		case "name_edge_punctuation":
+			message = t("ui.agents.publication.rule_name_edge_punctuation");
+			break;
+		case "tools_max_items":
+			message = t("ui.agents.publication.rule_tools_max_items", {
+				max: rule.max,
+			});
+			break;
+		case "tool_item_characters":
+			message = t("ui.agents.publication.rule_tool_item_characters", {
+				min: rule.min,
+				max: rule.max,
+			});
+			break;
+	}
+	return t("ui.agents.publication.local_validation", {
+		label: t(publicationFieldLabelKey(issue.field)),
+		rule: message,
+	});
 }
 
 /**

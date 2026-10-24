@@ -26,10 +26,12 @@ import {
 	Textarea,
 	Tooltip,
 } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Info, Save, SquareX } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { isWritableVariableKey } from "../../../../../../shared/desktop-contract";
 
 /**
@@ -93,7 +95,9 @@ const refusalOf = (error: unknown): Refusal => ({
 	code: error instanceof DesktopControlError ? error.code : undefined,
 	message: userFacingMessage(
 		error,
-		"The variable could not be saved. Try again.",
+		t(
+			"ui.canvas.variable_form_dialog.the_variable_could_not_be_saved_try_again",
+		),
 	),
 });
 
@@ -143,6 +147,7 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 	onSubmit,
 	initialData,
 }) => {
+	useI18nLocale();
 	const [formData, setFormData] = useState<FormDataType>(
 		getDefaultFormState(initialData),
 	);
@@ -172,8 +177,9 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 		if (!isWritableVariableKey(formData.key)) {
 			setRefusal({
 				field: "key",
-				message:
-					"This name cannot be sent. Use up to 128 characters, without control characters, and not only dots.",
+				message: t(
+					"ui.canvas.variable_form_dialog.this_name_cannot_be_sent_use_up_to_128_characters_without_control_charac",
+				),
 			});
 			return;
 		}
@@ -214,7 +220,9 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 	 * execution variable" - the backend's term for the legacy agent-scoped
 	 * surface this PR deletes, and a word the tour never uses.
 	 */
-	const dialogTitle = isEditMode ? "Edit variable" : "New variable";
+	const dialogTitle = isEditMode
+		? t("ui.canvas.variable_form_dialog.edit_variable")
+		: t("ui.canvas.variable_form_dialog.new_variable");
 
 	const dialogActions = (
 		<>
@@ -223,7 +231,7 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 				disabled={isSubmitting}
 				startIcon={<SquareX size={18} aria-hidden="true" />}
 			>
-				Cancel
+				{t("ui.canvas.variable_form_dialog.cancel")}
 			</SecondaryButton>
 			<PrimaryButton
 				onClick={() => void handleSubmit()}
@@ -232,23 +240,27 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 					isSubmitting ? <Spinner /> : <Save size={18} aria-hidden="true" />
 				}
 			>
-				{isSubmitting ? "Saving…" : isEditMode ? "Save" : "Create"}
+				{isSubmitting
+					? t("ui.canvas.variable_form_dialog.saving")
+					: isEditMode
+						? t("ui.canvas.variable_form_dialog.save")
+						: t("ui.canvas.variable_form_dialog.create")}
 			</PrimaryButton>
 		</>
 	);
 
-	const valueFieldLabel = useMemo(() => {
+	const valueFieldLabel = (() => {
 		switch (formData.type) {
 			case "dict":
-				return "Value (JSON object)";
+				return t("ui.canvas.variable_form_dialog.value_json_object");
 			case "list":
-				return "Value (JSON array)";
+				return t("ui.canvas.variable_form_dialog.value_json_array");
 			case "bool":
-				return "Value (true/false)";
+				return t("ui.canvas.variable_form_dialog.value_true_false");
 			default:
-				return "Value";
+				return t("ui.canvas.variable_form_dialog.value");
 		}
-	}, [formData.type]);
+	})();
 
 	const isJsonValue = formData.type === "dict" || formData.type === "list";
 
@@ -265,16 +277,22 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 				<div className={cn("flex flex-col gap-1.5")}>
 					<div className={cn("flex items-center gap-1")}>
 						<Label htmlFor="variable-key">
-							Name (key)
+							{t("ui.canvas.variable_form_dialog.name_key")}
 							<RequiredMark />
 						</Label>
-						<Tooltip content="The unique identifier for the variable (e.g., 'api_key', 'user_preference'). Cannot be changed after creation.">
+						<Tooltip
+							content={t(
+								"ui.canvas.variable_form_dialog.the_unique_identifier_for_the_variable_e_g_api_key_user_preference_canno",
+							)}
+						>
 							<Button
 								type="button"
 								variant="ghost"
 								size="icon-sm"
 								className={cn("text-info")}
-								aria-label="About the variable name"
+								aria-label={t(
+									"ui.canvas.variable_form_dialog.about_the_variable_name",
+								)}
 							>
 								<Info aria-hidden="true" />
 							</Button>
@@ -288,7 +306,9 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 						}
 						required
 						disabled={isSubmitting || isEditMode} // Key is not editable
-						placeholder="e.g., my_variable_name"
+						placeholder={t(
+							"ui.canvas.variable_form_dialog.e_g_my_variable_name",
+						)}
 						aria-invalid={refusalField === "key"}
 						aria-describedby={
 							refusalField === "key" ? "variable-key-refusal" : undefined
@@ -316,7 +336,7 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 
 				<div className={cn("flex flex-col gap-1.5")}>
 					<Label htmlFor="variable-type-select">
-						Type
+						{t("ui.canvas.variable_form_dialog.type")}
 						<RequiredMark />
 					</Label>
 					<Select
@@ -375,12 +395,12 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 						className={cn(refusalField === "value" && "border-danger")}
 						placeholder={
 							formData.type === "dict"
-								? `{ "example_key": "example_value" }`
+								? t("ui.canvas.variable_form_dialog.example_key_example_value")
 								: formData.type === "list"
-									? `[ "item1", "item2" ]`
+									? t("ui.canvas.variable_form_dialog.item1_item2")
 									: formData.type === "bool"
-										? "true or false"
-										: "Enter variable value"
+										? t("ui.canvas.variable_form_dialog.true_or_false")
+										: t("ui.canvas.variable_form_dialog.enter_variable_value")
 						}
 					/>
 					{isJsonValue && (
@@ -388,7 +408,7 @@ export const VariableFormDialog: FC<VariableFormDialogProps> = ({
 							id="variable-value-hint"
 							className={cn("text-ink-muted text-meta")}
 						>
-							Enter a valid JSON structure.
+							{t("ui.canvas.variable_form_dialog.enter_a_valid_json_structure")}
 						</p>
 					)}
 					{refusalField === "value" && (

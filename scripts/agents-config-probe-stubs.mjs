@@ -44,6 +44,13 @@ export function pushTranscriptDelta(text) {
 	for (const listener of listeners) listener();
 }
 
+// Extracted copy imports the shared language-write seam, which resolves the
+// capabilities key from this same desktop-hooks boundary even when no language
+// write occurs in the probe. Keep the stub's key identical to the real module.
+export const desktopKeys = {
+	capabilities: ["desktop", "capabilities"],
+};
+
 export function desktopFeatureEnabled() {
 	return true;
 }

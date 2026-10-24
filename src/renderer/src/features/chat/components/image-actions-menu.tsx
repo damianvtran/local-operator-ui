@@ -142,7 +142,9 @@ const ACTION_ICONS: Record<ImageActionId, React.ReactNode> = {
  */
 const failureSentence = (fallback: string, error: unknown): string =>
 	error instanceof AttachmentGoneError
-		? `${fallback}: it is no longer in the session`
+		? t("ui.chat.image_actions_menu.fallback_it_is_no_longer_in_the_session", {
+				fallback,
+			})
 		: fallback;
 
 export const ImageActionsMenu = ({
@@ -160,7 +162,7 @@ export const ImageActionsMenu = ({
 	onExpand,
 	saveName,
 	resolveBytes,
-	tooltip = "Image actions",
+	tooltip = t("ui.chat.image_actions_menu.image_actions"),
 	"aria-label": ariaLabel,
 }: ImageActionsMenuProps) => {
 	const kind = classifyAttachmentSource(file);
@@ -217,17 +219,28 @@ export const ImageActionsMenu = ({
 	const copyImage = async () => {
 		try {
 			if (typeof ClipboardItem === "undefined") {
-				throw new Error("this window cannot write an image to the clipboard");
+				throw new Error(
+					t(
+						"ui.chat.image_actions_menu.this_window_cannot_write_an_image_to_the_clipboard",
+					),
+				);
 			}
 			const bytes = resolveBytes
 				? await resolveBytes()
 				: await resolveCopyableImage(kind, file, src);
 			const png = await pngForClipboard(bytes);
 			await navigator.clipboard.write([new ClipboardItem({ [png.type]: png })]);
-			showSuccessToast("Image copied to clipboard");
+			showSuccessToast(
+				t("ui.chat.image_actions_menu.image_copied_to_clipboard"),
+			);
 		} catch (error) {
 			console.error("Failed to copy image: ", error);
-			showErrorToast(failureSentence("Failed to copy image", error));
+			showErrorToast(
+				failureSentence(
+					t("ui.chat.image_actions_menu.failed_to_copy_image"),
+					error,
+				),
+			);
 		}
 	};
 
@@ -244,7 +257,12 @@ export const ImageActionsMenu = ({
 			downloadBlob(bytes, saveName ?? "download");
 		} catch (error) {
 			console.error("Failed to save file: ", error);
-			showErrorToast(failureSentence("Failed to save file", error));
+			showErrorToast(
+				failureSentence(
+					t("ui.chat.image_actions_menu.failed_to_save_file"),
+					error,
+				),
+			);
 		}
 	};
 
@@ -280,8 +298,8 @@ export const ImageActionsMenu = ({
 			case "copy-file-path":
 				void copyText(
 					path,
-					"File path copied to clipboard",
-					"Failed to copy file path",
+					t("ui.chat.image_actions_menu.file_path_copied_to_clipboard"),
+					t("ui.chat.image_actions_menu.failed_to_copy_file_path"),
 				);
 				return;
 			case "copy-image":
@@ -293,8 +311,8 @@ export const ImageActionsMenu = ({
 			case "copy-image-url":
 				void copyText(
 					src ?? file,
-					"Image URL copied to clipboard",
-					"Failed to copy image URL",
+					t("ui.chat.image_actions_menu.image_url_copied_to_clipboard"),
+					t("ui.chat.image_actions_menu.failed_to_copy_image_url"),
 				);
 				return;
 			case "open-in-browser":
@@ -303,7 +321,11 @@ export const ImageActionsMenu = ({
 		}
 	};
 
-	const resolvedAriaLabel = ariaLabel ?? `Actions for ${label ?? "this image"}`;
+	const resolvedAriaLabel =
+		ariaLabel ??
+		t("ui.chat.image_actions_menu.actions_for_value", {
+			value: label ?? t("ui.chat.image_actions_menu.this_image"),
+		});
 
 	return (
 		<DropdownMenu open={open} onOpenChange={onOpenChange}>

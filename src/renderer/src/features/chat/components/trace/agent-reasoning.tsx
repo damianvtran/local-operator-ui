@@ -23,6 +23,7 @@
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { t } from "../../../../../../i18n/messages";
 import {
 	MarkdownRenderer,
 	type MarkdownStyleProps,
@@ -62,13 +63,19 @@ export type AgentReasoningProps = {
 };
 
 export const AgentReasoning = ({
-	label = "Reasoning",
+	label,
 	content,
 	durationS = null,
 }: AgentReasoningProps) => {
 	const showAgentReasoning = useUiPreferencesStore(
 		(state) => state.showAgentReasoning,
 	);
+	/*
+	 * Resolved here rather than as a parameter default: a default is evaluated
+	 * when the component is called, which is fine, but keeping the `t()` call in
+	 * the body next to the subscription makes the locale dependency visible.
+	 */
+	const shownLabel = label ?? t("ui.chat.trace.agent_reasoning.reasoning");
 
 	if (!showAgentReasoning || !content) {
 		return null;
@@ -92,8 +99,14 @@ export const AgentReasoning = ({
 						 */}
 						<span className="text-ink-dim text-body-sm">
 							{durationS !== null
-								? `${label} for ${formatDuration(durationS)}`
-								: label}
+								? t(
+										"ui.chat.trace.agent_reasoning.label_for_formatdurationvalue",
+										{
+											label: shownLabel,
+											formatDurationValue: formatDuration(durationS),
+										},
+									)
+								: shownLabel}
 						</span>
 					</span>
 				</span>

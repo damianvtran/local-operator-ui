@@ -13,6 +13,7 @@
  * composer still editable.
  */
 
+import { t } from "../../../../../i18n/messages";
 import {
 	DESKTOP_MESSAGE_BUDGET_BYTES,
 	DESKTOP_MESSAGE_MAX_CHARS,
@@ -135,7 +136,13 @@ export function commandBudgetRefusal(
 	// `z.string().max()` counts, so this check and the one it front-runs agree on
 	// every input rather than only on ASCII.
 	if (args.length > DESKTOP_MESSAGE_MAX_CHARS) {
-		return `This command is ${args.length.toLocaleString()} characters, more than the ${DESKTOP_MESSAGE_MAX_CHARS.toLocaleString()} one command can carry. Shorten it, or put the text in a message instead.`;
+		return t(
+			"ui.chat.message_budget.this_command_is_value_characters_more_than_the_value2_one",
+			{
+				value: args.length.toLocaleString(),
+				value2: DESKTOP_MESSAGE_MAX_CHARS.toLocaleString(),
+			},
+		);
 	}
 	const target = desktopEndpoint({
 		op: "sessions.command",
@@ -147,7 +154,10 @@ export function commandBudgetRefusal(
 	const total = new TextEncoder().encode(JSON.stringify(target.body)).length;
 	if (total <= budget) return null;
 	const [size, limit] = formatByteSizePair(total, budget);
-	return `This command is ${size}, more than the ${limit} one command can carry. Shorten it, or put the text in a message instead.`;
+	return t("ui.chat.message_budget.this_command_is_size_more_than_the", {
+		size,
+		limit,
+	});
 }
 
 /**
@@ -179,14 +189,23 @@ export function systemPromptBudgetRefusal(
 	budget: number = DESKTOP_SYSTEM_PROMPT_BUDGET_BYTES,
 ): string | null {
 	if (systemPrompt.length > DESKTOP_SYSTEM_PROMPT_MAX_CHARS) {
-		return `This system prompt is ${systemPrompt.length.toLocaleString()} characters, more than the ${DESKTOP_SYSTEM_PROMPT_MAX_CHARS.toLocaleString()} one agent can carry. Shorten it.`;
+		return t(
+			"ui.chat.message_budget.this_system_prompt_is_value_characters_more_than_the_value2",
+			{
+				value: systemPrompt.length.toLocaleString(),
+				value2: DESKTOP_SYSTEM_PROMPT_MAX_CHARS.toLocaleString(),
+			},
+		);
 	}
 	const total = new TextEncoder().encode(
 		JSON.stringify({ system_prompt: systemPrompt }),
 	).length;
 	if (total <= budget) return null;
 	const [size, limit] = formatByteSizePair(total, budget);
-	return `This system prompt is ${size}, more than the ${limit} one agent can carry. Shorten it.`;
+	return t("ui.chat.message_budget.this_system_prompt_is_size_more_than", {
+		size,
+		limit,
+	});
 }
 
 /**
@@ -209,7 +228,13 @@ export function forkBudgetRefusal(
 	budget: number = DESKTOP_MESSAGE_BUDGET_BYTES,
 ): string | null {
 	if (message.length > DESKTOP_MESSAGE_MAX_CHARS) {
-		return `This first message is ${message.length.toLocaleString()} characters, more than the ${DESKTOP_MESSAGE_MAX_CHARS.toLocaleString()} one message can carry. Shorten it, or send it in the new conversation instead.`;
+		return t(
+			"ui.chat.message_budget.this_first_message_is_value_characters_more_than_the_value2",
+			{
+				value: message.length.toLocaleString(),
+				value2: DESKTOP_MESSAGE_MAX_CHARS.toLocaleString(),
+			},
+		);
 	}
 	const target = desktopEndpoint({
 		op: "sessions.fork",
@@ -221,7 +246,10 @@ export function forkBudgetRefusal(
 	const total = new TextEncoder().encode(JSON.stringify(target.body)).length;
 	if (total <= budget) return null;
 	const [size, limit] = formatByteSizePair(total, budget);
-	return `This first message is ${size}, more than the ${limit} one message can carry. Shorten it, or send it in the new conversation instead.`;
+	return t("ui.chat.message_budget.this_first_message_is_size_more_than", {
+		size,
+		limit,
+	});
 }
 
 /**
@@ -246,7 +274,13 @@ export function messageBudgetRefusal(
 	// because that is what `z.string().max()` counts, so this check and the one it
 	// front-runs agree on every input rather than only on ASCII.
 	if (text.length > DESKTOP_MESSAGE_MAX_CHARS) {
-		return `This message is ${text.length.toLocaleString()} characters, more than the ${DESKTOP_MESSAGE_MAX_CHARS.toLocaleString()} one message can carry. Split it across two messages.`;
+		return t(
+			"ui.chat.message_budget.this_message_is_value_characters_more_than_the_value2_one",
+			{
+				value: text.length.toLocaleString(),
+				value2: DESKTOP_MESSAGE_MAX_CHARS.toLocaleString(),
+			},
+		);
 	}
 	const total = messageBodyBytes(text, images);
 	if (total <= budget) return null;
@@ -263,8 +297,14 @@ export function messageBudgetRefusal(
 	// that is the number the budget must be readably distinct from.
 	if (images.length && imageBytes >= textBytes) {
 		const [size, limit] = formatByteSizePair(imageBytes, budget);
-		return `These images total ${size}, more than the ${limit} one message can carry. Remove an image, or send them in a second message.`;
+		return t("ui.chat.message_budget.these_images_total_size_more_than_the", {
+			size,
+			limit,
+		});
 	}
 	const [size, limit] = formatByteSizePair(textBytes, budget);
-	return `This message is ${size} of text, more than the ${limit} one message can carry. Split it across two messages.`;
+	return t("ui.chat.message_budget.this_message_is_size_of_text_more", {
+		size,
+		limit,
+	});
 }

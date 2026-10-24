@@ -51,8 +51,10 @@
  */
 
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type ReactNode, useEffect, useState } from "react";
+import { t } from "../../../../../../i18n/messages";
 import {
 	DeliveryUnconfirmedGlyph,
 	InterruptedGlyph,
@@ -463,6 +465,7 @@ const DiffCounters = ({
 	added: number;
 	removed: number;
 }) => {
+	useI18nLocale();
 	if (added <= 0 && removed <= 0) return null;
 	return (
 		<span
@@ -510,7 +513,9 @@ const OUTCOME_LABEL: Record<ToolRowOutcome, string> = {
 	// rather than silent for the same reason `error` is: it is a settled outcome
 	// the row is the only carrier of, and a reader who cannot see the glyph would
 	// otherwise hear only the size.
-	"not-run": "never ran",
+	get "not-run"() {
+		return t("ui.chat.trace.tool_row.never_ran");
+	},
 	// The partial states do not announce through the table: their sentence is
 	// `SEND_DELIVERY_LABEL`'s (`delivered, wake unconfirmed` / `delivery
 	// unconfirmed`), which says more than the drawn word and is rendered where
@@ -583,6 +588,7 @@ const StatusCluster = ({
 	durationS: number | null;
 	startedAt?: number | null;
 }) => {
+	useI18nLocale();
 	const running = outcome === "running";
 	const elapsed = useRunningElapsed(running ? (startedAt ?? null) : null);
 	/*
@@ -845,6 +851,7 @@ export const ToolRow = ({
 	className,
 	media,
 }: ToolRowProps) => {
+	useI18nLocale();
 	const running = outcome === "running";
 	// The GROUND is gated on the `error` outcome alone, deliberately: see
 	// `neverSent` below, which states why a not-run row does not claim the wash.
@@ -1019,7 +1026,9 @@ export const ToolRow = ({
 						>
 							…
 						</span>
-						<span className={cn("sr-only")}>pending</span>
+						<span className={cn("sr-only")}>
+							{t("ui.chat.trace.tool_row.pending")}
+						</span>
 					</>
 				) : (
 					summaryText

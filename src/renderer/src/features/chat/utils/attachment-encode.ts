@@ -29,7 +29,7 @@ import {
 } from "../../../../../shared/desktop-contract";
 import { boundImagesForBudget } from "./bound-image";
 import type { WireImage } from "./bound-image";
-import { getFileName } from "./get-file-name";
+import { fileNameForDisplay } from "./get-file-name";
 import { messageBodyBytes } from "./message-budget";
 
 const IMAGE_DATA_URL = /^data:(image\/(png|jpeg|gif|webp));base64,(.+)$/;
@@ -134,7 +134,7 @@ export async function encodeAttachments(
 			 * states both old skips where the sentence is built).
 			 */
 			if (!window.api?.readFile) {
-				failures.push({ name: getFileName(attachment), kind: "read" });
+				failures.push({ name: fileNameForDisplay(attachment), kind: "read" });
 				continue;
 			}
 			const read = await window.api.readFile(pathOf(attachment), "base64");
@@ -146,11 +146,12 @@ export async function encodeAttachments(
 						? {}
 						: { origin_path: pathOf(attachment) }),
 				});
-			else failures.push({ name: getFileName(attachment), kind: "read" });
+			else
+				failures.push({ name: fileNameForDisplay(attachment), kind: "read" });
 			continue;
 		}
 
-		const name = getFileName(attachment);
+		const name = fileNameForDisplay(attachment);
 		if (options?.remoteOwned) {
 			failures.push({ name, kind: "remote" });
 			continue;

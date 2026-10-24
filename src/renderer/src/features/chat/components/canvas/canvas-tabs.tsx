@@ -6,6 +6,8 @@ import {
 	DropdownMenuTrigger,
 	Tooltip,
 } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Check, ChevronDown, X } from "lucide-react";
 import {
@@ -93,6 +95,7 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 	onChangeActiveDocument,
 	onCloseDocument,
 }) => {
+	useI18nLocale();
 	const tabRefs = useRef(new Map<string, HTMLButtonElement>());
 	const stripRef = useRef<HTMLDivElement>(null);
 
@@ -133,9 +136,20 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 		// the scrollable width without resizing the strip itself.
 	}, [documents]);
 
+	/*
+	 * The locale is a VALUE, not just a subscription. A pasted document's label
+	 * is derived from its path at render time (`artifactTabLabels`), so a
+	 * language switch has to rebuild the map; without the value in the deps the
+	 * tabs keep the previous language until a document opens or closes.
+	 */
+	const locale = useI18nLocale();
 	// Before the early return below, with the other hooks. See `artifactTabLabels`:
 	// only a clashing artifact name changes, so a file tab's label is its title.
-	const labels = useMemo(() => artifactTabLabels(documents), [documents]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is the re-label TRIGGER; the map reads it through `t()` inside `artifactTabLabels`, which the rule cannot follow across the call.
+	const labels = useMemo(
+		() => artifactTabLabels(documents),
+		[documents, locale],
+	);
 
 	// The active id can point at a document that has just been closed, so the
 	// selection is derived rather than stored: falling back to the first tab
@@ -246,7 +260,7 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 			<div
 				ref={stripRef}
 				role="tablist"
-				aria-label="Open documents"
+				aria-label={t("ui.canvas.tabs.open_documents")}
 				aria-orientation="horizontal"
 				/*
 				 * A TAB STRIP IS CHROME, NOT A TRACK. `bg-sunken` is the flat
@@ -334,7 +348,9 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label={`Close ${labels.get(doc.id) ?? doc.title}`}
+								aria-label={t("ui.canvas.tabs.close", {
+									value: labels.get(doc.id) ?? doc.title,
+								})}
 								onClick={(e) => handleCloseTab(e, doc.id)}
 								className={cn(
 									"size-5 [&_svg]:size-3",
@@ -359,12 +375,12 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 
 			{documents.length > 1 && (
 				<DropdownMenu>
-					<Tooltip content="All open files">
+					<Tooltip content={t("ui.canvas.tabs.all_open_files")}>
 						<DropdownMenuTrigger asChild>
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label="All open files"
+								aria-label={t("ui.canvas.tabs.all_open_files")}
 								// No vertical margin: `icon-sm` is 28px, which already
 								// centres inside the 32px strip. Margins here would push
 								// the row past the tab track and make the strip's height

@@ -89,6 +89,7 @@
  */
 
 import { Button, Tooltip } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type AskDrawerCloseOptions,
@@ -96,6 +97,7 @@ import {
 } from "@shared/store/ui-preferences-store";
 import { PanelRightClose } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { t } from "../../../../../../i18n/messages";
 import type { CanonicalFrontendState } from "../../../../../../shared/desktop-session-contract";
 import type {
 	AskDismissReason,
@@ -305,6 +307,7 @@ export const AskDrawer = ({
 	conversationOf,
 	nowMs,
 }: AskDrawerProps) => {
+	useI18nLocale();
 	/*
 	 * THE VIEW IS READ THROUGH THIS DRAWER'S OWN OUTCOMES, so its `delivering` count
 	 * excludes a row the owner has already refused to change (design round 2, D7 =
@@ -977,7 +980,11 @@ export const AskDrawer = ({
 		 */
 		<section
 			ref={rootRef}
-			aria-label={scope === "fleet" ? "All asks" : "This conversation's asks"}
+			aria-label={
+				scope === "fleet"
+					? t("ui.chat.asks.ask_drawer.all_asks")
+					: t("ui.chat.asks.ask_drawer.this_conversations_asks")
+			}
 			data-lo-ask-surfaces=""
 			data-glass-region="pane"
 			data-ask-drawer={scope}
@@ -1032,11 +1039,11 @@ export const AskDrawer = ({
 				>
 					{askScopeLine(scope, view)}
 				</span>
-				<Tooltip content="Close asks">
+				<Tooltip content={t("ui.chat.asks.ask_drawer.close_asks")}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Close asks"
+						aria-label={t("ui.chat.asks.ask_drawer.close_asks")}
 						/*
 						 * THE PRESSED KIND (#1079): this is the control the user aimed at, so it
 						 * asks for an EMPTY SLOT rather than handing the pane it displaced back.

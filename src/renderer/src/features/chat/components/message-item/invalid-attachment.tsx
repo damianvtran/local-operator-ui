@@ -1,5 +1,7 @@
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { CircleAlert } from "lucide-react";
 import type { FC } from "react";
+import { t } from "../../../../../../i18n/messages";
 /**
  * Props for the InvalidAttachment component
  */
@@ -35,18 +37,28 @@ export const InvalidAttachment: FC<InvalidAttachmentProps> = ({
 	reason,
 	onOpen,
 }) => {
+	useI18nLocale();
 	return (
 		<div
 			className="mt-2 flex w-fit max-w-full items-center rounded-sm border border-warning-border bg-warning-wash px-3 py-2 text-warning"
-			title={`File not viewable: ${getFileName(file)}`}
+			title={t(
+				"ui.chat.message.invalid_attachment.file_not_viewable_getfilenamevalue",
+				{ getFileNameValue: getFileName(file) },
+			)}
 		>
 			<span className="mr-2 flex shrink-0 items-center">
 				<CircleAlert size={14} />
 			</span>
 			<span className="max-w-full truncate text-body-sm">
 				{reason
-					? `${getFileName(file)} ${reason}`
-					: `${getFileName(file)} is not viewable (file may be incomplete, deleted, or moved)`}
+					? t("ui.chat.message.invalid_attachment.getfilenamevalue_reason", {
+							getFileNameValue: getFileName(file),
+							reason: reason,
+						})
+					: t(
+							"ui.chat.message.invalid_attachment.getfilenamevalue_is_not_viewable_file_may_be_incomplete_deleted_or",
+							{ getFileNameValue: getFileName(file) },
+						)}
 			</span>
 			{onOpen ? (
 				<button
@@ -54,7 +66,7 @@ export const InvalidAttachment: FC<InvalidAttachmentProps> = ({
 					onClick={onOpen}
 					className="ml-3 shrink-0 text-body-sm underline underline-offset-2"
 				>
-					Open
+					{t("ui.chat.message.invalid_attachment.open")}
 				</button>
 			) : null}
 		</div>

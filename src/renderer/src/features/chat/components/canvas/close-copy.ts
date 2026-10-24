@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * THE CLOSE'S SENTENCE, in a module of its own so the suites can hold it to account.
  *
@@ -25,4 +26,7 @@
  *   before it has already said.
  */
 export const keptWordsMessage = (title: string): string =>
-	`Closed ${title}. Your edits could not be saved, and are kept until the app quits — opening it again brings them back.`;
+	t(
+		"ui.canvas.close_copy.closed_your_edits_could_not_be_saved_and_are_kept_until_the_app_quits_op",
+		{ title: title },
+	);

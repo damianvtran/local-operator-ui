@@ -23,8 +23,10 @@
  * own children — see `ChildCount`.
  */
 
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ChevronRight } from "lucide-react";
+import { t } from "../../../../../../i18n/messages";
 import {
 	type SubagentRow,
 	childCountFitsInline,
@@ -101,6 +103,7 @@ const ChildCount = ({
 	/** The pane's own width, which is what the shed above is measured against. */
 	paneWidth: number;
 }) => {
+	useI18nLocale();
 	const label = childCountLabel(row);
 	if (!label || !childCountFitsInline(paneWidth)) return null;
 	return (
@@ -149,6 +152,7 @@ export const ChildSubagents = ({
 	 */
 	paneWidth: number;
 }) => {
+	useI18nLocale();
 	/*
 	 * Nothing at all when the open child has no children — not an empty section
 	 * and not a `0 subagents` line: most children delegate to nobody, and a section
@@ -168,7 +172,10 @@ export const ChildSubagents = ({
 			 * agree, because it is the only spelling that keeps the WHOLE owner: the
 			 * visible one truncates (below).
 			 */
-			aria-label={`Subagents of ${ownerLabel}`}
+			aria-label={t(
+				"ui.chat.run_details.run_child_subagents.subagents_of_ownerlabel",
+				{ ownerLabel },
+			)}
 			/*
 			 * The list's own hook, distinct from the roster's `data-run-panel-row`
 			 * on purpose (see `SubagentRowView.rowHook`): this is the READER's page
@@ -222,7 +229,9 @@ export const ChildSubagents = ({
 						"flex min-w-0 items-baseline gap-1 text-meta text-ink-muted",
 					)}
 				>
-					<span className={cn("shrink-0")}>Subagents of</span>
+					<span className={cn("shrink-0")}>
+						{t("ui.chat.run_details.run_child_subagents.subagents_of")}
+					</span>
 					<span className={cn("min-w-0 truncate")} title={ownerLabel}>
 						{ownerLabel}
 					</span>

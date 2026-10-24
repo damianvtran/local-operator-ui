@@ -47,6 +47,7 @@
  * session's shared outcome predicate the day it lands.
  */
 
+import { t } from "../../../../../i18n/messages";
 import {
 	EMPTY_SENDER,
 	type PeerSender,
@@ -722,7 +723,12 @@ export function quietGroupOfSegment(
 		if (entries.length > 2) {
 			let rest = 0;
 			for (const entry of entries.slice(2)) rest += entry.count;
-			top.push({ label: `${entries.length - 2} more`, count: rest });
+			top.push({
+				label: t("ui.chat.canonical.turn_collapse_model.value_more", {
+					value: entries.length - 2,
+				}),
+				count: rest,
+			});
 		}
 		senders.push(...top);
 	}
@@ -3067,7 +3073,7 @@ function planRun(
 			const label =
 				labelOfSegment(records, partition.cycles, span, group) ??
 				(internal !== null && records[span.from].kind === "notice"
-					? "Job result"
+					? t("ui.chat.canonical.turn_collapse_model.job_result")
 					: null);
 			/*
 			 * Only positive receipt-origin spans may compact while live. Settlement

@@ -13,6 +13,7 @@
  * not show the tool row that must not have one.
  */
 
+import { t } from "../../../../../i18n/messages";
 import type { TranscriptRecord } from "./transcript-reducer";
 
 export type AnswerActionId = "copy" | "speak" | "fork";
@@ -212,10 +213,14 @@ export function forkExcerpt(text: string): string {
  * The toolbar's accessible name. It names what the buttons act on, the way the
  * link toolbar's label does, because the buttons are icons.
  */
-export const ANSWER_ACTIONS_LABEL = "Answer actions";
+export const ANSWER_ACTIONS_LABEL = t(
+	"ui.chat.canonical.message_actions.answer_actions",
+);
 
 /** The user row's own label: the buttons act on the reader's message. */
-export const USER_ACTIONS_LABEL = "Your message actions";
+export const USER_ACTIONS_LABEL = t(
+	"ui.chat.canonical.message_actions.your_message_actions",
+);
 
 /**
  * The reveal treatment every action row wears at rest: invisible to the eye and

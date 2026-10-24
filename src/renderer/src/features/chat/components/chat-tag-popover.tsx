@@ -10,10 +10,10 @@ import {
 	PopoverAnchor,
 	PopoverContent,
 } from "@shared/components/ui";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import { useRef, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import { TagPickerCombobox } from "./tag-picker-combobox";
 
 /**

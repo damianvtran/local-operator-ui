@@ -85,8 +85,9 @@ export type AddIntegrationFormProps = {
  * has no reason to know a slash command, and the machine voice is for a token
  * they would type. "Reload integrations" is the action in the chat's own words.
  */
-export const ADD_INTEGRATION_PICKUP_NOTE =
-	"New chats can use it right away. Open chats pick it up when you start a new chat or reload integrations there.";
+export const ADD_INTEGRATION_PICKUP_NOTE = t(
+	"ui.settings.integrations.add_integration_form.copy_add_integration_pickup_note",
+);
 const ADD_INTEGRATION_PICKUP_NOTE_KEY =
 	"ui.settings.integrations.add_integration_form.copy_add_integration_pickup_note";
 
@@ -95,8 +96,9 @@ const ADD_INTEGRATION_PICKUP_NOTE_KEY =
  * (N2): a user who has an `npx` line from a README has no way to know whether
  * that is "Local command" or a URL.
  */
-export const TRANSPORT_HINT =
-	"Most services give you a URL. Use Local command when their setup says npx or uvx.";
+export const TRANSPORT_HINT = t(
+	"ui.settings.integrations.add_integration_form.copy_transport_hint",
+);
 const TRANSPORT_HINT_KEY =
 	"ui.settings.integrations.add_integration_form.copy_transport_hint";
 

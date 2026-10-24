@@ -1,0 +1,33 @@
+{
+	"ui.hub.download.collision": {
+		"role": "Dynamic status or complete sentence in Agent Hub download results",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "User-supplied agent or team name; preserve verbatim",
+			"collision": "Conflicting local agent name"
+		}
+	},
+	"ui.hub.download.fallback_agent": {
+		"role": "Action or accessible label in Agent Hub download results",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.download.renamed": {
+		"role": "Dynamic status or complete sentence in Agent Hub download results",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "User-supplied agent or team name; preserve verbatim",
+			"previous": "Previous local agent name"
+		}
+	},
+	"ui.hub.download.succeeded": {
+		"role": "Dynamic status or complete sentence in Agent Hub download results",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "User-supplied agent or team name; preserve verbatim"
+		}
+	}
+}

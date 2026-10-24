@@ -1538,7 +1538,9 @@ test("the Show-more control names its group, joins the arrow-key idiom, and is f
 	 * the same three clauses it stated before.
 	 */
 	assert.ok(
-		SIDEBAR_SRC.includes("aria-label={`${foot.aria} in ${displayName}`}"),
+		/aria-label=\{t\(\s*"ui\.chat\.sidebar\.chat_sidebar\.aria_in_displayname",\s*\{\s*aria: foot\.aria,\s*displayName(?::\s*displayName)?,?\s*\},?\s*\)\}/.test(
+			SIDEBAR_SRC,
+		),
 		"the press must say what it does, where in the group the reader is, AND which group it belongs to",
 	);
 	assert.ok(

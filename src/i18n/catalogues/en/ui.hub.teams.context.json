@@ -1,0 +1,366 @@
+{
+	"ui.hub.teams.access_denied": {
+		"role": "Failure or empty-state feedback in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.teams.access_denied_body": {
+		"role": "Explanatory copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"organization": "Organization display name; preserve verbatim"
+		}
+	},
+	"ui.hub.teams.brief": {
+		"role": "Field, filter, section, or status copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.brief_read_failed": {
+		"role": "Failure or empty-state feedback in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.teams.collaboration_brief": {
+		"role": "Field, filter, section, or status copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.created_date": {
+		"role": "Dynamic status or complete sentence in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"date": "Locale-formatted calendar date"
+		}
+	},
+	"ui.hub.teams.empty_organization": {
+		"role": "Failure or empty-state feedback in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"organization": "Organization display name; preserve verbatim"
+		}
+	},
+	"ui.hub.teams.fallback_team": {
+		"role": "Action or accessible label in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.just_now": {
+		"role": "Field, filter, section, or status copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.kind_role": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.kind_specialist": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.load_failed": {
+		"role": "Failure or empty-state feedback in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.manager": {
+		"role": "Field, filter, section, or status copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.manager_prefix": {
+		"role": "Field, filter, section, or status copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.member_kind": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "One wrapped suggestion or sentence",
+		"placeholders": {
+			"kind": "ICU selector: agent, team, or stored fallback",
+			"agent": "Dynamic value; preserve verbatim",
+			"team": "Dynamic value; preserve verbatim"
+		},
+		"note": "Preserve ICU select arms and machine selector values; translate rendered nouns only."
+	},
+	"ui.hub.teams.member_with_kind": {
+		"role": "Roster member and kind in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "One wrapped line",
+		"placeholders": {
+			"name": "Localized role and optional count; preserve verbatim",
+			"kind": "ICU selector: agent, team, or stored fallback",
+			"agent": "Rendered agent noun",
+			"team": "Rendered team noun"
+		},
+		"note": "Preserve ICU select arms and machine selector values; translate rendered nouns only."
+	},
+	"ui.hub.teams.members": {
+		"role": "Field, filter, section, or status copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.no_collaboration_brief": {
+		"role": "Field, filter, section, or status copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.teams.no_description": {
+		"role": "Explanatory copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.no_members": {
+		"role": "Field, filter, section, or status copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.no_project_brief": {
+		"role": "Field, filter, section, or status copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.no_search_match": {
+		"role": "Dynamic status or complete sentence in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"search": "Entered search text; preserve verbatim"
+		}
+	},
+	"ui.hub.teams.open_settings_sign_in": {
+		"role": "Action or accessible label in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.project_brief": {
+		"role": "Field, filter, section, or status copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.public_count": {
+		"role": "Dynamic status or complete sentence in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"count": "Non-negative integer count"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.hub.teams.public_empty": {
+		"role": "Failure or empty-state feedback in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.teams.public_intro": {
+		"role": "Explanatory copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.teams.public_load_failed": {
+		"role": "Failure or empty-state feedback in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.public_read_failed_body": {
+		"role": "Explanatory copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.teams.public_teams": {
+		"role": "Field, filter, section, or status copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.published_by": {
+		"role": "Team provenance in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"author": "Publisher display name; preserve verbatim"
+		}
+	},
+	"ui.hub.teams.pull": {
+		"role": "Action or accessible label in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.pull_failed": {
+		"role": "Failure or empty-state feedback in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.pull_named": {
+		"role": "Action or accessible label in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "User-supplied agent or team name; preserve verbatim"
+		}
+	},
+	"ui.hub.teams.pull_named_failed": {
+		"role": "Failure or empty-state feedback in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "User-supplied agent or team name; preserve verbatim"
+		}
+	},
+	"ui.hub.teams.pull_renamed_collision": {
+		"role": "Action or accessible label in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "User-supplied agent or team name; preserve verbatim",
+			"published": "Published team name"
+		}
+	},
+	"ui.hub.teams.pull_renamed_invalid": {
+		"role": "Action or accessible label in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "User-supplied agent or team name; preserve verbatim",
+			"published": "Published team name"
+		}
+	},
+	"ui.hub.teams.pull_sign_in_required": {
+		"role": "Failure or empty-state feedback in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.teams.pull_succeeded": {
+		"role": "Action or accessible label in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "User-supplied agent or team name; preserve verbatim"
+		}
+	},
+	"ui.hub.teams.pulling": {
+		"role": "Action or accessible label in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.read_failed_body": {
+		"role": "Explanatory copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.teams.roster": {
+		"role": "Field, filter, section, or status copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.search_status": {
+		"role": "Dynamic status or complete sentence in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"visible": "Visible result count",
+			"total": "Total result count",
+			"search": "Entered search text; preserve verbatim"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.hub.teams.search_teams": {
+		"role": "Field, filter, section, or status copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.shared_with": {
+		"role": "Dynamic status or complete sentence in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"organization": "Organization display name; preserve verbatim"
+		}
+	},
+	"ui.hub.teams.sign_in_again": {
+		"role": "Action or accessible label in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.sign_in_to_pull": {
+		"role": "Action or accessible label in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.teams.slot_with_count": {
+		"role": "Dynamic status or complete sentence in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"role": "Member role or agent name; preserve verbatim",
+			"count": "Non-negative integer count"
+		}
+	},
+	"ui.hub.teams.team_plan_body": {
+		"role": "Explanatory copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"organization": "Organization display name; preserve verbatim"
+		}
+	},
+	"ui.hub.teams.team_plan_required": {
+		"role": "Failure or empty-state feedback in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.teams.that_organization": {
+		"role": "Field, filter, section, or status copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.this_organization": {
+		"role": "Field, filter, section, or status copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.this_team": {
+		"role": "Field, filter, section, or status copy in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.try_again": {
+		"role": "Action or accessible label in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.trying": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.teams.updated_date": {
+		"role": "Dynamic status or complete sentence in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"date": "Locale-formatted calendar date"
+		}
+	},
+	"ui.hub.teams.version": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"version": "Published version identifier; preserve verbatim"
+		}
+	},
+	"ui.hub.teams.view_brief": {
+		"role": "Dynamic status or complete sentence in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "User-supplied agent or team name; preserve verbatim"
+		}
+	}
+}

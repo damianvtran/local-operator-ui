@@ -11,6 +11,7 @@ import {
 	Tooltip,
 } from "@shared/components/ui";
 import { useHomeDirectory } from "@shared/hooks";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useRecentDirectoriesStore } from "@shared/store/recent-directories-store";
 import { formatDirectory as formatDirectoryWithHome } from "@shared/utils/path-utils";
@@ -51,6 +52,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 import type { MoveCommitOutcome } from "../move-session";
 
 /**
@@ -246,8 +248,10 @@ const CHIP_PATH_COLUMN = "@min-[900px]/chatcol:max-w-[16ch]";
  * (the truncated-path arm and the ordinary live arm) and a sentence that exists
  * twice is how one of them starts describing a different cost.
  */
-const MOVE_COST_SENTENCE =
-	"Click to change the working directory. A running session's runtime restarts there.";
+const MOVE_COST_SENTENCE = () =>
+	t(
+		"ui.chat.directory.directory_indicator.click_to_change_the_working_directory_a_running_sessions_runtime",
+	);
 
 /**
  * Which of the pending chip's two sentences is in force.
@@ -322,7 +326,7 @@ const CHIP_FLOOR =
  * and only the pixels change. `hidden` would strip the chip of the value it is
  * named after.
  */
-const CHIP_TEXT_AT_FLOOR = "@max-[240px]/chatcol:sr-only";
+const CHIP_TEXT_AT_FLOOR = () => "@max-[240px]/chatcol:sr-only";
 
 /**
  * The chip's box, shared by all three states so they differ only where they
@@ -408,7 +412,7 @@ const CHIP_LABEL = cn(
 	// See `CHIP_FLOOR`: the word is already `hidden` below 620px, so this only
 	// states the rule at the floor rather than relying on one breakpoint being
 	// narrower than the other.
-	CHIP_TEXT_AT_FLOOR,
+	CHIP_TEXT_AT_FLOOR(),
 );
 
 /**
@@ -446,30 +450,122 @@ const getDirectoryIcon = (name: string, path: string): LucideIcon => {
  * Default directories to offer as quick selections based on OS
  */
 const DEFAULT_DIRECTORIES: DirectoryInfo[] = [
-	{ name: "Home", path: "~", icon: House },
-	{ name: "Downloads", path: "~/Downloads", icon: Download },
-	{ name: "Documents", path: "~/Documents", icon: FileText },
-	{ name: "Desktop", path: "~/Desktop", icon: Monitor },
-	{ name: "Pictures", path: "~/Pictures", icon: ImageIcon },
-	{ name: "Music", path: "~/Music", icon: Music },
-	{ name: "Videos", path: "~/Videos", icon: Video },
+	{
+		get name() {
+			return t("ui.chat.directory.directory_indicator.home");
+		},
+		path: "~",
+		icon: House,
+	},
+	{
+		get name() {
+			return t("ui.chat.directory.directory_indicator.downloads");
+		},
+		path: "~/Downloads",
+		icon: Download,
+	},
+	{
+		get name() {
+			return t("ui.chat.directory.directory_indicator.documents");
+		},
+		path: "~/Documents",
+		icon: FileText,
+	},
+	{
+		get name() {
+			return t("ui.chat.directory.directory_indicator.desktop");
+		},
+		path: "~/Desktop",
+		icon: Monitor,
+	},
+	{
+		get name() {
+			return t("ui.chat.directory.directory_indicator.pictures");
+		},
+		path: "~/Pictures",
+		icon: ImageIcon,
+	},
+	{
+		get name() {
+			return t("ui.chat.directory.directory_indicator.music");
+		},
+		path: "~/Music",
+		icon: Music,
+	},
+	{
+		get name() {
+			return t("ui.chat.directory.directory_indicator.videos");
+		},
+		path: "~/Videos",
+		icon: Video,
+	},
 	...(navigator.userAgent.indexOf("Win") !== -1
 		? [
-				{ name: "Program Files", path: "C:\\Program Files", icon: Laptop },
 				{
-					name: "Program Files (x86)",
-					path: "C:\\Program Files (x86)",
+					get name() {
+						return t("ui.chat.directory.directory_indicator.program_files");
+					},
+					get path() {
+						return t("ui.chat.directory.directory_indicator.c_program_files");
+					},
 					icon: Laptop,
 				},
-				{ name: "Users", path: "C:\\Users", icon: Users },
-				{ name: "ProgramData", path: "C:\\ProgramData", icon: Database },
+				{
+					get name() {
+						return t("ui.chat.directory.directory_indicator.program_files_x86");
+					},
+					get path() {
+						return t(
+							"ui.chat.directory.directory_indicator.c_program_files_x86",
+						);
+					},
+					icon: Laptop,
+				},
+				{
+					get name() {
+						return t("ui.chat.directory.directory_indicator.users");
+					},
+					path: "C:\\Users",
+					icon: Users,
+				},
+				{
+					get name() {
+						return t("ui.chat.directory.directory_indicator.programdata");
+					},
+					path: "C:\\ProgramData",
+					icon: Database,
+				},
 			]
 		: navigator.userAgent.indexOf("Mac") !== -1
 			? [
-					{ name: "Applications", path: "/Applications", icon: PackageOpen },
-					{ name: "Library", path: "~/Library", icon: Book },
-					{ name: "Users", path: "/Users", icon: Users },
-					{ name: "Volumes", path: "/Volumes", icon: HardDrive },
+					{
+						get name() {
+							return t("ui.chat.directory.directory_indicator.applications");
+						},
+						path: "/Applications",
+						icon: PackageOpen,
+					},
+					{
+						get name() {
+							return t("ui.chat.directory.directory_indicator.library");
+						},
+						path: "~/Library",
+						icon: Book,
+					},
+					{
+						get name() {
+							return t("ui.chat.directory.directory_indicator.users");
+						},
+						path: "/Users",
+						icon: Users,
+					},
+					{
+						get name() {
+							return t("ui.chat.directory.directory_indicator.volumes");
+						},
+						path: "/Volumes",
+						icon: HardDrive,
+					},
 				]
 			: [
 					{ name: "etc", path: "/etc", icon: Server },
@@ -504,6 +600,7 @@ export const DirectoryIndicator = forwardRef<
 	},
 	ref,
 ) {
+	useI18nLocale();
 	const [isEditing, setIsEditing] = useState(false);
 	const [directory, setDirectory] = useState(currentWorkingDirectory || "");
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -680,10 +777,20 @@ export const DirectoryIndicator = forwardRef<
 
 			if (exists) {
 				addRecentDirectory(trimmed);
-				setAnnouncement(`Working directory set to ${trimmed}`);
+				setAnnouncement(
+					t(
+						"ui.chat.directory.directory_indicator.working_directory_set_to_trimmed",
+						{ trimmed },
+					),
+				);
 			} else {
 				setInvalidPath(trimmed);
-				setAnnouncement(`${trimmed} is not a directory on this computer`);
+				setAnnouncement(
+					t(
+						"ui.chat.directory.directory_indicator.trimmed_is_not_a_directory_on_this_computer",
+						{ trimmed },
+					),
+				);
 			}
 			return true;
 		},
@@ -870,8 +977,10 @@ export const DirectoryIndicator = forwardRef<
 	 */
 	const pendingText = pending
 		? pendingRestarting
-			? "Restarting this session's runtime…"
-			: `Moving to ${shown}…`
+			? t(
+					"ui.chat.directory.directory_indicator.restarting_this_sessions_runtime",
+				)
+			: t("ui.chat.directory.directory_indicator.moving_to_shown", { shown })
 		: null;
 
 	/*
@@ -935,7 +1044,10 @@ export const DirectoryIndicator = forwardRef<
 					<button
 						type="button"
 						aria-disabled="true"
-						aria-label={`Working directory: ${shown}`}
+						aria-label={t(
+							"ui.chat.directory.directory_indicator.working_directory_shown",
+							{ shown },
+						)}
 						// The reason is a DESCRIPTION, not the name: naming the chip
 						// after the rule told a screen-reader user why they could not
 						// change the directory without ever telling them what it is.
@@ -953,10 +1065,18 @@ export const DirectoryIndicator = forwardRef<
 							 * phrase instead of moving to the visual left (design review
 							 * round 1, D1).
 							 */}
-							<bdi dir="auto">Working directory:</bdi>
+							<bdi dir="auto">
+								{t(
+									"ui.chat.directory.directory_indicator.working_directory_colon",
+								)}
+							</bdi>
 						</span>
 						<span
-							className={cn("min-w-0 truncate", PATH_TYPE, CHIP_TEXT_AT_FLOOR)}
+							className={cn(
+								"min-w-0 truncate",
+								PATH_TYPE,
+								CHIP_TEXT_AT_FLOOR(),
+							)}
 						>
 							{shown}
 						</span>
@@ -981,17 +1101,26 @@ export const DirectoryIndicator = forwardRef<
 	if (!currentWorkingDirectory && !isEditing) {
 		return (
 			<div className={cn(CHIP_WRAPPER)} data-lo-cwd-chip="unset">
-				<Tooltip content="Click to set the working directory" side="top">
+				<Tooltip
+					content={t(
+						"ui.chat.directory.directory_indicator.click_to_set_the_working_directory",
+					)}
+					side="top"
+				>
 					<Button
 						ref={triggerRef}
 						variant="ghost"
 						size="md"
 						className={cn(CHIP_BOX_INTERACTIVE)}
 						onClick={handleStartEdit}
-						aria-label="Set working directory"
+						aria-label={t(
+							"ui.chat.directory.directory_indicator.set_working_directory",
+						)}
 					>
 						<Folder aria-hidden="true" />
-						No working directory set
+						{t(
+							"ui.chat.directory.directory_indicator.no_working_directory_set",
+						)}
 						{/*
 						 * The same at-rest affordance the editable chip carries (design review
 						 * D8, second half). This state is the WEAKEST of the three: no path means
@@ -1037,8 +1166,12 @@ export const DirectoryIndicator = forwardRef<
 					onChange={(e) => setDirectory(e.target.value)}
 					onKeyDown={handleKeyPress}
 					onBlur={handleCancelEdit}
-					placeholder="Enter directory path"
-					aria-label="Working directory path"
+					placeholder={t(
+						"ui.chat.directory.directory_indicator.enter_directory_path",
+					)}
+					aria-label={t(
+						"ui.chat.directory.directory_indicator.working_directory_path",
+					)}
 					className={cn("w-64", PATH_TYPE)}
 				/>
 			) : (
@@ -1050,7 +1183,10 @@ export const DirectoryIndicator = forwardRef<
 							// move while the first is still being applied.
 							pendingText ??
 							(isInvalid
-								? `${shown} is not a directory on this computer`
+								? t(
+										"ui.chat.directory.directory_indicator.shown_is_not_a_directory_on_this_computer",
+										{ shown },
+									)
 								: pathOverflows
 									? // ONE tooltip carries BOTH facts when the path is truncated (UX review
 										// round 2, U2). The chain used to answer the overflow case first, so on a
@@ -1060,7 +1196,10 @@ export const DirectoryIndicator = forwardRef<
 										// only pre-commit statement of what a live move does, so dropping it
 										// here hid the price precisely when the control was hardest to read.
 										writePath?.kind === "move"
-										? `${shown} - ${MOVE_COST_SENTENCE}`
+										? t(
+												"ui.chat.directory.directory_indicator.shown_move_cost_sentence",
+												{ shown, MOVE_COST_SENTENCE: MOVE_COST_SENTENCE() },
+											)
 										: shown
 									: writePath?.kind === "move"
 										? // The LIVE chip names the cost at the point of decision (UX review
@@ -1068,8 +1207,10 @@ export const DirectoryIndicator = forwardRef<
 											// the bare `/move` command, and the command's own note explains that
 											// the runtime restarts while the tooltip the user actually hovers
 											// said nothing about it.
-											MOVE_COST_SENTENCE
-										: "Click to change the working directory")
+											MOVE_COST_SENTENCE()
+										: t(
+												"ui.chat.directory.directory_indicator.click_to_change_the_working_directory",
+											))
 						}
 						side="top"
 					>
@@ -1093,7 +1234,19 @@ export const DirectoryIndicator = forwardRef<
 								 * when the control is most likely to be re-read. The phrase is taken from
 								 * the same condition that paints the slot, not from a second spelling.
 								 */
-								aria-label={`${pending ? "Moving session" : "Working directory"}: ${shown}`}
+								aria-label={t(
+									"ui.chat.directory.directory_indicator.state_label",
+									{
+										state: pending
+											? t(
+													"ui.chat.directory.directory_indicator.moving_session",
+												)
+											: t(
+													"ui.chat.directory.directory_indicator.working_directory",
+												),
+										shown,
+									},
+								)}
 								aria-invalid={isInvalid || undefined}
 							>
 								{/*
@@ -1143,7 +1296,13 @@ export const DirectoryIndicator = forwardRef<
 									 */}
 									{/* Isolated for the same reason as the read-only label above (D1). */}
 									<bdi dir="auto">
-										{pending ? "Moving session:" : "Working directory:"}
+										{pending
+											? t(
+													"ui.chat.directory.directory_indicator.moving_session_colon",
+												)
+											: t(
+													"ui.chat.directory.directory_indicator.working_directory_colon",
+												)}
 									</bdi>
 								</span>
 								<span
@@ -1151,7 +1310,7 @@ export const DirectoryIndicator = forwardRef<
 									className={cn(
 										"min-w-0 truncate",
 										PATH_TYPE,
-										CHIP_TEXT_AT_FLOOR,
+										CHIP_TEXT_AT_FLOOR(),
 										CHIP_PATH_COLUMN,
 									)}
 								>
@@ -1223,7 +1382,9 @@ export const DirectoryIndicator = forwardRef<
 						 * region) is what explains why. The trigger stays live because the menu is
 						 * also where the user re-reads the path, which is not an action.
 						 */}
-						<DropdownMenuLabel>Custom directory</DropdownMenuLabel>
+						<DropdownMenuLabel>
+							{t("ui.chat.directory.directory_indicator.custom_directory")}
+						</DropdownMenuLabel>
 
 						<DropdownMenuItem
 							disabled={pending}
@@ -1233,7 +1394,7 @@ export const DirectoryIndicator = forwardRef<
 							}}
 						>
 							<Pencil aria-hidden="true" />
-							Enter custom path...
+							{t("ui.chat.directory.directory_indicator.enter_custom_path")}
 						</DropdownMenuItem>
 
 						<DropdownMenuItem
@@ -1241,13 +1402,15 @@ export const DirectoryIndicator = forwardRef<
 							onClick={handleBrowseForDirectory}
 						>
 							<FolderTree aria-hidden="true" />
-							Browse for directory...
+							{t("ui.chat.directory.directory_indicator.browse_for_directory")}
 						</DropdownMenuItem>
 
 						{/* Recent directories section - always show the section */}
 						<DropdownMenuSeparator />
 
-						<DropdownMenuLabel>Recent directories</DropdownMenuLabel>
+						<DropdownMenuLabel>
+							{t("ui.chat.directory.directory_indicator.recent_directories")}
+						</DropdownMenuLabel>
 
 						{filteredRecentDirectories.length > 0 ? (
 							filteredRecentDirectories.map((path) => {
@@ -1289,7 +1452,10 @@ export const DirectoryIndicator = forwardRef<
 										 */}
 										<button
 											type="button"
-											aria-label={`Remove ${formatted} from recent directories`}
+											aria-label={t(
+												"ui.chat.directory.directory_indicator.remove_formatted_from_recent_directories",
+												{ formatted },
+											)}
 											className={cn(
 												"ml-auto shrink-0 rounded-xs p-0.5 text-ink-dim opacity-0 transition-colors duration-fast",
 												"group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100",
@@ -1309,14 +1475,18 @@ export const DirectoryIndicator = forwardRef<
 							})
 						) : (
 							<DropdownMenuItem disabled>
-								No recent directories
+								{t(
+									"ui.chat.directory.directory_indicator.no_recent_directories",
+								)}
 							</DropdownMenuItem>
 						)}
 
 						{/* Default directories section */}
 						<DropdownMenuSeparator />
 
-						<DropdownMenuLabel>Default directories</DropdownMenuLabel>
+						<DropdownMenuLabel>
+							{t("ui.chat.directory.directory_indicator.default_directories")}
+						</DropdownMenuLabel>
 
 						{DEFAULT_DIRECTORIES.map((dir) => {
 							const DirIcon = dir.icon;

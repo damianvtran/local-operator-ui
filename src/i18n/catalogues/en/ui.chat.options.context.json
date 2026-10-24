@@ -1,0 +1,233 @@
+{
+	"ui.chat.options.chat_options_sidebar.chat_options": {
+		"role": "visible interface copy in chat components/chat-options-sidebar.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-options-sidebar.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.chat_options_sidebar.clear_conversation": {
+		"role": "visible interface copy in chat components/chat-options-sidebar.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-options-sidebar.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.chat_options_sidebar.clear_this_conversation": {
+		"role": "accessible name or tooltip in chat components/chat-options-sidebar.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-options-sidebar.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.chat_options_sidebar.customize_settings_for_this_agent": {
+		"role": "visible interface copy in chat components/chat-options-sidebar.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-options-sidebar.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.enter_stop_sequences_one_per_line": {
+		"role": "accessible name or tooltip in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.generation_settings": {
+		"role": "visible interface copy in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.more_info": {
+		"role": "accessible name or tooltip in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.random_number_seed_for_deterministic_generation": {
+		"role": "accessible name or tooltip in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.you_can_set_custom_values_for_these_settings_by_updating": {
+		"role": "visible interface copy in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.model_hosting_section.model_and_hosting": {
+		"role": "visible interface copy in chat components/model-hosting-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/model-hosting-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.model_hosting_section.more_info": {
+		"role": "accessible name or tooltip in chat components/model-hosting-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/model-hosting-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.unset_slider_setting.not_set_yet": {
+		"role": "visible interface copy in chat components/unset-slider-setting.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/unset-slider-setting.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.unset_slider_setting.set_to_default": {
+		"role": "visible interface copy in chat components/unset-slider-setting.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/unset-slider-setting.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.unset_text_setting.not_set_yet": {
+		"role": "visible interface copy in chat components/unset-text-setting.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/unset-text-setting.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.unset_text_setting.set_to_default": {
+		"role": "visible interface copy in chat components/unset-text-setting.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/unset-text-setting.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.controls_cumulative_probability_of_tokens_to_sample_from_0_0": {
+		"role": "visible interface copy in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.controls_randomness_in_responses_0_0_1_0_higher_values": {
+		"role": "visible interface copy in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.frequency_penalty": {
+		"role": "visible interface copy in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.increases_diversity_by_lowering_likelihood_of_prompt_tokens_2_0": {
+		"role": "visible interface copy in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.limits_tokens_to_sample_from_at_each_step": {
+		"role": "visible interface copy in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.max_tokens": {
+		"role": "visible interface copy in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.maximum_tokens_to_generate_in_response": {
+		"role": "visible interface copy in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.presence_penalty": {
+		"role": "visible interface copy in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.reduces_repetition_by_lowering_likelihood_of_repeated_tokens_2_0": {
+		"role": "visible interface copy in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.seed": {
+		"role": "visible interface copy in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.seed_must_be_a_valid_number": {
+		"role": "visible interface copy in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.sequences_that_will_cause_the_model_to_stop_generating_text": {
+		"role": "visible interface copy in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.settings_that_control_how_the_agent_generates_responses": {
+		"role": "visible interface copy in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.stop_sequences": {
+		"role": "visible interface copy in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.temperature": {
+		"role": "visible interface copy in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.top_k": {
+		"role": "visible interface copy in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.generation_settings_section.top_p": {
+		"role": "visible interface copy in chat components/generation-settings-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/generation-settings-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.options.model_hosting_section.configure_which_model_and_hosting_provider_to_use": {
+		"role": "visible interface copy in chat components/model-hosting-section.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/model-hosting-section.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	}
+}

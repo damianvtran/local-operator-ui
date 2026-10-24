@@ -2048,7 +2048,7 @@ test("the row's own layout: each flexible chip owns a line, and the alignment de
 	 * but a second label span would.
 	 */
 	assert.doesNotMatch(source, /chatcol:sr-only/);
-	tokens('"shrink-0"', 'goalStalled && "text-ink"', "{GOAL_LABEL}");
+	tokens('"shrink-0"', 'goalStalled && "text-ink"', "{GOAL_LABEL()}");
 
 	/*
 	 * The row owns the first-chip rule (design review round 1, D5): one constant,
@@ -2279,7 +2279,10 @@ test("the expanded body caps itself, keeps the author's breaks, and carries its 
 	assert.doesNotMatch(source, /max-h-32/);
 	assert.match(source, /whitespace-pre-wrap break-words/);
 	assert.match(source, /role="group"/);
-	assert.match(source, /aria-label="Session goal"/);
+	assert.match(
+		source,
+		/aria-label=\{t\("ui\.chat\.composer_status_row\.session_goal"\)\}/,
+	);
 	assert.match(source, /tabIndex=\{0\}/);
 	/*
 	 * The plan chip REVEALS and is not a toggle: no `aria-pressed` and no pressed
@@ -4120,16 +4123,28 @@ test("the two outcomes that speak do so in the person's own words", () => {
 	 */
 	assert.match(row, /if \(result\.result\.tone === "error"\)/);
 	assert.match(row, /showErrorToast\(result\.result\.text\);/);
-	for (const prefix of [
-		"Could not clear the goal",
-		"Could not stop the loop",
-		"Could not clear the loop",
-		"Could not restore the goal",
-	]) {
+	const messages = JSON.parse(
+		readFileSync("src/i18n/catalogues/en/ui.chat.json", "utf8"),
+	);
+	for (const [prefix, key] of Object.entries({
+		"Could not clear the goal":
+			"ui.chat.composer.composer_status_row.could_not_clear_the_goal",
+		"Could not stop the loop":
+			"ui.chat.composer.composer_status_row.could_not_stop_the_loop",
+		"Could not clear the loop":
+			"ui.chat.composer.composer_status_row.could_not_clear_the_loop",
+		"Could not restore the goal":
+			"ui.chat.composer.composer_status_row.could_not_restore_the_goal",
+	})) {
 		assert.match(
 			row,
-			new RegExp(`"${prefix}"`),
+			new RegExp(`"${key}"`),
 			`${prefix} is the failure prefix`,
+		);
+		assert.equal(
+			messages[key],
+			prefix,
+			`${prefix} is the English catalogue copy`,
 		);
 	}
 	/*
@@ -4148,11 +4163,11 @@ test("the two outcomes that speak do so in the person's own words", () => {
 		/showInfoToast\(goalClearedText\(settled\), \{/,
 		"the confirmation names what it cleared (UX round 2, U7)",
 	);
-	assert.match(row, /label: GOAL_UNDO_TEXT,/);
+	assert.match(row, /label: GOAL_UNDO_TEXT\(\),/);
 	assert.match(row, /onClick: \(\) => void restoreGoal\(settled\)/);
 	assert.match(
 		row,
-		/goalCommand\.run\(GOAL_COMMAND, text, GOAL_UNDO_FAILURE\)/,
+		/goalCommand\.run\(\s*GOAL_COMMAND,\s*text,\s*GOAL_UNDO_FAILURE\(\),?\s*\)/,
 	);
 	/*
 	 * EACH CONTROL OWNS ITS OWN CHANNEL (agent review round 2, MINOR 2): one hook meant
@@ -4180,7 +4195,7 @@ test("the two outcomes that speak do so in the person's own words", () => {
 	// The pair the two controls dispatch, and neither of them is a label.
 	assert.match(
 		row,
-		/runDismiss\(\s*goalCommand,\s*GOAL_COMMAND,\s*GOAL_CLEAR_ARGS,\s*GOAL_CLEAR_FAILURE,\s*\)/,
+		/runDismiss\(\s*goalCommand,\s*GOAL_COMMAND,\s*GOAL_CLEAR_ARGS,\s*GOAL_CLEAR_FAILURE\(\),?\s*\)/,
 	);
 	assert.match(
 		row,

@@ -27,12 +27,14 @@ import {
 	previewFailureReason,
 	useFileBlobUrl,
 } from "@shared/hooks/use-file-blob-url";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { type FC, memo, useCallback } from "react";
+import { t } from "../../../../../../i18n/messages";
 import type { Message } from "../../types/message";
 import { mimeTypeForPath } from "../../utils/file-kind";
-import { getFileName } from "../../utils/get-file-name";
+import { fileNameForDisplay } from "../../utils/get-file-name";
 import { isMessageHidden } from "../../utils/message-grouping";
 import {
 	AgentQuestion,
@@ -158,6 +160,7 @@ const ImageFileAttachment: FC<{
 	file: string;
 	conversationId: string;
 }> = ({ file, conversationId }) => {
+	useI18nLocale();
 	const state = useFileBlobUrl(file, { mimeType: mimeTypeForPath(file) });
 	if (state.status === "ready") {
 		return (
@@ -177,7 +180,7 @@ const ImageFileAttachment: FC<{
 			</div>
 		);
 	}
-	return <BrokenAttachment name={getFileName(file)} />;
+	return <BrokenAttachment name={fileNameForDisplay(file)} />;
 };
 
 /**
@@ -191,12 +194,15 @@ const UnavailableMedia: FC<{
 	file: string;
 	code: Parameters<typeof previewFailureReason>[0];
 }> = ({ file, code }) => {
+	useI18nLocale();
 	if (code !== "too-large") return <InvalidAttachment file={file} />;
 	const normalizedPath = file.startsWith("file://") ? file.substring(7) : file;
 	return (
 		<InvalidAttachment
 			file={file}
-			reason={`is ${previewFailureReason(code)?.toLowerCase()}`}
+			reason={t("ui.chat.message.index.is_value", {
+				value: String(previewFailureReason(code)?.toLowerCase()),
+			})}
 			onOpen={() => {
 				void window.api.openFile(normalizedPath);
 			}}
@@ -209,6 +215,7 @@ const VideoFileAttachment: FC<{
 	onClick: (file: string) => void;
 	conversationId: string;
 }> = ({ file, onClick, conversationId }) => {
+	useI18nLocale();
 	const state = useFileBlobUrl(file, { mimeType: mimeTypeForPath(file) });
 	if (state.status === "unavailable") {
 		return <UnavailableMedia file={file} code={state.code} />;
@@ -243,6 +250,7 @@ const AudioFileAttachment: FC<{ file: string; isUser: boolean }> = ({
 	file,
 	isUser,
 }) => {
+	useI18nLocale();
 	const state = useFileBlobUrl(file, { mimeType: mimeTypeForPath(file) });
 	if (state.status === "unavailable") {
 		return <UnavailableMedia file={file} code={state.code} />;
@@ -321,7 +329,10 @@ export const MessageItem: FC<MessageItemProps> = memo(
 				// exactly what a toast is for; see `error-view` for the other half
 				// of the policy.
 				showErrorToast(
-					`Could not open ${getFileName(filePath)}. The file may have been moved, renamed, or deleted.`,
+					t(
+						"ui.chat.message.index.could_not_open_getfilenamevalue_the_file_may_have_been_moved",
+						{ getFileNameValue: fileNameForDisplay(filePath) },
+					),
 				);
 			}
 		}, []);
@@ -446,14 +457,14 @@ export const MessageItem: FC<MessageItemProps> = memo(
 						<CodeBlock
 							code={message.content}
 							isUser={isUser}
-							header="Content"
+							header={t("ui.chat.message.index.content_header")}
 						/>
 					)}
 					{message.replacements && (
 						<CodeBlock
 							code={message.replacements}
 							isUser={isUser}
-							header="Replacements"
+							header={t("ui.chat.message.index.replacements_header")}
 						/>
 					)}
 					{stdout && <OutputBlock output={stdout} isUser={isUser} />}
@@ -586,7 +597,11 @@ export const MessageItem: FC<MessageItemProps> = memo(
 					{!isUser && hasTechnicalBlocks && (
 						<Disclosure
 							className="mt-2"
-							summary={<span className="text-meta">Technical details</span>}
+							summary={
+								<span className="text-meta">
+									{t("ui.chat.message.index.technical_details")}
+								</span>
+							}
 						>
 							{technicalBlocks}
 						</Disclosure>

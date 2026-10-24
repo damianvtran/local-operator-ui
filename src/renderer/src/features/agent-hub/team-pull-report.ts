@@ -26,6 +26,8 @@
  * unexpected one either.
  */
 
+import { t } from "@shared/i18n";
+
 /** What a pull reports, and at which level. */
 export type TeamPullReport = {
 	level: "success" | "warning";
@@ -45,21 +47,33 @@ export const describePulledTeam = (
 		| undefined,
 	requestedName?: string,
 ): TeamPullReport => {
-	const storedName = stored?.name?.trim() || requestedName?.trim() || "Team";
+	const storedName =
+		stored?.name?.trim() ||
+		requestedName?.trim() ||
+		t("ui.hub.teams.fallback_team");
 	const publishedName = stored?.renamed_from?.trim() || null;
 	const spellingWasAdjusted = stored?.invalid_name === true;
 
 	if (spellingWasAdjusted && publishedName) {
 		return {
 			level: "warning",
-			message: `Pulled "${storedName}". The published name "${publishedName}" is not usable locally, so the team was stored as "${storedName}".`,
+			message: t("ui.hub.teams.pull_renamed_invalid", {
+				name: storedName,
+				published: publishedName,
+			}),
 		};
 	}
 	if (publishedName) {
 		return {
 			level: "success",
-			message: `Pulled "${storedName}" (you already have a team called "${publishedName}").`,
+			message: t("ui.hub.teams.pull_renamed_collision", {
+				name: storedName,
+				published: publishedName,
+			}),
 		};
 	}
-	return { level: "success", message: `Pulled team "${storedName}".` };
+	return {
+		level: "success",
+		message: t("ui.hub.teams.pull_succeeded", { name: storedName }),
+	};
 };

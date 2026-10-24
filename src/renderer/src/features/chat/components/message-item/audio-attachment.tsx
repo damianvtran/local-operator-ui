@@ -1,4 +1,5 @@
 import { Spinner } from "@shared/components/common/spinner";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useAudioEngineStore } from "@shared/store/audio-engine-store";
 import {
@@ -9,6 +10,7 @@ import {
 	VolumeX,
 } from "lucide-react";
 import { type ChangeEvent, type FC, memo, useCallback, useState } from "react";
+import { t } from "../../../../../../i18n/messages";
 import { formatClock } from "../../canonical/waveform-model";
 import { InvalidAttachment } from "./invalid-attachment";
 
@@ -75,6 +77,7 @@ const RANGE_CLASS =
  */
 export const AudioAttachment: FC<AudioAttachmentProps> = memo(
 	({ content }: AudioAttachmentProps) => {
+		useI18nLocale();
 		/*
 		 * The engine identity for this row: the CONTENT is the only name a legacy
 		 * attachment has (there is no digest on this wire), and two rows of one
@@ -166,7 +169,11 @@ export const AudioAttachment: FC<AudioAttachmentProps> = memo(
 					className={ICON_BUTTON_CLASS}
 					onClick={handlePlayPause}
 					disabled={loading || hasError}
-					aria-label={playing ? "Pause" : "Play"}
+					aria-label={t(
+						playing
+							? "ui.chat.message.audio_attachment.pause"
+							: "ui.chat.message.audio_attachment.play",
+					)}
 				>
 					{loading ? (
 						<Spinner size="sm" />
@@ -181,7 +188,7 @@ export const AudioAttachment: FC<AudioAttachmentProps> = memo(
 				</span>
 				<input
 					type="range"
-					aria-label="time-indicator"
+					aria-label={t("ui.chat.message.audio_attachment.time_indicator")}
 					className={cn(RANGE_CLASS, "min-w-0 flex-1")}
 					value={Math.min(currentTime, duration)}
 					min={0}
@@ -199,13 +206,17 @@ export const AudioAttachment: FC<AudioAttachmentProps> = memo(
 						className={ICON_BUTTON_CLASS}
 						onClick={toggleMute}
 						disabled={hasError}
-						aria-label={volume === 0 ? "Unmute" : "Mute"}
+						aria-label={t(
+							volume === 0
+								? "ui.chat.message.audio_attachment.unmute"
+								: "ui.chat.message.audio_attachment.mute",
+						)}
 					>
 						<VolumeIcon size={20} />
 					</button>
 					<input
 						type="range"
-						aria-label="volume-control"
+						aria-label={t("ui.chat.message.audio_attachment.volume_control")}
 						className={cn(RANGE_CLASS, "w-[70px]")}
 						value={volume}
 						min={0}
@@ -216,7 +227,7 @@ export const AudioAttachment: FC<AudioAttachmentProps> = memo(
 					/>
 				</div>
 				<select
-					aria-label="Playback rate"
+					aria-label={t("ui.chat.message.audio_attachment.playback_rate")}
 					className="shrink-0 cursor-pointer rounded-sm border border-control bg-surface px-2 py-0.5 text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:text-ink disabled:pointer-events-none disabled:border-hairline disabled:bg-sunken disabled:text-ink-disabled"
 					value={playbackRate}
 					onChange={(event) =>
@@ -226,6 +237,7 @@ export const AudioAttachment: FC<AudioAttachmentProps> = memo(
 				>
 					{[0.5, 1, 1.5, 2].map((rate) => (
 						<option key={rate} value={rate}>
+							{/* i18n: ignore language-neutral playback-rate multiplier symbol */}
 							{rate}x
 						</option>
 					))}

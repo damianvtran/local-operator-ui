@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import { soundCostCaption } from "./sound-cost-caption";
 import type { TranscriptImage } from "./transcript-reducer";
 
@@ -49,7 +50,13 @@ export function soundBatchItems(
 		const occurrence = (occurrences.get(name) ?? 0) + 1;
 		occurrences.set(name, occurrence);
 		let suffix = occurrence;
-		let label = occurrence === 1 ? name : `${name} (${suffix})`;
+		let label =
+			occurrence === 1
+				? name
+				: t("ui.chat.canonical.sound_batch_model.name_suffix", {
+						name,
+						suffix,
+					});
 		// Do not turn a duplicate into the identity of another literal backend
 		// name, e.g. two “Rain” requests alongside one actually named “Rain (2)”.
 		while (labels.has(label) || (label !== name && names.has(label))) {
@@ -96,9 +103,12 @@ function batchItemCostCaption(
 		(result.status === "failed" || result.error) &&
 		result.cost_usd === 0
 	) {
-		if (cost?.basis === "billed") return "No charge.";
+		if (cost?.basis === "billed")
+			return t("ui.chat.canonical.sound_batch_model.no_charge");
 		if (cost?.basis === "estimated")
-			return "Estimated cost $0; final charge not confirmed.";
+			return t(
+				"ui.chat.canonical.sound_batch_model.estimated_cost_0_final_charge_not_confirmed",
+			);
 	}
 	return soundCostCaption({
 		...result,
@@ -110,9 +120,10 @@ function batchItemCostCaption(
 export function soundBatchCostCaption(details: unknown): string {
 	const result = details as Record<string, unknown>;
 	const caption = batchItemCostCaption(result);
-	if (!caption) return "Total cost not yet known.";
+	if (!caption)
+		return t("ui.chat.canonical.sound_batch_model.total_cost_not_yet_known");
 	const complete = result.cost_complete === true;
-	return `${complete ? "Total cost" : "Known total cost"} ${caption.slice(5)}${complete ? "" : " Unknown or late charges are not included."}`;
+	return `${complete ? t("ui.chat.canonical.sound_batch_model.total_cost") : t("ui.chat.canonical.sound_batch_model.known_total_cost")} ${caption.slice(5)}${complete ? "" : t("ui.chat.canonical.sound_batch_model.unknown_or_late_charges_are_not_included")}`;
 }
 
 /** Legacy single results carry artifacts, but none of these batch-only facts. */
@@ -138,7 +149,14 @@ export function soundBatchSummary(
 	const cancelled = count("cancelled");
 	const unknown = items.filter((item) => item.status === "unknown").length;
 	const attention = items.filter((item) => item.status !== "completed");
-	return `${count("completed")} completed · ${count("failed")} failed${cancelled ? ` · ${cancelled} cancelled/stopped` : ""}${unknown ? ` · ${unknown} status unknown` : ""}${attention.length ? `. Needs attention: ${attention.map((item) => item.label).join("; ")}` : ""}`;
+	return t("ui.chat.canonical.sound_batch_model.summary", {
+		completed: count("completed"),
+		failed: count("failed"),
+		cancelled,
+		unknown,
+		hasAttention: attention.length ? "true" : "false",
+		attention: attention.map((item) => item.label).join("; "),
+	});
 }
 
 /** The aggregate cause belongs beside item errors, not hidden by them. */
@@ -185,7 +203,10 @@ export function soundBatchProgress(
 		item >= 1 &&
 		item <= total &&
 		typeof result.name === "string"
-			? `Latest update: ${result.name} (item ${item} of ${total}).`
+			? t(
+					"ui.chat.canonical.sound_batch_model.latest_update_name_item_item_of_total",
+					{ name: result.name, item: item, total: total },
+				)
 			: null;
 	return { total, note };
 }

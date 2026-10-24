@@ -37,6 +37,7 @@
 import type { DesktopCapabilities } from "@shared/api/local-operator/desktop-api";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { desktopFeatureEnabled } from "@shared/api/local-operator/desktop-hooks";
+import { t } from "../../../../i18n/messages";
 import type { DesktopInterruptReceipt } from "../../../../shared/desktop-session-contract";
 
 /**
@@ -50,8 +51,9 @@ import type { DesktopInterruptReceipt } from "../../../../shared/desktop-session
  * failing, and named the press where the state is the fact). PROVISIONAL COPY,
  * pending the design round.
  */
-export const IDLE_STOP_NOTICE =
-	"No turn was running, so there was nothing to stop.";
+export const IDLE_STOP_NOTICE = t(
+	"ui.chat.interrupt_turn.no_turn_was_running_so_there_was_nothing_to_stop",
+);
 
 /**
  * The same answer when the pane still CLAIMS a turn is running.
@@ -68,8 +70,9 @@ export const IDLE_STOP_NOTICE =
  * settled by the next snapshot rather than left standing. PROVISIONAL COPY,
  * pending the design round.
  */
-export const IDLE_STOP_DISPUTED_NOTICE =
-	"The runtime says no turn is running, so nothing was stopped. This view may be out of date.";
+export const IDLE_STOP_DISPUTED_NOTICE = t(
+	"ui.chat.interrupt_turn.the_runtime_says_no_turn_is_running_so_nothing_was",
+);
 
 /**
  * Whether this renderer may interrupt a turn against this backend.
@@ -215,8 +218,12 @@ export function interruptNotice(
 ): string | null {
 	if (receipt.status === "idle")
 		return options.turnClaimed === true
-			? IDLE_STOP_DISPUTED_NOTICE
-			: IDLE_STOP_NOTICE;
+			? t(
+					"ui.chat.interrupt_turn.the_runtime_says_no_turn_is_running_so_nothing_was",
+				)
+			: t(
+					"ui.chat.interrupt_turn.no_turn_was_running_so_there_was_nothing_to_stop",
+				);
 	if (receipt.status !== "interrupted") return null;
 	const children = receipt.children_running ?? 0;
 	const jobs = receipt.background_jobs ?? 0;
@@ -234,8 +241,9 @@ export function interruptNotice(
 	 * the notice names the same thing the transcript does.
 	 */
 	const subagents = children === 1 ? "1 subagent" : `${children} subagents`;
-	const backgroundJobs =
-		jobs === 1 ? "1 background job" : `${jobs} background jobs`;
+	const backgroundJobs = t("ui.chat.interrupt_turn.jobs_background_jobs", {
+		jobs,
+	});
 	/*
 	 * The levers are named per fact rather than as one generic suggestion, and the
 	 * reading surface is named the way the app names it: "Run details" is the
@@ -249,10 +257,19 @@ export function interruptNotice(
 	 * again" would be false for both halves.
 	 */
 	if (children > 0 && jobs > 0)
-		return `Stopped this turn. ${subagents} and ${backgroundJobs} are still running - open Run details to watch them, and use /stop to end the session and its jobs.`;
+		return t(
+			"ui.chat.interrupt_turn.stopped_this_turn_subagents_and_backgroundjobs_are",
+			{ subagents, backgroundJobs },
+		);
 	if (children > 0)
-		return `Stopped this turn. ${subagents} ${children === 1 ? "is" : "are"} still running - open Run details to watch ${children === 1 ? "it" : "them"}, or use /stop to end the session.`;
-	return `Stopped this turn. ${backgroundJobs} ${jobs === 1 ? "is" : "are"} still running - ${jobs === 1 ? "it outlived the turn by design" : "they outlived the turn by design"}, so /stop is what ends ${jobs === 1 ? "it" : "them"} with the session.`;
+		return t("ui.chat.interrupt_turn.subagents_running", {
+			count: children,
+			subagents,
+		});
+	return t("ui.chat.interrupt_turn.background_jobs_running", {
+		count: jobs,
+		backgroundJobs,
+	});
 }
 
 /**
@@ -276,5 +293,7 @@ export function interruptUnavailableNotice(
 	enabled: boolean,
 ): string | null {
 	if (!busy || enabled) return null;
-	return "This backend predates the stop control, so this turn cannot be stopped from here - /stop ends the session and everything in it.";
+	return t(
+		"ui.chat.interrupt_turn.this_backend_predates_the_stop_control_so_this_turn_cannot",
+	);
 }

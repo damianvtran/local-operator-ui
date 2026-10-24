@@ -73,7 +73,6 @@ import {
 	useSpeakDismissal,
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { clipForSpeech } from "@shared/lib/speech-clip";
 import { useSpeechBindingFor } from "@shared/lib/speech-target";
@@ -86,6 +85,7 @@ import {
 import { Check, Copy, Quote } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import { copyTarget } from "../utils/link-open";
 import { COPY_FEEDBACK_MS } from "./message-actions";
 import { QUOTE_TOOLKIT_ATTR, quoteSelectionIn } from "./quote-model";
@@ -319,7 +319,7 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 		>
 			{allowQuote && (
 				<Tooltip
-					content="Quote"
+					content={t("ui.chat.canonical.transcript.quote")}
 					/*
 					 * The tooltip takes the opposite side to the control, because the
 					 * control sits BELOW the highlight when there was no room above it -
@@ -331,7 +331,7 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Quote"
+						aria-label={t("ui.chat.canonical.transcript.quote")}
 						className="text-ink-dim hover:bg-accent-wash hover:text-accent"
 						onClick={handleQuote}
 					>

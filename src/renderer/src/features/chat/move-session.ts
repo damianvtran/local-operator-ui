@@ -37,6 +37,7 @@ import { desktopFeatureEnabled } from "@shared/api/local-operator/desktop-hooks"
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
+import { t } from "../../../../i18n/messages";
 import type { DesktopMoveReceipt } from "../../../../shared/desktop-session-contract";
 import type { TranscriptRecord } from "./canonical/transcript-reducer";
 
@@ -52,8 +53,9 @@ import type { TranscriptRecord } from "./canonical/transcript-reducer";
  * FALSE against a backend that can move one - which is the one wording change
  * this feature owes users who never touch it.
  */
-export const MOVE_UNAVAILABLE_REASON =
-	"This backend cannot move a live session. Start a new chat to use a different folder, or update the backend.";
+export const MOVE_UNAVAILABLE_REASON = t(
+	"ui.chat.move_session.this_backend_cannot_move_a_live_session_start_a_new",
+);
 
 /**
  * The chip's read-only sentence while the session it belongs to is being CREATED.
@@ -71,8 +73,9 @@ export const MOVE_UNAVAILABLE_REASON =
  * later the chip is editable. The tooltip is the only place it appears, because a
  * transient creation is not worth a transcript note.
  */
-export const MOVE_NOT_READY_REASON =
-	"This session is still starting. Its working directory can be moved as soon as it is live.";
+export const MOVE_NOT_READY_REASON = t(
+	"ui.chat.move_session.this_session_is_still_starting_its_working_directory_can_be",
+);
 
 /**
  * Whether this renderer may move a live session against this backend.
@@ -116,7 +119,8 @@ export function sessionMoveEnabled(
  * quoting the exception is the failure mode `userFacingMessage` exists to stop.
  * The wording states only what is certainly true: the directory did not change.
  */
-const MOVE_FAILED_FALLBACK = "The working directory was not changed.";
+const MOVE_FAILED_FALLBACK = () =>
+	t("ui.chat.move_session.the_working_directory_was_not_changed");
 
 /**
  * How long the optimistic value is held waiting for the stream to agree.
@@ -202,7 +206,7 @@ export async function runMoveSession(input: {
 		// reconnect notice - and the fallback above when it did not. A generic
 		// "something went wrong" here would throw away the only thing that tells
 		// the user which of those happened.
-		const sentence = userFacingMessage(error, MOVE_FAILED_FALLBACK);
+		const sentence = userFacingMessage(error, MOVE_FAILED_FALLBACK());
 		input.note(sentence, true);
 		return { kind: "refused", sentence };
 	}
@@ -229,11 +233,19 @@ export function moveReceiptLine(
 	receipt: DesktopMoveReceipt,
 	evalUsed: boolean,
 ): string {
-	if (receipt.outcome === "unchanged") return `already in ${receipt.label}`;
-	if (receipt.outcome === "cold") return `moved to ${receipt.label}`;
+	if (receipt.outcome === "unchanged")
+		return t("ui.chat.move_session.already_in_label", { label: receipt.label });
+	if (receipt.outcome === "cold")
+		return t("ui.chat.move_session.moved_to_label", { label: receipt.label });
 	return evalUsed
-		? `moved to ${receipt.label} — this session's runtime is restarting there, so everything you set up in eval was lost`
-		: `moved to ${receipt.label} — this session's runtime is restarting there`;
+		? t(
+				"ui.chat.move_session.moved_to_label_this_sessions_runtime_is_restarting_there_so",
+				{ label: receipt.label },
+			)
+		: t(
+				"ui.chat.move_session.moved_to_label_this_sessions_runtime_is_restarting_there",
+				{ label: receipt.label },
+			);
 }
 
 /**
@@ -268,9 +280,17 @@ export async function runMoveSessionFromDispatch(
 	// transport here would allow a second move while the chip's request settles.
 	const outcome = await context.moveTo(context.cwd);
 	if (outcome.kind === "in-flight") {
-		context.note("A working-directory move is already in progress.", true);
+		context.note(
+			t("ui.chat.move_session.a_working_directory_move_is_already_in_progress"),
+			true,
+		);
 	} else if (outcome.kind === "unavailable") {
-		context.note(MOVE_UNAVAILABLE_REASON, true);
+		context.note(
+			t(
+				"ui.chat.move_session.this_backend_cannot_move_a_live_session_start_a_new",
+			),
+			true,
+		);
 	}
 }
 

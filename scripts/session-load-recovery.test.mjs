@@ -13,6 +13,7 @@ const RE_401_403_REFUSED_EVENT_STRE = /401|403|refused|event stream|http/i;
 const RE_401_REFUSED_EVENT_STREAM_I = /401|refused|event stream/i;
 const RE_HISTORY_I = /history/i;
 const RE_REACT = /^react$/;
+const RE_SHARED_I18N = /^@shared\/i18n$/;
 const RE_RECONNECT_I = /reconnect/i;
 const RE_SHARED_API_LOCAL_OPERATOR =
 	/^@shared\/api\/local-operator\/desktop-api$/;
@@ -1686,6 +1687,16 @@ const STATUS_SOURCE = `
 export const useConnectivityStatus = () => globalThis.__gateTest.status;
 `;
 
+/*
+ * The gate resolves its one copy sentence through `t()`; the real renderer
+ * door re-exports the whole catalogue core and its language-writes module,
+ * which pulls react-query and the desktop transport into this bundle. This
+ * harness tests connectivity gating, not copy, so the seam is one function.
+ */
+const I18N_SOURCE = `
+export const t = (key) => key;
+`;
+
 const gateBundle = await build({
 	stdin: {
 		contents:
@@ -1707,6 +1718,7 @@ const gateBundle = await build({
 					react: HARNESS_SOURCE,
 					query: QUERY_SOURCE,
 					status: STATUS_SOURCE,
+					i18n: I18N_SOURCE,
 				};
 				builder.onResolve({ filter: RE_REACT }, () => ({
 					path: "react",
@@ -1724,6 +1736,10 @@ const gateBundle = await build({
 						? { path: "status", namespace: "fixture" }
 						: undefined,
 				);
+				builder.onResolve({ filter: RE_SHARED_I18N }, () => ({
+					path: "i18n",
+					namespace: "fixture",
+				}));
 				builder.onLoad({ filter: RE, namespace: "fixture" }, (args) => ({
 					contents: fixtures[args.path],
 					loader: "js",

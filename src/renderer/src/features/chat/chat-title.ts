@@ -1,3 +1,4 @@
+import { t } from "../../../../i18n/messages";
 /**
  * The conversation's name, resolved for the two places that must agree.
  *
@@ -52,7 +53,7 @@
  * catalogue's own fallback are asserted to agree about it; the sidebar's copy
  * is left where it is (this change does not own that file's fallback).
  */
-export const UNTITLED_CHAT = "Untitled chat";
+export const UNTITLED_CHAT = t("ui.chat.chat_title.untitled_chat");
 
 /**
  * A title counts as unknown when it is absent or whitespace-only.
@@ -97,7 +98,9 @@ export function resolveChatTitle(input: {
 	const { draftKey, draftSessionId, draftTarget, liveTitle, catalogueTitle } =
 		input;
 	if (draftKey && !draftSessionId)
-		return draftTarget ? `New chat with ${draftTarget}` : "New chat";
+		return draftTarget
+			? t("ui.chat.chat_title.new_chat_with_drafttarget", { draftTarget })
+			: t("ui.chat.chat_title.new_chat");
 	if (!isBlankTitle(liveTitle)) return liveTitle as string;
 	if (!isBlankTitle(catalogueTitle)) return catalogueTitle as string;
 	/*
@@ -112,8 +115,8 @@ export function resolveChatTitle(input: {
 	 * send: "New chat". "Untitled chat" is for a conversation that exists and has
 	 * no name, which is not this.
 	 */
-	if (draftKey) return draftTarget ?? "New chat";
-	return UNTITLED_CHAT;
+	if (draftKey) return draftTarget ?? t("ui.chat.chat_title.new_chat");
+	return t("ui.chat.chat_title.untitled_chat");
 }
 
 /**

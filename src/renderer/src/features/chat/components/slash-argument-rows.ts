@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 /**
  * Argument-list rows for the composer's slash popup, and the two formatters
  * that describe a model.
@@ -168,14 +169,21 @@ export function modelDefaultActionRow(
 	return {
 		kind: "action",
 		id: "model-default",
-		name: "Set current model as default",
+		name: t("ui.chat.slash.arguments.set_current_model_as_default"),
 		description: model
-			? `Save the current model (${provider}/${modelId}) as the default for new sessions.`
-			: "No active session model is available to save.",
+			? t("ui.chat.slash.arguments.save_current_model_default", {
+					provider,
+					modelId,
+				})
+			: t(
+					"ui.chat.slash.arguments.no_active_session_model_is_available_to_save",
+				),
 		model,
 		clickText: model
-			? "Click does the same."
-			: "A session model is required before this action can save a default.",
+			? t("ui.chat.slash.arguments.click_does_the_same")
+			: t(
+					"ui.chat.slash.arguments.a_session_model_is_required_before_this_action_can_save",
+				),
 		disabled: model === null,
 	};
 }
@@ -337,8 +345,9 @@ export function mcpInServerSlot(argument: string): boolean {
  * is empty BY DESIGN (round 1, U2). The route sentence stays: Enter really
  * does run the command.
  */
-export const MCP_EMPTY_SLOT_COPY =
-	"No servers to choose. Enter runs the command.";
+export const MCP_EMPTY_SLOT_COPY = t(
+	"ui.chat.slash.arguments.no_servers_to_choose_enter_runs_the_command",
+);
 
 /**
  * The minimum version of a `requires` feature that licenses its inline list.
@@ -784,8 +793,10 @@ export const TITLE_REFRESH_ROWS: readonly ArgumentRow[] = [
 	{
 		value: "--refresh",
 		name: "--refresh",
-		description: "Re-read the conversation and name it again",
-		detail: "resumes auto-naming",
+		description: t(
+			"ui.chat.slash.arguments.re_read_the_conversation_and_name_it_again",
+		),
+		detail: t("ui.chat.slash.arguments.resumes_auto_naming"),
 		aliases: ["refresh", "update", "retitle", "--update", "--retitle"],
 	},
 ];
@@ -858,7 +869,7 @@ const asAliases = (value: unknown): readonly string[] | undefined =>
  */
 const CREDENTIAL_KINDS: Record<string, string> = {
 	oauth: "oauth",
-	api_key: "api key",
+	api_key: t("ui.chat.slash.arguments.api_key"),
 };
 
 /**
@@ -868,7 +879,9 @@ const CREDENTIAL_KINDS: Record<string, string> = {
  * sentinel has no identity to state, which is the same case the TUI's
  * `credential_identity` renders as ``None``.
  */
-const STORED_CREDENTIAL_FALLBACK = "Stored credential";
+const STORED_CREDENTIAL_FALLBACK = t(
+	"ui.chat.slash.arguments.stored_credential_label",
+);
 
 /**
  * The census's `state` enum in the words the TUI already prints —
@@ -877,11 +890,11 @@ const STORED_CREDENTIAL_FALLBACK = "Stored credential";
  * are the spec's §5 copy table, pinned by `scripts/slash-contract.test.mjs`.
  */
 const PROVIDER_STATE_COPY: Record<string, string> = {
-	logged_in: "logged in",
-	env_key: "env key",
-	needs_login: "needs login",
-	local_ready: "configured server",
-	local_unconfigured: "configure server",
+	logged_in: t("ui.chat.slash.arguments.logged_in"),
+	env_key: t("ui.chat.slash.arguments.env_key"),
+	needs_login: t("ui.chat.slash.arguments.needs_login"),
+	local_ready: t("ui.chat.slash.arguments.configured_server"),
+	local_unconfigured: t("ui.chat.slash.arguments.configure_server"),
 };
 
 /** `_squashed` (`app.py:52585`): the ASCII half of a name, lowercased. */
@@ -935,8 +948,8 @@ const MCP_OFFER_ACTIONS: Record<string, readonly string[]> = {
 const MCP_STATUS_WORDS: Record<string, string> = {
 	connected: "connected",
 	connecting: "connecting",
-	needs_sign_in: "needs sign-in",
-	not_started: "not connected",
+	needs_sign_in: t("ui.chat.slash.arguments.needs_sign_in"),
+	not_started: t("ui.chat.slash.arguments.not_connected"),
 	error: "error",
 };
 
@@ -953,17 +966,17 @@ function mcpServerDetail(verb: string, server: McpServerEntity): string {
 	if (verb === "remove") return compactPath(asText(server.source?.path));
 	if (verb === "logout") {
 		return status === "connected"
-			? "stored credential · connected"
-			: "stored credential";
+			? t("ui.chat.slash.arguments.stored_credential_connected")
+			: t("ui.chat.slash.arguments.stored_credential");
 	}
 	if (verb === "reauth") {
 		return status === "connected"
-			? "connected — will re-authorize"
+			? t("ui.chat.slash.arguments.connected_will_re_authorize")
 			: (MCP_STATUS_WORDS[status] ?? "");
 	}
 	// `login`, the only remaining verb with a server slot.
 	return status === "connected"
-		? "connected — will re-use"
+		? t("ui.chat.slash.arguments.connected_will_re_use")
 		: (MCP_STATUS_WORDS[status] ?? "");
 }
 
@@ -1036,7 +1049,9 @@ export function argumentRows(
 					 * register outside the family. The fact itself is unchanged — only the
 					 * word for it.
 					 */
-					row.connected === false ? "needs sign-in" : "",
+					row.connected === false
+						? t("ui.chat.slash.arguments.needs_sign_in")
+						: "",
 				]
 					.filter(Boolean)
 					.join(", ");

@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The configuration run: how it starts, how it is watched, how it is stopped,
  * and what it is allowed to touch.
@@ -67,7 +69,9 @@ import {
 	type CatalogueSnapshot,
 	RUN_TOOL_NAMES,
 	type RunToolRow,
+	type RunToolVerb,
 	diffCatalogue,
+	formatRunToolVerb,
 	projectRunToolRow,
 	snapshotCatalogue,
 } from "./summary";
@@ -204,7 +208,7 @@ export type ConfigRunHandle = {
 	elapsed: string;
 	/** Live activity, for the Watch panel (the run's own tool rows). */
 	activity: {
-		verb: string;
+		verb: RunToolVerb;
 		target: RunTarget | null;
 		/** Whether this call writes the registry rather than reading it. */
 		writes: boolean;
@@ -257,6 +261,9 @@ export type ConfigRunHandle = {
 };
 
 export function useConfigRun(): ConfigRunHandle {
+	// `step` is formatted below, so this hook must re-render even when its parent
+	// does not otherwise subscribe to the active locale.
+	useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	const enabled = configRunEnabled(capabilities.data);
 	const client = useQueryClient();
@@ -349,7 +356,9 @@ export function useConfigRun(): ConfigRunHandle {
 	}, [activity, live, store]);
 
 	const step =
-		live && activity.length > 0 ? activity[activity.length - 1].verb : null;
+		live && activity.length > 0
+			? formatRunToolVerb(activity[activity.length - 1].verb)
+			: null;
 	const elapsed = formatElapsed(useElapsed(store.startedAt, live));
 
 	/**
@@ -394,9 +403,7 @@ export function useConfigRun(): ConfigRunHandle {
 				// result could not be read and offers the lists' own retry.
 				useConfigRunStore
 					.getState()
-					.fail(
-						"The run finished, but the agents and teams lists could not be read to describe what changed.",
-					);
+					.fail(t("ui.agents.config.results_read_failed"));
 				// The lists may still be stale, so the invalidation still runs.
 				invalidateAuthoring(client);
 				return;
@@ -412,8 +419,12 @@ export function useConfigRun(): ConfigRunHandle {
 				const created = results.filter((result) => result.created).length;
 				showSuccessToast(
 					created > 0
-						? `Configuration run finished: ${results.length} definition${results.length === 1 ? "" : "s"} changed.`
-						: `Configuration run finished: ${results.length} definition${results.length === 1 ? "" : "s"} updated.`,
+						? t("ui.agents.config.run_finished_changed", {
+								count: results.length,
+							})
+						: t("ui.agents.config.run_finished_updated", {
+								count: results.length,
+							}),
 				);
 			}
 			/*
@@ -659,8 +670,8 @@ export function useConfigRun(): ConfigRunHandle {
 					userFacingMessage(
 						caught,
 						sessionId
-							? "The run was set up, but your request could not be sent. It is still in the box — send it again when the backend is reachable."
-							: "The configuration run could not be started. Your request is still here.",
+							? t("ui.agents.config.request_unsent_after_create")
+							: t("ui.agents.config.start_failed"),
 					),
 				);
 			/*
@@ -754,10 +765,7 @@ export function useConfigRun(): ConfigRunHandle {
 			useConfigRunStore
 				.getState()
 				.failUnsent(
-					userFacingMessage(
-						caught,
-						"The request could not be sent. It is still in the box.",
-					),
+					userFacingMessage(caught, t("ui.agents.config.request_unsent")),
 				);
 		} finally {
 			setStarting(false);
@@ -784,7 +792,7 @@ export function useConfigRun(): ConfigRunHandle {
 			useConfigRunStore
 				.getState()
 				.stopFailed(
-					userFacingMessage(caught, "The run did not acknowledge the request."),
+					userFacingMessage(caught, t("ui.agents.config.stop_unacknowledged")),
 				);
 		}
 	};
@@ -792,10 +800,10 @@ export function useConfigRun(): ConfigRunHandle {
 	const disabledReason = enabled
 		? null
 		: capabilities.isLoading
-			? "Connecting to the backend…"
+			? t("ui.agents.config.connecting_backend")
 			: capabilities.error
-				? "The backend could not be reached, so the composer is unavailable for now."
-				: "Ask for a change needs a newer backend. Update Local Operator to configure agents by conversation.";
+				? t("ui.agents.config.backend_unreachable")
+				: t("ui.agents.config.newer_backend_required");
 
 	return {
 		enabled,

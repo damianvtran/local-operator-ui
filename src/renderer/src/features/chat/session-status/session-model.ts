@@ -33,6 +33,7 @@
  * is what makes the segment's presence informative.
  */
 
+import { t } from "../../../../../i18n/messages";
 import type {
 	CanonicalEffectiveAccessState,
 	CanonicalFrontendState,
@@ -81,7 +82,8 @@ const AGGREGATOR_ROUTER_MODEL_IDS = new Set(["auto", "openrouter/auto"]);
  * app identifies the model by is unchanged — the chip's tooltip still prints
  * `radient/auto`.
  */
-const ROUTER_DISPLAY_NAME = "Auto";
+const ROUTER_DISPLAY_NAME = () =>
+	t("ui.chat.session_status.session_model.auto");
 
 /**
  * The bare tail of a selector: what the band falls back to when it will not
@@ -218,7 +220,7 @@ export function modelIdentity(
 		AGGREGATOR_PROVIDERS.has(provider) &&
 		AGGREGATOR_ROUTER_MODEL_IDS.has(model.model_id);
 	return {
-		name: router ? ROUTER_DISPLAY_NAME : refused ? bareId(selector) : display,
+		name: router ? ROUTER_DISPLAY_NAME() : refused ? bareId(selector) : display,
 		selector,
 	};
 }
@@ -628,8 +630,13 @@ export function effortState(
 			levelKnown: true,
 			detail:
 				ladder && ladder.length > 0
-					? `Reasoning effort. This model offers ${ladder.join(", ")}.`
-					: "Reasoning effort for this session.",
+					? t(
+							"ui.chat.session_status.session_model.reasoning_effort_this_model_offers_value",
+							{ value: ladder.join(", ") },
+						)
+					: t(
+							"ui.chat.session_status.session_model.reasoning_effort_for_this_session",
+						),
 		};
 
 	if (ladder && ladder.length > 0)
@@ -642,9 +649,14 @@ export function effortState(
 			adjustable: true,
 			knownLadder: true,
 			levelKnown: true,
-			detail: `No level is set, so this model runs at its own default${
-				fallbackDefault ? ` (${fallbackDefault})` : ""
-			}. It offers ${ladder.join(", ")}.`,
+			detail: t("ui.chat.session_status.session_model.auto_detail", {
+				fallbackDefault: fallbackDefault
+					? t("ui.chat.session_status.session_model.fallbackdefault", {
+							fallbackDefault,
+						})
+					: "",
+				ladder: ladder.join(", "),
+			}),
 		};
 
 	/*
@@ -695,8 +707,9 @@ export function effortState(
 			 * is the one act that resolves it, so that is what the sentence names
 			 * (UX round 3, U12).
 			 */
-			detail:
-				"This session has not reported its reasoning effort yet. It appears after the next turn, or run /effort <level> to set one now.",
+			detail: t(
+				"ui.chat.session_status.session_model.this_session_has_not_reported_its_reasoning_effort_yet_it",
+			),
 		};
 	// Ladder present and EMPTY: a reasoning model with no rungs to choose from.
 	if (ladder && model.reasoning)
@@ -707,8 +720,9 @@ export function effortState(
 			// it is the only source entitled to make this control read-only.
 			knownLadder: true,
 			levelKnown: true,
-			detail:
-				"This model reasons, but exposes no effort levels to choose between.",
+			detail: t(
+				"ui.chat.session_status.session_model.this_model_reasons_but_exposes_no_effort_levels_to_choose",
+			),
 		};
 
 	// Ladder UNKNOWN (an owner that predates the field). The default level is
@@ -720,8 +734,9 @@ export function effortState(
 			adjustable: false,
 			knownLadder: false,
 			levelKnown: true,
-			detail:
-				"The level this model runs at by default. This backend does not report which other levels it accepts.",
+			detail: t(
+				"ui.chat.session_status.session_model.the_level_this_model_runs_at_by_default_this_backend",
+			),
 		};
 
 	// Non-reasoning, or an old backend with nothing to say. Rendering nothing
@@ -785,7 +800,10 @@ export function reconcileEffort(
 	return {
 		...state,
 		adjustable: true,
-		detail: `Reasoning effort. This model offers ${rungs.join(", ")}.`,
+		detail: t(
+			"ui.chat.session_status.session_model.reasoning_effort_this_model_offers_value",
+			{ value: rungs.join(", ") },
+		),
 	};
 }
 
@@ -880,7 +898,7 @@ export function modelAccessReading(
 			owner:
 				wireWords(access.owner_label) ||
 				wireWords(access.owner_device) ||
-				"the owner device",
+				t("ui.chat.session_status.session_model.the_owner_device"),
 			observedAt: epochSeconds(access.observed_at),
 			lastGrantAt: epochSeconds(access.last_grant_at),
 			lastGrantExpiresAt: epochSeconds(access.last_grant_expires_at),
@@ -972,45 +990,86 @@ export function modelAccessPresentation(access: ModelAccessReading): {
 	canSwitchModel: boolean;
 } {
 	const { label, effectiveState } = access;
-	const owner = access.owner || "the owner device";
+	const owner =
+		access.owner || t("ui.chat.session_status.session_model.the_owner_device");
 	const readings: Record<CanonicalEffectiveAccessState, [string, string]> = {
 		local: [
-			`${label} access available`,
-			"This session uses its own provider access.",
+			t("ui.chat.session_status.session_model.label_access_available", {
+				label,
+			}),
+			t(
+				"ui.chat.session_status.session_model.this_session_uses_its_own_provider_access",
+			),
 		],
 		pending: [
-			`Checking ${label} access`,
-			"Access has not converged yet. The next request checks the owner automatically; no additional sign-in is needed here.",
+			t("ui.chat.session_status.session_model.checking_label_access", {
+				label,
+			}),
+			t(
+				"ui.chat.session_status.session_model.access_has_not_converged_yet_the_next_request_checks_the",
+			),
 		],
 		eligible_borrow_unverified: [
-			`Checking access from ${owner}`,
-			`This session may borrow ${label} access, but it has not resolved it yet. The next request verifies ${owner} automatically.`,
+			t("ui.chat.session_status.session_model.checking_access_from_owner", {
+				owner,
+			}),
+			t(
+				"ui.chat.session_status.session_model.this_session_may_borrow_label_access_but_it_has_not",
+				{ label, owner },
+			),
 		],
 		effective_borrow: [
-			`${label} access from ${owner}`,
-			"The runtime resolved borrowed access for this session. Every new request checks the owner again.",
+			t("ui.chat.session_status.session_model.label_access_from_owner", {
+				label,
+				owner,
+			}),
+			t(
+				"ui.chat.session_status.session_model.the_runtime_resolved_borrowed_access_for_this_session_every_new",
+			),
 		],
 		expired: [
-			`Fresh ${label} access needed`,
-			`The last borrowed grant expired, but borrowing permission is still present. The next request asks ${owner} for fresh access automatically.`,
+			t("ui.chat.session_status.session_model.fresh_label_access_needed", {
+				label,
+			}),
+			t(
+				"ui.chat.session_status.session_model.the_last_borrowed_grant_expired_but_borrowing_permission_is_still",
+				{ owner },
+			),
 		],
 		withdrawn: [
-			`${label} access needs attention`,
-			"The owner cannot currently provide borrowed access, or borrowing permission is unavailable. Restore owner access or permission before retrying, or choose another model.",
+			t("ui.chat.session_status.session_model.label_access_needs_attention", {
+				label,
+			}),
+			t(
+				"ui.chat.session_status.session_model.the_owner_cannot_currently_provide_borrowed_access_or_borrowing_permission",
+			),
 		],
 		owner_unavailable: [
-			`${owner} cannot provide access`,
-			`This session could not resolve ${label} access from ${owner}. Previous access cannot be reused. Retry after owner access is restored, or choose another model.`,
+			t("ui.chat.session_status.session_model.owner_cannot_provide_access", {
+				owner,
+			}),
+			t(
+				"ui.chat.session_status.session_model.this_session_could_not_resolve_label_access_from_owner_previous",
+				{ label, owner },
+			),
 		],
 		device_bound: [
-			`${label} needs a device sign-in`,
-			"This login cannot be borrowed. Sign in on the device running this session, or choose another model.",
+			t("ui.chat.session_status.session_model.label_needs_a_device_sign_in", {
+				label,
+			}),
+			t(
+				"ui.chat.session_status.session_model.this_login_cannot_be_borrowed_sign_in_on_the_device",
+			),
 		],
 		absent: [
 			`No ${label} access`,
 			access.connectHere === true
-				? "The serving device has no effective provider access for this session. Connect an account or choose another model."
-				: "The device running this session has no effective provider access. Sign in or restore access on that device, or choose another model.",
+				? t(
+						"ui.chat.session_status.session_model.the_serving_device_has_no_effective_provider_access_for_this",
+					)
+				: t(
+						"ui.chat.session_status.session_model.the_device_running_this_session_has_no_effective_provider_access",
+					),
 		],
 	};
 	const legacyUnavailable = access.state === "temporarily_unavailable";
@@ -1018,22 +1077,43 @@ export function modelAccessPresentation(access: ModelAccessReading): {
 		? readings[effectiveState]
 		: [
 				legacyUnavailable
-					? `${label} is temporarily unavailable`
-					: `Not signed in to ${label}`,
+					? t(
+							"ui.chat.session_status.session_model.label_is_temporarily_unavailable",
+							{ label },
+						)
+					: t("ui.chat.session_status.session_model.not_signed_in_to_label", {
+							label,
+						}),
 				legacyUnavailable
-					? "Your saved sign-in is still present. Try again later or choose another model."
-					: `This session runs ${label} without a working sign-in, so it cannot answer until you connect it.`,
+					? t(
+							"ui.chat.session_status.session_model.your_saved_sign_in_is_still_present_try_again_later",
+						)
+					: t(
+							"ui.chat.session_status.session_model.this_session_runs_label_without_a_working_sign_in_so",
+							{ label },
+						),
 			];
 	const context: string[] = [];
 	if (effectiveState && access.observedAt !== undefined) {
-		context.push(`Last checked: ${accessTime(access.observedAt)}.`);
+		context.push(
+			t("ui.chat.session_status.session_model.last_checked_accesstimevalue", {
+				accessTimeValue: accessTime(access.observedAt),
+			}),
+		);
 	}
 	if (effectiveState && access.lastGrantAt !== undefined) {
-		context.push(`Last resolved: ${accessTime(access.lastGrantAt)}.`);
+		context.push(
+			t("ui.chat.session_status.session_model.last_resolved_accesstimevalue", {
+				accessTimeValue: accessTime(access.lastGrantAt),
+			}),
+		);
 	}
 	if (effectiveState && access.lastGrantExpiresAt !== undefined) {
 		context.push(
-			`Recorded grant expiry: ${accessTime(access.lastGrantExpiresAt)}.`,
+			t(
+				"ui.chat.session_status.session_model.recorded_grant_expiry_accesstimevalue",
+				{ accessTimeValue: accessTime(access.lastGrantExpiresAt) },
+			),
 		);
 	}
 	if (
@@ -1041,7 +1121,11 @@ export function modelAccessPresentation(access: ModelAccessReading): {
 		(access.lastGrantAt !== undefined ||
 			access.lastGrantExpiresAt !== undefined)
 	) {
-		context.push("History only; not permission to reuse access.");
+		context.push(
+			t(
+				"ui.chat.session_status.session_model.history_only_not_permission_to_reuse_access",
+			),
+		);
 	}
 	return {
 		title,

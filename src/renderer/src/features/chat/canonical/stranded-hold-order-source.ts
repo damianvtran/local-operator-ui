@@ -1,4 +1,5 @@
 import fixtureJson from "../../../../../../scripts/fixtures/stranded-send-order.json";
+import { t } from "../../../../../i18n/messages";
 import type { DesktopHistoryPage } from "../../../../../shared/desktop-session-contract";
 
 /**
@@ -34,7 +35,11 @@ export function capturedOrderPage(
 		entries: entries.map((row) => {
 			const seq = capturedJournalOrdinals.get(row.id);
 			if (seq === undefined)
-				throw new Error("Entry is not in the captured journal windows");
+				throw new Error(
+					t(
+						"ui.chat.canonical.stranded_hold_order_source.entry_is_not_in_the_captured_journal_windows",
+					),
+				);
 			return { ...row, journal_seq: seq };
 		}),
 		has_more: true,

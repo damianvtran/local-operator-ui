@@ -60,9 +60,11 @@ export type FileActionsMenuProps = {
  */
 export const FileActionsMenu = ({
 	filePath,
-	tooltip = "File actions",
+	tooltip = t("ui.common.actions.file_actions_menu.file_actions"),
 	icon,
-	"aria-label": ariaLabel = "File actions",
+	"aria-label": ariaLabel = t(
+		"ui.common.actions.file_actions_menu.file_actions",
+	),
 	onShowInCanvas,
 	onPreview,
 }: FileActionsMenuProps) => {
@@ -71,10 +73,14 @@ export const FileActionsMenu = ({
 		if (!filePath) return;
 		try {
 			await navigator.clipboard.writeText(filePath);
-			showSuccessToast("File path copied to clipboard");
+			showSuccessToast(
+				t("ui.common.actions.file_actions_menu.file_path_copied_to_clipboard"),
+			);
 		} catch (err) {
 			console.error("Failed to copy file path: ", err);
-			showErrorToast("Failed to copy file path");
+			showErrorToast(
+				t("ui.common.actions.file_actions_menu.failed_to_copy_file_path"),
+			);
 		}
 	};
 

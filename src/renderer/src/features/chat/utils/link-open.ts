@@ -17,7 +17,8 @@
 
 import { showExternalOpenRefusal } from "@shared/lib/external-open-refusal";
 import { showErrorToast } from "@shared/utils/toast-manager";
-import { getFileName } from "./get-file-name";
+import { t } from "../../../../../i18n/messages";
+import { fileNameForDisplay } from "./get-file-name";
 import { type LinkKind, forgetProbe } from "./link-actions";
 
 /**
@@ -41,7 +42,10 @@ export const selectionTouches = (element: Element): boolean => {
 
 /** The one sentence a press that could not open something says. */
 const openFailure = (target: string): string =>
-	`Could not open ${getFileName(target)}. The file may have been moved, renamed, or deleted.`;
+	t(
+		"ui.chat.link_open.could_not_open_getfilenamevalue_the_file_may_have_been_moved",
+		{ getFileNameValue: fileNameForDisplay(target) },
+	);
 
 /**
  * Open a LOCAL path in the OS's own application.
@@ -108,7 +112,7 @@ export async function copyTarget(target: string): Promise<boolean> {
 		return true;
 	} catch (error) {
 		console.error("Failed to copy: ", error);
-		showErrorToast("Failed to copy");
+		showErrorToast(t("ui.chat.link_open.failed_to_copy"));
 		return false;
 	}
 }

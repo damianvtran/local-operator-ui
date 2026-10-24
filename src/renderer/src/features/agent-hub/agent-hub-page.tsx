@@ -25,7 +25,7 @@ import {
 } from "@shared/components/ui";
 import { usePairingCause } from "@shared/hooks/use-pairing-cause";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
-import { t } from "@shared/i18n";
+import { type WithoutParams, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Building2, Globe, Store } from "lucide-react";
@@ -69,41 +69,46 @@ import { orgSurfaceNotice, orgSurfaceReady } from "./org-surface-gate";
  */
 const SORT_OPTIONS: {
 	value: string;
-	label: string;
+	labelKey: WithoutParams;
 	sort: PublicAgentSort;
 	order: "asc" | "desc";
 }[] = [
 	{
 		value: "download_count:desc",
-		label: "Most downloaded",
+		labelKey: "ui.hub.agents.sort_most_downloaded",
 		sort: "download_count",
 		order: "desc",
 	},
 	{
 		value: "like_count:desc",
-		label: "Most liked",
+		labelKey: "ui.hub.agents.sort_most_liked",
 		sort: "like_count",
 		order: "desc",
 	},
 	{
 		value: "favourite_count:desc",
-		label: "Most favourited",
+		labelKey: "ui.hub.agents.sort_most_favourited",
 		sort: "favourite_count",
 		order: "desc",
 	},
 	{
 		value: "created_at:desc",
-		label: "Newest",
+		labelKey: "ui.hub.agents.sort_newest",
 		sort: "created_at",
 		order: "desc",
 	},
 	{
 		value: "updated_at:desc",
-		label: "Recently updated",
+		labelKey: "ui.hub.agents.sort_recently_updated",
 		sort: "updated_at",
 		order: "desc",
 	},
-	{ value: "name:asc", label: "Name (A to Z)", sort: "name", order: "asc" },
+	{
+		value: "name:asc",
+		labelKey: "ui.hub.agents.sort_name_ascending",
+		sort: "name",
+		order: "asc",
+	},
 ];
 
 /**
@@ -116,8 +121,8 @@ const SORT_OPTIONS: {
  * the control that says which question is being asked.
  */
 const SEARCH_SCOPES = [
-	{ value: "name", label: "Name" },
-	{ value: "description", label: "Description" },
+	{ value: "name", labelKey: "ui.hub.agents.search_name" },
+	{ value: "description", labelKey: "ui.hub.agents.search_description" },
 ] as const;
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -715,11 +720,17 @@ export const AgentHubPage: React.FC = () => {
 	 * waiting for instead of an empty line - an empty line is a line box less of
 	 * layout (D1).
 	 */
-	const scopePhrase = orgScopeId
-		? `shared with ${orgName ?? "this organization"}`
-		: "in the public hub";
-	const countPhrase = (count: number, noun: string) =>
-		`${count} ${noun}${count === 1 ? "" : "s"} ${scopePhrase}`;
+	const organizationName = orgName ?? t("ui.hub.agents.this_organization");
+	const countPhrase = (count: number, kind: "agent" | "team") => {
+		if (orgScopeId) {
+			return t("ui.hub.agents.status_count_organization", {
+				count,
+				kind,
+				organization: organizationName,
+			});
+		}
+		return t("ui.hub.agents.status_count_public", { count, kind });
+	};
 	let statusSentence: string;
 	if (view === "skills") {
 		statusSentence = "\u00a0"; // The sibling owns its source/count/loading line.
@@ -731,28 +742,32 @@ export const AgentHubPage: React.FC = () => {
 		 * replaced). A non-breaking space, not "", so the line keeps its box (D1).
 		 */
 		if (!orgScopeId) statusSentence = "\u00a0";
-		else if (teamsQuery.isLoading) statusSentence = "Loading teams…";
+		else if (teamsQuery.isLoading)
+			statusSentence = t("ui.hub.agents.loading_teams");
 		else if (teamsTabCount !== null)
 			statusSentence = countPhrase(teamsTabCount, "team");
 		/*
 		 * A refused or failed read still says WHOSE view this is (agent review
 		 * round 1, m5): the line used to go to zero height here and the roster's
 		 * alert landed 17px higher than in every other state.
-		 */ else statusSentence = `Teams ${scopePhrase}`;
+		 */ else
+			statusSentence = t("ui.hub.agents.status_teams_organization", {
+				organization: organizationName,
+			});
 	} else if (isColdLoading) {
-		statusSentence = "Loading agents…";
+		statusSentence = t("ui.hub.agents.loading_agents");
 	} else if (pagination) {
 		statusSentence = countPhrase(pagination.totalRecords, "agent");
 	} else {
-		statusSentence = `Agents ${scopePhrase}`;
+		statusSentence = t("ui.hub.agents.status_agents_public");
 	}
 
 	return (
 		/* `gap-8`: `PageHeader` no longer ships its own bottom margin. */
 		<div className="flex h-full flex-col gap-8 p-6">
 			<PageHeader
-				title="Agent Hub"
-				subtitle="Discover and download agents, teams and skills on Radient"
+				title={t("ui.hub.agents.hub_title")}
+				subtitle={t("ui.hub.agents.hub_subtitle")}
 				icon={Store}
 			/>
 			{/*
@@ -792,7 +807,9 @@ export const AgentHubPage: React.FC = () => {
 						className="max-w-2xl"
 						data-testid="agent-hub-org-unavailable"
 					>
-						<AlertTitle>Organizations are unavailable</AlertTitle>
+						<AlertTitle>
+							{t("ui.hub.agents.organizations_unavailable")}
+						</AlertTitle>
 						<AlertDescription>{orgNotice}</AlertDescription>
 					</Alert>
 				)}
@@ -827,7 +844,7 @@ export const AgentHubPage: React.FC = () => {
 					data-testid="agent-hub-browse-bar"
 				>
 					<Tabs value={view} onValueChange={(next) => setView(next as HubView)}>
-						<TabsList aria-label="Browse the hub by type">
+						<TabsList aria-label={t("ui.hub.agents.browse_by_type")}>
 							{(
 								[
 									"agents",
@@ -891,23 +908,25 @@ export const AgentHubPage: React.FC = () => {
 							 * `aria-hidden` rather than announced twice.
 							 */}
 							<span aria-hidden="true" className="text-meta text-ink-muted">
-								Showing
+								{t("ui.hub.agents.showing")}
 							</span>
 							<fieldset
 								className="m-0 min-w-0 border-0 p-0"
 								data-testid="agent-hub-scope"
 							>
-								<legend className="sr-only">Show the hub of</legend>
+								<legend className="sr-only">
+									{t("ui.hub.agents.show_hub_of")}
+								</legend>
 								<div className="flex flex-wrap gap-0.5 rounded-md bg-sunken p-0.5">
 									{[
 										{
 											value: PUBLIC_SCOPE,
-											label: "Public hub",
+											label: t("ui.hub.agents.public_hub"),
 											Icon: Globe,
 										},
 										...selectableOrgs.map((org) => ({
 											value: org.tenant_id,
-											label: org.tenant_name || "Organization",
+											label: org.tenant_name || t("ui.hub.agents.organization"),
 											Icon: Building2,
 										})),
 									].map(({ value, label, Icon }) => (
@@ -1025,8 +1044,8 @@ export const AgentHubPage: React.FC = () => {
 											 * right already says which field is searched, and a placeholder
 											 * derived from it was the same sentence twice.
 											 */
-											placeholder="Search agents"
-											aria-label="Search agents"
+											placeholder={t("ui.hub.agents.search_agents")}
+											aria-label={t("ui.hub.agents.search_agents")}
 											className="h-8 min-w-0 flex-1 border-0 bg-transparent outline-none"
 											data-testid="agent-hub-search"
 										/>
@@ -1042,7 +1061,7 @@ export const AgentHubPage: React.FC = () => {
 												 * that. `w-auto` because the trigger's own variant is full-width.
 												 */
 												className="w-auto shrink-0 border-y-0 border-l border-hairline border-r-0 bg-transparent pl-2 outline-none"
-												aria-label="Search in"
+												aria-label={t("ui.hub.agents.search_in")}
 												data-testid="agent-hub-search-scope"
 											>
 												<SelectValue />
@@ -1050,7 +1069,7 @@ export const AgentHubPage: React.FC = () => {
 											<SelectContent>
 												{SEARCH_SCOPES.map((scope) => (
 													<SelectItem key={scope.value} value={scope.value}>
-														{scope.label}
+														{t(scope.labelKey)}
 													</SelectItem>
 												))}
 											</SelectContent>
@@ -1059,7 +1078,7 @@ export const AgentHubPage: React.FC = () => {
 									<Select value={sortValue} onValueChange={setSortValue}>
 										<SelectTrigger
 											className="w-48"
-											aria-label="Sort agents"
+											aria-label={t("ui.hub.agents.sort_agents")}
 											data-testid="agent-hub-sort"
 										>
 											<SelectValue />
@@ -1067,7 +1086,7 @@ export const AgentHubPage: React.FC = () => {
 										<SelectContent>
 											{SORT_OPTIONS.map((option) => (
 												<SelectItem key={option.value} value={option.value}>
-													{option.label}
+													{t(option.labelKey)}
 												</SelectItem>
 											))}
 										</SelectContent>
@@ -1111,7 +1130,9 @@ export const AgentHubPage: React.FC = () => {
 								{view === "agents" && isRefreshing ? (
 									<>
 										{" "}
-										<span data-testid="agent-hub-updating">Updating…</span>
+										<span data-testid="agent-hub-updating">
+											{t("ui.hub.agents.updating")}
+										</span>
 									</>
 								) : null}
 							</p>
@@ -1137,8 +1158,7 @@ export const AgentHubPage: React.FC = () => {
 											data-testid="agent-hub-status-unknown"
 										>
 											<span>
-												Your likes and favourites could not be read, so no card
-												shows a viewer state.
+												{t("ui.hub.agents.cards_viewer_state_unavailable")}
 											</span>
 											<Button
 												variant="ghost"
@@ -1147,7 +1167,9 @@ export const AgentHubPage: React.FC = () => {
 												disabled={viewerStateIsFetching}
 												aria-busy={viewerStateIsFetching}
 											>
-												{viewerStateIsFetching ? "Trying…" : "Try again"}
+												{viewerStateIsFetching
+													? t("ui.hub.agents.trying")
+													: t("ui.hub.agents.try_again")}
 											</Button>
 										</output>
 									)}
@@ -1224,8 +1246,8 @@ export const AgentHubPage: React.FC = () => {
 											>
 												<AlertTitle>
 													{isAuthenticated
-														? "The hub could not be loaded"
-														: "Sign in to use the hub"}
+														? t("ui.hub.agents.hub_load_failed")
+														: t("ui.hub.agents.sign_in_to_use")}
 												</AlertTitle>
 												<AlertDescription>
 													{/*
@@ -1245,10 +1267,10 @@ export const AgentHubPage: React.FC = () => {
 													 */}
 													{isAuthenticated
 														? backendLoadErrorMessage(
-																"The agent list could not be loaded.",
+																t("ui.hub.agents.list_load_failed"),
 																error,
 															)
-														: "You are not signed in to Radient, so the hub has no credential to read the agent list with. Sign in on the settings page, then try again."}
+														: t("ui.hub.agents.sign_in_required_body")}
 												</AlertDescription>
 												{/*
 												 * The retry is a SIBLING of the description, not a child of it:
@@ -1276,7 +1298,9 @@ export const AgentHubPage: React.FC = () => {
 														disabled={isFetching}
 														aria-busy={isFetching}
 													>
-														{isFetching ? "Trying…" : "Try again"}
+														{isFetching
+															? t("ui.hub.agents.trying")
+															: t("ui.hub.agents.try_again")}
 													</Button>
 												</div>
 											</Alert>
@@ -1308,13 +1332,21 @@ export const AgentHubPage: React.FC = () => {
 										>
 											<AlertTitle>
 												{orgRefusal === "plan"
-													? "That organization needs an active Team plan"
-													: "You do not have access to that organization"}
+													? t("ui.hub.agents.team_plan_required")
+													: t("ui.hub.agents.organization_access_denied")}
 											</AlertTitle>
 											<AlertDescription>
 												{orgRefusal === "plan"
-													? `Sharing agents inside an organization is part of the Team plan. An owner of ${activeOrg.tenant_name || "this organization"} can activate it in the Radient console, and then its agents will be listed here.`
-													: `You are not a member of ${activeOrg.tenant_name || "that organization"}, so its agents are not listed here. An owner can invite you again.`}
+													? t("ui.hub.agents.team_plan_body", {
+															organization:
+																activeOrg.tenant_name ||
+																t("ui.hub.agents.this_organization"),
+														})
+													: t("ui.hub.agents.organization_access_denied_body", {
+															organization:
+																activeOrg.tenant_name ||
+																t("ui.hub.agents.that_organization"),
+														})}
 											</AlertDescription>
 											{orgRefusal === "plan" && (
 												<div className="mt-2">
@@ -1334,7 +1366,9 @@ export const AgentHubPage: React.FC = () => {
 														disabled={isFetching}
 														aria-busy={isFetching}
 													>
-														{isFetching ? "Trying…" : "Try again"}
+														{isFetching
+															? t("ui.hub.agents.trying")
+															: t("ui.hub.agents.try_again")}
 													</Button>
 												</div>
 											)}
@@ -1400,12 +1434,15 @@ export const AgentHubPage: React.FC = () => {
 												>
 													<p className="text-heading text-ink">
 														{orgScopeId
-															? "This organization has no shared agents yet."
+															? t("ui.hub.agents.no_org_agents")
 															: selectedCategory
-																? `No agents in ${categoryEntry(selectedCategory).label}.`
+																? t("ui.hub.agents.no_agents_in_category", {
+																		category:
+																			categoryEntry(selectedCategory).label,
+																	})
 																: hasFilters
-																	? "No agents match that search."
-																	: "The hub is empty."}
+																	? t("ui.hub.agents.no_search_matches")
+																	: t("ui.hub.agents.hub_empty")}
 													</p>
 													<p className="max-w-md text-body-sm text-ink-muted">
 														{/*
@@ -1421,12 +1458,16 @@ export const AgentHubPage: React.FC = () => {
 														 * (design §8.4 keeps the two namespaces distinct).
 														 */}
 														{orgScopeId
-															? `Agents published into ${activeOrg?.tenant_name || "this organization"} appear here for its members.`
+															? t("ui.hub.agents.org_agents_body", {
+																	organization:
+																		activeOrg?.tenant_name ||
+																		t("ui.hub.agents.this_organization"),
+																})
 															: selectedCategory
-																? "Nothing in this category yet. Clear the filter to see the whole hub."
+																? t("ui.hub.agents.empty_category_body")
 																: hasFilters
-																	? "No agent's name or description carries that. Clear it to see the whole hub."
-																	: "Nobody has published an agent yet. Yours could be the first."}
+																	? t("ui.hub.agents.empty_search_body")
+																	: t("ui.hub.agents.empty_hub_body")}
 													</p>
 													<div className="mt-2 flex flex-wrap items-center justify-center gap-2">
 														{hasFilters ? (
@@ -1448,8 +1489,8 @@ export const AgentHubPage: React.FC = () => {
 																onClick={handleClearFilters}
 															>
 																{selectedCategory
-																	? "Clear filter"
-																	: "Clear search"}
+																	? t("ui.hub.agents.clear_filter")
+																	: t("ui.hub.agents.clear_search")}
 															</Button>
 														) : orgScopeId && !canPublishToOrg ? /*
 														 * A MEMBER WHO CANNOT PUBLISH GETS NO CONTROL, rather than one the hub
@@ -1464,7 +1505,7 @@ export const AgentHubPage: React.FC = () => {
 																variant="secondary"
 																onClick={() => navigate("/agents")}
 															>
-																Publish an agent
+																{t("ui.hub.agents.publish_agent")}
 															</Button>
 														)}
 													</div>

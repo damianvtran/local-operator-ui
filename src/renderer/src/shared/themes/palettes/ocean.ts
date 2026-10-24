@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -39,7 +40,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const ocean: ThemeDefinition = {
 	id: "ocean",
 	name: "Ocean",
-	description: "Deep-sea blue-green under a pale sea-foam accent.",
+	get description() {
+		return t("ui.settings.appearance.theme.ocean");
+	},
 	palette: {
 		mode: "dark",
 		/*

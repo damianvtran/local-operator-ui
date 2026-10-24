@@ -43,6 +43,7 @@
  * unrecognised failure is the defect class this whole change exists to remove.
  */
 
+import { t } from "../../../../i18n/messages";
 import {
 	type TransportFragment,
 	stripErrorPrefixes,
@@ -77,8 +78,8 @@ export interface UpdateErrorCopy {
  * act on. The action named is the one that works - the connection, then try
  * again - because the transient shape is exactly the one a retry fixes.
  */
-const UPDATE_SERVER_UNREACHABLE =
-	"The app could not reach the update server. Check this machine's connection, then try again.";
+const updateServerUnreachable = (): string =>
+	t("ui.common.updates.error.server_unreachable");
 
 /**
  * The download stage's own sentence, and WHY IT NAMES THE ACTION IT CAN KEEP.
@@ -102,11 +103,15 @@ const UPDATE_SERVER_UNREACHABLE =
  * every case.
  */
 const UPDATE_STAGE_SENTENCE: Record<UpdateStage, string> = {
-	download:
-		"The update could not be downloaded. Check this machine's connection, then start the download again.",
-	install:
-		"The update could not be installed. Check this machine's connection, then start it again from the update panel.",
-	quit: "The app could not quit to finish the install. Quit the app yourself, then let the update finish.",
+	get download() {
+		return t("ui.common.updates.error.download");
+	},
+	get install() {
+		return t("ui.common.updates.error.install");
+	},
+	get quit() {
+		return t("ui.common.updates.error.quit");
+	},
 };
 
 /**
@@ -120,8 +125,8 @@ const UPDATE_STAGE_SENTENCE: Record<UpdateStage, string> = {
  * sentence: the machine's own words go to the line below for whoever has to
  * read them.
  */
-const UPDATE_CHECK_INCOMPLETE =
-	"The update check could not finish. The app will try again at its next check.";
+const updateCheckIncomplete = (): string =>
+	t("ui.common.updates.error.check_incomplete");
 
 /**
  * How long an app-authored label may be before it is machine wrapping.
@@ -277,7 +282,7 @@ export function updateErrorCopy(message: string): UpdateErrorCopy {
 			return { sentence: cleaned, detail: null, action: null };
 		}
 		return {
-			sentence: UPDATE_CHECK_INCOMPLETE,
+			sentence: updateCheckIncomplete(),
 			detail: cleaned === "" ? null : cleaned,
 			action: null,
 		};
@@ -300,7 +305,7 @@ export function updateErrorCopy(message: string): UpdateErrorCopy {
 	 * sentence takes the whole message.
 	 */
 	if (!fragment.clause) {
-		return { sentence: UPDATE_SERVER_UNREACHABLE, detail, action };
+		return { sentence: updateServerUnreachable(), detail, action };
 	}
 	/*
 	 * AND THE SURVIVING PREFIX HAS TO BE THE APP'S OWN LABEL, which is where the
@@ -316,10 +321,10 @@ export function updateErrorCopy(message: string): UpdateErrorCopy {
 	const prefix = cleaned.slice(0, fragment.start);
 	const tail = cleaned.slice(fragment.end).trim();
 	if (!isAuthoredLabel(prefix) || (tail !== "" && !isAuthoredLabel(tail))) {
-		return { sentence: UPDATE_SERVER_UNREACHABLE, detail, action };
+		return { sentence: updateServerUnreachable(), detail, action };
 	}
 	return {
-		sentence: `${prefix}${UPDATE_SERVER_UNREACHABLE}${cleaned.slice(fragment.end)}`,
+		sentence: `${prefix}${updateServerUnreachable()}${cleaned.slice(fragment.end)}`,
 		detail,
 		action,
 	};

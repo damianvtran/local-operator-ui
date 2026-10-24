@@ -13,9 +13,11 @@ import {
 	SecondaryButton,
 } from "@shared/components/common/base-dialog";
 import { Alert } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { t } from "../../../../../../i18n/messages";
 import {
 	type McpFailure,
 	type McpFailureAction,
@@ -37,13 +39,30 @@ import type { McpRemedyControls } from "./use-mcp-remedy";
  * classified from it — and a render-time recomputation from `state` alone could
  * not know either.
  */
+/**
+ * What a probe that ANSWERED settled on, as a stable code.
+ *
+ * WHY NOT THE SENTENCE: this state is written when the probe resolves. A
+ * translated string kept here freezes the language of that moment, and the
+ * dialog — re-rendered in place on a language switch — would keep showing it.
+ * `probeNoticeMessage` translates the code at render time instead.
+ */
+type ProbeNotice =
+	/** The backend predates secure key entry (and OAuth did not apply). */
+	| "backend-too-old"
+	/** The server declares neither OAuth nor a secret reference. */
+	| "no-sign-in-declared"
+	/** The probe answered, but nothing in it names a method. */
+	| "undetermined";
+
 type Transition =
 	| { kind: "probing" }
 	| { kind: "grant" }
 	| { kind: "running" }
+	/** A probe that ANSWERED without opening a sign-in: a code, not a sentence. */
 	| {
 			kind: "notice";
-			failure: McpFailure;
+			notice: ProbeNotice;
 			actions: McpFailureAction[];
 			/**
 			 * The callout the state wears, and the distinction is the one the app
@@ -53,9 +72,39 @@ type Transition =
 			 * simply cannot continue from here (design review round 3, D1: the refusal
 			 * was chromatically identical to an informational dialog).
 			 */
-			severity: "danger" | "warning";
+			severity: "warning";
+	  }
+	/** The probe itself FAILED; `mcpFailure` classified it. */
+	| {
+			kind: "notice";
+			failure: McpFailure;
+			actions: McpFailureAction[];
+			severity: "danger";
 	  }
 	| { kind: "key"; row: McpServerRow };
+
+/**
+ * The sentence for a probe that answered without opening a sign-in.
+ *
+ * Read at render, not at probe time: the code is what the state carries, so a
+ * language switch re-labels an open dialog without re-running the probe.
+ */
+const probeNoticeMessage = (notice: ProbeNotice): string => {
+	switch (notice) {
+		case "backend-too-old":
+			return t(
+				"ui.chat.run_details.mcp_auth_dialog.update_the_backend_for_secure_mcp_key_entry_oauth_and",
+			);
+		case "no-sign-in-declared":
+			return t(
+				"ui.chat.run_details.mcp_auth_dialog.this_server_does_not_use_oauth_and_declares_no_secret",
+			);
+		case "undetermined":
+			return t(
+				"ui.chat.run_details.mcp_auth_dialog.could_not_determine_this_servers_sign_in_method_check_its",
+			);
+	}
+};
 
 /** One transition owner for slash, sidebar and Settings. A false probe cannot
  * redispatch the original row's stale OAuth remedy. The backend owns consent,
@@ -86,6 +135,7 @@ export function McpAuthDialog({
 	remedy: McpRemedyControls;
 	onClose: () => void;
 }) {
+	useI18nLocale();
 	// The dialog is keyed by session/name. Polling must not reset a masked form.
 	const [row] = useState(initialRow);
 	const navigate = useNavigate();
@@ -140,16 +190,11 @@ export function McpAuthDialog({
 				setState({
 					kind: "notice",
 					severity: "warning",
-					failure: {
-						cause: "unknown",
-						phase: "probe",
-						detail: null,
-						message: !secure
-							? "Update the backend for secure MCP key entry. OAuth and the server list remain available."
-							: probe.transport_oauth_supported === false
-								? "This server does not use OAuth and declares no secret references. Add explicit ${NAME} references to its MCP environment or headers, then retry."
-								: "Could not determine this server's sign-in method. Check its connection and MCP setup, then retry.",
-					},
+					notice: !secure
+						? "backend-too-old"
+						: probe.transport_oauth_supported === false
+							? "no-sign-in-declared"
+							: "undetermined",
 					actions: mcpConfigActions(),
 				});
 			})
@@ -209,11 +254,19 @@ export function McpAuthDialog({
 				open
 				onClose={onClose}
 				maxWidth="sm"
-				title="Sign in to an MCP server"
-				actions={<SecondaryButton onClick={onClose}>Close</SecondaryButton>}
+				title={t(
+					"ui.chat.run_details.mcp_auth_dialog.sign_in_to_an_mcp_server",
+				)}
+				actions={
+					<SecondaryButton onClick={onClose}>
+						{t("ui.common.actions.close")}
+					</SecondaryButton>
+				}
 			>
 				<p className="p-1.5 text-body text-ink-muted" role="alert">
-					Open a conversation to sign in to this server.
+					{t(
+						"ui.chat.run_details.mcp_auth_dialog.open_a_conversation_to_sign_in_to_this_server",
+					)}
 				</p>
 			</BaseDialog>
 		);
@@ -315,10 +368,14 @@ export function McpAuthDialog({
 			open
 			onClose={onClose}
 			maxWidth="sm"
-			title={`Sign in to ${row.name}`}
+			title={t("ui.chat.run_details.mcp_auth_dialog.sign_in_to_name", {
+				name: row.name,
+			})}
 			actions={
 				<>
-					<SecondaryButton onClick={onClose}>Close</SecondaryButton>
+					<SecondaryButton onClick={onClose}>
+						{t("ui.common.actions.close")}
+					</SecondaryButton>
 					{state.kind === "grant" ? (
 						<PrimaryButton
 							onClick={() => {
@@ -327,8 +384,10 @@ export function McpAuthDialog({
 							}}
 						>
 							{action === "reauth"
-								? "Replace grant and sign in"
-								: "Continue in browser"}
+								? t(
+										"ui.chat.run_details.mcp_auth_dialog.replace_grant_and_sign_in",
+									)
+								: t("ui.chat.run_details.mcp_auth_dialog.continue_in_browser")}
 						</PrimaryButton>
 					) : null}
 					{state.kind === "notice" ||
@@ -360,12 +419,12 @@ export function McpAuthDialog({
 						 * `notice` and a recorded press failure.
 						 */
 						<SecondaryButton onClick={() => setAttempt((value) => value + 1)}>
-							Try again
+							{t("ui.common.actions.retry_again")}
 						</SecondaryButton>
 					) : null}
 					{operation?.status === "running" ? (
 						<SecondaryButton onClick={() => remedy.cancel(operation.id)}>
-							Cancel sign-in
+							{t("ui.chat.run_details.mcp_auth_dialog.cancel_sign_in")}
 						</SecondaryButton>
 					) : null}
 				</>
@@ -373,7 +432,11 @@ export function McpAuthDialog({
 		>
 			<div className="flex flex-col gap-3 p-1.5 text-body text-ink-muted">
 				{state.kind === "probing" ? (
-					<p>Checking this server's sign-in method…</p>
+					<p>
+						{t(
+							"ui.chat.run_details.mcp_auth_dialog.checking_this_servers_sign_in_method",
+						)}
+					</p>
 				) : null}
 				{/*
 				 * The recorded press failure IS the state while it is on screen (see
@@ -395,11 +458,12 @@ export function McpAuthDialog({
 						 */}
 						<Alert variant={notice.severity}>
 							<div className="flex flex-col gap-1">
-								<p role="alert">{notice.failure.message}</p>
-								{/* The server's own words, verbatim, where they are a reason this
-								    build cannot restate — the same treatment the run panel gives a
-								    diagnosis, and machine voice for the same reason. */}
-								{notice.failure.detail ? (
+								<p role="alert">
+									{"notice" in notice
+										? probeNoticeMessage(notice.notice)
+										: notice.failure.message}
+								</p>
+								{"failure" in notice && notice.failure.detail ? (
 									<p
 										className="font-mono text-ink-dim text-mono-sm"
 										title={notice.failure.detail}
@@ -448,9 +512,13 @@ export function McpAuthDialog({
 				) : null}
 				{state.kind === "grant" ? (
 					<p>
-						Your browser opens to approve access.
+						{t(
+							"ui.chat.run_details.mcp_auth_dialog.your_browser_opens_to_approve_access",
+						)}
 						{action === "reauth"
-							? " This replaces the existing grant for this server."
+							? t(
+									"ui.chat.run_details.mcp_auth_dialog.this_replaces_the_existing_grant_for_this_server",
+								)
 							: ""}
 					</p>
 				) : null}
@@ -458,8 +526,16 @@ export function McpAuthDialog({
 					<p>
 						{operation?.message ||
 							(running
-								? "Waiting for backend sign-in status…"
-								: `Sign-in ${operation?.status ?? "status unavailable"}.`)}
+								? t(
+										"ui.chat.run_details.mcp_auth_dialog.waiting_for_backend_sign_in_status",
+									)
+								: t("ui.chat.run_details.mcp_auth_dialog.sign_in_value", {
+										value:
+											operation?.status ??
+											t(
+												"ui.chat.run_details.mcp_auth_dialog.status_unavailable",
+											),
+									}))}
 					</p>
 				) : null}
 				{statusFailure ? (

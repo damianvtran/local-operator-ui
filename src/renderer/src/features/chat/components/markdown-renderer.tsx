@@ -42,6 +42,7 @@ import { MarkdownImage } from "./markdown-image";
 import remarkGuardedMath from "./markdown-math-guarded";
 import { MarkdownTable } from "./markdown-table";
 import "./markdown.css";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { MAX_PROBE_PATHS } from "../../../../../shared/desktop-contract";
 import { containsRenderableMath } from "./markdown-math";
 import { MermaidDiagram } from "./mermaid-diagram";
@@ -183,6 +184,7 @@ const MarkdownAnchor: FC<{ href?: string; children?: React.ReactNode }> = ({
 	href,
 	children,
 }) => {
+	useI18nLocale();
 	const target = classifyHref(href);
 	const pane = useCanvasPane();
 	if (!target || target.kind === "other") {
@@ -850,6 +852,7 @@ ParsedBlock.displayName = "ParsedBlock";
  * diagram is an error card, so it stays source until it closes.
  */
 const OpenFenceBody = ({ info, body }: { info: string; body: string }) => {
+	useI18nLocale();
 	const language = info.split(WHITESPACE_RUN)[0];
 	return (
 		<pre>
@@ -893,6 +896,7 @@ export const StreamingMarkdown: FC<StreamingMarkdownProps> = ({
 	styleProps,
 	className,
 }) => {
+	useI18nLocale();
 	const scannerRef = useRef<BlockScanner | null>(null);
 	if (scannerRef.current === null) {
 		scannerRef.current = createBlockScanner();

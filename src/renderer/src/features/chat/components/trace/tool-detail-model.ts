@@ -1,3 +1,4 @@
+import { t } from "../../../../../../i18n/messages";
 /**
  * The expanded tool detail as DATA: which lines the pane prints and what each
  * one says.
@@ -70,7 +71,8 @@ export type DetailLine = {
 const MAX_DEPTH = 8;
 
 /** What a cut-off subtree prints instead of its leaves. */
-const DEEPER_VALUES = "… deeper values not shown";
+const DEEPER_VALUES = () =>
+	t("ui.chat.trace.tool_detail_model.deeper_values_not_shown");
 
 /**
  * The app's own spelling for a section that exists and holds nothing.
@@ -101,7 +103,7 @@ const INDENT = "  ";
  * than as the one argument it came from.
  */
 export function detailOverflowLabel(hidden: number): string {
-	return `… ${hidden} more line${hidden === 1 ? "" : "s"}`;
+	return t("ui.chat.trace.tool_detail_model.more_lines", { hidden });
 }
 
 /**
@@ -258,7 +260,7 @@ function walk(
 	out: DetailLine[],
 ): void {
 	if (depth > MAX_DEPTH) {
-		out.push({ key, value: DEEPER_VALUES, depth });
+		out.push({ key, value: DEEPER_VALUES(), depth });
 		return;
 	}
 	if (isContainer(value)) {

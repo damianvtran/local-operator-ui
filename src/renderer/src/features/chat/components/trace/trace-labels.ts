@@ -28,6 +28,7 @@ import {
 	PencilLine,
 	Share2,
 } from "lucide-react";
+import { t } from "../../../../../../i18n/messages";
 
 export type TraceLabel = {
 	/** Past-tense verb for a completed action: "Read", "Ran code". */
@@ -70,27 +71,87 @@ const ACTION_META: Record<
 	ActionType,
 	{ verb: string; runningVerb: string; icon: LucideIcon }
 > = {
-	READ: { verb: "Read", runningVerb: "Reading", icon: Book },
-	WRITE: { verb: "Wrote", runningVerb: "Writing", icon: Pencil },
-	EDIT: { verb: "Edited", runningVerb: "Editing", icon: PencilLine },
-	CODE: { verb: "Ran code", runningVerb: "Running code", icon: CodeXml },
+	READ: {
+		get verb() {
+			return t("ui.chat.trace.trace_labels.read");
+		},
+		get runningVerb() {
+			return t("ui.chat.trace.trace_labels.reading");
+		},
+		icon: Book,
+	},
+	WRITE: {
+		get verb() {
+			return t("ui.chat.trace.trace_labels.wrote");
+		},
+		get runningVerb() {
+			return t("ui.chat.trace.trace_labels.writing");
+		},
+		icon: Pencil,
+	},
+	EDIT: {
+		get verb() {
+			return t("ui.chat.trace.trace_labels.edited");
+		},
+		get runningVerb() {
+			return t("ui.chat.trace.trace_labels.editing");
+		},
+		icon: PencilLine,
+	},
+	CODE: {
+		get verb() {
+			return t("ui.chat.trace.trace_labels.ran_code");
+		},
+		get runningVerb() {
+			return t("ui.chat.trace.trace_labels.running_code");
+		},
+		icon: CodeXml,
+	},
 	DELEGATE: {
-		verb: "Delegated work",
-		runningVerb: "Delegating work",
+		get verb() {
+			return t("ui.chat.trace.trace_labels.delegated_work");
+		},
+		get runningVerb() {
+			return t("ui.chat.trace.trace_labels.delegating_work");
+		},
 		icon: Share2,
 	},
-	DONE: { verb: "Finished", runningVerb: "Finishing", icon: CircleCheck },
-	ASK: { verb: "Asked", runningVerb: "Asking", icon: CircleHelp },
+	DONE: {
+		get verb() {
+			return t("ui.chat.trace.trace_labels.finished");
+		},
+		get runningVerb() {
+			return t("ui.chat.trace.trace_labels.finishing");
+		},
+		icon: CircleCheck,
+	},
+	ASK: {
+		get verb() {
+			return t("ui.chat.trace.trace_labels.asked");
+		},
+		get runningVerb() {
+			return t("ui.chat.trace.trace_labels.asking");
+		},
+		icon: CircleHelp,
+	},
 	BYE: {
-		verb: "Ended the conversation",
-		runningVerb: "Ending",
+		get verb() {
+			return t("ui.chat.trace.trace_labels.ended_the_conversation");
+		},
+		get runningVerb() {
+			return t("ui.chat.trace.trace_labels.ending");
+		},
 		icon: DoorOpen,
 	},
 };
 
 const FALLBACK = {
-	verb: "Worked on the request",
-	runningVerb: "Working on the request",
+	get verb() {
+		return t("ui.chat.trace.trace_labels.worked_on_the_request");
+	},
+	get runningVerb() {
+		return t("ui.chat.trace.trace_labels.working_on_the_request");
+	},
 	icon: CodeXml,
 };
 
@@ -118,7 +179,9 @@ export const getTraceLabel = (
 		if (concrete.length === 1) {
 			object = displayPath(concrete[0]);
 		} else if (concrete.length > 1) {
-			object = `${concrete.length} files`;
+			object = t("ui.chat.trace.trace_labels.length_files", {
+				length: concrete.length,
+			});
 		}
 	}
 	// Prose, so it lands in its own slot rather than the monospace one, and

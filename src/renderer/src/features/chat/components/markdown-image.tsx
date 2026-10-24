@@ -1,3 +1,4 @@
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 import { useCanvasPane } from "../utils/canvas-pane";
@@ -54,6 +55,7 @@ export const MarkdownImage: FC<{
 	title?: string;
 	className?: string;
 }> = ({ src, alt, title, className }) => {
+	useI18nLocale();
 	const pane = useCanvasPane();
 	const source = src ?? "";
 	const kind = classifyImageSource(source);

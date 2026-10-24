@@ -57,5 +57,480 @@
 		"tone": "short imperative action, sentence case",
 		"maxCells": 20,
 		"note": "States the action the row takes: it opens the run-details pane. Its sibling close_run_details carries the opposite state. maxCells is advisory, not measured fit."
+	},
+	"ui.chat.header.chat_header_identity_menu.loading": {
+		"role": "visible interface copy in chat components/chat-header-identity-menu.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity-menu.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity_menu.nothing_matches": {
+		"role": "visible interface copy in chat components/chat-header-identity-menu.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity-menu.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_tabs.chat": {
+		"role": "visible interface copy in chat components/chat-tabs.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-tabs.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_tabs.raw": {
+		"role": "visible interface copy in chat components/chat-tabs.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-tabs.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header.archive_conversation": {
+		"role": "visible interface copy in chat components/chat-header.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header.cancel_rename": {
+		"role": "visible interface copy in chat components/chat-header.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header.close_asks": {
+		"role": "visible interface copy in chat components/chat-header.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header.close_browser": {
+		"role": "visible interface copy in chat components/chat-header.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header.close_canvas": {
+		"role": "visible interface copy in chat components/chat-header.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header.close_code_review": {
+		"role": "visible interface copy in chat components/chat-header.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header.close_console": {
+		"role": "visible interface copy in chat components/chat-header.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header.could_not_rename_the_conversation": {
+		"role": "visible interface copy in chat components/chat-header.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header.local_operator": {
+		"role": "visible interface copy in chat components/chat-header.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header.tsx. Keep technical product names and identifiers unchanged.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header.open_asks": {
+		"role": "visible interface copy in chat components/chat-header.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header.open_browser": {
+		"role": "visible interface copy in chat components/chat-header.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header.open_canvas": {
+		"role": "visible interface copy in chat components/chat-header.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header.open_code_review": {
+		"role": "visible interface copy in chat components/chat-header.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header.open_console": {
+		"role": "visible interface copy in chat components/chat-header.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header.rename_conversation": {
+		"role": "visible interface copy in chat components/chat-header.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header.restore_conversation": {
+		"role": "visible interface copy in chat components/chat-header.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header.saving_the_conversation_name": {
+		"role": "visible interface copy in chat components/chat-header.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header.your_on_device_ai_assistant": {
+		"role": "visible interface copy in chat components/chat-header.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity.assign_a_team": {
+		"role": "visible interface copy in chat components/chat-header-identity.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity.assign_an_agent": {
+		"role": "visible interface copy in chat components/chat-header-identity.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity.could_not_switch_the_agent": {
+		"role": "visible interface copy in chat components/chat-header-identity.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity.could_not_switch_the_team": {
+		"role": "visible interface copy in chat components/chat-header-identity.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity.no_agents_are_registered": {
+		"role": "visible interface copy in chat components/chat-header-identity.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity.no_teams_are_registered": {
+		"role": "visible interface copy in chat components/chat-header-identity.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity_menu.agents": {
+		"role": "visible interface copy in chat components/chat-header-identity-menu.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity-menu.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity_menu.teams": {
+		"role": "visible interface copy in chat components/chat-header-identity-menu.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity-menu.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity_menu_model.all_agents": {
+		"role": "visible interface copy in chat components/chat-header-identity-menu-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity-menu-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity_menu_model.all_teams": {
+		"role": "visible interface copy in chat components/chat-header-identity-menu-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity-menu-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity_menu_model.its_manager": {
+		"role": "visible interface copy in chat components/chat-header-identity-menu-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity-menu-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity_menu_model.recent_agents": {
+		"role": "visible interface copy in chat components/chat-header-identity-menu-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity-menu-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity_menu_model.recent_teams": {
+		"role": "visible interface copy in chat components/chat-header-identity-menu-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity-menu-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity.current": {
+		"role": "visible interface copy in chat components/chat-header-identity.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"current": "string"
+		}
+	},
+	"ui.chat.header.chat_header_identity.label_closedreason": {
+		"role": "visible interface copy in chat components/chat-header-identity.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"label": "string",
+			"closedReason": "string"
+		}
+	},
+	"ui.chat.header.chat_header_identity.label_cuesentence": {
+		"role": "visible interface copy in chat components/chat-header-identity.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"label": "string",
+			"cueSentence": "string"
+		}
+	},
+	"ui.chat.header.chat_header_identity.triggerlabel_label_closedreason": {
+		"role": "visible interface copy in chat components/chat-header-identity.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"triggerLabel": "string",
+			"label": "string",
+			"closedReason": "string"
+		}
+	},
+	"ui.chat.header.chat_header_identity_menu.closednoteid_title": {
+		"role": "visible interface copy in chat components/chat-header-identity-menu.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity-menu.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"closedNoteId": "string"
+		}
+	},
+	"ui.chat.header.chat_header_identity_menu.search_noun": {
+		"role": "visible interface copy in chat components/chat-header-identity-menu.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity-menu.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"noun": "string"
+		}
+	},
+	"ui.chat.header.chat_header_identity_menu_model.agent_seat_closed_by_teamlabel": {
+		"role": "visible interface copy in chat components/chat-header-identity-menu-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity-menu-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"teamLabel": "string"
+		}
+	},
+	"ui.chat.header.chat_header_identity_menu_model.label_cannot_take_the_seat": {
+		"role": "visible interface copy in chat components/chat-header-identity-menu-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity-menu-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"label": "string"
+		}
+	},
+	"ui.chat.header.chat_header_identity_menu_model.teamlabel_is_led_by_its_manager_only_the_manager_and": {
+		"role": "visible interface copy in chat components/chat-header-identity-menu-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/chat-header-identity-menu-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"teamLabel": "string"
+		}
+	},
+	"ui.chat.header.chat_header_identity_menu_model.needs_a_delegating_profile_here": {
+		"role": "visible interface copy in chat components/chat-header-identity-menu-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity-menu-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity_menu_model.no_profile_can_take_the_seat_switch_the_team": {
+		"role": "visible interface copy in chat components/chat-header-identity-menu-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity-menu-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity_menu_model.no_profile_here_can_take_the_seat_clear_the_search": {
+		"role": "visible interface copy in chat components/chat-header-identity-menu-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/chat-header-identity-menu-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity_model.its_manager": {
+		"role": "visible interface copy in chat components/chat-header-identity-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity_model.no_agent": {
+		"role": "visible interface copy in chat components/chat-header-identity-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity_model.no_team": {
+		"role": "visible interface copy in chat components/chat-header-identity-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity.value_description": {
+		"role": "visible interface copy in chat components/chat-header-identity.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/chat-header-identity.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"value": "string",
+			"description": "string"
+		}
+	},
+	"ui.chat.header.chat_header_identity_menu_model.team_team_owns_this_session_value_is_the_speaker_so": {
+		"role": "visible interface copy in chat components/chat-header-identity-menu-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/chat-header-identity-menu-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"team": "string",
+			"value": "string"
+		}
+	},
+	"ui.chat.header.chat_header_identity_menu_model.total_noun_in_all_scroll_or_type": {
+		"role": "visible interface copy in chat components/chat-header-identity-menu-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/chat-header-identity-menu-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"total": "number",
+			"noun": "string"
+		}
+	},
+	"ui.chat.header.transcript_display.by_turn": {
+		"role": "rendered product copy in chat transcript-display-mode.ts",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.header.transcript_display.by_response": {
+		"role": "rendered product copy in chat transcript-display-mode.ts",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity.trigger_action_label": {
+		"role": "rendered product copy in chat components/chat-header-identity.tsx",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"triggerLabel": "Display name or label supplied by the caller.",
+			"label": "Display name or label supplied by the caller.",
+			"action": "Command or action text supplied by the caller.",
+			"cue": "Runtime value substituted into this message; preserve the ICU argument and its formatting."
+		}
+	},
+	"ui.chat.header.chat_header_identity.switch_team": {
+		"role": "rendered product copy in chat components/chat-header-identity.tsx",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity.switch_agent": {
+		"role": "rendered product copy in chat components/chat-header-identity.tsx",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity.cue_clause": {
+		"role": "rendered product copy in chat components/chat-header-identity.tsx",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"cueSentence": "Runtime value substituted into this message; preserve the ICU argument and its formatting."
+		}
+	},
+	"ui.chat.header.chat_header_identity.label_current": {
+		"role": "rendered product copy in chat components/chat-header-identity.tsx",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"label": "Display name or label supplied by the caller.",
+			"current": "Runtime value substituted into this message; preserve the ICU argument and its formatting."
+		}
+	},
+	"ui.chat.header.chat_header_identity.agent_trigger": {
+		"role": "rendered product copy in chat components/chat-header-identity.tsx",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.header.chat_header_identity.team_trigger": {
+		"role": "rendered product copy in chat components/chat-header-identity.tsx",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
 	}
 }

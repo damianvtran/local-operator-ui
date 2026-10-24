@@ -71,6 +71,7 @@
 
 import { Input } from "@shared/components/ui/input";
 import { PopoverContent } from "@shared/components/ui/popover";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Search } from "lucide-react";
 import {
@@ -84,6 +85,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 import type { ProfileRecencyKind } from "../../../shared/store/ui-preferences-store";
 import {
 	type PickerOption,
@@ -188,6 +190,7 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 	onClose,
 	onCloseAutoFocus,
 }) => {
+	useI18nLocale();
 	const [query, setQuery] = useState("");
 	const [active, setActive] = useState(0);
 	const [hovered, setHovered] = useState<number | null>(null);
@@ -498,11 +501,15 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 				aria-controls={showsList ? listId : undefined}
 				aria-activedescendant={activeId}
 				aria-autocomplete="list"
-				aria-label={`Search ${noun}`}
+				aria-label={t("ui.chat.header.chat_header_identity_menu.search_noun", {
+					noun,
+				})}
 				value={query}
 				onChange={(event) => setQuery(event.target.value)}
 				onKeyDown={onKeyDown}
-				placeholder={`Search ${noun}`}
+				placeholder={t("ui.chat.header.chat_header_identity_menu.search_noun", {
+					noun,
+				})}
 				className="pl-8"
 				autoComplete="off"
 				spellCheck={false}
@@ -511,7 +518,10 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 	);
 
 	if (closedReason !== null) {
-		const titleId = `${closedNoteId}-title`;
+		const titleId = t(
+			"ui.chat.header.chat_header_identity_menu.closednoteid_title",
+			{ closedNoteId: String(closedNoteId) },
+		);
 		return (
 			<PopoverContent
 				align="start"
@@ -650,7 +660,11 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 							// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>.
 							// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the listbox role is the WAI-ARIA combobox pattern for a popup driven from a text input.
 							role="listbox"
-							aria-label={kind === "team" ? "Teams" : "Agents"}
+							aria-label={
+								kind === "team"
+									? t("ui.chat.header.chat_header_identity_menu.teams")
+									: t("ui.chat.header.chat_header_identity_menu.agents")
+							}
 							/*
 							 * The rule the list enforces, programmatically associated (review
 							 * round 1, U4): a screen reader entering the listbox now hears the
@@ -686,7 +700,10 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 									 * photograph an empty list and hope. */
 									data-header-identity-no-matches=""
 								>
-									Nothing matches “{query.trim()}”.
+									{t(
+										"ui.chat.header.chat_header_identity_menu.nothing_matches",
+									)}
+									{query.trim()}”.
 								</p>
 							) : (
 								view.bands.map((band) => (
@@ -802,7 +819,10 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 					 */}
 					<div className={cn(MENU_STATE_ROW, "text-ink-dim")}>
 						{loading ? (
-							<span data-header-identity-loading="">Loading {noun}…</span>
+							<span data-header-identity-loading="">
+								{t("ui.chat.header.chat_header_identity_menu.loading")}
+								{noun}…
+							</span>
 						) : loadError ? (
 							<span className="text-danger" data-header-identity-error="">
 								{loadError}

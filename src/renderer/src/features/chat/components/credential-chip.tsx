@@ -1,6 +1,7 @@
 import { cn } from "@shared/lib/utils";
 import { Key, TriangleAlert, X } from "lucide-react";
 import type { CSSProperties, FC } from "react";
+import { t } from "../../../../../i18n/messages";
 
 /**
  * The credential chip: one credential reference, drawn as a chip.
@@ -223,7 +224,9 @@ export const CredentialChip: FC<CredentialChipProps> = ({
 			// designer looked at the delivered frame and did not ask for it to change,
 			// and re-grouping the items to tighten it would re-price D19 itself (it
 			// takes the backed chip's own 10.7px band to about 20px).
-			<span className="shrink-0">{`· ${chars} chars`}</span>
+			<span className="shrink-0">
+				{t("ui.chat.credential_chip.chars_chars", { chars })}
+			</span>
 		)}
 		{onClear && (
 			<button

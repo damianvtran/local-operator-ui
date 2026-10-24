@@ -7,6 +7,7 @@ import type {
 } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config"; // Import apiConfig for the base URL
 import { agentsQueryKey } from "@shared/hooks/use-agents";
+import { t } from "@shared/i18n";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
 	showSuccessToast,
@@ -105,7 +106,9 @@ export const useDownloadAgentMutation = () => {
 		onSuccess: (data, variables) => {
 			const installed = data.result as PulledAgent | undefined;
 			const installedName =
-				installed?.name?.trim() || variables.agentName?.trim() || "Agent";
+				installed?.name?.trim() ||
+				variables.agentName?.trim() ||
+				t("ui.hub.download.fallback_agent");
 			const renamedFrom = installed?.renamed_from?.trim() || null;
 			const collision = installed?.id
 				? localNameCollision(
@@ -116,14 +119,22 @@ export const useDownloadAgentMutation = () => {
 
 			if (renamedFrom) {
 				showSuccessToast(
-					`Downloaded "${installedName}" — you already have an agent called "${renamedFrom}".`,
+					t("ui.hub.download.renamed", {
+						name: installedName,
+						previous: renamedFrom,
+					}),
 				);
 			} else if (collision) {
 				showWarningToast(
-					`Downloaded "${installedName}". You already have an agent called "${collision}", so two agents now answer to that name and either may be picked. Rename one of them.`,
+					t("ui.hub.download.collision", {
+						name: installedName,
+						collision,
+					}),
 				);
 			} else {
-				showSuccessToast(`Downloaded "${installedName}" from the hub.`);
+				showSuccessToast(
+					t("ui.hub.download.succeeded", { name: installedName }),
+				);
 			}
 
 			// Invalidate local agents list to reflect the newly downloaded agent

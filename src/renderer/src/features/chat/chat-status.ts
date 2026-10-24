@@ -18,6 +18,7 @@
  * the mapping in both directions is the whole file.
  */
 
+import { t } from "../../../../i18n/messages";
 import {
 	type DaemonPairing,
 	type DaemonPairingCause,
@@ -70,6 +71,14 @@ export type ChatStatusDisplay = {
 	cause?: DaemonPairingCause | null;
 	/** The one word the strip's action always carries. */
 	action: "retry" | null;
+	/**
+	 * A caller-chosen label for the action, or `null` for the default.
+	 *
+	 * The strip resolves a null to `ui.common.actions.retry` AT RENDER. The
+	 * model does not author the word: a `t()` evaluated here would freeze the
+	 * language of whichever frame first built the reading, and every retry row
+	 * this model produces today wants the same default.
+	 */
 	actionLabel: string | null;
 	/** The dot the dismissed pill carries, per cause. */
 	dot: "danger" | "warning";
@@ -86,11 +95,24 @@ export type ChatStatusDisplay = {
  * distinguishes the two (`connectivityIssue`), so the strip must too.
  */
 export const CHAT_STATUS_COPY = {
-	unreachable: "Can't reach the Local Operator server. Sending will wait.",
-	"credential-refused":
-		"The running server refused this app's credential, so sign-in, settings and slash commands are unavailable.",
-	degraded: "The server is answering slowly. Your messages are queued.",
-	"internet-offline": "This machine is offline. Sending will wait.",
+	get unreachable() {
+		return t(
+			"ui.chat.chat_status.cant_reach_the_local_operator_server_sending_will_wait",
+		);
+	},
+	get "credential-refused"() {
+		return t(
+			"ui.chat.chat_status.the_running_server_refused_this_apps_credential_so_sign_in",
+		);
+	},
+	get degraded() {
+		return t(
+			"ui.chat.chat_status.the_server_is_answering_slowly_your_messages_are_queued",
+		);
+	},
+	get "internet-offline"() {
+		return t("ui.chat.chat_status.this_machine_is_offline_sending_will_wait");
+	},
 } as const satisfies Record<ChatStatusKind, string>;
 
 /**
@@ -226,7 +248,7 @@ export function chatStatusDisplay(
 			 * reader WHY their credential was refused.
 			 */
 			action: "retry",
-			actionLabel: "Retry",
+			actionLabel: null,
 			dot: "danger",
 		};
 	}
@@ -246,7 +268,7 @@ export function chatStatusDisplay(
 			title: CHAT_STATUS_COPY["internet-offline"],
 			detail: null,
 			action: "retry",
-			actionLabel: "Retry",
+			actionLabel: null,
 			dot: "warning",
 		};
 	}
@@ -278,7 +300,7 @@ export function chatStatusDisplay(
 			title: CHAT_STATUS_COPY.degraded,
 			detail: null,
 			action: "retry",
-			actionLabel: "Retry",
+			actionLabel: null,
 			dot: "warning",
 		};
 	}
@@ -328,7 +350,7 @@ export function chatStatusDisplay(
 				? (serverBannerCopy(snapshotOf(server))?.detail ?? null)
 				: null,
 			action: "retry",
-			actionLabel: "Retry",
+			actionLabel: null,
 			dot: "danger",
 		};
 	}

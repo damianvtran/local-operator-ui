@@ -59,6 +59,7 @@
  * the foot, the stamp and the caption key on, and nothing here changes that.
  */
 
+import { t } from "../../../../../i18n/messages";
 import {
 	DEFAULT_TRANSCRIPT_DISPLAY_MODE,
 	type TranscriptDisplayMode,
@@ -852,13 +853,13 @@ export type QuietGroupFamily = "peer" | "wake" | "monitor" | "job" | "mixed";
 export function quietGroupLabel(family: QuietGroupFamily): string {
 	switch (family) {
 		case "peer":
-			return "Peer messages";
+			return t("ui.chat.canonical.turn_segments.peer_messages");
 		case "wake":
-			return "Wake messages";
+			return t("ui.chat.canonical.turn_segments.wake_messages");
 		case "monitor":
-			return "Monitor messages";
+			return t("ui.chat.canonical.turn_segments.monitor_messages");
 		case "job":
-			return "Job results";
+			return t("ui.chat.canonical.turn_segments.job_results");
 		default:
 			return "Messages";
 	}
@@ -912,9 +913,9 @@ export function labelOfSegment(
 			return "Wake";
 		case "peer":
 		case "hub_message":
-			return "Peer message";
+			return t("ui.chat.canonical.turn_segments.peer_message");
 		case "job_result":
-			return "Job result";
+			return t("ui.chat.canonical.turn_segments.job_result");
 		default:
 			/*
 			 * THE ASK RECEIPTS GET A NAME OF THEIR OWN.
@@ -1026,7 +1027,10 @@ export function violationsOf(
 	const problems: string[] = [];
 	const owner = new Map<number, number>();
 	partition.segments.forEach((segment, s) => {
-		if (segment.from > segment.to) problems.push(`segment ${s} is empty`);
+		if (segment.from > segment.to)
+			problems.push(
+				t("ui.chat.canonical.turn_segments.segment_s_is_empty", { s }),
+			);
 		/*
 		 * A SEGMENT ABOVE THE SPAN (agent review round 1 on #708, R1-1). `from` is
 		 * the first row a span may hold - just below the run's opening user row, or
@@ -1035,7 +1039,10 @@ export function violationsOf(
 		 */
 		if (segment.from < options.from) {
 			problems.push(
-				`segment ${s} starts at row ${segment.from}, above the span's first row ${options.from}`,
+				t(
+					"ui.chat.canonical.turn_segments.segment_s_starts_at_row_from_above_the_spans_first",
+					{ s: s, from: segment.from, from2: options.from },
+				),
 			);
 		}
 		/*
@@ -1050,37 +1057,72 @@ export function violationsOf(
 			!partition.visible.has(segment.to + 1)
 		) {
 			problems.push(
-				`segment ${s} is not maximal: row ${segment.to + 1} is hidden too`,
+				t(
+					"ui.chat.canonical.turn_segments.segment_s_is_not_maximal_row_value_is_hidden_too",
+					{ s: s, value: segment.to + 1 },
+				),
 			);
 		}
 		if (s > 0 && segment.from <= partition.segments[s - 1].to) {
-			problems.push(`segment ${s} overlaps or precedes segment ${s - 1}`);
+			problems.push(
+				t(
+					"ui.chat.canonical.turn_segments.segment_s_overlaps_or_precedes_segment_value",
+					{ s: s, value: s - 1 },
+				),
+			);
 		}
 		for (let i = segment.from; i <= segment.to; i += 1) {
-			if (owner.has(i)) problems.push(`row ${i} is in two segments`);
+			if (owner.has(i))
+				problems.push(
+					t("ui.chat.canonical.turn_segments.row_i_is_in_two_segments", { i }),
+				);
 			owner.set(i, s);
 			if (partition.visible.has(i)) {
-				problems.push(`row ${i} is both visible and hidden`);
+				problems.push(
+					t(
+						"ui.chat.canonical.turn_segments.row_i_is_both_visible_and_hidden",
+						{ i },
+					),
+				);
 			}
 			if (options.pinned(records[i])) {
-				problems.push(`row ${i} is pinned but sits in segment ${s}`);
+				problems.push(
+					t(
+						"ui.chat.canonical.turn_segments.row_i_is_pinned_but_sits_in_segment_s",
+						{ i, s },
+					),
+				);
 			}
 		}
 	});
 	for (let i = options.from; i < records.length; i += 1) {
 		if (!partition.visible.has(i) && !owner.has(i)) {
-			problems.push(`row ${i} is neither visible nor in a segment`);
+			problems.push(
+				t(
+					"ui.chat.canonical.turn_segments.row_i_is_neither_visible_nor_in_a_segment",
+					{ i },
+				),
+			);
 		}
 	}
 	if (partition.answer !== null) {
 		const at = partition.answer.closeIndex;
-		if (owner.has(at)) problems.push("the answer row is hidden");
+		if (owner.has(at))
+			problems.push(
+				t("ui.chat.canonical.turn_segments.the_answer_row_is_hidden"),
+			);
 		if (partition.answer.class !== "response") {
-			problems.push("the answer cycle is not a response");
+			problems.push(
+				t("ui.chat.canonical.turn_segments.the_answer_cycle_is_not_a_response"),
+			);
 		}
 	}
 	if (partition.cycles.length > 0 && partition.cycles[0].class !== "response") {
-		problems.push("a run's first cycle must be a response");
+		problems.push(
+			t(
+				"ui.chat.canonical.turn_segments.a_runs_first_cycle_must_be_a_response",
+			),
+		);
 	}
 	return problems;
 }

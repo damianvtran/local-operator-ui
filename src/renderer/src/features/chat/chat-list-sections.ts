@@ -49,6 +49,7 @@
  */
 
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
+import { t } from "../../../../i18n/messages";
 
 export type ChatListSection = "running" | "today" | "week" | "older";
 
@@ -75,10 +76,18 @@ export const CHAT_LIST_SECTIONS: readonly ChatListSection[] = [
 
 /** The label each section prints (the component sets them in small caps). */
 export const CHAT_LIST_SECTION_LABEL: Record<ChatListSection, string> = {
-	running: "Running",
-	today: "Today",
-	week: "This week",
-	older: "Older",
+	get running() {
+		return t("ui.chat.chat_list_sections.running");
+	},
+	get today() {
+		return t("ui.chat.chat_list_sections.today");
+	},
+	get week() {
+		return t("ui.chat.chat_list_sections.this_week");
+	},
+	get older() {
+		return t("ui.chat.chat_list_sections.older");
+	},
 };
 
 /**
@@ -309,8 +318,12 @@ export function relativeTimeSentence(
 ): string {
 	const short = relativeTime(row, now, basis);
 	if (!short) return "";
-	const prefix = basis === "created" ? "created" : "last active";
-	if (short === "now") return `${prefix} just now`;
+	const prefix =
+		basis === "created"
+			? "created"
+			: t("ui.chat.chat_list_sections.last_active");
+	if (short === "now")
+		return t("ui.chat.chat_list_sections.prefix_just_now", { prefix });
 	const unit: Record<string, string> = {
 		m: "minute",
 		h: "hour",

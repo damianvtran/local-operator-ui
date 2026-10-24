@@ -1,3 +1,4 @@
+import { t } from "../../../../i18n/messages";
 /**
  * The queued-ask read model: what a session's asks are, what state each is in,
  * and what a surface may say about them.
@@ -273,11 +274,10 @@ export const askChipClause = (view: AskQueueView, nowMs: number): string => {
  * string a DOM-free rig asserts. One source, two renderers.
  */
 export const askChipCountClause = (view: AskQueueView): string => {
-	if (!askSplitIsKnowable(view)) return `${view.open} outstanding`;
+	if (!askSplitIsKnowable(view))
+		return t("ui.chat.asks.queue.outstanding", { count: view.open });
 	if (view.waiting > 0)
-		return view.waiting === 1
-			? "1 question waiting"
-			: `${view.waiting} questions waiting`;
+		return t("ui.chat.asks.queue.questions_waiting", { count: view.waiting });
 	/*
 	 * ANSWERS STILL TO DELIVER COME BEFORE `All asks settled` (design §10, #1936).
 	 *
@@ -307,9 +307,9 @@ export const askChipCountClause = (view: AskQueueView): string => {
 	 * delivery.
 	 */
 	if (view.delivering > 0)
-		return view.delivering === 1
-			? "1 answer not yet delivered — you can still change it"
-			: `${view.delivering} answers not yet delivered — you can still change them`;
+		return t("ui.chat.asks.queue.answers_delivering", {
+			count: view.delivering,
+		});
 	/*
 	 * TIMED OUT, in the badge's own word (design round 1 on #1116, D2): the quiet
 	 * register, and AFTER the delivering clause because nothing on a timed-out ask can
@@ -317,10 +317,8 @@ export const askChipCountClause = (view: AskQueueView): string => {
 	 * third name for the state the row's badge calls `Timed out`.
 	 */
 	if (view.movedOn > 0)
-		return view.movedOn === 1
-			? "1 question timed out"
-			: `${view.movedOn} questions timed out`;
-	return "All asks settled";
+		return t("ui.chat.asks.queue.questions_timed_out", { count: view.movedOn });
+	return t("ui.chat.asks.queue.all_asks_settled");
 };
 
 /**
@@ -350,7 +348,9 @@ export type AskScope = "session" | "fleet";
 
 /** The scope line's subject noun: what set the count beside it counts. */
 export const askScopeSubject = (scope: AskScope): string =>
-	scope === "fleet" ? "All conversations" : "This conversation";
+	scope === "fleet"
+		? t("ui.chat.asks.queue.all_conversations")
+		: t("ui.chat.asks.queue.this_conversation");
 
 /**
  * WHAT THE DRAWER SAYS WHEN THE FRAME THAT DECIDES ITS CONTENTS HAS NOT BEEN READ.
@@ -362,7 +362,7 @@ export const askScopeSubject = (scope: AskScope): string =>
  * is unresolved - `askScopeLine` omits the separator when there is no clause - so the
  * surface names what it is doing exactly once.
  */
-export const ASK_DRAWER_UNREAD_LINE = "Reading the asks…";
+export const ASK_DRAWER_UNREAD_LINE = t("ui.chat.asks.queue.reading_the_asks");
 
 /**
  * THE OTHER UNRESOLVED-LOOKING FRAME, WHICH IS NOT THE SAME FACT (design round 1, D1).
@@ -389,11 +389,14 @@ export const ASK_DRAWER_UNREAD_LINE = "Reading the asks…";
  * what that means, in the drawer's own voice; the pair is the drawer's, and the chip
  * and the asks item keep their designed zero-state offers unchanged.
  */
-export const ASK_DRAWER_UNAVAILABLE_CLAUSE = "Asks unavailable";
+export const ASK_DRAWER_UNAVAILABLE_CLAUSE = t(
+	"ui.chat.asks.queue.asks_unavailable",
+);
 
 /** The body under that clause: what is true, rather than what the surface hopes. */
-export const ASK_DRAWER_UNAVAILABLE_LINE =
-	"This runtime doesn't support queued asks.";
+export const ASK_DRAWER_UNAVAILABLE_LINE = t(
+	"ui.chat.asks.queue.this_runtime_doesnt_support_queued_asks",
+);
 
 /**
  * The DRAWER's count clause: what the surface shows, not only what the agent waits on.
@@ -422,7 +425,7 @@ export const askDrawerCountClause = (view: AskQueueView): string => {
 	 * delivered is a settled drawer, as the TUI's is.
 	 */
 	if (askSplitIsKnowable(view) && view.waiting === 0 && view.delivering === 0) {
-		return "All asks settled";
+		return t("ui.chat.asks.queue.all_asks_settled");
 	}
 	return askChipCountClause(view);
 };
@@ -494,13 +497,20 @@ export const askRailToggleLabel = (args: {
 	 */
 	cap?: string | null;
 }): string => {
-	const verb = args.open ? "Close" : "Open";
+	const verb = args.open
+		? t("ui.chat.asks.queue.close")
+		: t("ui.chat.asks.queue.open");
 	const chord =
 		args.cap === null || args.cap === undefined ? "" : ` (${args.cap})`;
 	const subject = askScopeSubject(args.scope);
 	return args.count > 0
-		? `${verb} asks${chord} \u2014 ${subject}, ${args.count} waiting`
-		: `${verb} asks${chord} \u2014 ${subject}`;
+		? t("ui.chat.asks.queue.rail_count", {
+				verb,
+				chord,
+				subject,
+				count: args.count,
+			})
+		: t("ui.chat.asks.queue.rail_no_count", { verb, chord, subject });
 };
 
 /**
@@ -559,7 +569,7 @@ export const askChipDeadlineText = (
  * ask the number IS that ask's and any subject would be noise.
  */
 export const askChipDeadlineSubject = (view: AskQueueView): string =>
-	view.waiting > 1 ? "soonest ask" : "";
+	view.waiting > 1 ? t("ui.chat.asks.queue.soonest_ask") : "";
 
 /**
  * The whole countdown as one string: the subject and its number, or null.
@@ -633,7 +643,10 @@ const askChipFullClause = (view: AskQueueView, nowMs: number): string => {
 		(view.waiting > 0 || view.delivering > 0) &&
 		view.movedOn > 0
 	) {
-		return `${askChipClause(view, nowMs)} · ${view.movedOn} timed out`;
+		return t("ui.chat.asks.queue.chip_timed_out", {
+			clause: askChipClause(view, nowMs),
+			count: view.movedOn,
+		});
 	}
 	return askChipClause(view, nowMs);
 };
@@ -672,7 +685,14 @@ export const askChipLabel = (
 	 * because the chip sits in one conversation's row while the drawer's other scope
 	 * - `fleet` - has no chip here).
 	 */
-	return `${expanded ? "Collapse" : "Expand"} this conversation's asks${LABEL_SEAM}${askChipFullClause(view, nowMs)}${urgency}`;
+	return t("ui.chat.asks.queue.conversation_label", {
+		action: expanded
+			? t("ui.chat.asks.queue.collapse")
+			: t("ui.chat.asks.queue.expand"),
+		labelSeam: LABEL_SEAM,
+		clause: askChipFullClause(view, nowMs),
+		urgency,
+	});
 };
 
 /**
@@ -1081,11 +1101,23 @@ export const askSettledAnswers = (
  * rather than rounding up to an hour.
  */
 export const askWaitedText = (seconds: number): string => {
-	if (!Number.isFinite(seconds) || seconds <= 0) return "a while";
-	if (seconds < 60) return `${Math.trunc(seconds)}s`;
-	if (seconds < 3600) return `${Math.trunc(seconds / 60)}m`;
-	if (seconds < 86400) return `${Math.trunc(seconds / 3600)}h`;
-	return `${Math.trunc(seconds / 86400)}d`;
+	if (!Number.isFinite(seconds) || seconds <= 0)
+		return t("ui.chat.asks.queue.a_while");
+	if (seconds < 60)
+		return t("ui.chat.asks.queue.short_seconds", {
+			count: Math.trunc(seconds),
+		});
+	if (seconds < 3600)
+		return t("ui.chat.asks.queue.short_minutes", {
+			count: Math.trunc(seconds / 60),
+		});
+	if (seconds < 86400)
+		return t("ui.chat.asks.queue.short_hours", {
+			count: Math.trunc(seconds / 3600),
+		});
+	return t("ui.chat.asks.queue.short_days", {
+		count: Math.trunc(seconds / 86400),
+	});
 };
 
 /**
@@ -1124,15 +1156,19 @@ export const askResponseSummary = (receipt: {
 		const via = surface ? ` (${surface})` : "";
 		const reason =
 			receipt.reason === "answered_in_chat"
-				? "settled in chat"
-				: "no longer needed";
-		return `Dismissed by you${via} — ${reason} (ask ${receipt.askId})`;
+				? t("ui.chat.asks.queue.settled_in_chat")
+				: t("ui.chat.asks.queue.no_longer_needed");
+		return t("ui.chat.asks.queue.receipt_dismissed", {
+			via,
+			reason,
+			askId: receipt.askId,
+		});
 	}
 	if (receipt.status === "declined")
-		return `Ask ${receipt.askId} declined — the agent was told`;
+		return t("ui.chat.asks.queue.receipt_declined", { askId: receipt.askId });
 	if (receipt.status === "late")
-		return `Answered late — the agent was told (ask ${receipt.askId})`;
-	return `Answered — delivering (ask ${receipt.askId})`;
+		return t("ui.chat.asks.queue.receipt_late", { askId: receipt.askId });
+	return t("ui.chat.asks.queue.receipt_answered", { askId: receipt.askId });
 };
 
 /**
@@ -1146,7 +1182,10 @@ export const askTimeoutSummary = (receipt: {
 	askId: string;
 	waitedS: number;
 }): string =>
-	`Timed out after ${askWaitedText(receipt.waitedS)} — the agent goes ahead without your answer (ask ${receipt.askId})`;
+	t("ui.chat.asks.queue.receipt_timed_out", {
+		waited: askWaitedText(receipt.waitedS),
+		askId: receipt.askId,
+	});
 
 /**
  * WHAT CLOSES THE CHANGE WINDOW, said where the control that uses it is (design §10,
@@ -1161,8 +1200,9 @@ export const askTimeoutSummary = (receipt: {
  * rather than in the mirrored copy contract: these are this surface's words about
  * this surface's control, not a backend notice restated.
  */
-export const ASK_CHANGE_WINDOW_HINT =
-	"You can change this until the agent is handed your answer.";
+export const ASK_CHANGE_WINDOW_HINT = t(
+	"ui.chat.asks.queue.you_can_change_this_until_the_agent_is_handed_your",
+);
 
 /**
  * This surface's record of the ask it last acted on (design §10, #1936).
@@ -1511,14 +1551,18 @@ const compareAge = (a: AskPresentation, b: AskPresentation): number => {
  * offers that any more (D10).
  */
 export const ASK_STATUS_COPY: Record<AskStatus | "unknown", string> = {
-	open: "Queued — the agent is continuing",
-	answered: "Answered — delivering",
-	timed_out: "Timed out — the agent goes ahead without your answer",
-	late: "Answered late — the agent was told",
-	declined: "Declined — the agent was told",
-	dismissed: "Dismissed — no reply was sent",
-	expired: "Expired — this ask is too old to answer; ask the agent again",
-	unknown: "Waiting on an answer",
+	open: t("ui.chat.asks.queue.queued_the_agent_is_continuing"),
+	answered: t("ui.chat.asks.queue.answered_delivering"),
+	timed_out: t(
+		"ui.chat.asks.queue.timed_out_the_agent_goes_ahead_without_your_answer",
+	),
+	late: t("ui.chat.asks.queue.answered_late_the_agent_was_told"),
+	declined: t("ui.chat.asks.queue.declined_the_agent_was_told"),
+	dismissed: t("ui.chat.asks.queue.dismissed_no_reply_was_sent"),
+	expired: t(
+		"ui.chat.asks.queue.expired_this_ask_is_too_old_to_answer_ask_the",
+	),
+	unknown: t("ui.chat.asks.queue.waiting_on_an_answer"),
 };
 
 /**
@@ -1536,7 +1580,9 @@ export const ASK_STATUS_COPY: Record<AskStatus | "unknown", string> = {
  * in the settled section (`askStatusWord`), where "the agent was told" is true — the
  * sentence is condition-dependent, the word is not.
  */
-export const ASK_LATE_UNDELIVERED_TEXT = "Answered late — not yet delivered";
+export const ASK_LATE_UNDELIVERED_TEXT = t(
+	"ui.chat.asks.queue.answered_late_not_yet_delivered",
+);
 
 /**
  * The status WORD for a settled row's one line, DERIVED from the sentence above.
@@ -1659,7 +1705,11 @@ const expiryParts = (
 ): { long: string; short: string } | null => {
 	if (!Number.isFinite(expiresAt) || expiresAt <= 0) return null;
 	const remainingMs = expiresAt - nowMs;
-	if (remainingMs <= 0) return { long: "expiring now", short: "now" };
+	if (remainingMs <= 0)
+		return {
+			long: t("ui.chat.asks.queue.expiring_now"),
+			short: t("ui.chat.asks.queue.now"),
+		};
 	const minutes = Math.floor(remainingMs / 60_000);
 	/*
 	 * ONE SPELLING OF ONE UNIT, and no space: the TUI this feature deliberately
@@ -1669,15 +1719,28 @@ const expiryParts = (
 	 * the shared contract exists to prevent (design round 1, D5).
 	 */
 	if (minutes < 1) {
-		const seconds = `${Math.floor(remainingMs / 1000)}s`;
-		return { long: `expires in ${seconds}`, short: seconds };
+		const seconds = Math.floor(remainingMs / 1000);
+		return {
+			long: t("ui.chat.asks.queue.expires_seconds", { count: seconds }),
+			short: t("ui.chat.asks.queue.short_seconds", { count: seconds }),
+		};
 	}
 	if (minutes < 60)
-		return { long: `expires in ${minutes}m`, short: `${minutes}m` };
+		return {
+			long: t("ui.chat.asks.queue.expires_minutes", { count: minutes }),
+			short: t("ui.chat.asks.queue.short_minutes", { count: minutes }),
+		};
 	const hours = Math.floor(minutes / 60);
-	if (hours < 24) return { long: `expires in ${hours}h`, short: `${hours}h` };
+	if (hours < 24)
+		return {
+			long: t("ui.chat.asks.queue.expires_hours", { count: hours }),
+			short: t("ui.chat.asks.queue.short_hours", { count: hours }),
+		};
 	const days = Math.floor(hours / 24);
-	return { long: `expires in ${days}d`, short: `${days}d` };
+	return {
+		long: t("ui.chat.asks.queue.expires_days", { count: days }),
+		short: t("ui.chat.asks.queue.short_days", { count: days }),
+	};
 };
 
 export const askDeadlineText = (
@@ -1806,17 +1869,21 @@ export const askSecretIsSkippable = (
  * "skip" as a parenthetical it read as "you will not be asked again" (design round 1,
  * D3). `askSecretPlaceholder` picks one.
  */
-export const ASK_SECRET_SKIP_PLACEHOLDER =
-	"Leave empty to skip; what you type is never shown";
+export const ASK_SECRET_SKIP_PLACEHOLDER = t(
+	"ui.chat.asks.queue.leave_empty_to_skip_what_you_type_is_never_shown",
+);
 /**
  * The change form's field over a stored key. It is the only explanation for a disabled
  * `Update answer` there, so it states the requirement rather than an option (D4), and
  * it is short enough to fit the 400px drawer floor's 332px text box (D6).
  */
-export const ASK_SECRET_RETYPE_PLACEHOLDER =
-	"Required: type it again; it is never shown";
+export const ASK_SECRET_RETYPE_PLACEHOLDER = t(
+	"ui.chat.asks.queue.required_type_it_again_it_is_never_shown",
+);
 /** Main's copy, kept where an empty field could not be sent as a skip. */
-export const ASK_SECRET_PLAIN_PLACEHOLDER = "Your answer (never shown again)";
+export const ASK_SECRET_PLAIN_PLACEHOLDER = t(
+	"ui.chat.asks.queue.your_answer_never_shown_again",
+);
 
 /** Whether a typed secret value is there to send. */
 const secretTyped = (question: PendingAskQuestion, secrets: AskSecrets) =>
@@ -2160,11 +2227,13 @@ export const askRevisionDraft = (ask: PendingAsk): AskDraft => {
  * they are worded to say what the user's next move is rather than to guess which
  * of the two happened.
  */
-export const ASK_ALREADY_SETTLED_MESSAGE =
-	"That question was already settled, so your answer was not sent.";
+export const ASK_ALREADY_SETTLED_MESSAGE = t(
+	"ui.chat.asks.queue.that_question_was_already_settled_so_your_answer_was_not",
+);
 
-export const ASK_EXPIRED_MESSAGE =
-	"This ask is too old to answer — ask the agent again.";
+export const ASK_EXPIRED_MESSAGE = t(
+	"ui.chat.asks.queue.this_ask_is_too_old_to_answer_ask_the_agent",
+);
 
 /**
  * The app's own sentence for a refusal that arrived WITHOUT one.
@@ -2421,4 +2490,4 @@ export const askDismissRequest = (
  * the chip says what is outstanding and never "waiting for you".
  */
 export const asksOutstandingLabel = (open: number): string =>
-	open === 1 ? "1 ask" : `${open} asks`;
+	t("ui.chat.asks.queue.open_asks", { count: open });

@@ -1,3 +1,5 @@
+import { t } from "../../../../i18n/messages";
+
 /**
  * The image viewer's arithmetic, as one module: which picture a left/right step
  * lands on, the zoom ladder a zoom press walks, and what a pan is allowed to
@@ -87,7 +89,7 @@ export const wrapGroupIndex = (
  * and the announcement cannot drift apart.
  */
 export const groupPositionLabel = (index: number, count: number): string =>
-	`Image ${index + 1} of ${count}`;
+	t("ui.common.viewer.image_progress", { index: index + 1, count });
 
 /**
  * Clamp a pan so the picture never shows a gap between its edge and the frame's.

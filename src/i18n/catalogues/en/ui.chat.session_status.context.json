@@ -1,0 +1,1230 @@
+{
+	"ui.chat.session_status.chat_header_device.check_again": {
+		"role": "visible interface copy in chat device/chat-header-device.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-header-device.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.quota_notice_line.dismiss": {
+		"role": "visible interface copy in chat quota-notice/quota-notice-line.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from quota-notice/quota-notice-line.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_model_access.connect": {
+		"role": "visible interface copy in chat session-status/session-model-access.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model-access.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_model_access.switch_model": {
+		"role": "visible interface copy in chat session-status/session-model-access.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model-access.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.choose_a_model": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.estimate": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.last_reading": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.another_device": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.cannot_receive_a_move": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.copy_here_leave_it_there": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.did_not_answer_the_last_read": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.move_this_conversation_to": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.moved_back_to_this_device": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.new_conversations_are_created_on_this_device_click_to_choose": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.new_on_this_device": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.on_this_device": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.recall_to_this_device": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.start_the_conversation_on": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.the_conversation_is_here_now": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.the_conversation_is_running_there_now_the_copy_here_is": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.the_conversation_is_there_the_copy_here_is_deleted": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.the_other_device": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.this_app_is_not_paired_with_the_backend": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.this_backend_cannot_move_a_conversation": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.this_backend_cannot_move_a_conversation_yet": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.this_conversation_runs_on_this_device_click_to_move_it": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.this_device": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_slot.this_device": {
+		"role": "visible interface copy in chat device/chat-device-slot.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-slot.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_context.estimate_counted_by_the_app_not_reported_by_the_provider": {
+		"role": "visible interface copy in chat session-status/session-context.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-context.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_context.no_reading_yet_the_first_turn_reports_what_the_request": {
+		"role": "visible interface copy in chat session-status/session-context.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-context.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_cost.basis_unavailable": {
+		"role": "visible interface copy in chat session-status/session-cost.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-cost.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_cost.nothing_has_been_spent_in_this_session_yet": {
+		"role": "visible interface copy in chat session-status/session-cost.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-cost.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_cost.part_of_this_conversations_spend_could_not_be_priced": {
+		"role": "visible interface copy in chat session-status/session-cost.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-cost.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_cost.some_spend_in_this_conversation_could_not_be_priced_so": {
+		"role": "visible interface copy in chat session-status/session-cost.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-cost.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_cost.this_session_billed_tokens_on_a_model_with_no_published": {
+		"role": "visible interface copy in chat session-status/session-cost.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-cost.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_cost.without_a_tracked_basis_yet": {
+		"role": "visible interface copy in chat session-status/session-cost.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-cost.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_model.access_has_not_converged_yet_the_next_request_checks_the": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_model.history_only_not_permission_to_reuse_access": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_model.reasoning_effort_for_this_session": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_model.the_device_running_this_session_has_no_effective_provider_access": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_model.the_level_this_model_runs_at_by_default_this_backend": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_model.the_owner_cannot_currently_provide_borrowed_access_or_borrowing_permission": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_model.the_owner_device": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_model.the_runtime_resolved_borrowed_access_for_this_session_every_new": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_model.the_serving_device_has_no_effective_provider_access_for_this": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_model.this_login_cannot_be_borrowed_sign_in_on_the_device": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_model.this_model_reasons_but_exposes_no_effort_levels_to_choose": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_model.this_session_has_not_reported_its_reasoning_effort_yet_it": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_model.this_session_uses_its_own_provider_access": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_model.your_saved_sign_in_is_still_present_try_again_later": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.change_it": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.change_it_it_applies_to_this_conversation": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.choose_the_model_this_conversation_will_run_on": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.click_for_the_full_breakdown": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.click_for_the_full_breakdown_9593fe": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.click_for_the_full_breakdown_which_estimates_your_next_request": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.click_to_choose_a_different_model": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.click_to_choose_a_different_model_it_applies_to_this": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.estimated": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.estimated_now_click_for_the_full_breakdown_which_estimates_your": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.measured_now_click_for_the_full_breakdown_which_estimates_your": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.model_none_resolved_yet_choose_the_model_this_conversation_will": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.model_resolving_the_model_this_conversation_will_run_on": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.model_this_conversations_model_was_not_resolved_retry": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.no_model_is_set_for_it_yet": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.no_model_resolved_yet": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.resolving": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.resolving_the_model": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.resolving_the_model_this_conversation_will_run_on": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.switching_the_model": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.switching_the_model_waiting_for_the_session_to_confirm_it": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.this_conversation_will_use_it_change_it_once_the_conversation": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.this_conversations_model_was_not_resolved": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.working_out_which_model_this_conversation_will_run_on": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.copied_to_name": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.session_status.chat_device_model.copy_to_destination": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"destination": "string"
+		}
+	},
+	"ui.chat.session_status.chat_device_model.move_to_destination": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"destination": "string"
+		}
+	},
+	"ui.chat.session_status.chat_device_model.moved_to_name": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.session_status.chat_device_model.nothing_is_running_on_name_yet_send_a_message_in": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.session_status.chat_device_model.nothing_is_running_on_name_yet_send_a_message_to": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.session_status.chat_device_model.the_conversation_is_here_now_the_copy_on_from_was": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"from": "string"
+		}
+	},
+	"ui.chat.session_status.chat_device_model.this_conversation_is_moving_to_name_it_continues_there_nothing": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.session_status.session_cost.marked_without_a_tracked_basis_yet_children": {
+		"role": "visible interface copy in chat session-status/session-cost.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-cost.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"marked": "string",
+			"children": "string"
+		}
+	},
+	"ui.chat.session_status.session_cost.text_cue": {
+		"role": "visible interface copy in chat session-status/session-cost.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-cost.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"text": "string",
+			"cue": "string"
+		}
+	},
+	"ui.chat.session_status.session_model.checking_access_from_owner": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"owner": "string"
+		}
+	},
+	"ui.chat.session_status.session_model.checking_label_access": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"label": "string"
+		}
+	},
+	"ui.chat.session_status.session_model.fallbackdefault": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"fallbackDefault": "string"
+		}
+	},
+	"ui.chat.session_status.session_model.fresh_label_access_needed": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"label": "string"
+		}
+	},
+	"ui.chat.session_status.session_model.label_access_available": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"label": "string"
+		}
+	},
+	"ui.chat.session_status.session_model.label_access_from_owner": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"label": "string",
+			"owner": "string"
+		}
+	},
+	"ui.chat.session_status.session_model.label_access_needs_attention": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"label": "string"
+		}
+	},
+	"ui.chat.session_status.session_model.label_is_temporarily_unavailable": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"label": "string"
+		}
+	},
+	"ui.chat.session_status.session_model.label_needs_a_device_sign_in": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"label": "string"
+		}
+	},
+	"ui.chat.session_status.session_model.not_signed_in_to_label": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"label": "string"
+		}
+	},
+	"ui.chat.session_status.session_model.owner_cannot_provide_access": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"owner": "string"
+		}
+	},
+	"ui.chat.session_status.session_model.the_last_borrowed_grant_expired_but_borrowing_permission_is_still": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"owner": "string"
+		}
+	},
+	"ui.chat.session_status.session_model.this_session_could_not_resolve_label_access_from_owner_previous": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"label": "string",
+			"owner": "string"
+		}
+	},
+	"ui.chat.session_status.session_model.this_session_may_borrow_label_access_but_it_has_not": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"label": "string",
+			"owner": "string"
+		}
+	},
+	"ui.chat.session_status.session_model.this_session_runs_label_without_a_working_sign_in_so": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"label": "string"
+		}
+	},
+	"ui.chat.session_status.session_status_strip.session_readings_last_reading_note": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"LAST_READING_NOTE": "string"
+		}
+	},
+	"ui.chat.session_status.session_model.auto": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.context_nothing_measured_yet_the_window_fills_as_the_conversation": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.nothing_measured_yet_the_window_fills_as_the_conversation_runs": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.set_once_the_conversation_starts": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.slash_commands_are_off_on_this_server_so_this_reading": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.handing_off_it_continues_there_this_cannot_be_stopped_from": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.the_conversation_is_not_here_to_move_recall_it_here": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.the_copy_on_this_device_is_deleted_when_the_move": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.the_copy_on_this_device_was_deleted_when_the_move": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.the_device_list_could_not_be_read_so_this_is": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.this_device_is_in_no_network_create_one_with_lop": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.quota_notice.checked_just_now_no_change_yet": {
+		"role": "visible interface copy in chat quota-notice/quota-notice.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from quota-notice/quota-notice.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.quota_notice.checking": {
+		"role": "visible interface copy in chat quota-notice/quota-notice.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from quota-notice/quota-notice.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.quota_notice.could_not_check_try_again": {
+		"role": "visible interface copy in chat quota-notice/quota-notice.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from quota-notice/quota-notice.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.quota_notice.could_not_send_try_again": {
+		"role": "visible interface copy in chat quota-notice/quota-notice.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from quota-notice/quota-notice.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.quota_notice.requested_recently_try_again_in_about_2_minutes": {
+		"role": "visible interface copy in chat quota-notice/quota-notice.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from quota-notice/quota-notice.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.quota_notice.sending": {
+		"role": "visible interface copy in chat quota-notice/quota-notice.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from quota-notice/quota-notice.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.quota_notice.sent_check_your_inbox_and_spam_folder": {
+		"role": "visible interface copy in chat quota-notice/quota-notice.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from quota-notice/quota-notice.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_cost.channels_are_not_tracked_for_this_conversation_so_this_covers": {
+		"role": "visible interface copy in chat session-status/session-cost.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-cost.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_cost.price_unknown": {
+		"role": "visible interface copy in chat session-status/session-cost.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-cost.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_duration.time_spent_working_waiting_is_not_counted": {
+		"role": "visible interface copy in chat session-status/session-duration.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-duration.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_duration.time_the_agent_has_spent_working_in_this_conversation_time": {
+		"role": "visible interface copy in chat session-status/session-duration.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-duration.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.last_reading_from_before_the_reconnect": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.readings_dropped_when_the_connection_was_lost": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.moving_this_conversation_to_name": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.session_status.chat_device_model.moving_to_name": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.session_status.chat_device_model.name_holds_a_copy_as_value_the_original_is_still": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string",
+			"value": "string"
+		}
+	},
+	"ui.chat.session_status.chat_device_model.new_conversations_are_created_on_name_click_to_choose_a": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.session_status.chat_device_model.new_on_name": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.session_status.chat_device_model.this_conversation_moved_to_name_the_copy_that_was_here": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.session_status.chat_device_model.this_conversation_moved_to_name_which_did_not_answer_the": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.session_status.chat_device_model.this_conversation_runs_on_name_click_to_recall_it_here": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.session_status.chat_device_model.this_conversation_runs_on_name_which_did_not_answer_the": {
+		"role": "visible interface copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from device/chat-device-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string",
+			"because": "string"
+		}
+	},
+	"ui.chat.session_status.chat_device_notice.moving_to_name": {
+		"role": "visible interface copy in chat device/chat-device-notice.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from device/chat-device-notice.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.session_status.session_context.formatcontexttokensvalue_tokens_in_use_the_window_this_model_allows_is": {
+		"role": "visible interface copy in chat session-status/session-context.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-context.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"formatContextTokensValue": "string"
+		}
+	},
+	"ui.chat.session_status.session_context.model_maximum_formatwindowvalue": {
+		"role": "visible interface copy in chat session-status/session-context.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-context.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"formatWindowValue": "string"
+		}
+	},
+	"ui.chat.session_status.session_cost.includes_moneyvalue_plan_covered_api_equivalent_not_charged": {
+		"role": "visible interface copy in chat session-status/session-cost.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-cost.ts. Keep technical product names and identifiers unchanged.",
+		"placeholders": {
+			"moneyValue": "string"
+		}
+	},
+	"ui.chat.session_status.session_cost.moneyvalue_subagent_sessions": {
+		"role": "visible interface copy in chat session-status/session-cost.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-cost.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"moneyValue": "string"
+		}
+	},
+	"ui.chat.session_status.session_cost.session_spend_is_at_least_formatcostvalue": {
+		"role": "visible interface copy in chat session-status/session-cost.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-cost.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"formatCostValue": "string"
+		}
+	},
+	"ui.chat.session_status.session_cost.session_spend_is_at_least_formatcostvalue_part_of_this_conversation": {
+		"role": "visible interface copy in chat session-status/session-cost.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from session-status/session-cost.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"formatCostValue": "string"
+		}
+	},
+	"ui.chat.session_status.session_cost.session_spend_so_far_formatcostvalue": {
+		"role": "visible interface copy in chat session-status/session-cost.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-cost.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"formatCostValue": "string"
+		}
+	},
+	"ui.chat.session_status.session_model.last_checked_accesstimevalue": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"accessTimeValue": "string"
+		}
+	},
+	"ui.chat.session_status.session_model.last_resolved_accesstimevalue": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"accessTimeValue": "string"
+		}
+	},
+	"ui.chat.session_status.session_model.reasoning_effort_this_model_offers_value": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"value": "string"
+		}
+	},
+	"ui.chat.session_status.session_model.recorded_grant_expiry_accesstimevalue": {
+		"role": "visible interface copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"accessTimeValue": "string"
+		}
+	},
+	"ui.chat.session_status.session_status_strip.context_no_reading_yet_contextbreakdownlinevalue": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"contextBreakdownLineValue": "string"
+		}
+	},
+	"ui.chat.session_status.session_status_strip.reasoning_effort_effortdisplayvalue": {
+		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"effortDisplayValue": "string"
+		}
+	},
+	"ui.chat.session_status.session_cost.not_tracked": {
+		"role": "visible interface copy in chat session-status/session-cost.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from session-status/session-cost.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.model_switching": {
+		"role": "rendered product copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"selector": "string",
+			"fastMode": "string"
+		}
+	},
+	"ui.chat.session_status.session_status_strip.model_reason": {
+		"role": "rendered product copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"selector": "string",
+			"fastMode": "string",
+			"reason": "string"
+		}
+	},
+	"ui.chat.session_status.session_status_strip.context_label": {
+		"role": "rendered product copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"spelling": "string",
+			"estimated": "string",
+			"breakdown": "string"
+		}
+	},
+	"ui.chat.session_status.session_status_strip.active_time_label": {
+		"role": "rendered product copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"duration": "string",
+			"explanation": "string"
+		}
+	},
+	"ui.chat.session_status.session_status_strip.fast_mode_badge": {
+		"role": "rendered product copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_status_strip.fast_mode_suffix": {
+		"role": "rendered product copy in chat session-status/session-status-strip.tsx",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.chat_device_model.this_device_label": {
+		"role": "rendered product copy in chat device/chat-device-model.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.session_status.session_model.auto_detail": {
+		"role": "rendered product copy in chat session-status/session-model.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"fallbackDefault": "Runtime value substituted into this message; preserve the ICU argument and its formatting.",
+			"ladder": "Runtime value substituted into this message; preserve the ICU argument and its formatting."
+		}
+	},
+	"ui.chat.session_status.session_cost.unpriced_records": {
+		"role": "rendered product copy in chat session-status/session-cost.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"count": "Numeric count supplied by the caller; preserve ICU plural/select categories."
+		}
+	},
+	"ui.chat.session_status.session_cost.basis_billed": "Money-basis word beside a spend figure: tokens were billed at the published price. Lower case, as the sized row prints it.",
+	"ui.chat.session_status.session_cost.basis_included": "Money-basis word beside a spend figure: a subscription funded these tokens; the figure is the API-equivalent price. Capitalised here; the row prefixes capitalisation itself.",
+	"ui.chat.session_status.session_cost.basis_estimated": "Money-basis word beside a spend figure: the price is an estimate rather than a published bill.",
+	"ui.chat.session_status.session_cost.subagents_amount": "The child-spend line: \"Subagents\" + the child figure and its basis words. {amount} already holds the money text plus \" · \" separators; keep the label first.",
+	"ui.chat.session_status.session_context.context": "Heading of the context wheel tooltip when no reading exists yet. One word."
+}

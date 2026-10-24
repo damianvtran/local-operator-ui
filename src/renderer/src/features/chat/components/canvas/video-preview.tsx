@@ -15,6 +15,7 @@ import {
 import type { CanvasDocument } from "../../types/canvas";
 import { artifactFileName } from "../../utils/artifact-identity";
 import { mimeTypeForPath } from "../../utils/file-kind";
+import { documentNameForDisplay } from "../../utils/get-file-name";
 import { ImageActionsMenu } from "../image-actions-menu";
 import {
 	FileViewerState,
@@ -107,7 +108,7 @@ const ArtifactVideoPreview: FC<{ document: CanvasDocument }> = ({
 				{artifact ? (
 					<ImageActionsMenu
 						file={document.path}
-						label={document.title}
+						label={documentNameForDisplay(document)}
 						mediaKind="video"
 						saveName={artifactFileName(artifact)}
 						resolveBytes={() =>
@@ -128,10 +129,12 @@ const ArtifactVideoPreview: FC<{ document: CanvasDocument }> = ({
 				<FileViewerState
 					title={
 						playbackFailed
-							? "This video could not be played"
-							: "This video is no longer in the session"
+							? t("ui.canvas.video_preview.this_video_could_not_be_played")
+							: t(
+									"ui.canvas.video_preview.this_video_is_no_longer_in_the_session",
+								)
 					}
-					detail={document.title}
+					detail={documentNameForDisplay(document)}
 				/>
 			) : (
 				<div
@@ -326,10 +329,10 @@ const BytesVideo: FC<{ document: CanvasDocument }> = ({ document }) => {
 			<FileViewerState
 				title={
 					tooLarge
-						? "Too large to preview"
+						? t("ui.canvas.video_preview.too_large_to_preview")
 						: gone
-							? "File no longer exists"
-							: "This video could not be played"
+							? t("ui.canvas.video_preview.file_no_longer_exists")
+							: t("ui.canvas.video_preview.this_video_could_not_be_played")
 				}
 				detail={
 					state.status === "unavailable"

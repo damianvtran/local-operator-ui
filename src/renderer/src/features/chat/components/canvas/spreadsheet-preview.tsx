@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import {
 	AllCommunityModule,
 	ModuleRegistry,
@@ -851,7 +852,9 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 				const outcome = await saveBuffer(document.id, { explicit });
 				if (outcome.status === "blocked") {
 					showErrorToast(
-						"The file changed on disk, so this save was not written. Use the row above to load it or save over it.",
+						t(
+							"ui.canvas.spreadsheet_preview.the_file_changed_on_disk_so_this_save_was_not_written_use_the_row_above",
+						),
 					);
 					return;
 				}
@@ -874,11 +877,16 @@ const SpreadsheetPreviewComponent: FC<SpreadsheetPreviewProps> = ({
 				 */
 				parseFile(payload.text, document.path);
 				setHasUserChanges(false);
-				showSuccessToast("Spreadsheet saved");
+				showSuccessToast(t("ui.canvas.spreadsheet_preview.spreadsheet_saved"));
 			} catch (error) {
 				console.error("Failed to save file:", error);
 				showErrorToast(
-					`Failed to save spreadsheet: ${error instanceof Error ? error.message : "Unknown error"}`,
+					t("ui.canvas.spreadsheet_preview.failed_to_save_spreadsheet", {
+						value:
+							error instanceof Error
+								? error.message
+								: t("ui.canvas.spreadsheet_preview.unknown_error"),
+					}),
 				);
 			} finally {
 				setIsSaving(false);

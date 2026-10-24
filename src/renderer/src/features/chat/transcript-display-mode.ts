@@ -31,6 +31,8 @@
  * (`isFinalResponse` keeps a handover visible in both modes).
  */
 
+import { t } from "../../../../i18n/messages";
+
 /** How a settled turn's transcript rows are drawn. */
 export type TranscriptDisplayMode = "by-turn" | "by-response";
 
@@ -46,8 +48,20 @@ export const TRANSCRIPT_DISPLAY_MODE_OPTIONS: readonly {
 	value: TranscriptDisplayMode;
 	label: string;
 }[] = [
-	{ value: "by-turn", label: "By turn" },
-	{ value: "by-response", label: "By response" },
+	{
+		value: "by-turn",
+		/* Access-time lookup keeps both Settings and the conversation menu live
+		 * across locale switches without caching a module-scope translation. */
+		get label() {
+			return t("ui.chat.header.transcript_display.by_turn");
+		},
+	},
+	{
+		value: "by-response",
+		get label() {
+			return t("ui.chat.header.transcript_display.by_response");
+		},
+	},
 ];
 
 /**

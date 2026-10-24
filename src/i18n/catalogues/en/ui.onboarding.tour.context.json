@@ -1,0 +1,489 @@
+{
+	"ui.onboarding.tour.action.back": {
+		"role": "Shepherd tour back button",
+		"tone": "Single navigation verb",
+		"length_hint": "Compact tour footer button"
+	},
+	"ui.onboarding.tour.action.finish": {
+		"role": "Shepherd tour finish button",
+		"tone": "Single navigation verb",
+		"length_hint": "Compact tour footer button"
+	},
+	"ui.onboarding.tour.action.next": {
+		"role": "Shepherd tour next button",
+		"tone": "Single navigation verb",
+		"length_hint": "Compact tour footer button"
+	},
+	"ui.onboarding.tour.agent_capabilities.body": {
+		"role": "Guided-tour body for step agent_capabilities",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"placeholders": {
+			"agentic_sequence_image": "Complete HTML image element; preserve verbatim"
+		},
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.agent_capabilities.title": {
+		"role": "Guided-tour title for step agent_capabilities",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.agent_hub_view.body": {
+		"role": "Guided-tour body for step agent_hub_view",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.agent_hub_view.title": {
+		"role": "Guided-tour title for step agent_hub_view",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.agent_list.body": {
+		"role": "Guided-tour body for step agent_list",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.agent_list.title": {
+		"role": "Guided-tour title for step agent_list",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.agent_naming_guidelines.body": {
+		"role": "Guided-tour body for step agent_naming_guidelines",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.agent_naming_guidelines.title": {
+		"role": "Guided-tour title for step agent_naming_guidelines",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.agent_options.body": {
+		"role": "Guided-tour body for step agent_options",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.agent_options.title": {
+		"role": "Guided-tour title for step agent_options",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.alt.agent_capabilities": {
+		"role": "Alternative text for the guided-tour image in step agent_capabilities",
+		"tone": "Describe the pictured interface succinctly",
+		"length_hint": "Image alt text only"
+	},
+	"ui.onboarding.tour.alt.attachments": {
+		"role": "Alternative text for the guided-tour image in step attachments",
+		"tone": "Describe the pictured interface succinctly",
+		"length_hint": "Image alt text only"
+	},
+	"ui.onboarding.tour.alt.canvas_documents_view": {
+		"role": "Alternative text for the guided-tour image in step canvas_documents_view",
+		"tone": "Describe the pictured interface succinctly",
+		"length_hint": "Image alt text only"
+	},
+	"ui.onboarding.tour.alt.canvas_feature": {
+		"role": "Alternative text for the guided-tour image in step canvas_feature",
+		"tone": "Describe the pictured interface succinctly",
+		"length_hint": "Image alt text only"
+	},
+	"ui.onboarding.tour.alt.canvas_variables_view": {
+		"role": "Alternative text for the guided-tour image in step canvas_variables_view",
+		"tone": "Describe the pictured interface succinctly",
+		"length_hint": "Image alt text only"
+	},
+	"ui.onboarding.tour.alt.chat_input": {
+		"role": "Alternative text for the guided-tour image in step chat_input",
+		"tone": "Describe the pictured interface succinctly",
+		"length_hint": "Image alt text only"
+	},
+	"ui.onboarding.tour.alt.welcome": {
+		"role": "Alternative text for the guided-tour image in step welcome",
+		"tone": "Describe the pictured interface succinctly",
+		"length_hint": "Image alt text only"
+	},
+	"ui.onboarding.tour.appearance_settings.body": {
+		"role": "Guided-tour body for step appearance_settings",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.appearance_settings.title": {
+		"role": "Guided-tour title for step appearance_settings",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.application_updates_settings.body": {
+		"role": "Guided-tour body for step application_updates_settings",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.application_updates_settings.title": {
+		"role": "Guided-tour title for step application_updates_settings",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.attachments.body": {
+		"role": "Guided-tour body for step attachments",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"placeholders": {
+			"chat_attachments_image": "Complete HTML image element; preserve verbatim"
+		},
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.attachments.title": {
+		"role": "Guided-tour title for step attachments",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.canvas_documents_view.body": {
+		"role": "Guided-tour body for step canvas_documents_view",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"placeholders": {
+			"inline_edit_canvas_image": "Complete HTML image element; preserve verbatim",
+			"canvas_code_inline_edit_image": "Complete HTML image element; preserve verbatim"
+		},
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.canvas_documents_view.title": {
+		"role": "Guided-tour title for step canvas_documents_view",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.canvas_feature.body": {
+		"role": "Guided-tour body for step canvas_feature",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"placeholders": {
+			"canvas_overview_image": "Complete HTML image element; preserve verbatim"
+		},
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.canvas_feature.title": {
+		"role": "Guided-tour title for step canvas_feature",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.canvas_files_view.body": {
+		"role": "Guided-tour body for step canvas_files_view",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.canvas_files_view.title": {
+		"role": "Guided-tour title for step canvas_files_view",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.canvas_open_button.body": {
+		"role": "Guided-tour body for step canvas_open_button",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.canvas_open_button.title": {
+		"role": "Guided-tour title for step canvas_open_button",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.canvas_variables_view.body": {
+		"role": "Guided-tour body for step canvas_variables_view",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"placeholders": {
+			"canvas_variables_image": "Complete HTML image element; preserve verbatim"
+		},
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.canvas_variables_view.title": {
+		"role": "Guided-tour title for step canvas_variables_view",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.chat_input.body": {
+		"role": "Guided-tour body for step chat_input",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"placeholders": {
+			"chat_input_image": "Complete HTML image element; preserve verbatim"
+		},
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.chat_input.title": {
+		"role": "Guided-tour title for step chat_input",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.click_view_settings_from_chat.body": {
+		"role": "Guided-tour body for step click_view_settings_from_chat",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.click_view_settings_from_chat.title": {
+		"role": "Guided-tour title for step click_view_settings_from_chat",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.create_new_agent.body": {
+		"role": "Guided-tour body for step create_new_agent",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.create_new_agent.title": {
+		"role": "Guided-tour title for step create_new_agent",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.create_schedule.body": {
+		"role": "Guided-tour body for step create_schedule",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.create_schedule.title": {
+		"role": "Guided-tour title for step create_schedule",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.create_schedule_dialog.body": {
+		"role": "Guided-tour body for step create_schedule_dialog",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.create_schedule_dialog.title": {
+		"role": "Guided-tour title for step create_schedule_dialog",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.download_agent.body": {
+		"role": "Guided-tour body for step download_agent",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.download_agent.title": {
+		"role": "Guided-tour title for step download_agent",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.general_settings.body": {
+		"role": "Guided-tour body for step general_settings",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.general_settings.title": {
+		"role": "Guided-tour title for step general_settings",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.integrations_settings.body": {
+		"role": "Guided-tour body for step integrations_settings",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.integrations_settings.title": {
+		"role": "Guided-tour title for step integrations_settings",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.modify_agent_prompt.body": {
+		"role": "Guided-tour body for step modify_agent_prompt",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.modify_agent_prompt.title": {
+		"role": "Guided-tour title for step modify_agent_prompt",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.modify_security_prompt.body": {
+		"role": "Guided-tour body for step modify_security_prompt",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.modify_security_prompt.title": {
+		"role": "Guided-tour title for step modify_security_prompt",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.navigate_agent_hub.body": {
+		"role": "Guided-tour body for step navigate_agent_hub",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.navigate_agent_hub.title": {
+		"role": "Guided-tour title for step navigate_agent_hub",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.navigate_schedules.body": {
+		"role": "Guided-tour body for step navigate_schedules",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.navigate_schedules.title": {
+		"role": "Guided-tour title for step navigate_schedules",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.navigate_settings.body": {
+		"role": "Guided-tour body for step navigate_settings",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.navigate_settings.title": {
+		"role": "Guided-tour title for step navigate_settings",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.pre_command_palette_open_canvas.body": {
+		"role": "Guided-tour body for step pre_command_palette_open_canvas",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"placeholders": {
+			"everything_mac": "Keyboard shortcut label; preserve verbatim",
+			"everything_windows": "Keyboard shortcut label; preserve verbatim",
+			"chats_mac": "Keyboard shortcut label; preserve verbatim",
+			"chats_windows": "Keyboard shortcut label; preserve verbatim",
+			"commands_mac": "Keyboard shortcut label; preserve verbatim",
+			"commands_windows": "Keyboard shortcut label; preserve verbatim"
+		},
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.pre_command_palette_open_canvas.title": {
+		"role": "Guided-tour title for step pre_command_palette_open_canvas",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.radient_account_settings.body": {
+		"role": "Guided-tour body for step radient_account_settings",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.radient_account_settings.title": {
+		"role": "Guided-tour title for step radient_account_settings",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.schedules_overview.body": {
+		"role": "Guided-tour body for step schedules_overview",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.schedules_overview.title": {
+		"role": "Guided-tour title for step schedules_overview",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.select_agent.body": {
+		"role": "Guided-tour body for step select_agent",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.select_agent.title": {
+		"role": "Guided-tour title for step select_agent",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.select_model.body": {
+		"role": "Guided-tour body for step select_model",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.select_model.title": {
+		"role": "Guided-tour title for step select_model",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.select_provider.body": {
+		"role": "Guided-tour body for step select_provider",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.select_provider.title": {
+		"role": "Guided-tour title for step select_provider",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.tour_complete.body": {
+		"role": "Guided-tour body for step tour_complete",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.tour_complete.title": {
+		"role": "Guided-tour title for step tour_complete",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.upload_agent_hub.body": {
+		"role": "Guided-tour body for step upload_agent_hub",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.upload_agent_hub.title": {
+		"role": "Guided-tour title for step upload_agent_hub",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.upload_agent_hub_dialog.body": {
+		"role": "Guided-tour body for step upload_agent_hub_dialog",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.upload_agent_hub_dialog.title": {
+		"role": "Guided-tour title for step upload_agent_hub_dialog",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.view_agent_settings.body": {
+		"role": "Guided-tour body for step view_agent_settings",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.view_agent_settings.title": {
+		"role": "Guided-tour title for step view_agent_settings",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	},
+	"ui.onboarding.tour.welcome.body": {
+		"role": "Guided-tour body for step welcome",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Multi-sentence tour body; preserve all HTML tags",
+		"placeholders": {
+			"chat_full_view_image": "Complete HTML image element; preserve verbatim"
+		},
+		"note": "Preserve ICU literal apostrophes around HTML tags, all markup, technical tokens, and URLs. Image elements arrive as HTML arguments with separately keyed alt text."
+	},
+	"ui.onboarding.tour.welcome.title": {
+		"role": "Guided-tour title for step welcome",
+		"tone": "Plain instructional language addressed to the operator",
+		"length_hint": "Short step title"
+	}
+}

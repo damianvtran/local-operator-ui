@@ -42,6 +42,7 @@ import {
 	useDraftWarmSession,
 	useWarmSession,
 } from "@shared/hooks/use-warm-session";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
@@ -50,7 +51,6 @@ import {
 	ASIDE_STILL_ANSWERING_CODE,
 	SEND_FAILURE_COPY,
 	SESSION_UNVALIDATED_CODE,
-	SESSION_UNVALIDATED_MESSAGE,
 	UNREADABLE_ATTACHMENT_CODE,
 	admitChatDraft,
 	isSessionUnvalidated,
@@ -62,6 +62,7 @@ import {
 	remoteOwnedId,
 	resynthesisePendingSend,
 	sendFailureCopy,
+	sessionUnvalidatedMessage,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
@@ -81,6 +82,7 @@ import {
 	useState,
 } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { t } from "../../../../../i18n/messages";
 import { pairingHasRemedy } from "../../../../../shared/backend-status";
 import { DESKTOP_REFUSAL_CODE } from "../../../../../shared/desktop-contract";
 import {
@@ -90,7 +92,6 @@ import {
 } from "../aside";
 import {
 	type AnswerOutcome,
-	SECRET_ANSWER_DOCKED_MESSAGE,
 	type SendLock,
 	answerGateOption,
 	answerGateSecret,
@@ -149,12 +150,7 @@ import {
 	interruptUnavailableNotice,
 	sessionInterruptEnabled,
 } from "../interrupt-turn";
-import {
-	MOVE_NOT_READY_REASON,
-	MOVE_UNAVAILABLE_REASON,
-	sessionMoveEnabled,
-	useSessionMove,
-} from "../move-session";
+import { sessionMoveEnabled, useSessionMove } from "../move-session";
 import { openConversation } from "../open-conversation";
 import { PickerOutlet } from "../pickers/picker-registry";
 import { resolveSessionAskFrame } from "../session-asks";
@@ -251,6 +247,7 @@ function SessionPanel({
 	 */
 	onStartNewChat: () => void;
 }) {
+	useI18nLocale();
 	const draftIdentity = useCanonicalSessionsStore((state) =>
 		paneDraftKey(draftKey, sessionId, state.drafts),
 	);
@@ -1265,10 +1262,14 @@ function SessionPanel({
 	 */
 	const cwdReadOnlyReason =
 		draftKey && (Boolean(draft?.sessionId) || admitting)
-			? MOVE_NOT_READY_REASON
+			? t(
+					"ui.chat.move_session.this_session_is_still_starting_its_working_directory_can_be",
+				)
 			: canMove
 				? undefined
-				: MOVE_UNAVAILABLE_REASON;
+				: t(
+						"ui.chat.move_session.this_backend_cannot_move_a_live_session_start_a_new",
+					);
 	const navigate = useNavigate();
 	const rebind = (id: string) => {
 		/* The `/chat` slash finger on the switch; the rule is in `openConversation`. */
@@ -2018,7 +2019,9 @@ function SessionPanel({
 				 */
 				if (gateIsSecret(gate))
 					throw new UserFacingError(
-						SECRET_ANSWER_DOCKED_MESSAGE,
+						t(
+							"ui.chat.ask_answer.your_answer_was_not_sent_a_secret_request_is_answered",
+						),
 						ANSWER_NOT_SENT_CODE,
 					);
 				if (gate.kind === "approval") {
@@ -2043,7 +2046,9 @@ function SessionPanel({
 					const approved = approvalAnswerValue(typed ?? content);
 					if (approved === null)
 						throw new UserFacingError(
-							"Reply yes or no to answer the approval request.",
+							t(
+								"ui.chat.chat_page.reply_yes_or_no_to_answer_the_approval_request",
+							),
 							ANSWER_NOT_SENT_CODE,
 						);
 					await desktopResult({
@@ -2217,7 +2222,9 @@ function SessionPanel({
 					 * with the user.
 					 */
 					setSendError(
-						"An aside answers text only. Remove the attached files to ask it.",
+						t(
+							"ui.chat.chat_page.an_aside_answers_text_only_remove_the_attached_files_to",
+						),
 					);
 					return false;
 				}
@@ -2398,7 +2405,7 @@ function SessionPanel({
 					if (outcome === "failed") {
 						setSendError(
 							streamRef.current.failure?.statement ??
-								SESSION_UNVALIDATED_MESSAGE,
+								sessionUnvalidatedMessage(),
 						);
 						setSendErrorCode(SESSION_UNVALIDATED_CODE);
 						/*
@@ -3011,7 +3018,8 @@ function SessionPanel({
 		 * nothing, leaving the card's own receipt (below, in `AskPanel`) as the only
 		 * trace on one side and a stale frame on the other.
 		 */
-		if (outcome.status === "sent") showSuccessToast("Answer changed");
+		if (outcome.status === "sent")
+			showSuccessToast(t("ui.chat.chat_page.answer_changed"));
 	};
 	const declineAsk = async (taskId: string) => {
 		if (!sessionId || sendLock.held) return;
@@ -3388,7 +3396,9 @@ function SessionPanel({
 				 */
 				const sentence = userFacingMessage(
 					error,
-					"Stop could not be confirmed. The turn may still be running.",
+					t(
+						"ui.chat.chat_page.stop_could_not_be_confirmed_the_turn_may_still_be",
+					),
 				);
 				stopAlertSentence.current = sentence;
 				setSendError(sentence);
@@ -4555,9 +4565,9 @@ function SessionPanel({
 							}}
 						>
 							{command === "agent"
-								? "Choose agent"
+								? t("ui.chat.chat_page.choose_agent")
 								: command === "team"
-									? "Choose team"
+									? t("ui.chat.chat_page.choose_team")
 									: command.charAt(0).toUpperCase() + command.slice(1)}
 						</button>
 					))}
@@ -4622,9 +4632,12 @@ function SessionPanel({
 								 * declares immutable, so the two lines now state one fact.
 								 */
 								starting
-								? (loadedTargetDisplay ?? "Starting the session")
+								? (loadedTargetDisplay ??
+									t("ui.chat.chat_page.starting_the_session"))
 								: draft?.sessionId
-									? canonical.frontend?.cwd || cwd || "Canonical chat"
+									? canonical.frontend?.cwd ||
+										cwd ||
+										t("ui.chat.chat_page.canonical_chat")
 									: /*
 										 * A DRAFT WITH NO SESSION STATES WHERE IT WILL RUN, NOT WHAT IT
 										 * WILL DO (§H, U23). This slot held "The session starts when you
@@ -4999,6 +5012,7 @@ function SessionPanel({
 }
 
 export function ChatPage() {
+	useI18nLocale();
 	const { agentId: routeIdentity } = useParams<{ agentId?: string }>();
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
@@ -5115,7 +5129,9 @@ export function ChatPage() {
 		 */
 		if (!SESSION_ID.test(routeIdentity)) {
 			setRouteError(
-				"This legacy link has no canonical chat. Its saved history is unchanged.",
+				t(
+					"ui.chat.chat_page.this_legacy_link_has_no_canonical_chat_its_saved_history",
+				),
 			);
 			return;
 		}
@@ -5280,14 +5296,20 @@ export function ChatPage() {
 						 * itself is untouched while the backend is being reached.
 						 */}
 						{capabilities.isLoading
-							? "Connecting to the backend… Your conversation is safe."
+							? t(
+									"ui.chat.chat_page.connecting_to_the_backend_your_conversation_is_safe",
+								)
 							: capabilities.error
 								? userFacingMessage(
 										capabilities.error,
-										"The Local Operator server did not answer as expected.",
+										t(
+											"ui.chat.chat_page.the_local_operator_server_did_not_answer_as_expected",
+										),
 									)
 								: (pairingSentence ??
-									"Update the backend to use canonical chats. Your existing histories are unchanged.")}
+									t(
+										"ui.chat.chat_page.update_the_backend_to_use_canonical_chats_your_existing_histories",
+									))}
 					</p>
 					{offerRetry && (
 						<button
@@ -5295,7 +5317,7 @@ export function ChatPage() {
 							className={cn("underline")}
 							onClick={() => void paneRetry()}
 						>
-							Retry
+							{t("ui.common.actions.retry")}
 						</button>
 					)}
 				</div>
@@ -5346,7 +5368,7 @@ export function ChatPage() {
 						className={cn("rounded-md border border-control px-3 py-2")}
 						onClick={() => stage(undefined, true)}
 					>
-						New chat
+						{t("ui.chat.chat_page.new_chat")}
 					</button>
 				</div>
 			)}

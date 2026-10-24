@@ -1,3 +1,4 @@
+import { t } from "../../../../i18n/messages";
 import { ARCHIVE_UNDO_TOAST_MS } from "./archive-undo";
 
 /**
@@ -59,21 +60,34 @@ import { ARCHIVE_UNDO_TOAST_MS } from "./archive-undo";
  * exactly as the search block draws it, so the sentence sends the reader to a thing
  * they can find by the name they were given.
  */
-export const ARCHIVE_CONFIRM_MESSAGE = `It leaves your lists. You can undo for ${ARCHIVE_UNDO_TOAST_MS / 1000} seconds; after that, search above your chats, turn on \u201cInclude archived\u201d, then Unarchive it.`;
+/**
+ * WHY THESE THREE ARE FUNCTIONS, not module constants: `t()` reads the active
+ * locale when it is CALLED. A `const` evaluated at import freezes the boot
+ * language into the sentence, and the dialog — re-rendered in place on a
+ * language switch — would keep showing the old one. The dialog subscribes with
+ * `useI18nLocale` and calls these per render, so a switch arrives without a
+ * reload and without remounting the list behind it.
+ */
+export const archiveConfirmMessage = (): string =>
+	t("ui.chat.archive_confirm.undo_explanation", {
+		seconds: ARCHIVE_UNDO_TOAST_MS / 1000,
+	});
 
 /**
  * What the question names when nobody can say which conversation it is: the store
  * holds no row for it and the asking surface carried no title. A question that put
  * nothing inside curly quotes would read as a bug, and this reads as the act.
  */
-export const ARCHIVE_CONFIRM_UNNAMED = "this conversation";
+export const archiveConfirmUnnamed = (): string =>
+	t("ui.chat.archive_confirm.this_conversation");
 
 /**
  * The verb the question opens with. The NAME is the caller's and it ellipsises;
  * this half and the question mark never give, because "Archive…" is not a question
  * and "…?" is not an act (`archiveOfferedName`'s R2-3 rule, applied to the title).
  */
-export const ARCHIVE_CONFIRM_VERB = "Archive";
+export const archiveConfirmVerb = (): string =>
+	t("ui.chat.archive_confirm.archive");
 
 /**
  * The row box a confirmed archive should hand the caret on from, or null.

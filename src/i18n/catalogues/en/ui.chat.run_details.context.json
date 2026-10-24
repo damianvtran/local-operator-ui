@@ -12,5 +12,1160 @@
 		"length": "One word.",
 		"note": "Closes the confirmation without cancelling the job, leaving it running. It takes the card's opening focus, so it must read as the safe choice beside Cancel.",
 		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_auth_dialog.cancel_sign_in": {
+		"role": "visible interface copy in chat components/run-details/mcp-auth-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-auth-dialog.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_auth_dialog.checking_this_servers_sign_in_method": {
+		"role": "visible interface copy in chat components/run-details/mcp-auth-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-auth-dialog.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_auth_dialog.open_a_conversation_to_sign_in_to_this_server": {
+		"role": "visible interface copy in chat components/run-details/mcp-auth-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-auth-dialog.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_auth_dialog.sign_in_to_an_mcp_server": {
+		"role": "accessible name or tooltip in chat components/run-details/mcp-auth-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-auth-dialog.tsx. Keep technical product names and identifiers unchanged.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_auth_dialog.your_browser_opens_to_approve_access": {
+		"role": "visible interface copy in chat components/run-details/mcp-auth-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-auth-dialog.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_key_dialog.replace_existing_values_for_these_shared_keys": {
+		"role": "visible interface copy in chat components/run-details/mcp-key-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-key-dialog.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_key_dialog.saved_to_the_encrypted_secret_store_then_this_server_is": {
+		"role": "visible interface copy in chat components/run-details/mcp-key-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/run-details/mcp-key-dialog.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.monitor_cancel_dialog.cancel_this_monitor": {
+		"role": "accessible name or tooltip in chat components/run-details/monitor-cancel-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/monitor-cancel-dialog.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_child_reader.delegated_with": {
+		"role": "visible interface copy in chat components/run-details/run-child-reader.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-child-reader.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_child_reader.failed": {
+		"role": "visible interface copy in chat components/run-details/run-child-reader.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-child-reader.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_child_reader.loading_this_subagents_conversation": {
+		"role": "visible interface copy in chat components/run-details/run-child-reader.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-child-reader.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_child_reader.read_only_this_is_the_subagents_page_not_a_way": {
+		"role": "visible interface copy in chat components/run-details/run-child-reader.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-child-reader.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_child_reader.shortened_at_the_wire_the_runtime_records_at_most_the": {
+		"role": "visible interface copy in chat components/run-details/run-child-reader.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/run-details/run-child-reader.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_child_reader.this_subagent_has_no_conversation_on_record_yet": {
+		"role": "visible interface copy in chat components/run-details/run-child-reader.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-child-reader.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_child_reader.this_subagent_has_no_transcript_on_disk_yet": {
+		"role": "visible interface copy in chat components/run-details/run-child-reader.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-child-reader.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_child_reader.this_subagents_row_carries_no_session_id_so_there_is": {
+		"role": "visible interface copy in chat components/run-details/run-child-reader.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/run-details/run-child-reader.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_child_reader.this_subagents_session_directory_is_no_longer_on_disk": {
+		"role": "visible interface copy in chat components/run-details/run-child-reader.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-child-reader.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_child_subagents.subagents_of": {
+		"role": "visible interface copy in chat components/run-details/run-child-subagents.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-child-subagents.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_mcp.mcp_servers": {
+		"role": "visible interface copy in chat components/run-details/run-detail-mcp.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-mcp.tsx. Keep technical product names and identifiers unchanged.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_mcp.the_stored_credential_was_removed": {
+		"role": "visible interface copy in chat components/run-details/run-detail-mcp.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-mcp.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_monitors.cancel_refused": {
+		"role": "visible interface copy in chat components/run-details/run-detail-monitors.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-monitors.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_monitors.monitors": {
+		"role": "visible interface copy in chat components/run-details/run-detail-monitors.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-monitors.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_subagents.subagents": {
+		"role": "visible interface copy in chat components/run-details/run-detail-subagents.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-subagents.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_todos.hidden": {
+		"role": "visible interface copy in chat components/run-details/run-detail-todos.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-todos.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_todos.to_dos": {
+		"role": "visible interface copy in chat components/run-details/run-detail-todos.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-todos.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_wakes.wakes": {
+		"role": "visible interface copy in chat components/run-details/run-detail-wakes.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-wakes.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_panel.close_run_details": {
+		"role": "accessible name or tooltip in chat components/run-details/run-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_panel.next_subagent": {
+		"role": "accessible name or tooltip in chat components/run-details/run-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_panel.opening_a_subagents_conversation_needs_a_newer_local_operator_backend": {
+		"role": "visible interface copy in chat components/run-details/run-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/run-details/run-panel.tsx. Keep technical product names and identifiers unchanged.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_panel.previous_subagent": {
+		"role": "accessible name or tooltip in chat components/run-details/run-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_panel.run_details": {
+		"role": "visible interface copy in chat components/run-details/run-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_panel.subagent_path": {
+		"role": "accessible name or tooltip in chat components/run-details/run-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_panel.that_subagents_conversation_could_not_be_opened": {
+		"role": "visible interface copy in chat components/run-details/run-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.wake_cancel_popover.keep": {
+		"role": "visible interface copy in chat components/run-details/wake-cancel-popover.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/wake-cancel-popover.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.job_cancel_popover.cancel_this_job": {
+		"role": "visible interface copy in chat components/run-details/job-cancel-popover.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/job-cancel-popover.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.job_cancel_popover.cancelling": {
+		"role": "visible interface copy in chat components/run-details/job-cancel-popover.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/job-cancel-popover.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.job_controls_model.could_not_cancel_the_job": {
+		"role": "visible interface copy in chat components/run-details/job-controls-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/job-controls-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_auth_dialog.continue_in_browser": {
+		"role": "visible interface copy in chat components/run-details/mcp-auth-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-auth-dialog.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_auth_dialog.could_not_determine_this_servers_sign_in_method_check_its": {
+		"role": "visible interface copy in chat components/run-details/mcp-auth-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/run-details/mcp-auth-dialog.tsx. Keep technical product names and identifiers unchanged.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_auth_dialog.replace_grant_and_sign_in": {
+		"role": "visible interface copy in chat components/run-details/mcp-auth-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-auth-dialog.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_auth_dialog.status_unavailable": {
+		"role": "visible interface copy in chat components/run-details/mcp-auth-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-auth-dialog.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_auth_dialog.this_replaces_the_existing_grant_for_this_server": {
+		"role": "visible interface copy in chat components/run-details/mcp-auth-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-auth-dialog.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_auth_dialog.this_server_does_not_use_oauth_and_declares_no_secret": {
+		"role": "visible interface copy in chat components/run-details/mcp-auth-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/run-details/mcp-auth-dialog.tsx. Keep technical product names and identifiers unchanged.",
+		"placeholders": {
+			"NAME": "string"
+		}
+	},
+	"ui.chat.run_details.mcp_auth_dialog.update_the_backend_for_secure_mcp_key_entry_oauth_and": {
+		"role": "visible interface copy in chat components/run-details/mcp-auth-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/run-details/mcp-auth-dialog.tsx. Keep technical product names and identifiers unchanged.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_auth_dialog.waiting_for_backend_sign_in_status": {
+		"role": "visible interface copy in chat components/run-details/mcp-auth-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-auth-dialog.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_key_dialog.save_and_reconnect": {
+		"role": "visible interface copy in chat components/run-details/mcp-key-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-key-dialog.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_key_dialog.saving": {
+		"role": "visible interface copy in chat components/run-details/mcp-key-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-key-dialog.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_child_reader.result": {
+		"role": "visible interface copy in chat components/run-details/run-child-reader.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-child-reader.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_child_reader.result_preview": {
+		"role": "visible interface copy in chat components/run-details/run-child-reader.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-child-reader.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_child_reader.show_less": {
+		"role": "visible interface copy in chat components/run-details/run-child-reader.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-child-reader.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_child_reader.this_is_a_shortened_copy_this_subagents_conversation_is_not": {
+		"role": "visible interface copy in chat components/run-details/run-child-reader.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/run-details/run-child-reader.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_child_reader.this_subagents_conversation_is_not_available_here": {
+		"role": "visible interface copy in chat components/run-details/run-child-reader.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-child-reader.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_mcp.1_tool": {
+		"role": "visible interface copy in chat components/run-details/run-detail-mcp.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-mcp.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_model.1_to_do_open": {
+		"role": "visible interface copy in chat components/run-details/run-detail-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_model.all_to_dos_closed": {
+		"role": "visible interface copy in chat components/run-details/run-detail-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_model.all_to_dos_resolved": {
+		"role": "visible interface copy in chat components/run-details/run-detail-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_model.mcp_server": {
+		"role": "visible interface copy in chat components/run-details/run-detail-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-model.ts. Keep technical product names and identifiers unchanged.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_monitors.cancelled": {
+		"role": "visible interface copy in chat components/run-details/run-detail-monitors.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-monitors.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_wakes.cancel_wake": {
+		"role": "visible interface copy in chat components/run-details/run-detail-wakes.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-wakes.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_wakes.cancelled": {
+		"role": "visible interface copy in chat components/run-details/run-detail-wakes.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-wakes.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_wakes.cancelling": {
+		"role": "visible interface copy in chat components/run-details/run-detail-wakes.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-wakes.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_details_panel.nothing_in_flight": {
+		"role": "visible interface copy in chat components/run-details/run-details-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-details-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_details_panel.nothing_to_show_yet": {
+		"role": "visible interface copy in chat components/run-details/run-details-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-details-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_details_trigger.run_details": {
+		"role": "visible interface copy in chat components/run-details/run-details-trigger.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-details-trigger.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_panel.back": {
+		"role": "visible interface copy in chat components/run-details/run-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_panel.update_backend": {
+		"role": "visible interface copy in chat components/run-details/run-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_panel.updating": {
+		"role": "visible interface copy in chat components/run-details/run-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.use_job_controls.there_is_no_conversation_to_cancel_a_job_on": {
+		"role": "visible interface copy in chat components/run-details/use-job-controls.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/use-job-controls.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.use_mcp_remedy.confirm_replacement_of_the_existing_shared_keys_before_saving": {
+		"role": "visible interface copy in chat components/run-details/use-mcp-remedy.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/use-mcp-remedy.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.use_mcp_remedy.the_keys_were_saved_but_this_server_is_not_connected": {
+		"role": "visible interface copy in chat components/run-details/use-mcp-remedy.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/run-details/use-mcp-remedy.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.use_monitor_controls.could_not_cancel_the_monitor": {
+		"role": "visible interface copy in chat components/run-details/use-monitor-controls.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/use-monitor-controls.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.use_monitor_controls.there_is_no_conversation_to_cancel_a_monitor_on": {
+		"role": "visible interface copy in chat components/run-details/use-monitor-controls.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/use-monitor-controls.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.use_wake_controls.could_not_cancel_the_wake": {
+		"role": "visible interface copy in chat components/run-details/use-wake-controls.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/use-wake-controls.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.use_wake_controls.there_is_no_conversation_to_cancel_a_wake_on": {
+		"role": "visible interface copy in chat components/run-details/use-wake-controls.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/use-wake-controls.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.wake_cancel_popover.cancelling": {
+		"role": "visible interface copy in chat components/run-details/wake-cancel-popover.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/wake-cancel-popover.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.wake_controls_model.cancel_check_in": {
+		"role": "visible interface copy in chat components/run-details/wake-controls-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/wake-controls-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.wake_controls_model.cancel_this_wake": {
+		"role": "visible interface copy in chat components/run-details/wake-controls-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/wake-controls-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.wake_controls_model.cancel_wake": {
+		"role": "visible interface copy in chat components/run-details/wake-controls-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/wake-controls-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.wake_controls_model.this_wake": {
+		"role": "visible interface copy in chat components/run-details/wake-controls-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/wake-controls-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.wake_controls_model.this_wake_is_already_gone": {
+		"role": "visible interface copy in chat components/run-details/wake-controls-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/wake-controls-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.the_sign_in_could_not_be_started": {
+		"role": "visible interface copy in chat components/run-details/mcp-failure.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-failure.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_mcp.sign_in_failed": {
+		"role": "visible interface copy in chat components/run-details/run-detail-mcp.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-mcp.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_mcp.waiting_for_your_browser": {
+		"role": "visible interface copy in chat components/run-details/run-detail-mcp.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-mcp.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_model.grant_account_access": {
+		"role": "visible interface copy in chat components/run-details/run-detail-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.job_cancel_popover.the_runtime_asks_the_provider_to_stop_label_the_row": {
+		"role": "visible interface copy in chat components/run-details/job-cancel-popover.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/run-details/job-cancel-popover.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"label": "string"
+		}
+	},
+	"ui.chat.run_details.monitor_cancel_dialog.name_will_not_check_again_the_conversation_stays": {
+		"role": "visible interface copy in chat components/run-details/monitor-cancel-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/monitor-cancel-dialog.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.run_details.run_child_subagents.subagents_of_ownerlabel": {
+		"role": "visible interface copy in chat components/run-details/run-child-subagents.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-child-subagents.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"ownerLabel": "string"
+		}
+	},
+	"ui.chat.run_details.run_detail_mcp.label": {
+		"role": "visible interface copy in chat components/run-details/run-detail-mcp.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-mcp.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"label": "string"
+		}
+	},
+	"ui.chat.run_details.run_detail_model.cadence_no_deliveries_left": {
+		"role": "visible interface copy in chat components/run-details/run-detail-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"cadence": "string"
+		}
+	},
+	"ui.chat.run_details.run_detail_model.count_monitors_armed": {
+		"role": "visible interface copy in chat components/run-details/run-detail-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"count": "number"
+		}
+	},
+	"ui.chat.run_details.run_detail_model.count_wakes_armed": {
+		"role": "visible interface copy in chat components/run-details/run-detail-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"count": "number"
+		}
+	},
+	"ui.chat.run_details.run_detail_subagents.show_hidden_more": {
+		"role": "visible interface copy in chat components/run-details/run-detail-subagents.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-subagents.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"hidden": "number"
+		}
+	},
+	"ui.chat.run_details.run_detail_wakes.cancel_wake_head": {
+		"role": "visible interface copy in chat components/run-details/run-detail-wakes.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-wakes.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"head": "string"
+		}
+	},
+	"ui.chat.run_details.run_detail_wakes.trailingclause": {
+		"role": "visible interface copy in chat components/run-details/run-detail-wakes.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-wakes.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"trailingClause": "string"
+		}
+	},
+	"ui.chat.run_details.wake_controls_model.cancel_name_s_check_in": {
+		"role": "visible interface copy in chat components/run-details/wake-controls-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/wake-controls-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.run_details.wake_controls_model.managed_by_name": {
+		"role": "visible interface copy in chat components/run-details/wake-controls-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/wake-controls-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.run_details.wake_controls_model.subject_will_not_fire_again_and_nothing_re_creates_it": {
+		"role": "visible interface copy in chat components/run-details/wake-controls-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/run-details/wake-controls-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"subject": "string",
+			"name": "string"
+		}
+	},
+	"ui.chat.run_details.wake_controls_model.subject_will_not_fire_again_and_nothing_re_creates_it_9db5ac": {
+		"role": "visible interface copy in chat components/run-details/wake-controls-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/run-details/wake-controls-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"subject": "string"
+		}
+	},
+	"ui.chat.run_details.wake_controls_model.this_wake_is_name_s_own_schedule_so_it_cant": {
+		"role": "visible interface copy in chat components/run-details/wake-controls-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/run-details/wake-controls-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.run_details.run_detail_mcp.manage_this_servers_credentials_in_settings": {
+		"role": "visible interface copy in chat components/run-details/run-detail-mcp.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-mcp.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_mcp.this_server_refused_the_sign_in_check_its_configuration": {
+		"role": "visible interface copy in chat components/run-details/run-detail-mcp.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-mcp.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_model.close_run_details": {
+		"role": "visible interface copy in chat components/run-details/run-detail-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_model.open_run_details": {
+		"role": "visible interface copy in chat components/run-details/run-detail-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_model.todos": {
+		"role": "visible interface copy in chat components/run-details/run-detail-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_panel.the_backend_update_could_not_start_retry_or_update_from": {
+		"role": "visible interface copy in chat components/run-details/run-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/run-details/run-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.job_controls_model.not_cancelled_the_provider_no_longer_knows_the_job": {
+		"role": "visible interface copy in chat components/run-details/job-controls-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/job-controls-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.open_this_server_in_settings": {
+		"role": "visible interface copy in chat components/run-details/mcp-failure.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-failure.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_model.cancelled_before_it_started": {
+		"role": "visible interface copy in chat components/run-details/run-detail-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_model.no_session_is_running_server_status_cannot_be_checked": {
+		"role": "visible interface copy in chat components/run-details/run-detail-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_auth_dialog.sign_in_to_name": {
+		"role": "visible interface copy in chat components/run-details/mcp-auth-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-auth-dialog.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.run_details.mcp_auth_dialog.sign_in_value": {
+		"role": "visible interface copy in chat components/run-details/mcp-auth-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-auth-dialog.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"value": "string"
+		}
+	},
+	"ui.chat.run_details.mcp_failure.lead": {
+		"role": "visible interface copy in chat components/run-details/mcp-failure.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-failure.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"lead": "string"
+		}
+	},
+	"ui.chat.run_details.mcp_failure.lead_a_sign_in_is_already_running_for_this_conversation": {
+		"role": "visible interface copy in chat components/run-details/mcp-failure.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/run-details/mcp-failure.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"lead": "string"
+		}
+	},
+	"ui.chat.run_details.mcp_failure.lead_because_this_conversations_session_is_not_running_trying_again": {
+		"role": "visible interface copy in chat components/run-details/mcp-failure.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/run-details/mcp-failure.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"lead": "string"
+		}
+	},
+	"ui.chat.run_details.mcp_failure.lead_the_server_refused_it_without_giving_a_reason_and": {
+		"role": "visible interface copy in chat components/run-details/mcp-failure.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/run-details/mcp-failure.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"lead": "string"
+		}
+	},
+	"ui.chat.run_details.mcp_failure.lead_value": {
+		"role": "visible interface copy in chat components/run-details/mcp-failure.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-failure.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"lead": "string",
+			"value": "string"
+		}
+	},
+	"ui.chat.run_details.mcp_key_dialog.enter_the_credentials_for_value": {
+		"role": "visible interface copy in chat components/run-details/mcp-key-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-key-dialog.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"value": "string"
+		}
+	},
+	"ui.chat.run_details.mcp_key_dialog.enter_the_key_for_value": {
+		"role": "visible interface copy in chat components/run-details/mcp-key-dialog.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-key-dialog.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"value": "string"
+		}
+	},
+	"ui.chat.run_details.run_child_reader.show_hidden_more_lines": {
+		"role": "visible interface copy in chat components/run-details/run-child-reader.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-child-reader.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"hidden": "number"
+		}
+	},
+	"ui.chat.run_details.run_detail_jobs.cancel_label": {
+		"role": "visible interface copy in chat components/run-details/run-detail-jobs.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-jobs.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"label": "string"
+		}
+	},
+	"ui.chat.run_details.run_detail_mcp.toolcount_tools": {
+		"role": "visible interface copy in chat components/run-details/run-detail-mcp.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-mcp.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"toolCount": "number"
+		}
+	},
+	"ui.chat.run_details.run_detail_model.last_check_formatwakeduevalue": {
+		"role": "visible interface copy in chat components/run-details/run-detail-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"formatWakeDueValue": "string"
+		}
+	},
+	"ui.chat.run_details.run_detail_model.opentodos_to_dos_open": {
+		"role": "visible interface copy in chat components/run-details/run-detail-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"openTodos": "number"
+		}
+	},
+	"ui.chat.run_details.run_detail_model.value": {
+		"role": "visible interface copy in chat components/run-details/run-detail-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"value": "number"
+		}
+	},
+	"ui.chat.run_details.run_detail_monitors.cancel_monitor_name": {
+		"role": "visible interface copy in chat components/run-details/run-detail-monitors.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-monitors.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"name": "string"
+		}
+	},
+	"ui.chat.run_details.run_detail_monitors.healthlabel": {
+		"role": "visible interface copy in chat components/run-details/run-detail-monitors.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-monitors.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"healthLabel": "string"
+		}
+	},
+	"ui.chat.run_details.run_detail_monitors.interval": {
+		"role": "visible interface copy in chat components/run-details/run-detail-monitors.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-monitors.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"interval": "string"
+		}
+	},
+	"ui.chat.run_details.run_detail_monitors.lastchecklabel": {
+		"role": "visible interface copy in chat components/run-details/run-detail-monitors.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-monitors.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"lastCheckLabel": "string"
+		}
+	},
+	"ui.chat.run_details.run_detail_todos.hidden_hidden": {
+		"role": "visible interface copy in chat components/run-details/run-detail-todos.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-todos.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"hidden": "number"
+		}
+	},
+	"ui.chat.run_details.run_detail_wakes.cadence": {
+		"role": "visible interface copy in chat components/run-details/run-detail-wakes.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-wakes.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"cadence": "string"
+		}
+	},
+	"ui.chat.run_details.run_detail_wakes.cancel_the_wake_that_fires_duelabel": {
+		"role": "visible interface copy in chat components/run-details/run-detail-wakes.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-wakes.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"dueLabel": "string"
+		}
+	},
+	"ui.chat.run_details.use_mcp_remedy.not_saved_value_unlock_or_repair_the_encrypted_store_then": {
+		"role": "visible interface copy in chat components/run-details/use-mcp-remedy.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/use-mcp-remedy.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"value": "string"
+		}
+	},
+	"ui.chat.run_details.use_mcp_remedy.saved_value": {
+		"role": "visible interface copy in chat components/run-details/use-mcp-remedy.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/use-mcp-remedy.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"value": "string"
+		}
+	},
+	"ui.chat.run_details.mcp_failure.the_cancellation_could_not_be_confirmed": {
+		"role": "visible interface copy in chat components/run-details/mcp-failure.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-failure.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.the_connection_test_could_not_be_started": {
+		"role": "visible interface copy in chat components/run-details/mcp-failure.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-failure.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.the_keys_were_not_saved": {
+		"role": "visible interface copy in chat components/run-details/mcp-failure.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-failure.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.the_server_could_not_be_added": {
+		"role": "visible interface copy in chat components/run-details/mcp-failure.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-failure.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.the_server_could_not_be_disconnected": {
+		"role": "visible interface copy in chat components/run-details/mcp-failure.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-failure.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.the_server_could_not_be_reconnected": {
+		"role": "visible interface copy in chat components/run-details/mcp-failure.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-failure.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.the_server_could_not_be_removed": {
+		"role": "visible interface copy in chat components/run-details/mcp-failure.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-failure.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.the_sign_in_status_could_not_be_refreshed": {
+		"role": "visible interface copy in chat components/run-details/mcp-failure.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-failure.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.this_servers_configuration_could_not_be_re_read": {
+		"role": "visible interface copy in chat components/run-details/mcp-failure.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-failure.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.mcp_failure.this_servers_sign_in_method_could_not_be_checked": {
+		"role": "visible interface copy in chat components/run-details/mcp-failure.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/mcp-failure.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_mcp.sign_in_cancelled": {
+		"role": "visible interface copy in chat components/run-details/run-detail-mcp.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-mcp.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_model.enter_api_key": {
+		"role": "visible interface copy in chat components/run-details/run-detail-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-model.ts. Keep technical product names and identifiers unchanged.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_model.manage_this_servers_credentials_in_settings": {
+		"role": "visible interface copy in chat components/run-details/run-detail-model.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/run-details/run-detail-model.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.run_detail_model.child_count": {
+		"role": "rendered product copy in chat components/run-details/run-detail-model.ts",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"count": "number"
+		}
+	},
+	"ui.chat.run_details.run_detail_monitors.more_monitors": {
+		"role": "rendered product copy in chat components/run-details/run-detail-monitors.tsx",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"hidden": "number"
+		}
+	},
+	"ui.chat.run_details.run_detail_wakes.more_wakes": {
+		"role": "rendered product copy in chat components/run-details/run-detail-wakes.tsx",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"hidden": "number"
+		}
+	},
+	"ui.chat.run_details.run_panel.open_child_subagents": {
+		"role": "rendered product copy in chat components/run-details/run-panel.tsx",
+		"tone": "sentence case; preserve the source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep model names, commands, identifiers and technical tokens unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"count": "number",
+			"Open": "string"
+		}
+	},
+	"ui.chat.run_details.monitor_cancel.stop": {
+		"role": "rendered product copy in chat components/run-details/monitor-cancel-dialog.tsx",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.run_details.monitor_cancel.stopping": {
+		"role": "rendered product copy in chat components/run-details/monitor-cancel-dialog.tsx",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
 	}
 }

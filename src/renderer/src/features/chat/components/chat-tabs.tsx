@@ -1,7 +1,9 @@
 import { Tabs, TabsList, TabsTrigger } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Code, MessageCircleMore } from "lucide-react";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 
 export type ChatTabValue = "chat" | "raw";
 
@@ -55,6 +57,7 @@ export const CHAT_TAB_PANEL_IDS: Record<ChatTabValue, string> = {
  * relationship in a new place.
  */
 export const ChatTabs: FC<ChatTabsProps> = ({ activeTab, onChange }) => {
+	useI18nLocale();
 	return (
 		<Tabs
 			value={activeTab}
@@ -70,7 +73,7 @@ export const ChatTabs: FC<ChatTabsProps> = ({ activeTab, onChange }) => {
 					}
 				>
 					<MessageCircleMore aria-hidden={true} />
-					Chat
+					{t("ui.chat.header.chat_tabs.chat")}
 				</TabsTrigger>
 				<TabsTrigger
 					value="raw"
@@ -80,7 +83,7 @@ export const ChatTabs: FC<ChatTabsProps> = ({ activeTab, onChange }) => {
 					}
 				>
 					<Code aria-hidden={true} />
-					Raw
+					{t("ui.chat.header.chat_tabs.raw")}
 				</TabsTrigger>
 			</TabsList>
 		</Tabs>

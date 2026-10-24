@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 /**
  * Slash command dispatch for the composer.
  *
@@ -647,7 +648,9 @@ export function useSlashDispatch({
 				return;
 			}
 			note(
-				"Choose the folder in the working directory chip above, or type /move <path> to move straight there.",
+				t(
+					"ui.chat.slash.dispatch.choose_the_folder_in_the_working_directory_chip_above_or",
+				),
 			);
 			focusCwdChip?.();
 		},
@@ -668,8 +671,11 @@ export function useSlashDispatch({
 				const suggestions = closestCommands(word, commands);
 				note(
 					suggestions.length > 0
-						? `Unknown command /${word}. Did you mean ${suggestions.join(", ")}? Type / for the full list.`
-						: `Unknown command /${word}. Type / for the full list.`,
+						? t("ui.chat.slash.dispatch.unknown_with_suggestions", {
+								word,
+								suggestions: suggestions.join(", "),
+							})
+						: t("ui.chat.slash.dispatch.unknown", { word }),
 					true,
 				);
 				return "consumed";
@@ -998,7 +1004,7 @@ export function useSlashDispatch({
 							`/${spec.name} could not run: ${
 								error instanceof Error
 									? error.message
-									: "the backend refused it"
+									: t("ui.chat.slash.dispatch.the_backend_refused_it")
 							}`,
 							true,
 						);
@@ -1148,7 +1154,9 @@ export function useSlashDispatch({
 					await window.api.desktop.closeWindow();
 				} else {
 					note(
-						"Close this window to quit. Conversations keep running in the background.",
+						t(
+							"ui.chat.slash.dispatch.close_this_window_to_quit_conversations_keep_running_in_the",
+						),
 					);
 				}
 				return "consumed";
@@ -1617,7 +1625,7 @@ export function useSlashDispatch({
 				spec.name === "rename" &&
 				flagTokenSelects("title-refresh", commandArgs)
 			) {
-				note("refreshing the title…");
+				note(t("ui.chat.slash.dispatch.refreshing_the_title"));
 			}
 			try {
 				const receipt = await desktopResult<DesktopCommandReceipt>({
@@ -1698,7 +1706,9 @@ export function useSlashDispatch({
 			} catch (error) {
 				note(
 					`/${spec.name} could not run: ${
-						error instanceof Error ? error.message : "the backend refused it"
+						error instanceof Error
+							? error.message
+							: t("ui.chat.slash.dispatch.the_backend_refused_it")
 					}`,
 					true,
 				);
@@ -1807,7 +1817,9 @@ export function useSlashDispatch({
 			const outcome = await dispatch(invocation);
 			if (outcome === "not-a-command") {
 				note(
-					"The backend could not complete this request. Check its connection and try again.",
+					t(
+						"ui.chat.slash.dispatch.the_backend_could_not_complete_this_request_check_its_connection",
+					),
 					true,
 				);
 			}

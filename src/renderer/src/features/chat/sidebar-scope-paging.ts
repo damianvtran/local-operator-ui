@@ -26,6 +26,7 @@
  * same rule for the sections).
  */
 
+import { t } from "../../../../i18n/messages";
 import {
 	CATALOGUE_GROUP_PAGE,
 	type CatalogueScopeCounts,
@@ -116,8 +117,9 @@ export type GroupChatsView = {
  * is not loading, so it must not say so - and the reader's next move is named
  * rather than left to them.
  */
-export const GROUP_WITHHELD_SENTENCE =
-	"They may be archived. Search with Include archived.";
+export const GROUP_WITHHELD_SENTENCE = t(
+	"ui.chat.sidebar.sidebar_scope_paging.they_may_be_archived_search_with_include_archived",
+);
 
 export function groupChatsView(args: {
 	/** Whether the daemon negotiates `session_catalogue_page`. */
@@ -133,7 +135,9 @@ export function groupChatsView(args: {
 		const empty = args.held === 0;
 		return {
 			state: empty ? "empty" : "rows",
-			sentence: empty ? "No chats yet" : null,
+			sentence: empty
+				? t("ui.chat.sidebar.sidebar_scope_paging.no_chats_yet")
+				: null,
 			retry: false,
 			more: false,
 			addCount: 0,
@@ -152,7 +156,7 @@ export function groupChatsView(args: {
 		 */
 		return {
 			state: "loading",
-			sentence: "Loading chats…",
+			sentence: t("ui.chat.sidebar.sidebar_scope_paging.loading_chats"),
 			retry: false,
 			more: false,
 			addCount: 0,
@@ -194,7 +198,7 @@ export function groupChatsView(args: {
 		if (scope.loading) {
 			return {
 				state: "loading",
-				sentence: "Loading chats…",
+				sentence: t("ui.chat.sidebar.sidebar_scope_paging.loading_chats"),
 				retry: false,
 				more: false,
 				addCount: 0,
@@ -204,7 +208,9 @@ export function groupChatsView(args: {
 		if (forbidden) {
 			return {
 				state: "settled",
-				sentence: GROUP_WITHHELD_SENTENCE,
+				sentence: t(
+					"ui.chat.sidebar.sidebar_scope_paging.they_may_be_archived_search_with_include_archived",
+				),
 				retry: false,
 				more: false,
 				addCount: 0,
@@ -213,7 +219,7 @@ export function groupChatsView(args: {
 		}
 		return {
 			state: "empty",
-			sentence: "No chats yet",
+			sentence: t("ui.chat.sidebar.sidebar_scope_paging.no_chats_yet"),
 			retry: false,
 			more: false,
 			addCount: 0,
@@ -317,7 +323,9 @@ export function scopeCensusTotal(
  * on the group's row and in the badge's `title`.
  */
 export function groupBadgeLabel(badge: number): string {
-	return `${badge} chats in this group`;
+	return t("ui.chat.sidebar.sidebar_scope_paging.badge_chats_in_this_group", {
+		badge,
+	});
 }
 
 /**
@@ -392,7 +400,9 @@ export function catalogueTotalSentence(args: {
  */
 export function tailArrivalAnnouncement(added: number): string | null {
 	if (added <= 0) return null;
-	return added === 1 ? "1 more chat arrived." : `${added} more chats arrived.`;
+	return t("ui.chat.sidebar.sidebar_scope_paging.added_more_chats_arrived", {
+		added,
+	});
 }
 
 /** What the chat region's tail draws. */

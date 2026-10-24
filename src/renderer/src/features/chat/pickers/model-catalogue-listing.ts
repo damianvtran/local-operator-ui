@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * What a `models.catalogue` answer means: the rows it holds, the providers that
  * failed, and whether the listing failed outright.
@@ -102,7 +103,10 @@ export function catalogueListing(
 		return { loadError: null, notice: null, noticeDetail: null };
 	return {
 		loadError: null,
-		notice: `Some providers did not answer (${failed.length}). The rows below are the ones that did.`,
+		notice: t(
+			"ui.chat.pickers.model_catalogue_listing.some_providers_did_not_answer_the_rows_below_are_the_ones_that_did",
+			{ length: failed.length },
+		),
 		noticeDetail: failed.join(", "),
 	};
 }
@@ -133,9 +137,16 @@ export function catalogueListing(
  * below, which keeps the quoted phrase on one line the way the button renders it.
  */
 export const providerListingNotice = (drawnFromRegistry: boolean): string =>
-	`The provider listing failed. The rows below are ${
-		drawnFromRegistry ? "the shipped models" : "the last listing that answered"
-	}; Refresh\u00a0from\u00a0providers tries again.`;
+	t(
+		"ui.chat.pickers.model_catalogue_listing.the_provider_listing_failed_the_rows_below_are_refresh_from_providers_tr",
+		{
+			value: drawnFromRegistry
+				? t("ui.chat.pickers.model_catalogue_listing.the_shipped_models")
+				: t(
+						"ui.chat.pickers.model_catalogue_listing.the_last_listing_that_answered",
+					),
+		},
+	);
 
 /**
  * The document the picker DRAWS, and whether it is a registry read.

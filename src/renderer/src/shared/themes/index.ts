@@ -205,7 +205,10 @@ export const themes: ThemeCollection = Object.fromEntries(
 		{
 			id: definition.id,
 			name: definition.name,
-			description: definition.description,
+			/* Preserve the palette getter: reading it here would freeze bootstrap English. */
+			get description() {
+				return definition.description;
+			},
 			theme: createBaseTheme(definition.palette),
 		},
 	]),

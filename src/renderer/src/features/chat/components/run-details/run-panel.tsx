@@ -44,6 +44,7 @@
 
 import { desktopKeys } from "@shared/api/local-operator/desktop-hooks";
 import { Button, Tooltip } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { scrollRegionToTop } from "@shared/lib/scroll";
 import { cn } from "@shared/lib/utils";
 import type { RunPanelSection } from "@shared/store/ui-preferences-store";
@@ -53,6 +54,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, PanelRightClose } from "lucide-react";
 import type { RefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { t } from "../../../../../../i18n/messages";
 import type { DesktopChildTranscriptPage } from "../../../../../../shared/desktop-session-contract";
 import { RunChildReader } from "./run-child-reader";
 import {
@@ -78,8 +80,10 @@ import type { AidaWakeIdentity } from "./wake-controls-model";
  * is where the user's own action lives, and "could not start" on its own told them
  * nothing they could do (design D4, UX U4).
  */
-const BACKEND_UPDATE_UNEXPLAINED =
-	"The backend update could not start. Retry, or update from Settings, under Application updates.";
+const BACKEND_UPDATE_UNEXPLAINED = () =>
+	t(
+		"ui.chat.run_details.run_panel.the_backend_update_could_not_start_retry_or_update_from",
+	);
 
 export type RunPanelProps = {
 	details: RunDetails;
@@ -186,6 +190,7 @@ export const RunPanel = ({
 	previewPage = null,
 	onClose,
 }: RunPanelProps) => {
+	useI18nLocale();
 	const openChildId = readerChildId;
 	/**
 	 * The pane's own root, for the Escape ladder's guard: a press belongs to the
@@ -259,12 +264,12 @@ export const RunPanel = ({
 			// run" as "the update ran" and left the reader with a backend that never
 			// changed and nothing to explain it.
 			if (started === false) {
-				setUpdateBackendError(reason ?? BACKEND_UPDATE_UNEXPLAINED);
+				setUpdateBackendError(reason ?? BACKEND_UPDATE_UNEXPLAINED());
 				return;
 			}
 			retryCapabilities();
 		} catch {
-			setUpdateBackendError(reason ?? BACKEND_UPDATE_UNEXPLAINED);
+			setUpdateBackendError(reason ?? BACKEND_UPDATE_UNEXPLAINED());
 		} finally {
 			removeBackendUpdateErrorListener();
 			setUpdatingBackend(false);
@@ -678,12 +683,14 @@ export const RunPanel = ({
 	 * in the label of a control whose own tooltip two lines above it agreed with
 	 * neither (round 1, U1-6, Q8). Both come off ONE count, so they cannot drift.
 	 */
-	const childControlName = `Open ${children.length} child subagent${
-		children.length === 1 ? "" : "s"
-	}`;
-	const childControlLabel = `${children.length} child${
-		children.length === 1 ? "" : "ren"
-	}`;
+	const childControlName = t(
+		"ui.chat.run_details.run_panel.open_child_subagents",
+		{ count: children.length },
+	);
+	const childControlLabel = t(
+		"ui.chat.run_details.run_detail_model.child_count",
+		{ count: children.length },
+	);
 	/*
 	 * The Back control's name, in ONE string (`§ 6.2`), the same way the descend
 	 * control above derives its tooltip and its accessible name from one count: two
@@ -693,7 +700,7 @@ export const RunPanel = ({
 	 * root, so renaming it would describe the landing rather than the move the user
 	 * made (designer D2, round 1).
 	 */
-	const backName = "Back";
+	const backName = t("ui.chat.run_details.run_panel.back");
 
 	return (
 		/*
@@ -713,7 +720,7 @@ export const RunPanel = ({
 			 * the `aria-label`, because a name is copy and this is a hook.
 			 */
 			data-run-panel-pane=""
-			aria-label="Run details"
+			aria-label={t("ui.chat.run_details.run_panel.run_details")}
 			tabIndex={-1}
 			/*
 			 * THE SLOT'S GROUND IS THE DRAWER'S RUNG, and the canvas states the rule
@@ -794,7 +801,7 @@ export const RunPanel = ({
 							 * operator reported — no way back up out of a first-level reader.
 							 */}
 							<nav
-								aria-label="Subagent path"
+								aria-label={t("ui.chat.run_details.run_panel.subagent_path")}
 								className={cn(
 									"flex min-w-0 items-center gap-1 overflow-hidden",
 								)}
@@ -806,7 +813,7 @@ export const RunPanel = ({
 										"shrink-0 truncate rounded-sm px-1 text-meta text-ink-muted hover:text-ink",
 									)}
 								>
-									Run details
+									{t("ui.chat.run_details.run_panel.run_details")}
 								</button>
 								{/*
 								 * The ancestors are CAPPED and the current node takes the rest.
@@ -869,7 +876,7 @@ export const RunPanel = ({
 						</>
 					) : (
 						<span className={cn("px-1 text-meta text-ink-dim")}>
-							Run details
+							{t("ui.chat.run_details.run_panel.run_details")}
 						</span>
 					)}
 				</div>
@@ -902,22 +909,32 @@ export const RunPanel = ({
 							)}
 							{siblings.length > 1 && (
 								<>
-									<Tooltip content="Previous subagent">
+									<Tooltip
+										content={t(
+											"ui.chat.run_details.run_panel.previous_subagent",
+										)}
+									>
 										<Button
 											variant="ghost"
 											size="icon-sm"
-											aria-label="Previous subagent"
+											aria-label={t(
+												"ui.chat.run_details.run_panel.previous_subagent",
+											)}
 											disabled={!previous}
 											onClick={() => previous && openChild(previous.id)}
 										>
 											<ChevronLeft aria-hidden="true" />
 										</Button>
 									</Tooltip>
-									<Tooltip content="Next subagent">
+									<Tooltip
+										content={t("ui.chat.run_details.run_panel.next_subagent")}
+									>
 										<Button
 											variant="ghost"
 											size="icon-sm"
-											aria-label="Next subagent"
+											aria-label={t(
+												"ui.chat.run_details.run_panel.next_subagent",
+											)}
 											disabled={!next}
 											onClick={() => next && openChild(next.id)}
 										>
@@ -928,11 +945,13 @@ export const RunPanel = ({
 							)}
 						</>
 					)}
-					<Tooltip content="Close run details">
+					<Tooltip
+						content={t("ui.chat.run_details.run_panel.close_run_details")}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Close run details"
+							aria-label={t("ui.chat.run_details.run_panel.close_run_details")}
 							onClick={onClose}
 							data-tour-tag="close-run-panel-button"
 						>
@@ -1047,8 +1066,9 @@ export const RunPanel = ({
 							)}
 						>
 							<p>
-								Opening a subagent's conversation needs a newer Local Operator
-								backend. Update the backend and restart the app.
+								{t(
+									"ui.chat.run_details.run_panel.opening_a_subagents_conversation_needs_a_newer_local_operator_backend",
+								)}
 							</p>
 							<div className={cn("flex items-center gap-2")}>
 								{canUpdateBackend && (
@@ -1058,7 +1078,9 @@ export const RunPanel = ({
 										disabled={updatingBackend}
 										onClick={updateBackend}
 									>
-										{updatingBackend ? "Updating" : "Update backend"}
+										{updatingBackend
+											? t("ui.chat.run_details.run_panel.updating")
+											: t("ui.chat.run_details.run_panel.update_backend")}
 									</Button>
 								)}
 								<Button variant="outline" size="sm" onClick={retryCapabilities}>
@@ -1071,7 +1093,7 @@ export const RunPanel = ({
 									 * carries the `border-control` floor, so the action reads as an
 									 * action beside `Update backend` without competing with it.
 									 */}
-									Retry
+									{t("ui.common.actions.retry")}
 								</Button>
 								{updateBackendError && (
 									<span className={cn("text-danger")}>
@@ -1083,7 +1105,9 @@ export const RunPanel = ({
 					)}
 					{unopenable && (
 						<p className={cn("px-3 pt-2 text-meta text-ink-muted")}>
-							That subagent's conversation could not be opened.
+							{t(
+								"ui.chat.run_details.run_panel.that_subagents_conversation_could_not_be_opened",
+							)}
 						</p>
 					)}
 					<RunDetailsPanel

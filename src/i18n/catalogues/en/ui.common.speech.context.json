@@ -1,0 +1,96 @@
+{
+	"ui.common.speech.speak_control.loading_speech_press_again_to_cancel": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in speak-control.tsx; interface copy in the speak control surface."
+	},
+	"ui.common.speech.speak_control.replay_speech": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in speak-control.tsx; interface copy in the speak control surface."
+	},
+	"ui.common.speech.speak_control.speak_aloud": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in speak-control.tsx; interface copy in the speak control surface."
+	},
+	"ui.common.speech.speak_control.stop": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in speak-control.tsx; interface copy in the speak control surface."
+	},
+	"ui.common.speech.speak_control.reading_the_first_characters_the_rest_is_not_read_aloud": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
+		"note": "Complete ICU message for the speech surface; dynamic values are composed without English fragment concatenation.",
+		"placeholders": {
+			"tolocalestring": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
+		}
+	},
+	"ui.common.speech.control.checking": {
+		"role": "Speech availability guidance",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Checking your Radient sign-in…"
+	},
+	"ui.common.speech.control.recording_sign_in": {
+		"role": "Speech availability guidance",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Sign in to Radient in Settings to enable recording"
+	},
+	"ui.common.speech.control.recording_unknown": {
+		"role": "Speech availability guidance",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Your Radient sign-in could not be checked, so recording is unavailable for now"
+	},
+	"ui.common.speech.control.recording_offline": {
+		"role": "Speech availability guidance",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Recording is unavailable while Local Operator is offline"
+	},
+	"ui.common.speech.control.speaking_sign_in": {
+		"role": "Speech availability guidance",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Sign in to Radient in Settings to enable speaking aloud"
+	},
+	"ui.common.speech.control.speaking_unknown": {
+		"role": "Speech availability guidance",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Your Radient sign-in could not be checked, so speaking aloud is unavailable for now"
+	},
+	"ui.common.speech.control.speaking_offline": {
+		"role": "Speech availability guidance",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Speaking aloud is unavailable while Local Operator is offline"
+	},
+	"ui.common.speech.settings.checking": {
+		"role": "Speech availability guidance",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Checking whether this machine can speak aloud…"
+	},
+	"ui.common.speech.settings.sign_in": {
+		"role": "Speech availability guidance",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Nothing can speak aloud yet: run /login radient to sign in, or store a provider key in the Model providers section"
+	},
+	"ui.common.speech.settings.unknown": {
+		"role": "Speech availability guidance",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Nothing can speak aloud yet. A Radient sign-in or a stored provider key is what changes that"
+	},
+	"ui.common.speech.settings.offline": {
+		"role": "Speech availability guidance",
+		"tone": "Concise, factual and actionable where the state has a next step.",
+		"length": "One compact status line, placeholder, button, or spoken suffix.",
+		"note": "English source: Local Operator is offline, so nothing can speak aloud right now"
+	}
+}

@@ -1,6 +1,7 @@
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
 import { Button } from "@shared/components/ui/button";
 import { Tooltip } from "@shared/components/ui/tooltip";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type AsideStream, useAsideStore } from "@shared/store/aside-store";
 import { X } from "lucide-react";
@@ -13,8 +14,8 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 import {
-	ASIDE_ADOPT_QUEUED,
 	adoptAside,
 	asideAdoptBlockedReason,
 	asideAdoptCap,
@@ -275,13 +276,14 @@ const asideExchangeCap = (
  * the render says why it is inline and box-neutral.
  */
 const AsideQuestion: FC<{ question: string }> = ({ question }) => {
+	useI18nLocale();
 	const { replies, remainingContent } = useMemo(
 		() => parseReplies(question),
 		[question],
 	);
 	return (
 		<>
-			<span className="sr-only">Question: </span>
+			<span className="sr-only">{t("ui.chat.aside.aside_panel.question")}</span>
 			{/*
 			 * THE VISIBLE HALF OF THE SAME FACT (issue #763). The sr-only prefix
 			 * above is the reader's copy and stays; this is the one a sighted reader
@@ -306,7 +308,7 @@ const AsideQuestion: FC<{ question: string }> = ({ question }) => {
 			 * `Recommended` uses.
 			 */}
 			<span aria-hidden={true} className="mr-1 text-meta text-ink-dim">
-				You:
+				{t("ui.chat.aside.aside_panel.you")}
 			</span>
 			{replies.map((reply) => (
 				<span
@@ -335,6 +337,7 @@ const AsideAnswer: FC<{
 	stream: AsideStream | undefined;
 	isSmallView: boolean;
 }> = ({ stream, isSmallView }) => {
+	useI18nLocale();
 	if (!stream) return null;
 	return (
 		<div className="flex flex-col gap-1">
@@ -357,7 +360,9 @@ const AsideAnswer: FC<{
 			{stream.streaming &&
 				stream.text.length === 0 &&
 				stream.error === null && (
-					<p className="text-body-sm text-ink-muted">thinking…</p>
+					<p className="text-body-sm text-ink-muted">
+						{t("ui.chat.aside.aside_panel.thinking")}
+					</p>
 				)}
 			{/*
 			 * `role="alert"`: the ask failed and the user is waiting on it, so it is
@@ -381,6 +386,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	isSmallView = false,
 	onReturnFocus,
 }) => {
+	useI18nLocale();
 	const attachment = useAsideStore(
 		(state) => state.attached[sessionId] ?? null,
 	);
@@ -613,7 +619,9 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	const ready =
 		!queued && asideAdoptReady(stream, sessionStreaming, adoptQueueSupported);
 	const blocked = queued
-		? ASIDE_ADOPT_QUEUED
+		? t(
+				"ui.chat.aside.aside.queued_this_aside_joins_the_conversation_when_the_current_turn",
+			)
 		: asideAdoptBlockedReason(stream, sessionStreaming, adoptQueueSupported);
 	/*
 	 * WHAT A SCREEN READER IS TOLD, AND WHY IT IS A PHASE SENTENCE RATHER THAN
@@ -648,7 +656,11 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 	 * started but cannot see complete, which is exactly the class of state this
 	 * region exists for, and the answer's own sentence was already heard at settle.
 	 */
-	const announcement = queued ? ASIDE_ADOPT_QUEUED : asideAnnouncement(stream);
+	const announcement = queued
+		? t(
+				"ui.chat.aside.aside.queued_this_aside_joins_the_conversation_when_the_current_turn",
+			)
+		: asideAnnouncement(stream);
 	// `navigator.platform`, derived at the call site exactly as `chat-sidebar.tsx`
 	// and `chat-header.tsx` do it: the cap is a promise about a key, and an
 	// awaited platform would flash the wrong one.
@@ -714,7 +726,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 			<div className="flex items-start justify-between gap-2">
 				<div className="flex flex-col">
 					<h2 id={titleId} className="text-body-sm text-ink">
-						Aside
+						{t("ui.chat.aside.aside_panel.aside")}
 					</h2>
 					{/*
 					 * The feature's own contract sentence, borrowed verbatim from the TUI
@@ -723,14 +735,16 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 					 * second wording for it here would be a second promise.
 					 */}
 					<p className="text-meta text-ink-muted">
-						off the record — nothing here joins the conversation
+						{t(
+							"ui.chat.aside.aside_panel.off_the_record_nothing_here_joins_the_conversation",
+						)}
 					</p>
 				</div>
 				<Button
 					variant="ghost"
 					size="icon-sm"
 					type="button"
-					aria-label="Close the aside"
+					aria-label={t("ui.chat.aside.aside_panel.close_the_aside")}
 					onClick={() => {
 						closeAside(sessionId);
 						// The panel unmounts this control, so focus would fall to `<body>`:
@@ -778,7 +792,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 				 */
 				// biome-ignore lint/a11y/noNoninteractiveTabindex: the stop IS the remedy - the region scrolls and nothing inside it is focusable.
 				tabIndex={0}
-				aria-label="The aside exchange"
+				aria-label={t("ui.chat.aside.aside_panel.the_aside_exchange")}
 				/*
 				 * `scrollbar-gutter: stable` is the measured cap's own constraint, and it is here
 				 * rather than at the cap: the cap grows with a box INSIDE the region, so the width
@@ -796,7 +810,9 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 			>
 				{attachment.turns.length === 0 ? (
 					<p className="text-body-sm text-ink-muted">
-						Type a question in the composer below — the answer lands here.
+						{t(
+							"ui.chat.aside.aside_panel.type_a_question_in_the_composer_below_the_answer_lands",
+						)}
 					</p>
 				) : (
 					attachment.turns.map((turn) => (
@@ -876,7 +892,7 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 								.finally(() => onReturnFocus?.());
 						}}
 					>
-						Add to conversation
+						{t("ui.chat.aside.aside_panel.add_to_conversation")}
 					</Button>
 					{/*
 					 * The chord, advertised rather than hidden: a keyboard-only user must
@@ -891,7 +907,11 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 					 * keys across the two hosts is better than two. What was missing was the
 					 * verb, and the label is where a cap can carry it.
 					 */}
-					<Tooltip content="Add the aside to the conversation">
+					<Tooltip
+						content={t(
+							"ui.chat.aside.aside_panel.add_the_aside_to_the_conversation",
+						)}
+					>
 						<span>
 							<KeyboardShortcut shortcut={asideAdoptCap(isMac)} />
 						</span>

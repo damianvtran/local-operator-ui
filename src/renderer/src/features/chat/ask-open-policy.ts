@@ -115,6 +115,7 @@
  * view rather than a check somebody has to remember.
  */
 
+import { t } from "../../../../i18n/messages";
 import { type AskQueueView, askChipCountClause } from "./ask-queue";
 
 /**
@@ -536,7 +537,9 @@ export type AskOutstandingReading = {
  * clears it when the drawer closes, so a later open re-announces.
  */
 export const askOpenAnnouncement = (view: AskQueueView): string =>
-	`Opened your questions: ${askChipCountClause(view)}.`;
+	t("ui.chat.ask_open_policy.opened_your_questions_askchipcountclausevalue", {
+		askChipCountClauseValue: askChipCountClause(view),
+	});
 
 /**
  * THE ONE OTHER SENTENCE THE SAME LIVE REGION SPEAKS (UX round 1, U8): what the
@@ -550,7 +553,9 @@ export const askOpenAnnouncement = (view: AskQueueView): string =>
  * point, so the region and the chip cannot disagree.
  */
 export const askSettledAnnouncement = (view: AskQueueView): string =>
-	`${askChipCountClause(view)}.`;
+	t("ui.chat.ask_open_policy.askchipcountclausevalue", {
+		askChipCountClauseValue: askChipCountClause(view),
+	});
 
 /**
  * The conversations whose surface the user has closed while asks remained, and WHICH

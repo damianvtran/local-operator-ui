@@ -88,7 +88,6 @@ import {
 	useSpeakControl,
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useSpeechBindingFor } from "@shared/lib/speech-target";
 import { cn } from "@shared/lib/utils";
@@ -103,13 +102,12 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 import { copyTarget } from "../utils/link-open";
 import {
-	ANSWER_ACTIONS_LABEL,
 	type ActionRowRole,
 	type AnswerActionId,
 	COPY_FEEDBACK_MS,
-	USER_ACTIONS_LABEL,
 	actionRowVisibility,
 	answerActionsFor,
 	forkExcerpt,
@@ -446,11 +444,22 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 			 * The design delta verifies it against frames and reverts if the
 			 * stamp band reads worse.
 			 */
-			<Tooltip content={copied ? "Copied" : "Copy"} side="bottom">
+			<Tooltip
+				content={
+					copied
+						? t("ui.chat.canonical.message_actions_row.copied")
+						: t("ui.chat.canonical.message_actions_row.copy")
+				}
+				side="bottom"
+			>
 				<Button
 					variant="ghost"
 					size="icon-sm"
-					aria-label={copied ? "Copied" : "Copy"}
+					aria-label={
+						copied
+							? t("ui.chat.canonical.message_actions_row.copied")
+							: t("ui.chat.canonical.message_actions_row.copy")
+					}
 					className={cn(
 						/*
 						 * NO HOVER GROUND. `ghost`'s shipped default paints `bg-accent-wash`
@@ -483,11 +492,14 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 			 * DIRECTION the sidebar's cannot (the cut is at this message, not at
 			 * the end), so the label carries the rest.
 			 */
-			<Tooltip content="Fork from this message" side="bottom">
+			<Tooltip
+				content={t("ui.chat.canonical.transcript.fork_from_message")}
+				side="bottom"
+			>
 				<Button
 					variant="ghost"
 					size="icon-sm"
-					aria-label="Fork from this message"
+					aria-label={t("ui.chat.canonical.transcript.fork_from_message")}
 					ref={forkButtonRef}
 					className={cn("text-ink-dim hover:bg-transparent hover:text-ink")}
 					onClick={handleFork}
@@ -509,12 +521,12 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 			 */
 			aria-label={
 				kind === "user"
-					? USER_ACTIONS_LABEL
+					? t("ui.chat.canonical.message_actions.your_message_actions")
 					: kind === "commentary"
 						? t("ui.chat.commentary_actions.label")
 						: kind === "response"
 							? t("ui.chat.response_actions.label")
-							: ANSWER_ACTIONS_LABEL
+							: t("ui.chat.canonical.message_actions.answer_actions")
 			}
 			ref={revealRef}
 			onAnimationEnd={(event) => {

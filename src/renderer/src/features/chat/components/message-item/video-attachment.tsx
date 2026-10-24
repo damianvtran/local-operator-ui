@@ -1,9 +1,11 @@
 import { FileActionsMenu } from "@shared/components/common/file-actions-menu";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { type FC, memo, useCallback, useState } from "react";
+import { t } from "../../../../../../i18n/messages";
 import { getFileTypeFromPath } from "../../utils/file-types";
-import { getFileName } from "../../utils/get-file-name";
+import { fileNameForDisplay, getFileName } from "../../utils/get-file-name";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
 import { InvalidAttachment } from "./invalid-attachment";
 
@@ -27,6 +29,7 @@ export type VideoAttachmentProps = BaseVideoAttachmentProps & {
  */
 export const VideoAttachment: FC<VideoAttachmentProps> = memo(
 	({ file, src, onClick, conversationId }) => {
+		useI18nLocale();
 		const [hasError, setHasError] = useState(false);
 		const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 		const { setViewMode } = useCanvasStore();
@@ -134,7 +137,12 @@ export const VideoAttachment: FC<VideoAttachmentProps> = memo(
 					const message =
 						error instanceof Error
 							? error.message
-							: String(error ?? "Unknown error reading file");
+							: String(
+									error ??
+										t(
+											"ui.chat.message.video_attachment.unknown_error_reading_file",
+										),
+								);
 					return fallbackAction(message);
 				}
 			}
@@ -177,7 +185,10 @@ export const VideoAttachment: FC<VideoAttachmentProps> = memo(
 						}
 					}}
 					onError={handleError}
-					title={`Click to open ${getFileName(file)}`}
+					title={t(
+						"ui.chat.message.video_attachment.click_to_open_getfilenamevalue",
+						{ getFileNameValue: fileNameForDisplay(file) },
+					)}
 				/>
 				{isLocalFile && (
 					<div
@@ -189,8 +200,8 @@ export const VideoAttachment: FC<VideoAttachmentProps> = memo(
 					>
 						<FileActionsMenu
 							filePath={normalizedPath}
-							tooltip="File actions"
-							aria-label="File actions"
+							tooltip={t("ui.chat.message.video_attachment.file_actions")}
+							aria-label={t("ui.chat.message.video_attachment.file_actions")}
 							onShowInCanvas={handleShowInCanvas}
 						/>
 					</div>

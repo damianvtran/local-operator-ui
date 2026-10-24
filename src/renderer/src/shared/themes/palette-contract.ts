@@ -975,6 +975,7 @@ export type ThemeDefinition = {
 	 * M-1). A type-only import, so the two modules still share no runtime code.
 	 */
 	id: ThemeName;
+	/** Established palette and editor-family names stay verbatim, like other brand names. */
 	name: string;
 	/** One line, shown under the name in the theme picker. */
 	description: string;

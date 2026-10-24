@@ -1,4 +1,5 @@
 import { Popover, PopoverAnchor, PopoverContent } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Check, CircleAlert, CircleDot, CircleSlash } from "lucide-react";
 import type {
@@ -16,12 +17,12 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 import type {
 	Checkpoint,
 	CheckpointOutcome,
 } from "../../../../../shared/desktop-contract";
 import {
-	CHECKPOINT_GENERATING_NAME,
 	CHECKPOINT_MARK_CLASS,
 	CHECKPOINT_OUTCOME_LABELS,
 	checkpointAriaLabel,
@@ -100,7 +101,9 @@ export const CHECKPOINT_CARD_OPEN_DELAY_MS = 120;
 export const CHECKPOINT_CARD_CLOSE_DELAY_MS = 80;
 
 /** The rail group's accessible name (UX round 1, U3 measured it absent). */
-export const CHECKPOINT_RAIL_LABEL = "Turn checkpoints";
+export const CHECKPOINT_RAIL_LABEL = t(
+	"ui.chat.canonical.checkpoint_rail.turn_checkpoints",
+);
 
 /** The tick's glyph per outcome (D5: ✓ / ! / ⊘ / dot). */
 const OUTCOME_ICONS: Record<CheckpointOutcome, typeof Check> = {
@@ -162,6 +165,7 @@ const CompletionCard: FC<{ checkpoint: Checkpoint; turnCount: number }> = ({
 	checkpoint,
 	turnCount,
 }) => {
+	useI18nLocale();
 	const outcome = checkpoint.outcome;
 	const OutcomeIcon = outcome ? OUTCOME_ICONS[outcome] : null;
 	const summary = checkpointSummary(checkpoint);
@@ -188,7 +192,7 @@ const CompletionCard: FC<{ checkpoint: Checkpoint; turnCount: number }> = ({
 			</p>
 			{checkpointNamingPending(checkpoint) && (
 				<p className={cn("text-ink-dim text-meta")}>
-					{CHECKPOINT_GENERATING_NAME}
+					{t("ui.chat.canonical.checkpoint_model.generating_name")}
 				</p>
 			)}
 			{summary && (
@@ -247,6 +251,7 @@ const CheckpointMark = memo(function CheckpointMark({
 	/** The open card's element id, when this mark's card is the open one. */
 	describedBy?: string;
 }) {
+	useI18nLocale();
 	const enter = (event: ReactPointerEvent<HTMLButtonElement>) => {
 		/*
 		 * `pointermove`, not `pointerenter`: a move WITHIN one 10px row must
@@ -311,6 +316,7 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 	loadedIds,
 	activeId = null,
 }) => {
+	useI18nLocale();
 	dbgRailRenders.count += 1;
 	const cardElementId = useId();
 	const [previewId, setPreviewId] = useState<string | null>(null);
@@ -704,7 +710,7 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 			data-lo-checkpoint-rail=""
 			role="toolbar"
 			aria-orientation="vertical"
-			aria-label={CHECKPOINT_RAIL_LABEL}
+			aria-label={t("ui.chat.canonical.checkpoint_rail.turn_checkpoints")}
 			/*
 			 * `z-10` IS THE ORDER THE COLUMN CANNOT GIVE (round-1 remediation,
 			 * measured): the rail moved FIRST in the column for the tab order (UX
@@ -828,7 +834,7 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 						role="tooltip"
 						aria-label={
 							activeCheckpoint.kind === "user"
-								? "Your message"
+								? t("ui.chat.canonical.checkpoint_rail.your_message")
 								: checkpointLeadLabel(activeCheckpoint, turnCount)
 						}
 						// Radix's focus-scope defaults assume a press-opened popover.

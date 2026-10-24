@@ -32,7 +32,6 @@ import {
 	DropdownMenuTrigger,
 	Tooltip,
 } from "@shared/components/ui";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import {
@@ -46,6 +45,7 @@ import {
 	LayoutGrid,
 } from "lucide-react";
 import { memo, useCallback, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import type { CanvasPane } from "../utils/canvas-pane";
 import { fileKind } from "../utils/file-kind";
 import { openLocalTarget, revealLocalTarget } from "../utils/link-open";
@@ -103,7 +103,11 @@ export function useFileTargets(
 					cwd ?? undefined,
 				);
 				if (!file?.resolved.startsWith("/")) {
-					throw new Error("File path has no session working directory");
+					throw new Error(
+						t(
+							"ui.chat.canonical.supplement_file_actions.file_path_has_no_session_working_directory",
+						),
+					);
 				}
 				await action(file.resolved);
 			} catch {
@@ -151,10 +155,17 @@ export const FileActionsMenu = memo(function FileActionsMenu({
 	useI18nLocale();
 	const { canOpenInCanvas, withTarget } = useFileTargets(actionPath, cwd, pane);
 	const [copied, setCopied] = useState(false);
-	const ariaLabel = `Actions for ${label || "this file"}`;
+	const ariaLabel = t(
+		"ui.chat.canonical.supplement_file_actions.actions_for_value",
+		{
+			value: label || t("ui.chat.canonical.supplement_file_actions.this_file"),
+		},
+	);
 	return (
 		<DropdownMenu>
-			<Tooltip content="File actions">
+			<Tooltip
+				content={t("ui.chat.canonical.supplement_file_actions.file_actions")}
+			>
 				<DropdownMenuTrigger asChild={true}>
 					{overlay ? (
 						/*
@@ -221,11 +232,21 @@ export const FileActionsMenu = memo(function FileActionsMenu({
 						void navigator.clipboard
 							.writeText(actionPath)
 							.then(() => setCopied(true))
-							.catch(() => showErrorToast("Failed to copy file path"));
+							.catch(() =>
+								showErrorToast(
+									t(
+										"ui.chat.canonical.supplement_file_actions.failed_to_copy_file_path",
+									),
+								),
+							);
 					}}
 				>
 					<ClipboardCopy aria-hidden="true" />
-					<span>{copied ? "Copied" : "Copy file path"}</span>
+					<span>
+						{copied
+							? t("ui.chat.canonical.supplement_file_actions.copied")
+							: t("ui.chat.canonical.supplement_file_actions.copy_file_path")}
+					</span>
 				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>

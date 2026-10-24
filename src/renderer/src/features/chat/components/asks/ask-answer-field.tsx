@@ -59,8 +59,10 @@
  */
 
 import { Textarea } from "@shared/components/ui/textarea";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type KeyboardEvent, type RefObject, useState } from "react";
+import { t } from "../../../../../../i18n/messages";
 import { ASK_ANSWER_MAX_CHARS } from "../../ask-queue";
 
 /**
@@ -69,8 +71,10 @@ import { ASK_ANSWER_MAX_CHARS } from "../../ask-queue";
  * today - a chat message carries attachments and leaves the ask pending, and the agent
  * decides whether the message answers it.
  */
-const ATTACHMENT_REFUSAL =
-	"Files and images can't be attached to an answer yet. Type your answer here, or send the file in the chat.";
+const ATTACHMENT_REFUSAL = () =>
+	t(
+		"ui.chat.asks.ask_answer_field.files_and_images_cant_be_attached_to_an_answer_yet",
+	);
 
 /**
  * Said when the field has reached the wire's cap on one answer. The browser stops
@@ -78,7 +82,9 @@ const ATTACHMENT_REFUSAL =
  * does - which is the quiet truncation this field refuses elsewhere - so the limit is
  * stated the moment it is reached instead of surfacing as a failed Send.
  */
-const LIMIT_NOTICE = `Answers stop at ${ASK_ANSWER_MAX_CHARS.toLocaleString("en-US")} characters; anything past that is not kept.`;
+const LIMIT_NOTICE = t("ui.chat.asks.answer_field.max_chars", {
+	count: ASK_ANSWER_MAX_CHARS.toLocaleString("en-US"),
+});
 
 /**
  * The card's Enter-commits key handler, shared by this field and the secret question's
@@ -127,6 +133,7 @@ export const AskAnswerField = ({
 	questionId,
 	fieldRef,
 }: AskAnswerFieldProps) => {
+	useI18nLocale();
 	/*
 	 * The refusal is local to the field and clears on the next edit: it describes the
 	 * paste that just happened, and a sentence that outlived the user's next keystroke
@@ -170,7 +177,7 @@ export const AskAnswerField = ({
 						text.split("\n").every((line) => names.includes(line.trim()));
 					if (text.trim() !== "" && !justTheFiles) return;
 					event.preventDefault();
-					setRefusal(ATTACHMENT_REFUSAL);
+					setRefusal(ATTACHMENT_REFUSAL());
 				}}
 				onDragOver={(event) => {
 					/*
@@ -180,7 +187,12 @@ export const AskAnswerField = ({
 					 * of a drop that then goes nowhere). Limited to FILE drags: cancelling
 					 * every dragover would also stop the browser inserting dragged text.
 					 */
-					if (!event.dataTransfer?.types.includes("Files")) return;
+					if (
+						!event.dataTransfer?.types.includes(
+							t("ui.chat.asks.ask_answer_field.files"),
+						)
+					)
+						return;
 					event.preventDefault();
 					event.dataTransfer.dropEffect = "none";
 				}}
@@ -189,7 +201,7 @@ export const AskAnswerField = ({
 					// belt to that brace, for any platform that delivers it anyway.
 					if (!event.dataTransfer?.files?.length) return;
 					event.preventDefault();
-					setRefusal(ATTACHMENT_REFUSAL);
+					setRefusal(ATTACHMENT_REFUSAL());
 				}}
 				/*
 				 * Two lines to start, so it reads as a multi-line field, and it grows with

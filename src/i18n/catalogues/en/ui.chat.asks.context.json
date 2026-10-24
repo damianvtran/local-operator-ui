@@ -85,5 +85,701 @@
 		"placeholders": {},
 		"role": "button that opens the dismissal chooser on an open ask card",
 		"tone": "verb with an ellipsis, sentence case"
+	},
+	"ui.chat.asks.ask_drawer.close_asks": {
+		"role": "accessible name or tooltip in chat components/asks/ask-drawer.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-drawer.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.change_answer": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.changed_the_agent_has_not_been_handed_it_yet": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.decline": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.filter_asks": {
+		"role": "accessible name or tooltip in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.no_answer_given": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.other": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.send_answer": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.settled": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.update_answer": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.urgent": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_answer_field.files": {
+		"role": "visible interface copy in chat components/asks/ask-answer-field.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-answer-field.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_drawer.all_asks": {
+		"role": "visible interface copy in chat components/asks/ask-drawer.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-drawer.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_drawer.this_conversations_asks": {
+		"role": "visible interface copy in chat components/asks/ask-drawer.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-drawer.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.all": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.no_asks_are_pending_they_have_all_settled_see_settled": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.no_asks_have_settled_yet_they_are_all_still_pending": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.no_asks_outstanding_the_agent_is_not_waiting_on_anything": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.no_question_text": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.pending": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.question_timed_out": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.that_question_timed_out_your_answer_was_not_sent": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.the_details_for_these_asks_could_not_be_loaded": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.fleet_ask_drawer.answer_changed_for": {
+		"role": "visible interface copy in chat components/asks/fleet-ask-drawer.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/fleet-ask-drawer.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.fleet_ask_drawer.answer_sent_to": {
+		"role": "visible interface copy in chat components/asks/fleet-ask-drawer.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/fleet-ask-drawer.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.fleet_ask_drawer.declined_the_ask_in": {
+		"role": "visible interface copy in chat components/asks/fleet-ask-drawer.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/fleet-ask-drawer.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.fleet_ask_drawer.dismissed_the_ask_in": {
+		"role": "visible interface copy in chat components/asks/fleet-ask-drawer.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/fleet-ask-drawer.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.dropped_questions_timed_out_your_answers_were_not_sent": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"dropped": "number"
+		}
+	},
+	"ui.chat.asks.ask_panel.label_count": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"label": "string",
+			"count": "number"
+		}
+	},
+	"ui.chat.asks.ask_panel.word_question": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"word": "string",
+			"question": "string"
+		}
+	},
+	"ui.chat.asks.fleet_ask_drawer.verb_name": {
+		"role": "visible interface copy in chat components/asks/fleet-ask-drawer.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/fleet-ask-drawer.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"verb": "string",
+			"name": "string"
+		}
+	},
+	"ui.chat.asks.ask_answer_field.files_and_images_cant_be_attached_to_an_answer_yet": {
+		"role": "visible interface copy in chat components/asks/ask-answer-field.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from components/asks/ask-answer-field.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.type_your_answer": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.ask_panel.length_questions_timed_out": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"length": "number"
+		}
+	},
+	"ui.chat.asks.ask_panel.your_answer_to_question": {
+		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"question": "string"
+		}
+	},
+	"ui.chat.asks.queue.all_asks_settled": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.all_conversations": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.this_conversation": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.reading_the_asks": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.asks_unavailable": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.this_runtime_doesnt_support_queued_asks": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.soonest_ask": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.a_while": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.settled_in_chat": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.no_longer_needed": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.you_can_change_this_until_the_agent_is_handed_your": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.queued_the_agent_is_continuing": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.answered_delivering": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.timed_out_the_agent_goes_ahead_without_your_answer": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.answered_late_the_agent_was_told": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.declined_the_agent_was_told": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.dismissed_no_reply_was_sent": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.expired_this_ask_is_too_old_to_answer_ask_the": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.waiting_on_an_answer": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.answered_late_not_yet_delivered": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.expiring_now": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.leave_empty_to_skip_what_you_type_is_never_shown": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.required_type_it_again_it_is_never_shown": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.your_answer_never_shown_again": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.that_question_was_already_settled_so_your_answer_was_not": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.this_ask_is_too_old_to_answer_ask_the_agent": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.outstanding": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"count": "Numeric count supplied by the caller; preserve ICU plural/select categories."
+		}
+	},
+	"ui.chat.asks.queue.questions_waiting": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"count": "Numeric count supplied by the caller; preserve ICU plural/select categories."
+		}
+	},
+	"ui.chat.asks.queue.answers_delivering": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"count": "Numeric count supplied by the caller; preserve ICU plural/select categories."
+		}
+	},
+	"ui.chat.asks.queue.questions_timed_out": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"count": "Numeric count supplied by the caller; preserve ICU plural/select categories."
+		}
+	},
+	"ui.chat.asks.queue.close": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.open": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.rail_count": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"verb": "Command or action text supplied by the caller.",
+			"chord": "Runtime value substituted into this message; preserve the ICU argument and its formatting.",
+			"subject": "Display name or label supplied by the caller.",
+			"count": "Numeric count supplied by the caller; preserve ICU plural/select categories."
+		}
+	},
+	"ui.chat.asks.queue.rail_no_count": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"verb": "Command or action text supplied by the caller.",
+			"chord": "Runtime value substituted into this message; preserve the ICU argument and its formatting.",
+			"subject": "Display name or label supplied by the caller."
+		}
+	},
+	"ui.chat.asks.queue.chip_timed_out": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"clause": "Runtime value substituted into this message; preserve the ICU argument and its formatting.",
+			"count": "Numeric count supplied by the caller; preserve ICU plural/select categories."
+		}
+	},
+	"ui.chat.asks.queue.collapse": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.expand": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.queue.conversation_label": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"action": "Command or action text supplied by the caller.",
+			"labelSeam": "Display name or label supplied by the caller.",
+			"clause": "Runtime value substituted into this message; preserve the ICU argument and its formatting.",
+			"urgency": "Runtime value substituted into this message; preserve the ICU argument and its formatting."
+		}
+	},
+	"ui.chat.asks.queue.short_seconds": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"count": "Numeric count supplied by the caller; preserve ICU plural/select categories."
+		}
+	},
+	"ui.chat.asks.queue.short_minutes": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"count": "Numeric count supplied by the caller; preserve ICU plural/select categories."
+		}
+	},
+	"ui.chat.asks.queue.short_hours": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"count": "Numeric count supplied by the caller; preserve ICU plural/select categories."
+		}
+	},
+	"ui.chat.asks.queue.short_days": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"count": "Numeric count supplied by the caller; preserve ICU plural/select categories."
+		}
+	},
+	"ui.chat.asks.queue.receipt_dismissed": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"via": "Runtime value substituted into this message; preserve the ICU argument and its formatting.",
+			"reason": "Error, reason or explanatory detail supplied by the caller; do not treat it as a catalogue key.",
+			"askId": "Runtime value substituted into this message; preserve the ICU argument and its formatting."
+		}
+	},
+	"ui.chat.asks.queue.receipt_declined": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"askId": "Runtime value substituted into this message; preserve the ICU argument and its formatting."
+		}
+	},
+	"ui.chat.asks.queue.receipt_late": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"askId": "Runtime value substituted into this message; preserve the ICU argument and its formatting."
+		}
+	},
+	"ui.chat.asks.queue.receipt_timed_out": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"waited": "Runtime value substituted into this message; preserve the ICU argument and its formatting.",
+			"askId": "Runtime value substituted into this message; preserve the ICU argument and its formatting."
+		}
+	},
+	"ui.chat.asks.queue.expires_seconds": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"count": "Numeric count supplied by the caller; preserve ICU plural/select categories."
+		}
+	},
+	"ui.chat.asks.queue.expires_minutes": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"count": "Numeric count supplied by the caller; preserve ICU plural/select categories."
+		}
+	},
+	"ui.chat.asks.queue.expires_hours": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"count": "Numeric count supplied by the caller; preserve ICU plural/select categories."
+		}
+	},
+	"ui.chat.asks.queue.expires_days": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"count": "Numeric count supplied by the caller; preserve ICU plural/select categories."
+		}
+	},
+	"ui.chat.asks.queue.open_asks": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"count": "Numeric count supplied by the caller; preserve ICU plural/select categories."
+		}
+	},
+	"ui.chat.asks.queue.now": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.asks.answer_field.max_chars": {
+		"role": "rendered product copy in chat components/asks/ask-answer-field.tsx",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"count": "Numeric count supplied by the caller; preserve ICU plural/select categories."
+		}
+	},
+	"ui.chat.asks.queue.receipt_answered": {
+		"role": "rendered product copy in chat ask-queue.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"askId": "Runtime value substituted into this message; preserve the ICU argument and its formatting."
+		}
 	}
 }

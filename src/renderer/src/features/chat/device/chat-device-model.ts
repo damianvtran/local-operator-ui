@@ -22,6 +22,7 @@
  */
 
 import type { DesktopFeatureState } from "@shared/api/local-operator/desktop-hooks";
+import { t } from "../../../../../i18n/messages";
 import type { MovePlan } from "../../mesh/mesh-drop";
 import { lossSentence } from "../../mesh/mesh-drop";
 import type { NetworkSummary, PeerRow } from "../../mesh/mesh-types";
@@ -109,15 +110,19 @@ export function placementLabel(placement: DevicePlacement): string {
 	switch (placement.kind) {
 		case "draft":
 			return placement.deviceId
-				? `New on ${placement.name}`
-				: "New on this device";
+				? t("ui.chat.session_status.chat_device_model.new_on_name", {
+						name: placement.name,
+					})
+				: t("ui.chat.session_status.chat_device_model.new_on_this_device");
 		case "local":
-			return "On this device";
+			return t("ui.chat.session_status.chat_device_model.on_this_device");
 		case "remote":
 		case "gone":
 			return `On ${placement.name}`;
 		case "moving":
-			return `Moving to ${placement.name}`;
+			return t("ui.chat.session_status.chat_device_model.moving_to_name", {
+				name: placement.name,
+			});
 	}
 }
 
@@ -133,8 +138,13 @@ export function placementSentence(placement: DevicePlacement): string {
 	switch (placement.kind) {
 		case "draft":
 			return placement.deviceId
-				? `New conversations are created on ${placement.name}. Click to choose a different device.`
-				: "New conversations are created on this device. Click to choose a different device.";
+				? t(
+						"ui.chat.session_status.chat_device_model.new_conversations_are_created_on_name_click_to_choose_a",
+						{ name: placement.name },
+					)
+				: t(
+						"ui.chat.session_status.chat_device_model.new_conversations_are_created_on_this_device_click_to_choose",
+					);
 		case "local":
 			/*
 			 * `OR RECALL IT LATER` IS THE SECOND HALF OF THE AFFORDANCE (agent review round
@@ -142,7 +152,9 @@ export function placementSentence(placement: DevicePlacement): string {
 			 * take from this control, which is the design's own reading of it, because the
 			 * chip's five visible words cannot say either one.
 			 */
-			return "This conversation runs on this device. Click to move it to another device or recall it later.";
+			return t(
+				"ui.chat.session_status.chat_device_model.this_conversation_runs_on_this_device_click_to_move_it",
+			);
 		case "remote":
 			/*
 			 * `reachable` IS TRI-STATE AND THE THIRD VALUE IS NOT A FAILURE (agent review
@@ -155,9 +167,15 @@ export function placementSentence(placement: DevicePlacement): string {
 			 */
 			if (placement.reachable === false) {
 				const because = placement.reason ? ` (${placement.reason})` : "";
-				return `This conversation runs on ${placement.name}, which did not answer the last read${because}.`;
+				return t(
+					"ui.chat.session_status.chat_device_model.this_conversation_runs_on_name_which_did_not_answer_the",
+					{ name: placement.name, because: because },
+				);
 			}
-			return `This conversation runs on ${placement.name}. Click to recall it here or move it on.`;
+			return t(
+				"ui.chat.session_status.chat_device_model.this_conversation_runs_on_name_click_to_recall_it_here",
+				{ name: placement.name },
+			);
 		case "gone":
 			/*
 			 * THE TOMBSTONE NAMES AN ACTION THIS CONTROL CAN TAKE. It used to end "Click to
@@ -177,11 +195,20 @@ export function placementSentence(placement: DevicePlacement): string {
 			 * round 1's D4 settled).
 			 */
 			if (placement.reachable === false) {
-				return `This conversation moved to ${placement.name}, which did not answer the last read. The copy that was here was deleted. Click to bring it back here.`;
+				return t(
+					"ui.chat.session_status.chat_device_model.this_conversation_moved_to_name_which_did_not_answer_the",
+					{ name: placement.name },
+				);
 			}
-			return `This conversation moved to ${placement.name}. The copy that was here was deleted. Click to bring it back here.`;
+			return t(
+				"ui.chat.session_status.chat_device_model.this_conversation_moved_to_name_the_copy_that_was_here",
+				{ name: placement.name },
+			);
 		case "moving":
-			return `Moving this conversation to ${placement.name}.`;
+			return t(
+				"ui.chat.session_status.chat_device_model.moving_this_conversation_to_name",
+				{ name: placement.name },
+			);
 	}
 }
 
@@ -251,8 +278,9 @@ export type DevicePickerModel = {
 };
 
 /** The exact consequence the default (deleting) move carries. */
-export const MOVE_FOOTER =
-	"The copy on this device is deleted when the move commits.";
+export const MOVE_FOOTER = t(
+	"ui.chat.session_status.chat_device_model.the_copy_on_this_device_is_deleted_when_the_move",
+);
 
 /**
  * Why the header's move item stands down, from the capability answer's OWN state.
@@ -291,10 +319,14 @@ export function moveGateReason(state: DesktopFeatureState): string | null {
 			 * app means the device MESH, so the old wording sent the user to create or
 			 * join a mesh, which does not fix a missing credential.
 			 */
-			return "this app is not paired with the backend";
+			return t(
+				"ui.chat.session_status.chat_device_model.this_app_is_not_paired_with_the_backend",
+			);
 		case "below-version":
 			/* The backend answered and does not advertise the capability. */
-			return "this backend cannot move a conversation";
+			return t(
+				"ui.chat.session_status.chat_device_model.this_backend_cannot_move_a_conversation",
+			);
 	}
 }
 
@@ -321,8 +353,9 @@ export function moveGateTone(state: DesktopFeatureState): "warning" | "dim" {
  * It has to travel through this device: recall it here first.`); this is the row's
  * own short half of it.
  */
-export const NOT_HERE_WHY =
-	"the conversation is not here to move; recall it here first";
+export const NOT_HERE_WHY = t(
+	"ui.chat.session_status.chat_device_model.the_conversation_is_not_here_to_move_recall_it_here",
+);
 
 /**
  * What this device's row says when no read has named it.
@@ -332,7 +365,9 @@ export const NOT_HERE_WHY =
  * running on - the plain word is both shorter and true. The `this device` fact is
  * dropped in the same case so the row does not say it twice.
  */
-export const THIS_DEVICE_LABEL = "This device";
+export const THIS_DEVICE_LABEL = t(
+	"ui.chat.session_status.chat_device_model.this_device_label",
+);
 
 /**
  * The pairing line for a device in no network.
@@ -348,8 +383,9 @@ export const THIS_DEVICE_LABEL = "This device";
  * draws this line when the read came back (`PickerInput.meshRead`); the failure
  * has its own sentence below.
  */
-export const PAIRING_GUIDANCE =
-	"This device is in no network. Create one with `lop network init`, or join one with `lop network join <token>`.";
+export const PAIRING_GUIDANCE = t(
+	"ui.chat.session_status.chat_device_model.this_device_is_in_no_network_create_one_with_lop",
+);
 
 /**
  * What a read that did not answer may be called.
@@ -358,8 +394,9 @@ export const PAIRING_GUIDANCE =
  * (§3.5) did not name: the device list is empty because nobody answered, which is
  * not a membership fact about this device and has a different remedy.
  */
-export const MESH_READ_FAILURE =
-	"The device list could not be read, so this is what the last answer holds.";
+export const MESH_READ_FAILURE = t(
+	"ui.chat.session_status.chat_device_model.the_device_list_could_not_be_read_so_this_is",
+);
 
 /**
  * The sentence a pick in flight puts in the picker's pinned band.
@@ -369,7 +406,10 @@ export const MESH_READ_FAILURE =
  * would be delivered nowhere. One state, one wording, two surfaces.
  */
 export function moveHoldSentence(name: string): string {
-	return `This conversation is moving to ${name}. It continues there; nothing sent from here would be delivered.`;
+	return t(
+		"ui.chat.session_status.chat_device_model.this_conversation_is_moving_to_name_it_continues_there_nothing",
+		{ name },
+	);
 }
 
 /**
@@ -381,8 +421,9 @@ export function moveHoldSentence(name: string): string {
  * branch never reaches (agent review R1-N1). What is true meanwhile is which side
  * the conversation belongs to and that the app cannot call it back.
  */
-export const MOVE_HOLD_DETAIL =
-	"handing off · it continues there; this cannot be stopped from here";
+export const MOVE_HOLD_DETAIL = t(
+	"ui.chat.session_status.chat_device_model.handing_off_it_continues_there_this_cannot_be_stopped_from",
+);
 
 /** `1 conversation` / `3 conversations`. */
 function conversations(n: number): string {
@@ -411,10 +452,15 @@ function ineligibleReason(input: {
 	canTransfer: boolean;
 	reachable: boolean;
 }): string {
-	if (!input.canTransfer) return "this backend cannot move a conversation yet";
+	if (!input.canTransfer)
+		return t(
+			"ui.chat.session_status.chat_device_model.this_backend_cannot_move_a_conversation_yet",
+		);
 	return input.reachable
-		? "cannot receive a move"
-		: "did not answer the last read";
+		? t("ui.chat.session_status.chat_device_model.cannot_receive_a_move")
+		: t(
+				"ui.chat.session_status.chat_device_model.did_not_answer_the_last_read",
+			);
 }
 
 export type PickerInput = {
@@ -652,9 +698,14 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 	 */
 	const self: DeviceRow = {
 		deviceId: selfDeviceId,
-		name: selfName || THIS_DEVICE_LABEL,
+		name:
+			selfName ||
+			t("ui.chat.session_status.chat_device_model.this_device_label"),
 		facts: selfName
-			? [conversations(input.selfConversations), "this device"]
+			? [
+					conversations(input.selfConversations),
+					t("ui.chat.session_status.chat_device_model.this_device"),
+				]
 			: [conversations(input.selfConversations)],
 		state: selfIsHere
 			? "current"
@@ -720,7 +771,9 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 					why: !standsDown
 						? undefined
 						: eligible
-							? NOT_HERE_WHY
+							? t(
+									"ui.chat.session_status.chat_device_model.the_conversation_is_not_here_to_move_recall_it_here",
+								)
 							: ineligibleReason({
 									canTransfer: input.canTransfer,
 									reachable: member.reachable,
@@ -763,7 +816,9 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 	const failed = input.meshRead === "failed";
 
 	return {
-		heading: moving ? "Move this conversation to" : "Start the conversation on",
+		heading: moving
+			? t("ui.chat.session_status.chat_device_model.move_this_conversation_to")
+			: t("ui.chat.session_status.chat_device_model.start_the_conversation_on"),
 		self,
 		sections,
 		/*
@@ -775,9 +830,14 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 			placement.kind === "local" ||
 			placement.kind === "remote" ||
 			placement.kind === "moving"
-				? MOVE_FOOTER
+				? t(
+						"ui.chat.session_status.chat_device_model.the_copy_on_this_device_is_deleted_when_the_move",
+					)
 				: placement.kind === "gone"
-					? lossSentence(placement.name, "this device")
+					? lossSentence(
+							placement.name,
+							t("ui.chat.session_status.chat_device_model.this_device"),
+						)
 					: null,
 		/*
 		 * THE PAIRING LINE IS ONLY TRUE OF AN ANSWERED READ. `pending` gets neither
@@ -786,11 +846,20 @@ export function devicePickerModel(input: PickerInput): DevicePickerModel {
 		 */
 		guidance:
 			input.meshRead === "ok" && networks.length === 0
-				? PAIRING_GUIDANCE
+				? t(
+						"ui.chat.session_status.chat_device_model.this_device_is_in_no_network_create_one_with_lop",
+					)
 				: null,
-		readFailure: failed ? MESH_READ_FAILURE : null,
+		readFailure: failed
+			? t(
+					"ui.chat.session_status.chat_device_model.the_device_list_could_not_be_read_so_this_is",
+				)
+			: null,
 		inFlight: input.busy
-			? moveHoldSentence(placementDeviceName(placement) || "another device")
+			? moveHoldSentence(
+					placementDeviceName(placement) ||
+						t("ui.chat.session_status.chat_device_model.another_device"),
+				)
 			: null,
 		offerCheckAgain:
 			failed || (networks.length > 0 && (!answered || unreachableRow)),
@@ -857,10 +926,17 @@ export function arrivalCopy(input: {
 	const { engaged, name, from, newSessionId, sourceRetired } = input;
 	if (from !== null) {
 		return {
-			verb: "Moved back to this device",
+			verb: t(
+				"ui.chat.session_status.chat_device_model.moved_back_to_this_device",
+			),
 			detail: sourceRetired
-				? `the conversation is here now; the copy on ${from} was deleted`
-				: "the conversation is here now",
+				? t(
+						"ui.chat.session_status.chat_device_model.the_conversation_is_here_now_the_copy_on_from_was",
+						{ from },
+					)
+				: t(
+						"ui.chat.session_status.chat_device_model.the_conversation_is_here_now",
+					),
 			/*
 			 * NO SECOND LINE, and it is the cold arrival's own condition that says why:
 			 * the mandatory line exists to stop a reader waiting for output on a machine
@@ -872,8 +948,13 @@ export function arrivalCopy(input: {
 	}
 	if (!sourceRetired) {
 		return {
-			verb: `Copied to ${name}`,
-			detail: `${name} holds a copy as ${newSessionId.slice(-6)}; the original is still here`,
+			verb: t("ui.chat.session_status.chat_device_model.copied_to_name", {
+				name,
+			}),
+			detail: t(
+				"ui.chat.session_status.chat_device_model.name_holds_a_copy_as_value_the_original_is_still",
+				{ name: name, value: newSessionId.slice(-6) },
+			),
 			/*
 			 * THE COLD LINE ADAPTS, and "in the copy" is not decoration: the move arm's
 			 * "start it there" reads back to its nearest noun, which in this arm is "the
@@ -885,20 +966,32 @@ export function arrivalCopy(input: {
 			second:
 				engaged === true
 					? null
-					: `Nothing is running on ${name} yet. Send a message in the copy to start it there, or open it from the session list.`,
+					: t(
+							"ui.chat.session_status.chat_device_model.nothing_is_running_on_name_yet_send_a_message_in",
+							{ name },
+						),
 		};
 	}
 	if (engaged === true) {
 		return {
-			verb: `Moved to ${name}`,
-			detail: "the conversation is running there now; the copy here is deleted",
+			verb: t("ui.chat.session_status.chat_device_model.moved_to_name", {
+				name,
+			}),
+			detail: t(
+				"ui.chat.session_status.chat_device_model.the_conversation_is_running_there_now_the_copy_here_is",
+			),
 			second: null,
 		};
 	}
 	return {
-		verb: `Moved to ${name}`,
-		detail: "the conversation is there; the copy here is deleted",
-		second: `Nothing is running on ${name} yet. Send a message to start it there, or open the conversation on that device.`,
+		verb: t("ui.chat.session_status.chat_device_model.moved_to_name", { name }),
+		detail: t(
+			"ui.chat.session_status.chat_device_model.the_conversation_is_there_the_copy_here_is_deleted",
+		),
+		second: t(
+			"ui.chat.session_status.chat_device_model.nothing_is_running_on_name_yet_send_a_message_to",
+			{ name },
+		),
 	};
 }
 
@@ -910,8 +1003,9 @@ export function arrivalCopy(input: {
  * silently empty - the two facts the tombstone carries are WHERE it went and
  * that this copy was deleted.
  */
-export const SOURCE_RETIRED_DETAIL =
-	"the copy on this device was deleted when the move committed";
+export const SOURCE_RETIRED_DETAIL = t(
+	"ui.chat.session_status.chat_device_model.the_copy_on_this_device_was_deleted_when_the_move",
+);
 
 /** The words a picker row and a chip both need for a device: never an empty label. */
 export function deviceName(name: string, deviceId: string): string {
@@ -968,22 +1062,30 @@ export function movePair(input: {
 	 * for a third device are `ineligible` in `devicePickerModel` rather than
 	 * composed here - so no reachable pick reaches this arm with a different end.
 	 */
-	const handedOver = "this device";
+	const handedOver = t("ui.chat.session_status.chat_device_model.this_device");
 	if (input.recall) {
 		return {
 			plan: {
 				...common,
 				to: "local",
 				keep: false,
-				verb: "Recall to this device",
-				lost: lossSentence(input.source ?? "the other device", "this device"),
+				verb: t(
+					"ui.chat.session_status.chat_device_model.recall_to_this_device",
+				),
+				lost: lossSentence(
+					input.source ??
+						t("ui.chat.session_status.chat_device_model.the_other_device"),
+					t("ui.chat.session_status.chat_device_model.this_device"),
+				),
 			},
 			alternatives: [
 				{
 					...common,
 					to: "local",
 					keep: true,
-					verb: "Copy here, leave it there",
+					verb: t(
+						"ui.chat.session_status.chat_device_model.copy_here_leave_it_there",
+					),
 					lost: null,
 				},
 			],
@@ -994,7 +1096,9 @@ export function movePair(input: {
 			...common,
 			to: input.destination.deviceId,
 			keep: false,
-			verb: `Move to ${destination}`,
+			verb: t("ui.chat.session_status.chat_device_model.move_to_destination", {
+				destination,
+			}),
 			lost: lossSentence(handedOver, destination),
 		},
 		alternatives: [
@@ -1002,7 +1106,10 @@ export function movePair(input: {
 				...common,
 				to: input.destination.deviceId,
 				keep: true,
-				verb: `Copy to ${destination}`,
+				verb: t(
+					"ui.chat.session_status.chat_device_model.copy_to_destination",
+					{ destination },
+				),
 				lost: null,
 			},
 		],

@@ -1,4 +1,6 @@
 import { Button, Input, Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Import, Plus, Search } from "lucide-react";
 import type { FC } from "react";
 
@@ -53,58 +55,63 @@ export const SidebarHeader: FC<SidebarHeaderProps> = ({
 	searchQuery,
 	onSearchChange,
 	onNewAgentClick,
-	searchPlaceholder = "Search agents",
-	newAgentTooltip = "Create a new agent",
+	searchPlaceholder = t("ui.common.layout.sidebar_header.search_agents"),
+	newAgentTooltip = t("ui.common.layout.sidebar_header.create_a_new_agent"),
 	onImportAgentClick,
-	importAgentTooltip = "Import an agent from a ZIP file",
-}) => (
-	<div className="p-4">
-		<div className="mb-3 flex items-center justify-between gap-2">
-			<h2 className="truncate text-heading text-ink">{title}</h2>
-			<div className="flex shrink-0 gap-1">
-				{onImportAgentClick && (
-					<Tooltip content={importAgentTooltip}>
+	importAgentTooltip = t(
+		"ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file",
+	),
+}) => {
+	useI18nLocale();
+	return (
+		<div className="p-4">
+			<div className="mb-3 flex items-center justify-between gap-2">
+				<h2 className="truncate text-heading text-ink">{title}</h2>
+				<div className="flex shrink-0 gap-1">
+					{onImportAgentClick && (
+						<Tooltip content={importAgentTooltip}>
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={onImportAgentClick}
+								aria-label={t("ui.common.layout.sidebar_header.import_agent")}
+							>
+								<Import aria-hidden="true" />
+							</Button>
+						</Tooltip>
+					)}
+					<Tooltip content={newAgentTooltip}>
+						{/* The tour clicks `button[data-tour-tag="create-new-agent-button"]`,
+					    so this tag must stay on the button element itself. */}
 						<Button
-							variant="ghost"
+							variant="primary"
 							size="icon"
-							onClick={onImportAgentClick}
-							aria-label="Import agent"
+							onClick={onNewAgentClick}
+							aria-label={t("ui.common.layout.sidebar_header.new_agent")}
+							data-tour-tag="create-new-agent-button"
 						>
-							<Import aria-hidden="true" />
+							<Plus aria-hidden="true" />
 						</Button>
 					</Tooltip>
-				)}
-				<Tooltip content={newAgentTooltip}>
-					{/* The tour clicks `button[data-tour-tag="create-new-agent-button"]`,
-					    so this tag must stay on the button element itself. */}
-					<Button
-						variant="primary"
-						size="icon"
-						onClick={onNewAgentClick}
-						aria-label="New agent"
-						data-tour-tag="create-new-agent-button"
-					>
-						<Plus aria-hidden="true" />
-					</Button>
-				</Tooltip>
+				</div>
+			</div>
+
+			<div className="relative">
+				<Search
+					size={16}
+					aria-hidden="true"
+					className="pointer-events-none absolute top-1/2 start-3 -translate-y-1/2 text-ink-dim"
+				/>
+				<Input
+					type="search"
+					inputSize="lg"
+					placeholder={searchPlaceholder}
+					value={searchQuery}
+					onChange={(e) => onSearchChange(e.target.value)}
+					aria-label={searchPlaceholder}
+					className="ps-9"
+				/>
 			</div>
 		</div>
-
-		<div className="relative">
-			<Search
-				size={16}
-				aria-hidden="true"
-				className="pointer-events-none absolute top-1/2 start-3 -translate-y-1/2 text-ink-dim"
-			/>
-			<Input
-				type="search"
-				inputSize="lg"
-				placeholder={searchPlaceholder}
-				value={searchQuery}
-				onChange={(e) => onSearchChange(e.target.value)}
-				aria-label={searchPlaceholder}
-				className="ps-9"
-			/>
-		</div>
-	</div>
-);
+	);
+};

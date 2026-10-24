@@ -1,0 +1,293 @@
+{
+	"ui.agents.team.add_member": {
+		"role": "Action or accessible label in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.agent": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.ask_for_change": {
+		"role": "Action or accessible label in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.choose_manager": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.choose_member": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.collaboration_instructions": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.count": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.count_of": {
+		"role": "Dynamic status or complete sentence in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"count": "Non-negative integer count",
+			"name": "User-supplied definition or member name; preserve verbatim"
+		}
+	},
+	"ui.agents.team.create_team": {
+		"role": "Action or accessible label in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.created_name": {
+		"role": "Dynamic status or complete sentence in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "User-supplied definition or member name; preserve verbatim"
+		}
+	},
+	"ui.agents.team.description": {
+		"role": "Explanatory or consent copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.description_placeholder": {
+		"role": "Explanatory or consent copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.discard_team": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.edit": {
+		"role": "Action or accessible label in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.includes_team": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.instructions_required": {
+		"role": "Validation or failure feedback in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.loading_agents": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.manager": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.manager_agent": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.manager_candidates": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.manager_description": {
+		"role": "Explanatory or consent copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.team.manager_tooltip": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.team.member": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.member_count": {
+		"role": "Dynamic status or complete sentence in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"count": "Non-negative integer count"
+		},
+		"note": "Preserve the ICU plural and number formatting; translators add the locale CLDR categories required by the glossary."
+	},
+	"ui.agents.team.member_count_with_team": {
+		"role": "Dynamic status or complete sentence in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"count": "Non-negative member count, excluding the team inclusion"
+		},
+		"note": "Preserve the ICU plural and number formatting; Includes a team describes one nested team slot."
+	},
+	"ui.agents.team.member_kind_label": {
+		"role": "Dynamic status or complete sentence in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"index": "One-based member position"
+		}
+	},
+	"ui.agents.team.member_label": {
+		"role": "Dynamic status or complete sentence in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"index": "One-based member position"
+		}
+	},
+	"ui.agents.team.members": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.members_description": {
+		"role": "Explanatory or consent copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.team.name": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.name_description": {
+		"role": "Explanatory or consent copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.team.name_invalid": {
+		"role": "Validation or failure feedback in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.team.name_label": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.name_required": {
+		"role": "Validation or failure feedback in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.name_taken": {
+		"role": "Validation or failure feedback in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "User-supplied definition or member name; preserve verbatim"
+		}
+	},
+	"ui.agents.team.new_chat": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.new_team": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.no_description": {
+		"role": "Explanatory or consent copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.not_found": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.not_found_prefix": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"role": "Missing manager or member role; preserve verbatim"
+		}
+	},
+	"ui.agents.team.one_fewer": {
+		"role": "Dynamic status or complete sentence in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "User-supplied definition or member name; preserve verbatim"
+		}
+	},
+	"ui.agents.team.one_more": {
+		"role": "Dynamic status or complete sentence in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "User-supplied definition or member name; preserve verbatim"
+		}
+	},
+	"ui.agents.team.project_brief": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.remove": {
+		"role": "Action or accessible label in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.save_alert_title": {
+		"role": "Action or accessible label in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.save_changes": {
+		"role": "Action or accessible label in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.save_failed": {
+		"role": "Validation or failure feedback in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.saved_name": {
+		"role": "Dynamic status or complete sentence in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "User-supplied definition or member name; preserve verbatim"
+		}
+	},
+	"ui.agents.team.team": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.type": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.team.what_it_is_for": {
+		"role": "Field, section, state, or status copy in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	}
+}

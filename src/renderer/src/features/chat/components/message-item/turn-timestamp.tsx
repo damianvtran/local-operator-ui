@@ -113,6 +113,7 @@ import {
 	formatTurnTimestamp,
 } from "@shared/utils/date-utils";
 import type { FC } from "react";
+import { t } from "../../../../../../i18n/messages";
 
 export type TurnTimestampProps = {
 	/** The moment itself: epoch ms from a record, or a `Date`. */
@@ -148,9 +149,15 @@ export type TurnTimestampProps = {
  * agent wrote and on a call that ran, which is what the three variants fix.
  */
 const STAMP_VERB: Record<TurnTimestampProps["scope"], string> = {
-	turn: "Sent",
-	answer: "Answered",
-	tool: "Ran",
+	get turn() {
+		return t("ui.chat.message.turn_timestamp.sent");
+	},
+	get answer() {
+		return t("ui.chat.message.turn_timestamp.answered");
+	},
+	get tool() {
+		return t("ui.chat.message.turn_timestamp.ran");
+	},
 };
 
 export const TurnTimestamp: FC<TurnTimestampProps> = ({
@@ -198,7 +205,10 @@ export const TurnTimestamp: FC<TurnTimestampProps> = ({
 				 * from `scope`, so the name is truthful per carrier - a turn was sent,
 				 * an answer was written, a call ran.
 				 */
-				aria-label={`${STAMP_VERB[scope]} ${full}`}
+				aria-label={t("ui.chat.message.turn_timestamp.value_full", {
+					value: STAMP_VERB[scope],
+					full: full,
+				})}
 				/*
 				 * `text-ink-dim` + `text-meta` is the contract's own pair for a
 				 * caption (§ 4: `text-meta` is "captions, timestamps, counts"; § 2:

@@ -89,6 +89,7 @@
  * failure direction is legacy, never the channel branch.
  */
 
+import { t } from "../../../../../i18n/messages";
 import type {
 	CanonicalFrontendState,
 	CanonicalSpendBreakdownEntry,
@@ -394,10 +395,18 @@ function microUsdText(micro: number): string {
  * plan.
  */
 const BASIS_WORDS: Record<string, string> = {
-	billed: "billed",
-	subscription_api_equivalent: "Included",
-	estimated: "estimated",
-	not_tracked: "not tracked",
+	get billed() {
+		return t("ui.chat.session_status.session_cost.basis_billed");
+	},
+	get subscription_api_equivalent() {
+		return t("ui.chat.session_status.session_cost.basis_included");
+	},
+	get estimated() {
+		return t("ui.chat.session_status.session_cost.basis_estimated");
+	},
+	get not_tracked() {
+		return t("ui.chat.session_status.session_cost.not_tracked");
+	},
 };
 
 /**
@@ -550,7 +559,9 @@ export function channelRowName(
  * panel and the strip print the same two words rather than each inventing
  * one.
  */
-export const PRICE_UNKNOWN_TEXT = "price unknown";
+export const PRICE_UNKNOWN_TEXT = t(
+	"ui.chat.session_status.session_cost.price_unknown",
+);
 
 /**
  * One row's amount, mark included: `$0.90`, `≥$0.053`, or the words `price
@@ -572,7 +583,11 @@ function rowAmountText(row: CanonicalSpendChannelRow): {
 		typeof row.amount_micro === "number" && Number.isFinite(row.amount_micro)
 			? row.amount_micro
 			: null;
-	if (amount === null) return { text: PRICE_UNKNOWN_TEXT, unknown: true };
+	if (amount === null)
+		return {
+			text: t("ui.chat.session_status.session_cost.price_unknown"),
+			unknown: true,
+		};
 	const floor = isFloorKnowledge(rung(row.knowledge));
 	return {
 		text: `${floor ? FLOOR_MARK : ""}${microUsdText(amount)}`,
@@ -610,16 +625,35 @@ export function channelBasisWords(
 	];
 }
 
-/** Child provenance is published separately: never infer it from the parent rows. */
-export function childBasisLine(reading: SpendChannelsReading): string | null {
+/**
+ * The child spend as AMOUNT + BASIS WORDS, without the row's `Subagents` label.
+ *
+ * Split from `childBasisLine` because the status band draws this half in the
+ * by-agent row's money column and the whole sentence in the tooltip. The old
+ * caller stripped `/^Subagents /` off the finished sentence, which is a
+ * spelling of the English label: the moment the row label is translated the
+ * strip removes nothing and the column starts printing the label inside the
+ * number. The label now exists in exactly one place, here.
+ */
+export function childBasisDetail(reading: SpendChannelsReading): string | null {
 	if (reading.childrenMicro === null || reading.childrenMicro <= 0) return null;
 	const bases = reading.childrenByBasis;
 	const words = bases?.map(({ basis }) =>
 		basis === "not_tracked_micro" || basis === "not_tracked"
-			? "without a tracked basis yet"
+			? t("ui.chat.session_status.session_cost.without_a_tracked_basis_yet")
 			: `${capitalise(channelBasisLabel(basis, reading.vocabulary))}${basis === "subscription_api_equivalent" && !/api-equivalent/i.test(channelBasisLabel(basis, reading.vocabulary)) ? " (API-equivalent)" : ""}`,
 	);
-	return `Subagents ${isFloorKnowledge(reading.childrenKnowledge) ? FLOOR_MARK : ""}${microUsdText(reading.childrenMicro)} · ${words?.length ? words.join(" · ") : bases === null ? "without a tracked basis yet" : "basis unavailable"}`;
+	return `${isFloorKnowledge(reading.childrenKnowledge) ? FLOOR_MARK : ""}${microUsdText(reading.childrenMicro)} · ${words?.length ? words.join(" · ") : bases === null ? t("ui.chat.session_status.session_cost.without_a_tracked_basis_yet") : t("ui.chat.session_status.session_cost.basis_unavailable")}`;
+}
+
+/** Child provenance is published separately: never infer it from the parent rows. */
+export function childBasisLine(reading: SpendChannelsReading): string | null {
+	const detail = childBasisDetail(reading);
+	return detail === null
+		? null
+		: t("ui.chat.session_status.session_cost.subagents_amount", {
+				amount: detail,
+			});
 }
 
 /** One published row as a `ChannelBreakdownRow`. */
@@ -715,7 +749,7 @@ function breakdownRow(
 		name: entry.label,
 		amount:
 			amountMicro === null
-				? PRICE_UNKNOWN_TEXT
+				? t("ui.chat.session_status.session_cost.price_unknown")
 				: `${floor ? FLOOR_MARK : ""}${money(amountMicro)}`,
 		basis: markers,
 		markers,
@@ -934,7 +968,7 @@ export function channelSummaryLine(
 		reading.knowledge === "unknown" ||
 		(reading.totalMicro === 0 && reading.knowledge !== "exact");
 	const total = unstated
-		? PRICE_UNKNOWN_TEXT
+		? t("ui.chat.session_status.session_cost.price_unknown")
 		: reading.knowledge === "exact"
 			? money(reading.totalMicro)
 			: markFloor(money(reading.totalMicro));
@@ -957,7 +991,10 @@ export function channelSummaryLine(
 					)?.micro;
 		const children =
 			untrackedChildren != null && untrackedChildren > 0
-				? ` (${money(untrackedChildren)} subagent sessions)`
+				? t(
+						"ui.chat.session_status.session_cost.moneyvalue_subagent_sessions",
+						{ moneyValue: money(untrackedChildren) },
+					)
 				: "";
 		/*
 		 * The mark lands on the MONEY, not the sentence: the panel's register is
@@ -966,12 +1003,17 @@ export function channelSummaryLine(
 		 */
 		const moneyText = money(remainder);
 		const marked = remainderIsFloor(reading) ? markFloor(moneyText) : moneyText;
-		parts.push(`${marked} without a tracked basis yet${children}`);
+		parts.push(
+			t(
+				"ui.chat.session_status.session_cost.marked_without_a_tracked_basis_yet_children",
+				{ marked, children },
+			),
+		);
 	}
 	if (reading.tracked && reading.notTrackedCalls > 0) {
 		const count = reading.notTrackedCalls;
 		parts.push(
-			`${count} ${count === 1 ? "record" : "records"} without a price`,
+			t("ui.chat.session_status.session_cost.unpriced_records", { count }),
 		);
 	}
 	return parts.length > 0 ? parts.join(" · ") : null;
@@ -1014,7 +1056,10 @@ export function channelPlanClause(
 		(bucket) => bucket.basis === "subscription_api_equivalent",
 	);
 	if (!plan) return null;
-	return `Includes ${money(plan.micro)} plan-covered (API-equivalent, not charged).`;
+	return t(
+		"ui.chat.session_status.session_cost.includes_moneyvalue_plan_covered_api_equivalent_not_charged",
+		{ moneyValue: money(plan.micro) },
+	);
 }
 
 /** The strip-ladder breakdown the tooltip renders. */
@@ -1203,7 +1248,9 @@ function channelsSessionCost(
 			total: 0,
 			knowledge,
 			isFloor,
-			text: text ? `${text}${cue}` : "",
+			text: text
+				? t("ui.chat.session_status.session_cost.text_cue", { text, cue })
+				: "",
 			channels: reading,
 		};
 	}
@@ -1229,13 +1276,26 @@ export function costTooltip(cost: SessionCost): string {
 	if (cost.channels) return channelsCostTooltip(cost);
 	if (cost.total === null) {
 		return cost.text === UNPRICEABLE_TEXT
-			? "This session billed tokens on a model with no published price, so the spend cannot be calculated."
-			: "Nothing has been spent in this session yet.";
+			? t(
+					"ui.chat.session_status.session_cost.this_session_billed_tokens_on_a_model_with_no_published",
+				)
+			: t(
+					"ui.chat.session_status.session_cost.nothing_has_been_spent_in_this_session_yet",
+				);
 	}
-	if (!cost.total) return "Nothing has been spent in this session yet.";
-	const exact = `Session spend so far: ${formatCost(cost.total)}.`;
+	if (!cost.total)
+		return t(
+			"ui.chat.session_status.session_cost.nothing_has_been_spent_in_this_session_yet",
+		);
+	const exact = t(
+		"ui.chat.session_status.session_cost.session_spend_so_far_formatcostvalue",
+		{ formatCostValue: formatCost(cost.total) },
+	);
 	if (!cost.isFloor) return exact;
-	return `Session spend is at least ${formatCost(cost.total)}. Part of this conversation ran before the app was tracking it, or a subagent's spend is not fully known.`;
+	return t(
+		"ui.chat.session_status.session_cost.session_spend_is_at_least_formatcostvalue_part_of_this_conversation",
+		{ formatCostValue: formatCost(cost.total) },
+	);
 }
 
 /**
@@ -1248,8 +1308,9 @@ export function costTooltip(cost: SessionCost): string {
  * tooltip and the analytics panel's legend must not describe one session
  * differently.
  */
-export const CHANNELS_UNTRACKED_NOTE =
-	"Channels are not tracked for this conversation, so this covers model spend only.";
+export const CHANNELS_UNTRACKED_NOTE = t(
+	"ui.chat.session_status.session_cost.channels_are_not_tracked_for_this_conversation_so_this_covers",
+);
 
 /**
  * The tooltip under the CHANNEL branch's figure.
@@ -1263,26 +1324,47 @@ export const CHANNELS_UNTRACKED_NOTE =
  */
 function channelsCostTooltip(cost: SessionCost): string {
 	const reading = cost.channels;
-	if (!reading) return "Nothing has been spent in this session yet.";
+	if (!reading)
+		return t(
+			"ui.chat.session_status.session_cost.nothing_has_been_spent_in_this_session_yet",
+		);
 	const sentences: string[] = [];
 	if (!cost.total) {
 		sentences.push(
 			cost.text.startsWith(UNPRICEABLE_TEXT)
-				? "Some spend in this conversation could not be priced, so the spend cannot be calculated."
-				: "Nothing has been spent in this session yet.",
+				? t(
+						"ui.chat.session_status.session_cost.some_spend_in_this_conversation_could_not_be_priced_so",
+					)
+				: t(
+						"ui.chat.session_status.session_cost.nothing_has_been_spent_in_this_session_yet",
+					),
 		);
 	} else {
 		sentences.push(
 			cost.isFloor
-				? `Session spend is at least ${formatCost(cost.total)}.`
-				: `Session spend so far: ${formatCost(cost.total)}.`,
+				? t(
+						"ui.chat.session_status.session_cost.session_spend_is_at_least_formatcostvalue",
+						{ formatCostValue: formatCost(cost.total) },
+					)
+				: t(
+						"ui.chat.session_status.session_cost.session_spend_so_far_formatcostvalue",
+						{ formatCostValue: formatCost(cost.total) },
+					),
 		);
 		if (cost.isFloor) {
-			sentences.push("Part of this conversation's spend could not be priced.");
+			sentences.push(
+				t(
+					"ui.chat.session_status.session_cost.part_of_this_conversations_spend_could_not_be_priced",
+				),
+			);
 		}
 	}
 	if (!reading.tracked) {
-		sentences.push(CHANNELS_UNTRACKED_NOTE);
+		sentences.push(
+			t(
+				"ui.chat.session_status.session_cost.channels_are_not_tracked_for_this_conversation_so_this_covers",
+			),
+		);
 	}
 	return sentences.join(" ");
 }

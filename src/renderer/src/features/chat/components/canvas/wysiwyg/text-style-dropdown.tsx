@@ -5,6 +5,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 
@@ -15,14 +17,14 @@ type TextStyleDropdownProps = {
 	onTextTypeChange: (type: TextType) => void;
 };
 
-const TEXT_TYPES: { value: TextType; label: string }[] = [
-	{ value: "paragraph", label: "Paragraph" },
-	{ value: "h1", label: "Heading 1" },
-	{ value: "h2", label: "Heading 2" },
-	{ value: "h3", label: "Heading 3" },
-	{ value: "h4", label: "Heading 4" },
-	{ value: "h5", label: "Heading 5" },
-	{ value: "h6", label: "Heading 6" },
+const TEXT_TYPES = (): { value: TextType; label: string }[] => [
+	{ value: "paragraph", label: t("ui.canvas.text_style_dropdown.paragraph") },
+	{ value: "h1", label: t("ui.canvas.text_style_dropdown.heading_1") },
+	{ value: "h2", label: t("ui.canvas.text_style_dropdown.heading_2") },
+	{ value: "h3", label: t("ui.canvas.text_style_dropdown.heading_3") },
+	{ value: "h4", label: t("ui.canvas.text_style_dropdown.heading_4") },
+	{ value: "h5", label: t("ui.canvas.text_style_dropdown.heading_5") },
+	{ value: "h6", label: t("ui.canvas.text_style_dropdown.heading_6") },
 ];
 
 /**
@@ -36,16 +38,20 @@ export const TextStyleDropdown: FC<TextStyleDropdownProps> = ({
 	currentTextType,
 	onTextTypeChange,
 }) => {
+	useI18nLocale();
 	return (
 		<Select
 			value={currentTextType}
 			onValueChange={(value) => onTextTypeChange(value as TextType)}
 		>
-			<SelectTrigger aria-label="Text style" className={cn("w-30")}>
+			<SelectTrigger
+				aria-label={t("ui.canvas.text_style_dropdown.text_style")}
+				className={cn("w-30")}
+			>
 				<SelectValue />
 			</SelectTrigger>
 			<SelectContent>
-				{TEXT_TYPES.map((textType) => (
+				{TEXT_TYPES().map((textType) => (
 					<SelectItem key={textType.value} value={textType.value}>
 						{textType.label}
 					</SelectItem>

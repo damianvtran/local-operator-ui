@@ -48,6 +48,7 @@ import {
 	revokeBlobUrl,
 } from "@shared/lib/blob-url-cache";
 import { useEffect, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import type { TranscriptImage } from "./transcript-reducer";
 
 /**
@@ -161,7 +162,7 @@ function fetchAttachment(
 /** The digest is not in the session's attachment store (the relay answered 404). */
 export class AttachmentGoneError extends Error {
 	constructor() {
-		super("This item is no longer in the session");
+		super(t("ui.chat.canonical.attachment.gone"));
 		this.name = "AttachmentGoneError";
 	}
 }
@@ -200,7 +201,11 @@ export async function fetchAttachmentBlob(
 		// interrupted write); anything else is the relay failing, which a retry can
 		// clear. The two want different sentences, so the type says which it was.
 		if (result.status === 404) throw new AttachmentGoneError();
-		throw new Error("These bytes are not available right now");
+		throw new Error(
+			t(
+				"ui.chat.canonical.use_attachment_url.these_bytes_are_not_available_right_now",
+			),
+		);
 	}
 	return new Blob([result.data as BlobPart], { type: result.mimeType });
 }

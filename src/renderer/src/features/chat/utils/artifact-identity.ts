@@ -1,3 +1,5 @@
+import { t } from "../../../../../i18n/messages";
+import { documentNameForDisplay } from "./get-file-name";
 /**
  * The identity of a session ARTIFACT: media the harness generated and filed in
  * its attachment store, which has bytes and a digest but no path on the user's
@@ -182,12 +184,16 @@ export const ARTIFACT_HEAD_LENGTH = 8;
  * shorter menu (no Open file / Open folder) is unexplained (UX U4, design D7).
  */
 export function artifactCue(kind: ArtifactIdentityKind): string {
-	if (kind === "file") return "File kept in this session";
+	if (kind === "file")
+		return t("ui.chat.artifact_identity.file_kept_in_this_session");
 	// "Generated sound" rather than "Generated audio": the cue shares the word
 	// the row's own fallback name and the Sounds section use (`artifactCue` is
 	// read by the tooltip alone, but one kind should read one way).
-	if (kind === "audio") return "Generated sound, kept in this session";
-	return `Generated ${kind}, kept in this session`;
+	if (kind === "audio")
+		return t("ui.chat.artifact_identity.generated_sound_kept_in_this_session");
+	return t("ui.chat.artifact_identity.generated_kind_kept_in_this_session", {
+		kind,
+	});
 }
 
 /**
@@ -207,7 +213,10 @@ export function artifactTooltip(artifact: {
 	// repeating the head would read `Video 9277c383 . 9277c383`.
 	const named = artifact.title.includes(head)
 		? artifact.title
-		: `${artifact.title} \u00b7 ${head}`;
+		: t("ui.chat.artifact_identity.title_head", {
+				title: artifact.title,
+				head: head,
+			});
 	return `${named} \u00b7 ${artifactCue(artifact.kind)}`;
 }
 
@@ -224,6 +233,14 @@ export function artifactTabLabels(
 	documents: ReadonlyArray<{
 		id: string;
 		title: string;
+		/**
+		 * The document's source. A PASTED document (a `data:` path with no
+		 * `name=`) has no filename of its own, so its label is derived from this
+		 * at render time — a title stored by an older build holds the language
+		 * that was active when the picture was pasted, and a stored string cannot
+		 * be re-translated (`documentNameForDisplay` carries the rule).
+		 */
+		path?: string;
 		artifact?: { digest: string } | undefined;
 	}>,
 ): Map<string, string> {
@@ -233,11 +250,15 @@ export function artifactTabLabels(
 	const labels = new Map<string, string>();
 	for (const doc of documents) {
 		const clash = doc.artifact && (counts.get(doc.title) ?? 0) > 1;
+		const name =
+			doc.path === undefined
+				? doc.title
+				: documentNameForDisplay({ path: doc.path, title: doc.title });
 		labels.set(
 			doc.id,
 			clash && doc.artifact
-				? `${doc.title} \u00b7 ${doc.artifact.digest.slice(0, ARTIFACT_HEAD_LENGTH)}`
-				: doc.title,
+				? `${name} \u00b7 ${doc.artifact.digest.slice(0, ARTIFACT_HEAD_LENGTH)}`
+				: name,
 		);
 	}
 	return labels;

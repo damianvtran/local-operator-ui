@@ -31,9 +31,10 @@
  * the composer showed and the send would omit.
  */
 
+import { t } from "../../../../../i18n/messages";
 import { DESKTOP_MESSAGE_MAX_FILES } from "../../../../../shared/attachment-upload";
 import { DESKTOP_MESSAGE_MAX_IMAGES } from "../../../../../shared/desktop-contract";
-import { getFileName } from "./get-file-name";
+import { fileNameForDisplay } from "./get-file-name";
 
 /** Trailing full stops, so a daemon sentence can join this one cleanly. */
 const TRAILING_STOPS = /\.+$/;
@@ -55,7 +56,7 @@ export type AttachmentFailure =
 	  };
 
 const nameOf = (failure: AttachmentFailure): string =>
-	typeof failure === "string" ? getFileName(failure) : failure.name;
+	typeof failure === "string" ? fileNameForDisplay(failure) : failure.name;
 
 /** `detail` without its own full stop, so the clause reads as one sentence. */
 const clauseOf = (detail: string | undefined): string =>
@@ -114,8 +115,14 @@ export function unreadableAttachmentRefusal(
 	 */
 	if (allRead) {
 		if (names.length === 1)
-			return `${names[0]} could not be read (it may have been moved or deleted), so this message was not sent. Attach it again, or remove it from the draft.`;
-		return `${names.join(", ")} could not be read (they may have been moved or deleted), so this message was not sent. Attach them again, or remove them from the draft.`;
+			return t(
+				"ui.chat.attachment_read.value_could_not_be_read_it_may_have_been_moved",
+				{ value: names[0] },
+			);
+		return t(
+			"ui.chat.attachment_read.value_could_not_be_read_they_may_have_been_moved",
+			{ value: names.join(", ") },
+		);
 	}
 	if (allRemote) {
 		// One cause for every name, so the sentence states it once rather than
@@ -156,8 +163,14 @@ export function imageOverflowRefusal(dropped: number): string | null {
 	const cap = DESKTOP_MESSAGE_MAX_IMAGES;
 	const total = cap + dropped;
 	if (dropped === 1)
-		return `This draft carries ${total} images and one message carries up to ${cap}, so this message was not sent. Remove the extra image, or send it in a second message.`;
-	return `This draft carries ${total} images and one message carries up to ${cap}, so this message was not sent. Remove ${dropped} of them, or send them in a second message.`;
+		return t(
+			"ui.chat.attachment_read.this_draft_carries_total_images_and_one",
+			{ total, cap },
+		);
+	return t(
+		"ui.chat.attachment_read.this_draft_carries_total_images_and_one_721f14",
+		{ total, cap, dropped },
+	);
 }
 
 /**

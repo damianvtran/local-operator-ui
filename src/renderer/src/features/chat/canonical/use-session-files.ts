@@ -8,11 +8,86 @@ import {
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import {
 	type SessionFile,
 	type SessionFilesPage,
 	mergeFilesPage,
 } from "./session-files";
+
+/**
+ * Why the index is not usable, as a STABLE CODE.
+ *
+ * WHY NOT THE SENTENCE: the snapshot is stored state. A translated string put
+ * here is frozen at the moment the request settled, so a language switch leaves
+ * the Files pane speaking the old language until the next refresh — and the
+ * code also keeps this hook free of locale at fetch time. The presentation
+ * layer translates with `fileIndexErrorMessage`.
+ */
+export type FileIndexError =
+	| "remote-unavailable"
+	| "not-available"
+	| "read-failed"
+	| "invalid-index"
+	| "churning"
+	| "repeated-cursor"
+	| "still-building"
+	| "unreadable";
+
+/** A failure this module raised itself, carrying the code it must store. */
+class SessionFilesError extends Error {
+	constructor(readonly code: FileIndexError) {
+		super(code);
+	}
+}
+
+/**
+ * The sentence the Files pane shows for a stored code.
+ *
+ * Called AT RENDER, so the sentence follows the active locale and a switch
+ * re-labels the pane without a refetch. `null` in, `null` out: the pane draws
+ * nothing for an index that has nothing to say.
+ */
+export function fileIndexErrorMessage(
+	error: FileIndexError | null,
+): string | null {
+	switch (error) {
+		case null:
+			return null;
+		case "remote-unavailable":
+			return t(
+				"ui.chat.canonical.use_session_files.remote_files_cannot_be_opened_on_this_device",
+			);
+		case "not-available":
+			return t(
+				"ui.chat.canonical.use_session_files.this_sessions_files_are_not_available_on_this_device",
+			);
+		case "read-failed":
+			return t(
+				"ui.chat.canonical.use_session_files.the_file_index_could_not_be_read_retry_to_reconnect",
+			);
+		case "invalid-index":
+			return t(
+				"ui.chat.canonical.use_session_files.the_backend_returned_an_invalid_file_index",
+			);
+		case "churning":
+			return t(
+				"ui.chat.canonical.use_session_files.files_are_changing_quickly_retry_after_the_current_turn_finishes",
+			);
+		case "repeated-cursor":
+			return t(
+				"ui.chat.canonical.use_session_files.the_file_index_repeated_a_page_cursor_retry_to_refresh",
+			);
+		case "still-building":
+			return t(
+				"ui.chat.canonical.use_session_files.the_index_is_still_building_continue_loading_to_check_progress",
+			);
+		case "unreadable":
+			return t(
+				"ui.chat.canonical.use_session_files.the_file_index_could_not_be_read",
+			);
+	}
+}
 
 export type FileIndexState = {
 	mode: "negotiating" | "fallback" | "index";
@@ -20,7 +95,7 @@ export type FileIndexState = {
 	rows: SessionFile[];
 	total: number;
 	statComplete: boolean;
-	error: string | null;
+	error: FileIndexError | null;
 	coveredBytes: number;
 	totalBytes: number;
 	/** Progress of the private pass; never thumbnail-producing membership. */
@@ -123,7 +198,7 @@ export function useSessionFiles(
 			setSnapshot({
 				...EMPTY,
 				state: "unsupported",
-				error: "Remote files cannot be opened on this device.",
+				error: "remote-unavailable",
 			});
 			return;
 		}
@@ -154,26 +229,24 @@ export function useSessionFiles(
 						setSnapshot({
 							...EMPTY,
 							state: "unsupported",
-							error: "This session's files are not available on this device.",
+							error: "not-available",
 						});
 						return;
 					}
 					if (response.status < 200 || response.status >= 300)
-						throw new Error(
-							"The file index could not be read. Retry to reconnect.",
-						);
+						throw new SessionFilesError("read-failed");
 					const page = (response.body as { result: SessionFilesPage }).result;
 					if (
 						!page ||
 						!Array.isArray(page.rows) ||
 						!["ready", "building", "unsupported"].includes(page.state)
 					)
-						throw new Error("The backend returned an invalid file index.");
+						throw new SessionFilesError("invalid-index");
 					if (page.state === "unsupported") {
 						setSnapshot({
 							...EMPTY,
 							state: "unsupported",
-							error: "Remote files cannot be opened on this device.",
+							error: "remote-unavailable",
 						});
 						return;
 					}
@@ -188,10 +261,7 @@ export function useSessionFiles(
 						rows = [];
 						revision = null;
 						cursors.clear();
-						if (++resets > 4)
-							throw new Error(
-								"Files are changing quickly. Retry after the current turn finishes.",
-							);
+						if (++resets > 4) throw new SessionFilesError("churning");
 						continue;
 					}
 					rows = mergeFilesPage(rows, page, revision);
@@ -224,9 +294,7 @@ export function useSessionFiles(
 					if (cursor) {
 						if (page.cursor_reset) cursors.clear();
 						if (cursors.has(cursor))
-							throw new Error(
-								"The file index repeated a page cursor. Retry to refresh it.",
-							);
+							throw new SessionFilesError("repeated-cursor");
 						cursors.add(cursor);
 						continue;
 					}
@@ -245,8 +313,7 @@ export function useSessionFiles(
 					setSnapshot((old) => ({
 						...old,
 						state: "building",
-						error:
-							"The index is still building. Continue loading to check progress.",
+						error: "still-building",
 					}));
 			} catch (error) {
 				if (live())
@@ -254,9 +321,7 @@ export function useSessionFiles(
 						...old,
 						state: "error",
 						error:
-							error instanceof Error
-								? error.message
-								: "The file index could not be read.",
+							error instanceof SessionFilesError ? error.code : "unreadable",
 					}));
 			}
 		})();

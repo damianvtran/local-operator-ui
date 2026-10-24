@@ -1,0 +1,4 @@
+{
+	"ui.chat.canvas_preview.html_title": "Accessible name of the HTML preview iframe. {name} is the document display name; keep the \"HTML Preview\" label first.",
+	"ui.chat.canvas_preview.pdf_title": "Accessible name of the PDF preview iframe. {name} is the document display name; keep the \"PDF\" label first."
+}

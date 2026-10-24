@@ -1,3 +1,4 @@
+import { t } from "../../../../../../i18n/messages";
 /**
  * The two receipt rows: an inbound peer message, and a wake delivery.
  *
@@ -158,7 +159,9 @@ export function hubIdentity(receipt: HubReceipt): string {
 				: "Hub");
 	return [
 		sender,
-		receipt.expectsReply ? "Reply requested" : "",
+		receipt.expectsReply
+			? t("ui.chat.trace.receipt_row_model.reply_requested")
+			: "",
 		receipt.steer ? "Steered" : "",
 	]
 		.filter(Boolean)
@@ -222,7 +225,8 @@ const WHITESPACE_RUN = /\s+/;
 const TRAILING_SEPARATORS = /[\\/]+$/;
 const PATH_SEPARATOR = /[\\/]/;
 const ENVELOPE_BREAK = "\n\n";
-const CANCEL_INSTRUCTION = " — cancel with wake(";
+const CANCEL_INSTRUCTION = () =>
+	t("ui.chat.trace.receipt_row_model.cancel_with_wake");
 
 /**
  * How much of one advisory sender field is printed.
@@ -365,7 +369,11 @@ export function peerName(sender: PeerSender): {
 		// A trailing slash says "this is a directory", which is the only thing
 		// that distinguishes a guessed name from a chosen one when both are
 		// unquoted.
-		if (base) return { name: `${base}/`, quoted: false };
+		if (base)
+			return {
+				name: t("ui.chat.trace.receipt_row_model.base", { base }),
+				quoted: false,
+			};
 	}
 	if (sender.sessionId) {
 		// A short prefix: a full ULID is 26 characters of entropy that pushes the
@@ -389,7 +397,9 @@ export function peerName(sender: PeerSender): {
 export function peerIdentity(sender: PeerSender): string {
 	const { name, quoted } = peerName(sender);
 	if (name) return quoted ? `"${name}"` : name;
-	return sender.pid ? `pid ${sender.pid}` : "another session";
+	return sender.pid
+		? `pid ${sender.pid}`
+		: t("ui.chat.trace.receipt_row_model.another_session");
 }
 
 /**
@@ -416,7 +426,7 @@ export function peerIdentityLine(sender: PeerSender): string {
 	if (parts.length > 0) return parts.join(" · ");
 	// Nothing identifying at all: the one case that still needs prose, because a
 	// bare "·"-joined empty list says nothing.
-	return "another session";
+	return t("ui.chat.trace.receipt_row_model.another_session");
 }
 
 /**
@@ -712,10 +722,10 @@ export function wakeIsHidden(details: Record<string, unknown>): boolean {
 export function wakeReceiptHeadline(text: string): string {
 	let head = text.split(ENVELOPE_BREAK)[0] ?? "";
 	head = head.split(WHITESPACE_RUN).filter(Boolean).join(" ");
-	head = head.split(CANCEL_INSTRUCTION)[0];
+	head = head.split(CANCEL_INSTRUCTION())[0];
 	const alarm = "(alarm) ";
 	while (head.startsWith(alarm)) head = head.slice(alarm.length);
-	const prefix = "Scheduled wake ";
+	const prefix = t("ui.chat.trace.receipt_row_model.scheduled_wake");
 	if (head.startsWith(prefix)) head = head.slice(prefix.length);
 	return head.trim();
 }

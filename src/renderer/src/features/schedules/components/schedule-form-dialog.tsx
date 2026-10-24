@@ -401,7 +401,7 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 		setIsSubmitting(true);
 		try {
 			if (!isEditMode && !formData.selectedAgentId) {
-				console.error("Agent ID is required to create a schedule.");
+				console.error(t("ui.schedules.errors.agent_id_required"));
 				setIsSubmitting(false);
 				return;
 			}
@@ -428,7 +428,7 @@ export const ScheduleFormDialog: FC<ScheduleFormDialogProps> = ({
 				: formData.selectedAgentId;
 
 			if (!agentForSubmit) {
-				console.error("Agent ID is missing for submission.");
+				console.error(t("ui.schedules.errors.agent_id_missing"));
 				setIsSubmitting(false);
 				return;
 			}

@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -35,7 +36,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const highContrastLight: ThemeDefinition = {
 	id: "highContrastLight",
 	name: "High Contrast Light",
-	description: "Near-black ink on near-white, every state well past its floor.",
+	get description() {
+		return t("ui.settings.appearance.theme.high_contrast_light");
+	},
 	palette: {
 		mode: "light",
 		canvas: "#E6E6E6",

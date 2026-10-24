@@ -7,9 +7,11 @@
  * the only reason this file knew about MUI.
  */
 
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Info } from "lucide-react";
-import type { FC } from "react";
+import type { FC, ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { t } from "../../../../../../i18n/messages";
 
 /**
  * Props for the ErrorBlock component
@@ -32,99 +34,125 @@ export type ErrorBlockProps = {
  * General, the same dead-end class this area was just fixed for (design review
  * round 2, D7). Callers that mean the whole page keep the default.
  */
-const settingsLink = (label = "settings page", to = "/settings") => (
-	<Link to={to} className="text-accent underline underline-offset-2">
-		{label}
-	</Link>
-);
+const SETTINGS_LINK_MARKER = "__SETTINGS_LINK__";
 
-const errorSuggestions: Record<string, React.ReactNode> = {
-	"Hosting platform is not configured": (
-		<p>
-			You haven't selected an AI provider yet. Go to the {settingsLink()} to
-			configure it for all your agents. If you don't have an AI provider, you
-			can sign in to Radient to get access for free to start.
-		</p>
-	),
-	"Model name is not configured": (
-		<p>
-			You haven't selected an AI model yet. Go to the {settingsLink()} to select
-			a model for all your agents. If you don't have an AI provider, you can
-			sign in to Radient to get access for free to start.
-		</p>
-	),
-	"Rate limit": (
-		<p>
-			You've hit the rate limit for your AI provider. Please try again later or
-			get Radient Pass in the {settingsLink()} to access AI models with no rate
-			limits at low prices.
-		</p>
-	),
-	"Rate-limit": (
-		<p>
-			You've hit the rate limit for your AI provider. Please try again later or
-			get Radient Pass in the {settingsLink()} to access all AI models with no
-			rate limits at low prices.
-		</p>
-	),
-	"Invalid API key": (
-		<p>
-			Your API key is invalid. Update it in the{" "}
-			{settingsLink("Providers section", "/settings?section=providers")}, or
-			sign in to the provider again.
-		</p>
-	),
-	"404 models": (
-		<p>
-			The model you're trying to use is not available. Go to the{" "}
-			{settingsLink()} to select a different model, or use Radient to get access
-			to hundreds of models with no rate limits
-		</p>
-	),
-	"Call ListModels": (
-		<p>
-			The model you're trying to use is not available. Go to the{" "}
-			{settingsLink()} to select a different model, or use Radient to get access
-			to hundreds of models with no rate limits
-		</p>
-	),
-	"Failed to interpret action": (
-		<p>
-			The model tried to perform an action but was unable to express its intent
-			in the required schema. Typically this happens because the model can't
-			follow the complex instructions required for agentic AI.
-			<br />
-			<br />
-			Change your model in the {settingsLink()} to fix this. We recommend using
-			Radient Automatic to have the best combo of cheap and smart picked for you
-			based on your requests (typically cheaper than bringing your own key), or
-			use one of the recommended models with a star icon.
-		</p>
-	),
+/*
+ * ICU owns the whole sentence and the link's position. Splitting only the
+ * formatted placeholder lets React keep the router link without making
+ * translators reorder fragments whose grammar depends on one another.
+ */
+const linkedSettingsSentence = (text: string, providers = false): ReactNode => {
+	const parts = text.split(SETTINGS_LINK_MARKER);
+	if (parts.length !== 2) return text;
+	return (
+		<>
+			{parts[0]}
+			<Link
+				to={
+					providers
+						? t("ui.chat.message.error_block.settings_section_providers")
+						: "/settings"
+				}
+				className="text-accent underline underline-offset-2"
+			>
+				{t(
+					providers
+						? "ui.chat.message.error_block.providers_section"
+						: "ui.chat.message.error_block.settings_page",
+				)}
+			</Link>
+			{parts[1]}
+		</>
+	);
+};
+
+type ErrorSuggestion = {
+	key:
+		| "hosting"
+		| "model"
+		| "rate_limit"
+		| "rate_limit_all"
+		| "invalid_key"
+		| "model_unavailable"
+		| "schema";
+	providers?: boolean;
+};
+
+const errorSuggestions: Record<string, ErrorSuggestion> = {
+	"Hosting platform is not configured": { key: "hosting" },
+	"Model name is not configured": { key: "model" },
+	"Rate limit": { key: "rate_limit" },
+	"Rate-limit": { key: "rate_limit_all" },
+	"Invalid API key": { key: "invalid_key", providers: true },
+	"404 models": { key: "model_unavailable" },
+	"Call ListModels": { key: "model_unavailable" },
+	"Failed to interpret action": { key: "schema" },
 };
 
 export const ErrorBlock: FC<ErrorBlockProps> = ({ error }) => {
+	useI18nLocale();
 	if (!error || error === "[No error output]") return null;
 
 	const lowercasedTrimmedError = error.trim().toLowerCase();
-	let suggestion: React.ReactNode | undefined;
+	let suggestion: ErrorSuggestion | undefined;
 	for (const key in errorSuggestions) {
 		if (lowercasedTrimmedError.includes(key.toLowerCase())) {
 			suggestion = errorSuggestions[key];
 			break;
 		}
 	}
+	const settingsText = (key: ErrorSuggestion["key"]) => {
+		const params = { settings: SETTINGS_LINK_MARKER };
+		switch (key) {
+			case "hosting":
+				return t("ui.chat.message.error_block.hosting", params);
+			case "model":
+				return t("ui.chat.message.error_block.model", params);
+			case "rate_limit":
+				return t("ui.chat.message.error_block.rate_limit", params);
+			case "rate_limit_all":
+				return t("ui.chat.message.error_block.rate_limit_all", params);
+			case "invalid_key":
+				return t("ui.chat.message.error_block.invalid_key", params);
+			case "model_unavailable":
+				return t("ui.chat.message.error_block.model_unavailable", params);
+			case "schema":
+				return t("ui.chat.message.error_block.schema_remedy", params);
+		}
+	};
 
 	return (
 		<div className="mb-4 w-full">
-			<span className="mb-1 block text-danger text-meta">Error</span>
+			<span className="mb-1 block text-danger text-meta">
+				{t("ui.chat.message.error_block.error")}
+			</span>
 			<pre className="flex max-h-[200px] w-full flex-col-reverse overflow-auto whitespace-pre-wrap rounded-sm border border-danger-border bg-danger-wash p-3 font-mono text-danger text-mono-sm">
 				{error}
 			</pre>
 			{suggestion && (
 				<div className="mt-3 flex w-full items-center gap-2 rounded-sm border border-hairline bg-surface p-3">
 					<Info className="size-4 shrink-0 text-ink-muted" aria-hidden={true} />
-					<div className="text-body-sm text-ink">{suggestion}</div>
+					<div className="text-body-sm text-ink">
+						{suggestion.key === "schema" ? (
+							<p>
+								{t("ui.chat.message.error_block.schema_explanation")}
+								<br />
+								<br />
+								{linkedSettingsSentence(
+									t("ui.chat.message.error_block.schema_remedy", {
+										settings: SETTINGS_LINK_MARKER,
+									}),
+								)}
+							</p>
+						) : (
+							<p>
+								{linkedSettingsSentence(
+									settingsText(suggestion.key),
+									suggestion.providers,
+								)}
+							</p>
+						)}
+					</div>
 				</div>
 			)}
 		</div>

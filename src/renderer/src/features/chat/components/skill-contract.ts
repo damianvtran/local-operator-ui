@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 /**
  * The `$skill` list's contract: key routing, row identity, footer copy, and the
  * no-rows notice.
@@ -93,12 +94,12 @@ export const SKILL_PHASE_LABEL = "Skills";
  * rather than a generic word, because the line sits beside the row it names.
  */
 export function skillEnterFooter(name: string): string {
-	return `Enter completes $${name}; Enter again sends it.`;
+	return t("ui.chat.skill.contract.enter_completes", { name });
 }
 
 /** The pointer's line, on the same row, for the same gesture. */
 export function skillClickFooter(name: string): string {
-	return `Click completes $${name}.`;
+	return t("ui.chat.skill.contract.click_completes", { name });
 }
 
 /* ------------------------------------------------------------------ */
@@ -178,11 +179,14 @@ export type SkillNotice = { kind: SkillNoticeKind; text: string };
  * and updating it is the way out. The design round ratifies the exact string;
  * the register it must stay in is the one both siblings write.
  */
-export const SKILL_UNAVAILABLE_REASON =
-	"This backend cannot serve the skill catalogue. Update the backend and try again.";
+export const SKILL_UNAVAILABLE_REASON = t(
+	"ui.chat.skill.contract.this_backend_cannot_serve_the_skill_catalogue_update_the_backend",
+);
 
 /** The transient state's sentence; one string for every pane and cause. */
-export const SKILL_TRANSIENT_REASON = "Skills aren't available right now.";
+export const SKILL_TRANSIENT_REASON = t(
+	"ui.chat.skill.contract.skills_arent_available_right_now",
+);
 
 /**
  * The loading state's line: the `/` sibling's own word, verbatim
@@ -194,13 +198,15 @@ export const SKILL_TRANSIENT_REASON = "Skills aren't available right now.";
 export const SKILL_LOADING_LINE = "Loading…";
 
 /** The empty state where `/skills` can be followed (a session is attached). */
-export const SKILL_EMPTY_ATTACHED = "No skills found — see /skills";
+export const SKILL_EMPTY_ATTACHED = t(
+	"ui.chat.skill.contract.no_skills_found_see_skills",
+);
 
 /** The empty state on a draft, where `/skills` would be refused. */
-export const SKILL_EMPTY_DRAFT = "No skills found.";
+export const SKILL_EMPTY_DRAFT = t("ui.chat.skill.contract.no_skills_found");
 
 /** The miss line, unchanged from #690. */
-export const SKILL_MISS_LINE = "No skills match.";
+export const SKILL_MISS_LINE = t("ui.chat.skill.contract.no_skills_match");
 
 export type SkillNoticeInput = {
 	/**

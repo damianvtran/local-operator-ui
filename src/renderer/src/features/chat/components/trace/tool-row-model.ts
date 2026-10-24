@@ -1,3 +1,4 @@
+import { t } from "../../../../../../i18n/messages";
 /**
  * The arithmetic behind a tool row, ported from the TUI's ledger.
  *
@@ -468,9 +469,15 @@ export function preferProgressDetails(
 export const SEND_DELIVERY_WORD: Readonly<
 	Partial<Record<SendDeliveryState, string>>
 > = {
-	mailbox: "wake unconfirmed",
-	unconfirmed: "delivery unconfirmed",
-	failed: "not delivered",
+	get mailbox() {
+		return t("ui.chat.trace.tool_row_model.wake_unconfirmed");
+	},
+	get unconfirmed() {
+		return t("ui.chat.trace.tool_row_model.delivery_unconfirmed");
+	},
+	get failed() {
+		return t("ui.chat.trace.tool_row_model.not_delivered");
+	},
 };
 
 /**
@@ -488,10 +495,16 @@ export const SEND_DELIVERY_WORD: Readonly<
 export const SEND_DELIVERY_TITLE: Readonly<
 	Partial<Record<SendDeliveryState, string>>
 > = {
-	mailbox:
-		"In their mailbox. The wake got no answer, so they will read it on their next turn.",
-	unconfirmed:
-		"No wake answer and not yet in their transcript — it may still arrive. Check before resending.",
+	get mailbox() {
+		return t(
+			"ui.chat.trace.tool_row_model.in_their_mailbox_the_wake_got_no_answer_so_they",
+		);
+	},
+	get unconfirmed() {
+		return t(
+			"ui.chat.trace.tool_row_model.no_wake_answer_and_not_yet_in_their_transcript_it",
+		);
+	},
 };
 
 /**
@@ -518,12 +531,21 @@ export const SEND_DELIVERY_TITLE: Readonly<
 export const SEND_DELIVERY_NOTE: Readonly<
 	Partial<Record<SendDeliveryState, string>>
 > = {
-	mailbox:
-		"Delivered to their mailbox. The wake got no answer, so they will read the message on their next turn. Do not send it again.",
-	unconfirmed:
-		"Not confirmed: there was no answer and the message is not in their transcript. It may still arrive, so check before resending.",
-	failed:
-		"Nothing was delivered. Fix the cause named below, or retry the send.",
+	get mailbox() {
+		return t(
+			"ui.chat.trace.tool_row_model.delivered_to_their_mailbox_the_wake_got_no_answer_so",
+		);
+	},
+	get unconfirmed() {
+		return t(
+			"ui.chat.trace.tool_row_model.not_confirmed_there_was_no_answer_and_the_message_is",
+		);
+	},
+	get failed() {
+		return t(
+			"ui.chat.trace.tool_row_model.nothing_was_delivered_fix_the_cause_named_below_or_retry",
+		);
+	},
 };
 
 /**
@@ -541,9 +563,14 @@ export const SEND_DELIVERY_NOTE: Readonly<
 export const SEND_DELIVERY_LABEL: Readonly<
 	Partial<Record<SendDeliveryState, string>>
 > = {
-	mailbox: "delivered, wake unconfirmed",
-	unconfirmed:
-		"delivery unconfirmed — it may still arrive, so check before resending",
+	get mailbox() {
+		return t("ui.chat.trace.tool_row_model.delivered_wake_unconfirmed");
+	},
+	get unconfirmed() {
+		return t(
+			"ui.chat.trace.tool_row_model.delivery_unconfirmed_it_may_still_arrive_so_check_before_resending",
+		);
+	},
 };
 
 /**
@@ -1223,25 +1250,158 @@ const isOpSelectable = (toolName: string): boolean =>
 	);
 
 const TOOL_VERBS: Record<string, Omit<ToolVerb, "named">> = {
-	bash: { settled: "Ran", running: "Running" },
-	eval: { settled: "Ran Python", running: "Running Python" },
-	read: { settled: "Read", running: "Reading" },
-	write: { settled: "Wrote", running: "Writing" },
-	edit: { settled: "Edited", running: "Editing" },
-	glob: { settled: "Listed", running: "Listing" },
-	grep: { settled: "Searched", running: "Searching" },
-	web_search: { settled: "Searched the web", running: "Searching the web" },
-	web_fetch: { settled: "Fetched", running: "Fetching" },
-	web_read: { settled: "Read", running: "Reading" },
-	browser: { settled: "Browsed", running: "Browsing" },
-	list_variables: { settled: "Listed variables", running: "Listing variables" },
-	read_variable: { settled: "Read variable", running: "Reading variable" },
-	ask: { settled: "Asked", running: "Asking" },
-	send: { settled: "Sent", running: "Sending" },
-	wait: { settled: "Waited for jobs", running: "Waiting for jobs" },
-	team_delete: { settled: "Deleted team", running: "Deleting team" },
-	project_delete: { settled: "Deleted project", running: "Deleting project" },
-	peer: { settled: "Received", running: "Receiving" },
+	bash: {
+		get settled() {
+			return t("ui.chat.trace.tool_row_model.ran");
+		},
+		get running() {
+			return t("ui.chat.trace.tool_row_model.running");
+		},
+	},
+	eval: {
+		get settled() {
+			return t("ui.chat.trace.tool_row_model.ran_python");
+		},
+		get running() {
+			return t("ui.chat.trace.tool_row_model.running_python");
+		},
+	},
+	read: {
+		get settled() {
+			return t("ui.chat.trace.tool_row_model.read");
+		},
+		get running() {
+			return t("ui.chat.trace.tool_row_model.reading");
+		},
+	},
+	write: {
+		get settled() {
+			return t("ui.chat.trace.tool_row_model.wrote");
+		},
+		get running() {
+			return t("ui.chat.trace.tool_row_model.writing");
+		},
+	},
+	edit: {
+		get settled() {
+			return t("ui.chat.trace.tool_row_model.edited");
+		},
+		get running() {
+			return t("ui.chat.trace.tool_row_model.editing");
+		},
+	},
+	glob: {
+		get settled() {
+			return t("ui.chat.trace.tool_row_model.listed");
+		},
+		get running() {
+			return t("ui.chat.trace.tool_row_model.listing");
+		},
+	},
+	grep: {
+		get settled() {
+			return t("ui.chat.trace.tool_row_model.searched");
+		},
+		get running() {
+			return t("ui.chat.trace.tool_row_model.searching");
+		},
+	},
+	web_search: {
+		get settled() {
+			return t("ui.chat.trace.tool_row_model.searched_the_web");
+		},
+		get running() {
+			return t("ui.chat.trace.tool_row_model.searching_the_web");
+		},
+	},
+	web_fetch: {
+		get settled() {
+			return t("ui.chat.trace.tool_row_model.fetched");
+		},
+		get running() {
+			return t("ui.chat.trace.tool_row_model.fetching");
+		},
+	},
+	web_read: {
+		get settled() {
+			return t("ui.chat.trace.tool_row_model.read");
+		},
+		get running() {
+			return t("ui.chat.trace.tool_row_model.reading");
+		},
+	},
+	browser: {
+		get settled() {
+			return t("ui.chat.trace.tool_row_model.browsed");
+		},
+		get running() {
+			return t("ui.chat.trace.tool_row_model.browsing");
+		},
+	},
+	list_variables: {
+		get settled() {
+			return t("ui.chat.trace.tool_row_model.listed_variables");
+		},
+		get running() {
+			return t("ui.chat.trace.tool_row_model.listing_variables");
+		},
+	},
+	read_variable: {
+		get settled() {
+			return t("ui.chat.trace.tool_row_model.read_variable");
+		},
+		get running() {
+			return t("ui.chat.trace.tool_row_model.reading_variable");
+		},
+	},
+	ask: {
+		get settled() {
+			return t("ui.chat.trace.tool_row_model.asked");
+		},
+		get running() {
+			return t("ui.chat.trace.tool_row_model.asking");
+		},
+	},
+	send: {
+		get settled() {
+			return t("ui.chat.trace.tool_row_model.sent");
+		},
+		get running() {
+			return t("ui.chat.trace.tool_row_model.sending");
+		},
+	},
+	wait: {
+		get settled() {
+			return t("ui.chat.trace.tool_row_model.waited_for_jobs");
+		},
+		get running() {
+			return t("ui.chat.trace.tool_row_model.waiting_for_jobs");
+		},
+	},
+	team_delete: {
+		get settled() {
+			return t("ui.chat.trace.tool_row_model.deleted_team");
+		},
+		get running() {
+			return t("ui.chat.trace.tool_row_model.deleting_team");
+		},
+	},
+	project_delete: {
+		get settled() {
+			return t("ui.chat.trace.tool_row_model.deleted_project");
+		},
+		get running() {
+			return t("ui.chat.trace.tool_row_model.deleting_project");
+		},
+	},
+	peer: {
+		get settled() {
+			return t("ui.chat.trace.tool_row_model.received");
+		},
+		get running() {
+			return t("ui.chat.trace.tool_row_model.receiving");
+		},
+	},
 	/*
 	 * `task` keeps `Delegated` and it is the only entry that earns it: `task`
 	 * launches a subagent, which IS delegation. `agent`/`team`/`hub` used to sit
@@ -1250,7 +1410,14 @@ const TOOL_VERBS: Record<string, Omit<ToolVerb, "named">> = {
 	 * painted `Delegated` and folded into `delegated 3 tasks`. They live in
 	 * `TOOL_OP_VERBS` below now, where the operation picks the word.
 	 */
-	task: { settled: "Delegated", running: "Delegating" },
+	task: {
+		get settled() {
+			return t("ui.chat.trace.tool_row_model.delegated");
+		},
+		get running() {
+			return t("ui.chat.trace.tool_row_model.delegating");
+		},
+	},
 };
 
 /**
@@ -1278,135 +1445,621 @@ const TOOL_VERBS: Record<string, Omit<ToolVerb, "named">> = {
  */
 const TOOL_OP_VERBS: Record<string, Record<string, Omit<ToolVerb, "named">>> = {
 	agent: {
-		list: { settled: "Listed agents", running: "Listing agents" },
-		show: { settled: "Viewed agent", running: "Viewing agent" },
-		search: { settled: "Searched agents", running: "Searching agents" },
-		install: { settled: "Installed agent", running: "Installing agent" },
-		reset: { settled: "Reset agent", running: "Resetting agent" },
-		create: { settled: "Created agent", running: "Creating agent" },
-		update: { settled: "Updated agent", running: "Updating agent" },
-		sync: { settled: "Synced agents", running: "Syncing agents" },
+		list: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.listed_agents");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.listing_agents");
+			},
+		},
+		show: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.viewed_agent");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.viewing_agent");
+			},
+		},
+		search: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.searched_agents");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.searching_agents");
+			},
+		},
+		install: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.installed_agent");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.installing_agent");
+			},
+		},
+		reset: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.reset_agent");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.resetting_agent");
+			},
+		},
+		create: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.created_agent");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.creating_agent");
+			},
+		},
+		update: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.updated_agent");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.updating_agent");
+			},
+		},
+		sync: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.synced_agents");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.syncing_agents");
+			},
+		},
 	},
 	team: {
-		list: { settled: "Listed teams", running: "Listing teams" },
-		show: { settled: "Viewed team", running: "Viewing team" },
-		create: { settled: "Created team", running: "Creating team" },
-		update: { settled: "Updated team", running: "Updating team" },
+		list: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.listed_teams");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.listing_teams");
+			},
+		},
+		show: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.viewed_team");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.viewing_team");
+			},
+		},
+		create: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.created_team");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.creating_team");
+			},
+		},
+		update: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.updated_team");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.updating_team");
+			},
+		},
 	},
 	hub: {
-		list: { settled: "Listed subagents", running: "Listing subagents" },
-		peek: { settled: "Peeked at", running: "Peeking at" },
-		send: { settled: "Messaged", running: "Messaging" },
-		ask: { settled: "Asked", running: "Asking" },
-		steer: { settled: "Steered", running: "Steering" },
-		pause: { settled: "Paused", running: "Pausing" },
-		cancel: { settled: "Cancelled", running: "Cancelling" },
-		resume: { settled: "Resumed", running: "Resuming" },
+		list: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.listed_subagents");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.listing_subagents");
+			},
+		},
+		peek: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.peeked_at");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.peeking_at");
+			},
+		},
+		send: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.messaged");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.messaging");
+			},
+		},
+		ask: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.asked");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.asking");
+			},
+		},
+		steer: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.steered");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.steering");
+			},
+		},
+		pause: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.paused");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.pausing");
+			},
+		},
+		cancel: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.cancelled");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.cancelling");
+			},
+		},
+		resume: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.resumed");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.resuming");
+			},
+		},
 	},
 	secret: {
-		store: { settled: "Stored secret", running: "Storing secret" },
-		retrieve: { settled: "Retrieved secret", running: "Retrieving secret" },
-		list: { settled: "Listed secrets", running: "Listing secrets" },
-		describe: { settled: "Described secret", running: "Describing secret" },
-		update: { settled: "Updated secret", running: "Updating secret" },
-		delete: { settled: "Deleted secret", running: "Deleting secret" },
+		store: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.stored_secret");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.storing_secret");
+			},
+		},
+		retrieve: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.retrieved_secret");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.retrieving_secret");
+			},
+		},
+		list: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.listed_secrets");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.listing_secrets");
+			},
+		},
+		describe: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.described_secret");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.describing_secret");
+			},
+		},
+		update: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.updated_secret");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.updating_secret");
+			},
+		},
+		delete: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.deleted_secret");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.deleting_secret");
+			},
+		},
 	},
 	project: {
-		list: { settled: "Listed projects", running: "Listing projects" },
-		show: { settled: "Viewed project", running: "Viewing project" },
-		create: { settled: "Created project", running: "Creating project" },
-		update: { settled: "Updated project", running: "Updating project" },
+		list: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.listed_projects");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.listing_projects");
+			},
+		},
+		show: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.viewed_project");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.viewing_project");
+			},
+		},
+		create: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.created_project");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.creating_project");
+			},
+		},
+		update: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.updated_project");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.updating_project");
+			},
+		},
 		// `link`/`unlink` act on the session named in the object, so the verb
 		// carries the direction - `Linked session to myproject` reads as the
 		// sentence it is, where a bare `Linked myproject` would not.
-		link: { settled: "Linked session to", running: "Linking session to" },
-		unlink: {
-			settled: "Unlinked session from",
-			running: "Unlinking session from",
+		link: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.linked_session_to");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.linking_session_to");
+			},
 		},
-		milestone: { settled: "Updated milestone", running: "Updating milestone" },
+		unlink: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.unlinked_session_from");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.unlinking_session_from");
+			},
+		},
+		milestone: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.updated_milestone");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.updating_milestone");
+			},
+		},
 		// The remove flag's own verb, composed by `toolOp`: the milestone op
 		// UPDATES when the flag is off and REMOVES when it is on, and the row
 		// says which (operator report follow-up, 2026-09-27: a removal must not
 		// read as an update any more than a read may read as a delegation).
 		"milestone-remove": {
-			settled: "Removed milestone",
-			running: "Removing milestone",
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.removed_milestone");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.removing_milestone");
+			},
 		},
 	},
 	todo: {
 		// `view` is a read; every other op changes the list, which is the claim
 		// the five share.
-		view: { settled: "Read todos", running: "Reading todos" },
-		init: { settled: "Updated todos", running: "Updating todos" },
-		add: { settled: "Updated todos", running: "Updating todos" },
-		done: { settled: "Updated todos", running: "Updating todos" },
-		block: { settled: "Updated todos", running: "Updating todos" },
-		drop: { settled: "Updated todos", running: "Updating todos" },
+		view: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.read_todos");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.reading_todos");
+			},
+		},
+		init: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.updated_todos");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.updating_todos");
+			},
+		},
+		add: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.updated_todos");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.updating_todos");
+			},
+		},
+		done: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.updated_todos");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.updating_todos");
+			},
+		},
+		block: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.updated_todos");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.updating_todos");
+			},
+		},
+		drop: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.updated_todos");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.updating_todos");
+			},
+		},
 	},
 	wake: {
-		create: { settled: "Scheduled", running: "Scheduling" },
-		list: { settled: "Listed wakes", running: "Listing wakes" },
-		cancel: { settled: "Cancelled wake", running: "Cancelling wake" },
+		create: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.scheduled");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.scheduling");
+			},
+		},
+		list: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.listed_wakes");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.listing_wakes");
+			},
+		},
+		cancel: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.cancelled_wake");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.cancelling_wake");
+			},
+		},
 	},
 	jobs: {
-		list: { settled: "Listed jobs", running: "Listing jobs" },
-		peek: { settled: "Peeked at", running: "Peeking at" },
-		cancel: { settled: "Cancelled job", running: "Cancelling job" },
+		list: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.listed_jobs");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.listing_jobs");
+			},
+		},
+		peek: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.peeked_at");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.peeking_at");
+			},
+		},
+		cancel: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.cancelled_job");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.cancelling_job");
+			},
+		},
 	},
 	network: {
 		// The reads first, each naming its own subject because the object column
 		// is empty for a call that addresses the whole device or network.
 		status: {
-			settled: "Checked network status",
-			running: "Checking network status",
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.checked_network_status");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.checking_network_status");
+			},
 		},
-		ls: { settled: "Listed networks", running: "Listing networks" },
-		show: { settled: "Viewed network", running: "Viewing network" },
+		ls: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.listed_networks");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.listing_networks");
+			},
+		},
+		show: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.viewed_network");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.viewing_network");
+			},
+		},
 		peers: {
-			settled: "Listed network peers",
-			running: "Listing network peers",
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.listed_network_peers");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.listing_network_peers");
+			},
 		},
-		log: { settled: "Read network log", running: "Reading network log" },
-		doctor: { settled: "Diagnosed network", running: "Diagnosing network" },
+		log: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.read_network_log");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.reading_network_log");
+			},
+		},
+		doctor: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.diagnosed_network");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.diagnosing_network");
+			},
+		},
 		// Then the trust-changing six, in the CLI's own vocabulary: `init`
 		// creates, `invite` mints a token, `member_rm` removes a device,
 		// `disconnect` leaves, `panic` rotates every member's secret.
-		init: { settled: "Created network", running: "Creating network" },
-		invite: { settled: "Invited device", running: "Inviting device" },
-		join: { settled: "Joined network", running: "Joining network" },
-		member_rm: { settled: "Removed device", running: "Removing device" },
-		disconnect: { settled: "Left network", running: "Leaving network" },
-		panic: { settled: "Raised panic", running: "Raising panic" },
+		init: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.created_network");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.creating_network");
+			},
+		},
+		invite: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.invited_device");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.inviting_device");
+			},
+		},
+		join: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.joined_network");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.joining_network");
+			},
+		},
+		member_rm: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.removed_device");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.removing_device");
+			},
+		},
+		disconnect: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.left_network");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.leaving_network");
+			},
+		},
+		panic: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.raised_panic");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.raising_panic");
+			},
+		},
 	},
 	console: {
 		// `console` is the pane's own noun (its aria labels read "Close
 		// console", "New console"), so the rows use it too.
-		list: { settled: "Listed consoles", running: "Listing consoles" },
-		create: { settled: "Opened console", running: "Opening console" },
-		status: { settled: "Checked console", running: "Checking console" },
-		read: { settled: "Read console", running: "Reading console" },
-		screenshot: { settled: "Captured console", running: "Capturing console" },
-		input: { settled: "Typed in console", running: "Typing in console" },
-		keys: { settled: "Sent keys", running: "Sending keys" },
-		resize: { settled: "Resized console", running: "Resizing console" },
+		list: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.listed_consoles");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.listing_consoles");
+			},
+		},
+		create: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.opened_console");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.opening_console");
+			},
+		},
+		status: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.checked_console");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.checking_console");
+			},
+		},
+		read: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.read_console");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.reading_console");
+			},
+		},
+		screenshot: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.captured_console");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.capturing_console");
+			},
+		},
+		input: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.typed_in_console");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.typing_in_console");
+			},
+		},
+		keys: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.sent_keys");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.sending_keys");
+			},
+		},
+		resize: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.resized_console");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.resizing_console");
+			},
+		},
 		// The switch toggles both ways; `secured` would be a one-way claim, and
 		// `input` is the pane's own word for it ("Secure input").
 		secure: {
-			settled: "Updated secure input",
-			running: "Updating secure input",
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.updated_secure_input");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.updating_secure_input");
+			},
 		},
-		close: { settled: "Closed console", running: "Closing console" },
+		close: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.closed_console");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.closing_console");
+			},
+		},
 	},
 	lsp: {
 		// Every lsp action is read-only (`tools/lsp.py`: `rename_preview`
 		// computes the edits a rename WOULD make), so all four are reads.
-		definitions: { settled: "Found definition", running: "Finding definition" },
-		references: { settled: "Found references", running: "Finding references" },
-		symbols: { settled: "Listed symbols", running: "Listing symbols" },
+		definitions: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.found_definition");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.finding_definition");
+			},
+		},
+		references: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.found_references");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.finding_references");
+			},
+		},
+		symbols: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.listed_symbols");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.listing_symbols");
+			},
+		},
 		rename_preview: {
-			settled: "Previewed rename",
-			running: "Previewing rename",
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.previewed_rename");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.previewing_rename");
+			},
 		},
 	},
 	sessions: {
@@ -1419,12 +2072,54 @@ const TOOL_OP_VERBS: Record<string, Record<string, Omit<ToolVerb, "named">>> = {
 		// object column then never has to say `session` twice; `peek` keeps the
 		// family's act-word (`hub`/`jobs` say `Peeked at`) with the noun beside
 		// it so the row reads as the read it is.
-		list: { settled: "Listed sessions", running: "Listing sessions" },
-		info: { settled: "Viewed session", running: "Viewing session" },
-		spawn: { settled: "Spawned session", running: "Spawning session" },
-		resume: { settled: "Resumed session", running: "Resuming session" },
-		stop: { settled: "Stopped session", running: "Stopping session" },
-		peek: { settled: "Peeked at session", running: "Peeking at session" },
+		list: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.listed_sessions");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.listing_sessions");
+			},
+		},
+		info: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.viewed_session");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.viewing_session");
+			},
+		},
+		spawn: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.spawned_session");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.spawning_session");
+			},
+		},
+		resume: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.resumed_session");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.resuming_session");
+			},
+		},
+		stop: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.stopped_session");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.stopping_session");
+			},
+		},
+		peek: {
+			get settled() {
+				return t("ui.chat.trace.tool_row_model.peeked_at_session");
+			},
+			get running() {
+				return t("ui.chat.trace.tool_row_model.peeking_at_session");
+			},
+		},
 	},
 };
 
@@ -1448,7 +2143,11 @@ export function toolVerb(toolName: string, op?: string | null): ToolVerb {
 	if (byOp) return { ...byOp, named: true };
 	const known = TOOL_VERBS[name];
 	if (known) return { ...known, named: true };
-	return { settled: "Called", running: "Calling", named: false };
+	return {
+		settled: t("ui.chat.trace.tool_row_model.called"),
+		running: t("ui.chat.trace.tool_row_model.calling"),
+		named: false,
+	};
 }
 
 export type ToolRowLabel = {
@@ -1786,5 +2485,5 @@ export function diffBody(diff: readonly string[]): DiffBody {
  * diff lines" is the kind of copy a reader notices instead of the number.
  */
 export function diffOverflowLabel(hidden: number): string {
-	return `… ${hidden} more diff line${hidden === 1 ? "" : "s"}`;
+	return t("ui.chat.trace.tool_row_model.more_diff_lines", { hidden });
 }

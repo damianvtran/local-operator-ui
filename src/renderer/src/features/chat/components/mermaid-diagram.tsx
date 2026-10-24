@@ -6,6 +6,7 @@ import {
 	Button,
 	Tooltip,
 } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
@@ -28,6 +29,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 
 /*
  * The mermaid theme, expressed in role variables.
@@ -77,9 +79,11 @@ const ROLE_INFO = "var(--color-info)";
 const ROLE_INFO_WASH = "var(--color-info-wash)";
 const ROLE_SUCCESS = "var(--color-success)";
 const ROLE_SUCCESS_WASH = "var(--color-success-wash)";
-const ROLE_WARNING = "var(--color-warning)";
-const ROLE_WARNING_WASH = "var(--color-warning-wash)";
-const ROLE_WARNING_BORDER = "var(--color-warning-border)";
+const ROLE_WARNING = () => t("ui.chat.mermaid_diagram.var_color_warning");
+const ROLE_WARNING_WASH = () =>
+	t("ui.chat.mermaid_diagram.var_color_warning_wash");
+const ROLE_WARNING_BORDER = () =>
+	t("ui.chat.mermaid_diagram.var_color_warning_border");
 const ROLE_DANGER = "var(--color-danger)";
 const ROLE_DANGER_WASH = "var(--color-danger-wash)";
 
@@ -116,7 +120,7 @@ const WASH_CYCLE = [
 	ROLE_ACCENT_ALT_WASH,
 	ROLE_INFO_WASH,
 	ROLE_SUCCESS_WASH,
-	ROLE_WARNING_WASH,
+	ROLE_WARNING_WASH(),
 	ROLE_DANGER_WASH,
 ];
 
@@ -171,8 +175,8 @@ const buildThemeVariables = (): Record<string, unknown> => {
 		defaultLinkColor: ROLE_INK_MUTED,
 		titleColor: ROLE_INK,
 		// notes read as the one "stuck on" surface in the system
-		noteBkgColor: ROLE_WARNING_WASH,
-		noteBorderColor: ROLE_WARNING_BORDER,
+		noteBkgColor: ROLE_WARNING_WASH(),
+		noteBorderColor: ROLE_WARNING_BORDER(),
 		noteTextColor: ROLE_INK,
 		// sequence
 		actorBkg: ROLE_ELEVATED,
@@ -255,7 +259,7 @@ const buildThemeVariables = (): Record<string, unknown> => {
 		// quadrant
 		quadrant2Fill: ROLE_INFO_WASH,
 		quadrant3Fill: ROLE_SUCCESS_WASH,
-		quadrant4Fill: ROLE_WARNING_WASH,
+		quadrant4Fill: ROLE_WARNING_WASH(),
 		quadrant2TextFill: ROLE_INK,
 		quadrant3TextFill: ROLE_INK,
 		quadrant4TextFill: ROLE_INK,
@@ -304,7 +308,7 @@ const buildThemeVariables = (): Record<string, unknown> => {
 				ROLE_ACCENT,
 				ROLE_INFO,
 				ROLE_SUCCESS,
-				ROLE_WARNING,
+				ROLE_WARNING(),
 				ROLE_DANGER,
 			].join(","),
 		},
@@ -411,77 +415,94 @@ const DiagramControls: FC<DiagramControlsProps> = ({
 	onSave,
 	onCopy,
 	children,
-}) => (
-	<div
-		className={cn(
-			"absolute z-10 flex items-center gap-0.5 rounded-md bg-elevated p-1 shadow-overlay",
-			className,
-		)}
-	>
-		<Tooltip content="Zoom in">
-			<Button
-				variant="ghost"
-				size="icon-sm"
-				aria-label="Zoom in"
-				onClick={onZoomIn}
+}) => {
+	useI18nLocale();
+	return (
+		<div
+			className={cn(
+				"absolute z-10 flex items-center gap-0.5 rounded-md bg-elevated p-1 shadow-overlay",
+				className,
+			)}
+		>
+			<Tooltip content={t("ui.chat.mermaid_diagram.zoom_in")}>
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					aria-label={t("ui.chat.mermaid_diagram.zoom_in")}
+					onClick={onZoomIn}
+				>
+					<ZoomIn />
+				</Button>
+			</Tooltip>
+
+			<Tooltip content={t("ui.chat.mermaid_diagram.zoom_out")}>
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					aria-label={t("ui.chat.mermaid_diagram.zoom_out")}
+					onClick={onZoomOut}
+				>
+					<ZoomOut />
+				</Button>
+			</Tooltip>
+
+			<Tooltip content={t("ui.chat.mermaid_diagram.drag_the_diagram_to_pan")}>
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					aria-label={t("ui.chat.mermaid_diagram.drag_to_pan")}
+				>
+					<Move />
+				</Button>
+			</Tooltip>
+
+			<Tooltip content={t("ui.chat.mermaid_diagram.reset_view")}>
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					aria-label={t("ui.chat.mermaid_diagram.reset_view")}
+					onClick={onReset}
+				>
+					<RotateCcw />
+				</Button>
+			</Tooltip>
+
+			<Tooltip content={t("ui.chat.mermaid_diagram.save_as_svg")}>
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					aria-label={t("ui.chat.mermaid_diagram.save_as_svg")}
+					onClick={onSave}
+				>
+					<Download />
+				</Button>
+			</Tooltip>
+
+			<Tooltip
+				content={
+					copied
+						? t("ui.chat.mermaid_diagram.copied")
+						: t("ui.chat.mermaid_diagram.copy_mermaid_text")
+				}
 			>
-				<ZoomIn />
-			</Button>
-		</Tooltip>
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					aria-label={
+						copied
+							? t("ui.chat.mermaid_diagram.copied")
+							: t("ui.chat.mermaid_diagram.copy_mermaid_text")
+					}
+					onClick={onCopy}
+				>
+					<CopyIcon className={cn(copied && "text-success")} />
+				</Button>
+			</Tooltip>
 
-		<Tooltip content="Zoom out">
-			<Button
-				variant="ghost"
-				size="icon-sm"
-				aria-label="Zoom out"
-				onClick={onZoomOut}
-			>
-				<ZoomOut />
-			</Button>
-		</Tooltip>
-
-		<Tooltip content="Drag the diagram to pan">
-			<Button variant="ghost" size="icon-sm" aria-label="Drag to pan">
-				<Move />
-			</Button>
-		</Tooltip>
-
-		<Tooltip content="Reset view">
-			<Button
-				variant="ghost"
-				size="icon-sm"
-				aria-label="Reset view"
-				onClick={onReset}
-			>
-				<RotateCcw />
-			</Button>
-		</Tooltip>
-
-		<Tooltip content="Save as SVG">
-			<Button
-				variant="ghost"
-				size="icon-sm"
-				aria-label="Save as SVG"
-				onClick={onSave}
-			>
-				<Download />
-			</Button>
-		</Tooltip>
-
-		<Tooltip content={copied ? "Copied" : "Copy mermaid text"}>
-			<Button
-				variant="ghost"
-				size="icon-sm"
-				aria-label={copied ? "Copied" : "Copy mermaid text"}
-				onClick={onCopy}
-			>
-				<CopyIcon className={cn(copied && "text-success")} />
-			</Button>
-		</Tooltip>
-
-		{children}
-	</div>
-);
+			{children}
+		</div>
+	);
+};
 
 /**
  * The diagram error state, used for a mermaid parse failure, a failure inside
@@ -492,12 +513,15 @@ type DiagramErrorProps = {
 	children: ReactNode;
 };
 
-const DiagramError: FC<DiagramErrorProps> = ({ title, children }) => (
-	<Alert variant="danger" role="alert" className="my-4">
-		<AlertTitle>{title}</AlertTitle>
-		<AlertDescription>{children}</AlertDescription>
-	</Alert>
-);
+const DiagramError: FC<DiagramErrorProps> = ({ title, children }) => {
+	useI18nLocale();
+	return (
+		<Alert variant="danger" role="alert" className="my-4">
+			<AlertTitle>{title}</AlertTitle>
+			<AlertDescription>{children}</AlertDescription>
+		</Alert>
+	);
+};
 
 /**
  * Error boundary to catch any rendering errors that escape the component's error handling
@@ -523,10 +547,16 @@ class MermaidErrorBoundary extends Component<
 		if (this.state.hasError) {
 			return (
 				this.props.fallback || (
-					<DiagramError title="Mermaid diagram error">
+					<DiagramError
+						title={t("ui.chat.mermaid_diagram.mermaid_diagram_error")}
+					>
 						{this.state.error?.message ||
-							"An unexpected error occurred while rendering the diagram"}{" "}
-						The error was contained within the diagram component.
+							t(
+								"ui.chat.mermaid_diagram.an_unexpected_error_occurred_while_rendering_the_diagram",
+							)}{" "}
+						{t(
+							"ui.chat.mermaid_diagram.the_error_was_contained_within_the_diagram_component",
+						)}
 					</DiagramError>
 				)
 			);
@@ -577,7 +607,9 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 
 			// Validate chart content before rendering
 			if (!chart || typeof chart !== "string" || chart.trim().length === 0) {
-				throw new Error("Invalid or empty chart content");
+				throw new Error(
+					t("ui.chat.mermaid_diagram.invalid_or_empty_chart_content"),
+				);
 			}
 
 			const mermaid = await getMermaid(themeName);
@@ -591,14 +623,20 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 
 			// Validate the SVG output
 			if (!svg || typeof svg !== "string" || svg.trim().length === 0) {
-				throw new Error("Mermaid failed to generate valid SVG output");
+				throw new Error(
+					t(
+						"ui.chat.mermaid_diagram.mermaid_failed_to_generate_valid_svg_output",
+					),
+				);
 			}
 
 			setSvgContent(svg);
 		} catch (err) {
 			console.error("Mermaid rendering error:", err);
 			const errorMessage =
-				err instanceof Error ? err.message : "Failed to render mermaid diagram";
+				err instanceof Error
+					? err.message
+					: t("ui.chat.mermaid_diagram.failed_to_render_mermaid_diagram");
 			setError(errorMessage);
 			setSvgContent(""); // Ensure SVG content is cleared on error
 		} finally {
@@ -610,7 +648,9 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 		// Wrap the async call in a try-catch to prevent unhandled promise rejections
 		renderDiagram().catch((err) => {
 			console.error("Error in renderDiagram effect:", err);
-			setError("Failed to initialize diagram rendering");
+			setError(
+				t("ui.chat.mermaid_diagram.failed_to_initialize_diagram_rendering"),
+			);
 			setIsLoading(false);
 		});
 	}, [renderDiagram]);
@@ -823,9 +863,11 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 
 	if (error) {
 		return (
-			<DiagramError title="Mermaid diagram error">
+			<DiagramError title={t("ui.chat.mermaid_diagram.mermaid_diagram_error")}>
 				{error}
-				<span className={cn("mt-2 block text-ink-muted")}>Chart</span>
+				<span className={cn("mt-2 block text-ink-muted")}>
+					{t("ui.chat.mermaid_diagram.chart")}
+				</span>
 				<span
 					className={cn(
 						"mt-1 block whitespace-pre-wrap font-mono text-mono-sm",
@@ -866,7 +908,7 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 				>
 					{isLoading ? (
 						<div className={cn("p-4 text-body-sm text-ink-muted")}>
-							Loading diagram...
+							{t("ui.chat.mermaid_diagram.loading_diagram")}
 						</div>
 					) : svgContent ? (
 						<div
@@ -884,8 +926,8 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 		} catch (err) {
 			console.error("Error rendering diagram content:", err);
 			return (
-				<DiagramError title="Rendering error">
-					Failed to render diagram content.
+				<DiagramError title={t("ui.chat.mermaid_diagram.rendering_error")}>
+					{t("ui.chat.mermaid_diagram.failed_to_render_diagram_content")}
 				</DiagramError>
 			);
 		}
@@ -910,11 +952,11 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 					onSave={handleSaveSVG}
 					onCopy={handleCopy}
 				>
-					<Tooltip content="Fullscreen">
+					<Tooltip content={t("ui.chat.mermaid_diagram.fullscreen")}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Open diagram fullscreen"
+							aria-label={t("ui.chat.mermaid_diagram.open_diagram_fullscreen")}
 							onClick={() => handleFullscreenToggle(true)}
 						>
 							<Maximize2 />
@@ -926,7 +968,7 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 			<BaseDialog
 				open={isFullscreen}
 				onClose={() => handleFullscreenToggle(false)}
-				title="Mermaid diagram"
+				title={t("ui.chat.mermaid_diagram.mermaid_diagram")}
 				maxWidth="xl"
 				fullWidth
 				dialogProps={{ className: "h-[90vh] max-h-[90vh]" }}
@@ -948,11 +990,11 @@ const MermaidDiagramCore: FC<MermaidDiagramProps> = memo(({ chart, id }) => {
 						onSave={handleSaveSVG}
 						onCopy={handleFullscreenCopy}
 					>
-						<Tooltip content="Close fullscreen">
+						<Tooltip content={t("ui.chat.mermaid_diagram.close_fullscreen")}>
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label="Close fullscreen"
+								aria-label={t("ui.chat.mermaid_diagram.close_fullscreen")}
 								onClick={() => handleFullscreenToggle(false)}
 							>
 								<X />

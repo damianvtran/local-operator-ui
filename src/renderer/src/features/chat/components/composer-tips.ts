@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 /**
  * The composer's rotating tip pool, and the order a mount turns through.
  *
@@ -96,16 +97,26 @@
  */
 
 export const COMPOSER_TIPS: readonly string[] = [
-	"search chats and agents to reopen an earlier session",
-	"ask for a team and several agents share one request",
-	"type /approvals to set whether tools ask first",
-	"ask for parallel work and the agent fans out subagents",
-	"open the run panel to see a turn's plan and subagents",
-	"attach a file with the paperclip, or paste one in",
-	"connect MCP servers in settings to give the agent tools",
-	"open a document in the canvas to keep it beside the chat",
-	"set a schedule to run a prompt on a timer",
-	"ask for phone access to drive this session from your phone",
+	t(
+		"ui.chat.composer.tips.search_chats_and_agents_to_reopen_an_earlier_session",
+	),
+	t(
+		"ui.chat.composer.tips.ask_for_a_team_and_several_agents_share_one_request",
+	),
+	t("ui.chat.composer.tips.type_approvals_to_set_whether_tools_ask_first"),
+	t(
+		"ui.chat.composer.tips.ask_for_parallel_work_and_the_agent_fans_out_subagents",
+	),
+	t("ui.chat.composer.tips.open_the_run_panel_to_see_a_turns_plan_and"),
+	t("ui.chat.composer.tips.attach_a_file_with_the_paperclip_or_paste_one_in"),
+	t(
+		"ui.chat.composer.tips.connect_mcp_servers_in_settings_to_give_the_agent_tools",
+	),
+	t("ui.chat.composer.tips.open_a_document_in_the_canvas_to_keep_it_beside"),
+	t("ui.chat.composer.tips.set_a_schedule_to_run_a_prompt_on_a_timer"),
+	t(
+		"ui.chat.composer.tips.ask_for_phone_access_to_drive_this_session_from_your",
+	),
 ];
 
 /**
@@ -128,8 +139,9 @@ export const COMPOSER_TIPS: readonly string[] = [
  * mechanism. That entry is the UPLOAD half of the pair and stays; this one is the
  * REFERENCE half — point the agent at a path, rather than send the bytes.
  */
-export const MENTION_TIP =
-	"type @ to point the agent at a file in this directory";
+export const MENTION_TIP = t(
+	"ui.chat.composer.tips.type_to_point_the_agent_at_a_file_in_this",
+);
 
 /**
  * The pool this composer may rotate, given whether it offers `@` at all.

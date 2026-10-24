@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The conversational configuration surface: the composer, the run strip, and the
  * settled summary.
@@ -59,6 +60,7 @@ import { useConversationInputStore } from "@shared/store/conversation-input-stor
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Square } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { formatRunChange, formatRunToolVerb } from "./summary";
 import type { ConfigRunHandle } from "./use-config-run";
 
 /**
@@ -87,14 +89,14 @@ const ASIDE_NOTICE_ID = "config-composer-note";
  * the notice band is that sentence's single carrier (round 2, D7), so repeating it
  * here would put the same 66-character sentence on the card twice, 8 px apart.
  */
-const DISABLED_GATE_LINE = "Configure agents by conversation";
+const DISABLED_GATE_LINE = "ui.agents.config.disabled_gate" as const;
 
 /** Three things an operator actually asks for, as one-press examples. */
 const EXAMPLES = [
-	"A reviewer that only reads code",
-	"Add the coder twice to release-crew",
-	"A team called shipping with a manager and two coders",
-];
+	"ui.agents.config.example_readonly_reviewer",
+	"ui.agents.config.example_duplicate_coder",
+	"ui.agents.config.example_shipping_team",
+] as const;
 
 const STATE_DOT: Record<string, string> = {
 	idle: "bg-ink-dim",
@@ -134,7 +136,7 @@ function RunActivity({ run }: { run: ConfigRunHandle }) {
 	if (run.activity.length === 0) {
 		return (
 			<p className="text-meta text-ink-muted">
-				Nothing to show yet — the run has not called a tool.
+				{t("ui.agents.config.no_tool_activity")}
 			</p>
 		);
 	}
@@ -144,7 +146,7 @@ function RunActivity({ run }: { run: ConfigRunHandle }) {
 				<li
 					// The row's own instant is its identity: a run may call the same tool
 					// on the same target twice, and an index-only key would mis-reconcile.
-					key={`${row.ts}:${row.verb}:${index}`}
+					key={`${row.ts}:${index}`}
 					className="flex items-baseline gap-2 text-body-sm"
 				>
 					<span className="text-ink-dim tabular-nums">
@@ -153,7 +155,7 @@ function RunActivity({ run }: { run: ConfigRunHandle }) {
 							minute: "2-digit",
 						})}
 					</span>
-					<span className="text-ink">{row.verb}</span>
+					<span className="text-ink">{formatRunToolVerb(row.verb)}</span>
 				</li>
 			))}
 		</ul>
@@ -262,7 +264,7 @@ function DetailRegion({ children }: { children: ReactNode }) {
 			ref={ref}
 			tabIndex={overflowing ? 0 : undefined}
 			role={overflowing ? "region" : undefined}
-			aria-label={overflowing ? "Run details" : undefined}
+			aria-label={overflowing ? t("ui.agents.config.run_details") : undefined}
 			/*
 			 * THE BOUND CUTS TEXT, SO IT SAYS SO (design review round 2 D2): measured,
 			 * 72.5 px of a 1,133 px answer sliced a line through its glyphs with only a
@@ -313,7 +315,7 @@ const STATUS_ROW = "mb-1 flex min-h-7 items-center gap-3";
 
 /** "1 definition" / "N definitions" - the count of rows a run touched. */
 const definitionsPhrase = (count: number) =>
-	count === 1 ? "1 definition" : `${count} definitions`;
+	t("ui.agents.config.definition_count", { count });
 
 function ComposerStatus({
 	run,
@@ -385,15 +387,15 @@ function ComposerStatus({
 
 	const title =
 		run.status === "running"
-			? (run.step ?? "Working on your request")
+			? (run.step ?? t("ui.agents.config.working"))
 			: run.status === "stopping"
-				? "Stopping"
+				? t("ui.agents.config.stopping")
 				: run.status === "done"
 					? run.results.length > 0
-						? "Finished"
-						: "Finished without changing anything"
+						? t("ui.agents.config.finished")
+						: t("ui.agents.config.finished_unchanged")
 					: run.status === "stopped"
-						? "Stopped"
+						? t("ui.agents.config.stopped")
 						: run.status === "error"
 							? /*
 								 * TWO DIFFERENT FAILURES, TWO HEADINGS (UX review round 3,
@@ -407,8 +409,8 @@ function ComposerStatus({
 								 * read back.
 								 */
 								run.canRetry
-								? "Stopped with an error"
-								: "Finished with an error"
+								? t("ui.agents.config.stopped_error")
+								: t("ui.agents.config.finished_error")
 							: "";
 
 	return (
@@ -436,7 +438,9 @@ function ComposerStatus({
 							 */}
 							{run.status === "done" && run.touched.length > 0 ? (
 								<span className="sr-only">
-									{`. Configured ${definitionsPhrase(run.touched.length)}`}
+									{t("ui.agents.config.configured_definitions", {
+										count: run.touched.length,
+									})}
 								</span>
 							) : null}
 						</span>
@@ -454,7 +458,9 @@ function ComposerStatus({
 								aria-hidden={run.status === "done" ? true : undefined}
 								className="shrink-0 text-meta text-ink-muted"
 							>
-								<span className="sr-only">Configured </span>
+								<span className="sr-only">
+									{t("ui.agents.config.configured")}
+								</span>
 								{definitionsPhrase(run.touched.length)}
 							</span>
 						) : null}
@@ -495,8 +501,7 @@ function ComposerStatus({
 										: "min-w-0 flex-1 truncate text-meta text-ink-dim"
 								}
 							>
-								Runs in the background. This does not appear in your
-								conversation.
+								{t("ui.agents.config.background_description")}
 							</span>
 						)}
 						{blockedReason ? (
@@ -539,10 +544,16 @@ function ComposerStatus({
 							<span
 								data-testid="config-composer-about"
 								// The name truncates at 224 px; the full words stay reachable (UX U8).
-								title={`About ${about.kind} ${about.name}`}
+								title={t("ui.agents.config.about_named", {
+									kind: about.kind,
+									name: about.name,
+								})}
 								className="max-w-56 truncate text-meta text-ink-muted"
 							>
-								About {about.kind} {about.name}
+								{t("ui.agents.config.about_named", {
+									kind: about.kind,
+									name: about.name,
+								})}
 							</span>
 							<Button
 								variant="ghost"
@@ -552,7 +563,7 @@ function ComposerStatus({
 								className={showsRun ? undefined : TRAILING_GHOST}
 								onClick={onClearAbout}
 							>
-								Clear
+								{t("ui.agents.config.clear")}
 							</Button>
 						</>
 					) : null}
@@ -568,7 +579,7 @@ function ComposerStatus({
 							) : (
 								<ChevronRight className="size-3.5" />
 							)}
-							Watch
+							{t("ui.agents.config.watch")}
 						</Button>
 					) : null}
 					{showsRun ? (
@@ -581,7 +592,9 @@ function ComposerStatus({
 								onClick={() => void run.stop()}
 							>
 								<Square className="size-3.5" />
-								{run.status === "stopping" ? "Stopping…" : "Stop"}
+								{run.status === "stopping"
+									? t("ui.agents.config.stopping_action")
+									: t("ui.agents.config.stop")}
 							</Button>
 						) : (
 							<Button
@@ -590,7 +603,7 @@ function ComposerStatus({
 								className={TRAILING_GHOST}
 								onClick={onDismiss}
 							>
-								Dismiss
+								{t("ui.agents.config.dismiss")}
 							</Button>
 						)
 					) : null}
@@ -635,8 +648,7 @@ function ComposerStatus({
 				<DetailRegion>
 					{run.attached ? (
 						<p className="mt-1 text-meta text-ink-muted">
-							Another configuration run was already going, so this page attached
-							to it. Your request was not sent — it is still in the box.
+							{t("ui.agents.config.attached_existing")}
 						</p>
 					) : null}
 					{/*
@@ -655,7 +667,7 @@ function ComposerStatus({
 							data-testid="config-stop-refused"
 						>
 							<p className="text-body-sm text-danger">
-								The stop did not take — the run is still going.
+								{t("ui.agents.config.stop_failed")}
 							</p>
 							<p className="mt-0.5 text-meta text-ink-muted">{run.stopError}</p>
 						</div>
@@ -677,8 +689,8 @@ function ComposerStatus({
 						<div className="mt-2 space-y-1 border-hairline border-t pt-2 text-body-sm">
 							<p className="text-ink">
 								{run.results.length > 0
-									? "Stopped. Changes it had already made were kept."
-									: "Stopped. Nothing had been changed yet."}
+									? t("ui.agents.config.stopped_changes_kept")
+									: t("ui.agents.config.stopped_unchanged")}
 							</p>
 							{run.results.length > 0 ? (
 								<ul className="space-y-0.5">
@@ -731,11 +743,13 @@ function ComposerStatus({
 							disabled={run.starting}
 							onClick={() => void run.retry()}
 						>
-							{run.starting ? "Sending…" : "Retry"}
+							{run.starting
+								? t("ui.agents.config.sending")
+								: t("ui.agents.config.retry")}
 						</Button>
 					) : null}
 					<p className="text-meta text-ink-muted">
-						Nothing else was changed by this run.
+						{t("ui.agents.config.no_other_changes")}
 					</p>
 				</div>
 			) : null}
@@ -758,7 +772,7 @@ function RunSummary({ run }: { run: ConfigRunHandle }) {
 		return (
 			<div className="mt-2 border-hairline border-t pt-2 text-body-sm">
 				<p className="text-ink-muted">
-					The run answered without changing any agent or team.
+					{t("ui.agents.config.answered_unchanged")}
 				</p>
 				{/*
 				 * THE ANSWER ITSELF, and the request it answers. "The run answered" is a
@@ -771,7 +785,7 @@ function RunSummary({ run }: { run: ConfigRunHandle }) {
 				) : null}
 				{run.topic ? (
 					<p className="mt-1 text-meta text-ink-muted">
-						You asked: {run.topic}
+						{t("ui.agents.config.you_asked", { topic: run.topic })}
 					</p>
 				) : null}
 			</div>
@@ -783,20 +797,28 @@ function RunSummary({ run }: { run: ConfigRunHandle }) {
 				{run.results.map((result) => (
 					<li key={`${result.target.kind}:${result.target.name}`}>
 						<span className="text-ink">
-							{result.created ? "Created " : "Updated "}
-							{result.target.name}
+							{result.created
+								? t("ui.agents.config.result_created", {
+										name: result.target.name,
+										kind: result.target.kind,
+									})
+								: t("ui.agents.config.result_updated", {
+										name: result.target.name,
+										kind: result.target.kind,
+									})}
 						</span>
-						<span className="text-ink-muted"> ({result.target.kind})</span>
 						{result.changes.length > 0 ? (
 							<span className="text-ink-muted">
 								{": "}
-								{result.changes.map((change) => change.label).join(", ")}
+								{result.changes
+									.map((change) =>
+										formatRunChange(change.field, change.before, change.after),
+									)
+									.join(", ")}
 							</span>
 						) : result.created ? null : (
 							<span className="text-ink-muted">
-								{
-									": its settings changed. The list does not show instructions, so open it to see what was written."
-								}
+								{t("ui.agents.config.settings_changed_suffix")}
 							</span>
 						)}
 					</li>
@@ -1046,10 +1068,10 @@ export function ConfigComposer({
 	const hostPlaceholder = blockedReason
 		? blockedReason
 		: live
-			? "Working on your request…"
+			? t("ui.agents.config.working_ellipsis")
 			: run.enabled
 				? undefined
-				: DISABLED_GATE_LINE;
+				: t(DISABLED_GATE_LINE);
 	/*
 	 * THE INVITATION IS THE SAME WORDS ON BOTH PANES (UX review round 3, U2). The
 	 * heading above this box says "Ask for an agent" or "Ask for a team" depending
@@ -1084,12 +1106,12 @@ export function ConfigComposer({
 	 * Do not lengthen it without re-running the native pane-width boundary check.
 	 */
 	const placeholder = about
-		? `Change ${about.name}…`
+		? t("ui.agents.config.change_named_placeholder", { name: about.name })
 		: run.enabled
 			? hero
-				? "Describe what you want…"
-				: "Ask for a change, or describe something new…"
-			: DISABLED_GATE_LINE;
+				? t("ui.agents.config.new_request_placeholder")
+				: t("ui.agents.config.change_or_new_placeholder")
+			: t(DISABLED_GATE_LINE);
 
 	/*
 	 * "ASK FOR A CHANGE" ARRIVES FROM ELSEWHERE, so the caret has to land here.
@@ -1133,7 +1155,7 @@ export function ConfigComposer({
 			data-testid="config-composer"
 		>
 			<div className="sr-only" id="config-composer-label">
-				Ask for an agent or team change
+				{t("ui.agents.config.submit_label")}
 			</div>
 			{/*
 			 * THE BOX IS THE APP'S OWN COMPOSER (Scope B, §3.1).
@@ -1309,11 +1331,11 @@ export function ConfigComposer({
 								className="-ml-2 h-auto max-w-full justify-start whitespace-normal break-words px-2 py-1 text-left text-body-sm text-ink-muted hover:bg-elevated hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent"
 								disabled={disabled}
 								onClick={() => {
-									setBoxText(example);
+									setBoxText(t(example));
 									inputRef.current?.focusInput();
 								}}
 							>
-								{example}
+								{t(example)}
 							</Button>
 						))}
 					</div>

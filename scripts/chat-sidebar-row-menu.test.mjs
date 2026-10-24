@@ -158,12 +158,16 @@ test("the menu's items are drawn from the same predicates the pair reads", () =>
 	 */
 	assert.ok(
 		archiveItem.includes(
-			'{archived ? "Unarchive conversation" : "Archive conversation"}',
-		),
+			't("ui.chat.sidebar.chat_sidebar.unarchive_conversation")',
+		) &&
+			archiveItem.includes(
+				't("ui.chat.sidebar.chat_sidebar.archive_conversation")',
+			),
 		"the archive item no longer words its act as the row/palette spelling",
 	);
 	assert.ok(
-		pinItem.includes('{pinned ? "Unpin conversation" : "Pin conversation"}'),
+		pinItem.includes('t("ui.chat.sidebar.chat_sidebar.unpin_conversation")') &&
+			pinItem.includes('t("ui.chat.sidebar.chat_sidebar.pin_conversation")'),
 		"the pin item no longer words its act as the pair's control does",
 	);
 	assert.ok(
@@ -521,7 +525,7 @@ test("Rename conversation is the menu's fifth row, and it acts on the row it was
 		"the request no longer names the register's rename picker, the row's own button as the invoker, and the row's conversation",
 	);
 	assert.ok(
-		request.includes('{ subjectName: row.title || "Untitled chat" }'),
+		request.includes("{ subjectName: conversationTitleForDisplay(row.title) }"),
 		"the request no longer carries the name the row DRAWS - the presenter holds a pane, not the row that was pointed at",
 	);
 	assert.ok(

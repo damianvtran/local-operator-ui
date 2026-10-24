@@ -24,6 +24,7 @@
  */
 
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
+import { t } from "../../../../../i18n/messages";
 import type {
 	QuotaNotice,
 	QuotaNoticeAction,
@@ -206,8 +207,9 @@ const RADIENT_CREDENTIAL_REFUSED_CODE = "radient_credential_refused";
 export const QUOTA_RESEND_COOLDOWN_MS = 120_000;
 
 /** What the press says after the server took it. */
-export const QUOTA_RESEND_SENT_SENTENCE =
-	"Sent. Check your inbox and spam folder.";
+export const QUOTA_RESEND_SENT_SENTENCE = t(
+	"ui.chat.session_status.quota_notice.sent_check_your_inbox_and_spam_folder",
+);
 
 /**
  * What the press says while the op is in flight.
@@ -216,7 +218,9 @@ export const QUOTA_RESEND_SENT_SENTENCE =
  * design N2: in-flight read like cooldown). It borrows the rate-limited
  * sentence's slot instead, so every phase that disables the control says why.
  */
-export const QUOTA_RESEND_SENDING_SENTENCE = "Sending…";
+export const QUOTA_RESEND_SENDING_SENTENCE = t(
+	"ui.chat.session_status.quota_notice.sending",
+);
 
 /**
  * What the press says when it failed and can be tried again.
@@ -226,11 +230,14 @@ export const QUOTA_RESEND_SENDING_SENTENCE = "Sending…";
  * and nothing said whether a mail went out. One sentence in the same
  * `<output>` slot as the other outcomes, and the button stays offered.
  */
-export const QUOTA_RESEND_FAILED_SENTENCE = "Could not send. Try again.";
+export const QUOTA_RESEND_FAILED_SENTENCE = t(
+	"ui.chat.session_status.quota_notice.could_not_send_try_again",
+);
 
 /** What the press says when the server's own cooldown refused it. */
-export const QUOTA_RESEND_RATE_LIMITED_SENTENCE =
-	"Requested recently. Try again in about 2 minutes.";
+export const QUOTA_RESEND_RATE_LIMITED_SENTENCE = t(
+	"ui.chat.session_status.quota_notice.requested_recently_try_again_in_about_2_minutes",
+);
 
 /**
  * The resend press's own lifecycle. `degraded` is terminal for the mount: the
@@ -326,14 +333,16 @@ export function quotaResendView(
 		case "sending":
 			return {
 				disabled: true,
-				sentence: QUOTA_RESEND_SENDING_SENTENCE,
+				sentence: t("ui.chat.session_status.quota_notice.sending"),
 				offered: true,
 			};
 		case "sent":
 			return state.until > now
 				? {
 						disabled: true,
-						sentence: QUOTA_RESEND_SENT_SENTENCE,
+						sentence: t(
+							"ui.chat.session_status.quota_notice.sent_check_your_inbox_and_spam_folder",
+						),
 						offered: true,
 					}
 				: { disabled: false, sentence: null, offered: true };
@@ -341,14 +350,18 @@ export function quotaResendView(
 			return state.until > now
 				? {
 						disabled: true,
-						sentence: QUOTA_RESEND_RATE_LIMITED_SENTENCE,
+						sentence: t(
+							"ui.chat.session_status.quota_notice.requested_recently_try_again_in_about_2_minutes",
+						),
 						offered: true,
 					}
 				: { disabled: false, sentence: null, offered: true };
 		case "failed":
 			return {
 				disabled: false,
-				sentence: QUOTA_RESEND_FAILED_SENTENCE,
+				sentence: t(
+					"ui.chat.session_status.quota_notice.could_not_send_try_again",
+				),
 				offered: true,
 			};
 		case "degraded":
@@ -383,10 +396,15 @@ export function quotaNoticeActions(
  * every settled outcome of the press gets a sentence, in the same `<output>`
  * slot the resend outcomes use.
  */
-export const QUOTA_REFRESH_CHECKING_SENTENCE = "Checking…";
-export const QUOTA_REFRESH_UNCHANGED_SENTENCE =
-	"Checked just now — no change yet.";
-export const QUOTA_REFRESH_FAILED_SENTENCE = "Could not check. Try again.";
+export const QUOTA_REFRESH_CHECKING_SENTENCE = t(
+	"ui.chat.session_status.quota_notice.checking",
+);
+export const QUOTA_REFRESH_UNCHANGED_SENTENCE = t(
+	"ui.chat.session_status.quota_notice.checked_just_now_no_change_yet",
+);
+export const QUOTA_REFRESH_FAILED_SENTENCE = t(
+	"ui.chat.session_status.quota_notice.could_not_check_try_again",
+);
 
 /** The refresh press's phase, beside the resend press's. */
 export type QuotaRefreshCue = "idle" | "checking" | "unchanged" | "failed";
@@ -397,11 +415,13 @@ export function quotaRefreshSentence(cue: QuotaRefreshCue): string | null {
 		case "idle":
 			return null;
 		case "checking":
-			return QUOTA_REFRESH_CHECKING_SENTENCE;
+			return t("ui.chat.session_status.quota_notice.checking");
 		case "unchanged":
-			return QUOTA_REFRESH_UNCHANGED_SENTENCE;
+			return t(
+				"ui.chat.session_status.quota_notice.checked_just_now_no_change_yet",
+			);
 		case "failed":
-			return QUOTA_REFRESH_FAILED_SENTENCE;
+			return t("ui.chat.session_status.quota_notice.could_not_check_try_again");
 	}
 }
 

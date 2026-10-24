@@ -31,6 +31,7 @@ import {
 } from "@shared/api/local-operator/desktop-api";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 import { keepPreviousData } from "@tanstack/react-query";
+import { t } from "../../../../i18n/messages";
 import type { DesktopModelSelection } from "../../../../shared/desktop-contract";
 import type {
 	CanonicalFrontendSync,
@@ -255,7 +256,10 @@ export function effortCarry(
 		return {
 			checked: true,
 			rung: null,
-			confirmation: (selector) => `This conversation will run ${selector}.`,
+			confirmation: (selector) =>
+				t("ui.chat.draft_selection.this_conversation_will_run_selector", {
+					selector,
+				}),
 		};
 	if (!target.ladderKnown)
 		return {
@@ -267,8 +271,9 @@ export function effortCarry(
 			 * it. It also stops repeating "changed", which the previous wording
 			 * did twice in one breath (review round 5, D19).
 			 */
-			refusal:
-				"Nothing was changed, because that model's effort levels could not be read. Try again.",
+			refusal: t(
+				"ui.chat.draft_selection.nothing_was_changed_because_that_models_effort_levels_could_not",
+			),
 		};
 	const offered = target.ladder.find(
 		(rung) => rung.trim().toLowerCase() === wanted.toLowerCase(),
@@ -278,15 +283,24 @@ export function effortCarry(
 			checked: true,
 			rung: offered,
 			confirmation: (selector) =>
-				`This conversation will run ${selector} at ${offered} effort.`,
+				t(
+					"ui.chat.draft_selection.this_conversation_will_run_selector_at_offered_effort",
+					{ selector, offered },
+				),
 		};
 	return {
 		checked: true,
 		rung: null,
 		confirmation: (selector) =>
 			target.level
-				? `This conversation will run ${selector}. Its effort is now ${target.level}, because ${wanted} is not one of that model's levels.`
-				: `This conversation will run ${selector}. No effort level is set on it, because ${wanted} is not one of that model's levels.`,
+				? t(
+						"ui.chat.draft_selection.this_conversation_will_run_selector_its_effort_is_now_level",
+						{ selector: selector, level: target.level, wanted: wanted },
+					)
+				: t(
+						"ui.chat.draft_selection.this_conversation_will_run_selector_no_effort_level_is_set",
+						{ selector, wanted },
+					),
 	};
 }
 

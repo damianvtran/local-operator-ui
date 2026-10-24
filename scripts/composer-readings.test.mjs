@@ -37,6 +37,7 @@ const bundle = await build({
 			import { renderToStaticMarkup } from "react-dom/server";
 			import { SessionStatusStrip } from "./src/renderer/src/features/chat/session-status/session-status-strip";
 			export { LAST_READING_NOTE, READINGS_DROPPED_NOTE, FAST_MODE_ON_NOTE } from "./src/renderer/src/features/chat/session-status/session-status-strip";
+			export { formatDuration, durationReading } from "./src/renderer/src/features/chat/session-status/session-duration";
 			export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";
 
 			export const renderStrip = (props) =>
@@ -82,6 +83,8 @@ const {
 	FAST_MODE_ON_NOTE,
 	desktopEndpoint,
 	desktopRequestSchema,
+	formatDuration,
+	durationReading,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -1089,10 +1092,6 @@ test("the duration port spells what the band spells, bounded at six cells", asyn
 	// ones `format_duration`'s own docstring names, plus the boundaries that
 	// decide a branch. A number this app prints in two places has to be the same
 	// number in both, which is the whole reason it is a port.
-	const { formatDuration } = await import(
-		"../src/renderer/src/features/chat/session-status/session-duration.ts"
-	);
-
 	const cases = [
 		[0, "0s"],
 		// Sub-second WORK renders 0s rather than vanishing: a finished turn
@@ -1131,10 +1130,6 @@ test("the duration port spells what the band spells, bounded at six cells", asyn
 });
 
 test("a session that has done nothing renders no duration, and a running one always does", async () => {
-	const { durationReading } = await import(
-		"../src/renderer/src/features/chat/session-status/session-duration.ts"
-	);
-
 	// Nothing banked and nothing running: no reading. `0s` would claim a turn
 	// completed in under a second, which is the claim `$0.00` makes about a
 	// session that has spent nothing (R19, D21). This is also exactly a DRAFT's

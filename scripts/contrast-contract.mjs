@@ -3124,7 +3124,7 @@ const STRUCTURAL_CALL_SITES = [
 		file: "src/renderer/src/features/chat/pickers/picker-host.tsx",
 		/* `!option.disabled` joined this arm in review round 1 too (U2); see the
 		 * tint entry above for why the gate is the point rather than a drift. */
-		must: 'isPicked || (isHovered && !isActive && !option.disabled)) &&\n\t\t\t\t\t"outline-solid outline-1 -outline-offset-1 outline-control"',
+		must: 'isPicked || (isHovered && !isActive && !option.disabled)) &&\n\t\t\t\t\t\t"outline-solid outline-1 -outline-offset-1 outline-control"',
 		why: "the pointer's mark and the in-flight mark must be perceivable in every theme, which a wash-based mark is not: the role it needs is asserted as `picker row pointer mark` above, and this pin is what proves the row renders it (design D12) - for settable rows; a refused row carries neither half (review round 1, U2)",
 	},
 	{

@@ -28,12 +28,12 @@ import {
 	ContextMenuItem,
 	ContextMenuTrigger,
 } from "@shared/components/ui/context-menu";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { showInfoToast } from "@shared/utils/toast-manager";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import { copyTarget } from "../utils/link-open";
 
 export type TranscriptCopyMenuProps = {
