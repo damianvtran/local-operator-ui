@@ -4,6 +4,7 @@ import { apiConfig } from "@shared/config";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type FC, memo, useCallback, useMemo, useState } from "react";
+import { t } from "../../../../../../i18n/messages";
 import type { CanvasDocument } from "../../types/canvas";
 import { documentNameForDisplay } from "../../utils/get-file-name";
 import { CodeEditor } from "./code-editor";
@@ -194,7 +195,9 @@ const HtmlPreviewComponent: FC<HtmlPreviewProps> = ({
 					<iframe
 						key={version}
 						src={htmlUrl}
-						title={`HTML Preview: ${documentNameForDisplay(document)}`}
+						title={t("ui.chat.canvas_preview.html_title", {
+							name: documentNameForDisplay(document),
+						})}
 						sandbox={PREVIEW_SANDBOX}
 						className={cn("h-full w-full border-0 bg-surface")}
 					/>

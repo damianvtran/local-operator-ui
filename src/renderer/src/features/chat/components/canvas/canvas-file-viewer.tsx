@@ -6,6 +6,7 @@ import {
 import { getFileTypeFromPath } from "@features/chat/utils/file-types";
 import { READ_ENCODING, viewerFor } from "@features/chat/utils/viewer-routing";
 import { desktopRequest } from "@shared/api/local-operator/desktop-api";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import type { FC } from "react";
@@ -46,6 +47,12 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	onSwitchToDocumentView,
 	scan = null,
 }) => {
+	/*
+	 * `buildFileRows` derives display names through `t()`. This component is
+	 * `memo`-wrapped, so nothing else would repaint the Files pane on a language
+	 * switch; the value also keys the memo below so the rows are rebuilt.
+	 */
+	const locale = useI18nLocale();
 	// Get files from the canvas store for this conversation
 	const fallbackFiles = useCanvasStore((state): CanvasDocument[] => {
 		const conv = state.conversations[conversationId];
@@ -68,7 +75,8 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 	const setSelectedTab = useCanvasStore((s) => s.setSelectedTab);
 	const setViewMode = useCanvasStore((s) => s.setViewMode);
 
-	const rows = useMemo(() => buildFileRows(files), [files]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is the re-label TRIGGER; `buildFileRows` reads it through `t()` opaquely to this rule.
+	const rows = useMemo(() => buildFileRows(files), [files, locale]);
 
 	const handleFileClick = useCallback(
 		async (fileDoc: CanvasDocument) => {

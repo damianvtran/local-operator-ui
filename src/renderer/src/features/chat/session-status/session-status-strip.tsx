@@ -30,6 +30,7 @@ import {
 	type SessionCostInput,
 	type SpendChannelsReading,
 	channelBreakdown,
+	childBasisDetail,
 	childBasisLine,
 	costTooltip,
 	sessionCost,
@@ -594,8 +595,7 @@ const ChannelTooltipBody: FC<{
 							<span className="shrink-0 font-mono text-mono-sm">
 								{basisTooltipText(
 									entry.channel === "subagents"
-										? (childBasisLine(reading)?.replace(/^Subagents /, "") ??
-												entry.amount)
+										? (childBasisDetail(reading) ?? entry.amount)
 										: entry.amount,
 								)}
 							</span>
@@ -1054,7 +1054,12 @@ const DRAFT_CONTEXT_LINE = () =>
 	t(
 		"ui.chat.session_status.session_status_strip.nothing_measured_yet_the_window_fills_as_the_conversation_runs",
 	);
-const DRAFT_CONTEXT_TOOLTIP = [
+/*
+ * A FUNCTION, not a module constant: the array calls `t()` at both entries, and
+ * a `const` would freeze the import-time language into a mounted strip. The
+ * reading's own tooltip lines above are built at render for the same reason.
+ */
+const draftContextTooltip = (): string[] => [
 	t("ui.chat.session_status.session_context.context"),
 	DRAFT_CONTEXT_LINE(),
 ];
@@ -1933,7 +1938,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 						mono={reading.status !== "no-reading"}
 						lines={
 							draft
-								? DRAFT_CONTEXT_TOOLTIP
+								? draftContextTooltip()
 								: [
 										...contextTooltipLines(
 											reading,

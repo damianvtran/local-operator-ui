@@ -5,6 +5,7 @@ import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type FC, memo } from "react";
+import { t } from "../../../../../../i18n/messages";
 import {
 	FileViewerState,
 	OpenInOsButton,
@@ -100,7 +101,9 @@ const PdfPreviewComponent: FC<{ document: CanvasDocument }> = ({
 				{state.status === "ready" ? (
 					<iframe
 						src={`${state.url}#toolbar=0`}
-						title={`PDF: ${documentNameForDisplay(document)}`}
+						title={t("ui.chat.canvas_preview.pdf_title", {
+							name: documentNameForDisplay(document),
+						})}
 						className={cn("h-full w-full border-0 bg-surface")}
 					/>
 				) : state.status === "loading" ? (

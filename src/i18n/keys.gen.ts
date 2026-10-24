@@ -39,6 +39,7 @@ import enUiChatAsks from "./catalogues/en/ui.chat.asks.json";
 import enUiChatAt from "./catalogues/en/ui.chat.at.json";
 import enUiChatAttachments from "./catalogues/en/ui.chat.attachments.json";
 import enUiChatCanonical from "./catalogues/en/ui.chat.canonical.json";
+import enUiChatCanvasPreview from "./catalogues/en/ui.chat.canvas_preview.json";
 import enUiChatCommentaryActions from "./catalogues/en/ui.chat.commentary_actions.json";
 import enUiChatComposer from "./catalogues/en/ui.chat.composer.json";
 import enUiChatComposerMedia from "./catalogues/en/ui.chat.composer_media.json";
@@ -562,6 +563,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatAt,
 	...enUiChatAttachments,
 	...enUiChatCanonical,
+	...enUiChatCanvasPreview,
 	...enUiChatCommentaryActions,
 	...enUiChatComposer,
 	...enUiChatComposerMedia,
@@ -2320,6 +2322,8 @@ export type MessageParams = {
 	"ui.chat.canonical.working_line_model.starting_the_session": undefined;
 	"ui.chat.canonical.working_line_model.stopping_the_turn": undefined;
 	"ui.chat.canonical.working_line_model.waiting_for_the_agent": undefined;
+	"ui.chat.canvas_preview.html_title": { name: string };
+	"ui.chat.canvas_preview.pdf_title": { name: string };
 	"ui.chat.commentary_actions.label": undefined;
 	"ui.chat.composer.ask_aside": undefined;
 	"ui.chat.composer.attach_file": undefined;
