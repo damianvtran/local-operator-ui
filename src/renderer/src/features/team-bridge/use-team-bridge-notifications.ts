@@ -64,6 +64,7 @@ import {
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { TeamBridgeApi } from "@shared/api/local-operator/team-bridge-api";
+import { radientAuthoritySnapshot } from "@shared/hooks/radient-account-authority";
 import { t } from "@shared/i18n";
 import {
 	type QueryClient,
@@ -92,11 +93,13 @@ import {
 	planTeamBridgeNotifications,
 	teamBridgeNotifyOrganizations,
 } from "./team-bridge-notify-model";
+import { readForBridgeOwner, useTeamBridgeAccount } from "./team-bridge-owner";
+import { TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD } from "./team-bridge-thread-gate";
 import { assertThreadPage } from "./team-bridge-thread-read";
 import { teamBridgeViewingConversation } from "./team-bridge-viewing";
 import {
 	teamBridgeKeys,
-	useTeamBridgeIdentity,
+	useTeamBridgeStatus,
 	useTeamBridgeUnread,
 } from "./use-team-bridge";
 
@@ -138,11 +141,15 @@ function bannerPlace(
 async function directoryPeople(
 	client: QueryClient,
 	tenantId: string,
+	accountId: string,
 ): Promise<readonly TeamBridgeDirectoryMember[]> {
 	try {
 		const directory = await client.fetchQuery({
-			queryKey: teamBridgeKeys.directory(tenantId),
-			queryFn: () => TeamBridgeApi.directory(tenantId),
+			queryKey: teamBridgeKeys.directory(tenantId, accountId),
+			queryFn: () =>
+				readForBridgeOwner(client, accountId, () =>
+					TeamBridgeApi.directory(tenantId),
+				),
 			staleTime: 30_000,
 			retry: false,
 		});
@@ -166,27 +173,35 @@ async function deliverTeamBridgeBanner(
 	selfAccountId: string,
 	stillCurrent: () => boolean,
 ): Promise<void> {
+	if (!stillCurrent()) return;
 	let senderLabel = candidate.senderLabel;
 	let preview: string | null = null;
+	/*
+	 * NO THREAD READ WHILE THE HOLD IS ON. A reply banner would otherwise address
+	 * `listReplies` for its preview, which is one of the thread paths carrying
+	 * the reported #1304 cross-account isolation defects. Treated as an ordinary
+	 * message instead: the timeline read below excludes replies, so a held reply
+	 * banner degrades to its metadata (or is skipped) rather than touching the
+	 * thread cache, and the click target carries no thread root either.
+	 */
+	const threadId = TEAM_BRIDGE_THREADS_SHIPPED_IN_THIS_BUILD
+		? candidate.threadId
+		: undefined;
 	try {
 		// Timeline history excludes replies. Address the candidate's thread and
 		// inclusive sequence cursor directly: one row bounds the read even for an
 		// old, long thread; never page through its private history for a banner.
-		const newest = candidate.threadId
+		const newest = threadId
 			? assertThreadPage(
-					await TeamBridgeApi.listReplies(
-						candidate.conversationId,
-						candidate.threadId,
-						{
-							tenantId: candidate.tenantId,
-							afterSeq: candidate.seq,
-							limit: 1,
-						},
-					),
+					await TeamBridgeApi.listReplies(candidate.conversationId, threadId, {
+						tenantId: candidate.tenantId,
+						afterSeq: candidate.seq,
+						limit: 1,
+					}),
 					{
 						tenantId: candidate.tenantId,
 						conversationId: candidate.conversationId,
-						rootId: candidate.threadId,
+						rootId: threadId,
 					},
 				).replies.find((reply) => reply.seq === candidate.seq)
 			: (
@@ -202,12 +217,15 @@ async function deliverTeamBridgeBanner(
 			) {
 				return;
 			}
-			const people = await directoryPeople(client, candidate.tenantId);
-			senderLabel = participantLabel(newest.sender, people, {
-				named: (agent, person) =>
-					t("ui.teamBridge.chief.label", { agent, person }),
-				unnamed: (person) => t("ui.teamBridge.chief.unnamed", { person }),
-			});
+			if (!stillCurrent()) return;
+			const people = await directoryPeople(
+				client,
+				candidate.tenantId,
+				selfAccountId,
+			);
+			senderLabel = participantLabel(newest.sender, people, (agent, person) =>
+				t("ui.teamBridge.chief.label", { agent, person }),
+			);
 			preview = teamBridgePreviewText(newest.body);
 		}
 	} catch {
@@ -237,8 +255,9 @@ async function deliverTeamBridgeBanner(
 		.notify({
 			conversationId: candidate.conversationId,
 			// A reply banner names its thread root so the click opens the thread
-			// pane; omitted for a top-level message so the click opens the conversation.
-			...(candidate.threadId ? { threadId: candidate.threadId } : {}),
+			// pane; omitted for a top-level message, and omitted entirely while the
+			// hold is on (see `threadId` above).
+			...(threadId ? { threadId } : {}),
 			tenantId: candidate.tenantId,
 			seq: candidate.seq,
 			title: text.title,
@@ -265,10 +284,18 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 	 * two routes only to discard every candidate at the IPC line.
 	 */
 	const available = Boolean(window.api?.desktop?.teamBridge);
-	const identity = useTeamBridgeIdentity(enabled && available);
-	const selfAccountId = identity.data ?? undefined;
+	const accountAuthority = useTeamBridgeAccount();
+	const status = useTeamBridgeStatus(enabled && available);
+	const selfAccountId = accountAuthority.accountId;
 	const signedIn = Boolean(selfAccountId);
-	const active = enabled && available && signedIn;
+	const active =
+		enabled &&
+		available &&
+		signedIn &&
+		status.data?.account_id === selfAccountId &&
+		status.data?.state === "ready" &&
+		status.data.local.enabled &&
+		!status.data.read_only;
 	const client = useQueryClient();
 	const memberships = useMembershipsQuery({ enabled: active });
 	/*
@@ -296,9 +323,16 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 	accountRef.current = selfAccountId;
 	const activeRef = useRef(active);
 	activeRef.current = active;
+	useEffect(() => {
+		activeRef.current = active;
+		return () => {
+			activeRef.current = false;
+		};
+	}, [active]);
 	const membershipsData = memberships.data;
 
 	const accountUnread = useTeamBridgeUnread(active, TEAM_BRIDGE_ALL_SCOPE, {
+		accountId: selfAccountId,
 		refetchInterval: TEAM_BRIDGE_NOTIFY_POLL_MS,
 		refetchIntervalInBackground: true,
 	});
@@ -315,8 +349,14 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 		queries: notificationOrganizations.map((organization) => {
 			const tenantId = asTeamBridgeTenantId(organization.tenant_id);
 			return {
-				queryKey: teamBridgeKeys.unread(tenantId),
-				queryFn: () => TeamBridgeApi.unread({ tenantId }),
+				queryKey: teamBridgeKeys.unread(
+					tenantId,
+					selfAccountId ?? "unresolved-owner",
+				),
+				queryFn: () =>
+					readForBridgeOwner(client, selfAccountId, () =>
+						TeamBridgeApi.unread({ tenantId }),
+					),
 				enabled: active,
 				staleTime: TEAM_BRIDGE_NOTIFY_POLL_MS,
 				refetchInterval: TEAM_BRIDGE_NOTIFY_POLL_MS,
@@ -349,8 +389,14 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 	 * policy or a conversation's title from an unread row alone.
 	 */
 	const conversations = useQuery({
-		queryKey: teamBridgeKeys.conversations(TEAM_BRIDGE_ALL_SCOPE),
-		queryFn: () => TeamBridgeApi.listConversations("account"),
+		queryKey: teamBridgeKeys.conversations(
+			TEAM_BRIDGE_ALL_SCOPE,
+			selfAccountId ?? "unresolved-owner",
+		),
+		queryFn: () =>
+			readForBridgeOwner(client, selfAccountId, () =>
+				TeamBridgeApi.listConversations("account"),
+			),
 		enabled: active,
 		staleTime: TEAM_BRIDGE_NOTIFY_POLL_MS,
 		refetchInterval: TEAM_BRIDGE_NOTIFY_POLL_MS,
@@ -474,6 +520,10 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 			// backlog of messages the badge already showed.
 			if (notificationsOffRef.current || !selfAccountId) continue;
 			const account = selfAccountId;
+			const authToken = radientAuthoritySnapshot(client);
+			const bridgeStatus = client.getQueryData(
+				teamBridgeKeys.statusFor(account),
+			);
 			for (const candidate of plan.candidates) {
 				void deliverTeamBridgeBanner(
 					client,
@@ -481,6 +531,9 @@ export function useTeamBridgeNotifications(enabled: boolean): void {
 					account,
 					() =>
 						accountRef.current === account &&
+						radientAuthoritySnapshot(client) === authToken &&
+						client.getQueryData(teamBridgeKeys.statusFor(account)) ===
+							bridgeStatus &&
 						activeRef.current &&
 						!notificationsOffRef.current,
 				);

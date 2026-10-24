@@ -657,29 +657,6 @@
 		"placeholders": {},
 		"note": "Used in place of the agent's name when the server has not published one."
 	},
-	"ui.teamBridge.chief.unnamed": {
-		"role": "row label composition",
-		"tone": "plain, sentence case",
-		"length": "Short; must fit a 30px rail row.",
-		"placeholders": {
-			"person": "The owning teammate's display name, verbatim."
-		},
-		"note": "Names a teammate's chief of staff when the agent has no name of its own (or its name is the owner's name), e.g. 'Ben Tran’s chief of staff'. Must not repeat the person. Shown on the rail, the thread header and the composer placeholder."
-	},
-	"ui.teamBridge.message.sending": {
-		"role": "status label",
-		"tone": "plain, sentence case",
-		"length": "One or two words; sits beside a message's time.",
-		"placeholders": {},
-		"note": "Shown beside a message the reader just sent while the server has not confirmed it yet."
-	},
-	"ui.teamBridge.message.failed": {
-		"role": "status label",
-		"tone": "plain, sentence case, matter-of-fact",
-		"length": "One or two words; sits before a Retry button.",
-		"placeholders": {},
-		"note": "Shown in the danger colour on a message that could not be sent, immediately before the Retry button. The message stays in the thread."
-	},
 	"ui.teamBridge.people.self_named": {
 		"role": "row label",
 		"tone": "plain, sentence case",
