@@ -38,7 +38,7 @@ import {
 	useOnboardingStore,
 } from "@shared/store/onboarding-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { screen, userEvent, waitFor } from "@storybook/test";
+import { expect, screen, userEvent, waitFor } from "@storybook/test";
 import { Plug } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useLayoutEffect, useState } from "react";
@@ -148,6 +148,10 @@ type BridgeOptions = {
 	hosting?: string;
 	model?: string;
 	script?: Script;
+	/** Wire snapshots for the additive recovery contract, including old-backend absence. */
+	authReply?: AuthOperation;
+	/** Keep the real poll pending until the play cancels it; no timing race in the fixture. */
+	deferredAuth?: { reply: AuthOperation; release?: () => void };
 	/** How `auth.key` answers: saved, saved-unchecked, or rejected (422). */
 	key?: "valid" | "unchecked" | "rejected";
 	/**
@@ -220,8 +224,15 @@ const installBridge = (options: BridgeOptions) => {
 		status: 200,
 		body: { result },
 	});
-	const statusFor = (): DesktopResponse => {
+	const statusFor = (): DesktopResponse | Promise<DesktopResponse> => {
 		polls += 1;
+		const deferred = options.deferredAuth;
+		if (deferred) {
+			return new Promise((resolve) => {
+				deferred.release = () => resolve(ok(deferred.reply));
+			});
+		}
+		if (options.authReply) return ok(options.authReply);
 		// Only the composed phone recovery fixture: first auth is already
 		// completed/refused; the explicit SECOND start stays waiting so browser
 		// evidence can verify the real re-auth flow, not merely a button label.
@@ -440,6 +451,7 @@ const installBridge = (options: BridgeOptions) => {
 						},
 					});
 				case "auth.start":
+					if (options.authReply) return ok(options.authReply);
 					starts += 1;
 					if (options.phoneSetup && starts > 1) {
 						polls = 0;
@@ -499,6 +511,7 @@ const installBridge = (options: BridgeOptions) => {
 		},
 	};
 	return () => {
+		if (options.deferredAuth) options.deferredAuth.release = undefined;
 		api.desktop = previous;
 	};
 };
@@ -976,6 +989,162 @@ export const PanelSucceededWithDefault: Story = {
  * not confirm, and the panel says the same thing in its own words rather than
  * claiming the refusal it is not.
  */
+// Exact trusted backend template; only the record IDs are synthetic.
+const RETAINED_NOTICE = [
+	"Retained Radient sign-ins (unavailable):",
+	"  [101] Account could not be verified; record retained.",
+	"  [202] Account could not be verified; record retained.",
+	"  Sign in to the account you want to use:",
+	"  /login radient in the app; local-operator login radient in a terminal.",
+	"  Older records have not been deleted or assigned to that account.",
+].join("\n");
+const SIGN_IN_COMPLETE = "Sign-in complete.";
+const PRESERVED_DISABLED =
+	"Sign-in verified; the existing credential remains unavailable. Its saved disabled state was preserved.";
+
+const recoveryReply = (extra: Partial<AuthOperation> = {}): AuthOperation =>
+	snapshot("succeeded", {
+		provider: "radient",
+		message: SIGN_IN_COMPLETE,
+		defaults_applied: {
+			hosting: "radient",
+			model: "auto",
+			model_name: "Auto",
+			receipt: "Existing default model unchanged.",
+		},
+		...extra,
+	});
+
+const recoveryStory = (reply: AuthOperation, provider = "radient"): Story => {
+	const options: BridgeOptions = {
+		providers: signedIn([provider]).filter((row) => row.id === provider),
+		hosting: provider,
+		model: "auto",
+		authReply: reply,
+	};
+	return {
+		render: () => (
+			<Bridge options={options}>
+				<SettingsFrame>
+					<ProviderGrid onChangeModel={() => undefined} />
+				</SettingsFrame>
+			</Bridge>
+		),
+		play: async () => {
+			await openRow(/^Manage /i);
+			await userEvent.click(
+				await screen.findByRole("menuitem", { name: SIGN_IN_AGAIN }),
+			);
+			const state = reply.state === "succeeded" ? "succeeded" : "unfinished";
+			await startIfIdle(state);
+			const panel = document.querySelector(`[data-sign-in-state="${state}"]`);
+			const notice = panel?.querySelector("[data-retained-notice]");
+			const visible =
+				state === "succeeded" &&
+				provider === "radient" &&
+				reply.provider === "radient" &&
+				Boolean(reply.retained_notice?.trim());
+			expect(Boolean(notice)).toBe(visible);
+			if (visible) {
+				expect(notice?.textContent).toBe(reply.retained_notice);
+				expect(notice?.querySelector("a, img, strong")).toBeNull();
+				if (!notice) throw new Error("The retained notice must be rendered.");
+				const style = getComputedStyle(notice);
+				expect(style.whiteSpace).toBe("pre-wrap");
+				expect(style.overflowWrap).toBe("anywhere");
+				expect(notice.scrollWidth).toBeLessThanOrEqual(notice.clientWidth + 1);
+				if (reply.retained_notice === RETAINED_NOTICE) {
+					expect(notice.textContent?.split("\n")).toHaveLength(6);
+					expect(notice.textContent).toContain("\n  [101] ");
+					expect(notice.textContent).toContain("\n  [202] ");
+				}
+			}
+			if (state === "succeeded") {
+				expect(panel?.textContent).not.toContain(SIGN_IN_COMPLETE);
+				expect(panel?.textContent).toContain(
+					"Existing default model unchanged.",
+				);
+			} else if (reply.state === "failed") {
+				expect(panel?.textContent).toContain(PRESERVED_DISABLED);
+			}
+		},
+	};
+};
+
+export const PanelRadientRetainedNotice = recoveryStory(
+	recoveryReply({ retained_notice: RETAINED_NOTICE }),
+);
+export const PanelRadientOldBackendNoNotice = recoveryStory(recoveryReply());
+export const PanelRadientNoRetainedRecords = recoveryStory(
+	recoveryReply({ retained_notice: null }),
+);
+// Blank/markup payloads are defensive controls, not values produced by core.
+export const PanelRadientBlankNotice = recoveryStory(
+	recoveryReply({ retained_notice: " \n\t " }),
+);
+export const PanelRadientRetainedNoticePlainText = recoveryStory(
+	recoveryReply({
+		retained_notice:
+			"<strong>Kept</strong> **settings** [review](https://example.com)",
+	}),
+);
+export const PanelRadientPreservedDisabled = recoveryStory(
+	recoveryReply({
+		state: "failed",
+		message: PRESERVED_DISABLED,
+		retained_notice: null,
+	}),
+);
+export const PanelRadientCancelled = recoveryStory(
+	recoveryReply({ state: "cancelled", message: "", retained_notice: null }),
+);
+export const PanelUnrelatedProviderNoRetainedNotice = recoveryStory(
+	recoveryReply({ provider: "anthropic", retained_notice: null }),
+	"anthropic",
+);
+
+const OPTS_RETAINED_LATE: BridgeOptions = {
+	providers: signedIn(["radient"]).filter((row) => row.id === "radient"),
+	hosting: "radient",
+	model: "auto",
+	authReply: snapshot("waiting", {
+		provider: "radient",
+		auth_url: AUTH_URL,
+		retained_notice: null,
+	}),
+	deferredAuth: { reply: recoveryReply({ retained_notice: RETAINED_NOTICE }) },
+};
+export const PanelRadientLateNoticeAfterCancel: Story = {
+	render: () => (
+		<Bridge options={OPTS_RETAINED_LATE}>
+			<SettingsFrame>
+				<ProviderGrid onChangeModel={() => undefined} />
+			</SettingsFrame>
+		</Bridge>
+	),
+	play: async () => {
+		await openRow(/^Manage /i);
+		await userEvent.click(
+			await screen.findByRole("menuitem", { name: SIGN_IN_AGAIN }),
+		);
+		await startIfIdle("waiting");
+		await waitFor(() =>
+			expect(typeof OPTS_RETAINED_LATE.deferredAuth?.release).toBe("function"),
+		);
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Cancel" }),
+		);
+		await waitForState("idle");
+		OPTS_RETAINED_LATE.deferredAuth?.release?.();
+		// Let the real poll's continuation settle before capturing its negative result.
+		await wait(0);
+		expect(document.querySelector("[data-retained-notice]")).toBeNull();
+		expect(
+			document.querySelector('[data-sign-in-state="succeeded"]'),
+		).toBeNull();
+	},
+};
+
 const OPTS_UNCONFIRMED: BridgeOptions = {
 	script: "succeed",
 	loginVerdict: "unknown",

@@ -6848,6 +6848,12 @@ export type AuthOperation = {
 	 */
 	/** What the sign-in changed about the default model; only on `succeeded`. */
 	defaults_applied?: DefaultsApplied | null;
+	/**
+	 * Trusted recovery copy for a successful Radient login that kept local
+	 * choices. Older backends omit it; render as plain text, never substitute
+	 * the generic operation message or use it to change the success verdict.
+	 */
+	retained_notice?: string | null;
 	/** A device flow's one-time code, as its own field. */
 	user_code?: string | null;
 	/**
