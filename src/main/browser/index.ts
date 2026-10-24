@@ -1673,6 +1673,7 @@ async function initializeBrowserHost(
 					canGoBack: navigation ? navigation.canGoBack() : false,
 					canGoForward: navigation ? navigation.canGoForward() : false,
 					isEditable: params.isEditable,
+					selectionText: params.selectionText ?? "",
 					editFlags: params.editFlags,
 				});
 				const menu = Menu.buildFromTemplate(

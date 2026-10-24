@@ -267,6 +267,45 @@ test("context menu D2/U8: an editable target gets edit history, the edit group, 
 	);
 });
 
+test("context menu U8: a page selection offers Copy, without losing its navigation group", () => {
+	const items = buildPageContextMenuItems({
+		linkUrl: "",
+		pageUrl: "https://example.com/page",
+		canGoBack: true,
+		canGoForward: false,
+		isEditable: false,
+		selectionText: "selected words",
+	});
+	assert.deepEqual(
+		items.map((item) => [item.id, item.enabled]),
+		[
+			["back", true],
+			["forward", false],
+			["reload", true],
+			["separator", false],
+			["copy", true],
+			["separator", false],
+			["copy-page", true],
+		],
+		"Copy is the page's own selection action; navigation and Copy page address stay",
+	);
+	// An empty selection is not an item, and editFlags cannot smuggle one in:
+	// Chromium reports selectionText only when the user actually selected text.
+	const none = buildPageContextMenuItems({
+		linkUrl: "",
+		pageUrl: "https://example.com/page",
+		canGoBack: true,
+		canGoForward: false,
+		isEditable: false,
+		selectionText: "",
+		editFlags: { canCopy: true },
+	});
+	assert.equal(
+		none.some((item) => item.id === "copy"),
+		false,
+	);
+});
+
 test("context menu U8: a non-editable page shows no edit items", () => {
 	// editFlags describe a field that is not there; they must not leak an
 	// Undo/Redo/Cut/Paste item onto a page right-click.
@@ -329,6 +368,7 @@ test("wiring pins: Home intent and the native context-menu handler stay connecte
 	// D2/U3/U8: main passes the editable facts and the page address through,
 	// and every edit action the rule can emit has a contents method behind it.
 	assert.match(main, /isEditable: params\.isEditable/);
+	assert.match(main, /selectionText: params\.selectionText/);
 	assert.match(main, /editFlags: params\.editFlags/);
 	assert.match(main, /pageUrl: contents\.getURL\(\)/);
 	assert.match(main, /contents\.undo\(\)/);
