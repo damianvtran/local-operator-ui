@@ -1,0 +1,757 @@
+{
+  "auditor": "translation-auditor",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "instance": "861658748256",
+  "date": "2026-10-23",
+  "locale": "ur",
+  "status": "changes_requested",
+  "audit_round": "completion round 1, second independent audit",
+  "commit": "8e1814b92ea7c7afa809997e77e157781c73eaa0",
+  "scope": {
+    "key_count": 152,
+    "namespace_count": 11,
+    "namespaces": [
+      "ui.chat.sidebar",
+      "ui.chat.pickers",
+      "ui.chat.canonical",
+      "ui.chat.analytics",
+      "ui.chat.transcript_copy",
+      "ui.common.file_actions",
+      "ui.common.viewer",
+      "ui.chat.tag_dialogs",
+      "ui.presence",
+      "ui.chat.run_details",
+      "ui.chat.commentary_actions"
+    ]
+  },
+  "independence": {
+    "authored_translation": false,
+    "translator_session": "a8963d4aa6bf",
+    "auditor_session": "861658748256",
+    "translator_receipt_read": false,
+    "other_second_audit_receipt_read": false,
+    "basis": "Derived independently from English catalogues, Urdu catalogues, English context sidecars, existing Urdu terminology, core glossary/style guide, and fresh execution probes."
+  },
+  "fallback": "None; actual served model recorded from this session.",
+  "terminology_sources": {
+    "glossary": {
+      "path": "/Users/damian/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "ur_style_guide": {
+      "path": "/Users/damian/local-operator/i18n/style-guides/ur.md",
+      "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+    },
+    "core_checkout_commit": "24dbccbb784bd1c9b690ce4601f489791ceacb09"
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "keys_read": 43,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+        "ur": "src/i18n/catalogues/ur/ui.chat.sidebar.json",
+        "context": "src/i18n/catalogues/en/ui.chat.sidebar.context.json"
+      },
+      "sha256": {
+        "en": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+        "ur": "a5557ccaeb9e0c57c466f901b71543fb39dff23da32ceb1fd9234bb666b3372c"
+      },
+      "context_sha256": "fe5dc2a0fa4cb9b95ef5c1a30d57aee030fa5edf2b6b54b323562a1c63b8eb3a",
+      "findings": [
+        {
+          "id": "UR2-SIDEBAR-001",
+          "severity": "MINOR",
+          "key": "ui.chat.sidebar.search.searching",
+          "current": "گفتگوؤں میں تلاش جاری ہے…",
+          "proposed": "گفتگو میں تلاش جاری ہے…",
+          "reason": "The identical English “Searching conversations…” is already rendered as گفتگو میں تلاش جاری ہے… in ui.command_palette.command_palette.searching_conversations and ui.command_palette.palette_search.searching_conversations; align this high-visibility status to avoid terminology drift."
+        }
+      ]
+    },
+    "ui.chat.pickers": {
+      "status": "passed",
+      "keys_read": 34,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+        "ur": "src/i18n/catalogues/ur/ui.chat.pickers.json",
+        "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+      },
+      "sha256": {
+        "en": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+        "ur": "1effbfc9eccdd05b1e9071ebd34bdc73383e114665334fd5f1320af111e57909"
+      },
+      "context_sha256": "8d3fa914cd52768c98a75c4f41b903b86553335b27e406f98500eab7ff576e64",
+      "findings": []
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "keys_read": 30,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "ur": "src/i18n/catalogues/ur/ui.chat.canonical.json",
+        "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+      },
+      "sha256": {
+        "en": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
+        "ur": "8b9416cf2da7b9ceeeec631ad3d7fe99c3e5d3dde727febbed4ae924df0255f3"
+      },
+      "context_sha256": "53145be31fe46bde6578d114653466dc5c6c932947460c10a0022c9e190d9a34",
+      "findings": []
+    },
+    "ui.chat.analytics": {
+      "status": "passed",
+      "keys_read": 11,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.analytics.json",
+        "ur": "src/i18n/catalogues/ur/ui.chat.analytics.json",
+        "context": "src/i18n/catalogues/en/ui.chat.analytics.context.json"
+      },
+      "sha256": {
+        "en": "6ac0bbfb50c8ef8c772f229868614aa8d07dfd9f659311d5d396cea5c4611159",
+        "ur": "e660bfcbf69f8b30290eeb890dceb1bee2af0980d2fdb248562c8c039fb8820a"
+      },
+      "context_sha256": "7c25af7f391fbaac6a1718a81b8b258c0b313ba46411f16e95691446828640ff",
+      "findings": []
+    },
+    "ui.chat.transcript_copy": {
+      "status": "passed",
+      "keys_read": 9,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.transcript_copy.json",
+        "ur": "src/i18n/catalogues/ur/ui.chat.transcript_copy.json",
+        "context": "src/i18n/catalogues/en/ui.chat.transcript_copy.context.json"
+      },
+      "sha256": {
+        "en": "a81115a3e17a63068b79b4c66d86edaa1417a145f0b1fcc14d34deae8cd1734b",
+        "ur": "0c5b41286daa74ea959227a45a7063e82269311f2b4427d9b9015898a216bcee"
+      },
+      "context_sha256": "955b217858b3ac8c2ab4a20e7ad47298c683698c5c65c0012f681ba6b23d4c8b",
+      "findings": []
+    },
+    "ui.common.file_actions": {
+      "status": "passed",
+      "keys_read": 5,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.file_actions.json",
+        "ur": "src/i18n/catalogues/ur/ui.common.file_actions.json",
+        "context": "src/i18n/catalogues/en/ui.common.file_actions.context.json"
+      },
+      "sha256": {
+        "en": "edac3001910c5ba03d5c0552f07c19baeb1bd1e8e9d3c0a6c178a693f9351233",
+        "ur": "65496c7de6660edd0ef60da86978d0d5ed581e610c4dd34d422fcd9d06a56430"
+      },
+      "context_sha256": "147274f1e573608ac78a0dc45aa14d14a5d2cf89efa953d4f4e012a7fae8d04b",
+      "findings": []
+    },
+    "ui.common.viewer": {
+      "status": "passed",
+      "keys_read": 4,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.viewer.json",
+        "ur": "src/i18n/catalogues/ur/ui.common.viewer.json",
+        "context": "src/i18n/catalogues/en/ui.common.viewer.context.json"
+      },
+      "sha256": {
+        "en": "660c7e185ebc22d37ecc9b5d02807428f87c477f86431f5cdb07fdec888b78bb",
+        "ur": "85dbf1ae38907f821d94df37b31b2c6889718e1e594ad08e83b7eea6f1167cad"
+      },
+      "context_sha256": "cd11be98d1d94cba927141b2b6b390af7fdc59a8519ea3ed18361cfd4930c2c9",
+      "findings": []
+    },
+    "ui.chat.tag_dialogs": {
+      "status": "passed",
+      "keys_read": 4,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.tag_dialogs.json",
+        "ur": "src/i18n/catalogues/ur/ui.chat.tag_dialogs.json",
+        "context": "src/i18n/catalogues/en/ui.chat.tag_dialogs.context.json"
+      },
+      "sha256": {
+        "en": "140fb44d94388706e24ba37c6910a6b753ce0f0701f44e78390a1fffb13c1506",
+        "ur": "3b251779813dcf501877c472adc1f1827ecc1771a1b62f47ac969966249df284"
+      },
+      "context_sha256": "8f4cc8ca17d926c4f85f4226ff92e7c291babbe7e9868ebb8d9fceb5a8841987",
+      "findings": []
+    },
+    "ui.presence": {
+      "status": "changes_requested",
+      "keys_read": 9,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.presence.json",
+        "ur": "src/i18n/catalogues/ur/ui.presence.json",
+        "context": "src/i18n/catalogues/en/ui.presence.context.json"
+      },
+      "sha256": {
+        "en": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
+        "ur": "04f341a8a1c3755ff8d6ed935027b5161204bf674173fcaaf89c4db2db00a2a9"
+      },
+      "context_sha256": "f78dc27ea4c00befbb3b48ce6723230a23c6e4388bf5ace429c2b445447aae44",
+      "findings": [
+        {
+          "id": "UR2-PRESENCE-001",
+          "severity": "MAJOR",
+          "key": "ui.presence.hours_ago",
+          "current": "{count, number} گھنٹے پہلے",
+          "proposed": "{count, plural, one {{count, number} گھنٹہ پہلے} other {{count, number} گھنٹے پہلے}}",
+          "reason": "The current message formats count=1 as “1 گھنٹے پہلے”; Urdu requires singular “1 گھنٹہ پہلے”, while other counts use “گھنٹے”. Existing Urdu ui.code_review.age.hours and ui.settings.integrations.integration_model.hours_h_ago use the same one/other distinction.",
+          "evidence": {
+            "current_at_1": "1 گھنٹے پہلے",
+            "proposed_at_0": "0 گھنٹے پہلے",
+            "proposed_at_1": "1 گھنٹہ پہلے",
+            "proposed_at_2": "2 گھنٹے پہلے",
+            "proposed_at_1234": "1,234 گھنٹے پہلے"
+          }
+        }
+      ]
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "keys_read": 2,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.run_details.json",
+        "ur": "src/i18n/catalogues/ur/ui.chat.run_details.json",
+        "context": "src/i18n/catalogues/en/ui.chat.run_details.context.json"
+      },
+      "sha256": {
+        "en": "7eea05d7c5b371e7969214abc7bd2961bf6c38fd3e5886e0957493b787878094",
+        "ur": "4c39c81581c49c0c6ca859601bf3bf0898566faf0075083d4534d9aaacccd35d"
+      },
+      "context_sha256": "eae93350935a597d66fe4931a40fed2fa9d40d0b01e03925d2cef22985f628d6",
+      "findings": []
+    },
+    "ui.chat.commentary_actions": {
+      "status": "passed",
+      "keys_read": 1,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.commentary_actions.json",
+        "ur": "src/i18n/catalogues/ur/ui.chat.commentary_actions.json",
+        "context": "src/i18n/catalogues/en/ui.chat.commentary_actions.context.json"
+      },
+      "sha256": {
+        "en": "77d6babd2e9fac04e95a550d25f4428e113144c160c34009b89e06608b812868",
+        "ur": "3c70dc50e01696b8bfba6702aede932dfc32fe98f39f682744ef14f00e5c3c78"
+      },
+      "context_sha256": "20901db281f82c025243d688a14bfc490d1b5c01c7fd03e7d8788f35411c3ad1",
+      "findings": []
+    }
+  },
+  "findings": [
+    {
+      "id": "UR2-SIDEBAR-001",
+      "severity": "MINOR",
+      "key": "ui.chat.sidebar.search.searching",
+      "current": "گفتگوؤں میں تلاش جاری ہے…",
+      "proposed": "گفتگو میں تلاش جاری ہے…",
+      "reason": "The identical English “Searching conversations…” is already rendered as گفتگو میں تلاش جاری ہے… in ui.command_palette.command_palette.searching_conversations and ui.command_palette.palette_search.searching_conversations; align this high-visibility status to avoid terminology drift."
+    },
+    {
+      "id": "UR2-PRESENCE-001",
+      "severity": "MAJOR",
+      "key": "ui.presence.hours_ago",
+      "current": "{count, number} گھنٹے پہلے",
+      "proposed": "{count, plural, one {{count, number} گھنٹہ پہلے} other {{count, number} گھنٹے پہلے}}",
+      "reason": "The current message formats count=1 as “1 گھنٹے پہلے”; Urdu requires singular “1 گھنٹہ پہلے”, while other counts use “گھنٹے”. Existing Urdu ui.code_review.age.hours and ui.settings.integrations.integration_model.hours_h_ago use the same one/other distinction.",
+      "evidence": {
+        "current_at_1": "1 گھنٹے پہلے",
+        "proposed_at_0": "0 گھنٹے پہلے",
+        "proposed_at_1": "1 گھنٹہ پہلے",
+        "proposed_at_2": "2 گھنٹے پہلے",
+        "proposed_at_1234": "1,234 گھنٹے پہلے"
+      }
+    }
+  ],
+  "summary": {
+    "keys_read": 152,
+    "blocker": 0,
+    "major": 1,
+    "minor": 1,
+    "nit": 0,
+    "overall": "changes_requested"
+  },
+  "evidence": {
+    "semantic_review": "Read all 152 English/Urdu pairs side by side with all 11 English context sidecars; checked accuracy, idiom, polite آپ/respectful-imperative register, punctuation, glossary and existing Urdu usage.",
+    "mechanical": {
+      "keys": 152,
+      "key_set_mismatch": 0,
+      "key_order_mismatch": 0,
+      "icu_signature_mismatch": 0,
+      "branch_mismatch": 0,
+      "nfc_failures": 0,
+      "bidi_control_failures": 0,
+      "line_separator_failures": 0,
+      "pseudo_parse_failures": 0,
+      "pseudo_icu_failures": 0
+    },
+    "duplicate_json_members": {
+      "files_checked": 33,
+      "duplicates": 0
+    },
+    "generated_freshness": {
+      "command": "node scripts/i18n/generate.mjs --check",
+      "result": "PASS — src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+    },
+    "plural_cldr": {
+      "library": "intl-messageformat 12.1.3 + host Intl.PluralRules",
+      "samples": [
+        {
+          "key": "ui.chat.pickers.stop.confirm",
+          "count": 0,
+          "enCategory": "other",
+          "urCategory": "other",
+          "en": "Stop 0 sessions now",
+          "ur": "0 سیشن اب روکیں"
+        },
+        {
+          "key": "ui.chat.pickers.stop.confirm",
+          "count": 1,
+          "enCategory": "one",
+          "urCategory": "one",
+          "en": "Stop this session now",
+          "ur": "یہ سیشن اب روکیں"
+        },
+        {
+          "key": "ui.chat.pickers.stop.confirm",
+          "count": 2,
+          "enCategory": "other",
+          "urCategory": "other",
+          "en": "Stop 2 sessions now",
+          "ur": "2 سیشن اب روکیں"
+        },
+        {
+          "key": "ui.chat.pickers.stop.confirm",
+          "count": 21,
+          "enCategory": "other",
+          "urCategory": "other",
+          "en": "Stop 21 sessions now",
+          "ur": "21 سیشن اب روکیں"
+        },
+        {
+          "key": "ui.chat.pickers.stop.confirm",
+          "count": 1234,
+          "enCategory": "other",
+          "urCategory": "other",
+          "en": "Stop 1234 sessions now",
+          "ur": "1234 سیشن اب روکیں"
+        }
+      ],
+      "conclusion": "Urdu 0=other and 1=one in this runtime; stop confirmation is correct at 0, 1, 2, 21 and 1234. The separate singular-hour defect is UR2-PRESENCE-001."
+    },
+    "formatted_number_samples": [
+      {
+        "key": "ui.chat.canonical.supplement.details.attempts",
+        "count": 0,
+        "formatted": "کوششیں: 0"
+      },
+      {
+        "key": "ui.chat.canonical.supplement.details.attempts",
+        "count": 1,
+        "formatted": "کوششیں: 1"
+      },
+      {
+        "key": "ui.chat.canonical.supplement.details.attempts",
+        "count": 2,
+        "formatted": "کوششیں: 2"
+      },
+      {
+        "key": "ui.chat.canonical.supplement.details.attempts",
+        "count": 1234,
+        "formatted": "کوششیں: 1234"
+      },
+      {
+        "key": "ui.presence.minutes_ago",
+        "count": 0,
+        "formatted": "0 منٹ پہلے"
+      },
+      {
+        "key": "ui.presence.minutes_ago",
+        "count": 1,
+        "formatted": "1 منٹ پہلے"
+      },
+      {
+        "key": "ui.presence.minutes_ago",
+        "count": 2,
+        "formatted": "2 منٹ پہلے"
+      },
+      {
+        "key": "ui.presence.minutes_ago",
+        "count": 1234,
+        "formatted": "1,234 منٹ پہلے"
+      },
+      {
+        "key": "ui.presence.hours_ago",
+        "count": 0,
+        "formatted": "0 گھنٹے پہلے"
+      },
+      {
+        "key": "ui.presence.hours_ago",
+        "count": 1,
+        "formatted": "1 گھنٹے پہلے"
+      },
+      {
+        "key": "ui.presence.hours_ago",
+        "count": 2,
+        "formatted": "2 گھنٹے پہلے"
+      },
+      {
+        "key": "ui.presence.hours_ago",
+        "count": 1234,
+        "formatted": "1,234 گھنٹے پہلے"
+      },
+      {
+        "key": "ui.presence.days_ago",
+        "count": 0,
+        "formatted": "0 دن پہلے"
+      },
+      {
+        "key": "ui.presence.days_ago",
+        "count": 1,
+        "formatted": "1 دن پہلے"
+      },
+      {
+        "key": "ui.presence.days_ago",
+        "count": 2,
+        "formatted": "2 دن پہلے"
+      },
+      {
+        "key": "ui.presence.days_ago",
+        "count": 1234,
+        "formatted": "1,234 دن پہلے"
+      }
+    ],
+    "select_and_mixed_direction": {
+      "samples": [
+        {
+          "key": "ui.chat.sidebar.pins.failure",
+          "params": {
+            "action": "pin",
+            "title": "release-v2"
+          },
+          "formatted": "“release-v2” پن نہیں کی جا سکی۔",
+          "tokenPreserved": true
+        },
+        {
+          "key": "ui.chat.sidebar.pins.failure",
+          "params": {
+            "action": "unpin",
+            "title": "میری چیٹ"
+          },
+          "formatted": "“میری چیٹ” کی پن نہیں ہٹائی جا سکی۔",
+          "tokenPreserved": true
+        },
+        {
+          "key": "ui.chat.sidebar.pins.failure",
+          "params": {
+            "action": "other",
+            "title": "release-v2"
+          },
+          "formatted": "“release-v2” اپ ڈیٹ نہیں کی جا سکی۔",
+          "tokenPreserved": true
+        },
+        {
+          "key": "ui.chat.pickers.credential.forget_confirmation",
+          "params": {
+            "name": "API_KEY"
+          },
+          "formatted": "اس سیشن سے API_KEY کو بھول جائیں",
+          "tokenPreserved": true
+        },
+        {
+          "key": "ui.chat.pickers.models.native_details",
+          "params": {
+            "name": "gpt-5"
+          },
+          "formatted": "نیٹو تفصیلات — gpt-5",
+          "tokenPreserved": true
+        },
+        {
+          "key": "ui.chat.tag_dialogs.deleted_name",
+          "params": {
+            "name": "release-v2"
+          },
+          "formatted": "“release-v2” حذف کر دیا گیا",
+          "tokenPreserved": true
+        },
+        {
+          "key": "ui.chat.sidebar.search.too_long",
+          "params": {
+            "max": 1234
+          },
+          "formatted": "تلاش 1234 حروف تک محدود ہے۔ یہ تلاش اس سے لمبی ہے، اس لیے صرف چیٹ کے نام تلاش کیے جا رہے ہیں۔",
+          "tokenPreserved": true
+        }
+      ],
+      "all_tokens_preserved": true,
+      "conclusion": "Static logical-order/token evidence only; not a rendered-bidi claim."
+    },
+    "unicode_rtl_static": {
+      "nfc_failures": 0,
+      "manual_bidi_controls": 0,
+      "line_or_paragraph_separators": 0,
+      "rendered_rtl_claimed": false,
+      "remaining_gate": "Real-app RTL frame, shaping and geometry review remains required."
+    },
+    "english_leakage": {
+      "latin_runs": [
+        {
+          "key": "ui.chat.sidebar.pins.drag_title",
+          "token": "Esc",
+          "allowed": true
+        },
+        {
+          "key": "ui.chat.sidebar.row_menu.copy_id",
+          "token": "ID",
+          "allowed": true
+        },
+        {
+          "key": "ui.chat.sidebar.search.names_only",
+          "token": "Local Operator",
+          "allowed": true
+        },
+        {
+          "key": "ui.chat.canonical.sound.stop.warning",
+          "token": "endpoint",
+          "allowed": true
+        },
+        {
+          "key": "ui.chat.canonical.supplement.file_actions.open_in_canvas",
+          "token": "Canvas",
+          "allowed": true
+        },
+        {
+          "key": "ui.chat.canonical.supplement.file_actions.reveal_in_finder",
+          "token": "Finder",
+          "allowed": true
+        },
+        {
+          "key": "ui.chat.canonical.supplement.preview_unavailable",
+          "token": "HTML",
+          "allowed": true
+        },
+        {
+          "key": "ui.chat.transcript_copy.menu.copy_markdown",
+          "token": "Markdown",
+          "allowed": true
+        },
+        {
+          "key": "ui.chat.transcript_copy.toast.copied_markdown",
+          "token": "Markdown",
+          "allowed": true
+        },
+        {
+          "key": "ui.common.file_actions.show_in_canvas",
+          "token": "Canvas",
+          "allowed": true
+        }
+      ],
+      "allowed_english_tokens": [
+        "Canvas",
+        "Esc",
+        "Finder",
+        "HTML",
+        "ID",
+        "Local Operator",
+        "Markdown",
+        "endpoint"
+      ],
+      "untranslated_prose": [],
+      "conclusion": "All 10 Latin runs are allowed product, platform, format, keyboard, acronym or glossary tokens; no untranslated English prose found."
+    },
+    "pseudo_localization": {
+      "method": "Independent scratch probe: delimit every value and add approximately 35% padding per word while preserving complete ICU expressions and allowed technical tokens; parse every result and compare ICU signatures.",
+      "processed": 152,
+      "parse_or_icu_failures": 0,
+      "samples": [
+        {
+          "key": "ui.chat.sidebar.pins.drag_title",
+          "original": "ترتیب بدلنے کے لیے گھسیٹیں · Esc سے منسوخ کریں",
+          "pseudo": "⟦ترتیب﹏﹏ بدلنے﹏﹏ کے﹏ لیے﹏﹏ گھسیٹیں﹏﹏﹏ · Esc سے﹏ منسوخ﹏﹏ کریں﹏﹏⟧"
+        },
+        {
+          "key": "ui.chat.pickers.stop.confirm",
+          "original": "{count, plural, one {یہ سیشن} other {{count, number, ::group-off} سیشن}} اب روکیں",
+          "pseudo": "⟦{count, plural, one {یہ سیشن} other {{count, number, ::group-off} سیشن}} اب﹏ روکیں﹏﹏⟧"
+        },
+        {
+          "key": "ui.chat.transcript_copy.menu.copy_markdown",
+          "original": "Markdown کے طور پر نقل کریں",
+          "pseudo": "⟦Markdown کے﹏ طور﹏﹏ پر﹏ نقل﹏﹏ کریں﹏﹏⟧"
+        },
+        {
+          "key": "ui.presence.hours_ago",
+          "original": "{count, number} گھنٹے پہلے",
+          "pseudo": "⟦{count, number} گھنٹے﹏﹏ پہلے﹏﹏⟧"
+        }
+      ]
+    },
+    "static_overflow": {
+      "method": "Literal code-point lengths after removing non-nested ICU argument expressions; material set = +8 code points and ratio >=1.25, plus all compact ui.presence age strings. Pseudo lengths include delimiters and expansion.",
+      "items": [
+        {
+          "key": "ui.chat.sidebar.pins.drag_title",
+          "en": 29,
+          "ur": 46,
+          "pseudo": 63,
+          "ratio": 1.59
+        },
+        {
+          "key": "ui.chat.pickers.fast.premium_acknowledgement",
+          "en": 46,
+          "ur": 59,
+          "pseudo": 84,
+          "ratio": 1.28
+        },
+        {
+          "key": "ui.chat.sidebar.list.loading_more",
+          "en": 13,
+          "ur": 25,
+          "pseudo": 38,
+          "ratio": 1.92
+        },
+        {
+          "key": "ui.chat.analytics.sections.by_provider",
+          "en": 11,
+          "ur": 22,
+          "pseudo": 32,
+          "ratio": 2
+        },
+        {
+          "key": "ui.chat.transcript_copy.menu.copy_markdown",
+          "en": 16,
+          "ur": 27,
+          "pseudo": 37,
+          "ratio": 1.69
+        },
+        {
+          "key": "ui.chat.transcript_copy.toast.copied_markdown",
+          "en": 18,
+          "ur": 29,
+          "pseudo": 40,
+          "ratio": 1.61
+        },
+        {
+          "key": "ui.chat.pickers.login.title",
+          "en": 21,
+          "ur": 32,
+          "pseudo": 47,
+          "ratio": 1.52
+        },
+        {
+          "key": "ui.chat.canonical.transcript.reconnecting",
+          "en": 12,
+          "ur": 22,
+          "pseudo": 33,
+          "ratio": 1.83
+        },
+        {
+          "key": "ui.presence.link_down_last_seen",
+          "en": 22,
+          "ur": 31,
+          "pseudo": 50,
+          "ratio": 1.41
+        },
+        {
+          "key": "ui.presence.device_link_down",
+          "en": 25,
+          "ur": 34,
+          "pseudo": 61,
+          "ratio": 1.36
+        },
+        {
+          "key": "ui.common.viewer.opening",
+          "en": 8,
+          "ur": 16,
+          "pseudo": 24,
+          "ratio": 2
+        },
+        {
+          "key": "ui.chat.pickers.goal.mark_done",
+          "en": 9,
+          "ur": 17,
+          "pseudo": 26,
+          "ratio": 1.89
+        },
+        {
+          "key": "ui.chat.canonical.transcript.reconnect",
+          "en": 9,
+          "ur": 17,
+          "pseudo": 26,
+          "ratio": 1.89
+        },
+        {
+          "key": "ui.chat.canonical.sound.stop.request_stop",
+          "en": 12,
+          "ur": 20,
+          "pseudo": 30,
+          "ratio": 1.67
+        },
+        {
+          "key": "ui.common.file_actions.copy_file_path",
+          "en": 14,
+          "ur": 22,
+          "pseudo": 33,
+          "ratio": 1.57
+        },
+        {
+          "key": "ui.presence.hours_ago",
+          "en": 5,
+          "ur": 11,
+          "pseudo": 32,
+          "ratio": 2.2
+        },
+        {
+          "key": "ui.presence.minutes_ago",
+          "en": 5,
+          "ur": 9,
+          "pseudo": 30,
+          "ratio": 1.8
+        },
+        {
+          "key": "ui.presence.days_ago",
+          "en": 5,
+          "ur": 8,
+          "pseudo": 28,
+          "ratio": 1.6
+        }
+      ],
+      "disposition": "Every listed item is flagged for the real-app rendered-fit gate. Static length alone is not asserted as clipping or a translation defect."
+    }
+  },
+  "commands": [
+    {
+      "command": "node ur-second-audit.mjs",
+      "actual_result": "exit 0; 152 keys; all key/order, ICU/branch, NFC, bidi-control, line-separator and pseudo counters zero"
+    },
+    {
+      "command": "python3 duplicate-member probe over en/ur catalogues and en context sidecars",
+      "actual_result": "PASS — 33 JSON files, 0 duplicate keys"
+    },
+    {
+      "command": "node scripts/i18n/generate.mjs --check",
+      "actual_result": "exit 0; generated keys byte-identical"
+    },
+    {
+      "command": "IntlMessageFormat proposed-hours probe at 0/1/2/1234",
+      "actual_result": "0 گھنٹے پہلے / 1 گھنٹہ پہلے / 2 گھنٹے پہلے / 1,234 گھنٹے پہلے"
+    }
+  ],
+  "unverified": [
+    "Rendered RTL direction, bidi visual order and glyph shaping",
+    "Actual clipping, truncation, wrapping and overflow in the real app"
+  ],
+  "repository_writes": "None. All audit probes and this receipt are in the auditor session scratchpad.",
+  "artifacts": [
+    {
+      "path": "/Users/damian/.local-operator/sessions/861658748256/scratchpad/ur-second-audit-evidence.json",
+      "sha256": "eba6ad28b19ab8ac11dedaf070d0afe49c81faf498ef4bd21903a374f9ea78ec"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/861658748256/scratchpad/ur-second-audit.mjs",
+      "sha256": "8858240e77eba60e9f61c89cf3da18fe4b0fc1942731ee71b10ce66e9ffdb5d5"
+    },
+    {
+      "path": "/Users/damian/.local-operator/sessions/861658748256/scratchpad/ur-second-audit-run.log",
+      "sha256": "b89a15093eebf55ab219a1e16db9a129b6fa3946c08b0aaa32dfa92e0a8c811e"
+    }
+  ]
+}

@@ -1,0 +1,793 @@
+{
+  "schema": 1,
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "fallback": null,
+  "instance": "4522cb1f1619",
+  "session": "4522cb1f1619",
+  "date": "2026-10-23",
+  "locale": "ur",
+  "round": 1,
+  "status": "changes_requested",
+  "verdict": "changes_requested",
+  "keys_audited": 152,
+  "finding_counts": {
+    "blocker": 0,
+    "major": 1,
+    "minor": 1,
+    "nit": 0
+  },
+  "scope": {
+    "base": "f6b9aae9ce5594e79dddb0d654edc4b4a0862331",
+    "head": "8e1814b92ea7c7afa809997e77e157781c73eaa0",
+    "translator_session": "a8963d4aa6bf",
+    "namespaces": [
+      "ui.chat.sidebar",
+      "ui.chat.pickers",
+      "ui.chat.canonical",
+      "ui.chat.analytics",
+      "ui.chat.transcript_copy",
+      "ui.common.file_actions",
+      "ui.common.viewer",
+      "ui.chat.tag_dialogs",
+      "ui.presence",
+      "ui.chat.run_details",
+      "ui.chat.commentary_actions"
+    ],
+    "note": "Independent native Urdu audit of all 152 newly added values in 11 namespaces; English, target and context bytes read side by side. Catalogue audit only, not rendered RTL/design approval."
+  },
+  "independence": "This auditor did not author or translate the contribution and is a different session from translator a8963d4aa6bf. No catalogue, context, ledger, allowance, generated or other repository file was edited; no PR or commit was created.",
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  },
+  "reference_paths": {
+    "glossary": "~/local-operator/i18n/glossary.md",
+    "style_guide": "~/local-operator/i18n/style-guides/ur.md",
+    "ui_howto": "docs/I18N.md at scope.head",
+    "accepted_contract": "~/local-operator/docs/design/i18n.md §§2, 4, 6",
+    "receipt_contract": "scripts/i18n/ledger-assemble.mjs lines 43-57 at scope.head"
+  },
+  "translator_hash_crosscheck": {
+    "checked": 33,
+    "mismatches": [],
+    "note": "All independently derived en/ur/context hashes equal the translator receipt claims; the claims were not used as audit evidence."
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "keys_audited": 43,
+      "sha256": {
+        "en": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+        "ur": "a5557ccaeb9e0c57c466f901b71543fb39dff23da32ceb1fd9234bb666b3372c",
+        "context": "fe5dc2a0fa4cb9b95ef5c1a30d57aee030fa5edf2b6b54b323562a1c63b8eb3a"
+      },
+      "findings": [],
+      "mechanical": {
+        "exact_en_target_key_order": true,
+        "exact_en_context_key_order": true,
+        "nfc": true,
+        "manual_bidi_controls": 0,
+        "english_identical_values": 0,
+        "icu_descriptor_mismatches": 0
+      }
+    },
+    "ui.chat.pickers": {
+      "status": "passed",
+      "keys_audited": 34,
+      "sha256": {
+        "en": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+        "ur": "1effbfc9eccdd05b1e9071ebd34bdc73383e114665334fd5f1320af111e57909",
+        "context": "8d3fa914cd52768c98a75c4f41b903b86553335b27e406f98500eab7ff576e64"
+      },
+      "findings": [],
+      "mechanical": {
+        "exact_en_target_key_order": true,
+        "exact_en_context_key_order": true,
+        "nfc": true,
+        "manual_bidi_controls": 0,
+        "english_identical_values": 0,
+        "icu_descriptor_mismatches": 0
+      }
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "keys_audited": 30,
+      "sha256": {
+        "en": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
+        "ur": "8b9416cf2da7b9ceeeec631ad3d7fe99c3e5d3dde727febbed4ae924df0255f3",
+        "context": "53145be31fe46bde6578d114653466dc5c6c932947460c10a0022c9e190d9a34"
+      },
+      "findings": [],
+      "mechanical": {
+        "exact_en_target_key_order": true,
+        "exact_en_context_key_order": true,
+        "nfc": true,
+        "manual_bidi_controls": 0,
+        "english_identical_values": 0,
+        "icu_descriptor_mismatches": 0
+      }
+    },
+    "ui.chat.analytics": {
+      "status": "passed",
+      "keys_audited": 11,
+      "sha256": {
+        "en": "6ac0bbfb50c8ef8c772f229868614aa8d07dfd9f659311d5d396cea5c4611159",
+        "ur": "e660bfcbf69f8b30290eeb890dceb1bee2af0980d2fdb248562c8c039fb8820a",
+        "context": "7c25af7f391fbaac6a1718a81b8b258c0b313ba46411f16e95691446828640ff"
+      },
+      "findings": [],
+      "mechanical": {
+        "exact_en_target_key_order": true,
+        "exact_en_context_key_order": true,
+        "nfc": true,
+        "manual_bidi_controls": 0,
+        "english_identical_values": 0,
+        "icu_descriptor_mismatches": 0
+      }
+    },
+    "ui.chat.transcript_copy": {
+      "status": "passed",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "a81115a3e17a63068b79b4c66d86edaa1417a145f0b1fcc14d34deae8cd1734b",
+        "ur": "0c5b41286daa74ea959227a45a7063e82269311f2b4427d9b9015898a216bcee",
+        "context": "955b217858b3ac8c2ab4a20e7ad47298c683698c5c65c0012f681ba6b23d4c8b"
+      },
+      "findings": [],
+      "mechanical": {
+        "exact_en_target_key_order": true,
+        "exact_en_context_key_order": true,
+        "nfc": true,
+        "manual_bidi_controls": 0,
+        "english_identical_values": 0,
+        "icu_descriptor_mismatches": 0
+      }
+    },
+    "ui.common.file_actions": {
+      "status": "passed",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "edac3001910c5ba03d5c0552f07c19baeb1bd1e8e9d3c0a6c178a693f9351233",
+        "ur": "65496c7de6660edd0ef60da86978d0d5ed581e610c4dd34d422fcd9d06a56430",
+        "context": "147274f1e573608ac78a0dc45aa14d14a5d2cf89efa953d4f4e012a7fae8d04b"
+      },
+      "findings": [],
+      "mechanical": {
+        "exact_en_target_key_order": true,
+        "exact_en_context_key_order": true,
+        "nfc": true,
+        "manual_bidi_controls": 0,
+        "english_identical_values": 0,
+        "icu_descriptor_mismatches": 0
+      }
+    },
+    "ui.common.viewer": {
+      "status": "passed",
+      "keys_audited": 4,
+      "sha256": {
+        "en": "660c7e185ebc22d37ecc9b5d02807428f87c477f86431f5cdb07fdec888b78bb",
+        "ur": "85dbf1ae38907f821d94df37b31b2c6889718e1e594ad08e83b7eea6f1167cad",
+        "context": "cd11be98d1d94cba927141b2b6b390af7fdc59a8519ea3ed18361cfd4930c2c9"
+      },
+      "findings": [],
+      "mechanical": {
+        "exact_en_target_key_order": true,
+        "exact_en_context_key_order": true,
+        "nfc": true,
+        "manual_bidi_controls": 0,
+        "english_identical_values": 0,
+        "icu_descriptor_mismatches": 0
+      }
+    },
+    "ui.chat.tag_dialogs": {
+      "status": "passed",
+      "keys_audited": 4,
+      "sha256": {
+        "en": "140fb44d94388706e24ba37c6910a6b753ce0f0701f44e78390a1fffb13c1506",
+        "ur": "3b251779813dcf501877c472adc1f1827ecc1771a1b62f47ac969966249df284",
+        "context": "8f4cc8ca17d926c4f85f4226ff92e7c291babbe7e9868ebb8d9fceb5a8841987"
+      },
+      "findings": [],
+      "mechanical": {
+        "exact_en_target_key_order": true,
+        "exact_en_context_key_order": true,
+        "nfc": true,
+        "manual_bidi_controls": 0,
+        "english_identical_values": 0,
+        "icu_descriptor_mismatches": 0
+      }
+    },
+    "ui.presence": {
+      "status": "changes_requested",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
+        "ur": "04f341a8a1c3755ff8d6ed935027b5161204bf674173fcaaf89c4db2db00a2a9",
+        "context": "f78dc27ea4c00befbb3b48ce6723230a23c6e4388bf5ace429c2b445447aae44"
+      },
+      "findings": [
+        {
+          "id": "UR1",
+          "severity": "MAJOR",
+          "key": "ui.presence.hours_ago",
+          "current": "{count, number} گھنٹے پہلے",
+          "proposed": "{count, plural, one {{count, number} گھنٹہ پہلے} other {{count, number} گھنٹے پہلے}}",
+          "reason": "At Urdu CLDR `one`, the current value formats the ungrammatical “1 گھنٹے پہلے”; singular گھنٹہ is required, while 0/2/1000 correctly use گھنٹے.",
+          "evidence": "Real IntlMessageFormat ur samples: 0 گھنٹے پہلے; 1 گھنٹے پہلے; 2 گھنٹے پہلے; 1,000 گھنٹے پہلے. Proposed remedy formats 0 گھنٹے پہلے; 1 گھنٹہ پہلے; 2 گھنٹے پہلے; 1,000 گھنٹے پہلے. The same distinction already exists in ui.library.time.hours_h_ago."
+        },
+        {
+          "id": "UR2",
+          "severity": "MINOR",
+          "key": "ui.presence.minutes_ago",
+          "current": "{count, number} منٹ پہلے",
+          "proposed": "Keep the current grammatical text and run the narrow-sidebar rendered check; if it truncates, choose a native/design-reviewed compact unit without dropping پہلے, because this fragment is also inserted into “آخری بار {age} دیکھا گیا”.",
+          "reason": "The sidecar requires a compact unit for narrow sidebar rows, but the formatted value grows from “4m ago” (6 code points) to “4 منٹ پہلے” (10, +66.7%); hours_ago grows 6→12 and days_ago 6→9, with the composed Link down sample growing 18→22.",
+          "evidence": "Formatted source/target measurements, not pixels: minutes 4m ago=6 vs 4 منٹ پہلے=10; singular hours 1h ago=6 vs 1 گھنٹے پہلے=12; days 2d ago=6 vs 2 دن پہلے=9; Link down · 4m ago=18 vs لنک منقطع · 4 منٹ پہلے=22."
+        }
+      ],
+      "mechanical": {
+        "exact_en_target_key_order": true,
+        "exact_en_context_key_order": true,
+        "nfc": true,
+        "manual_bidi_controls": 0,
+        "english_identical_values": 0,
+        "icu_descriptor_mismatches": 0
+      }
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "7eea05d7c5b371e7969214abc7bd2961bf6c38fd3e5886e0957493b787878094",
+        "ur": "4c39c81581c49c0c6ca859601bf3bf0898566faf0075083d4534d9aaacccd35d",
+        "context": "eae93350935a597d66fe4931a40fed2fa9d40d0b01e03925d2cef22985f628d6"
+      },
+      "findings": [],
+      "mechanical": {
+        "exact_en_target_key_order": true,
+        "exact_en_context_key_order": true,
+        "nfc": true,
+        "manual_bidi_controls": 0,
+        "english_identical_values": 0,
+        "icu_descriptor_mismatches": 0
+      }
+    },
+    "ui.chat.commentary_actions": {
+      "status": "passed",
+      "keys_audited": 1,
+      "sha256": {
+        "en": "77d6babd2e9fac04e95a550d25f4428e113144c160c34009b89e06608b812868",
+        "ur": "3c70dc50e01696b8bfba6702aede932dfc32fe98f39f682744ef14f00e5c3c78",
+        "context": "20901db281f82c025243d688a14bfc490d1b5c01c7fd03e7d8788f35411c3ad1"
+      },
+      "findings": [],
+      "mechanical": {
+        "exact_en_target_key_order": true,
+        "exact_en_context_key_order": true,
+        "nfc": true,
+        "manual_bidi_controls": 0,
+        "english_identical_values": 0,
+        "icu_descriptor_mismatches": 0
+      }
+    }
+  },
+  "native_review": {
+    "coverage": "152/152 English values, Urdu values, roles, tones, lengths, notes and placeholder descriptions reviewed.",
+    "glossary_register": "Glossary terms are consistent: سیشن، ایجنٹ، ٹیم، ٹول، منظوریاں، ماڈل، مہارتیں، لاگت، ڈیوائس. Existing Urdu اسناد (including singular Credential contexts) and کام for Jobs match the established catalogue. Respectful آپ/imperative register is used; no standalone تم or تو. No Hindi danda, Arabic-only ي/ك, or untranslated prose found.",
+    "clean_namespaces": [
+      "ui.chat.sidebar",
+      "ui.chat.pickers",
+      "ui.chat.canonical",
+      "ui.chat.analytics",
+      "ui.chat.transcript_copy",
+      "ui.common.file_actions",
+      "ui.common.viewer",
+      "ui.chat.tag_dialogs",
+      "ui.chat.run_details",
+      "ui.chat.commentary_actions"
+    ],
+    "finding_counts_by_namespace": {
+      "ui.chat.sidebar": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "ui.chat.pickers": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "ui.chat.canonical": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "ui.chat.analytics": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "ui.chat.transcript_copy": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "ui.common.file_actions": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "ui.common.viewer": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "ui.chat.tag_dialogs": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "ui.presence": {
+        "blocker": 0,
+        "major": 1,
+        "minor": 1,
+        "nit": 0
+      },
+      "ui.chat.run_details": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      },
+      "ui.chat.commentary_actions": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    }
+  },
+  "validation": {
+    "commands": [
+      "node <session-scratch>/audit.mjs (Node v26.12.0; @formatjs/icu-messageformat-parser 3.5.21; intl-messageformat 12.1.3)",
+      "node --test scripts/i18n/locale-parity.test.mjs scripts/i18n/format.test.mjs",
+      "node scripts/i18n/generate.mjs --check",
+      "node scripts/i18n/context-parity.mjs"
+    ],
+    "repository_results": [
+      "51 tests passed, 0 failed, 0 skipped; includes ur key/placeholder and no-English-stub checks.",
+      "keys.gen.ts byte-identical to fresh generation.",
+      "context-parity: ok; 131 pre-existing allowed gaps in 4 namespaces, none introduced into scoped exact context parity."
+    ],
+    "mechanical": {
+      "keys": 152,
+      "exact_key_order": "152/152 en↔ur and 152/152 en↔context",
+      "icu": "All values parsed; argument names/types, select arms, plural arms, number skeletons and markup descriptors match en. 0 mismatches; 0 format errors.",
+      "unicode": "11/11 targets NFC; no BOM, bidi/zero-width/control characters, Arabic ي/ك or Hindi danda in scoped values.",
+      "english_identical": 0,
+      "errors": []
+    },
+    "cldr_plural": {
+      "categories": [
+        "one",
+        "other"
+      ],
+      "category_samples": {
+        "0": "other",
+        "1": "one",
+        "2": "other",
+        "1.5": "other",
+        "1000": "other"
+      },
+      "number_samples": {
+        "0": "0",
+        "1": "1",
+        "2": "2",
+        "1.5": "1.5",
+        "1000": "1,000"
+      },
+      "stop_confirm": {
+        "0": "0 سیشن اب روکیں",
+        "1": "یہ سیشن اب روکیں",
+        "2": "2 سیشن اب روکیں",
+        "1000": "1000 سیشن اب روکیں"
+      },
+      "hours_ago_failure": {
+        "0": "0 گھنٹے پہلے",
+        "1": "1 گھنٹے پہلے",
+        "2": "2 گھنٹے پہلے",
+        "1000": "1,000 گھنٹے پہلے"
+      },
+      "hours_ago_proposed": {
+        "0": "0 گھنٹے پہلے",
+        "1": "1 گھنٹہ پہلے",
+        "2": "2 گھنٹے پہلے",
+        "1000": "1,000 گھنٹے پہلے"
+      }
+    },
+    "pseudo_localization": {
+      "method": "Every scoped value was formatted through intl-messageformat with deterministic arguments and then wrapped in ⟦…⟧ with 40% visible-length padding in scratch; select arms pin/unpin/other and counts 0/1/2/1000 were exercised where applicable.",
+      "actual": {
+        "formatted_samples": 172,
+        "distinct_keys": 152,
+        "format_errors": 0,
+        "pseudo_length_min": 9,
+        "pseudo_length_max": 303
+      },
+      "limit": "String-level pseudo-expansion only. No DOM, geometry, screenshot, native bidi or rendered-fit claim."
+    },
+    "static_overflow": {
+      "method": "Unicode code-point counts of raw en/ur message templates. Material expansion is declared as ratio >=1.25 AND at least +4 code points; this is a triage criterion, not a pixel-width or clipping claim.",
+      "material_expansion_count": 45,
+      "material_expansion": [
+        {
+          "key": "ui.chat.sidebar.agents.clear_filter",
+          "en_codepoints": 18,
+          "ur_codepoints": 24,
+          "ratio": 1.333,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.sidebar.agents.empty",
+          "en_codepoints": 13,
+          "ur_codepoints": 20,
+          "ratio": 1.538,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.sidebar.agents.loading",
+          "en_codepoints": 15,
+          "ur_codepoints": 21,
+          "ratio": 1.4,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.sidebar.agents.no_match",
+          "en_codepoints": 15,
+          "ur_codepoints": 20,
+          "ratio": 1.333,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.sidebar.header.view_options",
+          "en_codepoints": 12,
+          "ur_codepoints": 18,
+          "ratio": 1.5,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.sidebar.list.loading_more",
+          "en_codepoints": 13,
+          "ur_codepoints": 25,
+          "ratio": 1.923,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.sidebar.pins.drag_title",
+          "en_codepoints": 29,
+          "ur_codepoints": 46,
+          "ratio": 1.586,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.sidebar.row.not_sent",
+          "en_codepoints": 12,
+          "ur_codepoints": 19,
+          "ratio": 1.583,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.sidebar.search.include_archived",
+          "en_codepoints": 16,
+          "ur_codepoints": 21,
+          "ratio": 1.313,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.sidebar.teams.loading",
+          "en_codepoints": 14,
+          "ur_codepoints": 21,
+          "ratio": 1.5,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.pickers.copy.title",
+          "en_codepoints": 4,
+          "ur_codepoints": 8,
+          "ratio": 2,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.pickers.credential.forget",
+          "en_codepoints": 6,
+          "ur_codepoints": 10,
+          "ratio": 1.667,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.pickers.fast.premium_acknowledgement",
+          "en_codepoints": 46,
+          "ur_codepoints": 59,
+          "ratio": 1.283,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.pickers.goal.mark_done",
+          "en_codepoints": 9,
+          "ur_codepoints": 17,
+          "ratio": 1.889,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.pickers.login.title",
+          "en_codepoints": 21,
+          "ur_codepoints": 32,
+          "ratio": 1.524,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.pickers.logout.title",
+          "en_codepoints": 8,
+          "ur_codepoints": 13,
+          "ratio": 1.625,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.pickers.profile.loading_detail",
+          "en_codepoints": 14,
+          "ur_codepoints": 19,
+          "ratio": 1.357,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.pickers.skills.loading",
+          "en_codepoints": 7,
+          "ur_codepoints": 13,
+          "ratio": 1.857,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.canonical.sound.stop.confirm_label",
+          "en_codepoints": 20,
+          "ur_codepoints": 25,
+          "ratio": 1.25,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.canonical.sound.stop.keep_waiting",
+          "en_codepoints": 12,
+          "ur_codepoints": 17,
+          "ratio": 1.417,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.canonical.sound.stop.request_stop",
+          "en_codepoints": 12,
+          "ur_codepoints": 20,
+          "ratio": 1.667,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.canonical.supplement.frame.loading",
+          "en_codepoints": 16,
+          "ur_codepoints": 20,
+          "ratio": 1.25,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.canonical.transcript.edit",
+          "en_codepoints": 4,
+          "ur_codepoints": 10,
+          "ratio": 2.5,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.canonical.transcript.reconnect",
+          "en_codepoints": 9,
+          "ur_codepoints": 17,
+          "ratio": 1.889,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.canonical.transcript.reconnecting",
+          "en_codepoints": 12,
+          "ur_codepoints": 22,
+          "ratio": 1.833,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.analytics.filters.top_level_only",
+          "en_codepoints": 14,
+          "ur_codepoints": 21,
+          "ratio": 1.5,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.analytics.sections.by_channel",
+          "en_codepoints": 10,
+          "ur_codepoints": 15,
+          "ratio": 1.5,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.analytics.sections.by_model",
+          "en_codepoints": 8,
+          "ur_codepoints": 15,
+          "ratio": 1.875,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.analytics.sections.by_provider",
+          "en_codepoints": 11,
+          "ur_codepoints": 22,
+          "ratio": 2,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.analytics.sections.by_session",
+          "en_codepoints": 10,
+          "ur_codepoints": 15,
+          "ratio": 1.5,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.analytics.toolbar.refreshing",
+          "en_codepoints": 10,
+          "ur_codepoints": 17,
+          "ratio": 1.7,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.transcript_copy.menu.copy_markdown",
+          "en_codepoints": 16,
+          "ur_codepoints": 27,
+          "ratio": 1.688,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.transcript_copy.menu.copy_selection",
+          "en_codepoints": 14,
+          "ur_codepoints": 18,
+          "ratio": 1.286,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.transcript_copy.toast.copied_markdown",
+          "en_codepoints": 18,
+          "ur_codepoints": 29,
+          "ratio": 1.611,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.transcript_copy.toast.copied_selection",
+          "en_codepoints": 16,
+          "ur_codepoints": 20,
+          "ratio": 1.25,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.transcript_copy.selection.copy",
+          "en_codepoints": 14,
+          "ur_codepoints": 18,
+          "ratio": 1.286,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.common.file_actions.copy_file_path",
+          "en_codepoints": 14,
+          "ur_codepoints": 22,
+          "ratio": 1.571,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.common.file_actions.show_in_canvas",
+          "en_codepoints": 14,
+          "ur_codepoints": 18,
+          "ratio": 1.286,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.common.viewer.opening",
+          "en_codepoints": 8,
+          "ur_codepoints": 16,
+          "ratio": 2,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.common.viewer.reset_view",
+          "en_codepoints": 10,
+          "ur_codepoints": 16,
+          "ratio": 1.6,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.common.viewer.zoom_in",
+          "en_codepoints": 7,
+          "ur_codepoints": 11,
+          "ratio": 1.571,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.tag_dialogs.deleted_name",
+          "en_codepoints": 16,
+          "ur_codepoints": 23,
+          "ratio": 1.438,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.presence.link_down_last_seen",
+          "en_codepoints": 27,
+          "ur_codepoints": 36,
+          "ratio": 1.333,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.presence.hours_ago",
+          "en_codepoints": 20,
+          "ur_codepoints": 26,
+          "ratio": 1.3,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        },
+        {
+          "key": "ui.chat.run_details.keep",
+          "en_codepoints": 4,
+          "ur_codepoints": 10,
+          "ratio": 2.5,
+          "disposition": "real-app rendered-fit check; static expansion alone is not a clipping verdict"
+        }
+      ],
+      "paired_controls": [
+        {
+          "keys": [
+            "ui.chat.canonical.transcript.edit",
+            "ui.chat.canonical.transcript.send_again"
+          ],
+          "en_combined_codepoints": 15,
+          "ur_combined_codepoints": 24,
+          "disposition": "The sidecar requires this pair to share one line; rendered check required."
+        },
+        {
+          "keys": [
+            "ui.common.viewer.zoom_in",
+            "ui.common.viewer.zoom_out"
+          ],
+          "en_combined_codepoints": 16,
+          "ur_combined_codepoints": 23,
+          "disposition": "The sidecar requires a legible side-by-side pair; rendered check required."
+        }
+      ],
+      "compact_time_samples": "Formatted source/target measurements, not pixels: minutes 4m ago=6 vs 4 منٹ پہلے=10; singular hours 1h ago=6 vs 1 گھنٹے پہلے=12; days 2d ago=6 vs 2 دن پہلے=9; Link down · 4m ago=18 vs لنک منقطع · 4 منٹ پہلے=22."
+    },
+    "rtl_text_safety": {
+      "static_result": "Pass apart from the separate compact-width finding. Values are logical-order Urdu with no manually inserted bidi controls; placeholders and required punctuation survive. Mixed-direction Latin runs are intentional technical/product tokens, not reordered prose.",
+      "allowed_english_tokens": [
+        "Local Operator (product)",
+        "Canvas (product pane)",
+        "Finder (Apple product)",
+        "Markdown (format name)",
+        "HTML (technology acronym)",
+        "endpoint (wave-2 kept-English technical term)",
+        "ID (technical acronym)",
+        "Esc (keyboard key)"
+      ],
+      "icu_machine_tokens": "action/select/pin/unpin/other/title/query/max/name/count/number/group-off/plural/one/age/reason remain exact ICU syntax or placeholder names, not untranslated prose.",
+      "untranslated_prose": "None found; 0/152 values are English-identical and every retained Latin prose token is named above.",
+      "unverified": "No rendered RTL, glyph shaping, visual punctuation order, mirrored layout, truncation or real-app frame evidence is claimed. That separate real-app frame gate remains required."
+    }
+  },
+  "limitations": [
+    "Catalogue/source-only audit. No rendered RTL/design/UX sign-off, screenshots, pixel measurements, activation or release approval.",
+    "Static expansion entries are review candidates, not 45 defects; only UR2 is counted as a width finding. No source file was modified to test remedies."
+  ]
+}
