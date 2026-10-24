@@ -180,17 +180,29 @@ import frUiAgentsStarters from "./catalogues/fr/ui.agents.starters.json";
 import frUiBrowserChrome from "./catalogues/fr/ui.browser.chrome.json";
 import frUiBrowser from "./catalogues/fr/ui.browser.json";
 import frUiCanvas from "./catalogues/fr/ui.canvas.json";
+import frUiChatAside from "./catalogues/fr/ui.chat.aside.json";
 import frUiChatAsks from "./catalogues/fr/ui.chat.asks.json";
+import frUiChatAt from "./catalogues/fr/ui.chat.at.json";
 import frUiChatAttachments from "./catalogues/fr/ui.chat.attachments.json";
+import frUiChatCanonical from "./catalogues/fr/ui.chat.canonical.json";
+import frUiChatCanvasPreview from "./catalogues/fr/ui.chat.canvas_preview.json";
 import frUiChatComposer from "./catalogues/fr/ui.chat.composer.json";
 import frUiChatComposerMedia from "./catalogues/fr/ui.chat.composer_media.json";
+import frUiChatCredentialCapture from "./catalogues/fr/ui.chat.credential_capture.json";
 import frUiChatDialogs from "./catalogues/fr/ui.chat.dialogs.json";
+import frUiChatDirectory from "./catalogues/fr/ui.chat.directory.json";
 import frUiChatHeader from "./catalogues/fr/ui.chat.header.json";
 import frUiChat from "./catalogues/fr/ui.chat.json";
 import frUiChatLiveUpdates from "./catalogues/fr/ui.chat.live_updates.json";
+import frUiChatMessage from "./catalogues/fr/ui.chat.message.json";
+import frUiChatOptions from "./catalogues/fr/ui.chat.options.json";
 import frUiChatResponseActions from "./catalogues/fr/ui.chat.response_actions.json";
+import frUiChatRunDetails from "./catalogues/fr/ui.chat.run_details.json";
+import frUiChatSessionStatus from "./catalogues/fr/ui.chat.session_status.json";
 import frUiChatSidebarView from "./catalogues/fr/ui.chat.sidebar_view.json";
+import frUiChatSkill from "./catalogues/fr/ui.chat.skill.json";
 import frUiChatTags from "./catalogues/fr/ui.chat.tags.json";
+import frUiChatTrace from "./catalogues/fr/ui.chat.trace.json";
 import frUiChatTranscriptCopy from "./catalogues/fr/ui.chat.transcript_copy.json";
 import frUiCodeReview from "./catalogues/fr/ui.code_review.json";
 import frUiCommandPalette from "./catalogues/fr/ui.command_palette.json";
@@ -714,17 +726,29 @@ export const bundledCatalogues: Readonly<
 		...frUiBrowserChrome,
 		...frUiBrowser,
 		...frUiCanvas,
+		...frUiChatAside,
 		...frUiChatAsks,
+		...frUiChatAt,
 		...frUiChatAttachments,
+		...frUiChatCanonical,
+		...frUiChatCanvasPreview,
 		...frUiChatComposer,
 		...frUiChatComposerMedia,
+		...frUiChatCredentialCapture,
 		...frUiChatDialogs,
+		...frUiChatDirectory,
 		...frUiChatHeader,
 		...frUiChat,
 		...frUiChatLiveUpdates,
+		...frUiChatMessage,
+		...frUiChatOptions,
 		...frUiChatResponseActions,
+		...frUiChatRunDetails,
+		...frUiChatSessionStatus,
 		...frUiChatSidebarView,
+		...frUiChatSkill,
 		...frUiChatTags,
+		...frUiChatTrace,
 		...frUiChatTranscriptCopy,
 		...frUiCodeReview,
 		...frUiCommandPalette,

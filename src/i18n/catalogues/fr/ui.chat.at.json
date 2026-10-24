@@ -1,0 +1,13 @@
+{
+	"ui.chat.at.contract.this_backend_cannot_carry_file_references_update_the_backend_and": "Ce serveur ne peut pas transmettre de références de fichiers. Mettez-le à jour, puis réessayez.",
+	"ui.chat.at.contract.nothing_to_insert_esc_closes": "Rien à insérer · Échap ferme",
+	"ui.chat.at.contract.reading_this_folder": "Lecture de ce dossier…",
+	"ui.chat.at.contract.this_folder_is_empty": "Ce dossier est vide.",
+	"ui.chat.at.contract.could_not_read_this_folder_it_may_need_a_permission": "Impossible de lire ce dossier. Il nécessite peut-être une autorisation dont cette application ne dispose pas.",
+	"ui.chat.at.contract.could_not_read_this_folder_check_that_it_exists_and": "Impossible de lire ce dossier. Vérifiez qu’il existe et que vous pouvez l’ouvrir.",
+	"ui.chat.at.contract.enter_opens": "Entrée ouvre {path}",
+	"ui.chat.at.contract.enter_inserts": "Entrée insère {token}",
+	"ui.chat.at.contract.footer": "{verb} · Échap ferme",
+	"ui.chat.at.contract.nothing_matches": "Rien ne correspond à « {query} » dans {scope}.",
+	"ui.chat.at.contract.no_files_match": "Aucun fichier ne correspond à « {query} » dans {scope}."
+}

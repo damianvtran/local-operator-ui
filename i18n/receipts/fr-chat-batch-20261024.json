@@ -1,0 +1,872 @@
+{
+  "schema": 1,
+  "locale": "fr",
+  "translator": {
+    "agent": "translator",
+    "role": "LLM translator (team lopdev)",
+    "session": "a1f77e4aae1f",
+    "model": "radient/auto",
+    "model_note": "Harness-selected model identity recorded as radient/auto; the upstream routed model is not exposed in session metadata. No fallback model was used. No translation API, SDK or MT service was used.",
+    "date": "2026-10-24"
+  },
+  "status": "translated",
+  "awaiting": "independent i18n-auditor pass; no ledger row, coverage allowance, baseline, English catalogue or application code was edited by the translator",
+  "scope": "English batch head 5d97575ac4388522267291ffee74d12bd9675b12 (round-3 remediation); batch diff base 9c5ddd1839. 1,733 keys added across 15 chat/transcript/trace/picker namespaces. The fr files also carry the 62 pre-existing English keys in those namespaces, so every touched namespace is key-complete: 1,795 French values.",
+  "branch": {
+    "name": "feat/i18n-chat-fr",
+    "worktree": ".worktrees/i18n-chat-fr",
+    "base_en_head": "5d97575ac4388522267291ffee74d12bd9675b12"
+  },
+  "manifest": {
+    "method": "git show per English catalogue; keys present at 5d97575ac4 and absent at 9c5ddd1839, plus the pre-existing keys needed for key completeness",
+    "new_key_count": 1733,
+    "pre_existing_keys_in_touched_namespaces": 62,
+    "fr_values_total": 1795,
+    "sha256": "07612c23535e546c536900b0b02374b7c991878821a235c82c6fc4ea819d57e3"
+  },
+  "source": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/fr.md",
+      "sha256": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+    },
+    "register": "formal vous, sentence case, French typographic spacing (U+202F before : ; ! ? and before %), curly apostrophe U+2019, « » with U+202F inside, Latin digits, runtime kept English",
+    "plurals": "fr one/many/other; every English one/other plural expanded to the French category set, many only for exact multiples of 10^6"
+  },
+  "namespaces": {
+    "ui.chat.aside": {
+      "keys_in_file_total": 35,
+      "keys_assigned": 35,
+      "sha256": {
+        "en": "d8ce04c8e909a73f3050588b2b562b12db3840ae1f4231a66ef3eb5ac76ed1b6",
+        "fr": "cf3940036cf231ea2f853aa23a7b30b5ce45c5b188bcae2bfe50d3d31d58ceaa",
+        "context": "522fcbc0c965224e7d4fb8cb8200e7c68889c9ee73d073b09c6cb2af827b8431"
+      }
+    },
+    "ui.chat.asks": {
+      "keys_in_file_total": 101,
+      "keys_assigned": 89,
+      "sha256": {
+        "en": "f5017d10d314fc9e3e94eeff2d5067c559e97ba0c6ffcef4e8ed9d1c39cf67ab",
+        "fr": "984dd7883045c3290b80e219c980d61b6c0782e48551d2838f0ffdcdf95933ab",
+        "context": "0e1f544932e7c9c6c94bbb0d4e2066910d80e33060ad23bbbb57d5bb9c1b637c"
+      }
+    },
+    "ui.chat.at": {
+      "keys_in_file_total": 11,
+      "keys_assigned": 11,
+      "sha256": {
+        "en": "685a75115b95770d8d74cc43c2f250c53bed311c0d117cf51849f72041533694",
+        "fr": "0e75d58c00a80c7e94117cbf4aced360b22189bed5d48937258acd73d00baf8a",
+        "context": "da529439f1aa5970aff5b833b40900524c2cfd465abe96296e3b9cecf5ec555e"
+      }
+    },
+    "ui.chat.canonical": {
+      "keys_in_file_total": 297,
+      "keys_assigned": 267,
+      "sha256": {
+        "en": "522e7fced024ec756b4b93b21952c4abfb232278a3ca32bba67b45978749eb6d",
+        "fr": "0bf843af45f39115d45d7e34bf107171e3551559436b258d1b42f3df6967c419",
+        "context": "af353a188112ef28df7dfda8c7139fa5bd33506a40b112392e1e40fbe32116f2"
+      }
+    },
+    "ui.chat.canvas_preview": {
+      "keys_in_file_total": 2,
+      "keys_assigned": 2,
+      "sha256": {
+        "en": "4a29d028e7727502fbefd86b995750910ca3760879769ffa1fc537e5893920a9",
+        "fr": "a6de5cf2062ff5a7d3a670ea5c49563bdffc232d091bbdcf33951266a56d53b2",
+        "context": "5f336900e740bf4ebc7819837676fc2eeffe6deb69b8181ebc440e962d580a06"
+      }
+    },
+    "ui.chat.credential_capture": {
+      "keys_in_file_total": 18,
+      "keys_assigned": 18,
+      "sha256": {
+        "en": "1776a41f5dfa3335b5e390e85870cb55756e25c6a2439cd3f42ea4c864515bdd",
+        "fr": "95b93b1a3d6a8d659a157d2b5a960088c0391a7cfd33a431cd67cddb3703109d",
+        "context": "bf6e3bb8cd70e39cba3aad66b0d92aa38ebad880ac49405fb1affd032f6f3b1f"
+      }
+    },
+    "ui.chat.directory": {
+      "keys_in_file_total": 42,
+      "keys_assigned": 42,
+      "sha256": {
+        "en": "57540488fb400a9a4ac1040c7d7f91f19f25ab313ec87a50ef527da442d3ec6b",
+        "fr": "11324ef3c48221823c6a9b1a4639a91e86b81b6ba3d769eb09be4681b0a3a62c",
+        "context": "4bfdbc219bccc88fbdcaf3c62897b168d5604d5acbbb5f70f040c95c941c2daa"
+      }
+    },
+    "ui.chat.header": {
+      "keys_in_file_total": 72,
+      "keys_assigned": 62,
+      "sha256": {
+        "en": "ff03f6ca7b3206e77fc260116d2b540cc9f211ea37436863b874770e917158d8",
+        "fr": "cce11ac2f5e3588e351e6fecb310e1b519275d971f4ad9e88460f483893fbf09",
+        "context": "0d601a99861fc8b23207f117b90b697ba88ddd4f6419a68021f34c177158ea2e"
+      }
+    },
+    "ui.chat": {
+      "keys_in_file_total": 532,
+      "keys_assigned": 524,
+      "sha256": {
+        "en": "dc5765d20ff846c61f3fe8953e69524393561bc2a39f89fa419958d4e4a67346",
+        "fr": "88d1d4fa8afc0924834acc0faebbeeddaa9c92e87939bb9e3016a8dee6ab7b39",
+        "context": "f95436a7c1e91f17b47a5f45059f58ef63749cedef54b02d10b29260477be426"
+      }
+    },
+    "ui.chat.message": {
+      "keys_in_file_total": 55,
+      "keys_assigned": 55,
+      "sha256": {
+        "en": "95d7b60b2cb1bdc37648cfa896856ce53724e300ed4a6b0448d7562aad452a5a",
+        "fr": "29dafa522bc3e5f1db4de21e36597be30c769308ab5238dddaae61452ba71c72",
+        "context": "0278baa63867980cd08d18e47e282af12a6330b7c6a785f0157e7a01cceb4230"
+      }
+    },
+    "ui.chat.options": {
+      "keys_in_file_total": 33,
+      "keys_assigned": 33,
+      "sha256": {
+        "en": "fdfb1ceae54aa5270dd76b67748f56fa14e5d3f47d7770dad8eba755995a5a79",
+        "fr": "ff613f2f2077049051ea3c105f9a9b1b902f06ec783b91ea8b5bb47878c72253",
+        "context": "4609f41205d7d0b14dd07e98a629b9fb40f74f870106e78b30a3b210eb7f13db"
+      }
+    },
+    "ui.chat.run_details": {
+      "keys_in_file_total": 154,
+      "keys_assigned": 152,
+      "sha256": {
+        "en": "daf3ddc7d9c0904642876bf3db0746b6c0c68c5fe3b87a1a6730b07f67c90c2f",
+        "fr": "4b80b126d2cbddcd0ecf55bba4687aae5084477372873388236207501bddb821",
+        "context": "dcb2cf6f636814a1866186e8864fd6817033fa8de027049b365f362c53b5d384"
+      }
+    },
+    "ui.chat.session_status": {
+      "keys_in_file_total": 162,
+      "keys_assigned": 162,
+      "sha256": {
+        "en": "05a6e2dd52cd41fb90dbb6756bb8a8f51c5d22e3769edb3fd6228a0d9a059198",
+        "fr": "49a5aeb2ad00ecab168e6ff1a83d4db2d9c4310dd4baf8886d67119bd32fb282",
+        "context": "91544a1523e2ccd3a50041e3530ded39255a614f571c50264991ed8e92ca90e7"
+      }
+    },
+    "ui.chat.skill": {
+      "keys_in_file_total": 7,
+      "keys_assigned": 7,
+      "sha256": {
+        "en": "919b6643e792d02ed270911df96d96da277bba5b5b91a2d04fac6cf044acfc10",
+        "fr": "e340917109d816e2149450f28ed86ae53eddf242a233b0c6d2f884e577fc01bc",
+        "context": "012b41d3b048ae9575012522051687b87e3b3a8189dab9121985052ea04f965d"
+      }
+    },
+    "ui.chat.trace": {
+      "keys_in_file_total": 274,
+      "keys_assigned": 274,
+      "sha256": {
+        "en": "52a0fa5ed78ec2f3bbedf5b67f7abf3cc8d72c7a66ff4383d182358e242fb848",
+        "fr": "5c96c8cd86022943330ce0adb3254e6a9036b3080252eb03987d01ff630271db",
+        "context": "b54b6acb4399743d207d8a793080555f1cab291761de90cf3e6e9f3ce9c70016"
+      }
+    }
+  },
+  "checks": {
+    "generate_check": "PASS — src/i18n/keys.gen.ts byte-identical to a fresh generation",
+    "icu_structure": "PASS — 1,795 keys: ICU argument sets, select arms, plural branches and number skeletons compared against English with @formatjs/icu-messageformat-parser; no lost or invented argument, no dropped arm",
+    "pseudo_format": "PASS — 2,195 IntlMessageFormat renders at fr, numeric arguments cycled through 0/1/2/1000000; no throw, no empty render, no unformatted brace beyond the ICU-quoted literal the source itself renders",
+    "key_parity": "PASS — 15/15 touched namespaces key-complete, 1,795/1,795 English keys present, no extra key, no unknown key",
+    "locale_parity_suite": "PARTIAL — [fr] passes the ships-a-message, unique-key, key-complete, known-keys-only and placeholder checks. Its only failure is 'is not an English stub': 101 byte-identical values, all classified below, which need IDENTICAL_OK entries to go green. The suite also fails key-completeness for five other locales on this same extraction batch, independently of fr.",
+    "types": "NOT RUN — translation-only branch; the generated key map is regenerated and unchanged in shape",
+    "literal_scanner": "NOT RUN — no TypeScript change in this branch"
+  },
+  "identical_values": {
+    "count": 101,
+    "summary": [
+      {
+        "class": "format",
+        "count": 67
+      },
+      {
+        "class": "cognate",
+        "count": 16
+      },
+      {
+        "class": "token",
+        "count": 10
+      },
+      {
+        "class": "path",
+        "count": 5
+      },
+      {
+        "class": "product",
+        "count": 3
+      }
+    ],
+    "note": "Every entry is either a placeholders-and-separators-only format string, a French cognate whose spelling really is the English one, a kept-English product/technical name, a literal on-disk folder name, or a non-prose token (HTML role, CSS custom property, Tailwind class, DOM id fragment, keyboard shortcut). None is skipped copy. Gate-file exemption entries were deliberately not added by the translator.",
+    "keys": [
+      {
+        "namespace_file": "ui.chat.asks.json",
+        "key": "ui.chat.asks.ask_panel.urgent",
+        "reason_class": "cognate",
+        "reason": "French cognate: the French word has the same spelling"
+      },
+      {
+        "namespace_file": "ui.chat.asks.json",
+        "key": "ui.chat.asks.ask_panel.label_count",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.asks.json",
+        "key": "ui.chat.asks.fleet_ask_drawer.verb_name",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.canonical.json",
+        "key": "ui.chat.canonical.thread_search.role.agent",
+        "reason_class": "cognate",
+        "reason": "French cognate: the French word has the same spelling"
+      },
+      {
+        "namespace_file": "ui.chat.canonical.json",
+        "key": "ui.chat.canonical.canonical_transcript.1_action",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.canonical.json",
+        "key": "ui.chat.canonical.canonical_transcript.image",
+        "reason_class": "cognate",
+        "reason": "French cognate: the French word has the same spelling"
+      },
+      {
+        "namespace_file": "ui.chat.canonical.json",
+        "key": "ui.chat.canonical.fold_media.image",
+        "reason_class": "cognate",
+        "reason": "French cognate: the French word has the same spelling"
+      },
+      {
+        "namespace_file": "ui.chat.canonical.json",
+        "key": "ui.chat.canonical.image_group_lightbox.image",
+        "reason_class": "cognate",
+        "reason": "French cognate: the French word has the same spelling"
+      },
+      {
+        "namespace_file": "ui.chat.canonical.json",
+        "key": "ui.chat.canonical.fold_media.more",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.canonical.json",
+        "key": "ui.chat.canonical.image_group_lightbox.count_images",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.canonical.json",
+        "key": "ui.chat.canonical.sound_batch_model.name_suffix",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.canonical.json",
+        "key": "ui.chat.canonical.supplement_row.failedcause",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.canonical.json",
+        "key": "ui.chat.canonical.older_history_slot.min_260px_olderhistory_hidden",
+        "reason_class": "token",
+        "reason": "non-prose token (HTML attribute, CSS custom property, Tailwind class or DOM id fragment); must stay byte-identical"
+      },
+      {
+        "namespace_file": "ui.chat.canonical.json",
+        "key": "ui.chat.canonical.canonical_transcript.actions_actions",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.canonical.json",
+        "key": "ui.chat.canonical.canonical_transcript.direction",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.canonical.json",
+        "key": "ui.chat.canonical.canonical_transcript.image_value",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.canonical.json",
+        "key": "ui.chat.canonical.fold_media.image_value",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.canonical.json",
+        "key": "ui.chat.canonical.image_gen_card.noun_value",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.canonical.json",
+        "key": "ui.chat.canonical.image_group_lightbox.image_value",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.canonical.json",
+        "key": "ui.chat.canonical.transcript_reducer.stringvalue_value",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.canonical.json",
+        "key": "ui.chat.canonical.sound_player.action_label",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.credential_capture.json",
+        "key": "ui.chat.credential_capture.unconfirmed_chip",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.directory.json",
+        "key": "ui.chat.directory.directory_indicator.applications",
+        "reason_class": "cognate",
+        "reason": "French cognate: the French word has the same spelling"
+      },
+      {
+        "namespace_file": "ui.chat.directory.json",
+        "key": "ui.chat.directory.directory_indicator.documents",
+        "reason_class": "cognate",
+        "reason": "French cognate: the French word has the same spelling"
+      },
+      {
+        "namespace_file": "ui.chat.directory.json",
+        "key": "ui.chat.directory.directory_indicator.program_files",
+        "reason_class": "path",
+        "reason": "literal filesystem name kept verbatim (the folder is named this on disk)"
+      },
+      {
+        "namespace_file": "ui.chat.directory.json",
+        "key": "ui.chat.directory.directory_indicator.program_files_x86",
+        "reason_class": "path",
+        "reason": "literal filesystem name kept verbatim (the folder is named this on disk)"
+      },
+      {
+        "namespace_file": "ui.chat.directory.json",
+        "key": "ui.chat.directory.directory_indicator.programdata",
+        "reason_class": "path",
+        "reason": "literal filesystem name kept verbatim (the folder is named this on disk)"
+      },
+      {
+        "namespace_file": "ui.chat.directory.json",
+        "key": "ui.chat.directory.directory_indicator.volumes",
+        "reason_class": "cognate",
+        "reason": "French cognate: the French word has the same spelling"
+      },
+      {
+        "namespace_file": "ui.chat.directory.json",
+        "key": "ui.chat.directory.directory_indicator.c_program_files",
+        "reason_class": "path",
+        "reason": "literal filesystem name kept verbatim (the folder is named this on disk)"
+      },
+      {
+        "namespace_file": "ui.chat.directory.json",
+        "key": "ui.chat.directory.directory_indicator.c_program_files_x86",
+        "reason_class": "path",
+        "reason": "literal filesystem name kept verbatim (the folder is named this on disk)"
+      },
+      {
+        "namespace_file": "ui.chat.header.json",
+        "key": "ui.chat.header.chat_header.local_operator",
+        "reason_class": "product",
+        "reason": "product or technical name kept verbatim by the programme glossary"
+      },
+      {
+        "namespace_file": "ui.chat.header.json",
+        "key": "ui.chat.header.chat_header_identity_menu.agents",
+        "reason_class": "cognate",
+        "reason": "French cognate: the French word has the same spelling"
+      },
+      {
+        "namespace_file": "ui.chat.header.json",
+        "key": "ui.chat.header.chat_header_identity.current",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.header.json",
+        "key": "ui.chat.header.chat_header_identity.label_closedreason",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.header.json",
+        "key": "ui.chat.header.chat_header_identity.label_cuesentence",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.header.json",
+        "key": "ui.chat.header.chat_header_identity_menu.closednoteid_title",
+        "reason_class": "token",
+        "reason": "non-prose token (HTML attribute, CSS custom property, Tailwind class or DOM id fragment); must stay byte-identical"
+      },
+      {
+        "namespace_file": "ui.chat.header.json",
+        "key": "ui.chat.header.chat_header_identity.value_description",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.header.json",
+        "key": "ui.chat.header.chat_header_identity.cue_clause",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.header.json",
+        "key": "ui.chat.header.chat_header_identity.label_current",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.header.json",
+        "key": "ui.chat.header.chat_header_identity.agent_trigger",
+        "reason_class": "cognate",
+        "reason": "French cognate: the French word has the same spelling"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.slash_commands.action",
+        "reason_class": "cognate",
+        "reason": "French cognate: the French word has the same spelling"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.chat_regions.ctrl_shift_l",
+        "reason_class": "token",
+        "reason": "non-prose token (HTML attribute, CSS custom property, Tailwind class or DOM id fragment); must stay byte-identical"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.chat_regions.l",
+        "reason_class": "token",
+        "reason": "non-prose token (HTML attribute, CSS custom property, Tailwind class or DOM id fragment); must stay byte-identical"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.sidebar.chat_sidebar.agents",
+        "reason_class": "cognate",
+        "reason": "French cognate: the French word has the same spelling"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.sidebar.chat_sidebar.role_menuitem",
+        "reason_class": "token",
+        "reason": "non-prose token (HTML attribute, CSS custom property, Tailwind class or DOM id fragment); must stay byte-identical"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.slash_commands.x",
+        "reason_class": "token",
+        "reason": "non-prose token (HTML attribute, CSS custom property, Tailwind class or DOM id fragment); must stay byte-identical"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.chat_status_strip.outcome",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.composer.composer_status_row.goal_clear_text_label_seam_goal",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.composer.composer_status_row.goal_cleared_text_leading",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.hub_update_mark.detail_action",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.sidebar.chat_sidebar.displayname_name",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.sidebar.chat_sidebar.footname_section_grown_hint",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.sidebar.chat_sidebar.silent_remedy",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.sidebar.chat_sidebar_view.label_position",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.sidebar.chat_sidebar_view.section_grown_hint_key",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.mermaid_diagram.var_color_warning",
+        "reason_class": "token",
+        "reason": "non-prose token (HTML attribute, CSS custom property, Tailwind class or DOM id fragment); must stay byte-identical"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.mermaid_diagram.var_color_warning_border",
+        "reason_class": "token",
+        "reason": "non-prose token (HTML attribute, CSS custom property, Tailwind class or DOM id fragment); must stay byte-identical"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.mermaid_diagram.var_color_warning_wash",
+        "reason_class": "token",
+        "reason": "non-prose token (HTML attribute, CSS custom property, Tailwind class or DOM id fragment); must stay byte-identical"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.artifact_identity.title_head",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.ask_open_policy.askchipcountclausevalue",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.composer.composer_status_row.job_actionvalue_label_seam_jobclausevalue_busiestclausevalue",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.composer.composer_status_row.loop_labelvalue_loopstatuswordvalue",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.composer.composer_status_row.monitor_actionvalue_label_seam_monitorclausevalue",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.composer.composer_status_row.plan_actionvalue_label_seam_todoclausevalue",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.composer.composer_status_row.subagent_actionvalue_label_seam_childclausevalue_busiestclausevalue",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.composer.composer_status_row.text_label_seam_loopclausevalue",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.composer.composer_status_row.wake_actionvalue_label_seam_wakeclausevalue",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.draft_rows.draft_row_prefix_draftrowtitlevalue",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.draft_rows.value",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.message_grouping.value_value2",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.message_grouping.value_value2_b35da6",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.sidebar.chat_sidebar.clause",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.sidebar.chat_sidebar.detail",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.undo_toasts.detail",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.chat_regions.conversation",
+        "reason_class": "cognate",
+        "reason": "French cognate: the French word has the same spelling"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.sidebar.chat_sidebar_view.agents",
+        "reason_class": "cognate",
+        "reason": "French cognate: the French word has the same spelling"
+      },
+      {
+        "namespace_file": "ui.chat.json",
+        "key": "ui.chat.composer.composer_status_row.goal_disclosure_label",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.message.json",
+        "key": "ui.chat.message.message_avatar.assistant",
+        "reason_class": "cognate",
+        "reason": "French cognate: the French word has the same spelling"
+      },
+      {
+        "namespace_file": "ui.chat.message.json",
+        "key": "ui.chat.message.code_block.code",
+        "reason_class": "cognate",
+        "reason": "French cognate: the French word has the same spelling"
+      },
+      {
+        "namespace_file": "ui.chat.message.json",
+        "key": "ui.chat.message.error_block.settings_section_providers",
+        "reason_class": "token",
+        "reason": "non-prose token (HTML attribute, CSS custom property, Tailwind class or DOM id fragment); must stay byte-identical"
+      },
+      {
+        "namespace_file": "ui.chat.message.json",
+        "key": "ui.chat.message.attachment_frame.detail",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.message.json",
+        "key": "ui.chat.message.attachment_frame.name_detail",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.message.json",
+        "key": "ui.chat.message.invalid_attachment.getfilenamevalue_reason",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.message.json",
+        "key": "ui.chat.message.turn_timestamp.value_full",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.options.json",
+        "key": "ui.chat.options.generation_settings_section.top_k",
+        "reason_class": "product",
+        "reason": "product or technical name kept verbatim by the programme glossary"
+      },
+      {
+        "namespace_file": "ui.chat.options.json",
+        "key": "ui.chat.options.generation_settings_section.top_p",
+        "reason_class": "product",
+        "reason": "product or technical name kept verbatim by the programme glossary"
+      },
+      {
+        "namespace_file": "ui.chat.run_details.json",
+        "key": "ui.chat.run_details.run_detail_mcp.label",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.run_details.json",
+        "key": "ui.chat.run_details.run_detail_wakes.trailingclause",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.run_details.json",
+        "key": "ui.chat.run_details.mcp_failure.lead",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.run_details.json",
+        "key": "ui.chat.run_details.mcp_failure.lead_value",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.run_details.json",
+        "key": "ui.chat.run_details.run_detail_monitors.healthlabel",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.run_details.json",
+        "key": "ui.chat.run_details.run_detail_monitors.interval",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.run_details.json",
+        "key": "ui.chat.run_details.run_detail_monitors.lastchecklabel",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.run_details.json",
+        "key": "ui.chat.run_details.run_detail_wakes.cadence",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.session_status.json",
+        "key": "ui.chat.session_status.session_cost.text_cue",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.session_status.json",
+        "key": "ui.chat.session_status.session_model.fallbackdefault",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.trace.json",
+        "key": "ui.chat.trace.receipt_row_model.base",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.trace.json",
+        "key": "ui.chat.trace.trace_fold.verb_object",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.trace.json",
+        "key": "ui.chat.trace.turn_summary.receipts",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.trace.json",
+        "key": "ui.chat.trace.turn_summary.value",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      },
+      {
+        "namespace_file": "ui.chat.trace.json",
+        "key": "ui.chat.trace.turn_summary.value_75ced7",
+        "reason_class": "format",
+        "reason": "language-neutral format string (placeholders and separators only); nothing to translate"
+      }
+    ]
+  },
+  "terms": {
+    "aside": "kept as the borrowed product noun « aside » (masculine: cet aside, ajouté), matching the existing fr composer key « Interroger l’aside »",
+    "backend": "serveur, matching the existing fr settings copy (the fr guide prefers French)",
+    "canvas": "Canvas, kept as the surface name used by the existing fr panel rail",
+    "manager": "responsable, matching the existing fr projects copy",
+    "seat": "siège (agent seat)",
+    "judge": "évaluateur",
+    "checkpoint": "point de contrôle",
+    "loop": "boucle",
+    "goal": "objectif",
+    "compaction": "compactage, trace, transcription, réveil, surveillance, tâche, approbation per the glossary",
+    "listage": "rejected in favour of « Liste des … » for the listing_* progress labels"
+  },
+  "overflow": {
+    "maxcells_breaches": 0,
+    "flags": [
+      {
+        "key": "ui.chat.directory.directory_indicator.home",
+        "en": "Home",
+        "fr": "Dossier personnel",
+        "why": "4.25× the English label in the folder list"
+      },
+      {
+        "key": "ui.chat.message.audio_attachment.pause",
+        "en": "Pause",
+        "fr": "Mettre en pause",
+        "why": "3× a short button label; accessible name, but visible if the control is labelled"
+      },
+      {
+        "key": "ui.chat.message.audio_attachment.mute",
+        "en": "Mute",
+        "fr": "Couper le son",
+        "why": "3.25× a short button label"
+      },
+      {
+        "key": "ui.chat.trace.trace_labels.ending",
+        "en": "Ending",
+        "fr": "Fin de la conversation",
+        "why": "3.67× a status verb in the trace line"
+      },
+      {
+        "key": "ui.chat.sidebar.sidebar_scope_paging.no_chats_yet",
+        "en": "No chats yet",
+        "fr": "Aucune conversation pour l’instant",
+        "why": "empty-state label, 22 cells longer"
+      }
+    ]
+  },
+  "notes": [
+    "Base pin correction applied: the branch was rebased onto 5d97575ac4 and every key absent from that English set (the remediation-pruned protocol/identity tokens) was dropped from the French files before completion.",
+    "Only French catalogue files, src/i18n/keys.gen.ts and this receipt are touched. English catalogues, other locales, application code, ledger, coverage allowance, baseline and gate scripts are untouched.",
+    "Existing French values keep their bytes; new keys follow the English key order and the catalogue files keep tab indentation and one trailing newline."
+  ]
+}
