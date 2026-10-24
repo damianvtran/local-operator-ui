@@ -74,13 +74,16 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export {
+				FAST_UNAVAILABLE_SENTENCE,
 				NO_DRAFT_TARGET,
+				draftModelForWire,
 				draftPreviewKey,
 				draftPreviewQuery,
 				effortCarry,
 				fastModelPickNotice,
 				fastPickFailure,
 				fetchDraftPreview,
+				pickResultText,
 				selectionFromModel,
 				selectionSelector,
 			} from "./src/renderer/src/features/chat/draft-selection";
@@ -98,6 +101,14 @@ const bundle = await build({
 				specUnresolved,
 			} from "./src/renderer/src/features/chat/session-status/session-model";
 			export { errorText } from "./src/renderer/src/features/chat/pickers/use-picker-backend";
+			/*
+			 * The REAL negotiation predicate, for the picker harness below: the
+			 * shipped pickers now ask it whether the backend carries a draft's dial,
+			 * and a hand-written stub would be the second copy of a rule that drifts.
+			 * The capability DOCUMENT is the harness's (one fixture), the predicate is
+			 * the app's.
+			 */
+			export { desktopFeatureEnabled } from "./src/renderer/src/shared/api/local-operator/desktop-hooks";
 			export {
 				admitChatDraft,
 				useCanonicalSessionsStore,
@@ -146,9 +157,12 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	NO_DRAFT_TARGET,
 	DesktopControlError,
+	FAST_UNAVAILABLE_SENTENCE,
 	admitChatDraft,
 	bandReadings,
+	draftModelForWire,
 	desktopEndpoint,
+	desktopFeatureEnabled,
 	desktopRequestSchema,
 	draftFastReading,
 	draftPreviewKey,
@@ -164,6 +178,7 @@ const {
 	fastPickFailure,
 	fetchDraftPreview,
 	modelSelector,
+	pickResultText,
 	panePlacement,
 	selectionFromModel,
 	selectionSelector,
@@ -354,6 +369,12 @@ test("a fast pick rides the create, and a pane that never picked one sends no di
 			? { result: { session_id: "abcdef123456", binding: { kind: "none" } } }
 			: { result: {} };
 
+	/*
+	 * The capability the pane publishes (`setDraftFastCarries`). Stated here
+	 * because the create now asks it (round 2's F1 follow-up): this half is the
+	 * backend that CARRIES the field, which is the only one the dial may reach.
+	 */
+	store.setDraftFastCarries(true);
 	const key = store.stageDraft();
 	// What FastPicker's draft branch records: the pane's selection, dial on.
 	store.setDraftModel(key, PICKED_FAST);
@@ -392,6 +413,45 @@ test("a fast pick rides the create, and a pane that never picked one sends no di
 		!("fast_mode" in plainCreate.body.model),
 		"an untouched dial must be absent, never `false`",
 	);
+
+	/*
+	 * ROUND 2'S F1 FOLLOW-UP, end to end: the same row, sent by a backend that
+	 * cannot carry the field. The dial is dropped from the REQUEST (the core's
+	 * `DraftModel` is `extra="forbid"`, so keeping it would refuse the model and
+	 * the effort rung with it) and the ROW keeps the user's choice untouched.
+	 */
+	calls.length = 0;
+	store.setDraftFastCarries(false);
+	const replayKey = store.stageDraft();
+	store.setDraftModel(replayKey, PICKED_FAST);
+	assert.deepEqual(
+		useCanonicalSessionsStore.getState().drafts[replayKey].model,
+		PICKED_FAST,
+		"the strip must not be what discards the choice: only the request is filtered",
+	);
+	await admitChatDraft(replayKey, {
+		text: "hello",
+		attachments: [],
+		images: [],
+		mode: "prompt",
+		cwd: CWD,
+	});
+	const replayCreate = wire().find(
+		(call) => call.path === "/v1/desktop/sessions",
+	);
+	assert.deepEqual(replayCreate?.body.model, PICKED);
+	assert.ok(
+		!("fast_mode" in replayCreate.body.model),
+		"an older core would 422 the WHOLE body, so the field cannot be sent",
+	);
+	// And the sentence the pane shows for it is the exported one, not a literal
+	// somewhere else: the strip and the pick cannot name two different facts.
+	assert.equal(
+		FAST_UNAVAILABLE_SENTENCE,
+		"Fast mode is off: this version of the Local Operator service cannot carry it.",
+	);
+	// Back to the fail-closed default the store ships with, for the tests below.
+	store.setDraftFastCarries(false);
 });
 
 test("a draft's preview resolves the dial it was asked for", async () => {
@@ -411,6 +471,55 @@ test("a draft's preview resolves the dial it was asked for", async () => {
 	 * answers `null` there, and the pick is refused rather than claimed.
 	 */
 	assert.equal(bandReadings(resolved.snapshot, null).identity.fast_mode, true);
+});
+
+test("a backend without draft_fast is never SENT the dial, and a capable one is (round 2's F1 replay half)", async () => {
+	/*
+	 * A row persisted on a capable build replays `fast_mode: true` into the preview
+	 * and the create. The core's draft model is `extra="forbid"`, so an older
+	 * backend refuses the WHOLE body - the pane would not even resolve a model. The
+	 * filter lives at the senders (`draftPreviewQuery`, and the store's create),
+	 * and this drives the SHIPPED query rather than the helper alone.
+	 */
+	calls.length = 0;
+	reply = () => ({
+		result: { frontend: frame({ ...SPEC, fast_mode: false }) },
+	});
+	await draftPreviewQuery({ cwd: CWD, model: PICKED_FAST }, false).queryFn();
+	const filtered = lastWire();
+	assert.equal(filtered.path, "/v1/desktop/sessions/preview");
+	assert.deepEqual(filtered.body.model, PICKED);
+	assert.ok(
+		!("fast_mode" in filtered.body.model),
+		"the field must not reach a backend that would 422 the whole body",
+	);
+	/*
+	 * ONE CACHE ENTRY, and it is the same one the filtered selection has. A key
+	 * built from the unfiltered model would cache two answers to one question, and
+	 * the pickers read the pane's entry by key.
+	 */
+	assert.deepEqual(
+		draftPreviewQuery({ cwd: CWD, model: PICKED_FAST }, false).queryKey,
+		draftPreviewQuery({ cwd: CWD, model: PICKED }, true).queryKey,
+	);
+
+	calls.length = 0;
+	await draftPreviewQuery({ cwd: CWD, model: PICKED_FAST }, true).queryFn();
+	assert.equal(
+		lastWire().body.model.fast_mode,
+		true,
+		"a capable backend still gets the dial - the guard is not a feature removal",
+	);
+});
+
+test("the wire filter drops a dial only when it has one to drop", () => {
+	/* Identity, not a copy: the ordinary body stays byte-for-byte what every
+	 * caller sent before the field existed. */
+	assert.equal(draftModelForWire(PICKED, false), PICKED);
+	assert.equal(draftModelForWire(PICKED_FAST, true), PICKED_FAST);
+	assert.deepEqual(draftModelForWire(PICKED_FAST, false), PICKED);
+	assert.equal(draftModelForWire(null, false), null);
+	assert.equal(draftModelForWire(undefined, false), null);
 });
 
 /* ---- the first turn is created on the selection --------------------------- */
@@ -799,8 +908,8 @@ test("each picker routes a draft's pick through one resolver, and never through 
 	assert.match(resolve, /setPicked\(chosen\)/);
 	assert.match(
 		picker,
-		/draftPreviewQuery\(draftPick\.target \?\? NO_DRAFT_TARGET\)/,
-		"both dialogs resolve for the selection in force, not the prop they opened on",
+		/draftPreviewQuery\(\s*draftPick\.target \?\? NO_DRAFT_TARGET,\s*draftPick\.carriesFast,?\s*\)/,
+		"both dialogs resolve for the selection in force, not the prop they opened on - and through the wire filter (round 2's F1 follow-up)",
 	);
 	/*
 	 * R6: an effort rung with no model behind it is refused OUT LOUD. `pick` takes a
@@ -976,27 +1085,60 @@ test("a draft's refusal names the form that works, and only where it would work 
 		features: { draft_selection: 1 },
 	};
 	assert.equal(
-		draftRouteRefusal("fast", "session.fast", draft, CAPABLE),
+		draftRouteRefusal("fast", "session.fast", draft, CAPABLE, undefined),
 		"/fast takes no argument on a new chat. Type /fast on its own to set it for the first message.",
 	);
 	assert.equal(
-		draftRouteRefusal("fast", "session.fast", draft, NO_FAST),
+		draftRouteRefusal("fast", "session.fast", draft, NO_FAST, undefined),
 		"/fast is not available on this version of the Local Operator service. Update Local Operator, then try again.",
+	);
+	/*
+	 * THE OTHER TWO STATES ARE NOT "UPDATE" (round 2, N3): `desktopFeatureEnabled`
+	 * answers false for all three, and the repair is different for each. An
+	 * unanswered probe is transient; unpaired is a credential fact, and the app's
+	 * own words for it are `moveGateReason`'s.
+	 */
+	const UNPAIRED = { desktop_available: false, features: {} };
+	assert.equal(
+		draftRouteRefusal("fast", "session.fast", draft, UNPAIRED, undefined),
+		"/fast is not available: this app is not paired with the backend.",
+	);
+	assert.equal(
+		draftRouteRefusal("fast", "session.fast", draft, undefined, undefined),
+		"/fast is waiting for the local service to answer. Try again in a moment.",
+	);
+	/*
+	 * THE PRE-PREVIEW WINDOW (round 2, D7): no draft context yet, but the pane is
+	 * resolving, so "needs an open conversation" is a diagnosis of the wrong pane.
+	 * The wording follows the strip's own reading ("Resolving the model").
+	 */
+	assert.equal(
+		draftRouteRefusal("fast", "session.fast", undefined, CAPABLE, {
+			status: "pending",
+		}),
+		"/fast is waiting for this conversation's model to resolve. Try again in a moment.",
+	);
+	assert.equal(
+		draftRouteRefusal("fast", "session.fast", undefined, CAPABLE, {
+			status: "failed",
+			retry: () => undefined,
+		}),
+		"/fast needs this conversation's model, which was not resolved. Retry it from the model reading.",
 	);
 	/* No draft context, and a row that declares no draft route: the ordinary
 	 * refusal is still the honest one. */
 	assert.equal(
-		draftRouteRefusal("fast", "session.fast", undefined, CAPABLE),
+		draftRouteRefusal("fast", "session.fast", undefined, CAPABLE, undefined),
 		"/fast needs an open conversation. Start one first.",
 	);
 	assert.equal(
-		draftRouteRefusal("goal", "session.goal", draft, CAPABLE),
+		draftRouteRefusal("goal", "session.goal", draft, CAPABLE, undefined),
 		"/goal needs an open conversation. Start one first.",
 	);
 	/* And the sentence names the command the user actually typed: nothing about
 	 * `/fast` may appear for another row. */
 	assert.doesNotMatch(
-		draftRouteRefusal("goal", "session.goal", draft, CAPABLE),
+		draftRouteRefusal("goal", "session.goal", draft, CAPABLE, undefined),
 		/fast/,
 	);
 });
@@ -1156,8 +1298,8 @@ test("a model pick that resets the fast dial says so, in the resolved dial's own
 	);
 	assert.equal(
 		fastModelPickNotice(true, "off"),
-		"Fast mode is off for this model.",
-		"the dial the pane held, and the dial the first turn will get",
+		"Changing model turned fast mode off.",
+		"the outcome AND the cause: the pick is the reason it moved",
 	);
 	assert.equal(
 		fastModelPickNotice(true, null),
@@ -1171,23 +1313,95 @@ test("a model pick that resets the fast dial says so, in the resolved dial's own
 	);
 });
 
-test("the model pick's confirmation is where that sentence is printed", () => {
+test("the model pick's notice is COMPOSED onto whichever confirmation wins (round 2, D6 and N2)", () => {
 	/*
-	 * The helper above is pure, so a suite could be green over a call site that
-	 * never reaches it. These are the two lines a later edit would have to delete
-	 * first: the dial read off the LIVE selection (the dialog's own receipt, not
-	 * the snapshot it opened on) and its use inside `describe`, which is the
-	 * sentence the result strip shows once the backend answered.
+	 * The helper above is pure, so a suite can be green over a call site that never
+	 * reaches it - which is exactly what round 2 found: the notice lived inside
+	 * `describe`, `describe` does not run when an effort rung is carried, and the
+	 * old guard matched the call site whether that branch executed or not.
+	 *
+	 * The executable half is `pickResultText`'s (both bases, with and without a
+	 * notice, asserted below). These pins are the other half: the result sentence
+	 * goes through that composition, the notice is one of its inputs, and the dial
+	 * it reads is the RESOLUTION's rather than the request's - the substitution
+	 * `fastModeState(bandReadings(...))` -> a constant would otherwise keep every
+	 * assertion green while the copy claimed a reading it no longer made (N2).
 	 */
 	const picker = readFileSync(join(ROOT, PICKERS), "utf8");
 	assert.match(
 		picker,
 		/const carriedFast = draftPick\.selection\?\.fast_mode \?\? null;/,
+		"the dial is read off the LIVE selection, not the snapshot the dialog opened on",
 	);
 	assert.match(
 		picker,
-		/fastModelPickNotice\(\s*carriedFast,/,
-		"the model pick's confirmation must state the dial it reset",
+		/text: pickResultText\(\{/,
+		"one composition for both branches, not a ternary at the call site",
+	);
+	assert.match(
+		picker,
+		/notice: reading\.notice\?\.\(resolved\) \?\? null,/,
+		"the caller's notice is an input to that composition",
+	);
+	assert.match(
+		picker,
+		/notice: \(resolved\) =>\s*fastModelPickNotice\(\s*carriedFast,/,
+		"the model pick states the dial it reset through the notice",
+	);
+	assert.match(
+		picker,
+		/fastModeState\(bandReadings\(resolved\.snapshot, null\)\.identity\)/,
+		"the notice's dial is the RESOLVED one: this expression is the reading it names",
+	);
+});
+
+test("a pick's result sentence carries the notice on EITHER branch (round 2, D6)", () => {
+	/*
+	 * The defect round 2 filed, executable: with an effort rung carried, `pick`
+	 * printed `carry.confirmation` and skipped `describe` - and the dial notice
+	 * lived in `describe`. These are the four shapes the composition now covers,
+	 * and the carry-with-a-notice one is the regression: it must contain BOTH the
+	 * rung's sentence and the dial's.
+	 */
+	const carried = effortCarry("high", {
+		ladder: ["low", "high"],
+		ladderKnown: true,
+		level: "low",
+	});
+	assert.equal(carried.checked, true);
+
+	const withCarry = pickResultText({
+		carried,
+		selector: "openrouter/b",
+		described: "This conversation will run openrouter/b.",
+		notice: "Changing model turned fast mode off.",
+	});
+	assert.equal(
+		withCarry,
+		"This conversation will run openrouter/b at high effort. Changing model turned fast mode off.",
+		"the carry branch must state the dial too; this is the round-2 defect",
+	);
+
+	const withoutNotice = pickResultText({
+		carried,
+		selector: "openrouter/b",
+		described: "This conversation will run openrouter/b.",
+		notice: null,
+	});
+	assert.equal(
+		withoutNotice,
+		"This conversation will run openrouter/b at high effort.",
+	);
+
+	const noCarry = pickResultText({
+		carried: null,
+		selector: "openrouter/b",
+		described: "This conversation will run openrouter/b.",
+		notice: "Changing model turned fast mode off.",
+	});
+	assert.equal(
+		noCarry,
+		"This conversation will run openrouter/b. Changing model turned fast mode off.",
 	);
 });
 
@@ -1253,7 +1467,8 @@ test("the fast pick reaches that mapping, so a failure cannot fall back to the r
 	 */
 	assert.match(
 		picker,
-		/reading\.failure\s*\? reading\.failure\(error\)\s*: `\$\{reading\.refused\} \$\{errorText\(error\)\}`/,
+		/reading\.failure\s*\? reading\.failure\(error\)\s*: reading\.refused\s*\? `\$\{reading\.refused\} \$\{errorText\(error\)\}`\s*: errorText\(error\)/,
+		"the prefixed sentence is the fallback for the picks that still bring one; the fast dial brings its own",
 	);
 });
 
@@ -1464,6 +1679,9 @@ const pickerDependencies = {
 	modelSelector,
 	specUnresolved,
 	errorText,
+	/* The result sentence's composition (round 2, D6), the app's own function: the
+	 * harness renders the real `pick`, so a stub here would prove nothing. */
+	pickResultText,
 	PickerHost: () => null,
 	useEntities: () => ({}),
 	useOperation: () => ({
@@ -1481,6 +1699,16 @@ const pickerDependencies = {
 		run: () => assert.fail("a draft must not issue a session command"),
 	}),
 	useQueryClient: () => activePicker.client,
+	/*
+	 * The pane's capability document, and the app's own predicate over it. The
+	 * pickers read `draft_fast` before they filter a draft's selection for the
+	 * wire (round 2's F1 follow-up), so this harness states a backend that carries
+	 * it - the behaviour every case below was written against.
+	 */
+	useDesktopCapabilities: () => ({
+		data: { desktop_available: true, features: { draft_fast: 1 } },
+	}),
+	desktopFeatureEnabled,
 	useCallback: (callback) => callback,
 	useMemo: (compute) => compute(),
 	useState: (initial) => {
