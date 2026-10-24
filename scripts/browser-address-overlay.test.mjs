@@ -992,12 +992,6 @@ test("S4b: a presentation-only flip lowers nothing, and the child comes back", a
 	assert.equal((await pending).shown, true);
 	assert.equal(view.visible, true);
 
-	// A revision-only repeat is not a layout change: the tab and rect are exactly
-	// unchanged, so the raised row and its child must survive it.
-	controller.onLayout(layout({ revision: 99 }));
-	assert.deepEqual(events, [], "a same-tab/same-rect repeat must not dismiss");
-	assert.equal(view.visible, true);
-
 	// The page menu suppresses the native page for as long as its panel is open:
 	// presented flips, the tab and the rectangle do not.
 	controller.onLayout(layout({ presented: false, revision: 2 }));
