@@ -376,7 +376,7 @@ export const LibraryComposer: FC<LibraryComposerProps> = ({
 	const linked = asset.chat;
 	return (
 		<div
-			className="flex flex-col gap-2 px-4 pb-3"
+			className="flex flex-col gap-2 bg-sunken px-4 py-3"
 			data-library-composer=""
 			data-sending={sending ? "" : undefined}
 		>

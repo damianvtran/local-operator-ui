@@ -132,7 +132,7 @@ const PANEL_COLUMNS = [
 		classes: [
 			'className="panel-top-pad flex h-full w-48 shrink-0 flex-col overflow-hidden bg-surface"',
 			'className="panel-top-pad flex min-w-0 flex-1 flex-col"',
-			'className="panel-top-pad flex h-full w-[448px] shrink-0 bg-surface"',
+			'className="panel-top-pad flex h-full shrink-0 bg-surface"',
 			/*
 			 * The standalone preview's wrapper owns the `surface` ground, not only the
 			 * pad: `LibraryPreview` paints `bg-surface` on its own root, which sits
@@ -140,7 +140,7 @@ const PANEL_COLUMNS = [
 			 * through the strip as a band (design round 1, D2).
 			 */
 			'className="panel-top-pad min-w-0 flex-1 bg-surface"',
-			'className="panel-top-pad hidden h-full w-[448px] shrink-0 items-start justify-center bg-surface p-8 lg:flex"',
+			'className="panel-top-pad hidden h-full shrink-0 items-start justify-center bg-surface p-8 lg:flex"',
 		],
 	},
 	{

@@ -1019,6 +1019,8 @@ const page = (
 		route?: string;
 		view?: "grid" | "list";
 		shell?: boolean;
+		compact?: boolean;
+		docked?: boolean;
 	},
 ) => {
 	stub = {
@@ -1041,6 +1043,7 @@ const page = (
 	try {
 		if (state.view) localStorage.setItem("library-view", state.view);
 		else localStorage.removeItem("library-view");
+		localStorage.removeItem("library-details-width");
 		sessionStorage.removeItem("library-filters");
 	} catch {
 		/* storage is not what these stories are about */
@@ -1049,7 +1052,9 @@ const page = (
 	return state.shell ? (
 		<ShellLibrary nowMs={NOW} route={route} />
 	) : (
-		<div className="h-screen">
+		<div
+			className={`${state.compact ? "h-[640px]" : "h-screen"} ${state.docked ? "flex" : ""}`}
+		>
 			<RouteTo path={route}>
 				<LibraryPage nowMs={NOW} />
 			</RouteTo>
@@ -1197,6 +1202,117 @@ export const RowsFavouritedOnBright: Story = {
 			brightThumbnails: BRIGHT_ROWS.map((row) => row.id),
 			view: "list",
 		}),
+};
+
+/*
+ * The real page and shell at the dock's default and keyboard-driven bounds.
+ * The plays leave the actual persisted width in place, so these frames also
+ * prove the separator's value and the drawer's painted width agree.
+ */
+export const DockedPreview: Story = {
+	render: () =>
+		page({
+			docked: true,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: async () => {
+		await waitFor(() => {
+			expect(document.querySelector("[data-library-dock]")).not.toBeNull();
+			expect(document.querySelector("[data-library-preview]")).not.toBeNull();
+			expect(document.querySelector("[data-library-composer]")).not.toBeNull();
+		});
+	},
+};
+export const DockedPreviewNarrow: Story = {
+	render: () =>
+		page({
+			docked: true,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: async () => {
+		const separator = await waitFor(() => {
+			const node = document.querySelector<HTMLElement>('[role="separator"]');
+			if (!node) throw new Error("the dock separator is not mounted");
+			return node;
+		});
+		separator.dispatchEvent(
+			new KeyboardEvent("keydown", { key: "Home", bubbles: true }),
+		);
+		await waitFor(() =>
+			expect(
+				document.querySelector<HTMLElement>("[data-library-dock]")?.style.width,
+			).toBe("320px"),
+		);
+	},
+};
+export const DockedPreviewWide: Story = {
+	render: () =>
+		page({
+			docked: true,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: async () => {
+		const separator = await waitFor(() => {
+			const node = document.querySelector<HTMLElement>('[role="separator"]');
+			if (!node) throw new Error("the dock separator is not mounted");
+			return node;
+		});
+		separator.dispatchEvent(
+			new KeyboardEvent("keydown", { key: "End", bubbles: true }),
+		);
+		await waitFor(() =>
+			expect(
+				document.querySelector<HTMLElement>("[data-library-dock]")?.style.width,
+			).toBe("720px"),
+		);
+	},
+};
+export const DockedEmpty: Story = {
+	render: () =>
+		page({
+			docked: true,
+			route: "/library/assets/la_missing",
+		}),
+	play: async () => {
+		await waitFor(() =>
+			expect(document.querySelector("[data-library-dock]")).not.toBeNull(),
+		);
+	},
+};
+export const DockedPreviewCompact: Story = {
+	render: () =>
+		page({
+			compact: true,
+			docked: true,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: DockedPreview.play,
+};
+export const TrajectoryCompact: Story = {
+	render: () =>
+		page({
+			compact: true,
+			docked: true,
+			route: "/library/assets/la_0000000000000023",
+			linkedChat: true,
+			trajectory: "populated",
+		}),
+	play: async () => {
+		const disclosure = await waitFor(() => {
+			const node = [...document.querySelectorAll("button")].find((button) =>
+				button.textContent?.includes("Chat about this asset"),
+			);
+			if (!node) throw new Error("the trajectory disclosure is not mounted");
+			return node;
+		});
+		await userEvent.click(disclosure);
+		await waitFor(() => {
+			expect(document.querySelector("[data-library-composer]")).not.toBeNull();
+			expect(document.body.textContent).toContain(
+				"Which invoices are still open for March?",
+			);
+		});
+	},
 };
 
 /*

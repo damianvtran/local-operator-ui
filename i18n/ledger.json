@@ -13078,8 +13078,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.library",
-			"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
-			"target_sha256": "cf90f236e786baaf426af113f0b54771e308a2cb64396925a5d2d05f4072bf95",
+			"source_sha256": "f573e43a8f348747a364b0f37d7aa882d7c2fae7b2b17f4167986aeccbe1d71c",
+			"target_sha256": "97d735dd1735d053a62fb1aca5d449c362081d814ddfa3f0db71612a07072889",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -13087,19 +13087,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
+					"agent": "reviewer",
+					"model": "openrouter/moonshotai/kimi-k3.1-pro",
+					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "10332831a316",
+					"instance": "4b5d6178a790-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/10332831a316.json",
-					"receipt_sha256": "9e2a2b87715ce190b265ac3c833db24abc8fc1aaf18069f116c97a7b791b8781"
+					"receipt": "i18n/receipts/4b5d6178a790-hi.json",
+					"receipt_sha256": "f9299d6ed491ac060de62f859d53753d0cc0454573ee93f2fc973293d75f5593",
+					"scope": "Independent one-key ui.library.page.resize_preview audit"
 				}
 			],
 			"status": "audited",
@@ -13148,6 +13149,28 @@
 							"receipt_sha256": "fe00a1582d23089953c6c308cd2de4c7506b9195f04ea0e736552971cf122221",
 							"scope": "hi ui.library vs current en source — main-repair delta audit (16 values across 3 namespaces)",
 							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+					"target_sha256": "cf90f236e786baaf426af113f0b54771e308a2cb64396925a5d2d05f4072bf95",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "10332831a316",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/10332831a316.json",
+							"receipt_sha256": "9e2a2b87715ce190b265ac3c833db24abc8fc1aaf18069f116c97a7b791b8781"
 						}
 					],
 					"status": "audited"
@@ -17608,8 +17631,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.library",
-			"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
-			"target_sha256": "04e9d9e7224c859b31500dde60aceb16f825df33aecf1e23517eb1e62e4635ac",
+			"source_sha256": "f573e43a8f348747a364b0f37d7aa882d7c2fae7b2b17f4167986aeccbe1d71c",
+			"target_sha256": "a0dd4866081715af969005d3f2a1e287f987c88e822ce3702914913f84a2cdcf",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -17618,18 +17641,19 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
+					"model": "openrouter/moonshotai/kimi-k3.1-pro",
+					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "6efc8add2188",
+					"instance": "4b5d6178a790-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6efc8add2188.json",
-					"receipt_sha256": "76398ce62688718c24e0c7c9bd3265cab0a8e807efe7feb1ea03266f1a99718e"
+					"receipt": "i18n/receipts/4b5d6178a790-ur.json",
+					"receipt_sha256": "56972a9b350d5214fd4a4ec34d13a781a810e4a04847b95d2ee60b849650d856",
+					"scope": "Independent one-key ui.library.page.resize_preview audit"
 				}
 			],
 			"status": "audited",
@@ -17678,6 +17702,28 @@
 							"receipt_sha256": "e6f5f7c8a40bb1ab74a0168145c8649325809a745d0c59cf323d5e502570b8dd",
 							"scope": "Post-merge drift: new English keys carried at the final bytes.",
 							"note": "New keys landed on main after the tranche; translated and independently audited."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+					"target_sha256": "04e9d9e7224c859b31500dde60aceb16f825df33aecf1e23517eb1e62e4635ac",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "6efc8add2188",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6efc8add2188.json",
+							"receipt_sha256": "76398ce62688718c24e0c7c9bd3265cab0a8e807efe7feb1ea03266f1a99718e"
 						}
 					],
 					"status": "audited"
@@ -19088,8 +19134,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.library",
-			"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
-			"target_sha256": "6fd498d38471656227382d135020a2e1047950e04044a9c185de43cab9f319f9",
+			"source_sha256": "f573e43a8f348747a364b0f37d7aa882d7c2fae7b2b17f4167986aeccbe1d71c",
+			"target_sha256": "3ee78cfc3e1f980f3b472715cdf554868d52c160ed85162e94126611cb36eb2c",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -19097,19 +19143,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "translation-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
+					"agent": "reviewer",
+					"model": "openrouter/moonshotai/kimi-k3.1-pro",
+					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "a4607d62363d",
+					"instance": "4b5d6178a790-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/a4607d62363d.json",
-					"receipt_sha256": "90c0f567ae7c2f41450c38b5ecde7ad8c5af1641a945c76be6928a4f72c8bad9"
+					"receipt": "i18n/receipts/4b5d6178a790-fr.json",
+					"receipt_sha256": "279edc58e4eca15508c0ccb50229be3f90e5cb72f195eaeed54166f13e43147c",
+					"scope": "Independent one-key ui.library.page.resize_preview audit"
 				}
 			],
 			"status": "audited",
@@ -19134,6 +19181,28 @@
 							"receipt_sha256": "3a791ebfb0bc2598474ca59c54b3398ae2eb9cb15277fc0c657ac100d5fac73e",
 							"scope": "fr ui.library vs en source at 75428c035e - wave-1 full namespace pass",
 							"note": "0 BLOCKER/MAJOR; clean pass on the audited bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+					"target_sha256": "6fd498d38471656227382d135020a2e1047950e04044a9c185de43cab9f319f9",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "a4607d62363d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/a4607d62363d.json",
+							"receipt_sha256": "90c0f567ae7c2f41450c38b5ecde7ad8c5af1641a945c76be6928a4f72c8bad9"
 						}
 					],
 					"status": "audited"
@@ -19679,8 +19748,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.library",
-			"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
-			"target_sha256": "d2bcc2ab1d21fcbe56cc98039b50b1b076219d98bada6636756b1ee80db874f7",
+			"source_sha256": "f573e43a8f348747a364b0f37d7aa882d7c2fae7b2b17f4167986aeccbe1d71c",
+			"target_sha256": "97277c6a42c1f85f35b715c6746e76404cf5f13a05ac6daf07adce72970fd5f3",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -19689,18 +19758,19 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
+					"model": "openrouter/moonshotai/kimi-k3.1-pro",
+					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "d96abdb97c68",
+					"instance": "4b5d6178a790-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d96abdb97c68.json",
-					"receipt_sha256": "f7764696c31ee2c610243eeb356d9738abc071556f358888479d312689a93aec"
+					"receipt": "i18n/receipts/4b5d6178a790-es.json",
+					"receipt_sha256": "47b72e72454e017f7928022be3b497750e9545454e7a6fd9202527013e367eec",
+					"scope": "Independent one-key ui.library.page.resize_preview audit"
 				}
 			],
 			"status": "audited",
@@ -19725,6 +19795,28 @@
 							"receipt_sha256": "1a105061d61af7a578a2c47e558a798b212df9ff497f53ea766ee31e85cba26a",
 							"scope": "es ui.library vs en source at 75428c035e - wave-1 full namespace pass",
 							"note": "0 BLOCKER/MAJOR; clean pass on the audited bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+					"target_sha256": "d2bcc2ab1d21fcbe56cc98039b50b1b076219d98bada6636756b1ee80db874f7",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "d96abdb97c68",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d96abdb97c68.json",
+							"receipt_sha256": "f7764696c31ee2c610243eeb356d9738abc071556f358888479d312689a93aec"
 						}
 					],
 					"status": "audited"
@@ -20613,8 +20705,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.library",
-			"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
-			"target_sha256": "a5c0458632425986ba1afa6a973a9c42f301b1723f6a219d5957a110aa71ac99",
+			"source_sha256": "f573e43a8f348747a364b0f37d7aa882d7c2fae7b2b17f4167986aeccbe1d71c",
+			"target_sha256": "ea3fb47f14066b6bc14cb1ffe8726996893e56671e8c97623776ee6b3fc176f7",
 			"translator": {
 				"agent": "translator",
 				"model": "deepseek/deepseek-flash",
@@ -20623,18 +20715,19 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
-					"result": "clean-with-findings",
-					"instance": "02585a00b5d3",
+					"model": "openrouter/moonshotai/kimi-k3.1-pro",
+					"date": "2026-10-23",
+					"result": "clean",
+					"instance": "4b5d6178a790-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/02585a00b5d3.json",
-					"receipt_sha256": "62ac9df15cfc53a8f185cb11b80833c1ac12e73756359c97ec2170c310745aed"
+					"receipt": "i18n/receipts/4b5d6178a790-zh-cn.json",
+					"receipt_sha256": "f389f771297969ca8ccc94eea6b96aed42d74b52abc86c3717e7715d6bf9d8dc",
+					"scope": "Independent one-key ui.library.page.resize_preview audit"
 				}
 			],
 			"status": "audited",
@@ -20659,6 +20752,28 @@
 							"receipt_sha256": "49bcf7665f9a32c19a825151ffa92bb1cd4e3244b20cdcd941a85e9a291416f9",
 							"scope": "zh-CN ui.library vs en source at 75428c035e - wave-1 full namespace pass",
 							"note": "0 BLOCKER/MAJOR; clean pass on the audited bytes."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+					"target_sha256": "a5c0458632425986ba1afa6a973a9c42f301b1723f6a219d5957a110aa71ac99",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean-with-findings",
+							"instance": "02585a00b5d3",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/02585a00b5d3.json",
+							"receipt_sha256": "62ac9df15cfc53a8f185cb11b80833c1ac12e73756359c97ec2170c310745aed"
 						}
 					],
 					"status": "audited"
@@ -20699,8 +20814,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.library",
-			"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
-			"target_sha256": "2e711e04ebd8aa383dd974f086cab03520e2a91df8fee846521fa9914a26d3dd",
+			"source_sha256": "f573e43a8f348747a364b0f37d7aa882d7c2fae7b2b17f4167986aeccbe1d71c",
+			"target_sha256": "d303b353483f506208fb2b74b82907c98f3dd72a5496298d8fad253c45e221af",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -20708,20 +20823,20 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
+					"agent": "reviewer",
+					"model": "openrouter/moonshotai/kimi-k3.1-pro",
+					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "99cb676d1abc-r2",
+					"instance": "4b5d6178a790-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/99cb676d1abc-r2.json",
-					"receipt_sha256": "786c0e8420bcac10821188e525b05357b405941027f9c6af8821665b1140c24b",
-					"scope": "Round 2: re-audit of the two remediated keys (page.more, page.more_destinations); 156 unchanged keys proved byte-identical to the 12d60b45 audit"
+					"receipt": "i18n/receipts/4b5d6178a790-vi.json",
+					"receipt_sha256": "d5131975d9f42755e2867fd4a202dd271dd3191490289c298c3aada3ece31edd",
+					"scope": "Independent one-key ui.library.page.resize_preview audit"
 				}
 			],
 			"status": "audited",
@@ -20749,14 +20864,37 @@
 						}
 					],
 					"status": "audited"
+				},
+				{
+					"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+					"target_sha256": "2e711e04ebd8aa383dd974f086cab03520e2a91df8fee846521fa9914a26d3dd",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "99cb676d1abc-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/99cb676d1abc-r2.json",
+							"receipt_sha256": "786c0e8420bcac10821188e525b05357b405941027f9c6af8821665b1140c24b",
+							"scope": "Round 2: re-audit of the two remediated keys (page.more, page.more_destinations); 156 unchanged keys proved byte-identical to the 12d60b45 audit"
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "ru",
 			"namespace": "ui.library",
-			"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
-			"target_sha256": "98dd7b5e814ac2739430839c60a5007d9963bd6c53ae0fed870fe6d8379b2481",
+			"source_sha256": "f573e43a8f348747a364b0f37d7aa882d7c2fae7b2b17f4167986aeccbe1d71c",
+			"target_sha256": "9a24c321b4fcefe45be2f46fe68f861d3634e97a822032c41888b9a71a98d62e",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -20765,18 +20903,19 @@
 			"auditors": [
 				{
 					"agent": "reviewer",
-					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-20",
+					"model": "openrouter/moonshotai/kimi-k3.1-pro",
+					"date": "2026-10-23",
 					"result": "clean",
-					"instance": "d4a69b568c33",
+					"instance": "4b5d6178a790-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d4a69b568c33.json",
-					"receipt_sha256": "f982752140befcc5aac9ba871992fe1eedf06657bf40fd6e9381b759aa96c71f"
+					"receipt": "i18n/receipts/4b5d6178a790-ru.json",
+					"receipt_sha256": "c9f9d8b55c8673c79d2517ff795fa8ebd29f6bfc72f9447addb6409e7f93f43a",
+					"scope": "Independent one-key ui.library.page.resize_preview audit"
 				}
 			],
 			"status": "audited",
@@ -20799,6 +20938,28 @@
 							},
 							"receipt": "i18n/receipts/55ba7a641173.json",
 							"receipt_sha256": "1b57531fba4352f5a603870ebba0ae180ec57c9888d5c740e17893efa8eb98db"
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "d38247e1cc3871ed45581b84e5d514de7a6aa91cd0d946027a1dd37f5920daa5",
+					"target_sha256": "98dd7b5e814ac2739430839c60a5007d9963bd6c53ae0fed870fe6d8379b2481",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-20",
+							"result": "clean",
+							"instance": "d4a69b568c33",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d4a69b568c33.json",
+							"receipt_sha256": "f982752140befcc5aac9ba871992fe1eedf06657bf40fd6e9381b759aa96c71f"
 						}
 					],
 					"status": "audited"

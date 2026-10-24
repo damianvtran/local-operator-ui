@@ -135,6 +135,7 @@
 	"ui.library.page.loaded_count": "Файлы: {loaded} из {total}",
 	"ui.library.page.preview": "Предпросмотр файла",
 	"ui.library.page.results": "Результаты Библиотеки",
+	"ui.library.page.resize_preview": "Изменить ширину панели сведений. Дважды щёлкните, чтобы сбросить её.",
 	"ui.library.preview.unavailable": "Этот файл недоступен",
 	"ui.library.preview.unavailable_detail": "Возможно, его больше нет в каталоге.",
 	"ui.library.preview.pptx_preparing": "Подготовка презентации…",
