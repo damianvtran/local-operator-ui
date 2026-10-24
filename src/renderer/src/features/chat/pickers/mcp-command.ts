@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 export type McpIntent =
 	| { kind: "list"; action: "login" | "reauth" }
 	| { kind: "auth"; name: string; action: "login" | "reauth" }
@@ -32,7 +33,10 @@ export function parseMcpIntent(
 	if (verb !== "login" && verb !== "reauth" && verb !== "auth") {
 		return {
 			kind: "error",
-			message: `Unknown MCP server or command: ${text}. Use /mcp login <name> or /mcp reauth <name>.`,
+			message: t(
+				"ui.chat.pickers.mcp_command.unknown_mcp_server_or_command_use_mcp_login_name_or_mcp_reauth_name",
+				{ text: text },
+			),
 		};
 	}
 	const action = verb === "reauth" ? "reauth" : "login";
@@ -40,7 +44,10 @@ export function parseMcpIntent(
 	if (extra.length || !names.includes(name))
 		return {
 			kind: "error",
-			message: `Unknown MCP server: ${name}${extra.length ? " (expected one target)" : ""}. No server was changed.`,
+			message: t(
+				"ui.chat.pickers.mcp_command.unknown_mcp_server_no_server_was_changed",
+				{ name: name, extra: extra.length ? "true" : "false" },
+			),
 		};
 	return { kind: "auth", name, action };
 }

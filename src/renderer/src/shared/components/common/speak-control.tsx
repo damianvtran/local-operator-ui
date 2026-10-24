@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * @file speak-control.tsx
  * @description
@@ -155,14 +156,14 @@ export function useSpeakControl({
 	 * second press reads as the replay it is.
 	 */
 	const label = isPlaying
-		? "Stop"
+		? t("ui.common.speech.speak_control.stop")
 		: isLoading
-			? "Loading speech. Press again to cancel."
+			? t("ui.common.speech.speak_control.loading_speech_press_again_to_cancel")
 			: canReplay
-				? "Replay speech"
-				: "Speak aloud";
+				? t("ui.common.speech.speak_control.replay_speech")
+				: t("ui.common.speech.speak_control.speak_aloud");
 	const tooltip = isPlaying
-		? "Stop"
+		? t("ui.common.speech.speak_control.stop")
 		: isLoading
 			? /*
 				 * THE SAME sentence as the button's accessible name (copy review round
@@ -173,8 +174,11 @@ export function useSpeakControl({
 				 * the spinner beside it is `aria-hidden`, so the name is also the only
 				 * place a screen-reader user learns the app is busy.
 				 */
-				"Loading speech. Press again to cancel."
-			: (reason ?? (canReplay ? "Replay speech" : "Speak aloud"));
+				t("ui.common.speech.speak_control.loading_speech_press_again_to_cancel")
+			: (reason ??
+				(canReplay
+					? t("ui.common.speech.speak_control.replay_speech")
+					: t("ui.common.speech.speak_control.speak_aloud")));
 
 	const press = () => {
 		if (isPlaying) {
@@ -210,7 +214,10 @@ export function useSpeakControl({
 			 * was the wrong object on half of them.
 			 */
 			showInfoToast(
-				`Reading the first ${text.length.toLocaleString("en-US")} characters. The rest is not read aloud.`,
+				t(
+					"ui.common.speech.speak_control.reading_the_first_characters_the_rest_is_not_read_aloud",
+					{ tolocalestring: text.length.toLocaleString("en-US") },
+				),
 			);
 		}
 		play({ text });

@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import type {
 	DesktopModelRate,
 	DesktopUsageAggregate,
@@ -51,8 +52,12 @@ export type AnalyticsData = {
 export type AnalyticsMetric = "tokens" | "spend";
 
 export const METRIC_LABEL: Record<AnalyticsMetric, string> = {
-	tokens: "Tokens",
-	spend: "Spend",
+	get tokens() {
+		return t("ui.chat.pickers.analytics_model.tokens");
+	},
+	get spend() {
+		return t("ui.chat.pickers.analytics_model.spend");
+	},
 };
 
 export type AnalyticsWindow = {
@@ -124,13 +129,17 @@ export function spanLabel(win: AnalyticsWindow): string {
  */
 export function windowMeta(
 	win: AnalyticsWindow,
-	scope: "this session" | "all sessions",
+	// Scope is display copy, not an English-parsing state token.
+	scope: string,
 	readAtMs?: number | null,
 ): string {
 	const base = `${windowTitle(win.days)} · ${spanLabel(win)} · ${scope}`;
 	return readAtMs === null || readAtMs === undefined
 		? base
-		: `${base} · as of ${formatClock(readAtMs)}`;
+		: t("ui.chat.pickers.analytics_model.as_of", {
+				base: base,
+				formatclock: formatClock(readAtMs),
+			});
 }
 
 /**
@@ -145,12 +154,18 @@ export function dailyMeta(
 	win: AnalyticsWindow,
 	scopeIsThisSession: boolean,
 ): string {
-	const base = `Daily rollup · ${spanLabel(win)}`;
-	return scopeIsThisSession ? `${base} · all sessions` : base;
+	const base = t("ui.chat.pickers.analytics_model.daily_rollup", {
+		spanlabel: spanLabel(win),
+	});
+	return scopeIsThisSession
+		? t("ui.chat.pickers.analytics_model.all_sessions", { base: base })
+		: base;
 }
 
 export function windowTitle(days: number): string {
-	return days === 1 ? "Today" : `Last ${days} days`;
+	return days === 1
+		? t("ui.chat.pickers.analytics_model.today")
+		: t("ui.chat.pickers.analytics_model.last_days", { days: days });
 }
 
 /** Tokens the panel counts: what went in plus what came out. */
@@ -170,7 +185,8 @@ export const totalTokens = (aggregate: DesktopUsageAggregate): number =>
  * construction: a rename that missed one of them is the defect the review round
  * found, and a single export cannot drift.
  */
-export const CACHE_HIT_LABEL = "Cache hit rate";
+export const CACHE_HIT_LABEL = () =>
+	t("ui.chat.pickers.analytics_model.cache_hit_rate");
 
 /**
  * What that number is, and what `—` means, in one sentence.
@@ -181,8 +197,10 @@ export const CACHE_HIT_LABEL = "Cache hit rate";
  * captured frame — so neither the denominator nor the difference between `0%`
  * and `—` was ever stated anywhere a reader could find it.
  */
-export const CACHE_HIT_MEANING =
-	"Cache reads as a share of read context tokens; — means no call reported a context total.";
+export const CACHE_HIT_MEANING = (): string =>
+	t(
+		"ui.chat.pickers.analytics_model.cache_reads_as_a_share_of_read_context_tokens_means_no_call_reported_a_c",
+	);
 
 /**
  * `cache_read_tokens / context_tokens`, or `null` when there is no denominator.
@@ -261,7 +279,8 @@ export function metricValue(
  * ------------------------------------------------------------------------- */
 
 /** The rate column's heading, spelled once for all three tables. */
-export const TOK_PER_SECOND_LABEL = "tok/s (decode)";
+export const TOK_PER_SECOND_LABEL = () =>
+	t("ui.chat.pickers.analytics_model.tok_s_decode");
 
 /**
  * The By-model table's SECOND rate column.
@@ -271,10 +290,12 @@ export const TOK_PER_SECOND_LABEL = "tok/s (decode)";
  * header alone. `wall` is the backend's own word for it (`wall_us`,
  * `wall_tokens`, `wall_calls`) and the one the design uses.
  */
-export const WALL_TOK_PER_SECOND_LABEL = "tok/s (wall)";
+export const WALL_TOK_PER_SECOND_LABEL = () =>
+	t("ui.chat.pickers.analytics_model.tok_s_wall");
 
 /** The coverage column's heading on the By-model table. */
-export const COVERAGE_LABEL = "Coverage";
+export const COVERAGE_LABEL = () =>
+	t("ui.chat.pickers.analytics_model.coverage");
 
 /**
  * `decode_tokens / (decode_us / 1e6)` for one aggregate, or `null` when no call
@@ -343,10 +364,16 @@ export function coverageFraction(coverage: RateCoverage): number | null {
 export function rateLegend(coverage: RateCoverage): string | null {
 	if (coverage.calls === 0) return null;
 	if (coverage.covered === 0) {
-		return `No call in this window has a measured generation time yet, so the rate reads ${UNKNOWN} rather than 0 tok/s.`;
+		return t(
+			"ui.chat.pickers.analytics_model.no_call_in_this_window_has_a_measured_generation_time_yet_so_the_rate_re",
+			{ unknown: UNKNOWN },
+		);
 	}
 	if (coverage.covered < coverage.calls) {
-		return `Decode rate over ${formatCount(coverage.covered)} of ${formatCount(coverage.calls)} calls.`;
+		return t("ui.chat.pickers.analytics_model.decode_rate_over_of_calls", {
+			formatcount: formatCount(coverage.covered),
+			formatcount2: formatCount(coverage.calls),
+		});
 	}
 	return null;
 }
@@ -371,8 +398,13 @@ export function modelRateLegend(
 ): string | null {
 	const parts = [
 		rateLegend(decode) ??
-			`Decode rate over all ${formatCount(decode.calls)} calls.`,
-		`Wall rate over ${formatCount(wall.covered)} of ${formatCount(wall.calls)} calls.`,
+			t("ui.chat.pickers.analytics_model.decode_rate_over_all_calls", {
+				formatcount: formatCount(decode.calls),
+			}),
+		t("ui.chat.pickers.analytics_model.wall_rate_over_of_calls", {
+			formatcount: formatCount(wall.covered),
+			formatcount2: formatCount(wall.calls),
+		}),
 	];
 	return parts.join(" ");
 }
@@ -540,10 +572,16 @@ export function chartSummary(
 	win: AnalyticsWindow,
 	metric: AnalyticsMetric,
 ): string {
-	const series = metric === "spend" ? "Daily spend" : "Daily tokens";
-	const span = `${formatDayBucket(win.firstDay)} to ${formatDayBucket(
-		localDayString(new Date(win.untilMs - 1), 0),
-	)}`;
+	const series =
+		metric === "spend"
+			? t("ui.chat.pickers.analytics_model.daily_spend")
+			: t("ui.chat.pickers.analytics_model.daily_tokens");
+	const span = t("ui.chat.pickers.analytics_model.to", {
+		formatdaybucket: formatDayBucket(win.firstDay),
+		formatdaybucket2: formatDayBucket(
+			localDayString(new Date(win.untilMs - 1), 0),
+		),
+	});
 	const withUsage = rows.filter((row) => row.value > 0);
 	const total = rows.reduce((sum, row) => sum + row.value, 0);
 	const peak = rows.reduce<{ bucket: string; value: number } | null>(
@@ -551,14 +589,25 @@ export function chartSummary(
 		null,
 	);
 	const format = metric === "spend" ? spendTick : tokenTick;
-	const unit = metric === "spend" ? "" : " tokens";
+	const unit = metric === "spend" ? "spend" : "tokens";
 	const parts = [
-		`${series} from ${span}: ${withUsage.length} ${withUsage.length === 1 ? "day" : "days"} with usage`,
-		`${format(total)}${unit} total`,
+		t("ui.chat.pickers.analytics_model.from_with_usage", {
+			series: series,
+			span: span,
+			length: withUsage.length,
+		}),
+		t("ui.chat.pickers.analytics_model.total", {
+			format: format(total),
+			unit: unit,
+		}),
 	];
 	if (peak && peak.value > 0) {
 		parts.push(
-			`highest ${formatDayBucket(peak.bucket)} at ${format(peak.value)}${unit}`,
+			t("ui.chat.pickers.analytics_model.highest_at", {
+				formatdaybucket: formatDayBucket(peak.bucket),
+				format: format(peak.value),
+				unit: unit,
+			}),
 		);
 	}
 	return `${parts.join(", ")}.`;

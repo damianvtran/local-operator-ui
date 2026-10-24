@@ -1,4 +1,6 @@
 import { Button, Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { FileUp } from "lucide-react";
 import type { FC, ReactNode } from "react";
@@ -69,16 +71,19 @@ export const FileViewerState: FC<FileViewerStateProps> = ({
  */
 export const OpenInOsButton: FC<{ path: string; label?: string }> = ({
 	path,
-	label = "Open in default app",
-}) => (
-	<Button
-		variant="secondary"
-		size="sm"
-		onClick={() => window.api.openFile(path)}
-	>
-		{label}
-	</Button>
-);
+	label = t("ui.canvas.file_viewer_state.open_in_default_app"),
+}) => {
+	useI18nLocale();
+	return (
+		<Button
+			variant="secondary"
+			size="sm"
+			onClick={() => window.api.openFile(path)}
+		>
+			{label}
+		</Button>
+	);
+};
 
 /**
  * The one chrome bar the four media viewers share.
@@ -121,6 +126,7 @@ export const ViewerChrome: FC<{
 	 */
 	children?: ReactNode;
 }> = ({ path, children }) => {
+	useI18nLocale();
 	const openable =
 		typeof path === "string" && path.length > 0 && !path.startsWith("data:");
 	return (
@@ -139,11 +145,11 @@ export const ViewerChrome: FC<{
 		>
 			{children}
 			{openable && (
-				<Tooltip content="Open in default app">
+				<Tooltip content={t("ui.canvas.file_viewer_state.open_in_default_app")}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Open in default app"
+						aria-label={t("ui.canvas.file_viewer_state.open_in_default_app")}
 						onClick={() => window.api.openFile(path)}
 					>
 						<FileUp aria-hidden="true" />

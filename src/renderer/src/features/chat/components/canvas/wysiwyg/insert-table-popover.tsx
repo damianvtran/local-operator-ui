@@ -5,6 +5,8 @@ import {
 	PopoverAnchor,
 	PopoverContent,
 } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { FC, KeyboardEvent } from "react";
 import { useId, useMemo, useState } from "react";
@@ -40,6 +42,7 @@ export const InsertTablePopover: FC<InsertTablePopoverProps> = ({
 	onClose,
 	onInsert,
 }) => {
+	useI18nLocale();
 	const extentLabelId = useId();
 	const [extent, setExtent] = useState({ rows: 0, cols: 0 });
 	const [customRows, setCustomRows] = useState(3);
@@ -123,8 +126,11 @@ export const InsertTablePopover: FC<InsertTablePopoverProps> = ({
 						className={cn("mb-1.5 font-medium text-ink-muted text-body-sm")}
 					>
 						{extent.rows > 0 && extent.cols > 0
-							? `${extent.rows} × ${extent.cols} table`
-							: "Insert table"}
+							? t("ui.canvas.insert_table_popover.table", {
+									rows: extent.rows,
+									cols: extent.cols,
+								})
+							: t("ui.canvas.insert_table_popover.insert_table")}
 					</p>
 					<div
 						// biome-ignore lint/a11y/useSemanticElements: a fieldset groups form controls; this groups painted cells, and the accessible control is the container itself.
@@ -167,14 +173,14 @@ export const InsertTablePopover: FC<InsertTablePopoverProps> = ({
 
 				<div>
 					<p className={cn("mb-1.5 font-medium text-ink-muted text-body-sm")}>
-						Custom size
+						{t("ui.canvas.insert_table_popover.custom_size")}
 					</p>
 					<div className={cn("flex items-center gap-2")}>
 						<Input
 							type="number"
 							min={1}
-							aria-label="Rows"
-							placeholder="Rows"
+							aria-label={t("ui.canvas.insert_table_popover.rows")}
+							placeholder={t("ui.canvas.insert_table_popover.rows")}
 							value={customRows}
 							onChange={(e) =>
 								setCustomRows(Math.max(1, Number(e.target.value)))
@@ -185,8 +191,8 @@ export const InsertTablePopover: FC<InsertTablePopoverProps> = ({
 						<Input
 							type="number"
 							min={1}
-							aria-label="Columns"
-							placeholder="Columns"
+							aria-label={t("ui.canvas.insert_table_popover.columns")}
+							placeholder={t("ui.canvas.insert_table_popover.columns")}
 							value={customCols}
 							onChange={(e) =>
 								setCustomCols(Math.max(1, Number(e.target.value)))
@@ -197,7 +203,7 @@ export const InsertTablePopover: FC<InsertTablePopoverProps> = ({
 				</div>
 
 				<Button variant="primary" onClick={handleCustomInsert}>
-					Insert table
+					{t("ui.canvas.insert_table_popover.insert_table")}
 				</Button>
 			</PopoverContent>
 		</Popover>
