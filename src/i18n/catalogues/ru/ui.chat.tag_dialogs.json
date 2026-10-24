@@ -1,0 +1,6 @@
+{
+	"ui.chat.tag_dialogs.deleted_name": "«{name}» удалён",
+	"ui.chat.tag_dialogs.created_assigned": "«{name}» создан и добавлен в этот разговор",
+	"ui.chat.tag_dialogs.assign_created_failed": "«{name}» создан, но не удалось добавить его в этот разговор. Выберите его в списке, чтобы добавить.",
+	"ui.chat.tag_dialogs.changed_elsewhere": "Теги изменены в другом месте. В списке теперь показаны актуальные теги разговора; повторите выбор, чтобы применить изменение."
+}
