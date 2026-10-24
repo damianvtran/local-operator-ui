@@ -1,0 +1,249 @@
+{
+  "auditor": {
+    "agent": "translation-auditor",
+    "instance": "351aa9be8eac-r1-second",
+    "session_id": "351aa9be8eac",
+    "model": "openrouter/moonshotai/kimi-k3.1-pro",
+    "actual_model": "openrouter/moonshotai/kimi-k3.1-pro",
+    "served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+    "fallback_used": false
+  },
+  "instance": "351aa9be8eac-r1-second",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "date": "2026-10-23",
+  "locale": "zh-CN",
+  "commit": "7aba1fb840aa53ce090b647130530ae4ea465720",
+  "round": "completion-round-1-second-independent",
+  "status": "passed",
+  "overall_verdict": "clean-with-findings",
+  "keys_read": 134,
+  "intended_repository_receipt": "i18n/receipts/351aa9be8eac-r1-second.json",
+  "independence": {
+    "translator_session": "3874e9cb17a0",
+    "statement": "This was a second independent audit derived directly from the English catalogues, context sidecars, target bytes, locale guidance and existing zh-CN terminology. The auditor is not the translator, did not edit any catalogue or generated file, and did not read or copy another new zh-CN completion audit receipt."
+  },
+  "guidance": {
+    "glossary": {
+      "path": "/Users/damian/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "/Users/damian/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    }
+  },
+  "scope": {
+    "namespaces": 9,
+    "keys": 134,
+    "requirement": "All values in the nine new zh-CN files, not a sample; exact English/target/context key sets and order; semantic accuracy, idiom, register, glossary, ICU/CLDR, typography, pseudo-localization, English leakage and static overflow."
+  },
+  "evidence": {
+    "semantic_and_glossary": "Read all 134 English/target/context triples. Compared high-visibility wording with existing zh-CN catalogues, including 数据分析, 后台任务, 分叉, 叙述/回复, 会话 versus 对话, 凭据, 工具审批, Canvas and provider terminology. Six repeated exact-English values with multiple existing Chinese renderings were examined in context; none established a defect in these new values. Eight namespaces have no semantic/register/glossary finding; the sidebar finding is recorded below.",
+    "key_set_and_order": "Derived from parsed bytes at the pinned commit: English=43+34+30+11+5+4+4+2+1=134 keys. Every namespace has identical English, target and context key sets and identical English/target/context insertion order; no missing, extra or duplicate scoped key was found.",
+    "repository_checks": [
+      {
+        "command": "node --test scripts/i18n/locale-parity.test.mjs",
+        "actual_result": "exit 0; 43 tests, 43 pass, 0 fail. zh-CN passed non-empty, unique-key, complete-key, known-key, real-ICU-placeholder and not-English-stub checks."
+      },
+      {
+        "command": "node scripts/i18n/context-parity.mjs && node scripts/i18n/generate.mjs --check",
+        "actual_result": "exit 0; context-parity ok (131 pre-existing allowed gaps in 4 namespaces); keys.gen.ts byte-identical to fresh generation."
+      }
+    ],
+    "icu_and_cldr": {
+      "command": "Scoped Node probe using @formatjs/icu-messageformat-parser, intl-messageformat and Intl.PluralRules against all nine files.",
+      "actual_result": "134 keys; 17 English argument usages exactly matched target argument name, type, order and number skeleton; 1 plural node and 1 select node; 0 failures. Select options pin/unpin/other rendered separately. Intl.PluralRules('zh-CN').resolvedOptions().pluralCategories=[\"other\"]; 0, 1, 2, 5 and 1234 all selected other.",
+      "format_samples": [
+        "ui.chat.pickers.stop.confirm count=0 -> 立即停止0个会话",
+        "ui.chat.pickers.stop.confirm count=1 -> 立即停止1个会话",
+        "ui.chat.pickers.stop.confirm count=2 -> 立即停止2个会话",
+        "ui.chat.pickers.stop.confirm count=1234 -> 立即停止1234个会话",
+        "ui.chat.sidebar.pins.failure action=pin -> 无法置顶“标题”。",
+        "ui.chat.sidebar.pins.failure action=unpin -> 无法取消置顶“标题”。",
+        "ui.chat.sidebar.pins.failure action=other -> 无法更新“标题”。",
+        "ui.chat.sidebar.search.too_long max=1234 -> 搜索词最多1234个字符。当前搜索词超出限制，因此仅搜索对话名称。",
+        "ui.chat.pickers.stop.all_sessions count=1234 -> 所有会话（1234）",
+        "ui.chat.canonical.supplement.details.attempts count=1234 -> 尝试次数: 1234",
+        "Grouped control Intl.NumberFormat('zh-CN').format(1234) -> 1,234, proving ::group-off remained effective in the catalogue samples."
+      ]
+    },
+    "pseudo_localization": "The same scoped Node probe doubled every non-whitespace literal code point, wrapped literal segments in ⟦⟧, preserved ICU AST nodes, and formatted every message plus plural/select variants through intl-messageformat. Actual result: 139 pseudo renders, 0 failures; no unresolved braces, replacement characters, undefined or NaN. Sample: ⟦立立即即停停止止⟧1234⟦个个会会话话⟧. This is parser/formatter stress evidence, not rendered-layout evidence.",
+    "static_overflow": "Measured formatted strings with CJK/full-width characters=2 cells and ASCII=1, using count/max=1234, action=other and representative NAME/QUERY/TITLE. Nine of 134 targets were wider than English. Largest ratio: ui.chat.run_details.jobs 4->8 cells (后台任务); largest absolute increase was +4 cells. Other increases were ui.common.file_actions.open_folder 11->14, ui.common.viewer.opening 8->10, and six labels by +1 cell. No material static overflow finding: the largest ratios remain very short absolute labels, and 后台任务 matches the background-jobs context. Sidecars provide prose length guidance but no numeric maxCells for this scope. Real wrapping/truncation remains unverified.",
+    "typography": "Scoped scans found 0 您, 0 ASCII '...', 0 single Chinese ellipsis, 0 unexpected target-only final full stops, 0 no-trailing-punctuation violations and 0 CJK/Latin-or-digit separating-space hits. Chinese ellipses are ……. ASCII colon+space remains only in the two monospace diagnostic lines supplement.details.attempts/model and is accepted in that technical context. One polite 请 occurrence is the MINOR finding; 请求 in stop copy is a noun, not polite address.",
+    "english_leakage": "Parsed literal-node scan covered 147 target literal nodes. Eight nodes contained Latin runs; unique runs were exactly Canvas, Esc, Finder, HTML, ID, Local Operator and token. No untranslated English prose and no byte-identical English stub was found.",
+    "rtl": "Not applicable: zh-CN is left-to-right; no RTL or bidi claim is made.",
+    "limitations": "Catalogue and formatter audit only. No rendered frames, real-app geometry, native activation, release eligibility or visual-fit evidence is claimed; the programme's later real-app frame gate remains required."
+  },
+  "allowed_english_tokens": {
+    "Local Operator": "Product name; glossary requires exact English spelling (ui.chat.sidebar.search.names_only).",
+    "Esc": "Keyboard keycap; machine/platform display vocabulary (ui.chat.sidebar.pins.drag_title).",
+    "ID": "Technical identifier abbreviation in session ID (ui.chat.sidebar.row_menu.copy_id).",
+    "token": "LLM token; zh-CN style guide explicitly keeps token rather than 词元 (ui.chat.pickers.fast.premium_acknowledgement).",
+    "Canvas": "Named product pane; context explicitly requires English (ui.chat.canonical.supplement.file_actions.open_in_canvas and ui.common.file_actions.show_in_canvas).",
+    "Finder": "Apple product name; context explicitly requires English (ui.chat.canonical.supplement.file_actions.reveal_in_finder).",
+    "HTML": "Technical acronym; style guide keeps Latin acronyms uppercase (ui.chat.canonical.supplement.preview_unavailable)."
+  },
+  "severity_totals": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys_read": 43,
+      "sha256": {
+        "en": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+        "zh-CN": "05091e7028843aa083de7975e3a9682ed66adb3309f1ba6c41e8ecb9c16a25dd"
+      },
+      "context_sha256": "fe5dc2a0fa4cb9b95ef5c1a30d57aee030fa5edf2b6b54b323562a1c63b8eb3a",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+        "target": "src/i18n/catalogues/zh-CN/ui.chat.sidebar.json",
+        "context": "src/i18n/catalogues/en/ui.chat.sidebar.context.json"
+      },
+      "findings": [
+        {
+          "id": "ZH2-SIDEBAR-1",
+          "severity": "MINOR",
+          "key": "ui.chat.sidebar.list.empty",
+          "location": "src/i18n/catalogues/zh-CN/ui.chat.sidebar.json:18",
+          "english": "No chats yet. Choose an agent, team or New chat.",
+          "current": "暂无对话。请选择智能体、团队或“新建对话”。",
+          "proposed": "暂无对话。选择智能体、团队或“新建对话”。",
+          "reason": "The zh-CN guide permits polite 请 only where the English says please; this direct Choose instruction adds an unsupported politeness marker and breaks the terse register."
+        }
+      ]
+    },
+    "ui.chat.pickers": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 34,
+      "sha256": {
+        "en": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+        "zh-CN": "96371c2977c74c3a1d72b790b261437daea9df2d868ef2653abdf434e0f60788"
+      },
+      "context_sha256": "8d3fa914cd52768c98a75c4f41b903b86553335b27e406f98500eab7ff576e64",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+        "target": "src/i18n/catalogues/zh-CN/ui.chat.pickers.json",
+        "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+      },
+      "findings": []
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 30,
+      "sha256": {
+        "en": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
+        "zh-CN": "cd7853e76fa14ee6b5ab34fc4ef32c8165eb929103772adeae958d24a34f34ed"
+      },
+      "context_sha256": "53145be31fe46bde6578d114653466dc5c6c932947460c10a0022c9e190d9a34",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "target": "src/i18n/catalogues/zh-CN/ui.chat.canonical.json",
+        "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+      },
+      "findings": []
+    },
+    "ui.chat.analytics": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 11,
+      "sha256": {
+        "en": "6ac0bbfb50c8ef8c772f229868614aa8d07dfd9f659311d5d396cea5c4611159",
+        "zh-CN": "ed091258a3a0547f31ecf7a221539e4de9afba7f871957b0583eff875172b4e4"
+      },
+      "context_sha256": "7c25af7f391fbaac6a1718a81b8b258c0b313ba46411f16e95691446828640ff",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.analytics.json",
+        "target": "src/i18n/catalogues/zh-CN/ui.chat.analytics.json",
+        "context": "src/i18n/catalogues/en/ui.chat.analytics.context.json"
+      },
+      "findings": []
+    },
+    "ui.common.file_actions": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 5,
+      "sha256": {
+        "en": "edac3001910c5ba03d5c0552f07c19baeb1bd1e8e9d3c0a6c178a693f9351233",
+        "zh-CN": "e8bbfda82407311afd9bc8a3955bb8df95482cf86b15fd579a3095141f949eaf"
+      },
+      "context_sha256": "147274f1e573608ac78a0dc45aa14d14a5d2cf89efa953d4f4e012a7fae8d04b",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.file_actions.json",
+        "target": "src/i18n/catalogues/zh-CN/ui.common.file_actions.json",
+        "context": "src/i18n/catalogues/en/ui.common.file_actions.context.json"
+      },
+      "findings": []
+    },
+    "ui.common.viewer": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 4,
+      "sha256": {
+        "en": "660c7e185ebc22d37ecc9b5d02807428f87c477f86431f5cdb07fdec888b78bb",
+        "zh-CN": "eb3cd0c4362aaef50f069d687fd5524a60465f9263a955fc440597673e43f0de"
+      },
+      "context_sha256": "cd11be98d1d94cba927141b2b6b390af7fdc59a8519ea3ed18361cfd4930c2c9",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.viewer.json",
+        "target": "src/i18n/catalogues/zh-CN/ui.common.viewer.json",
+        "context": "src/i18n/catalogues/en/ui.common.viewer.context.json"
+      },
+      "findings": []
+    },
+    "ui.chat.tag_dialogs": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 4,
+      "sha256": {
+        "en": "140fb44d94388706e24ba37c6910a6b753ce0f0701f44e78390a1fffb13c1506",
+        "zh-CN": "c542d1b89d097eea9b6771fcfdb356d7e4f79b6945035d25c8703a1b6fa87d6e"
+      },
+      "context_sha256": "8f4cc8ca17d926c4f85f4226ff92e7c291babbe7e9868ebb8d9fceb5a8841987",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.tag_dialogs.json",
+        "target": "src/i18n/catalogues/zh-CN/ui.chat.tag_dialogs.json",
+        "context": "src/i18n/catalogues/en/ui.chat.tag_dialogs.context.json"
+      },
+      "findings": []
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 2,
+      "sha256": {
+        "en": "7eea05d7c5b371e7969214abc7bd2961bf6c38fd3e5886e0957493b787878094",
+        "zh-CN": "5eb1da3785990647d1fad1f04dc765f2833394f03d02fa7dae5c81bce3dc90f6"
+      },
+      "context_sha256": "eae93350935a597d66fe4931a40fed2fa9d40d0b01e03925d2cef22985f628d6",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.run_details.json",
+        "target": "src/i18n/catalogues/zh-CN/ui.chat.run_details.json",
+        "context": "src/i18n/catalogues/en/ui.chat.run_details.context.json"
+      },
+      "findings": []
+    },
+    "ui.chat.commentary_actions": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 1,
+      "sha256": {
+        "en": "77d6babd2e9fac04e95a550d25f4428e113144c160c34009b89e06608b812868",
+        "zh-CN": "c031da66f5d32a348727ab94eafe27cdcaaefc1f408ff9d3ba8476c08b8368ca"
+      },
+      "context_sha256": "20901db281f82c025243d688a14bfc490d1b5c01c7fd03e7d8788f35411c3ad1",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.commentary_actions.json",
+        "target": "src/i18n/catalogues/zh-CN/ui.chat.commentary_actions.json",
+        "context": "src/i18n/catalogues/en/ui.chat.commentary_actions.context.json"
+      },
+      "findings": []
+    }
+  }
+}

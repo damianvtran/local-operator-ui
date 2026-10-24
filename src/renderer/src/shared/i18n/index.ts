@@ -40,6 +40,14 @@ export {
 	translate,
 } from "../../../../i18n";
 
+/* Direction is a property of the language (see `i18n/direction.ts`), and the
+ * native card document needs the same `lang`/`dir` pair the app root carries. */
+export {
+	resolveLanguage,
+	textDirectionFor,
+} from "../../../../i18n/direction";
+export type { TextDirection } from "../../../../i18n/direction";
+
 /*
  * The renderer-half's own module (not part of the core: it holds the query
  * client's renegotiation and the own-write window, which are renderer

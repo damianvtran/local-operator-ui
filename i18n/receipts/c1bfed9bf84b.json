@@ -1,0 +1,422 @@
+{
+  "schema": 1,
+  "instance": "c1bfed9bf84b",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "date": "2026-10-23",
+  "status": "passed",
+  "locale": "es",
+  "commit": "f8523794527b4d69fdf9a0b20db593156a982aa1",
+  "auditor": {
+    "agent": "translation-auditor (lopdev team)",
+    "session": "c1bfed9bf84b",
+    "served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+    "fallback_used": false
+  },
+  "independence": {
+    "translator_session": "9ab86eade0cc",
+    "independent_session": true,
+    "translator_receipt_read": false,
+    "other_second_audit_receipt_read": false,
+    "source_or_catalogue_edits": false,
+    "note": "Derived directly from the commit's English, Spanish and context bytes, repository contracts, core glossary/style guide, existing committed terminology and fresh local probes. No claim was accepted from the translator or another auditor."
+  },
+  "scope": {
+    "locale": "es",
+    "direction": "ltr",
+    "namespace_count": 9,
+    "key_count": 134,
+    "namespaces": [
+      "ui.chat.analytics",
+      "ui.chat.canonical",
+      "ui.chat.commentary_actions",
+      "ui.chat.pickers",
+      "ui.chat.run_details",
+      "ui.chat.sidebar",
+      "ui.chat.tag_dialogs",
+      "ui.common.file_actions",
+      "ui.common.viewer"
+    ]
+  },
+  "guidance": {
+    "ui_howto": {
+      "path": "docs/I18N.md",
+      "commit": "f8523794527b4d69fdf9a0b20db593156a982aa1",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    },
+    "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "core_howto": {
+      "path": "/Users/damian/local-operator/docs/I18N.md",
+      "sha256": "e1ccfdcb4efc5e846edfa9a80a832dbcd2f0a168134dff8fe5be5cf1f1d60d8b"
+    },
+    "core_design_contract": {
+      "path": "/Users/damian/local-operator/docs/design/i18n.md",
+      "sections_read": [
+        2,
+        4,
+        6
+      ],
+      "sha256": "a597416937a2440de7bf82a8eb7ba110eac5afb03274200648a166b027e70e50"
+    },
+    "glossary": {
+      "path": "/Users/damian/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "spanish_style": {
+      "path": "/Users/damian/local-operator/i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    }
+  },
+  "namespaces": {
+    "ui.chat.analytics": {
+      "status": "passed",
+      "sha256": {
+        "en": "6ac0bbfb50c8ef8c772f229868614aa8d07dfd9f659311d5d396cea5c4611159",
+        "es": "174b4be548b4d7494c5da54c4c54b867ca0cafa902b45bfb57fe6e47367ffb02",
+        "context": "7c25af7f391fbaac6a1718a81b8b258c0b313ba46411f16e95691446828640ff"
+      },
+      "findings": [],
+      "keys": 11,
+      "verdict": "clean"
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "sha256": {
+        "en": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
+        "es": "5b189a86ad2da2e4b63f4ecb1eb4534905e5f903c07410d3545fb00c4bbc1a77",
+        "context": "53145be31fe46bde6578d114653466dc5c6c932947460c10a0022c9e190d9a34"
+      },
+      "findings": [],
+      "keys": 30,
+      "verdict": "clean"
+    },
+    "ui.chat.commentary_actions": {
+      "status": "passed",
+      "sha256": {
+        "en": "77d6babd2e9fac04e95a550d25f4428e113144c160c34009b89e06608b812868",
+        "es": "3633c6cbd80323c7c8e9a6cae0f328d733e0930a5969b6d6c5fe88855116c408",
+        "context": "20901db281f82c025243d688a14bfc490d1b5c01c7fd03e7d8788f35411c3ad1"
+      },
+      "findings": [],
+      "keys": 1,
+      "verdict": "clean"
+    },
+    "ui.chat.pickers": {
+      "status": "passed",
+      "sha256": {
+        "en": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+        "es": "f25d5baa979025cc55b2efada9e3b372f2c71e68396b58adacaf614b4b18bbba",
+        "context": "8d3fa914cd52768c98a75c4f41b903b86553335b27e406f98500eab7ff576e64"
+      },
+      "findings": [],
+      "keys": 34,
+      "verdict": "clean"
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "sha256": {
+        "en": "7eea05d7c5b371e7969214abc7bd2961bf6c38fd3e5886e0957493b787878094",
+        "es": "cc95b9c0545c0686fd10dd9b277141c557d45fadde0b708aea4c3406b824d61f",
+        "context": "eae93350935a597d66fe4931a40fed2fa9d40d0b01e03925d2cef22985f628d6"
+      },
+      "findings": [],
+      "keys": 2,
+      "verdict": "clean"
+    },
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "sha256": {
+        "en": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+        "es": "797a6f9b45b98829d4d332a512fb9cf42e7456e29d2d0a8d589f8abcd877502a",
+        "context": "fe5dc2a0fa4cb9b95ef5c1a30d57aee030fa5edf2b6b54b323562a1c63b8eb3a"
+      },
+      "findings": [
+        {
+          "id": "ES2-1",
+          "severity": "minor",
+          "namespace": "ui.chat.sidebar",
+          "key": "ui.chat.sidebar.nav.chats",
+          "english": "Chats",
+          "current": "Conversaciones",
+          "proposed": "Chats",
+          "reason": "The same namespace renders chat/chats as chat/chats in list.empty, list.truncated_legacy, search.names_only and search.placeholder, and the existing ui.command_palette.palette_search.chats label is also Chats; Conversaciones is glossary/house-voice drift for the same English term."
+        }
+      ],
+      "keys": 43,
+      "verdict": "clean-with-findings"
+    },
+    "ui.chat.tag_dialogs": {
+      "status": "passed",
+      "sha256": {
+        "en": "140fb44d94388706e24ba37c6910a6b753ce0f0701f44e78390a1fffb13c1506",
+        "es": "5fd755f73ac6d67c9929fcd1e69984602c36e558b6cddb97c2ecf74184902448",
+        "context": "8f4cc8ca17d926c4f85f4226ff92e7c291babbe7e9868ebb8d9fceb5a8841987"
+      },
+      "findings": [],
+      "keys": 4,
+      "verdict": "clean"
+    },
+    "ui.common.file_actions": {
+      "status": "passed",
+      "sha256": {
+        "en": "edac3001910c5ba03d5c0552f07c19baeb1bd1e8e9d3c0a6c178a693f9351233",
+        "es": "95cbcbb27f865bb9d15b0a5f4053fba263a3147ea5729a93449a09d05703c4ff",
+        "context": "147274f1e573608ac78a0dc45aa14d14a5d2cf89efa953d4f4e012a7fae8d04b"
+      },
+      "findings": [],
+      "keys": 5,
+      "verdict": "clean"
+    },
+    "ui.common.viewer": {
+      "status": "passed",
+      "sha256": {
+        "en": "660c7e185ebc22d37ecc9b5d02807428f87c477f86431f5cdb07fdec888b78bb",
+        "es": "a7b773b4b329b7ba68c3f2d62c6bb417633eb9507a31128844c997553752d56e",
+        "context": "cd11be98d1d94cba927141b2b6b390af7fdc59a8519ea3ed18361cfd4930c2c9"
+      },
+      "findings": [],
+      "keys": 4,
+      "verdict": "clean"
+    }
+  },
+  "semantic_review": {
+    "accuracy": "All 134 English messages, Spanish messages and context entries were compared. Safety/charge, recovery, destructive-action, session-scope and failure semantics are preserved.",
+    "idiom_and_register": "Neutral Spanish and tú address are consistent; action labels use infinitives, sentence case and the locale's punctuation. No T/V mismatch found.",
+    "glossary": "session/sesión, tool/herramienta, approvals/aprobaciones, skill/habilidad, job/trabajo, team/equipo, credentials/credencial and model/modelo conform. Narración for commentary matches existing audited Spanish usage. One chat/chats drift is reported as ES2-1.",
+    "english_leakage": "No English-identical target value among the 134. Remaining Latin/technical runs are allowed or established: Local Operator, Canvas, Finder, HTML, backend, token, app, ID, Esc and chat/chats. No untranslated English sentence found.",
+    "rtl": "Not applicable: es is LTR; no bidi control characters are needed or asserted."
+  },
+  "mechanical_evidence": {
+    "official": {
+      "command": "node scripts/i18n/generate.mjs --check && node --test scripts/i18n/locale-parity.test.mjs scripts/i18n/context-parity.test.mjs",
+      "actual_output": "keys.gen.ts byte-identical to fresh generation; 51 tests, 51 pass, 0 fail. Spanish key coverage, placeholder preservation and English-stub checks passed.",
+      "scope_note": "Audited source/target/context/generated paths were unchanged from the commit; the unrelated dirty coverage allowance was not used as translation evidence."
+    },
+    "exact_order": "Derived with ordered JSON parsing of commit bytes: en key order == es key order and en key order == context key order in all 9 namespaces; 134/134 keys, no missing or extra keys.",
+    "independent_icu_probe": {
+      "actual_output": "134 messages parsed and formatted; per-message argument/name/type/skeleton sets matched; 15 unique per-message argument signatures; 1 plural and 1 select; 0 markup tags; PROBLEMS []. The added many branch legitimately repeats count and was compared as a set, not an occurrence list.",
+      "plural_categories": "Intl.PluralRules('es') reports many, one, other.",
+      "plural_samples": [
+        "0/other: Detener 0 sesiones ahora",
+        "1/one: Detener esta sesión ahora",
+        "2/other: Detener 2 sesiones ahora",
+        "1000000/many: Detener 1000000 de sesiones ahora",
+        "1500000/other: Detener 1500000 sesiones ahora"
+      ],
+      "select_samples": [
+        "pin: No se pudo fijar “Título”.",
+        "unpin: No se pudo desfijar “Título”.",
+        "other: No se pudo actualizar “Título”."
+      ],
+      "number_skeletons": "::group-off preserved; million-scale samples remain ungrouped. No ICU plural/select arm, placeholder, number skeleton or markup token was dropped or renamed."
+    }
+  },
+  "pseudo_and_static_fit": {
+    "rendered_claim": "none",
+    "maxCells_entries_in_scope": 0,
+    "pseudo": "All 134 messages were formatted with sample arguments, then accented and expanded by 35% with pseudo wrappers; 134/134 produced output and 0 probe failures. This is static pseudo evidence, not native-layout or clipping proof.",
+    "expansion_heuristic": "Formatted Spanish >25% longer and >4 Unicode code points longer than formatted English; screen-reader-only strings excluded from this visible-fit list. The heuristic is an audit screen, not a repository width budget.",
+    "disposition": "The following 27 strings are named for a later rendered-fit check; no overflow defect is asserted without pixels. Tight action rows/buttons are highest priority. Flexible dialog titles, notices and menu labels are observations only.",
+    "candidates": [
+      {
+        "key": "ui.chat.pickers.goal.mark_done",
+        "en_codepoints": 9,
+        "es_codepoints": 22,
+        "ratio": 2.44,
+        "priority": "tight-button"
+      },
+      {
+        "key": "ui.chat.pickers.approvals.title",
+        "en_codepoints": 14,
+        "es_codepoints": 28,
+        "ratio": 2.0,
+        "priority": "flexible-title"
+      },
+      {
+        "key": "ui.chat.sidebar.list.retry_refresh",
+        "en_codepoints": 13,
+        "es_codepoints": 24,
+        "ratio": 1.85,
+        "priority": "tight-button"
+      },
+      {
+        "key": "ui.chat.pickers.skills.title",
+        "en_codepoints": 6,
+        "es_codepoints": 11,
+        "ratio": 1.83,
+        "priority": "flexible-title"
+      },
+      {
+        "key": "ui.common.file_actions.preview",
+        "en_codepoints": 7,
+        "es_codepoints": 12,
+        "ratio": 1.71,
+        "priority": "menu-label"
+      },
+      {
+        "key": "ui.common.viewer.reset_view",
+        "en_codepoints": 10,
+        "es_codepoints": 17,
+        "ratio": 1.7,
+        "priority": "control-tooltip"
+      },
+      {
+        "key": "ui.chat.pickers.goal.placeholder",
+        "en_codepoints": 33,
+        "es_codepoints": 56,
+        "ratio": 1.7,
+        "priority": "wrapping-textarea"
+      },
+      {
+        "key": "ui.chat.sidebar.search.unavailable",
+        "en_codepoints": 62,
+        "es_codepoints": 102,
+        "ratio": 1.65,
+        "priority": "wrapping-notice"
+      },
+      {
+        "key": "ui.common.file_actions.copy_file_path",
+        "en_codepoints": 14,
+        "es_codepoints": 23,
+        "ratio": 1.64,
+        "priority": "menu-label"
+      },
+      {
+        "key": "ui.chat.pickers.logout.title",
+        "en_codepoints": 8,
+        "es_codepoints": 13,
+        "ratio": 1.63,
+        "priority": "flexible-title"
+      },
+      {
+        "key": "ui.chat.canonical.sound.stop.request_stop",
+        "en_codepoints": 12,
+        "es_codepoints": 19,
+        "ratio": 1.58,
+        "priority": "tight-button"
+      },
+      {
+        "key": "ui.chat.canonical.supplement.file_actions.open_in_default_app",
+        "en_codepoints": 19,
+        "es_codepoints": 30,
+        "ratio": 1.58,
+        "priority": "menu-label"
+      },
+      {
+        "key": "ui.chat.canonical.transcript.send_again",
+        "en_codepoints": 10,
+        "es_codepoints": 15,
+        "ratio": 1.5,
+        "priority": "paired-button"
+      },
+      {
+        "key": "ui.chat.pickers.effort.title",
+        "en_codepoints": 16,
+        "es_codepoints": 24,
+        "ratio": 1.5,
+        "priority": "flexible-title"
+      },
+      {
+        "key": "ui.chat.pickers.goal.clear",
+        "en_codepoints": 10,
+        "es_codepoints": 15,
+        "ratio": 1.5,
+        "priority": "action-row-button"
+      },
+      {
+        "key": "ui.chat.pickers.goal.title",
+        "en_codepoints": 12,
+        "es_codepoints": 18,
+        "ratio": 1.5,
+        "priority": "flexible-title"
+      },
+      {
+        "key": "ui.chat.sidebar.agents.no_match",
+        "en_codepoints": 15,
+        "es_codepoints": 22,
+        "ratio": 1.47,
+        "priority": "wrapping-empty-state"
+      },
+      {
+        "key": "ui.chat.pickers.login.title",
+        "en_codepoints": 21,
+        "es_codepoints": 30,
+        "ratio": 1.43,
+        "priority": "flexible-title"
+      },
+      {
+        "key": "ui.chat.sidebar.header.view_options",
+        "en_codepoints": 12,
+        "es_codepoints": 17,
+        "ratio": 1.42,
+        "priority": "control-tooltip"
+      },
+      {
+        "key": "ui.chat.sidebar.agents.empty",
+        "en_codepoints": 13,
+        "es_codepoints": 18,
+        "ratio": 1.38,
+        "priority": "wrapping-empty-state"
+      },
+      {
+        "key": "ui.chat.canonical.transcript.stale_caption",
+        "en_codepoints": 58,
+        "es_codepoints": 80,
+        "ratio": 1.38,
+        "priority": "wrapping-caption"
+      },
+      {
+        "key": "ui.chat.pickers.stop.all_sessions",
+        "en_codepoints": 16,
+        "es_codepoints": 22,
+        "ratio": 1.38,
+        "priority": "checkbox-label"
+      },
+      {
+        "key": "ui.chat.pickers.models.set_as_default",
+        "en_codepoints": 28,
+        "es_codepoints": 37,
+        "ratio": 1.32,
+        "priority": "ghost-button"
+      },
+      {
+        "key": "ui.chat.canonical.transcript.start_new_chat",
+        "en_codepoints": 16,
+        "es_codepoints": 21,
+        "ratio": 1.31,
+        "priority": "recovery-button"
+      },
+      {
+        "key": "ui.chat.sidebar.pins.drag_title",
+        "en_codepoints": 29,
+        "es_codepoints": 38,
+        "ratio": 1.31,
+        "priority": "tooltip"
+      },
+      {
+        "key": "ui.chat.sidebar.search.searching",
+        "en_codepoints": 24,
+        "es_codepoints": 31,
+        "ratio": 1.29,
+        "priority": "wrapping-status"
+      },
+      {
+        "key": "ui.chat.pickers.stop.confirm",
+        "en_codepoints": 19,
+        "es_codepoints": 24,
+        "ratio": 1.26,
+        "priority": "checkbox-label"
+      }
+    ]
+  },
+  "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "overall_verdict": "clean-with-findings",
+  "terminal_static_audit": true,
+  "unverified": [
+    "Rendered fit, wrapping, clipping and geometry were not exercised and are not claimed. The 27 static expansion candidates remain rendered-check inputs, not measured visual failures."
+  ]
+}

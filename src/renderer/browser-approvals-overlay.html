@@ -4,16 +4,14 @@
     <meta charset="UTF-8" />
     <title>Local Operator Approvals Card</title>
     <!--
-      S6a's inert card document (docs/design/browser-approvals-card.md).
+      S6b's approvals card document (docs/design/browser-approvals-card.md).
 
-      THIS DOCUMENT HAS NO TRUST BOUNDARY YET. It is a static, unfocused
-      presentation surface used to measure the native child's geometry and
-      lifecycle before S6b adds a purpose-built preload and two sender-pinned
-      IPC channels. It has no preload, no IPC, no remote content, no inline
-      script and no focus target. The first paint's count and the palette are
-      query parameters; the live count arrives through `setCount`, which owns
-      the catalogue lookup and the ICU plural. Compositing and the 8 px ring's
-      hit routing are NOT measurable in this slice and are not claimed.
+      THIS DOCUMENT RUNS BEHIND A PURPOSE-BUILT PRELOAD: exactly two verbs cross
+      to main (`dismiss`, `decide`) and the model arrives through
+      `window.__approvalsCard.setModel` (the seam S6a proved for the count). It
+      carries no inline script, no inline style, no remote content and no
+      `innerHTML`; every string is written with `textContent`. More options and
+      Review all are local view changes: they never cross the boundary.
 
       CSP: every capability the card does not need is denied. Script and style
       are emitted by the app's own build (`script-src 'self'`, `style-src
@@ -27,13 +25,53 @@
     <link rel="stylesheet" href="/src/approvals-overlay/card.css" />
   </head>
   <body>
-    <main id="approvals-card" aria-hidden="true">
+    <main
+      id="approvals-card"
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby="approvals-title"
+      tabindex="-1"
+    >
       <p class="card-brand" id="approvals-brand"></p>
       <header class="card-header">
         <h1 id="approvals-title"></h1>
+        <button type="button" class="card-close" id="approvals-close"></button>
       </header>
-      <p class="card-count" id="approvals-count"></p>
-      <p class="card-detail" id="approvals-detail"></p>
+      <div class="card-body">
+        <section id="approvals-request">
+          <!--
+            ONE SENTENCE, like the band's consent card: requester, the verb and
+            the exact origin inline in monospace. Three block rows read as three
+            unrelated facts and lose the subject of the request (D2).
+          -->
+          <p class="card-request-line">
+            <span id="approvals-requester" class="card-requester"></span>
+            <span id="approvals-lead"></span>
+            <code id="approvals-origin" class="card-origin"></code>
+          </p>
+          <p class="card-expiry" id="approvals-expiry"></p>
+          <button
+            type="button"
+            class="card-primary"
+            id="approvals-allow-once"
+          ></button>
+          <!--
+            ONE GLOSS LINE. The scoped decisions share the line and update it on
+            focus/hover, so the honesty text is available without five repeated
+            paragraphs pushing the deny button under the fold (D10/Q2).
+          -->
+          <p class="card-gloss" id="approvals-gloss"></p>
+          <div class="card-secondary" id="approvals-secondary"></div>
+        </section>
+        <section id="approvals-list" hidden>
+          <div class="card-rows" id="approvals-rows" role="list"></div>
+        </section>
+        <footer class="card-footer">
+          <p class="card-error" id="approvals-error" role="alert" hidden></p>
+          <button type="button" class="card-review" id="approvals-review"></button>
+          <button type="button" class="card-review" id="approvals-back" hidden></button>
+        </footer>
+      </div>
     </main>
     <script type="module" src="/src/approvals-overlay/main.ts"></script>
   </body>
