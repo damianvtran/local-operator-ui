@@ -1633,7 +1633,9 @@ export type MessageParams = {
 	"ui.browser.page_context_menu.cut": undefined;
 	"ui.browser.page_context_menu.open_link_in_new_tab": undefined;
 	"ui.browser.page_context_menu.paste": undefined;
+	"ui.browser.page_context_menu.redo": undefined;
 	"ui.browser.page_context_menu.select_all": undefined;
+	"ui.browser.page_context_menu.undo": undefined;
 	"ui.browser.use_browser_chrome.downloads_folder_failed": { message: string };
 	"ui.browser.use_consent_attention_lifetime.that_request_is_no_longer_waiting": undefined;
 	"ui.browser.webauthn_chooser.a_site": undefined;

@@ -218,6 +218,8 @@
 	"ui.browser.page_context_menu.open_link_in_new_tab": "لنک نئے ٹیب میں کھولیں",
 	"ui.browser.page_context_menu.paste": "چسپاں کریں",
 	"ui.browser.page_context_menu.select_all": "سب منتخب کریں",
+	"ui.browser.page_context_menu.redo": "دوبارہ کریں",
+	"ui.browser.page_context_menu.undo": "کالعدم کریں",
 	"ui.browser.use_browser_chrome.downloads_folder_failed": "ڈاؤن لوڈ فولڈر نہیں کھل سکا۔ {message}",
 	"ui.browser.use_consent_attention_lifetime.that_request_is_no_longer_waiting": "وہ درخواست اب منتظر نہیں ہے۔",
 	"ui.browser.webauthn_chooser.a_site": "ایک سائٹ",

@@ -1663,8 +1663,8 @@ async function initializeBrowserHost(
 			// RULE lives in `page-context-menu.ts` (pure, tested); this block
 			// only turns it into a native menu for THIS view - back/forward
 			// walk this contents' own history, not the active tab's, so a
-			// menu can never steer a tab it was not opened on. Read/navigation
-			// only: no downloads, no devtools, no consent actions.
+			// menu can never steer a tab it was not opened on. Navigation and
+			// editing only: no downloads, no devtools, no consent actions.
 			contents.on("context-menu", (_event, params) => {
 				const navigation = contents.navigationHistory;
 				const items = buildPageContextMenuItems({
@@ -1673,6 +1673,7 @@ async function initializeBrowserHost(
 					canGoBack: navigation ? navigation.canGoBack() : false,
 					canGoForward: navigation ? navigation.canGoForward() : false,
 					isEditable: params.isEditable,
+					selectionText: params.selectionText ?? "",
 					editFlags: params.editFlags,
 				});
 				const menu = Menu.buildFromTemplate(
@@ -1689,6 +1690,8 @@ async function initializeBrowserHost(
 									clipboard.writeText(params.linkURL ?? "");
 								else if (item.id === "copy-page")
 									clipboard.writeText(contents.getURL());
+								else if (item.id === "undo") contents.undo();
+								else if (item.id === "redo") contents.redo();
 								else if (item.id === "cut") contents.cut();
 								else if (item.id === "copy") contents.copy();
 								else if (item.id === "paste") contents.paste();
