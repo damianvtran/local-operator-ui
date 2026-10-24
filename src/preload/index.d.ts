@@ -202,6 +202,9 @@ declare global {
 					/** Why the view is hidden, when it is: the browser's own state
 					 * page rather than an overlay. See `registry.ts:chromeVisible`. */
 					ownPage?: boolean,
+					/** The browser's own content state even while an overlay hides it;
+					 * controls are refused on it (QA Q3-1). */
+					ownStatePage?: boolean,
 				) => Promise<unknown>;
 				handOver: (tabId: number, sessionId: string) => Promise<unknown>;
 				revokeHandOver: (tabId: number) => Promise<unknown>;
