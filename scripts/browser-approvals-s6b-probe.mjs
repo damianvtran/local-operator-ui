@@ -320,18 +320,32 @@ app.whenReady().then(async () => {
   await sleep(250);
   record("I8-stale-seq", responded.length === beforeStale && controller.facts().actions.dropped >= 1, { staleResult, responded: [...responded], actions: controller.facts().actions });
 
-  // I4 — Escape dismisses without deciding.
+  // I4 — Escape dismisses without deciding AND the document repaints the next
+  // request. The second half is the Q-S6b-1 regression: a dismissal that only
+  // advanced the controller left the previous request painted, and a second
+  // Escape dismissed that same entry again.
   const beforeEscape = responded.length;
   const dismissedEntry = controller.facts().requestEntryId;
   currentCard().webContents.sendInputEvent({ type: "keyDown", keyCode: "Escape" });
   currentCard().webContents.sendInputEvent({ type: "keyUp", keyCode: "Escape" });
   await sleep(300);
+  const afterEscapeFacts = controller.facts();
+  const afterEscapeDoc = await readCard();
+  const expectedEscape = entries.find((entry) => entry.entryId === afterEscapeFacts.requestEntryId);
+  const renderedNext = Boolean(
+    expectedEscape &&
+      afterEscapeDoc?.requester === requesterLabels[expectedEscape.entryId] &&
+      afterEscapeDoc?.origin === expectedEscape.origin,
+  );
   // Dismissing the shown request may present the next live one (the queue rule),
-  // so the assertion is that the dismissed entry is gone and nothing was decided.
+  // so the assertion is that the dismissed entry is gone, nothing was decided,
+  // and the document is painting the controller's next request.
   record(
     "I4-escape",
-    responded.length === beforeEscape && controller.facts().requestEntryId !== dismissedEntry,
-    { visible: controller.facts().visible, requestEntryId: controller.facts().requestEntryId, dismissedEntry, responded: [...responded], actions: controller.facts().actions },
+    responded.length === beforeEscape &&
+      afterEscapeFacts.requestEntryId !== dismissedEntry &&
+      renderedNext,
+    { visible: afterEscapeFacts.visible, requestEntryId: afterEscapeFacts.requestEntryId, dismissedEntry, afterEscapeDoc, expectedEscape, renderedNext, responded: [...responded], actions: afterEscapeFacts.actions },
   );
 
   // RTL: the same formula mirrors the native view to the left edge.

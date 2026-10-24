@@ -111,7 +111,11 @@ dedicated non-persistent partition, and the pinned deny-all CSP.
   renderer returns keyboard focus to the shield on the open→closed transition.
   They never decide. A dismissed request stays pending and counted; an explicit
   open with every request dismissed clears the presentation-only dismissals and
-  recalls the oldest (U3).
+  recalls the oldest (U3). `selectedEntryId` is only an explicit list selection:
+  it is cleared before a dismissal and whenever the controller's request
+  changes, so the painted request always follows main. A presentation-dismissed
+  entry can stay in the live queue, so selection cannot be inferred from
+  `pending` alone (Q-S6b-1).
 - A decision returns focus to the page; the store's change builds the next
   model.
 - The card is a non-modal dialog (`role="dialog"`, `aria-modal="false"`,
