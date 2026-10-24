@@ -159,12 +159,15 @@ declare global {
 					locale?: string;
 					dir?: "ltr" | "rtl";
 					theme?: "light" | "dark";
+					palette?: string | null;
 				}) => Promise<unknown>;
 				closeApprovalsCard: () => Promise<unknown>;
 				setApprovalsCardContext: (input: {
 					locale?: string;
 					dir?: "ltr" | "rtl";
 					theme?: "light" | "dark";
+					palette?: string | null;
+					requesterLabels?: Readonly<Record<string, string>>;
 				}) => Promise<unknown>;
 				onChord: (
 					callback: (

@@ -650,14 +650,70 @@ test("model: hostile fields are rebuilt from the allow-list, never forwarded", (
 	assert.equal(model.pending.length, 0, "a non-http origin cannot be painted");
 });
 
-test("model: the display authority reaches the card as the requester", () => {
+test("model: the production queue names the requester, never the site", () => {
 	const model = mod.approvalsCardModelFrom({
 		seq: 1,
 		entries: [
 			{
 				entryId: "e1",
 				origin: "https://example.test",
-				displayAuthority: "The agent in 'probe'",
+				displayAuthority: "example.test",
+				requester: "session:session-a",
+				requesterSessionId: "session-a",
+				expiresAt: Date.now() + 60_000,
+				broad: { scope: "domain", key: "example.test" },
+			},
+			{
+				entryId: "e2",
+				origin: "https://example.test",
+				displayAuthority: "example.test",
+				requester: "session:session-b",
+				requesterSessionId: "session-b",
+				expiresAt: Date.now() + 60_000,
+			},
+		],
+		requesterLabels: {
+			"session-a": "Fix the login flow",
+			"session-b": "Draft a release note",
+		},
+		locale: "en",
+		dir: "ltr",
+		theme: "dark",
+	});
+	assert.equal(model.request.requester, "Fix the login flow");
+	assert.notEqual(model.request.requester, "example.test");
+	assert.equal(model.pending[1].requester, "Draft a release note");
+});
+
+test("model: the app's exact palette survives sanitisation, junk does not", () => {
+	const parsed = (palette) =>
+		mod.sanitizeApprovalsCardModel({
+			v: 1,
+			seq: 1,
+			locale: "fr",
+			dir: "ltr",
+			theme: "light",
+			palette,
+			view: "request",
+			focus: false,
+			count: 0,
+			busy: false,
+			request: null,
+			pending: [],
+			error: null,
+		})?.palette ?? null;
+	assert.equal(parsed("catppuccinLatte"), "catppuccinLatte");
+	assert.equal(parsed("</style><script>"), null);
+});
+
+test("model: a non-session requester is not rendered from the site", () => {
+	const model = mod.approvalsCardModelFrom({
+		seq: 1,
+		entries: [
+			{
+				entryId: "e1",
+				origin: "https://example.test",
+				displayAuthority: "example.test",
 				expiresAt: Date.now() + 60_000,
 				broad: { scope: "domain", key: "example.test" },
 			},
@@ -666,7 +722,9 @@ test("model: the display authority reaches the card as the requester", () => {
 		dir: "ltr",
 		theme: "dark",
 	});
-	assert.equal(model.request.requester, "The agent in 'probe'");
+	// The document falls back to its localized "An agent"; main never invents a
+	// label from the requested host (F2).
+	assert.equal(model.request.requester, "");
 	assert.equal(model.request.broadKey, "example.test");
 });
 
@@ -817,9 +875,11 @@ test("controller: the two card channels are sender-pinned, seq-checked and route
 	assert.equal(responded.length, 0);
 	assert.equal(controller.facts().visible, true);
 
-	// The live entry decides, through the one `respond` callback.
+	// The live entry decides, through the one `respond` callback. The dropped
+	// actions above repainted the card with a fresh seq, so the live action uses
+	// the seq the document now carries (the same rule a real card follows).
 	mod.emitIpc("browser-approvals-card-decide", event, {
-		seq,
+		seq: controller.facts().seq,
 		entryId,
 		decision: "once",
 	});
@@ -948,9 +1008,13 @@ test("controller: a fully dismissed queue is recallable from the shield (U3)", a
 			if (index !== -1) children.splice(index, 1);
 		},
 	};
+	let changed = 0;
 	const controller = new mod.ApprovalsOverlayController({
 		window: { contentView, isDestroyed: () => false },
 		documentUrl: "file:///tmp/browser-approvals-overlay.html",
+		onChanged: () => {
+			changed += 1;
+		},
 	});
 	controller.onLayout({
 		presented: true,
@@ -970,6 +1034,10 @@ test("controller: a fully dismissed queue is recallable from the shield (U3)", a
 	});
 	await waitFor(() => !controller.facts().visible, "dismissed");
 	assert.equal(controller.facts().pending, 1, "still pending and counted");
+	// F1: the card's own dismissal must push the projection and clear the
+	// explicit latch; otherwise the shield's first press is a stale no-op.
+	assert.ok(changed > 0, "a card dismissal pushed the projection");
+	assert.equal(controller.state().open, false);
 	controller.open({ focus: true });
 	await waitFor(() => controller.facts().visible, "recalled");
 	assert.equal(controller.facts().visible, true);

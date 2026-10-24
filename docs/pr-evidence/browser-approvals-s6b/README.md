@@ -1,27 +1,33 @@
-# S6b approvals card frames — round-1 remediation head
+# S6b approvals card frames — round-2 remediation head
 
-**Document-only frames.** These are screenshots of the BUILT card document
-(`out/renderer/browser-approvals-overlay.html`) loaded in an iframe over a
-page-coloured ground, with a model injected through `window.__approvalsCard`
-(the same seam main uses). The native `WebContentsView` composite, transparency
-over a live page, ring hit routing and VoiceOver are **not** shown and remain
-**BLOCKED** (see the PR's blocker comment); this folder does not claim them.
+**Document-only frames.** These are cropped screenshots of the BUILT card
+document (`out/renderer/browser-approvals-overlay.html`) loaded in an iframe
+over a page-coloured ground, with a model injected through
+`window.__approvalsCard` (the same seam main uses). They are cropped to the
+document so the card is legible; the dashed edge is the harness iframe, not the
+native ring. Native composite, transparency over a live page, the ring's hit
+routing and VoiceOver are **not** shown and are recorded BLOCKED in
+`docs/evidence/browser-approvals-s6b/`.
 
-Captured at head `ccd1b0a194` with the harness browser (the repo's browser
-tool), from the same built document that the probe drives:
-
-| File | Cell |
+| File | State |
 | --- | --- |
-| `card-264-dark.png` | 264 view · dark · fr |
-| `card-264-light.png` | 264 view · light · fr |
-| `card-368-dark.png` | 368 view · dark · fr |
-| `card-368-light.png` | 368 view · light · fr |
-| `list-368-light.png` | the queue list (Review all), 368 · light |
-| `error-264-light.png` | the failure line in the sticky footer, 264 · light |
+| `card-264-dark.png` | request · 264 · dark · fr |
+| `card-264-light.png` | request · 264 · light · fr |
+| `card-368-dark.png` | request · 368 · dark · fr |
+| `card-368-light.png` | request · 368 · light · fr |
+| `list-264-light.png` | queue list · 264 · light (footer anchored at the card foot) |
+| `list-368-dark.png` | queue list · 368 · dark |
+| `palette-368-latte.png` | catppuccinLatte (a light palette whose name has no "light") |
+| `expired-264-light.png` | expired: colour-based disabled decisions, no opacity |
+| `error-264-light.png` | stale action: the error line in the sticky footer |
 
-All five decisions and the queue/back action are above the fold at 264; the
-request is one sentence with the origin inline; the broad grant uses the
-queue's registrable-domain key; the footer carries the hairline and no label is
-cut. The native probe that produces the *native* rows is currently blocked by an
-environment-level `WebContentsView` failure; those rows stay BLOCKED in
+What they show: one request sentence with the origin inline; the broad grant as
+`allow_all_of` + the queue's registrable-domain key; a single gloss line; all
+five decisions plus the footer above the fold at 264 and 368; the footer's
+hairline and scrim; the count-labelled list action; the list footer at the card
+foot without changing the pinned height; the exact app palette; disabled states
+as colour, not opacity; the stale/error line above the footer.
+
+The native rows (and the ring) come from `scripts/browser-approvals-s6b-probe.mjs`,
+not from these frames; its four cells at this head are in
 `docs/evidence/browser-approvals-s6b/`.

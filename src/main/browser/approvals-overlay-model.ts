@@ -12,7 +12,9 @@
  * WHAT IS NOT HERE: decision meaning. The model carries entry ids and display
  * text only; `decide` re-resolves the id against the live queue in main and
  * routes through `host.respondToConsent`. A card that lies about its model can
- * at worst paint wrong glyphs.
+ * only choose among the LIVE pending entries the model already carried (any of
+ * which the operator may have selected in the list); it cannot create an entry,
+ * widen a scope, or name a request that is not in the queue.
  */
 
 import {
@@ -95,21 +97,30 @@ function sanitizeCardRequest(entry: {
  * `displayAuthority` is the display string, and `broad.key` is the registrable
  * domain the broad grant would cover.
  */
-export function approvalsCardRequestFrom(entry: {
-	entryId?: unknown;
-	origin?: unknown;
-	displayAuthority?: unknown;
-	expiresAt?: unknown;
-	broad?: unknown;
-}): ApprovalsCardRequest | null {
+export function approvalsCardRequestFrom(
+	entry: {
+		entryId?: unknown;
+		origin?: unknown;
+		/** The queue's opaque requester identity; mapped through `labels` only. */
+		requester?: unknown;
+		requesterSessionId?: unknown;
+		expiresAt?: unknown;
+		broad?: unknown;
+	},
+	labels: Readonly<Record<string, string>> = {},
+): ApprovalsCardRequest | null {
 	const broad =
 		entry.broad && typeof entry.broad === "object"
 			? (entry.broad as { key?: unknown })
 			: null;
+	const sessionId =
+		typeof entry.requesterSessionId === "string"
+			? entry.requesterSessionId
+			: "";
 	return sanitizeCardRequest({
 		entryId: entry.entryId,
 		origin: entry.origin,
-		requester: entry.displayAuthority,
+		requester: sessionId ? labels[sessionId] : "",
 		expiresAt: entry.expiresAt,
 		broadKey: broad?.key,
 	});
@@ -127,6 +138,10 @@ export interface ApprovalsCardModelInput {
 	error?: unknown;
 	/** Entry ids the operator dismissed; presentation-only, never persisted. */
 	dismissed?: ReadonlySet<string>;
+	/** Display labels keyed by the queue's `requesterSessionId`, pushed by the app. */
+	requesterLabels?: Readonly<Record<string, string>>;
+	/** The app's exact palette name; null/absent means the mode default. */
+	palette?: unknown;
 }
 
 function modelDirection(value: unknown): "ltr" | "rtl" {
@@ -144,7 +159,7 @@ export function approvalsCardModelFrom(
 	const pending: ApprovalsCardRequest[] = [];
 	for (const entry of input.entries) {
 		if (pending.length >= APPROVALS_CARD_MODEL_LIMITS.pending) break;
-		const request = approvalsCardRequestFrom(entry);
+		const request = approvalsCardRequestFrom(entry, input.requesterLabels);
 		if (request) pending.push(request);
 	}
 	const request =
@@ -155,6 +170,7 @@ export function approvalsCardModelFrom(
 		locale: text(input.locale, 35) || "en",
 		dir: modelDirection(input.dir),
 		theme: input.theme === "light" ? "light" : "dark",
+		palette: paletteName(input.palette),
 		view: input.view === "list" ? "list" : "request",
 		focus: input.focus === true,
 		count: pending.length,
@@ -167,6 +183,12 @@ export function approvalsCardModelFrom(
 				: null,
 	};
 	return sanitizeApprovalsCardModel(model) ?? emptyModel(model);
+}
+
+/** A palette name is a CSS token, not free text: letters, digits, `-` and `_`. */
+function paletteName(value: unknown): string | null {
+	if (typeof value !== "string") return null;
+	return /^[A-Za-z0-9_-]{1,40}$/.test(value) ? value : null;
 }
 
 function emptyModel(fallback: ApprovalsCardModel): ApprovalsCardModel {
@@ -214,6 +236,7 @@ export function sanitizeApprovalsCardModel(
 		locale: text(input.locale, 35) || "en",
 		dir: modelDirection(input.dir),
 		theme: input.theme === "light" ? "light" : "dark",
+		palette: paletteName(input.palette),
 		view: input.view === "list" ? "list" : "request",
 		focus: input.focus === true,
 		count: pending.length,

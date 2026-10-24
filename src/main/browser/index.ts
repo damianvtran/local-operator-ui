@@ -59,7 +59,11 @@ import {
 import { ConsentNotifier } from "./consent-notifier";
 import { DownloadArmer } from "./downloads";
 import type { DriveableView } from "./electron-types";
-import { BrowserHost, isReportableLoadFailure } from "./host";
+import {
+	BrowserHost,
+	isReportableLoadFailure,
+	sessionRequesterOf,
+} from "./host";
 import {
 	PRODUCT_ADDRESS_OVERLAY_EVENT,
 	type RegisterBrowserIpcOptions,
@@ -878,6 +882,9 @@ async function initializeBrowserHost(
 						documentUrl: options.approvalsOverlay.documentUrl,
 						preloadPath: options.approvalsOverlay.preloadPath,
 						opaque: process.platform !== "darwin",
+						// The projection is the renderer's only view of the shield; a
+						// dismissal from the card itself must push it (F1).
+						onChanged: () => notifyChanged(),
 						log,
 						respond: (entryId, decision) => {
 							if (!respondToConsent) {
@@ -1117,7 +1124,13 @@ async function initializeBrowserHost(
 				clearTimeout(approvalsExpiryTimer);
 				approvalsExpiryTimer = null;
 			}
-			const entries = approvals.pendingEntries();
+			// The queue's `requester` is an authority boundary; the card gets the
+			// session id so the renderer-pushed display label can name WHO asked
+			// (F2), never the requested site's host.
+			const entries = approvals.pendingEntries().map((entry) => ({
+				...entry,
+				requesterSessionId: sessionRequesterOf(entry.requester),
+			}));
 			approvalsOverlay?.setModel({ entries });
 			if (entries.length === 0) return;
 			const delay = approvalsExpiryDelay(entries);

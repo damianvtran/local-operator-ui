@@ -294,7 +294,11 @@ function render(): void {
 			allowOnceNode.textContent = t(
 				"ui.browser.browser_consent_request.allow_once",
 			);
-			allowOnceNode.disabled = model.busy;
+			// The primary ignores the expiry no more than the scoped decisions do
+			// (round-2 minor): an expired request cannot be answered from a stale
+			// card.
+			allowOnceNode.disabled =
+				model.busy || (minutesLeft(request.expiresAt) ?? 1) <= 0;
 			allowOnceNode.onclick = () => sendDecision("once");
 			setGloss(
 				t(
@@ -305,8 +309,11 @@ function render(): void {
 		renderSecondary(request);
 	}
 	if (reviewNode) {
+		// The count is the reason to open the list, and the audited plural names
+		// what the list holds; "Open approvals" read like a separate surface (D9).
 		reviewNode.textContent = t(
-			"ui.browser.browser_approvals_tray.open_approvals",
+			"ui.browser.browser_approvals_tray.header_waiting",
+			{ count: model.count },
 		);
 		reviewNode.disabled = model.busy;
 		reviewNode.onclick = () => setView("list");
@@ -326,9 +333,13 @@ function render(): void {
 	if (errorNode) {
 		errorNode.hidden = model.error === null;
 		errorNode.textContent =
-			model.error === null
-				? ""
-				: t("ui.browser.browser_surface.browser_unavailable");
+			model.error === "stale"
+				? t(
+						"ui.browser.browser_approvals_dock.expired_the_agent_has_to_ask_again",
+					)
+				: model.error === "unavailable"
+					? t("ui.browser.browser_surface.browser_unavailable")
+					: "";
 	}
 	if (model.focus) card?.focus();
 }
@@ -351,7 +362,8 @@ window.__approvalsCard = {
 		document.documentElement.lang = next.locale;
 		document.documentElement.dir = next.dir;
 		document.documentElement.dataset.theme =
-			next.theme === "light" ? "localOperatorLight" : "localOperatorDark";
+			next.palette ??
+			(next.theme === "light" ? "localOperatorLight" : "localOperatorDark");
 		if (brandNode) {
 			brandNode.textContent = t("ui.browser.browser_new_tab.wordmark");
 		}

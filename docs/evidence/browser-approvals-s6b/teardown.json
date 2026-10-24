@@ -1,5 +1,11 @@
 {
-  "at": "2026-10-24T09:29:23Z",
-  "boots": [],
-  "note": "No probe boot completed at this head; the environment's WebContentsView failure and the BrowserWindow negative control are recorded in the plan."
+  "at": "2026-10-24T11:44:36Z",
+  "boots": [
+    "264-dark",
+    "264-light",
+    "900-dark",
+    "900-light"
+  ],
+  "exit": 0,
+  "leftover": "none; process-group SIGKILL after each boot"
 }

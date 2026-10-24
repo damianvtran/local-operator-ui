@@ -915,6 +915,7 @@ const api = {
 			locale?: string;
 			dir?: "ltr" | "rtl";
 			theme?: "light" | "dark";
+			palette?: string | null;
 		}): Promise<unknown> =>
 			ipcRenderer.invoke("browser-approvals-card-open", input),
 		closeApprovalsCard: (): Promise<unknown> =>
@@ -923,6 +924,8 @@ const api = {
 			locale?: string;
 			dir?: "ltr" | "rtl";
 			theme?: "light" | "dark";
+			palette?: string | null;
+			requesterLabels?: Readonly<Record<string, string>>;
 		}): Promise<unknown> =>
 			ipcRenderer.invoke("browser-approvals-card-context", input),
 		onChord: (

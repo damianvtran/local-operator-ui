@@ -1,8 +1,9 @@
 # Browser approvals card — S6b
 
-Status (2026-10-24): **S6b, interactive native child under the S6A opt-in. Round-1
-remediation applied; not a shipped product surface until the independent rounds
-clear.**
+Status (2026-10-24): **S6b, interactive native child under the S6A opt-in.
+Round-2 remediation applied; the four-cell native probe passes apart from the
+measured I3 ring row. Not a shipped product surface until the independent
+rounds clear.**
 
 The approvals card is one native `WebContentsView` over the live page, sized to
 the card and anchored to the content rect's **inline end**: bottom-right in LTR,
@@ -19,9 +20,13 @@ the page.
   side.
 - The height is measured from the card at the width it will occupy, never from
   a zero-width provisional view (that view reports a wrapped 150 DIP block).
-  The model is painted **before** the measurement: the S6b card's content is
-  dynamic, so a measurement taken on the empty document settles at the floor
-  and clips the decision buttons.
+  The model is painted **in the same script as the measurement**: the S6b
+  card's content is dynamic, so a measurement taken on the empty document
+  settles at the floor and clips the decision buttons. Two separate
+  `executeJavaScript` calls are not ordered by contract (round 2 measured a
+  96 DIP card under load); one task applies the model, then reads. The read is
+  a `setTimeout(0)`, not `requestAnimationFrame`: a hidden window runs no
+  animation frames.
 - A content-rect **width** change rebuilds the child at the new bounds before
   its document loads. Measured on Electron 44.3.0: a width change is not
   propagated to a child's viewport (`innerWidth` stays at the old value), while
@@ -29,12 +34,23 @@ the page.
   attributed both to the viewport; the probe now distinguishes them.
 - Auto-presented, **unfocused**, while the live queue is non-empty. No focus
   call, no page focus/blur event, no bounds change. Only an explicit open (the
-  shield) may focus the card.
+  shield) may focus the card. The shield toggles the EXPLICIT open, never
+  auto-present visibility; a dismissal from the card pushes the host projection
+  and clears the latch, so the next press is not a stale close (F1).
 - Hidden (not destroyed) when the queue empties or the page stops being
   presented. A tab switch with an unchanged content rect keeps it.
 - The card identifies itself as app chrome: a localized `Local Operator`
   wordmark from the catalogue (`ui.browser.browser_new_tab.wordmark`) above the
   `Approvals` heading.
+- The requester is the queue's **session identity resolved to its display
+  label** by the renderer (`requesterSessionId` → conversation title), never
+  `displayAuthority` (the requested site's host). Main cannot name a
+  conversation, so the renderer pushes the label map with the locale/theme
+  context; an entry with no session falls back to the document's localized
+  "An agent" (F2).
+- The exact palette name travels in the model (`palette`), so the card paints
+  in the user's palette; the light/dark mode is read from the app's `dark`
+  class, not from a substring of the palette name (F3).
 - The request is ONE sentence — requester, the verb and the exact origin inline
   in monospace — matching the band's consent card; the scoped decisions share
   one gloss line that follows focus/hover, so five repeated gloss paragraphs no
@@ -102,7 +118,12 @@ dedicated non-persistent partition, and the pinned deny-all CSP.
   scoped decisions → Review all. `aria-busy` follows the model's busy state.
   Review all is an actionable list: rows carry requester, origin and expiry and
   select the request in place (D9/U4); the list inherits the request view's
-  height so the native view does not collapse under it (D11).
+  height so the native view does not collapse under it (D11), and the body
+  fills the pinned card so the footer sits at the card's foot in both views
+  (D12). Its label is the count (“2 approvals waiting”), naming what the list
+  holds rather than “Open approvals” (D9). A stale action re-pushes the model
+  with a visible stale line; the primary obeys the expiry like the scoped
+  decisions.
 - `lang`/`dir` come from the app's resolved locale, not the card's device tag
   (UX U2). `fr` formats French plurals and reads `lang="fr"`; `ur` sets
   `dir="rtl"` and mirrors the native view.
@@ -120,10 +141,13 @@ geometry; the content-driven height and its 480 ceiling; the RTL view mirror
 outside-click and page-click non-dismissal; Escape without a decision; the
 shield open/close focus handoff; the Tab order; and a stale `seq` dropping.
 
-**Round-1 driven rows:** the request sentence, broad label, sticky footer,
-recall and above-fold decision geometry are re-captured by the probe; the
-auto-present A1 snapshot is taken AT the auto-present moment (not from the
-end-state facts).
+**Round-2 driven rows:** four cells (264/900 × dark/light) on the built
+document — auto-present unfocused, geometry and Q2-above-fold, RTL, the eight
+input rows (I3 ring BLOCKED), locale/requester/palette and the document frames.
+The probe uses a private `--user-data-dir` and `--disable-gpu`, no `HOME`
+override, and reaps its process group; all four boots exit 0 with no leftover
+Electron. The earlier "environment BLOCKED" claim was wrong: a sized child
+loads once the probe follows that recipe.
 
 **BLOCKED and not claimed:** native composite/transparency over a sibling page
 (no Screen Recording, hidden window), the 8 DIP ring's native hit routing (no
