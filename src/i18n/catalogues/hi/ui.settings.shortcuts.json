@@ -36,7 +36,7 @@
 	"ui.settings.shortcuts.reserved.chat_region_down": "आरक्षित: चैट क्षेत्रों में नीचे जाता है।",
 	"ui.settings.shortcuts.reserved.chat_region_up": "आरक्षित: चैट क्षेत्रों में ऊपर जाता है।",
 	"ui.settings.shortcuts.reserved.chat_tags": "आरक्षित: फ़ोकस की गई बातचीत के टैग खोलता है।",
-	"ui.settings.shortcuts.reserved.close": "आरक्षित: ब्राउज़र टैब या विंडो बंद करता है।",
+	"ui.settings.shortcuts.reserved.close": "आरक्षित: ब्राउज़र टैब या उसके बाहर की विंडो बंद करता है।",
 	"ui.settings.shortcuts.reserved.copy": "आरक्षित: कॉपी।",
 	"ui.settings.shortcuts.reserved.cut": "आरक्षित: कट।",
 	"ui.settings.shortcuts.reserved.find": "आरक्षित: ब्राउज़र पेज या ट्रांसक्रिप्ट में खोजता है।",
