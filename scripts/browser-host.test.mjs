@@ -5101,6 +5101,62 @@ test("a driven view is sized before it is ever hidden", () => {
 	assert.throws(() => assertSizedBeforeHidden(swapped));
 });
 
+/**
+ * The page's press must reach the address overlay's `dismissForTab`.
+ *
+ * WHY A SOURCE SCAN: the wiring is a closure inside `startBrowserHost`'s
+ * `wireView`, and no harness in this file can boot Electron to deliver a native
+ * mouse event into a page. The controller's own tab scoping and reason are
+ * exercised against the real controller in
+ * `scripts/browser-address-overlay.test.mjs`; this pins the two links that make
+ * the press reach it — the page contents' `before-mouse-event` (not the child's)
+ * and the `page_pointer` reason the renderer's abandonment is keyed on.
+ */
+function assertPagePointerDismissal(source) {
+	const wireView = source.slice(source.indexOf("function wireView("));
+	assert.notEqual(wireView.length, 0, "no `wireView` in browser/index.ts");
+	const onPage = wireView.indexOf(
+		'contents.on("before-mouse-event", (_event, mouse) => {',
+	);
+	assert.notEqual(
+		onPage,
+		-1,
+		"the page contents must observe its own mouse events",
+	);
+	const body = wireView.slice(onPage, onPage + 400);
+	assert.match(
+		body,
+		/if \(mouse\.type === "mouseDown"\)\s*addressOverlay\?\.dismissForTab\(tabId, "page_pointer"\);/,
+		"a page mouse-down must dismiss the bound tab's overlay as page_pointer",
+	);
+}
+
+test("a page pointer press dismisses the address field even when the page has focus", () => {
+	const source = readFileSync(
+		new URL("../src/main/browser/index.ts", import.meta.url),
+		"utf8",
+	);
+	assertPagePointerDismissal(source);
+	// The check has bite: the plausible wrong wiring is the focus event's reason,
+	// which would also make the renderer's dismissal indistinguishable from a
+	// focus move — the case that already missed a second click into the page.
+	const wrongReason = source.replace(
+		'dismissForTab(tabId, "page_pointer")',
+		'dismissForTab(tabId, "page_focus")',
+	);
+	assert.notEqual(
+		wrongReason,
+		source,
+		"the reason swap must have changed the source",
+	);
+	assert.throws(() => assertPagePointerDismissal(wrongReason));
+	const removed = source.replace(
+		'contents.on("before-mouse-event", (_event, mouse) => {',
+		'contents.on("unused-mouse-event", (_event, mouse) => {',
+	);
+	assert.throws(() => assertPagePointerDismissal(removed));
+});
+
 test("a background capture retries a stalled attempt, and does not retry a real failure", async () => {
 	const { host, registry, cdp } = makeHost();
 	const params = { url: "https://approved.example/", requester: "session:a" };

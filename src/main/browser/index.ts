@@ -1681,6 +1681,23 @@ async function initializeBrowserHost(
 				addressOverlay?.dismissForTab(tabId, "page_focus");
 			});
 			contents.on("blur", () => host.setPageFocused(tabId, false));
+			/*
+			 * A PAGE PRESS IS A DISMISSAL EVEN WHEN THE PAGE ALREADY HAS FOCUS
+			 * (operator report, 2026-10-24). The focus handler above fires once,
+			 * when focus ARRIVES; a second click into an already-focused page
+			 * produces no focus event, and the owner input's blur then carries the
+			 * null `relatedTarget` the row deliberately keeps (that value is also a
+			 * window deactivation). The page's own input pipeline sees every press,
+			 * so it is the one fact that can lower the field in that case.
+			 * `dismissForTab` is scoped to the bound/active tab; a renderer that
+			 * is not showing a list is not subscribed to the event, so a press on
+			 * a closed field is ignored. The suggestion child's row-commit
+			 * observer is a different WebContents and is not involved.
+			 */
+			contents.on("before-mouse-event", (_event, mouse) => {
+				if (mouse.type === "mouseDown")
+					addressOverlay?.dismissForTab(tabId, "page_pointer");
+			});
 			// The user's own navigation starts here; a page/agent-initiated one shares
 			// the event, which is why the design scopes "navigating dismisses" to the
 			// bound tab's main frame and not to a background tab's load.
