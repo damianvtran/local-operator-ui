@@ -101,8 +101,8 @@ const PdfPreviewComponent: FC<{ document: CanvasDocument }> = ({
 				{state.status === "ready" ? (
 					<iframe
 						src={`${state.url}#toolbar=0`}
-						title={t("ui.canvas.pdf_preview.pdf", {
-							title: documentNameForDisplay(document),
+						title={t("ui.chat.canvas_preview.pdf_title", {
+							name: documentNameForDisplay(document),
 						})}
 						className={cn("h-full w-full border-0 bg-surface")}
 					/>

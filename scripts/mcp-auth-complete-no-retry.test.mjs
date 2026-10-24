@@ -70,7 +70,8 @@ after(() => {
 const source = "src/renderer/src/features/chat/components/run-details";
 const bundle = await build({
 	stdin: {
-		contents: `export { McpAuthDialog } from "./${source}/mcp-auth-dialog";`,
+		contents: `export { McpAuthDialog } from "./${source}/mcp-auth-dialog";
+export { setLocale, registerCatalogue, clearRegisteredCatalogues } from "./src/i18n";`,
 		resolveDir: process.cwd(),
 		loader: "tsx",
 	},
@@ -90,7 +91,12 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { McpAuthDialog } = await import(bundlePath.href);
+const {
+	McpAuthDialog,
+	setLocale,
+	registerCatalogue,
+	clearRegisteredCatalogues,
+} = await import(bundlePath.href);
 await unlink(bundlePath);
 
 /**
@@ -121,6 +127,17 @@ const CAPABILITIES = {
 	desktop_auth: "bearer",
 	features: { mcp_auth: 1 },
 };
+/**
+ * A probe that ANSWERED without a sign-in method: no OAuth, no secret
+ * reference, no key submission. The dialog's notice state is the sentence this
+ * answers with - the copy under the probe-notice probe below.
+ */
+const PROBE_NO_SIGN_IN = {
+	name: "hubspot",
+	transport_oauth_supported: false,
+	secret_refs: [],
+	key_submission_supported: false,
+};
 /** A `mcp.control {action:"probe"}` answer, one envelope level down. */
 const PROBE_OAUTH = {
 	name: "hubspot",
@@ -145,7 +162,7 @@ const operation = (status) => ({
 });
 
 /** The bridge, standing where the preload's `desktop.request` stands. */
-const installBridge = (status) => {
+const installBridge = (status, probe = PROBE_OAUTH) => {
 	const sent = [];
 	globalThis.window.api = {
 		desktop: {
@@ -154,7 +171,7 @@ const installBridge = (status) => {
 				if (request.op === "capabilities")
 					return { status: 200, body: { result: CAPABILITIES } };
 				if (request.op === "mcp.control")
-					return { status: 200, body: { result: { data: PROBE_OAUTH } } };
+					return { status: 200, body: { result: { data: probe } } };
 				if (request.op === "mcp.list")
 					return {
 						status: 200,
@@ -191,7 +208,7 @@ const buttonLabelled = (scope, label) =>
  * the poll is the component's, so the frames below are the ones a reader gets
  * rather than a state a test rewrote.
  */
-async function fixture(status, run) {
+async function fixture(status, run, probe = PROBE_OAUTH) {
 	const dom = new JSDOM("<div id='root'></div>", {
 		url: "http://localhost/",
 		// `pretendToBeVisual` is what gives the page a `requestAnimationFrame`,
@@ -265,7 +282,7 @@ async function fixture(status, run) {
 			value,
 		});
 	}
-	const sent = installBridge(status);
+	const sent = installBridge(status, probe);
 	const pressed = [];
 	const client = new QueryClient({
 		defaultOptions: {
@@ -330,17 +347,31 @@ async function fixture(status, run) {
 				),
 			),
 		);
-		// The probe's own press: the same control the operator pressed, clicked
-		// as a real DOM click rather than by forcing the phase into the store.
-		const grant = await settle(
-			() => buttonLabelled(window.document, "Continue in browser"),
-			"the grant state",
-		);
-		await act(() => grant.click());
-		await settle(
-			() => SETTLED_SENTENCE.test(dialog().textContent ?? ""),
-			`a settled ${status} operation`,
-		);
+		if (probe.transport_oauth_supported === true) {
+			// The probe's own press: the same control the operator pressed, clicked
+			// as a real DOM click rather than by forcing the phase into the store.
+			const grant = await settle(
+				() => buttonLabelled(window.document, "Continue in browser"),
+				"the grant state",
+			);
+			await act(() => grant.click());
+			await settle(
+				() => SETTLED_SENTENCE.test(dialog().textContent ?? ""),
+				`a settled ${status} operation`,
+			);
+		} else {
+			/*
+			 * A probe that ANSWERED with no sign-in method never reaches a grant
+			 * press: the notice is the state, and its sentence is the one the
+			 * locale case reads.
+			 */
+			await settle(
+				() =>
+					dialog()?.textContent?.includes("This server does not use OAuth") ??
+					false,
+				"the probe notice",
+			);
+		}
 		await run(api);
 	} finally {
 		await act(() => root.unmount());
@@ -441,4 +472,42 @@ test("a status this build cannot read is not a success, and keeps the retry", as
 		// for a status the dialog cannot name.
 		assert.match(dialog().textContent, UNREADABLE_SENTENCE);
 	});
+});
+
+/*
+ * THE PROBE NOTICE IS A CODE, READ AT RENDER (agent review round 3, MAJOR
+ * reactivity). The sentence is chosen from what the probe answered, and the
+ * state stores that ANSWER - not a string captioned at probe time - so a
+ * language switch re-labels an open dialog. The fixture overrides the key it
+ * would have shown, so the assertion is a counterfactual rather than a second
+ * English reading.
+ */
+test("the probe notice re-labels in place on a locale change", async () => {
+	await fixture(
+		"complete",
+		async ({ dialog }) => {
+			try {
+				assert.match(
+					dialog().textContent,
+					/This server does not use OAuth and declares no secret references\./,
+				);
+				registerCatalogue("fr", {
+					"ui.chat.run_details.mcp_auth_dialog.this_server_does_not_use_oauth_and_declares_no_secret":
+						"FIXTURE ce serveur ne declare aucune methode de connexion",
+				});
+				await act(async () => setLocale("fr"));
+				assert.match(
+					dialog().textContent,
+					/FIXTURE ce serveur ne declare aucune methode/,
+					"the notice repaints in the new language without re-running the probe",
+				);
+				await act(async () => setLocale("en"));
+				assert.match(dialog().textContent, /This server does not use OAuth/);
+			} finally {
+				clearRegisteredCatalogues();
+				await act(async () => setLocale("en"));
+			}
+		},
+		PROBE_NO_SIGN_IN,
+	);
 });

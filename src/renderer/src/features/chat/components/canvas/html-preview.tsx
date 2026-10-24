@@ -197,8 +197,8 @@ const HtmlPreviewComponent: FC<HtmlPreviewProps> = ({
 					<iframe
 						key={version}
 						src={htmlUrl}
-						title={t("ui.canvas.html_preview.html_preview", {
-							title: documentNameForDisplay(document),
+						title={t("ui.chat.canvas_preview.html_title", {
+							name: documentNameForDisplay(document),
 						})}
 						sandbox={PREVIEW_SANDBOX}
 						className={cn("h-full w-full border-0 bg-surface")}

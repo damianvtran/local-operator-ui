@@ -141,6 +141,12 @@ export function FinderFilesView({
 	materialise,
 	legacyScan,
 }: Props) {
+	/*
+	 * The list's names and its index sentence are read through `t()` at render
+	 * (`documentNameForDisplay`, `fileIndexErrorMessage`), so this view must
+	 * subscribe: the pane is mounted for the life of the canvas, and a language
+	 * switch has no other reason to repaint it.
+	 */
 	const locale = useI18nLocale();
 	const selectedId = useCanvasStore(
 		(state) => state.conversations[conversationId]?.selectedTabId,
@@ -179,6 +185,8 @@ export function FinderFilesView({
 	const typeahead = useRef({ text: "", at: 0 });
 	const displayItems = index.localReadAllowed === false ? [] : settledItems;
 	const narrowing = Boolean(query.trim() || prefs.kinds.length);
+	/* One read per render: the same sentence is drawn in three places below. */
+	const indexError = fileIndexErrorMessage(index.error);
 	const narrowed = useMemo(() => {
 		const ids = new Set(
 			filterAndSearchRows(
@@ -625,9 +633,9 @@ export function FinderFilesView({
 						</Button>
 					</div>
 				)}
-				{fileIndexErrorMessage(index.error) && narrowed.length > 0 && (
+				{indexError && narrowed.length > 0 && (
 					<output className={cn("text-body-sm text-ink-muted")}>
-						{fileIndexErrorMessage(index.error)}
+						{indexError}
 						<Button variant="ghost" size="sm" onClick={index.refresh}>
 							{index.state === "building"
 								? t("ui.canvas.files.continue")
@@ -708,7 +716,7 @@ export function FinderFilesView({
 								{t("ui.canvas.files.emptyDetail")}
 							</p>
 						)}
-						{index.error && (
+						{indexError && (
 							<Button variant="outline" size="sm" onClick={index.refresh}>
 								{index.state === "building"
 									? t("ui.canvas.files.continue")

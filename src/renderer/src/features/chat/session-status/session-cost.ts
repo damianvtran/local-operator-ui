@@ -625,8 +625,17 @@ export function channelBasisWords(
 	];
 }
 
-/** Child provenance is published separately: never infer it from the parent rows. */
-export function childBasisLine(reading: SpendChannelsReading): string | null {
+/**
+ * The child spend as AMOUNT + BASIS WORDS, without the row's `Subagents` label.
+ *
+ * Split from `childBasisLine` because the status band draws this half in the
+ * by-agent row's money column and the whole sentence in the tooltip. The old
+ * caller stripped `/^Subagents /` off the finished sentence, which is a
+ * spelling of the English label: the moment the row label is translated the
+ * strip removes nothing and the column starts printing the label inside the
+ * number. The label now exists in exactly one place, here.
+ */
+export function childBasisDetail(reading: SpendChannelsReading): string | null {
 	if (reading.childrenMicro === null || reading.childrenMicro <= 0) return null;
 	const bases = reading.childrenByBasis;
 	const words = bases?.map(({ basis }) =>
@@ -634,9 +643,17 @@ export function childBasisLine(reading: SpendChannelsReading): string | null {
 			? t("ui.chat.session_status.session_cost.without_a_tracked_basis_yet")
 			: `${capitalise(channelBasisLabel(basis, reading.vocabulary))}${basis === "subscription_api_equivalent" && !/api-equivalent/i.test(channelBasisLabel(basis, reading.vocabulary)) ? " (API-equivalent)" : ""}`,
 	);
-	return t("ui.chat.session_status.session_cost.subagents_amount", {
-		amount: `${isFloorKnowledge(reading.childrenKnowledge) ? FLOOR_MARK : ""}${microUsdText(reading.childrenMicro)} · ${words?.length ? words.join(" · ") : bases === null ? t("ui.chat.session_status.session_cost.without_a_tracked_basis_yet") : t("ui.chat.session_status.session_cost.basis_unavailable")}`,
-	});
+	return `${isFloorKnowledge(reading.childrenKnowledge) ? FLOOR_MARK : ""}${microUsdText(reading.childrenMicro)} · ${words?.length ? words.join(" · ") : bases === null ? t("ui.chat.session_status.session_cost.without_a_tracked_basis_yet") : t("ui.chat.session_status.session_cost.basis_unavailable")}`;
+}
+
+/** Child provenance is published separately: never infer it from the parent rows. */
+export function childBasisLine(reading: SpendChannelsReading): string | null {
+	const detail = childBasisDetail(reading);
+	return detail === null
+		? null
+		: t("ui.chat.session_status.session_cost.subagents_amount", {
+				amount: detail,
+			});
 }
 
 /** One published row as a `ChannelBreakdownRow`. */
