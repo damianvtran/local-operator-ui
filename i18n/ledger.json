@@ -27139,8 +27139,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.pickers",
-			"source_sha256": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
-			"target_sha256": "1effbfc9eccdd05b1e9071ebd34bdc73383e114665334fd5f1320af111e57909",
+			"source_sha256": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+			"target_sha256": "c2c219f979a0de875543f109f5485cbb7e2db360e1cad95f0b61389fde009adf",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -27149,40 +27149,66 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openrouter/moonshotai/kimi-k3.1-pro",
-					"date": "2026-10-23",
-					"result": "clean",
-					"instance": "4522cb1f1619",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-24",
+					"result": "clean-with-findings",
+					"instance": "aef2ad9d3193-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/4522cb1f1619.json",
-					"receipt_sha256": "74a81beb8b8046ed59931c8653381b6cf0db1045b5a0b6a568b141468a428b26",
-					"scope": "independent round-1 audit of namespaces unchanged by remediation",
-					"note": "Two independent audits at current bytes; changed namespaces re-audited after remediation. Fit watches retained for rendered RTL QA."
-				},
-				{
-					"agent": "translation-auditor",
-					"model": "openrouter/moonshotai/kimi-k3.1-pro",
-					"date": "2026-10-23",
-					"result": "clean",
-					"instance": "861658748256",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/861658748256.json",
-					"receipt_sha256": "feea54fdf8a3f6046e1e90a195224aa509b498c00d6568f2989754c03b82efa8",
-					"scope": "independent round-1 audit of namespaces unchanged by remediation",
-					"note": "Two independent audits at current bytes; changed namespaces re-audited after remediation. Fit watches retained for rendered RTL QA."
+					"receipt": "i18n/receipts/aef2ad9d3193-ur.json",
+					"receipt_sha256": "761ef6187f5c0629540bbde90b19e53d23f123b419191e43cbd0fcc89f3ae52e",
+					"scope": "ONLY ui.chat.pickers at 3f983092b2: the round-3 findings R3-UR-PICKERS-01..06 and their direct neighbours. All 720 keys were checked mechanically (key set, ICU parse, arguments, skeletons, tags, plural/select arms); the 7 changed values and the keys they compose with were re-read semantically. Catalogue audit only; no rendered RTL frame, no native-speaker sign-off and no design/QA approval are claimed.",
+					"note": "Round-4 scoped re-audit; residual R4-UR-PICKERS-01 (nit, «» quote pair in the provider-listing sentence)."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+					"target_sha256": "1effbfc9eccdd05b1e9071ebd34bdc73383e114665334fd5f1320af111e57909",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openrouter/moonshotai/kimi-k3.1-pro",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "4522cb1f1619",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4522cb1f1619.json",
+							"receipt_sha256": "74a81beb8b8046ed59931c8653381b6cf0db1045b5a0b6a568b141468a428b26",
+							"scope": "independent round-1 audit of namespaces unchanged by remediation",
+							"note": "Two independent audits at current bytes; changed namespaces re-audited after remediation. Fit watches retained for rendered RTL QA."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "openrouter/moonshotai/kimi-k3.1-pro",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "861658748256",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/861658748256.json",
+							"receipt_sha256": "feea54fdf8a3f6046e1e90a195224aa509b498c00d6568f2989754c03b82efa8",
+							"scope": "independent round-1 audit of namespaces unchanged by remediation",
+							"note": "Two independent audits at current bytes; changed namespaces re-audited after remediation. Fit watches retained for rendered RTL QA."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
