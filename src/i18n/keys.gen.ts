@@ -170,16 +170,23 @@ import frUiAgentsStarters from "./catalogues/fr/ui.agents.starters.json";
 import frUiBrowserChrome from "./catalogues/fr/ui.browser.chrome.json";
 import frUiBrowser from "./catalogues/fr/ui.browser.json";
 import frUiCanvas from "./catalogues/fr/ui.canvas.json";
+import frUiChatAnalytics from "./catalogues/fr/ui.chat.analytics.json";
 import frUiChatAsks from "./catalogues/fr/ui.chat.asks.json";
 import frUiChatAttachments from "./catalogues/fr/ui.chat.attachments.json";
+import frUiChatCanonical from "./catalogues/fr/ui.chat.canonical.json";
+import frUiChatCommentaryActions from "./catalogues/fr/ui.chat.commentary_actions.json";
 import frUiChatComposer from "./catalogues/fr/ui.chat.composer.json";
 import frUiChatComposerMedia from "./catalogues/fr/ui.chat.composer_media.json";
 import frUiChatDialogs from "./catalogues/fr/ui.chat.dialogs.json";
 import frUiChatHeader from "./catalogues/fr/ui.chat.header.json";
 import frUiChat from "./catalogues/fr/ui.chat.json";
 import frUiChatLiveUpdates from "./catalogues/fr/ui.chat.live_updates.json";
+import frUiChatPickers from "./catalogues/fr/ui.chat.pickers.json";
 import frUiChatResponseActions from "./catalogues/fr/ui.chat.response_actions.json";
+import frUiChatRunDetails from "./catalogues/fr/ui.chat.run_details.json";
+import frUiChatSidebar from "./catalogues/fr/ui.chat.sidebar.json";
 import frUiChatSidebarView from "./catalogues/fr/ui.chat.sidebar_view.json";
+import frUiChatTagDialogs from "./catalogues/fr/ui.chat.tag_dialogs.json";
 import frUiChatTags from "./catalogues/fr/ui.chat.tags.json";
 import frUiChatTranscriptCopy from "./catalogues/fr/ui.chat.transcript_copy.json";
 import frUiCodeReview from "./catalogues/fr/ui.code_review.json";
@@ -189,10 +196,12 @@ import frUiCommonActions from "./catalogues/fr/ui.common.actions.json";
 import frUiCommonConnection from "./catalogues/fr/ui.common.connection.json";
 import frUiCommonEditing from "./catalogues/fr/ui.common.editing.json";
 import frUiCommonErrors from "./catalogues/fr/ui.common.errors.json";
+import frUiCommonFileActions from "./catalogues/fr/ui.common.file_actions.json";
 import frUiCommonForms from "./catalogues/fr/ui.common.forms.json";
 import frUiCommonLoading from "./catalogues/fr/ui.common.loading.json";
 import frUiCommonModels from "./catalogues/fr/ui.common.models.json";
 import frUiCommonUpdates from "./catalogues/fr/ui.common.updates.json";
+import frUiCommonViewer from "./catalogues/fr/ui.common.viewer.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
 import frUiHubComments from "./catalogues/fr/ui.hub.comments.json";
 import frUiHub from "./catalogues/fr/ui.hub.json";
@@ -694,16 +703,23 @@ export const bundledCatalogues: Readonly<
 		...frUiBrowserChrome,
 		...frUiBrowser,
 		...frUiCanvas,
+		...frUiChatAnalytics,
 		...frUiChatAsks,
 		...frUiChatAttachments,
+		...frUiChatCanonical,
+		...frUiChatCommentaryActions,
 		...frUiChatComposer,
 		...frUiChatComposerMedia,
 		...frUiChatDialogs,
 		...frUiChatHeader,
 		...frUiChat,
 		...frUiChatLiveUpdates,
+		...frUiChatPickers,
 		...frUiChatResponseActions,
+		...frUiChatRunDetails,
+		...frUiChatSidebar,
 		...frUiChatSidebarView,
+		...frUiChatTagDialogs,
 		...frUiChatTags,
 		...frUiChatTranscriptCopy,
 		...frUiCodeReview,
@@ -713,10 +729,12 @@ export const bundledCatalogues: Readonly<
 		...frUiCommonConnection,
 		...frUiCommonEditing,
 		...frUiCommonErrors,
+		...frUiCommonFileActions,
 		...frUiCommonForms,
 		...frUiCommonLoading,
 		...frUiCommonModels,
 		...frUiCommonUpdates,
+		...frUiCommonViewer,
 		...frUiConsole,
 		...frUiHubComments,
 		...frUiHub,
