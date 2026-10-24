@@ -611,25 +611,26 @@ test("the invitation is true on both tabs: object-free in the hero, both objects
 			`and names both objects or neither, never one (got ${placeholder})`,
 		);
 		/*
-		 * AND IT FITS ONE LINE (design D1 = QA Q1 = UX U3): the idle docked box does
-		 * not auto-grow, so a wrapped placeholder is clipped. THE SHIPPED STRING IS
-		 * PINNED EXACTLY, not bounded by a length, because no character count
-		 * guarantees a width (agent review round 3, M1: the old `length <= 50` was
-		 * arithmetic on a per-character figure that the measurement itself refuted -
-		 * 301.2 px for 44 characters is 6.85 px each, so 50 characters would be ~342 px
-		 * against a 320 px text area).
+		 * AND IT STAYS READABLE (design D1 = QA Q1 = UX U3): the idle docked box does
+		 * not auto-grow. Readable wrapping is accepted; clipping and vertical overflow
+		 * are not. Equal scroll/client heights prove the latter, not a one-line render.
+		 * THE SHIPPED STRING IS PINNED EXACTLY, not bounded by a length, because no
+		 * character count guarantees a width (agent review round 3, M1: the old
+		 * `length <= 50` was arithmetic on a per-character figure that the measurement
+		 * itself refuted - 301.2 px for 44 characters is 6.85 px each, so 50 characters
+		 * would be ~342 px against a 320 px text area).
 		 *
 		 * WHAT WAS MEASURED, and what a change to this string invalidates: native QA
 		 * drove the reusable-profile route at 1000 px, where sidebar 320 + roster 288
-		 * leaves the NARROWEST docked detail pane at 392 px. This exact sentence is
-		 * 301.1709 px in the 304 px content box (pane less 88 px of insets), and the
+		 * leaves the NARROWEST docked detail pane at 392 px. The unwrapped sentence
+		 * measures 301.1709 px against the 304 px content box (pane less 88 px of
+		 * insets). The frame shows readable wrapping with nothing clipped, and the
 		 * textarea reported `scrollHeight == clientHeight` (55 == 55, no vertical
-		 * overflow). The
-		 * raw PASS record is `qa-native-3-results.json` beside this PR's evidence;
-		 * the assertions below check that record and its placeholder against this
-		 * mounted component. ANY edit needs the native boundary check again. The 71
-		 * characters this replaced measured 444 px. "Definition" is the run counter's
-		 * noun, not the page's (D5).
+		 * overflow). The raw record is `qa-native-3-results.json` beside this PR's
+		 * evidence; the assertions below check its dimensions and placeholder against
+		 * this mounted component, not a line count. ANY edit needs the native boundary
+		 * check again. The 71 characters this replaced measured 444 px. "Definition"
+		 * is the run counter's noun, not the page's (D5).
 		 */
 		assert.equal(
 			placeholder,
@@ -663,12 +664,17 @@ test("the invitation is true on both tabs: object-free in the hero, both objects
 		assert.equal(boundary.actual.fieldClientWidth, 304);
 		assert.ok(
 			boundary.actual.placeholderWidth <= boundary.actual.fieldClientWidth,
-			"the measured placeholder fits the 392px pane's 304px content box",
+			"the unwrapped placeholder measurement fits the 304px content box; this is not a line-count assertion",
+		);
+		assert.equal(
+			boundary.actual.fieldScrollWidth,
+			boundary.actual.fieldClientWidth,
+			"native QA measured no horizontal overflow at the 392px boundary",
 		);
 		assert.equal(
 			boundary.actual.fieldScrollHeight,
 			boundary.actual.fieldClientHeight,
-			"native QA measured no vertical overflow at the 392px boundary",
+			"native QA accepted readable wrapping with no vertical overflow; equal heights do not prove one line",
 		);
 		assert.notEqual(
 			placeholder,
