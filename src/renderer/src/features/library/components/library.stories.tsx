@@ -1280,6 +1280,9 @@ export const DockedLongContent: Story = {
 				"[data-lo-pane-edge-cues]",
 			);
 			expect(scroller?.scrollTop).toBeGreaterThan(0);
+			expect(scroller ? scroller.scrollTop + scroller.clientHeight : 0).toBe(
+				scroller?.scrollHeight,
+			);
 		});
 	},
 };
@@ -2014,9 +2017,54 @@ export const InShellPreviewGlass: Story = {
 	parameters: { glass: true },
 	render: () =>
 		page({ shell: true, route: "/library/assets/la_0000000000000023" }),
+	play: async () => {
+		await waitFor(() => {
+			const outer = document.querySelector("[data-library-dock]");
+			const inner = document.querySelector("[data-library-preview]");
+			expect(outer).not.toBeNull();
+			expect(inner).not.toBeNull();
+			if (!outer || !inner) return;
+			expect(getComputedStyle(outer).backgroundColor).not.toBe(
+				"rgba(0, 0, 0, 0)",
+			);
+			/* Bare-page stories miss the main-scoped net-pane selector. This is
+			 * the shipped ChatLayout composition, so its computed clear is the
+			 * regression pin for the old specificity defect. */
+			expect(getComputedStyle(inner).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+		});
+	},
+};
+export const InShellEmptyGlass: Story = {
+	parameters: { glass: true },
+	render: () => page({ shell: true, route: "/library/assets/la_missing" }),
+	play: DockedEmpty.play,
+};
+export const InShellImageGlass: Story = {
+	parameters: { glass: true },
+	render: () =>
+		page({ shell: true, route: "/library/assets/la_0000000000000021" }),
+	play: DockedImage.play,
+};
+export const InShellLongContentGlass: Story = {
+	parameters: { glass: true },
+	render: () =>
+		page({
+			shell: true,
+			longContent: true,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: DockedLongContent.play,
 };
 
 export const InShellFullView: Story = {
+	render: () =>
+		page({
+			shell: true,
+			route: "/library/assets/la_0000000000000023?full=1",
+		}),
+};
+export const InShellFullViewGlass: Story = {
+	parameters: { glass: true },
 	render: () =>
 		page({
 			shell: true,
