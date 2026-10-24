@@ -1,0 +1,888 @@
+{
+	"schema": 1,
+	"kind": "i18n-audit",
+	"locale": "ru",
+	"locale_name": "Russian",
+	"batch": "chat: 15 ui.chat.* namespaces",
+	"branch": "feat/i18n-chat-ru",
+	"audited_heads": {
+		"base": "5d97575ac4388522267291ffee74d12bd9675b12",
+		"head": "5829c3ca54bfdc13e802e30cda0738a04011db78"
+	},
+	"date": "2026-10-24",
+	"agent": "translation-auditor",
+	"instance": "a551a85b0a2f",
+	"model": "radient/auto",
+	"auditor": {
+		"agent": "translation-auditor",
+		"role": "independent translation auditor (team lopdev); authored no catalogue value",
+		"team": "lopdev",
+		"session": "a551a85b0a2f",
+		"instance": "a551a85b0a2f",
+		"model": "radient/auto",
+		"served_model": "radient/auto",
+		"fallback_used": false,
+		"model_provenance": "Harness-reported model for this session is radient/auto. The upstream provider/model id is not exposed to the session, so it is not named. No model fallback occurred during this run.",
+		"independence": "Different agent and session from the translator (translation-auditor vs i18n-translator, session a551a85b0a2f vs c30ee3949549). This session authored no catalogue value in the batch and did not edit any catalogue file; every quoted value was read from the bytes at the audited head."
+	},
+	"translator": {
+		"agent": "i18n-translator",
+		"session": "c30ee3949549",
+		"served_model": "radient/auto",
+		"receipt": "i18n/receipts/ui-chat-ru-batch.json",
+		"receipt_verified": "Its per-namespace en/ru/context SHA-256 values were recomputed from the bytes at the audited head and all 45 matched."
+	},
+	"guidance": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ru.md",
+			"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+		},
+		"ui_howto": {
+			"path": "~/local-operator-ui/docs/I18N.md",
+			"sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+		}
+	},
+	"scope": "All 15 ui.chat.* namespaces carried by ru at 5829c3ca54bfdc13e802e30cda0738a04011db78: 1,795 Russian values read against the English source and the English context sidecar. 1,765 values are new in this branch (git diff against 5d97575ac4388522267291ffee74d12bd9675b12: 0 changed, 1,765 added); the 30 carried values (ui.chat 8, ui.chat.header 10, ui.chat.asks 12) are byte-identical to the base and were read for register and glossary continuity. Key coverage against English: 0 missing, 0 extra. Translated catalogue files only: test files and the translator receipt added by the branch were not reviewed as catalogue copy.",
+	"method": [
+		"Read every ru value beside its English source and the context sidecar (role, tone, length, note, placeholders) at the audited head.",
+		"Parsed all 1,795 pairs with @formatjs/icu-messageformat-parser and compared argument names, number/date skeletons, tag names, select option sets and pound nodes.",
+		"Rendered every ru message through intl-messageformat at 0, 1, 2, 3, 5, 11, 21, 22, 25, 101 and 1.5 to exercise every plural arm and catch branch errors.",
+		"Checked the ru CLDR category set (one/few/many/other) on all 45 plural messages and read agreement arm by arm at 1, 2-4, 5-20 and fraction counts.",
+		"Compared number-token presence per arm: no arm where English shows # and ru drops it.",
+		"Byte-compared en and ru; every exact match is listed per namespace and classified.",
+		"Checked NFC, manual bidi controls (U+202A-202E, U+2066-2069, U+200E/F, U+061C) and C0/C1 controls.",
+		"Checked the 9 advisory maxCells budgets and ranked every non-plural value by length against its English source.",
+		"Read the call sites where meaning depended on composition: the approval typed-answer resolver, the message-budget size formatter, the run-details pane name, the fleet ask toast, the directory picker, the unset-setting button row, the identity-menu quote fragment, the composer suggestion pool (user-to-agent prompts) and the wake-due formatter.",
+		"Re-derived every namespace block through scripts/i18n/ledger-rules.mjs deriveReceiptAudit against the bytes on disk, so the receipt is machine-checkable."
+	],
+	"checks": {
+		"icu_parse_errors": 0,
+		"structural_mismatches": 0,
+		"select_arm_mismatches": 0,
+		"plural_messages": 45,
+		"plural_messages_with_all_ru_arms": 45,
+		"render_errors": 0,
+		"number_arms_dropped": 0,
+		"nfc_violations": 0,
+		"bidi_controls": 0,
+		"c0_c1_controls": 0,
+		"identical_to_en_total": 85,
+		"identical_stubs": 0,
+		"maxcells_budgets": 9,
+		"maxcells_overruns": 0
+	},
+	"totals": {
+		"keys_read": 1795,
+		"namespaces": 15,
+		"new_in_batch": 1765,
+		"carried_unchanged": 30,
+		"blocker": 0,
+		"major": 5,
+		"minor": 8,
+		"nit": 10,
+		"distinct_major_defects": 3
+	},
+	"namespaces": {
+		"ui.chat": {
+			"namespace": "ui.chat",
+			"status": "changes_requested",
+			"keys": 532,
+			"identical_to_en": {
+				"count": 35,
+				"keys": [
+					"ui.chat.chat_regions.ctrl_shift_l",
+					"ui.chat.chat_regions.l",
+					"ui.chat.sidebar.chat_sidebar.role_menuitem",
+					"ui.chat.slash_commands.x",
+					"ui.chat.chat_status_strip.outcome",
+					"ui.chat.composer.composer_status_row.askdeadlinesubject",
+					"ui.chat.composer.composer_status_row.goal_clear_text_label_seam_goal",
+					"ui.chat.composer.composer_status_row.goal_cleared_text_leading",
+					"ui.chat.composer.composer_status_row.stateword",
+					"ui.chat.hub_update_mark.detail_action",
+					"ui.chat.sidebar.chat_sidebar.all_kind",
+					"ui.chat.sidebar.chat_sidebar.displayname_name",
+					"ui.chat.sidebar.chat_sidebar.silent_remedy",
+					"ui.chat.sidebar.chat_sidebar_view.label_position",
+					"ui.chat.sidebar.chat_sidebar_view.section_grown_hint_key",
+					"ui.chat.mermaid_diagram.var_color_warning",
+					"ui.chat.mermaid_diagram.var_color_warning_border",
+					"ui.chat.mermaid_diagram.var_color_warning_wash",
+					"ui.chat.artifact_identity.title_head",
+					"ui.chat.ask_open_policy.askchipcountclausevalue",
+					"ui.chat.composer.composer_status_row.job_actionvalue_label_seam_jobclausevalue_busiestclausevalue",
+					"ui.chat.composer.composer_status_row.loop_labelvalue_loopstatuswordvalue",
+					"ui.chat.composer.composer_status_row.monitor_actionvalue_label_seam_monitorclausevalue",
+					"ui.chat.composer.composer_status_row.plan_actionvalue_label_seam_todoclausevalue",
+					"ui.chat.composer.composer_status_row.subagent_actionvalue_label_seam_childclausevalue_busiestclausevalue",
+					"ui.chat.composer.composer_status_row.text_label_seam_loopclausevalue",
+					"ui.chat.composer.composer_status_row.wake_actionvalue_label_seam_wakeclausevalue",
+					"ui.chat.draft_rows.draft_row_prefix_draftrowtitlevalue",
+					"ui.chat.draft_rows.value",
+					"ui.chat.message_grouping.value_value2",
+					"ui.chat.message_grouping.value_value2_b35da6",
+					"ui.chat.sidebar.chat_sidebar.clause",
+					"ui.chat.sidebar.chat_sidebar.detail",
+					"ui.chat.undo_toasts.detail",
+					"ui.chat.composer.composer_status_row.goal_disclosure_label"
+				]
+			},
+			"sha256": {
+				"en": "dc5765d20ff846c61f3fe8953e69524393561bc2a39f89fa419958d4e4a67346",
+				"ru": "6f519b3d20db50618c50a68aca59b800767c9de033da00626df503efd7d746e6",
+				"context": "f95436a7c1e91f17b47a5f45059f58ef63749cedef54b02d10b29260477be426"
+			},
+			"findings": [
+				{
+					"id": "R1-01",
+					"severity": "major",
+					"kind": "functional",
+					"keys": [
+						"ui.chat.chat_page.reply_yes_or_no_to_answer_the_approval_request"
+					],
+					"english": {
+						"ui.chat.chat_page.reply_yes_or_no_to_answer_the_approval_request": "Reply yes or no to answer the approval request."
+					},
+					"current": {
+						"ui.chat.chat_page.reply_yes_or_no_to_answer_the_approval_request": "Ответьте «да» или «нет», чтобы ответить на запрос одобрения."
+					},
+					"proposed": "Ответьте yes или no, чтобы ответить на запрос одобрения.",
+					"reason": "The copy tells the reader to type «да»/«нет», but approval-words.ts approvalAnswerValue accepts only y/yes/approve/ok/allow, n/no/deny/reject/cancel and the ordinals 1/2. chat-page.tsx throws this very sentence when a typed answer is not recognised, so a ru reader who follows it types «да» and gets the same refusal again. The batch keeps these tokens Latin in trace/question_dock.answer_from_the_composer_instead and question_dock.choose_approve_or_deny_above (yes, no, 1, 2), so this key is also the inconsistent one. Fix in copy (keep the literal input tokens Latin) or teach the parser the localized words in code."
+				},
+				{
+					"id": "R1-02",
+					"severity": "major",
+					"kind": "grammar",
+					"keys": [
+						"ui.chat.message_budget.these_images_total_size_more_than_the",
+						"ui.chat.message_budget.this_command_is_size_more_than_the",
+						"ui.chat.message_budget.this_first_message_is_size_more_than",
+						"ui.chat.message_budget.this_message_is_size_of_text_more",
+						"ui.chat.message_budget.this_system_prompt_is_size_more_than",
+						"ui.chat.message_budget.this_command_is_value_characters_more_than_the_value2_one",
+						"ui.chat.message_budget.this_first_message_is_value_characters_more_than_the_value2",
+						"ui.chat.message_budget.this_message_is_value_characters_more_than_the_value2_one",
+						"ui.chat.message_budget.this_system_prompt_is_value_characters_more_than_the_value2"
+					],
+					"english": {
+						"ui.chat.message_budget.these_images_total_size_more_than_the": "These images total {size}, more than the {limit} one message can carry. Remove an image, or send them in a second message.",
+						"ui.chat.message_budget.this_command_is_size_more_than_the": "This command is {size}, more than the {limit} one command can carry. Shorten it, or put the text in a message instead.",
+						"ui.chat.message_budget.this_first_message_is_size_more_than": "This first message is {size}, more than the {limit} one message can carry. Shorten it, or send it in the new conversation instead.",
+						"ui.chat.message_budget.this_message_is_size_of_text_more": "This message is {size} of text, more than the {limit} one message can carry. Split it across two messages.",
+						"ui.chat.message_budget.this_system_prompt_is_size_more_than": "This system prompt is {size}, more than the {limit} one agent can carry. Shorten it.",
+						"ui.chat.message_budget.this_command_is_value_characters_more_than_the_value2_one": "This command is {value} characters, more than the {value2} one command can carry. Shorten it, or put the text in a message instead.",
+						"ui.chat.message_budget.this_first_message_is_value_characters_more_than_the_value2": "This first message is {value} characters, more than the {value2} one message can carry. Shorten it, or send it in the new conversation instead.",
+						"ui.chat.message_budget.this_message_is_value_characters_more_than_the_value2_one": "This message is {value} characters, more than the {value2} one message can carry. Split it across two messages.",
+						"ui.chat.message_budget.this_system_prompt_is_value_characters_more_than_the_value2": "This system prompt is {value} characters, more than the {value2} one agent can carry. Shorten it."
+					},
+					"current": {
+						"ui.chat.message_budget.these_images_total_size_more_than_the": "Эти изображения вместе весят {size} — больше, чем {limit}, которые может нести одно сообщение. Удалите изображение или отправьте их во втором сообщении.",
+						"ui.chat.message_budget.this_command_is_size_more_than_the": "Эта команда занимает {size} — больше, чем {limit}, которые может нести одна команда. Сократите её или отправьте текст сообщением.",
+						"ui.chat.message_budget.this_first_message_is_size_more_than": "Это первое сообщение занимает {size} — больше, чем {limit}, которые может нести одно сообщение. Сократите его или отправьте его в новом разговоре.",
+						"ui.chat.message_budget.this_message_is_size_of_text_more": "Это сообщение содержит {size} текста — больше, чем {limit}, которые может нести одно сообщение. Разделите его на два сообщения.",
+						"ui.chat.message_budget.this_system_prompt_is_size_more_than": "Этот системный промпт занимает {size} — больше, чем {limit}, которые может нести один агент. Сократите его.",
+						"ui.chat.message_budget.this_command_is_value_characters_more_than_the_value2_one": "Эта команда занимает {value} символов — больше, чем {value2}, которые может нести одна команда. Сократите её или отправьте текст сообщением.",
+						"ui.chat.message_budget.this_first_message_is_value_characters_more_than_the_value2": "Это первое сообщение занимает {value} символов — больше, чем {value2}, которые может нести одно сообщение. Сократите его или отправьте его в новом разговоре.",
+						"ui.chat.message_budget.this_message_is_value_characters_more_than_the_value2_one": "Это сообщение занимает {value} символов — больше, чем {value2}, которые может нести одно сообщение. Разделите его на два сообщения.",
+						"ui.chat.message_budget.this_system_prompt_is_value_characters_more_than_the_value2": "Этот системный промпт занимает {value} символов — больше, чем {value2}, которые может нести один агент. Сократите его."
+					},
+					"proposed": "… — больше, чем вмещает одно сообщение ({limit}). … (одна команда / один агент in the matching keys). Example: «Эти изображения вместе весят {size} — больше, чем вмещает одно сообщение ({limit}). Удалите изображение или отправьте их во втором сообщении.»",
+					"reason": "The relative «которые» has no plural antecedent: {limit}/{value2} is a formatted byte size («1,5 МБ») or a bare character count. Nine blocking error sentences share the broken construction, and the «которые может нести» clause also scrambles the word order of «сколько вмещает одно сообщение»."
+				},
+				{
+					"id": "R1-11",
+					"severity": "nit",
+					"kind": "glossary",
+					"keys": [
+						"ui.chat.composer.tips.open_the_run_panel_to_see_a_turns_plan_and"
+					],
+					"english": {
+						"ui.chat.composer.tips.open_the_run_panel_to_see_a_turns_plan_and": "open the run panel to see a turn's plan and subagents"
+					},
+					"current": {
+						"ui.chat.composer.tips.open_the_run_panel_to_see_a_turns_plan_and": "откройте панель выполнения, чтобы увидеть план хода и субагентов"
+					},
+					"proposed": "откройте сведения о выполнении, чтобы увидеть план хода и субагентов",
+					"reason": "The pane is «сведения о выполнении» in ten other strings (including two in this batch's header namespace); this tip renames it «панель выполнения». Same referent, second name."
+				},
+				{
+					"id": "R1-12",
+					"severity": "nit",
+					"kind": "plural",
+					"keys": [
+						"ui.chat.interrupt_turn.subagents_running"
+					],
+					"english": {
+						"ui.chat.interrupt_turn.subagents_running": "{count, plural, one {Stopped this turn. {subagents} is still running - open Run details to watch it, or use /stop to end the session.} other {Stopped this turn. {subagents} are still running - open Run details to watch them, or use /stop to end the session.}}"
+					},
+					"current": {
+						"ui.chat.interrupt_turn.subagents_running": "{count, plural, one {Этот ход остановлен. {subagents} всё ещё выполняется — откройте «Сведения о выполнении», чтобы следить за ним, или используйте /stop, чтобы завершить сессию.} few {Этот ход остановлен. {subagents} всё ещё выполняются — откройте «Сведения о выполнении», чтобы следить за ними, или используйте /stop, чтобы завершить сессию.} many {Этот ход остановлен. {subagents} всё ещё выполняются — откройте «Сведения о выполнении», чтобы следить за ними, или используйте /stop, чтобы завершить сессию.} other {Этот ход остановлен. {subagents} всё ещё выполняются — откройте «Сведения о выполнении», чтобы следить за ними, или используйте /stop, чтобы завершить сессию.}}"
+					},
+					"proposed": "other arm: «…{subagents} всё ещё выполняется — … следить за ним …»",
+					"reason": "The CLDR other arm (fractions) carries the plural verb «выполняются» and «за ними», while the sibling interrupt_turn.background_jobs_running uses the singular/neuter form there. Unreachable for an integer subagent count, so recorded for consistency rather than as a live defect."
+				}
+			]
+		},
+		"ui.chat.aside": {
+			"namespace": "ui.chat.aside",
+			"status": "clean-with-findings",
+			"keys": 35,
+			"identical_to_en": {
+				"count": 0,
+				"keys": []
+			},
+			"sha256": {
+				"en": "d8ce04c8e909a73f3050588b2b562b12db3840ae1f4231a66ef3eb5ac76ed1b6",
+				"ru": "39cb914479c96f700ccef49123afb2934d638ab9605e714625eb01e8783badea",
+				"context": "522fcbc0c965224e7d4fb8cb8200e7c68889c9ee73d073b09c6cb2af827b8431"
+			},
+			"findings": [
+				{
+					"id": "R1-22",
+					"severity": "nit",
+					"kind": "idiom",
+					"keys": [
+						"ui.chat.aside.aside_panel.the_aside_exchange",
+						"ui.chat.aside.aside.the_aside_is_still_answering_press_enter_again_once_the",
+						"ui.chat.aside.aside.this_aside_cant_continue_press_esc_to_close_it_which"
+					],
+					"english": {
+						"ui.chat.aside.aside_panel.the_aside_exchange": "The aside exchange",
+						"ui.chat.aside.aside.the_aside_is_still_answering_press_enter_again_once_the": "The aside is still answering. Press Enter again once the answer is in.",
+						"ui.chat.aside.aside.this_aside_cant_continue_press_esc_to_close_it_which": "This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw."
+					},
+					"current": {
+						"ui.chat.aside.aside_panel.the_aside_exchange": "Переписка в отдельном вопросе",
+						"ui.chat.aside.aside.the_aside_is_still_answering_press_enter_again_once_the": "Отдельный вопрос ещё отвечается. Нажмите Enter ещё раз, когда ответ появится.",
+						"ui.chat.aside.aside.this_aside_cant_continue_press_esc_to_close_it_which": "Этот отдельный вопрос не может продолжиться. Нажмите Esc, чтобы закрыть его и отбросить переписку, затем начните новый с помощью /btw."
+					},
+					"proposed": "«Переписка по отдельному вопросу»; «Отдельный вопрос ещё обрабатывается…»; «Этот отдельный вопрос нельзя продолжить.»",
+					"reason": "«Переписка в отдельном вопросе» reads as correspondence inside a question; «ещё отвечается» is an awkward reflexive; «не может продолжиться» calques can't continue where Russian wants «нельзя продолжить»."
+				}
+			]
+		},
+		"ui.chat.asks": {
+			"namespace": "ui.chat.asks",
+			"status": "clean-with-findings",
+			"keys": 101,
+			"identical_to_en": {
+				"count": 2,
+				"keys": [
+					"ui.chat.asks.ask_panel.label_count",
+					"ui.chat.asks.fleet_ask_drawer.verb_name"
+				]
+			},
+			"sha256": {
+				"en": "f5017d10d314fc9e3e94eeff2d5067c559e97ba0c6ffcef4e8ed9d1c39cf67ab",
+				"ru": "a11d999be73a35f28cf81862f5e2258c115d7dbc2ebb81d16df9fc83da639b03",
+				"context": "0e1f544932e7c9c6c94bbb0d4e2066910d80e33060ad23bbbb57d5bb9c1b637c"
+			},
+			"findings": [
+				{
+					"id": "R1-21",
+					"severity": "nit",
+					"kind": "idiom",
+					"keys": [
+						"ui.chat.asks.fleet_ask_drawer.answer_sent_to",
+						"ui.chat.asks.fleet_ask_drawer.answer_changed_for"
+					],
+					"english": {
+						"ui.chat.asks.fleet_ask_drawer.answer_sent_to": "Answer sent to",
+						"ui.chat.asks.fleet_ask_drawer.answer_changed_for": "Answer changed for"
+					},
+					"current": {
+						"ui.chat.asks.fleet_ask_drawer.answer_sent_to": "Ответ отправлен для",
+						"ui.chat.asks.fleet_ask_drawer.answer_changed_for": "Ответ изменён для"
+					},
+					"proposed": "Ответ отправлен в {name} / Ответ изменён в {name} (или «: {name}»)",
+					"reason": "These verbs compose with a conversation title ({verb} {name}); «для» plus a title reads as for <title> and is the odd one out beside the sibling verbs that use «в»."
+				}
+			]
+		},
+		"ui.chat.at": {
+			"namespace": "ui.chat.at",
+			"status": "clean",
+			"keys": 11,
+			"identical_to_en": {
+				"count": 0,
+				"keys": []
+			},
+			"sha256": {
+				"en": "685a75115b95770d8d74cc43c2f250c53bed311c0d117cf51849f72041533694",
+				"ru": "6cafb3c3c4db19f204a5b838b6d965c80d5714d57d0bd3090f48f0287d51eb34",
+				"context": "da529439f1aa5970aff5b833b40900524c2cfd465abe96296e3b9cecf5ec555e"
+			},
+			"findings": []
+		},
+		"ui.chat.canonical": {
+			"namespace": "ui.chat.canonical",
+			"status": "changes_requested",
+			"keys": 297,
+			"identical_to_en": {
+				"count": 8,
+				"keys": [
+					"ui.chat.canonical.fold_media.more",
+					"ui.chat.canonical.sound_batch_model.name_suffix",
+					"ui.chat.canonical.supplement_row.failedcause",
+					"ui.chat.canonical.older_history_slot.min_260px_olderhistory_hidden",
+					"ui.chat.canonical.canonical_transcript.direction",
+					"ui.chat.canonical.image_gen_card.noun_value",
+					"ui.chat.canonical.transcript_reducer.stringvalue_value",
+					"ui.chat.canonical.sound_player.action_label"
+				]
+			},
+			"sha256": {
+				"en": "522e7fced024ec756b4b93b21952c4abfb232278a3ca32bba67b45978749eb6d",
+				"ru": "165ed167c429daf972966a9f698e92320273d49a06240e6b76881cc6f219dff3",
+				"context": "af353a188112ef28df7dfda8c7139fa5bd33506a40b112392e1e40fbe32116f2"
+			},
+			"findings": [
+				{
+					"id": "R1-03",
+					"severity": "major",
+					"kind": "glossary",
+					"keys": [
+						"ui.chat.canonical.canonical_transcript.could_not_reach_that_turn_it_is_further_back_than",
+						"ui.chat.canonical.transcript_dom_window.duplicate_transcript_entry_key",
+						"ui.chat.canonical.transcript_dom_window.invalid_transcript_extent_key"
+					],
+					"english": {
+						"ui.chat.canonical.canonical_transcript.could_not_reach_that_turn_it_is_further_back_than": "Could not reach that turn. It is further back than the loaded history — scroll up in the transcript to load more.",
+						"ui.chat.canonical.transcript_dom_window.duplicate_transcript_entry_key": "Duplicate transcript entry: {key}",
+						"ui.chat.canonical.transcript_dom_window.invalid_transcript_extent_key": "Invalid transcript extent: {key}"
+					},
+					"current": {
+						"ui.chat.canonical.canonical_transcript.could_not_reach_that_turn_it_is_further_back_than": "Не удалось добраться до того хода. Он дальше загруженной истории — прокрутите вверх в расшифровке, чтобы загрузить больше.",
+						"ui.chat.canonical.transcript_dom_window.duplicate_transcript_entry_key": "Повторяющаяся запись расшифровки: {key}",
+						"ui.chat.canonical.transcript_dom_window.invalid_transcript_extent_key": "Недопустимый диапазон расшифровки: {key}"
+					},
+					"proposed": "«…прокрутите вверх в транскрипте…»; «Повторяющаяся запись транскрипта: {key}»; «Недопустимый диапазон транскрипта: {key}»",
+					"reason": "The ru style guide pins transcript → «транскрипт» (recorded locale call), and the same batch uses it in ui.chat.header «Вид транскрипта». These three strings say «расшифровка» instead — including the near-identical twin of thread_search.jump_miss, which says «в транскрипте» in this same file."
+				},
+				{
+					"id": "R1-10",
+					"severity": "nit",
+					"kind": "terminology",
+					"keys": [
+						"ui.chat.canonical.supplement_model.highlights_reached_the_time_limit_your_answer_and_files_are",
+						"ui.chat.canonical.supplement_model.highlights_stopped_at_the_spending_limit_or_unavailable_pricing_your",
+						"ui.chat.canonical.supplement_model.the_highlights_model_is_unavailable_right_now_your_answer_and",
+						"ui.chat.canonical.supplement_model.the_highlights_service_did_not_respond_your_answer_and_files",
+						"ui.chat.canonical.supplement_row.highlights_could_not_be_updated",
+						"ui.chat.canonical.supplement_model.couldnt_prepare_highlights"
+					],
+					"english": {
+						"ui.chat.canonical.supplement_model.highlights_reached_the_time_limit_your_answer_and_files_are": "Highlights reached the time limit. Your answer and files are unchanged.",
+						"ui.chat.canonical.supplement_model.highlights_stopped_at_the_spending_limit_or_unavailable_pricing_your": "Highlights stopped at the spending limit or unavailable pricing. Your answer and files are unchanged.",
+						"ui.chat.canonical.supplement_model.the_highlights_model_is_unavailable_right_now_your_answer_and": "The highlights model is unavailable right now. Your answer and files are unchanged.",
+						"ui.chat.canonical.supplement_model.the_highlights_service_did_not_respond_your_answer_and_files": "The highlights service did not respond. Your answer and files are unchanged.",
+						"ui.chat.canonical.supplement_row.highlights_could_not_be_updated": "Highlights could not be updated.",
+						"ui.chat.canonical.supplement_model.couldnt_prepare_highlights": "Couldn't prepare highlights"
+					},
+					"current": {
+						"ui.chat.canonical.supplement_model.highlights_reached_the_time_limit_your_answer_and_files_are": "Акценты достигли лимита времени. Ваш ответ и файлы не изменились.",
+						"ui.chat.canonical.supplement_model.highlights_stopped_at_the_spending_limit_or_unavailable_pricing_your": "Акценты остановлены из-за лимита расходов или недоступных цен. Ваш ответ и файлы не изменились.",
+						"ui.chat.canonical.supplement_model.the_highlights_model_is_unavailable_right_now_your_answer_and": "Модель акцентов сейчас недоступна. Ваш ответ и файлы не изменились.",
+						"ui.chat.canonical.supplement_model.the_highlights_service_did_not_respond_your_answer_and_files": "Служба акцентов не ответила. Ваш ответ и файлы не изменились.",
+						"ui.chat.canonical.supplement_row.highlights_could_not_be_updated": "Не удалось обновить акценты.",
+						"ui.chat.canonical.supplement_model.couldnt_prepare_highlights": "Не удалось подготовить акценты"
+					},
+					"proposed": "«выжимки» (e.g. «Не удалось подготовить выжимки»), or record «акценты» as a product term in the style guide",
+					"reason": "«Акценты» is the word for emphasis/accents, not for extracted highlights; «модель акцентов» reads oddly. The batch introduces the feature term, so it needs either an idiomatic word («выжимки») or a recorded glossary decision."
+				}
+			]
+		},
+		"ui.chat.canvas_preview": {
+			"namespace": "ui.chat.canvas_preview",
+			"status": "clean",
+			"keys": 2,
+			"identical_to_en": {
+				"count": 0,
+				"keys": []
+			},
+			"sha256": {
+				"en": "4a29d028e7727502fbefd86b995750910ca3760879769ffa1fc537e5893920a9",
+				"ru": "d94ce5f85a84d48b6020f1da774f286d2bcaa570dbff88bff1a305e1da22f89e",
+				"context": "5f336900e740bf4ebc7819837676fc2eeffe6deb69b8181ebc440e962d580a06"
+			},
+			"findings": []
+		},
+		"ui.chat.credential_capture": {
+			"namespace": "ui.chat.credential_capture",
+			"status": "clean",
+			"keys": 18,
+			"identical_to_en": {
+				"count": 1,
+				"keys": [
+					"ui.chat.credential_capture.unconfirmed_chip"
+				]
+			},
+			"sha256": {
+				"en": "1776a41f5dfa3335b5e390e85870cb55756e25c6a2439cd3f42ea4c864515bdd",
+				"ru": "b998f57fd2eefa3df0d47f15d6a4c969b22ba235339ec18688a681b72372c54c",
+				"context": "bf6e3bb8cd70e39cba3aad66b0d92aa38ebad880ac49405fb1affd032f6f3b1f"
+			},
+			"findings": []
+		},
+		"ui.chat.directory": {
+			"namespace": "ui.chat.directory",
+			"status": "clean-with-findings",
+			"keys": 42,
+			"identical_to_en": {
+				"count": 6,
+				"keys": [
+					"ui.chat.directory.directory_indicator.program_files",
+					"ui.chat.directory.directory_indicator.program_files_x86",
+					"ui.chat.directory.directory_indicator.programdata",
+					"ui.chat.directory.directory_indicator.c_program_files",
+					"ui.chat.directory.directory_indicator.c_program_files_x86",
+					"ui.chat.directory.directory_indicator.state_label"
+				]
+			},
+			"sha256": {
+				"en": "57540488fb400a9a4ac1040c7d7f91f19f25ab313ec87a50ef527da442d3ec6b",
+				"ru": "8bf381867d79532289048d32b216ec6fc43679dbf7a9702dc55f4c4d5414a4c2",
+				"context": "4bfdbc219bccc88fbdcaf3c62897b168d5604d5acbbb5f70f040c95c941c2daa"
+			},
+			"findings": [
+				{
+					"id": "R1-17",
+					"severity": "minor",
+					"kind": "glossary",
+					"keys": [
+						"ui.chat.directory.directory_indicator.browse_for_directory",
+						"ui.chat.directory.directory_indicator.enter_directory_path"
+					],
+					"english": {
+						"ui.chat.directory.directory_indicator.browse_for_directory": "Browse for directory...",
+						"ui.chat.directory.directory_indicator.enter_directory_path": "Enter directory path"
+					},
+					"current": {
+						"ui.chat.directory.directory_indicator.browse_for_directory": "Обзор папок…",
+						"ui.chat.directory.directory_indicator.enter_directory_path": "Введите путь к папке"
+					},
+					"proposed": "Обзор каталогов… / Введите путь к каталогу",
+					"reason": "directory → «каталог» in the other 23 strings of this component and in ui.chat.at_picker.directory; these two say «папка», the settled term for folder. Same control, two terms."
+				}
+			]
+		},
+		"ui.chat.header": {
+			"namespace": "ui.chat.header",
+			"status": "clean-with-findings",
+			"keys": 72,
+			"identical_to_en": {
+				"count": 10,
+				"keys": [
+					"ui.chat.header.chat_header.local_operator",
+					"ui.chat.header.chat_header_identity.current",
+					"ui.chat.header.chat_header_identity.label_closedreason",
+					"ui.chat.header.chat_header_identity.label_cuesentence",
+					"ui.chat.header.chat_header_identity.triggerlabel_label_closedreason",
+					"ui.chat.header.chat_header_identity_menu.closednoteid_title",
+					"ui.chat.header.chat_header_identity.value_description",
+					"ui.chat.header.chat_header_identity.trigger_action_label",
+					"ui.chat.header.chat_header_identity.cue_clause",
+					"ui.chat.header.chat_header_identity.label_current"
+				]
+			},
+			"sha256": {
+				"en": "ff03f6ca7b3206e77fc260116d2b540cc9f211ea37436863b874770e917158d8",
+				"ru": "c437858d054776c70dfaa042e0214be5778e282cec8eec01046a2d014685e8f0",
+				"context": "0d601a99861fc8b23207f117b90b697ba88ddd4f6419a68021f34c177158ea2e"
+			},
+			"findings": [
+				{
+					"id": "R1-15",
+					"severity": "minor",
+					"kind": "glossary",
+					"keys": [
+						"ui.chat.header.close_run_details",
+						"ui.chat.header.open_run_details"
+					],
+					"english": {
+						"ui.chat.header.close_run_details": "Close run details",
+						"ui.chat.header.open_run_details": "Open run details"
+					},
+					"current": {
+						"ui.chat.header.close_run_details": "Закрыть сведения",
+						"ui.chat.header.open_run_details": "Открыть сведения"
+					},
+					"proposed": "Закрыть сведения о выполнении / Открыть сведения о выполнении",
+					"reason": "The pane's name in this locale is «сведения о выполнении» (ten uses). These two menu rows drop the qualifier, so the row no longer says which details it closes. Constraint recorded: the sidecar's advisory maxCells is 20 and the full term is 28 cells, so if the budget is real this is a width decision to take deliberately (and record), not a translation slip."
+				},
+				{
+					"id": "R1-16",
+					"severity": "nit",
+					"kind": "typography",
+					"keys": [
+						"ui.chat.header.chat_header_identity_menu.nothing_matches"
+					],
+					"english": {
+						"ui.chat.header.chat_header_identity_menu.nothing_matches": "Nothing matches “"
+					},
+					"current": {
+						"ui.chat.header.chat_header_identity_menu.nothing_matches": "Ничего не найдено по запросу “"
+					},
+					"proposed": "Ничего не найдено по запросу « (with the closing » made locale-aware at the call site)",
+					"reason": "Russian prose uses «ёлочки», but this fragment opens a Latin curly quote while chat-header-identity-menu.tsx hard-codes the closing ” in JSX. Fixing only the catalogue would produce mismatched quotes, so the fix is a source change (make the closing glyph a key or a locale-aware pair); recorded against this key because that is where the opener lives."
+				}
+			]
+		},
+		"ui.chat.message": {
+			"namespace": "ui.chat.message",
+			"status": "clean-with-findings",
+			"keys": 55,
+			"identical_to_en": {
+				"count": 5,
+				"keys": [
+					"ui.chat.message.error_block.settings_section_providers",
+					"ui.chat.message.attachment_frame.detail",
+					"ui.chat.message.attachment_frame.name_detail",
+					"ui.chat.message.invalid_attachment.getfilenamevalue_reason",
+					"ui.chat.message.turn_timestamp.value_full"
+				]
+			},
+			"sha256": {
+				"en": "95d7b60b2cb1bdc37648cfa896856ce53724e300ed4a6b0448d7562aad452a5a",
+				"ru": "4f6569cd7b239fa03fc9b6516a5399eaf96ed0cb37c74d85649dfafb9c01528b",
+				"context": "0278baa63867980cd08d18e47e282af12a6330b7c6a785f0157e7a01cceb4230"
+			},
+			"findings": [
+				{
+					"id": "R1-23",
+					"severity": "nit",
+					"kind": "typography",
+					"keys": [
+						"ui.chat.message.error_block.schema_remedy"
+					],
+					"english": {
+						"ui.chat.message.error_block.schema_remedy": "Change your model in the {settings} to fix this. We recommend using Radient Automatic to have the best combo of cheap and smart picked for you based on your requests (typically cheaper than bringing your own key), or use one of the recommended models with a star icon."
+					},
+					"current": {
+						"ui.chat.message.error_block.schema_remedy": "Смените модель в {settings}, чтобы исправить это. Рекомендуем Radient Automatic — он подберёт лучший баланс дешёвых и умных моделей под ваши запросы (обычно дешевле, чем со своим ключом), — или используйте одну из рекомендуемых моделей со значком звезды."
+					},
+					"proposed": "…(обычно дешевле, чем со своим ключом) — или используйте одну из рекомендуемых моделей со значком звезды.",
+					"reason": "A comma before the em dash after a parenthetical is nonstandard Russian punctuation; the dash alone carries the contrast."
+				}
+			]
+		},
+		"ui.chat.options": {
+			"namespace": "ui.chat.options",
+			"status": "clean-with-findings",
+			"keys": 33,
+			"identical_to_en": {
+				"count": 2,
+				"keys": [
+					"ui.chat.options.generation_settings_section.top_k",
+					"ui.chat.options.generation_settings_section.top_p"
+				]
+			},
+			"sha256": {
+				"en": "fdfb1ceae54aa5270dd76b67748f56fa14e5d3f47d7770dad8eba755995a5a79",
+				"ru": "87a3e1d7fb0b295bbede1538a80e6f43c9bafc5559c83d0999dd2925828595e1",
+				"context": "4609f41205d7d0b14dd07e98a629b9fb40f74f870106e78b30a3b210eb7f13db"
+			},
+			"findings": [
+				{
+					"id": "R1-20",
+					"severity": "minor",
+					"kind": "overflow",
+					"keys": [
+						"ui.chat.options.unset_slider_setting.set_to_default",
+						"ui.chat.options.unset_text_setting.set_to_default"
+					],
+					"english": {
+						"ui.chat.options.unset_slider_setting.set_to_default": "Set to default (",
+						"ui.chat.options.unset_text_setting.set_to_default": "Set to default ("
+					},
+					"current": {
+						"ui.chat.options.unset_slider_setting.set_to_default": "Сбросить до значения по умолчанию (",
+						"ui.chat.options.unset_text_setting.set_to_default": "Сбросить до значения по умолчанию ("
+					},
+					"proposed": "Вернуть по умолчанию (",
+					"reason": "A size=sm outline button in a two-column row with «Ещё не задано» beside it; 35 cells is 2.2x the 16-cell English and will wrap or squeeze the row. «Вернуть по умолчанию (» is 23 cells and keeps the fragment shape (the value and closing bracket are appended in JSX)."
+				}
+			]
+		},
+		"ui.chat.run_details": {
+			"namespace": "ui.chat.run_details",
+			"status": "changes_requested",
+			"keys": 154,
+			"identical_to_en": {
+				"count": 9,
+				"keys": [
+					"ui.chat.run_details.run_detail_mcp.label",
+					"ui.chat.run_details.run_detail_wakes.trailingclause",
+					"ui.chat.run_details.mcp_failure.lead",
+					"ui.chat.run_details.mcp_failure.lead_value",
+					"ui.chat.run_details.run_detail_model.value",
+					"ui.chat.run_details.run_detail_monitors.healthlabel",
+					"ui.chat.run_details.run_detail_monitors.interval",
+					"ui.chat.run_details.run_detail_monitors.lastchecklabel",
+					"ui.chat.run_details.run_detail_wakes.cadence"
+				]
+			},
+			"sha256": {
+				"en": "daf3ddc7d9c0904642876bf3db0746b6c0c68c5fe3b87a1a6730b07f67c90c2f",
+				"ru": "28fa9f7e9e9956bed22d6aa83e34ffad8978c46497592ef39fbd2ea352c74dc7",
+				"context": "dcb2cf6f636814a1866186e8864fd6817033fa8de027049b365f362c53b5d384"
+			},
+			"findings": [
+				{
+					"id": "R1-04",
+					"severity": "major",
+					"kind": "glossary",
+					"keys": [
+						"ui.chat.run_details.run_child_reader.this_subagent_has_no_transcript_on_disk_yet"
+					],
+					"english": {
+						"ui.chat.run_details.run_child_reader.this_subagent_has_no_transcript_on_disk_yet": "This subagent has no transcript on disk yet."
+					},
+					"current": {
+						"ui.chat.run_details.run_child_reader.this_subagent_has_no_transcript_on_disk_yet": "У этого субагента пока нет расшифровки на диске."
+					},
+					"proposed": "У этого субагента пока нет транскрипта на диске.",
+					"reason": "Same transcript drift as R1-03/R1-05: the style guide's recorded term is «транскрипт», this string says «расшифровка»."
+				},
+				{
+					"id": "R1-09",
+					"severity": "nit",
+					"kind": "grammar",
+					"keys": [
+						"ui.chat.run_details.run_detail_wakes.cancel_the_wake_that_fires_duelabel"
+					],
+					"english": {
+						"ui.chat.run_details.run_detail_wakes.cancel_the_wake_that_fires_duelabel": "Cancel the wake that fires {dueLabel}"
+					},
+					"current": {
+						"ui.chat.run_details.run_detail_wakes.cancel_the_wake_that_fires_duelabel": "Отменить пробуждение, которое сработает {dueLabel}"
+					},
+					"proposed": "Отменить пробуждение, запланированное на {dueLabel}",
+					"reason": "{dueLabel} is formatWakeDue output: a clock time, optionally with a date («3:05 PM», «10 окт. 2026 г. 3:05 PM»). «сработает {dueLabel}» needs a preposition for a time and none works for both shapes; «запланированное на» reads correctly for both. Note the call site also formats that label in English (AM/PM, English month names) — a code-side localisation gap outside this receipt's scope."
+				}
+			]
+		},
+		"ui.chat.session_status": {
+			"namespace": "ui.chat.session_status",
+			"status": "clean-with-findings",
+			"keys": 162,
+			"identical_to_en": {
+				"count": 2,
+				"keys": [
+					"ui.chat.session_status.session_cost.text_cue",
+					"ui.chat.session_status.session_model.fallbackdefault"
+				]
+			},
+			"sha256": {
+				"en": "05a6e2dd52cd41fb90dbb6756bb8a8f51c5d22e3769edb3fd6228a0d9a059198",
+				"ru": "0562f005da8de1dd1c76a4eba61913e73f9621bbeb3935b3c60286063d427e12",
+				"context": "91544a1523e2ccd3a50041e3530ded39255a614f571c50264991ed8e92ca90e7"
+			},
+			"findings": [
+				{
+					"id": "R1-18",
+					"severity": "minor",
+					"kind": "accuracy",
+					"keys": [
+						"ui.chat.session_status.session_cost.basis_unavailable",
+						"ui.chat.session_status.session_cost.without_a_tracked_basis_yet",
+						"ui.chat.session_status.session_cost.marked_without_a_tracked_basis_yet_children"
+					],
+					"english": {
+						"ui.chat.session_status.session_cost.basis_unavailable": "basis unavailable",
+						"ui.chat.session_status.session_cost.without_a_tracked_basis_yet": "without a tracked basis yet",
+						"ui.chat.session_status.session_cost.marked_without_a_tracked_basis_yet_children": "{marked} without a tracked basis yet{children}"
+					},
+					"current": {
+						"ui.chat.session_status.session_cost.basis_unavailable": "основа недоступна",
+						"ui.chat.session_status.session_cost.without_a_tracked_basis_yet": "без отслеживаемой основы",
+						"ui.chat.session_status.session_cost.marked_without_a_tracked_basis_yet_children": "{marked} без отслеживаемой основы{children}"
+					},
+					"proposed": "«база расчёта недоступна»; «без отслеживаемой базы расчёта»; «{marked} без отслеживаемой базы расчёта{children}»",
+					"reason": "Here basis is the cost basis (the key family is session_cost). «Основа» is the abstract foundation and reads as nonsense beside «расходы»/«стоимость»; the cost panel needs «база расчёта» (or «основание расчёта»)."
+				},
+				{
+					"id": "R1-19",
+					"severity": "minor",
+					"kind": "grammar",
+					"keys": [
+						"ui.chat.session_status.chat_device_model.nothing_is_running_on_name_yet_send_a_message_in"
+					],
+					"english": {
+						"ui.chat.session_status.chat_device_model.nothing_is_running_on_name_yet_send_a_message_in": "Nothing is running on {name} yet. Send a message in the copy to start it there, or open it from the session list."
+					},
+					"current": {
+						"ui.chat.session_status.chat_device_model.nothing_is_running_on_name_yet_send_a_message_in": "На {name} пока ничего не выполняется. Отправьте сообщение в копии, чтобы запустить его там, или откройте её из списка сессий."
+					},
+					"proposed": "На {name} пока ничего не выполняется. Отправьте сообщение в копии, чтобы запустить разговор там, или откройте его из списка сессий.",
+					"reason": "One sentence refers to the same thing twice with two genders: «запустить его» (masculine) then «откройте её» (feminine). The nearest noun is «копия», so the first pronoun has no antecedent; naming the conversation fixes both."
+				}
+			]
+		},
+		"ui.chat.skill": {
+			"namespace": "ui.chat.skill",
+			"status": "clean",
+			"keys": 7,
+			"identical_to_en": {
+				"count": 0,
+				"keys": []
+			},
+			"sha256": {
+				"en": "919b6643e792d02ed270911df96d96da277bba5b5b91a2d04fac6cf044acfc10",
+				"ru": "2c7f62426a28bd29fd7faac4a47420889822e8f79737b1afa5f6683aa9ee2ad5",
+				"context": "012b41d3b048ae9575012522051687b87e3b3a8189dab9121985052ea04f965d"
+			},
+			"findings": []
+		},
+		"ui.chat.trace": {
+			"namespace": "ui.chat.trace",
+			"status": "changes_requested",
+			"keys": 274,
+			"identical_to_en": {
+				"count": 5,
+				"keys": [
+					"ui.chat.trace.receipt_row_model.base",
+					"ui.chat.trace.trace_fold.verb_object",
+					"ui.chat.trace.turn_summary.receipts",
+					"ui.chat.trace.turn_summary.value",
+					"ui.chat.trace.turn_summary.value_75ced7"
+				]
+			},
+			"sha256": {
+				"en": "52a0fa5ed78ec2f3bbedf5b67f7abf3cc8d72c7a66ff4383d182358e242fb848",
+				"ru": "4caccb7df308fb0173db0c4f3cb162ddee086fca73050e73727d738b292080b9",
+				"context": "b54b6acb4399743d207d8a793080555f1cab291761de90cf3e6e9f3ce9c70016"
+			},
+			"findings": [
+				{
+					"id": "R1-05",
+					"severity": "major",
+					"kind": "glossary",
+					"keys": [
+						"ui.chat.trace.question_dock.hidden_as_you_type_sent_to_the_agent_not_shown",
+						"ui.chat.trace.tool_row_model.no_wake_answer_and_not_yet_in_their_transcript_it",
+						"ui.chat.trace.tool_row_model.not_confirmed_there_was_no_answer_and_the_message_is"
+					],
+					"english": {
+						"ui.chat.trace.question_dock.hidden_as_you_type_sent_to_the_agent_not_shown": "Hidden as you type — sent to the agent, not shown in the transcript.",
+						"ui.chat.trace.tool_row_model.no_wake_answer_and_not_yet_in_their_transcript_it": "No wake answer and not yet in their transcript — it may still arrive. Check before resending.",
+						"ui.chat.trace.tool_row_model.not_confirmed_there_was_no_answer_and_the_message_is": "Not confirmed: there was no answer and the message is not in their transcript. It may still arrive, so check before resending."
+					},
+					"current": {
+						"ui.chat.trace.question_dock.hidden_as_you_type_sent_to_the_agent_not_shown": "Скрыто при вводе — отправляется агенту, не показывается в расшифровке.",
+						"ui.chat.trace.tool_row_model.no_wake_answer_and_not_yet_in_their_transcript_it": "Ответа на пробуждение нет, и в их расшифровке сообщения пока нет — оно может ещё прийти. Проверьте перед повторной отправкой.",
+						"ui.chat.trace.tool_row_model.not_confirmed_there_was_no_answer_and_the_message_is": "Не подтверждено: ответа не было, и сообщения нет в их расшифровке. Оно может ещё прийти, поэтому проверьте перед повторной отправкой."
+					},
+					"proposed": "«…не показывается в транскрипте.»; «…и в их транскрипте сообщения пока нет…»; «…и сообщения нет в их транскрипте.»",
+					"reason": "Same transcript drift as R1-03/R1-04: three more «расшифровка» uses where the binding locale call is «транскрипт»."
+				},
+				{
+					"id": "R1-06",
+					"severity": "minor",
+					"kind": "register",
+					"keys": [
+						"ui.chat.trace.tool_row_model.raised_panic",
+						"ui.chat.trace.tool_row_model.raising_panic"
+					],
+					"english": {
+						"ui.chat.trace.tool_row_model.raised_panic": "Raised panic",
+						"ui.chat.trace.tool_row_model.raising_panic": "Raising panic"
+					},
+					"current": {
+						"ui.chat.trace.tool_row_model.raised_panic": "Поднял панику",
+						"ui.chat.trace.tool_row_model.raising_panic": "Поднимает панику"
+					},
+					"proposed": "Активировал panic / Активирует panic (или «включил режим panic»)",
+					"reason": "«Поднял панику» is the idiom for raising a fuss and names an emotional reaction, not the mesh panic command this row reports. The action is destructive, so the row should name the control: keep the command token Latin (as the glossary does for merge/pull/push) or say «режим panic»."
+				},
+				{
+					"id": "R1-07",
+					"severity": "minor",
+					"kind": "idiom",
+					"keys": [
+						"ui.chat.trace.tool_row_model.peeked_at",
+						"ui.chat.trace.tool_row_model.peeking_at",
+						"ui.chat.trace.tool_row_model.peeked_at_session",
+						"ui.chat.trace.tool_row_model.peeking_at_session"
+					],
+					"english": {
+						"ui.chat.trace.tool_row_model.peeked_at": "Peeked at",
+						"ui.chat.trace.tool_row_model.peeking_at": "Peeking at",
+						"ui.chat.trace.tool_row_model.peeked_at_session": "Peeked at session",
+						"ui.chat.trace.tool_row_model.peeking_at_session": "Peeking at session"
+					},
+					"current": {
+						"ui.chat.trace.tool_row_model.peeked_at": "Подсмотрел",
+						"ui.chat.trace.tool_row_model.peeking_at": "Подсматривает",
+						"ui.chat.trace.tool_row_model.peeked_at_session": "Подсмотрел сессию",
+						"ui.chat.trace.tool_row_model.peeking_at_session": "Подсматривает сессию"
+					},
+					"proposed": "Заглянул / Заглядывает / Заглянул в сессию / Заглядывает в сессию",
+					"reason": "«Подсмотрел» means to spy or peep furtively; the tool row reports a read-only peek at a session. «Заглянуть» keeps the light-touch sense without the covert one."
+				},
+				{
+					"id": "R1-08",
+					"severity": "minor",
+					"kind": "idiom",
+					"keys": [
+						"ui.chat.trace.tool_row_model.captured_console",
+						"ui.chat.trace.tool_row_model.capturing_console"
+					],
+					"english": {
+						"ui.chat.trace.tool_row_model.captured_console": "Captured console",
+						"ui.chat.trace.tool_row_model.capturing_console": "Capturing console"
+					},
+					"current": {
+						"ui.chat.trace.tool_row_model.captured_console": "Захватил консоль",
+						"ui.chat.trace.tool_row_model.capturing_console": "Захватывает консоль"
+					},
+					"proposed": "Снял консоль / Снимает консоль",
+					"reason": "«Захватил консоль» reads as seizing or taking over the console. The action captures its output (a screenshot/read), which Russian expresses with «снять»."
+				},
+				{
+					"id": "R1-13",
+					"severity": "nit",
+					"kind": "idiom",
+					"keys": [
+						"ui.chat.trace.tool_row_model.previewed_rename",
+						"ui.chat.trace.tool_row_model.previewing_rename"
+					],
+					"english": {
+						"ui.chat.trace.tool_row_model.previewed_rename": "Previewed rename",
+						"ui.chat.trace.tool_row_model.previewing_rename": "Previewing rename"
+					},
+					"current": {
+						"ui.chat.trace.tool_row_model.previewed_rename": "Предпросмотрел переименование",
+						"ui.chat.trace.tool_row_model.previewing_rename": "Предпросматривает переименование"
+					},
+					"proposed": "Показал предпросмотр переименования / Показывает предпросмотр переименования",
+					"reason": "«Предпросмотрел» is a made-up verb; the noun «предпросмотр» is established in the corpus (core ru uses «предпросмотр» throughout)."
+				},
+				{
+					"id": "R1-14",
+					"severity": "nit",
+					"kind": "idiom",
+					"keys": [
+						"ui.chat.trace.question_dock.1_to_answer",
+						"ui.chat.trace.question_dock.1_value_to_answer"
+					],
+					"english": {
+						"ui.chat.trace.question_dock.1_to_answer": "1 to answer",
+						"ui.chat.trace.question_dock.1_value_to_answer": "1-{value, number, ::group-off} to answer"
+					},
+					"current": {
+						"ui.chat.trace.question_dock.1_to_answer": "1 для ответа",
+						"ui.chat.trace.question_dock.1_value_to_answer": "1-{value, number, ::group-off} для ответа"
+					},
+					"proposed": "1 — ответить / 1-{value, number, ::group-off} — ответить",
+					"reason": "A keyboard hint built as «1 для ответа» reads as a purpose (1 for an answer) rather than a key that answers; the dash states the action."
+				}
+			]
+		}
+	},
+	"verdict": "changes_requested: 0 blocker, 5 major entries covering 3 distinct defects (the approval typed-answer tokens; the nine message-budget sentences; the transcript term split across canonical, run_details and trace), 8 minor and 10 nit. Eleven namespaces pass with only minors/nits; ui.chat, ui.chat.canonical, ui.chat.run_details and ui.chat.trace cannot back an audited row until the majors are fixed and re-audited."
+}
