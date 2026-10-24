@@ -48,7 +48,7 @@ const BROWSER_SURFACE =
 const BROWSER_TAB_STRIP =
 	"src/renderer/src/features/browser/components/browser-tab-strip.tsx";
 const ROUTE_CHROME_WRAPPER =
-	/className=\{isRoutePage \? "panel-top-pad bg-sunken" : undefined\}[\s\S]{0,200}?data-glass-region=\{isRoutePage \? "chrome" : undefined\}[\s\S]{0,300}?<div ref=\{stripRef\} className="relative">/;
+	/className=\{isRoutePage \? "panel-top-pad bg-sunken" : undefined\}[\s\S]{0,200}?data-glass-region=\{isRoutePage \? "chrome" : undefined\}[\s\S]{0,1200}?<div className="relative">/;
 const STRIP_CHROME_ROLE = /data-glass-region="chrome"/;
 const NESTED_CHROME_TRANSPARENT =
 	/html\[data-glass~="pane"\]\s*\[data-glass-region="chrome"\]\s*\[data-glass-region="chrome"\]\s*\{\s*background-color: transparent;\s*\}/;

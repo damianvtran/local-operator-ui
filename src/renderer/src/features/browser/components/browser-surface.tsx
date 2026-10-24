@@ -845,84 +845,84 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				className={isRoutePage ? "panel-top-pad bg-sunken" : undefined}
 				data-glass-region={isRoutePage ? "chrome" : undefined}
 			>
-			{/* THE STRIP CONSUMES THESE TWO HANDS, so they are passed through rather than
+				{/* THE STRIP CONSUMES THESE TWO HANDS, so they are passed through rather than
 			    `void`-ed: a close's own outcome is what bounds its caret restore (review
 			    round 2, A-2), and discarding it here would leave the one caller that needs
 			    the answer with nothing to read. Every other chrome call stays fired-and-
 			    forgotten, which is what `void` says. */}
-			<div className="relative">
-				<BrowserTabStrip
-					tabPanelId={tabPanelId}
-					tabs={tabs}
-					sessions={sessions}
-					activeTabId={state?.activeTabId ?? null}
-					waiting={queue.waiting}
-					onActivate={(tabId) => void chrome.activateTab(tabId)}
-					onClose={closeTab}
-					onCloseTabs={(intent) => chrome.closeTabs(intent)}
-					onNewTab={() => void chrome.newTab(hostSessionId)}
-					onReorder={(ids) => chrome.reorderTabs(ids)}
-					onTabAction={(id, action) => {
-						void chrome.actOnTab(id, action).then((outcome) => {
-							// A failed navigation still retains an active plain-user copy. Reveal
-							// an actual destination, never a refusal that created none; do not
-							// copy conversation association just to make the failure inspectable.
-							if (
-								outcome?.tabId != null &&
-								action === "duplicate" &&
-								tabScope !== "all"
-							)
-								onShowAllTabs?.();
-						});
-					}}
-					newTabLabel={newTabLabel}
-					onHandOver={(tab) => setHandOverTab(tab)}
-					onRevokeHandOver={(tabId) => void chrome.revokeHandOver(tabId)}
-				/>
-			</div>
-			{/* THE PERMANENT ADDRESS ROW (S5, LOH-13). One 37px in-flow band
+				<div className="relative">
+					<BrowserTabStrip
+						tabPanelId={tabPanelId}
+						tabs={tabs}
+						sessions={sessions}
+						activeTabId={state?.activeTabId ?? null}
+						waiting={queue.waiting}
+						onActivate={(tabId) => void chrome.activateTab(tabId)}
+						onClose={closeTab}
+						onCloseTabs={(intent) => chrome.closeTabs(intent)}
+						onNewTab={() => void chrome.newTab(hostSessionId)}
+						onReorder={(ids) => chrome.reorderTabs(ids)}
+						onTabAction={(id, action) => {
+							void chrome.actOnTab(id, action).then((outcome) => {
+								// A failed navigation still retains an active plain-user copy. Reveal
+								// an actual destination, never a refusal that created none; do not
+								// copy conversation association just to make the failure inspectable.
+								if (
+									outcome?.tabId != null &&
+									action === "duplicate" &&
+									tabScope !== "all"
+								)
+									onShowAllTabs?.();
+							});
+						}}
+						newTabLabel={newTabLabel}
+						onHandOver={(tab) => setHandOverTab(tab)}
+						onRevokeHandOver={(tabId) => void chrome.revokeHandOver(tabId)}
+					/>
+				</div>
+				{/* THE PERMANENT ADDRESS ROW (S5, LOH-13). One 37px in-flow band
 			    between the strip and the page: Back, Forward, Reload/Stop, Home, the
 			    field with its site mark, the fixed 28px Approvals control and the
 			    overflow menu. `rowRef` is the anchor the native suggestion child hangs
 			    from and the width that decides which controls fold; it replaces
 			    `stripRef` because the row is what the list is attached to now. */}
-			<BrowserUrlBar
-				rootRef={rowRef}
-				inputRef={addressRef}
-				tabId={state?.activeTabId ?? null}
-				url={state?.url ?? ""}
-				pendingUrl={chrome.pendingUrl}
-				loading={Boolean(state?.loading)}
-				canGoBack={Boolean(state?.canGoBack)}
-				canGoForward={Boolean(state?.canGoForward)}
-				disabled={tabs.length === 0}
-				hideForward={rowWidth > 0 && rowWidth < 300}
-				hideHome={rowWidth > 0 && rowWidth < 360}
-				startPage={onStartPage}
-				placeholder={
-					onStartPage
-						? t("ui.browser.browser_new_tab.address_placeholder")
-						: undefined
-				}
-				suggestionsUnavailable={browserOwnState}
-				narrow={rowWidth > 0 && rowWidth < 360}
-				onNavigate={(url, expectedTabId) =>
-					void chrome.navigate(url, expectedTabId)
-				}
-				onBack={() => void chrome.history("back")}
-				onForward={() => void chrome.history("forward")}
-				onReload={() => void chrome.reload()}
-				onStop={() => void chrome.stop()}
-				onHome={() => void chrome.home()}
-				loadFailure={state?.navFailure ?? null}
-				overlayMode={overlayMode}
-				anchor={anchor}
-				focusRequest={focusRequest}
-				onDismiss={returnBrowserFocus}
-				onCommitted={returnBrowserFocus}
-				menu={
-					<>
-						{/* APPROVALS IS A FIXED 28px ROW CONTROL (S5 ruling 1 and 7):
+				<BrowserUrlBar
+					rootRef={rowRef}
+					inputRef={addressRef}
+					tabId={state?.activeTabId ?? null}
+					url={state?.url ?? ""}
+					pendingUrl={chrome.pendingUrl}
+					loading={Boolean(state?.loading)}
+					canGoBack={Boolean(state?.canGoBack)}
+					canGoForward={Boolean(state?.canGoForward)}
+					disabled={tabs.length === 0}
+					hideForward={rowWidth > 0 && rowWidth < 300}
+					hideHome={rowWidth > 0 && rowWidth < 360}
+					startPage={onStartPage}
+					placeholder={
+						onStartPage
+							? t("ui.browser.browser_new_tab.address_placeholder")
+							: undefined
+					}
+					suggestionsUnavailable={browserOwnState}
+					narrow={rowWidth > 0 && rowWidth < 360}
+					onNavigate={(url, expectedTabId) =>
+						void chrome.navigate(url, expectedTabId)
+					}
+					onBack={() => void chrome.history("back")}
+					onForward={() => void chrome.history("forward")}
+					onReload={() => void chrome.reload()}
+					onStop={() => void chrome.stop()}
+					onHome={() => void chrome.home()}
+					loadFailure={state?.navFailure ?? null}
+					overlayMode={overlayMode}
+					anchor={anchor}
+					focusRequest={focusRequest}
+					onDismiss={returnBrowserFocus}
+					onCommitted={returnBrowserFocus}
+					menu={
+						<>
+							{/* APPROVALS IS A FIXED 28px ROW CONTROL (S5 ruling 1 and 7):
 						    mounted with its space reserved, because a control that appears
 						    and disappears would reflow the field every time an agent asked
 						    for a site. Below a 300px row it FOLDS into ⋯ (round-1 D5): the
@@ -933,87 +933,89 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 						    rides the ROW ground,
 						    not `canvas`, or the halo reads as a lighter box against the
 						    strip it overhangs (D6). */}
-						{!(rowWidth > 0 && rowWidth < 300) && (
-							<span className="relative flex shrink-0 items-center">
-								<Tooltip
-									side="top"
-									align="end"
-									content={t("ui.browser.chrome.approvals")}
-								>
-									<Button
-										ref={approvalsTriggerRef}
-										variant={queue.count > 0 || dockOpen ? "outline" : "ghost"}
-										size="icon-sm"
-										className={dockOpen ? "bg-row-selected" : undefined}
-										onClick={() => setDockOpen((open) => !open)}
-										aria-expanded={dockOpen}
-										aria-label={
-											queue.count > 0
-												? t("ui.browser.browser_url_bar.approvals_waiting", {
-														count: queue.count,
-													})
-												: t("ui.browser.chrome.approvals")
-										}
-										data-tour-tag="browser-approvals"
+							{!(rowWidth > 0 && rowWidth < 300) && (
+								<span className="relative flex shrink-0 items-center">
+									<Tooltip
+										side="top"
+										align="end"
+										content={t("ui.browser.chrome.approvals")}
 									>
-										<ShieldCheck aria-hidden className="size-3.5" />
-									</Button>
-								</Tooltip>
-								{queue.count > 0 && (
-									<span className="pointer-events-none absolute -top-0.5 -right-0.5">
-										{/* 2px per side: half the 4px gap above the control, so the
-										    badge's 2px ring stays inside the row (D6b). */}
-										<Badge
-											variant="attention"
-											shape="pill"
-											size="count"
-											className="ring-2 ring-elevated"
-											aria-hidden="true"
-											data-tour-tag="browser-approvals-badge"
+										<Button
+											ref={approvalsTriggerRef}
+											variant={
+												queue.count > 0 || dockOpen ? "outline" : "ghost"
+											}
+											size="icon-sm"
+											className={dockOpen ? "bg-row-selected" : undefined}
+											onClick={() => setDockOpen((open) => !open)}
+											aria-expanded={dockOpen}
+											aria-label={
+												queue.count > 0
+													? t("ui.browser.browser_url_bar.approvals_waiting", {
+															count: queue.count,
+														})
+													: t("ui.browser.chrome.approvals")
+											}
+											data-tour-tag="browser-approvals"
 										>
-											{countLabel(queue.count, 99)}
-										</Badge>
-									</span>
-								)}
-							</span>
-						)}
-						<BrowserPageMenu
-							disabled={tabs.length === 0}
-							canGoForward={Boolean(state?.canGoForward)}
-							pageZoom={state?.pageControls?.zoom ?? 1}
-							waitingCount={queue.count}
-							downloadsDir={chrome.state?.transfers?.dir ?? null}
-							showForward={rowWidth > 0 && rowWidth < 300}
-							showHome={rowWidth > 0 && rowWidth < 360}
-							onForward={() => void chrome.history("forward")}
-							onHome={() => void chrome.home()}
-							onFind={() => void openFind("chrome")}
-							onPrint={() => {
-								if (state?.activeTabId != null)
-									void chrome.pageControl(state.activeTabId, "print");
-							}}
-							onResetZoom={() => {
-								if (state?.activeTabId != null)
-									void chrome.pageControl(state.activeTabId, "reset");
-							}}
-							onOpenDownloads={() => void chrome.revealDownloads()}
-							onOpenApprovals={() => {
-								const opening = !dockOpen;
-								setDockOpen(opening);
-								return opening;
-							}}
-							onDockOpened={() => setDockFocusRequest((n) => n + 1)}
-							triggerRef={pageMenuTriggerRef}
-							showApprovalsFolded={rowWidth > 0 && rowWidth < 300}
-							canControlPage={!browserOwnState && activeTab !== null}
-						/>
-					</>
-				}
-				// Suggestions are one list for the field: persistent history is
-				// session-agnostic, so there is no display scope to pass.
-				addressHistory={(request) => chrome.addressHistory(request)}
-				onStateChanged={chrome.onStateChanged}
-			/>
+											<ShieldCheck aria-hidden className="size-3.5" />
+										</Button>
+									</Tooltip>
+									{queue.count > 0 && (
+										<span className="pointer-events-none absolute -top-0.5 -right-0.5">
+											{/* 2px per side: half the 4px gap above the control, so the
+										    badge's 2px ring stays inside the row (D6b). */}
+											<Badge
+												variant="attention"
+												shape="pill"
+												size="count"
+												className="ring-2 ring-elevated"
+												aria-hidden="true"
+												data-tour-tag="browser-approvals-badge"
+											>
+												{countLabel(queue.count, 99)}
+											</Badge>
+										</span>
+									)}
+								</span>
+							)}
+							<BrowserPageMenu
+								disabled={tabs.length === 0}
+								canGoForward={Boolean(state?.canGoForward)}
+								pageZoom={state?.pageControls?.zoom ?? 1}
+								waitingCount={queue.count}
+								downloadsDir={chrome.state?.transfers?.dir ?? null}
+								showForward={rowWidth > 0 && rowWidth < 300}
+								showHome={rowWidth > 0 && rowWidth < 360}
+								onForward={() => void chrome.history("forward")}
+								onHome={() => void chrome.home()}
+								onFind={() => void openFind("chrome")}
+								onPrint={() => {
+									if (state?.activeTabId != null)
+										void chrome.pageControl(state.activeTabId, "print");
+								}}
+								onResetZoom={() => {
+									if (state?.activeTabId != null)
+										void chrome.pageControl(state.activeTabId, "reset");
+								}}
+								onOpenDownloads={() => void chrome.revealDownloads()}
+								onOpenApprovals={() => {
+									const opening = !dockOpen;
+									setDockOpen(opening);
+									return opening;
+								}}
+								onDockOpened={() => setDockFocusRequest((n) => n + 1)}
+								triggerRef={pageMenuTriggerRef}
+								showApprovalsFolded={rowWidth > 0 && rowWidth < 300}
+								canControlPage={!browserOwnState && activeTab !== null}
+							/>
+						</>
+					}
+					// Suggestions are one list for the field: persistent history is
+					// session-agnostic, so there is no display scope to pass.
+					addressHistory={(request) => chrome.addressHistory(request)}
+					onStateChanged={chrome.onStateChanged}
+				/>
 			</div>
 			<BrowserFindRow chrome={chrome} returnToPage={findReturnToPage} />
 			{state?.pageControls?.notice && (
