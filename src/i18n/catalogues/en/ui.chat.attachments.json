@@ -1,0 +1,14 @@
+{
+	"ui.chat.attachments.pending_caption": "Not sent yet",
+	"ui.chat.attachments.file_meta": "{type} · {size}",
+	"ui.chat.attachments.file_missing": "Moved or deleted",
+	"ui.chat.attachments.file_retained": "Still retained in the attachment store ({digest})",
+	"ui.chat.attachments.file_unnamed": "Attached file",
+	"ui.chat.attachments.copy_path": "Copy path",
+	"ui.chat.attachments.path_copied": "Path copied",
+	"ui.chat.attachments.file_missing_recovery": "The file is no longer at this path.",
+	"ui.chat.attachments.file_type_unknown": "File",
+	"ui.chat.attachments.copy_saved_path": "Copy saved copy path",
+	"ui.chat.attachments.saved_path_copied": "Saved copy path copied",
+	"ui.chat.attachments.saved_copy_label": "Saved copy"
+}

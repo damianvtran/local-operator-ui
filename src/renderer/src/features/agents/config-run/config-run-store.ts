@@ -40,6 +40,7 @@ export type ConfigRunStatus =
 export type RunTarget = { kind: "agent" | "team"; name: string };
 
 import type { WireImage } from "@features/chat/utils/bound-image";
+import type { ChatFile } from "@shared/store/canonical-sessions-store";
 
 /** A catalogue field that changed, in the operator's words. */
 export type RunChange = { label: string; before: string; after: string };
@@ -121,6 +122,13 @@ export type ConfigRunStore = {
 	 */
 	images: WireImage[];
 	/**
+	 * The uploaded file references the accepted request carried, for the same
+	 * retry rule as `images`: the receipt hashes the whole body, so a retry that
+	 * dropped the files would be a different request (attachment contract §1.2).
+	 * Already stored when this is written; a retry re-sends only the references.
+	 */
+	files: ChatFile[];
+	/**
 	 * A run exists and is live.
 	 *
 	 * THE DRAFT IS NOT SPENT HERE, and that is the rule this store used to hold with
@@ -136,6 +144,7 @@ export type ConfigRunStore = {
 		topic: string,
 		before: unknown,
 		images?: WireImage[],
+		files?: ChatFile[],
 	) => void;
 	noteTouched: (target: RunTarget) => void;
 	stopping: () => void;
@@ -166,6 +175,7 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 	status: "idle",
 	topic: "",
 	images: [],
+	files: [],
 	about: null,
 	error: null,
 	stopError: null,
@@ -180,12 +190,13 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 
 	setAbout: (about) => set({ about }),
 
-	adopt: (sessionId, topic, before, images = []) =>
+	adopt: (sessionId, topic, before, images = [], files = []) =>
 		set({
 			sessionId,
 			status: "running",
 			topic,
 			images,
+			files,
 			error: null,
 			stopError: null,
 			startedAt: Date.now(),
@@ -245,6 +256,7 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 			sessionId: null,
 			// A settled run has no request left to repeat, images included.
 			images: [],
+			files: [],
 			// A run that settled has nothing left to refuse: the stop is moot.
 			stopError: null,
 			// `before` is spent by the diff it was taken for.
@@ -280,6 +292,7 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 			unsent: false,
 			topic: "",
 			images: [],
+			files: [],
 			touched: [],
 			results: [],
 			answer: "",

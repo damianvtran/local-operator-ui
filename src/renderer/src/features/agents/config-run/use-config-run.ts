@@ -27,8 +27,9 @@
  */
 
 import { interruptTurn } from "@features/chat/interrupt-turn";
-import { encodeImageAttachments } from "@features/chat/utils/attachment-encode";
+import { encodeAttachments } from "@features/chat/utils/attachment-encode";
 import {
+	fileOverflowRefusal,
 	imageOverflowRefusal,
 	unreadableAttachmentRefusal,
 } from "@features/chat/utils/attachment-read";
@@ -53,6 +54,7 @@ import {
 	useCanonicalSessionStream,
 } from "@shared/hooks/use-canonical-session";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
+import type { ChatFile } from "@shared/store/canonical-sessions-store";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -564,11 +566,9 @@ export function useConfigRun(): ConfigRunHandle {
 		 * are sending, and their remedy is to fix the chips — which are still in the
 		 * box, because this path returns `false` below.
 		 */
-		const { images, unreadable, overflow } = await encodeImageAttachments(
-			attachments,
-			body,
-		);
-		const attachmentRefusal = unreadableAttachmentRefusal(unreadable);
+		const { images, files, failures, overflow, fileOverflow } =
+			await encodeAttachments(attachments, body);
+		const attachmentRefusal = unreadableAttachmentRefusal(failures);
 		if (attachmentRefusal) {
 			/*
 			 * `fail`, NOT `failUnsent`, and the difference is the remit: `failUnsent`
@@ -587,6 +587,11 @@ export function useConfigRun(): ConfigRunHandle {
 			 * because a retry re-sends the same chips and meets the same refusal.
 			 */
 			useConfigRunStore.getState().fail(overflowRefusal);
+			return false;
+		}
+		const fileOverflowMessage = fileOverflowRefusal(fileOverflow);
+		if (fileOverflowMessage) {
+			useConfigRunStore.getState().fail(fileOverflowMessage);
 			return false;
 		}
 		try {
@@ -620,18 +625,18 @@ export function useConfigRun(): ConfigRunHandle {
 					 * text has to still be there (review round 1, M2 / QA Q5 — the code even
 					 * said "KEEP the text" while clearing it).
 					 */
-					store.adopt(active, text.trim(), before, images);
+					store.adopt(active, text.trim(), before, images, files);
 					return false;
 				}
 				throw caught;
 			}
-			store.adopt(sessionId, body, before, images);
+			store.adopt(sessionId, body, before, images, files);
 			/*
 			 * The prompt is a SECOND call on the same session, exactly as the design's
 			 * mechanism table states: create, then message. `startedAt` is the accepted
 			 * create, so the elapsed clock starts where the work does.
 			 */
-			await sendMessage(sessionId, body, images);
+			await sendMessage(sessionId, body, images, files);
 			/*
 			 * NOTHING IS CLEARED HERE, and that is the M2 rule rather than an
 			 * omission: the box's text is spent by the composer's own store when the
@@ -681,6 +686,7 @@ export function useConfigRun(): ConfigRunHandle {
 		sessionId: string,
 		text: string,
 		images: WireImage[] = [],
+		files: ChatFile[] = [],
 	) => {
 		await desktopResult<{ ok?: boolean }>({
 			op: "sessions.message",
@@ -695,6 +701,7 @@ export function useConfigRun(): ConfigRunHandle {
 			 * or a 409).
 			 */
 			...(images.length > 0 ? { images } : {}),
+			...(files.length > 0 ? { files } : {}),
 		});
 	};
 
@@ -729,7 +736,12 @@ export function useConfigRun(): ConfigRunHandle {
 			return;
 		setStarting(true);
 		try {
-			await sendMessage(state.sessionId, state.topic, state.images);
+			await sendMessage(
+				state.sessionId,
+				state.topic,
+				state.images,
+				state.files,
+			);
 			/*
 			 * Back to live. `adopt` is the one door that sets `running`, and the run id
 			 * and topic it needs are the ones already in hand — so the retry re-arms

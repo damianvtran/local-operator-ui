@@ -59,6 +59,7 @@ import {
 	panelIdentityFor,
 	panelSessionIdOfView,
 	pressLockCopy,
+	remoteOwnedId,
 	resynthesisePendingSend,
 	sendFailureCopy,
 	useCanonicalSessionsStore,
@@ -160,8 +161,9 @@ import {
 	modelAccessLocality,
 } from "../session-status/session-model";
 import type { Message } from "../types/message";
-import { encodeImageAttachments } from "../utils/attachment-encode";
+import { encodeAttachments } from "../utils/attachment-encode";
 import {
+	fileOverflowRefusal,
 	imageOverflowRefusal,
 	unreadableAttachmentRefusal,
 } from "../utils/attachment-read";
@@ -2001,10 +2003,25 @@ function SessionPanel({
 					});
 				return true;
 			}
-			const { images, unreadable, overflow } = await encodeImageAttachments(
-				attachments,
-				content,
+			/*
+			 * Files cannot ride a peer-owned conversation in v1 (attachment contract
+			 * §6b.2): the upload lands in THIS machine's attachment store, and the owner
+			 * has a different one. The encoder reports the files as `remote` failures, so
+			 * the refusal below names them and the send stops here rather than posting a
+			 * digest the owner could never resolve. Images keep today's peer staging.
+			 */
+			const remoteOwned = remoteOwnedId(
+				useCanonicalSessionsStore.getState().sessions,
+				useCanonicalSessionsStore.getState().placementFacts,
+				sessionId ?? draft?.sessionId ?? "",
 			);
+			const {
+				images,
+				files,
+				failures,
+				overflow,
+				fileOverflow: fileOverflowCount,
+			} = await encodeAttachments(attachments, content, { remoteOwned });
 			/*
 			 * An attachment the send could not read, reported before admission for the
 			 * same reason as the budget refusal below: the file is not in the message
@@ -2019,7 +2036,7 @@ function SessionPanel({
 			 * how the same sentence was measured both with and without it (design
 			 * round 4, D13; the predicate is `withholdsRetryHint`).
 			 */
-			const unreadableRefusal = unreadableAttachmentRefusal(unreadable);
+			const unreadableRefusal = unreadableAttachmentRefusal(failures);
 			if (unreadableRefusal) {
 				setSendError(unreadableRefusal);
 				setSendErrorCode(UNREADABLE_ATTACHMENT_CODE);
@@ -2037,6 +2054,14 @@ function SessionPanel({
 				 * register is set here rather than told to a code.
 				 */
 				setSendError(overflowRefusal);
+				setSendErrorCode(undefined);
+				setSendErrorRetry(false);
+				setSendErrorMuted(false);
+				return false;
+			}
+			const fileOverflow = fileOverflowRefusal(fileOverflowCount);
+			if (fileOverflow) {
+				setSendError(fileOverflow);
 				setSendErrorCode(undefined);
 				setSendErrorRetry(false);
 				setSendErrorMuted(false);
@@ -2324,6 +2349,7 @@ function SessionPanel({
 					text: content,
 					attachments,
 					images,
+					...(files.length ? { files } : {}),
 					mode: turnAlive ? "steer" : "prompt",
 					cwd,
 					/*

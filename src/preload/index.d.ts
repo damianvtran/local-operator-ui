@@ -5,6 +5,10 @@ import type {
 	BackendUpdateCompletion,
 	BackendUpdateErrorReport,
 } from "../main/update-service";
+import type {
+	AttachmentUploadResult,
+	AttachmentUploadSource,
+} from "../shared/attachment-upload";
 import type { DaemonStatusSnapshot } from "../shared/backend-status";
 import type {
 	AddressHistoryRequest,
@@ -463,6 +467,14 @@ declare global {
 				filePath: string,
 				maxBytes?: number,
 			) => Promise<ReadFileBytesResponse>;
+			/**
+			 * Upload one composer attachment to the daemon's attachment store. Main owns
+			 * the read and the multipart POST; the renderer receives the stored record
+			 * or a typed refusal carrying the sentence it renders (contract v1 §1.1).
+			 */
+			uploadAttachment: (
+				source: AttachmentUploadSource,
+			) => Promise<AttachmentUploadResult>;
 			/**
 			 * Resolve and stat a batch of paths, returning the RESOLVED path each one
 			 * maps to. That resolved path is the Files panel's identity for a file.
