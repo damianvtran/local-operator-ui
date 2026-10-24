@@ -1,10 +1,10 @@
 {
-	"ui.chat.at.contract.this_backend_cannot_carry_file_references_update_the_backend_and": "此后端无法传递文件引用。请更新后端后重试。",
+	"ui.chat.at.contract.this_backend_cannot_carry_file_references_update_the_backend_and": "此后端无法传递文件引用。更新后端后重试。",
 	"ui.chat.at.contract.nothing_to_insert_esc_closes": "无可插入内容 · Esc关闭",
 	"ui.chat.at.contract.reading_this_folder": "正在读取此文件夹……",
 	"ui.chat.at.contract.this_folder_is_empty": "此文件夹为空。",
 	"ui.chat.at.contract.could_not_read_this_folder_it_may_need_a_permission": "无法读取此文件夹。它可能需要本应用没有的权限。",
-	"ui.chat.at.contract.could_not_read_this_folder_check_that_it_exists_and": "无法读取此文件夹。请检查它是否存在，以及你能否打开它。",
+	"ui.chat.at.contract.could_not_read_this_folder_check_that_it_exists_and": "无法读取此文件夹。检查它是否存在，以及你能否打开它。",
 	"ui.chat.at.contract.enter_opens": "Enter打开{path}",
 	"ui.chat.at.contract.enter_inserts": "Enter插入{token}",
 	"ui.chat.at.contract.footer": "{verb} · Esc关闭",
