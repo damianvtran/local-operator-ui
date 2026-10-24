@@ -36,7 +36,6 @@ import {
 	requestsInScope,
 	useApprovalQueue,
 } from "../model/approval-queue-model";
-import { approvalsDockFullWidth } from "../model/approvals-dock-layout";
 import { browserBridge } from "../model/browser-projection-store";
 import { browserOverlaySuppressing } from "../model/self-suppression";
 import { browserOwnStateFor } from "../model/start-page";
@@ -47,6 +46,7 @@ import {
 	tabsInScope,
 } from "../model/tab-index-model";
 import { sessionDisplayName } from "../model/tab-index-model";
+import { useApprovalsDockWidth } from "../model/use-approvals-dock-width";
 import { BrowserApprovalsDock } from "./browser-approvals-dock";
 import { defaultApprovalHeaderLabel } from "./browser-approvals-tray";
 import { BrowserConsentBar } from "./browser-consent-bar";
@@ -311,8 +311,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	 * layout still has room for both; measuring the row (not the viewport) is
 	 * what makes the pane's narrow width behave, including in a wide window.
 	 */
-	const dockRowRef = useRef<HTMLDivElement | null>(null);
-	const [dockFullWidth, setDockFullWidth] = useState(false);
+	const { fullWidth: dockFullWidth, attachDockRow } = useApprovalsDockWidth();
 	const approvalsTriggerRef = useRef<HTMLButtonElement | null>(null);
 	/* The ⋯ trigger: at narrow widths the Approvals control is folded, so the
 	   dock has no shield to return focus to and falls back to the menu it came
@@ -604,22 +603,6 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	const queue = useApprovalQueue(pendingRequests, tabs);
 
 	// ---- layout: report the rectangle ---------------------------------------
-	/*
-	 * The row measurement is its own observer: the content observer must not
-	 * gate the dock layout, and the row width is stable while the dock opens
-	 * (the flex container does not change width; the content yields).
-	 */
-	useLayoutEffect(() => {
-		const element = dockRowRef.current;
-		if (!element) return;
-		const report = (): void =>
-			setDockFullWidth(approvalsDockFullWidth(element.clientWidth));
-		report();
-		const observer = new ResizeObserver(report);
-		observer.observe(element);
-		return () => observer.disconnect();
-	}, []);
-
 	// `useLayoutEffect` so the first report lands before the browser paints: with
 	// a passive effect the view would appear one frame after the chrome, which is
 	// a flash of the placeholder under it.
@@ -1288,7 +1271,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			    dock opens. That is the design's whole point (`spec 2`): a native view
 			    cannot be CSS-scaled or overlaid, so the dock is in flow, and the
 			    `ResizeObserver` above re-reports on the same frame. */}
-			<div className="flex min-h-0 grow" ref={dockRowRef}>
+			<div className="flex min-h-0 grow" ref={attachDockRow}>
 				{/* The content rect. The native view paints ABOVE this element, so
 				    everything below is visible only while the view is hidden — which is
 				    exactly why the treatment is a page title and one line rather than a

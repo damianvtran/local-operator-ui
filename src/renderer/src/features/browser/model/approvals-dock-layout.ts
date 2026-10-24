@@ -18,8 +18,6 @@
  * The numbers are exported so the surface, the static render and the real-app
  * measurement rig cannot drift from each other.
  */
-export const APPROVALS_DOCK_SIDE_WIDTH = 320;
-export const APPROVALS_PAGE_FLOOR = 240;
 export const APPROVALS_DOCK_FULL_WIDTH_MAX = 520;
 
 /**

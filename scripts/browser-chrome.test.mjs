@@ -3481,6 +3481,19 @@ test("the dock's full-width state is a rendered state, not a CSS afterthought", 
 	assert.match(side, /w-80/);
 });
 
+test("the dock's row observer is a callback ref, so a remount re-measures", () => {
+	// The row exists only on the ready return. The availability branch (cold
+	// start, host retry) unmounts it; a one-shot mount effect would have observed
+	// null and never fired again, leaving a narrow pane on the side form. The
+	// callback ref is the mechanism that re-attaches on the remount.
+	const surface = shippedSource(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+	);
+	assert.match(surface, /ref=\{attachDockRow\}/);
+	assert.match(surface, /useApprovalsDockWidth\(\)/);
+	assert.doesNotMatch(surface, /const element = dockRowRef\.current/);
+});
+
 test("the app-wide count includes the requests no conversation owns, and drops the expired", () => {
 	// R1'S ARITHMETIC (operator ask, 2026-09-23), and the two ways a count derived from
 	// `pendingConsent.length` would be wrong:
