@@ -46,6 +46,7 @@ const {
 	formatAge,
 	formatAmount,
 	formatCountdown,
+	formatPercentValue,
 	fractionOf,
 	isStale,
 	limitRow,
@@ -382,6 +383,19 @@ test("a percent row keeps a sub-one-percent reading visible", () => {
 		formatAmount(amount({ used_fraction: 0.0006, unit: "percent" })),
 		"<1% used",
 	);
+});
+
+test("the percent helper keeps half-even at its own boundary", () => {
+	// The whole rule, called directly, so the edge between the sub-1 branch and
+	// zero-places half-even is stated at the helper rather than inferred from
+	// `formatAmount`. 2.5 is the even tie: Python's `f"{2.5:.0f}"` is `2`, so
+	// the `<1` branch must not swallow it on the way past.
+	assert.equal(formatPercentValue(0.5), "<1");
+	assert.equal(formatPercentValue(0.9999), "<1");
+	assert.equal(formatPercentValue(1), "1");
+	assert.equal(formatPercentValue(1.5), "2");
+	assert.equal(formatPercentValue(2.5), "2");
+	assert.equal(formatPercentValue(0), "0");
 });
 
 test("USD keeps its cents and prints both halves of a used/limit pair", () => {
