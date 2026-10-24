@@ -1365,6 +1365,11 @@ plan(
 	"driven",
 );
 plan(
+	"V16",
+	"a hover tooltip at the sidebar edge does not pause or blank the page",
+	"driven",
+);
+plan(
 	"F1",
 	"Tier 1/2 fallbacks are source-only here; native failure injection is BLOCKED",
 	"source",
@@ -1652,6 +1657,56 @@ try {
 			: "FAIL",
 		{ dockInjected, extraInjected },
 	);
+
+	// V16: a tooltip at the sidebar edge while the real page is live. Owner frame
+	// carries the tooltip, page frame proves the native page still paints; the
+	// registry reports no suppression, so the tooltip is not a pause.
+	const tipPoint = await evaluate(
+		cdp,
+		`(() => {
+			const el = document.querySelector('[data-tour-tag="browser-tab-close"]');
+			if (!el) return null;
+			const r = el.getBoundingClientRect();
+			return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+		})()`,
+	);
+	if (tipPoint) {
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: tipPoint.x,
+			y: tipPoint.y,
+		});
+		await sleep(900);
+		writeFileSync(join(FRAMES, "owner-tooltip-page.png"), await shot(cdp));
+		writeFileSync(join(FRAMES, "page-tooltip-page.png"), await shot(pageCdp));
+		const tooltipFacts = await evaluate(
+			cdp,
+			`(() => {
+				const content = document.querySelector('[data-tour-tag="browser-content"]');
+				const tips = [...document.querySelectorAll('[role="tooltip"]')]
+					.map((el) => ({ text: el.textContent?.trim() ?? '', rect: el.getBoundingClientRect().toJSON() }))
+					.filter((entry) => entry.rect.width > 0 && entry.rect.height > 0);
+				return { tooltipCount: tips.length, tooltip: tips[0] ?? null, suppressedBy: content?.getAttribute('data-suppressed-by') ?? null, page: content?.getBoundingClientRect().toJSON() ?? null };
+			})()`,
+		);
+		record(
+			"V16",
+			tooltipFacts.tooltipCount > 0 &&
+				tooltipFacts.suppressedBy === "" &&
+				tooltipFacts.page !== null
+				? "PASS"
+				: "FAIL",
+			tooltipFacts,
+		);
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: 4,
+			y: 4,
+		});
+		await sleep(200);
+	} else {
+		record("V16", "BLOCKED", "the settings rail item was not present");
+	}
 
 	const sendKey = (type, key, code, modifiers = 0) =>
 		cdp.send("Input.dispatchKeyEvent", {
