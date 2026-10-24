@@ -99,11 +99,13 @@ import {
 	approvalAnswerValue,
 	createSendLock,
 	declineQueuedAsk,
+	dismissQueuedAsk,
 	gateIsSecret,
 	reviseQueuedAsk,
 } from "../ask-answer";
 import {
 	type AskAnswerAttempt,
+	type AskDismissReason,
 	type AskDraft,
 	type AskOutcome,
 	askClaimsEscape,
@@ -2934,6 +2936,53 @@ function SessionPanel({
 		}
 		settleAskOutcome(taskId, outcome);
 	};
+	/**
+	 * PUT AN OPEN ASK AWAY (harness PR #2833, SA-D5).
+	 *
+	 * The third queued-ask door, behind the same lock as its siblings. Its receipt
+	 * is this surface's own record (`AskOutcome.dismissed`): the wire folds the ask
+	 * to `dismissed` with no marker for WHICH reason went, and the card that offered
+	 * the chooser collapses on the frame — so the reason has to be remembered here
+	 * or it is lost between the press and the row.
+	 *
+	 * NO TOAST. A decline has none and the card keeps its own line: the reader is
+	 * looking at the ask they just put away, and a transient notice over it would
+	 * be the second receipt for one act. The fleet scope does toast, because there
+	 * the row leaves the pane rather than settling in place (see its own note).
+	 */
+	const dismissAsk = async (taskId: string, reason: AskDismissReason) => {
+		if (!sessionId || sendLock.held) return;
+		setAdmitting(true);
+		setAskOutcomes((current) => ({
+			...current,
+			[taskId]: { sending: true, refused: null },
+		}));
+		let outcome: AnswerOutcome;
+		try {
+			outcome = await dismissQueuedAsk(
+				{ taskId, reason, sessionId, lock: sendLock },
+				(request) => desktopResult(request),
+			);
+		} finally {
+			setAdmitting(false);
+		}
+		if (outcome.status !== "sent") {
+			/*
+			 * `settleAskOutcome` is the one place that clears the in-flight flag and
+			 * records the sentence: a transport failure carries the owner's words, and
+			 * a `refused` outcome (the lock was taken, or the session id is gone) reached
+			 * nothing so it records neither. Returning without it would leave the card
+			 * disabled for the mount's life.
+			 */
+			settleAskOutcome(taskId, outcome);
+			return;
+		}
+		setAskOutcomes((current) => ({
+			...current,
+			[taskId]: { sending: false, refused: null, dismissed: reason },
+		}));
+		void queryClient.invalidateQueries({ queryKey: FLEET_ASKS_QUERY_KEY });
+	};
 	/*
 	 * THE DRAWER'S TOGGLE. The bar, the chip and the panel's Escape all call this
 	 * rather than flipping a flag of their own, so there is one answer to "is the
@@ -4822,6 +4871,20 @@ function SessionPanel({
 						onDeclineAsk: (taskId: string) => void declineAsk(taskId),
 						onReviseAsk: (taskId: string, answers: Record<string, string[]>) =>
 							void reviseAsk(taskId, answers),
+						/*
+						 * THE DISMISS DOOR IS GATED ON THE CAPABILITY, not on the reason a call
+						 * might fail: an older daemon's `Answer` is `extra="forbid"`, so a body
+						 * carrying `dismiss` is a 422 there, and a control that can only be
+						 * refused is the dead affordance the ask panel refuses. Absent means the
+						 * panel draws no button.
+						 */
+						onDismissAsk: desktopFeatureEnabled(
+							capabilities.data,
+							"ask_dismiss",
+						)
+							? (taskId: string, reason: AskDismissReason) =>
+									void dismissAsk(taskId, reason)
+							: undefined,
 						askOutcomes,
 						/* The asks drawer's lane: the flag, its door and the panel's draft. The
 						 * composer is deliberately NOT part of it (no sentence, no mode). */
