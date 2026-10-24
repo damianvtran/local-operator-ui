@@ -450,6 +450,7 @@ let stub: StubState = {
  * script does not know and the story would fail rather than show the chip.
  */
 let extraTags: { id: string; name: string; category: string }[] = [];
+let longContent = false;
 
 /*
  * HOW MANY CONTENT READS THE PREVIEW HAS ISSUED THIS STORY. `library.content` is
@@ -931,7 +932,13 @@ const install = () => {
 				kind: "bytes",
 				mimeType: "text/markdown",
 				data: new TextEncoder().encode(
-					"# March invoices\n\nReconcile the March run against the ledger.\n\n- Net 30\n- Two currencies\n- One disputed line\n",
+					longContent
+						? Array.from(
+								{ length: 36 },
+								(_, index) =>
+									`## Entry ${index + 1}\n\nA deliberately long reconciliation note keeps the real viewer scrollable.`,
+							).join("\n\n")
+						: "# March invoices\n\nReconcile the March run against the ledger.\n\n- Net 30\n- Two currencies\n- One disputed line\n",
 				),
 			};
 		},
@@ -1028,6 +1035,7 @@ const page = (
 		workspaceWidth?: number;
 		preserveDockWidth?: boolean;
 		freeNavigation?: boolean;
+		longContent?: boolean;
 	},
 ) => {
 	stub = {
@@ -1046,6 +1054,7 @@ const page = (
 	extraTags = [];
 	contentReads = 0;
 	thumbnailReads = [];
+	longContent = Boolean(state.longContent);
 	install();
 	try {
 		if (state.view) localStorage.setItem("library-view", state.view);
@@ -1226,9 +1235,51 @@ export const DockedPreview: Story = {
 		}),
 	play: async () => {
 		await waitFor(() => {
-			expect(document.querySelector("[data-library-dock]")).not.toBeNull();
+			expect(
+				document
+					.querySelector("[data-library-dock]")
+					?.getAttribute("data-glass-region"),
+			).toBe("pane");
 			expect(document.querySelector("[data-library-preview]")).not.toBeNull();
 			expect(document.querySelector("[data-library-composer]")).not.toBeNull();
+		});
+	},
+};
+export const DockedImage: Story = {
+	render: () =>
+		page({
+			docked: true,
+			route: "/library/assets/la_0000000000000021",
+		}),
+	play: async () => {
+		await waitFor(() =>
+			expect(
+				document.querySelector('[data-library-media-trigger="image"]'),
+			).not.toBeNull(),
+		);
+	},
+};
+export const DockedLongContent: Story = {
+	render: () =>
+		page({
+			docked: true,
+			longContent: true,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: async () => {
+		await waitFor(() => {
+			const scroller = document.querySelector<HTMLElement>(
+				"[data-lo-pane-edge-cues]",
+			);
+			if (!scroller) throw new Error("the text scroller is not mounted");
+			expect(scroller.scrollHeight).toBeGreaterThan(scroller.clientHeight);
+			scroller.scrollTop = scroller.scrollHeight;
+		});
+		await waitFor(() => {
+			const scroller = document.querySelector<HTMLElement>(
+				"[data-lo-pane-edge-cues]",
+			);
+			expect(scroller?.scrollTop).toBeGreaterThan(0);
 		});
 	},
 };
@@ -1324,6 +1375,11 @@ export const StandaloneNarrow: Story = {
 		}),
 	play: async () => {
 		await waitFor(() => {
+			expect(
+				document
+					.querySelector('[aria-label="Asset preview"]')
+					?.getAttribute("data-glass-region"),
+			).toBe("pane");
 			expect(document.querySelector("[data-library-preview]")).not.toBeNull();
 			expect(document.querySelector('[role="separator"]')).toBeNull();
 		});
@@ -1337,7 +1393,11 @@ export const DockedEmpty: Story = {
 		}),
 	play: async () => {
 		await waitFor(() =>
-			expect(document.querySelector("[data-library-dock]")).not.toBeNull(),
+			expect(
+				document
+					.querySelector("[data-library-dock]")
+					?.getAttribute("data-glass-region"),
+			).toBe("pane"),
 		);
 	},
 };

@@ -1145,9 +1145,12 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 						/*
 						 * THE DOCK IS A PANEL: its `surface` starts at y0 and its header and
 						 * scroller begin below the strip. This is the aside the operator's
-						 * screenshot caught beginning 32px down.
+						 * screenshot caught beginning 32px down. The OUTER padded box must
+						 * own the pane alpha too: marking only the inner preview made the
+						 * 32px lane opaque while the content below it was translucent.
 						 */
 						data-library-dock=""
+						data-glass-region="pane"
 						style={{ width: dockWidth }}
 						className="panel-top-pad flex h-full shrink-0 bg-surface"
 						aria-label={t("ui.library.page.preview")}
@@ -1178,6 +1181,8 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 					 * 1, D2). The panel that owns the pad owns the ground, which also
 					 * grounds the spinner and `UnavailableAsset` arms.
 					 */
+					/* Standalone has the same outer alpha owner as the docked panel. */
+					data-glass-region="pane"
 					className="panel-top-pad min-w-0 flex-1 bg-surface"
 					aria-label={t("ui.library.page.preview")}
 				>
@@ -1218,6 +1223,8 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 					/>
 					<div
 						data-library-dock=""
+						/* No inner preview exists here, so this root owns the whole pane. */
+						data-glass-region="pane"
 						style={{ width: dockWidth }}
 						className="panel-top-pad hidden h-full shrink-0 items-start justify-center bg-surface p-8 lg:flex"
 					>
