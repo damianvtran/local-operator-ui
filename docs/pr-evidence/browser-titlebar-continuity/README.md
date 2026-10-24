@@ -23,7 +23,7 @@ All captures used the real built Electron app with `--window-mode=headless`, scr
 - `narrow.png`: direct 560px narrow neighbour on the same after build.
 - `overflow.png`: nine tabs with three off screen on the same after build.
 
-`frame-metadata.json` records each frame's actual theme, glass settings and attribute, viewport and DPR. Standard frames are 1380×900 at DPR 2; narrow is 560×900 at DPR 1. All six before/after states keep strip y32, row y69 and page y106.
+`frame-metadata.json` records each frame's actual theme, glass settings and attribute, viewport and DPR. Every entry names its reviewed head `79684fb4f4589229fb49fa6a6d4a4bc612b742d4` and capture timestamp; `file` maps published captures to the exact repository filename, while unpublished base neighbour captures explicitly use `file: null`. Standard frames are 1380×900 at DPR 2; narrow is 560×900 at DPR 1. All six before/after states keep strip y32, row y69 and page y106.
 
 The fixture page was really loaded and scrolled (`scrollY=1200`, `innerHeight=794`, page marker `y=300`). The large black page region is expected: renderer capture does not include the separate native `WebContentsView`. These are not native composite or traffic-light screenshots.
 
