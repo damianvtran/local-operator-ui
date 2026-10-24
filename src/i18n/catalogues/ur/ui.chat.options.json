@@ -3,7 +3,7 @@
 	"ui.chat.options.chat_options_sidebar.clear_conversation": "گفتگو صاف کریں",
 	"ui.chat.options.chat_options_sidebar.clear_this_conversation": "یہ گفتگو صاف کریں؟",
 	"ui.chat.options.chat_options_sidebar.customize_settings_for_this_agent": "اس ایجنٹ کی ترتیبات حسب ضرورت بنائیں",
-	"ui.chat.options.generation_settings_section.enter_stop_sequences_one_per_line": "اسٹاپ ترتیبیں درج کریں (ہر سطر میں ایک)...",
+	"ui.chat.options.generation_settings_section.enter_stop_sequences_one_per_line": "اسٹاپ ترتیبیں درج کریں (ہر سطر میں ایک)…",
 	"ui.chat.options.generation_settings_section.generation_settings": "تخلیق کی ترتیبات",
 	"ui.chat.options.generation_settings_section.more_info": "مزید معلومات",
 	"ui.chat.options.generation_settings_section.random_number_seed_for_deterministic_generation": "مستقل تخلیق کے لیے بے ترتیب نمبر کا سیڈ",

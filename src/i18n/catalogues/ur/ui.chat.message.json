@@ -46,7 +46,7 @@
 	"ui.chat.message.video_attachment.click_to_open_getfilenamevalue": "{getFileNameValue} کھولنے کے لیے کلک کریں",
 	"ui.chat.message.turn_timestamp.ran": "چلایا",
 	"ui.chat.message.turn_timestamp.sent": "بھیجا گیا",
-	"ui.chat.message.audio_attachment.pause": "توقف",
+	"ui.chat.message.audio_attachment.pause": "روکیں",
 	"ui.chat.message.audio_attachment.play": "چلائیں",
 	"ui.chat.message.audio_attachment.unmute": "آواز بحال کریں",
 	"ui.chat.message.audio_attachment.mute": "خاموش کریں",

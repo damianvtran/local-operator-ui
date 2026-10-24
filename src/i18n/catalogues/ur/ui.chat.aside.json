@@ -16,7 +16,7 @@
 	"ui.chat.aside.aside.the_aside_was_not_answered": "ضمنی گفتگو کا جواب نہیں دیا گیا۔",
 	"ui.chat.aside.aside.the_exchange_is_still_settling_a_moment_before_it_can": "تبادلہ ابھی مکمل ہو رہا ہے — شامل کرنے میں ایک لمحہ باقی ہے۔",
 	"ui.chat.aside.aside.the_model_didnt_reply_in_text_ask_again": "ماڈل نے متن میں جواب نہیں دیا۔ دوبارہ پوچھیں۔",
-	"ui.chat.aside.aside.this_conversation_is_working_adding_the_aside_while_it_runs": "یہ گفتگو کام کر رہی ہے۔ چلتے دوران ضمنی گفتگو شامل کرنے سے پیغام جاری باری میں گھس جائے گا۔",
+	"ui.chat.aside.aside.this_conversation_is_working_adding_the_aside_while_it_runs": "یہ گفتگو کام کر رہی ہے۔ چلنے کے دوران ضمنی گفتگو شامل کرنے سے پیغام جاری باری میں گھس جائے گا۔",
 	"ui.chat.aside.aside_panel.add_the_aside_to_the_conversation": "ضمنی گفتگو گفتگو میں شامل کریں",
 	"ui.chat.aside.aside.the_aside_answered_sentence": "ضمنی گفتگو نے جواب دیا: {sentence}",
 	"ui.chat.aside.aside.the_request_has_invalid_fields": "درخواست میں غلط خانے ہیں۔",
