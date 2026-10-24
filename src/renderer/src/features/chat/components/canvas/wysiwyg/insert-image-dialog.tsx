@@ -1,5 +1,7 @@
 import { BaseDialog } from "@shared/components/common/base-dialog";
 import { Button, Input, Label } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { CloudUpload, File as FileIcon } from "lucide-react";
 import type { DragEvent, FC } from "react";
@@ -26,6 +28,7 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 	onClose,
 	onInsert,
 }) => {
+	useI18nLocale();
 	const pathId = useId();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [path, setPath] = useState("");
@@ -87,7 +90,7 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 
 	const dialogActions = (
 		<Button variant="outline" onClick={onClose}>
-			Cancel
+			{t("ui.canvas.insert_image_dialog.cancel")}
 		</Button>
 	);
 
@@ -95,14 +98,16 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 		<BaseDialog
 			open={open}
 			onClose={onClose}
-			title="Insert image"
+			title={t("ui.canvas.insert_image_dialog.insert_image")}
 			actions={dialogActions}
 			maxWidth="sm"
 			fullWidth
 		>
 			<div className={cn("flex flex-col gap-4 pt-2")}>
 				<div className={cn("flex flex-col gap-1.5")}>
-					<Label htmlFor={pathId}>Image path on device</Label>
+					<Label htmlFor={pathId}>
+						{t("ui.canvas.insert_image_dialog.image_path_on_device")}
+					</Label>
 					<div className={cn("flex items-center gap-2")}>
 						{/*
 						 * The icon sits inside the field rather than beside it, so the
@@ -121,7 +126,9 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 								autoFocus
 								id={pathId}
 								type="text"
-								placeholder="/Users/eren/Documents/image.png"
+								placeholder={t(
+									"ui.canvas.insert_image_dialog.users_eren_documents_image_png",
+								)}
 								value={path}
 								onChange={(e) => setPath(e.target.value)}
 								onKeyDown={handleKeyDown}
@@ -134,11 +141,13 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 							disabled={!path.trim()}
 							className={cn("min-w-20")}
 						>
-							Insert
+							{t("ui.canvas.insert_image_dialog.insert")}
 						</Button>
 					</div>
 				</div>
-				<p className={cn("text-center text-ink-muted text-meta")}>or</p>
+				<p className={cn("text-center text-ink-muted text-meta")}>
+					{t("ui.canvas.insert_image_dialog.or")}
+				</p>
 				<input
 					ref={fileInputRef}
 					accept="image/*"
@@ -163,7 +172,9 @@ export const InsertImageDialog: FC<InsertImageDialogProps> = ({
 						className={cn("text-ink-dim")}
 					/>
 					<span className={cn("text-body-sm text-ink-muted")}>
-						Drag and drop an image here, or click to select one
+						{t(
+							"ui.canvas.insert_image_dialog.drag_and_drop_an_image_here_or_click_to_select_one",
+						)}
 					</span>
 				</button>
 			</div>

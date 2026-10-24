@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * The one picker host for every `native_action` destination.
  *
@@ -250,7 +252,7 @@ const TONE_CLASS: Record<PickerResult["tone"], string> = {
  * `/analytics` (QA round 1, Q4). The constant stays as the fallback for a caller
  * that has not said where it is.
  */
-const PANEL_BODY_LABEL = "Panel content";
+const PANEL_BODY_LABEL = () => t("ui.chat.pickers.picker_host.panel_content");
 
 type PickerRowProps = {
 	id: string;
@@ -583,17 +585,29 @@ export function pickerFooterHint(state: {
 	 */
 	retargetedLabel?: string | null;
 }): string {
-	if (state.busy) return state.busyText ?? "Applying the change…";
+	if (state.busy)
+		return (
+			state.busyText ?? t("ui.chat.pickers.picker_host.applying_the_change")
+		);
 	if (state.hasList && state.rowCount > 0) {
 		if (state.retargetedLabel)
-			return `The row you were on is gone · Enter picks ${state.retargetedLabel}`;
+			return t(
+				"ui.chat.pickers.picker_host.the_row_you_were_on_is_gone_enter_picks",
+				{ retargetedlabel: state.retargetedLabel },
+			);
 		if (state.activeConnectProvider)
-			return `Arrows move · Enter connects ${state.activeConnectProvider} · Esc closes`;
+			return t(
+				"ui.chat.pickers.picker_host.arrows_move_enter_connects_esc_closes",
+				{ activeconnectprovider: state.activeConnectProvider },
+			);
 		return state.activeLabel
-			? `Arrows move · Enter picks ${state.activeLabel} · Esc closes`
-			: "Arrows move, Enter picks, Esc closes";
+			? t(
+					"ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes5710e2",
+					{ activelabel: state.activeLabel },
+				)
+			: t("ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes");
 	}
-	return "Esc closes";
+	return t("ui.chat.pickers.picker_host.esc_closes");
 }
 
 /**
@@ -610,11 +624,11 @@ export function pickerPrimaryLabel(state: {
 	busy: boolean;
 	result: PickerResult | null;
 }): string {
-	if (state.busy) return "Close";
+	if (state.busy) return t("ui.chat.pickers.picker_host.close");
 	return state.result &&
 		(state.result.tone === "success" || state.result.tone === "info")
-		? "Done"
-		: "Close";
+		? t("ui.chat.pickers.picker_host.done")
+		: t("ui.chat.pickers.picker_host.close");
 }
 
 /**
@@ -687,7 +701,7 @@ export const PickerRow: FC<PickerRowProps> = memo(
 		isPicked,
 		onHover,
 		onPick,
-		busyLabel = "Applying the change",
+		busyLabel = t("ui.chat.pickers.picker_host.applying_the_changea9b670"),
 	}) => (
 		/* biome-ignore lint/a11y/useFocusableInteractive: focus stays in the search input; the active option is announced through aria-activedescendant. */
 		<div
@@ -705,7 +719,10 @@ export const PickerRow: FC<PickerRowProps> = memo(
 			data-current={option.current || undefined}
 			data-hovered={isHovered || undefined}
 			data-picked={isPicked || undefined}
-			onMouseEnter={() => onHover(index)}
+			onMouseEnter={() => {
+				useI18nLocale();
+				return onHover(index);
+			}}
 			onMouseDown={(event) => {
 				// mousedown, not click: keeps focus in the search input, the same
 				// reason the composer popup does it.
@@ -761,7 +778,7 @@ export const PickerRow: FC<PickerRowProps> = memo(
 								"size-3.5 shrink-0",
 								option.disabled ? "text-warning" : "text-accent",
 							)}
-							aria-label="Current"
+							aria-label={t("ui.chat.pickers.picker_host.current")}
 						/>
 					)}
 				</span>
@@ -829,19 +846,19 @@ export const PickerHost: FC<PickerHostProps> = ({
 	loadError = null,
 	notice = null,
 	noticeDetail = null,
-	emptyText = "Nothing matches.",
+	emptyText = t("ui.chat.pickers.picker_host.nothing_matches"),
 	emptyAction,
-	searchPlaceholder = "Search",
+	searchPlaceholder = t("ui.chat.pickers.picker_host.search"),
 	onPick,
 	form,
 	onSubmit,
-	submitLabel = "Apply",
+	submitLabel = t("ui.chat.pickers.picker_host.apply"),
 	submitDisabled = false,
 	actions,
 	result = null,
 	busy = false,
 	busyText,
-	busyLabel = "Applying the change",
+	busyLabel = t("ui.chat.pickers.picker_host.applying_the_changea9b670"),
 	wide = false,
 	shell = "dialog",
 	bodyLabel,
@@ -849,6 +866,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 	body,
 	bodyScrolls = false,
 }) => {
+	useI18nLocale();
 	const listId = useId();
 	/*
 	 * Hide the native browser view while this modal is up.
@@ -1383,7 +1401,10 @@ export const PickerHost: FC<PickerHostProps> = ({
 						)}
 						{bodyKind === "loading" ? (
 							<div className="flex h-24 items-center justify-center">
-								<Spinner size="md" label="Loading" />
+								<Spinner
+									size="md"
+									label={t("ui.chat.pickers.picker_host.loading")}
+								/>
 							</div>
 						) : bodyKind === "error" ? (
 							<p className="px-2 py-3 text-body-sm text-danger">{loadError}</p>
@@ -1505,7 +1526,9 @@ export const PickerHost: FC<PickerHostProps> = ({
 							 */
 							role={shell === "panel" ? "region" : undefined}
 							aria-label={
-								shell === "panel" ? (bodyLabel ?? PANEL_BODY_LABEL) : undefined
+								shell === "panel"
+									? (bodyLabel ?? PANEL_BODY_LABEL())
+									: undefined
 							}
 							tabIndex={shell === "panel" ? 0 : undefined}
 							/*

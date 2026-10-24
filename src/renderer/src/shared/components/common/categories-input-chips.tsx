@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 /**
  * Category picker rendered as dismissible chips.
  *
@@ -53,10 +55,11 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 	value,
 	label,
 	onChange,
-	placeholder = "Add category...",
+	placeholder = t("ui.common.forms.categories_input_chips.add_category"),
 	disabled = false,
 	icon,
 }) => {
+	useI18nLocale();
 	const [inputValue, setInputValue] = useState("");
 	const [isOpen, setIsOpen] = useState(false);
 	const [activeIndex, setActiveIndex] = useState(0);
@@ -202,7 +205,10 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 						{CATEGORY_LABELS[cat] || cat}
 						<button
 							type="button"
-							aria-label={`Remove category ${CATEGORY_LABELS[cat] || cat}`}
+							aria-label={t(
+								"ui.common.forms.categories_input_chips.remove_category",
+								{ value: CATEGORY_LABELS[cat] || cat },
+							)}
 							disabled={disabled}
 							onClick={() => handleDelete(cat)}
 							className={cn(
@@ -288,7 +294,7 @@ export const CategoriesInputChips: FC<CategoriesInputChipsProps> = ({
 			</div>
 			{value.length === 0 && (
 				<span className="mt-1 ml-1 block text-ink-dim text-meta">
-					No categories selected
+					{t("ui.common.forms.categories_input_chips.no_categories_selected")}
 				</span>
 			)}
 		</div>

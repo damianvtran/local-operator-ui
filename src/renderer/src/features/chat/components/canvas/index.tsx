@@ -1,4 +1,6 @@
 import { Button, TabPanel, Tooltip } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { CanvasViewMode } from "@shared/store/canvas-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
@@ -223,6 +225,7 @@ type CanvasProps = {
  * `role="radiogroup"` is what "one of these, always one" actually means — the
  * count it holds is not fixed, and the goals segment made it four.
  */
+// Label getters preserve the array contract without freezing module-load English.
 const VIEWS: {
 	value: CanvasViewMode;
 	label: string;
@@ -231,19 +234,25 @@ const VIEWS: {
 }[] = [
 	{
 		value: "documents",
-		label: "Documents",
+		get label() {
+			return t("ui.canvas.shell.documents");
+		},
 		tourTag: "canvas-documents-view-button",
 		Icon: FileText,
 	},
 	{
 		value: "files",
-		label: "Files",
+		get label() {
+			return t("ui.canvas.shell.files");
+		},
 		tourTag: "canvas-files-view-button",
 		Icon: FolderOpen,
 	},
 	{
 		value: "variables",
-		label: "Variables",
+		get label() {
+			return t("ui.canvas.shell.variables");
+		},
 		tourTag: "canvas-variables-view-button",
 		Icon: ListTree,
 	},
@@ -259,7 +268,9 @@ const VIEWS: {
 	 */
 	{
 		value: "goals",
-		label: "Goals",
+		get label() {
+			return t("ui.canvas.shell.goals");
+		},
 		tourTag: "canvas-goals-view-button",
 		Icon: Target,
 	},
@@ -317,7 +328,9 @@ const ViewSwitcher: FC<{
 	<fieldset
 		className={cn("inline-flex h-7 shrink-0 items-center gap-0.5 border-0 p-0")}
 	>
-		<legend className={cn("sr-only")}>Canvas view</legend>
+		<legend className={cn("sr-only")}>
+			{t("ui.canvas.shell.canvas_view")}
+		</legend>
 		{views.map(({ value, label, tourTag, Icon }) => {
 			const isActive = current === value;
 			/*
@@ -334,7 +347,10 @@ const ViewSwitcher: FC<{
 			 */
 			const counted =
 				value === "files" ? fileCount : value === "goals" ? goalCount : 0;
-			const noun = value === "files" ? "file" : "goal";
+			const noun =
+				value === "files"
+					? t("ui.canvas.shell.file")
+					: t("ui.canvas.shell.goal");
 			/*
 			 * The name is DERIVED OUTSIDE, because the number it speaks is a claim about a
 			 * list and the Goals segment's list can be capped. `goalTruncated` is read only
@@ -357,7 +373,10 @@ const ViewSwitcher: FC<{
 						aria-pressed={isActive}
 						aria-label={name}
 						data-tour-tag={tourTag}
-						onClick={() => onChange(value)}
+						onClick={() => {
+							useI18nLocale();
+							return onChange(value);
+						}}
 						className={cn(
 							"inline-flex h-6 items-center justify-center rounded-sm px-2",
 							"transition-colors duration-fast ease-out-quart",
@@ -422,6 +441,8 @@ const CanvasComponent: FC<CanvasProps> = ({
 }) => {
 	// Standalone stories retain their hook, but a chat-mounted pane consumes the
 	// parent's inventory rather than issuing a second pagination/backfill loop.
+
+	useI18nLocale();
 	const standaloneFileIndex = useSessionFiles(
 		sessionId,
 		!sharedFileIndex,
@@ -745,7 +766,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 		 * 59.
 		 */
 		<section
-			aria-label="Canvas"
+			aria-label={t("ui.canvas.shell.canvas")}
 			data-tour-tag="canvas-container"
 			/*
 			 * The boundary the canvas's own `⌘N` is scoped to
@@ -831,22 +852,34 @@ const CanvasComponent: FC<CanvasProps> = ({
 					goalTruncated={goalHistoryTruncated}
 				/>
 				<div className={cn("flex shrink-0 items-center gap-0.5")}>
-					<Tooltip content={`New file (${modifierKey} + N)`}>
+					<Tooltip
+						content={t("ui.canvas.shell.new_file_n", {
+							modifierkey: modifierKey,
+						})}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label={`New file (${modifierKey} + N)`}
+							aria-label={t("ui.canvas.shell.new_file_n", {
+								modifierkey: modifierKey,
+							})}
 							onClick={() => setCreateFileDialogOpen(true)}
 							data-tour-tag="canvas-create-file-button"
 						>
 							<FilePlus aria-hidden="true" />
 						</Button>
 					</Tooltip>
-					<Tooltip content={`Open file from disk (${modifierKey} + O)`}>
+					<Tooltip
+						content={t("ui.canvas.shell.open_file_from_disk_o", {
+							modifierkey: modifierKey,
+						})}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label={`Open file from disk (${modifierKey} + O)`}
+							aria-label={t("ui.canvas.shell.open_file_from_disk_o", {
+								modifierkey: modifierKey,
+							})}
 							onClick={handleOpenFile}
 						>
 							<FileUp aria-hidden="true" />
@@ -857,11 +890,11 @@ const CanvasComponent: FC<CanvasProps> = ({
 					 * "close the document" beside a strip of tabs that each carry
 					 * their own ✕; this one says which way the panel goes.
 					 */}
-					<Tooltip content="Close canvas">
+					<Tooltip content={t("ui.canvas.shell.close_canvas")}>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Close canvas"
+							aria-label={t("ui.canvas.shell.close_canvas")}
 							onClick={onClose}
 							data-tour-tag="close-canvas-button"
 						>
@@ -937,8 +970,10 @@ const CanvasComponent: FC<CanvasProps> = ({
 					{/* Empty state when no documents are open */}
 					{!activeDocument && documents.length === 0 && (
 						<EmptyState
-							title="Nothing open yet"
-							description="Open a file to read or edit it here. Files the agent mentions in the conversation open here too."
+							title={t("ui.canvas.shell.nothing_open_yet")}
+							description={t(
+								"ui.canvas.shell.open_a_file_to_read_or_edit_it_here_files_the_agent_mentions_in_the_conv",
+							)}
 						>
 							{/*
 							 * Three actions, and ALWAYS these three in this order: browse what the
@@ -965,11 +1000,15 @@ const CanvasComponent: FC<CanvasProps> = ({
 								onClick={() => setCurrentView("files")}
 							>
 								<FolderOpen aria-hidden="true" />
-								{hasFiles ? `Browse files (${fileCountValue})` : "Browse files"}
+								{hasFiles
+									? t("ui.canvas.shell.browse_filesc0c547", {
+											filecountvalue: fileCountValue,
+										})
+									: t("ui.canvas.shell.browse_files")}
 							</Button>
 							<Button variant="secondary" size="sm" onClick={handleOpenFile}>
 								<FileUp aria-hidden="true" />
-								Open file from disk
+								{t("ui.canvas.shell.open_file_from_disk")}
 							</Button>
 							<Button
 								variant="secondary"
@@ -977,7 +1016,7 @@ const CanvasComponent: FC<CanvasProps> = ({
 								onClick={() => setCreateFileDialogOpen(true)}
 							>
 								<FilePlus aria-hidden="true" />
-								New file
+								{t("ui.canvas.shell.new_file")}
 							</Button>
 						</EmptyState>
 					)}
@@ -1059,8 +1098,10 @@ const CanvasComponent: FC<CanvasProps> = ({
 			{(currentView === "files" || currentView === "variables") &&
 				!conversationId && (
 					<EmptyState
-						title="No conversation open"
-						description="Start a conversation with an agent to see the files and variables it is working with."
+						title={t("ui.canvas.shell.no_conversation_open")}
+						description={t(
+							"ui.canvas.shell.start_a_conversation_with_an_agent_to_see_the_files_and_variables_it_is",
+						)}
 					/>
 				)}
 			{agentId && (

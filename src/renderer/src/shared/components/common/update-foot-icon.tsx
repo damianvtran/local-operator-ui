@@ -98,7 +98,10 @@ export const footIconInFlightName = (inflight: FootIconInFlight): string => {
 		typeof inflight.percent === "number"
 			? `, ${Math.round(inflight.percent)}%`
 			: "";
-	return `${subject} in progress${percent}.`;
+	return t("ui.common.updates.update_foot_icon.in_progress", {
+		subject: subject,
+		percent: percent,
+	});
 };
 
 /** The band's words for one waiting surface, minus the trailing "available". */
@@ -120,12 +123,18 @@ const surfaceSubject = (surface: FootIconSurface): string =>
  */
 export const footIconAvailableName = (surfaces: FootIconSurface[]): string => {
 	const words = surfaces.map((surface) => surfaceSubject(surface));
-	const joined = words
-		.map((word, index) =>
-			index === 0 ? word : `${word.charAt(0).toLowerCase()}${word.slice(1)}`,
-		)
-		.join(" and ");
-	return `${joined} available. Show the update notice.`;
+	const joined = words.slice(1).reduce(
+		(left, word) =>
+			t("ui.common.updates.update_foot_icon.subject_join", {
+				left: left,
+				right: `${word.charAt(0).toLowerCase()}${word.slice(1)}`,
+			}),
+		words[0],
+	);
+	return t(
+		"ui.common.updates.update_foot_icon.available_show_the_update_notice",
+		{ joined: joined },
+	);
 };
 
 /**

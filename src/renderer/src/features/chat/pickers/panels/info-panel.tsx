@@ -5,6 +5,8 @@ import {
 import { useTeamLabelFor } from "@shared/api/local-operator/profile-hooks";
 import { Badge } from "@shared/components/ui/badge";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import type { FC } from "react";
@@ -92,13 +94,19 @@ const FactsTable: FC<{ label: string; rows: InfoRow[] }> = ({
 	label,
 	rows,
 }) => {
+	useI18nLocale();
 	if (rows.length === 0) {
-		return <PanelNotice kind="empty" text="Nothing to report here." />;
+		return (
+			<PanelNotice
+				kind="empty"
+				text={t("ui.chat.pickers.info_panel.nothing_to_report_here")}
+			/>
+		);
 	}
 	const columns: Column<InfoRow>[] = [
 		{
 			key: "item",
-			header: "Item",
+			header: t("ui.chat.pickers.info_panel.item"),
 			cell: (row) => (
 				<span className={cn("text-ink-muted")}>
 					{row.label}
@@ -112,7 +120,7 @@ const FactsTable: FC<{ label: string; rows: InfoRow[] }> = ({
 		},
 		{
 			key: "value",
-			header: "Value",
+			header: t("ui.chat.pickers.info_panel.value"),
 			/* One decision, taken by `factValue` above; the cell only styles it. */
 			cell: (row) => {
 				const value = factValue(row);
@@ -144,15 +152,15 @@ const FactsTable: FC<{ label: string; rows: InfoRow[] }> = ({
 	);
 };
 
-const INSTALL_COLUMNS: Column<InfoRow>[] = [
+const INSTALL_COLUMNS = (): Column<InfoRow>[] => [
 	{
 		key: "item",
-		header: "Path",
+		header: t("ui.chat.pickers.info_panel.path"),
 		cell: (row) => <span className={cn("text-ink-muted")}>{row.label}</span>,
 	},
 	{
 		key: "value",
-		header: "Value",
+		header: t("ui.chat.pickers.info_panel.value"),
 		cell: (row) => (
 			<span
 				className={cn(
@@ -189,19 +197,41 @@ const STATE_BADGE: Record<
 		className?: string;
 	}
 > = {
-	live: { variant: "neutral", label: "live" },
-	wedged: { variant: "warning", label: "not answering" },
-	stale: { variant: "neutral", label: "stale", className: "text-ink-dim" },
-	stored: { variant: "neutral", label: "stored", className: "text-ink-dim" },
+	get live() {
+		return {
+			variant: "neutral" as const,
+			label: t("ui.chat.pickers.info_panel.live"),
+		};
+	},
+	get wedged() {
+		return {
+			variant: "warning" as const,
+			label: t("ui.chat.pickers.info_panel.not_answering"),
+		};
+	},
+	get stale() {
+		return {
+			variant: "neutral" as const,
+			label: t("ui.chat.pickers.info_panel.stale"),
+			className: "text-ink-dim",
+		};
+	},
+	get stored() {
+		return {
+			variant: "neutral" as const,
+			label: t("ui.chat.pickers.info_panel.stored"),
+			className: "text-ink-dim",
+		};
+	},
 };
 
 const MARKER_BADGE: Record<
 	"neutral" | "warning" | "dim",
 	{ variant: "neutral" | "warning"; className?: string }
 > = {
-	neutral: { variant: "neutral" },
-	warning: { variant: "warning" },
-	dim: { variant: "neutral", className: "text-ink-dim" },
+	neutral: { variant: "neutral" as const },
+	warning: { variant: "warning" as const },
+	dim: { variant: "neutral" as const, className: "text-ink-dim" },
 };
 
 export const InfoPanel: FC<InfoPanelProps> = ({
@@ -214,6 +244,7 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 	gated,
 	teamLabelFor,
 }) => {
+	useI18nLocale();
 	const install = data ? installFacts(data.install) : null;
 	const sessions = data?.sessions;
 	/*
@@ -226,10 +257,14 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 		? sessionLineRows(sessions.lines, sessionId)
 		: [];
 	const sessionColumns: Column<(typeof sessionRows)[number]>[] = [
-		{ key: "name", header: "Session", cell: (row) => row.name },
+		{
+			key: "name",
+			header: t("ui.chat.pickers.info_panel.session"),
+			cell: (row) => row.name,
+		},
 		{
 			key: "state",
-			header: "State",
+			header: t("ui.chat.pickers.info_panel.state"),
 			cell: (row) => {
 				const badge = STATE_BADGE[row.state] ?? STATE_BADGE.stale;
 				return (
@@ -239,7 +274,11 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 				);
 			},
 		},
-		{ key: "model", header: "Model", cell: (row) => row.model },
+		{
+			key: "model",
+			header: t("ui.chat.pickers.info_panel.model"),
+			cell: (row) => row.model,
+		},
 		/*
 		 * `Activity`, not `Uptime`: the cell carries an uptime for a running row
 		 * and a last-active or stopped sentence for a stored one, and a header
@@ -247,16 +286,20 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 		 * not running (design round 1, D3). `State` would collide with the badge
 		 * column beside it and `Last seen` would mislabel a live row's uptime.
 		 */
-		{ key: "uptime", header: "Activity", cell: (row) => row.uptime },
+		{
+			key: "uptime",
+			header: t("ui.chat.pickers.info_panel.activity"),
+			cell: (row) => row.uptime,
+		},
 		{
 			key: "memory",
-			header: "Memory",
+			header: t("ui.chat.pickers.info_panel.memory"),
 			numeric: true,
 			cell: (row) => row.memory,
 		},
 		{
 			key: "markers",
-			header: "Markers",
+			header: t("ui.chat.pickers.info_panel.markers"),
 			cell: (row) => (
 				<span className={cn("flex flex-wrap gap-1")}>
 					{row.markers.map((marker) => (
@@ -292,8 +335,8 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 			open
 			onClose={onClose}
 			shell="panel"
-			bodyLabel="Host info region"
-			title="Info"
+			bodyLabel={t("ui.chat.pickers.info_panel.host_info_region")}
+			title={t("ui.chat.pickers.info_panel.info")}
 			description={
 				/*
 				 * The third clause is a promise about what is on screen, so a
@@ -307,37 +350,52 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 				 * claim than the heading the reader then sees (design round 1, D2).
 				 */
 				sessionId === ""
-					? "The install, the host this app is connected to, and the sessions on this machine."
-					: "The install, the host this app is connected to, and the conversation in front of you."
+					? t(
+							"ui.chat.pickers.info_panel.the_install_the_host_this_app_is_connected_to_and_the_sessions_on_this_m",
+						)
+					: t(
+							"ui.chat.pickers.info_panel.the_install_the_host_this_app_is_connected_to_and_the_conversation_in_fr",
+						)
 			}
 			body={
 				gated ? (
 					<PanelNotice
 						kind="unavailable"
-						text="This backend cannot serve this panel yet. Update the backend and try again."
+						text={t(
+							"ui.chat.pickers.info_panel.this_backend_cannot_serve_this_panel_yet_update_the_backend_and_try_agai",
+						)}
 					/>
 				) : (
 					<PanelStack>
 						<PanelSection
-							title="Install"
+							title={t("ui.chat.pickers.info_panel.install")}
 							meta={data ? installMeta(data.install) : undefined}
 						>
 							{hostBody() ?? (
 								<>
 									<StatGrid>
 										<StatCard
-											label="Version"
-											value={install?.version ?? "unavailable"}
+											label={t("ui.chat.pickers.info_panel.version")}
+											value={
+												install?.version ??
+												t("ui.chat.pickers.info_panel.unavailable")
+											}
 											note={install?.versionNote}
 											tone={data?.install.behind ? "warning" : "neutral"}
 										/>
 										<StatCard
-											label="Install kind"
-											value={install?.kind ?? "unavailable"}
+											label={t("ui.chat.pickers.info_panel.install_kind")}
+											value={
+												install?.kind ??
+												t("ui.chat.pickers.info_panel.unavailable")
+											}
 										/>
 										<StatCard
-											label="Interpreter"
-											value={install?.interpreter ?? "unavailable"}
+											label={t("ui.chat.pickers.info_panel.interpreter")}
+											value={
+												install?.interpreter ??
+												t("ui.chat.pickers.info_panel.unavailable")
+											}
 										/>
 									</StatGrid>
 									{install?.updateBadge ? (
@@ -352,23 +410,31 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 									 */}
 									<div className={cn("pt-3")}>
 										<DataTable<InfoRow>
-											label="Install and running code paths"
-											columns={INSTALL_COLUMNS}
+											label={t(
+												"ui.chat.pickers.info_panel.install_and_running_code_paths",
+											)}
+											columns={INSTALL_COLUMNS()}
 											rows={[
 												{
 													key: "install_path",
-													label: "Install path",
-													value: install?.installPath ?? "unavailable",
+													label: t("ui.chat.pickers.info_panel.install_path"),
+													value:
+														install?.installPath ??
+														t("ui.chat.pickers.info_panel.unavailable"),
 												},
 												{
 													key: "running_code",
-													label: "Running code",
-													value: install?.runningCode ?? "unavailable",
+													label: t("ui.chat.pickers.info_panel.running_code"),
+													value:
+														install?.runningCode ??
+														t("ui.chat.pickers.info_panel.unavailable"),
 													tone: install?.runningCodeShadowed
 														? "warning"
 														: "neutral",
 													note: data?.install.is_git_snapshot
-														? `git snapshot ${data.install.source_ref || ""}`.trim()
+														? t("ui.chat.pickers.info_panel.git_snapshot", {
+																value: data.install.source_ref || "",
+															}).trim()
 														: undefined,
 												},
 											]}
@@ -379,18 +445,20 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 							)}
 						</PanelSection>
 						<PanelSection
-							title="Host runtime"
-							meta="the machine this app is connected to"
+							title={t("ui.chat.pickers.info_panel.host_runtime")}
+							meta={t(
+								"ui.chat.pickers.info_panel.the_machine_this_app_is_connected_to",
+							)}
 						>
 							{hostBody() ?? (
 								<FactsTable
-									label="Host runtime"
+									label={t("ui.chat.pickers.info_panel.host_runtime")}
 									rows={hostRows(data?.process as DesktopInfoData["process"])}
 								/>
 							)}
 						</PanelSection>
 						<PanelSection
-							title="Sessions on this machine"
+							title={t("ui.chat.pickers.info_panel.sessions_on_this_machine")}
 							meta={
 								/*
 								 * No meta when the scan failed: `N live · M total` over a notice saying the
@@ -400,7 +468,10 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 								 * the scan.
 								 */
 								sessions?.available
-									? `${formatCount(sessions.live)} live · ${formatCount(sessions.total)} total`
+									? t("ui.chat.pickers.info_panel.live_total", {
+											formatcount: formatCount(sessions.live),
+											formatcount2: formatCount(sessions.total),
+										})
 									: undefined
 							}
 						>
@@ -408,19 +479,21 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 								(sessions && !sessions.available ? (
 									<PanelNotice
 										kind="unavailable"
-										text={REGISTRY_UNAVAILABLE_NOTICE}
+										text={REGISTRY_UNAVAILABLE_NOTICE()}
 									/>
 								) : (
 									<>
 										{sessions?.build_skew ? (
 											<PanelNotice
 												kind="degraded"
-												text="More than one build is running. A change may look absent in a window that has not been restarted."
+												text={t(
+													"ui.chat.pickers.info_panel.more_than_one_build_is_running_a_change_may_look_absent_in_a_window_that",
+												)}
 											/>
 										) : null}
 										<StatGrid>
 											<StatCard
-												label="Live"
+												label={t("ui.chat.pickers.info_panel.live65c821")}
 												value={formatCount(sessions?.live ?? 0)}
 											/>
 											<StatCard
@@ -431,18 +504,20 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 												 * the person's word, and this card was naming it in the
 												 * wire's.
 												 */
-												label="Not answering"
+												label={t(
+													"ui.chat.pickers.info_panel.not_answering824ea0",
+												)}
 												value={formatCount(sessions?.wedged ?? 0)}
 												tone={
 													(sessions?.wedged ?? 0) > 0 ? "warning" : "neutral"
 												}
 											/>
 											<StatCard
-												label="Busy"
+												label={t("ui.chat.pickers.info_panel.busy")}
 												value={formatCount(sessions?.busy ?? 0)}
 											/>
 											<StatCard
-												label="Needs input"
+												label={t("ui.chat.pickers.info_panel.needs_input")}
 												value={formatCount(sessions?.pending ?? 0)}
 												tone={
 													(sessions?.pending ?? 0) > 0 ? "warning" : "neutral"
@@ -451,14 +526,18 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 										</StatGrid>
 										<div className={cn("pt-3")}>
 											<DataTable<(typeof sessionRows)[number]>
-												label="Sessions on this machine"
+												label={t(
+													"ui.chat.pickers.info_panel.sessions_on_this_machine",
+												)}
 												columns={sessionColumns}
 												rows={sessionRows}
 												rowKey={(row) => row.key}
 												empty={
 													<PanelNotice
 														kind="empty"
-														text="No other lop sessions are running on this machine."
+														text={t(
+															"ui.chat.pickers.info_panel.no_other_lop_sessions_are_running_on_this_machine",
+														)}
 													/>
 												}
 											/>
@@ -470,13 +549,18 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 										 */}
 										{sessions?.usage_available === false ? (
 											<p className={cn("pt-2 text-body-sm text-ink-muted")}>
-												Memory could not be measured on this machine.
+												{t(
+													"ui.chat.pickers.info_panel.memory_could_not_be_measured_on_this_machine",
+												)}
 											</p>
 										) : null}
 									</>
 								))}
 						</PanelSection>
-						<PanelSection title="Agents and subagents" meta={fleet?.meta}>
+						<PanelSection
+							title={t("ui.chat.pickers.info_panel.agents_and_subagents")}
+							meta={fleet?.meta}
+						>
 							{hostBody("stats") ??
 								(fleet ? (
 									<>
@@ -521,7 +605,7 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 									 */
 									<PanelNotice
 										kind="unavailable"
-										text={REGISTRY_UNAVAILABLE_NOTICE}
+										text={REGISTRY_UNAVAILABLE_NOTICE()}
 									/>
 								))}
 						</PanelSection>
@@ -535,36 +619,38 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 						 */}
 						{sessionId !== "" ? (
 							<PanelSection
-								title="This conversation"
-								meta="live · this conversation"
+								title={t("ui.chat.pickers.info_panel.this_conversation")}
+								meta={t("ui.chat.pickers.info_panel.live_this_conversation")}
 							>
 								<FactsTable
-									label="This conversation"
+									label={t("ui.chat.pickers.info_panel.this_conversation")}
 									rows={conversationRows(frontend, sessionId, teamLabelFor)}
 								/>
 							</PanelSection>
 						) : null}
 						<PanelSection
-							title="Environment"
-							meta="backend runtime and this app"
+							title={t("ui.chat.pickers.info_panel.environment")}
+							meta={t(
+								"ui.chat.pickers.info_panel.backend_runtime_and_this_app",
+							)}
 						>
 							<FactsTable
-								label="Environment"
+								label={t("ui.chat.pickers.info_panel.environment")}
 								rows={data ? environmentRows(data.env, frontend) : []}
 							/>
 							{mcp.failures.length > 0 ? (
 								<div className={cn("pt-3")}>
 									<DataTable<{ name: string; error: string }>
-										label="MCP server failures"
+										label={t("ui.chat.pickers.info_panel.mcp_server_failures")}
 										columns={[
 											{
 												key: "name",
-												header: "Server",
+												header: t("ui.chat.pickers.info_panel.server"),
 												cell: (row) => row.name,
 											},
 											{
 												key: "error",
-												header: "Reported",
+												header: t("ui.chat.pickers.info_panel.reported"),
 												cell: (row) => (
 													<span
 														className={cn(
@@ -582,9 +668,11 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 								</div>
 							) : null}
 							<div className={cn("pt-3")}>
-								<Disclosure summary="Runtime terminal">
+								<Disclosure
+									summary={t("ui.chat.pickers.info_panel.runtime_terminal")}
+								>
 									<FactsTable
-										label="Runtime terminal"
+										label={t("ui.chat.pickers.info_panel.runtime_terminal")}
 										rows={data ? terminalRows(data.env) : []}
 									/>
 								</Disclosure>
@@ -592,15 +680,19 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 						</PanelSection>
 						{data && data.degraded.length > 0 ? (
 							<PanelSection
-								title="Could not be read"
-								meta="why a field above shows an unknown"
+								title={t("ui.chat.pickers.info_panel.could_not_be_read")}
+								meta={t(
+									"ui.chat.pickers.info_panel.why_a_field_above_shows_an_unknown",
+								)}
 							>
 								<DataTable<{ field: string; reason: string }>
-									label="Fields that could not be read"
+									label={t(
+										"ui.chat.pickers.info_panel.fields_that_could_not_be_read",
+									)}
 									columns={[
 										{
 											key: "field",
-											header: "Field",
+											header: t("ui.chat.pickers.info_panel.field"),
 											cell: (row) => (
 												<span className={cn("font-mono text-mono-sm")}>
 													{row.field}
@@ -609,7 +701,7 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 										},
 										{
 											key: "reason",
-											header: "Reason",
+											header: t("ui.chat.pickers.info_panel.reason"),
 											cell: (row) => (
 												<span className={cn("text-body-sm")}>{row.reason}</span>
 											),
