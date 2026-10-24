@@ -1,0 +1,609 @@
+{
+ "schema": 1,
+ "kind": "i18n-audit-receipt",
+ "auditor": "translation-auditor",
+ "model": "radient/auto",
+ "model_provenance": "Served model label reported by this session is radient/auto (routed). No narrower underlying model id and no fallback event were exposed to the session; none is invented.",
+ "instance": "i18n-audit-chat-20261024-ur",
+ "session": "f700cd24ec35",
+ "team": "lopdev",
+ "date": "2026-10-24",
+ "locale": "ur",
+ "locale_name": "Urdu",
+ "direction": "rtl",
+ "round": 1,
+ "status": "changes_requested",
+ "source": {
+  "repo": "local-operator-ui",
+  "worktree": "/Users/damian/local-operator-ui/.worktrees/i18n-chat-ur",
+  "branch": "feat/i18n-chat-ur",
+  "head": "f853cb2f581dbca42acce6410bd7605a9367bb16",
+  "base": "5d97575ac4388522267291ffee74d12bd9675b12",
+  "translation_receipt": "i18n/receipts/ui-ur-chat-batch-20261024.json",
+  "translation_receipt_sha256": "33d45e36ffb74a94e1300bb32826bb549ce87cd1feeb11348f44808620416c91",
+  "translator": {
+   "agent": "translator",
+   "session": "8bbe0897c75f",
+   "model": "radient/auto"
+  },
+  "batch_added_keys": 1733,
+  "preexisting_english_keys_filled": 32,
+  "preexisting_values_preserved": 30
+ },
+ "independence": {
+  "different_agent": true,
+  "different_session": true,
+  "translator_session": "8bbe0897c75f",
+  "auditor_session": "f700cd24ec35",
+  "catalogue_edits": "none",
+  "checker": "Checks authored in this session: Python hash/key/AST scans plus @formatjs/icu-messageformat-parser 3.5.21 from the worktree's node_modules; generate.mjs --check and git diff --check were re-run read-only. No translator script was reused."
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+   "revision": "local-operator 24dbccbb78"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/ur.md",
+   "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  },
+  "languages_manifest": {
+   "path": "i18n/languages.json",
+   "sha256": "7fd056b916fc3d56ddf36991a09b29864ea0b0f825d938aead1ed165926f8d63"
+  }
+ },
+ "scope": "Round-1 full independent audit of all 1,795 keys in the 15 touched ui.chat.* namespaces at head f853cb2f581, against the English catalogues at base 5d97575ac4 and their en context sidecars. Read and judged every key. Verified key set and key order, ICU parse and AST structure, placeholders/styles/select arms/plural categories and offsets, NFC, manual bidi controls, Urdu punctuation, Latin technical islands, identical-to-English values, and static length risk.",
+ "counts": {
+  "namespaces": 15,
+  "keys_read": 1795,
+  "batch_added_keys": 1733,
+  "preexisting_values_preserved": 30,
+  "preexisting_english_keys_filled": 32,
+  "identical_to_english": 90,
+  "untranslated_stubs": 0,
+  "argument_nodes_in_added_english": 611,
+  "pound_tokens_in_added_english": 78,
+  "placeholder_occurrences_missing_or_renamed": 0,
+  "icu_shape_differences": 6,
+  "icu_shape_differences_note": "All six are placeholder-order swaps verified as grammatical in Urdu: total/value (position phrase), scope/query, count/value (image of count), owner/label (access from owner) twice, and the same pair in the longer sentence.",
+  "plural_messages": 42,
+  "plural_categories": {
+   "locale": [
+    "one",
+    "other"
+   ],
+   "verified": true
+  },
+  "select_messages": 2,
+  "markup_tags": 0,
+  "nfc_violations": 0,
+  "bidi_controls": 0,
+  "hindi_danda": 0,
+  "ascii_ellipsis_keys": 4,
+  "max_cells_budgets": 0,
+  "longest_target": "314 characters (ui.chat.interrupt_turn.background_jobs_running) vs 260 English. No numeric maxCells/maxWidth budget exists in these sidecars; fit is a static length read, not a rendered-frame proof.",
+  "rendered_fit": "NOT CAPTURED — translation audit, not a UI change; no rendered frame or geometry claim."
+ },
+ "validation": {
+  "hashes": "All 15 en/target/context SHA-256 values match the translator receipt ui-ur-chat-batch-20261024.json exactly.",
+  "key_set": "15/15 namespaces have an identical key set and key order to English; 0 duplicate keys on either side; 1,795 keys.",
+  "icu": "All 1,795 values parsed with @formatjs/icu-messageformat-parser 3.5.21. Non-literal ASTs are identical except six placeholder-order swaps verified as grammatical Urdu. In the 1,733 added English keys: 611 argument nodes and 78 # tokens; 0 missing, renamed, retyped or restyled; select arms, plural categories and offsets identical.",
+  "plurals": "42 plural messages; Intl.PluralRules('ur') reports one/other; every message carries the English one/other arms plus the same explicit =0..=6 arms, with no extra category needed. Two select messages preserve both arms.",
+  "nfc": "0 values fail NFC normalization.",
+  "bidi": "0 manual bidi controls (U+200E/U+200F/U+061C/U+202A-U+202E/U+2066-U+2069); no ZWNJ/ZWJ. The render layer's FSI/PDI isolation is not duplicated in the bytes.",
+  "punctuation": "0 Hindi danda; 0 exclamation marks; Urdu ۔ ، ؟ ؛ and curly quotes otherwise. Four values use ASCII '...' instead of '…' (NIT).",
+  "generator": "node scripts/i18n/generate.mjs --check: byte-identical; git diff --check: exit 0.",
+  "fit": "No numeric maxCells/maxWidth budget in the 15 en context sidecars. Static length read only: longest target 314 characters vs 260 English; no rendered frame or geometry claim."
+ },
+ "identical_values": {
+  "count": 90,
+  "classification": "All 90 are legitimate tokens: pure placeholders/ICU fragments, product names (Local Operator, PDF, Top K, Top P), paths (C:\\Program Files and C:\\Program Files (x86)), CSS variables, a DOM attribute, a keyboard shortcut, and punctuation-only prefixes. No untranslated English prose stub."
+ },
+ "namespaces": {
+  "ui.chat": {
+   "keys_read": 532,
+   "status": "changes_requested",
+   "sha256": {
+    "en": "dc5765d20ff846c61f3fe8953e69524393561bc2a39f89fa419958d4e4a67346",
+    "target": "fd1f5c3eb22f5745bd9e110a52910542d608bd4481b5522166af428d724662ec",
+    "context": "f95436a7c1e91f17b47a5f45059f58ef63749cedef54b02d10b29260477be426"
+   },
+   "finding_ids": [
+    "UR-CHAT-R1-M1",
+    "UR-CHAT-R1-m1",
+    "UR-CHAT-R1-m4",
+    "UR-CHAT-R1-m7",
+    "UR-CHAT-R1-n6"
+   ]
+  },
+  "ui.chat.aside": {
+   "keys_read": 35,
+   "status": "clean-with-findings",
+   "sha256": {
+    "en": "d8ce04c8e909a73f3050588b2b562b12db3840ae1f4231a66ef3eb5ac76ed1b6",
+    "target": "5db6e9445d4f665f850262dc80c246ba448974396c4612cd24d2473172b23874",
+    "context": "522fcbc0c965224e7d4fb8cb8200e7c68889c9ee73d073b09c6cb2af827b8431"
+   },
+   "finding_ids": [
+    "UR-CHAT-R1-n8"
+   ]
+  },
+  "ui.chat.asks": {
+   "keys_read": 101,
+   "status": "clean-with-findings",
+   "sha256": {
+    "en": "f5017d10d314fc9e3e94eeff2d5067c559e97ba0c6ffcef4e8ed9d1c39cf67ab",
+    "target": "d6b35c493d6220235be4d4a4090e102bb9ecc9ce536fc4bbce3d504645d89427",
+    "context": "0e1f544932e7c9c6c94bbb0d4e2066910d80e33060ad23bbbb57d5bb9c1b637c"
+   },
+   "finding_ids": [
+    "UR-CHAT-R1-n2"
+   ]
+  },
+  "ui.chat.at": {
+   "keys_read": 11,
+   "status": "clean",
+   "sha256": {
+    "en": "685a75115b95770d8d74cc43c2f250c53bed311c0d117cf51849f72041533694",
+    "target": "f6386b661e1e61fc26c5412ca2d1265fb07e60203593b22a4fb2eea14ee2e1ad",
+    "context": "da529439f1aa5970aff5b833b40900524c2cfd465abe96296e3b9cecf5ec555e"
+   },
+   "finding_ids": []
+  },
+  "ui.chat.canonical": {
+   "keys_read": 297,
+   "status": "changes_requested",
+   "sha256": {
+    "en": "522e7fced024ec756b4b93b21952c4abfb232278a3ca32bba67b45978749eb6d",
+    "target": "9d568d711e6581471d808e68dfc12c63d19d56b227c97ee4f7b8b78166c0aba2",
+    "context": "af353a188112ef28df7dfda8c7139fa5bd33506a40b112392e1e40fbe32116f2"
+   },
+   "finding_ids": [
+    "UR-CHAT-R1-M1",
+    "UR-CHAT-R1-n4",
+    "UR-CHAT-R1-n5"
+   ]
+  },
+  "ui.chat.canvas_preview": {
+   "keys_read": 2,
+   "status": "clean",
+   "sha256": {
+    "en": "4a29d028e7727502fbefd86b995750910ca3760879769ffa1fc537e5893920a9",
+    "target": "d372adab47ae0350e4fb71ab8e5de39924f5e93b0d1b06d37cf7c116935407ed",
+    "context": "5f336900e740bf4ebc7819837676fc2eeffe6deb69b8181ebc440e962d580a06"
+   },
+   "finding_ids": []
+  },
+  "ui.chat.credential_capture": {
+   "keys_read": 18,
+   "status": "clean-with-findings",
+   "sha256": {
+    "en": "1776a41f5dfa3335b5e390e85870cb55756e25c6a2439cd3f42ea4c864515bdd",
+    "target": "cecf362e2266f035a29b6b743c758a98eb499c77916dfae9be90bbc2b3cc34bc",
+    "context": "bf6e3bb8cd70e39cba3aad66b0d92aa38ebad880ac49405fb1affd032f6f3b1f"
+   },
+   "finding_ids": [
+    "UR-CHAT-R1-m6"
+   ]
+  },
+  "ui.chat.directory": {
+   "keys_read": 42,
+   "status": "clean-with-findings",
+   "sha256": {
+    "en": "57540488fb400a9a4ac1040c7d7f91f19f25ab313ec87a50ef527da442d3ec6b",
+    "target": "baa750bd83b806479d4b7ff0a23dd9a150609b6dacf293961a98ae7226a63b64",
+    "context": "4bfdbc219bccc88fbdcaf3c62897b168d5604d5acbbb5f70f040c95c941c2daa"
+   },
+   "finding_ids": [
+    "UR-CHAT-R1-n1",
+    "UR-CHAT-R1-n6",
+    "UR-CHAT-R1-n8"
+   ]
+  },
+  "ui.chat.header": {
+   "keys_read": 72,
+   "status": "clean-with-findings",
+   "sha256": {
+    "en": "ff03f6ca7b3206e77fc260116d2b540cc9f211ea37436863b874770e917158d8",
+    "target": "8157b2a12e94df8b3904196db1375b543f04f33c06025fe54c7ca217c864853a",
+    "context": "0d601a99861fc8b23207f117b90b697ba88ddd4f6419a68021f34c177158ea2e"
+   },
+   "finding_ids": [
+    "UR-CHAT-R1-m5"
+   ]
+  },
+  "ui.chat.message": {
+   "keys_read": 55,
+   "status": "clean-with-findings",
+   "sha256": {
+    "en": "95d7b60b2cb1bdc37648cfa896856ce53724e300ed4a6b0448d7562aad452a5a",
+    "target": "3e844d3eaec502d0ef873bbedd97cc0c7e19f795f0eb52f5a9545c96fc82af95",
+    "context": "0278baa63867980cd08d18e47e282af12a6330b7c6a785f0157e7a01cceb4230"
+   },
+   "finding_ids": [
+    "UR-CHAT-R1-n5"
+   ]
+  },
+  "ui.chat.options": {
+   "keys_read": 33,
+   "status": "clean-with-findings",
+   "sha256": {
+    "en": "fdfb1ceae54aa5270dd76b67748f56fa14e5d3f47d7770dad8eba755995a5a79",
+    "target": "1ee3712b594d3061944adccd4c8ba354c3ff0c91e9d25942fa8bbb4127ac66ed",
+    "context": "4609f41205d7d0b14dd07e98a629b9fb40f74f870106e78b30a3b210eb7f13db"
+   },
+   "finding_ids": [
+    "UR-CHAT-R1-n6"
+   ]
+  },
+  "ui.chat.run_details": {
+   "keys_read": 154,
+   "status": "changes_requested",
+   "sha256": {
+    "en": "daf3ddc7d9c0904642876bf3db0746b6c0c68c5fe3b87a1a6730b07f67c90c2f",
+    "target": "198725cb28950df60b4a5dc283468a820e64f51c3cef08db7f806c66ece17917",
+    "context": "dcb2cf6f636814a1866186e8864fd6817033fa8de027049b365f362c53b5d384"
+   },
+   "finding_ids": [
+    "UR-CHAT-R1-M1",
+    "UR-CHAT-R1-m2",
+    "UR-CHAT-R1-m3",
+    "UR-CHAT-R1-n3"
+   ]
+  },
+  "ui.chat.session_status": {
+   "keys_read": 162,
+   "status": "changes_requested",
+   "sha256": {
+    "en": "05a6e2dd52cd41fb90dbb6756bb8a8f51c5d22e3769edb3fd6228a0d9a059198",
+    "target": "6db9c4f05e4e1f378172f1d28548de16843ef857d092c74be2233409669239c8",
+    "context": "91544a1523e2ccd3a50041e3530ded39255a614f571c50264991ed8e92ca90e7"
+   },
+   "finding_ids": [
+    "UR-CHAT-R1-B1",
+    "UR-CHAT-R1-B2"
+   ]
+  },
+  "ui.chat.skill": {
+   "keys_read": 7,
+   "status": "clean",
+   "sha256": {
+    "en": "919b6643e792d02ed270911df96d96da277bba5b5b91a2d04fac6cf044acfc10",
+    "target": "e6e2f618041b03504eebd58c940d5873f5b6643d15c2fa73c76d8fa10517787e",
+    "context": "012b41d3b048ae9575012522051687b87e3b3a8189dab9121985052ea04f965d"
+   },
+   "finding_ids": []
+  },
+  "ui.chat.trace": {
+   "keys_read": 274,
+   "status": "changes_requested",
+   "sha256": {
+    "en": "52a0fa5ed78ec2f3bbedf5b67f7abf3cc8d72c7a66ff4383d182358e242fb848",
+    "target": "9106f6533627291c89da327384bbcbdc7c3fbc4f5884bab3db06db45fff78f94",
+    "context": "b54b6acb4399743d207d8a793080555f1cab291761de90cf3e6e9f3ce9c70016"
+   },
+   "finding_ids": [
+    "UR-CHAT-R1-M1",
+    "UR-CHAT-R1-n7"
+   ]
+  }
+ },
+ "findings": [
+  {
+   "id": "UR-CHAT-R1-B1",
+   "severity": "BLOCKER",
+   "namespace": "ui.chat.session_status",
+   "key": "ui.chat.session_status.session_model.the_serving_device_has_no_effective_provider_access_for_this",
+   "current": "اس سیشن کا ڈیوائس بیک اینڈ سے منسلک نہیں ہے۔",
+   "proposed": "اس سیشن کے لیے استعمال ہونے والے ڈیوائس کے پاس فراہم کنندہ تک مؤثر رسائی نہیں۔ اکاؤنٹ منسلک کریں یا دوسرا ماڈل منتخب کریں۔",
+   "reason": "The source says the serving device has no effective provider access for this session and tells the user to connect an account or choose another model; the target says only that the session's device is not connected to the backend. It drops the provider-access condition and the whole remedy, so it is a different diagnostic message."
+  },
+  {
+   "id": "UR-CHAT-R1-B2",
+   "severity": "BLOCKER",
+   "namespace": "ui.chat.session_status",
+   "key": "ui.chat.session_status.session_model.this_login_cannot_be_borrowed_sign_in_on_the_device",
+   "current": "اس سیشن کا ڈیوائس منسلک ہے، مگر بیک اینڈ نے ابھی اس کی رسائی نہیں بتائی۔",
+   "proposed": "یہ لاگ اِن مستعار نہیں لیا جا سکتا۔ اس سیشن کو چلانے والے ڈیوائس پر سائن اِن کریں، یا دوسرا ماڈل منتخب کریں۔",
+   "reason": "The source says this login cannot be borrowed and directs a sign-in on the device running the session or another model; the target says the device is connected but the backend has not yet reported its access. That is a different status and omits both the restriction and the remedy."
+  },
+  {
+   "id": "UR-CHAT-R1-M1",
+   "severity": "MAJOR",
+   "namespace": "ui.chat + ui.chat.canonical + ui.chat.run_details + ui.chat.trace",
+   "key": null,
+   "keys": [
+    {
+     "namespace": "ui.chat",
+     "key": "ui.chat.chat_archived.this_window_cannot_tell_whether_that_conversation_is_archived_it",
+     "current": "یہ ونڈو نہیں بتا سکتی کہ وہ گفتگو آرکائیو میں ہے یا نہیں — یہ یہاں درج چیٹس میں نہیں۔ اسے تلاش سے ڈھونڈیں اور اس کی قطار سے بحال کریں۔",
+     "proposed": "یہ ونڈو نہیں بتا سکتی کہ وہ گفتگو آرکائیو میں ہے یا نہیں — یہ یہاں درج چیٹس میں نہیں۔ اسے تلاش سے ڈھونڈیں اور اس کی صف سے بحال کریں۔"
+    },
+    {
+     "namespace": "ui.chat",
+     "key": "ui.chat.slash.contract.enter_needs_a_row_you_pick_then_enter_tab_completes",
+     "current": "Enter کے لیے آپ کی منتخب کردہ قطار درکار ہے: ↓ پھر Enter · Tab یہ قطار مکمل کرتا ہے۔",
+     "proposed": "Enter کے لیے آپ کی منتخب کردہ صف درکار ہے: ↓ پھر Enter · Tab یہ صف مکمل کرتا ہے۔"
+    },
+    {
+     "namespace": "ui.chat.canonical",
+     "key": "ui.chat.canonical.turn_segments.the_answer_row_is_hidden",
+     "current": "جواب کی قطار پوشیدہ ہے",
+     "proposed": "جواب کی صف پوشیدہ ہے"
+    },
+    {
+     "namespace": "ui.chat.canonical",
+     "key": "ui.chat.canonical.turn_segments.row_i_is_both_visible_and_hidden",
+     "current": "قطار {i, number, ::group-off} دونوں دکھائی اور پوشیدہ ہے",
+     "proposed": "صف {i, number, ::group-off} دونوں دکھائی اور پوشیدہ ہے"
+    },
+    {
+     "namespace": "ui.chat.canonical",
+     "key": "ui.chat.canonical.turn_segments.row_i_is_in_two_segments",
+     "current": "قطار {i, number, ::group-off} دو حصوں میں ہے",
+     "proposed": "صف {i, number, ::group-off} دو حصوں میں ہے"
+    },
+    {
+     "namespace": "ui.chat.canonical",
+     "key": "ui.chat.canonical.turn_segments.row_i_is_neither_visible_nor_in_a_segment",
+     "current": "قطار {i, number, ::group-off} نہ دکھائی ہے نہ کسی حصے میں",
+     "proposed": "صف {i, number, ::group-off} نہ دکھائی ہے نہ کسی حصے میں"
+    },
+    {
+     "namespace": "ui.chat.canonical",
+     "key": "ui.chat.canonical.turn_segments.row_i_is_pinned_but_sits_in_segment_s",
+     "current": "قطار {i, number, ::group-off} پن شدہ ہے مگر حصہ {s, number, ::group-off} میں ہے",
+     "proposed": "صف {i, number, ::group-off} پن شدہ ہے مگر حصہ {s, number, ::group-off} میں ہے"
+    },
+    {
+     "namespace": "ui.chat.canonical",
+     "key": "ui.chat.canonical.turn_segments.segment_s_is_not_maximal_row_value_is_hidden_too",
+     "current": "حصہ {s, number, ::group-off} زیادہ سے زیادہ نہیں: قطار {value, number, ::group-off} بھی پوشیدہ ہے",
+     "proposed": "حصہ {s, number, ::group-off} زیادہ سے زیادہ نہیں: صف {value, number, ::group-off} بھی پوشیدہ ہے"
+    },
+    {
+     "namespace": "ui.chat.canonical",
+     "key": "ui.chat.canonical.turn_segments.segment_s_starts_at_row_from_above_the_spans_first",
+     "current": "حصہ {s, number, ::group-off} قطار {from, number, ::group-off} سے شروع ہوتا ہے، جو اسپین کی پہلی قطار {from2, number, ::group-off} سے اوپر ہے",
+     "proposed": "حصہ {s, number, ::group-off} صف {from, number, ::group-off} سے شروع ہوتا ہے، جو اسپین کی پہلی صف {from2, number, ::group-off} سے اوپر ہے"
+    },
+    {
+     "namespace": "ui.chat.run_details",
+     "key": "ui.chat.run_details.run_child_reader.this_subagents_row_carries_no_session_id_so_there_is",
+     "current": "اس ذیلی ایجنٹ کی قطار میں سیشن ID نہیں، اس لیے یہاں سے کھولنے کے لیے کوئی گفتگو نہیں۔",
+     "proposed": "اس ذیلی ایجنٹ کی صف میں سیشن ID نہیں، اس لیے یہاں سے کھولنے کے لیے کوئی گفتگو نہیں۔"
+    },
+    {
+     "namespace": "ui.chat.run_details",
+     "key": "ui.chat.run_details.job_cancel_popover.the_runtime_asks_the_provider_to_stop_label_the_row",
+     "current": "رن ٹائم فراہم کنندہ سے “{label}” روکنے کو کہتا ہے۔ قطار میں “منسوخ” صرف اس وقت لکھا جاتا ہے جب کام طے ہو۔",
+     "proposed": "رن ٹائم فراہم کنندہ سے “{label}” روکنے کو کہتا ہے۔ اس صف میں “منسوخ” صرف اس وقت لکھا جاتا ہے جب کام طے ہو۔"
+    },
+    {
+     "namespace": "ui.chat.run_details",
+     "key": "ui.chat.run_details.mcp_failure.lead_a_sign_in_is_already_running_for_this_conversation",
+     "current": "{lead}: اس گفتگو کے لیے پہلے ہی ایک سائن اِن چل رہا ہے، اور ایک وقت میں صرف ایک چل سکتا ہے۔ اس کے مکمل ہونے کا انتظار کریں، یا سرور کی قطار سے اسے منسوخ کریں۔",
+     "proposed": "{lead}: اس گفتگو کے لیے پہلے ہی ایک سائن اِن چل رہا ہے، اور ایک وقت میں صرف ایک چل سکتا ہے۔ اس کے مکمل ہونے کا انتظار کریں، یا سرور کی صف سے اسے منسوخ کریں۔"
+    },
+    {
+     "namespace": "ui.chat.trace",
+     "key": "ui.chat.trace.turn_summary.at_least_receiptcount_messages_earlier_rows_are",
+     "current": "کم از کم {receiptCount, number, ::group-off} پیغامات — پہلی قطاریں لوڈ نہیں ہیں",
+     "proposed": "کم از کم {receiptCount, number, ::group-off} پیغامات — پہلی صفیں لوڈ نہیں ہیں"
+    },
+    {
+     "namespace": "ui.chat.trace",
+     "key": "ui.chat.trace.turn_summary.at_least_actions_unloaded",
+     "current": "{actionCount, plural, one {کم از کم # عمل — اس باری کی پہلی قطاریں لوڈ نہیں ہیں} other {کم از کم # اعمال — اس باری کی پہلی قطاریں لوڈ نہیں ہیں}}",
+     "proposed": "{actionCount, plural, one {کم از کم # عمل — اس باری کی پہلی صفیں لوڈ نہیں ہیں} other {کم از کم # اعمال — اس باری کی پہلی صفیں لوڈ نہیں ہیں}}"
+    }
+   ],
+   "reason": "The batch renders 'queued' as 'قطار میں' in five keys, so the same word 'قطار' in these row strings reads as 'queue', not as a list/table row; 'صف' keeps the row meaning and does not collide with 'سطر', which the batch already uses for 'line'."
+  },
+  {
+   "id": "UR-CHAT-R1-m1",
+   "severity": "MINOR",
+   "namespace": "ui.chat",
+   "key": "ui.chat.highlights.file_resolution_failed",
+   "current": "سیشن کی ورکنگ ڈائریکٹری میں یہ فائل نہیں مل سکی۔ دوبارہ کوشش کرنے سے پہلے فائل کا پاتھ نقل کریں کا استعمال کر کے اس سیشن کی ورک اسپیس میں اس کا مقام جانچیں۔",
+   "proposed": "سیشن کی ورکنگ ڈائریکٹری میں یہ فائل نہیں مل سکی۔ دوبارہ کوشش کرنے سے پہلے «فائل کا پاتھ نقل کریں» استعمال کر کے اس سیشن کی ورک اسپیس میں اس کا مقام جانچیں۔",
+   "reason": "The button label 'Copy file path' was spliced into the sentence as 'فائل کا پاتھ نقل کریں کا استعمال کر کے' (an imperative plus کا), which is ungrammatical; quoting the label restores a readable instruction."
+  },
+  {
+   "id": "UR-CHAT-R1-m2",
+   "severity": "MINOR",
+   "namespace": "ui.chat.run_details",
+   "key": "ui.chat.run_details.jobs",
+   "current": "کام",
+   "proposed": "جابز",
+   "reason": "The Run details panel labels both 'Jobs' and 'To-dos' as کام (run_details.jobs, run_detail_todos.to_dos, run_detail_model.todos), so the two section headers are indistinguishable; the locale already uses پس منظر کام for background jobs, and 'جابز' matches the ٹولز/سیشنز loanword pattern.",
+   "related_keys": [
+    {
+     "key": "ui.chat.run_details.run_detail_todos.to_dos",
+     "current": "کام",
+     "note": "Keep کام for To-dos; this is the established ui.projects term and is the reason Jobs needs a distinct label."
+    },
+    {
+     "key": "ui.chat.run_details.run_detail_model.todos",
+     "current": "کام",
+     "note": "Keep کام for Todos; the section header is the collision point."
+    }
+   ]
+  },
+  {
+   "id": "UR-CHAT-R1-m3",
+   "severity": "MINOR",
+   "namespace": "ui.chat.run_details",
+   "key": "ui.chat.run_details.wake_controls_model.subject_will_not_fire_again_and_nothing_re_creates_it",
+   "current": "{subject} دوبارہ نہیں چلے گا، اور اسے دوبارہ کوئی نہیں بنائے گا۔ {name} کی اپنی تکرار متاثر نہیں ہوتی۔",
+   "proposed": "{subject} دوبارہ نہیں چلے گا، اور اسے دوبارہ کوئی نہیں بنائے گا۔ {name} کا اپنا شیڈول متاثر نہیں ہوتا۔",
+   "reason": "cadence is the wake's schedule/frequency, not repetition; تکرار means repetition and gives the user the wrong noun. شیڈول is the glossary term for schedule."
+  },
+  {
+   "id": "UR-CHAT-R1-m4",
+   "severity": "MINOR",
+   "namespace": "ui.chat",
+   "key": "ui.chat.undo_toasts.archive_failed",
+   "current": "{action} “{title}” ناکام۔{detail}",
+   "proposed": "“{title}” کا {action} نہیں ہو سکا۔{detail}",
+   "reason": "The action slots hold imperatives (آرکائیو کریں / آرکائیو سے نکالیں), so 'آرکائیو کریں “{title}” ناکام' reads as a broken imperative clause; the action values should become nouns and the sentence should use 'کا {action} نہیں ہو سکا'.",
+   "also_affects": [
+    {
+     "key": "ui.chat.undo_toasts.archive_action",
+     "current": "آرکائیو کریں",
+     "proposed": "آرکائیو"
+    },
+    {
+     "key": "ui.chat.undo_toasts.unarchive_action",
+     "current": "آرکائیو سے نکالیں",
+     "proposed": "آرکائیو سے اخراج"
+    }
+   ]
+  },
+  {
+   "id": "UR-CHAT-R1-m5",
+   "severity": "MINOR",
+   "namespace": "ui.chat.header",
+   "key": "ui.chat.header.close_run_details",
+   "current": "تفصیلات بند کریں",
+   "proposed": "رن کی تفصیلات بند کریں",
+   "reason": "Every other 'run details' string in the batch uses رن کی تفصیلات (ui.chat, ui.chat.run_details); the header pair drops رن and leaves a generic 'details', which is ambiguous beside the conversation's other details.",
+   "also_affects": [
+    {
+     "key": "ui.chat.header.open_run_details",
+     "current": "تفصیلات کھولیں",
+     "proposed": "رن کی تفصیلات کھولیں"
+    }
+   ]
+  },
+  {
+   "id": "UR-CHAT-R1-m6",
+   "severity": "MINOR",
+   "namespace": "ui.chat.credential_capture",
+   "key": "ui.chat.credential_capture.unstored_receipt",
+   "current": "{count, plural, one {# اسناد محفوظ نہیں ہو سکی} other {# اسناد محفوظ نہیں ہو سکیں}} ({keys})؛ ایجنٹ کو بتا دیا گیا ہے۔ دوبارہ کوشش کے لیے /credential کے بعد قدر پھر چسپاں کریں۔",
+   "proposed": "{count, plural, one {# سند محفوظ نہیں ہو سکی} other {# اسناد محفوظ نہیں ہو سکیں}} ({keys})؛ ایجنٹ کو بتا دیا گیا ہے۔ دوبارہ کوشش کے لیے /credential کے بعد قدر پھر چسپاں کریں۔",
+   "reason": "Urdu selects one only for 1, and the one arm currently reads '1 اسناد' (plural noun with a singular count); use the singular سند in the one arm while keeping the established plural اسناد in the other arm.",
+   "also_affects": [
+    {
+     "key": "ui.chat.credential_capture.unconfirmed_receipt",
+     "current": "{count, plural, one {# اسناد کی محفوظ ہونے کی تصدیق نہیں ہو سکی} other {# اسناد کی محفوظ ہونے کی تصدیق نہیں ہو سکیں}} ({keys})؛ ایجنٹ کو ہدایت دی گئی ہے کہ استعمال سے پہلے جانچ لے۔ {operatorMove}",
+     "proposed": "{count, plural, one {# سند کی محفوظ ہونے کی تصدیق نہیں ہو سکی} other {# اسناد کی محفوظ ہونے کی تصدیق نہیں ہو سکیں}} ({keys})؛ ایجنٹ کو ہدایت دی گئی ہے کہ استعمال سے پہلے جانچ لے۔ {operatorMove}"
+    }
+   ]
+  },
+  {
+   "id": "UR-CHAT-R1-m7",
+   "severity": "MINOR",
+   "namespace": "ui.chat",
+   "key": "ui.chat.composer.composer_status_row.stopped_after",
+   "current": "رکنے کی وجہ: ",
+   "proposed": "source change: merge 'stopped after ' + {count} + ' continuations' into one ICU message; then '«{count} تسلسل کے بعد رکا»'",
+   "reason": "This key is a prefix concatenated with a hardcoded English tail; the translation says 'reason for stopping:' instead of 'stopped after', so the rendered reason becomes 'رکنے کی وجہ: 12 continuations'. The defect cannot be fixed in the translation alone because the count and the English tail are outside the key."
+  },
+  {
+   "id": "UR-CHAT-R1-n1",
+   "severity": "NIT",
+   "namespace": "ui.chat.directory",
+   "key": "ui.chat.directory.directory_indicator.browse_for_directory",
+   "current": "ڈائریکٹری تلاش کریں...",
+   "proposed": "ڈائریکٹری منتخب کریں…",
+   "reason": "تلاش کریں means 'search'; the control opens a directory picker, so 'منتخب کریں' (or 'براؤز کریں') matches the action."
+  },
+  {
+   "id": "UR-CHAT-R1-n2",
+   "severity": "NIT",
+   "namespace": "ui.chat.asks",
+   "key": "ui.chat.asks.queue.this_runtime_doesnt_support_queued_asks",
+   "current": "یہ رن ٹائم قطار میں لگے سوالات کی حمایت نہیں کرتا۔",
+   "proposed": "یہ رن ٹائم قطار میں لگے سوالات کی معاونت نہیں کرتا۔",
+   "reason": "حمایت means advocacy/support of a cause; for a runtime capability, معاونت or the established loanword سپورٹ is the natural register."
+  },
+  {
+   "id": "UR-CHAT-R1-n3",
+   "severity": "NIT",
+   "namespace": "ui.chat.run_details",
+   "key": "ui.chat.run_details.run_child_reader.shortened_at_the_wire_the_runtime_records_at_most_the",
+   "current": "وائر پر مختصر کیا گیا۔ رن ٹائم کسی خرابی کے زیادہ سے زیادہ پہلے 2,000 حروف محفوظ کرتا ہے۔",
+   "proposed": "ٹرانسمیشن کے وقت مختصر کیا گیا۔ رن ٹائم کسی خرابی کے زیادہ سے زیادہ پہلے 2,000 حروف محفوظ کرتا ہے۔",
+   "reason": "وائر پر is a literal calque of 'at the wire'; ٹرانسمیشن کے وقت states the same fact in natural Urdu."
+  },
+  {
+   "id": "UR-CHAT-R1-n4",
+   "severity": "NIT",
+   "namespace": "ui.chat.canonical",
+   "key": "ui.chat.canonical.turn_segments.segment_s_overlaps_or_precedes_segment_value",
+   "current": "حصہ {s, number, ::group-off} حصہ {value, number, ::group-off} پر چڑھتا ہے یا اس سے پہلے ہے",
+   "proposed": "حصہ {s, number, ::group-off} حصہ {value, number, ::group-off} میں آتا ہے یا اس سے پہلے ہے",
+   "reason": "پر چڑھتا ہے means 'climbs onto'; for overlapping segments the verb should be میں آنا or اوورلیپ کرنا."
+  },
+  {
+   "id": "UR-CHAT-R1-n5",
+   "severity": "NIT",
+   "namespace": "ui.chat.message",
+   "key": "ui.chat.message.audio_attachment.pause",
+   "current": "توقف",
+   "proposed": "روکیں",
+   "reason": "The control is a button and the style guide uses the respectful imperative for commands; توقف is a noun label.",
+   "also_affects": [
+    {
+     "key": "ui.chat.canonical.sound_player.pause",
+     "current": "توقف",
+     "proposed": "روکیں"
+    }
+   ]
+  },
+  {
+   "id": "UR-CHAT-R1-n6",
+   "severity": "NIT",
+   "namespace": "ui.chat",
+   "key": "ui.chat.mermaid_diagram.loading_diagram",
+   "current": "ڈایاگرام لوڈ ہو رہا ہے...",
+   "proposed": "ڈایاگرام لوڈ ہو رہا ہے…",
+   "reason": "The batch uses the Urdu ellipsis … in 41 values and ASCII ... in four; using … consistently is the style-guide typography.",
+   "also_affects": [
+    {
+     "key": "ui.chat.directory.directory_indicator.browse_for_directory",
+     "current": "ڈائریکٹری تلاش کریں...",
+     "proposed": "ڈائریکٹری منتخب کریں…"
+    },
+    {
+     "key": "ui.chat.directory.directory_indicator.enter_custom_path",
+     "current": "حسب ضرورت پاتھ درج کریں...",
+     "proposed": "حسب ضرورت پاتھ درج کریں…"
+    },
+    {
+     "key": "ui.chat.options.generation_settings_section.enter_stop_sequences_one_per_line",
+     "current": "اسٹاپ ترتیبیں درج کریں (ہر سطر میں ایک)...",
+     "proposed": "اسٹاپ ترتیبیں درج کریں (ہر سطر میں ایک)…"
+    }
+   ]
+  },
+  {
+   "id": "UR-CHAT-R1-n7",
+   "severity": "NIT",
+   "namespace": "ui.chat.trace",
+   "key": "ui.chat.trace.question_dock.1_to_answer",
+   "current": "جواب کے لیے 1",
+   "proposed": "جواب دینے کے لیے 1",
+   "reason": "The source is a keyboard hint '1 to answer'; جواب کے لیے 1 is elliptical and can be read as '1 for the answer'. Adding دینے makes the action explicit."
+  },
+  {
+   "id": "UR-CHAT-R1-n8",
+   "severity": "NIT",
+   "namespace": "ui.chat.aside",
+   "key": "ui.chat.aside.aside.this_conversation_is_working_adding_the_aside_while_it_runs",
+   "current": "یہ گفتگو کام کر رہی ہے۔ چلتے دوران ضمنی گفتگو شامل کرنے سے پیغام جاری باری میں گھس جائے گا۔",
+   "proposed": "یہ گفتگو کام کر رہی ہے۔ چلنے کے دوران ضمنی گفتگو شامل کرنے سے پیغام جاری باری میں گھس جائے گا۔",
+   "reason": "چلتے دوران is a colloquial infinitive + دوران construction; standard Urdu uses چلنے کے دوران. The same pattern appears in ui.chat.directory.directory_indicator.click_to_change_the_working_directory_a_running_sessions_runtime, where چلتے سیشن کا should be چل رہے سیشن کا.",
+   "also_affects": [
+    {
+     "key": "ui.chat.directory.directory_indicator.click_to_change_the_working_directory_a_running_sessions_runtime",
+     "current": "ورکنگ ڈائریکٹری بدلنے کے لیے کلک کریں۔ چلتے سیشن کا رن ٹائم وہاں دوبارہ شروع ہوتا ہے۔",
+     "proposed": "ورکنگ ڈائریکٹری بدلنے کے لیے کلک کریں۔ چل رہے سیشن کا رن ٹائم وہاں دوبارہ شروع ہوتا ہے۔"
+    }
+   ]
+  }
+ ]
+}
