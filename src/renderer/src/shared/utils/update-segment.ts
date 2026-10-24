@@ -174,6 +174,8 @@ export const segmentCrossed = (
 	return true;
 };
 
+import { t } from "../../../../i18n/messages";
+
 /**
  * What each value means, in the words the settings control prints.
  *
@@ -188,15 +190,25 @@ export const FOLLOWED_SEGMENT_COPY: Record<
 	{ label: string; description: string }
 > = {
 	[FollowedSegment.PATCH]: {
-		label: "Every release",
-		description: "Patch, minor and major versions.",
+		get label() {
+			return t("ui.settings.updates.update_following.patch_label");
+		},
+		get description() {
+			return t("ui.settings.updates.update_following.patch_help");
+		},
 	},
 	[FollowedSegment.MINOR]: {
-		label: "Minor and major only",
-		description: "Skips patch releases.",
+		get label() {
+			return t("ui.settings.updates.update_following.minor_label");
+		},
+		get description() {
+			return t("ui.settings.updates.update_following.minor_help");
+		},
 	},
 	[FollowedSegment.MAJOR]: {
-		label: "Breaking changes only",
+		get label() {
+			return t("ui.settings.updates.update_following.major_label");
+		},
 		/*
 		 * TRUE FOR A 0.x PRODUCT, which the old wording was not: "Skip patch and
 		 * minor releases" reads as a filter over three named steps, and on a 0.x
@@ -205,8 +217,9 @@ export const FOLLOWED_SEGMENT_COPY: Record<
 		 * switch (reviews R7, U7). The consequence is stated instead of the version
 		 * components, the same rule the other two descriptions follow.
 		 */
-		description:
-			"Skips patches and minors. Before 1.0 a new minor is a breaking change.",
+		get description() {
+			return t("ui.settings.updates.update_following.major_help");
+		},
 	},
 };
 

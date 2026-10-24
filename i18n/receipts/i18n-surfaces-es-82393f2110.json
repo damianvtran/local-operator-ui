@@ -1,0 +1,393 @@
+{
+  "schema": 1,
+  "locale": "es",
+  "date": "2026-10-24",
+  "status": "translated",
+  "scope": "471 newly extracted surface keys: 470 manifest rows plus ui.common.errors.speech_temporarily_unavailable, with round-1 remediation of 13 audited values in 5 namespaces; no English, other-locale, ledger, allowance or gate edits.",
+  "head": "82393f2110b1e0c18acecf0dca1bd8699e688e13",
+  "branch": "feat/i18n-surfaces-es",
+  "worktree": ".worktrees/i18n-surfaces-es",
+  "translated_keys": 471,
+  "namespace_count": 23,
+  "manifest_sha256": "01892e7f1dee7a7cd4c74f10c3447fa7e326c6fd0733aaf380163373b0e3d23d",
+  "translator": {
+    "agent": "translator",
+    "session": "352ac9921511",
+    "model": "openrouter/moonshotai/kimi-k3.1-pro",
+    "served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+    "fallback": null,
+    "date": "2026-10-24"
+  },
+  "glossary": {
+    "path": "local-operator/i18n/glossary.md",
+    "revision": "5079899f091c5439711350108fa6a32500b1100c",
+    "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+    "path": "local-operator/i18n/style-guides/es.md",
+    "revision": "23d08be818088578da161e80cfc82e5c77516d3a",
+    "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+  },
+  "entries": [
+    {
+      "locale": "es",
+      "namespace": "ui.browser.errors",
+      "status": "translated",
+      "translated_keys": 2,
+      "english_total_keys": 2,
+      "target_total_keys": 2,
+      "source_sha256": "c76148aad81e67ae2bacc513a51a5ff219c797ea93bf274f6b6ebaa09635426a",
+      "target_sha256": "c2551e1d9138e00b15eb5ac14a30ce41f4056abf595b3781fb99621f8f35af5b",
+      "context_sha256": "2b1f9eb5194709780b3c9188d7463177a4bf2aff07b9a5a438e91a2ec7a82906"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.chat.canonical",
+      "status": "translated",
+      "translated_keys": 17,
+      "english_total_keys": 47,
+      "target_total_keys": 17,
+      "source_sha256": "dfa9cde6984a451b75a22530303197ed8a3c8d9148685231d017299f16cfe0dd",
+      "target_sha256": "b6bd5d091f11822eb63bd582ed0146d471e7b904769c953cdf502a74282f77b2",
+      "context_sha256": "953ddc573ded81d8f78aec78a81cb89dbdf6fdc6f6adf2b0945b8b4bff71077b"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.chat.composer",
+      "status": "translated",
+      "translated_keys": 11,
+      "english_total_keys": 45,
+      "target_total_keys": 45,
+      "source_sha256": "beced0ec43069d64bcf96415a71ef53be1ed6366848f386a2efaa4d4b77bf4df",
+      "target_sha256": "c4a95c9e5c901d890579567bdb3af0135bddc3761c141e480e0e82c53dfaf00d",
+      "context_sha256": "ce5cb033df55ee401da6b4bf18ac1b205799e5126392e62a9c59ec02cd715330"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.code_review",
+      "status": "translated",
+      "translated_keys": 1,
+      "english_total_keys": 76,
+      "target_total_keys": 76,
+      "source_sha256": "52c1c5147bded8beb2e223c43e7cdb44d236a9ab4c2722627868a5a0fca1a312",
+      "target_sha256": "95ed1c71e9cdc5b5394ea0458582d102540129074de34e193b8a260d1ff475f9",
+      "context_sha256": "4d60ce00b0a08f78c30aab5e1b40ddba4e086f61e828e3cf23116866b5daebb2"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.common.account",
+      "status": "translated",
+      "translated_keys": 20,
+      "english_total_keys": 38,
+      "target_total_keys": 38,
+      "source_sha256": "0e39546d4357107a461f4eb3774c3a17d48a29af902825e86e450809dcf51a48",
+      "target_sha256": "3eb355568d6f8d9550a296ff2d1aa2328b08b2b7602151a93aa3003949bdd885",
+      "context_sha256": "148dcc3c9c40ad03373b54c1394f210386290b9e9395134d12532617d0d33f1a"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.common.actions",
+      "status": "translated",
+      "translated_keys": 14,
+      "english_total_keys": 20,
+      "target_total_keys": 20,
+      "source_sha256": "e1d2fa68aededcc4aa67bd9527a80072859f35b8a358cadba2007696414e8235",
+      "target_sha256": "8484a540d3eba62c0fed65004f5454910ee164de001cf6b93bec8b7294387f5c",
+      "context_sha256": "160a775122143fdf72ed91a052d112f568a41105412e69f8adfdcfcc1b3b7256"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.common.connection",
+      "status": "translated",
+      "translated_keys": 27,
+      "english_total_keys": 37,
+      "target_total_keys": 37,
+      "source_sha256": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
+      "target_sha256": "1d2ba13affe531c60633999f0f5b5853f7cb9fe5f61b8ea37bc2f6abab52c3a8",
+      "context_sha256": "9d39efa215fb38d30e7b70d0df1ed293e32e33a0b72ffc838d7385fb17e7dbb2"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.common.errors",
+      "status": "translated",
+      "translated_keys": 131,
+      "english_total_keys": 135,
+      "target_total_keys": 135,
+      "source_sha256": "59dc7dfdbc3db2070238d457e7700d57941830a223181ea1eb4fabe9d5d7eae4",
+      "target_sha256": "c1fbdbef6a3aba68acb0876f4ee93a1da709d10fb479750b30c13e249a852e22",
+      "context_sha256": "714850a99bf61133a2fb7548504dc0030a20a516bd1ca3b1dfbe70b2de5f7fb1"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.common.speech",
+      "status": "translated",
+      "translated_keys": 11,
+      "english_total_keys": 11,
+      "target_total_keys": 11,
+      "source_sha256": "75e394ea07a049d8a58a2cc12fedec1042e30b61e572f53740f0fac35a825eb0",
+      "target_sha256": "48673aafc30c2c2e180fa672f76eae13565ca9400d4563bfe7485218a4d1095b",
+      "context_sha256": "284ead771845e6a6b4ef5c45ddc450e44f0df76873e63b4cc794fba84475522b"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.common.time",
+      "status": "translated",
+      "translated_keys": 1,
+      "english_total_keys": 1,
+      "target_total_keys": 1,
+      "source_sha256": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
+      "target_sha256": "2b208fa332b2de5ba3896206c6c77e8e9aa2ba2b709030fdf9846ac7b0744354",
+      "context_sha256": "9d666403cd1c661075607faa0a7db78b43bdd570f3d2ce1c7f5968e26f28a6a1"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.common.updates",
+      "status": "translated",
+      "translated_keys": 11,
+      "english_total_keys": 138,
+      "target_total_keys": 138,
+      "source_sha256": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
+      "target_sha256": "427cf9644a4b32ce6464697caebdcc2b1f90e3c6e921c1ef8c909366a52cc409",
+      "context_sha256": "5188c08320cea150fd71c3a26666ca6b0b637a94659bc6087155681b59d9614f"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.common.viewer",
+      "status": "translated",
+      "translated_keys": 1,
+      "english_total_keys": 5,
+      "target_total_keys": 1,
+      "source_sha256": "9db8efc731cb81ac781c732a3021587434acd26bd03d41ec41156c5672edabfe",
+      "target_sha256": "7adf1f8e77ce53162c8507bcffeb123f07cf511aa0d1f1a047dac0a56dcf96dd",
+      "context_sha256": "77232304d3ddc3dbe20151daddc2ee1a3c28271cdcfd7ebc54a302fe6f68f40e"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.console.errors",
+      "status": "translated",
+      "translated_keys": 1,
+      "english_total_keys": 1,
+      "target_total_keys": 1,
+      "source_sha256": "ef6827986b0cd0d75cb4e2aea62aa0b017b58191b5736f7a721c6afa938f344b",
+      "target_sha256": "bc6a28b7404a3035e63935fddd5f39c3ebb48d011e3614f6e37ee6484ba82b43",
+      "context_sha256": "7a4e2ef6e8a081c78dab8ac422a3c82fbe268d8f1f68ca885e5f4eb9f7bed0d3"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.hub.updates",
+      "status": "translated",
+      "translated_keys": 56,
+      "english_total_keys": 56,
+      "target_total_keys": 56,
+      "source_sha256": "9fa15153d1a036a7f98b1d50da90d736c7f423c2981087ae1436469d23afcfdd",
+      "target_sha256": "45bf4fbbf80a1bdb4abd7d26eef782d0213ae40dc945a4d33bc4a16b77f80af8",
+      "context_sha256": "d30a14eb3c3bad0bd2bde7eb1a26fd5fff5aa16ff38dfdd623ed05db4db76390"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.installer",
+      "status": "translated",
+      "translated_keys": 4,
+      "english_total_keys": 22,
+      "target_total_keys": 22,
+      "source_sha256": "89b4c22ea75c9c7fb1db96e226c1eed958643d3e08eb4a0317b2e4369fd4e8e9",
+      "target_sha256": "7b5eefb8f0744d80c1abc0ea8a8fe64f76b3134d522ec8f08c89e51073eddd30",
+      "context_sha256": "6969a13f454799d950a961da740d6585545525f0a148dade5c85e1ae81232705"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.library.errors",
+      "status": "translated",
+      "translated_keys": 3,
+      "english_total_keys": 3,
+      "target_total_keys": 3,
+      "source_sha256": "162f2d82448d8a77cd96d4b142018cf233dd1ebfabe37ba7ce47d4fc52195bc4",
+      "target_sha256": "4632c69d338cc9e9b80cf559b24b817e155cbdcaad48d09b59683e7ed803034d",
+      "context_sha256": "cc8e737dc8b52dbe3cc5193a9fc33f5acdb6332420c95e3fad5e1567946b247a"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.mesh.errors",
+      "status": "translated",
+      "translated_keys": 1,
+      "english_total_keys": 1,
+      "target_total_keys": 1,
+      "source_sha256": "285997c116c83dd475ace036931ca2a49108dba4237300be3389bcc513ff2a40",
+      "target_sha256": "ec76ed9af28ca5b3485f784a75893d239b1e503094edee035420c6303c08074e",
+      "context_sha256": "d33ebdde6b2958258ed1e52f9aa44070c9987fe8e40287e6966ff4cfa9021299"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.miniView",
+      "status": "translated",
+      "translated_keys": 34,
+      "english_total_keys": 34,
+      "target_total_keys": 34,
+      "source_sha256": "50202e2b2c757708215867b51811ca4c72dd1814c747960a98a4f1929925119e",
+      "target_sha256": "c130778ecb9c362c1b3a3443380857f2af7a646967aa786ebb4141462a159642",
+      "context_sha256": "22c12b345086a5ae0f1efacf3e9256f2890d8621912f8b0c642554a50f838f07"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.projects",
+      "status": "translated",
+      "translated_keys": 3,
+      "english_total_keys": 427,
+      "target_total_keys": 427,
+      "source_sha256": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
+      "target_sha256": "f32ba45366ecefaef31e9a15d68097c12cf4ef607737a8ff0d12545f892d599b",
+      "context_sha256": "7eaaba481914ce8fc0692c6eaee39ad04e80d9cddc82f0c83a00bebc96af28d4"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.schedules.errors",
+      "status": "translated",
+      "translated_keys": 3,
+      "english_total_keys": 3,
+      "target_total_keys": 3,
+      "source_sha256": "05e2bc81700cb5ef326144dcf2ded7fee9b351b02e56226cfc800a9bdcf07961",
+      "target_sha256": "1a4c8ab4e42f6e28824e6d3efafe55d724136124dc0ba3b600c4ff44f6632873",
+      "context_sha256": "e622fe4a49850f864e15cda2fe0d6d724f8ec8e0769f1efb07adf243a51db69b"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.settings.appearance",
+      "status": "translated",
+      "translated_keys": 59,
+      "english_total_keys": 69,
+      "target_total_keys": 69,
+      "source_sha256": "be349b938ef72437bfb68cdcbd6c168247edff20f5efe6b50abe981183769729",
+      "target_sha256": "f83bf4bddab3408541d779ae3fda547173bec78347251da8e32cc08bbf772639",
+      "context_sha256": "c18933608a9e715e4d7ea6fafd6096c154991e8829f79a2653a3726802cc7f3f"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.settings",
+      "status": "translated",
+      "translated_keys": 6,
+      "english_total_keys": 45,
+      "target_total_keys": 45,
+      "source_sha256": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
+      "target_sha256": "832f90038513ccb5934364174692526be2bea6966553ae4e8494616a045d094f",
+      "context_sha256": "bc524adfbef11d7aa28b074b5884076ab388526f44a344feaf53cabb51bb9692"
+    },
+    {
+      "locale": "es",
+      "namespace": "ui.settings.shortcuts",
+      "status": "translated",
+      "translated_keys": 54,
+      "english_total_keys": 63,
+      "target_total_keys": 63,
+      "source_sha256": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
+      "target_sha256": "3599926c9fbca0be97f671f915610cce835e1aa1d29f34cc9679216f031aca25",
+      "context_sha256": "9c74fb267e6504114980b62f75efa1b02c79d76dbe1a20f1e476b56d9865c215"
+    }
+  ],
+  "note": "Translator provenance only. No self-audit or independent-auditor verdict is claimed; audit and integration gates remain with their separate lanes.",
+  "remediation": {
+    "round": 1,
+    "date": "2026-10-24",
+    "head_before": "82a6f6a954586fe629b01fa2dc60bfbec049a845",
+    "base": "82393f2110b1e0c18acecf0dca1bd8699e688e13",
+    "audit_receipts": [
+      "/Users/damian/.local-operator/sessions/9a6273e11154/scratchpad/es-surface-r1-audit-receipt.json",
+      "/Users/damian/.local-operator/sessions/32818c8f857f/scratchpad/es-surfaces-independent-r1-second/receipt.json"
+    ],
+    "disposition": {
+      "required_majors_fixed": 7,
+      "first_audit_minors_fixed": 4,
+      "second_audit_minor_fixed": 1,
+      "second_audit_wording_nits_fixed": 2,
+      "retained_static_fit_flags": [
+        "ui.miniView.sheet_effort (ES2-M1)",
+        "ui.settings.shortcuts.row.execution (ES2-S2)",
+        "ui.settings.shortcuts.action.open_run_details (ES2-S3)"
+      ]
+    },
+    "changed_namespaces": [
+      "ui.common.connection",
+      "ui.common.errors",
+      "ui.hub.updates",
+      "ui.settings.appearance",
+      "ui.settings.shortcuts"
+    ],
+    "changes": {
+      "ui.common.connection": [
+        {
+          "key": "ui.common.connection.backend.pane_governed",
+          "finding": "first-audit MAJOR desktop controls ownership",
+          "applied": "No se puede leer esta conversación aquí: otro programa gestiona los controles de escritorio del servidor. Tus chats siguen en ese servidor."
+        }
+      ],
+      "ui.common.errors": [
+        {
+          "key": "ui.common.errors.teams_unsupported",
+          "finding": "first-audit MAJOR kept-English pull",
+          "applied": "Este backend aún no puede hacer pull de los equipos de la organización. Actualiza el backend y vuelve a intentarlo."
+        }
+      ],
+      "ui.hub.updates": [
+        {
+          "key": "ui.hub.updates.error.provider",
+          "finding": "first-audit MAJOR kept-English merge",
+          "applied": "No se pudo contactar con el modelo responsable del merge. Se reintentará automáticamente; pulsa Reintentar para hacerlo ahora."
+        },
+        {
+          "key": "ui.hub.updates.error.model_unavailable",
+          "finding": "first-audit MAJOR kept-English merge",
+          "applied": "No hay ningún modelo disponible para hacer merge. Comprueba Ajustes › Agent Hub."
+        },
+        {
+          "key": "ui.hub.updates.error.prompt_too_long",
+          "finding": "first-audit MAJOR kept-English merge",
+          "applied": "Este elemento es demasiado grande para hacer merge automáticamente."
+        },
+        {
+          "key": "ui.hub.updates.detail.updating",
+          "finding": "first-audit MAJOR kept-English merge",
+          "applied": "Haciendo merge de la versión del hub con la tuya."
+        },
+        {
+          "key": "ui.hub.updates.report.merged_edits",
+          "finding": "first-audit MAJOR kept-English merge",
+          "applied": "Merge aplicado con tus cambios. La versión anterior se guardó como copia de seguridad."
+        },
+        {
+          "key": "ui.hub.updates.report.merged_local",
+          "finding": "first-audit MINOR where-scope",
+          "applied": "Actualizado. En las partes en las que el hub y tu copia diferían, se mantuvo la tuya. La versión anterior se guardó como copia de seguridad."
+        },
+        {
+          "key": "ui.hub.updates.report.merged_remote",
+          "finding": "first-audit MINOR where-scope",
+          "applied": "Actualizado. En las partes en las que el hub y tu copia diferían, se usó la del hub. La versión anterior se guardó como copia de seguridad."
+        },
+        {
+          "key": "ui.hub.updates.slow_note",
+          "finding": "first-audit MINOR mark vs indicator",
+          "applied": "Esto está tardando más de lo esperado. Puede que aún termine; el indicador se actualizará."
+        }
+      ],
+      "ui.settings.shortcuts": [
+        {
+          "key": "ui.settings.shortcuts.reserved.zoom_reset",
+          "finding": "first-audit MINOR + second-audit ES2-S1 browser/app ambiguity",
+          "applied": "Reservado: restablece el zoom de la página del navegador o el de la app fuera del navegador."
+        }
+      ],
+      "ui.settings.appearance": [
+        {
+          "key": "ui.settings.appearance.theme.outrun",
+          "finding": "second-audit ES2-A1 wording nit",
+          "applied": "Magenta de atardecer y cian de cuadrícula surcando el azul medianoche."
+        },
+        {
+          "key": "ui.settings.appearance.theme.synthwave",
+          "finding": "second-audit ES2-A2 wording nit",
+          "applied": "Rosa intenso y cian sobre un viaje nocturno en morado y azul marino profundos."
+        }
+      ]
+    },
+    "note": "One unified remediation commit from both round-1 audits. Static fit flags retained for a rendered fit check; no rendered claim. No self-audit, ledger or allowance edit."
+  }
+}

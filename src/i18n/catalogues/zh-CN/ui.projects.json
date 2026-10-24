@@ -422,5 +422,8 @@
 	"ui.projects.request_update.value1_could_not_be_reached": "无法联系{value1}。",
 	"ui.projects.timeline.read_failed": "无法读取{count, plural, other {{count, number, ::group-off}个项目}}的里程碑。",
 	"ui.projects.use_request_update.could_not_request_updates_endedsentence_message": "无法请求更新：{endedSentence_message}",
-	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "无法确认请求是否成功。"
+	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "无法确认请求是否成功。",
+	"ui.projects.project_model.milestone_summary": "已完成{completed, number, ::group-off}/{total, number, ::group-off}项",
+	"ui.projects.project_model.todos_summary": "{open, number, ::group-off}项待处理，共{total, number, ::group-off}项",
+	"ui.projects.project_model.done_gate_tail": "完成或移除未完成的里程碑，然后将其标记为完成"
 }

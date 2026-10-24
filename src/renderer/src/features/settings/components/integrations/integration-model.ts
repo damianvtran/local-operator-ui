@@ -865,8 +865,9 @@ export function publicSignInReason(
 }
 
 /** What "Ready" means, for the status's tooltip. */
-export const READY_EXPLANATION =
-	"Nothing is wrong. It starts when a chat uses it.";
+export const READY_EXPLANATION = t(
+	"ui.settings.integrations.integration_model.copy_ready_explanation",
+);
 export const READY_EXPLANATION_KEY =
 	"ui.settings.integrations.integration_model.copy_ready_explanation";
 
@@ -885,7 +886,9 @@ export const READY_EXPLANATION_KEY =
  * fine ones - each chat runs its own servers - and leaves the control, when
  * there is one, to say itself.
  */
-export const NOT_CONNECTED_EXPLANATION = "Not running in this chat.";
+export const NOT_CONNECTED_EXPLANATION = t(
+	"ui.settings.integrations.integration_model.copy_not_connected_explanation",
+);
 export const NOT_CONNECTED_EXPLANATION_KEY =
 	"ui.settings.integrations.integration_model.copy_not_connected_explanation";
 
@@ -2244,8 +2247,9 @@ export const CATALOG_REFUSAL_COPY: Record<string, string> = {
  * refusal, so the reader gets the honest generic sentence and the row keeps its
  * own controls.
  */
-export const CATALOG_REFUSAL_FALLBACK =
-	"The server refused it, so nothing was changed. Try again.";
+export const CATALOG_REFUSAL_FALLBACK = t(
+	"ui.settings.integrations.integration_model.copy_catalog_refusal_fallback",
+);
 const CATALOG_REFUSAL_FALLBACK_KEY =
 	"ui.settings.integrations.integration_model.copy_catalog_refusal_fallback";
 

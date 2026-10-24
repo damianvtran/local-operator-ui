@@ -1,0 +1,3 @@
+{
+	"ui.common.viewer.image_progress": "Image {index, number, ::group-off} sur {count, number, ::group-off}"
+}

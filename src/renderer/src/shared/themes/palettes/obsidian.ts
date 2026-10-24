@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -31,7 +32,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const obsidian: ThemeDefinition = {
 	id: "obsidian",
 	name: "Obsidian",
-	description: "Monochrome: zinc near-black with an off-white accent.",
+	get description() {
+		return t("ui.settings.appearance.theme.obsidian");
+	},
 	palette: {
 		mode: "dark",
 

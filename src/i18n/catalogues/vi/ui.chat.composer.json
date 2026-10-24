@@ -34,5 +34,16 @@
 	"ui.chat.composer.secret_fill_gone": "Chưa đưa vào ô bí mật: yêu cầu đó không còn chờ nữa. Nội dung của bạn được giữ lại.",
 	"ui.chat.composer.secret_fill_refused": "Ô bí mật không nhận giá trị đó. Nội dung của bạn được giữ lại — bảng câu hỏi hiển thị lý do.",
 	"ui.chat.composer.secret_fill_unavailable": "Không truy cập được ô bí mật. Nội dung của bạn được giữ lại.",
-	"ui.chat.composer.secret_fill_multi": "Yêu cầu này cần nhiều thông tin bí mật. Nội dung của bạn được giữ lại — hãy chọn ô trong bảng câu hỏi."
+	"ui.chat.composer.secret_fill_multi": "Yêu cầu này cần nhiều thông tin bí mật. Nội dung của bạn được giữ lại — hãy chọn ô trong bảng câu hỏi.",
+	"ui.chat.composer.placeholder.unavailable": "Cuộc trò chuyện này không còn tồn tại",
+	"ui.chat.composer.placeholder.busy": "Tác nhân đang bận",
+	"ui.chat.composer.placeholder.answer": "Nhập câu trả lời của bạn…",
+	"ui.chat.composer.placeholder.secret_answer": "Trả lời yêu cầu thông tin bí mật trong bảng câu hỏi",
+	"ui.chat.composer.placeholder.aside": "Hỏi bên lề — Esc đóng câu hỏi bên lề",
+	"ui.chat.composer.placeholder.sending": "Đang gửi tin nhắn",
+	"ui.chat.composer.placeholder.stopping": "Đang dừng lượt",
+	"ui.chat.composer.placeholder.recording": "Đang ghi âm",
+	"ui.chat.composer.placeholder.waiting": "Điều hướng tác nhân. Enter gửi ngay · Esc dừng",
+	"ui.chat.composer.placeholder.no_provider": "Kết nối nhà cung cấp để bắt đầu trò chuyện",
+	"ui.chat.composer.placeholder.idle": "Hỏi bất cứ điều gì. @ thêm tệp, / chạy lệnh"
 }

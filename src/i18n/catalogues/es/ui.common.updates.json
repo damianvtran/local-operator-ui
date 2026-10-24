@@ -125,5 +125,16 @@
 	"ui.common.updates.update_quiet_indicator.server_update": "Actualización del servidor",
 	"ui.common.updates.wait.minutes": "En espera desde hace {minutes, plural, one {{minutes, number, ::group-off} minuto} many {{minutes, number, ::group-off} de minutos} other {{minutes, number, ::group-off} minutos}}",
 	"ui.common.updates.wait.minutes_seconds": "En espera desde hace {minutes, plural, one {{minutes, number, ::group-off} minuto} many {{minutes, number, ::group-off} de minutos} other {{minutes, number, ::group-off} minutos}} y {seconds, plural, one {{seconds, number, ::group-off} segundo} many {{seconds, number, ::group-off} de segundos} other {{seconds, number, ::group-off} segundos}}",
-	"ui.common.updates.wait.seconds": "En espera desde hace {seconds, plural, one {{seconds, number, ::group-off} segundo} many {{seconds, number, ::group-off} de segundos} other {{seconds, number, ::group-off} segundos}}"
+	"ui.common.updates.wait.seconds": "En espera desde hace {seconds, plural, one {{seconds, number, ::group-off} segundo} many {{seconds, number, ::group-off} de segundos} other {{seconds, number, ::group-off} segundos}}",
+	"ui.common.updates.install.verifying": "Verificando la actualización con respecto a la app que sustituirá…",
+	"ui.common.updates.install.staging": "Preparando la actualización junto a la app que sustituirá…",
+	"ui.common.updates.install.starting": "Iniciando el instalador. La app se cierra un momento…",
+	"ui.common.updates.install.preparing": "Preparando la instalación…",
+	"ui.common.updates.install.succeeded": "Local Operator se actualizó a v{version}.",
+	"ui.common.updates.error.server_unreachable": "La app no pudo contactar con el servidor de actualizaciones. Comprueba la conexión de este equipo y vuelve a intentarlo.",
+	"ui.common.updates.error.download": "No se pudo descargar la actualización. Comprueba la conexión de este equipo y reinicia la descarga.",
+	"ui.common.updates.error.install": "No se pudo instalar la actualización. Comprueba la conexión de este equipo y reiníciala desde el panel de actualizaciones.",
+	"ui.common.updates.error.quit": "La app no pudo cerrarse para terminar la instalación. Ciérrala tú y deja que la actualización termine.",
+	"ui.common.updates.error.check_incomplete": "No se completó la comprobación de actualizaciones. La app reintentará en la próxima.",
+	"ui.common.updates.error.version_unknown_required": "Desconocida (actualización necesaria)"
 }

@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 /**
  * Local Operator API - Jobs Endpoints
  */
@@ -57,7 +58,10 @@ export const JobsApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`Cancel job request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.job_cancel", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -86,7 +90,10 @@ export const JobsApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`List jobs request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.jobs_list", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -117,7 +124,10 @@ export const JobsApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`Cleanup jobs request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.jobs_cleanup", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 

@@ -422,5 +422,8 @@
 	"ui.projects.request_update.value1_could_not_be_reached": " {value1} से संपर्क नहीं हुआ।",
 	"ui.projects.timeline.read_failed": "माइलस्टोन पढ़े नहीं जा सके {count, plural, one {{count, number, ::group-off} प्रोजेक्ट} other {{count, number, ::group-off} प्रोजेक्ट}} के लिए।",
 	"ui.projects.use_request_update.could_not_request_updates_endedsentence_message": "अपडेट नहीं माँगे जा सके: {endedSentence_message}",
-	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "अनुरोध की पुष्टि नहीं हो सकी।"
+	"ui.projects.use_request_update.the_request_could_not_be_confirmed": "अनुरोध की पुष्टि नहीं हो सकी।",
+	"ui.projects.project_model.milestone_summary": "कुल {total, number, ::group-off} में से {completed, number, ::group-off} पूरे",
+	"ui.projects.project_model.todos_summary": "कुल {total, number, ::group-off} में से {open, number, ::group-off} खुले",
+	"ui.projects.project_model.done_gate_tail": "अधूरे माइलस्टोन पूरे करें या हटाएँ, फिर प्रोजेक्ट को पूरा चिह्नित करें"
 }

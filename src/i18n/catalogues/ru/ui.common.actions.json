@@ -4,5 +4,19 @@
 	"ui.common.actions.copied": "Скопировано",
 	"ui.common.actions.copy_failed": "Не удалось скопировать. Выделите и скопируйте вручную.",
 	"ui.common.actions.retry": "Повторить",
-	"ui.common.actions.retry_again": "Повторить"
+	"ui.common.actions.retry_again": "Повторить",
+	"ui.common.actions.agent_created": "Агент создан",
+	"ui.common.actions.agent_deleted": "Агент удалён",
+	"ui.common.actions.agent_imported": "Агент импортирован",
+	"ui.common.actions.agent_exported": "Агент экспортирован",
+	"ui.common.actions.agent_updated": "Агент обновлён",
+	"ui.common.actions.agent_system_prompt_updated": "Системный промпт агента обновлён",
+	"ui.common.actions.conversation_cleared": "Разговор очищен",
+	"ui.common.actions.variable_created": "Переменная создана",
+	"ui.common.actions.variable_updated": "Переменная обновлена",
+	"ui.common.actions.variable_deleted": "Переменная удалена",
+	"ui.common.actions.configuration_updated": "Конфигурация обновлена",
+	"ui.common.actions.system_prompt_updated": "Системный промпт обновлён",
+	"ui.common.actions.credential_updated": "Учётные данные «{key}» успешно обновлены",
+	"ui.common.actions.clear": "Очистить"
 }

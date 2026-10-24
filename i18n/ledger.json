@@ -24300,6 +24300,37 @@
 					"status": "audited"
 				}
 			]
+		},
+		{
+			"locale": "zh-CN",
+			"namespace": "ui.browser.errors",
+			"source_sha256": "c76148aad81e67ae2bacc513a51a5ff219c797ea93bf274f6b6ebaa09635426a",
+			"target_sha256": "5999fe9763953fce71ccd9d80ee2b42b4ed085963a8586006922876d9e408f1f",
+			"translator": {
+				"agent": "translator",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"date": "2026-10-24"
+			},
+			"auditors": [
+				{
+					"agent": "translation-auditor",
+					"model": "openrouter/moonshotai/kimi-k3.1-pro",
+					"date": "2026-10-24",
+					"result": "clean",
+					"instance": "5e4bc8838c01-surfaces-zh-cn-r1",
+					"findings": {
+						"blocker": 0,
+						"major": 0,
+						"minor": 0,
+						"nit": 0
+					},
+					"receipt": "i18n/receipts/5e4bc8838c01-surfaces-zh-cn-r1.json",
+					"receipt_sha256": "11f672f8fa16f25cea4e723052c6f80dadc42be4d9fc458158b32f208d42194a",
+					"scope": "independent surface-extraction audit of 471 assigned keys at current hashes",
+					"note": "Two independent audits; minor/nit findings retained without gating. No rendered claim."
+				}
+			],
+			"status": "audited"
 		}
 	]
 }

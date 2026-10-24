@@ -73,5 +73,6 @@
 	"ui.code_review.row.opens_browser": "आपके ब्राउज़र में खुलता है",
 	"ui.code_review.row.refresh_error": "रीफ़्रेश नहीं हुआ: {error}",
 	"ui.code_review.row.stale_error": "पुरानी — आख़िरी ज्ञात, मौजूदा नहीं: {error}",
-	"ui.code_review.tool.more": "{count, plural, one {टूल आउटपुट में {countText}{capped} और दिखा} other {टूल आउटपुट में {countText}{capped} और दिखे}}"
+	"ui.code_review.tool.more": "{count, plural, one {टूल आउटपुट में {countText}{capped} और दिखा} other {टूल आउटपुट में {countText}{capped} और दिखे}}",
+	"ui.code_review.refresh.try_again": "फिर कोशिश करें"
 }

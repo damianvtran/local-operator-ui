@@ -1,0 +1,5 @@
+{
+	"ui.schedules.errors.agent_id_required": "L’ID d’agent est requis pour créer une planification.",
+	"ui.schedules.errors.agent_id_missing": "L’ID d’agent manque pour l’envoi.",
+	"ui.schedules.errors.base_url_missing": "L’URL de base de l’API Local Operator n’est pas configurée."
+}

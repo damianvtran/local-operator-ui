@@ -34,5 +34,16 @@
 	"ui.chat.composer.secret_fill_gone": "Not put in the secret field: that request is no longer waiting. Your text is kept.",
 	"ui.chat.composer.secret_fill_refused": "The secret field did not take that value. Your text is kept — the asks panel shows why.",
 	"ui.chat.composer.secret_fill_unavailable": "Could not reach the secret field. Your text is kept.",
-	"ui.chat.composer.secret_fill_multi": "This request asks for more than one secret. Your text is kept — choose the field in the asks panel."
+	"ui.chat.composer.secret_fill_multi": "This request asks for more than one secret. Your text is kept — choose the field in the asks panel.",
+	"ui.chat.composer.placeholder.unavailable": "This conversation is gone",
+	"ui.chat.composer.placeholder.busy": "Agent is busy",
+	"ui.chat.composer.placeholder.answer": "Type your own answer…",
+	"ui.chat.composer.placeholder.secret_answer": "Answer the secret request in the asks panel",
+	"ui.chat.composer.placeholder.aside": "Ask off the record — Esc closes the aside",
+	"ui.chat.composer.placeholder.sending": "Sending your message",
+	"ui.chat.composer.placeholder.stopping": "Stopping the turn",
+	"ui.chat.composer.placeholder.recording": "Recording",
+	"ui.chat.composer.placeholder.waiting": "Steer the agent. Enter sends now · Esc stops",
+	"ui.chat.composer.placeholder.no_provider": "Connect a provider to start chatting",
+	"ui.chat.composer.placeholder.idle": "Ask anything. @ adds files, / runs commands"
 }

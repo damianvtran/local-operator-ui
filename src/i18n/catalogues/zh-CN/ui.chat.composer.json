@@ -34,5 +34,16 @@
 	"ui.chat.composer.secret_fill_gone": "未填入敏感信息字段：该请求已不再等待回复。文本已保留。",
 	"ui.chat.composer.secret_fill_refused": "敏感信息字段未接受此值。文本已保留，请在请求面板中查看原因。",
 	"ui.chat.composer.secret_fill_unavailable": "无法访问敏感信息字段。文本已保留。",
-	"ui.chat.composer.secret_fill_multi": "此请求需要多项敏感信息。文本已保留，请在请求面板中选择要填写的字段。"
+	"ui.chat.composer.secret_fill_multi": "此请求需要多项敏感信息。文本已保留，请在请求面板中选择要填写的字段。",
+	"ui.chat.composer.placeholder.unavailable": "此对话已不存在",
+	"ui.chat.composer.placeholder.busy": "智能体正忙",
+	"ui.chat.composer.placeholder.answer": "输入你的回答……",
+	"ui.chat.composer.placeholder.secret_answer": "在请求面板中回答敏感信息请求",
+	"ui.chat.composer.placeholder.aside": "向旁支对话提问——按Esc关闭",
+	"ui.chat.composer.placeholder.sending": "正在发送消息",
+	"ui.chat.composer.placeholder.stopping": "正在停止本轮",
+	"ui.chat.composer.placeholder.recording": "正在录音",
+	"ui.chat.composer.placeholder.waiting": "引导智能体。Enter立即发送 · Esc停止",
+	"ui.chat.composer.placeholder.no_provider": "连接模型提供商后开始聊天",
+	"ui.chat.composer.placeholder.idle": "输入任何问题。@添加文件，/运行命令"
 }

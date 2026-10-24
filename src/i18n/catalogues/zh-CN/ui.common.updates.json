@@ -125,5 +125,16 @@
 	"ui.common.updates.update_quiet_indicator.server_update": "服务器更新",
 	"ui.common.updates.wait.minutes": "已等待{minutes, plural, other {{minutes, number, ::group-off}分钟}}",
 	"ui.common.updates.wait.minutes_seconds": "已等待{minutes, plural, other {{minutes, number, ::group-off}分钟}}{seconds, plural, other {{seconds, number, ::group-off}秒}}",
-	"ui.common.updates.wait.seconds": "已等待{seconds, plural, other {{seconds, number, ::group-off}秒}}"
+	"ui.common.updates.wait.seconds": "已等待{seconds, plural, other {{seconds, number, ::group-off}秒}}",
+	"ui.common.updates.install.verifying": "正在对照待替换的应用验证更新……",
+	"ui.common.updates.install.staging": "正在将更新暂存到待替换的应用旁边……",
+	"ui.common.updates.install.starting": "正在启动安装程序。应用将短暂关闭……",
+	"ui.common.updates.install.preparing": "正在准备安装……",
+	"ui.common.updates.install.succeeded": "Local Operator已更新至v{version}。",
+	"ui.common.updates.error.server_unreachable": "应用无法连接更新服务器。检查本机网络连接后重试。",
+	"ui.common.updates.error.download": "无法下载更新。检查本机网络连接，然后重新下载。",
+	"ui.common.updates.error.install": "无法安装更新。检查本机网络连接，然后从更新面板重新安装。",
+	"ui.common.updates.error.quit": "应用无法退出以完成安装。手动退出应用，然后等待更新完成。",
+	"ui.common.updates.error.check_incomplete": "更新检查未能完成。应用会在下次检查时重试。",
+	"ui.common.updates.error.version_unknown_required": "未知（需要更新）"
 }

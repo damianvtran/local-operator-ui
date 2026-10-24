@@ -1,0 +1,5 @@
+{
+	"ui.schedules.errors.agent_id_required": "Для создания расписания требуется ID агента.",
+	"ui.schedules.errors.agent_id_missing": "Для отправки не указан ID агента.",
+	"ui.schedules.errors.base_url_missing": "Базовый URL API Local Operator не настроен."
+}

@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -28,7 +29,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const iceberg: ThemeDefinition = {
 	id: "iceberg",
 	name: "Iceberg",
-	description: "Cool blue-grey paper with the Iceberg navy.",
+	get description() {
+		return t("ui.settings.appearance.theme.iceberg");
+	},
 	palette: {
 		mode: "light",
 

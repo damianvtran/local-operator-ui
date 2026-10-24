@@ -1,0 +1,929 @@
+{
+	"schema": 1,
+	"locale": "hi",
+	"translator": {
+		"agent": "translator",
+		"profile": "i18n-translator",
+		"instance": "i18n-surfaces-hi",
+		"session": "37f772843d10",
+		"model": "openrouter/moonshotai/kimi-k3.1-pro",
+		"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+		"date": "2026-10-24"
+	},
+	"scope": {
+		"kind": "Reviewed surface-extraction translation batch; only the 470 manifest keys plus ui.common.errors.speech_temporarily_unavailable.",
+		"worktree_head": "82393f2110b1e0c18acecf0dca1bd8699e688e13",
+		"worktree": "/Users/damian/local-operator-ui/.worktrees/i18n-surfaces-hi",
+		"manifest_path": "/Users/damian/.local-operator/sessions/21de6e67117c/scratchpad/i18n-new-key-manifest.tsv",
+		"manifest_sha256": "01892e7f1dee7a7cd4c74f10c3447fa7e326c6fd0733aaf380163373b0e3d23d",
+		"manifest_rows": 470,
+		"additional_keys": [
+			"ui.common.errors.speech_temporarily_unavailable"
+		],
+		"translated_key_count": 471,
+		"namespace_count": 23,
+		"scope_verification": "Git HEAD comparison proves exactly 471 added Hindi keys, zero modified legacy values, and zero removed keys."
+	},
+	"references": {
+		"glossary_path": "~/local-operator/i18n/glossary.md",
+		"glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+		"style_guide_path": "~/local-operator/i18n/style-guides/hi.md",
+		"style_guide_sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+		"core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09"
+	},
+	"terminology": {
+		"invented": [],
+		"chosen": {
+			"aside": "अलग बातचीत (existing composer terminology)",
+			"Canvas": "कैनवस (existing shell terminology)",
+			"quick send": "क्विक सेंड",
+			"speaking aloud": "बोलकर सुनाना (existing speech terminology)",
+			"dictation": "डिक्टेशन",
+			"delegated sessions": "सौंपे गए सत्र",
+			"keyboard chord": "कुंजी-संयोजन",
+			"seat": "सीट",
+			"reasoning effort": "तर्क का प्रयास (aligned to existing प्रयास settings)"
+		},
+		"register": "Polite आप and polite imperatives; everyday Hindi with established technical loans; Latin digits; danda for new prose."
+	},
+	"overflow_risks": [
+		{
+			"key": "ui.settings.section.delegated_max_age.label",
+			"note": "“इतने समय बाद हटाएँ” is the shortest natural duration-label wording found but remains longer than “Remove after”; rendered fit not measured."
+		},
+		{
+			"key": "ui.settings.shortcuts.reserved.undo",
+			"note": "“आरक्षित: पूर्ववत करता है।” uses clear Hindi rather than a shorter invented loan; compact-row fit not measured."
+		},
+		{
+			"key": "ui.settings.shortcuts.reserved.redo",
+			"note": "“आरक्षित: फिर से करता है।” is semantically clear but longer than the English fragment; compact-row fit not measured."
+		}
+	],
+	"checks": [
+		{
+			"command": "node scripts/i18n/generate.mjs && node scripts/i18n/generate.mjs --check",
+			"result": "PASS — generated keys.gen.ts; final check byte-identical to fresh generation."
+		},
+		{
+			"command": "node scripts/i18n/context-parity.mjs",
+			"result": "PASS — only the existing 131 allowed context gaps in 4 namespaces."
+		},
+		{
+			"command": "pnpm check-types",
+			"result": "PASS — check-types:main and check-types:renderer."
+		},
+		{
+			"command": "node scripts/run-desktop-tests.mjs scripts/i18n/locale-parity.test.mjs scripts/i18n/runtime.test.mjs scripts/i18n/hi-activation.test.mjs scripts/i18n/common-status-copy.test.mjs scripts/i18n/common-control-copy.test.mjs scripts/i18n/surface-copy-reactivity.test.mjs scripts/i18n/typed-keys.test.mjs",
+			"result": "78 PASS / 7 expected FAIL out of 85. Every failure is the per-locale complete-namespace assertion while extraction lanes are unintegrated. Hindi passes ownership, ICU placeholders and non-stub; its remaining completeness gap is 52 older out-of-scope backfill keys (canonical 30, account 18, viewer 4)."
+		},
+		{
+			"command": "node $LOCAL_OPERATOR_SCRATCHPAD/hi-pseudo-check.cjs",
+			"result": "PASS — 471 actual renders and 495 pseudo renders through the real runtime; 8 plural messages exercised at Hindi CLDR counts 0, 1, 2 and 1234."
+		},
+		{
+			"command": "node scripts/i18n/check-coverage.mjs",
+			"result": "EXPECTED RED — 2826 unallowed missing keys across unintegrated extraction lanes; no allowance changed."
+		},
+		{
+			"command": "node scripts/i18n/ledger-check.mjs",
+			"result": "EXPECTED RED — 267 findings across 438 entries, including new unaudited Hindi namespaces and stale extraction hashes; no ledger or audit verdict changed."
+		}
+	],
+	"limitations": [
+		"Translator provenance only: no self-audit, independent semantic audit, ledger verdict, allowance or baseline change.",
+		"No rendered-frame or native fit evidence; overflow notes are source/target wording assessments only.",
+		"Older missing-namespace backfill was deliberately not duplicated or altered; full coverage and ledger remain integration work."
+	],
+	"entries": [
+		{
+			"locale": "hi",
+			"namespace": "ui.browser.errors",
+			"translated_key_count": 2,
+			"source_path": "src/i18n/catalogues/en/ui.browser.errors.json",
+			"target_path": "src/i18n/catalogues/hi/ui.browser.errors.json",
+			"context_path": "src/i18n/catalogues/en/ui.browser.errors.context.json",
+			"source_sha256": "c76148aad81e67ae2bacc513a51a5ff219c797ea93bf274f6b6ebaa09635426a",
+			"target_sha256": "025af3ee0065f3f956abcd2fce39e0b6faeadd570108e3fbd462054769dce85a",
+			"context_sha256": "2b1f9eb5194709780b3c9188d7463177a4bf2aff07b9a5a438e91a2ec7a82906",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.canonical",
+			"translated_key_count": 17,
+			"source_path": "src/i18n/catalogues/en/ui.chat.canonical.json",
+			"target_path": "src/i18n/catalogues/hi/ui.chat.canonical.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.canonical.context.json",
+			"source_sha256": "dfa9cde6984a451b75a22530303197ed8a3c8d9148685231d017299f16cfe0dd",
+			"target_sha256": "cf9c7251086d6fbd879e0b3eaa79e2806c818e0e4aedfbc4c9161eaa334718b0",
+			"context_sha256": "953ddc573ded81d8f78aec78a81cb89dbdf6fdc6f6adf2b0945b8b4bff71077b",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.chat.composer",
+			"translated_key_count": 11,
+			"source_path": "src/i18n/catalogues/en/ui.chat.composer.json",
+			"target_path": "src/i18n/catalogues/hi/ui.chat.composer.json",
+			"context_path": "src/i18n/catalogues/en/ui.chat.composer.context.json",
+			"source_sha256": "beced0ec43069d64bcf96415a71ef53be1ed6366848f386a2efaa4d4b77bf4df",
+			"target_sha256": "0972472ed3707f8d21db0147fc5572c647a8241a0b61e50caf29a0fdce1858ed",
+			"context_sha256": "ce5cb033df55ee401da6b4bf18ac1b205799e5126392e62a9c59ec02cd715330",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.code_review",
+			"translated_key_count": 1,
+			"source_path": "src/i18n/catalogues/en/ui.code_review.json",
+			"target_path": "src/i18n/catalogues/hi/ui.code_review.json",
+			"context_path": "src/i18n/catalogues/en/ui.code_review.context.json",
+			"source_sha256": "52c1c5147bded8beb2e223c43e7cdb44d236a9ab4c2722627868a5a0fca1a312",
+			"target_sha256": "6529804c8ff678330cda45b9e7bfae822684806d00aa19b5b5bb0d6297c6d5c4",
+			"context_sha256": "4d60ce00b0a08f78c30aab5e1b40ddba4e086f61e828e3cf23116866b5daebb2",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.common.account",
+			"translated_key_count": 20,
+			"source_path": "src/i18n/catalogues/en/ui.common.account.json",
+			"target_path": "src/i18n/catalogues/hi/ui.common.account.json",
+			"context_path": "src/i18n/catalogues/en/ui.common.account.context.json",
+			"source_sha256": "0e39546d4357107a461f4eb3774c3a17d48a29af902825e86e450809dcf51a48",
+			"target_sha256": "f75cda1b8758d030b788aec3fd6cfff241844d9b27a6af043e79bd39bf993d0b",
+			"context_sha256": "148dcc3c9c40ad03373b54c1394f210386290b9e9395134d12532617d0d33f1a",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.common.actions",
+			"translated_key_count": 14,
+			"source_path": "src/i18n/catalogues/en/ui.common.actions.json",
+			"target_path": "src/i18n/catalogues/hi/ui.common.actions.json",
+			"context_path": "src/i18n/catalogues/en/ui.common.actions.context.json",
+			"source_sha256": "e1d2fa68aededcc4aa67bd9527a80072859f35b8a358cadba2007696414e8235",
+			"target_sha256": "d2d3c897a7fbc5fc7c7bf5f7108020e9b73b9760101706bb26930a84ed748038",
+			"context_sha256": "160a775122143fdf72ed91a052d112f568a41105412e69f8adfdcfcc1b3b7256",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.common.connection",
+			"translated_key_count": 27,
+			"source_path": "src/i18n/catalogues/en/ui.common.connection.json",
+			"target_path": "src/i18n/catalogues/hi/ui.common.connection.json",
+			"context_path": "src/i18n/catalogues/en/ui.common.connection.context.json",
+			"source_sha256": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
+			"target_sha256": "9ee2b150fc735ab6830983422c1ec29b1e21da33ad2ae16a38b3d0a1fc09c085",
+			"context_sha256": "9d39efa215fb38d30e7b70d0df1ed293e32e33a0b72ffc838d7385fb17e7dbb2",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.common.errors",
+			"translated_key_count": 131,
+			"source_path": "src/i18n/catalogues/en/ui.common.errors.json",
+			"target_path": "src/i18n/catalogues/hi/ui.common.errors.json",
+			"context_path": "src/i18n/catalogues/en/ui.common.errors.context.json",
+			"source_sha256": "59dc7dfdbc3db2070238d457e7700d57941830a223181ea1eb4fabe9d5d7eae4",
+			"target_sha256": "2afadf9f36aff0dd6b5470004360e6c576a7b04bef6a66886f9c8bd69bb05f78",
+			"context_sha256": "714850a99bf61133a2fb7548504dc0030a20a516bd1ca3b1dfbe70b2de5f7fb1",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.common.speech",
+			"translated_key_count": 11,
+			"source_path": "src/i18n/catalogues/en/ui.common.speech.json",
+			"target_path": "src/i18n/catalogues/hi/ui.common.speech.json",
+			"context_path": "src/i18n/catalogues/en/ui.common.speech.context.json",
+			"source_sha256": "75e394ea07a049d8a58a2cc12fedec1042e30b61e572f53740f0fac35a825eb0",
+			"target_sha256": "19b241bc82faa489e707942499c68cad9afd0d4a7b34ef02cf1bae0438aa47b3",
+			"context_sha256": "284ead771845e6a6b4ef5c45ddc450e44f0df76873e63b4cc794fba84475522b",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.common.time",
+			"translated_key_count": 1,
+			"source_path": "src/i18n/catalogues/en/ui.common.time.json",
+			"target_path": "src/i18n/catalogues/hi/ui.common.time.json",
+			"context_path": "src/i18n/catalogues/en/ui.common.time.context.json",
+			"source_sha256": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
+			"target_sha256": "3926070cac4463c4bc5a16aa11cc4e8f9594951a92752241cbda41f82bf1ab7f",
+			"context_sha256": "9d666403cd1c661075607faa0a7db78b43bdd570f3d2ce1c7f5968e26f28a6a1",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.common.updates",
+			"translated_key_count": 11,
+			"source_path": "src/i18n/catalogues/en/ui.common.updates.json",
+			"target_path": "src/i18n/catalogues/hi/ui.common.updates.json",
+			"context_path": "src/i18n/catalogues/en/ui.common.updates.context.json",
+			"source_sha256": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
+			"target_sha256": "095fd2a2d945b86fa70519840079bca361b236a371af8d0a935f9376df3e011e",
+			"context_sha256": "5188c08320cea150fd71c3a26666ca6b0b637a94659bc6087155681b59d9614f",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.common.viewer",
+			"translated_key_count": 1,
+			"source_path": "src/i18n/catalogues/en/ui.common.viewer.json",
+			"target_path": "src/i18n/catalogues/hi/ui.common.viewer.json",
+			"context_path": "src/i18n/catalogues/en/ui.common.viewer.context.json",
+			"source_sha256": "9db8efc731cb81ac781c732a3021587434acd26bd03d41ec41156c5672edabfe",
+			"target_sha256": "270f0afe719dc9037e3a766f65391e04a4607c2986e6e5e972122312b953e8f2",
+			"context_sha256": "77232304d3ddc3dbe20151daddc2ee1a3c28271cdcfd7ebc54a302fe6f68f40e",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.console.errors",
+			"translated_key_count": 1,
+			"source_path": "src/i18n/catalogues/en/ui.console.errors.json",
+			"target_path": "src/i18n/catalogues/hi/ui.console.errors.json",
+			"context_path": "src/i18n/catalogues/en/ui.console.errors.context.json",
+			"source_sha256": "ef6827986b0cd0d75cb4e2aea62aa0b017b58191b5736f7a721c6afa938f344b",
+			"target_sha256": "6190edc32c336ff2bb80c7be02363e70394058bed707ab6e9e59fbd681f630e7",
+			"context_sha256": "7a4e2ef6e8a081c78dab8ac422a3c82fbe268d8f1f68ca885e5f4eb9f7bed0d3",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.hub.updates",
+			"translated_key_count": 56,
+			"source_path": "src/i18n/catalogues/en/ui.hub.updates.json",
+			"target_path": "src/i18n/catalogues/hi/ui.hub.updates.json",
+			"context_path": "src/i18n/catalogues/en/ui.hub.updates.context.json",
+			"source_sha256": "9fa15153d1a036a7f98b1d50da90d736c7f423c2981087ae1436469d23afcfdd",
+			"target_sha256": "8c1c32f08f5a660e5b2f2fcc57da2859ffc25f48de323f97f8367500d1fae32d",
+			"context_sha256": "d30a14eb3c3bad0bd2bde7eb1a26fd5fff5aa16ff38dfdd623ed05db4db76390",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.installer",
+			"translated_key_count": 4,
+			"source_path": "src/i18n/catalogues/en/ui.installer.json",
+			"target_path": "src/i18n/catalogues/hi/ui.installer.json",
+			"context_path": "src/i18n/catalogues/en/ui.installer.context.json",
+			"source_sha256": "89b4c22ea75c9c7fb1db96e226c1eed958643d3e08eb4a0317b2e4369fd4e8e9",
+			"target_sha256": "83ef5b6348da275e5f60607a402e659cf8847d5f9df1675c86ada7efb1e382dc",
+			"context_sha256": "6969a13f454799d950a961da740d6585545525f0a148dade5c85e1ae81232705",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.library.errors",
+			"translated_key_count": 3,
+			"source_path": "src/i18n/catalogues/en/ui.library.errors.json",
+			"target_path": "src/i18n/catalogues/hi/ui.library.errors.json",
+			"context_path": "src/i18n/catalogues/en/ui.library.errors.context.json",
+			"source_sha256": "162f2d82448d8a77cd96d4b142018cf233dd1ebfabe37ba7ce47d4fc52195bc4",
+			"target_sha256": "d7dc544c4b697b509e14a0efaf4e1d2eda55d6183dc713dc76ddce016e4d4719",
+			"context_sha256": "cc8e737dc8b52dbe3cc5193a9fc33f5acdb6332420c95e3fad5e1567946b247a",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.mesh.errors",
+			"translated_key_count": 1,
+			"source_path": "src/i18n/catalogues/en/ui.mesh.errors.json",
+			"target_path": "src/i18n/catalogues/hi/ui.mesh.errors.json",
+			"context_path": "src/i18n/catalogues/en/ui.mesh.errors.context.json",
+			"source_sha256": "285997c116c83dd475ace036931ca2a49108dba4237300be3389bcc513ff2a40",
+			"target_sha256": "37396ae0b70b94fd4da73a7f50b77b1e66670f5d29caf6f23ed863728967670c",
+			"context_sha256": "d33ebdde6b2958258ed1e52f9aa44070c9987fe8e40287e6966ff4cfa9021299",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.miniView",
+			"translated_key_count": 34,
+			"source_path": "src/i18n/catalogues/en/ui.miniView.json",
+			"target_path": "src/i18n/catalogues/hi/ui.miniView.json",
+			"context_path": "src/i18n/catalogues/en/ui.miniView.context.json",
+			"source_sha256": "50202e2b2c757708215867b51811ca4c72dd1814c747960a98a4f1929925119e",
+			"target_sha256": "b94d2e6e39848241ad87979eb35c5d670d51ba766449749b07f85310960e9a70",
+			"context_sha256": "22c12b345086a5ae0f1efacf3e9256f2890d8621912f8b0c642554a50f838f07",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.projects",
+			"translated_key_count": 3,
+			"source_path": "src/i18n/catalogues/en/ui.projects.json",
+			"target_path": "src/i18n/catalogues/hi/ui.projects.json",
+			"context_path": "src/i18n/catalogues/en/ui.projects.context.json",
+			"source_sha256": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
+			"target_sha256": "92d40fafa54263c14e7ae7ae5729c2fb4be6d68a7275ca450d5d42c6df9ff462",
+			"context_sha256": "7eaaba481914ce8fc0692c6eaee39ad04e80d9cddc82f0c83a00bebc96af28d4",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.schedules.errors",
+			"translated_key_count": 3,
+			"source_path": "src/i18n/catalogues/en/ui.schedules.errors.json",
+			"target_path": "src/i18n/catalogues/hi/ui.schedules.errors.json",
+			"context_path": "src/i18n/catalogues/en/ui.schedules.errors.context.json",
+			"source_sha256": "05e2bc81700cb5ef326144dcf2ded7fee9b351b02e56226cfc800a9bdcf07961",
+			"target_sha256": "15e8beb161eb505125f7e4533d2282676d20ede56a9f58a883f2e82dc21b6f1c",
+			"context_sha256": "e622fe4a49850f864e15cda2fe0d6d724f8ec8e0769f1efb07adf243a51db69b",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.settings",
+			"translated_key_count": 6,
+			"source_path": "src/i18n/catalogues/en/ui.settings.json",
+			"target_path": "src/i18n/catalogues/hi/ui.settings.json",
+			"context_path": "src/i18n/catalogues/en/ui.settings.context.json",
+			"source_sha256": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
+			"target_sha256": "bcf2e5671eef2afcb1ecab6c16062f56ad5802dd4c52cadd4eb83870c8620ab9",
+			"context_sha256": "bc524adfbef11d7aa28b074b5884076ab388526f44a344feaf53cabb51bb9692",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.settings.appearance",
+			"translated_key_count": 59,
+			"source_path": "src/i18n/catalogues/en/ui.settings.appearance.json",
+			"target_path": "src/i18n/catalogues/hi/ui.settings.appearance.json",
+			"context_path": "src/i18n/catalogues/en/ui.settings.appearance.context.json",
+			"source_sha256": "be349b938ef72437bfb68cdcbd6c168247edff20f5efe6b50abe981183769729",
+			"target_sha256": "ecd29d0065d20d305fa8935c61e36a89a96ef35e31854013b3badfb9aacedb5e",
+			"context_sha256": "c18933608a9e715e4d7ea6fafd6096c154991e8829f79a2653a3726802cc7f3f",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		},
+		{
+			"locale": "hi",
+			"namespace": "ui.settings.shortcuts",
+			"translated_key_count": 54,
+			"source_path": "src/i18n/catalogues/en/ui.settings.shortcuts.json",
+			"target_path": "src/i18n/catalogues/hi/ui.settings.shortcuts.json",
+			"context_path": "src/i18n/catalogues/en/ui.settings.shortcuts.context.json",
+			"source_sha256": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
+			"target_sha256": "d4e247ece7519ddf1efe611ff97bbd0de376be73de22256040f35810d3549112",
+			"context_sha256": "9c74fb267e6504114980b62f75efa1b02c79d76dbe1a20f1e476b56d9865c215",
+			"translator": {
+				"agent": "translator",
+				"profile": "i18n-translator",
+				"instance": "i18n-surfaces-hi",
+				"session": "37f772843d10",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro",
+				"model_provenance": "Actual served model reported by this session runtime; no fallback used.",
+				"date": "2026-10-24"
+			},
+			"status": "translated"
+		}
+	],
+	"remediation": {
+		"round": 1,
+		"kind": "ONE unified remediation addressing both independent round-1 audits in a single change set; no self-audit, ledger, allowance or baseline edit.",
+		"base_head": "93679684ea1088cffb1e6ff9c8d8c0a8506d6ffb",
+		"audits": [
+			{
+				"label": "independent audit 1",
+				"path": "/Users/damian/.local-operator/sessions/245b92d6c9e5/scratchpad/i18n-receipt-hi-surfaces-r1.json",
+				"sha256": "331ba67e639bca6c529a66217696eecec794d62ffedb48280a9ad67a93503032",
+				"audited_head": "93679684ea1088cffb1e6ff9c8d8c0a8506d6ffb",
+				"model": "radient/auto"
+			},
+			{
+				"label": "independent audit 2",
+				"path": "/Users/damian/.local-operator/sessions/3b8b43f55056/scratchpad/i18n-hi-surfaces-471-independent-audit-2-3b8b43f55056.json",
+				"sha256": "846aa74d055a49f26c62f2c576c2a323273a708b30f639a4e7de17013dd82727",
+				"audited_head": "93679684ea1088cffb1e6ff9c8d8c0a8506d6ffb",
+				"model": "openrouter/moonshotai/kimi-k3.1-pro; radient/auto"
+			}
+		],
+		"changed_namespaces": [
+			"ui.chat.composer",
+			"ui.common.actions",
+			"ui.common.connection",
+			"ui.common.errors",
+			"ui.common.viewer",
+			"ui.miniView",
+			"ui.mesh.errors",
+			"ui.settings.appearance",
+			"ui.settings.shortcuts"
+		],
+		"changed_value_count": 29,
+		"applied": [
+			{
+				"ids": [
+					"A2 HI-M1",
+					"A1 NL-03"
+				],
+				"severity": "major",
+				"keys": [
+					"ui.common.errors.wake_needs_conversation"
+				],
+				"change": "शेड्यूल किए कार्य → शेड्यूल किए गए कार्य",
+				"reason": "Missing perfective auxiliary; ungrammatical in a user-facing error."
+			},
+			{
+				"ids": [
+					"A2 HI-M2",
+					"A1 NL-02"
+				],
+				"severity": "major",
+				"keys": [
+					"ui.common.errors.speech_radient_sign_in",
+					"ui.common.errors.speech_radient_sign_in_legacy"
+				],
+				"change": "बंद कर गया है → बंद कर दिया है",
+				"reason": "Invalid compound perfect; transitive completion needs कर दिया."
+			},
+			{
+				"ids": [
+					"A2 HI-M3",
+					"A1 OBS-03"
+				],
+				"severity": "major",
+				"keys": [
+					"ui.common.errors.teams_unsupported"
+				],
+				"change": "टीमें नहीं खींच सकता → टीमें pull नहीं कर सकता",
+				"reason": "Glossary keeps pull Latin for hub/pull operations; locale already uses \"अभी pull करें\"."
+			},
+			{
+				"ids": [
+					"A2 HI-M4"
+				],
+				"severity": "major",
+				"keys": [
+					"ui.settings.shortcuts.reserved.chat_move_up",
+					"ui.settings.shortcuts.reserved.chat_move_down"
+				],
+				"change": "पिन किए क्रम → पिन किए गए क्रम",
+				"reason": "Same missing perfective auxiliary in Settings shortcut descriptions."
+			},
+			{
+				"ids": [
+					"A2 HI-M5",
+					"A1 OBS-06"
+				],
+				"severity": "major",
+				"keys": [
+					"ui.common.viewer.image_progress"
+				],
+				"change": "छवि {index} / {count} → कुल {count} में से छवि {index}",
+				"reason": "aria-live announcement; a screen reader voices \"/\" as slash, losing the \"of\" relation."
+			},
+			{
+				"ids": [
+					"A2 HI-m3",
+					"A1 OBS-02"
+				],
+				"severity": "minor",
+				"keys": [
+					"ui.common.connection.backend.compatibility_missing"
+				],
+				"change": "उन सरफ़ेस को → उन सरफ़ेसों को",
+				"reason": "Oblique plural required after उन."
+			},
+			{
+				"ids": [
+					"A2 HI-m1",
+					"A2 HI-m2"
+				],
+				"severity": "minor",
+				"keys": [
+					"ui.common.errors.agent_import",
+					"ui.common.errors.agent_import_unknown",
+					"ui.common.actions.agent_imported"
+				],
+				"change": "इंपोर्ट → इम्पोर्ट",
+				"reason": "Established UI spelling (ui.agents.dialogs.import.*, ui.agents.navigation.sidebar.import_hint)."
+			},
+			{
+				"ids": [
+					"A2 HI-m4"
+				],
+				"severity": "minor",
+				"keys": [
+					"ui.settings.appearance.theme.catppuccin_frappe",
+					"ui.settings.appearance.theme.catppuccin_latte",
+					"ui.settings.appearance.theme.catppuccin_macchiato",
+					"ui.settings.appearance.theme.catppuccin_mocha"
+				],
+				"change": "स्वाद → फ़्लेवर",
+				"reason": "Catppuccin variant vocabulary, not taste; four keys moved together."
+			},
+			{
+				"ids": [
+					"A2 HI-m5"
+				],
+				"severity": "minor",
+				"keys": [
+					"ui.settings.appearance.theme.alucard",
+					"ui.settings.appearance.theme.github_light"
+				],
+				"change": "दिन भर का → दिन की रोशनी / दिन का",
+				"reason": "\"दिन भर का\" means all day long; four sibling tooltips already use दिन की रोशनी."
+			},
+			{
+				"ids": [
+					"A1 NL-01"
+				],
+				"severity": "minor",
+				"keys": [
+					"ui.miniView.seat_label"
+				],
+				"change": "को: {name} → प्रति: {name}",
+				"reason": "Hindi postpositions follow the governed noun; locale already uses प्रति: in ui.teamBridge.compose.to."
+			},
+			{
+				"ids": [
+					"A1 NL-04"
+				],
+				"severity": "minor",
+				"keys": [
+					"ui.chat.composer.placeholder.unavailable"
+				],
+				"change": "अब नहीं है → अब मौजूद नहीं है",
+				"reason": "Completes the predicate; matches send_failure.gone."
+			},
+			{
+				"ids": [
+					"A1 NL-05"
+				],
+				"severity": "minor",
+				"keys": [
+					"ui.mesh.errors.move_refused"
+				],
+				"change": "खिसकाने से इनकार किया गया → ले जाना अस्वीकार किया गया",
+				"reason": "ui.mesh uses ले जाना for moves; खिसकाना is the projects-board verb."
+			},
+			{
+				"ids": [
+					"A1 NL-07"
+				],
+				"severity": "nit",
+				"keys": [
+					"ui.common.actions.credential_updated"
+				],
+				"change": "straight quotes → “{key}”",
+				"reason": "Style guide fixes curly double quotes; placeholder byte-identical."
+			},
+			{
+				"ids": [
+					"A1 NL-09"
+				],
+				"severity": "nit",
+				"keys": [
+					"ui.common.errors.chats_refresh"
+				],
+				"change": "फिर कोशिश करके कनेक्ट करें → दोबारा कनेक्ट करने के लिए फिर कोशिश करें",
+				"reason": "Keeps the source's single retry action."
+			},
+			{
+				"ids": [
+					"A1 NL-06",
+					"A2 HI-n3"
+				],
+				"severity": "nit",
+				"keys": [
+					"ui.settings.appearance.theme.rose_pine",
+					"ui.settings.appearance.theme.vaporwave",
+					"ui.settings.appearance.theme.linen"
+				],
+				"change": "धूल-गुलाबी / धूल भरे / धूल-से → धुँधला / धुँधले",
+				"reason": "One rendering of \"dusty\" across the namespace; adopted the second audit's form over the first's धूल भरे (semantic fit for dusty rose/pastels)."
+			},
+			{
+				"ids": [
+					"A1 NL-08",
+					"A2 HI-n4"
+				],
+				"severity": "nit",
+				"keys": [
+					"ui.settings.appearance.theme.high_contrast_light"
+				],
+				"change": "काफी → काफ़ी",
+				"reason": "Consistent nukta per locale guide."
+			},
+			{
+				"ids": [
+					"A2 HI-n2"
+				],
+				"severity": "nit",
+				"keys": [
+					"ui.settings.appearance.theme.arcade"
+				],
+				"change": "CRT गिलास → CRT काँच",
+				"reason": "गिलास is a drinking glass; screen glass is काँच."
+			},
+			{
+				"ids": [
+					"A1 NL-10"
+				],
+				"severity": "nit",
+				"keys": [
+					"ui.settings.appearance.theme.tokyo_night_day"
+				],
+				"change": "उसी नीयॉन रंगों → उन्हीं नीयॉन रंगों",
+				"reason": "Plural agreement, matching sibling Catppuccin copy."
+			},
+			{
+				"ids": [
+					"A2 HI-n1"
+				],
+				"severity": "nit",
+				"keys": [
+					"ui.settings.shortcuts.capture.unbindable"
+				],
+				"change": "बाइंड नहीं हो सकती → असाइन नहीं की जा सकती",
+				"reason": "Removes developer jargon from a Settings message."
+			}
+		],
+		"journal": {
+			"before_values": "git show 93679684ea1088cffb1e6ff9c8d8c0a8506d6ffb:src/i18n/catalogues/hi/<namespace>.json",
+			"verification": "git diff versus base_head: 29 values modified, 0 keys added, 0 removed, 0 key-order changes; all other 442 assigned values byte-identical."
+		},
+		"conflicts_resolved": [
+			{
+				"topic": "\"dusty\" standardisation",
+				"audit_1": "धूल भरे",
+				"audit_2": "धुँधला / धुँधले",
+				"decision": "Adopted the second audit's धुँधला/धुँधले: \"dusty rose\" and dusty pastels denote muted colour, not dust; both audits agreed the namespace must use one form."
+			}
+		],
+		"not_applied": [
+			{
+				"id": "A1 OBS-01",
+				"key": "ui.miniView.control_unavailable",
+				"reason": "Observation only; क्विक सेंड is the recorded feature-name choice for this namespace."
+			},
+			{
+				"id": "A1 OBS-04",
+				"key": "ui.common.errors.providers_list",
+				"reason": "Observation, not a finding; the audited value is understandable and no replacement was required by the instruction. Left to avoid unreviewed churn."
+			},
+			{
+				"id": "A1 OBS-05",
+				"key": "ui.common.updates.install.staging",
+				"reason": "Conditional on a rendered reading; no render performed in this lane."
+			},
+			{
+				"id": "A1 OBS-07",
+				"key": "ui.hub.updates.action.retry",
+				"reason": "Width observation in a wrapping tooltip; requires rendered evidence, not a source edit."
+			},
+			{
+				"id": "A1 OBS-08",
+				"key": "ui.settings.shortcuts.reserved.undo / redo",
+				"reason": "Compact-row width observation; rendered check not available in this lane."
+			},
+			{
+				"id": "A1 OBS-09",
+				"key": "ui.common.time.yesterday_at",
+				"reason": "Auditor explicitly requested no change."
+			}
+		],
+		"out_of_scope_extraction_gap": {
+			"file": "src/renderer/src/shared/components/common/image-lightbox.tsx",
+			"line": 429,
+			"code": "`Asset ${index + 1} of ${count}`",
+			"detail": "When mediaLabel === \"asset\" the aria-live/position label bypasses t() and groupPositionLabel, so it stays English for every locale; the grouped branch at line 430 resolves ui.common.viewer.image_progress. This is an extraction gap in application code, outside a translation-only lane, and was not changed.",
+			"related_keys": [
+				"ui.common.viewer.image_progress"
+			]
+		},
+		"date": "2026-10-24",
+		"translator_identity": {
+			"agent": "translator (profile i18n-translator)",
+			"instance": "i18n-surfaces-hi",
+			"session": "37f772843d10",
+			"translation_run_model": "openrouter/moonshotai/kimi-k3.1-pro",
+			"remediation_run_model": "radient/auto",
+			"model_provenance": "The 471-key translation ran on openrouter/moonshotai/kimi-k3.1-pro. The harness switched this session to radient/auto before the audit-remediation turn; this remediation and its checks ran on radient/auto. The routed provider model is not exposed to the session and is not invented; no provider fallback occurred."
+		}
+	},
+	"remediation_checks": [
+		{
+			"command": "node scripts/i18n/generate.mjs --check",
+			"result": "PASS — src/i18n/keys.gen.ts byte-identical to a fresh generation."
+		},
+		{
+			"command": "node scripts/i18n/context-parity.mjs",
+			"result": "PASS — existing 131 allowed gaps in 4 namespaces only."
+		},
+		{
+			"command": "node scripts/run-desktop-tests.mjs scripts/i18n/locale-parity.test.mjs scripts/i18n/runtime.test.mjs scripts/i18n/hi-activation.test.mjs scripts/i18n/common-status-copy.test.mjs scripts/i18n/common-control-copy.test.mjs scripts/i18n/surface-copy-reactivity.test.mjs scripts/i18n/typed-keys.test.mjs",
+			"result": "78 PASS / 7 FAIL of 85. Hindi passes key ownership, ICU placeholders and non-stub; the only [hi] failure is the expected 52-key legacy completeness gap (canonical 30, account 18, viewer 4). The other six failures are the same completeness assertion in locales outside this lane."
+		},
+		{
+			"command": "node $LOCAL_OPERATOR_SCRATCHPAD/hi-pseudo-check.cjs",
+			"result": "PASS — 471 actual + 495 pseudo renders through the real runtime; 8 plural messages at hi CLDR 0/1/2/1234."
+		},
+		{
+			"command": "changed-key ICU comparison (real @formatjs parser)",
+			"result": "PASS — 29/29 changed keys preserve English argument sets and ::group-off skeletons."
+		}
+	]
+}
