@@ -43,6 +43,7 @@ import {
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const LETTER_RE = /\p{L}/u;
+const CATALOGUE_KEY_RE = /^ui(?:\.[a-z0-9_]+)+$/;
 const HUNK_RE = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
 const TEST_DIRECTORY_RE = /(?:^|\/)(?:__tests__|tests?)\//;
 const TEST_FILE_RE = /\.(?:test|spec)\.[^.]+$/;
@@ -167,6 +168,10 @@ export function findAddedCopyViolations(sourceFile, addedLines) {
 	const take = (node, kind) => {
 		for (const literal of staticTextNodes(node)) {
 			const text = collapse(literal.text);
+			/* Key tables defer t() until presentation so locale switches cannot leave
+			 * stale copy behind. Only property sinks may hold those keys; a raw key in
+			 * JSX or an attribute is still user-visible and must remain a finding. */
+			if (kind.startsWith("property:") && CATALOGUE_KEY_RE.test(text)) continue;
 			const line =
 				sourceFile.getLineAndCharacterOfPosition(literal.getStart(sourceFile))
 					.line + 1;
