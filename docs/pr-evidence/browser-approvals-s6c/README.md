@@ -1,7 +1,7 @@
 # S6c — enabled-path proof and real-app documents
 
-App head: `7f20a501a3` (built `out/` from this tree). Proof head:
-`b9277670dc` (the proof rig executes the composite attempt; app code unchanged
+App head: `7f20a501a3` (built `out/` from this tree). Proof run head:
+`2bdf94571c` (the proof rig executes the composite attempt; app code unchanged
 since `7f20a5`).
 Command:
 
