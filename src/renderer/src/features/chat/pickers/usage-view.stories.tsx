@@ -309,6 +309,62 @@ export const PercentOnly: Story = {
 	args: { ...base, payload: payload([openai]) },
 };
 
+/**
+ * Kimi on a current plan: a 5-hour window and the MONTHLY pool, no weekly one.
+ *
+ * New Kimi plans expose `5h + monthly`; legacy plans keep the weekly window,
+ * so a frame that always shows three rows is a frame for a plan most accounts
+ * no longer have. The monthly pool is the case this frame exists for: it has
+ * STARTED at 0.06% (`used: 0.06`, no limit, fraction `0.0006`), which
+ * zero-places rounding would print as `0%` — indistinguishable from a window
+ * nothing has been consumed from. The row, and the block heading the row
+ * binding picks, must both say `<1%` instead.
+ */
+export const KimiMonthly: Story = {
+	args: {
+		...base,
+		payload: payload([
+			report({
+				provider: "kimi",
+				identity: null,
+				fetched_at: NOW,
+				age_ms: 0,
+				state: "available",
+				limits: [
+					limit({
+						id: "kimi:0",
+						label: "5h limit",
+						window: "5h limit",
+						amount: amount({
+							used: 1,
+							limit: 100,
+							remaining: 99,
+							used_fraction: 0.01,
+							unit: "unknown",
+						}),
+						resets_at_ms: NOW + 4 * HOUR + 16 * MINUTE,
+						shared: true,
+					}),
+					limit({
+						id: "kimi:monthly-total",
+						label: "Monthly total",
+						window: "monthly",
+						amount: amount({
+							used: 0.06,
+							limit: null,
+							remaining: 99.94,
+							used_fraction: 0.0006,
+							unit: "percent",
+						}),
+						resets_at_ms: NOW + 31 * DAY + 5 * HOUR,
+						shared: true,
+					}),
+				],
+			}),
+		]),
+	},
+};
+
 /** A remaining-only balance: a number, no fill, and the words "not reported". */
 export const RemainingBalance: Story = {
 	args: { ...base, payload: payload([deepseek]) },
