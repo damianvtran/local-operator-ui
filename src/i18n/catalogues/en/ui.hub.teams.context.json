@@ -89,6 +89,18 @@
 		},
 		"note": "Preserve ICU select arms and machine selector values; translate rendered nouns only."
 	},
+	"ui.hub.teams.member_with_kind": {
+		"role": "Roster member and kind in Agent Hub public and organization teams",
+		"tone": "Concise, plain product language",
+		"length_hint": "One wrapped line",
+		"placeholders": {
+			"name": "Localized role and optional count; preserve verbatim",
+			"kind": "ICU selector: agent, team, or stored fallback",
+			"agent": "Rendered agent noun",
+			"team": "Rendered team noun"
+		},
+		"note": "Preserve ICU select arms and machine selector values; translate rendered nouns only."
+	},
 	"ui.hub.teams.members": {
 		"role": "Field, filter, section, or status copy in Agent Hub public and organization teams",
 		"tone": "Concise, plain product language",
@@ -167,9 +179,12 @@
 		"length_hint": "Short label"
 	},
 	"ui.hub.teams.published_by": {
-		"role": "Action or accessible label in Agent Hub public and organization teams",
+		"role": "Team provenance in Agent Hub public and organization teams",
 		"tone": "Concise, plain product language",
-		"length_hint": "Short label"
+		"length_hint": "Short label",
+		"placeholders": {
+			"author": "Publisher display name; preserve verbatim"
+		}
 	},
 	"ui.hub.teams.pull": {
 		"role": "Action or accessible label in Agent Hub public and organization teams",

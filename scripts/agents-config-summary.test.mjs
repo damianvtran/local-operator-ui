@@ -30,10 +30,16 @@ const bundle = await build({
 	write: false,
 	tsconfig: "tsconfig.web.json",
 });
-const { diffCatalogue, projectRunToolRow, RUN_TOOL_NAMES, snapshotCatalogue } =
-	await import(
-		`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
-	);
+const {
+	diffCatalogue,
+	formatRunChange,
+	formatRunToolVerb,
+	projectRunToolRow,
+	RUN_TOOL_NAMES,
+	snapshotCatalogue,
+} = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
+);
 
 const agent = (over = {}) => ({
 	name: "reviewer",
@@ -57,6 +63,10 @@ const team = (over = {}) => ({
 
 const names = (results) =>
 	results.map((result) => `${result.target.kind}:${result.target.name}`);
+const changeLabels = (result) =>
+	result.changes.map((change) =>
+		formatRunChange(change.field, change.before, change.after),
+	);
 
 test("a name that appeared is a create, and a name that moved is an update", () => {
 	const before = snapshotCatalogue([agent()], []);
@@ -73,10 +83,7 @@ test("a name that appeared is a create, and a name that moved is an update", () 
 	]);
 	assert.deepEqual(names(results), ["agent:reviewer", "agent:frame-probe"]);
 	assert.equal(results[0].created, false);
-	assert.deepEqual(
-		results[0].changes.map((change) => change.label),
-		["description changed"],
-	);
+	assert.deepEqual(changeLabels(results[0]), ["description changed"]);
 	assert.equal(results[1].created, true);
 });
 
@@ -109,7 +116,7 @@ test("a definition the run only read never reaches the summary", () => {
 		ts: 1,
 	});
 	assert.equal(read.writes, false);
-	assert.equal(read.verb, "Reading reviewer");
+	assert.equal(formatRunToolVerb(read.verb), "Reading reviewer");
 	for (const op of ["list", "search", "show"]) {
 		assert.equal(
 			projectRunToolRow({
@@ -190,7 +197,10 @@ test("a write that failed, was skipped, or never ran is not a change", () => {
 	}
 	// The step line is still painted for a failed call: the Watch list is where
 	// "it tried and was refused" belongs, and it is not the summary's business.
-	assert.equal(write({ isError: true }).verb, "Creating agent reviewer");
+	assert.equal(
+		formatRunToolVerb(write({ isError: true }).verb),
+		"Creating agent reviewer",
+	);
 });
 
 test("a touched definition whose list fields did not move is an update with nothing visible", () => {
@@ -225,13 +235,13 @@ test("tools, delegation, effort and a team's manager and members are said in wor
 		{ kind: "agent", name: "reviewer" },
 		{ kind: "team", name: "release-crew" },
 	]);
-	const agentLabels = results[0].changes.map((change) => change.label);
+	const agentLabels = changeLabels(results[0]);
 	assert.deepEqual(agentLabels, [
 		"tools widened to every tool",
 		"effort tier changed",
 		"delegation turned on",
 	]);
-	const teamLabels = results[1].changes.map((change) => change.label);
+	const teamLabels = changeLabels(results[1]);
 	assert.deepEqual(teamLabels, ["manager changed", "members changed (1 to 1)"]);
 });
 
@@ -262,10 +272,7 @@ test("a class change is reported, and its direction is said out loud", () => {
 	const [result] = diffCatalogue(before, after, [
 		{ kind: "agent", name: "reviewer" },
 	]);
-	assert.deepEqual(
-		result.changes.map((change) => change.label),
-		["class changed to proactive"],
-	);
+	assert.deepEqual(changeLabels(result), ["class changed to proactive"]);
 	/*
 	 * And the absent spelling is `reactive`, so a payload that simply omits the
 	 * field is not a change away from a stored `reactive` — the same collapse the
@@ -288,8 +295,7 @@ test("a class change is reported, and its direction is said out loud", () => {
 		snapshotCatalogue([agent()], []),
 		[{ kind: "agent", name: "reviewer" }],
 	);
-	assert.deepEqual(
-		back.changes.map((change) => change.label),
-		["class changed to reactive — proactive messaging stopped"],
-	);
+	assert.deepEqual(changeLabels(back), [
+		"class changed to reactive — proactive messaging stopped",
+	]);
 });

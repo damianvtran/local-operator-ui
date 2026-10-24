@@ -160,8 +160,12 @@
 		"tone": "Concise, plain product language",
 		"length_hint": "Short label",
 		"placeholders": {
-			"name": "Definition name; preserve verbatim"
-		}
+			"name": "Definition name; preserve verbatim",
+			"kind": "ICU selector: agent, team, or stored fallback",
+			"agent": "Rendered agent noun",
+			"team": "Rendered team noun"
+		},
+		"note": "Preserve ICU select arms and machine selector values; translate rendered nouns only."
 	},
 	"ui.agents.config.result_kind": {
 		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
@@ -179,8 +183,12 @@
 		"tone": "Concise, plain product language",
 		"length_hint": "Short label",
 		"placeholders": {
-			"name": "Definition name; preserve verbatim"
-		}
+			"name": "Definition name; preserve verbatim",
+			"kind": "ICU selector: agent, team, or stored fallback",
+			"agent": "Rendered agent noun",
+			"team": "Rendered team noun"
+		},
+		"note": "Preserve ICU select arms and machine selector values; translate rendered nouns only."
 	},
 	"ui.agents.config.results_read_failed": {
 		"role": "Validation or failure feedback in configuration summaries and run status",
@@ -535,6 +543,9 @@
 	"ui.agents.config.you_asked": {
 		"role": "Field, section, state, or status copy in the agent and team configuration composer",
 		"tone": "Concise, plain product language",
-		"length_hint": "Short label"
+		"length_hint": "One wrapped line",
+		"placeholders": {
+			"topic": "The operator's original request; preserve verbatim"
+		}
 	}
 }

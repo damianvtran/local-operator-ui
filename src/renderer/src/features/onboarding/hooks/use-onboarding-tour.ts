@@ -48,7 +48,9 @@ const pressTourAction = (action: string): void => {
 		?.click();
 };
 
-const tourSteps: StepOptions[] = [
+// Build at tour start: module-scope messages freeze the bootstrap locale and a
+// live language switch would otherwise leave Shepherd holding the old catalogue.
+export const createTourSteps = (): StepOptions[] => [
 	{
 		id: "welcome",
 		title: t("ui.onboarding.tour.welcome.title"),
@@ -1410,6 +1412,7 @@ export const useOnboardingTour = () => {
 		tourInstance.off("cancel", completeTourOnboarding); // Remove first
 		tourInstance.on("cancel", completeTourOnboarding);
 
+		const tourSteps = createTourSteps();
 		// Manage steps:
 		// If forcing (e.g., "Resume Tour" button) or if the tour isn't active (fresh start),
 		// clear existing steps and add the current `tourSteps`.

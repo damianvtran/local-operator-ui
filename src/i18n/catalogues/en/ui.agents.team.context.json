@@ -130,6 +130,15 @@
 		},
 		"note": "Preserve the ICU plural and number formatting; translators add the locale CLDR categories required by the glossary."
 	},
+	"ui.agents.team.member_count_with_team": {
+		"role": "Dynamic status or complete sentence in the team detail and creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"count": "Non-negative member count, excluding the team inclusion"
+		},
+		"note": "Preserve the ICU plural and number formatting; Includes a team describes one nested team slot."
+	},
 	"ui.agents.team.member_kind_label": {
 		"role": "Dynamic status or complete sentence in the team detail and creation pane",
 		"tone": "Concise, plain product language",
@@ -212,7 +221,10 @@
 	"ui.agents.team.not_found_prefix": {
 		"role": "Field, section, state, or status copy in the team detail and creation pane",
 		"tone": "Concise, plain product language",
-		"length_hint": "Short label"
+		"length_hint": "Short label",
+		"placeholders": {
+			"role": "Missing manager or member role; preserve verbatim"
+		}
 	},
 	"ui.agents.team.one_fewer": {
 		"role": "Dynamic status or complete sentence in the team detail and creation pane",

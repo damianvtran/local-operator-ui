@@ -84,6 +84,12 @@ const lib = await import(mountPath.href);
 
 const DAY = 86_400_000;
 const NOW = Date.parse("2026-09-30T12:00:00.000Z");
+const expectedDate = (iso) =>
+	new Intl.DateTimeFormat("en", {
+		day: "numeric",
+		month: "short",
+		year: "numeric",
+	}).format(new Date(iso));
 const team = (overrides = {}) => ({
 	id: "t1",
 	tenant_id: "tenant-1",
@@ -158,8 +164,8 @@ test("recency: updated_at only, honest fallbacks, no lies", () => {
 	assert.equal(future.label, "updated");
 	assert.equal(
 		future.when,
-		"2 Oct 2026",
-		"a future stamp is a date, not '-2 days ago'",
+		expectedDate("2026-10-02T09:00:00.000Z"),
+		"a future stamp is a localized date, not '-2 days ago'",
 	);
 	assert.doesNotMatch(future.when, /ago/);
 
@@ -306,8 +312,8 @@ test("exact dates for the expanded body come from the stored fields", () => {
 			updated_at: "2026-09-25T10:00:00.000Z",
 		}),
 	);
-	assert.equal(dates.created, "14 Mar 2026");
-	assert.equal(dates.updated, "25 Sep 2026");
+	assert.equal(dates.created, expectedDate("2026-03-14T10:00:00.000Z"));
+	assert.equal(dates.updated, expectedDate("2026-09-25T10:00:00.000Z"));
 	assert.deepEqual(lib.teamDates(team({ created_date: "", updated_at: "x" })), {
 		created: null,
 		updated: null,
@@ -618,9 +624,11 @@ test("opening a row is client-only, keeps focus on the trigger, and Escape close
 		assert.match(panel.textContent, /screener\s*Role\s*×3/);
 		assert.match(panel.textContent, /analyst\s*Specialist/);
 		assert.doesNotMatch(panel.textContent, /×1/, "a slot of one prints no ×1");
-		assert.match(
-			panel.textContent,
-			/Created \d+ \w+ \d{4} · Updated \d+ \w+ \d{4}/,
+		const datedTeam = team();
+		assert.ok(
+			panel.textContent.includes(
+				`Created ${expectedDate(datedTeam.created_date)} · Updated ${expectedDate(datedTeam.updated_at)}`,
+			),
 		);
 		assert.ok(
 			first.compareDocumentPosition(panel) &
@@ -668,7 +676,7 @@ test("opening a row is client-only, keeps focus on the trigger, and Escape close
 			/No members/,
 			"L3 already says it; the body does not repeat it",
 		);
-		assert.match(thirdPanel.textContent, /Created \d+ \w+ \d{4}/);
+		assert.match(thirdPanel.textContent, /Created \w+ \d{1,2}, \d{4}/);
 
 		/*
 		 * D1: a member name is `ink-muted`, so it does not outshout the description

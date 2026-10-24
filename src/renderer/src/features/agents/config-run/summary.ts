@@ -56,6 +56,49 @@ export type RunToolRow = {
 	neverSent?: boolean;
 };
 
+/** The stable activity descriptor retained from a transcript row. */
+export type RunToolVerb =
+	| {
+			operation: "create" | "update";
+			kind: RunTarget["kind"];
+			name: string | null;
+	  }
+	| { operation: "install"; name: string | null }
+	| { operation: "read"; kind: RunTarget["kind"]; name: string | null }
+	| { operation: "unknown"; kind: RunTarget["kind"]; running: boolean };
+
+/** Format activity at render time, after any live language switch. */
+export function formatRunToolVerb(verb: RunToolVerb): string {
+	switch (verb.operation) {
+		case "create":
+			return verb.name
+				? t("ui.agents.config.summary_creating_named", {
+						kind: verb.kind,
+						name: verb.name,
+					})
+				: t("ui.agents.config.summary_creating_kind", { kind: verb.kind });
+		case "update":
+			return verb.name
+				? t("ui.agents.config.summary_updating_named", {
+						kind: verb.kind,
+						name: verb.name,
+					})
+				: t("ui.agents.config.summary_updating_kind", { kind: verb.kind });
+		case "install":
+			return verb.name
+				? t("ui.agents.config.summary_installing_named", { name: verb.name })
+				: t("ui.agents.config.summary_installing_agent");
+		case "read":
+			return verb.name
+				? t("ui.agents.config.summary_reading_named", { name: verb.name })
+				: t("ui.agents.config.summary_reading_kind", { kind: verb.kind });
+		case "unknown":
+			return verb.running
+				? t("ui.agents.config.summary_working_kind", { kind: verb.kind })
+				: t("ui.agents.config.summary_checked_kind", { kind: verb.kind });
+	}
+}
+
 /**
  * One tool row's own words for what it is doing, when it names a definition.
  *
@@ -83,7 +126,7 @@ export type RunToolRow = {
  * still paints its step line in the Watch list.
  */
 export function projectRunToolRow(row: RunToolRow): {
-	verb: string;
+	verb: RunToolVerb;
 	target: RunTarget | null;
 	/** Whether this call WRITES the registry rather than reading it. */
 	writes: boolean;
@@ -106,25 +149,19 @@ export function projectRunToolRow(row: RunToolRow): {
 	switch (op) {
 		case "create":
 			return {
-				verb: name
-					? t("ui.agents.config.summary_creating_named", { kind, name })
-					: t("ui.agents.config.summary_creating_kind", { kind }),
+				verb: { operation: "create", kind, name },
 				target,
 				...write(true),
 			};
 		case "update":
 			return {
-				verb: name
-					? t("ui.agents.config.summary_updating_named", { kind, name })
-					: t("ui.agents.config.summary_updating_kind", { kind }),
+				verb: { operation: "update", kind, name },
 				target,
 				...write(true),
 			};
 		case "install":
 			return {
-				verb: name
-					? t("ui.agents.config.summary_installing_named", { name })
-					: t("ui.agents.config.summary_installing_agent"),
+				verb: { operation: "install", name },
 				target,
 				...write(true),
 			};
@@ -132,9 +169,7 @@ export function projectRunToolRow(row: RunToolRow): {
 		case "search":
 		case "show":
 			return {
-				verb: name
-					? t("ui.agents.config.summary_reading_named", { name })
-					: t("ui.agents.config.summary_reading_kind", { kind }),
+				verb: { operation: "read", kind, name },
 				target,
 				...write(false),
 			};
@@ -145,10 +180,11 @@ export function projectRunToolRow(row: RunToolRow): {
 			 * the operator will see in the list.
 			 */
 			return {
-				verb:
-					row.phase === "running"
-						? t("ui.agents.config.summary_working_kind", { kind })
-						: t("ui.agents.config.summary_checked_kind", { kind }),
+				verb: {
+					operation: "unknown",
+					kind,
+					running: row.phase === "running",
+				},
 				target,
 				...write(true),
 			};
@@ -265,7 +301,12 @@ function describeTools(before: string, after: string): string {
 	return t("ui.agents.config.summary_tools_changed");
 }
 
-function describeField(field: string, before: string, after: string): string {
+/** Format one retained change in the locale of the settled result's current render. */
+export function formatRunChange(
+	field: string,
+	before: string,
+	after: string,
+): string {
 	if (field === "tools") return describeTools(before, after);
 	if (field === "delegate")
 		return after === "true"
@@ -330,7 +371,7 @@ export function diffCatalogue(
 		for (const field of Object.keys(afterRow)) {
 			if (afterRow[field] === beforeRow[field]) continue;
 			changes.push({
-				label: describeField(field, beforeRow[field], afterRow[field]),
+				field,
 				before: beforeRow[field],
 				after: afterRow[field],
 			});

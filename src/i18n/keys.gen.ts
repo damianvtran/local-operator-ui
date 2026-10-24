@@ -1223,9 +1223,9 @@ export type MessageParams = {
 	"ui.agents.config.no_tool_activity": undefined;
 	"ui.agents.config.request_unsent": undefined;
 	"ui.agents.config.request_unsent_after_create": undefined;
-	"ui.agents.config.result_created": { name: string };
+	"ui.agents.config.result_created": { name: string; kind: string };
 	"ui.agents.config.result_kind": { kind: string };
-	"ui.agents.config.result_updated": { name: string };
+	"ui.agents.config.result_updated": { name: string; kind: string };
 	"ui.agents.config.results_read_failed": undefined;
 	"ui.agents.config.retry": undefined;
 	"ui.agents.config.run_details": undefined;
@@ -1280,7 +1280,7 @@ export type MessageParams = {
 	"ui.agents.config.watch": undefined;
 	"ui.agents.config.working": undefined;
 	"ui.agents.config.working_ellipsis": undefined;
-	"ui.agents.config.you_asked": undefined;
+	"ui.agents.config.you_asked": { topic: string };
 	"ui.agents.detail.add": undefined;
 	"ui.agents.detail.add_tool": undefined;
 	"ui.agents.detail.all_tools": undefined;
@@ -1635,6 +1635,19 @@ export type MessageParams = {
 	"ui.agents.publication.pull_failed": undefined;
 	"ui.agents.publication.review_unavailable": undefined;
 	"ui.agents.publication.review_unavailable_body": undefined;
+	"ui.agents.publication.rule_empty": undefined;
+	"ui.agents.publication.rule_max_characters": { max: number };
+	"ui.agents.publication.rule_name_bidi_override": undefined;
+	"ui.agents.publication.rule_name_control": undefined;
+	"ui.agents.publication.rule_name_edge_punctuation": undefined;
+	"ui.agents.publication.rule_name_format": undefined;
+	"ui.agents.publication.rule_name_separators": undefined;
+	"ui.agents.publication.rule_name_whitespace": undefined;
+	"ui.agents.publication.rule_tool_item_characters": {
+		min: number;
+		max: number;
+	};
+	"ui.agents.publication.rule_tools_max_items": { max: number };
 	"ui.agents.publication.team_missing": undefined;
 	"ui.agents.publication.team_missing_body": undefined;
 	"ui.agents.publication.team_plan_publish_body": undefined;
@@ -1761,6 +1774,7 @@ export type MessageParams = {
 	"ui.agents.team.manager_tooltip": undefined;
 	"ui.agents.team.member": undefined;
 	"ui.agents.team.member_count": { count: number };
+	"ui.agents.team.member_count_with_team": { count: number };
 	"ui.agents.team.member_kind_label": { index: number };
 	"ui.agents.team.member_label": { index: number };
 	"ui.agents.team.members": undefined;
@@ -1775,7 +1789,7 @@ export type MessageParams = {
 	"ui.agents.team.new_team": undefined;
 	"ui.agents.team.no_description": undefined;
 	"ui.agents.team.not_found": undefined;
-	"ui.agents.team.not_found_prefix": undefined;
+	"ui.agents.team.not_found_prefix": { role: string };
 	"ui.agents.team.one_fewer": { name: string };
 	"ui.agents.team.one_more": { name: string };
 	"ui.agents.team.project_brief": undefined;
@@ -1787,7 +1801,7 @@ export type MessageParams = {
 	"ui.agents.team.team": undefined;
 	"ui.agents.team.type": undefined;
 	"ui.agents.team.what_it_is_for": undefined;
-	"ui.agents.upload.agent_label": undefined;
+	"ui.agents.upload.agent_label": { name: string };
 	"ui.agents.upload.cancel": undefined;
 	"ui.agents.upload.cannot_publish": undefined;
 	"ui.agents.upload.checking_name": undefined;
@@ -3391,6 +3405,7 @@ export type MessageParams = {
 	"ui.hub.teams.manager": undefined;
 	"ui.hub.teams.manager_prefix": undefined;
 	"ui.hub.teams.member_kind": { kind: string };
+	"ui.hub.teams.member_with_kind": { name: string; kind: string };
 	"ui.hub.teams.members": undefined;
 	"ui.hub.teams.no_collaboration_brief": undefined;
 	"ui.hub.teams.no_description": undefined;
@@ -3405,7 +3420,7 @@ export type MessageParams = {
 	"ui.hub.teams.public_load_failed": undefined;
 	"ui.hub.teams.public_read_failed_body": undefined;
 	"ui.hub.teams.public_teams": undefined;
-	"ui.hub.teams.published_by": undefined;
+	"ui.hub.teams.published_by": { author: string };
 	"ui.hub.teams.pull": undefined;
 	"ui.hub.teams.pull_failed": undefined;
 	"ui.hub.teams.pull_named": { name: string };
