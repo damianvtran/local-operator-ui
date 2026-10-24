@@ -824,6 +824,34 @@ export type PendingAsk = {
 	 * between a receipt and a promise.
 	 */
 	delivered?: boolean;
+	/**
+	 * How many messages the USER sent in this conversation after this ask was
+	 * queued, and the epoch-ms stamp of the latest one (SA-D7's manager override;
+	 * harness PR #2833).
+	 *
+	 * The pair is the card's honesty about a stale ask: an ask can sit open across
+	 * a conversation that has already moved past it, and a reader deciding whether
+	 * it is still worth answering needs to know the conversation kept going.
+	 *
+	 * ADDITIVE AND OPTIONAL, and absent is "cannot say" rather than zero: an older
+	 * runtime omits both keys, and a card that defaulted them to 0 would claim the
+	 * user had said nothing since the ask when the truth is it never asked. Both
+	 * keys travel together from the queue's projection (`(None, None)` when there
+	 * is no admitted user message to count), so a count without a stamp is a shape
+	 * this client does not render a line for.
+	 */
+	user_messages_since?: number | null;
+	last_user_message_at?: number | null;
+	/**
+	 * WHEN a dismissed ask was put away, and WHY (harness PR-4c, SA-D8). Optional and
+	 * absent on every wire this app could read before that release, INCLUDING the one
+	 * #2833 ships: a dismissal written by an older build carries neither key, and the
+	 * surfaces read absence as the contract's own "no reply was sent" rather than as a
+	 * reason. `dismissed_reason` is the wire's own vocabulary (`moot` |
+	 * `answered_in_chat`), narrowed at the reader (`askDismissReason`).
+	 */
+	dismissed_at?: number | null;
+	dismissed_reason?: string | null;
 	questions: PendingAskQuestion[];
 	/**
 	 * The answers, keyed by question id; each a LIST because a question may be

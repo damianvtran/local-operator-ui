@@ -1,0 +1,169 @@
+{
+ "audit_id": "pr5-20261023-r2",
+ "round": 2,
+ "date": "2026-10-23",
+ "locale": "ur",
+ "namespace": "ui.chat.asks",
+ "source_commit": "7ecde120ded63e6c97e9593daf730513bbeb7e84",
+ "remediation_commit": "4cecb7a2a",
+ "scope": "PR #1363 round-2 re-check of all 10 ui.chat.asks keys for ur at 7ecde120d. Every value was re-read, not only the 1 changed by 4cecb7a2a. Each round-1 finding was verified against the new bytes. ICU, placeholders, CLDR plural arms (rendered at 1, 2, 5 and 1,000,000), NFC and bidi were re-run. The en catalogue is unchanged; the en context changed only in the dismiss.moot.note tone/note fields (other fields reordered, no value changes). No rendered-fit claim.",
+ "status": "passed",
+ "result": "clean",
+ "keys_read": 10,
+ "keys_changed_since_round1": [
+  "ui.chat.asks.dismiss.moot.note"
+ ],
+ "translator": {
+  "note": "Round-2 values were applied by the coder in 4cecb7a2a, taking the round-1 auditor proposals. The ledger assembler supplies the row translator. This auditor did not write the catalogue bytes."
+ },
+ "auditors": [
+  {
+   "agent": "task",
+   "model": "anthropic/claude-opus-5-5",
+   "session": "fb125765ab49",
+   "team": "lopdev",
+   "instance": "pr5-20261023-r2-ur",
+   "date": "2026-10-23",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "receipt": "i18n/receipts/pr5-ur-r2.json",
+   "receipt_sha256": "971deb2b92cc4c35ea2424e3a1cae651d7aebb41418c0e4dc0b703c6121847e3"
+  }
+ ],
+ "model_note": "Served model anthropic/claude-opus-5-5 for the whole round-2 pass. No provider fallback occurred. The session runtime restarted once mid-task (Python kernel reset), but the model did not change.",
+ "independence": "Independent translation audit by the `task` member of team lopdev (session fb125765ab49), delegated by the team manager; the same independent auditor as round 1. This session produced none of the reviewed copy: the round-2 values were applied by the coder in 4cecb7a2a. It did not translate, edit, commit or push any catalogue, context file or ledger row, and wrote only its own receipts and evidence records. No MT, translation API or SDK was used. ICU parsing and plural rendering ran the worktree's existing intl-messageformat as validation, not as translation.",
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.chat.asks.json",
+   "sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/ur/ui.chat.asks.json",
+   "sha256": "7d86acb011841467a079f01851e8bfd70baa3acd857eb971b7ecdad1670fa57f"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.chat.asks.context.json",
+   "sha256": "5e0c467aeb72a886d6f32ef8311b48b4c73b4bc39669b75441e878b98366542c",
+   "previous_sha256": "f5e2f62d5630e4873ee3084265c8e487beac4854a690df4e824ce0a6135747ea",
+   "change": "dismiss.moot.note tone and note now state the agent is the actor; other entries reordered only (field-by-field comparison: no other value changed)."
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "~/workspace/repos/lo-stale-ask-dismiss/i18n/glossary.md",
+   "revision": "9969e2907933b1bf87df6c2502332396f36d36ec",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/workspace/repos/lo-stale-ask-dismiss/i18n/style-guides/ur.md",
+   "revision": "9969e2907933b1bf87df6c2502332396f36d36ec",
+   "sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+  },
+  "contract": {
+   "path": "docs/I18N.md",
+   "ref": "origin/main",
+   "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+  },
+  "cross_surface": {
+   "repo": "~/workspace/repos/lo-stale-ask-surfaces",
+   "commit": "93f798ddb284bca3e342112a7fca76c60729e83a",
+   "catalogues": [],
+   "note": "Unmerged branch at audit time. No ur catalogue exists there; no cross-surface comparison possible."
+  }
+ },
+ "findings": [
+  {
+   "id": "ur-r2-i1",
+   "severity": "INFO",
+   "key": "ui.chat.asks.dismiss.moot.note",
+   "issue": "Round-1 major fixed: the note now names the agent as the one who stops waiting, matching the revised en context tone line and the harness terminal/phone note."
+  },
+  {
+   "id": "ur-r2-i2",
+   "severity": "INFO",
+   "key": "ui.chat.asks.dismiss.moot.note",
+   "issue": "RTL: logical storage order; no manual bidi controls; the Latin-digit time run (e.g. 7:36 PM) stays contiguous inside mirrored parentheses. Not counted."
+  }
+ ],
+ "round1_verification": [
+  {
+   "round1_id": "ur-M1",
+   "round1_severity": "MAJOR",
+   "key": "ui.chat.asks.dismiss.moot.note",
+   "disposition": "fixed as proposed",
+   "head_value": "ایجنٹ اب جواب کا انتظار نہیں کرے گا"
+  }
+ ],
+ "validation": {
+  "icu_errors": [],
+  "plural_arms": [
+   "one",
+   "other"
+  ],
+  "cldr_categories": [
+   "one",
+   "other"
+  ],
+  "arms_match_cldr": true,
+  "placeholders_match_en": true,
+  "key_parity": "10/10",
+  "nfc": true,
+  "bidi_controls": 0,
+  "plural_samples": {
+   "1": "اس سوال کے بعد سے آپ کا 1 پیغام (آخری 7:36 PM)",
+   "2": "اس سوال کے بعد سے آپ کے 2 پیغامات (آخری 7:36 PM)",
+   "5": "اس سوال کے بعد سے آپ کے 5 پیغامات (آخری 7:36 PM)",
+   "1000000": "اس سوال کے بعد سے آپ کے 1,000,000 پیغامات (آخری 7:36 PM)"
+  },
+  "rendered_fit": "Not executed; no rendered-frame or width claim."
+ },
+ "deriveReceiptAudit": {
+  "module_ref": "origin/main",
+  "module_path": "scripts/i18n/ledger-rules.mjs",
+  "module_sha256": "199816433c5a2ce0b0c0d107f8bca2afef13c329b18051a84c1f824824c91aa6",
+  "execution": "Imported exact git-show bytes via in-memory data URL; called pure deriveReceiptAudit with actual en/target SHA-256 from disk; exit 0. No assembler or ledger write executed.",
+  "derived": {
+   "agent": "task",
+   "instance": "pr5-20261023-r2-ur",
+   "model": "anthropic/claude-opus-5-5",
+   "result": "clean",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 0
+   },
+   "source_sha256": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+   "target_sha256": "7d86acb011841467a079f01851e8bfd70baa3acd857eb971b7ecdad1670fa57f",
+   "receipt_sha256": "971deb2b92cc4c35ea2424e3a1cae651d7aebb41418c0e4dc0b703c6121847e3"
+  }
+ },
+ "retained_rounds": [
+  {
+   "round": 1,
+   "path": "i18n/receipts/pr5-ur.json",
+   "sha256": "a6d5e1110ea24157937da0bac5dbe74cd7526c98aae08c192f6037a42844b5f6",
+   "instance": "pr5-20261023-ur",
+   "result": "changes_requested",
+   "record": "i18n/audits/evidence/ur/ui.chat.asks/pr5-20261023/record.json"
+  },
+  {
+   "round": 2,
+   "path": "i18n/receipts/pr5-ur-r2.json",
+   "sha256": "971deb2b92cc4c35ea2424e3a1cae651d7aebb41418c0e4dc0b703c6121847e3",
+   "instance": "pr5-20261023-r2-ur",
+   "result": "clean"
+  }
+ ],
+ "limitations": [
+  "Catalogue-only audit; no build, test, install, browser, render or activation evidence.",
+  "Cross-surface alignment is against an unmerged harness branch (93f798ddb); re-check if it changes before merge. No ur harness catalogue exists there.",
+  "Round-1 receipts no longer match the current target bytes; they are retained as history only and cannot back a ledger row."
+ ],
+ "rtl": "Logical storage order; no manual RLM/LRM/FSI/PDI; ASCII parentheses mirror under dir=rtl; Latin time run contiguous; Urdu-script vocabulary (ایجنٹ، انتظار، پیغام)، not Hindi-ised."
+}
