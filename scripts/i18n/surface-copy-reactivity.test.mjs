@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { test } from "node:test";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 
@@ -49,6 +49,7 @@ const mod = await import(pathToFileURL(compiled).href);
 const fixture = {
 	"ui.hub.updates.sign_in": "fixture hub sign-in",
 	"ui.common.errors.dictation_empty": "fixture empty dictation",
+	"ui.common.errors.desktop_refusal_placeholder": "fixture desktop refusal",
 	"ui.common.errors.speech_failure": "fixture speech failure",
 	"ui.common.actions.retry": "fixture retry",
 	"ui.common.actions.clear": "fixture clear",
@@ -108,6 +109,33 @@ test("hub, transcription, speech and canonical actions resolve per call", () => 
 		"A message can't start with / — that is a command. Move it below your text, or send it on its own.",
 		"fixture leading slash",
 	);
+});
+
+test("an empty desktop refusal keeps a stable sentinel and localizes on presentation", async () => {
+	const previousWindow = globalThis.window;
+	globalThis.window = {
+		api: {
+			desktop: {
+				request: async () => ({ status: 418, body: {} }),
+			},
+		},
+	};
+	try {
+		const error = await mod.desktopResult({ op: "settings.list" }).then(
+			() => null,
+			(caught) => caught,
+		);
+		assert.ok(error, "the empty refusal must reject");
+		assert.equal(error.message, mod.DESKTOP_REFUSAL_PLACEHOLDER);
+		assertLocaleCycle(
+			() => mod.userFacingMessage(error, "fixture fallback"),
+			"This server did not answer the request for its desktop controls.",
+			"fixture desktop refusal",
+		);
+	} finally {
+		if (previousWindow === undefined) globalThis.window = undefined;
+		else globalThis.window = previousWindow;
+	}
 });
 
 test("theme registry and palette both retain lazy description reads", () => {

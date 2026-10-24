@@ -2,6 +2,11 @@ export { hubSignInLine } from "../../src/renderer/src/shared/api/local-operator/
 export { emptyTranscriptionMessage } from "../../src/renderer/src/shared/api/local-operator/transcription-failure";
 export { HealthApi } from "../../src/renderer/src/shared/api/local-operator/health-api";
 export {
+	DESKTOP_REFUSAL_PLACEHOLDER,
+	desktopResult,
+	userFacingMessage,
+} from "../../src/renderer/src/shared/api/local-operator/desktop-api";
+export {
 	speechFailureFallbackCopy,
 	speechPlaybackCopy,
 } from "../../src/renderer/src/shared/lib/speech-errors";
