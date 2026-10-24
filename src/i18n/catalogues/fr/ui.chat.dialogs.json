@@ -1,6 +1,12 @@
 {
-	"ui.chat.dialogs.delete_title": "Supprimer cette conversation ?",
-	"ui.chat.dialogs.delete_action": "Supprimer",
 	"ui.chat.dialogs.archive_action": "Archiver",
-	"ui.chat.dialogs.cancel": "Annuler"
+	"ui.chat.dialogs.cancel": "Annuler",
+	"ui.chat.dialogs.delete_action": "Supprimer",
+	"ui.chat.dialogs.delete_title": "Supprimer cette conversation ?",
+	"ui.chat.dialogs.options.clear_confirm": "Effacer",
+	"ui.chat.dialogs.options.clear_conversation": "Effacer la conversation",
+	"ui.chat.dialogs.options.clear_message": "Tous ses messages sont supprimés de cet ordinateur, sans possibilité d’annulation. L’agent lui-même n’est pas affecté.",
+	"ui.chat.dialogs.options.clear_title": "Effacer cette conversation ?",
+	"ui.chat.dialogs.options.description": "Personnaliser les paramètres de cet agent",
+	"ui.chat.dialogs.options.title": "Options de la conversation"
 }
