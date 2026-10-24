@@ -47,6 +47,7 @@ import enUiChatAsks from "./catalogues/en/ui.chat.asks.json";
 import enUiChatAt from "./catalogues/en/ui.chat.at.json";
 import enUiChatAttachments from "./catalogues/en/ui.chat.attachments.json";
 import enUiChatCanonical from "./catalogues/en/ui.chat.canonical.json";
+import enUiChatCanvasPreview from "./catalogues/en/ui.chat.canvas_preview.json";
 import enUiChatCommentaryActions from "./catalogues/en/ui.chat.commentary_actions.json";
 import enUiChatComposer from "./catalogues/en/ui.chat.composer.json";
 import enUiChatComposerMedia from "./catalogues/en/ui.chat.composer_media.json";
@@ -591,6 +592,7 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiChatAt,
 	...enUiChatAttachments,
 	...enUiChatCanonical,
+	...enUiChatCanvasPreview,
 	...enUiChatCommentaryActions,
 	...enUiChatComposer,
 	...enUiChatComposerMedia,
@@ -2330,7 +2332,6 @@ export type MessageParams = {
 	"ui.canvas.goals_viewer.no_goals_completed_yet": undefined;
 	"ui.canvas.goals_viewer.older_settled_goals_are_not_carried_here_this_list_is_capped": undefined;
 	"ui.canvas.html_preview.edit": undefined;
-	"ui.canvas.html_preview.html_preview": { title: string };
 	"ui.canvas.html_preview.preview": undefined;
 	"ui.canvas.image_preview.file_no_longer_exists": undefined;
 	"ui.canvas.image_preview.this_image_could_not_be_opened": undefined;
@@ -2397,7 +2398,6 @@ export type MessageParams = {
 	"ui.canvas.insert_table_popover.table": { rows: number; cols: number };
 	"ui.canvas.pdf_preview.file_no_longer_exists": undefined;
 	"ui.canvas.pdf_preview.opening": undefined;
-	"ui.canvas.pdf_preview.pdf": { title: string };
 	"ui.canvas.pdf_preview.this_pdf_could_not_be_opened": undefined;
 	"ui.canvas.pdf_preview.too_large_to_preview": undefined;
 	"ui.canvas.shell.browse_files": undefined;
@@ -3151,6 +3151,8 @@ export type MessageParams = {
 	"ui.chat.canonical.working_line_model.starting_the_session": undefined;
 	"ui.chat.canonical.working_line_model.stopping_the_turn": undefined;
 	"ui.chat.canonical.working_line_model.waiting_for_the_agent": undefined;
+	"ui.chat.canvas_preview.html_title": { name: string };
+	"ui.chat.canvas_preview.pdf_title": { name: string };
 	"ui.chat.commentary_actions.label": undefined;
 	"ui.chat.composer.ask_aside": undefined;
 	"ui.chat.composer.attach_file": undefined;

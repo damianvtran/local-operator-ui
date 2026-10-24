@@ -559,14 +559,6 @@
 		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
 		"note": "Shown in finder-thumbnails.ts; interface copy in the finder thumbnails surface."
 	},
-	"ui.canvas.html_preview.html_preview": {
-		"role": "interface copy",
-		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
-		"note": "Shown in html-preview.tsx; interface copy in the html preview surface.",
-		"placeholders": {
-			"title": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
-		}
-	},
 	"ui.canvas.image_preview.this_image_could_not_be_shown": {
 		"role": "interface copy",
 		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
@@ -855,14 +847,6 @@
 		"role": "tooltip",
 		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
 		"note": "Shown in inline-edit.tsx; tooltip in the inline edit surface."
-	},
-	"ui.canvas.pdf_preview.pdf": {
-		"role": "interface copy",
-		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
-		"note": "Shown in pdf-preview.tsx; interface copy in the pdf preview surface.",
-		"placeholders": {
-			"title": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
-		}
 	},
 	"ui.canvas.pdf_preview.opening": {
 		"role": "interface copy",

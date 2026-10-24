@@ -240,7 +240,7 @@ export const desktopResult = request => globalThis.__desktop(request);`,
 		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-hooks.ts`,
 	)}
 export const useDesktopCapabilities = () => ({
-	data: { desktop_available: true, features: { session_catalogue: 2, profile_catalogue: 1, team_catalogue: 1 } },
+	data: { desktop_available: true, features: globalThis.__features ?? { session_catalogue: 2, profile_catalogue: 1, team_catalogue: 1 } },
 	error: null,
 	isLoading: false,
 	refetch: async () => undefined,
@@ -289,6 +289,7 @@ const bundle = await build({
 		contents:
 			'export { ChatSidebar } from "./src/renderer/src/features/chat/components/chat-sidebar";' +
 			' export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";' +
+			' export { setLocale, registerCatalogue, clearRegisteredCatalogues } from "./src/i18n";' +
 			' export { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";' +
 			/*
 			 * The query client, EXPORTED FROM THIS BUNDLE rather than imported on the
@@ -347,6 +348,9 @@ const {
 	useUiPreferencesStore,
 	QueryClient,
 	QueryClientProvider,
+	setLocale,
+	registerCatalogue,
+	clearRegisteredCatalogues,
 } = await import(bundlePath.href);
 const { createRoot } = await import("react-dom/client");
 
@@ -686,5 +690,78 @@ test("no dismissal exists where there is no offer to dismiss", async () => {
 		assert.ok(harness.createRow(), "the create row left the populated section");
 	} finally {
 		await harness.unmount();
+	}
+});
+
+test("a held pinned row re-labels in place on a locale change", async () => {
+	/*
+	 * THE REAL SIDEBAR, not a re-render: the row is already on screen when the
+	 * locale moves, and the only thing that can repaint its title is the
+	 * `useI18nLocale()` value carried into `heldRows`' dependency list. Without
+	 * that half the memo keeps the old-language title until the catalogue or a
+	 * pin changes - the defect this case exists to keep out.
+	 */
+	globalThis.__features = {
+		session_catalogue: 2,
+		profile_catalogue: 1,
+		team_catalogue: 1,
+		session_pins: 1,
+	};
+	const harness = await mount();
+	/*
+	 * THE FIXTURE IS WRITTEN AFTER THE MOUNT. The canonical store persists and
+	 * rehydrates when it initialises; a pre-mount `setState` is state that
+	 * hydration then replaces, which drew the empty sentence instead of a list.
+	 * These writes land on the mounted store, and the sidebar's subscription is
+	 * what makes the rows appear.
+	 */
+	await act(async () => {
+		useCanonicalSessionsStore.setState({
+			sessions: [
+				{
+					session_id: "listed-fixture",
+					title: "Listed chat",
+					updated_at: 1_760_000_100,
+					pinned: false,
+				},
+			],
+			loading: false,
+			error: null,
+			pinFacts: {
+				"held-fixture": { pinned: true, title: "", updated_at: 1_760_000_000 },
+			},
+		});
+	});
+
+	const rowTitles = () =>
+		[...document.querySelectorAll("[data-session-row]")]
+			.map((element) => element.textContent ?? "")
+			.join(" | ");
+	try {
+		assert.match(
+			rowTitles(),
+			/Untitled chat/,
+			"the held row is drawn with the catalogue's own title",
+		);
+		registerCatalogue("fr", {
+			/* The integration resolves an empty row title through the shared
+			 * conversationTitleForDisplay helper, whose fallback key is
+			 * ui.chat.canonical.untitled (it also normalises the two legacy
+			 * English sentinels); the sidebar's own untitled_chat key is gone. */
+			"ui.chat.canonical.untitled": "FIXTURE conversation sans titre",
+		});
+		await act(async () => setLocale("fr"));
+		assert.match(
+			rowTitles(),
+			/FIXTURE conversation sans titre/,
+			"the mounted row re-labels on the switch without a remount",
+		);
+		await act(async () => setLocale("en"));
+		assert.match(rowTitles(), /Untitled chat/);
+	} finally {
+		clearRegisteredCatalogues();
+		await harness.unmount();
+		globalThis.__features = undefined;
+		useCanonicalSessionsStore.setState({ pinFacts: {}, sessions: [] });
 	}
 });
