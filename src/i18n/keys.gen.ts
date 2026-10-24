@@ -304,17 +304,25 @@ import ruUiAgentsStarters from "./catalogues/ru/ui.agents.starters.json";
 import ruUiBrowserChrome from "./catalogues/ru/ui.browser.chrome.json";
 import ruUiBrowser from "./catalogues/ru/ui.browser.json";
 import ruUiCanvas from "./catalogues/ru/ui.canvas.json";
+import ruUiChatAnalytics from "./catalogues/ru/ui.chat.analytics.json";
 import ruUiChatAsks from "./catalogues/ru/ui.chat.asks.json";
 import ruUiChatAttachments from "./catalogues/ru/ui.chat.attachments.json";
+import ruUiChatCanonical from "./catalogues/ru/ui.chat.canonical.json";
+import ruUiChatCommentaryActions from "./catalogues/ru/ui.chat.commentary_actions.json";
 import ruUiChatComposer from "./catalogues/ru/ui.chat.composer.json";
 import ruUiChatComposerMedia from "./catalogues/ru/ui.chat.composer_media.json";
 import ruUiChatDialogs from "./catalogues/ru/ui.chat.dialogs.json";
 import ruUiChatHeader from "./catalogues/ru/ui.chat.header.json";
 import ruUiChat from "./catalogues/ru/ui.chat.json";
 import ruUiChatLiveUpdates from "./catalogues/ru/ui.chat.live_updates.json";
+import ruUiChatPickers from "./catalogues/ru/ui.chat.pickers.json";
 import ruUiChatResponseActions from "./catalogues/ru/ui.chat.response_actions.json";
+import ruUiChatRunDetails from "./catalogues/ru/ui.chat.run_details.json";
+import ruUiChatSidebar from "./catalogues/ru/ui.chat.sidebar.json";
 import ruUiChatSidebarView from "./catalogues/ru/ui.chat.sidebar_view.json";
+import ruUiChatTagDialogs from "./catalogues/ru/ui.chat.tag_dialogs.json";
 import ruUiChatTags from "./catalogues/ru/ui.chat.tags.json";
+import ruUiChatTranscriptCopy from "./catalogues/ru/ui.chat.transcript_copy.json";
 import ruUiCodeReview from "./catalogues/ru/ui.code_review.json";
 import ruUiCommandPalette from "./catalogues/ru/ui.command_palette.json";
 import ruUiCommonAccount from "./catalogues/ru/ui.common.account.json";
@@ -322,10 +330,12 @@ import ruUiCommonActions from "./catalogues/ru/ui.common.actions.json";
 import ruUiCommonConnection from "./catalogues/ru/ui.common.connection.json";
 import ruUiCommonEditing from "./catalogues/ru/ui.common.editing.json";
 import ruUiCommonErrors from "./catalogues/ru/ui.common.errors.json";
+import ruUiCommonFileActions from "./catalogues/ru/ui.common.file_actions.json";
 import ruUiCommonForms from "./catalogues/ru/ui.common.forms.json";
 import ruUiCommonLoading from "./catalogues/ru/ui.common.loading.json";
 import ruUiCommonModels from "./catalogues/ru/ui.common.models.json";
 import ruUiCommonUpdates from "./catalogues/ru/ui.common.updates.json";
+import ruUiCommonViewer from "./catalogues/ru/ui.common.viewer.json";
 import ruUiConsole from "./catalogues/ru/ui.console.json";
 import ruUiHubComments from "./catalogues/ru/ui.hub.comments.json";
 import ruUiHub from "./catalogues/ru/ui.hub.json";
@@ -334,6 +344,7 @@ import ruUiInstaller from "./catalogues/ru/ui.installer.json";
 import ruUiLibrary from "./catalogues/ru/ui.library.json";
 import ruUiMesh from "./catalogues/ru/ui.mesh.json";
 import ruUiOnboarding from "./catalogues/ru/ui.onboarding.json";
+import ruUiPresence from "./catalogues/ru/ui.presence.json";
 import ruUiProjects from "./catalogues/ru/ui.projects.json";
 import ruUiProviders from "./catalogues/ru/ui.providers.json";
 import ruUiSchedules from "./catalogues/ru/ui.schedules.json";
@@ -841,17 +852,25 @@ export const bundledCatalogues: Readonly<
 		...ruUiBrowserChrome,
 		...ruUiBrowser,
 		...ruUiCanvas,
+		...ruUiChatAnalytics,
 		...ruUiChatAsks,
 		...ruUiChatAttachments,
+		...ruUiChatCanonical,
+		...ruUiChatCommentaryActions,
 		...ruUiChatComposer,
 		...ruUiChatComposerMedia,
 		...ruUiChatDialogs,
 		...ruUiChatHeader,
 		...ruUiChat,
 		...ruUiChatLiveUpdates,
+		...ruUiChatPickers,
 		...ruUiChatResponseActions,
+		...ruUiChatRunDetails,
+		...ruUiChatSidebar,
 		...ruUiChatSidebarView,
+		...ruUiChatTagDialogs,
 		...ruUiChatTags,
+		...ruUiChatTranscriptCopy,
 		...ruUiCodeReview,
 		...ruUiCommandPalette,
 		...ruUiCommonAccount,
@@ -859,10 +878,12 @@ export const bundledCatalogues: Readonly<
 		...ruUiCommonConnection,
 		...ruUiCommonEditing,
 		...ruUiCommonErrors,
+		...ruUiCommonFileActions,
 		...ruUiCommonForms,
 		...ruUiCommonLoading,
 		...ruUiCommonModels,
 		...ruUiCommonUpdates,
+		...ruUiCommonViewer,
 		...ruUiConsole,
 		...ruUiHubComments,
 		...ruUiHub,
@@ -871,6 +892,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiLibrary,
 		...ruUiMesh,
 		...ruUiOnboarding,
+		...ruUiPresence,
 		...ruUiProjects,
 		...ruUiProviders,
 		...ruUiSchedules,

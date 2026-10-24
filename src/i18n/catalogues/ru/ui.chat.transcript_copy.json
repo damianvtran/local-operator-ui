@@ -1,0 +1,11 @@
+{
+	"ui.chat.transcript_copy.menu.copy_text": "Копировать текст",
+	"ui.chat.transcript_copy.menu.copy_markdown": "Копировать как Markdown",
+	"ui.chat.transcript_copy.menu.copy_selection": "Копировать выделенное",
+	"ui.chat.transcript_copy.toast.copied_markdown": "Скопировано как Markdown",
+	"ui.chat.transcript_copy.toast.copied_selection": "Выделенное скопировано",
+	"ui.chat.transcript_copy.row.your_message": "Ваше сообщение",
+	"ui.chat.transcript_copy.row.agent_message": "Сообщение агента",
+	"ui.chat.transcript_copy.selection.copy": "Копировать выделенное",
+	"ui.chat.transcript_copy.selection.toolbar": "Действия с выделенным"
+}

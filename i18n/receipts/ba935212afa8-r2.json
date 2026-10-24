@@ -1,0 +1,406 @@
+{
+  "auditor": "i18n-auditor",
+  "team_role": "translation-auditor",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "fallback": "none",
+  "instance": "ba935212afa8-r2",
+  "date": "2026-10-23",
+  "locale": "ru",
+  "commit": "2798a774b2a179fd4f8c68bc5a4e1db59751a704",
+  "base": "a2c5ce5871ff338585020382c610f8a00f0293ec",
+  "scope": "a2c5ce5871ff338585020382c610f8a00f0293ec..2798a774b2a179fd4f8c68bc5a4e1db59751a704; four changed namespaces and direct regression neighbors only",
+  "audit_round": 2,
+  "status": "passed",
+  "verdict": "clean-with-findings",
+  "keys_read": 118,
+  "changed_keys_read": 6,
+  "namespace_count": 4,
+  "independence": "Same independent auditor session as the second round-1 audit, now performing a fresh scoped remediation audit; did not author the translation or remediation, did not edit repository files, and did not read the other auditor receipt. Translator session a259c592a9b8 remains distinct.",
+  "prior_own_receipt_sha256": "bf0d0c9d8f9113e45b0678474516126665d09e2ad56c8f9416956a36bf822256",
+  "references": {
+    "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "ru_style_guide_sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "namespace": "ui.chat.sidebar",
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 43,
+      "sha256": {
+        "en": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+        "ru": "5f4701d6cb99cbbce5d0a3a849c6ca11b3b1051e1b73051cd15714a691cf44ce",
+        "context": "fe5dc2a0fa4cb9b95ef5c1a30d57aee030fa5edf2b6b54b323562a1c63b8eb3a"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+        "ru": "src/i18n/catalogues/ru/ui.chat.sidebar.json",
+        "context": "src/i18n/catalogues/en/ui.chat.sidebar.context.json"
+      },
+      "findings": [],
+      "evidence": {
+        "scoped_mechanical_keys_read": 43,
+        "exact_key_order": true,
+        "exact_context_key_order": true,
+        "icu_ast_parses": 86,
+        "icu_format_operations": 90,
+        "pseudo_parse_format_passes": 43,
+        "changed_key_overflow_candidates": [
+          {
+            "key": "ui.chat.sidebar.row_menu.copy_id",
+            "enLength": 15,
+            "ruLength": 20,
+            "delta": 5,
+            "ratio": 1.333,
+            "enDisplay": "Copy session ID",
+            "ruDisplay": "Копировать ID сессии"
+          }
+        ],
+        "resolved": {
+          "RU2-m3": "Копировать ID сессии, byte-identical wording to ui.chat.header.copy_id"
+        }
+      }
+    },
+    "ui.chat.pickers": {
+      "namespace": "ui.chat.pickers",
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys_audited": 34,
+      "sha256": {
+        "en": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+        "ru": "bea805be75cf3ebebaf945a847428b88da764f8073d2cd4ea66eac9df7a5ee26",
+        "context": "8d3fa914cd52768c98a75c4f41b903b86553335b27e406f98500eab7ff576e64"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+        "ru": "src/i18n/catalogues/ru/ui.chat.pickers.json",
+        "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+      },
+      "findings": [
+        {
+          "id": "RU2-n1",
+          "severity": "NIT",
+          "key": "ui.chat.pickers.effort.title",
+          "path": "src/i18n/catalogues/ru/ui.chat.pickers.json:8; pre-existing src/i18n/catalogues/ru/ui.agents.models.json:3",
+          "current": "Here: «Глубина рассуждений»; pre-existing ui.agents.models.override.effort_field: «Усилия рассуждения».",
+          "proposed": "Standardise on «Глубина рассуждений» for both in a later terminology-alignment lane; this remediation deliberately leaves the pre-existing agents catalogue untouched.",
+          "reason": "The identical English term retains two Russian renderings, but this was explicitly deferred and does not gate the remediated head.",
+          "disposition": "deferred — pre-existing ui.agents.models was deliberately not touched in commit 2798a774b2a179fd4f8c68bc5a4e1db59751a704"
+        }
+      ],
+      "evidence": {
+        "scoped_mechanical_keys_read": 34,
+        "exact_key_order": true,
+        "exact_context_key_order": true,
+        "icu_ast_parses": 68,
+        "icu_format_operations": 68,
+        "pseudo_parse_format_passes": 34,
+        "changed_key_overflow_candidates": [
+          {
+            "key": "ui.chat.pickers.login.title",
+            "enLength": 21,
+            "ruLength": 33,
+            "delta": 12,
+            "ratio": 1.571,
+            "enDisplay": "Sign in to a provider",
+            "ruDisplay": "Войти в учётную запись провайдера"
+          },
+          {
+            "key": "ui.chat.pickers.stop.confirm",
+            "enLength": 19,
+            "ruLength": 26,
+            "delta": 7,
+            "ratio": 1.368,
+            "enDisplay": "Stop 2 sessions now",
+            "ruDisplay": "Остановить 2 сессии сейчас"
+          }
+        ],
+        "resolved": {
+          "RU2-B1": "=1/one split and count-bearing one verified at 1/21/101/2/5/1.5",
+          "RU2-M1": "Войти в учётную запись провайдера",
+          "RU2-m1": "Сведения о модели — {name}"
+        }
+      }
+    },
+    "ui.chat.canonical": {
+      "namespace": "ui.chat.canonical",
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 30,
+      "sha256": {
+        "en": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
+        "ru": "fd38208862ebfa072462076ab08526981541dafe73ecff370db16c1a73c44f97",
+        "context": "53145be31fe46bde6578d114653466dc5c6c932947460c10a0022c9e190d9a34"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.canonical.json",
+        "ru": "src/i18n/catalogues/ru/ui.chat.canonical.json",
+        "context": "src/i18n/catalogues/en/ui.chat.canonical.context.json"
+      },
+      "findings": [],
+      "evidence": {
+        "scoped_mechanical_keys_read": 30,
+        "exact_key_order": true,
+        "exact_context_key_order": true,
+        "icu_ast_parses": 60,
+        "icu_format_operations": 60,
+        "pseudo_parse_format_passes": 30,
+        "changed_key_overflow_candidates": [
+          {
+            "key": "ui.chat.canonical.sound.stop.confirm_label",
+            "enLength": 20,
+            "ruLength": 34,
+            "delta": 14,
+            "ratio": 1.7,
+            "enDisplay": "Confirm stop request",
+            "ruDisplay": "Подтверждение запроса на остановку"
+          }
+        ],
+        "resolved": {
+          "RU2-m2": "Подтверждение запроса на остановку"
+        }
+      }
+    },
+    "ui.chat.analytics": {
+      "namespace": "ui.chat.analytics",
+      "status": "passed",
+      "verdict": "clean",
+      "keys_audited": 11,
+      "sha256": {
+        "en": "6ac0bbfb50c8ef8c772f229868614aa8d07dfd9f659311d5d396cea5c4611159",
+        "ru": "7ea62307418e52ebf125bb0cb5b07fdda629407cb6c79ec50e1d80b7248408f2",
+        "context": "7c25af7f391fbaac6a1718a81b8b258c0b313ba46411f16e95691446828640ff"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.analytics.json",
+        "ru": "src/i18n/catalogues/ru/ui.chat.analytics.json",
+        "context": "src/i18n/catalogues/en/ui.chat.analytics.context.json"
+      },
+      "findings": [],
+      "evidence": {
+        "scoped_mechanical_keys_read": 11,
+        "exact_key_order": true,
+        "exact_context_key_order": true,
+        "icu_ast_parses": 22,
+        "icu_format_operations": 22,
+        "pseudo_parse_format_passes": 11,
+        "changed_key_overflow_candidates": [
+          {
+            "key": "ui.chat.analytics.filters.top_level_only",
+            "enLength": 14,
+            "ruLength": 29,
+            "delta": 15,
+            "ratio": 2.071,
+            "enDisplay": "Top-level only",
+            "ruDisplay": "Только сессии верхнего уровня"
+          }
+        ],
+        "resolved": {
+          "RU2-n2": "Только сессии верхнего уровня"
+        }
+      }
+    }
+  },
+  "findings_summary": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1,
+    "total": 1,
+    "new_findings": 0,
+    "resolved_round1_findings": 6,
+    "deferred_round1_findings": 1
+  },
+  "resolved_round1_findings": [
+    "RU2-B1",
+    "RU2-M1",
+    "RU2-m1",
+    "RU2-m2",
+    "RU2-m3",
+    "RU2-n2"
+  ],
+  "direct_regression_neighbors": [
+    {
+      "key": "ui.chat.header.copy_id",
+      "relation": "Exact Copy session ID wording now matches sidebar",
+      "current": "Копировать ID сессии",
+      "delta_unchanged": true,
+      "ru_sha256": "8b7f67e19f7cb17ee637f2ca5fee08226b41ffd7c443389f32be7b7f179c0511"
+    },
+    {
+      "key": "ui.common.models.hosting_select.no_hosting_providers_available_sign_in_to_a_provider_or_add_a_pro",
+      "relation": "Existing provider sign-in precedent",
+      "current": "Войдите в учётную запись провайдера",
+      "delta_unchanged": true,
+      "ru_sha256": "0c51a21f2ad533bc866a012732c0c220843a0f993807dbc398424ab7a1d2594a"
+    },
+    {
+      "key": "ui.agents.models.override.effort_field",
+      "relation": "Deliberately deferred reasoning-effort drift",
+      "current": "Усилия рассуждения",
+      "delta_unchanged": true,
+      "ru_sha256": "6c9f49426145134bc19f461fbd5c836cc3cb7921b8c4827919909d50e31184ab"
+    }
+  ],
+  "unchanged_namespaces_not_reaudited": [
+    "ui.chat.transcript_copy",
+    "ui.common.file_actions",
+    "ui.common.viewer",
+    "ui.chat.tag_dialogs",
+    "ui.presence",
+    "ui.chat.run_details",
+    "ui.chat.commentary_actions"
+  ],
+  "evidence": {
+    "delta": "Exactly six Russian values changed across the four scoped namespaces; English and context bytes did not change. The committed receipt was not read or audited.",
+    "mechanical": {
+      "result": "PASS",
+      "keys": 118,
+      "english_and_russian_ast_parses": 236,
+      "icu_format_operations": 240,
+      "exact_key_order": true,
+      "exact_context_key_order": true,
+      "source_placeholder_type_skeleton_preservation": true,
+      "required_russian_plural_arms": "=1 plus one/few/many/other present",
+      "select_arms": "pin/unpin/other preserved and formatted",
+      "pseudo_parse_format_passes": 118,
+      "pseudo_expansion_ratio": [
+        1.415,
+        2
+      ],
+      "disallowed_english_prose_tokens": 0,
+      "failures": [],
+      "mutation_controls": {
+        "renamedPlaceholderDetected": true,
+        "changedNumberSkeletonDetected": true,
+        "droppedSelectArmDetected": true,
+        "missingRussianFewDetected": true,
+        "englishProseDetected": true,
+        "pseudoExpansionMeasured": true
+      }
+    },
+    "russian_cldr_plural": {
+      "implementation": "Node Intl.PluralRules(\"ru\") and IntlMessageFormat 12.1.3 against current bytes",
+      "samples": [
+        {
+          "count": 1,
+          "category": "one",
+          "formattedNumber": "1",
+          "output": "Остановить эту сессию сейчас"
+        },
+        {
+          "count": 2,
+          "category": "few",
+          "formattedNumber": "2",
+          "output": "Остановить 2 сессии сейчас"
+        },
+        {
+          "count": 5,
+          "category": "many",
+          "formattedNumber": "5",
+          "output": "Остановить 5 сессий сейчас"
+        },
+        {
+          "count": 21,
+          "category": "one",
+          "formattedNumber": "21",
+          "output": "Остановить 21 сессию сейчас"
+        },
+        {
+          "count": 101,
+          "category": "one",
+          "formattedNumber": "101",
+          "output": "Остановить 101 сессию сейчас"
+        },
+        {
+          "count": 1.5,
+          "category": "other",
+          "formattedNumber": "1,5",
+          "output": "Остановить 1,5 сессии сейчас"
+        }
+      ],
+      "result": "PASS: exact =1 retains “this session”; cardinal one bears the count at 21/101; few/many/other and decimal comma are correct"
+    },
+    "semantic_glossary_register": "PASS for the six remediated values and named neighbors. Provider login now means signing into the provider account; native_details names the model idiomatically; confirm_label preserves best-effort request semantics; copy_id matches its header neighbor; analytics explicitly names top-level sessions. Formal lowercase вы/register and typography remain conformant.",
+    "static_overflow": {
+      "result": "Changed-key fit-watch only; no clipping verdict",
+      "method": "Actual formatted English/Russian codepoint lengths; unchanged round-1 overflow candidates are not re-audited in this scoped round.",
+      "declared_maxCells_entries": 0,
+      "changed_key_candidates": [
+        {
+          "key": "ui.chat.analytics.filters.top_level_only",
+          "enLength": 14,
+          "ruLength": 29,
+          "delta": 15,
+          "ratio": 2.071,
+          "enDisplay": "Top-level only",
+          "ruDisplay": "Только сессии верхнего уровня"
+        },
+        {
+          "key": "ui.chat.canonical.sound.stop.confirm_label",
+          "enLength": 20,
+          "ruLength": 34,
+          "delta": 14,
+          "ratio": 1.7,
+          "enDisplay": "Confirm stop request",
+          "ruDisplay": "Подтверждение запроса на остановку"
+        },
+        {
+          "key": "ui.chat.pickers.login.title",
+          "enLength": 21,
+          "ruLength": 33,
+          "delta": 12,
+          "ratio": 1.571,
+          "enDisplay": "Sign in to a provider",
+          "ruDisplay": "Войти в учётную запись провайдера"
+        },
+        {
+          "key": "ui.chat.pickers.stop.confirm",
+          "enLength": 19,
+          "ruLength": 26,
+          "delta": 7,
+          "ratio": 1.368,
+          "enDisplay": "Stop 2 sessions now",
+          "ruDisplay": "Остановить 2 сессии сейчас"
+        },
+        {
+          "key": "ui.chat.sidebar.row_menu.copy_id",
+          "enLength": 15,
+          "ruLength": 20,
+          "delta": 5,
+          "ratio": 1.333,
+          "enDisplay": "Copy session ID",
+          "ruDisplay": "Копировать ID сессии"
+        }
+      ],
+      "dispositions": {
+        "ui.chat.canonical.sound.stop.confirm_label": "Screen-reader-only fieldset name; expansion has no rendered width surface.",
+        "ui.chat.analytics.filters.top_level_only": "Rendered check required for the intentionally explicit 29-codepoint label.",
+        "ui.chat.pickers.login.title": "Rendered dialog-title check required.",
+        "ui.chat.pickers.stop.confirm": "Rendered checkbox-label check required.",
+        "ui.chat.sidebar.row_menu.copy_id": "Rendered context-menu check required.",
+        "ui.chat.pickers.models.native_details": "21 vs 18 codepoints with X placeholder; below the material-expansion threshold."
+      },
+      "rendered_claim": false
+    },
+    "commands": [
+      {
+        "command": "cd /Users/damian/local-operator-ui/.worktrees/i18n-ru && node --input-type=module < $SCRATCH/ru-completion-second-audit-r2.mjs > $SCRATCH/ru-completion-second-evidence-r2.json",
+        "actual": "exit 0; 118 keys; failures=[]; six mutation controls true"
+      },
+      {
+        "command": "git diff --exit-code <base>..<head> -- src/i18n/catalogues/ru/ui.agents.models.json src/i18n/catalogues/ru/ui.chat.header.json src/i18n/catalogues/ru/ui.common.models.json",
+        "actual": "exit 0; direct neighbors unchanged"
+      }
+    ],
+    "probe_integrity": {
+      "script_sha256": "884a402685e8a22b0b28e3dc1bbbbba538392a1c356d609d2b2dca0fd355727c",
+      "raw_evidence_sha256": "ae03a902d9d83df2c063dd83ced50105bd8a3067d3eca71de066733910f5c76d",
+      "parser": "@formatjs/icu-messageformat-parser 3.5.21",
+      "formatter": "intl-messageformat 12.1.3"
+    },
+    "limitations": "Scoped catalogue remediation audit only. No real-app/rendered, screenshot, activation or release claim. Seven unchanged namespaces were not re-audited."
+  }
+}
