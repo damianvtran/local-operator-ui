@@ -14,6 +14,43 @@ C2 standard/pre-authorized UI behavior change. Non-goal: changing the separate
 canvas/ask-drawer fit-yield, right-slot/run-pane behavior, or the stored width
 merely to fit a narrow window.
 
+## Independent QA round 1 supplement
+
+Source: [QA report round 1](https://github.com/damianvtran/local-operator-ui/pull/1367#issuecomment-6377547192),
+executed against `6f2fb31ff81332c64a7be7c19396c7e594870581`. The report and a
+small selected artifact set are committed here so the native measurements and
+focus traces do not depend on a session scratch root:
+
+- `qa-report-round-1.md` is QA's full surface/command/actual-output matrix.
+- `qa-native-3-results.json`, `qa-native-empty-5-results.json` and
+  `qa-native-keyboard-6-results.json` preserve the raw comprehensive, empty-only
+  and keyboard records. The comprehensive run's superseded empty predicate stays
+  visible; the empty-only rerun and keyboard supplement both summarize PASS.
+- `qa-contact-layout.png`, `qa-contact-states.png` and `qa-contact-keyboard.png`
+  are QA's visually inspected layout, empty/loading/error and keyboard sheets.
+- `qa-agents-1000-coder-dark.png` is the native 1000px agents boundary frame.
+  `qa-keyboard-enter-collapsed-dark.png` and
+  `qa-keyboard-space-expanded-dark.png` preserve the post-activation focus rings.
+
+The agents boundary is sidebar **320** + roster **288** + detail **392** at
+native 1000px, with no chat rail. The textarea's content box is 304px; its
+`scrollHeight == clientHeight == 55`, and the measured placeholder width is
+301.1709px. The image shows wrapped, readable placeholder text; the numbers
+prove no vertical overflow, not an unwrapped one-line rendering.
+`scripts/agents-composer-mount.test.mjs` audits those raw values and ties the
+recorded placeholder to the current mounted component.
+
+Settled native canvas and ask fit-yield both measure **56 + 480 + 443 + 44 =
+1023**, retaining `collapsed=false`; closing restores the 320px dock. Real
+Ctrl+B and Cmd+B both toggle twice with no sheet/dialog. Tab/Shift+Tab reaches
+both named controls; Enter collapses and Space expands. After activation the
+active element is BODY, and the next Tab reaches **Expand sidebar** (32x32) or
+**Search chats and agents** (28x28), respectively. The keyboard JSON preserves
+the full 34-stop trace and accessible names/rects.
+
+QA's old-head macOS NPX observation remains a heap-OOM failure, not a pass. The
+new push rechecks CI; no full local desktop or `check-changed` rerun is claimed.
+
 ## Trees, artifact identity and isolation
 
 - Base application: `d406006bdfa43d73fe23d82089be4de24cae3ea4` (`origin/main`

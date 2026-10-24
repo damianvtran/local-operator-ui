@@ -150,6 +150,9 @@ export async function sceneSidebarDocking({
 		label,
 		{ mode, width, collapsed, captureFrame = true },
 	) => {
+		/* The stability wait can finish an animated width transition. Measure after it
+		 * so the assertions and JSON describe the same settled layout as the PNG. */
+		if (captureFrame) await frame(label);
 		const reading = await read(label);
 		check(
 			`${label}: ${mode} is drawn from collapsed=${collapsed}`,
@@ -184,7 +187,6 @@ export async function sceneSidebarDocking({
 				populated: reading.populated,
 			}),
 		);
-		if (captureFrame) await frame(label);
 		return reading;
 	};
 
