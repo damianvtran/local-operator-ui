@@ -8,7 +8,7 @@ import {
 import { Spinner } from "@shared/components/common/spinner";
 import { Badge, countLabel } from "@shared/components/ui";
 import { Button, Tooltip } from "@shared/components/ui";
-import { t } from "@shared/i18n";
+import { currentLocale, resolveLanguage, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { AlertTriangle, Globe, ShieldCheck, X } from "lucide-react";
@@ -287,6 +287,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	   from (round-2 Q2-2). */
 	const pageMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
 	const [dockOpen, setDockOpen] = useState(false);
+
 	/* A menu-opened dock mounts while Radix is still closing; the heading focus is
 	   re-requested once the menu has handed focus back (round 3, U13). */
 	const [dockFocusRequest, setDockFocusRequest] = useState(0);
@@ -330,6 +331,17 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	);
 
 	const state = chrome.state;
+	/**
+	 * WHICH SURFACE THE SHIELD DESCRIBES. The native card (S6b) is the product
+	 * path when the launch built it; the DOM dock is the fallback. One boolean
+	 * feeds the button's selected style, aria-expanded and toggle, so the two
+	 * states cannot disagree.
+	 */
+	const nativeApprovalsCard = state?.approvalsCard;
+	const approvalsOpen = nativeApprovalsCard?.available
+		? Boolean(nativeApprovalsCard.open)
+		: dockOpen;
+
 	// The scope filter, applied to the projection the strip, the URL bar and the
 	// waiting chips all read. `state?.tabs` is a fresh array per projection, so the
 	// filter is memoised on it rather than on `state`.
@@ -944,12 +956,33 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 										<Button
 											ref={approvalsTriggerRef}
 											variant={
-												queue.count > 0 || dockOpen ? "outline" : "ghost"
+												queue.count > 0 || approvalsOpen ? "outline" : "ghost"
 											}
 											size="icon-sm"
-											className={dockOpen ? "bg-row-selected" : undefined}
-											onClick={() => setDockOpen((open) => !open)}
-											aria-expanded={dockOpen}
+											className={approvalsOpen ? "bg-row-selected" : undefined}
+											onClick={() => {
+												/*
+												 * S6b: when the host built the native card, the shield
+												 * opens THAT surface (focused) instead of the DOM dock;
+												 * the dock is the fallback for a launch without it.
+												 * The locale/direction are resolved in the renderer
+												 * because main has no catalogue (UX U2).
+												 */
+												if (nativeApprovalsCard?.available) {
+													if (nativeApprovalsCard.open) {
+														void window.api?.browser.closeApprovalsCard();
+													} else {
+														const locale = currentLocale();
+														void window.api?.browser.openApprovalsCard({
+															locale,
+															dir: resolveLanguage(locale).dir,
+														});
+													}
+													return;
+												}
+												setDockOpen((open) => !open);
+											}}
+											aria-expanded={approvalsOpen}
 											aria-label={
 												queue.count > 0
 													? t("ui.browser.browser_url_bar.approvals_waiting", {
