@@ -1,0 +1,606 @@
+{
+  "at": "2026-10-24T16:08:54Z",
+  "sourceHead": "703f2ce5a3",
+  "htmlSha": "3e640b0485ff",
+  "assets": [
+    "assets/approvalsOverlay-CX3DxhSv.css",
+    "assets/approvalsOverlay-DC6BOmdk.js",
+    "assets/messages-DwEn-4Kt.js"
+  ],
+  "csp": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; font-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'",
+  "bootGuard": "BOOT-fixture-load / BOOT-flow writes a facts file and exits 1 instead of hanging; final cells all exit 0",
+  "cells": {
+    "264-dark": {
+      "view": {
+        "x": 0,
+        "y": 340,
+        "width": 264,
+        "height": 380
+      },
+      "card": {
+        "x": 8,
+        "y": 8.234375,
+        "width": 248,
+        "height": 397.765625
+      },
+      "footerTop": 352,
+      "viewport": {
+        "w": 264,
+        "h": 600
+      },
+      "rows": {
+        "Q2-decisions-above-fold": "PASS",
+        "A1-auto-present-unfocused": "PASS",
+        "I6-shield-toggle": "PASS",
+        "I1-allow-once": "PASS",
+        "I2-click-outside": "PASS",
+        "I3-ring-click": "BLOCKED",
+        "I5-page-click-keeps-card": "PASS",
+        "I7-tab-order": "PASS",
+        "I8-stale-seq": "PASS",
+        "I4-escape": "PASS",
+        "G-rtl-anchor": "PASS"
+      },
+      "i4": {
+        "visible": true,
+        "requestEntryId": "entry-1",
+        "dismissedEntry": "entry-0",
+        "afterEscapeDoc": {
+          "active": "approvals-review",
+          "lang": "fr",
+          "dir": "ltr",
+          "theme": "localOperatorDark",
+          "card": {
+            "x": 8,
+            "y": 42.4296875,
+            "width": 248,
+            "height": 363.5703125
+          },
+          "origin": "https://example1.test",
+          "requester": "Draft a release note",
+          "expiry": "expire dans 9 minutes",
+          "review": "2 approbations en attente",
+          "close": "Fermer",
+          "allowOnce": {
+            "text": "Autoriser une fois",
+            "disabled": false,
+            "x": 132,
+            "y": 184.421875
+          },
+          "buttons": [
+            {
+              "id": "approvals-close",
+              "text": "Fermer",
+              "disabled": false
+            },
+            {
+              "id": "approvals-allow-once",
+              "text": "Autoriser une fois",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "Autoriser jusqu\u2019\u00e0 la fermeture de l\u2019application",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "Toujours autoriser ce site",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "Ne pas autoriser",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "https://example0.testFix the login flow \u00b7 expire dans 9 minutes",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "https://example1.testDraft a release note \u00b7 expire dans 9 minutes",
+              "disabled": false
+            },
+            {
+              "id": "approvals-review",
+              "text": "2 approbations en attente",
+              "disabled": false
+            },
+            {
+              "id": "approvals-back",
+              "text": "Retour",
+              "disabled": false
+            }
+          ],
+          "cardHeight": 362,
+          "cardRectHeight": 363.5703125,
+          "footerHeight": 45,
+          "footerTop": 318,
+          "decisionRects": [
+            {
+              "text": "Autoriser jusqu\u2019\u00e0 la fermeture de l\u2019application",
+              "top": 199,
+              "bottom": 243
+            },
+            {
+              "text": "Toujours autoriser ce site",
+              "top": 249,
+              "bottom": 277
+            },
+            {
+              "text": "Ne pas autoriser",
+              "top": 283,
+              "bottom": 312
+            }
+          ]
+        },
+        "expectedEscape": {
+          "entryId": "entry-1",
+          "origin": "https://example1.test",
+          "displayAuthority": "example1.test",
+          "requester": "session:entry-1",
+          "requesterSessionId": "entry-1",
+          "expiresAt": 1792858281002
+        },
+        "renderedNext": true,
+        "responded": [
+          {
+            "entryId": "entry-0",
+            "decision": "once"
+          }
+        ],
+        "actions": {
+          "dismissed": 1,
+          "decided": 1,
+          "dropped": 1
+        }
+      }
+    },
+    "264-light": {
+      "view": {
+        "x": 0,
+        "y": 340,
+        "width": 264,
+        "height": 380
+      },
+      "card": {
+        "x": 8,
+        "y": 8.234375,
+        "width": 248,
+        "height": 397.765625
+      },
+      "footerTop": 352,
+      "viewport": {
+        "w": 264,
+        "h": 600
+      },
+      "rows": {
+        "Q2-decisions-above-fold": "PASS",
+        "A1-auto-present-unfocused": "PASS",
+        "I6-shield-toggle": "PASS",
+        "I1-allow-once": "PASS",
+        "I2-click-outside": "PASS",
+        "I3-ring-click": "BLOCKED",
+        "I5-page-click-keeps-card": "PASS",
+        "I7-tab-order": "PASS",
+        "I8-stale-seq": "PASS",
+        "I4-escape": "PASS",
+        "G-rtl-anchor": "PASS"
+      },
+      "i4": {
+        "visible": true,
+        "requestEntryId": "entry-1",
+        "dismissedEntry": "entry-0",
+        "afterEscapeDoc": {
+          "active": "approvals-review",
+          "lang": "fr",
+          "dir": "ltr",
+          "theme": "localOperatorLight",
+          "card": {
+            "x": 8,
+            "y": 42.4296875,
+            "width": 248,
+            "height": 363.5703125
+          },
+          "origin": "https://example1.test",
+          "requester": "Draft a release note",
+          "expiry": "expire dans 9 minutes",
+          "review": "2 approbations en attente",
+          "close": "Fermer",
+          "allowOnce": {
+            "text": "Autoriser une fois",
+            "disabled": false,
+            "x": 132,
+            "y": 184.421875
+          },
+          "buttons": [
+            {
+              "id": "approvals-close",
+              "text": "Fermer",
+              "disabled": false
+            },
+            {
+              "id": "approvals-allow-once",
+              "text": "Autoriser une fois",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "Autoriser jusqu\u2019\u00e0 la fermeture de l\u2019application",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "Toujours autoriser ce site",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "Ne pas autoriser",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "https://example0.testFix the login flow \u00b7 expire dans 9 minutes",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "https://example1.testDraft a release note \u00b7 expire dans 9 minutes",
+              "disabled": false
+            },
+            {
+              "id": "approvals-review",
+              "text": "2 approbations en attente",
+              "disabled": false
+            },
+            {
+              "id": "approvals-back",
+              "text": "Retour",
+              "disabled": false
+            }
+          ],
+          "cardHeight": 362,
+          "cardRectHeight": 363.5703125,
+          "footerHeight": 45,
+          "footerTop": 318,
+          "decisionRects": [
+            {
+              "text": "Autoriser jusqu\u2019\u00e0 la fermeture de l\u2019application",
+              "top": 199,
+              "bottom": 243
+            },
+            {
+              "text": "Toujours autoriser ce site",
+              "top": 249,
+              "bottom": 277
+            },
+            {
+              "text": "Ne pas autoriser",
+              "top": 283,
+              "bottom": 312
+            }
+          ]
+        },
+        "expectedEscape": {
+          "entryId": "entry-1",
+          "origin": "https://example1.test",
+          "displayAuthority": "example1.test",
+          "requester": "session:entry-1",
+          "requesterSessionId": "entry-1",
+          "expiresAt": 1792858296470
+        },
+        "renderedNext": true,
+        "responded": [
+          {
+            "entryId": "entry-0",
+            "decision": "once"
+          }
+        ],
+        "actions": {
+          "dismissed": 1,
+          "decided": 1,
+          "dropped": 1
+        }
+      }
+    },
+    "900-dark": {
+      "view": {
+        "x": 532,
+        "y": 372,
+        "width": 368,
+        "height": 348
+      },
+      "card": {
+        "x": 8,
+        "y": 8.2265625,
+        "width": 352,
+        "height": 348.7734375
+      },
+      "footerTop": 303,
+      "viewport": {
+        "w": 900,
+        "h": 600
+      },
+      "rows": {
+        "Q2-decisions-above-fold": "PASS",
+        "A1-auto-present-unfocused": "PASS",
+        "I6-shield-toggle": "PASS",
+        "I1-allow-once": "PASS",
+        "I2-click-outside": "PASS",
+        "I3-ring-click": "BLOCKED",
+        "I5-page-click-keeps-card": "PASS",
+        "I7-tab-order": "PASS",
+        "I8-stale-seq": "PASS",
+        "I4-escape": "PASS",
+        "G-rtl-anchor": "PASS"
+      },
+      "i4": {
+        "visible": true,
+        "requestEntryId": "entry-1",
+        "dismissedEntry": "entry-0",
+        "afterEscapeDoc": {
+          "active": "approvals-review",
+          "lang": "fr",
+          "dir": "ltr",
+          "theme": "localOperatorDark",
+          "card": {
+            "x": 8,
+            "y": 25.0234375,
+            "width": 352,
+            "height": 331.9765625
+          },
+          "origin": "https://example1.test",
+          "requester": "Draft a release note",
+          "expiry": "expire dans 9 minutes",
+          "review": "2 approbations en attente",
+          "close": "Fermer",
+          "allowOnce": {
+            "text": "Autoriser une fois",
+            "disabled": false,
+            "x": 184,
+            "y": 167.015625
+          },
+          "buttons": [
+            {
+              "id": "approvals-close",
+              "text": "Fermer",
+              "disabled": false
+            },
+            {
+              "id": "approvals-allow-once",
+              "text": "Autoriser une fois",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "Autoriser jusqu\u2019\u00e0 la fermeture de l\u2019application",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "Toujours autoriser ce site",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "Ne pas autoriser",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "https://example0.testFix the login flow \u00b7 expire dans 9 minutes",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "https://example1.testDraft a release note \u00b7 expire dans 9 minutes",
+              "disabled": false
+            },
+            {
+              "id": "approvals-review",
+              "text": "2 approbations en attente",
+              "disabled": false
+            },
+            {
+              "id": "approvals-back",
+              "text": "Retour",
+              "disabled": false
+            }
+          ],
+          "cardHeight": 330,
+          "cardRectHeight": 331.9765625,
+          "footerHeight": 45,
+          "footerTop": 286,
+          "decisionRects": [
+            {
+              "text": "Autoriser jusqu\u2019\u00e0 la fermeture de l\u2019application",
+              "top": 183,
+              "bottom": 212
+            },
+            {
+              "text": "Toujours autoriser ce site",
+              "top": 218,
+              "bottom": 246
+            },
+            {
+              "text": "Ne pas autoriser",
+              "top": 252,
+              "bottom": 280
+            }
+          ]
+        },
+        "expectedEscape": {
+          "entryId": "entry-1",
+          "origin": "https://example1.test",
+          "displayAuthority": "example1.test",
+          "requester": "session:entry-1",
+          "requesterSessionId": "entry-1",
+          "expiresAt": 1792858608770
+        },
+        "renderedNext": true,
+        "responded": [
+          {
+            "entryId": "entry-0",
+            "decision": "once"
+          }
+        ],
+        "actions": {
+          "dismissed": 1,
+          "decided": 1,
+          "dropped": 1
+        }
+      }
+    },
+    "900-light": {
+      "view": {
+        "x": 532,
+        "y": 372,
+        "width": 368,
+        "height": 348
+      },
+      "card": {
+        "x": 8,
+        "y": 8.2265625,
+        "width": 352,
+        "height": 348.7734375
+      },
+      "footerTop": 303,
+      "viewport": {
+        "w": 900,
+        "h": 600
+      },
+      "rows": {
+        "Q2-decisions-above-fold": "PASS",
+        "A1-auto-present-unfocused": "PASS",
+        "I6-shield-toggle": "PASS",
+        "I1-allow-once": "PASS",
+        "I2-click-outside": "PASS",
+        "I3-ring-click": "BLOCKED",
+        "I5-page-click-keeps-card": "PASS",
+        "I7-tab-order": "PASS",
+        "I8-stale-seq": "PASS",
+        "I4-escape": "PASS",
+        "G-rtl-anchor": "PASS"
+      },
+      "i4": {
+        "visible": true,
+        "requestEntryId": "entry-1",
+        "dismissedEntry": "entry-0",
+        "afterEscapeDoc": {
+          "active": "approvals-review",
+          "lang": "fr",
+          "dir": "ltr",
+          "theme": "localOperatorLight",
+          "card": {
+            "x": 8,
+            "y": 25.0234375,
+            "width": 352,
+            "height": 331.9765625
+          },
+          "origin": "https://example1.test",
+          "requester": "Draft a release note",
+          "expiry": "expire dans 9 minutes",
+          "review": "2 approbations en attente",
+          "close": "Fermer",
+          "allowOnce": {
+            "text": "Autoriser une fois",
+            "disabled": false,
+            "x": 184,
+            "y": 167.015625
+          },
+          "buttons": [
+            {
+              "id": "approvals-close",
+              "text": "Fermer",
+              "disabled": false
+            },
+            {
+              "id": "approvals-allow-once",
+              "text": "Autoriser une fois",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "Autoriser jusqu\u2019\u00e0 la fermeture de l\u2019application",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "Toujours autoriser ce site",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "Ne pas autoriser",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "https://example0.testFix the login flow \u00b7 expire dans 9 minutes",
+              "disabled": false
+            },
+            {
+              "id": "",
+              "text": "https://example1.testDraft a release note \u00b7 expire dans 9 minutes",
+              "disabled": false
+            },
+            {
+              "id": "approvals-review",
+              "text": "2 approbations en attente",
+              "disabled": false
+            },
+            {
+              "id": "approvals-back",
+              "text": "Retour",
+              "disabled": false
+            }
+          ],
+          "cardHeight": 330,
+          "cardRectHeight": 331.9765625,
+          "footerHeight": 45,
+          "footerTop": 286,
+          "decisionRects": [
+            {
+              "text": "Autoriser jusqu\u2019\u00e0 la fermeture de l\u2019application",
+              "top": 183,
+              "bottom": 212
+            },
+            {
+              "text": "Toujours autoriser ce site",
+              "top": 218,
+              "bottom": 246
+            },
+            {
+              "text": "Ne pas autoriser",
+              "top": 252,
+              "bottom": 280
+            }
+          ]
+        },
+        "expectedEscape": {
+          "entryId": "entry-1",
+          "origin": "https://example1.test",
+          "displayAuthority": "example1.test",
+          "requester": "session:entry-1",
+          "requesterSessionId": "entry-1",
+          "expiresAt": 1792858624763
+        },
+        "renderedNext": true,
+        "responded": [
+          {
+            "entryId": "entry-0",
+            "decision": "once"
+          }
+        ],
+        "actions": {
+          "dismissed": 1,
+          "decided": 1,
+          "dropped": 1
+        }
+      }
+    }
+  }
+}

@@ -32,7 +32,7 @@
 	"ui.chat.canonical.supplement.frame.failed": "یہ گرافک نہیں دکھایا جا سکا",
 	"ui.chat.canonical.supplement.frame.loading": "گرافک لوڈ ہو رہا ہے…",
 	"ui.chat.canonical.supplement.frame.source": "ماخذ: {name}",
-	"ui.chat.canonical.supplement.preview_unavailable": "ان لائن پیش منظر دستیاب نہیں۔ اس HTML کے لیے غیر سپورٹ شدہ وسائل یا دستاویزی مواد درکار ہے۔ دیکھنے کے لیے فائل کھولیں۔",
+	"ui.chat.canonical.supplement.preview_unavailable": "ان لائن پیش منظر دستیاب نہیں۔ اس HTML کے لیے غیر تعاون یافتہ وسائل یا دستاویزی مواد درکار ہے۔ دیکھنے کے لیے فائل کھولیں۔",
 	"ui.chat.canonical.supplement.send": "بھیجیں",
 	"ui.chat.canonical.transcript.connect_provider": "فراہم کنندہ منسلک کریں",
 	"ui.chat.canonical.transcript.credential_lost": "سیشن کے پاس اب وہ اسناد نہیں ہیں جن کا اس جواب میں ذکر تھا۔",

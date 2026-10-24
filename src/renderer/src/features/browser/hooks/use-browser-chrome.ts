@@ -126,6 +126,9 @@ export interface BrowserChromeState {
 	/** S4b: which list presenter the product chrome has. `suspend` is Tier 1 —
 	 * the field works, the native list does not. Absent on a pre-S4b main. */
 	addressOverlay?: { mode: "popout" | "suspend"; reason: string | null };
+	/** S6b: the native approvals card. Absent on a launch without the opt-in, in
+	 * which case the shield keeps using the DOM dock. */
+	approvalsCard?: { available: boolean; open: boolean };
 	pageControls?: {
 		find: {
 			tabId: number;
