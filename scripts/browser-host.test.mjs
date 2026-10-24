@@ -6305,6 +6305,44 @@ test("a hydration that never commits a page is marked failed, and the next navig
 	assert.equal(host.failedTabIds().size, 0, "the next navigation retires it");
 });
 
+test("a restore superseded mid-flight, then stopped, is not marked failed (F7)", async () => {
+	// The restore rejects ERR_ABORTED before the superseding page commits; if the
+	// superseding load is then stopped, no did-navigate ever arrives to clear a
+	// mark. The abort is ordinary navigation, not a restore failure.
+	const registry = new TabRegistry(
+		(_options, tabId) => {
+			const view = new FakeView(tabId);
+			view.webContents.loadURL = () =>
+				Promise.reject(
+					new Error("ERR_ABORTED (-3) loading 'http://127.0.0.1:3691/second'"),
+				);
+			return view;
+		},
+		() => {},
+		() => {},
+	);
+	const { host } = makeHost({ registry, log: () => {} });
+	host.restoreTabs([
+		{
+			owner: "user",
+			active: true,
+			entries: [{ url: "http://127.0.0.1:3691/first", title: "first" }],
+			activeIndex: 0,
+		},
+	]);
+	await host.whenRestored();
+	assert.equal(
+		host.failedTabIds().size,
+		0,
+		"a superseded restore is not a Failed tab, even when its successor is stopped",
+	);
+	assert.equal(
+		host.chromeState().navFailure,
+		null,
+		"no restore-failure panel is published for the abort",
+	);
+});
+
 test("a hydration that failed after a commit is not marked failed", async () => {
 	const registry = new TabRegistry(
 		(_options, tabId) => {
