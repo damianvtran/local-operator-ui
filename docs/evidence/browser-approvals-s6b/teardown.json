@@ -1,5 +1,6 @@
 {
-  "at": "2026-10-24T11:44:36Z",
+  "at": "2026-10-24T14:36:51Z",
+  "sourceHead": "1d08bf2358",
   "boots": [
     "264-dark",
     "264-light",
@@ -7,5 +8,6 @@
     "900-light"
   ],
   "exit": 0,
-  "leftover": "none; process-group SIGKILL after each boot"
+  "leftover": "none; process-group SIGKILL after each boot",
+  "guard": "a failed fixture load or a 90s flow stall records BOOT-fixture-load / BOOT-flow and exits 1; no product row is invented"
 }
