@@ -157,8 +157,231 @@
   "notes": [
     "Source pin: the task named 23eaaea7b8 but stated 1,733 added keys; 23eaaea7b8 adds 1,758, while feat/i18n-extract-chat's local head 5d97575ac4 adds exactly 1,733. Work is based on 5d97575ac4.",
     "ui.chat.canonical (30) and ui.chat.run_details (2) are new es files, so their pre-existing English keys were translated as well to keep the files key-complete.",
-    "Language-neutral identical values are deliberate: Error, Chat, Chats, Local Operator, PDF, Program Files/ProgramData folder names and C:\\Program Files paths, Ctrl+Shift+L, [role=\"menuitem\"], all:{kind}, section-grown-hint-{key}, CSS variable names, time-indicator, volume-control, Top K, Top P, Auto, and placeholder-only strings.",
+    "Language-neutral identical values are deliberate: Error, Chat, Chats, Local Operator, PDF, Program Files/ProgramData folder names and C:\\Program Files paths, Ctrl+Shift+L, [role=\"menuitem\"], all:{kind}, section-grown-hint-{key}, CSS variable names, Top K, Top P, Auto, and placeholder-only strings. Remediation round 1 removed time-indicator and volume-control from this list by translating both aria-labels.",
     "Chosen term: 'pill' in the credential capture UI renders as 'píldora'; 'aside' is 'consulta al margen' to match the existing composer label 'Preguntar al margen'."
   ],
-  "awaiting": "independent i18n audit; ledger rows are added after the audit"
+  "awaiting": "independent i18n audit; ledger rows are added after the audit",
+  "remediation": {
+    "round": 1,
+    "date": "2026-10-24",
+    "head_before": "7dd1618c74d197809ca46b9a42c252c537e59f33",
+    "audited_head": "372aa11f61370c03864f2a51df5d363445b865ee",
+    "base": "9c5ddd18390c66cccd48b34cab0544e863a522d8",
+    "audit_receipt": "i18n/receipts/ui-es-chat-batch-audit.json",
+    "auditor": {
+      "agent": "translation-auditor",
+      "model": "radient/auto",
+      "session": "d83bf6bec156"
+    },
+    "disposition": {
+      "blockers_fixed": 0,
+      "required_majors_fixed": 3,
+      "clear_minors_fixed": 12,
+      "nits_fixed": 0,
+      "deferred": 10,
+      "changed_keys": 22
+    },
+    "changed_namespaces": [
+      "ui.chat.aside",
+      "ui.chat.canonical",
+      "ui.chat.credential_capture",
+      "ui.chat.message",
+      "ui.chat.run_details",
+      "ui.chat.session_status",
+      "ui.chat.trace"
+    ],
+    "changes": {
+      "ui.chat.aside": [
+        {
+          "key": "ui.chat.aside.aside.the_aside_answered",
+          "finding": "MINOR aside: a query does not \"answer\"; applied the proposal so the state matches the existing negative 'no obtuvo respuesta'.",
+          "applied": "La consulta al margen obtuvo respuesta"
+        },
+        {
+          "key": "ui.chat.aside.aside.the_aside_answered_sentence",
+          "finding": "MINOR aside related: same 'respondió' agency; applied the proposal.",
+          "applied": "La consulta al margen obtuvo respuesta: {sentence}"
+        },
+        {
+          "key": "ui.chat.aside.aside.the_aside_answered_value",
+          "finding": "MINOR aside related: same 'respondió' agency; applied the proposal.",
+          "applied": "La consulta al margen obtuvo respuesta: {value}…"
+        }
+      ],
+      "ui.chat.canonical": [
+        {
+          "key": "ui.chat.canonical.sound.batch_attachment_unavailable",
+          "finding": "MINOR canonical: stray leading U+0020 in a standalone <p> text node; stripped it.",
+          "applied": "Adjunto de audio no disponible."
+        },
+        {
+          "key": "ui.chat.canonical.sound.player_failed",
+          "finding": "MINOR canonical related: same stray leading U+0020; stripped it.",
+          "applied": "No se pudo reproducir este sonido"
+        },
+        {
+          "key": "ui.chat.canonical.supplement_model.show_all_bounded_graphics",
+          "finding": "MINOR canonical: the one arm dropped the ICU # that English carries; restored it as the literal '1' in the singular arm, as proposed.",
+          "applied": "{bounded, plural, one {Mostrar 1 gráfico} many {Mostrar los # de gráficos} other {Mostrar los # gráficos}}"
+        },
+        {
+          "key": "ui.chat.canonical.checkpoint_model.open",
+          "finding": "MAJOR canonical: CHECKPOINT_OUTCOME_LABELS prints this beside Complete/Interrupted/Error as a state word, not a control; 'Abrir' read as an imperative. Applied 'Abierto'. The English context sidecar needs a state/examples note (reported, not edited here).",
+          "applied": "Abierto"
+        }
+      ],
+      "ui.chat.credential_capture": [
+        {
+          "key": "ui.chat.credential_capture.store_unconfirmed",
+          "finding": "MINOR credential_capture: the chip named the act/medium ('almacenamiento') while the standalone key names the store ('Almacén de credenciales'); applied 'almacén'.",
+          "applied": "almacén sin confirmar"
+        }
+      ],
+      "ui.chat.message": [
+        {
+          "key": "ui.chat.message.audio_attachment.time_indicator",
+          "finding": "MAJOR message: aria-label left as the English placeholder 'time-indicator'; translated it.",
+          "applied": "indicador de tiempo"
+        },
+        {
+          "key": "ui.chat.message.audio_attachment.volume_control",
+          "finding": "MAJOR message: aria-label left as the English placeholder 'volume-control'; translated it.",
+          "applied": "control de volumen"
+        },
+        {
+          "key": "ui.chat.message.error_block.model_unavailable",
+          "finding": "MINOR message: 'rate limits' was 'límites de velocidad' here while the sibling rate-limit keys use 'límite de solicitudes'; applied the proposal.",
+          "applied": "El modelo que intentas usar no está disponible. Ve a la {settings} para elegir otro modelo, o usa Radient para acceder a cientos de modelos sin límites de solicitudes"
+        }
+      ],
+      "ui.chat.run_details": [
+        {
+          "key": "ui.chat.run_details.run_panel.opening_a_subagents_conversation_needs_a_newer_local_operator_backend",
+          "finding": "MINOR run_details: 'restart the app' used 'aplicación' while the batch uses 'app'; applied the proposal.",
+          "applied": "Abrir la conversación de un subagente requiere un backend de Local Operator más reciente. Actualiza el backend y reinicia la app."
+        },
+        {
+          "key": "ui.chat.run_details.mcp_auth_dialog.replace_grant_and_sign_in",
+          "finding": "MINOR run_details: the OAuth grant is 'autorización' in the adjacent grant string; applied the proposal.",
+          "applied": "Reemplazar la autorización e iniciar sesión"
+        },
+        {
+          "key": "ui.chat.run_details.run_detail_todos.hidden",
+          "finding": "MINOR run_details: the standalone label disagreed with the feminine noun 'tareas pendientes'; applied 'ocultas'.",
+          "applied": "ocultas"
+        },
+        {
+          "key": "ui.chat.run_details.run_detail_todos.hidden_hidden",
+          "finding": "MINOR run_details related: same gender disagreement in the counted label; applied 'ocultas'.",
+          "applied": "{hidden, number, ::group-off} ocultas"
+        },
+        {
+          "key": "ui.chat.run_details.run_detail_wakes.cancel_the_wake_that_fires_duelabel",
+          "finding": "MINOR run_details: 'fires {dueLabel}' needed the Spanish time preposition; applied 'a las {dueLabel}'.",
+          "applied": "Cancelar el despertar que se activa a las {dueLabel}"
+        }
+      ],
+      "ui.chat.session_status": [
+        {
+          "key": "ui.chat.session_status.session_model.the_owner_cannot_currently_provide_borrowed_access_or_borrowing_permission",
+          "finding": "MINOR session_status: missing definite article before the direct object ('proporcionar acceso prestado'); applied 'el acceso prestado'.",
+          "applied": "El propietario no puede proporcionar el acceso prestado ahora mismo, o el permiso para tomarlo prestado no está disponible. Restaura el acceso o el permiso del propietario antes de reintentar, o elige otro modelo."
+        },
+        {
+          "key": "ui.chat.session_status.session_model.the_runtime_resolved_borrowed_access_for_this_session_every_new",
+          "finding": "MINOR session_status: missing definite article ('resolvió acceso prestado'); applied 'el acceso prestado'.",
+          "applied": "El runtime resolvió el acceso prestado para esta sesión. Cada nueva solicitud vuelve a comprobar al propietario."
+        },
+        {
+          "key": "ui.chat.session_status.session_model.this_session_may_borrow_label_access_but_it_has_not",
+          "finding": "MINOR session_status related: missing definite article ('tomar prestado acceso a {label}'); applied 'el acceso a {label}'.",
+          "applied": "Esta sesión puede tomar prestado el acceso a {label}, pero aún no lo ha resuelto. La próxima solicitud verifica {owner} automáticamente."
+        }
+      ],
+      "ui.chat.trace": [
+        {
+          "key": "ui.chat.trace.question_dock.answer_from_the_composer_instead_type_yes_no_1_or",
+          "finding": "MINOR trace related: 'Escape' drifted from the dock's 'Esc'; applied 'Esc'.",
+          "applied": "Responde desde el cuadro: escribe sí, no, 1 o 2 y envía, o pulsa Esc en el cuadro de mensaje para detener el turno."
+        },
+        {
+          "key": "ui.chat.trace.question_dock.choose_approve_or_deny_above_type_yes_no_1_or",
+          "finding": "MINOR trace related: same Escape drift; applied 'Esc'.",
+          "applied": "Elige Aprobar o Denegar arriba, escribe sí, no, 1 o 2 y envía, o pulsa Esc en el cuadro de mensaje para detener el turno."
+        },
+        {
+          "key": "ui.chat.trace.question_dock.prefix_held_while_this_answers_fate_is_unknown_it_may",
+          "finding": "MINOR trace: English says 'Esc in the card'; Spanish said 'Escape en el mensaje'; applied 'Esc en la tarjeta'.",
+          "applied": "{prefix}En espera mientras se desconoce el destino de esta respuesta: puede que haya llegado, así que no se puede reenviar; pulsa Esc en la tarjeta para ocultarla."
+        }
+      ]
+    },
+    "deferred": [
+      {
+        "id": "ES-CHAT-08",
+        "key": "ui.chat.canonical.transcript.older_history.scroll_short",
+        "reason": "nit; 'Desplázate hacia arriba para ver lo anterior' is a clear improvement but nit findings do not gate a clean round. Left for the batch polish pass."
+      },
+      {
+        "id": "ES-CHAT-09",
+        "key": "ui.chat.canonical.use_checkpoints.checkpoint_naming_is_unavailable_the_cards_keep_their_fallback_text",
+        "reason": "nit; 'asignación de nombres' is the settled term but the current 'nombrado' is understandable. Left for the batch polish pass."
+      },
+      {
+        "id": "ES-CHAT-10",
+        "key": "ui.chat.canonical.sound.stop.warning",
+        "reason": "nit; 'Detener solo es un intento' is tighter, but the current charge warning is accurate. Left for the batch polish pass."
+      },
+      {
+        "id": "ES-CHAT-11",
+        "key": "ui.chat.canonical.supplement_model.provider_timed_out",
+        "reason": "nit; 'superó el tiempo de espera' is more precise; current wording is understandable. Left for the batch polish pass."
+      },
+      {
+        "id": "ES-CHAT-19",
+        "key": "ui.chat.aside.aside.this_conversation_is_working_adding_the_aside_while_it_runs",
+        "reason": "nit; 'está ocupada' matches the sibling string, but nit findings do not gate. Left for the batch polish pass."
+      },
+      {
+        "id": "ES-CHAT-21",
+        "key": "ui.chat.trace.tool_row_model.previewed_rename",
+        "reason": "nit; 'Previsualizó el cambio de nombre' changes aspect/voice; left for the batch polish pass so this value-only round stays scoped."
+      },
+      {
+        "id": "ES-CHAT-22",
+        "key": "ui.chat.at.contract.this_backend_cannot_carry_file_references_update_the_backend_and",
+        "reason": "nit; 'admitir' is better than the 'transportar' calque, but nit findings do not gate. Left for the batch polish pass."
+      },
+      {
+        "id": "ES-CHAT-23",
+        "key": "ui.chat.skill.contract.this_backend_cannot_serve_the_skill_catalogue_update_the_backend",
+        "reason": "nit; 'proporcionar' is preferred over 'servir', but nit findings do not gate. Left for the batch polish pass."
+      },
+      {
+        "id": "ES-CHAT-24",
+        "key": "ui.chat.composer.composer_status_row.goal_stalled_auto_continuation_stopped_send_a_message_to_continue",
+        "reason": "nit; the second colon should be a semicolon, but the sentence reads. Left for the batch polish pass."
+      },
+      {
+        "id": "ES-CHAT-25",
+        "key": "ui.chat.composer.composer_status_row.mark_the_goal_done_label_seam_goal",
+        "reason": "nit; 'cumplido' would match the completed state, but nit findings do not gate. Left for the batch polish pass."
+      }
+    ],
+    "verification": {
+      "generate_check": "node scripts/i18n/generate.mjs --check -> src/i18n/keys.gen.ts is byte-identical to a fresh generation.",
+      "context_parity": "node scripts/i18n/context-parity.mjs -> ok; 131 allowed gaps in 4 namespaces, unchanged.",
+      "locale_parity_es": "node --test --test-name-pattern='\\[es\\]' scripts/i18n/locale-parity.test.mjs -> 5/6 pass; the only failure is the pre-existing 'not an English stub' list, which shrinks from 99 to 97 (time_indicator and volume_control removed) with no added value.",
+      "es_activation": "node --test scripts/i18n/es-activation.test.mjs -> 3/3 pass.",
+      "format_and_typed_keys": "node --test scripts/i18n/format.test.mjs scripts/i18n/typed-keys.test.mjs -> 17/17 pass (the combined run also covers es activation).",
+      "icu_verification": "translator-executed per-key check over the 15 namespaces (1795 keys): key set/order, ICU argument names and types, explicit =N arms, number/date skeletons and tag sequences match; every changed key (22) rendered through the real IntlMessageFormat at counts 1, 2 and 1000000 -> 66 renders, no throw, no empty output, no leftover brace. One pre-existing arm-shape difference in ui.chat.sidebar.chat_sidebar.builtin_offer is identical at the branch head and is not introduced here.",
+      "ledger_check": "node scripts/i18n/ledger-check.mjs -> the same 75 findings as the branch head; no ledger, allowance or shipped-locale file was touched."
+    },
+    "residual_risks": [
+      "Source-context gap (reported, not edited): ui.chat.canonical.checkpoint_model.open's English sidecar carries only the generic 'Extracted unchanged from canonical/checkpoint-model.ts' note. The source comment says 'Open' is the backend's own word for a tail turn nothing has resolved, deliberately not 'in progress'; the sidecar needs a state/examples note so translators do not read it as an action.",
+      "Audit related-key typo: ui.chat.aside.aside_panel.the_aside_answered does not exist in the English catalogue; the three existing aside.answered keys were fixed.",
+      "Pre-existing gate debt: locale-parity es still fails its 'not an English stub' assertion on a 97-value language-neutral list; the audit ledger still reports 75 findings because the new es chat namespaces await ledger rows. Neither set is changed by this round beyond removing the two translated aria-labels from the stub list.",
+      "Width judgement: 'Reemplazar la autorización e iniciar sesión' grows the MCP auth control by 8 cells against 'Reemplazar permiso e iniciar sesión'; no maxCells budget exists for this string, so this is a judgement, not a gate failure. 'indicador de tiempo' and 'control de volumen' are aria-labels and do not occupy layout."
+    ]
+  }
 }
