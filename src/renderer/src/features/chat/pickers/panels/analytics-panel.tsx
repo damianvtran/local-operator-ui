@@ -682,6 +682,12 @@ const SessionTable: FC<{
 					 * Absent only when the window has no sessions at all, where the
 					 * section's behaviour is what it was before this change: the table's
 					 * own empty state above, and no controls counting nothing.
+					 *
+					 * The noun pair is passed in the form the RANGE message places it —
+					 * after `of {totaltext}` — so each catalogue carries the forms its own
+					 * grammar requires there: Russian needs the genitive («сессии»/
+					 * «сессий»), not the standalone nominative. Both keys are pager-only;
+					 * a standalone «session» label has its own keys.
 					 */}
 					{index.rows.length > 0 ? (
 						<TablePager
