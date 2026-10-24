@@ -2,5 +2,11 @@
 	"ui.chat.dialogs.delete_title": "یہ گفتگو حذف کریں؟",
 	"ui.chat.dialogs.delete_action": "حذف کریں",
 	"ui.chat.dialogs.archive_action": "آرکائیو کریں",
-	"ui.chat.dialogs.cancel": "منسوخ کریں"
+	"ui.chat.dialogs.cancel": "منسوخ کریں",
+	"ui.chat.dialogs.options.clear_confirm": "صاف کریں",
+	"ui.chat.dialogs.options.clear_conversation": "گفتگو صاف کریں",
+	"ui.chat.dialogs.options.clear_message": "اس کا ہر پیغام اس کمپیوٹر سے حذف ہو جاتا ہے اور اسے واپس نہیں لایا جا سکتا۔ خود ایجنٹ پر کوئی اثر نہیں پڑتا۔",
+	"ui.chat.dialogs.options.clear_title": "یہ گفتگو صاف کریں؟",
+	"ui.chat.dialogs.options.description": "اس ایجنٹ کی ترتیبات حسب ضرورت بنائیں",
+	"ui.chat.dialogs.options.title": "چیٹ کے اختیارات"
 }
