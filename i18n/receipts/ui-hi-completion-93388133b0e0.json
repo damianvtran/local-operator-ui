@@ -30,7 +30,7 @@
 			"status": "translated",
 			"keys": 34,
 			"source_sha256": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
-			"target_sha256": "f6c4b7276d9306a6ebef60e35d4ef3f871d96d88bc8def3eef2aa64edd245d9b",
+			"target_sha256": "8642a1b803217430605f29a5ac3a1ebda547fbfc3cfc1043b5c9912bc836d213",
 			"context_sha256": "8d3fa914cd52768c98a75c4f41b903b86553335b27e406f98500eab7ff576e64",
 			"translator": {
 				"agent": "translator",
@@ -58,7 +58,7 @@
 			"status": "translated",
 			"keys": 18,
 			"source_sha256": "72e2a848a2aa4b46ecdc0ede34ed5f59b280b73e3fc544d5e563ce22ab2743e0",
-			"target_sha256": "e02b0b36d4abe5c4f7e6fa652bf72cf5ec11133f4d02659bfca6c5f88525b2dd",
+			"target_sha256": "e803fc5f02c179506d397da90fc17ddacac91e9ce21019506fe34d455d6a8bb0",
 			"context_sha256": "d3576fe1e83a51325e07df3b999a0e9c029c63b19aefad771edeb54be4dd3bcf",
 			"translator": {
 				"agent": "translator",
@@ -156,7 +156,7 @@
 			"status": "translated",
 			"keys": 2,
 			"source_sha256": "7eea05d7c5b371e7969214abc7bd2961bf6c38fd3e5886e0957493b787878094",
-			"target_sha256": "1b5e0c349466a93d277f7e0d015cb4c75d06a962f8587cecc44e9ea1a4a0c35d",
+			"target_sha256": "b2b246144d121e4fabc7d5d0614d168bc42dbc51981507bc5fc6cc5d6e1906f5",
 			"context_sha256": "eae93350935a597d66fe4931a40fed2fa9d40d0b01e03925d2cef22985f628d6",
 			"translator": {
 				"agent": "translator",
