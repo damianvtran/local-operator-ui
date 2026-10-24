@@ -2729,8 +2729,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "12ebdb50d49dfe5e7101fc29293485d5366f5a52ae7ac3c7dca9ef985fcde8c9",
-			"target_sha256": "809cb71b2b6394758f0f2a3814b8350c7c5647b54342691b4c1b55f0c0c88917",
+			"source_sha256": "9e591f688e8696c77967bccb7961ee15405481f539e633658f8db4ae58f5b800",
+			"target_sha256": "b75416b87e787d10ba75eb3fe707bf68097216e85f4f48d44cca176ca5b3a30f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -2738,21 +2738,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "deepseek/deepseek-flash",
+					"agent": "translation-auditor",
+					"model": "radient/auto",
 					"date": "2026-10-24",
-					"result": "clean-with-findings",
-					"instance": "061da45dd19b-es",
+					"result": "clean",
+					"instance": "19fdfcee9e91-surfaces",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/061da45dd19b-es.json",
-					"receipt_sha256": "4dc06723f73f87b2e6b8d42b7bb8520bfcde8b0f98ef633098a3f08dcb0a686c",
-					"scope": "Round 2 at 2026-10-24 on the remediation tree: the two retained-take keys in ui.chat.composer, and round 1's formatting and copy findings re-checked against the current bytes.",
-					"note": "Two new keys (toast sentence and retained-take row). Round 2 audit passed; minor/nit findings recorded, not churned."
+					"receipt": "i18n/receipts/19fdfcee9e91-surfaces.json",
+					"receipt_sha256": "36d23fc76bafb5df33ce2d7da400aae26bea82d78f05946389a122a59546d467",
+					"scope": "round-3 independent re-audit: the full namespace at f0e395ef28, read against en and the context sidecars; re-binds the row to current bytes after main's completion waves",
+					"note": "0 BLOCKER/MAJOR; MINOR/NIT recorded in the immutable receipt, not churned."
 				}
 			],
 			"status": "audited",
@@ -2777,6 +2777,30 @@
 								"minor": 0,
 								"nit": 0
 							}
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "12ebdb50d49dfe5e7101fc29293485d5366f5a52ae7ac3c7dca9ef985fcde8c9",
+					"target_sha256": "809cb71b2b6394758f0f2a3814b8350c7c5647b54342691b4c1b55f0c0c88917",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "061da45dd19b-es",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/061da45dd19b-es.json",
+							"receipt_sha256": "4dc06723f73f87b2e6b8d42b7bb8520bfcde8b0f98ef633098a3f08dcb0a686c",
+							"scope": "Round 2 at 2026-10-24 on the remediation tree: the two retained-take keys in ui.chat.composer, and round 1's formatting and copy findings re-checked against the current bytes.",
+							"note": "Two new keys (toast sentence and retained-take row). Round 2 audit passed; minor/nit findings recorded, not churned."
 						}
 					],
 					"status": "audited"
@@ -26818,8 +26842,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.canonical",
-			"source_sha256": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
-			"target_sha256": "5b189a86ad2da2e4b63f4ecb1eb4534905e5f903c07410d3545fb00c4bbc1a77",
+			"source_sha256": "dfa9cde6984a451b75a22530303197ed8a3c8d9148685231d017299f16cfe0dd",
+			"target_sha256": "bcdca68fbcff517dbf96d75173423c08aecf83c06dc03a4e15be74edcfa8cf6e",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -26828,40 +26852,66 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openrouter/moonshotai/kimi-k3.1-pro",
-					"date": "2026-10-23",
-					"result": "clean",
-					"instance": "d3918ef5d0bb",
+					"model": "radient/auto",
+					"date": "2026-10-24",
+					"result": "clean-with-findings",
+					"instance": "19fdfcee9e91-surfaces",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/d3918ef5d0bb.json",
-					"receipt_sha256": "c6e894287d3b9a3c8080c5dfebcc3c7be36b96bfd3f3bde4b576f5ee4f466a9e",
-					"scope": "independent round-1 audit and second high-visibility pass at current hashes",
-					"note": "Independent audits; MINOR/NIT findings retained in immutable receipts."
-				},
-				{
-					"agent": "translation-auditor",
-					"model": "openrouter/moonshotai/kimi-k3.1-pro",
-					"date": "2026-10-23",
-					"result": "clean",
-					"instance": "c1bfed9bf84b",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/c1bfed9bf84b.json",
-					"receipt_sha256": "78299d508ae83b78f6ce64bc631d0233c7e289b71b3aa2db2fc0461b2ed18296",
-					"scope": "second independent high-visibility round-1 audit at current hashes",
-					"note": "Independent second pass; MINOR/NIT findings retained in immutable receipt."
+					"receipt": "i18n/receipts/19fdfcee9e91-surfaces.json",
+					"receipt_sha256": "36d23fc76bafb5df33ce2d7da400aae26bea82d78f05946389a122a59546d467",
+					"scope": "round-3 independent re-audit: the full namespace at f0e395ef28, read against en and the context sidecars; re-binds the row to current bytes after main's completion waves",
+					"note": "0 BLOCKER/MAJOR; MINOR/NIT recorded in the immutable receipt, not churned."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
+					"target_sha256": "5b189a86ad2da2e4b63f4ecb1eb4534905e5f903c07410d3545fb00c4bbc1a77",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openrouter/moonshotai/kimi-k3.1-pro",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "d3918ef5d0bb",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d3918ef5d0bb.json",
+							"receipt_sha256": "c6e894287d3b9a3c8080c5dfebcc3c7be36b96bfd3f3bde4b576f5ee4f466a9e",
+							"scope": "independent round-1 audit and second high-visibility pass at current hashes",
+							"note": "Independent audits; MINOR/NIT findings retained in immutable receipts."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "openrouter/moonshotai/kimi-k3.1-pro",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "c1bfed9bf84b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c1bfed9bf84b.json",
+							"receipt_sha256": "78299d508ae83b78f6ce64bc631d0233c7e289b71b3aa2db2fc0461b2ed18296",
+							"scope": "second independent high-visibility round-1 audit at current hashes",
+							"note": "Independent second pass; MINOR/NIT findings retained in immutable receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
@@ -26962,8 +27012,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.common.viewer",
-			"source_sha256": "660c7e185ebc22d37ecc9b5d02807428f87c477f86431f5cdb07fdec888b78bb",
-			"target_sha256": "a7b773b4b329b7ba68c3f2d62c6bb417633eb9507a31128844c997553752d56e",
+			"source_sha256": "9db8efc731cb81ac781c732a3021587434acd26bd03d41ec41156c5672edabfe",
+			"target_sha256": "8bbe94a6d0f524249e98748ee4a108b8288615e77775f43f399c0975ecc0c4f7",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -26972,40 +27022,66 @@
 			"auditors": [
 				{
 					"agent": "translation-auditor",
-					"model": "openrouter/moonshotai/kimi-k3.1-pro",
-					"date": "2026-10-23",
+					"model": "radient/auto",
+					"date": "2026-10-24",
 					"result": "clean",
-					"instance": "d3918ef5d0bb",
+					"instance": "19fdfcee9e91-surfaces",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/d3918ef5d0bb.json",
-					"receipt_sha256": "c6e894287d3b9a3c8080c5dfebcc3c7be36b96bfd3f3bde4b576f5ee4f466a9e",
-					"scope": "independent round-1 audit and second high-visibility pass at current hashes",
-					"note": "Independent audits; MINOR/NIT findings retained in immutable receipts."
-				},
-				{
-					"agent": "translation-auditor",
-					"model": "openrouter/moonshotai/kimi-k3.1-pro",
-					"date": "2026-10-23",
-					"result": "clean",
-					"instance": "c1bfed9bf84b",
-					"findings": {
-						"blocker": 0,
-						"major": 0,
-						"minor": 0,
-						"nit": 0
-					},
-					"receipt": "i18n/receipts/c1bfed9bf84b.json",
-					"receipt_sha256": "78299d508ae83b78f6ce64bc631d0233c7e289b71b3aa2db2fc0461b2ed18296",
-					"scope": "second independent high-visibility round-1 audit at current hashes",
-					"note": "Independent second pass; MINOR/NIT findings retained in immutable receipt."
+					"receipt": "i18n/receipts/19fdfcee9e91-surfaces.json",
+					"receipt_sha256": "36d23fc76bafb5df33ce2d7da400aae26bea82d78f05946389a122a59546d467",
+					"scope": "round-3 independent re-audit: the full namespace at f0e395ef28, read against en and the context sidecars; re-binds the row to current bytes after main's completion waves",
+					"note": "0 BLOCKER/MAJOR; MINOR/NIT recorded in the immutable receipt, not churned."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "660c7e185ebc22d37ecc9b5d02807428f87c477f86431f5cdb07fdec888b78bb",
+					"target_sha256": "a7b773b4b329b7ba68c3f2d62c6bb417633eb9507a31128844c997553752d56e",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "openrouter/moonshotai/kimi-k3.1-pro",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "d3918ef5d0bb",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/d3918ef5d0bb.json",
+							"receipt_sha256": "c6e894287d3b9a3c8080c5dfebcc3c7be36b96bfd3f3bde4b576f5ee4f466a9e",
+							"scope": "independent round-1 audit and second high-visibility pass at current hashes",
+							"note": "Independent audits; MINOR/NIT findings retained in immutable receipts."
+						},
+						{
+							"agent": "translation-auditor",
+							"model": "openrouter/moonshotai/kimi-k3.1-pro",
+							"date": "2026-10-23",
+							"result": "clean",
+							"instance": "c1bfed9bf84b",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/c1bfed9bf84b.json",
+							"receipt_sha256": "78299d508ae83b78f6ce64bc631d0233c7e289b71b3aa2db2fc0461b2ed18296",
+							"scope": "second independent high-visibility round-1 audit at current hashes",
+							"note": "Independent second pass; MINOR/NIT findings retained in immutable receipt."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
