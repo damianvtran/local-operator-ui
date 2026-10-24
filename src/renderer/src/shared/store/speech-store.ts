@@ -76,9 +76,9 @@ import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { apiConfig } from "@shared/config";
 import {
 	SPEECH_FAILURE_DETAIL_PREFIX,
-	SPEECH_PLAYBACK_COPY,
 	isUnknownAgentSpeechRefusal,
 	speechFailureCopy,
+	speechPlaybackCopy,
 } from "@shared/lib/speech-errors";
 import { fetchSpeechAgentId } from "@shared/lib/speech-target";
 import { useAudioEngineStore } from "@shared/store/audio-engine-store";
@@ -425,7 +425,7 @@ export const useSpeechStore = create<SpeechState & SpeechActions>(
 							console.error(
 								`${SPEECH_FAILURE_DETAIL_PREFIX} playback failed for ${key}`,
 							);
-							showErrorToast(SPEECH_PLAYBACK_COPY);
+							showErrorToast(speechPlaybackCopy());
 						},
 					});
 				/*

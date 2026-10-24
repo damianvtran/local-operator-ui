@@ -397,6 +397,5 @@ function clip(detail: string): string {
  * said whether the app had heard anything at all - a user reads that as a
  * broken gesture.
  */
-export const EMPTY_TRANSCRIPTION_MESSAGE = t(
-	"ui.common.errors.dictation_empty",
-);
+export const emptyTranscriptionMessage = (): string =>
+	t("ui.common.errors.dictation_empty");

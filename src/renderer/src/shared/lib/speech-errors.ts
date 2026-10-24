@@ -37,7 +37,8 @@ export const SPEECH_FAILURE_DETAIL_PREFIX = "[speech]";
  * with, including a null body ("no audio data received" is the transport
  * describing itself; the reader is owed what happened and what to do).
  */
-export const SPEECH_FAILURE_COPY = t("ui.common.errors.speech_failure");
+export const speechFailureFallbackCopy = (): string =>
+	t("ui.common.errors.speech_failure");
 
 /**
  * The reader's sentence for a playback failure (autoplay refused, a decode
@@ -57,7 +58,8 @@ export const SPEECH_FAILURE_COPY = t("ui.common.errors.speech_failure");
  * highlight, not a message - "this message" named an object half the surfaces
  * do not have. The object-less form is true everywhere the press mounts.
  */
-export const SPEECH_PLAYBACK_COPY = t("ui.common.errors.speech_failure");
+export const speechPlaybackCopy = (): string =>
+	t("ui.common.errors.speech_failure");
 
 /**
  * The daemon's sentence for an `agent_id` its registry does not hold.
@@ -122,7 +124,7 @@ const DESIGNED_SPEECH_SENTENCES: ReadonlyMap<string, () => string> = new Map([
 	],
 	[
 		"Speech is temporarily unavailable. Try again in a moment.",
-		() => t("ui.common.errors.speech_unavailable"),
+		() => t("ui.common.errors.speech_temporarily_unavailable"),
 	],
 	/*
 	 * agent-server's own base 503 sentence, one hop upstream. The daemon
@@ -204,7 +206,7 @@ export function speechFailureCopy(error: unknown): string {
 	const designed = DESIGNED_SPEECH_SENTENCES.get(raw);
 	if (designed) return designed();
 	console.error(`${SPEECH_FAILURE_DETAIL_PREFIX} ${raw}`);
-	return SPEECH_FAILURE_COPY;
+	return speechFailureFallbackCopy();
 }
 
 /**

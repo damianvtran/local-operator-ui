@@ -283,6 +283,12 @@
 		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
 		"note": "English source: Your Radient credit balance is too low for speech. Add credits in the Radient Console to continue."
 	},
+	"ui.common.errors.speech_temporarily_unavailable": {
+		"role": "Speech generation refusal",
+		"tone": "Calm temporary failure with a retry remedy.",
+		"length": "One error toast sentence.",
+		"note": "Exact UI rendering of the daemon's 'Speech is temporarily unavailable. Try again in a moment.' protocol refusal. Keep distinct from the shorter 'temporarily unavailable' and 'unavailable right now' variants."
+	},
 	"ui.common.errors.speech_unavailable": {
 		"role": "Error message",
 		"tone": "Factual and actionable without blame.",

@@ -41,6 +41,7 @@
 	"ui.common.errors.speech_radient_sign_in": "Your Radient sign-in has stopped working. Sign in again in Settings.",
 	"ui.common.errors.speech_radient_credits": "Your Radient credit balance is too low for speech. Add credits in the Radient Console to continue.",
 	"ui.common.errors.speech_unavailable": "Speech is unavailable right now. Try again in a moment.",
+	"ui.common.errors.speech_temporarily_unavailable": "Speech is temporarily unavailable. Try again in a moment.",
 	"ui.common.errors.speech_unavailable_short": "Speech is temporarily unavailable.",
 	"ui.common.errors.speech_sign_in_enable": "Sign in to Radient in Settings to enable speaking aloud.",
 	"ui.common.errors.speech_unknown_agent": "This conversation's agent is no longer available.",
