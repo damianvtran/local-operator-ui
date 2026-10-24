@@ -1,0 +1,5 @@
+{
+	"ui.schedules.errors.agent_id_required": "Cần ID tác nhân để tạo lịch.",
+	"ui.schedules.errors.agent_id_missing": "Thiếu ID tác nhân để gửi.",
+	"ui.schedules.errors.base_url_missing": "Chưa cấu hình URL cơ sở cho Local Operator API."
+}

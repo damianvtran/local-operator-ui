@@ -1,0 +1,3 @@
+{
+	"ui.common.viewer.image_progress": "{count, number, ::group-off} میں سے تصویر {index, number, ::group-off}"
+}

@@ -1,0 +1,3 @@
+{
+	"ui.common.viewer.image_progress": "第{index, number, ::group-off}张，共{count, number, ::group-off}张"
+}

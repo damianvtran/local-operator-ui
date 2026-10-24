@@ -16,5 +16,9 @@
 	"ui.installer.phase.label.python": "Đang chuẩn bị",
 	"ui.installer.phase.label.verify": "Đang khởi chạy",
 	"ui.installer.status.elapsed": "{step} · đã qua {elapsed} · {eta}",
-	"ui.installer.status.step": "Bước {step} trên {total}"
+	"ui.installer.status.step": "Bước {step} trên {total}",
+	"ui.installer.phase.state.finished": " - xong",
+	"ui.installer.phase.state.active": " - đang chạy",
+	"ui.installer.phase.state.failed": " - thất bại",
+	"ui.installer.phase.state.waiting": " - chờ"
 }

@@ -125,5 +125,16 @@
 	"ui.common.updates.update_quiet_indicator.server_update": "सर्वर अपडेट",
 	"ui.common.updates.wait.minutes": "अभी तक {minutes, plural, one {{minutes, number, ::group-off} मिनट} other {{minutes, number, ::group-off} मिनट}} से इंतज़ार है",
 	"ui.common.updates.wait.minutes_seconds": "अभी तक {minutes, plural, one {{minutes, number, ::group-off} मिनट} other {{minutes, number, ::group-off} मिनट}} {seconds, plural, one {{seconds, number, ::group-off} सेकंड} other {{seconds, number, ::group-off} सेकंड}} से इंतज़ार है",
-	"ui.common.updates.wait.seconds": "अभी तक {seconds, plural, one {{seconds, number, ::group-off} सेकंड} other {{seconds, number, ::group-off} सेकंड}} से इंतज़ार है"
+	"ui.common.updates.wait.seconds": "अभी तक {seconds, plural, one {{seconds, number, ::group-off} सेकंड} other {{seconds, number, ::group-off} सेकंड}} से इंतज़ार है",
+	"ui.common.updates.install.verifying": "बदले जाने वाले ऐप के मुकाबले अपडेट की जाँच…",
+	"ui.common.updates.install.staging": "बदले जाने वाले ऐप के पास अपडेट तैयार किया जा रहा है…",
+	"ui.common.updates.install.starting": "इंस्टॉलर शुरू हो रहा है। ऐप थोड़ी देर के लिए बंद होगा…",
+	"ui.common.updates.install.preparing": "इंस्टॉल करने की तैयारी…",
+	"ui.common.updates.install.succeeded": "Local Operator को v{version} पर अपडेट किया गया।",
+	"ui.common.updates.error.server_unreachable": "ऐप अपडेट सर्वर तक नहीं पहुँच सका। इस मशीन का कनेक्शन जाँचें, फिर कोशिश करें।",
+	"ui.common.updates.error.download": "अपडेट डाउनलोड नहीं हो सका। इस मशीन का कनेक्शन जाँचें, फिर डाउनलोड दोबारा शुरू करें।",
+	"ui.common.updates.error.install": "अपडेट इंस्टॉल नहीं हो सका। इस मशीन का कनेक्शन जाँचें, फिर अपडेट पैनल से इसे दोबारा शुरू करें।",
+	"ui.common.updates.error.quit": "इंस्टॉल पूरा करने के लिए ऐप बंद नहीं हो सका। ऐप खुद बंद करें, फिर अपडेट पूरा होने दें।",
+	"ui.common.updates.error.check_incomplete": "अपडेट जाँच पूरी नहीं हो सकी। ऐप अगली जाँच में फिर कोशिश करेगा।",
+	"ui.common.updates.error.version_unknown_required": "अज्ञात (अपडेट ज़रूरी)"
 }

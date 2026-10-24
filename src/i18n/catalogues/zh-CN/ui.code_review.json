@@ -73,5 +73,6 @@
 	"ui.code_review.row.opens_browser": "在浏览器中打开",
 	"ui.code_review.row.refresh_error": "无法刷新：{error}",
 	"ui.code_review.row.stale_error": "已过期，仅为上次已知状态：{error}",
-	"ui.code_review.tool.more": "{count, plural, other {工具输出中还发现{countText}{capped}个}}"
+	"ui.code_review.tool.more": "{count, plural, other {工具输出中还发现{countText}{capped}个}}",
+	"ui.code_review.refresh.try_again": "重试"
 }

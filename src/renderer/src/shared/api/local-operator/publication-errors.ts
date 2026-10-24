@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * @file publication-errors.ts
  * @description The refusal vocabulary of instruction-set publication, in one place.
@@ -250,7 +251,7 @@ export function publicationErrorFromBody(
 			? detail.text
 			: typeof detail.message === "string" && detail.message.trim()
 				? detail.message
-				: "The agent could not be published.";
+				: t("ui.common.errors.agent_publish");
 	const details =
 		typeof detail.details === "object" && detail.details !== null
 			? (detail.details as PublicationDetails)

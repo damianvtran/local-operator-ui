@@ -16,5 +16,9 @@
 	"ui.installer.phase.label.python": "Подготовка",
 	"ui.installer.phase.label.verify": "Запуск",
 	"ui.installer.status.elapsed": "{step} · прошло {elapsed} · {eta}",
-	"ui.installer.status.step": "Шаг {step} из {total}"
+	"ui.installer.status.step": "Шаг {step} из {total}",
+	"ui.installer.phase.state.finished": " — завершено",
+	"ui.installer.phase.state.active": " — выполняется",
+	"ui.installer.phase.state.failed": " — ошибка",
+	"ui.installer.phase.state.waiting": " — ожидание"
 }

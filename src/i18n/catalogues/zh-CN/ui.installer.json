@@ -16,5 +16,9 @@
 	"ui.installer.phase.label.python": "准备运行环境",
 	"ui.installer.phase.label.verify": "启动验证",
 	"ui.installer.status.elapsed": "{step}·已用时{elapsed}·{eta}",
-	"ui.installer.status.step": "第{step}步，共{total}步"
+	"ui.installer.status.step": "第{step}步，共{total}步",
+	"ui.installer.phase.state.finished": " - 已完成",
+	"ui.installer.phase.state.active": " - 进行中",
+	"ui.installer.phase.state.failed": " - 失败",
+	"ui.installer.phase.state.waiting": " - 等待中"
 }

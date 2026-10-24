@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -42,7 +43,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const mintLight: ThemeDefinition = {
 	id: "mintLight",
 	name: "Mint Light",
-	description: "Crisp white with the cool cast of fresh mint.",
+	get description() {
+		return t("ui.settings.appearance.theme.mint_light");
+	},
 	palette: {
 		mode: "light",
 		/*

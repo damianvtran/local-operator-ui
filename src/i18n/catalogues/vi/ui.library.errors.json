@@ -1,0 +1,5 @@
+{
+	"ui.library.errors.preview_load": "Không thể tải bản xem trước này.",
+	"ui.library.errors.asset_read": "Không thể đọc nội dung tệp.",
+	"ui.library.errors.empty_bytes": "Dữ liệu byte trống."
+}

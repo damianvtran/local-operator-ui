@@ -21,6 +21,7 @@ import type {
 } from "@shared/api/local-operator/session-variables-api";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { t } from "../../../../i18n/messages";
 
 /**
  * Read a session's code memory.
@@ -43,7 +44,7 @@ export const useSessionVariables = (
 		queryKey: sessionVariablesQueryKey(sessionId),
 		queryFn: async () => {
 			if (!sessionId) {
-				throw new Error("A session id is required to read code memory.");
+				throw new Error(t("ui.common.errors.session_id_required"));
 			}
 			return listSessionVariables(sessionId);
 		},
@@ -87,11 +88,11 @@ export const useCreateSessionVariable = () => {
 		mutationFn: ({ sessionId, ...write }) =>
 			createSessionVariable(sessionId, write),
 		onSuccess: async () => {
-			showSuccessToast("Variable created");
+			showSuccessToast(t("ui.common.actions.variable_created"));
 		},
 		onError: (error) => {
 			showErrorToast(
-				userFacingMessage(error, "The variable could not be created."),
+				userFacingMessage(error, t("ui.common.errors.variable_create")),
 			);
 		},
 		onSettled: invalidateSessionVariables(queryClient),
@@ -105,11 +106,11 @@ export const useUpdateSessionVariable = () => {
 		mutationFn: ({ sessionId, ...write }) =>
 			updateSessionVariable(sessionId, write),
 		onSuccess: async () => {
-			showSuccessToast("Variable updated");
+			showSuccessToast(t("ui.common.actions.variable_updated"));
 		},
 		onError: (error) => {
 			showErrorToast(
-				userFacingMessage(error, "The variable could not be updated."),
+				userFacingMessage(error, t("ui.common.errors.variable_update")),
 			);
 		},
 		onSettled: invalidateSessionVariables(queryClient),
@@ -128,11 +129,11 @@ export const useDeleteSessionVariable = () => {
 	return useMutation<unknown, Error, { sessionId: string; key: string }>({
 		mutationFn: ({ sessionId, key }) => deleteSessionVariable(sessionId, key),
 		onSuccess: async () => {
-			showSuccessToast("Variable deleted");
+			showSuccessToast(t("ui.common.actions.variable_deleted"));
 		},
 		onError: (error) => {
 			showErrorToast(
-				userFacingMessage(error, "The variable could not be deleted."),
+				userFacingMessage(error, t("ui.common.errors.variable_delete")),
 			);
 		},
 		onSettled: invalidateSessionVariables(queryClient),
