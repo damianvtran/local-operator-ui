@@ -139,9 +139,19 @@ function action(
 
 function dismiss(): void {
 	if (!model) return;
+	const shown = shownRequest();
+	/*
+	 * A dismissal ends the local selection, and it must do so BEFORE the model
+	 * advances: a presentation-dismissed entry can stay in the live queue, so
+	 * `selectedEntryId` would keep passing the `pending` check and `shownRequest`
+	 * would paint the request the operator just dismissed (Q-S6b-1). Clearing
+	 * it here makes the next model push paint the controller's request; the
+	 * request-change reset in `render` covers a dismissal that moves the pick.
+	 */
+	selectedEntryId = null;
 	window.approvalsCard?.dismiss({
 		seq: model.seq,
-		entryId: shownRequest()?.entryId ?? "",
+		entryId: shown?.entryId ?? "",
 	});
 }
 
@@ -285,14 +295,21 @@ function setView(view: "request" | "list"): void {
 
 function render(): void {
 	if (!model) return;
-	const request = shownRequest();
-	if (request && request.entryId !== lastEntryId) {
-		lastEntryId = request.entryId;
-		selectedEntryId = request.entryId;
+	/* A CONTROLLER PICK REPLACES THE LOCAL SELECTION. `selectedEntryId` is only
+	 * an explicit row choice; the current request is `model.request`. The two
+	 * used to be the same field, so after a dismissal advanced the controller
+	 * the document kept the dismissed entry selected (it stays in the live
+	 * queue) and painted it again (Q-S6b-1). Reset on every controller pick, and
+	 * clear on an empty pick, so the painted request always follows main. */
+	if (model.request && model.request.entryId !== lastEntryId) {
+		lastEntryId = model.request.entryId;
+		selectedEntryId = null;
 		// A new request always opens on the request view, never on the list a
 		// previous request left behind.
 		setView("request");
 	}
+	if (!model.request) selectedEntryId = null;
+	const request = shownRequest();
 	if (request) {
 		if (requesterNode) {
 			requesterNode.textContent =
