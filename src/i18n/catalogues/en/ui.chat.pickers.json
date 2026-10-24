@@ -717,5 +717,7 @@
 	"ui.chat.pickers.session_panel.unknown_value": "unknown",
 	"ui.chat.pickers.usage_view_model.tokens": "tokens",
 	"ui.chat.pickers.usage_view_model.requests": "req",
-	"ui.chat.pickers.usage_view_model.credits": "credits"
+	"ui.chat.pickers.usage_view_model.credits": "credits",
+	"ui.chat.pickers.destination_pickers.refreshing": "Refreshing…",
+	"ui.chat.pickers.destination_pickers.checking": "Checking…"
 }

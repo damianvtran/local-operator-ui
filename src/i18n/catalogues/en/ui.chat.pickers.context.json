@@ -4256,5 +4256,15 @@
 		"role": "interface copy",
 		"tone": "Plain, concise product language.",
 		"note": "Display value in the pickers surface."
+	},
+	"ui.chat.pickers.destination_pickers.refreshing": {
+		"role": "button label",
+		"tone": "Concise in-progress status.",
+		"note": "Shown while a live model catalogue is refreshing after the user asked for a fresh provider read."
+	},
+	"ui.chat.pickers.destination_pickers.checking": {
+		"role": "button label",
+		"tone": "Concise in-progress status.",
+		"note": "Shown during the initial live model-catalogue check before the user explicitly requests a refresh."
 	}
 }
