@@ -149,6 +149,7 @@ const bundle = await build({
 			} from "./src/renderer/src/shared/lib/image-viewer-model";
 			export { SCROLLBAR_HOLD_MS } from "./src/renderer/src/shared/lib/scrollbar-activity";
 			export { CONTROLS_RESTING_CLASS } from "./src/renderer/src/shared/components/common/image-lightbox";
+			export { t } from "@shared/i18n";
 		`,
 		resolveDir: ROOT,
 	},
@@ -205,6 +206,7 @@ const {
 	wrapGroupIndex,
 	SCROLLBAR_HOLD_MS,
 	CONTROLS_RESTING_CLASS,
+	t,
 } = await import(pathToFileURL(bundlePath).href);
 
 /* ------------------------------------------------------------------ fixtures */
@@ -2191,7 +2193,7 @@ test("the group walk wraps and clamps, and the position sentence is one rule", (
 
 	assert.equal(
 		groupPositionLabel(1, 3),
-		"Image 2 of 3",
+		t("ui.common.viewer.position", { kind: "image", index: 2, count: 3 }),
 		"one sentence, 1-based, both facts",
 	);
 
@@ -2371,7 +2373,7 @@ test("the arrows walk the whole group, wrapping at the ends, and a missing pictu
 		);
 		assert.equal(
 			position(),
-			"Image 1 of 3",
+			t("ui.common.viewer.position", { kind: "image", index: 1, count: 3 }),
 			"and the announcement wraps with it",
 		);
 	});
