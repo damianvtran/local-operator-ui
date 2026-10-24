@@ -19,6 +19,7 @@ import { useConnectProviderStore } from "@features/providers/connect-provider-st
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import type { DesktopProvider } from "@shared/api/local-operator/desktop-api";
 import {
+	desktopFeatureEnabled,
 	desktopKeys,
 	useDesktopCapabilities,
 	useDesktopProviders,
@@ -104,6 +105,7 @@ import {
 	effortCarry,
 	fastModelPickNotice,
 	fastPickFailure,
+	pickResultText,
 	selectionFromModel,
 	selectionSelector,
 } from "../draft-selection";
@@ -494,6 +496,15 @@ function useDraftPick(
 	note: (text: string, error?: boolean) => void,
 ) {
 	const queryClient = useQueryClient();
+	/*
+	 * Whether this backend can carry `DraftModel.fast_mode` (round 2's F1
+	 * follow-up). Read here rather than by each picker, because every preview this
+	 * hook asks - the pane's and the pickers' - has to be filtered the same way or
+	 * a persisted dial 422s the whole body on the one request that happens to keep
+	 * it. `draftPreviewQuery` owns the filtering; this is the answer it is given.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const carriesFast = desktopFeatureEnabled(capabilities.data, "draft_fast");
 	const [busy, setBusy] = useState(false);
 	const [result, setResult] = useState<PickerResult | null>(null);
 	/*
@@ -566,8 +577,15 @@ function useDraftPick(
 				 * What a refusal names, and it names the READING rather than "the model":
 				 * an effort pick that failed has not changed the model, and saying so
 				 * tells the user to re-check the one thing that is still correct.
+				 *
+				 * OPTIONAL because the fast dial's picks always bring their own words
+				 * (`failure` for a refused request, `applied` for a resolution that did
+				 * not take the dial), and the one path that would use this prefix is
+				 * unreachable for them: the draft route only opens once the pane's
+				 * preview has named a model. A sentence nothing can print is a claim
+				 * nobody checks (round 2, nit).
 				 */
-				refused: string;
+				refused?: string;
 				/**
 				 * The effort level the pane's own pick holds, when this pick changes the
 				 * MODEL and that level must not be discarded in silence (UX U1; design
@@ -619,6 +637,19 @@ function useDraftPick(
 					 */
 					refusal: (resolved: CanonicalFrontendSync) => string | null;
 				};
+
+				/**
+				 * A clause that is true of the pick WHATEVER the outcome said, composed
+				 * onto the result sentence AFTER the branch that chose it (design review
+				 * round 2, D6).
+				 *
+				 * The model pick's fast-dial notice used to live inside `describe`, and
+				 * `describe` does not run when an effort rung is carried - so the one path
+				 * that changes a model with a rung in force dropped the dial in silence. A
+				 * notice stated here cannot be skipped by the branch, which is why the
+				 * composition lives in `pickResultText` rather than at the call site.
+				 */
+				notice?: (resolved: CanonicalFrontendSync) => string | null;
 				/**
 				 * What a FAILED request says, when the caller has better words than the
 				 * transport's.
@@ -639,7 +670,9 @@ function useDraftPick(
 			if (!draft) return;
 			if (!next) {
 				refuse(
-					`${reading.refused} This pane has not resolved a model to change.`,
+					reading.refused
+						? `${reading.refused} This pane has not resolved a model to change.`
+						: "This pane has not resolved a model to change.",
 				);
 				return;
 			}
@@ -656,7 +689,7 @@ function useDraftPick(
 				// A blank level is no question: there is nothing to check, so no probe runs.
 				if (reading.carry) {
 					const probe = await queryClient.fetchQuery(
-						draftPreviewQuery({ ...draft.target, model: next }),
+						draftPreviewQuery({ ...draft.target, model: next }, carriesFast),
 					);
 					const offered = bandReadings(probe.snapshot, null).effort;
 					const decision = effortCarry(reading.carry, {
@@ -696,7 +729,7 @@ function useDraftPick(
 					? { ...next, reasoning_effort: carry.rung }
 					: next;
 				const resolved = await queryClient.fetchQuery(
-					draftPreviewQuery({ ...draft.target, model: chosen }),
+					draftPreviewQuery({ ...draft.target, model: chosen }, carriesFast),
 				);
 				/*
 				 * Before the record, never after: see `applied`'s own note. A reading the
@@ -714,11 +747,22 @@ function useDraftPick(
 				setPicked(chosen);
 				setResult({
 					tone: "success",
-					text: carry
-						? carry.confirmation(
-								selectorOfResolution(resolved, selectionSelector(chosen) ?? ""),
-							)
-						: reading.describe(resolved),
+					/*
+					 * ONE COMPOSITION FOR BOTH BRANCHES (design review round 2, D6): the
+					 * carry's confirmation or the pick's own sentence is the base, and the
+					 * caller's notice is appended after either of them. The branch used to
+					 * choose the whole sentence, so a notice living inside `describe`
+					 * vanished exactly when an effort rung was carried.
+					 */
+					text: pickResultText({
+						carried: carry,
+						selector: selectorOfResolution(
+							resolved,
+							selectionSelector(chosen) ?? "",
+						),
+						described: reading.describe(resolved),
+						notice: reading.notice?.(resolved) ?? null,
+					}),
 				});
 			} catch (error) {
 				/*
@@ -735,15 +779,25 @@ function useDraftPick(
 				refuse(
 					reading.failure
 						? reading.failure(error)
-						: `${reading.refused} ${errorText(error)}`,
+						: reading.refused
+							? `${reading.refused} ${errorText(error)}`
+							: errorText(error),
 				);
 			} finally {
 				setBusy(false);
 			}
 		},
-		[draft, queryClient, refuse],
+		[draft, queryClient, refuse, carriesFast],
 	);
-	return { pick, busy, result, selection, target, refuse };
+	return {
+		pick,
+		busy,
+		result,
+		selection,
+		target,
+		refuse,
+		carriesFast,
+	};
 }
 
 /**
@@ -1102,7 +1156,10 @@ export const ModelPicker: FC<PickerContext> = ({
 	 * resolved for the model BEFORE the pick (review round 1, R2).
 	 */
 	const draftPreview = useQuery({
-		...draftPreviewQuery(draftPick.target ?? NO_DRAFT_TARGET),
+		...draftPreviewQuery(
+			draftPick.target ?? NO_DRAFT_TARGET,
+			draftPick.carriesFast,
+		),
 		enabled: Boolean(draft),
 	});
 	const persist = useOperation();
@@ -1459,23 +1516,22 @@ export const ModelPicker: FC<PickerContext> = ({
 				await draftPick.pick(
 					{ provider, model_id: modelId, reasoning_effort: null },
 					{
+						describe: (resolved) =>
+							`This conversation will run ${selectorOfResolution(resolved, option.label)}.`,
 						/*
-						 * The confirmation names the model AND what happened to the dial.
-						 * The clause is read off the RESOLUTION (the model the first turn
-						 * will actually run), so a model with no fast tier says so
-						 * instead of claiming an `off` dial it does not have; see
-						 * `fastModelPickNotice`.
+						 * The dial's clause is a NOTICE rather than part of `describe`
+						 * (design review round 2, D6). `pick` appends it after whichever
+						 * base sentence wins, so the carry branch - which never runs
+						 * `describe` - states it too. The dial is still read off the
+						 * RESOLUTION (the model the first turn will actually run), so a
+						 * model with no fast tier says that instead of claiming an `off`
+						 * dial it does not have; see `fastModelPickNotice`.
 						 */
-						describe: (resolved) => {
-							const selector = selectorOfResolution(resolved, option.label);
-							const notice = fastModelPickNotice(
+						notice: (resolved) =>
+							fastModelPickNotice(
 								carriedFast,
 								fastModeState(bandReadings(resolved.snapshot, null).identity),
-							);
-							return notice
-								? `This conversation will run ${selector}. ${notice}`
-								: `This conversation will run ${selector}.`;
-						},
+							),
 						carry: carried,
 						refused: "The model was not changed.",
 					},
@@ -2092,7 +2148,10 @@ export const EffortPicker: FC<PickerContext> = ({
 	/* Same key as the model dialog's: the selection in force, not the snapshot the
 	   dialog opened on, so the rungs offered are the current model's (R2). */
 	const draftPreview = useQuery({
-		...draftPreviewQuery(draftPick.target ?? NO_DRAFT_TARGET),
+		...draftPreviewQuery(
+			draftPick.target ?? NO_DRAFT_TARGET,
+			draftPick.carriesFast,
+		),
 		enabled: Boolean(draft),
 	});
 	const draftModel = draft
@@ -3840,7 +3899,10 @@ export const FastPicker: FC<PickerContext> = ({
 	 * (disabled) outside draft mode because hooks cannot be conditional.
 	 */
 	const draftPreview = useQuery({
-		...draftPreviewQuery(draftPick.target ?? NO_DRAFT_TARGET),
+		...draftPreviewQuery(
+			draftPick.target ?? NO_DRAFT_TARGET,
+			draftPick.carriesFast,
+		),
 		enabled: Boolean(draft),
 	});
 	/*
@@ -3897,7 +3959,6 @@ export const FastPicker: FC<PickerContext> = ({
 			selection ? { ...selection, fast_mode: requested === "on" } : null,
 			{
 				describe: (resolved) => draftFastReading(resolved, requested).sentence,
-				refused: "Fast mode was not set.",
 				failure: fastPickFailure,
 				applied: {
 					refusal: (resolved) => {

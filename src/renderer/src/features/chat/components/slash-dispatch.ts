@@ -52,6 +52,7 @@ import {
 } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
+	desktopFeatureState,
 	desktopKeys,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
@@ -95,7 +96,10 @@ import {
 	archiveDestinationApplies,
 } from "../chat-archived";
 import { DELETE_UNAVAILABLE_REASON } from "../delete-conversation";
-import type { DraftPickerDestination } from "../draft-selection";
+import type {
+	DraftPickerDestination,
+	DraftResolution,
+} from "../draft-selection";
 import {
 	MOVE_NOT_READY_REASON,
 	MOVE_UNAVAILABLE_REASON,
@@ -152,6 +156,17 @@ type SlashDispatchOptions = {
 	 * selection instead of a session's.
 	 */
 	draftPicker?: DraftPickerSession;
+	/**
+	 * Where the pane's RESOLUTION is, while it has no reading yet (round 2, D7).
+	 *
+	 * `draftPicker` arrives only once the preview has answered, so the
+	 * pre-preview window was indistinguishable from a pane with no draft
+	 * capability at all - and its refusal said "needs an open conversation. Start
+	 * one first" about a pane that has everything except an answer. This is the
+	 * same value the strip paints (pending, or failed with a retry), so the
+	 * refusal and the reading cannot describe different states.
+	 */
+	draftResolution?: DraftResolution;
 	/**
 	 * Focus the composer's working-directory chip and open its menu.
 	 *
@@ -308,26 +323,56 @@ export function sessionlessActionData(
  * than a second false instruction on a backend that cannot carry the dial (agent
  * review round 1, F1).
  *
- * EXPORTED FOR THE SUITE for the same reason `sessionlessActionData` is: the three
+ * EXPORTED FOR THE SUITE for the same reason `sessionlessActionData` is: the
  * answers are copy a reader meets on a reachable path, and only the predicate's
  * own answers were pinned. The test asserts each branch.
+ *
+ * THE CAPABILITY IS READ AS A STATE, not as a boolean (round 2, N3).
+ * `desktopFeatureEnabled` collapses three different facts into `false`, and only
+ * one of them is "update the service": `unknown` is a probe that has not
+ * answered, `unpaired` is a missing credential, and telling either reader to
+ * update sends them to the wrong repair. Each now gets its own sentence.
+ *
+ * AND A PANE WHOSE PREVIEW HAS NOT ANSWERED IS NOT "a pane with no
+ * conversation" (round 2, D7): the draft context is only handed over once the
+ * resolution lands, so the pre-preview window used to read the ordinary refusal.
+ * The pane's own resolution state is passed in for exactly that window, and says
+ * what the strip says ("Resolving the model") rather than diagnosing the pane.
  */
 export function draftRouteRefusal(
 	name: string,
 	destination: string | undefined,
 	draft: DraftPickerSession | undefined,
 	capabilities: DesktopCapabilities | null | undefined,
+	resolution: DraftResolution | undefined,
 ): string {
 	const ordinary = `/${name} needs an open conversation. Start one first.`;
-	/* No draft context: the pane has not answered which model the first turn would
-	 * run (or cannot select one at all), so the bare route has nothing to carry
-	 * and this row's own refusal is still the honest one. */
-	if (!draft) return ordinary;
+	/*
+	 * No draft context: either this row has no draft route, or the preview that
+	 * would give it one has not answered (or failed). The pane's own resolution
+	 * state is what tells those apart, and it is the same value the strip paints.
+	 */
+	if (!draft) {
+		if (resolution?.status === "pending")
+			return `/${name} is waiting for this conversation's model to resolve. Try again in a moment.`;
+		if (resolution?.status === "failed")
+			return `/${name} needs this conversation's model, which was not resolved. Retry it from the model reading.`;
+		return ordinary;
+	}
 	const capability = draftSelectionCapability(destination);
 	if (!capability) return ordinary;
-	if (!desktopFeatureEnabled(capabilities, capability))
-		return `/${name} is not available on this version of the Local Operator service. Update Local Operator, then try again.`;
-	return `/${name} takes no argument on a new chat. Type /${name} on its own to set it for the first message.`;
+	switch (desktopFeatureState(capabilities, capability)) {
+		case "enabled":
+			return `/${name} takes no argument on a new chat. Type /${name} on its own to set it for the first message.`;
+		case "below-version":
+			return `/${name} is not available on this version of the Local Operator service. Update Local Operator, then try again.`;
+		case "unpaired":
+			/* The app's own words for a credential fact (`moveGateReason`). */
+			return `/${name} is not available: this app is not paired with the backend.`;
+		case "unknown":
+			/* Transient, and it is the service that has not answered - not the user. */
+			return `/${name} is waiting for the local service to answer. Try again in a moment.`;
+	}
 }
 
 /**
@@ -423,6 +468,7 @@ export function useSlashDispatch({
 	rebind,
 	focusComposer,
 	draftPicker,
+	draftResolution,
 	focusCwdChip,
 	moveSession,
 	moveReady,
@@ -1314,6 +1360,7 @@ export function useSlashDispatch({
 								spec.destination,
 								draftPicker,
 								capabilities.data,
+								draftResolution,
 							),
 							true,
 						);
@@ -1714,6 +1761,12 @@ export function useSlashDispatch({
 			 * advertising `draft_fast` — or, worse, open it on one that never had.
 			 */
 			capabilities.data,
+			/*
+			 * And the pane's resolution state, which the refusal copy reads (round 2,
+			 * D7): a closed-over stale value would keep diagnosing a pane the preview
+			 * had since answered (or stop saying it was still resolving).
+			 */
+			draftResolution,
 		],
 	);
 
