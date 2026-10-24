@@ -1,3 +1,4 @@
+import { t } from "../../../../i18n/messages";
 /**
  * Whether this composer has to be SEEDED from the conversation it is showing.
  *
@@ -283,9 +284,15 @@ export const joinTranscript = (draft: string, text: string): string => {
  * mentioned before.
  */
 export const COMPOSER_PLACEHOLDER = {
-	unavailable: "This conversation is gone",
-	busy: "Agent is busy",
-	answer: "Type your own answer…",
+	get unavailable() {
+		return t("ui.chat.composer.placeholder.unavailable");
+	},
+	get busy() {
+		return t("ui.chat.composer.placeholder.busy");
+	},
+	get answer() {
+		return t("ui.chat.composer.placeholder.answer");
+	},
 	/*
 	 * A SECRET ASK'S OWN SENTENCE, and it is not `answer`'s: the ordinary
 	 * answer arm invites typing into this box, which is exactly what a secret
@@ -302,13 +309,19 @@ export const COMPOSER_PLACEHOLDER = {
 	 * question dock, and both are the ask's own panel, which is why the copy names the
 	 * panel rather than this box's neighbourhood.
 	 */
-	secretAnswer: "Answer the secret request in the asks panel",
+	get secretAnswer() {
+		return t("ui.chat.composer.placeholder.secret_answer");
+	},
 	/*
 	 * The exit is named beside the verb for the reason the `@` list's own line
 	 * names its ("Nothing to insert · Esc closes").
 	 */
-	aside: "Ask off the record — Esc closes the aside",
-	sending: "Sending your message",
+	get aside() {
+		return t("ui.chat.composer.placeholder.aside");
+	},
+	get sending() {
+		return t("ui.chat.composer.placeholder.sending");
+	},
 	/*
 	 * THE PRESS GETS ITS ANSWER WHERE THE FINGER IS (design round 1, D6): during
 	 * the press's own window the stop square is pixel-identical and the rung is
@@ -317,7 +330,9 @@ export const COMPOSER_PLACEHOLDER = {
 	 * composer's existing idiom, with the transcript's line still the turn's one
 	 * liveness element (`waiting`'s sibling rule).
 	 */
-	stopping: "Stopping the turn",
+	get stopping() {
+		return t("ui.chat.composer.placeholder.stopping");
+	},
 	/**
 	 * WHILE A TAKE IS LIVE, THE BOX'S OWN KEYS ARE THE RECORDING'S (UX round 1,
 	 * U1). Enter confirms the take and Esc cancels it - rung 4 of the interrupt
@@ -334,14 +349,22 @@ export const COMPOSER_PLACEHOLDER = {
 	 * label row is the one, stable place for the affordance; this placeholder
 	 * keeps only the state's name.
 	 */
-	recording: "Recording",
-	waiting: "Steer the agent. Enter sends now · Esc stops",
+	get recording() {
+		return t("ui.chat.composer.placeholder.recording");
+	},
+	get waiting() {
+		return t("ui.chat.composer.placeholder.waiting");
+	},
 	/**
 	 * Nothing connected: the invitation would be a lie, and this is the one
 	 * sentence that names the action instead (design audit section 6).
 	 */
-	noProvider: "Connect a provider to start chatting",
-	idle: "Ask anything. @ adds files, / runs commands",
+	get noProvider() {
+		return t("ui.chat.composer.placeholder.no_provider");
+	},
+	get idle() {
+		return t("ui.chat.composer.placeholder.idle");
+	},
 } as const;
 
 /**

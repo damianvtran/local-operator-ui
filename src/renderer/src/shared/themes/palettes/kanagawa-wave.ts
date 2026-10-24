@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -34,7 +35,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const kanagawaWave: ThemeDefinition = {
 	id: "kanagawaWave",
 	name: "Kanagawa Wave",
-	description: "Hokusai ink-wash night, muted paper tones on deep sumi.",
+	get description() {
+		return t("ui.settings.appearance.theme.kanagawa_wave");
+	},
 	palette: {
 		mode: "dark",
 

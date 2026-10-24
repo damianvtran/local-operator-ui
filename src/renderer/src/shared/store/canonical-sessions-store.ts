@@ -50,6 +50,7 @@ import {
 } from "@shared/store/conversation-input-store";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { t } from "../../../../i18n/messages";
 import type { TagRef } from "../../../../shared/desktop-contract";
 import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
@@ -552,7 +553,7 @@ export type DraftsUndoOffer = {
  *
  * The title is kept only so a surface that has to NAME the conversation after the
  * row is gone can still do so - the pane's header is the one that needs it, and
- * "Untitled chat" over a conversation the user just deleted names nothing. The
+ * t("ui.chat.canonical.untitled") over a conversation the user just deleted names nothing. The
  * not-found writer has no title to give: it never read one.
  */
 export type ForgottenFact = {
@@ -907,8 +908,9 @@ export const SESSION_UNVALIDATED_CODE = "session_unvalidated";
  * its own - the stream's own lost-connection sentence is preferred there, so
  * the composer and the transcript cannot disagree (design round 1, D3).
  */
-export const SESSION_UNVALIDATED_MESSAGE =
-	"This chat is not ready for messages yet, so the message was not sent. Sending works once it is ready.";
+export const SESSION_UNVALIDATED_MESSAGE = t(
+	"ui.common.errors.session_unvalidated",
+);
 
 /**
  * A send refused because its text STARTS WITH A SLASH.
@@ -940,8 +942,9 @@ export const LEADING_SLASH_CODE = "leading_slash_message";
  * fixes, both in front of them — so the sentence names them (branding section 8:
  * what happened, what it means, what to do).
  */
-export const LEADING_SLASH_MESSAGE =
-	"A message can't start with / — that is a command. Move it below your text, or send it on its own.";
+export const LEADING_SLASH_MESSAGE = t(
+	"ui.common.errors.leading_slash_message",
+);
 
 /**
  * Whether a refused send is the leading-slash policy refusal.
@@ -1361,13 +1364,17 @@ export const SEND_FAILURE_COPY = {
 	 * de-duplicates it - so the sentence says so rather than leaving the safest
 	 * action unstated.
 	 */
-	unconfirmed:
-		"Couldn't confirm your message was sent. Sending it again is safe.",
+	get unconfirmed() {
+		return t("ui.chat.canonical.send_failure.unconfirmed");
+	},
 	/** Unknown, and the specific fact is that nothing answered. */
-	unreachable:
-		"Couldn't reach Local Operator. Your message may not have been sent.",
+	get unreachable() {
+		return t("ui.chat.canonical.send_failure.unreachable");
+	},
 	/** The owner took the request and is not free yet. */
-	busy: "The agent is busy, so your message wasn't sent.",
+	get busy() {
+		return t("ui.chat.canonical.send_failure.busy");
+	},
 	/*
 	 * THE TWO ASIDE REFUSALS (fold of `origin/main` = `f9d92ac1e`, #482). The aside panel's own
 	 * semantics are that PR's and are re-stated here rather than re-spelled: the sentence is the
@@ -1376,23 +1383,35 @@ export const SEND_FAILURE_COPY = {
 	 * this composer - must not read as two different facts. What each row carries is the control:
 	 * neither offers Retry, and the classifier says why for both (`withholdsRetryHint`).
 	 */
-	asideNotAnswered: "The aside was not answered.",
-	asideStillAnswering:
-		"The aside is still answering. Press Enter again once the answer is in.",
+	get asideNotAnswered() {
+		return t("ui.chat.canonical.send_failure.aside_not_answered");
+	},
+	get asideStillAnswering() {
+		return t("ui.chat.canonical.send_failure.aside_still_answering");
+	},
 	/** The owner is leaving; its own advice is to come back in a moment. */
-	retiring:
-		"Local Operator is restarting, so your message wasn't sent. Try again in a moment.",
+	get retiring() {
+		return t("ui.chat.canonical.send_failure.retiring");
+	},
 	/** The read window's refusal: the app has not confirmed the chat yet. */
-	notReady: "This chat isn't ready yet, so your message wasn't sent.",
+	get notReady() {
+		return t("ui.chat.canonical.send_failure.not_ready");
+	},
 	/** 422 with no code the app can act on. */
-	generic: "Your message wasn't sent.",
+	get generic() {
+		return t("ui.chat.canonical.send_failure.generic");
+	},
 	/** 404: the conversation is gone, so only the content is salvageable. */
-	gone: "This conversation no longer exists, so your message wasn't sent.",
+	get gone() {
+		return t("ui.chat.canonical.send_failure.gone");
+	},
 	/**
 	 * The send lock (A1/A2). A muted statement of fact rather than a failure: the
 	 * text is still in the box because the press never became a send.
 	 */
-	sendLock: "Your last message is still sending.",
+	get sendLock() {
+		return t("ui.chat.canonical.send_failure.send_lock");
+	},
 	/**
 	 * The queued press (task-17, U1/U2). A press made while the conversation's
 	 * read window is still open - the pane is loading its first page, or is
@@ -1404,9 +1423,13 @@ export const SEND_FAILURE_COPY = {
 	 * failed, the message is with the app, and the delivery takes care of
 	 * itself - so it takes no controls and no error register.
 	 */
-	queuedSend: "Your message will send as soon as the conversation is ready.",
+	get queuedSend() {
+		return t("ui.chat.canonical.send_failure.queued_send");
+	},
 	/** The same lock, with the question that explains it on screen. */
-	gateLock: "Answer the question above first.",
+	get gateLock() {
+		return t("ui.chat.canonical.send_failure.gate_lock");
+	},
 	/*
 	 * THE PLAIN SENTENCE IS BACK, WITH A CALLER THIS TIME (design round 9, D17). It
 	 * was removed in round 4 (n2) because the `overlap` arm had stopped using it and
@@ -1417,7 +1440,9 @@ export const SEND_FAILURE_COPY = {
 	 * exactly what this one was written to be. It is shorter than either
 	 * box-describing sentence at every width, so no captured frame is invalidated.
 	 */
-	lateDelivery: "Your earlier message was delivered.",
+	get lateDelivery() {
+		return t("ui.chat.canonical.send_failure.late_delivery");
+	},
 	/*
 	 * AND THE ONE THAT NAMES WHAT IS IN THE BOX (review round 2, D4). Where the
 	 * delivered message HAS come out
@@ -1426,8 +1451,9 @@ export const SEND_FAILURE_COPY = {
 	 * "the app lost my draft" and "the app kept it": measured in round 1 as the
 	 * auto-clear that looked like the app losing the text (Q-4).
 	 */
-	lateDeliveryDraft:
-		"Your earlier message was delivered. What's here now hasn't been sent.",
+	get lateDeliveryDraft() {
+		return t("ui.chat.canonical.send_failure.late_delivery_draft");
+	},
 	/*
 	 * AND THE ARM WHERE THE DELIVERED WORDS ARE STILL IN THE BOX (review round 3,
 	 * D8). The prefix test cannot remove them - the user edited inside them, so no
@@ -1438,8 +1464,9 @@ export const SEND_FAILURE_COPY = {
 	 * copy has to carry the rest: this is the one duplicate the app cannot prevent,
 	 * so it names it.
 	 */
-	lateDeliveryOverlap:
-		"Your earlier message was delivered. Its words are still in the box, so sending again would repeat them.",
+	get lateDeliveryOverlap() {
+		return t("ui.chat.canonical.send_failure.late_delivery_overlap");
+	},
 } as const;
 
 /**
@@ -1464,8 +1491,8 @@ export function pressLockCopy(
 	return pendingGate ? SEND_FAILURE_COPY.gateLock : SEND_FAILURE_COPY.sendLock;
 }
 
-export const RETRY_LABEL = "Retry";
-export const CLEAR_LABEL = "Clear";
+export const RETRY_LABEL = t("ui.common.actions.retry");
+export const CLEAR_LABEL = t("ui.common.actions.clear");
 
 /**
  * One sentence and at most two actions, for one failed send.
@@ -2885,7 +2912,8 @@ export async function admitChatDraft(
 				)) ?? undefined;
 			if (!id)
 				throw new UserFacingError(
-					useCanonicalSessionsStore.getState().error ?? "Chat could not start.",
+					useCanonicalSessionsStore.getState().error ??
+						t("ui.common.errors.chat_start_simple"),
 				);
 			store.updateDraft(key, { sessionId: id });
 			/*
@@ -6246,7 +6274,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							 */
 							error: storeErrorMessage(
 								error,
-								"Chats could not refresh. Retry to reconnect.",
+								t("ui.common.errors.chats_refresh"),
 							),
 						});
 				}
@@ -6376,7 +6404,10 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							 * `error` would raise the sidebar's danger alert about the backend -
 							 * a claim about the whole window that one scrolled page cannot support.
 							 */
-							error: storeErrorMessage(error, "Could not load more chats."),
+							error: storeErrorMessage(
+								error,
+								t("ui.common.errors.chats_load_more"),
+							),
 						},
 					}));
 				}
@@ -6484,7 +6515,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 									loading: false,
 									error: storeErrorMessage(
 										error,
-										"Could not load this group's chats.",
+										t("ui.common.errors.chats_load_group"),
 									),
 								},
 							},
@@ -6855,7 +6886,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 */
 								at: state.answerSeq + 1,
 								archived,
-								title: rowTitle || "Untitled chat",
+								title: rowTitle || t("ui.chat.canonical.untitled"),
 								/*
 								 * The backend's own sentence when there is one. A transport failure
 								 * that reached nothing keeps an empty detail and the sentence around
@@ -6937,7 +6968,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						detail:
 							error instanceof DesktopControlError && error.message
 								? error.message
-								: "The conversation could not be deleted.",
+								: t("ui.common.errors.conversation_delete"),
 					};
 				}
 			},
@@ -7032,10 +7063,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					// Same rule as `fetchSessions` above: the app states the refusal's own
 					// consequence rather than repeating the server's words (UX round 2, U1).
 					set({
-						error: storeErrorMessage(
-							error,
-							"Chat could not start. Retry with the same draft.",
-						),
+						error: storeErrorMessage(error, t("ui.common.errors.chat_start")),
 					});
 					throw error;
 				}
@@ -8401,7 +8429,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					before === undefined && seed !== undefined
 						? {
 								session_id: sessionId,
-								title: seed.title || "Untitled chat",
+								title: seed.title || t("ui.chat.canonical.untitled"),
 								updated_at: seed.updated_at,
 								pinned,
 							}
@@ -8515,7 +8543,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							pinFailure: {
 								sessionId,
 								pinned,
-								title: before?.title || "this chat",
+								title: before?.title || t("ui.chat.canonical.this_chat"),
 								detail: userFacingMessage(error, ""),
 							},
 						};

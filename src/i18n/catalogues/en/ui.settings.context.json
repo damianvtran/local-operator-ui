@@ -88,5 +88,41 @@
 		"role": "button label while that re-read is running",
 		"tone": "single present-progressive word",
 		"note": "Disabled state of the Retry button after the reader's own press."
+	},
+	"ui.settings.section.delegated_enabled.gate_label": {
+		"role": "Settings copy",
+		"tone": "Concise and factual.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: automatic removal"
+	},
+	"ui.settings.section.delegated_enabled.help": {
+		"role": "Settings copy",
+		"tone": "Concise and factual.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Applies to subagent runs, agent shells and background runs only."
+	},
+	"ui.settings.section.delegated_enabled.label": {
+		"role": "Settings copy",
+		"tone": "Concise and factual.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Remove delegated sessions automatically"
+	},
+	"ui.settings.section.delegated_max_age.help": {
+		"role": "Settings copy",
+		"tone": "Concise and factual.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The retention window: how long a delegated session (a subagent or background run) can sit idle before it is removed."
+	},
+	"ui.settings.section.delegated_max_age.label": {
+		"role": "Settings copy",
+		"tone": "Concise and factual.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Remove after"
+	},
+	"ui.settings.section.session_delegated.title": {
+		"role": "Settings copy",
+		"tone": "Concise and factual.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Delegated work: subagents and background sessions"
 	}
 }

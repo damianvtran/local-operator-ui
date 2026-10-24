@@ -58,5 +58,359 @@
 		"tone": "Neutral noun phrase in sentence case.",
 		"length": "Segmented-tab label; the tab strip shares one row with its siblings. English is 11 characters; stay within ~1.5x.",
 		"note": "Second option: show each agent response separately instead of folding a turn into its answer. Pairs with \"By turn\"."
+	},
+	"ui.settings.appearance.theme.alucard": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the alucard theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.arcade": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the arcade theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.arctic": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the arctic theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.autumn": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the autumn theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.ayu_dark": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the ayuDark theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.ayu_light": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the ayuLight theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.ayu_mirage": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the ayuMirage theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.catppuccin_frappe": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the catppuccinFrappe theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.catppuccin_latte": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the catppuccinLatte theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.catppuccin_macchiato": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the catppuccinMacchiato theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.catppuccin_mocha": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the catppuccinMocha theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.cyberpunk": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the cyberpunk theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.desert": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the desert theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.dracula": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the dracula theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.dune": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the dune theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.duskfox": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the duskfox theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.everforest_light": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the everforestLight theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.everforest": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the everforest theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.forest": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the forest theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.github_light": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the githubLight theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.gruvbox_light": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the gruvboxLight theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.gruvbox": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the gruvbox theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.high_contrast_light": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the highContrastLight theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.iceberg": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the iceberg theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.kanagawa_lotus": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the kanagawaLotus theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.kanagawa_wave": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the kanagawaWave theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.lavender": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the lavender theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.linen": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the linen theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.local_operator_light": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the localOperatorLight theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.local_operator_dark": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the localOperatorDark theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.matrix": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the matrix theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.mint_light": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the mintLight theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.monokai": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the monokai theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.neon_noir": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the neonNoir theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.neon": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the neon theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.nightfox": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the nightfox theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.nord": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the nord theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.obsidian": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the obsidian theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.ocean": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the ocean theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.one_dark": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the oneDark theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.one_light": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the oneLight theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.outrun": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the outrun theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.palenight": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the palenight theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.paper": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the paper theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.radient": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the radient theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.rose_pine_dawn": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the rosePineDawn theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.rose_pine_moon": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the rosePineMoon theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.rose_pine": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the rosePine theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.rosewood": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the rosewood theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.sage": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the sage theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.solarized_dark": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the solarizedDark theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.solarized_light": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the solarizedLight theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.synth": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the synth theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.synthwave": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the synthwave theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.tokyo_night_day": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the tokyoNightDay theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.tokyo_night_storm": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the tokyoNightStorm theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.tokyo_night": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the tokyoNight theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.tron": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the tron theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
+	},
+	"ui.settings.appearance.theme.vaporwave": {
+		"role": "Theme description tooltip",
+		"tone": "Evocative but concise description of the palette appearance.",
+		"length": "One sentence in a wrapping tooltip beside the theme tile.",
+		"note": "Describes the vaporwave theme in its picker tooltip. Theme and editor-family names are proper names; preserve their established spelling."
 	}
 }

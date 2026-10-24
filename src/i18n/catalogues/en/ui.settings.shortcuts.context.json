@@ -61,5 +61,335 @@
 		"placeholders": {
 			"label": "Localised action name; insert verbatim."
 		}
+	},
+	"ui.settings.shortcuts.action.open_asks": {
+		"role": "Shortcut action tooltip",
+		"tone": "Concise imperative.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Imperative action name used outside the settings row: Open asks"
+	},
+	"ui.settings.shortcuts.action.open_browser": {
+		"role": "Shortcut action tooltip",
+		"tone": "Concise imperative.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Imperative action name used outside the settings row: Open browser"
+	},
+	"ui.settings.shortcuts.action.open_canvas": {
+		"role": "Shortcut action tooltip",
+		"tone": "Concise imperative.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Imperative action name used outside the settings row: Open canvas"
+	},
+	"ui.settings.shortcuts.action.open_code_review": {
+		"role": "Shortcut action tooltip",
+		"tone": "Concise imperative.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Imperative action name used outside the settings row: Open code review"
+	},
+	"ui.settings.shortcuts.action.open_console": {
+		"role": "Shortcut action tooltip",
+		"tone": "Concise imperative.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Imperative action name used outside the settings row: Open console"
+	},
+	"ui.settings.shortcuts.action.open_run_details": {
+		"role": "Shortcut action tooltip",
+		"tone": "Concise imperative.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Imperative action name used outside the settings row: Open run details"
+	},
+	"ui.settings.shortcuts.capture.already_assigned": {
+		"role": "Shortcut capture validation",
+		"tone": "Direct and helpful validation.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Shown while recording a shortcut; describes why the candidate chord cannot be assigned.",
+		"placeholders": {
+			"label": "Already-localized action label conflicting with the captured chord."
+		}
+	},
+	"ui.settings.shortcuts.capture.needs_modifier": {
+		"role": "Shortcut capture validation",
+		"tone": "Direct and helpful validation.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Shown while recording a shortcut; describes why the candidate chord cannot be assigned."
+	},
+	"ui.settings.shortcuts.capture.needs_modifier_mac": {
+		"role": "Shortcut capture validation",
+		"tone": "Direct and helpful validation.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Shown while recording a shortcut; describes why the candidate chord cannot be assigned."
+	},
+	"ui.settings.shortcuts.capture.unbindable": {
+		"role": "Shortcut capture validation",
+		"tone": "Direct and helpful validation.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Shown while recording a shortcut; describes why the candidate chord cannot be assigned."
+	},
+	"ui.settings.shortcuts.category.panels": {
+		"role": "Shortcut category",
+		"tone": "Concise grouping noun.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Groups the panel-rail actions in shortcut settings."
+	},
+	"ui.settings.shortcuts.reserved.archive_chat": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: archives the focused conversation."
+	},
+	"ui.settings.shortcuts.reserved.browser_address": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: focuses the browser address bar."
+	},
+	"ui.settings.shortcuts.reserved.browser_back": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: goes back in the browser, or between chats outside it."
+	},
+	"ui.settings.shortcuts.reserved.browser_forward": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: goes forward in the browser, or between chats outside it."
+	},
+	"ui.settings.shortcuts.reserved.browser_last_tab": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: switches to the last browser tab."
+	},
+	"ui.settings.shortcuts.reserved.browser_new_tab": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: opens a new browser tab."
+	},
+	"ui.settings.shortcuts.reserved.browser_numbered_tab": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: switches to browser tab {digit}.",
+		"placeholders": {
+			"digit": "Browser tab number from 1 through 8."
+		}
+	},
+	"ui.settings.shortcuts.reserved.browser_reload": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: reloads the browser page."
+	},
+	"ui.settings.shortcuts.reserved.browser_reload_cache": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: reloads the browser page, ignoring the cache."
+	},
+	"ui.settings.shortcuts.reserved.browser_reopen_tab": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: reopens the last closed browser tab."
+	},
+	"ui.settings.shortcuts.reserved.canvas_open": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: opens a file in the canvas."
+	},
+	"ui.settings.shortcuts.reserved.canvas_save": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: saves the canvas document."
+	},
+	"ui.settings.shortcuts.reserved.chat_move_down": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: moves the focused chat down the pinned order."
+	},
+	"ui.settings.shortcuts.reserved.chat_move_up": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: moves the focused chat up the pinned order."
+	},
+	"ui.settings.shortcuts.reserved.chat_region_down": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: walks down the chat regions."
+	},
+	"ui.settings.shortcuts.reserved.chat_region_up": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: walks up the chat regions."
+	},
+	"ui.settings.shortcuts.reserved.chat_tags": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: opens the focused conversation's tags."
+	},
+	"ui.settings.shortcuts.reserved.close": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: closes the browser tab, or the window outside it."
+	},
+	"ui.settings.shortcuts.reserved.copy": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: copy."
+	},
+	"ui.settings.shortcuts.reserved.cut": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: cut."
+	},
+	"ui.settings.shortcuts.reserved.find": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: finds in the browser page, or searches the transcript outside it."
+	},
+	"ui.settings.shortcuts.reserved.minimise": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: minimises the window."
+	},
+	"ui.settings.shortcuts.reserved.new_chat": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: starts a new chat."
+	},
+	"ui.settings.shortcuts.reserved.palette_anywhere": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: opens the command palette from anywhere."
+	},
+	"ui.settings.shortcuts.reserved.palette_chats": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: opens the command palette on chats."
+	},
+	"ui.settings.shortcuts.reserved.palette_commands": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: opens the command palette on commands."
+	},
+	"ui.settings.shortcuts.reserved.paste": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: paste."
+	},
+	"ui.settings.shortcuts.reserved.quit": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: quits the app."
+	},
+	"ui.settings.shortcuts.reserved.redo": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: redo."
+	},
+	"ui.settings.shortcuts.reserved.redo_windows_linux": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: redo on Windows and Linux."
+	},
+	"ui.settings.shortcuts.reserved.select_all": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: select all."
+	},
+	"ui.settings.shortcuts.reserved.speech_to_text": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: starts speech to text."
+	},
+	"ui.settings.shortcuts.reserved.toggle_sidebar": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: toggles the sidebar."
+	},
+	"ui.settings.shortcuts.reserved.undo": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: undo."
+	},
+	"ui.settings.shortcuts.reserved.zoom_in": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: zooms the browser page or app in."
+	},
+	"ui.settings.shortcuts.reserved.zoom_out": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: zooms the browser page or app out."
+	},
+	"ui.settings.shortcuts.reserved.zoom_reset": {
+		"role": "Shortcut capture refusal",
+		"tone": "Factual explanation of a fixed application shortcut.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Explains why this chord cannot be reassigned: resets browser page zoom, or app zoom outside it."
+	},
+	"ui.settings.shortcuts.row.asks": {
+		"role": "Shortcut settings row label",
+		"tone": "Concise destination noun.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Names the destination without the imperative verb used by the corresponding action tooltip."
+	},
+	"ui.settings.shortcuts.row.browser": {
+		"role": "Shortcut settings row label",
+		"tone": "Concise destination noun.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Names the destination without the imperative verb used by the corresponding action tooltip."
+	},
+	"ui.settings.shortcuts.row.canvas": {
+		"role": "Shortcut settings row label",
+		"tone": "Concise destination noun.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Names the destination without the imperative verb used by the corresponding action tooltip."
+	},
+	"ui.settings.shortcuts.row.code_review": {
+		"role": "Shortcut settings row label",
+		"tone": "Concise destination noun.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Names the destination without the imperative verb used by the corresponding action tooltip."
+	},
+	"ui.settings.shortcuts.row.console": {
+		"role": "Shortcut settings row label",
+		"tone": "Concise destination noun.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Names the destination without the imperative verb used by the corresponding action tooltip."
+	},
+	"ui.settings.shortcuts.row.execution": {
+		"role": "Shortcut settings row label",
+		"tone": "Concise destination noun.",
+		"length": "One shortcut row or refusal sentence; keep compact.",
+		"note": "Names the destination without the imperative verb used by the corresponding action tooltip."
 	}
 }

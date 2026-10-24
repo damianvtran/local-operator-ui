@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -43,7 +44,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const gruvboxLight: ThemeDefinition = {
 	id: "gruvboxLight",
 	name: "Gruvbox Light",
-	description: "Retro groove by daylight, warm cream and faded ink.",
+	get description() {
+		return t("ui.settings.appearance.theme.gruvbox_light");
+	},
 	palette: {
 		mode: "light",
 

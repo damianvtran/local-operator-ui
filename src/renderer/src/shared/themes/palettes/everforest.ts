@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -40,7 +41,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const everforest: ThemeDefinition = {
 	id: "everforest",
 	name: "Everforest",
-	description: "Low-contrast forest night, moss green over warm slate.",
+	get description() {
+		return t("ui.settings.appearance.theme.everforest");
+	},
 	palette: {
 		mode: "dark",
 
