@@ -705,7 +705,13 @@ test("the pinned mark is drawn at rest at every width, and is not inside a displ
 	 * rather than a real finding. Absolute offsets from the same anchor cannot drift
 	 * apart that way.
 	 */
-	const block = source.slice(at, at + 5200);
+	/*
+	 * 6000 rather than 5200: the extraction added the locale reasoning to the
+	 * control's own comment, which sits between the anchor and the `pinned`
+	 * ternary. The window still only bounds where the search STARTS - the
+	 * branch's end is read from the source, as the note above requires.
+	 */
+	const block = source.slice(at, at + 6000);
 	const branchMatch = /\n\s*pinned\n/.exec(block);
 	assert.notEqual(branchMatch, null, "the pin's pinned branch must exist");
 	const pinnedBranchText = source.slice(

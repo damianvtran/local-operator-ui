@@ -115,8 +115,10 @@
 		"role": "visible interface copy in chat components/trace/turn-summary.tsx",
 		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
 		"length": "short label or one line",
-		"note": "Extracted unchanged from components/trace/turn-summary.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {}
+		"note": "The turn bar's span clause: the word and the localised duration are one message, so a locale can order them and no separator is lost.",
+		"placeholders": {
+			"duration": "The formatter's localised span, e.g. \"3s\" or \"1m 19s\"."
+		}
 	},
 	"ui.chat.trace.agent_question.sending_your_answer": {
 		"role": "visible interface copy in chat components/trace/agent-question.tsx",

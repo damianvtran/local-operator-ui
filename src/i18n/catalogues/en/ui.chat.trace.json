@@ -15,7 +15,7 @@
 	"ui.chat.trace.security_notice.show_the_reviewed_code": "Show the reviewed code",
 	"ui.chat.trace.tool_row.pending": "pending",
 	"ui.chat.trace.turn_summary.completed": "completed",
-	"ui.chat.trace.turn_summary.took": "Took",
+	"ui.chat.trace.turn_summary.took": "Took {duration}",
 	"ui.chat.trace.approval.approve_description": "Run the action and continue the turn.",
 	"ui.chat.trace.approval.deny_description": "Refuse the action; the turn continues.",
 	"ui.chat.trace.agent_question.sending_your_answer": "Sending your answer…",

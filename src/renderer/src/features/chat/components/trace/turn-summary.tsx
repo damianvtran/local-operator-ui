@@ -506,8 +506,9 @@ export const TurnSummary: FC<TurnSummaryProps> = ({
 								)}
 								{durationS !== null && (
 									<span className={cn("shrink-0 text-body-sm text-ink-muted")}>
-										{t("ui.chat.trace.turn_summary.took")}
-										{formatDuration(durationS)}
+										{t("ui.chat.trace.turn_summary.took", {
+											duration: formatDuration(durationS),
+										})}
 									</span>
 								)}
 								{durationS !== null && actionCount > 0 && <Dot />}

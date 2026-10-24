@@ -251,11 +251,21 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { mountLibrary, filterAssets, NO_LIBRARY_FILTERS, locale } = await import(
-	bundlePath.href
-);
-await unlink(bundlePath);
-await unlink(muiStubPath);
+/*
+ * The scratch bundle is pid-named, so a killed run leaves files under
+ * `scripts/` that the next `git add -A` would commit (they were: 8.6 MB of
+ * generated test scratch). The finally block is the cleanup the pid name was
+ * only pretending to be; `.gitignore` also refuses the pattern as a second
+ * line of defence.
+ */
+let page;
+try {
+	page = await import(bundlePath.href);
+} finally {
+	await unlink(bundlePath).catch(() => {});
+	await unlink(muiStubPath).catch(() => {});
+}
+const { mountLibrary, filterAssets, NO_LIBRARY_FILTERS, locale } = page;
 
 const NOW = new Date(2026, 9, 18, 12, 0, 0).getTime();
 

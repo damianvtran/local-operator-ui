@@ -996,7 +996,7 @@ test("the loading indicator stays one small quiet mark", () => {
 	);
 	assert.match(
 		placeholder,
-		/aria-label="Loading conversation"/,
+		/aria-label=\{t\("ui\.chat\.canonical\.transcript\.loading"\)\}/,
 		"the live region keeps its name",
 	);
 });

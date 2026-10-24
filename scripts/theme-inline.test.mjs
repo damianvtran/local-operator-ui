@@ -107,7 +107,15 @@ function mount(action) {
 			effects.push(fn);
 		},
 		useI18nLocale: () => {},
-		t: (key) => PICKERS_ENGLISH[key] ?? key,
+		t: (key, values) => {
+			const message = PICKERS_ENGLISH[key] ?? key;
+			if (!values) return message;
+			// Simple ICU placeholders: the slash command's sentence names the
+			// theme, so the seam interpolates rather than echoing `{name}`.
+			return message.replace(/\{(\w+)\}/g, (placeholder, name) =>
+				Object.hasOwn(values, name) ? String(values[name]) : placeholder,
+			);
+		},
 		PickerHost: (props) => props,
 	};
 	const module = { exports: {} };
