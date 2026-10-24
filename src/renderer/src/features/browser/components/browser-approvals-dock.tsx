@@ -65,6 +65,9 @@ import {
 
 export interface BrowserApprovalsDockProps {
 	open: boolean;
+	/** Bumped when a caller needs the heading focused after an external close
+	 * sequence (the folded ⋯ menu closes after this component mounts). */
+	focusRequest?: number;
 	rows: ApprovalRow[];
 	resolved: ResolvedRow[];
 	selectedEntryId: string | null;
@@ -105,6 +108,7 @@ function grantedWhen(grantedAt: number): string {
 
 export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 	open,
+	focusRequest = 0,
 	rows,
 	resolved,
 	selectedEntryId,
@@ -131,6 +135,12 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 		if (!open) return;
 		headingRef.current?.focus();
 	}, [open]);
+	/* A second focus on an explicit request: the folded menu closes after this
+	   component mounts, so its heading focus must be re-requested afterwards. */
+	useEffect(() => {
+		if (!open || focusRequest === 0) return;
+		headingRef.current?.focus();
+	}, [open, focusRequest]);
 
 	// Escape closes the dock, BOUND ON THE DOCUMENT rather than on the section (UX
 	// round 1, U1). The section handler looked equivalent and was not: deciding on

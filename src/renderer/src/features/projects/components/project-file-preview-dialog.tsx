@@ -82,7 +82,7 @@ export const ProjectFilePreviewDialog: FC<ProjectFilePreviewDialogProps> = ({
 	 * over a page with a browser pane mounted must stand the view down - the
 	 * same call the shared lightbox makes.
 	 */
-	useSuppressBrowserView(open, "project-file-preview");
+	useSuppressBrowserView(open, "dialog", "project-file-preview");
 	const [state, setState] = useState<PreviewState>({ status: "loading" });
 	const path = attachment?.path ?? null;
 	const markdown = attachment

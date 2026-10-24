@@ -84,6 +84,7 @@ const PROBE = `
 	import { closeConversationIntent, closeFailedIntent, closeOthersIntent, closeToTheRightIntent, groupTabsBySession, pooledTabs, scopeFromKey, scopeKey, sessionDisplayName, summariseConversations, tabsBySession, tabsInScope } from "./src/renderer/src/features/browser/model/tab-index-model";
 	import { BrowserLoadFailure, loadFailureSentence } from "./src/renderer/src/features/browser/components/browser-load-failure";
 	import { BrowserNewTab } from "./src/renderer/src/features/browser/components/browser-new-tab";
+	export { countLabel } from "./src/renderer/src/shared/components/ui/badge";
 	import { isStartPageUrl } from "./src/renderer/src/features/browser/model/start-page";
 	import { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";
 	import { browserBridgeAvailable, clearBrowserProjectionReadError, publishStagedProjection, readBrowserProjection, refreshBrowserProjection, subscribeBrowserProjection } from "./src/renderer/src/features/browser/model/browser-projection-store";
@@ -309,6 +310,7 @@ const {
 	browserViewSuppressed,
 	suppressBrowserView,
 	suppressedOverlayIds,
+	countLabel,
 	safeHttpUrl,
 	configurePslRules,
 } = mod;
@@ -1246,10 +1248,12 @@ test("revoking one origin takes the broad grant that admitted it, too", () => {
 
 test("the overlay policy is ref-counted, so an inner close cannot clear an outer overlay", () => {
 	assert.equal(browserViewSuppressed(), false);
-	const outer = suppressBrowserView("dialog");
-	const inner = suppressBrowserView("dialog");
+	// S5: an id names its KIND first (`${kind}:${label}:${uid}`). Two registrations
+	// of the same overlay still ref-count; the kind prefix is what the policy reads.
+	const outer = suppressBrowserView("dialog:test:outer");
+	const inner = suppressBrowserView("dialog:test:outer");
 	assert.equal(browserViewSuppressed(), true);
-	assert.deepEqual(suppressedOverlayIds(), ["dialog"]);
+	assert.deepEqual(suppressedOverlayIds(), ["dialog:test:outer"]);
 	inner();
 	assert.equal(
 		browserViewSuppressed(),
@@ -1261,14 +1265,22 @@ test("the overlay policy is ref-counted, so an inner close cannot clear an outer
 });
 
 test("a release is idempotent: a double-release cannot unbalance the count", () => {
-	const release = suppressBrowserView("toast");
+	const release = suppressBrowserView("dialog:test:notice");
 	release();
 	release();
 	assert.equal(browserViewSuppressed(), false);
-	const other = suppressBrowserView("toast");
+	const other = suppressBrowserView("dialog:test:notice");
 	assert.equal(browserViewSuppressed(), true);
 	other();
 	assert.equal(browserViewSuppressed(), false);
+});
+
+test("the approvals badge counts are bounded at 99+ (round-1 D6)", () => {
+	// The badge is `size="count"` and the brief's frames ask for 1 / 9 / 99+.
+	assert.equal(countLabel(1, 99), "1");
+	assert.equal(countLabel(9, 99), "9");
+	assert.equal(countLabel(99, 99), "99");
+	assert.equal(countLabel(120, 99), "99+");
 });
 
 // ---- a bounded, validated restore (review round 1, R5) ----------------------
@@ -3134,9 +3146,9 @@ test("the start page paints the app's own surface, and only the exact start stat
 	assert.equal(isStartPageUrl("https://example.com/"), false);
 
 	const navigated = [];
-	const markup = render(
-		el(BrowserNewTab, { onNavigate: (url) => navigated.push(url) }),
-	);
+	// S5: the start page has no field and no Go — the permanent row is the only
+	// address input (ruling 2). Rendering it takes no navigation props.
+	const markup = render(el(BrowserNewTab, {}));
 	assert.ok(
 		markup.includes("browser-start-page") && markup.includes("data-brand-mark"),
 		"the brand mark leads the surface, not a bare blank rectangle",
@@ -3147,9 +3159,10 @@ test("the start page paints the app's own surface, and only the exact start stat
 		"the wordmark and the one instruction the page gives",
 	);
 	assert.ok(
-		markup.includes("browser-start-page-address") &&
-			markup.includes("browser-start-page-go"),
-		"a way to start a navigation from the page itself",
+		!markup.includes("browser-start-page-address") &&
+			!markup.includes("browser-start-page-go") &&
+			!markup.includes("<input"),
+		"the page owns no second address field; the row above is the one input",
 	);
 	assert.ok(
 		!markup.includes("http") && !markup.includes("<img"),
@@ -3273,8 +3286,12 @@ test("the surface's own view registrations are not read as the overlay that hide
 	const surface = shippedSource(
 		"src/renderer/src/features/browser/components/browser-surface.tsx",
 	);
+	// S5: the id is `${kind}:${label}:${uid}`, so the self-suppression list names
+	// the LABEL of a `browser-state` registration.
 	const registered = [
-		...surface.matchAll(/useSuppressBrowserView\([^,]+,\s*"([^"]+)"/g),
+		...surface.matchAll(
+			/useSuppressBrowserView\([^,]+,\s*"browser-state"\s*,\s*"([^"]+)"/g,
+		),
 	].map((match) => match[1]);
 	assert.ok(
 		registered.length >= 2,
@@ -3286,7 +3303,7 @@ test("the surface's own view registrations are not read as the overlay that hide
 	assert.ok(exclusionBlock, "the exclusion list exists");
 	for (const name of registered) {
 		assert.ok(
-			exclusionBlock[1].includes(`"${name}:"`),
+			exclusionBlock[1].includes(`"browser-state:${name}:"`),
 			`\`${name}\` registers itself for the view, so the overlay filter must exclude it — otherwise the state is hidden by its own registration`,
 		);
 	}
@@ -3982,3 +3999,99 @@ for (const outcome of [
 			globalThis.window = previous;
 		}
 	});
+
+test("the unavailable sentence is announced and does not name implementation states (U10, N2)", () => {
+	const bar = readFileSync(
+		"src/renderer/src/features/browser/components/browser-url-bar.tsx",
+		"utf8",
+	);
+	assert.match(bar, /id=\{unavailableId\}/);
+	assert.ok(
+		bar.includes('? "sr-only"'),
+		"below the width it can share, the sentence is description only (U18)",
+	);
+	assert.ok(bar.includes("bg-elevated px-1"));
+	const hint = bar.slice(
+		bar.indexOf("hintShown && ("),
+		bar.indexOf("hintShown && (") + 1200,
+	);
+	assert.ok(
+		!hint.includes("aria-live"),
+		"the hint itself is not a live region",
+	);
+	assert.equal(
+		(bar.match(/role="status"/g) ?? []).length,
+		1,
+		"exactly one polite live region (Q4-2)",
+	);
+	assert.ok(
+		bar.includes("@container/addressfield relative min-w-0 grow"),
+		"the field, not the row, is the measured container (Q5-1)",
+	);
+	const surfaceSource = readFileSync(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+		"utf8",
+	);
+	assert.match(
+		surfaceSource,
+		/const onStartPage = browserOwnStateFor\(activeTab, chrome\.pendingUrl\)/,
+		"the surface derives own-state from pendingUrl, not the loading flag",
+	);
+	assert.match(
+		surfaceSource,
+		/suggestionsUnavailable=\{browserOwnState\}/,
+		"the field's unavailable copy reads the same own-state fact (Q5 U27)",
+	);
+	const chordsSource = readFileSync(
+		"src/renderer/src/features/browser/hooks/use-browser-chords.ts",
+		"utf8",
+	);
+	assert.match(
+		chordsSource,
+		/browserOwnState: boolean,/,
+		"the chord hook requires the shared fact, with no fail-open default",
+	);
+	assert.match(
+		bar,
+		/hintPainted &&[\s\S]{0,300}"@\[342px\]\/addressfield:pr-\[min\(378px,max\(0px,calc\(100%-10rem\)\)\)\]"/,
+		"the 218 px pill and its 160 px floor start at field 342 and are clamped; 359/360/420 sit below it, wide above (Q5-1)",
+	);
+	assert.match(
+		bar,
+		/else if \(!autocomplete\.loading && !suggestionsUnavailable\)/,
+		"the empty-list fallthrough is silent while the field says unavailable (U25)",
+	);
+	assert.match(
+		bar,
+		/suggestions\.rows\.length > 0 && !suggestionsUnavailable/,
+		"no 'suggestions available' announcement while the field says unavailable (U25)",
+	);
+	assert.match(
+		bar,
+		/if \(!hintShown\) return;\s*setAnnouncement\(\s*t\(/,
+		"the sentence reaches the existing status region on the transition (U18/U21)",
+	);
+	assert.match(bar, /content=\{t\("ui\.browser\.browser_url_bar\.home"\)\}/);
+	assert.doesNotMatch(bar, /home_destination/);
+});
+
+test("the start/failure page stays non-controllable while an overlay is open (Q3-1)", () => {
+	const surface = readFileSync(
+		"src/renderer/src/features/browser/components/browser-surface.tsx",
+		"utf8",
+	);
+	assert.match(
+		surface,
+		/const browserOwnState = onStartPage \|\| navFailure !== null;/,
+		"own-state is a property of the state, not of the overlay filter",
+	);
+	assert.match(
+		surface,
+		/setViewVisible\(\s*!suppressed,\s*suppressed && !overlaySuppressing,\s*suppressed && browserOwnState,\s*\)/,
+	);
+	assert.match(
+		surface,
+		/approvalsTriggerRef\.current \?\? pageMenuTriggerRef\.current/,
+		"band-empty handoff must reach the folded trigger too",
+	);
+});

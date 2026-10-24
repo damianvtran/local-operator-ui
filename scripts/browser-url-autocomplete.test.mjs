@@ -288,9 +288,25 @@ const options = (bundle) => [
  * the product, so every empty/hint/error sentence is announced through this
  * `aria-describedby` target rather than painted in DOM. */
 const describedNotice = (bundle) => {
-	const id = bundle.input.getAttribute("aria-describedby");
-	return id ? document.getElementById(id) : null;
+	/* The field now always names its site description first (S5 U4), so the
+	   attribute is a LIST; a notice is whichever referenced node exists. */
+	const ids = (bundle.input.getAttribute("aria-describedby") ?? "")
+		.split(/\s+/)
+		.filter(Boolean);
+	for (const id of ids) {
+		if (!/-(notice|unavailable)$/.test(id)) continue;
+		const node = document.getElementById(id);
+		if (node) return node;
+	}
+	return null;
 };
+/** The concatenated text of every node the field describes itself with. */
+const describedText = (bundle) =>
+	(bundle.input.getAttribute("aria-describedby") ?? "")
+		.split(/\s+/)
+		.filter(Boolean)
+		.map((id) => document.getElementById(id)?.textContent ?? "")
+		.join(" ");
 
 test("focus fetches once and an empty query shows the session's entries", async () => {
 	const bundle = await renderBar();
@@ -621,9 +637,7 @@ test("a paste with no displayed suffix keeps the best match as a row", async () 
 test("blocked input says so before Enter, and Enter refuses it", async () => {
 	const bundle = await renderBar();
 	await type(bundle, "example.com:");
-	const described = bundle.input.getAttribute("aria-describedby");
-	assert.ok(described);
-	assert.match(document.getElementById(described).textContent, BLOCKED_HINT);
+	assert.match(describedText(bundle), BLOCKED_HINT);
 	await key(bundle, "Enter");
 	assert.deepEqual(bundle.navigations, []);
 	assert.equal(bundle.input.value, "example.com:");
@@ -633,9 +647,7 @@ test("blocked input says so before Enter, and Enter refuses it", async () => {
 test("a file URL is refused with the same hint and never searched", async () => {
 	const bundle = await renderBar();
 	await type(bundle, "file:///tmp/a.txt");
-	const described = bundle.input.getAttribute("aria-describedby");
-	assert.ok(described);
-	assert.match(document.getElementById(described).textContent, BLOCKED_HINT);
+	assert.match(describedText(bundle), BLOCKED_HINT);
 	await key(bundle, "Enter");
 	assert.deepEqual(bundle.navigations, []);
 	await bundle.cleanup();
@@ -1005,7 +1017,11 @@ test("aria-controls names the listbox only while a listbox exists", async () => 
 	const populated = await renderBar();
 	await type(populated, "example.com/acc");
 	assert.ok(populated.input.getAttribute("aria-controls"));
-	assert.equal(populated.input.getAttribute("aria-describedby"), null);
+	assert.doesNotMatch(
+		populated.input.getAttribute("aria-describedby") ?? "",
+		/-notice/,
+		"a populated list names no notice; the site description is not a list state",
+	);
 	await populated.cleanup();
 
 	const empty = await renderBar({
@@ -1019,12 +1035,7 @@ test("aria-controls names the listbox only while a listbox exists", async () => 
 	await act(async () => empty.input.focus());
 	await flush();
 	assert.equal(empty.input.getAttribute("aria-controls"), null);
-	const described = empty.input.getAttribute("aria-describedby");
-	assert.ok(described);
-	assert.match(
-		document.getElementById(described).textContent,
-		NO_BROWSING_HISTORY,
-	);
+	assert.match(describedText(empty), NO_BROWSING_HISTORY);
 	await empty.cleanup();
 });
 
@@ -1037,12 +1048,7 @@ test("the unavailable notice is described by the field", async () => {
 	await act(async () => bundle.input.focus());
 	await flush();
 	assert.equal(bundle.input.getAttribute("aria-controls"), null);
-	const described = bundle.input.getAttribute("aria-describedby");
-	assert.ok(described);
-	assert.match(
-		document.getElementById(described).textContent,
-		ADDRESS_SUGGESTIONS_UNAVAILABLE,
-	);
+	assert.match(describedText(bundle), ADDRESS_SUGGESTIONS_UNAVAILABLE);
 	await bundle.cleanup();
 });
 

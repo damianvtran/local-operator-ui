@@ -597,7 +597,7 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 	 * that registration is the reason it may not be built on the primitive
 	 * without it.
 	 */
-	useSuppressBrowserView(open, "image-lightbox");
+	useSuppressBrowserView(open, "lightbox");
 
 	/*
 	 * The zoom frame's own element, read at gesture time rather than stored:

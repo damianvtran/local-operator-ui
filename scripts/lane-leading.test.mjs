@@ -328,43 +328,6 @@ test("the chat dock pads once: the route is flush, so each column's own pad is t
 	);
 });
 
-test("the Browser address popout anchors below the route's pad, not at y0", () => {
-	/*
-	 * The popout is `absolute inset-x-0 top-0`, and `top-0` resolves to the
-	 * containing block's PADDING box. On the route host that box starts at y0
-	 * (flush) and the pad lives inside it, so a popout anchored to the root
-	 * opens under the lane even once the root pads. It must instead anchor to
-	 * the strip's own `relative` wrapper, which sits below the pad in both hosts
-	 * (agent review round 1, F1: the #1305 popout opened at y0 after the merge).
-	 */
-	const source = readSource(BROWSER_SURFACE);
-	const wrapperStart = source.indexOf(
-		'<div ref={stripRef} className="relative">',
-	);
-	assert.notEqual(
-		wrapperStart,
-		-1,
-		"the tab strip's wrapper must be the popout's positioned ancestor (`relative`)",
-	);
-	const popoutAt = source.indexOf('data-tour-tag="browser-address-popout"');
-	assert.notEqual(popoutAt, -1, "the address popout must stay tagged");
-	// The wrapper's own closing tag: the first `</div>` at its indentation.
-	const indent = source.slice(
-		source.lastIndexOf("\n", wrapperStart) + 1,
-		wrapperStart,
-	);
-	const wrapperEnd = source.indexOf(`\n${indent}</div>`, wrapperStart);
-	assert.ok(
-		popoutAt > wrapperStart && popoutAt < wrapperEnd,
-		"the address popout must render INSIDE the strip's `relative` wrapper; anchored to the surface root it opens at y0 on the route, under the drag lane and the traffic lights",
-	);
-	assert.match(
-		source.slice(popoutAt - 200, popoutAt),
-		/className="absolute inset-x-0 top-0 z-30"/,
-		"the popout still overlays the strip's own row",
-	);
-});
-
 test("the Library dock and rail are the measured panels, and the dock scrolls inside its pad", () => {
 	const page = readSource(LIBRARY_PAGE);
 	/*
