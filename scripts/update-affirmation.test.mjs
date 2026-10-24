@@ -292,11 +292,18 @@ const bundle = await build({
 			*/
 			export { UpdateNotification } from "./src/renderer/src/shared/components/common/update-notification";
 			/*
+			 * THE PRODUCER'S OWN COMPOSER, so the panel case drives the sentence the app
+			 * would send rather than a paraphrase a fixture could drift from. The module
+			 * imports nothing at runtime (its failure vocabulary is a type-only import),
+			 * so this joins the bundle without dragging the main process in.
+			 */
+			export { serverUpdateFailureSentence } from "./src/main/server-update-copy";
+			/*
 			 * The failure panel's own container, so the sentence UNDER TEST is read from
 			 * the panel rather than from whatever else on screen happens to say it -
 			 * which surface holds it is the whole attribution question (R2-1, QA Q2).
 			 */
-			export { UpdateContainer } from "./src/renderer/src/shared/components/common/update-notification";
+			export { InstallerOutput, UpdateContainer } from "./src/renderer/src/shared/components/common/update-notification";
 			/*
 			 * The alert that carries an update-path failure's sentence. Exported so the
 			 * harness can EXPAND it (below) rather than treat it as an opaque element:
@@ -578,8 +585,10 @@ const {
 	UpdateErrorAlert,
 	PanelDetails,
 	Button,
+	InstallerOutput,
 	UpdateContainer,
 	UpdateNotification,
+	serverUpdateFailureSentence,
 	useUpdateNoticeStore,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
@@ -1142,6 +1151,121 @@ test("backend-update-error takes the in-flight panel down and says why", () => {
 	// dismissal that defers the release.
 	control(handle, "Try again");
 	control(handle, "Update later");
+});
+
+/**
+ * THE INCIDENT THE STRUCTURED CAUSE EXISTS FOR (2026-10-24).
+ *
+ * The updater exited 1 with `fresh PyPI latest is 0.88.4, not 0.89.0` on line 7 of
+ * its stderr, behind two startup advisories long enough to consume
+ * `installDiagnosisLines`' 800-character budget. The panel therefore showed the
+ * advisories and no cause. These cases drive the shipped panel with the producer's
+ * composed sentence for those facts and assert the cause is what the reader sees.
+ */
+const INCIDENT_FAILURE = {
+	step: "publish",
+	kind: "publication",
+	error: "fresh PyPI latest is 0.88.4, not 0.89.0; retry lop update",
+};
+const INCIDENT_STARTUP_OUTPUT = [
+	"2026-10-24 16:42:26,743 - WARNING - /Users/operator/.local-operator/config.yml lost 1 setting(s) since the last launch: subagents.models.hi",
+	"2026-10-24 16:42:27,154 - WARNING - the LOADED page of the project store carries 2 rows named 'minerva-assigned-mr-release-20261013'",
+].join("\n");
+const incidentSentence = () =>
+	serverUpdateFailureSentence({
+		rebuildRoute: false,
+		ran: true,
+		exitCode: 1,
+		groupSurvived: false,
+		diagnosis: INCIDENT_STARTUP_OUTPUT,
+		target: "0.89.0",
+		after: "0.88.4",
+		before: "0.88.4",
+		updateCommand: "lop update",
+		failure: INCIDENT_FAILURE,
+	});
+
+test("a structured failure puts the updater's cause on the panel, not the stream head", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+
+	const message = incidentSentence();
+	updater.emit("backend-update-error", {
+		message,
+		phase: "update",
+		// The raw fallback still travels; it is no longer the only diagnosis.
+		installerOutput: INCIDENT_STARTUP_OUTPUT,
+		failure: { ...INCIDENT_FAILURE, exitCode: 1 },
+	});
+	handle.render();
+
+	assert.equal(showsText(handle, "Updating server"), false);
+	assert.ok(
+		showsText(handle, "The server update didn't finish"),
+		JSON.stringify(visible(handle)),
+	);
+	assert.ok(
+		showsText(handle, message),
+		`the composed sentence must render verbatim: ${message}`,
+	);
+	const copy = allText(handle);
+	assert.match(copy, /It stopped at the publish step/);
+	assert.match(copy, /fresh PyPI latest is 0\.88\.4, not 0\.89\.0/);
+	assert.match(
+		copy,
+		/The release is still publishing; try again in a few minutes\./,
+	);
+	// The raw output keeps its own (collapsible) block, and the panel still offers
+	// the two actions a failed attempt has always offered.
+	const outputBlock = walk(handle.tree).find(
+		(node) => node.type === InstallerOutput,
+	);
+	assert.ok(outputBlock, "the raw output must keep its own block");
+	assert.match(
+		outputBlock.props.output,
+		/config\.yml lost 1 setting\(s\)/,
+		"the stream head must still be available as the fallback record",
+	);
+	control(handle, "Try again");
+	control(handle, "Update later");
+	assert.equal(dangerToasts(handle).length, 0);
+});
+
+test("an older payload without a failure block keeps today's copy and does not crash", () => {
+	const handle = mountNotification();
+	startServerUpdate(handle);
+
+	const legacy = serverUpdateFailureSentence({
+		rebuildRoute: false,
+		ran: true,
+		exitCode: 1,
+		groupSurvived: false,
+		diagnosis: INCIDENT_STARTUP_OUTPUT,
+		target: "0.89.0",
+		after: "0.88.4",
+		before: "0.88.4",
+		updateCommand: "lop update",
+	});
+	// No `failure` field at all: the shape every build that predates the contract
+	// sends.
+	updater.emit("backend-update-error", {
+		message: legacy,
+		phase: "update",
+		installerOutput: INCIDENT_STARTUP_OUTPUT,
+	});
+	handle.render();
+
+	assert.ok(
+		showsText(handle, legacy),
+		`the older sentence must render unchanged: ${legacy}`,
+	);
+	assert.equal(
+		showsText(handle, "It stopped at"),
+		false,
+		"an older backend must not gain a cause clause it cannot back with data",
+	);
+	assert.equal(dangerToasts(handle).length, 0);
+	control(handle, "Try again");
 });
 
 test("a resolved false with no event still leaves the panel and says something", async () => {

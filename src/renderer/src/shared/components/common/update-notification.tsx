@@ -1187,6 +1187,23 @@ export const UpdateNotification = ({
 		/** The installer's own lines, when the failing branch had any to send. */
 		installerOutput?: string;
 		/**
+		 * The updater's structured cause, when the backend emits one (contract
+		 * 2026-10-24).
+		 *
+		 * HELD BESIDE `message`, not instead of it: the sentence is the app's copy and
+		 * is what the panel reads, while these fields are the machine-readable half a
+		 * surface can act on without parsing English. The panel does not re-compose
+		 * copy from them - that would be the second author `serverUpdateFailureReason`
+		 * exists to prevent - but a later surface that must branch on the kind (a
+		 * restart rather than a retry, for `serve`) has it here.
+		 */
+		failure?: {
+			step: string;
+			kind: string;
+			exitCode: number;
+			error: string;
+		};
+		/**
 		 * The update service log the failing branch wrote, when it named one.
 		 *
 		 * The panel's sentence points at that log, so the pointer is only honest if
@@ -2659,6 +2676,7 @@ export const UpdateNotification = ({
 						// The installer's own lines travel with the report (the producer's own field),
 						// rather than being re-derived from the sentence here (review round 5, M1).
 						installerOutput: report.installerOutput,
+						failure: report.failure,
 						logPath: report.logPath,
 						/*
 						 * AND WHETHER THIS WAS A REFUSAL RATHER THAN A FAILURE (design round 1,
