@@ -62,10 +62,11 @@ the page.
   browser keys. No new English key was added: a new key would require an
   audited translation in every shipped locale, and the card is not allowed to
   ship unaudited copy.
-- The footer is sticky inside the scrolling body, with a hairline and a top
-  scrim: it shares the body's content width (no 15px mismatch), the scroll
-  boundary is explicit, and the failure line lives there so it is never below
-  the 480 ceiling (D5/D6/D7). The close control is on the app's 28px ladder
+- The footer is sticky inside the scrolling body and shares that body's content
+  width; the scroll boundary is marked by a hairline and a scrim that is
+  **painted only while the body actually overflows** (D13 — an always-on shadow
+  greyed the empty ground of a short list), and the failure line lives there so
+  it is never below the 480 ceiling (D5/D6/D7). The close control is on the app's 28px ladder
   (D8); disabled states are colour treatments, not `opacity: .6` (D4 — the
   light disabled primary measured 2.53:1 under opacity; `ink-dim` on
   `elevated` is 6.14:1).
@@ -120,8 +121,11 @@ dedicated non-persistent partition, and the pinned deny-all CSP.
   select the request in place (D9/U4); the list inherits the request view's
   height so the native view does not collapse under it (D11), and the body
   fills the pinned card so the footer sits at the card's foot in both views
-  (D12). Its label is the count (“2 approvals waiting”), naming what the list
-  holds rather than “Open approvals” (D9). A stale action re-pushes the model
+  (D12). Its visible label is the count (“2 approvals waiting”) with a
+  disclosure chevron and an action aria-label (“Open approvals”), so it reads as
+  an action without dropping the count (D9/U9). When an unnamed session would
+  otherwise make two rows identical, the row label appends a four-character
+  session discriminator — never the full id (U10). A stale action re-pushes the model
   with a visible stale line; the primary obeys the expiry like the scoped
   decisions.
 - `lang`/`dir` come from the app's resolved locale, not the card's device tag
@@ -143,7 +147,8 @@ shield open/close focus handoff; the Tab order; and a stale `seq` dropping.
 
 **Round-2 driven rows:** four cells (264/900 × dark/light) on the built
 document — auto-present unfocused, geometry and Q2-above-fold, RTL, the eight
-input rows (I3 ring BLOCKED), locale/requester/palette and the document frames.
+input rows (I3 ring BLOCKED), locale/requester/palette and the nine document frames (request 264/368 × dark/light, list 264/368,
+catppuccinLatte, expired, stale error).
 The probe uses a private `--user-data-dir` and `--disable-gpu`, no `HOME`
 override, and reaps its process group; all four boots exit 0 with no leftover
 Electron. The earlier "environment BLOCKED" claim was wrong: a sized child

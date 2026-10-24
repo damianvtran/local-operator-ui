@@ -550,6 +550,9 @@ export class ApprovalsOverlayController {
 	/** Close without deciding (Close, Escape, or the shield's second click). */
 	close(reason = "close"): void {
 		if (this.disposed) return;
+		// A close ends the action too: a later context push must not resurrect the
+		// stale line from a click on a card that has already gone (round-3 minor).
+		this.actionError = null;
 		this.explicitOpen = false;
 		this.pendingFocus = false;
 		this.hide();
@@ -723,6 +726,10 @@ export class ApprovalsOverlayController {
 	/** Close the card's current entry without deciding it. */
 	private dismissEntry(entryId: string): void {
 		this.dismissed.add(entryId);
+		// The stale line belongs to the action that failed, not to the next card
+		// this dismissal presents; setContext re-pushes `actionError`, so it must
+		// be cleared here as well as in close (round-3 minor).
+		this.actionError = null;
 		if (!this.model) return;
 		const model = approvalsCardModelFrom({
 			seq: ++this.modelSeq,

@@ -44,6 +44,7 @@ import {
 	scopeKey,
 	tabsInScope,
 } from "../model/tab-index-model";
+import { sessionDisplayName } from "../model/tab-index-model";
 import { BrowserApprovalsDock } from "./browser-approvals-dock";
 import { defaultApprovalHeaderLabel } from "./browser-approvals-tray";
 import { BrowserConsentBar } from "./browser-consent-bar";
@@ -218,6 +219,23 @@ export interface BrowserSurfaceProps {
 
 const DEFAULT_APPROVAL_HEADER = defaultApprovalHeaderLabel;
 
+/**
+ * The card's row label. `requesterLabel` deliberately names an unnamed session
+ * in the app's own words ("The agent in an untitled chat"), which leaves two
+ * untitled sessions indistinguishable; two rows then differ only by expiry (U10).
+ * Appending a short session discriminator to THAT fallback is the one piece of
+ * identity left; a named conversation still shows its title and nothing else.
+ */
+function cardRequesterLabel(
+	id: string,
+	sessions: ReadonlyArray<{ session_id: string; title?: string | null }>,
+): string {
+	const label = requesterLabel(id, sessions);
+	return sessionDisplayName(id, sessions) === id
+		? `${label} · ${id.slice(-4)}`
+		: label;
+}
+
 export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	tabScope,
 	requestScope,
@@ -384,7 +402,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 		void locale;
 		const labels: Record<string, string> = {};
 		for (const id of requesterIdsKey.split("|")) {
-			if (id && !labels[id]) labels[id] = requesterLabel(id, sessions);
+			if (id && !labels[id]) labels[id] = cardRequesterLabel(id, sessions);
 		}
 		return labels;
 		// `locale` is a dependency because `requesterLabel` formats through the

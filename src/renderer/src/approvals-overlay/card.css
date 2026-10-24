@@ -277,6 +277,14 @@ html[data-opaque="1"] #approvals-card {
 	padding: 6px 12px 10px;
 	border-top: 1px solid var(--lo-hairline);
 	background: var(--lo-elevated);
+}
+
+/*
+ * The scrim is a scroll-boundary cue, not decoration: the body only gets the
+ * class when its content actually overflows, so a short list's empty ground is
+ * not painted grey (D13).
+ */
+.card-body.is-scrollable .card-footer {
 	box-shadow: 0 -10px 14px -8px
 		color-mix(in srgb, var(--lo-scrim) 80%, transparent);
 }
@@ -288,11 +296,29 @@ html[data-opaque="1"] #approvals-card {
 	font-size: 11px;
 }
 
+/*
+ * A status-shaped label still needs a disclosure affordance (U9): the chevron
+ * points toward the inline end in both directions.
+ */
+.card-review::after {
+	content: " ›";
+	color: var(--lo-ink-dim);
+}
+
+html[dir="rtl"] .card-review::after {
+	content: " ‹";
+}
+
 .card-rows {
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
 	margin: 4px 0 0;
+}
+
+/* The list's last row clears the hairline when the body is scrolled to its end. */
+#approvals-list {
+	padding-bottom: 8px;
 }
 
 .card-row {
