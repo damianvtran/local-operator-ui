@@ -5115,19 +5115,27 @@ test("a driven view is sized before it is ever hidden", () => {
 function assertPagePointerDismissal(source) {
 	const wireView = source.slice(source.indexOf("function wireView("));
 	assert.notEqual(wireView.length, 0, "no `wireView` in browser/index.ts");
-	const onPage = wireView.indexOf(
-		'contents.on("before-mouse-event", (_event, mouse) => {',
+	// Anchor on the call itself, then walk back to the page handler that owns it:
+	// a fixed-character window goes stale on any comment edit above the call.
+	const call = wireView.indexOf('dismissForTab(tabId, "page_pointer")');
+	assert.notEqual(
+		call,
+		-1,
+		"a page mouse-down must dismiss the bound tab's overlay as page_pointer",
+	);
+	const handler = wireView.lastIndexOf(
+		'contents.on("before-mouse-event"',
+		call,
 	);
 	assert.notEqual(
-		onPage,
+		handler,
 		-1,
 		"the page contents must observe its own mouse events",
 	);
-	const body = wireView.slice(onPage, onPage + 400);
 	assert.match(
-		body,
-		/if \(mouse\.type === "mouseDown"\)\s*addressOverlay\?\.dismissForTab\(tabId, "page_pointer"\);/,
-		"a page mouse-down must dismiss the bound tab's overlay as page_pointer",
+		wireView.slice(handler, call),
+		/if \(mouse\.type === "mouseDown"\)/,
+		"the dismissal must be the mouse-down arm of the page handler",
 	);
 }
 
@@ -5155,6 +5163,13 @@ test("a page pointer press dismisses the address field even when the page has fo
 		'contents.on("unused-mouse-event", (_event, mouse) => {',
 	);
 	assert.throws(() => assertPagePointerDismissal(removed));
+	// A mouse-up would also fire on hover-less releases and would dismiss after
+	// the page had already handled the press; only the down arm is the fact.
+	const wrongArm = source.replace(
+		'if (mouse.type === "mouseDown")',
+		'if (mouse.type === "mouseUp")',
+	);
+	assert.throws(() => assertPagePointerDismissal(wrongArm));
 });
 
 test("a background capture retries a stalled attempt, and does not retry a real failure", async () => {

@@ -1689,9 +1689,11 @@ async function initializeBrowserHost(
 			 * null `relatedTarget` the row deliberately keeps (that value is also a
 			 * window deactivation). The page's own input pipeline sees every press,
 			 * so it is the one fact that can lower the field in that case.
-			 * `dismissForTab` is scoped to the bound/active tab; a renderer that
-			 * is not showing a list is not subscribed to the event, so a press on
-			 * a closed field is ignored. The suggestion child's row-commit
+			 * `dismissForTab` is scoped to the bound/active tab. It performs one
+			 * hide (and one log line) per page press even when no child is shown:
+			 * the press is the edit-session dismissal, so it must not wait for a
+			 * projection (the pending-first-answer case has none), and a renderer
+			 * that is not editing ignores it. The suggestion child's row-commit
 			 * observer is a different WebContents and is not involved.
 			 */
 			contents.on("before-mouse-event", (_event, mouse) => {
