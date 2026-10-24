@@ -4,36 +4,15 @@
  * The document's background is TRANSPARENT: the native child is larger than the
  * card only so the card's shadow can paint, and everything outside the rounded
  * surface must show the live page underneath. The native view's own background
- * colour is set to `#00000000` by the controller; this file must not paint a
+ * colour is set to fully transparent by the controller; this file must not paint a
  * body background or the transparency proof would be measuring the card, not
  * the compositor.
  *
- * The values are the Local Operator palette's dark/light roles, spelled here
- * because this is a separate document and cannot inherit the app's CSS
- * variables. S6b replaces them with values delivered by the app renderer; S6a
- * only needs the surface to be honest in the two themes the evidence captures.
+ * COLOUR IS TOKEN ROLES ONLY. The generated theme stylesheet is linked by the
+ * document, and the root's `data-theme` selects the app's palette; there is no
+ * hex, no rgb and no second palette in this file. S6b delivers the same roles
+ * from the app renderer; S6a reads the generated stylesheet directly.
  */
-:root {
-	color-scheme: dark;
-	--card-elevated: #322d22;
-	--card-ink: #f1eee6;
-	--card-ink-muted: #c2bcaf;
-	--card-border: #837c6d;
-	--card-accent: #38c96a;
-	--card-on-accent: #16130e;
-	--card-radius: 14px;
-}
-
-html[data-theme="light"] {
-	color-scheme: light;
-	--card-elevated: #fefdfa;
-	--card-ink: #211e18;
-	--card-ink-muted: #4e4940;
-	--card-border: #857f70;
-	--card-accent: #137742;
-	--card-on-accent: #f6faf8;
-}
-
 html,
 body {
 	margin: 0;
@@ -44,7 +23,7 @@ body {
 	background: transparent;
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
 		sans-serif;
-	color: var(--card-ink);
+	color: var(--lo-ink);
 }
 
 #approvals-card {
@@ -54,11 +33,10 @@ body {
 	bottom: 8px;
 	box-sizing: border-box;
 	overflow: hidden;
-	border: 1px solid var(--card-border);
-	border-radius: var(--card-radius);
-	background: var(--card-elevated);
-	box-shadow: 0 1px 6px
-		color-mix(in srgb, var(--card-elevated) 60%, transparent);
+	border: 1px solid var(--lo-border-control);
+	border-radius: 14px;
+	background: var(--lo-elevated);
+	box-shadow: 0 1px 6px color-mix(in srgb, var(--lo-scrim) 60%, transparent);
 	padding: 12px;
 }
 
@@ -81,19 +59,19 @@ html[data-opaque="1"] #approvals-card {
 	font-size: 13px;
 	font-weight: 600;
 	line-height: 1.4;
-	color: var(--card-ink);
+	color: var(--lo-ink);
 }
 
 .card-count {
 	margin: 8px 0 0;
-	color: var(--card-accent);
+	color: var(--lo-accent);
 	font-size: 12px;
 	line-height: 1.4;
 }
 
 .card-detail {
 	margin: 4px 0 0;
-	color: var(--card-ink-muted);
+	color: var(--lo-ink-muted);
 	font-size: 12px;
 	line-height: 1.4;
 }

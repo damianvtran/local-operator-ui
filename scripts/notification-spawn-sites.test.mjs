@@ -257,6 +257,14 @@ const APP_SPAWN_SITES = [
 		/const env = withNotificationsOff\(\{/,
 	),
 	guarded(
+		"scripts/browser-approvals-s6a-probe.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots a standalone Electron fixture for the S6a approvals card, so the notification kill switch must ride the launch env like every app rig",
+		/const env = withNotificationsOff\(\{/,
+	),
+	guarded(
 		"scripts/renderer-driver.mjs",
 		"spawn",
 		1,
