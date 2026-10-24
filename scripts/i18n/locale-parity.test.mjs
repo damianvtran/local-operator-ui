@@ -1083,6 +1083,51 @@ const IDENTICAL_OK = new Map([
 		"ui.settings.shortcuts.row.canvas",
 		"product surface name: Canvas is preserved verbatim by the glossary",
 	],
+	// --- ui.chat.directory folder quick-picks. The English context marks the
+	// literal path segments below do-not-translate (they are the directory name
+	// shown beside its own path), and Windows shows these three folder names
+	// verbatim in every locale. Identical is the correct translation for each,
+	// not a skipped string; one entry serves every locale that keeps the value.
+	[
+		"ui.chat.directory.folder.etc",
+		"literal filesystem path segment: the English sidecar marks it do-not-translate",
+	],
+	[
+		"ui.chat.directory.folder.media",
+		"literal filesystem path segment: the English sidecar marks it do-not-translate",
+	],
+	[
+		"ui.chat.directory.folder.mnt",
+		"literal filesystem path segment: the English sidecar marks it do-not-translate",
+	],
+	[
+		"ui.chat.directory.folder.opt",
+		"literal filesystem path segment: the English sidecar marks it do-not-translate",
+	],
+	[
+		"ui.chat.directory.folder.srv",
+		"literal filesystem path segment: the English sidecar marks it do-not-translate",
+	],
+	[
+		"ui.chat.directory.folder.usr",
+		"literal filesystem path segment: the English sidecar marks it do-not-translate",
+	],
+	[
+		"ui.chat.directory.folder.var",
+		"literal filesystem path segment: the English sidecar marks it do-not-translate",
+	],
+	[
+		"ui.chat.directory.folder.program_data",
+		"Windows' own folder name: Explorer shows ProgramData verbatim in every locale",
+	],
+	[
+		"ui.chat.directory.folder.program_files",
+		"Windows' own folder name: Explorer shows Program Files verbatim in every locale",
+	],
+	[
+		"ui.chat.directory.folder.program_files_x86",
+		"Windows' own folder name: Explorer shows Program Files (x86) verbatim in every locale",
+	],
 ]);
 
 function localeDirs() {
