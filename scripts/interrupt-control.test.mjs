@@ -1502,7 +1502,7 @@ test("the parked card names both exits", () => {
 	);
 	assert.match(
 		source,
-		/"Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn\."/,
+		/ui\.chat\.trace\.question_dock\.choose_approve_or_deny_above_type_yes_no_1_or/,
 	);
 });
 

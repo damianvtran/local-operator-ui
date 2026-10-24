@@ -83,6 +83,31 @@ function fixture() {
 		),
 		join(themeDir, "palettes", "local-operator.ts"),
 	);
+	/*
+	 * The palette's `description` getters read the catalogue through `t()`
+	 * (`../../../../../i18n/messages`), so the scratch copy needs that module
+	 * to bundle. The stub resolves against the shipped English catalogue for
+	 * the appearance namespace: the gate compares palette descriptions too, so
+	 * a key-echoing stub would read as brand drift on every case.
+	 */
+	mkdirSync(join(root, "src", "i18n"), { recursive: true });
+	const english = JSON.parse(
+		readFileSync(
+			join(
+				ROOT,
+				"src",
+				"i18n",
+				"catalogues",
+				"en",
+				"ui.settings.appearance.json",
+			),
+			"utf8",
+		),
+	);
+	writeFileSync(
+		join(root, "src", "i18n", "messages.ts"),
+		`const messages: Record<string, string> = ${JSON.stringify(english)};\nexport const t = (key: string) => messages[key] ?? key;\n`,
+	);
 	return root;
 }
 
