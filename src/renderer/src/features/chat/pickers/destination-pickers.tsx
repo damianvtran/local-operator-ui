@@ -1032,7 +1032,9 @@ export const ModelPicker: FC<PickerContext> = ({
 	useEffect(() => {
 		if (!catalogue.isFetching) setAsked(false);
 	}, [catalogue.isFetching]);
-	const refreshingLabel = asked ? "Refreshing…" : "Checking…";
+	const refreshingLabel = asked
+		? t("ui.chat.pickers.destination_pickers.refreshing")
+		: t("ui.chat.pickers.destination_pickers.checking");
 	const command = useSessionCommand(sessionId);
 	/*
 	 * A DRAFT pane's own reading, from the ONE query the pane itself reads.

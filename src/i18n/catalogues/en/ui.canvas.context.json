@@ -1511,23 +1511,23 @@
 		"note": "Complete message for the spreadsheet preview surface."
 	},
 	"ui.canvas.code_editor_diff.remove": {
-	  "role": "interface copy",
-	  "tone": "Plain, concise product language; preserve technical tokens.",
-	  "note": "Complete message for the code editor diff surface."
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve technical tokens.",
+		"note": "Complete message for the code editor diff surface."
 	},
 	"ui.canvas.code_editor_diff.add": {
-	  "role": "interface copy",
-	  "tone": "Plain, concise product language; preserve technical tokens.",
-	  "note": "Complete message for the code editor diff surface."
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve technical tokens.",
+		"note": "Complete message for the code editor diff surface."
 	},
 	"ui.canvas.wysiwyg_markdown_editor.remove": {
-	  "role": "interface copy",
-	  "tone": "Plain, concise product language; preserve technical tokens.",
-	  "note": "Complete message for the wysiwyg markdown editor surface."
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve technical tokens.",
+		"note": "Complete message for the wysiwyg markdown editor surface."
 	},
 	"ui.canvas.wysiwyg_markdown_editor.add": {
-	  "role": "interface copy",
-	  "tone": "Plain, concise product language; preserve technical tokens.",
-	  "note": "Complete message for the wysiwyg markdown editor surface."
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve technical tokens.",
+		"note": "Complete message for the wysiwyg markdown editor surface."
 	}
 }

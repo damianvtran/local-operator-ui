@@ -2405,6 +2405,7 @@ export type MessageParams = {
 	"ui.chat.pickers.destination_pickers.attach_team": undefined;
 	"ui.chat.pickers.destination_pickers.available": undefined;
 	"ui.chat.pickers.destination_pickers.chars": { length: number };
+	"ui.chat.pickers.destination_pickers.checking": undefined;
 	"ui.chat.pickers.destination_pickers.choose_the_model_for_this_session": undefined;
 	"ui.chat.pickers.destination_pickers.choose_the_model_this_conversation_starts_on_and_keeps_running_on_your_d": undefined;
 	"ui.chat.pickers.destination_pickers.clipboard_refused": {
@@ -2543,6 +2544,7 @@ export type MessageParams = {
 	"ui.chat.pickers.destination_pickers.reasoning": undefined;
 	"ui.chat.pickers.destination_pickers.reattached_to_the_running_session": undefined;
 	"ui.chat.pickers.destination_pickers.refresh_from_providers": undefined;
+	"ui.chat.pickers.destination_pickers.refreshing": undefined;
 	"ui.chat.pickers.destination_pickers.released": undefined;
 	"ui.chat.pickers.destination_pickers.reload": undefined;
 	"ui.chat.pickers.destination_pickers.removes_one_stored_account_credentials_supplied_through_environment_vari": undefined;
