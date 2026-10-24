@@ -14,7 +14,7 @@
 	"ui.common.actions.file_actions_menu.file_actions": "فائل کے اعمال",
 	"ui.common.actions.file_actions_menu.file_path_copied_to_clipboard": "فائل کا راستہ کلپ بورڈ پر نقل ہو گیا",
 	"ui.common.actions.file_actions_menu.failed_to_copy_file_path": "فائل کا راستہ نقل نہیں ہو سکا",
-	"ui.common.actions.find_replace_widget.switch_to_replace": "تبدیلی پر سوئچ کریں",
+	"ui.common.actions.find_replace_widget.switch_to_replace": "تبدیل کرنے پر سوئچ کریں",
 	"ui.common.actions.find_replace_widget.switch_to_find": "تلاش پر سوئچ کریں",
 	"ui.common.actions.find_replace_widget.find": "تلاش کریں",
 	"ui.common.actions.find_replace_widget.replace": "تبدیل کریں",
