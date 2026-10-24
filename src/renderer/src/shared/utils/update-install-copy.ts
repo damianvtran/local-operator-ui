@@ -54,3 +54,24 @@ export function installPhaseCopy(phase: InstallPhase | null): string {
 export function installSucceededCopy(version: string): string {
 	return t("ui.common.updates.install.succeeded", { version });
 }
+
+// Version reads are cached across language changes. Translate only their
+// known presentation states at render time; actual versions and daemon URLs stay verbatim.
+export function versionDisplay(value: string): string {
+	switch (value) {
+		case "Loading...":
+			return t("ui.settings.updates.app_updates_section.state_loading");
+		case "Not connected":
+			return t("ui.settings.updates.app_updates_section.state_not_connected");
+		case "Not attached":
+			return t("ui.settings.updates.app_updates_section.state_not_attached");
+		case "Version unknown":
+			return t("ui.settings.updates.app_updates_section.state_version_unknown");
+		case "Unknown (update required)":
+			return t("ui.common.updates.error.version_unknown_required");
+		case "Unavailable":
+			return t("ui.settings.updates.app_updates_section.state_unavailable");
+		default:
+			return value;
+	}
+}

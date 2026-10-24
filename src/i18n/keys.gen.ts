@@ -2481,6 +2481,7 @@ export type MessageParams = {
 	"ui.common.errors.speech_radient_sign_in_legacy": undefined;
 	"ui.common.errors.speech_sign_in_enable": undefined;
 	"ui.common.errors.speech_sign_in_enable_legacy": undefined;
+	"ui.common.errors.speech_temporarily_unavailable": undefined;
 	"ui.common.errors.speech_unavailable": undefined;
 	"ui.common.errors.speech_unavailable_short": undefined;
 	"ui.common.errors.speech_unknown_agent": undefined;

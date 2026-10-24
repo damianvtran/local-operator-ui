@@ -553,9 +553,28 @@ export type DraftsUndoOffer = {
  *
  * The title is kept only so a surface that has to NAME the conversation after the
  * row is gone can still do so - the pane's header is the one that needs it, and
- * t("ui.chat.canonical.untitled") over a conversation the user just deleted names nothing. The
+ * an untitled placeholder over a conversation the user just deleted names nothing. The
  * not-found writer has no title to give: it never read one.
  */
+/*
+ * Presentation-only title fallback. Empty titles stay empty in the session
+ * model; the two legacy English sentinels are accepted so older cached state
+ * does not remain English after a locale switch.
+ */
+export function conversationTitleForDisplay(
+	title: string | null | undefined,
+	fallback: "untitled" | "this_chat" = "untitled",
+): string {
+	const normalized = title?.trim();
+	if (!normalized)
+		return fallback === "this_chat"
+			? t("ui.chat.canonical.this_chat")
+			: t("ui.chat.canonical.untitled");
+	if (normalized === "Untitled chat") return t("ui.chat.canonical.untitled");
+	if (normalized === "this chat") return t("ui.chat.canonical.this_chat");
+	return normalized;
+}
+
 export type ForgottenFact = {
 	/** The request sequence the delete took, which orders it against every read. */
 	at: number;
@@ -908,9 +927,8 @@ export const SESSION_UNVALIDATED_CODE = "session_unvalidated";
  * its own - the stream's own lost-connection sentence is preferred there, so
  * the composer and the transcript cannot disagree (design round 1, D3).
  */
-export const SESSION_UNVALIDATED_MESSAGE = t(
-	"ui.common.errors.session_unvalidated",
-);
+export const sessionUnvalidatedMessage = (): string =>
+	t("ui.common.errors.session_unvalidated");
 
 /**
  * A send refused because its text STARTS WITH A SLASH.
@@ -942,9 +960,8 @@ export const LEADING_SLASH_CODE = "leading_slash_message";
  * fixes, both in front of them — so the sentence names them (branding section 8:
  * what happened, what it means, what to do).
  */
-export const LEADING_SLASH_MESSAGE = t(
-	"ui.common.errors.leading_slash_message",
-);
+export const leadingSlashMessage = (): string =>
+	t("ui.common.errors.leading_slash_message");
 
 /**
  * Whether a refused send is the leading-slash policy refusal.
@@ -1491,8 +1508,8 @@ export function pressLockCopy(
 	return pendingGate ? SEND_FAILURE_COPY.gateLock : SEND_FAILURE_COPY.sendLock;
 }
 
-export const RETRY_LABEL = t("ui.common.actions.retry");
-export const CLEAR_LABEL = t("ui.common.actions.clear");
+export const retryLabel = (): string => t("ui.common.actions.retry");
+export const clearLabel = (): string => t("ui.common.actions.clear");
 
 /**
  * One sentence and at most two actions, for one failed send.
@@ -1576,7 +1593,7 @@ export function sendFailureCopy(
 				code,
 			};
 		if (code === LEADING_SLASH_CODE)
-			return { message: LEADING_SLASH_MESSAGE, retry: false, code };
+			return { message: leadingSlashMessage(), retry: false, code };
 		/*
 		 * Everything else keeps the sentence the refusal itself carries: the
 		 * unreadable attachment names the file, the budget refusal carries the
@@ -2669,7 +2686,7 @@ export async function admitChatDraft(
 	 */
 	if (isSessionUnvalidated(store.validatingSessionId, sessionId))
 		throw new UserFacingError(
-			SESSION_UNVALIDATED_MESSAGE,
+			sessionUnvalidatedMessage(),
 			SESSION_UNVALIDATED_CODE,
 		);
 	const previous = store.drafts[key];
@@ -3255,7 +3272,7 @@ export async function admitChatDraft(
 		throw leadingSlash
 			? new DesktopControlError(
 					422,
-					LEADING_SLASH_MESSAGE,
+					leadingSlashMessage(),
 					error,
 					LEADING_SLASH_CODE,
 				)
@@ -3856,7 +3873,7 @@ type CanonicalSessionsState = {
 	 * The session the view has moved onto that its own stream has not yet
 	 * confirmed exists.
 	 *
-	 * A send addressed to it is refused (`SESSION_UNVALIDATED_MESSAGE`, the
+	 * A send addressed to it is refused (`sessionUnvalidatedMessage()`, the
 	 * composer keeps the text) rather than issued at a session that may be gone.
 	 * The window used to be closed by a `sessions.get` guard read issued at the
 	 * click; that read is gone from the click path (see `openSession`), because
@@ -6886,7 +6903,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								 */
 								at: state.answerSeq + 1,
 								archived,
-								title: rowTitle || t("ui.chat.canonical.untitled"),
+								title: rowTitle || "",
 								/*
 								 * The backend's own sentence when there is one. A transport failure
 								 * that reached nothing keeps an empty detail and the sentence around
@@ -7372,7 +7389,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * What that changes, stated because each was a property of the old read:
 				 *
 				 * - THE WINDOW stays. A send addressed to a session nothing has confirmed
-				 *   is still refused with `SESSION_UNVALIDATED_MESSAGE`; the window is
+				 *   is still refused with `sessionUnvalidatedMessage()`; the window is
 				 *   now closed by the snapshot, which is the frame that paints the
 				 *   messages, so "messages on screen" and "the composer sends" land in
 				 *   the same commit rather than one round trip apart.
@@ -8429,7 +8446,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					before === undefined && seed !== undefined
 						? {
 								session_id: sessionId,
-								title: seed.title || t("ui.chat.canonical.untitled"),
+								title: seed.title || "",
 								updated_at: seed.updated_at,
 								pinned,
 							}
@@ -8543,7 +8560,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							pinFailure: {
 								sessionId,
 								pinned,
-								title: before?.title || t("ui.chat.canonical.this_chat"),
+								title: before?.title || "",
 								detail: userFacingMessage(error, ""),
 							},
 						};

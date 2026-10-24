@@ -1,7 +1,7 @@
 import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import {
-	EMPTY_TRANSCRIPTION_MESSAGE,
+	emptyTranscriptionMessage,
 	transcriptionFailureMessage,
 } from "@shared/api/local-operator/transcription-failure";
 import type {
@@ -460,7 +460,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 			} else {
 				// A successful, empty transcript is said out loud rather than silently
 				// dropping the take (UX round 1, U3).
-				showInfoToast(EMPTY_TRANSCRIPTION_MESSAGE);
+				showInfoToast(emptyTranscriptionMessage());
 			}
 			setAudioBlob(null); // Clear the blob after sending
 		} catch (error) {

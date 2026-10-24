@@ -82,6 +82,7 @@ import {
 	type CanonicalSessionRow,
 	LEGACY_CATALOGUE_PAGE,
 	catalogueScopeKey,
+	conversationTitleForDisplay,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
@@ -8935,7 +8936,7 @@ export function ChatSidebar({
 		<p ref={pinRef} className="pb-2 text-meta text-warning">
 			{t("ui.chat.sidebar.pins.failure", {
 				action: pinFailure.pinned ? "pin" : "unpin",
-				title: pinFailure.title,
+				title: conversationTitleForDisplay(pinFailure.title, "this_chat"),
 			})}
 			{pinFailure.detail ? ` ${pinFailure.detail}` : ""}{" "}
 			<button

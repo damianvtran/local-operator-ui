@@ -395,13 +395,13 @@ export function hubAvailableCount(
  * carried it too; and it was drawn per section, so a signed-out hub user read it
  * twice. The caller hosts it in ONE section.
  */
-export const HUB_SIGN_IN_LINE = t("ui.hub.updates.sign_in");
+const hubSignInText = (): string => t("ui.hub.updates.sign_in");
 
 export function hubSignInLine(updates: HubUpdates | undefined): string | null {
 	const needed = (updates?.items ?? []).some(
 		(item) => item.error_class === "no-credential",
 	);
-	return needed ? HUB_SIGN_IN_LINE : null;
+	return needed ? hubSignInText() : null;
 }
 
 /** A sentence a press leaves beside its control, so no press ends silently. */
