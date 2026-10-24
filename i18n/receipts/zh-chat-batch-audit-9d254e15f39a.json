@@ -1,0 +1,1497 @@
+{
+  "schema": 1,
+  "audit_kind": "independent-translation-audit",
+  "batch": "chat",
+  "locale": "zh-CN",
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor (lopdev team)",
+  "session": "9d254e15f39a",
+  "instance": "9d254e15f39a",
+  "model": "radient/auto",
+  "model_fallback": "none",
+  "model_note": "Harness-selected model identity recorded as radient/auto (effort auto); the routed upstream model is not exposed in session metadata. No fallback model was used. No translation API, SDK or MT service was used for this audit.",
+  "date": "2026-10-24",
+  "independence": "Independent agent and session from the translator (translator session b0b65f0bdaeb, recorded in i18n/receipts/zh-cn-chat-translation-b0b65f0bdaeb.json). This audit read git objects only; no catalogue, ledger, allowance, baseline, shipped or generated file was edited.",
+  "scope": {
+    "repo": "damianvtran/local-operator-ui",
+    "branch": "feat/i18n-chat-zh-CN",
+    "base": "5d97575ac4388522267291ffee74d12bd9675b12",
+    "head": "44fb2e1699e1aa509b46b32cef8f28d1b1ecc81b",
+    "translation_head": "de461316260931efe38f82f421501b90369eda3e",
+    "batch": "15 ui.chat.* namespaces, 1,733 new English keys at 5d97575ac4 (diff base 9c5ddd1839)",
+    "method": "git show per English, zh-CN and context file at the named head; no checkout. Read every value in the 14 present namespaces side by side, namespace by namespace; ran a balanced-brace ICU parser for argument/branch/skeleton equality, a CLDR-category check, NFC/bidi/zero-width scans, identical-value classification, cell-width ratios and key-order checks."
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+      "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+    },
+    "core_revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09"
+  },
+  "counts": {
+    "batch_namespaces": 15,
+    "batch_keys": 1733,
+    "namespaces_present": 14,
+    "namespaces_missing": 1,
+    "batch_keys_present": 1731,
+    "batch_keys_missing": 2,
+    "pre_existing_en_keys_translated": 32,
+    "preserved_existing_values": 30,
+    "values_read": 1793,
+    "values_translated": 1763,
+    "identical_to_english": 66,
+    "identical_legitimate_tokens": 66,
+    "untranslated_stubs": 0,
+    "plural_messages": 42,
+    "plural_nodes": 48,
+    "plural_arms": {
+      "other": 48,
+      "=0": 3,
+      "=1": 3,
+      "=2": 1,
+      "=3": 1,
+      "=4": 1,
+      "=5": 1,
+      "=6": 1
+    },
+    "select_messages": 2,
+    "polite_qing_keys_total": 97,
+    "polite_qing_keys_with_source_please": 2,
+    "polite_qing_keys_new_without_please": 94,
+    "polite_qing_keys_preserved_without_please": 1
+  },
+  "checks": [
+    {
+      "command": "node scripts/i18n/generate.mjs --check",
+      "result": "pass",
+      "output": "src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+    },
+    {
+      "command": "node scripts/i18n/check-strings.mjs",
+      "result": "pass",
+      "output": "check-strings.mjs: ok — 1343 file(s) scanned, 391 literal(s) at or below the baseline"
+    },
+    {
+      "command": "node scripts/i18n/context-parity.mjs",
+      "result": "pass",
+      "output": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s)"
+    },
+    {
+      "check": "key parity",
+      "result": "pass",
+      "output": "14/14 present files have exactly the English key set; 0 missing, 0 extra; every file is in English key order."
+    },
+    {
+      "check": "ICU argument and branch structure",
+      "result": "pass",
+      "output": "1,793 values parsed; argument-name sets equal; plural messages other-only; exact =0/=1/=2..=6 arms preserved; select arms true/other preserved; no unmatched braces."
+    },
+    {
+      "check": "placeholders and skeletons",
+      "result": "fail",
+      "output": "1 key changed a placeholder skeleton: ui.chat.canonical.transcript_reducer.retrying adds ', number' to {attempt} (Z2). 6 keys reorder named placeholders for grammar; named ICU args are order-insensitive, so those are recorded as safe, not findings."
+    },
+    {
+      "check": "plural categories",
+      "result": "pass",
+      "output": "48 plural nodes / 42 messages: 48 other arms, 3 =0, 3 =1, 1 each =2..=6. No one/few/many/two category in zh-CN. 2 select messages with true/other."
+    },
+    {
+      "check": "markup and literals",
+      "result": "pass",
+      "output": "No HTML tags in the batch; backticks, flags, paths, DOM ids and the /settings route are byte-identical; no ASCII ellipsis."
+    },
+    {
+      "check": "unicode",
+      "result": "pass",
+      "output": "All values NFC; no bidi controls (U+200E/F, U+202A-E, U+2066-9), no zero-width characters. zh-CN is not RTL; no RTL punctuation question applies."
+    },
+    {
+      "check": "identical-to-English classification",
+      "result": "pass",
+      "output": "66 identical values, all legitimate tokens: 49 placeholder-only/format strings, 2 key chords, 1 DOM attribute literal, 1 bracket token, 3 CSS custom properties, 1 Tailwind class, 1 DOM-id prefix template, 2 Windows paths, 1 product name, 2 DOM ids, 1 route token, 2 sampling-parameter names. 0 untranslated stubs."
+    },
+    {
+      "check": "width",
+      "result": "pass",
+      "output": "No EN>=20-cell value exceeds 1.28x its English cell width; longest zh-CN value 240 cells (sound_batch_model.summary, source longer). All 9 context maxCells budgets satisfied (advisory)."
+    },
+    {
+      "check": "translated strings used as wire sentinels",
+      "result": "fail",
+      "output": "composer-status-row.tsx uses the catalogue values judge_could_not_decide and stopped_after as equality/startsWith mirrors of goal_judge.py's English reasons. In zh-CN both comparisons are false (measured: breaker equality false, cap startsWith false, cap endsWith true), so both specific stall notes degrade to the generic fallback (Z3)."
+    }
+  ],
+  "status": "changes_requested",
+  "verdict": "changes requested — 4 major, 15 minor, 3 nit; no blocker. 14/15 namespaces and 1,731/1,733 batch keys present; 1,793 values read; plurals other-only and structurally sound; 66 identical values all legitimate tokens, 0 untranslated stubs.",
+  "namespaces": {
+    "ui.chat": {
+      "status": "changes_requested",
+      "verdict": "changes-requested — major Z3 (wire sentinels) + Z4 (register, 35 new keys, 1 preserved) + minor Z5/Z6/Z19 + nit Z21",
+      "keys_audited": 532,
+      "values_read": 532,
+      "keys_en": 532,
+      "batch_keys": 524,
+      "batch_keys_present": 524,
+      "sha256": {
+        "en": "dc5765d20ff846c61f3fe8953e69524393561bc2a39f89fa419958d4e4a67346",
+        "zh-CN": "dcdb9cd562ad0d479556a86621e5040e683b301bf7d9bb226ff38cfad9fb634f",
+        "context": "f95436a7c1e91f17b47a5f45059f58ef63749cedef54b02d10b29260477be426"
+      },
+      "finding_ids": [
+        "Z3",
+        "Z4",
+        "Z5",
+        "Z6",
+        "Z19",
+        "Z21"
+      ],
+      "namespace_key_count": 532
+    },
+    "ui.chat.aside": {
+      "status": "changes_requested",
+      "verdict": "changes-requested — major Z4 (register, 6 keys)",
+      "keys_audited": 35,
+      "values_read": 35,
+      "keys_en": 35,
+      "batch_keys": 35,
+      "batch_keys_present": 35,
+      "sha256": {
+        "en": "d8ce04c8e909a73f3050588b2b562b12db3840ae1f4231a66ef3eb5ac76ed1b6",
+        "zh-CN": "7e3a6d910628c3a727601c7accb795a3dee6f1cbd7f6e3fd17ba8354314fc80f",
+        "context": "522fcbc0c965224e7d4fb8cb8200e7c68889c9ee73d073b09c6cb2af827b8431"
+      },
+      "finding_ids": [
+        "Z4"
+      ],
+      "namespace_key_count": 35
+    },
+    "ui.chat.asks": {
+      "status": "changes_requested",
+      "verdict": "changes-requested — major Z4 (register, 5 keys) + minor Z10/Z11/Z12 + nit Z21",
+      "keys_audited": 101,
+      "values_read": 101,
+      "keys_en": 101,
+      "batch_keys": 89,
+      "batch_keys_present": 89,
+      "sha256": {
+        "en": "f5017d10d314fc9e3e94eeff2d5067c559e97ba0c6ffcef4e8ed9d1c39cf67ab",
+        "zh-CN": "8092f0ed616d24b448c82f482adcf2136bf6f96467df9e3610c088061c120e70",
+        "context": "0e1f544932e7c9c6c94bbb0d4e2066910d80e33060ad23bbbb57d5bb9c1b637c"
+      },
+      "finding_ids": [
+        "Z4",
+        "Z10",
+        "Z11",
+        "Z12",
+        "Z21"
+      ],
+      "namespace_key_count": 101
+    },
+    "ui.chat.at": {
+      "status": "changes_requested",
+      "verdict": "changes-requested — major Z4 (register, 2 keys)",
+      "keys_audited": 11,
+      "values_read": 11,
+      "keys_en": 11,
+      "batch_keys": 11,
+      "batch_keys_present": 11,
+      "sha256": {
+        "en": "685a75115b95770d8d74cc43c2f250c53bed311c0d117cf51849f72041533694",
+        "zh-CN": "9bd6e7d1330d28e60bc078951c1ae47f275b2d1d66ffe4ed1a3d8b58f73330db",
+        "context": "da529439f1aa5970aff5b833b40900524c2cfd465abe96296e3b9cecf5ec555e"
+      },
+      "finding_ids": [
+        "Z4"
+      ],
+      "namespace_key_count": 11
+    },
+    "ui.chat.canonical": {
+      "status": "changes_requested",
+      "verdict": "changes-requested — major Z2/Z4 (attempt format; register) + minor Z9/Z16/Z17/Z18 + nit Z21/Z22",
+      "keys_audited": 297,
+      "values_read": 297,
+      "keys_en": 297,
+      "batch_keys": 267,
+      "batch_keys_present": 267,
+      "sha256": {
+        "en": "522e7fced024ec756b4b93b21952c4abfb232278a3ca32bba67b45978749eb6d",
+        "zh-CN": "5a3de2cb2d94dcd0f3247a8837f5736d8d17d57368d5c871455e2efe75d9fab6",
+        "context": "af353a188112ef28df7dfda8c7139fa5bd33506a40b112392e1e40fbe32116f2"
+      },
+      "finding_ids": [
+        "Z2",
+        "Z4",
+        "Z9",
+        "Z16",
+        "Z17",
+        "Z18",
+        "Z21",
+        "Z22"
+      ],
+      "namespace_key_count": 297
+    },
+    "ui.chat.canvas_preview": {
+      "status": "missing",
+      "verdict": "missing — namespace absent; 2 keys",
+      "keys_audited": 0,
+      "values_read": 0,
+      "keys_en": 2,
+      "batch_keys": 2,
+      "batch_keys_present": 0,
+      "sha256": {
+        "en": "4a29d028e7727502fbefd86b995750910ca3760879769ffa1fc537e5893920a9",
+        "zh-CN": null,
+        "context": "5f336900e740bf4ebc7819837676fc2eeffe6deb69b8181ebc440e962d580a06"
+      },
+      "finding_ids": [
+        "Z1"
+      ],
+      "namespace_key_count": 2
+    },
+    "ui.chat.credential_capture": {
+      "status": "changes_requested",
+      "verdict": "changes-requested — major Z4 (register, 1 key) + nit Z20/Z21",
+      "keys_audited": 18,
+      "values_read": 18,
+      "keys_en": 18,
+      "batch_keys": 18,
+      "batch_keys_present": 18,
+      "sha256": {
+        "en": "1776a41f5dfa3335b5e390e85870cb55756e25c6a2439cd3f42ea4c864515bdd",
+        "zh-CN": "f2e91de4935c8bf644dee2e93f6b4a9a63b48de954f54ac7817114b1909a962a",
+        "context": "bf6e3bb8cd70e39cba3aad66b0d92aa38ebad880ac49405fb1affd032f6f3b1f"
+      },
+      "finding_ids": [
+        "Z4",
+        "Z20",
+        "Z21"
+      ],
+      "namespace_key_count": 18
+    },
+    "ui.chat.directory": {
+      "status": "clean",
+      "verdict": "clean — 42 keys, no findings",
+      "keys_audited": 42,
+      "values_read": 42,
+      "keys_en": 42,
+      "batch_keys": 42,
+      "batch_keys_present": 42,
+      "sha256": {
+        "en": "57540488fb400a9a4ac1040c7d7f91f19f25ab313ec87a50ef527da442d3ec6b",
+        "zh-CN": "6f47fe55691e1868db2e3fb3d3d075dba0cc2a3b9b89d4fb4797cbb73ef4f9b8",
+        "context": "4bfdbc219bccc88fbdcaf3c62897b168d5604d5acbbb5f70f040c95c941c2daa"
+      },
+      "finding_ids": [],
+      "namespace_key_count": 42
+    },
+    "ui.chat.header": {
+      "status": "changes_requested",
+      "verdict": "changes-requested — major Z4 (register, 3 keys) + minor Z6",
+      "keys_audited": 72,
+      "values_read": 72,
+      "keys_en": 72,
+      "batch_keys": 62,
+      "batch_keys_present": 62,
+      "sha256": {
+        "en": "ff03f6ca7b3206e77fc260116d2b540cc9f211ea37436863b874770e917158d8",
+        "zh-CN": "e2f29448d6dca386a98fb6879fe434e9c9b958463754685829de03ce1293682c",
+        "context": "0d601a99861fc8b23207f117b90b697ba88ddd4f6419a68021f34c177158ea2e"
+      },
+      "finding_ids": [
+        "Z4",
+        "Z6"
+      ],
+      "namespace_key_count": 72
+    },
+    "ui.chat.message": {
+      "status": "changes_requested",
+      "verdict": "changes-requested — major Z4 (register, 4 keys)",
+      "keys_audited": 55,
+      "values_read": 55,
+      "keys_en": 55,
+      "batch_keys": 55,
+      "batch_keys_present": 55,
+      "sha256": {
+        "en": "95d7b60b2cb1bdc37648cfa896856ce53724e300ed4a6b0448d7562aad452a5a",
+        "zh-CN": "899e3844d0d86333428c9470e61411c303b998801069de9a000bb36c1fede815",
+        "context": "0278baa63867980cd08d18e47e282af12a6330b7c6a785f0157e7a01cceb4230"
+      },
+      "finding_ids": [
+        "Z4"
+      ],
+      "namespace_key_count": 55
+    },
+    "ui.chat.options": {
+      "status": "clean",
+      "verdict": "clean — 33 keys, no findings",
+      "keys_audited": 33,
+      "values_read": 33,
+      "keys_en": 33,
+      "batch_keys": 33,
+      "batch_keys_present": 33,
+      "sha256": {
+        "en": "fdfb1ceae54aa5270dd76b67748f56fa14e5d3f47d7770dad8eba755995a5a79",
+        "zh-CN": "010048b7b769cf730f054261610e85753fcf6501154fefa497aaf11f934add8e",
+        "context": "4609f41205d7d0b14dd07e98a629b9fb40f74f870106e78b30a3b210eb7f13db"
+      },
+      "finding_ids": [],
+      "namespace_key_count": 33
+    },
+    "ui.chat.run_details": {
+      "status": "changes_requested",
+      "verdict": "changes-requested — major Z4 (register, 11 keys) + minor Z14/Z15 + nit Z21",
+      "keys_audited": 154,
+      "values_read": 154,
+      "keys_en": 154,
+      "batch_keys": 152,
+      "batch_keys_present": 152,
+      "sha256": {
+        "en": "daf3ddc7d9c0904642876bf3db0746b6c0c68c5fe3b87a1a6730b07f67c90c2f",
+        "zh-CN": "55c4549e7c580b18c3c25010f76164ab926e8c7f73905a0c43baf0fce62ee3df",
+        "context": "dcb2cf6f636814a1866186e8864fd6817033fa8de027049b365f362c53b5d384"
+      },
+      "finding_ids": [
+        "Z4",
+        "Z14",
+        "Z15",
+        "Z21"
+      ],
+      "namespace_key_count": 154
+    },
+    "ui.chat.session_status": {
+      "status": "changes_requested",
+      "verdict": "changes-requested — major Z4 (register, 13 keys) + minor Z7/Z8/Z13 + nit Z21",
+      "keys_audited": 162,
+      "values_read": 162,
+      "keys_en": 162,
+      "batch_keys": 162,
+      "batch_keys_present": 162,
+      "sha256": {
+        "en": "05a6e2dd52cd41fb90dbb6756bb8a8f51c5d22e3769edb3fd6228a0d9a059198",
+        "zh-CN": "e5b957f9aa0b7dd07157efcad98a8b1c6f8b69eedfef8ea181b7f733758781de",
+        "context": "91544a1523e2ccd3a50041e3530ded39255a614f571c50264991ed8e92ca90e7"
+      },
+      "finding_ids": [
+        "Z4",
+        "Z7",
+        "Z8",
+        "Z13",
+        "Z21"
+      ],
+      "namespace_key_count": 162
+    },
+    "ui.chat.skill": {
+      "status": "changes_requested",
+      "verdict": "changes-requested — major Z4 (register, 2 keys)",
+      "keys_audited": 7,
+      "values_read": 7,
+      "keys_en": 7,
+      "batch_keys": 7,
+      "batch_keys_present": 7,
+      "sha256": {
+        "en": "919b6643e792d02ed270911df96d96da277bba5b5b91a2d04fac6cf044acfc10",
+        "zh-CN": "a0dd6b655e52d87538cccb35fd1a009304e78b51e278adf90020ce96081a7d51",
+        "context": "012b41d3b048ae9575012522051687b87e3b3a8189dab9121985052ea04f965d"
+      },
+      "finding_ids": [
+        "Z4"
+      ],
+      "namespace_key_count": 7
+    },
+    "ui.chat.trace": {
+      "status": "changes_requested",
+      "verdict": "changes-requested — major Z4 (register, 7 keys) + minor Z18 (peer term) + nit Z21",
+      "keys_audited": 274,
+      "values_read": 274,
+      "keys_en": 274,
+      "batch_keys": 274,
+      "batch_keys_present": 274,
+      "sha256": {
+        "en": "52a0fa5ed78ec2f3bbedf5b67f7abf3cc8d72c7a66ff4383d182358e242fb848",
+        "zh-CN": "182b046fe7450de7f3c84237c46c2b7a3d91ce544f4bf263a9c48e5b128b8652",
+        "context": "b54b6acb4399743d207d8a793080555f1cab291761de90cf3e6e9f3ce9c70016"
+      },
+      "finding_ids": [
+        "Z18",
+        "Z21",
+        "Z4"
+      ],
+      "namespace_key_count": 274
+    }
+  },
+  "findings": [
+    {
+      "id": "Z1",
+      "severity": "major",
+      "namespace": "ui.chat.canvas_preview",
+      "keys": [
+        "ui.chat.canvas_preview.html_title",
+        "ui.chat.canvas_preview.pdf_title"
+      ],
+      "current": "Namespace absent; the English fallback renders 'HTML Preview: {name}' and 'PDF: {name}'.",
+      "proposed": "ui.chat.canvas_preview.html_title = 'HTML预览：{name}'; ui.chat.canvas_preview.pdf_title = 'PDF：{name}'",
+      "reason": "The batch is 15 namespaces / 1,733 new keys, but the zh-CN branch carries 14 namespaces / 1,731 batch keys. These are the accessible names of the HTML and PDF preview iframes; without the file, screen-reader users get English. Every other chat locale branch (fr, es, ru, vi, hi, ur) contains the file.",
+      "values": [
+        {
+          "key": "ui.chat.canvas_preview.html_title",
+          "source": "HTML Preview: {name}",
+          "proposed": "HTML预览：{name}"
+        },
+        {
+          "key": "ui.chat.canvas_preview.pdf_title",
+          "source": "PDF: {name}",
+          "proposed": "PDF：{name}"
+        }
+      ]
+    },
+    {
+      "id": "Z2",
+      "severity": "major",
+      "namespace": "ui.chat.canonical",
+      "keys": [
+        "ui.chat.canonical.transcript_reducer.retrying"
+      ],
+      "current": "出错后正在重试（第{attempt, number}次）{fallback}",
+      "proposed": "出错后正在重试（第{attempt}次）{fallback}",
+      "reason": "The call site passes `attempt: String(event.attempt ?? \"?\")` (transcript-reducer.ts:6590), so the source `{attempt}` is text, not a number. Adding `, number` is a placeholder-skeleton change: measured with this repo's intl-messageformat 12.1.3, `?` renders 第NaN次, and any non-numeric attempt does the same.",
+      "evidence": {
+        "command": "node -e 'const {IntlMessageFormat}=require(\"intl-messageformat\"); for (const v of [\"3\",\"?\"]) console.log(JSON.stringify(v), \"=>\", new IntlMessageFormat(\"出错后正在重试（第{attempt, number}次）{fallback}\",\"zh-CN\").format({attempt:v,fallback:\"\"}));'",
+        "output": "\"3\" => 出错后正在重试（第3次）\n\"?\" => 出错后正在重试（第NaN次）",
+        "run_in": "/Users/damian/local-operator-ui/.worktrees/i18n-chat-zh-CN"
+      }
+    },
+    {
+      "id": "Z3",
+      "severity": "major",
+      "namespace": "ui.chat",
+      "keys": [
+        "ui.chat.composer.composer_status_row.judge_could_not_decide",
+        "ui.chat.composer.composer_status_row.stopped_after"
+      ],
+      "current": "评判器无法判定  /  在以下次数后停止：",
+      "proposed": "judge could not decide  /  stopped after ",
+      "reason": "These two values are wire mirrors, not UI copy. composer-status-row.tsx compares them against the backend's English reasons (goal_judge.py: STALLED_BREAKER_REASON = 'judge could not decide'; STALLED_CAP_REASON = f'stopped after {n} continuations') by equality and startsWith. Translated, both comparisons fail in zh-CN, so a stalled goal always shows the generic 'auto-continuation stopped' note instead of the breaker/cap cause and count. Keep these two values byte-identical to English, or (preferred) stop using t() for the mirror.",
+      "evidence": {
+        "command": "node -e 'const en=require(\"./src/i18n/catalogues/en/ui.chat.json\"); const zh=require(\"./src/i18n/catalogues/zh-CN/ui.chat.json\"); const breaker=\"judge could not decide\"; const cap=\"stopped after 12 continuations\"; console.log(\"breaker equality:\", breaker===zh[\"ui.chat.composer.composer_status_row.judge_could_not_decide\"]); console.log(\"cap startsWith:\", cap.startsWith(zh[\"ui.chat.composer.composer_status_row.stopped_after\"])); console.log(\"cap endsWith:\", cap.endsWith(\" continuations\"));'",
+        "output": "breaker equality: false\ncap startsWith: false\ncap endsWith: true",
+        "run_in": "/Users/damian/local-operator-ui/.worktrees/i18n-chat-zh-CN"
+      }
+    },
+    {
+      "id": "Z4",
+      "severity": "major",
+      "namespace": "batch",
+      "keys": [
+        "ui.chat.archive_confirm.undo_explanation",
+        "ui.chat.attachment_read.this_draft_carries_total_images_and_one",
+        "ui.chat.attachment_read.this_draft_carries_total_images_and_one_721f14",
+        "ui.chat.attachment_read.value_could_not_be_read_it_may_have_been_moved",
+        "ui.chat.attachment_read.value_could_not_be_read_they_may_have_been_moved",
+        "ui.chat.chat_archived.this_backend_cannot_archive_conversations_update_the_backend_and_try",
+        "ui.chat.chat_archived.this_conversation_is_already_archived_use_unarchive_to_restore_it",
+        "ui.chat.chat_archived.this_window_cannot_tell_whether_that_conversation_is_archived_it",
+        "ui.chat.chat_page.an_aside_answers_text_only_remove_the_attached_files_to",
+        "ui.chat.delete_conversation.the_guard_above_is_the_daemons_own_and_nothing_in",
+        "ui.chat.delete_conversation.this_backend_cannot_delete_conversations_update_the_backend_and_try",
+        "ui.chat.draft_selection.nothing_was_changed_because_that_models_effort_levels_could_not",
+        "ui.chat.error_view.message_the_agents_history_is_safe_try_again_in_a",
+        "ui.chat.error_view.the_local_server_returned_an_error_the_agents_history_is",
+        "ui.chat.message_budget.these_images_total_size_more_than_the",
+        "ui.chat.message_budget.this_command_is_size_more_than_the",
+        "ui.chat.message_budget.this_command_is_value_characters_more_than_the_value2_one",
+        "ui.chat.message_budget.this_first_message_is_size_more_than",
+        "ui.chat.message_budget.this_first_message_is_value_characters_more_than_the_value2",
+        "ui.chat.message_budget.this_message_is_size_of_text_more",
+        "ui.chat.message_budget.this_message_is_value_characters_more_than_the_value2_one",
+        "ui.chat.message_budget.this_system_prompt_is_size_more_than",
+        "ui.chat.message_budget.this_system_prompt_is_value_characters_more_than_the_value2",
+        "ui.chat.move_session.this_backend_cannot_move_a_live_session_start_a_new",
+        "ui.chat.radient_session_issue.complete_the_sign_in_in_your_browser_the_connector_restarts",
+        "ui.chat.radient_session_issue.if_signing_in_does_not_clear_this_run_command_in",
+        "ui.chat.radient_session_issue.message_this_surface_cannot_take_the_pasted_code_so_finish",
+        "ui.chat.sidebar.chat_sidebar.stop_if_it_stays_silent",
+        "ui.chat.sidebar.sidebar_scope_paging.they_may_be_archived_search_with_include_archived",
+        "ui.chat.slash.contract.needs_an_open_conversation_start_one_first",
+        "ui.chat.slash.contract.needs_conversation_clause",
+        "ui.chat.slash.contract.secret_dialog_fields",
+        "ui.chat.slash.dispatch.choose_the_folder_in_the_working_directory_chip_above_or",
+        "ui.chat.slash.dispatch.the_backend_could_not_complete_this_request_check_its_connection",
+        "ui.chat.slash_commands.the_list_could_not_be_loaded_try_again",
+        "ui.chat.aside.aside.the_aside_could_not_be_confirmed_in_the_conversation_if",
+        "ui.chat.aside.aside.the_aside_was_not_added_to_the_conversation_add_it",
+        "ui.chat.aside.aside.the_conversation_stopped_in_the_middle_of_a_tool_call",
+        "ui.chat.aside.aside.the_model_didnt_reply_in_text_ask_again",
+        "ui.chat.aside.aside.this_aside_cant_continue_press_esc_to_close_it_which",
+        "ui.chat.aside.aside.this_conversation_is_busy_and_the_version_its_running_cant",
+        "ui.chat.asks.ask_answer_field.files_and_images_cant_be_attached_to_an_answer_yet",
+        "ui.chat.asks.ask_panel.no_asks_are_pending_they_have_all_settled_see_settled",
+        "ui.chat.asks.queue.expired_this_ask_is_too_old_to_answer_ask_the",
+        "ui.chat.asks.queue.required_type_it_again_it_is_never_shown",
+        "ui.chat.asks.queue.this_ask_is_too_old_to_answer_ask_the_agent",
+        "ui.chat.at.contract.could_not_read_this_folder_check_that_it_exists_and",
+        "ui.chat.at.contract.this_backend_cannot_carry_file_references_update_the_backend_and",
+        "ui.chat.canonical.canonical_transcript.could_not_reach_that_turn_it_is_further_back_than",
+        "ui.chat.canonical.image_gen_card_model.audio_generation_is_busy_right_now_wait_a_moment_and",
+        "ui.chat.canonical.supplement.preview_unavailable",
+        "ui.chat.canonical.thread_search.jump_miss",
+        "ui.chat.canonical.use_session_files.files_are_changing_quickly_retry_after_the_current_turn_finishes",
+        "ui.chat.credential_capture.unstored_receipt",
+        "ui.chat.header.chat_header_identity_menu_model.no_profile_can_take_the_seat_switch_the_team",
+        "ui.chat.header.chat_header_identity_menu_model.no_profile_here_can_take_the_seat_clear_the_search",
+        "ui.chat.header.chat_header_identity_menu_model.team_team_owns_this_session_value_is_the_speaker_so",
+        "ui.chat.message.error_block.hosting",
+        "ui.chat.message.error_block.invalid_key",
+        "ui.chat.message.error_block.model",
+        "ui.chat.message.error_block.model_unavailable",
+        "ui.chat.run_details.mcp_auth_dialog.could_not_determine_this_servers_sign_in_method_check_its",
+        "ui.chat.run_details.mcp_auth_dialog.this_server_does_not_use_oauth_and_declares_no_secret",
+        "ui.chat.run_details.mcp_auth_dialog.update_the_backend_for_secure_mcp_key_entry_oauth_and",
+        "ui.chat.run_details.mcp_failure.lead_a_sign_in_is_already_running_for_this_conversation",
+        "ui.chat.run_details.run_detail_mcp.this_server_refused_the_sign_in_check_its_configuration",
+        "ui.chat.run_details.run_panel.opening_a_subagents_conversation_needs_a_newer_local_operator_backend",
+        "ui.chat.run_details.run_panel.the_backend_update_could_not_start_retry_or_update_from",
+        "ui.chat.run_details.use_mcp_remedy.confirm_replacement_of_the_existing_shared_keys_before_saving",
+        "ui.chat.run_details.use_mcp_remedy.not_saved_value_unlock_or_repair_the_encrypted_store_then",
+        "ui.chat.run_details.use_mcp_remedy.the_keys_were_saved_but_this_server_is_not_connected",
+        "ui.chat.run_details.wake_controls_model.this_wake_is_name_s_own_schedule_so_it_cant",
+        "ui.chat.session_status.chat_device_model.the_conversation_is_not_here_to_move_recall_it_here",
+        "ui.chat.session_status.quota_notice.could_not_check_try_again",
+        "ui.chat.session_status.quota_notice.could_not_send_try_again",
+        "ui.chat.session_status.quota_notice.requested_recently_try_again_in_about_2_minutes",
+        "ui.chat.session_status.quota_notice.sent_check_your_inbox_and_spam_folder",
+        "ui.chat.session_status.session_model.the_device_running_this_session_has_no_effective_provider_access",
+        "ui.chat.session_status.session_model.the_owner_cannot_currently_provide_borrowed_access_or_borrowing_permission",
+        "ui.chat.session_status.session_model.the_serving_device_has_no_effective_provider_access_for_this",
+        "ui.chat.session_status.session_model.this_login_cannot_be_borrowed_sign_in_on_the_device",
+        "ui.chat.session_status.session_model.this_session_could_not_resolve_label_access_from_owner_previous",
+        "ui.chat.session_status.session_model.your_saved_sign_in_is_still_present_try_again_later",
+        "ui.chat.session_status.session_status_strip.model_none_resolved_yet_choose_the_model_this_conversation_will",
+        "ui.chat.session_status.session_status_strip.model_this_conversations_model_was_not_resolved_retry",
+        "ui.chat.skill.contract.no_skills_found_see_skills",
+        "ui.chat.skill.contract.this_backend_cannot_serve_the_skill_catalogue_update_the_backend",
+        "ui.chat.trace.question_dock.choose_approve_or_deny_above_type_yes_no_1_or",
+        "ui.chat.trace.receipt_row_model.cancel_with_wake",
+        "ui.chat.trace.tool_row_model.delivered_to_their_mailbox_the_wake_got_no_answer_so",
+        "ui.chat.trace.tool_row_model.delivery_unconfirmed_it_may_still_arrive_so_check_before_resending",
+        "ui.chat.trace.tool_row_model.no_wake_answer_and_not_yet_in_their_transcript_it",
+        "ui.chat.trace.tool_row_model.not_confirmed_there_was_no_answer_and_the_message_is",
+        "ui.chat.trace.tool_row_model.nothing_was_delivered_fix_the_cause_named_below_or_retry"
+      ],
+      "current": "94 newly translated keys use 请 where the English has no 'please'; examples: 无法加载列表。请重试。 / 请选择其他模型。 / 请移除多余的图片。",
+      "proposed": "Drop 请 and keep the verb-forward imperative: 无法加载列表。重试。 / 选择其他模型。 / 移除多余的图片。 The two source-'please' keys (error_block.rate_limit, rate_limit_all) keep 请 and are correct.",
+      "reason": "The zh-CN style guide is binding: '请 only where the English says please (blocking dialogs)'. Apart from the two legitimate rate-limit strings, 97 polite 请 keys exist; 94 are new here and one (highlights.file_resolution_failed) is preserved from the base. Individually each is a minor softening; at 94 keys across 12 namespaces it is a locale-register defect and must be remediated as one sweep.",
+      "values": [
+        {
+          "key": "ui.chat.archive_confirm.undo_explanation",
+          "namespace": "ui.chat",
+          "current": "它会离开你的列表。你可以在{seconds, number}秒内撤销；之后请在对话上方搜索，开启“包含已归档”，然后将其取消归档。"
+        },
+        {
+          "key": "ui.chat.attachment_read.this_draft_carries_total_images_and_one",
+          "namespace": "ui.chat",
+          "current": "此草稿共有{total, number, ::group-off}张图片，而一条消息最多携带{cap, number, ::group-off}张，因此此消息未发送。请移除多余的图片，或分两条消息发送。"
+        },
+        {
+          "key": "ui.chat.attachment_read.this_draft_carries_total_images_and_one_721f14",
+          "namespace": "ui.chat",
+          "current": "此草稿共有{total, number, ::group-off}张图片，而一条消息最多携带{cap, number, ::group-off}张，因此此消息未发送。请移除其中{dropped, number, ::group-off}张，或分两条消息发送。"
+        },
+        {
+          "key": "ui.chat.attachment_read.value_could_not_be_read_it_may_have_been_moved",
+          "namespace": "ui.chat",
+          "current": "无法读取{value}（它可能已被移动或删除），因此此消息未发送。请重新添加，或从草稿中移除。"
+        },
+        {
+          "key": "ui.chat.attachment_read.value_could_not_be_read_they_may_have_been_moved",
+          "namespace": "ui.chat",
+          "current": "无法读取{value}（它们可能已被移动或删除），因此此消息未发送。请重新添加，或从草稿中移除。"
+        },
+        {
+          "key": "ui.chat.chat_archived.this_backend_cannot_archive_conversations_update_the_backend_and_try",
+          "namespace": "ui.chat",
+          "current": "此后端无法归档对话。请更新后端后重试。"
+        },
+        {
+          "key": "ui.chat.chat_archived.this_conversation_is_already_archived_use_unarchive_to_restore_it",
+          "namespace": "ui.chat",
+          "current": "此对话已归档。请使用/unarchive恢复。"
+        },
+        {
+          "key": "ui.chat.chat_archived.this_window_cannot_tell_whether_that_conversation_is_archived_it",
+          "namespace": "ui.chat",
+          "current": "此窗口无法判断该对话是否已归档——它不在此处列出的对话中。请用搜索找到它，并通过其条目恢复。"
+        },
+        {
+          "key": "ui.chat.chat_page.an_aside_answers_text_only_remove_the_attached_files_to",
+          "namespace": "ui.chat",
+          "current": "旁支对话只应答文本。请先移除附件再提问。"
+        },
+        {
+          "key": "ui.chat.delete_conversation.the_guard_above_is_the_daemons_own_and_nothing_in",
+          "namespace": "ui.chat",
+          "current": "上方的拦截来自守护进程自身，此窗口中的任何操作都无法清除：请在会话运行的位置清除——在那里停止它，或取消它所指的唤醒——然后重试。"
+        },
+        {
+          "key": "ui.chat.delete_conversation.this_backend_cannot_delete_conversations_update_the_backend_and_try",
+          "namespace": "ui.chat",
+          "current": "此后端无法删除对话。请更新后端后重试。"
+        },
+        {
+          "key": "ui.chat.draft_selection.nothing_was_changed_because_that_models_effort_levels_could_not",
+          "namespace": "ui.chat",
+          "current": "未做任何更改，因为无法读取该模型的推理强度档位。请重试。"
+        },
+        {
+          "key": "ui.chat.error_view.message_the_agents_history_is_safe_try_again_in_a",
+          "namespace": "ui.chat",
+          "current": "{message} 智能体的历史是安全的——请稍后重试。"
+        },
+        {
+          "key": "ui.chat.error_view.the_local_server_returned_an_error_the_agents_history_is",
+          "namespace": "ui.chat",
+          "current": "本地服务器返回错误。智能体的历史是安全的——请稍后重试。"
+        },
+        {
+          "key": "ui.chat.message_budget.these_images_total_size_more_than_the",
+          "namespace": "ui.chat",
+          "current": "这些图片共{size}，超过一条消息可携带的{limit}。请移除一张图片，或分两条消息发送。"
+        },
+        {
+          "key": "ui.chat.message_budget.this_command_is_size_more_than_the",
+          "namespace": "ui.chat",
+          "current": "此命令为{size}，超过一条命令可携带的{limit}。请缩短它，或将文本放入消息中发送。"
+        },
+        {
+          "key": "ui.chat.message_budget.this_command_is_value_characters_more_than_the_value2_one",
+          "namespace": "ui.chat",
+          "current": "此命令为{value}个字符，超过单条命令可承载的{value2}。请缩短，或将文本放在消息中。"
+        },
+        {
+          "key": "ui.chat.message_budget.this_first_message_is_size_more_than",
+          "namespace": "ui.chat",
+          "current": "首条消息为{size}，超过一条消息可携带的{limit}。请缩短它，或在新对话中发送。"
+        },
+        {
+          "key": "ui.chat.message_budget.this_first_message_is_value_characters_more_than_the_value2",
+          "namespace": "ui.chat",
+          "current": "此首条消息为{value}个字符，超过单条消息可承载的{value2}。请缩短，或改在新对话中发送。"
+        },
+        {
+          "key": "ui.chat.message_budget.this_message_is_size_of_text_more",
+          "namespace": "ui.chat",
+          "current": "此消息有{size}文本，超过一条消息可携带的{limit}。请拆分为两条消息。"
+        },
+        {
+          "key": "ui.chat.message_budget.this_message_is_value_characters_more_than_the_value2_one",
+          "namespace": "ui.chat",
+          "current": "此消息为{value}个字符，超过单条消息可承载的{value2}。请拆成两条消息发送。"
+        },
+        {
+          "key": "ui.chat.message_budget.this_system_prompt_is_size_more_than",
+          "namespace": "ui.chat",
+          "current": "此系统提示词为{size}，超过一个智能体可携带的{limit}。请缩短它。"
+        },
+        {
+          "key": "ui.chat.message_budget.this_system_prompt_is_value_characters_more_than_the_value2",
+          "namespace": "ui.chat",
+          "current": "此系统提示词为{value}个字符，超过单个智能体可承载的{value2}。请缩短。"
+        },
+        {
+          "key": "ui.chat.move_session.this_backend_cannot_move_a_live_session_start_a_new",
+          "namespace": "ui.chat",
+          "current": "此后端无法迁移运行中的会话。请开始新对话以使用其他文件夹，或更新后端。"
+        },
+        {
+          "key": "ui.chat.radient_session_issue.complete_the_sign_in_in_your_browser_the_connector_restarts",
+          "namespace": "ui.chat",
+          "current": "请在浏览器中完成登录。登录完成后连接器会自行重启；未完成的尝试会在几分钟后结束。"
+        },
+        {
+          "key": "ui.chat.radient_session_issue.if_signing_in_does_not_clear_this_run_command_in",
+          "namespace": "ui.chat",
+          "current": "如果登录后仍无法解决，请在终端中运行{command}。"
+        },
+        {
+          "key": "ui.chat.radient_session_issue.message_this_surface_cannot_take_the_pasted_code_so_finish",
+          "namespace": "ui.chat",
+          "current": "{message} 此界面无法接收粘贴的验证码，请在设置的“服务商”下完成登录。"
+        },
+        {
+          "key": "ui.chat.sidebar.chat_sidebar.stop_if_it_stays_silent",
+          "namespace": "ui.chat",
+          "current": "若持续无响应，请用/stop。"
+        },
+        {
+          "key": "ui.chat.sidebar.sidebar_scope_paging.they_may_be_archived_search_with_include_archived",
+          "namespace": "ui.chat",
+          "current": "它们可能已归档。请使用“包含已归档”搜索。"
+        },
+        {
+          "key": "ui.chat.slash.contract.needs_an_open_conversation_start_one_first",
+          "namespace": "ui.chat",
+          "current": "需要已打开的对话。请先开始一个。"
+        },
+        {
+          "key": "ui.chat.slash.contract.needs_conversation_clause",
+          "namespace": "ui.chat",
+          "current": "需要已打开的对话；请先开始一个。"
+        },
+        {
+          "key": "ui.chat.slash.contract.secret_dialog_fields",
+          "namespace": "ui.chat",
+          "current": "请在对话框的名称和值字段中输入密钥。"
+        },
+        {
+          "key": "ui.chat.slash.dispatch.choose_the_folder_in_the_working_directory_chip_above_or",
+          "namespace": "ui.chat",
+          "current": "请在上方的工作目录芯片中选择文件夹，或输入/move '<path>'直接迁移到该处。"
+        },
+        {
+          "key": "ui.chat.slash.dispatch.the_backend_could_not_complete_this_request_check_its_connection",
+          "namespace": "ui.chat",
+          "current": "后端无法完成此请求。请检查其连接后重试。"
+        },
+        {
+          "key": "ui.chat.slash_commands.the_list_could_not_be_loaded_try_again",
+          "namespace": "ui.chat",
+          "current": "无法加载列表。请重试。"
+        },
+        {
+          "key": "ui.chat.aside.aside.the_aside_could_not_be_confirmed_in_the_conversation_if",
+          "namespace": "ui.chat.aside",
+          "current": "无法确认旁支对话已加入对话。如果其中没有，请重新添加。"
+        },
+        {
+          "key": "ui.chat.aside.aside.the_aside_was_not_added_to_the_conversation_add_it",
+          "namespace": "ui.chat.aside",
+          "current": "旁支对话未加入对话。请重新添加以再试一次。"
+        },
+        {
+          "key": "ui.chat.aside.aside.the_conversation_stopped_in_the_middle_of_a_tool_call",
+          "namespace": "ui.chat.aside",
+          "current": "对话在工具调用中途停止，因此旁支对话未加入。请发送一条消息继续对话，然后添加旁支对话。"
+        },
+        {
+          "key": "ui.chat.aside.aside.the_model_didnt_reply_in_text_ask_again",
+          "namespace": "ui.chat.aside",
+          "current": "模型未以文本回复。请重新提问。"
+        },
+        {
+          "key": "ui.chat.aside.aside.this_aside_cant_continue_press_esc_to_close_it_which",
+          "namespace": "ui.chat.aside",
+          "current": "此旁支对话无法继续。按Esc关闭会放弃这次往来，请随后用/btw重新发起。"
+        },
+        {
+          "key": "ui.chat.aside.aside.this_conversation_is_busy_and_the_version_its_running_cant",
+          "namespace": "ui.chat.aside",
+          "current": "此对话正忙，当前运行的版本无法排队旁支对话。请在回复结束后添加。"
+        },
+        {
+          "key": "ui.chat.asks.ask_answer_field.files_and_images_cant_be_attached_to_an_answer_yet",
+          "namespace": "ui.chat.asks",
+          "current": "回答暂时还不能附加文件和图片。请在此输入回答，或在对话中发送文件。"
+        },
+        {
+          "key": "ui.chat.asks.ask_panel.no_asks_are_pending_they_have_all_settled_see_settled",
+          "namespace": "ui.chat.asks",
+          "current": "没有待处理的请求。全部已解决——请查看“已解决”。"
+        },
+        {
+          "key": "ui.chat.asks.queue.expired_this_ask_is_too_old_to_answer_ask_the",
+          "namespace": "ui.chat.asks",
+          "current": "已过期——此请求太旧，无法回答；请重新向智能体提问"
+        },
+        {
+          "key": "ui.chat.asks.queue.required_type_it_again_it_is_never_shown",
+          "namespace": "ui.chat.asks",
+          "current": "必填：请再次输入；内容不会显示"
+        },
+        {
+          "key": "ui.chat.asks.queue.this_ask_is_too_old_to_answer_ask_the_agent",
+          "namespace": "ui.chat.asks",
+          "current": "此请求太旧，无法回答——请重新向智能体提问。"
+        },
+        {
+          "key": "ui.chat.at.contract.could_not_read_this_folder_check_that_it_exists_and",
+          "namespace": "ui.chat.at",
+          "current": "无法读取此文件夹。请检查它是否存在，以及你能否打开它。"
+        },
+        {
+          "key": "ui.chat.at.contract.this_backend_cannot_carry_file_references_update_the_backend_and",
+          "namespace": "ui.chat.at",
+          "current": "此后端无法传递文件引用。请更新后端后重试。"
+        },
+        {
+          "key": "ui.chat.canonical.canonical_transcript.could_not_reach_that_turn_it_is_further_back_than",
+          "namespace": "ui.chat.canonical",
+          "current": "无法到达该回合。它比已加载的历史更早——请在记录中向上滚动以加载更多。"
+        },
+        {
+          "key": "ui.chat.canonical.image_gen_card_model.audio_generation_is_busy_right_now_wait_a_moment_and",
+          "namespace": "ui.chat.canonical",
+          "current": "音频生成正忙。请稍候片刻再试。"
+        },
+        {
+          "key": "ui.chat.canonical.supplement.preview_unavailable",
+          "namespace": "ui.chat.canonical",
+          "current": "无法内嵌预览。此HTML需要不受支持的资源或文档内容。请打开文件查看。"
+        },
+        {
+          "key": "ui.chat.canonical.thread_search.jump_miss",
+          "namespace": "ui.chat.canonical",
+          "current": "无法到达该消息。它比已加载的历史更早——请在记录中向上滚动以加载更多。"
+        },
+        {
+          "key": "ui.chat.canonical.use_session_files.files_are_changing_quickly_retry_after_the_current_turn_finishes",
+          "namespace": "ui.chat.canonical",
+          "current": "文件变化频繁。请在当前回合结束后重试。"
+        },
+        {
+          "key": "ui.chat.credential_capture.unstored_receipt",
+          "namespace": "ui.chat.credential_capture",
+          "current": "{count, plural, other {# 个凭据无法存储}}（{keys}）；已告知智能体。请在/credential之后再次粘贴该值以重试。"
+        },
+        {
+          "key": "ui.chat.header.chat_header_identity_menu_model.no_profile_can_take_the_seat_switch_the_team",
+          "namespace": "ui.chat.header",
+          "current": "没有配置可以担任此席位——请切换团队。"
+        },
+        {
+          "key": "ui.chat.header.chat_header_identity_menu_model.no_profile_here_can_take_the_seat_clear_the_search",
+          "namespace": "ui.chat.header",
+          "current": "此处没有配置可以担任此席位——请清除搜索，或切换团队。"
+        },
+        {
+          "key": "ui.chat.header.chat_header_identity_menu_model.team_team_owns_this_session_value_is_the_speaker_so",
+          "namespace": "ui.chat.header",
+          "current": "团队{team}拥有此会话：{value}是发言人，因此/agent已关闭。请先运行/team clear解除团队。"
+        },
+        {
+          "key": "ui.chat.message.error_block.hosting",
+          "namespace": "ui.chat.message",
+          "current": "你尚未选择AI服务商。请前往{settings}为所有智能体配置。如果没有AI服务商，可以登录Radient免费获取访问权限，立即开始使用。"
+        },
+        {
+          "key": "ui.chat.message.error_block.invalid_key",
+          "namespace": "ui.chat.message",
+          "current": "你的API密钥无效。请在{settings}中更新，或重新登录该服务商。"
+        },
+        {
+          "key": "ui.chat.message.error_block.model",
+          "namespace": "ui.chat.message",
+          "current": "你尚未选择AI模型。请前往{settings}为所有智能体选择模型。如果没有AI服务商，可以登录Radient免费获取访问权限，开始使用。"
+        },
+        {
+          "key": "ui.chat.message.error_block.model_unavailable",
+          "namespace": "ui.chat.message",
+          "current": "你要使用的模型不可用。请前往{settings}选择其他模型，或使用Radient访问数百个无速率限制的模型"
+        },
+        {
+          "key": "ui.chat.run_details.mcp_auth_dialog.could_not_determine_this_servers_sign_in_method_check_its",
+          "namespace": "ui.chat.run_details",
+          "current": "无法确定此服务器的登录方式。请检查其连接和MCP设置，然后重试。"
+        },
+        {
+          "key": "ui.chat.run_details.mcp_auth_dialog.this_server_does_not_use_oauth_and_declares_no_secret",
+          "namespace": "ui.chat.run_details",
+          "current": "此服务器不使用OAuth，也未声明任何密钥引用。请在其MCP环境或请求头中添加显式的 $'{NAME}' 引用，然后重试。"
+        },
+        {
+          "key": "ui.chat.run_details.mcp_auth_dialog.update_the_backend_for_secure_mcp_key_entry_oauth_and",
+          "namespace": "ui.chat.run_details",
+          "current": "请更新后端以使用安全的MCP密钥录入。OAuth和服务器列表仍可使用。"
+        },
+        {
+          "key": "ui.chat.run_details.mcp_failure.lead_a_sign_in_is_already_running_for_this_conversation",
+          "namespace": "ui.chat.run_details",
+          "current": "{lead}：此对话已有登录正在进行，同一时间只能有一个。请等待其完成，或从服务器条目中取消。"
+        },
+        {
+          "key": "ui.chat.run_details.run_detail_mcp.this_server_refused_the_sign_in_check_its_configuration",
+          "namespace": "ui.chat.run_details",
+          "current": "此服务器拒绝了登录。请检查其配置。"
+        },
+        {
+          "key": "ui.chat.run_details.run_panel.opening_a_subagents_conversation_needs_a_newer_local_operator_backend",
+          "namespace": "ui.chat.run_details",
+          "current": "打开子智能体的对话需要更新版本的Local Operator后端。请更新后端并重启应用。"
+        },
+        {
+          "key": "ui.chat.run_details.run_panel.the_backend_update_could_not_start_retry_or_update_from",
+          "namespace": "ui.chat.run_details",
+          "current": "后端更新无法启动。请重试，或在设置的“应用更新”中更新。"
+        },
+        {
+          "key": "ui.chat.run_details.use_mcp_remedy.confirm_replacement_of_the_existing_shared_keys_before_saving",
+          "namespace": "ui.chat.run_details",
+          "current": "保存前请确认替换现有的共享密钥。"
+        },
+        {
+          "key": "ui.chat.run_details.use_mcp_remedy.not_saved_value_unlock_or_repair_the_encrypted_store_then",
+          "namespace": "ui.chat.run_details",
+          "current": "未保存：{value}。请解锁或修复加密存储，然后重试。"
+        },
+        {
+          "key": "ui.chat.run_details.use_mcp_remedy.the_keys_were_saved_but_this_server_is_not_connected",
+          "namespace": "ui.chat.run_details",
+          "current": "密钥已保存，但此服务器未连接。请检查凭据和服务器设置，然后重试。"
+        },
+        {
+          "key": "ui.chat.run_details.wake_controls_model.this_wake_is_name_s_own_schedule_so_it_cant",
+          "namespace": "ui.chat.run_details",
+          "current": "此唤醒是{name}自己的定时，无法在此取消。要停止这些定时检查，请使用/aida pause。"
+        },
+        {
+          "key": "ui.chat.session_status.chat_device_model.the_conversation_is_not_here_to_move_recall_it_here",
+          "namespace": "ui.chat.session_status",
+          "current": "对话不在此处，无法迁移；请先将其召回此处"
+        },
+        {
+          "key": "ui.chat.session_status.quota_notice.could_not_check_try_again",
+          "namespace": "ui.chat.session_status",
+          "current": "无法检查。请重试。"
+        },
+        {
+          "key": "ui.chat.session_status.quota_notice.could_not_send_try_again",
+          "namespace": "ui.chat.session_status",
+          "current": "无法发送。请重试。"
+        },
+        {
+          "key": "ui.chat.session_status.quota_notice.requested_recently_try_again_in_about_2_minutes",
+          "namespace": "ui.chat.session_status",
+          "current": "最近已请求过。请约 2 分钟后重试。"
+        },
+        {
+          "key": "ui.chat.session_status.quota_notice.sent_check_your_inbox_and_spam_folder",
+          "namespace": "ui.chat.session_status",
+          "current": "已发送。请检查收件箱和垃圾邮件文件夹。"
+        },
+        {
+          "key": "ui.chat.session_status.session_model.the_device_running_this_session_has_no_effective_provider_access",
+          "namespace": "ui.chat.session_status",
+          "current": "运行此会话的设备没有有效的服务商访问权限。请在该设备上登录或恢复访问权限，或选择其他模型。"
+        },
+        {
+          "key": "ui.chat.session_status.session_model.the_owner_cannot_currently_provide_borrowed_access_or_borrowing_permission",
+          "namespace": "ui.chat.session_status",
+          "current": "所有者当前无法提供借用访问权限，或借用许可不可用。请先恢复所有者访问权限或授权再重试，或选择其他模型。"
+        },
+        {
+          "key": "ui.chat.session_status.session_model.the_serving_device_has_no_effective_provider_access_for_this",
+          "namespace": "ui.chat.session_status",
+          "current": "为此会话提供服务的设备没有有效的服务商访问权限。请连接账号或选择其他模型。"
+        },
+        {
+          "key": "ui.chat.session_status.session_model.this_login_cannot_be_borrowed_sign_in_on_the_device",
+          "namespace": "ui.chat.session_status",
+          "current": "此登录无法借用。请在运行此会话的设备上登录，或选择其他模型。"
+        },
+        {
+          "key": "ui.chat.session_status.session_model.this_session_could_not_resolve_label_access_from_owner_previous",
+          "namespace": "ui.chat.session_status",
+          "current": "此会话无法从{owner}解析{label}访问权限。之前的访问权限不能复用。请在所有者恢复访问权限后重试，或选择其他模型。"
+        },
+        {
+          "key": "ui.chat.session_status.session_model.your_saved_sign_in_is_still_present_try_again_later",
+          "namespace": "ui.chat.session_status",
+          "current": "你保存的登录仍然有效。请稍后重试，或选择其他模型。"
+        },
+        {
+          "key": "ui.chat.session_status.session_status_strip.model_none_resolved_yet_choose_the_model_this_conversation_will",
+          "namespace": "ui.chat.session_status",
+          "current": "模型：尚未解析。请选择此对话将要运行的模型。"
+        },
+        {
+          "key": "ui.chat.session_status.session_status_strip.model_this_conversations_model_was_not_resolved_retry",
+          "namespace": "ui.chat.session_status",
+          "current": "模型：此对话的模型未能解析。请重试。"
+        },
+        {
+          "key": "ui.chat.skill.contract.no_skills_found_see_skills",
+          "namespace": "ui.chat.skill",
+          "current": "未找到技能，请查看/skills"
+        },
+        {
+          "key": "ui.chat.skill.contract.this_backend_cannot_serve_the_skill_catalogue_update_the_backend",
+          "namespace": "ui.chat.skill",
+          "current": "此后端无法提供技能目录。请更新后端后重试。"
+        },
+        {
+          "key": "ui.chat.trace.question_dock.choose_approve_or_deny_above_type_yes_no_1_or",
+          "namespace": "ui.chat.trace",
+          "current": "请在上方选择批准或拒绝，或输入yes、no、1或2并发送，或在消息框中按Escape停止回合。"
+        },
+        {
+          "key": "ui.chat.trace.receipt_row_model.cancel_with_wake",
+          "namespace": "ui.chat.trace",
+          "current": "——取消请用wake("
+        },
+        {
+          "key": "ui.chat.trace.tool_row_model.delivered_to_their_mailbox_the_wake_got_no_answer_so",
+          "namespace": "ui.chat.trace",
+          "current": "已投递到对方的邮箱。唤醒未获回答，因此对方会在下一个回合读到这条消息。请勿再次发送。"
+        },
+        {
+          "key": "ui.chat.trace.tool_row_model.delivery_unconfirmed_it_may_still_arrive_so_check_before_resending",
+          "namespace": "ui.chat.trace",
+          "current": "送达未确认——可能仍会到达，重新发送前请先确认"
+        },
+        {
+          "key": "ui.chat.trace.tool_row_model.no_wake_answer_and_not_yet_in_their_transcript_it",
+          "namespace": "ui.chat.trace",
+          "current": "唤醒未获回答，且尚未出现在对方的记录中——可能仍会到达。重新发送前请先确认。"
+        },
+        {
+          "key": "ui.chat.trace.tool_row_model.not_confirmed_there_was_no_answer_and_the_message_is",
+          "namespace": "ui.chat.trace",
+          "current": "未确认：没有回答，且消息不在对方的记录中。它可能仍会到达，因此重新发送前请确认。"
+        },
+        {
+          "key": "ui.chat.trace.tool_row_model.nothing_was_delivered_fix_the_cause_named_below_or_retry",
+          "namespace": "ui.chat.trace",
+          "current": "没有送达任何内容。请修复下方所述原因，或重试发送。"
+        }
+      ],
+      "per_namespace": {
+        "ui.chat": 35,
+        "ui.chat.aside": 6,
+        "ui.chat.asks": 5,
+        "ui.chat.at": 2,
+        "ui.chat.canonical": 5,
+        "ui.chat.credential_capture": 1,
+        "ui.chat.header": 3,
+        "ui.chat.message": 4,
+        "ui.chat.run_details": 11,
+        "ui.chat.session_status": 13,
+        "ui.chat.skill": 2,
+        "ui.chat.trace": 7
+      }
+    },
+    {
+      "id": "Z5",
+      "severity": "minor",
+      "namespace": "ui.chat",
+      "keys": [
+        "ui.chat.slash.dispatch.choose_the_folder_in_the_working_directory_chip_above_or"
+      ],
+      "current": "请在上方的工作目录芯片中选择文件夹，或输入/move '<path>'直接迁移到该处。",
+      "proposed": "在上方的工作目录标签中选择文件夹，或输入/move '<path>'直接迁移到该处。",
+      "reason": "芯片 is a silicon chip; the English 'chip' is the UI chip/control. 标签 (or 控件) is the interface term. The 请 is removed under Z4."
+    },
+    {
+      "id": "Z6",
+      "severity": "minor",
+      "namespace": [
+        "ui.chat.header",
+        "ui.chat"
+      ],
+      "keys": [
+        "ui.chat.header.chat_header_identity_menu_model.teamlabel_is_led_by_its_manager_only_the_manager_and",
+        "ui.chat.header.chat_header_identity_menu_model.needs_a_delegating_profile_here",
+        "ui.chat.header.chat_header_identity_menu_model.no_profile_can_take_the_seat_switch_the_team",
+        "ui.chat.header.chat_header_identity_menu_model.no_profile_here_can_take_the_seat_clear_the_search",
+        "ui.chat.slash_commands.no_profiles_found"
+      ],
+      "current": "只有管理者和具备委派能力的配置可以担任此席位。 / 此处需要具备委派能力的配置。 / 没有配置可以担任此席位——请切换团队。 / 未找到配置。",
+      "proposed": "…配置档案… (replace 配置 with 配置档案 in all five; the 请 in two of them is handled by Z4, not here)",
+      "reason": "配置 unqualified reads as 'configuration' in this UI (设置/配置 screens); an agent profile is a reusable persona. 『没有配置可以担任此席位』 literally says 'no configuration can take the seat'. Use 配置档案 for the profile object; the 请 removals here belong to Z4.",
+      "values": [
+        {
+          "key": "ui.chat.header.chat_header_identity_menu_model.teamlabel_is_led_by_its_manager_only_the_manager_and",
+          "current": "{teamLabel}由其管理者领导；只有管理者和具备委派能力的配置可以担任此席位。",
+          "proposed": "{teamLabel}由其管理者领导；只有管理者和具备委派能力的配置档案可以担任此席位。"
+        },
+        {
+          "key": "ui.chat.header.chat_header_identity_menu_model.needs_a_delegating_profile_here",
+          "current": "此处需要具备委派能力的配置。",
+          "proposed": "此处需要具备委派能力的配置档案。"
+        },
+        {
+          "key": "ui.chat.header.chat_header_identity_menu_model.no_profile_can_take_the_seat_switch_the_team",
+          "current": "没有配置可以担任此席位——请切换团队。",
+          "proposed": "没有配置档案可以担任此席位——请切换团队。"
+        },
+        {
+          "key": "ui.chat.header.chat_header_identity_menu_model.no_profile_here_can_take_the_seat_clear_the_search",
+          "current": "此处没有配置可以担任此席位——请清除搜索，或切换团队。",
+          "proposed": "此处没有配置档案可以担任此席位——请清除搜索，或切换团队。"
+        },
+        {
+          "key": "ui.chat.slash_commands.no_profiles_found",
+          "current": "未找到配置。",
+          "proposed": "未找到配置档案。"
+        }
+      ]
+    },
+    {
+      "id": "Z7",
+      "severity": "minor",
+      "namespace": "ui.chat.session_status",
+      "keys": [
+        "ui.chat.session_status.session_status_strip.set_once_the_conversation_starts"
+      ],
+      "current": "对话开始后设置。",
+      "proposed": "将在对话开始后设置。",
+      "reason": "The source is a passive future statement about the effort reading on a draft (DRAFT_EFFORT_LINE: 'the ladder is real, the choice is not available yet'). The current text reads as an instruction telling the user to set it after the conversation starts."
+    },
+    {
+      "id": "Z8",
+      "severity": "minor",
+      "namespace": "ui.chat.session_status",
+      "keys": [
+        "ui.chat.session_status.chat_device_model.start_the_conversation_on"
+      ],
+      "current": "开始对话于",
+      "proposed": "在以下设备上开始对话",
+      "reason": "This is the device-picker heading when the conversation is not moving, followed by the device list. 『开始对话于』 is a word-for-word calque; 于 cannot follow the verb-object this way, and the heading has no object of its own."
+    },
+    {
+      "id": "Z9",
+      "severity": "minor",
+      "namespace": "ui.chat.canonical",
+      "keys": [
+        "ui.chat.canonical.sound.stop.warning"
+      ],
+      "current": "服务商没有取消接口。生成会继续，若产出音频仍会计费。停止是尽力而为，并不保证取消或免费。",
+      "proposed": "服务商没有取消接口。生成会继续，若产出音频仍会计费。停止是尽力而为，并不保证取消或不产生费用。",
+      "reason": "『免费』 is the product adjective 'free of charge'; the source means 'does not guarantee ... no charge'. The current sentence also leaves 保证 with mismatched objects (取消 / 免费)."
+    },
+    {
+      "id": "Z10",
+      "severity": "minor",
+      "namespace": "ui.chat.asks",
+      "keys": [
+        "ui.chat.asks.fleet_ask_drawer.answer_sent_to"
+      ],
+      "current": "已回答至",
+      "proposed": "回答已发送至",
+      "reason": "settle() composes this as `{verb} {recipient}`; 『已回答至 Alice』 reads as an answer already given to Alice rather than the delivery outcome, and 至 directly after 回答 is not idiomatic."
+    },
+    {
+      "id": "Z11",
+      "severity": "minor",
+      "namespace": "ui.chat.asks",
+      "keys": [
+        "ui.chat.asks.queue.receipt_declined"
+      ],
+      "current": "请求{askId}已拒绝——已告知智能体",
+      "proposed": "请求{askId}已被拒绝——已告知智能体",
+      "reason": "Without 被 the clause reads as the request declining something, not as the request being declined; Chinese needs the passive marker here."
+    },
+    {
+      "id": "Z12",
+      "severity": "minor",
+      "namespace": "ui.chat.asks",
+      "keys": [
+        "ui.chat.asks.answer_field.max_chars"
+      ],
+      "current": "回答最多到{count}个字符；超出部分不会保留。",
+      "proposed": "回答最长为{count}个字符；超出部分不会保留。",
+      "reason": "『最多到』 is a spoken calque of 'stop at'; 『最长为』 is the idiomatic way to state a length limit."
+    },
+    {
+      "id": "Z13",
+      "severity": "minor",
+      "namespace": "ui.chat.session_status",
+      "keys": [
+        "ui.chat.session_status.session_cost.this_session_billed_tokens_on_a_model_with_no_published"
+      ],
+      "current": "此会话在一个未公开价格的模型上计费了token，因此无法计算花费。",
+      "proposed": "此会话在一个未公开价格的模型上产生了token计费，因此无法计算花费。",
+      "reason": "『计费了token』 makes token the direct object of 计费; the source means tokens were billed. 『产生了…计费』 is the idiomatic collocation."
+    },
+    {
+      "id": "Z14",
+      "severity": "minor",
+      "namespace": "ui.chat.run_details",
+      "keys": [
+        "ui.chat.run_details.run_child_subagents.subagents_of"
+      ],
+      "current": "子智能体，属于",
+      "proposed": "所属子智能体",
+      "reason": "The label renders as a heading before a separate owner-name span. The current comma clause inverts the Chinese order ('subagents, belong to' + name); 所属子智能体 reads naturally before the name."
+    },
+    {
+      "id": "Z15",
+      "severity": "minor",
+      "namespace": "ui.chat.run_details",
+      "keys": [
+        "ui.chat.run_details.job_controls_model.not_cancelled_the_provider_no_longer_knows_the_job"
+      ],
+      "current": "未取消——服务商已不再知道该任务",
+      "proposed": "未取消——服务商已无法识别该任务",
+      "reason": "『不再知道』 is a literal 'no longer knows'; a provider/service does not 'know' a job in Chinese, and 无法识别 is the idiomatic state."
+    },
+    {
+      "id": "Z16",
+      "severity": "minor",
+      "namespace": "ui.chat.canonical",
+      "keys": [
+        "ui.chat.canonical.thread_search.count_split"
+      ],
+      "current": "{exact, number, ::group-off} 个精确 · {soft, number, ::group-off} 个相关",
+      "proposed": "{exact, number, ::group-off} 个精确匹配 · {soft, number, ::group-off} 个相关",
+      "reason": "『个』 needs a noun; 精确 alone is an adjective, so 『2 个精确』 is ungrammatical. Add 匹配 (or reorder to 精确 2 · 相关 3)."
+    },
+    {
+      "id": "Z17",
+      "severity": "minor",
+      "namespace": "ui.chat.canonical",
+      "keys": [
+        "ui.chat.canonical.transcript_reducer.retired_for_an_update_a_turn_was_in_flight_and"
+      ],
+      "current": "因更新而退役——有回合正在进行被中断；其先前的输出已保留",
+      "proposed": "因更新而退役——有回合正在进行并被中断；其先前的输出已保留",
+      "reason": "The two predicates 正在进行 / 被中断 are juxtaposed without a conjunction; 并 makes the clause grammatical and keeps the sequence."
+    },
+    {
+      "id": "Z18",
+      "severity": "minor",
+      "namespace": "ui.chat.canonical",
+      "keys": [
+        "ui.chat.canonical.turn_segments.peer_message",
+        "ui.chat.canonical.turn_segments.peer_messages",
+        "ui.chat.trace.tool_row_model.listed_network_peers",
+        "ui.chat.trace.tool_row_model.listing_network_peers"
+      ],
+      "current": "对等消息 / 对等消息 / 已列出网络对等端 / 正在列出网络对等端",
+      "proposed": "对端消息 / 对端消息 / 已列出网络对端 / 正在列出网络对端",
+      "reason": "The locale already renders 'peer' as 对端 in ui.mesh (『对端读取请求』『对端中继未运行』『对端已响应』). This batch introduces 对等 / 对等端 for the same English term; one English term must map to one local term everywhere.",
+      "also_namespaces": [
+        "ui.chat.trace"
+      ],
+      "values": [
+        {
+          "key": "ui.chat.canonical.turn_segments.peer_message",
+          "current": "对等消息",
+          "proposed": "对端消息"
+        },
+        {
+          "key": "ui.chat.canonical.turn_segments.peer_messages",
+          "current": "对等消息",
+          "proposed": "对端消息"
+        },
+        {
+          "key": "ui.chat.trace.tool_row_model.listed_network_peers",
+          "current": "已列出网络对等端",
+          "proposed": "已列出网络对端"
+        },
+        {
+          "key": "ui.chat.trace.tool_row_model.listing_network_peers",
+          "current": "正在列出网络对等端",
+          "proposed": "正在列出网络对端"
+        }
+      ]
+    },
+    {
+      "id": "Z19",
+      "severity": "minor",
+      "namespace": "ui.chat",
+      "keys": [
+        "ui.chat.chat_archived.this_window_cannot_tell_whether_that_conversation_is_archived_it"
+      ],
+      "current": "此窗口无法判断该对话是否已归档——它不在此处列出的对话中。请用搜索找到它，并通过其条目恢复。",
+      "proposed": "此窗口无法判断该对话是否已归档——它不在此处列出的对话中。使用搜索找到它，并通过其条目恢复。",
+      "reason": "『用搜索』 uses the noun 搜索 as a verb; 使用搜索 is grammatical. The 请 removal belongs to Z4."
+    },
+    {
+      "id": "Z20",
+      "severity": "nit",
+      "namespace": "ui.chat.credential_capture",
+      "keys": [
+        "ui.chat.credential_capture.armed_add_a_space_then_type_or_paste_the_secret",
+        "ui.chat.credential_capture.masked_as_you_type_enter_makes_a_pill_esc_twice",
+        "ui.chat.credential_capture.masked_enter_opens_the_credential_picker_type_or_paste_the",
+        "ui.chat.credential_capture.esc_again_discards_it_still_masked_enter_makes_a_pill",
+        "ui.chat.credential_capture.credential_discarded_nothing_was_stored_or_sent",
+        "ui.chat.credential_capture.masked_enter_runs_credential_which_needs_an_open_conversation_type",
+        "ui.chat.credential_capture.removed_receipt",
+        "ui.chat.credential_capture.held_label",
+        "ui.chat.credential_capture.plain_text_warning"
+      ],
+      "current": "已待命 — 加一个空格…… (and eight more credential-capture strings with a spaced single em dash)",
+      "proposed": "已待命——加一个空格…… (replace ' — ' with '——', no surrounding spaces)",
+      "reason": "The batch otherwise uses the Chinese double em dash —— (179 occurrences across 84 keys); these nine strings use a spaced half-width em dash. Typography consistency, not meaning.",
+      "keys_with_values": [
+        {
+          "key": "ui.chat.credential_capture.armed_add_a_space_then_type_or_paste_the_secret",
+          "current": "已待命 — 加一个空格，然后输入或粘贴密钥"
+        },
+        {
+          "key": "ui.chat.credential_capture.masked_as_you_type_enter_makes_a_pill_esc_twice",
+          "current": "输入时已遮蔽 — Enter生成胶囊标签，连按两次Esc放弃"
+        },
+        {
+          "key": "ui.chat.credential_capture.masked_enter_opens_the_credential_picker_type_or_paste_the",
+          "current": "已遮蔽 — Enter打开凭据选择器；在此范围内输入或粘贴密钥"
+        },
+        {
+          "key": "ui.chat.credential_capture.esc_again_discards_it_still_masked_enter_makes_a_pill",
+          "current": "再按Esc即放弃 — 仍保持遮蔽，Enter生成胶囊标签"
+        },
+        {
+          "key": "ui.chat.credential_capture.credential_discarded_nothing_was_stored_or_sent",
+          "current": "凭据已放弃 — 未存储也未发送任何内容"
+        },
+        {
+          "key": "ui.chat.credential_capture.masked_enter_runs_credential_which_needs_an_open_conversation_type",
+          "current": "已遮蔽 — Enter执行/credential，此命令需要已打开的对话；在此范围内输入或粘贴密钥"
+        },
+        {
+          "key": "ui.chat.credential_capture.removed_receipt",
+          "current": "已从此消息中移除{key}（凭据 #{index, number}）。其值已消失 — 按{undoCap}可恢复，或在/credential之后再次粘贴以复用。"
+        },
+        {
+          "key": "ui.chat.credential_capture.held_label",
+          "current": "凭据 #{index, number}，{chars, number} 个字符 — 保留在此消息中；其值无法读取"
+        },
+        {
+          "key": "ui.chat.credential_capture.plain_text_warning",
+          "current": "{length, number} 个字符现在在输入框中是纯文本 — 按Enter会将其暴露"
+        }
+      ]
+    },
+    {
+      "id": "Z21",
+      "severity": "nit",
+      "namespace": "batch",
+      "keys": [
+        "ui.chat.credential_chip.chars_chars",
+        "ui.chat.mark_all_read.count_live_on_other_devices_and_clear",
+        "ui.chat.chat_session_subagents.wholevalue_queued",
+        "ui.chat.message_grouping.today_value",
+        "ui.chat.message_grouping.yesterday_value",
+        "ui.chat.asks.ask_panel.dropped_questions_timed_out_your_answers_were_not_sent",
+        "ui.chat.asks.ask_panel.length_questions_timed_out",
+        "ui.chat.asks.queue.rail_count",
+        "ui.chat.canonical.canonical_transcript.1_action",
+        "ui.chat.canonical.fold_media.1_image_from_this_run",
+        "ui.chat.canonical.supplement_image_grid.1_image_from_this_run",
+        "ui.chat.canonical.image_group_lightbox.count_images",
+        "ui.chat.canonical.canonical_transcript.actions_actions",
+        "ui.chat.canonical.image_gen_card.length_items",
+        "ui.chat.credential_capture.held_label",
+        "ui.chat.credential_capture.plain_text_warning",
+        "ui.chat.run_details.run_detail_mcp.toolcount_tools",
+        "ui.chat.run_details.run_detail_model.opentodos_to_dos_open",
+        "ui.chat.run_details.run_detail_todos.hidden_hidden",
+        "ui.chat.session_status.quota_notice.requested_recently_try_again_in_about_2_minutes",
+        "ui.chat.trace.trace_labels.length_files"
+      ],
+      "current": "21 keys put a space between a numeric placeholder/digit and the following Chinese classifier, e.g. 『{chars} 个字符』 『1 个操作』 『今天 {value}』.",
+      "proposed": "Remove the space: 『{chars}个字符』 『1个操作』 『今天{value}』.",
+      "reason": "zh-CN style-guide width rules: 'No space inserted between Chinese text and Latin/digit runs.' 21 keys: 17 placeholder+classifier, 2 digit+classifier, 2 time-prefix; one pre-existing instance in ui.projects is outside this batch.",
+      "values": [
+        {
+          "key": "ui.chat.credential_chip.chars_chars",
+          "current": "· {chars, number, ::group-off} 个字符"
+        },
+        {
+          "key": "ui.chat.mark_all_read.count_live_on_other_devices_and_clear",
+          "current": "{count, number, ::group-off} 个在其他设备上，这些设备更新后会清除。"
+        },
+        {
+          "key": "ui.chat.chat_session_subagents.wholevalue_queued",
+          "current": "{wholeValue, number, ::group-off} 个已排队"
+        },
+        {
+          "key": "ui.chat.message_grouping.today_value",
+          "current": "今天 {value}"
+        },
+        {
+          "key": "ui.chat.message_grouping.yesterday_value",
+          "current": "昨天 {value}"
+        },
+        {
+          "key": "ui.chat.asks.ask_panel.dropped_questions_timed_out_your_answers_were_not_sent",
+          "current": "{dropped, number, ::group-off} 个问题已超时；你的回答未发送。"
+        },
+        {
+          "key": "ui.chat.asks.ask_panel.length_questions_timed_out",
+          "current": "{length, number, ::group-off} 个问题已超时"
+        },
+        {
+          "key": "ui.chat.asks.queue.rail_count",
+          "current": "{verb}请求{chord}——{subject}，{count, number} 个等待中"
+        },
+        {
+          "key": "ui.chat.canonical.canonical_transcript.1_action",
+          "current": "1 个操作"
+        },
+        {
+          "key": "ui.chat.canonical.fold_media.1_image_from_this_run",
+          "current": "本次运行的 1 张图片"
+        },
+        {
+          "key": "ui.chat.canonical.supplement_image_grid.1_image_from_this_run",
+          "current": "本次运行的 1 张图片"
+        },
+        {
+          "key": "ui.chat.canonical.image_group_lightbox.count_images",
+          "current": "{count, number, ::group-off} 张图片"
+        },
+        {
+          "key": "ui.chat.canonical.canonical_transcript.actions_actions",
+          "current": "{actions, number, ::group-off} 个操作"
+        },
+        {
+          "key": "ui.chat.canonical.image_gen_card.length_items",
+          "current": "{length, number, ::group-off} 项"
+        },
+        {
+          "key": "ui.chat.credential_capture.held_label",
+          "current": "凭据 #{index, number}，{chars, number} 个字符 — 保留在此消息中；其值无法读取"
+        },
+        {
+          "key": "ui.chat.credential_capture.plain_text_warning",
+          "current": "{length, number} 个字符现在在输入框中是纯文本 — 按Enter会将其暴露"
+        },
+        {
+          "key": "ui.chat.run_details.run_detail_mcp.toolcount_tools",
+          "current": "{toolCount, number, ::group-off} 个工具"
+        },
+        {
+          "key": "ui.chat.run_details.run_detail_model.opentodos_to_dos_open",
+          "current": "{openTodos, number, ::group-off} 个待办未完成"
+        },
+        {
+          "key": "ui.chat.run_details.run_detail_todos.hidden_hidden",
+          "current": "{hidden, number, ::group-off} 个已隐藏"
+        },
+        {
+          "key": "ui.chat.session_status.quota_notice.requested_recently_try_again_in_about_2_minutes",
+          "current": "最近已请求过。请约 2 分钟后重试。"
+        },
+        {
+          "key": "ui.chat.trace.trace_labels.length_files",
+          "current": "{length, number, ::group-off} 个文件"
+        }
+      ]
+    },
+    {
+      "id": "Z22",
+      "severity": "nit",
+      "namespace": "ui.chat.canonical",
+      "keys": [
+        "ui.chat.canonical.turn_segments.segment_s_is_empty"
+      ],
+      "current": "段{s, number, ::group-off}为空",
+      "proposed": "分段{s, number, ::group-off}为空",
+      "reason": "Every other turn_segments string in the same namespace says 分段; the bare 段 is the odd spelling for the same object."
+    }
+  ],
+  "notes": [
+    "Batch arithmetic: 1,733 new keys + 62 pre-existing English keys in the touched namespaces = 1,795 expected values. zh-CN carries 1,793: 1,731 batch keys + 32 pre-existing English keys translated + 30 pre-existing zh values preserved. The 2-key gap is ui.chat.canvas_preview (Z1).",
+    "The 30 preserved values are byte-identical to the base; 8 are ui.chat usage keys, 12 asks dismiss keys and 10 header keys. One preserved value (ui.chat.highlights.file_resolution_failed) contains a 请; it is not counted in Z4's 94 new keys.",
+    "Six keys reorder named placeholders for Chinese word order: ui.chat.draft_selection.this_conversation_will_run_selector_at_offered_effort, ui.chat.sidebar.chat_sidebar.aria_in_displayname, ui.chat.at.contract.nothing_matches, ui.chat.at.contract.no_files_match, ui.chat.session_status.session_model.label_access_from_owner and ...this_session_could_not_resolve_label_access_from_owner_previous. ICU named arguments are order-insensitive and the sentences are more idiomatic this way; recorded as safe rather than as findings.",
+    "Glossary consistency outside Z6/Z18 is strong: session 78/78 会话, conversation 119/119 对话, chat 31/31 对话, agent 61/61 智能体, subagent 18/18 子智能体, tool 2/2 工具, workspace 工作区, approvals 审批, project 11/11 项目, model 52/52 模型, prompt 5/5 提示词, compaction 2/2 压缩, schedule 定时, monitor 10/10 监控, relay 中继, usage 用量, cost 5/5 费用, team 22/22 团队, skill 3/3 技能, device 37/37 设备, credential 凭据, job 18/18 任务, token stays Latin 4/4.",
+    "No ledger row, allowance, baseline, shipped or generated file was changed; the only added file is this receipt.",
+    "Z3 is a code/copy seam: the preferred fix is to stop matching on t()-translated values; the minimal catalogue-only fix is to keep judge_could_not_decide and stopped_after byte-identical to English (neither is displayed).",
+    "Z4 values are enumerated under findings[Z4].values; the remediation is one sweep dropping 请/using 使用 where 请用 was the verb, with the two rate-limit strings left as-is."
+  ]
+}
