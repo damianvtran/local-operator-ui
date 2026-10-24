@@ -52,6 +52,7 @@ import {
 	sessionDisplayName,
 } from "../model/tab-index-model";
 import {
+	physicalMoveTarget,
 	physicalScrollEdges,
 	pointerIsAfterTab,
 } from "./browser-tab-direction";
@@ -891,7 +892,9 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	const closeOthers =
 		actionsTabId === null ? null : closeOthersIntent(tabs, actionsTabId);
 	const closeRight =
-		actionsTabId === null ? null : closeToTheRightIntent(ordered, actionsTabId);
+		actionsTabId === null
+			? null
+			: closeToTheRightIntent(ordered, actionsTabId, direction);
 	/** The failed set's counted close: every tab in the visible list whose last
 	 * navigation was refused — the tabs the strip paints its `Failed` chips on, and
 	 * exactly the set the session store now refuses to restore. Read from the same
@@ -1050,6 +1053,18 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						const waitingOrdinal = waiting[tab.tabId];
 						// One identity/menu slot + title + close. Status text does not spend
 						// the title's budget; the complete name remains accessible at every width.
+						const moveLeft = physicalMoveTarget(
+							index,
+							ordered.length,
+							"left",
+							direction,
+						);
+						const moveRight = physicalMoveTarget(
+							index,
+							ordered.length,
+							"right",
+							direction,
+						);
 						const floor = tabFloor(active, 0);
 						const previous = index > 0 ? ordered[index - 1] : null;
 						/**
@@ -1561,22 +1576,28 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 													{onReorder && (
 														<>
 															<DropdownMenuItem
-																disabled={index === 0}
-																onSelect={() =>
-																	move(tab.tabId, ordered[index - 1].tabId)
-																}
+																disabled={moveLeft === null}
+																onSelect={() => {
+																	if (moveLeft !== null)
+																		move(
+																			tab.tabId,
+																			ordered[moveLeft].tabId,
+																			moveLeft > index,
+																		);
+																}}
 															>
 																{copy.left}
 															</DropdownMenuItem>
 															<DropdownMenuItem
-																disabled={index === ordered.length - 1}
-																onSelect={() =>
-																	move(
-																		tab.tabId,
-																		ordered[index + 1].tabId,
-																		true,
-																	)
-																}
+																disabled={moveRight === null}
+																onSelect={() => {
+																	if (moveRight !== null)
+																		move(
+																			tab.tabId,
+																			ordered[moveRight].tabId,
+																			moveRight > index,
+																		);
+																}}
 															>
 																{copy.right}
 															</DropdownMenuItem>

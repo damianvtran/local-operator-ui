@@ -1650,11 +1650,11 @@ const AssistantRow = memo(function AssistantRow({
 					 * edge, over the prose - the designer measured it covering text at the
 					 * app's 800px minimum. Reserving 40px here (28px bare Copy target +
 					 * 12px clearance) makes the prose wrap BEFORE the control instead of
-					 * under it; at >=900 the overlay moves out into the `-right-10` gutter
+					 * under it; at >=900 the overlay moves out into the `-end-10` gutter
 					 * and the padding returns to zero, so the wide layout is unchanged.
 					 * A horizontal band only: no reserved ROW, no pill, no smaller target.
 					 */
-					commentaryOverlay && "pe-10 @min-[900px]/chatcol:pr-0",
+					commentaryOverlay && "pe-10 @min-[900px]/chatcol:pe-0",
 					/*
 					 * THE ANSWER'S FOCUS RING, moved off the full-width row wrapper for the
 					 * user bubble's reason: focus is drawn around the content the reader
@@ -1888,7 +1888,7 @@ const AssistantRow = memo(function AssistantRow({
 			{commentaryOverlay && (
 				<AnswerActionRow
 					overlay
-					overlayClassName="@min-[900px]/chatcol:-right-10"
+					overlayClassName="@min-[900px]/chatcol:-end-10"
 					kind="commentary"
 					bodyText={remainingContent}
 				/>
