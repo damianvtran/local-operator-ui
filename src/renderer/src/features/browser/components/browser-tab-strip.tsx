@@ -332,6 +332,17 @@ const tabLabel = (title: string): string => {
 };
 
 /**
+ * `tabLabel` as an ISOLATED RUN inside a catalogue sentence (design round 2,
+ * D7). The menu quotes the title and is portalled into an RTL paragraph: an
+ * LTR title's ellipsis drifted to the start of the Latin run (`"…accessibility"`).
+ * FSI/PDI (U+2068/U+2069) is the inline equivalent of `<bdi>` — a catalogue
+ * message cannot carry an element - and it wraps the VALUE, never the copy, so
+ * a translation keeps its own quotes and punctuation.
+ */
+const isolatedTabLabel = (title: string): string =>
+	`\u2068${tabLabel(title)}\u2069`;
+
+/**
  * The state chips a row can carry, IN SURVIVAL ORDER — the order the cap spends.
  *
  * WHY THE ORDER IS THIS ONE, most load-bearing first (design R4, fix 1; open
@@ -1384,7 +1395,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										data-tour-tag="browser-tab"
 									>
 										<span
-											className="min-w-0 grow truncate"
+											className="min-w-0 grow truncate rtl:text-right"
 											title={tab.title}
 											/*
 											 * A TAB TITLE IS THE PAGE'S OWN TEXT, not the tab's chrome: a
@@ -1515,7 +1526,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 												>
 													<DropdownMenuLabel className="truncate">
 														{t("ui.browser.browser_tab_strip.actions_for", {
-															title: tabLabel(tab.title),
+															title: isolatedTabLabel(tab.title),
 														})}
 													</DropdownMenuLabel>
 													{!tab.active && (
@@ -1529,7 +1540,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 															data-tour-tag="browser-tab-watch"
 														>
 															{t("ui.browser.browser_tab_strip.watch", {
-																title: tabLabel(tab.title),
+																title: isolatedTabLabel(tab.title),
 															})}
 														</DropdownMenuItem>
 													)}
@@ -1546,7 +1557,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 															{t(
 																"ui.browser.browser_tab_strip.let_an_agent_use",
 																{
-																	title: tabLabel(tab.title),
+																	title: isolatedTabLabel(tab.title),
 																},
 															)}
 															…
@@ -1560,7 +1571,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 															{t(
 																"ui.browser.browser_tab_strip.stop_letting_the_agent_use",
 																{
-																	title: tabLabel(tab.title),
+																	title: isolatedTabLabel(tab.title),
 																},
 															)}
 														</DropdownMenuItem>
@@ -1678,7 +1689,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 														data-tour-tag="browser-tab-actions-close"
 													>
 														{t("ui.browser.browser_tab_strip.close", {
-															title: tabLabel(tab.title),
+															title: isolatedTabLabel(tab.title),
 														})}
 													</DropdownMenuItem>
 													{/*
@@ -2065,7 +2076,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										/>
 										<TabMark tab={tab} />
 										<span
-											className="min-w-0 grow truncate"
+											className="min-w-0 grow truncate rtl:text-right"
 											dir="auto"
 											title={tab.title}
 										>

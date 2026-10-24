@@ -253,10 +253,31 @@ test("technical runs are isolated inside RTL prose", () => {
 	const freshness = source(
 		"src/renderer/src/features/chat/components/canvas/document-freshness-bar.tsx",
 	);
+	/*
+	 * The two runs are adjacent; the formatter is free to spell the between them
+	 * either as a literal space or as `{" "}`, so the pin accepts both.
+	 */
 	assert.match(
 		freshness,
-		/<bdi>\{t\("ui\.canvas\.files\.modified"\)\}<\/bdi>\{" "\}\s*<bdi>\{modifiedText\}<\/bdi>/,
+		/<bdi>\{t\("ui\.canvas\.files\.modified"\)\}<\/bdi>(?:\{" "\}|\s)+<bdi>\{dateText\}<\/bdi>/,
 		"the word is the shipped key, not a JSX literal; the date stays its own run",
+	);
+	/*
+	 * D4c: the clock is a run of its own. `formatCalendarDateTime` is one Intl
+	 * string, and inside the date's RTL `<bdi>` its trailing `AM 7:53` swapped
+	 * because the space before it is neutral. The split only runs when the
+	 * formatted clock really is the string's tail, so a locale that moves the
+	 * clock keeps the single-run rendering.
+	 */
+	assert.match(
+		freshness,
+		/<bdi dir="ltr">\{clock\}<\/bdi>/,
+		"the clock is rendered as its own LTR run",
+	);
+	assert.match(
+		freshness,
+		/clockIsTail\s*=\s*modifiedText !== null &&\s*clock !== null &&\s*clock\.length > 0 &&\s*modifiedText\.endsWith\(clock\)/,
+		"the split is guarded by the clock actually being the tail",
 	);
 });
 
@@ -271,4 +292,71 @@ test("direction-dependent glyphs and truncation follow the locale", () => {
 	);
 	const auto = tabs.match(/<span[^>]*\bdir="auto"[^>]*>/g) ?? [];
 	assert.equal(auto.length, 2, "both tab-title spans take their own direction");
+	/*
+	 * D6: `dir="auto"` gives the span its own base direction, so `text-start`
+	 * would resolve to the LATIN start (left) inside an RTL tab; the cell keeps
+	 * dir=auto for truncation and aligns to the locale's inline start instead.
+	 */
+	const aligned = tabs.match(/<span[^>]*rtl:text-right[^>]*>/g) ?? [];
+	assert.equal(
+		aligned.length,
+		2,
+		"both title cells align to the tab's start in Urdu",
+	);
+});
+
+test("the tab menu isolates a quoted title inside its sentence", () => {
+	const tabs = source(
+		"src/renderer/src/features/browser/components/browser-tab-strip.tsx",
+	);
+	assert.ok(
+		tabs.includes("const isolatedTabLabel = (title: string): string =>"),
+		"the helper exists beside tabLabel",
+	);
+	assert.ok(
+		tabs.includes("`\\u2068${tabLabel(title)}\\u2069`"),
+		"the value is wrapped in FSI/PDI, the inline equivalent of <bdi>",
+	);
+	assert.equal(
+		tabs.match(/title: isolatedTabLabel\(tab\.title\),/g)?.length,
+		5,
+		"every title in the tab-actions menu goes through the isolate",
+	);
+});
+
+test("the freshness split's clock really is the tail in both gated locales", () => {
+	/*
+	 * The split is guarded by `modifiedText.endsWith(clock)`, so the guard is
+	 * only worth its comment if that assumption holds where the app ships. This
+	 * executes Intl directly with the SAME option bags the two call sites use
+	 * (`formatCalendarDateTime`'s numeric/long/numeric + hour/minute, and the
+	 * clock's hour/minute) — it pins the assumption, not the pixels; the frames
+	 * are QA's.
+	 */
+	const instant = new Date("2026-10-24T07:53:00");
+	const dateOptions = {
+		year: "numeric",
+		month: "long",
+		day: "numeric",
+		hour: "numeric",
+		minute: "2-digit",
+	};
+	const clockOptions = { hour: "numeric", minute: "2-digit" };
+	const cases = [
+		["en", "October 24, 2026 at 7:53 AM"],
+		["ur", "24 اکتوبر، 2026 کو 7:53 AM"],
+	];
+	for (const [locale, expected] of cases) {
+		const full = new Intl.DateTimeFormat(locale, dateOptions).format(instant);
+		const clock = new Intl.DateTimeFormat(locale, clockOptions).format(instant);
+		assert.equal(
+			full,
+			expected,
+			`${locale} still composes the stamp the same way`,
+		);
+		assert.ok(
+			full.endsWith(clock),
+			`${locale}: the clock is the tail, which is what the split guard reads`,
+		);
+	}
 });
