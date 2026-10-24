@@ -39,7 +39,7 @@
 	"ui.agents.page.search_agents": "Buscar agentes",
 	"ui.agents.page.search_all": "Buscar agentes y equipos",
 	"ui.agents.page.search_teams": "Buscar equipos",
-	"ui.agents.page.show_owned_by": "Mostrar definiciones de",
+	"ui.agents.page.show_owned_by": "Mostrar definiciones propiedad de",
 	"ui.agents.page.team_run_description": "Un equipo tiene un agente que lidera el chat y miembros a los que puede delegar trabajo. Describe lo que quieres y una ejecución de configuración lo crea.",
 	"ui.agents.page.teams": "Equipos",
 	"ui.agents.page.teams_read_failed": "No se pudieron leer los equipos",

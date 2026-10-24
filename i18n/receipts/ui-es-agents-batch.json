@@ -137,9 +137,8 @@
     "render_execution": "translator-executed: every Spanish message in the 13 namespaces was formatted through the real IntlMessageFormat runtime at counts 1, 2 and 1000000 with synthetic arguments -> 3165 renders, no throw, no leftover brace, no empty output"
   },
   "neutral_identical": {
-    "note": "Four values are byte-identical to English because the correct Spanish is the same string. scripts/i18n/locale-parity.test.mjs IDENTICAL_OK is a gate script this lane must not edit, so these need one exempt entry each (key + reason) before the es PR can be green; nothing else in es is identical to English.",
+    "note": "Three values are byte-identical to English because the correct Spanish is the same string. scripts/i18n/locale-parity.test.mjs IDENTICAL_OK is a gate script this lane must not edit, so these need one exempt entry each (key + reason) before the es PR can be green; nothing else in es is identical to English. Remediation round 1 removed the former fourth value, ui.hub.agents.hub_title, by aligning it to the shipped 'Hub de agentes'.",
     "keys": {
-      "ui.hub.agents.hub_title": "Agent Hub is the product surface name, kept English by glossary §1 and by the es copy everywhere else ('Volver al Agent Hub').",
       "ui.hub.teams.pull": "pull is in the glossary's kept-English set for git/hub operations; the es guides elsewhere render it as 'Pull ahora'.",
       "ui.hub.teams.slot_with_count": "Language-neutral: {role} plus a multiplication sign and {count}; no words to translate.",
       "ui.hub.teams.version": "Language-neutral: the version prefix 'v' plus {version}; no words to translate."
@@ -148,9 +147,9 @@
   "terms_chosen": {
     "manager": "gestor (agent that leads the chat; 'agente gestor', 'Gestor:')",
     "listing": "ficha (a published catalogue entry: 'Actualizar la ficha existente', 'Abrir la ficha')",
-    "brief": "resumen ('Resumen del proyecto', 'Resumen de colaboración') - 'brief' has no settled Spanish product term and a calque was avoided",
+    "brief": "contexto ('Contexto del proyecto', 'Contexto de colaboración', 'Contexto') — 'brief' has no settled Spanish product term; 'resumen' collided with the product's summary/breakdown sense, and the one-word heading 'Brief' would be byte-identical to English (IDENTICAL_OK is a gate script), so the proposal's alternate 'Contexto' family was used.",
     "starter": "agente incluido ('Instalado desde un agente incluido')",
-    "roster": "plantilla (hub team member list heading)",
+    "roster": "composición (hub team member list heading) — 'plantilla' is region-marked (staff roster in Spain, template in much of LatAm).",
     "delist": "retirar del hub ('Retirar agente', 'Agente retirado del hub')",
     "configuration run": "ejecución de configuración (matches the existing audited es copy in the team conflict description)",
     "built-in": "integrado (matches ui.agents.starters)",
@@ -162,8 +161,313 @@
     "flags": [
       "ui.agents.detail.on / off: 'Activado' / 'Desactivado' are 8 and 11 cells against 'On' / 'Off' (2 and 3). No shorter correct pair exists; 'Sí/No' would misdescribe a mode.",
       "ui.agents.page.scope_custom / scope_builtin / scope_installed: 'Personalizados', 'Integrados', 'Instalados' in a filter chip row where English uses 'Custom', 'Built-in', 'Installed'. 'Propios' would be shorter but breaks the glossary's 'integrado' family.",
-      "ui.agents.detail.tool_name: 'Nombre de la herramienta' (24) for a 9-cell field label; the field row wraps.",
-      "ui.hub.agents.favourite / unfavourite: 'Añadir a favoritos' / 'Quitar de favoritos' (19/20) against 'Favourite agent' / 'Unfavourite agent' (15/18) - kept short deliberately; longer phrasings were avoided."
+      "ui.hub.agents.favourite / unfavourite: 'Añadir a favoritos' / 'Quitar de favoritos' (19/20) against 'Favourite agent' / 'Unfavourite agent' (15/18) - kept short deliberately; longer phrasings were avoided.",
+      "ui.agents.detail.tool_name: 'Nombre de herramienta' (21 cells) for a 9-cell field label; shortened from 'Nombre de la herramienta' and the field row wraps.",
+      "Agent Hub labels: 'Hub de agentes' (14 cells) replaces 'Agent Hub' (9) in the hub title, actions and tour prose; it is the shipped sidebar/palette term, so the width is inherited from the merged wave rather than introduced here."
+    ]
+  },
+  "remediation": {
+    "round": 1,
+    "date": "2026-10-24",
+    "head_before": "75b2cdc676e76c438479d1a4a6a9e5d0460ef9f7",
+    "base": "9c5ddd18390c66cccd48b34cab0544e863a522d8",
+    "audit_receipt": "i18n/receipts/es-agents-batch-audit-a9f27f62e5d6.json",
+    "auditor": {
+      "agent": "translation-auditor",
+      "session": "a9f27f62e5d6"
+    },
+    "disposition": {
+      "blockers_fixed": 0,
+      "required_majors_fixed": 6,
+      "clear_minors_fixed": 17,
+      "nits_fixed": 6,
+      "deferred": 1,
+      "changed_keys": 48
+    },
+    "changed_namespaces": [
+      "ui.agents.config",
+      "ui.agents.detail",
+      "ui.agents.page",
+      "ui.agents.publication",
+      "ui.agents.team",
+      "ui.agents.upload",
+      "ui.hub.agents",
+      "ui.hub.teams",
+      "ui.onboarding.tour"
+    ],
+    "changes": {
+      "ui.agents.config": [
+        {
+          "key": "ui.agents.config.summary_tools_widened",
+          "finding": "MINOR config: 'herramientas ampliadas a todas' leaves 'todas' without its noun; applied the exact proposal '…a todas las disponibles'.",
+          "applied": "herramientas ampliadas a todas las disponibles"
+        }
+      ],
+      "ui.agents.detail": [
+        {
+          "key": "ui.agents.detail.built_in_description",
+          "finding": "MINOR detail: 'en el sitio' is a calque of 'in place'; applied 'directamente'.",
+          "applied": "Este viene con la app y no se puede editar directamente. Instálalo para obtener una copia editable o duplícalo como agente nuevo."
+        },
+        {
+          "key": "ui.agents.detail.conflict_description",
+          "finding": "NIT detail: 'Otra cosa' is not the idiomatic opener for an unknown writer; applied 'Algo más'.",
+          "applied": "Algo más — una ejecución de configuración u otra ventana — escribió en este agente después de que lo abrieras. Tus cambios se conservan; al guardar solo se escriben los campos que cambiaste."
+        },
+        {
+          "key": "ui.agents.detail.new_agent",
+          "finding": "MINOR detail: 'Agente nuevo' drifts from the merged wave's 'Nuevo agente'; applied the proposal.",
+          "applied": "Nuevo agente"
+        },
+        {
+          "key": "ui.agents.detail.new_chat",
+          "finding": "MINOR detail related: same adjective-after-noun drift; applied 'Nuevo chat'.",
+          "applied": "Nuevo chat"
+        },
+        {
+          "key": "ui.agents.detail.tool_name",
+          "finding": "NIT detail: 24-cell label; applied the shorter 'Nombre de herramienta'.",
+          "applied": "Nombre de herramienta"
+        }
+      ],
+      "ui.agents.page": [
+        {
+          "key": "ui.agents.page.show_owned_by",
+          "finding": "MINOR page: 'Mostrar definiciones de' loses the ownership relation; applied 'Mostrar definiciones propiedad de'.",
+          "applied": "Mostrar definiciones propiedad de"
+        }
+      ],
+      "ui.agents.publication": [
+        {
+          "key": "ui.agents.publication.moderation_harassment",
+          "finding": "MINOR publication: 'atacar' strengthens 'target'; applied 'tomar como objetivo'.",
+          "applied": "No se pueden publicar instrucciones para acosar, amenazar o tomar como objetivo a personas."
+        },
+        {
+          "key": "ui.agents.publication.moderation_prompt_injection",
+          "finding": "MINOR publication: 'dirigirse al revisor' weakens 'instruct the reviewer'; applied 'instruir al revisor'.",
+          "applied": "Este conjunto de instrucciones intenta instruir al revisor en lugar de describir un agente, así que no se puede publicar."
+        },
+        {
+          "key": "ui.agents.publication.name_in_flight_body",
+          "finding": "MAJOR publication: 'No está reservado' conflated 'not claimed' with the sibling 'reservado' state; applied 'Todavía no lo ha reclamado nadie'.",
+          "applied": "Alguien está publicando un agente llamado “{name}” en este momento. Todavía no lo ha reclamado nadie: inténtalo de nuevo en un momento."
+        }
+      ],
+      "ui.agents.team": [
+        {
+          "key": "ui.agents.team.new_chat",
+          "finding": "MINOR team related: same adjective-after-noun drift as new_team; applied 'Nuevo chat del equipo'.",
+          "applied": "Nuevo chat del equipo"
+        },
+        {
+          "key": "ui.agents.team.new_team",
+          "finding": "MINOR team: 'Equipo nuevo' drifts from the merged wave's 'Nuevo equipo'; applied the proposal.",
+          "applied": "Nuevo equipo"
+        },
+        {
+          "key": "ui.agents.team.project_brief",
+          "finding": "MINOR team: 'Resumen' misdescribes the editable project brief; applied the proposal's alternate 'Contexto del proyecto' (the exact 'Brief' family is blocked by the English-stub gate — see residual_risks).",
+          "applied": "Contexto del proyecto"
+        }
+      ],
+      "ui.agents.upload": [
+        {
+          "key": "ui.agents.upload.confirm_public",
+          "finding": "MINOR upload: 'Agent Hub' drift with the shipped 'Hub de agentes'; aligned.",
+          "applied": "Vas a publicar el conjunto de instrucciones de este agente en el Hub de agentes público. Lo que se publica es lo que describe al agente:"
+        },
+        {
+          "key": "ui.agents.upload.publish_public_title",
+          "finding": "MINOR upload related: 'Agent Hub' drift; aligned.",
+          "applied": "¿Publicar “{name}” en el Hub de agentes?"
+        },
+        {
+          "key": "ui.agents.upload.published_public_title",
+          "finding": "MINOR upload related: 'Agent Hub' drift; aligned.",
+          "applied": "Publicado “{name}” en el Hub de agentes"
+        },
+        {
+          "key": "ui.agents.upload.sign_in_required",
+          "finding": "MINOR upload related: 'Agent Hub' drift; aligned.",
+          "applied": "Tienes que haber iniciado sesión en Radient para publicar agentes en el Hub de agentes."
+        },
+        {
+          "key": "ui.agents.upload.update_title",
+          "finding": "MINOR upload related: 'Agent Hub' drift; aligned.",
+          "applied": "¿Actualizar la ficha de “{name}” en el Hub de agentes?"
+        },
+        {
+          "key": "ui.agents.upload.updated_title",
+          "finding": "MINOR upload related: 'Agent Hub' drift; aligned.",
+          "applied": "Ficha de “{name}” en el Hub de agentes actualizada"
+        },
+        {
+          "key": "ui.agents.upload.visibility_description",
+          "finding": "MAJOR upload: second sentence reversed agency ('los agentes … pueden leerlos sus miembros'); applied the passive proposal.",
+          "applied": "Las publicaciones del hub público puede leerlas cualquiera. Los agentes de una organización solo pueden ser leídos por sus miembros."
+        }
+      ],
+      "ui.hub.agents": [
+        {
+          "key": "ui.hub.agents.back_to_hub",
+          "finding": "MINOR hub.agents related: 'Agent Hub' drift; aligned to the shipped sidebar label.",
+          "applied": "Volver al Hub de agentes"
+        },
+        {
+          "key": "ui.hub.agents.card_favourite_unread",
+          "finding": "NIT hub.agents: same double-negative shape as card_like_unread; quoted the withheld state.",
+          "applied": "No se pudieron leer tus favoritos, así que esto no se muestra como «no favorito»."
+        },
+        {
+          "key": "ui.hub.agents.card_like_unread",
+          "finding": "MINOR hub.agents: 'no marcado' drops the 'me gusta' state; applied '«sin me gusta»'.",
+          "applied": "No se pudieron leer tus me gusta, así que esto no se muestra como «sin me gusta»."
+        },
+        {
+          "key": "ui.hub.agents.delist_help",
+          "finding": "MINOR hub.agents related: 'Agent Hub' drift; aligned.",
+          "applied": "Retirar este agente del Hub de agentes de forma permanente"
+        },
+        {
+          "key": "ui.hub.agents.download_help",
+          "finding": "MAJOR hub.agents: 'equipo' is this product's term for a team; applied 'ordenador'.",
+          "applied": "Descargar el agente a tu ordenador"
+        },
+        {
+          "key": "ui.hub.agents.hub_title",
+          "finding": "MINOR hub.agents: page title kept 'Agent Hub' while the shipped sidebar, palette and dialogs say 'Hub de agentes'; applied the proposal and aligned the 13 sibling strings in this batch.",
+          "applied": "Hub de agentes"
+        },
+        {
+          "key": "ui.hub.agents.status_count_organization",
+          "finding": "MAJOR hub.agents: the participle sat outside the plural, rendering '1 agente compartidos'; moved 'compartido(s)' and {organization} into each arm.",
+          "applied": "{kind, select, agent {{count, plural, one {{count, number, ::group-off} agente compartido con {organization}} many {{count, number, ::group-off} de agentes compartidos con {organization}} other {{count, number, ::group-off} agentes compartidos con {organization}}}} team {{count, plural, one {{count, number, ::group-off} equipo compartido con {organization}} many {{count, number, ::group-off} de equipos compartidos con {organization}} other {{count, number, ::group-off} equipos compartidos con {organization}}}} other {{count, number, ::group-off} {kind} compartido con {organization}}}"
+        }
+      ],
+      "ui.hub.teams": [
+        {
+          "key": "ui.hub.teams.brief",
+          "finding": "MINOR hub.teams: 'Resumen' misdescribes the team brief; with project_brief the whole family moved to 'Contexto' (the proposal's alternate; exact 'Brief' is byte-identical to English and the IDENTICAL_OK gate script is not editable here).",
+          "applied": "Contexto"
+        },
+        {
+          "key": "ui.hub.teams.brief_read_failed",
+          "finding": "MINOR hub.teams related: same brief term; aligned to 'contexto'.",
+          "applied": "No se pudo leer el contexto de este equipo."
+        },
+        {
+          "key": "ui.hub.teams.collaboration_brief",
+          "finding": "MINOR hub.teams related: same brief term; aligned to 'Contexto de colaboración'.",
+          "applied": "Contexto de colaboración"
+        },
+        {
+          "key": "ui.hub.teams.no_collaboration_brief",
+          "finding": "MINOR hub.teams related: same brief term; aligned.",
+          "applied": "Este equipo no tiene contexto de colaboración."
+        },
+        {
+          "key": "ui.hub.teams.no_project_brief",
+          "finding": "MINOR hub.teams related: same brief term; aligned.",
+          "applied": "Este equipo no tiene contexto del proyecto."
+        },
+        {
+          "key": "ui.hub.teams.project_brief",
+          "finding": "MINOR hub.teams related: same brief term; aligned to 'Contexto del proyecto'.",
+          "applied": "Contexto del proyecto"
+        },
+        {
+          "key": "ui.hub.teams.pull_named",
+          "finding": "NIT hub.teams: 2.5x overflow; applied the shortest proposal 'Pull de {name}'.",
+          "applied": "Pull de {name}"
+        },
+        {
+          "key": "ui.hub.teams.roster",
+          "finding": "MINOR hub.teams: 'Plantilla' is region-marked (template in much of LatAm); applied 'Composición'.",
+          "applied": "Composición"
+        },
+        {
+          "key": "ui.hub.teams.search_status",
+          "finding": "MINOR hub.teams: verb outside the plural rendered '1 de 1 equipo … coinciden'; made 'la búsqueda' the subject and moved the count into the predicate.",
+          "applied": "La búsqueda “{search}” coincide con {visible, number, ::group-off} de {total, plural, one {{total, number, ::group-off} equipo} many {{total, number, ::group-off} de equipos} other {{total, number, ::group-off} equipos}} en esta página · abarca los equipos cargados aquí"
+        },
+        {
+          "key": "ui.hub.teams.view_brief",
+          "finding": "MINOR hub.teams related: same brief term; aligned to 'Ver el contexto de {name}'.",
+          "applied": "Ver el contexto de {name}"
+        }
+      ],
+      "ui.onboarding.tour": [
+        {
+          "key": "ui.onboarding.tour.agent_hub_view.title",
+          "finding": "MAJOR tour related: one of the 13 'Agent Hub' strings; aligned to 'El Hub de agentes'.",
+          "applied": "El Hub de agentes"
+        },
+        {
+          "key": "ui.onboarding.tour.agent_list.body",
+          "finding": "MAJOR tour related: one of the 13 'Agent Hub' strings; aligned.",
+          "applied": "A la izquierda verás una lista de tus agentes de IA disponibles. Puedes seleccionar un agente para iniciar una conversación o gestionar sus ajustes. Piénsalo como tu lista de contactos de mensajería, pero de agentes de IA. No hay límite de agentes, así que crea todos los que necesites para tus tareas del día a día.'<br/><br/>'Usa el botón de crear agentes de la parte superior de la barra de herramientas para crear un agente nuevo cuando quieras. También puedes importar agentes desde el Hub de agentes, algo que veremos más adelante en este recorrido."
+        },
+        {
+          "key": "ui.onboarding.tour.canvas_documents_view.body",
+          "finding": "MINOR tour: 'en el sitio' calque; applied 'directamente'.",
+          "applied": "La vista Documentos muestra todas tus notas, artículos de blog, código y visualizaciones abiertas como pestañas. Puedes cambiar entre documentos para editarlos y ver las visualizaciones dinámicas en HTML que crean tus agentes. Usa esta vista para trabajar con tus notas, informes y el contenido generado por los agentes.'<br /><br />'Aquí es donde puedes afinar el trabajo de tus agentes.'<br/>'{inline_edit_canvas_image}'<br />'En tus documentos, resalta el texto que quieras que tu agente mejore y pulsa Cmd/Ctrl+K para abrir el editor de IA en línea.  \n    '<br />'{canvas_code_inline_edit_image}'<br />'Puedes ser todo lo preciso que quieras y el agente editará el documento por ti directamente, usando su memoria y su contexto para que no tengas que volver a explicarlo."
+        },
+        {
+          "key": "ui.onboarding.tour.canvas_documents_view.title",
+          "finding": "MINOR tour: noun+noun calque 'Vista Documentos'; applied 'Vista de documentos'.",
+          "applied": "Vista de documentos"
+        },
+        {
+          "key": "ui.onboarding.tour.navigate_agent_hub.body",
+          "finding": "MAJOR tour: the step told the user to click an 'Agent Hub' icon that the UI labels 'Hub de agentes'; aligned both occurrences.",
+          "applied": "Vamos a visitar el Hub de agentes para encontrar agentes creados por la comunidad. Haz clic en el icono “Hub de agentes” de la barra de navegación."
+        },
+        {
+          "key": "ui.onboarding.tour.pre_command_palette_open_canvas.body",
+          "finding": "MAJOR tour: broken comparison 'así que haciendo clic'; applied 'de esta forma que haciendo clic'.",
+          "applied": "Veamos rápidamente otra función potente: la paleta de comandos. Puedes abrirla en cualquier parte de la app pulsando '<code>'{everything_mac}'</code>' en Mac y '<code>'{everything_windows}'</code>' en Windows o Linux. Es una ventana útil que puedes abrir desde cualquier lugar de la app para acceder con el teclado a tus chats, agentes, ajustes, páginas y acciones, y mucho más. Muchas veces es más rápido llegar a las secciones de la app de esta forma que haciendo clic por los menús. Escribe una palabra para buscarlo todo a la vez o empieza por un prefijo para acotar: '<code>'#'</code>' para chats, '<code>'@'</code>' para agentes y equipos, '<code>','</code>' para ajustes y '<code>'&gt;'</code>' para comandos y páginas.'<br /><br />'¿Tienes prisa por una conversación? Pulsa '<code>'{chats_mac}'</code>' en Mac y '<code>'{chats_windows}'</code>' en Windows o Linux y la paleta se abre ya buscando en tus chats, para que saltes directo a uno; y '<code>'{commands_mac}'</code>' en Mac y '<code>'{commands_windows}'</code>' en Windows o Linux la abre en los comandos y páginas propios de la app cuando eso es lo que buscas. También puedes hacer clic en Buscar en la barra lateral para abrirla."
+        },
+        {
+          "key": "ui.onboarding.tour.radient_account_settings.body",
+          "finding": "NIT tour: 'mixes and matches' reduced to 'combina'; applied 'combina y alterna'.",
+          "applied": "Conecta tu cuenta de Radient para acceder a los detalles de tu Radient Pass y a tus créditos, y desbloquear el acceso unificado a modelos y herramientas. Radient es la mejor forma de usar Local Operator, ya que impulsa los modelos de IA, la búsqueda web, la generación de imágenes y mucho más con una sola integración. Obtienes créditos gratis al registrarte para probarlo y créditos de bonificación cuando recargas.'<br /><br />'La primera vez que inicies sesión, se creará automáticamente un Radient Pass y se guardará de forma segura en tu ordenador. Esto impulsará a tus agentes de Local Operator con Radient Automatic, que combina y alterna modelos de IA para lograr el mejor equilibrio entre velocidad, precisión y coste en cada paso del flujo de trabajo de tus agentes."
+        },
+        {
+          "key": "ui.onboarding.tour.select_provider.body",
+          "finding": "MINOR tour: impersonal 'lo recomendado'; applied 'la opción recomendada'.",
+          "applied": "Elige un proveedor de IA para tu agente. Si no eliges ninguno aquí, se usará el proveedor predeterminado de la página de ajustes. Cada proveedor ofrece distintos modelos de IA y precios. Radient es la opción recomendada para Local Operator, ya que su modo “Automatic” está optimizado para el menor coste y el mejor rendimiento."
+        },
+        {
+          "key": "ui.onboarding.tour.tour_complete.body",
+          "finding": "NIT tour: 'Feliz automatización' calque; applied 'Que disfrutes automatizando'.",
+          "applied": "Ya has visto las funciones principales de Local Operator. Explora con libertad y descubre todas las formas en que tus agentes de IA pueden ayudarte. Que disfrutes automatizando."
+        },
+        {
+          "key": "ui.onboarding.tour.upload_agent_hub.body",
+          "finding": "MAJOR tour related: one of the 13 'Agent Hub' strings; aligned.",
+          "applied": "Si creas un agente útil, también puedes compartirlo con la comunidad subiéndolo al Hub de agentes desde el menú de opciones del agente."
+        },
+        {
+          "key": "ui.onboarding.tour.welcome.body",
+          "finding": "MAJOR tour related: one of the 13 'Agent Hub' strings; aligned.",
+          "applied": "Local Operator es una plataforma de agentes de IA que te permite crear un equipo de agentes proactivos que te apoyan y te ayudan a reducir tu carga de trabajo diaria.'<br/>'{chat_full_view_image}'<br />'Estos agentes son distintos de los chatbots simples porque pueden hacer cosas de verdad por ti en tu ordenador, como crear archivos, ejecutar código y análisis, editar imágenes, vídeos y PDF, organizar tu sistema y mucho más.'<br/><br/>'En este recorrido veremos:'<ul><li>'Crear agentes'</li><li>'Hacer que los agentes actúen'</li><li>'El espacio de trabajo del Canvas'</li><li>'Personalizar agentes'</li><li>'El Hub de agentes para compartir y colaborar'</li><li>'Programaciones para agentes proactivos'</li><li>'Ajustes para personalizar'</li></ul>'Veamos cómo funciona."
+        }
+      ]
+    },
+    "verification": {
+      "generate_check": "node scripts/i18n/generate.mjs --check -> byte-identical to a fresh generation.",
+      "context_parity": "node scripts/i18n/context-parity.mjs -> ok (131 allowed gaps in 4 namespaces, unchanged).",
+      "locale_parity_es": "node --test --test-name-pattern='\\[es\\]' scripts/i18n/locale-parity.test.mjs -> key-set, unknown-key, placeholder and namespace checks pass; the pre-existing 'not an English stub' list shrinks from four to three (pull, slot_with_count, version): hub_title left the list and no new identical value was introduced.",
+      "locale_parity_other": "full locale-parity run has the same failing test set as the branch head (fr/hi/ru/ur/vi/zh-CN still miss the 7 extraction keys); no es failure added.",
+      "es_activation": "node --test scripts/i18n/es-activation.test.mjs -> 3/3 pass.",
+      "icu_verification": "per-key AST check over the 13 namespaces: ICU parses on both sides, argument names and types match, select/plural arms match (es 'many' allowed), number skeletons and tag sequences match -> 0 failures; plural/select messages rendered at counts 1, 2 and 1000000 with the real IntlMessageFormat runtime.",
+      "ledger_check": "node scripts/i18n/ledger-check.mjs output is byte-identical to the branch head (50 findings: the new es namespaces have no ledger rows yet and the other locales still miss the extraction keys); no new finding."
+    },
+    "residual_risks": [
+      "MINOR manager: the proposal is the current value 'Gestor', so no change was possible; the batch is internally consistent (gestor, agente gestor, Gestor:) but ui.projects.project_start_session.team_manager_manager still says 'Equipo · manager: {manager}'. That outlier is outside this batch and needs a locale-wide alignment or a glossary row.",
+      "MINOR brief: the auditor proposed 'Brief' for ui.hub.teams.brief, but that one-word value would be byte-identical to English and scripts/i18n/locale-parity.test.mjs::IDENTICAL_OK is a gate script this lane must not edit. The proposal's alternate 'Contexto' family is applied throughout; adopting 'Brief' exactly needs an approved allowlist entry first.",
+      "Widths: tool_name, show_owned_by, pull_named and the longer 'Hub de agentes' label were shortened or aligned to shipped wording, but no rendered frame was captured in this locale-only pipeline; a rendered fit check remains owed."
     ]
   }
 }

@@ -76,7 +76,7 @@
 	"ui.agents.config.summary_tools_changed": "herramientas cambiadas",
 	"ui.agents.config.summary_tools_narrowed": "herramientas reducidas a una lista",
 	"ui.agents.config.summary_tools_removed": "{count, plural, one {{count, number, ::group-off} herramienta quitada} many {{count, number, ::group-off} de herramientas quitadas} other {{count, number, ::group-off} herramientas quitadas}}",
-	"ui.agents.config.summary_tools_widened": "herramientas ampliadas a todas",
+	"ui.agents.config.summary_tools_widened": "herramientas ampliadas a todas las disponibles",
 	"ui.agents.config.summary_updating_kind": "Actualizando {kind, select, agent {un agente} team {un equipo} other {un {kind}}}",
 	"ui.agents.config.summary_updating_named": "Actualizando {kind, select, agent {el agente} team {el equipo} other {el {kind}}} {name}",
 	"ui.agents.config.summary_working_kind": "Trabajando en {kind, select, agent {agentes} team {equipos} other {{kind}}}",
