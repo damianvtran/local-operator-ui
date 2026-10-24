@@ -481,13 +481,20 @@ import viUiShellRail from "./catalogues/vi/ui.shell.rail.json";
 import viUiTeamBridge from "./catalogues/vi/ui.teamBridge.json";
 import zhCNUiAgentMessages from "./catalogues/zh-CN/ui.agentMessages.json";
 import zhCNUiAgentMessagesSettings from "./catalogues/zh-CN/ui.agentMessages.settings.json";
+import zhCNUiAgentsConfig from "./catalogues/zh-CN/ui.agents.config.json";
+import zhCNUiAgentsDetail from "./catalogues/zh-CN/ui.agents.detail.json";
 import zhCNUiAgentsDialogs from "./catalogues/zh-CN/ui.agents.dialogs.json";
+import zhCNUiAgentsEditor from "./catalogues/zh-CN/ui.agents.editor.json";
 import zhCNUiAgents from "./catalogues/zh-CN/ui.agents.json";
 import zhCNUiAgentsModels from "./catalogues/zh-CN/ui.agents.models.json";
 import zhCNUiAgentsNavigation from "./catalogues/zh-CN/ui.agents.navigation.json";
+import zhCNUiAgentsPage from "./catalogues/zh-CN/ui.agents.page.json";
+import zhCNUiAgentsPublication from "./catalogues/zh-CN/ui.agents.publication.json";
 import zhCNUiAgentsRefusals from "./catalogues/zh-CN/ui.agents.refusals.json";
 import zhCNUiAgentsSettings from "./catalogues/zh-CN/ui.agents.settings.json";
 import zhCNUiAgentsStarters from "./catalogues/zh-CN/ui.agents.starters.json";
+import zhCNUiAgentsTeam from "./catalogues/zh-CN/ui.agents.team.json";
+import zhCNUiAgentsUpload from "./catalogues/zh-CN/ui.agents.upload.json";
 import zhCNUiBrowserChrome from "./catalogues/zh-CN/ui.browser.chrome.json";
 import zhCNUiBrowser from "./catalogues/zh-CN/ui.browser.json";
 import zhCNUiCanvas from "./catalogues/zh-CN/ui.canvas.json";
@@ -515,13 +522,17 @@ import zhCNUiCommonLoading from "./catalogues/zh-CN/ui.common.loading.json";
 import zhCNUiCommonModels from "./catalogues/zh-CN/ui.common.models.json";
 import zhCNUiCommonUpdates from "./catalogues/zh-CN/ui.common.updates.json";
 import zhCNUiConsole from "./catalogues/zh-CN/ui.console.json";
+import zhCNUiHubAgents from "./catalogues/zh-CN/ui.hub.agents.json";
 import zhCNUiHubComments from "./catalogues/zh-CN/ui.hub.comments.json";
+import zhCNUiHubDownload from "./catalogues/zh-CN/ui.hub.download.json";
 import zhCNUiHub from "./catalogues/zh-CN/ui.hub.json";
 import zhCNUiHubTaxonomy from "./catalogues/zh-CN/ui.hub.taxonomy.json";
+import zhCNUiHubTeams from "./catalogues/zh-CN/ui.hub.teams.json";
 import zhCNUiInstaller from "./catalogues/zh-CN/ui.installer.json";
 import zhCNUiLibrary from "./catalogues/zh-CN/ui.library.json";
 import zhCNUiMesh from "./catalogues/zh-CN/ui.mesh.json";
 import zhCNUiOnboarding from "./catalogues/zh-CN/ui.onboarding.json";
+import zhCNUiOnboardingTour from "./catalogues/zh-CN/ui.onboarding.tour.json";
 import zhCNUiPresence from "./catalogues/zh-CN/ui.presence.json";
 import zhCNUiProjects from "./catalogues/zh-CN/ui.projects.json";
 import zhCNUiProviders from "./catalogues/zh-CN/ui.providers.json";
@@ -1026,13 +1037,20 @@ export const bundledCatalogues: Readonly<
 	"zh-CN": {
 		...zhCNUiAgentMessages,
 		...zhCNUiAgentMessagesSettings,
+		...zhCNUiAgentsConfig,
+		...zhCNUiAgentsDetail,
 		...zhCNUiAgentsDialogs,
+		...zhCNUiAgentsEditor,
 		...zhCNUiAgents,
 		...zhCNUiAgentsModels,
 		...zhCNUiAgentsNavigation,
+		...zhCNUiAgentsPage,
+		...zhCNUiAgentsPublication,
 		...zhCNUiAgentsRefusals,
 		...zhCNUiAgentsSettings,
 		...zhCNUiAgentsStarters,
+		...zhCNUiAgentsTeam,
+		...zhCNUiAgentsUpload,
 		...zhCNUiBrowserChrome,
 		...zhCNUiBrowser,
 		...zhCNUiCanvas,
@@ -1060,13 +1078,17 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiCommonModels,
 		...zhCNUiCommonUpdates,
 		...zhCNUiConsole,
+		...zhCNUiHubAgents,
 		...zhCNUiHubComments,
+		...zhCNUiHubDownload,
 		...zhCNUiHub,
 		...zhCNUiHubTaxonomy,
+		...zhCNUiHubTeams,
 		...zhCNUiInstaller,
 		...zhCNUiLibrary,
 		...zhCNUiMesh,
 		...zhCNUiOnboarding,
+		...zhCNUiOnboardingTour,
 		...zhCNUiPresence,
 		...zhCNUiProjects,
 		...zhCNUiProviders,
