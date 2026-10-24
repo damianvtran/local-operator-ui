@@ -1456,3 +1456,107 @@ test("a file: live URL does not announce a refusal on focus alone", async () => 
 	assert.match(describedText(bundle), BLOCKED_HINT);
 	await bundle.cleanup();
 });
+
+/*
+ * ROUND 2 (review R2-1/U3-1, R2-2/U3-2): an ended edit must not be reopened by
+ * a late IME commit, and Enter on a blank draft must hand the keyboard back.
+ */
+
+test("a late IME input after a press cannot re-seed a dismissed draft", async () => {
+	const bundle = await renderBar();
+	await type(bundle, "example.com/acc");
+	const outside = document.createElement("div");
+	document.body.appendChild(outside);
+	await pointerDown(outside);
+	assert.equal(bundle.input.getAttribute("data-address-editing"), "false");
+
+	// Chromium delivers the input that commits the composition even though the
+	// field was blurred by the press.
+	await act(async () => {
+		setValue(bundle.input, "example.com/account/profile", "insertText");
+	});
+	await flush();
+
+	assert.equal(bundle.input.getAttribute("aria-expanded"), "false");
+	assert.equal(
+		bundle.input.getAttribute("data-address-editing"),
+		"false",
+		"a late input must not seed the draft again",
+	);
+	assert.equal(bundle.input.value, "example.com/account");
+	assert.equal(bundle.navigations.length, 0);
+	outside.remove();
+	await bundle.cleanup();
+});
+
+test("a late IME input after a commit cannot re-seed the navigated draft", async () => {
+	const bundle = await renderBar();
+	await type(bundle, "example.com/acc");
+	await key(bundle, "Enter");
+	assert.equal(bundle.navigations.length, 1);
+	assert.equal(bundle.input.getAttribute("data-address-editing"), "false");
+
+	await act(async () => {
+		setValue(bundle.input, "example.com/account/pro", "insertText");
+	});
+	await flush();
+
+	assert.equal(bundle.input.getAttribute("aria-expanded"), "false");
+	assert.equal(bundle.input.getAttribute("data-address-editing"), "false");
+	assert.equal(bundle.input.value, "example.com/account");
+	assert.equal(bundle.navigations.length, 1);
+	await bundle.cleanup();
+});
+
+test("a late input then compositionend after a press leaves the panel closed", async () => {
+	const bundle = await renderBar();
+	await act(async () => bundle.input.focus());
+	await flush();
+	await act(async () => {
+		bundle.input.dispatchEvent(
+			new dom.window.CompositionEvent("compositionstart", { bubbles: true }),
+		);
+		setValue(bundle.input, "exa");
+	});
+	await flush();
+
+	const outside = document.createElement("div");
+	document.body.appendChild(outside);
+	await pointerDown(outside);
+
+	// The `input` that commits the composition can precede `compositionend`.
+	await act(async () => {
+		setValue(bundle.input, "example.com/account/profile", "insertText");
+	});
+	await act(async () => {
+		bundle.input.dispatchEvent(
+			new dom.window.CompositionEvent("compositionend", { bubbles: true }),
+		);
+	});
+	await flush();
+
+	assert.equal(bundle.input.getAttribute("aria-expanded"), "false");
+	assert.equal(bundle.input.getAttribute("data-address-editing"), "false");
+	assert.equal(bundle.input.value, "example.com/account");
+	assert.equal(bundle.navigations.length, 0);
+	outside.remove();
+	await bundle.cleanup();
+});
+
+test("Enter on a blank draft hands focus back instead of dropping it on the body", async () => {
+	const reasons = [];
+	const bundle = await renderBar({
+		onDismiss: (intent) => reasons.push(intent),
+	});
+	await type(bundle, "   ");
+	await key(bundle, "Enter");
+	assert.deepEqual(
+		reasons,
+		["cancel"],
+		"the surface must decide where the keyboard goes, as untouched Enter does",
+	);
+	assert.equal(bundle.input.value, "example.com/account");
+	assert.notEqual(document.activeElement, bundle.input);
+	assert.equal(bundle.navigations.length, 0);
+	await bundle.cleanup();
+});
