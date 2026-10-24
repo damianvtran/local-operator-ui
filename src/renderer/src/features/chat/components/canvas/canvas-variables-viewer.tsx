@@ -224,7 +224,7 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 			<div className={cn("group border-hairline border-b last:border-b-0")}>
 				<div
 					className={cn(
-						"flex min-h-8 items-center gap-1 pr-1",
+						"flex min-h-8 items-center gap-1 pe-1",
 						/* The row's hover is a step DOWN from the pane's ground and not up to
 						   `elevated`: these rows have no plane of their own (they ride the pane,
 						   `canvas/index.tsx`), so an `elevated` hover now measures ΔE00 0 against
@@ -244,7 +244,7 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 						aria-expanded={expanded}
 						aria-controls={contentId}
 						className={cn(
-							"flex min-w-0 flex-1 cursor-pointer select-none items-center gap-2 px-2 py-1 text-left font-mono text-mono-sm",
+							"flex min-w-0 flex-1 cursor-pointer select-none items-center gap-2 px-2 py-1 text-start font-mono text-mono-sm",
 						)}
 					>
 						{/*
@@ -265,12 +265,12 @@ const VariableRow: FC<VariableDisplayProps> = memo(
 						{expanded ? (
 							<ChevronDown
 								aria-hidden="true"
-								className="size-3 shrink-0 text-ink-dim"
+								className="size-3 shrink-0 text-ink-dim rtl:-scale-x-100"
 							/>
 						) : (
 							<ChevronRight
 								aria-hidden="true"
-								className="size-3 shrink-0 text-ink-dim"
+								className="size-3 shrink-0 text-ink-dim rtl:-scale-x-100"
 							/>
 						)}
 						<span className={cn("shrink-0 font-medium text-ink")}>
@@ -815,7 +815,7 @@ export const CanvasVariablesViewer: FC<CanvasVariablesViewerProps> = memo(
 							<>
 								<span className={cn("mx-1.5 text-ink-dim")}>·</span>
 								<Spinner size="xs" />
-								<span className={cn("ml-1.5")}>
+								<span className={cn("ms-1.5")}>
 									{t("ui.canvas.variables_viewer.reading")}
 								</span>
 							</>

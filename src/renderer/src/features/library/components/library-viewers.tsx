@@ -511,7 +511,7 @@ const MediaViewer: FC<{
 							title={fullScreenLabel}
 							onClick={() => setLightboxIndex(position)}
 							data-library-media-trigger="video"
-							className="absolute top-2 right-2 z-[2]"
+							className="absolute top-2 end-2 z-[2]"
 						>
 							<Maximize2 aria-hidden="true" />
 						</Button>
@@ -782,7 +782,7 @@ const SpreadsheetTable: FC<{
 							 * are different cases, and the census measured them
 							 * as such.
 							 */
-							className="sticky top-0 bg-sunken px-2 py-1 text-left text-ink-muted"
+							className="sticky top-0 bg-sunken px-2 py-1 text-start text-ink-muted"
 						>
 							#
 						</th>
@@ -790,7 +790,7 @@ const SpreadsheetTable: FC<{
 							<th
 								// biome-ignore lint/suspicious/noArrayIndexKey: a column is its index.
 								key={index}
-								className="sticky top-0 border-b border-hairline bg-sunken px-2 py-1 text-left font-medium text-ink-muted"
+								className="sticky top-0 border-b border-hairline bg-sunken px-2 py-1 text-start font-medium text-ink-muted"
 							>
 								{String.fromCharCode(65 + (index % 26))}
 							</th>

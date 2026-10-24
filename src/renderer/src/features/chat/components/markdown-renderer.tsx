@@ -374,7 +374,7 @@ const MARKDOWN_COMPONENTS: Components = {
 		}
 
 		return (
-			<code className={className} {...rest}>
+			<code dir="ltr" className={className} {...rest}>
 				{children}
 			</code>
 		);

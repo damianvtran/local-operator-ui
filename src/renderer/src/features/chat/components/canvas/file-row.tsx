@@ -414,7 +414,7 @@ const FileRowItemComponent = ({
 					 * which is what makes it read as a row rather than as a chip.
 					 */
 					className={cn(
-						"flex h-9 w-full items-center gap-2 rounded-sm py-0 pr-8 pl-2 text-left",
+						"flex h-9 w-full items-center gap-2 rounded-sm py-0 pe-8 ps-2 text-start",
 					)}
 				>
 					<span className={cn("flex w-7 shrink-0 items-center justify-center")}>
@@ -495,7 +495,7 @@ const FileRowItemComponent = ({
 			{(isLocalFile || artifact) && (
 				<div
 					className={cn(
-						"absolute top-1/2 right-1 z-10 -translate-y-1/2",
+						"absolute top-1/2 end-1 z-10 -translate-y-1/2",
 						/*
 						 * Revealed on hover or keyboard focus, like every other row action
 						 * in the app, and `group-focus-within` is what keeps it reachable

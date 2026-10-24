@@ -472,7 +472,7 @@ const SessionTable: FC<{
 			sortable: true,
 			cell: (row) => (
 				<span
-					style={{ paddingLeft: `${row.depth * 12}px` }}
+					style={{ paddingInlineStart: `${row.depth * 12}px` }}
 					className={cn(
 						"block max-w-72 truncate",
 						row.unnamed && "font-mono text-mono-sm",
@@ -567,7 +567,7 @@ const SessionTable: FC<{
 						<div className={cn("relative w-64")}>
 							<Search
 								className={cn(
-									"-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 size-4 text-ink-dim",
+									"-translate-y-1/2 pointer-events-none absolute top-1/2 start-2.5 size-4 text-ink-dim",
 								)}
 								aria-hidden="true"
 							/>
@@ -577,7 +577,7 @@ const SessionTable: FC<{
 								placeholder={t("ui.chat.analytics.search.sessions")}
 								value={state.query}
 								onChange={(event) => onSearch(event.target.value)}
-								className={cn("pl-8", state.query ? "pr-9" : undefined)}
+								className={cn("ps-8", state.query ? "pe-9" : undefined)}
 								autoComplete="off"
 								spellCheck={false}
 							/>
@@ -596,7 +596,7 @@ const SessionTable: FC<{
 									size="icon-sm"
 									aria-label={t("ui.chat.analytics.search.clear")}
 									className={cn(
-										"-translate-y-1/2 absolute top-1/2 right-1 focus-visible:outline-offset-[-2px]!",
+										"-translate-y-1/2 absolute top-1/2 end-1 focus-visible:outline-offset-[-2px]!",
 									)}
 									onClick={() => {
 										setChange("search");
@@ -1089,7 +1089,7 @@ export const AnalyticsPanel: FC<AnalyticsPanelProps> = ({
 						</PickerCheck>
 					) : null}
 					{refreshing ? (
-						<p className={cn("ml-auto text-ink-dim text-meta")}>
+						<p className={cn("ms-auto text-ink-dim text-meta")}>
 							{t("ui.chat.analytics.toolbar.refreshing")}
 						</p>
 					) : null}

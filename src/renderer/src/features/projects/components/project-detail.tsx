@@ -209,7 +209,7 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 						variant="secondary"
 						onClick={() => void navigate("/projects")}
 					>
-						<ArrowLeft />
+						<ArrowLeft className="rtl:-scale-x-100" />
 						{t("ui.projects.project_detail.all_projects")}
 					</Button>
 				</div>
@@ -418,7 +418,7 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 						onClick={() => void navigate("/projects")}
 						className="flex w-fit items-center gap-1.5 text-body-sm text-ink-muted hover:text-ink"
 					>
-						<ArrowLeft className="size-4" />
+						<ArrowLeft className="size-4 rtl:-scale-x-100" />
 						{t("ui.projects.project_detail.all_projects")}
 					</button>
 

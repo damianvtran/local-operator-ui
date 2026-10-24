@@ -920,7 +920,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 			) : (
 				<>
 					<Tooltip content={t("ui.canvas.inline_edit.close")}>
-						<span className={cn("absolute top-2 right-2 z-[1301]")}>
+						<span className={cn("absolute top-2 end-2 z-[1301]")}>
 							<Button
 								variant="ghost"
 								size="icon-sm"
@@ -948,7 +948,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 							)}
 						>
 							<span
-								className={cn("mr-1 font-medium text-body-sm text-ink-muted")}
+								className={cn("me-1 font-medium text-body-sm text-ink-muted")}
 							>
 								{t("ui.canvas.inline_edit.processing_audio")}
 							</span>
@@ -961,7 +961,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 								// `pr-9` keeps the first line clear of the absolutely
 								// positioned close control, which used to sit on top of
 								// whatever was typed.
-								"w-full resize-none overflow-y-auto bg-transparent py-1 pr-9 pl-1.5",
+								"w-full resize-none overflow-y-auto bg-transparent py-1 pe-9 ps-1.5",
 								"max-h-40 text-body-sm text-ink outline-none",
 								"placeholder:text-ink-dim disabled:text-ink-disabled",
 							)}

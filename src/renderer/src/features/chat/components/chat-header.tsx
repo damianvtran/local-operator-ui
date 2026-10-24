@@ -655,7 +655,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			 * header; the row starts with the conversation's title.
 			 */}
 			{/* `flex-1` as well as `min-w-0`: the block was min-w-0 inside a row
-			 * whose only other content is an `ml-auto` action, so it yielded before
+			 * whose only other content is an `ms-auto` action, so it yielded before
 			 * the empty space did - the description clipped mid-sentence at 760px
 			 * while 220px of bar sat unused to its right. Growing first means the
 			 * text truncates only once there is genuinely no room left. */}
@@ -1063,7 +1063,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 			</div>
 			{/*
 			 * The header's action cluster: the `...` menu, as one group at the end of the
-			 * bar. The cluster carries the `ml-auto` so the actions sit together instead
+			 * bar. The cluster carries the `ms-auto` so the actions sit together instead
 			 * of being pinned to opposite ends of whatever else the bar holds.
 			 *
 			 * THE FIFTH DOOR LEFT THIS CLUSTER IN #896. Run details, Browser, Console and
@@ -1090,7 +1090,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				 * surroundings is the CONTAINER's (branding.md section 5), never a margin on
 				 * the control.
 				 */
-				className="ml-auto flex items-center gap-2"
+				className="ms-auto flex items-center gap-2"
 			>
 				{/*
 				 * THE ARCHIVED STATE, and its restore control, as a PAIR.
@@ -1389,14 +1389,14 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 												 * row holds focus, and checked / unchecked / focused stay three
 												 * distinguishable states.
 												 *
-												 * `ml-auto` rather than a spacer, because the panel hugs its
+												 * `ms-auto` rather than a spacer, because the panel hugs its
 												 * content: the mark sits at the row's end and the panel's own
 												 * `min-w-32` still owns its floor.
 												 */}
 												{activeTranscriptDisplayMode === option.value && (
 													<Check
 														aria-hidden="true"
-														className="ml-auto text-accent"
+														className="ms-auto text-accent"
 													/>
 												)}
 											</DropdownMenuRadioItem>
