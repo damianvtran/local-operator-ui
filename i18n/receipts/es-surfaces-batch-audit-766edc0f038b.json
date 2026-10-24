@@ -1,0 +1,660 @@
+{
+  "schema": 1,
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "date": "2026-10-24",
+  "locale": "es",
+  "batch": "surfaces",
+  "pr": "#1389",
+  "branch": "feat/i18n-surfaces-batch",
+  "audited_head": "7a1fdf200ce785f959b2e140b4a361ebbf8b4b3c",
+  "translation_commit": "03b57b80b2b4dafa5708de6e631143a627b3da49",
+  "base": "d96d68795b1f261b3aac8c65d7ca821f6641c5fa",
+  "auditor": {
+    "agent": "translation-auditor",
+    "session": "766edc0f038b",
+    "model": "radient/auto",
+    "actual_model_source": "harness session model (system prompt: Model: radient/auto); no fallback used",
+    "fallback": null,
+    "independent_from_translators": true,
+    "independence_basis": "Separate session from both translators (canvas translator session f21dffa6aee9; surfaces translator session 352ac9921511, per their receipts). This auditor read the catalogue bytes and did not author or edit any value."
+  },
+  "references": {
+    "glossary": {
+      "path": "local_operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "local_operator/i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca8"
+    }
+  },
+  "scope": "All values translated by the batch (keys present at the translation commit and absent from its parent) in the touched es namespaces, read against the English source and the en context sidecars at the audited head. Pre-existing values were machine-scanned for the same terminology and identical-value checks but not re-audited semantically. No rendered-frame pass and no native-speaker sign-off are claimed.",
+  "method": [
+    "Read 100% of the batch values in the es catalogue against en and en.context.json.",
+    "Parsed ICU arguments, plural and select arms; compared every placeholder, number/date skeleton, markup token, backtick and whitespace byte.",
+    "Checked Spanish CLDR categories one/many/other; 'few' absent; every plural arm uses the locale's categories.",
+    "Checked NFC, manual bidi controls, NBSP/NNBSP/ZWSP/BOM/SHY, duplicate keys.",
+    "Scanned whole touched namespaces for glossary/terminology drift, register and identical values."
+  ],
+  "namespaces": {
+    "ui.browser.errors": {
+      "batch_keys": 2,
+      "head_keys": 2,
+      "sha256": {
+        "en": "c76148aad81e67ae2bacc513a51a5ff219c797ea93bf274f6b6ebaa09635426a",
+        "context": "2b1f9eb5194709780b3c9188d7463177a4bf2aff07b9a5a438e91a2ec7a82906",
+        "es": "c2551e1d9138e00b15eb5ac14a30ce41f4056abf595b3781fb99621f8f35af5b"
+      },
+      "status": "clean",
+      "finding_ids": [],
+      "identical_values": 0
+    },
+    "ui.chat.canonical": {
+      "batch_keys": 17,
+      "head_keys": 47,
+      "sha256": {
+        "en": "dfa9cde6984a451b75a22530303197ed8a3c8d9148685231d017299f16cfe0dd",
+        "context": "953ddc573ded81d8f78aec78a81cb89dbdf6fdc6f6adf2b0945b8b4bff71077b",
+        "es": "bcdca68fbcff517dbf96d75173423c08aecf83c06dc03a4e15be74edcfa8cf6e"
+      },
+      "status": "clean-with-findings",
+      "finding_ids": [
+        "SU-1"
+      ],
+      "identical_values": 0
+    },
+    "ui.chat.composer": {
+      "batch_keys": 11,
+      "head_keys": 47,
+      "sha256": {
+        "en": "9e591f688e8696c77967bccb7961ee15405481f539e633658f8db4ae58f5b800",
+        "context": "3a45a24f1ce79edec4d13b2c0f11272c3dd3974812f05d8009f04ab787da8e63",
+        "es": "b75416b87e787d10ba75eb3fe707bf68097216e85f4f48d44cca176ca5b3a30f"
+      },
+      "status": "clean-with-findings",
+      "finding_ids": [
+        "SU-1"
+      ],
+      "identical_values": 0
+    },
+    "ui.code_review": {
+      "batch_keys": 1,
+      "head_keys": 76,
+      "sha256": {
+        "en": "52c1c5147bded8beb2e223c43e7cdb44d236a9ab4c2722627868a5a0fca1a312",
+        "context": "4d60ce00b0a08f78c30aab5e1b40ddba4e086f61e828e3cf23116866b5daebb2",
+        "es": "95ed1c71e9cdc5b5394ea0458582d102540129074de34e193b8a260d1ff475f9"
+      },
+      "status": "clean",
+      "finding_ids": [],
+      "identical_values": 1
+    },
+    "ui.common.account": {
+      "batch_keys": 20,
+      "head_keys": 38,
+      "sha256": {
+        "en": "0e39546d4357107a461f4eb3774c3a17d48a29af902825e86e450809dcf51a48",
+        "context": "148dcc3c9c40ad03373b54c1394f210386290b9e9395134d12532617d0d33f1a",
+        "es": "3eb355568d6f8d9550a296ff2d1aa2328b08b2b7602151a93aa3003949bdd885"
+      },
+      "status": "clean",
+      "finding_ids": [],
+      "identical_values": 2
+    },
+    "ui.common.actions": {
+      "batch_keys": 14,
+      "head_keys": 20,
+      "sha256": {
+        "en": "e1d2fa68aededcc4aa67bd9527a80072859f35b8a358cadba2007696414e8235",
+        "context": "160a775122143fdf72ed91a052d112f568a41105412e69f8adfdcfcc1b3b7256",
+        "es": "8484a540d3eba62c0fed65004f5454910ee164de001cf6b93bec8b7294387f5c"
+      },
+      "status": "clean",
+      "finding_ids": [],
+      "identical_values": 0
+    },
+    "ui.common.connection": {
+      "batch_keys": 27,
+      "head_keys": 37,
+      "sha256": {
+        "en": "f4d8116323bd5fa12e2a7b7a9b95ce78be29e710088f7fa50f209b788dcfeaa5",
+        "context": "9d39efa215fb38d30e7b70d0df1ed293e32e33a0b72ffc838d7385fb17e7dbb2",
+        "es": "1d2ba13affe531c60633999f0f5b5853f7cb9fe5f61b8ea37bc2f6abab52c3a8"
+      },
+      "status": "clean",
+      "finding_ids": [],
+      "identical_values": 0
+    },
+    "ui.common.errors": {
+      "batch_keys": 131,
+      "head_keys": 135,
+      "sha256": {
+        "en": "59dc7dfdbc3db2070238d457e7700d57941830a223181ea1eb4fabe9d5d7eae4",
+        "context": "714850a99bf61133a2fb7548504dc0030a20a516bd1ca3b1dfbe70b2de5f7fb1",
+        "es": "c1fbdbef6a3aba68acb0876f4ee93a1da709d10fb479750b30c13e249a852e22"
+      },
+      "status": "clean-with-findings",
+      "finding_ids": [
+        "SU-7"
+      ],
+      "identical_values": 0
+    },
+    "ui.common.speech": {
+      "batch_keys": 11,
+      "head_keys": 11,
+      "sha256": {
+        "en": "75e394ea07a049d8a58a2cc12fedec1042e30b61e572f53740f0fac35a825eb0",
+        "context": "284ead771845e6a6b4ef5c45ddc450e44f0df76873e63b4cc794fba84475522b",
+        "es": "48673aafc30c2c2e180fa672f76eae13565ca9400d4563bfe7485218a4d1095b"
+      },
+      "status": "clean",
+      "finding_ids": [],
+      "identical_values": 0
+    },
+    "ui.common.time": {
+      "batch_keys": 1,
+      "head_keys": 1,
+      "sha256": {
+        "en": "d29ccbd6b980f727b02c9c7e60c27c0d068d8082bab2e424784bc683f1cfbdd0",
+        "context": "9d666403cd1c661075607faa0a7db78b43bdd570f3d2ce1c7f5968e26f28a6a1",
+        "es": "2b208fa332b2de5ba3896206c6c77e8e9aa2ba2b709030fdf9846ac7b0744354"
+      },
+      "status": "clean",
+      "finding_ids": [],
+      "identical_values": 0
+    },
+    "ui.common.updates": {
+      "batch_keys": 11,
+      "head_keys": 138,
+      "sha256": {
+        "en": "5bb2c4cba16a412565d9c41dd5e9233e8ad8324d07758327ddd947607b59bc82",
+        "context": "5188c08320cea150fd71c3a26666ca6b0b637a94659bc6087155681b59d9614f",
+        "es": "427cf9644a4b32ce6464697caebdcc2b1f90e3c6e921c1ef8c909366a52cc409"
+      },
+      "status": "clean",
+      "finding_ids": [],
+      "identical_values": 0
+    },
+    "ui.common.viewer": {
+      "batch_keys": 1,
+      "head_keys": 5,
+      "sha256": {
+        "en": "9db8efc731cb81ac781c732a3021587434acd26bd03d41ec41156c5672edabfe",
+        "context": "77232304d3ddc3dbe20151daddc2ee1a3c28271cdcfd7ebc54a302fe6f68f40e",
+        "es": "8bbe94a6d0f524249e98748ee4a108b8288615e77775f43f399c0975ecc0c4f7"
+      },
+      "status": "clean",
+      "finding_ids": [],
+      "identical_values": 0
+    },
+    "ui.console.errors": {
+      "batch_keys": 1,
+      "head_keys": 1,
+      "sha256": {
+        "en": "ef6827986b0cd0d75cb4e2aea62aa0b017b58191b5736f7a721c6afa938f344b",
+        "context": "7a4e2ef6e8a081c78dab8ac422a3c82fbe268d8f1f68ca885e5f4eb9f7bed0d3",
+        "es": "bc6a28b7404a3035e63935fddd5f39c3ebb48d011e3614f6e37ee6484ba82b43"
+      },
+      "status": "clean",
+      "finding_ids": [],
+      "identical_values": 0
+    },
+    "ui.hub.updates": {
+      "batch_keys": 56,
+      "head_keys": 56,
+      "sha256": {
+        "en": "9fa15153d1a036a7f98b1d50da90d736c7f423c2981087ae1436469d23afcfdd",
+        "context": "d30a14eb3c3bad0bd2bde7eb1a26fd5fff5aa16ff38dfdd623ed05db4db76390",
+        "es": "45bf4fbbf80a1bdb4abd7d26eef782d0213ae40dc945a4d33bc4a16b77f80af8"
+      },
+      "status": "clean",
+      "finding_ids": [],
+      "identical_values": 0
+    },
+    "ui.installer": {
+      "batch_keys": 4,
+      "head_keys": 22,
+      "sha256": {
+        "en": "89b4c22ea75c9c7fb1db96e226c1eed958643d3e08eb4a0317b2e4369fd4e8e9",
+        "context": "6969a13f454799d950a961da740d6585545525f0a148dade5c85e1ae81232705",
+        "es": "7b5eefb8f0744d80c1abc0ea8a8fe64f76b3134d522ec8f08c89e51073eddd30"
+      },
+      "status": "clean",
+      "finding_ids": [],
+      "identical_values": 1
+    },
+    "ui.library.errors": {
+      "batch_keys": 3,
+      "head_keys": 3,
+      "sha256": {
+        "en": "162f2d82448d8a77cd96d4b142018cf233dd1ebfabe37ba7ce47d4fc52195bc4",
+        "context": "cc8e737dc8b52dbe3cc5193a9fc33f5acdb6332420c95e3fad5e1567946b247a",
+        "es": "4632c69d338cc9e9b80cf559b24b817e155cbdcaad48d09b59683e7ed803034d"
+      },
+      "status": "clean",
+      "finding_ids": [],
+      "identical_values": 0
+    },
+    "ui.mesh.errors": {
+      "batch_keys": 1,
+      "head_keys": 1,
+      "sha256": {
+        "en": "285997c116c83dd475ace036931ca2a49108dba4237300be3389bcc513ff2a40",
+        "context": "d33ebdde6b2958258ed1e52f9aa44070c9987fe8e40287e6966ff4cfa9021299",
+        "es": "ec76ed9af28ca5b3485f784a75893d239b1e503094edee035420c6303c08074e"
+      },
+      "status": "clean",
+      "finding_ids": [],
+      "identical_values": 0
+    },
+    "ui.miniView": {
+      "batch_keys": 34,
+      "head_keys": 34,
+      "sha256": {
+        "en": "50202e2b2c757708215867b51811ca4c72dd1814c747960a98a4f1929925119e",
+        "context": "22c12b345086a5ae0f1efacf3e9256f2890d8621912f8b0c642554a50f838f07",
+        "es": "c130778ecb9c362c1b3a3443380857f2af7a646967aa786ebb4141462a159642"
+      },
+      "status": "clean-with-findings",
+      "finding_ids": [
+        "SU-1",
+        "SU-2"
+      ],
+      "identical_values": 0
+    },
+    "ui.projects": {
+      "batch_keys": 3,
+      "head_keys": 427,
+      "sha256": {
+        "en": "78d8aea1536bad3a731455d50fe3361e620ffb34f914368dfbbedc7b7d277883",
+        "context": "7eaaba481914ce8fc0692c6eaee39ad04e80d9cddc82f0c83a00bebc96af28d4",
+        "es": "f32ba45366ecefaef31e9a15d68097c12cf4ef607737a8ff0d12545f892d599b"
+      },
+      "status": "clean",
+      "finding_ids": [],
+      "identical_values": 9
+    },
+    "ui.schedules.errors": {
+      "batch_keys": 3,
+      "head_keys": 3,
+      "sha256": {
+        "en": "05e2bc81700cb5ef326144dcf2ded7fee9b351b02e56226cfc800a9bdcf07961",
+        "context": "e622fe4a49850f864e15cda2fe0d6d724f8ec8e0769f1efb07adf243a51db69b",
+        "es": "1a4c8ab4e42f6e28824e6d3efafe55d724136124dc0ba3b600c4ff44f6632873"
+      },
+      "status": "clean",
+      "finding_ids": [],
+      "identical_values": 0
+    },
+    "ui.settings.appearance": {
+      "batch_keys": 59,
+      "head_keys": 69,
+      "sha256": {
+        "en": "be349b938ef72437bfb68cdcbd6c168247edff20f5efe6b50abe981183769729",
+        "context": "c18933608a9e715e4d7ea6fafd6096c154991e8829f79a2653a3726802cc7f3f",
+        "es": "f83bf4bddab3408541d779ae3fda547173bec78347251da8e32cc08bbf772639"
+      },
+      "status": "clean-with-findings",
+      "finding_ids": [
+        "SU-3",
+        "SU-6"
+      ],
+      "identical_values": 0
+    },
+    "ui.settings": {
+      "batch_keys": 6,
+      "head_keys": 45,
+      "sha256": {
+        "en": "3a4316b07423741b3a5bb670a82cb07ae260ef247c40fd039f5ad74213efd625",
+        "context": "bc524adfbef11d7aa28b074b5884076ab388526f44a344feaf53cabb51bb9692",
+        "es": "832f90038513ccb5934364174692526be2bea6966553ae4e8494616a045d094f"
+      },
+      "status": "clean-with-findings",
+      "finding_ids": [
+        "SU-4"
+      ],
+      "identical_values": 0
+    },
+    "ui.settings.shortcuts": {
+      "batch_keys": 54,
+      "head_keys": 63,
+      "sha256": {
+        "en": "0942be5821493ed1353b222905589e2a45204def2c2d1a4b26e1717e4cc7c99f",
+        "context": "9c74fb267e6504114980b62f75efa1b02c79d76dbe1a20f1e476b56d9865c215",
+        "es": "3599926c9fbca0be97f671f915610cce835e1aa1d29f34cc9679216f031aca25"
+      },
+      "status": "clean-with-findings",
+      "finding_ids": [
+        "SU-2",
+        "SU-5",
+        "SU-8"
+      ],
+      "identical_values": 0
+    }
+  },
+  "findings": [
+    {
+      "id": "SU-1",
+      "severity": "minor",
+      "namespaces": [
+        "ui.chat.canonical",
+        "ui.chat.composer",
+        "ui.miniView"
+      ],
+      "keys": [
+        "ui.chat.canonical.send_failure.aside_still_answering",
+        "ui.chat.composer.placeholder.waiting",
+        "ui.miniView.hint"
+      ],
+      "current": "Pulsa Intro de nuevo... / Intro envía ahora · Esc detiene / Enter envía, Shift+Enter añade una línea, Esc oculta",
+      "proposed": "Use one spelling; 'Intro' is used by the two chat surfaces, 'Enter' by miniView and by the canvas batch.",
+      "reason": "Glossary consistency: the same physical key is named two ways in the same batch and across batches.",
+      "values": [
+        {
+          "key": "ui.chat.canonical.send_failure.aside_still_answering",
+          "value": "La consulta al margen sigue respondiendo. Pulsa Intro de nuevo cuando la respuesta esté lista."
+        },
+        {
+          "key": "ui.chat.composer.placeholder.waiting",
+          "value": "Dirige al agente. Intro envía ahora · Esc detiene"
+        },
+        {
+          "key": "ui.miniView.hint",
+          "value": "Enter envía, Shift+Enter añade una línea, Esc oculta"
+        }
+      ]
+    },
+    {
+      "id": "SU-2",
+      "severity": "minor",
+      "namespaces": [
+        "ui.miniView",
+        "ui.settings.shortcuts"
+      ],
+      "keys": [
+        "ui.miniView.sheet_effort",
+        "ui.settings.shortcuts.row.execution",
+        "ui.settings.shortcuts.action.open_run_details"
+      ],
+      "current": "Esfuerzo de razonamiento / Detalles de ejecución / Abrir detalles de ejecución",
+      "proposed": "Verify rendered fit; shorter candidates: 'Razonamiento', 'Ejecución', 'Abrir ejecución'.",
+      "reason": "Material expansion in compact rows/sheets: 16->24, 11->21, 16->27 characters. These were already retained as static fit flags by the surfaces remediation (ES2-M1, ES2-S2, ES2-S3); no numeric budget is in the sidecars, so this is still a rendered-check candidate.",
+      "values": [
+        {
+          "key": "ui.miniView.sheet_effort",
+          "value": "Esfuerzo de razonamiento"
+        },
+        {
+          "key": "ui.settings.shortcuts.row.execution",
+          "value": "Detalles de ejecución"
+        },
+        {
+          "key": "ui.settings.shortcuts.action.open_run_details",
+          "value": "Abrir detalles de ejecución"
+        }
+      ]
+    },
+    {
+      "id": "SU-3",
+      "severity": "minor",
+      "namespaces": [
+        "ui.settings.appearance"
+      ],
+      "keys": [
+        "ui.settings.appearance.theme.arcade"
+      ],
+      "current": "Colores RGB de caramelo que brillan en un cristal CRT negro.",
+      "proposed": "Estados de juego en RGB caramelo que brillan en un cristal CRT negro.",
+      "reason": "The English says 'Candy RGB game states'; the translation drops 'game states' and keeps only the colours.",
+      "values": [
+        {
+          "key": "ui.settings.appearance.theme.arcade",
+          "value": "Colores RGB de caramelo que brillan en un cristal CRT negro."
+        }
+      ]
+    },
+    {
+      "id": "SU-4",
+      "severity": "nit",
+      "namespaces": [
+        "ui.settings"
+      ],
+      "keys": [
+        "ui.settings.section.delegated_max_age.help"
+      ],
+      "current": "Periodo de retención: cuánto tiempo puede estar inactiva una sesión delegada ...",
+      "proposed": "Período de retención: ... (or standardise on 'periodo' everywhere).",
+      "reason": "Orthographic drift for the same term: this batch uses 'periodo' (unaccented), while the canvas pickers batch uses 'período' (accented); both forms are RAE-valid, but the product should not show both.",
+      "values": [
+        {
+          "key": "ui.settings.section.delegated_max_age.help",
+          "value": "Periodo de retención: cuánto tiempo puede estar inactiva una sesión delegada (de un subagente o en segundo plano) antes de eliminarse."
+        }
+      ]
+    },
+    {
+      "id": "SU-5",
+      "severity": "nit",
+      "namespaces": [
+        "ui.settings.shortcuts"
+      ],
+      "keys": [
+        "ui.settings.shortcuts.reserved.browser_reload_cache"
+      ],
+      "current": "Reservado: recarga la página del navegador, ignorando la cache.",
+      "proposed": "... ignorando la caché. (if 'caché' is the locale decision; otherwise keep 'cache' everywhere)",
+      "reason": "Same drift as CA-12: 'cache' here, 'caché' in the canvas pickers; name both.",
+      "values": [
+        {
+          "key": "ui.settings.shortcuts.reserved.browser_reload_cache",
+          "value": "Reservado: recarga la página del navegador, ignorando la cache."
+        }
+      ]
+    },
+    {
+      "id": "SU-6",
+      "severity": "nit",
+      "namespaces": [
+        "ui.settings.appearance"
+      ],
+      "keys": [
+        "ui.settings.appearance.theme.rose_pine_moon"
+      ],
+      "current": "Rosé Pine suavizado: los mismos rosa y pino sobre un violeta más suave.",
+      "proposed": "Rosé Pine elevado: los mismos rosa y pino sobre un violeta más suave.",
+      "reason": "'lifted' is lightened/elevated, not softened; 'suavizado' reverses the direction of the colour change.",
+      "values": [
+        {
+          "key": "ui.settings.appearance.theme.rose_pine_moon",
+          "value": "Rosé Pine suavizado: los mismos rosa y pino sobre un violeta más suave."
+        }
+      ]
+    },
+    {
+      "id": "SU-7",
+      "severity": "nit",
+      "namespaces": [
+        "ui.common.errors"
+      ],
+      "keys": [
+        "ui.common.errors.session_id_required"
+      ],
+      "current": "Se necesita un id de sesión para leer la memoria de código.",
+      "proposed": "Se necesita un ID de sesión para leer la memoria de código.",
+      "reason": "The same catalogue uses 'ID' elsewhere (ui.schedules.errors.agent_id_required, ui.common.errors.schedule_get); 'id' is casing drift.",
+      "values": [
+        {
+          "key": "ui.common.errors.session_id_required",
+          "value": "Se necesita un id de sesión para leer la memoria de código."
+        }
+      ]
+    },
+    {
+      "id": "SU-8",
+      "severity": "nit",
+      "namespaces": [
+        "ui.settings.shortcuts"
+      ],
+      "keys": [
+        "ui.settings.shortcuts.reserved.chat_move_down",
+        "ui.settings.shortcuts.reserved.chat_move_up"
+      ],
+      "current": "... hacia abajo en el orden de fijados. / ... hacia arriba en el orden de fijados.",
+      "proposed": "... en el orden de los fijados. / ... en la lista de fijados.",
+      "reason": "'orden de fijados' lacks the article and reads telegraphic; the noun phrase is otherwise correct.",
+      "values": [
+        {
+          "key": "ui.settings.shortcuts.reserved.chat_move_down",
+          "value": "Reservado: mueve el chat enfocado hacia abajo en el orden de fijados."
+        },
+        {
+          "key": "ui.settings.shortcuts.reserved.chat_move_up",
+          "value": "Reservado: mueve el chat enfocado hacia arriba en el orden de fijados."
+        }
+      ]
+    }
+  ],
+  "identical_values": [
+    {
+      "namespace": "ui.code_review",
+      "key": "ui.code_review.lane.state.terminal",
+      "value": "terminal",
+      "classification": "IDENTICAL_OK",
+      "scope": "pre-existing-whole-file",
+      "reason_class": "same-form-in-es",
+      "reason": "terminal is also the Spanish adjective for a terminal state."
+    },
+    {
+      "namespace": "ui.common.account",
+      "key": "ui.common.account.low_credits_dialog.detail",
+      "value": "${detail} USD",
+      "classification": "IDENTICAL_OK",
+      "scope": "pre-existing-whole-file",
+      "reason_class": "currency-code",
+      "reason": "USD is a currency code inside a formatted amount."
+    },
+    {
+      "namespace": "ui.common.account",
+      "key": "ui.common.account.low_credits_dialog.radient_pass",
+      "value": "Radient Pass",
+      "classification": "IDENTICAL_OK",
+      "scope": "pre-existing-whole-file",
+      "reason_class": "product-name",
+      "reason": "Product name kept verbatim."
+    },
+    {
+      "namespace": "ui.installer",
+      "key": "ui.installer.installer_panel.local_operator",
+      "value": "Local Operator",
+      "classification": "IDENTICAL_OK",
+      "scope": "pre-existing-whole-file",
+      "reason_class": "product-name",
+      "reason": "Product name kept verbatim."
+    },
+    {
+      "namespace": "ui.projects",
+      "key": "ui.projects.examples.owner",
+      "value": "atlas",
+      "classification": "IDENTICAL_OK",
+      "scope": "pre-existing-whole-file",
+      "reason_class": "sample-data",
+      "reason": "Sample owner value kept verbatim."
+    },
+    {
+      "namespace": "ui.projects",
+      "key": "ui.projects.project_model.clause",
+      "value": " ({clause})",
+      "classification": "IDENTICAL_OK",
+      "scope": "pre-existing-whole-file",
+      "reason_class": "placeholder-only",
+      "reason": "Only placeholders, separators and punctuation; no prose to translate."
+    },
+    {
+      "namespace": "ui.projects",
+      "key": "ui.projects.project_model.completed_total",
+      "value": "{completed}/{total}",
+      "classification": "IDENTICAL_OK",
+      "scope": "pre-existing-whole-file",
+      "reason_class": "placeholder-only",
+      "reason": "Only placeholders, separators and punctuation; no prose to translate."
+    },
+    {
+      "namespace": "ui.projects",
+      "key": "ui.projects.project_model.count_live",
+      "value": "{count} · {live}",
+      "classification": "IDENTICAL_OK",
+      "scope": "pre-existing-whole-file",
+      "reason_class": "placeholder-only",
+      "reason": "Only placeholders, separators and punctuation; no prose to translate."
+    },
+    {
+      "namespace": "ui.projects",
+      "key": "ui.projects.project_model.qa",
+      "value": "QA",
+      "classification": "IDENTICAL_OK",
+      "scope": "pre-existing-whole-file",
+      "reason_class": "same-form-in-es",
+      "reason": "The Spanish form is identical to the English value."
+    },
+    {
+      "namespace": "ui.projects",
+      "key": "ui.projects.project_model.value_d",
+      "value": "{value}d",
+      "classification": "IDENTICAL_OK",
+      "scope": "pre-existing-whole-file",
+      "reason_class": "unit-suffix",
+      "reason": "Placeholder plus a unit suffix; no prose."
+    },
+    {
+      "namespace": "ui.projects",
+      "key": "ui.projects.project_model.value_pt",
+      "value": "{value} pt",
+      "classification": "IDENTICAL_OK",
+      "scope": "pre-existing-whole-file",
+      "reason_class": "unit-suffix",
+      "reason": "Placeholder plus a unit suffix; no prose."
+    },
+    {
+      "namespace": "ui.projects",
+      "key": "ui.projects.projects_toolbar.facet_labels_facet_first",
+      "value": "{FACET_LABELS_facet} · {first}",
+      "classification": "IDENTICAL_OK",
+      "scope": "pre-existing-whole-file",
+      "reason_class": "placeholder-only",
+      "reason": "Only placeholders, separators and punctuation; no prose to translate."
+    },
+    {
+      "namespace": "ui.projects",
+      "key": "ui.projects.projects_toolbar.facet_labels_facet_first_length_1",
+      "value": "{FACET_LABELS_facet} · {first} +{length___1}",
+      "classification": "IDENTICAL_OK",
+      "scope": "pre-existing-whole-file",
+      "reason_class": "placeholder-only",
+      "reason": "Only placeholders, separators and punctuation; no prose to translate."
+    }
+  ],
+  "stubs": [],
+  "totals": {
+    "batch_keys_read": 471,
+    "head_keys_in_touched_namespaces": 1281,
+    "namespace_count": 23,
+    "blocker": 0,
+    "major": 0,
+    "minor": 3,
+    "nit": 5,
+    "batch_identical_values": 0,
+    "pre_existing_identical_values": 13,
+    "identical_ok": 13,
+    "stubs": 0
+  },
+  "verdict": "clean-with-findings",
+  "limitations": [
+    "Translator provenance receipts were read only for scope/counts; their target hashes predate the merge of main for ui.chat.pickers and ui.common.viewer (canvas) and ui.chat.canonical, ui.chat.composer and ui.common.viewer (surfaces). The batch values themselves are byte-identical at ship commit and head; only main's additional keys differ.",
+    "Overflow findings are source-length inspections; the sidecars carry no maxCells/maxChars for these keys, so a rendered check is still required.",
+    "No native-speaker sign-off is claimed."
+  ]
+}
