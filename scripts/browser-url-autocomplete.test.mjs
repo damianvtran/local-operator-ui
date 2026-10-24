@@ -1293,6 +1293,11 @@ test("main's dismissal abandons the edit instead of re-projecting it", async () 
 			[],
 			"main's dismissal must not ask the surface to move focus: the user's press already chose the target",
 		);
+		assert.notEqual(
+			document.activeElement,
+			bundle.input,
+			"the focus outline must go with the edit; the page owns focus now",
+		);
 		assert.equal(bundle.navigations.length, 0);
 		const after = projections.slice(before);
 		assert.ok(
@@ -1318,6 +1323,136 @@ test("Escape names the escape intent so the surface can return focus to the page
 		"the surface distinguishes Escape (return to the page) from a cancel",
 	);
 	assert.equal(bundle.input.value, "example.com/account");
+	assert.notEqual(
+		document.activeElement,
+		bundle.input,
+		"Escape hands focus back, so the input must not paint a focus outline",
+	);
 	assert.equal(bundle.navigations.length, 0);
+	await bundle.cleanup();
+});
+
+test("a press during composition cannot be undone by compositionend", async () => {
+	const bundle = await renderBar();
+	await act(async () => bundle.input.focus());
+	await flush();
+	await act(async () => {
+		bundle.input.dispatchEvent(
+			new dom.window.CompositionEvent("compositionstart", { bubbles: true }),
+		);
+		setValue(bundle.input, "exa");
+	});
+	await flush();
+	// The list is CLOSED while composing, which is exactly the window the press
+	// listener used to miss (review round 1, R1-1).
+	assert.equal(bundle.input.getAttribute("aria-expanded"), "false");
+
+	const outside = document.createElement("div");
+	document.body.appendChild(outside);
+	await pointerDown(outside);
+
+	// The IME commits its interim text after the press already ended the edit.
+	await act(async () => {
+		bundle.input.dispatchEvent(
+			new dom.window.CompositionEvent("compositionend", { bubbles: true }),
+		);
+	});
+	await flush();
+
+	assert.equal(
+		bundle.input.getAttribute("aria-expanded"),
+		"false",
+		"a late composition commit must not re-raise the child after the press left",
+	);
+	assert.equal(bundle.input.value, "example.com/account");
+	assert.notEqual(document.activeElement, bundle.input);
+	assert.equal(bundle.navigations.length, 0);
+	outside.remove();
+	await bundle.cleanup();
+});
+
+test("a main dismissal before the first answer keeps the list closed", async () => {
+	let resolveHistory = () => {};
+	let emit = () => {};
+	const intents = [];
+	dom.window.api = {
+		browser: {
+			addressOverlay: {
+				project: async () => ({ accepted: true }),
+				onEvent: (callback) => {
+					emit = callback;
+					return () => {};
+				},
+			},
+		},
+	};
+	try {
+		const bundle = await renderBar({
+			addressHistory: (request) =>
+				new Promise((resolve) => {
+					resolveHistory = () =>
+						resolve({
+							requestId: request.requestId,
+							activeTabId: 1,
+							entries: ENTRIES,
+						});
+				}),
+			onDismiss: (intent) => intents.push(intent),
+		});
+		await act(async () => bundle.input.focus());
+		await flush();
+		assert.equal(
+			bundle.input.getAttribute("aria-expanded"),
+			"false",
+			"the answer is pending, so no list is visible to subscribe the visible path",
+		);
+
+		await act(async () => {
+			emit({ type: "dismiss", reason: "page_pointer" });
+		});
+		await flush();
+
+		// The late answer must not resurrect the edit the press/main already ended.
+		await act(async () => {
+			resolveHistory();
+		});
+		await flush();
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 20));
+		});
+		await flush();
+
+		assert.equal(bundle.input.getAttribute("aria-expanded"), "false");
+		assert.equal(bundle.input.value, "example.com/account");
+		assert.notEqual(document.activeElement, bundle.input);
+		assert.deepEqual(intents, [], "a main dismissal is focus-neutral");
+		await bundle.cleanup();
+	} finally {
+		dom.window.api = undefined;
+	}
+});
+
+test("a file: live URL does not announce a refusal on focus alone", async () => {
+	const bundle = await renderBar({
+		url: "file:///tmp/a.txt",
+		addressHistory: async (request) => ({
+			requestId: request.requestId,
+			activeTabId: 1,
+			entries: [],
+		}),
+	});
+	await act(async () => bundle.input.focus());
+	await flush();
+	assert.equal(
+		bundle.input.getAttribute("aria-expanded"),
+		"false",
+		"the focus seed is the page URL, not a typed address",
+	);
+	assert.doesNotMatch(describedText(bundle), BLOCKED_HINT);
+
+	// Typing a file: address IS a user intent, and the refusal still explains it.
+	await type(bundle, "file:///tmp/b.txt");
+	assert.equal(bundle.input.getAttribute("aria-expanded"), "true");
+	assert.match(describedText(bundle), BLOCKED_HINT);
 	await bundle.cleanup();
 });
