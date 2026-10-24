@@ -407,7 +407,9 @@ import urUiChatCanonical from "./catalogues/ur/ui.chat.canonical.json";
 import urUiChatCommentaryActions from "./catalogues/ur/ui.chat.commentary_actions.json";
 import urUiChatComposer from "./catalogues/ur/ui.chat.composer.json";
 import urUiChatComposerMedia from "./catalogues/ur/ui.chat.composer_media.json";
+import urUiChatDevice from "./catalogues/ur/ui.chat.device.json";
 import urUiChatDialogs from "./catalogues/ur/ui.chat.dialogs.json";
+import urUiChatDirectory from "./catalogues/ur/ui.chat.directory.json";
 import urUiChatHeader from "./catalogues/ur/ui.chat.header.json";
 import urUiChat from "./catalogues/ur/ui.chat.json";
 import urUiChatLiveUpdates from "./catalogues/ur/ui.chat.live_updates.json";
@@ -1012,7 +1014,9 @@ export const bundledCatalogues: Readonly<
 		...urUiChatCommentaryActions,
 		...urUiChatComposer,
 		...urUiChatComposerMedia,
+		...urUiChatDevice,
 		...urUiChatDialogs,
+		...urUiChatDirectory,
 		...urUiChatHeader,
 		...urUiChat,
 		...urUiChatLiveUpdates,
