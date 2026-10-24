@@ -833,7 +833,7 @@
      "proposed": "बदलें और फिर चलाएँ"
     }
    ],
-   "reason": "The label is a button with no maxCells budget and grows from 16 to 29 characters; the shorter proposed phrasing is 21 characters and keeps 'edit' + 'run again'. Flag for a rendered-width check if the button is pinned."
+   "reason": "The label is a button with no maxCells budget and grows from 16 to 29 characters; the shorter proposed phrasing is 18 characters and keeps 'edit' + 'run again'. Flag for a rendered-width check if the button is pinned."
   },
   {
    "id": "F-20",
@@ -843,17 +843,12 @@
    ],
    "instances": [
     {
-     "key": "ui.chat.trace.turn_summary.took",
-     "current": "लिया",
-     "proposed": "समय"
-    },
-    {
      "key": "ui.chat.trace.turn_summary.completed",
      "current": "पूरा",
      "proposed": "पूर्ण"
     }
    ],
-   "reason": "turn-summary.tsx renders {took}{formatDuration(durationS)} with no separator, so 'लिया' precedes the duration ('लिया 12s') although Hindi puts the verb after its object; 'समय' reads 'समय 12s'. The sr-only trailing 'पूरा' also disagrees with feminine कार्रवाई in the accessible name; invariant 'पूर्ण' avoids it."
+   "reason": "turn-summary.tsx appends the sr-only 'completed' word after the facts, so the accessible name contains '1 कार्रवाई पूरा'; पूरा is masculine and does not agree with feminine कार्रवाई. Invariant पूर्ण states the state without a gender mismatch. (The adjacent 'took' label is a source-spacing issue: the JSX concatenates the label and duration with no separator, which affects every locale and is not fixable in this catalogue alone.)"
   },
   {
    "id": "F-21",
