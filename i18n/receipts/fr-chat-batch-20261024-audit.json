@@ -1,0 +1,1485 @@
+{
+  "schema": 1,
+  "locale": "fr",
+  "scope": "chat translation batch: 15 ui.chat.* namespaces",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent i18n auditor, team lopdev (not the translator)",
+    "session": "1071b7ca380c",
+    "model": "radient/auto",
+    "model_note": "Harness-selected model identity recorded as radient/auto; the upstream routed model is not exposed in session metadata. No fallback model was used. No translation API, SDK or MT service was used.",
+    "date": "2026-10-24"
+  },
+  "source": {
+    "repo": "damianvtran/local-operator-ui",
+    "branch": "feat/i18n-chat-fr",
+    "base_en_head": "5d97575ac4388522267291ffee74d12bd9675b12",
+    "target_head": "db89aeec40a33e5212f5d00128eeebb559f237b2",
+    "batch_diff_base": "9c5ddd1839",
+    "reachable": "5d97575ac4 is an ancestor of db89aeec40; the branch adds one commit"
+  },
+  "reference_sha256": {
+    "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide": "b916f3d1c30b0a2e18fc94ca51d130f60e86b3b17b1918aa51f5c5da6d52ec39"
+  },
+  "method": {
+    "read": "Every English key and every French value in the 15 namespaces was read side by side, with the en context sidecar consulted for role/tone/maxCells.",
+    "keys_read": 1795,
+    "keys_batch_new": 1733,
+    "keys_carried": 62,
+    "icu": "Custom brace parser compared argument names, types, skeletons and plural/select arms against English; @formatjs/intl-messageformat rendered the disputed strings.",
+    "identical": "Every byte-identical value was classified individually; all 101 are format strings, cognates, product/path tokens or technical tokens. 0 untranslated stubs.",
+    "nfc": "0 failures across all 1,795 values.",
+    "bidi": "0 bidi control characters or RTL marks (fr is LTR).",
+    "markup": "0 differences in HTML/JSX-like markup tokens.",
+    "code_tokens": "0 backtick-token differences.",
+    "numbers": "French decimal commas and 24-hour times; no hand-written dates.",
+    "format": "15/15 files valid JSON, English key order, tab indentation, trailing newline.",
+    "structural_gates": [
+      "node scripts/i18n/generate.mjs --check -> PASS (keys.gen.ts byte-identical to a fresh generation)",
+      "node scripts/i18n/context-parity.mjs -> PASS (every English key covered apart from the existing shrink-only allowance)",
+      "node scripts/i18n/ledger-check.mjs -> FAIL by design pending audit: 12 new fr namespaces have no ledger row and ui.chat/ui.chat.header hashes are stale after the added values. Not a translation defect; it is the state this receipt is meant to clear."
+    ],
+    "translator_receipt_verification": {
+      "namespace_hash_triples": "15/15 match the translator receipt",
+      "new_key_count": "verified 1,733 (keys present at 5d97575ac4 and absent at 9c5ddd1839) + 62 carried = 1,795",
+      "key_parity": "1,795/1,795, zero missing, zero extra, same order",
+      "carried_bytes": "30/30 pre-existing French values in the three files that existed at base are byte-identical"
+    }
+  },
+  "identical_values": {
+    "count": 101,
+    "untranslated_stubs": 0,
+    "classes": {
+      "format": 67,
+      "cognate": 16,
+      "token": 10,
+      "path": 5,
+      "product": 3
+    },
+    "note": "Spot-checked all 101 against the English: Urgent/Agent/Action/Conversation/Assistant/Code/Image are real French cognates, Program Files/ProgramData/Volumes/Applications/Documents are on-disk folder names, the rest are placeholder-only or markup/CSS tokens."
+  },
+  "placeholders": {
+    "dropped": 0,
+    "renamed": 0,
+    "reordered_keys": [
+      "ui.chat.credential_capture.removed_receipt"
+    ],
+    "repeated_keys": [
+      "ui.chat.asks.context.messages_since",
+      "ui.chat.interrupt_turn.subagents_running",
+      "ui.chat.interrupt_turn.background_jobs_running"
+    ],
+    "note": "No dropped or renamed placeholder anywhere. Repeats are valid ICU and render correctly; they are recorded because the glossary asks for byte-exact placeholder preservation."
+  },
+  "plurals": {
+    "categories_used": [
+      "one",
+      "many",
+      "other"
+    ],
+    "cldr_fr": [
+      "one",
+      "many",
+      "other"
+    ],
+    "arms_match_cldr": true,
+    "missing_many": [
+      "ui.chat.sidebar.chat_sidebar.builtin_offer (first count plural; count is the packaged roster size, so 10^6 is not a real case)"
+    ],
+    "render_samples": {
+      "ui.chat.asks.context.messages_since": {
+        "0": "0 message de votre part depuis cette demande (dernier message à 19:36)",
+        "1": "1 message de votre part depuis cette demande (dernier message à 19:36)",
+        "2": "2 messages de votre part depuis cette demande (dernier message à 19:36)",
+        "1000000": "1 000 000 de messages de votre part depuis cette demande (dernier message à 19:36)"
+      },
+      "ui.chat.canonical.supplement_model.show_all_bounded_graphics": {
+        "1": "Afficher les 1 graphiques"
+      },
+      "ui.chat.undo_toasts.archive_failed": {
+        "archiver": "Impossible de archiver « Test ».",
+        "désarchiver": "Impossible de désarchiver « Test »."
+      }
+    }
+  },
+  "overflow": {
+    "maxcells_breaches": 3,
+    "breaches": [
+      {
+        "key": "ui.chat.header.transcript_display",
+        "maxCells": 28,
+        "fr_cells": 29,
+        "fr": "Affichage de la transcription"
+      },
+      {
+        "key": "ui.chat.header.close_run_details",
+        "maxCells": 20,
+        "fr_cells": 33,
+        "fr": "Fermer les détails de l’exécution"
+      },
+      {
+        "key": "ui.chat.header.open_run_details",
+        "maxCells": 20,
+        "fr_cells": 33,
+        "fr": "Ouvrir les détails de l’exécution"
+      }
+    ],
+    "note": "maxCells is advisory per the sidecar. The translator receipt recorded maxcells_breaches 0 and did not list these three; that claim is corrected here."
+  },
+  "findings": [
+    {
+      "id": "fr-chat-b1",
+      "severity": "BLOCKER",
+      "category": "machine-token",
+      "title": "The hub 'all:<kind>' lookup key was translated",
+      "items": [
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.sidebar.chat_sidebar.all_kind",
+          "source": "all:{kind}",
+          "current": "tout :{kind}",
+          "proposed": "all:{kind}",
+          "note": "Not prose: used as a map key. chat-sidebar.tsx looks up hub.pending/hub.notes with t(all_kind); hub-hooks.ts stores those entries under the literal all:${kind}. The translation never matches, so the section-level busy and note state is lost in French. Keep byte-identical to English. It also lacks the space a French colon would need after it, showing it is not prose."
+        }
+      ],
+      "reason": "Translating a machine lookup token breaks the hub section state in fr. This is a functional regression, not a wording preference.",
+      "evidence": [
+        "src/renderer/src/features/chat/components/chat-sidebar.tsx:6726,6757",
+        "src/renderer/src/shared/api/local-operator/hub-hooks.ts:142,266",
+        "src/renderer/src/shared/api/local-operator/hub-action-store.ts:101"
+      ],
+      "verification": "static call-site trace; the string is never rendered as prose"
+    },
+    {
+      "id": "fr-chat-m1",
+      "severity": "MAJOR",
+      "category": "terminology",
+      "title": "« aside » left as an English noun although the locale already calls it « aparté »",
+      "items": [
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside_panel.aside",
+          "source": "Aside",
+          "current": "L’aside",
+          "proposed": "L’aparté",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside_panel.close_the_aside",
+          "source": "Close the aside",
+          "current": "Fermer l’aside",
+          "proposed": "Fermer l’aparté",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside_panel.the_aside_exchange",
+          "source": "The aside exchange",
+          "current": "L’échange de l’aside",
+          "proposed": "L’échange de l’aparté",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside.asking_the_aside",
+          "source": "Asking the aside",
+          "current": "Interrogation de l’aside",
+          "proposed": "Interrogation de l’aparté",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside.the_aside_answered",
+          "source": "The aside answered",
+          "current": "L’aside a répondu",
+          "proposed": "L’aparté a répondu",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside.the_aside_was_not_added_to_the_conversation",
+          "source": "The aside was not added to the conversation.",
+          "current": "L’aside n’a pas été ajouté à la conversation.",
+          "proposed": "L’aparté n’a pas été ajouté à la conversation.",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside.the_aside_was_not_answered",
+          "source": "The aside was not answered.",
+          "current": "L’aside n’a pas obtenu de réponse.",
+          "proposed": "L’aparté n’a pas obtenu de réponse.",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside.this_conversation_is_working_adding_the_aside_while_it_runs",
+          "source": "This conversation is working. Adding the aside while it runs would splice a message into a live turn.",
+          "current": "Cette conversation travaille. Ajouter l’aside pendant son exécution insérerait un message dans un tour en cours.",
+          "proposed": "Cette conversation travaille. Ajouter l’aparté pendant son exécution insérerait un message dans un tour en cours.",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside_panel.add_the_aside_to_the_conversation",
+          "source": "Add the aside to the conversation",
+          "current": "Ajouter l’aside à la conversation",
+          "proposed": "Ajouter l’aparté à la conversation",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside.the_aside_answered_sentence",
+          "source": "The aside answered: {sentence}",
+          "current": "L’aside a répondu : {sentence}",
+          "proposed": "L’aparté a répondu : {sentence}",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside.ask_again_here_to_keep_this_exchange_or_press_esc",
+          "source": "Ask again here to keep this exchange, or press Esc to close the aside and discard it.",
+          "current": "Posez à nouveau la question ici pour conserver cet échange, ou appuyez sur Échap pour fermer l’aside et l’abandonner.",
+          "proposed": "Posez à nouveau la question ici pour conserver cet échange, ou appuyez sur Échap pour fermer l’aparté et l’abandonner.",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside.queued_this_aside_joins_the_conversation_when_the_current_turn",
+          "source": "Queued — this aside joins the conversation when the current turn finishes.",
+          "current": "En file d’attente — cet aside rejoint la conversation à la fin du tour en cours.",
+          "proposed": "En file d’attente — cet aparté rejoint la conversation à la fin du tour en cours.",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside.the_aside_could_not_be_confirmed_in_the_conversation_if",
+          "source": "The aside could not be confirmed in the conversation. If it is not there, add it again.",
+          "current": "L’aside n’a pas pu être confirmé dans la conversation. S’il n’y figure pas, ajoutez-le de nouveau.",
+          "proposed": "L’aparté n’a pas pu être confirmé dans la conversation. S’il n’y figure pas, ajoutez-le de nouveau.",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside.the_aside_is_still_answering_press_enter_again_once_the",
+          "source": "The aside is still answering. Press Enter again once the answer is in.",
+          "current": "L’aside répond encore. Appuyez à nouveau sur Entrée une fois la réponse arrivée.",
+          "proposed": "L’aparté répond encore. Appuyez à nouveau sur Entrée une fois la réponse arrivée.",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside.the_aside_was_not_added_to_the_conversation_add_it",
+          "source": "The aside was not added to the conversation. Add it again to try once more.",
+          "current": "L’aside n’a pas été ajouté à la conversation. Ajoutez-le de nouveau pour réessayer.",
+          "proposed": "L’aparté n’a pas été ajouté à la conversation. Ajoutez-le de nouveau pour réessayer.",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside.this_aside_cant_continue_press_esc_to_close_it_which",
+          "source": "This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw.",
+          "current": "Cet aside ne peut pas continuer. Appuyez sur Échap pour le fermer, ce qui abandonne cet échange, puis commencez-en un nouveau avec /btw.",
+          "proposed": "Cet aparté ne peut pas continuer. Appuyez sur Échap pour le fermer, ce qui abandonne cet échange, puis commencez-en un nouveau avec /btw.",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside.this_aside_is_queued_to_join_the_conversation_ask_again",
+          "source": "This aside is queued to join the conversation. Ask again once it has been added.",
+          "current": "Cet aside est en file d’attente pour rejoindre la conversation. Posez à nouveau la question une fois qu’il a été ajouté.",
+          "proposed": "Cet aparté est en file d’attente pour rejoindre la conversation. Posez à nouveau la question une fois qu’il a été ajouté.",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside.press_asideadoptcapvalue_again_to_add_the_aside_to_the_conversation",
+          "source": "Press {asideAdoptCapValue} again to add the aside to the conversation. Once added, it stays there.",
+          "current": "Appuyez à nouveau sur {asideAdoptCapValue} pour ajouter l’aside à la conversation. Une fois ajouté, il y reste.",
+          "proposed": "Appuyez à nouveau sur {asideAdoptCapValue} pour ajouter l’aparté à la conversation. Une fois ajouté, il y reste.",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside.the_aside_answered_value",
+          "source": "The aside answered: {value}…",
+          "current": "L’aside a répondu : {value}…",
+          "proposed": "L’aparté a répondu : {value}…",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside.your_aside_asidequotedquestionvalue_got_no_answer_asideoffpanelcausevalue",
+          "source": "Your aside {asideQuotedQuestionValue} got no answer: {asideOffPanelCauseValue}",
+          "current": "Votre aside {asideQuotedQuestionValue} n’a pas obtenu de réponse : {asideOffPanelCauseValue}",
+          "proposed": "Votre aparté {asideQuotedQuestionValue} n’a pas obtenu de réponse : {asideOffPanelCauseValue}",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside.the_aside_was_not_added_this_conversation_has_closed_so",
+          "source": "The aside was not added: this conversation has closed, so there is nothing to add it to.",
+          "current": "L’aside n’a pas été ajouté : cette conversation est fermée, il n’y a donc rien à quoi l’ajouter.",
+          "proposed": "L’aparté n’a pas été ajouté : cette conversation est fermée, il n’y a donc rien à quoi l’ajouter.",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside.the_conversation_stopped_in_the_middle_of_a_tool_call",
+          "source": "The conversation stopped in the middle of a tool call, so the aside was not added. Send a message to continue the conversation, then add the aside.",
+          "current": "La conversation s’est arrêtée au milieu d’un appel d’outil, l’aside n’a donc pas été ajouté. Envoyez un message pour reprendre la conversation, puis ajoutez l’aside.",
+          "proposed": "La conversation s’est arrêtée au milieu d’un appel d’outil, l’aparté n’a donc pas été ajouté. Envoyez un message pour reprendre la conversation, puis ajoutez l’aparté.",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside.this_conversation_is_busy_and_the_version_its_running_cant",
+          "source": "This conversation is busy, and the version it's running can't queue an aside. Add it when the reply finishes.",
+          "current": "Cette conversation est occupée, et la version qu’elle exécute ne peut pas mettre un aside en file d’attente. Ajoutez-le à la fin de la réponse.",
+          "proposed": "Cette conversation est occupée, et la version qu’elle exécute ne peut pas mettre un aparté en file d’attente. Ajoutez-le à la fin de la réponse.",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat.aside",
+          "key": "ui.chat.aside.aside.the_aside_was_not_answered_inline",
+          "source": "The aside was not answered",
+          "current": "L’aside n’a pas obtenu de réponse en ligne",
+          "proposed": "L’aparté n’a pas obtenu de réponse en ligne",
+          "note": "« aparté » is the established French term in this locale."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.chat_page.an_aside_answers_text_only_remove_the_attached_files_to",
+          "source": "An aside answers text only. Remove the attached files to ask it.",
+          "current": "Un aside ne répond qu’en texte. Retirez les fichiers joints pour l’interroger.",
+          "proposed": "Un aparté ne répond qu’en texte. Retirez les fichiers joints pour l’interroger.",
+          "note": "« aparté » is the established French term in this locale."
+        }
+      ],
+      "reason": "The pre-existing French composer key ui.chat.composer.ask_aside is « Interroger l’aparté », so the feature's established French name is aparté. This batch uses the English word in 25 values (L’aside, cet aside, un aside). The translator receipt's terms.aside claims it matches an existing « Interroger l’aside » key; no such value exists at this head. Spanish also translates the term (Consulta al margen), so it is not a kept-English product name.",
+      "evidence": [
+        "src/i18n/catalogues/fr/ui.chat.composer.json:13 -> Interroger l’aparté",
+        "src/i18n/catalogues/es/ui.chat.aside.json -> Consulta al margen"
+      ],
+      "verification": "catalogue-wide read of every French value; the replacement keeps every placeholder intact"
+    },
+    {
+      "id": "fr-chat-m2",
+      "severity": "MAJOR",
+      "category": "terminology",
+      "title": "« seat » rendered as « siège »",
+      "items": [
+        {
+          "namespace": "ui.chat.header",
+          "key": "ui.chat.header.chat_header_identity_menu_model.agent_seat_closed_by_teamlabel",
+          "source": "Agent seat closed by {teamLabel}",
+          "current": "Siège d’agent fermé par {teamLabel}",
+          "proposed": "Poste d’agent fermé par {teamLabel}",
+          "note": "A roster slot is a poste, not a siège (chair/headquarters)."
+        },
+        {
+          "namespace": "ui.chat.header",
+          "key": "ui.chat.header.chat_header_identity_menu_model.label_cannot_take_the_seat",
+          "source": "{label} cannot take the seat.",
+          "current": "{label} ne peut pas occuper ce siège.",
+          "proposed": "{label} ne peut pas occuper ce poste.",
+          "note": "A roster slot is a poste, not a siège (chair/headquarters)."
+        },
+        {
+          "namespace": "ui.chat.header",
+          "key": "ui.chat.header.chat_header_identity_menu_model.teamlabel_is_led_by_its_manager_only_the_manager_and",
+          "source": "{teamLabel} is led by its manager; only the manager and profiles that can delegate may take this seat.",
+          "current": "{teamLabel} est dirigée par son responsable ; seuls le responsable et les profils autorisés à déléguer peuvent occuper ce siège.",
+          "proposed": "{teamLabel} est dirigée par son responsable ; seuls le responsable et les profils autorisés à déléguer peuvent occuper ce poste.",
+          "note": "A roster slot is a poste, not a siège (chair/headquarters)."
+        },
+        {
+          "namespace": "ui.chat.header",
+          "key": "ui.chat.header.chat_header_identity_menu_model.no_profile_can_take_the_seat_switch_the_team",
+          "source": "No profile can take the seat — switch the team.",
+          "current": "Aucun profil ne peut occuper ce siège — changez d’équipe.",
+          "proposed": "Aucun profil ne peut occuper ce poste — changez d’équipe.",
+          "note": "A roster slot is a poste, not a siège (chair/headquarters)."
+        },
+        {
+          "namespace": "ui.chat.header",
+          "key": "ui.chat.header.chat_header_identity_menu_model.no_profile_here_can_take_the_seat_clear_the_search",
+          "source": "No profile here can take the seat — clear the search, or switch the team.",
+          "current": "Aucun profil ici ne peut occuper ce siège — effacez la recherche ou changez d’équipe.",
+          "proposed": "Aucun profil ici ne peut occuper ce poste — effacez la recherche ou changez d’équipe.",
+          "note": "A roster slot is a poste, not a siège (chair/headquarters)."
+        }
+      ],
+      "reason": "The five strings name a team role slot. « Siège » means a chair or a headquarters in French and reads as a literal calque; the es locale uses Puesto for every one of these strings.",
+      "evidence": [
+        "src/i18n/catalogues/es/ui.chat.header.json -> Puesto de agente / ocupar el puesto"
+      ],
+      "verification": "compared against the sibling locale"
+    },
+    {
+      "id": "fr-chat-m3",
+      "severity": "MAJOR",
+      "category": "grammar",
+      "title": "The archive-failure template cannot inflect its verb",
+      "items": [
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.undo_toasts.archive_failed",
+          "source": "Could not {action} “{title}”.{detail}",
+          "current": "Impossible de {action} « {title} ».{detail}",
+          "proposed": "L’action « {action} » sur « {title} » a échoué.{detail}",
+          "note": "action is « archiver » or « désarchiver »; one elision cannot serve both."
+        }
+      ],
+      "reason": "“Impossible de {action}” renders “Impossible de archiver” (elision missing). The verb is supplied by the caller (ui.chat.undo_toasts.archive_action = archiver, unarchive_action = désarchiver), so the string needs a construction that is grammatical for both.",
+      "evidence": [
+        "intl-messageformat fr render: action=archiver -> Impossible de archiver « Test ».",
+        "intl-messageformat fr render: action=désarchiver -> Impossible de désarchiver « Test »."
+      ],
+      "verification": "actual render"
+    },
+    {
+      "id": "fr-chat-m4",
+      "severity": "MAJOR",
+      "category": "plural",
+      "title": "The one arm of Show all # graphics is plural",
+      "items": [
+        {
+          "namespace": "ui.chat.canonical",
+          "key": "ui.chat.canonical.supplement_model.show_all_bounded_graphics",
+          "source": "{bounded, plural, one {Show all # graphic} other {Show all # graphics}}",
+          "current": "{bounded, plural, one {Afficher les # graphiques} many {Afficher les # graphiques} other {Afficher les # graphiques}}",
+          "proposed": "{bounded, plural, one {Afficher le graphique} many {Afficher les # graphiques} other {Afficher les # graphiques}}",
+          "note": "The one arm repeats the plural wording."
+        }
+      ],
+      "reason": "At count=1 the one arm is selected and prints “Afficher les 1 graphiques”. showAllText() is documented as singularized for one, so the arm is reachable.",
+      "evidence": [
+        "intl-messageformat fr render: bounded=1 -> Afficher les 1 graphiques",
+        "src/renderer/src/features/chat/canonical/supplement-model.ts:528-537"
+      ],
+      "verification": "actual render"
+    },
+    {
+      "id": "fr-chat-m5",
+      "severity": "MAJOR",
+      "category": "part-of-speech",
+      "title": "The Open checkpoint outcome became an action",
+      "items": [
+        {
+          "namespace": "ui.chat.canonical",
+          "key": "ui.chat.canonical.checkpoint_model.open",
+          "source": "Open",
+          "current": "Ouvrir",
+          "proposed": "Ouvert",
+          "note": "CHECKPOINT_OUTCOME_LABELS pairs this word with an icon as a state, beside Terminé and Interrompu."
+        }
+      ],
+      "reason": "“Ouvrir” is an infinitive action and reads as a control. The English word is the backend's own outcome name; French needs the adjective Ouvert.",
+      "evidence": [
+        "src/renderer/src/features/chat/canonical/checkpoint-model.ts:186-204"
+      ],
+      "verification": "static call-site trace"
+    },
+    {
+      "id": "fr-chat-m6",
+      "severity": "MAJOR",
+      "category": "glossary-collision",
+      "title": "Jobs and to-dos are both called « Tâches » in the run-details panel",
+      "items": [
+        {
+          "namespace": "ui.chat.run_details",
+          "key": "ui.chat.run_details.jobs",
+          "source": "Jobs",
+          "current": "Tâches",
+          "proposed": "Tâches",
+          "note": "Keep: the glossary fixes job = tâche; the to-do family moves instead."
+        },
+        {
+          "namespace": "ui.chat.run_details",
+          "key": "ui.chat.run_details.run_detail_todos.to_dos",
+          "source": "To-dos",
+          "current": "Tâches",
+          "proposed": "À faire",
+          "note": "Two distinct sections of the same panel."
+        },
+        {
+          "namespace": "ui.chat.run_details",
+          "key": "ui.chat.run_details.run_detail_model.todos",
+          "source": "Todos",
+          "current": "Tâches",
+          "proposed": "À faire",
+          "note": "Two distinct sections of the same panel."
+        },
+        {
+          "namespace": "ui.chat.run_details",
+          "key": "ui.chat.run_details.run_detail_model.1_to_do_open",
+          "source": "1 to-do open",
+          "current": "1 tâche en cours",
+          "proposed": "1 élément à faire",
+          "note": "Two distinct sections of the same panel."
+        },
+        {
+          "namespace": "ui.chat.run_details",
+          "key": "ui.chat.run_details.run_detail_model.opentodos_to_dos_open",
+          "source": "{openTodos, number, ::group-off} to-dos open",
+          "current": "{openTodos, number, ::group-off} tâches en cours",
+          "proposed": "{openTodos, number, ::group-off} éléments à faire",
+          "note": "Two distinct sections of the same panel."
+        },
+        {
+          "namespace": "ui.chat.run_details",
+          "key": "ui.chat.run_details.run_detail_model.all_to_dos_closed",
+          "source": "All to-dos closed",
+          "current": "Toutes les tâches sont closes",
+          "proposed": "Tous les éléments à faire sont terminés",
+          "note": "Two distinct sections of the same panel."
+        },
+        {
+          "namespace": "ui.chat.run_details",
+          "key": "ui.chat.run_details.run_detail_model.all_to_dos_resolved",
+          "source": "All to-dos resolved",
+          "current": "Toutes les tâches sont résolues",
+          "proposed": "Tous les éléments à faire sont traités",
+          "note": "Two distinct sections of the same panel."
+        }
+      ],
+      "reason": "The run-details panel renders separate sections: Jobs (background shell jobs) and To-dos. Both headings become « Tâches », and the item counts both become « tâches en cours », so a reader cannot tell which list is which. The glossary fixes job = tâche; the to-do family therefore needs a distinct noun (à faire / élément à faire). The same collision appears in the trace labels (todo_read/todo_update) and the trace row verbs (read_todos etc.), listed under related_keys.",
+      "evidence": [
+        "src/i18n/catalogues/fr/ui.chat.run_details.json (jobs/to_dos/todos)",
+        "src/i18n/catalogues/fr/ui.chat.canonical.json (todo_read/todo_reads/todo_update/todo_updates)",
+        "src/i18n/catalogues/fr/ui.chat.trace.json (read_todos/reading_todos/updated_todos/updating_todos)"
+      ],
+      "verification": "read the two section headings side by side in the same namespace",
+      "related_keys": [
+        "ui.chat.canonical.trace_fold_model.todo_read",
+        "ui.chat.canonical.trace_fold_model.todo_reads",
+        "ui.chat.canonical.trace_fold_model.todo_update",
+        "ui.chat.canonical.trace_fold_model.todo_updates",
+        "ui.chat.trace.tool_row_model.read_todos",
+        "ui.chat.trace.tool_row_model.reading_todos",
+        "ui.chat.trace.tool_row_model.updated_todos",
+        "ui.chat.trace.tool_row_model.updating_todos"
+      ]
+    },
+    {
+      "id": "fr-chat-m7",
+      "severity": "MAJOR",
+      "category": "meaning",
+      "title": "“the agent is not blocked on you” became “not blocked by you”",
+      "items": [
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.chat_session_status.asksoutstandinglabelvalue_outstanding_the_agent_is_not_blocked_on_you",
+          "source": "{asksOutstandingLabelValue} outstanding. The agent is not blocked on you.",
+          "current": "{asksOutstandingLabelValue} en attente. L’agent n’est pas bloqué par vous.",
+          "proposed": "{asksOutstandingLabelValue} en attente. L’agent n’est pas bloqué en attendant votre réponse.",
+          "note": "blocked on you = waiting for you; bloqué par vous = you are blocking it."
+        }
+      ],
+      "reason": "The rendered aria-label states the reverse relation: the English says the agent is not waiting on the operator, the French says the agent is not blocked by the operator. On a screen-reader-only status this is the whole message.",
+      "evidence": [
+        "src/renderer/src/features/chat/components/chat-session-status.tsx:124-129"
+      ],
+      "verification": "read the call site and the rendered sentence"
+    },
+    {
+      "id": "fr-chat-m8",
+      "severity": "MAJOR",
+      "category": "gender-agreement",
+      "title": "A raw English material noun is followed by a masculine participle",
+      "items": [
+        {
+          "namespace": "ui.chat.canonical",
+          "key": "ui.chat.canonical.image_gen_card.generated_imagegenmaterialnounvalue",
+          "source": "Generated {imageGenMaterialNounValue}",
+          "current": "{imageGenMaterialNounValue} généré",
+          "proposed": "Élément généré : {imageGenMaterialNounValue}",
+          "note": "The helper returns image / video / voiceover / sound effect; image and vidéo are feminine."
+        },
+        {
+          "namespace": "ui.chat.canonical",
+          "key": "ui.chat.canonical.image_gen_card.the_imagegenmaterialnounvalue_could_not_be_generated",
+          "source": "The {imageGenMaterialNounValue} could not be generated.",
+          "current": "{imageGenMaterialNounValue} n’a pas pu être généré.",
+          "proposed": "Impossible de générer : {imageGenMaterialNounValue}",
+          "note": "Same placeholder, same agreement problem."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.artifact_identity.generated_kind_kept_in_this_session",
+          "source": "Generated {kind}, kept in this session",
+          "current": "{kind} généré, conservé dans cette session",
+          "proposed": "Élément généré : {kind}, conservé dans cette session",
+          "note": "{kind} is the raw ArtifactIdentityKind (image, video), not a French noun."
+        }
+      ],
+      "reason": "These three strings append a French participle to a placeholder whose values are feminine nouns or raw English tokens. The default material is image, so the card renders “image généré” / “image n’a pas pu être généré”. Rephrase with a neutral head noun so no agreement is needed.",
+      "evidence": [
+        "src/renderer/src/features/chat/canonical/image-gen-card-model.ts:248-259 (image/video/voiceover/sound effect)",
+        "src/renderer/src/features/chat/utils/artifact-identity.ts:184-195"
+      ],
+      "verification": "traced the placeholder producers"
+    },
+    {
+      "id": "fr-chat-m9",
+      "severity": "MAJOR",
+      "category": "glossary",
+      "title": "One sentence uses « serveur » for both the backend and MCP servers",
+      "items": [
+        {
+          "namespace": "ui.chat.run_details",
+          "key": "ui.chat.run_details.mcp_auth_dialog.update_the_backend_for_secure_mcp_key_entry_oauth_and",
+          "source": "Update the backend for secure MCP key entry. OAuth and the server list remain available.",
+          "current": "Mettez le serveur à jour pour la saisie sécurisée des clés MCP. OAuth et la liste des serveurs restent disponibles.",
+          "proposed": "Mettez le backend à jour pour la saisie sécurisée des clés MCP. OAuth et la liste des serveurs restent disponibles.",
+          "note": "The same English sentence exists in ui.common.connection with “backend”."
+        }
+      ],
+      "reason": "backend and MCP server are two different things in one sentence; French calls both « serveur ». The locale already renders the identical English sentence “Update backend” as « Mettre à jour le backend » in ui.common.connection, and 11 French values keep backend. This batch translates 23 backend values as serveur, following the older chat namespace's convention; the collision above is where the convention becomes ambiguous. Resolve locale-wide rather than per file; the full key list is under related_keys.",
+      "evidence": [
+        "src/i18n/catalogues/fr/ui.common.connection.json -> Mettre à jour le backend",
+        "src/i18n/catalogues/fr/ui.common.connection.json -> La mise à jour du backend n’a pas pu démarrer.",
+        "src/i18n/catalogues/fr/ui.hub.json, ui.library.json, ui.agents.refusals.json (backend kept)"
+      ],
+      "verification": "catalogue-wide grep for backend across fr",
+      "related_keys": [
+        "ui.chat.at.contract.this_backend_cannot_carry_file_references_update_the_backend_and",
+        "ui.chat.canonical.use_session_files.the_backend_returned_an_invalid_file_index",
+        "ui.chat.chat_page.connecting_to_the_backend_your_conversation_is_safe",
+        "ui.chat.chat_page.update_the_backend_to_use_canonical_chats_your_existing_histories",
+        "ui.chat.interrupt_turn.this_backend_predates_the_stop_control_so_this_turn_cannot",
+        "ui.chat.sidebar.chat_sidebar.the_backend_did_not_answer",
+        "ui.chat.read_ack_notice.the_app_could_not_reach_the_backend",
+        "ui.chat.chat_archived.this_backend_cannot_archive_conversations_update_the_backend_and_try",
+        "ui.chat.delete_conversation.this_backend_cannot_delete_conversations_update_the_backend_and_try",
+        "ui.chat.move_session.this_backend_cannot_move_a_live_session_start_a_new",
+        "ui.chat.slash.dispatch.the_backend_refused_it",
+        "ui.chat.slash.dispatch.the_backend_could_not_complete_this_request_check_its_connection",
+        "ui.chat.sidebar.sidebar_catalogue_gate.backend_notice",
+        "ui.chat.run_details.run_panel.opening_a_subagents_conversation_needs_a_newer_local_operator_backend",
+        "ui.chat.run_details.mcp_auth_dialog.waiting_for_backend_sign_in_status",
+        "ui.chat.run_details.run_panel.update_backend",
+        "ui.chat.run_details.run_panel.the_backend_update_could_not_start_retry_or_update_from",
+        "ui.chat.session_status.chat_device_model.this_app_is_not_paired_with_the_backend",
+        "ui.chat.session_status.chat_device_model.this_backend_cannot_move_a_conversation",
+        "ui.chat.session_status.chat_device_model.this_backend_cannot_move_a_conversation_yet",
+        "ui.chat.session_status.session_model.the_level_this_model_runs_at_by_default_this_backend",
+        "ui.chat.skill.contract.this_backend_cannot_serve_the_skill_catalogue_update_the_backend"
+      ]
+    },
+    {
+      "id": "fr-chat-n11",
+      "severity": "MINOR",
+      "category": "glossary-drift",
+      "title": "23 backend values use « serveur » while the rest of the French locale keeps « backend »",
+      "items": [
+        {
+          "namespace": "ui.chat.at",
+          "key": "ui.chat.at.contract.this_backend_cannot_carry_file_references_update_the_backend_and",
+          "source": "This backend cannot carry file references. Update the backend and try again.",
+          "current": "Ce serveur ne peut pas transmettre de références de fichiers. Mettez-le à jour, puis réessayez.",
+          "proposed": "Ce backend ne peut pas transmettre de références de fichiers. Mettez-le à jour, puis réessayez.",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat.canonical",
+          "key": "ui.chat.canonical.use_session_files.the_backend_returned_an_invalid_file_index",
+          "source": "The backend returned an invalid file index.",
+          "current": "Le serveur a renvoyé un index de fichiers invalide.",
+          "proposed": "Le backend a renvoyé un index de fichiers invalide.",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.chat_page.connecting_to_the_backend_your_conversation_is_safe",
+          "source": "Connecting to the backend… Your conversation is safe.",
+          "current": "Connexion au serveur… Votre conversation est en sécurité.",
+          "proposed": "Connexion au backend… Votre conversation est en sécurité.",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.chat_page.update_the_backend_to_use_canonical_chats_your_existing_histories",
+          "source": "Update the backend to use canonical chats. Your existing histories are unchanged.",
+          "current": "Mettez le serveur à jour pour utiliser les conversations canoniques. Vos historiques existants sont inchangés.",
+          "proposed": "Mettez le backend à jour pour utiliser les conversations canoniques. Vos historiques existants sont inchangés.",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.interrupt_turn.this_backend_predates_the_stop_control_so_this_turn_cannot",
+          "source": "This backend predates the stop control, so this turn cannot be stopped from here - /stop ends the session and everything in it.",
+          "current": "Ce serveur est antérieur à la commande d’arrêt, ce tour ne peut donc pas être arrêté d’ici — /stop met fin à la session et à tout ce qu’elle contient.",
+          "proposed": "Ce backend est antérieur à la commande d’arrêt, ce tour ne peut donc pas être arrêté d’ici — /stop met fin à la session et à tout ce qu’elle contient.",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.sidebar.chat_sidebar.the_backend_did_not_answer",
+          "source": "The backend did not answer.",
+          "current": "Le serveur n’a pas répondu.",
+          "proposed": "Le backend n’a pas répondu.",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.read_ack_notice.the_app_could_not_reach_the_backend",
+          "source": "The app could not reach the backend.",
+          "current": "L’application n’a pas pu joindre le serveur.",
+          "proposed": "L’application n’a pas pu joindre le backend.",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.chat_archived.this_backend_cannot_archive_conversations_update_the_backend_and_try",
+          "source": "This backend cannot archive conversations. Update the backend and try again.",
+          "current": "Ce serveur ne peut pas archiver les conversations. Mettez-le à jour, puis réessayez.",
+          "proposed": "Ce backend ne peut pas archiver les conversations. Mettez-le à jour, puis réessayez.",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.delete_conversation.this_backend_cannot_delete_conversations_update_the_backend_and_try",
+          "source": "This backend cannot delete conversations. Update the backend and try again.",
+          "current": "Ce serveur ne peut pas supprimer les conversations. Mettez-le à jour, puis réessayez.",
+          "proposed": "Ce backend ne peut pas supprimer les conversations. Mettez-le à jour, puis réessayez.",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.move_session.this_backend_cannot_move_a_live_session_start_a_new",
+          "source": "This backend cannot move a live session. Start a new chat to use a different folder, or update the backend.",
+          "current": "Ce serveur ne peut pas déplacer une session active. Démarrez une nouvelle conversation pour utiliser un autre dossier, ou mettez le serveur à jour.",
+          "proposed": "Ce backend ne peut pas déplacer une session active. Démarrez une nouvelle conversation pour utiliser un autre dossier, ou mettez le backend à jour.",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.slash.dispatch.the_backend_refused_it",
+          "source": "the backend refused it",
+          "current": "le serveur l’a refusé",
+          "proposed": "le backend l’a refusé",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.slash.dispatch.the_backend_could_not_complete_this_request_check_its_connection",
+          "source": "The backend could not complete this request. Check its connection and try again.",
+          "current": "Le serveur n’a pas pu traiter cette requête. Vérifiez sa connexion et réessayez.",
+          "proposed": "Le backend n’a pas pu traiter cette requête. Vérifiez sa connexion et réessayez.",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.sidebar.sidebar_catalogue_gate.backend_notice",
+          "source": "Update the backend to use canonical chats. Existing histories are unchanged.{lastKnown}",
+          "current": "Mettez le serveur à jour pour utiliser les conversations canoniques. Les historiques existants sont inchangés.{lastKnown}",
+          "proposed": "Mettez le backend à jour pour utiliser les conversations canoniques. Les historiques existants sont inchangés.{lastKnown}",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat.run_details",
+          "key": "ui.chat.run_details.run_panel.opening_a_subagents_conversation_needs_a_newer_local_operator_backend",
+          "source": "Opening a subagent's conversation needs a newer Local Operator backend. Update the backend and restart the app.",
+          "current": "L’ouverture de la conversation d’un sous-agent nécessite un serveur Local Operator plus récent. Mettez le serveur à jour et redémarrez l’application.",
+          "proposed": "L’ouverture de la conversation d’un sous-agent nécessite un backend Local Operator plus récent. Mettez le backend à jour et redémarrez l’application.",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat.run_details",
+          "key": "ui.chat.run_details.mcp_auth_dialog.waiting_for_backend_sign_in_status",
+          "source": "Waiting for backend sign-in status…",
+          "current": "En attente de l’état de connexion du serveur…",
+          "proposed": "En attente de l’état de connexion du backend…",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat.run_details",
+          "key": "ui.chat.run_details.run_panel.update_backend",
+          "source": "Update backend",
+          "current": "Mettre le serveur à jour",
+          "proposed": "Mettre le backend à jour",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat.run_details",
+          "key": "ui.chat.run_details.run_panel.the_backend_update_could_not_start_retry_or_update_from",
+          "source": "The backend update could not start. Retry, or update from Settings, under Application updates.",
+          "current": "La mise à jour du serveur n’a pas pu démarrer. Réessayez, ou lancez la mise à jour depuis les paramètres, sous Mises à jour de l’application.",
+          "proposed": "La mise à jour du backend n’a pas pu démarrer. Réessayez, ou lancez la mise à jour depuis les paramètres, sous Mises à jour de l’application.",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat.session_status",
+          "key": "ui.chat.session_status.chat_device_model.this_app_is_not_paired_with_the_backend",
+          "source": "this app is not paired with the backend",
+          "current": "cette application n’est pas appairée avec le serveur",
+          "proposed": "cette application n’est pas appairée avec le backend",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat.session_status",
+          "key": "ui.chat.session_status.chat_device_model.this_backend_cannot_move_a_conversation",
+          "source": "this backend cannot move a conversation",
+          "current": "ce serveur ne peut pas déplacer une conversation",
+          "proposed": "ce backend ne peut pas déplacer une conversation",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat.session_status",
+          "key": "ui.chat.session_status.chat_device_model.this_backend_cannot_move_a_conversation_yet",
+          "source": "this backend cannot move a conversation yet",
+          "current": "ce serveur ne peut pas encore déplacer une conversation",
+          "proposed": "ce backend ne peut pas encore déplacer une conversation",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat.session_status",
+          "key": "ui.chat.session_status.session_model.the_level_this_model_runs_at_by_default_this_backend",
+          "source": "The level this model runs at by default. This backend does not report which other levels it accepts.",
+          "current": "Le niveau auquel ce modèle s’exécute par défaut. Ce serveur ne précise pas quels autres niveaux il accepte.",
+          "proposed": "Le niveau auquel ce modèle s’exécute par défaut. Ce backend ne précise pas quels autres niveaux il accepte.",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        },
+        {
+          "namespace": "ui.chat.skill",
+          "key": "ui.chat.skill.contract.this_backend_cannot_serve_the_skill_catalogue_update_the_backend",
+          "source": "This backend cannot serve the skill catalogue. Update the backend and try again.",
+          "current": "Ce serveur ne peut pas fournir le catalogue de compétences. Mettez-le à jour, puis réessayez.",
+          "proposed": "Ce backend ne peut pas fournir le catalogue de compétences. Mettez-le à jour, puis réessayez.",
+          "note": "Same English term, second French spelling. Locale-wide decision needed."
+        }
+      ],
+      "reason": "The same English term backend is « serveur » in 23 chat values but « backend » in 11 existing French values, including the identical sentence Update backend -> Mettre à jour le backend (ui.common.connection). The older audited chat namespace already used serveur, so this batch follows a precedent; the two spellings still cannot stand together. The ambiguous sentence above is counted as a major; these siblings are the consistency half.",
+      "evidence": [
+        "src/i18n/catalogues/fr/ui.common.connection.json (backend kept)",
+        "src/i18n/catalogues/fr/ui.hub.json, ui.library.json, ui.agents.refusals.json (backend kept)",
+        "src/i18n/catalogues/fr/ui.chat.json (pre-existing chat values use serveur)"
+      ],
+      "verification": "catalogue-wide grep of every fr value containing backend/serveur"
+    },
+    {
+      "id": "fr-chat-n1",
+      "severity": "MINOR",
+      "category": "idiom",
+      "title": "“carry” rendered as « transporter » for a capacity limit",
+      "items": [
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.message_budget.these_images_total_size_more_than_the",
+          "source": "These images total {size}, more than the {limit} one message can carry. Remove an image, or send them in a second message.",
+          "current": "Ces images totalisent {size}, soit plus que les {limit} qu’un message peut transporter. Retirez une image, ou envoyez-les dans un second message.",
+          "proposed": "Ces images totalisent {size}, soit plus que les {limit} qu’un message peut contenir. Retirez une image, ou envoyez-les dans un second message.",
+          "note": "contenir is the verb for a capacity; transporter suggests physical transport."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.message_budget.this_command_is_size_more_than_the",
+          "source": "This command is {size}, more than the {limit} one command can carry. Shorten it, or put the text in a message instead.",
+          "current": "Cette commande fait {size}, soit plus que les {limit} qu’une commande peut transporter. Raccourcissez-la, ou placez le texte dans un message.",
+          "proposed": "Cette commande fait {size}, soit plus que les {limit} qu’une commande peut contenir. Raccourcissez-la, ou placez le texte dans un message.",
+          "note": "contenir is the verb for a capacity; transporter suggests physical transport."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.message_budget.this_first_message_is_size_more_than",
+          "source": "This first message is {size}, more than the {limit} one message can carry. Shorten it, or send it in the new conversation instead.",
+          "current": "Ce premier message fait {size}, soit plus que les {limit} qu’un message peut transporter. Raccourcissez-le, ou envoyez-le dans la nouvelle conversation.",
+          "proposed": "Ce premier message fait {size}, soit plus que les {limit} qu’un message peut contenir. Raccourcissez-le, ou envoyez-le dans la nouvelle conversation.",
+          "note": "contenir is the verb for a capacity; transporter suggests physical transport."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.message_budget.this_message_is_size_of_text_more",
+          "source": "This message is {size} of text, more than the {limit} one message can carry. Split it across two messages.",
+          "current": "Ce message fait {size} de texte, soit plus que les {limit} qu’un message peut transporter. Répartissez-le sur deux messages.",
+          "proposed": "Ce message fait {size} de texte, soit plus que les {limit} qu’un message peut contenir. Répartissez-le sur deux messages.",
+          "note": "contenir is the verb for a capacity; transporter suggests physical transport."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.message_budget.this_system_prompt_is_size_more_than",
+          "source": "This system prompt is {size}, more than the {limit} one agent can carry. Shorten it.",
+          "current": "Ce prompt système fait {size}, soit plus que les {limit} qu’un agent peut transporter. Raccourcissez-le.",
+          "proposed": "Ce prompt système fait {size}, soit plus que les {limit} qu’un agent peut contenir. Raccourcissez-le.",
+          "note": "contenir is the verb for a capacity; transporter suggests physical transport."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.message_budget.this_command_is_value_characters_more_than_the_value2_one",
+          "source": "This command is {value} characters, more than the {value2} one command can carry. Shorten it, or put the text in a message instead.",
+          "current": "Cette commande fait {value} caractères, soit plus que les {value2} qu’une commande peut transporter. Raccourcissez-la, ou placez le texte dans un message.",
+          "proposed": "Cette commande fait {value} caractères, soit plus que les {value2} qu’une commande peut contenir. Raccourcissez-la, ou placez le texte dans un message.",
+          "note": "contenir is the verb for a capacity; transporter suggests physical transport."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.message_budget.this_first_message_is_value_characters_more_than_the_value2",
+          "source": "This first message is {value} characters, more than the {value2} one message can carry. Shorten it, or send it in the new conversation instead.",
+          "current": "Ce premier message fait {value} caractères, soit plus que les {value2} qu’un message peut transporter. Raccourcissez-le, ou envoyez-le dans la nouvelle conversation.",
+          "proposed": "Ce premier message fait {value} caractères, soit plus que les {value2} qu’un message peut contenir. Raccourcissez-le, ou envoyez-le dans la nouvelle conversation.",
+          "note": "contenir is the verb for a capacity; transporter suggests physical transport."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.message_budget.this_message_is_value_characters_more_than_the_value2_one",
+          "source": "This message is {value} characters, more than the {value2} one message can carry. Split it across two messages.",
+          "current": "Ce message fait {value} caractères, soit plus que les {value2} qu’un message peut transporter. Répartissez-le sur deux messages.",
+          "proposed": "Ce message fait {value} caractères, soit plus que les {value2} qu’un message peut contenir. Répartissez-le sur deux messages.",
+          "note": "contenir is the verb for a capacity; transporter suggests physical transport."
+        },
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.message_budget.this_system_prompt_is_value_characters_more_than_the_value2",
+          "source": "This system prompt is {value} characters, more than the {value2} one agent can carry. Shorten it.",
+          "current": "Ce prompt système fait {value} caractères, soit plus que les {value2} qu’un agent peut transporter. Raccourcissez-le.",
+          "proposed": "Ce prompt système fait {value} caractères, soit plus que les {value2} qu’un agent peut contenir. Raccourcissez-le.",
+          "note": "contenir is the verb for a capacity; transporter suggests physical transport."
+        }
+      ],
+      "reason": "Nine message-budget sentences say a message can « transporter » N characters. This is a word-for-word calque; French UI copy uses contenir (or accepter) for capacity.",
+      "evidence": [
+        "catalogue grep: “peut transporter” in ui.chat.json"
+      ],
+      "verification": "read every hit"
+    },
+    {
+      "id": "fr-chat-n2",
+      "severity": "MINOR",
+      "category": "glossary",
+      "title": "« endpoint » translated against the fr guide's keep-English list",
+      "items": [
+        {
+          "namespace": "ui.chat.canonical",
+          "key": "ui.chat.canonical.sound.stop.warning",
+          "source": "The provider has no cancellation endpoint. The generation continues and will be charged if it produces audio. Stopping is best-effort; it does not guarantee cancellation or no charge.",
+          "current": "Le fournisseur n’a pas de point de terminaison d’annulation. La génération continue et sera facturée si elle produit de l’audio. L’arrêt est une tentative au mieux ; il ne garantit ni l’annulation ni l’absence de facturation.",
+          "proposed": "Le fournisseur n’a pas de endpoint d’annulation. La génération continue et sera facturée si elle produit de l’audio. L’arrêt est une tentative au mieux ; il ne garantit ni l’annulation ni l’absence de facturation.",
+          "note": null
+        },
+        {
+          "namespace": "ui.chat.canonical",
+          "key": "ui.chat.canonical.image_gen_card_model.stop_requested_the_provider_has_no_cancellation_endpoint_the_generation",
+          "source": "Stop requested. The provider has no cancellation endpoint; the generation continues and will be charged if it produces audio. Checking for settlement.",
+          "current": "Arrêt demandé. Le fournisseur n’a pas de point de terminaison d’annulation ; la génération continue et sera facturée si elle produit de l’audio. Vérification du règlement en cours.",
+          "proposed": "Arrêt demandé. Le fournisseur n’a pas de endpoint d’annulation ; la génération continue et sera facturée si elle produit de l’audio. Vérification du règlement en cours.",
+          "note": null
+        }
+      ],
+      "reason": "The fr style guide's settled dev vocabulary keeps endpoint English (token, cache, endpoint, script, prompt). Two sound-cancellation warnings translate it as « point de terminaison », which is also avoidable ambiguity.",
+      "evidence": [
+        "i18n/style-guides/fr.md — Kept-English technical list"
+      ],
+      "verification": "guide text read in full"
+    },
+    {
+      "id": "fr-chat-n3",
+      "severity": "MINOR",
+      "category": "overflow",
+      "title": "Three header labels exceed their sidecar maxCells",
+      "items": [
+        {
+          "namespace": "ui.chat.header",
+          "key": "ui.chat.header.transcript_display",
+          "source": "Transcript display",
+          "current": "Affichage de la transcription",
+          "proposed": "Mode d’affichage",
+          "note": "advisory cell budget from the English sidecar"
+        },
+        {
+          "namespace": "ui.chat.header",
+          "key": "ui.chat.header.close_run_details",
+          "source": "Close run details",
+          "current": "Fermer les détails de l’exécution",
+          "proposed": "Fermer les détails",
+          "note": "advisory cell budget from the English sidecar"
+        },
+        {
+          "namespace": "ui.chat.header",
+          "key": "ui.chat.header.open_run_details",
+          "source": "Open run details",
+          "current": "Ouvrir les détails de l’exécution",
+          "proposed": "Ouvrir les détails",
+          "note": "advisory cell budget from the English sidecar"
+        }
+      ],
+      "reason": "The sidecar states maxCells for these overflow-menu labels: transcript_display 28 (fr 29), close_run_details 20 (fr 33), open_run_details 20 (fr 33). The note calls maxCells advisory rather than a measured fit, so this is minor; the 13-cell overshoot on the two run-details items is still likely to truncate a menu row.",
+      "evidence": [
+        "ui.chat.header.context.json maxCells: transcript_display 28, close_run_details 20, open_run_details 20"
+      ],
+      "verification": "measured character counts against the sidecar values"
+    },
+    {
+      "id": "fr-chat-n4",
+      "severity": "MINOR",
+      "category": "terminology",
+      "title": "“check-in” rendered as « point d'étape »",
+      "items": [
+        {
+          "namespace": "ui.chat.run_details",
+          "key": "ui.chat.run_details.wake_controls_model.cancel_check_in",
+          "source": "Cancel check-in",
+          "current": "Annuler le point d’étape",
+          "proposed": "Annuler la vérification",
+          "note": "A check-in is a scheduled verification, not a project milestone."
+        },
+        {
+          "namespace": "ui.chat.run_details",
+          "key": "ui.chat.run_details.wake_controls_model.cancel_name_s_check_in",
+          "source": "Cancel {name}'s check-in?",
+          "current": "Annuler le point d’étape de {name} ?",
+          "proposed": "Annuler la vérification de {name} ?",
+          "note": "Same term; keep the narrow no-break space before ?."
+        }
+      ],
+      "reason": "No other French surface uses point d'étape for the wake concept; a milestone is not a check-in.",
+      "evidence": [
+        "catalogue grep: no other fr value uses point d’étape"
+      ],
+      "verification": "read both strings and the wake copy"
+    },
+    {
+      "id": "fr-chat-n5",
+      "severity": "MINOR",
+      "category": "gender-agreement",
+      "title": "The effort tooltip says « La changer » for a masculine antecedent",
+      "items": [
+        {
+          "namespace": "ui.chat.session_status",
+          "key": "ui.chat.session_status.session_status_strip.change_it",
+          "source": "Change it.",
+          "current": "La changer.",
+          "proposed": "Le changer.",
+          "note": "The reading is Effort de raisonnement (masculine) / le modèle."
+        },
+        {
+          "namespace": "ui.chat.session_status",
+          "key": "ui.chat.session_status.session_status_strip.change_it_it_applies_to_this_conversation",
+          "source": "Change it. It applies to this conversation.",
+          "current": "La changer. Cela s’applique à cette conversation.",
+          "proposed": "Le changer. Cela s’applique à cette conversation.",
+          "note": "Same antecedent."
+        }
+      ],
+      "reason": "effortReason() attaches this sentence to the reasoning-effort reading. Effort and modèle are masculine; « La changer » has no feminine antecedent in the tooltip.",
+      "evidence": [
+        "src/renderer/src/features/chat/session-status/session-status-strip.tsx:1009-1035"
+      ],
+      "verification": "read the call site and its preceding sentence"
+    },
+    {
+      "id": "fr-chat-n6",
+      "severity": "MINOR",
+      "category": "idiom",
+      "title": "“1 to answer” reads as a literal prepositional phrase",
+      "items": [
+        {
+          "namespace": "ui.chat.trace",
+          "key": "ui.chat.trace.question_dock.1_to_answer",
+          "source": "1 to answer",
+          "current": "1 pour répondre",
+          "proposed": "1 à répondre",
+          "note": "badge count"
+        },
+        {
+          "namespace": "ui.chat.trace",
+          "key": "ui.chat.trace.question_dock.1_value_to_answer",
+          "source": "1-{value, number, ::group-off} to answer",
+          "current": "1-{value, number, ::group-off} pour répondre",
+          "proposed": "1-{value, number, ::group-off} à répondre",
+          "note": "badge count"
+        }
+      ],
+      "reason": "« 1 pour répondre » is understandable but not the idiomatic count label; « 1 à répondre » is.",
+      "evidence": [
+        "catalogue read"
+      ],
+      "verification": "read both values"
+    },
+    {
+      "id": "fr-chat-n7",
+      "severity": "MINOR",
+      "category": "meaning",
+      "title": "“ready to install” became “offered at installation”",
+      "items": [
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.sidebar.chat_sidebar.builtin_offer",
+          "source": "{count, plural, =0 {No} one {One} =2 {Two} =3 {Three} =4 {Four} =5 {Five} =6 {Six} other {#}} built-in {count, plural, one {agent is} other {agents are}} ready to install — {list}. You can edit {count, plural, one {it} other {them}} once installed.",
+          "current": "{count, plural, =0 {Aucun agent intégré n’est proposé} one {Un agent intégré est proposé} =2 {Deux agents intégrés sont proposés} =3 {Trois agents intégrés sont proposés} =4 {Quatre agents intégrés sont proposés} =5 {Cinq agents intégrés sont proposés} =6 {Six agents intégrés sont proposés} other {# agents intégrés sont proposés}} à l’installation — {list}. Vous pourrez modifier {count, plural, one {celui-ci} many {ces # agents} other {ces # agents}} après installation.",
+          "proposed": "{count, plural, =0 {Aucun agent intégré n’est proposé} one {Un agent intégré peut être installé} =2 {Deux agents intégrés peuvent être installés} =3 {Trois agents intégrés peuvent être installés} =4 {Quatre agents intégrés peuvent être installés} =5 {Cinq agents intégrés peuvent être installés} =6 {Six agents intégrés peuvent être installés} other {# agents intégrés peuvent être installés}} — {list}. Vous pourrez modifier {count, plural, one {celui-ci} many {ces # agents} other {ces # agents}} après installation.",
+          "note": "The offer is a list of agents the user can install now, not components offered by an installer."
+        }
+      ],
+      "reason": "The English says the built-in agents are ready to install. « proposé à l'installation » reads as “offered during installation”, which points at the app installer rather than the install button beside the list.",
+      "evidence": [
+        "intl-messageformat fr renders at 1/2/7 consulted for the surrounding sentence"
+      ],
+      "verification": "actual renders"
+    },
+    {
+      "id": "fr-chat-n12",
+      "severity": "NIT",
+      "category": "typography",
+      "title": "Two trailing spaces where English has one",
+      "items": [
+        {
+          "namespace": "ui.chat.trace",
+          "key": "ui.chat.trace.receipt_row_model.scheduled_wake",
+          "source": "Scheduled wake ",
+          "current": "Réveil planifié  ",
+          "proposed": "Réveil planifié ",
+          "note": "English has one trailing space; French has two."
+        }
+      ],
+      "reason": "Whitespace only; no width claim.",
+      "evidence": [
+        "repr() of both values"
+      ],
+      "verification": "byte comparison"
+    },
+    {
+      "id": "fr-chat-n8",
+      "severity": "NIT",
+      "category": "placeholder-order",
+      "title": "removed_receipt reorders its placeholders",
+      "items": [
+        {
+          "namespace": "ui.chat.credential_capture",
+          "key": "ui.chat.credential_capture.removed_receipt",
+          "source": "Removed {key} (credential #{index, number}) from this message. Its value is gone — press {undoCap} to put it back, or paste it again after /credential to reuse it.",
+          "current": "Identifiant #{index, number} ({key}) retiré de ce message. Sa valeur n’est plus disponible — appuyez sur {undoCap} pour la rétablir, ou collez-la à nouveau après /credential pour la réutiliser.",
+          "proposed": null,
+          "note": "The glossary asks that placeholders never be reordered; ICU renders by name, so this is not functional.",
+          "action": "no change required; recorded for completeness"
+        }
+      ],
+      "reason": "English order is key, index, undoCap; French is index, key, undoCap. No placeholder is lost, but the glossary's literal invariant says never reorder.",
+      "evidence": [
+        "i18n/glossary.md — placeholders row"
+      ],
+      "verification": "byte comparison"
+    },
+    {
+      "id": "fr-chat-n9",
+      "severity": "NIT",
+      "category": "redundancy",
+      "title": "The clock placeholder is repeated in every plural arm",
+      "items": [
+        {
+          "namespace": "ui.chat.asks",
+          "key": "ui.chat.asks.context.messages_since",
+          "source": "{count, plural, one {# message from you since this was asked} other {# messages from you since this was asked}} (last message {time})",
+          "current": "{count, plural, one {# message de votre part depuis cette demande (dernier message à {time})} many {# de messages de votre part depuis cette demande (dernier message à {time})} other {# messages de votre part depuis cette demande (dernier message à {time})}}",
+          "proposed": null,
+          "note": "Correct output; English keeps {time} once outside the plural.",
+          "action": "no change required; recorded for completeness"
+        }
+      ],
+      "reason": "Three copies instead of one. Renders correctly (verified at 0/1/2/1,000,000), but a later change to the parenthetical must touch three arms.",
+      "evidence": [
+        "intl-messageformat renders at 0/1/2/1000000"
+      ],
+      "verification": "actual renders"
+    },
+    {
+      "id": "fr-chat-n10",
+      "severity": "NIT",
+      "category": "plural-coverage",
+      "title": "builtin_offer's first plural has no many arm",
+      "items": [
+        {
+          "namespace": "ui.chat",
+          "key": "ui.chat.sidebar.chat_sidebar.builtin_offer",
+          "source": "{count, plural, =0 {No} one {One} =2 {Two} =3 {Three} =4 {Four} =5 {Five} =6 {Six} other {#}} built-in {count, plural, one {agent is} other {agents are}} ready to install — {list}. You can edit {count, plural, one {it} other {them}} once installed.",
+          "current": "{count, plural, =0 {Aucun agent intégré n’est proposé} one {Un agent intégré est proposé} =2 {Deux agents intégrés sont proposés} =3 {Trois agents intégrés sont proposés} =4 {Quatre agents intégrés sont proposés} =5 {Cinq agents intégrés sont proposés} =6 {Six agents intégrés sont proposés} other {# agents intégrés sont proposés}} à l’installation — {list}. Vous pourrez modifier {count, plural, one {celui-ci} many {ces # agents} other {ces # agents}} après installation.",
+          "proposed": null,
+          "note": "All other plurals in the batch carry one/many/other per the guide."
+        }
+      ],
+      "reason": "The first count plural uses explicit =0..=6 plus other. A count of 1,000,000 would take other and print « 1 000 000 agents intégrés » instead of « d'agents ». The list is the packaged built-in roster, so 1,000,000 is unreachable; recorded for completeness, not as a defect.",
+      "evidence": [
+        "ui.chat.sidebar.chat_sidebar.builtin_offer"
+      ],
+      "verification": "read the arms"
+    }
+  ],
+  "counts": {
+    "blocking_issues": 1,
+    "majors": 9,
+    "minors": 8,
+    "nits": 4
+  },
+  "namespaces": {
+    "ui.chat.aside": {
+      "keys_total": 35,
+      "keys_batch_new": 35,
+      "keys_carried": 0,
+      "sha256": {
+        "en": "d8ce04c8e909a73f3050588b2b562b12db3840ae1f4231a66ef3eb5ac76ed1b6",
+        "fr": "cf3940036cf231ea2f853aa23a7b30b5ce45c5b188bcae2bfe50d3d31d58ceaa",
+        "context": "522fcbc0c965224e7d4fb8cb8200e7c68889c9ee73d073b09c6cb2af827b8431"
+      },
+      "verdict": "fail",
+      "findings": {
+        "BLOCKER": 0,
+        "MAJOR": 1,
+        "MINOR": 0,
+        "NIT": 0
+      }
+    },
+    "ui.chat.asks": {
+      "keys_total": 101,
+      "keys_batch_new": 89,
+      "keys_carried": 12,
+      "sha256": {
+        "en": "f5017d10d314fc9e3e94eeff2d5067c559e97ba0c6ffcef4e8ed9d1c39cf67ab",
+        "fr": "984dd7883045c3290b80e219c980d61b6c0782e48551d2838f0ffdcdf95933ab",
+        "context": "0e1f544932e7c9c6c94bbb0d4e2066910d80e33060ad23bbbb57d5bb9c1b637c"
+      },
+      "verdict": "clean",
+      "findings": {
+        "BLOCKER": 0,
+        "MAJOR": 0,
+        "MINOR": 0,
+        "NIT": 1
+      }
+    },
+    "ui.chat.at": {
+      "keys_total": 11,
+      "keys_batch_new": 11,
+      "keys_carried": 0,
+      "sha256": {
+        "en": "685a75115b95770d8d74cc43c2f250c53bed311c0d117cf51849f72041533694",
+        "fr": "0e75d58c00a80c7e94117cbf4aced360b22189bed5d48937258acd73d00baf8a",
+        "context": "da529439f1aa5970aff5b833b40900524c2cfd465abe96296e3b9cecf5ec555e"
+      },
+      "verdict": "pass-with-findings",
+      "findings": {
+        "BLOCKER": 0,
+        "MAJOR": 0,
+        "MINOR": 1,
+        "NIT": 0
+      }
+    },
+    "ui.chat.canonical": {
+      "keys_total": 297,
+      "keys_batch_new": 267,
+      "keys_carried": 30,
+      "sha256": {
+        "en": "522e7fced024ec756b4b93b21952c4abfb232278a3ca32bba67b45978749eb6d",
+        "fr": "0bf843af45f39115d45d7e34bf107171e3551559436b258d1b42f3df6967c419",
+        "context": "af353a188112ef28df7dfda8c7139fa5bd33506a40b112392e1e40fbe32116f2"
+      },
+      "verdict": "fail",
+      "findings": {
+        "BLOCKER": 0,
+        "MAJOR": 3,
+        "MINOR": 2,
+        "NIT": 0
+      }
+    },
+    "ui.chat.canvas_preview": {
+      "keys_total": 2,
+      "keys_batch_new": 2,
+      "keys_carried": 0,
+      "sha256": {
+        "en": "4a29d028e7727502fbefd86b995750910ca3760879769ffa1fc537e5893920a9",
+        "fr": "a6de5cf2062ff5a7d3a670ea5c49563bdffc232d091bbdcf33951266a56d53b2",
+        "context": "5f336900e740bf4ebc7819837676fc2eeffe6deb69b8181ebc440e962d580a06"
+      },
+      "verdict": "clean",
+      "findings": {
+        "BLOCKER": 0,
+        "MAJOR": 0,
+        "MINOR": 0,
+        "NIT": 0
+      }
+    },
+    "ui.chat.credential_capture": {
+      "keys_total": 18,
+      "keys_batch_new": 18,
+      "keys_carried": 0,
+      "sha256": {
+        "en": "1776a41f5dfa3335b5e390e85870cb55756e25c6a2439cd3f42ea4c864515bdd",
+        "fr": "95b93b1a3d6a8d659a157d2b5a960088c0391a7cfd33a431cd67cddb3703109d",
+        "context": "bf6e3bb8cd70e39cba3aad66b0d92aa38ebad880ac49405fb1affd032f6f3b1f"
+      },
+      "verdict": "clean",
+      "findings": {
+        "BLOCKER": 0,
+        "MAJOR": 0,
+        "MINOR": 0,
+        "NIT": 1
+      }
+    },
+    "ui.chat.directory": {
+      "keys_total": 42,
+      "keys_batch_new": 42,
+      "keys_carried": 0,
+      "sha256": {
+        "en": "57540488fb400a9a4ac1040c7d7f91f19f25ab313ec87a50ef527da442d3ec6b",
+        "fr": "11324ef3c48221823c6a9b1a4639a91e86b81b6ba3d769eb09be4681b0a3a62c",
+        "context": "4bfdbc219bccc88fbdcaf3c62897b168d5604d5acbbb5f70f040c95c941c2daa"
+      },
+      "verdict": "clean",
+      "findings": {
+        "BLOCKER": 0,
+        "MAJOR": 0,
+        "MINOR": 0,
+        "NIT": 0
+      }
+    },
+    "ui.chat.header": {
+      "keys_total": 72,
+      "keys_batch_new": 62,
+      "keys_carried": 10,
+      "sha256": {
+        "en": "ff03f6ca7b3206e77fc260116d2b540cc9f211ea37436863b874770e917158d8",
+        "fr": "cce11ac2f5e3588e351e6fecb310e1b519275d971f4ad9e88460f483893fbf09",
+        "context": "0d601a99861fc8b23207f117b90b697ba88ddd4f6419a68021f34c177158ea2e"
+      },
+      "verdict": "fail",
+      "findings": {
+        "BLOCKER": 0,
+        "MAJOR": 1,
+        "MINOR": 1,
+        "NIT": 0
+      }
+    },
+    "ui.chat": {
+      "keys_total": 532,
+      "keys_batch_new": 524,
+      "keys_carried": 8,
+      "sha256": {
+        "en": "dc5765d20ff846c61f3fe8953e69524393561bc2a39f89fa419958d4e4a67346",
+        "fr": "88d1d4fa8afc0924834acc0faebbeeddaa9c92e87939bb9e3016a8dee6ab7b39",
+        "context": "f95436a7c1e91f17b47a5f45059f58ef63749cedef54b02d10b29260477be426"
+      },
+      "verdict": "fail",
+      "findings": {
+        "BLOCKER": 1,
+        "MAJOR": 4,
+        "MINOR": 3,
+        "NIT": 1
+      }
+    },
+    "ui.chat.message": {
+      "keys_total": 55,
+      "keys_batch_new": 55,
+      "keys_carried": 0,
+      "sha256": {
+        "en": "95d7b60b2cb1bdc37648cfa896856ce53724e300ed4a6b0448d7562aad452a5a",
+        "fr": "29dafa522bc3e5f1db4de21e36597be30c769308ab5238dddaae61452ba71c72",
+        "context": "0278baa63867980cd08d18e47e282af12a6330b7c6a785f0157e7a01cceb4230"
+      },
+      "verdict": "clean",
+      "findings": {
+        "BLOCKER": 0,
+        "MAJOR": 0,
+        "MINOR": 0,
+        "NIT": 0
+      }
+    },
+    "ui.chat.options": {
+      "keys_total": 33,
+      "keys_batch_new": 33,
+      "keys_carried": 0,
+      "sha256": {
+        "en": "fdfb1ceae54aa5270dd76b67748f56fa14e5d3f47d7770dad8eba755995a5a79",
+        "fr": "ff613f2f2077049051ea3c105f9a9b1b902f06ec783b91ea8b5bb47878c72253",
+        "context": "4609f41205d7d0b14dd07e98a629b9fb40f74f870106e78b30a3b210eb7f13db"
+      },
+      "verdict": "clean",
+      "findings": {
+        "BLOCKER": 0,
+        "MAJOR": 0,
+        "MINOR": 0,
+        "NIT": 0
+      }
+    },
+    "ui.chat.run_details": {
+      "keys_total": 154,
+      "keys_batch_new": 152,
+      "keys_carried": 2,
+      "sha256": {
+        "en": "daf3ddc7d9c0904642876bf3db0746b6c0c68c5fe3b87a1a6730b07f67c90c2f",
+        "fr": "4b80b126d2cbddcd0ecf55bba4687aae5084477372873388236207501bddb821",
+        "context": "dcb2cf6f636814a1866186e8864fd6817033fa8de027049b365f362c53b5d384"
+      },
+      "verdict": "fail",
+      "findings": {
+        "BLOCKER": 0,
+        "MAJOR": 2,
+        "MINOR": 2,
+        "NIT": 0
+      }
+    },
+    "ui.chat.session_status": {
+      "keys_total": 162,
+      "keys_batch_new": 162,
+      "keys_carried": 0,
+      "sha256": {
+        "en": "05a6e2dd52cd41fb90dbb6756bb8a8f51c5d22e3769edb3fd6228a0d9a059198",
+        "fr": "49a5aeb2ad00ecab168e6ff1a83d4db2d9c4310dd4baf8886d67119bd32fb282",
+        "context": "91544a1523e2ccd3a50041e3530ded39255a614f571c50264991ed8e92ca90e7"
+      },
+      "verdict": "pass-with-findings",
+      "findings": {
+        "BLOCKER": 0,
+        "MAJOR": 0,
+        "MINOR": 2,
+        "NIT": 0
+      }
+    },
+    "ui.chat.skill": {
+      "keys_total": 7,
+      "keys_batch_new": 7,
+      "keys_carried": 0,
+      "sha256": {
+        "en": "919b6643e792d02ed270911df96d96da277bba5b5b91a2d04fac6cf044acfc10",
+        "fr": "e340917109d816e2149450f28ed86ae53eddf242a233b0c6d2f884e577fc01bc",
+        "context": "012b41d3b048ae9575012522051687b87e3b3a8189dab9121985052ea04f965d"
+      },
+      "verdict": "pass-with-findings",
+      "findings": {
+        "BLOCKER": 0,
+        "MAJOR": 0,
+        "MINOR": 1,
+        "NIT": 0
+      }
+    },
+    "ui.chat.trace": {
+      "keys_total": 274,
+      "keys_batch_new": 274,
+      "keys_carried": 0,
+      "sha256": {
+        "en": "52a0fa5ed78ec2f3bbedf5b67f7abf3cc8d72c7a66ff4383d182358e242fb848",
+        "fr": "5c96c8cd86022943330ce0adb3254e6a9036b3080252eb03987d01ff630271db",
+        "context": "b54b6acb4399743d207d8a793080555f1cab291761de90cf3e6e9f3ce9c70016"
+      },
+      "verdict": "pass-with-findings",
+      "findings": {
+        "BLOCKER": 0,
+        "MAJOR": 0,
+        "MINOR": 1,
+        "NIT": 1
+      }
+    }
+  },
+  "verdict": {
+    "overall": "NOT PASSED — remediation required",
+    "namespaces_failing": [
+      "ui.chat.aside",
+      "ui.chat.canonical",
+      "ui.chat.header",
+      "ui.chat",
+      "ui.chat.run_details"
+    ],
+    "reason": "1 blocker (translated machine key) and 9 majors across 5 namespaces. The other 10 namespaces are clean or carry only minor findings.",
+    "summary": "The batch is structurally sound (placeholders, ICU, plurals, NFC, markup) and mostly fluent, but one translated machine key breaks a lookup and several visible strings carry wrong meaning or terminology. Fix the blocker and majors, then re-audit the delta."
+  }
+}
