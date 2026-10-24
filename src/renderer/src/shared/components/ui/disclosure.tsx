@@ -264,7 +264,7 @@ export type DisclosureProps = {
 // identity glyph (the trace rows do) pushes its text further right, and a
 // shared primitive cannot depend on a feature's rail width to stay aligned.
 // A trailing chevron leaves no leading gutter, so the content is flush.
-const CONTENT_INDENT = "ml-5";
+const CONTENT_INDENT = "ms-5";
 
 /**
  * Where a 14px mark sits when a summary WRAPS, so it stays on the first line.
@@ -307,7 +307,7 @@ export type SummaryAlign = "center" | "firstLine";
 // `min-h-6` + `py-0.5` is the COMFORTABLE default, for disclosures that sit
 // alone or in short lists. A caller painting a dense run overrides it through
 // `rowClassName` rather than editing this line — see that prop's docs.
-const ROW = "flex min-h-6 w-full items-center gap-1.5 py-0.5 text-left";
+const ROW = "flex min-h-6 w-full items-center gap-1.5 py-0.5 text-start";
 
 export const Disclosure = ({
 	summary,

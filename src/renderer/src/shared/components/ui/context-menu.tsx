@@ -131,7 +131,7 @@ export const ContextMenuItem = forwardRef<
 		ref={ref}
 		className={cn(
 			itemClasses,
-			inset && "pl-8",
+			inset && "ps-8",
 			destructive && "text-danger data-[highlighted]:bg-danger-wash",
 			className,
 		)}

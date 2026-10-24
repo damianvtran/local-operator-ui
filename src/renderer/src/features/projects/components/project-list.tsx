@@ -360,7 +360,7 @@ export const ProjectList: FC<ProjectListProps> = ({
 												: "ascending"
 											: "none"
 									}
-									className={cn(column.className, "p-0 text-left font-normal")}
+									className={cn(column.className, "p-0 text-start font-normal")}
 								>
 									<Popover>
 										<PopoverTrigger asChild>
@@ -374,7 +374,7 @@ export const ProjectList: FC<ProjectListProps> = ({
 												onFocus={() => setActiveHeader(index)}
 												onKeyDown={onHeaderKeyDown(index)}
 												className={cn(
-													"group flex w-full min-w-0 items-center gap-1 rounded-xs text-left",
+													"group flex w-full min-w-0 items-center gap-1 rounded-xs text-start",
 													"transition-colors duration-fast ease-out-quart",
 													active ? "text-ink" : "hover:text-ink",
 												)}
@@ -462,7 +462,7 @@ export const ProjectList: FC<ProjectListProps> = ({
 											onClick={() => onOpen(project)}
 											data-project-name={project.name}
 											className={cn(
-												"flex w-full items-center gap-3 px-3 py-2 text-left",
+												"flex w-full items-center gap-3 px-3 py-2 text-start",
 												"transition-colors duration-fast ease-out-quart",
 												/* `row-hover` is the role the glass rules rebind to an ink
 												 * overlay; `elevated` would be an opaque slab on glass. Off

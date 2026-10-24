@@ -39,6 +39,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { textDirectionFor } from "../../../../../i18n/direction";
 import type { BrowserTabView } from "../hooks/use-browser-chrome";
 import {
 	type CloseTabsIntent,
@@ -50,6 +51,10 @@ import {
 	pooledTabs,
 	sessionDisplayName,
 } from "../model/tab-index-model";
+import {
+	physicalScrollEdges,
+	pointerIsAfterTab,
+} from "./browser-tab-direction";
 
 /**
  * The tab strip. Design: docs/design/ui-browser-tab.md 6.1 (the controls), 6.2
@@ -306,7 +311,7 @@ const TabMark: FC<{
 				<Status
 					data-tour-tag={`browser-tab-${status}`}
 					className={cn(
-						"absolute bottom-0 right-0 size-2.5 rounded-full bg-elevated",
+						"absolute bottom-0 end-0 size-2.5 rounded-full bg-elevated",
 						status === "failed" ? "text-danger" : "text-ink-muted",
 					)}
 				/>
@@ -440,7 +445,8 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 	onHandOver,
 	onRevokeHandOver,
 }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
+	const direction = textDirectionFor(locale);
 	const copy = {
 		error: t("ui.browser.chrome.error_title"),
 		left: t("ui.browser.chrome.move_left"),
@@ -913,10 +919,14 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 			}
 			setTabsOffScreen(offScreen);
 			setViewportWidth(strip.clientWidth);
-			setScrollEdges({
-				left: strip.scrollLeft > 1,
-				right: strip.scrollLeft + strip.clientWidth < strip.scrollWidth - 1,
-			});
+			setScrollEdges(
+				physicalScrollEdges(
+					strip.scrollLeft,
+					strip.clientWidth,
+					strip.scrollWidth,
+					direction,
+				),
+			);
 		};
 
 		measure();
@@ -928,7 +938,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 			strip.removeEventListener("scroll", measure);
 			observer.disconnect();
 		};
-	}, [ordered]);
+	}, [ordered, direction]);
 
 	return (
 		<div
@@ -978,21 +988,28 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 				data-tour-tag="browser-tab-strip-row"
 			>
 				{hasOverflow && (
-					<Tooltip side="top" content={copy.scrollLeft}>
+					<Tooltip
+						side="top"
+						content={direction === "rtl" ? copy.scrollRight : copy.scrollLeft}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
 							className="shrink-0 self-center focus-visible:-outline-offset-2!"
-							aria-label={copy.scrollLeft}
-							disabled={!scrollEdges.left}
+							aria-label={
+								direction === "rtl" ? copy.scrollRight : copy.scrollLeft
+							}
+							disabled={
+								direction === "rtl" ? !scrollEdges.right : !scrollEdges.left
+							}
 							onClick={() =>
 								scrollerRef.current?.scrollBy({
-									left: -240,
+									left: direction === "rtl" ? 240 : -240,
 									behavior: "instant",
 								})
 							}
 						>
-							<ChevronLeft aria-hidden className="size-4" />
+							<ChevronLeft aria-hidden className="size-4 rtl:-scale-x-100" />
 						</Button>
 					</Tooltip>
 				)}
@@ -1164,10 +1181,13 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											event.preventDefault();
 											setDropTarget(tab.tabId);
 											setDropAfter(
-												event.clientX >
+												pointerIsAfterTab(
+													event.clientX,
 													event.currentTarget.getBoundingClientRect().x +
 														event.currentTarget.getBoundingClientRect().width /
 															2,
+													direction,
+												),
 											);
 										}
 									}}
@@ -1179,7 +1199,11 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											move(
 												dragging,
 												tab.tabId,
-												event.clientX > rect.x + rect.width / 2,
+												pointerIsAfterTab(
+													event.clientX,
+													rect.x + rect.width / 2,
+													direction,
+												),
 											);
 										}
 										setDragging(null);
@@ -1308,9 +1332,15 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											);
 											let next = at;
 											if (event.key === "ArrowRight")
-												next = (at + 1) % ordered.length;
+												next =
+													direction === "rtl"
+														? (at + ordered.length - 1) % ordered.length
+														: (at + 1) % ordered.length;
 											else if (event.key === "ArrowLeft")
-												next = (at + ordered.length - 1) % ordered.length;
+												next =
+													direction === "rtl"
+														? (at + 1) % ordered.length
+														: (at + ordered.length - 1) % ordered.length;
 											else if (event.key === "Home") next = 0;
 											else if (event.key === "End") next = ordered.length - 1;
 											else return;
@@ -1335,7 +1365,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										 * content (mark, chips, title) and is a SIBLING of the notch, so
 										 * clipping here keeps the guarantee and leaves the notch painting.
 										 */
-										className="flex min-w-0 grow items-center gap-1.5 overflow-hidden py-1.5 text-left focus-visible:-outline-offset-2!"
+										className="flex min-w-0 grow items-center gap-1.5 overflow-hidden py-1.5 text-start focus-visible:-outline-offset-2!"
 										data-tour-tag="browser-tab"
 									>
 										<span
@@ -1781,7 +1811,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											aria-hidden
 											className={cn(
 												"pointer-events-none absolute inset-y-1 w-0.5 bg-accent",
-												dropAfter ? "right-0" : "left-0",
+												dropAfter ? "end-0" : "start-0",
 											)}
 											data-tour-tag="browser-tab-drop-marker"
 										/>
@@ -1792,21 +1822,28 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 					})}
 				</div>
 				{hasOverflow && (
-					<Tooltip side="top" content={copy.scrollRight}>
+					<Tooltip
+						side="top"
+						content={direction === "rtl" ? copy.scrollLeft : copy.scrollRight}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
 							className="shrink-0 self-center focus-visible:-outline-offset-2!"
-							aria-label={copy.scrollRight}
-							disabled={!scrollEdges.right}
+							aria-label={
+								direction === "rtl" ? copy.scrollLeft : copy.scrollRight
+							}
+							disabled={
+								direction === "rtl" ? !scrollEdges.left : !scrollEdges.right
+							}
 							onClick={() =>
 								scrollerRef.current?.scrollBy({
-									left: 240,
+									left: direction === "rtl" ? -240 : 240,
 									behavior: "instant",
 								})
 							}
 						>
-							<ChevronRight aria-hidden className="size-4" />
+							<ChevronRight aria-hidden className="size-4 rtl:-scale-x-100" />
 						</Button>
 					</Tooltip>
 				)}
@@ -1886,7 +1923,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							className="ml-2 shrink-0 self-center focus-visible:-outline-offset-2!"
+							className="ms-2 shrink-0 self-center focus-visible:-outline-offset-2!"
 							aria-label={newTabLabel}
 							aria-keyshortcuts={newChord.aria}
 							onClick={onNewTab}
@@ -1977,7 +2014,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										}}
 										aria-current={tab.tabId === activeTabId}
 										data-tab-id={tab.tabId}
-										className="flex w-full items-center gap-1.5 rounded-sm px-2 py-1 text-left text-body-sm text-ink-muted hover:bg-row-hover hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+										className="flex w-full items-center gap-1.5 rounded-sm px-2 py-1 text-start text-body-sm text-ink-muted hover:bg-row-hover hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
 										data-tour-tag="browser-tab-overflow-row"
 									>
 										<Check
@@ -2001,7 +2038,7 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 						size="icon-sm"
 						aria-label={t("ui.browser.browser_tab_strip.hide_all_tabs")}
 						onClick={closeOverflow}
-						className="absolute top-1 right-2"
+						className="absolute top-1 end-2"
 						data-tour-tag="browser-tab-overflow-dismiss"
 					>
 						{/* One shape for "this band row goes away": the pinned list is the
