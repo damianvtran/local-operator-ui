@@ -239,7 +239,7 @@ const editorProseClasses = cn(
 	// is the wrong reading. The header earns a rule and semibold weight rather
 	// than a fill, so the table has no boxes at all.
 	"[&_table]:my-3 [&_table]:w-full [&_table]:border-collapse",
-	"[&_:is(th,td)]:border-hairline [&_:is(th,td)]:border-b [&_:is(th,td)]:py-1.5 [&_:is(th,td)]:pe-4 [&_:is(th,td)]:text-start [&_:is(th,td):last-child]:pr-0",
+	"[&_:is(th,td)]:border-hairline [&_:is(th,td)]:border-b [&_:is(th,td)]:py-1.5 [&_:is(th,td)]:pe-4 [&_:is(th,td)]:text-start [&_:is(th,td):last-child]:pe-0",
 	"[&_th]:font-semibold [&_th]:text-ink-muted",
 	"[&_tbody_tr:last-child_td]:border-b-0",
 	// Links and images.

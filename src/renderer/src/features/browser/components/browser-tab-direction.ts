@@ -1,5 +1,17 @@
 import type { TextDirection } from "../../../../../i18n/direction";
 
+/** The physical move target, or null at that physical edge of the strip. */
+export function physicalMoveTarget(
+	index: number,
+	count: number,
+	side: "left" | "right",
+	direction: TextDirection,
+): number | null {
+	const delta = (side === "left" ? -1 : 1) * (direction === "rtl" ? -1 : 1);
+	const target = index + delta;
+	return target >= 0 && target < count ? target : null;
+}
+
 /**
  * Physical overflow edges for Chromium's horizontal scroller.
  *

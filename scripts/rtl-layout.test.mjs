@@ -12,6 +12,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents: `export {
+			physicalMoveTarget,
 			physicalScrollEdges,
 			pointerIsAfterTab,
 		} from "./src/renderer/src/features/browser/components/browser-tab-direction";`,
@@ -27,10 +28,35 @@ runInNewContext(bundle.outputFiles[0].text, {
 	module: module_,
 	exports: module_.exports,
 });
-const { physicalScrollEdges, pointerIsAfterTab } = module_.exports;
+const { physicalMoveTarget, physicalScrollEdges, pointerIsAfterTab } =
+	module_.exports;
 
 const source = (path) =>
 	readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+
+test("browser move actions follow physical edges in both directions", () => {
+	const cases = [
+		// [index, direction, left target, right target]
+		[0, "ltr", null, 1],
+		[1, "ltr", 0, 2],
+		[2, "ltr", 1, null],
+		[0, "rtl", 1, null],
+		[1, "rtl", 2, 0],
+		[2, "rtl", null, 1],
+	];
+	for (const [index, direction, left, right] of cases) {
+		assert.equal(
+			physicalMoveTarget(index, 3, "left", direction),
+			left,
+			`${direction} index=${index} move left`,
+		);
+		assert.equal(
+			physicalMoveTarget(index, 3, "right", direction),
+			right,
+			`${direction} index=${index} move right`,
+		);
+	}
+});
 
 test("browser overflow uses Chromium's negative RTL scrollLeft at both edges", () => {
 	const cases = [
@@ -109,6 +135,52 @@ test("shell tooltips and directional icons follow the inline axis", () => {
 		"src/renderer/src/features/library/components/pptx-viewer.tsx",
 	);
 	assert.doesNotMatch(media, /rtl:-scale-x-100/);
+});
+
+test("wide transcript, table and composer utilities stay logical", () => {
+	const transcript = source(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+	);
+	assert.match(
+		transcript,
+		/commentaryOverlay && "pe-10 @min-\[900px\]\/chatcol:pe-0"/,
+	);
+	assert.match(
+		transcript,
+		/overlayClassName="@min-\[900px\]\/chatcol:-end-10"/,
+	);
+	assert.doesNotMatch(transcript, /@min-\[900px\]\/chatcol:(?:pr-0|-right-10)/);
+
+	const wysiwyg = source(
+		"src/renderer/src/features/chat/components/canvas/wysiwyg-markdown-editor.tsx",
+	);
+	assert.match(wysiwyg, /\[&_:is\(th,td\)\]:pe-4/);
+	assert.match(wysiwyg, /\[&_:is\(th,td\):last-child\]:pe-0/);
+	const composer = source(
+		"src/renderer/src/features/chat/components/composer-status-row.tsx",
+	);
+	assert.match(composer, /const FIRST_CHIP = "-ms-1\.5";/);
+});
+
+test("technical islands are explicitly LTR without a document-wide override", () => {
+	const startPage = source(
+		"src/renderer/src/features/browser/components/browser-new-tab.tsx",
+	);
+	// Current main has no new-tab address field. Do not reintroduce one during
+	// RTL integration; the remaining URL editor owns the explicit LTR boundary.
+	assert.doesNotMatch(startPage, /browser-start-page-address/);
+	const addressBar = source(
+		"src/renderer/src/features/browser/components/browser-url-bar.tsx",
+	);
+	assert.match(addressBar, /dir="ltr"/);
+	const codeTheme = source(
+		"src/renderer/src/shared/themes/code-mirror-theme.ts",
+	);
+	assert.match(codeTheme, /"\.cm-content": \{[\s\S]*?direction: "ltr"/);
+	const markdown = source(
+		"src/renderer/src/features/chat/components/markdown-renderer.tsx",
+	);
+	assert.match(markdown, /<code dir="ltr" className=\{className\}/);
 });
 
 test("technical and directional surfaces keep their physical semantics", () => {
