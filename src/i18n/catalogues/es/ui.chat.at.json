@@ -1,0 +1,13 @@
+{
+	"ui.chat.at.contract.this_backend_cannot_carry_file_references_update_the_backend_and": "Este backend no puede transportar referencias a archivos. Actualiza el backend e inténtalo de nuevo.",
+	"ui.chat.at.contract.nothing_to_insert_esc_closes": "Nada que insertar · Esc cierra",
+	"ui.chat.at.contract.reading_this_folder": "Leyendo esta carpeta…",
+	"ui.chat.at.contract.this_folder_is_empty": "Esta carpeta está vacía.",
+	"ui.chat.at.contract.could_not_read_this_folder_it_may_need_a_permission": "No se pudo leer esta carpeta. Puede requerir un permiso que esta app no tiene.",
+	"ui.chat.at.contract.could_not_read_this_folder_check_that_it_exists_and": "No se pudo leer esta carpeta. Comprueba que existe y que puedes abrirla.",
+	"ui.chat.at.contract.enter_opens": "Intro abre {path}",
+	"ui.chat.at.contract.enter_inserts": "Intro inserta {token}",
+	"ui.chat.at.contract.footer": "{verb} · Esc cierra",
+	"ui.chat.at.contract.nothing_matches": "Nada coincide con “{query}” en {scope}.",
+	"ui.chat.at.contract.no_files_match": "Ningún archivo coincide con “{query}” en {scope}."
+}

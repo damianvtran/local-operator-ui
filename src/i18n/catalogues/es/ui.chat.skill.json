@@ -1,0 +1,9 @@
+{
+	"ui.chat.skill.contract.this_backend_cannot_serve_the_skill_catalogue_update_the_backend": "Este backend no puede servir el catálogo de habilidades. Actualiza el backend e inténtalo de nuevo.",
+	"ui.chat.skill.contract.skills_arent_available_right_now": "Las habilidades no están disponibles ahora mismo.",
+	"ui.chat.skill.contract.no_skills_found_see_skills": "No se encontraron habilidades: consulta /skills",
+	"ui.chat.skill.contract.no_skills_found": "No se encontraron habilidades.",
+	"ui.chat.skill.contract.no_skills_match": "Ninguna habilidad coincide.",
+	"ui.chat.skill.contract.enter_completes": "Intro completa ${name}; Intro otra vez lo envía.",
+	"ui.chat.skill.contract.click_completes": "Haz clic para completar ${name}."
+}

@@ -1,0 +1,164 @@
+{
+  "schema": 1,
+  "locale": "es",
+  "date": "2026-10-24",
+  "batch": "chat",
+  "branch": "feat/i18n-chat-es",
+  "source_branch": "feat/i18n-extract-chat",
+  "source_head": "5d97575ac4388522267291ffee74d12bd9675b12",
+  "source_base": "9c5ddd18390c66cccd48b34cab0544e863a522d8",
+  "translator": {
+    "agent": "translator",
+    "model": "radient/auto",
+    "model_provenance": "harness session model (system prompt: Model: radient/auto); no fallback used",
+    "session": "ff48489a921b",
+    "date": "2026-10-24"
+  },
+  "references": {
+    "glossary": {
+      "path": "local_operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "local_operator/i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca8"
+    }
+  },
+  "counts": {
+    "batch_keys": 1733,
+    "pre_existing_keys_carried": 30,
+    "pre_existing_keys_newly_translated": 32,
+    "files": 15,
+    "target_keys_total": 1795
+  },
+  "namespaces": {
+    "ui.chat.aside": {
+      "status": "translated",
+      "keys": 35,
+      "batch_keys": 35,
+      "source_sha256": "d8ce04c8e909a73f3050588b2b562b12db3840ae1f4231a66ef3eb5ac76ed1b6",
+      "target_sha256": "d05974c88e56ba2577939cfca739eb99e339d87c026a421bc4e4805194ccbb86"
+    },
+    "ui.chat.asks": {
+      "status": "translated",
+      "keys": 101,
+      "batch_keys": 89,
+      "source_sha256": "f5017d10d314fc9e3e94eeff2d5067c559e97ba0c6ffcef4e8ed9d1c39cf67ab",
+      "target_sha256": "74643edd5375a1aa89b1d42a1967cc99275fe2ada2de8ace3ab07978ab1fa60d"
+    },
+    "ui.chat.at": {
+      "status": "translated",
+      "keys": 11,
+      "batch_keys": 11,
+      "source_sha256": "685a75115b95770d8d74cc43c2f250c53bed311c0d117cf51849f72041533694",
+      "target_sha256": "e0d1899a23f73e32ee70ca20f003a760d80b8e31ccedd8665b4d9a48c855ad06"
+    },
+    "ui.chat.canonical": {
+      "status": "translated",
+      "keys": 297,
+      "batch_keys": 267,
+      "source_sha256": "522e7fced024ec756b4b93b21952c4abfb232278a3ca32bba67b45978749eb6d",
+      "target_sha256": "285aa8d9ec115e04c510e67d6a399f6b9d66dd4a9c191ff0d99dbfbb7279426f"
+    },
+    "ui.chat.canvas_preview": {
+      "status": "translated",
+      "keys": 2,
+      "batch_keys": 2,
+      "source_sha256": "4a29d028e7727502fbefd86b995750910ca3760879769ffa1fc537e5893920a9",
+      "target_sha256": "e4ce471900aa653d91ea646747eba5c9e46ae7ee4aaa172017986601d63506d3"
+    },
+    "ui.chat.credential_capture": {
+      "status": "translated",
+      "keys": 18,
+      "batch_keys": 18,
+      "source_sha256": "1776a41f5dfa3335b5e390e85870cb55756e25c6a2439cd3f42ea4c864515bdd",
+      "target_sha256": "b5f598b54defc1810be1949a714e40b354d5fdecbc585623048a98a8b305868e"
+    },
+    "ui.chat.directory": {
+      "status": "translated",
+      "keys": 42,
+      "batch_keys": 42,
+      "source_sha256": "57540488fb400a9a4ac1040c7d7f91f19f25ab313ec87a50ef527da442d3ec6b",
+      "target_sha256": "98a0f37235ea779d925be8e9e1673bb5bd28cbd7023e00b36e4bcb0bbb7a830a"
+    },
+    "ui.chat.header": {
+      "status": "translated",
+      "keys": 72,
+      "batch_keys": 62,
+      "source_sha256": "ff03f6ca7b3206e77fc260116d2b540cc9f211ea37436863b874770e917158d8",
+      "target_sha256": "ebbdc799fffef405cbe45b642322f513568afef07969cf0fb521cfd30275bdb5"
+    },
+    "ui.chat": {
+      "status": "translated",
+      "keys": 532,
+      "batch_keys": 524,
+      "source_sha256": "dc5765d20ff846c61f3fe8953e69524393561bc2a39f89fa419958d4e4a67346",
+      "target_sha256": "0ec555046cb07c651ab38df8186de5cc30668ed5e5a8c84aade1b8a204911214"
+    },
+    "ui.chat.message": {
+      "status": "translated",
+      "keys": 55,
+      "batch_keys": 55,
+      "source_sha256": "95d7b60b2cb1bdc37648cfa896856ce53724e300ed4a6b0448d7562aad452a5a",
+      "target_sha256": "a910392ae64796276878e6d42db1e1c6baa82a296e2e7960c75473d565e3245a"
+    },
+    "ui.chat.options": {
+      "status": "translated",
+      "keys": 33,
+      "batch_keys": 33,
+      "source_sha256": "fdfb1ceae54aa5270dd76b67748f56fa14e5d3f47d7770dad8eba755995a5a79",
+      "target_sha256": "24fc133539505de56f06637789b8f7557b0f8b8237b3f8423ea277b467794e86"
+    },
+    "ui.chat.run_details": {
+      "status": "translated",
+      "keys": 154,
+      "batch_keys": 152,
+      "source_sha256": "daf3ddc7d9c0904642876bf3db0746b6c0c68c5fe3b87a1a6730b07f67c90c2f",
+      "target_sha256": "a2a0aa62feb21dcefa64151bd6ffaa214d66ceab6dee4003731b2f08f6d2712f"
+    },
+    "ui.chat.session_status": {
+      "status": "translated",
+      "keys": 162,
+      "batch_keys": 162,
+      "source_sha256": "05a6e2dd52cd41fb90dbb6756bb8a8f51c5d22e3769edb3fd6228a0d9a059198",
+      "target_sha256": "6cf6feb9352c61d2863136dd737655da146c6cc8c1d18a0a88b6350efb1796a2"
+    },
+    "ui.chat.skill": {
+      "status": "translated",
+      "keys": 7,
+      "batch_keys": 7,
+      "source_sha256": "919b6643e792d02ed270911df96d96da277bba5b5b91a2d04fac6cf044acfc10",
+      "target_sha256": "224a3d88bd07a90d0747ac24bd021f9b0c019c695fb8b589bbcfa7380fc7b28b"
+    },
+    "ui.chat.trace": {
+      "status": "translated",
+      "keys": 274,
+      "batch_keys": 274,
+      "source_sha256": "52a0fa5ed78ec2f3bbedf5b67f7abf3cc8d72c7a66ff4383d182358e242fb848",
+      "target_sha256": "9a0c6c24721e8cfd8bf53ac021e7edf7be00fa174876493f9b9c81ec61ee8a0e"
+    }
+  },
+  "checks": {
+    "generator": "node scripts/i18n/generate.mjs --check: pass (keys.gen.ts regenerated and committed)",
+    "icu_per_key": {
+      "tool": "scratchpad://i18n/check-es-chat.cjs",
+      "keys": 1795,
+      "failures": 0,
+      "english_prose_stubs": 0,
+      "plural_categories": "one/many/other present on every Spanish plural (few never used); explicit =0 arms preserved"
+    },
+    "locale_parity": "all 24 ui.chat* es files have exactly the English key list in English key order; touched namespaces are key-complete",
+    "unicode": "NFC; no manual bidi controls; UTF-8 literal accents"
+  },
+  "notes": [
+    "Source pin: the task named 23eaaea7b8 but stated 1,733 added keys; 23eaaea7b8 adds 1,758, while feat/i18n-extract-chat's local head 5d97575ac4 adds exactly 1,733. Work is based on 5d97575ac4.",
+    "ui.chat.canonical (30) and ui.chat.run_details (2) are new es files, so their pre-existing English keys were translated as well to keep the files key-complete.",
+    "Language-neutral identical values are deliberate: Error, Chat, Chats, Local Operator, PDF, Program Files/ProgramData folder names and C:\\Program Files paths, Ctrl+Shift+L, [role=\"menuitem\"], all:{kind}, section-grown-hint-{key}, CSS variable names, time-indicator, volume-control, Top K, Top P, Auto, and placeholder-only strings.",
+    "Chosen term: 'pill' in the credential capture UI renders as 'píldora'; 'aside' is 'consulta al margen' to match the existing composer label 'Preguntar al margen'."
+  ],
+  "awaiting": "independent i18n audit; ledger rows are added after the audit"
+}

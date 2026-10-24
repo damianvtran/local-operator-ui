@@ -116,17 +116,29 @@ import esUiAgentsStarters from "./catalogues/es/ui.agents.starters.json";
 import esUiBrowserChrome from "./catalogues/es/ui.browser.chrome.json";
 import esUiBrowser from "./catalogues/es/ui.browser.json";
 import esUiCanvas from "./catalogues/es/ui.canvas.json";
+import esUiChatAside from "./catalogues/es/ui.chat.aside.json";
 import esUiChatAsks from "./catalogues/es/ui.chat.asks.json";
+import esUiChatAt from "./catalogues/es/ui.chat.at.json";
 import esUiChatAttachments from "./catalogues/es/ui.chat.attachments.json";
+import esUiChatCanonical from "./catalogues/es/ui.chat.canonical.json";
+import esUiChatCanvasPreview from "./catalogues/es/ui.chat.canvas_preview.json";
 import esUiChatComposer from "./catalogues/es/ui.chat.composer.json";
 import esUiChatComposerMedia from "./catalogues/es/ui.chat.composer_media.json";
+import esUiChatCredentialCapture from "./catalogues/es/ui.chat.credential_capture.json";
 import esUiChatDialogs from "./catalogues/es/ui.chat.dialogs.json";
+import esUiChatDirectory from "./catalogues/es/ui.chat.directory.json";
 import esUiChatHeader from "./catalogues/es/ui.chat.header.json";
 import esUiChat from "./catalogues/es/ui.chat.json";
 import esUiChatLiveUpdates from "./catalogues/es/ui.chat.live_updates.json";
+import esUiChatMessage from "./catalogues/es/ui.chat.message.json";
+import esUiChatOptions from "./catalogues/es/ui.chat.options.json";
 import esUiChatResponseActions from "./catalogues/es/ui.chat.response_actions.json";
+import esUiChatRunDetails from "./catalogues/es/ui.chat.run_details.json";
+import esUiChatSessionStatus from "./catalogues/es/ui.chat.session_status.json";
 import esUiChatSidebarView from "./catalogues/es/ui.chat.sidebar_view.json";
+import esUiChatSkill from "./catalogues/es/ui.chat.skill.json";
 import esUiChatTags from "./catalogues/es/ui.chat.tags.json";
+import esUiChatTrace from "./catalogues/es/ui.chat.trace.json";
 import esUiChatTranscriptCopy from "./catalogues/es/ui.chat.transcript_copy.json";
 import esUiCodeReview from "./catalogues/es/ui.code_review.json";
 import esUiCommandPalette from "./catalogues/es/ui.command_palette.json";
@@ -648,17 +660,29 @@ export const bundledCatalogues: Readonly<
 		...esUiBrowserChrome,
 		...esUiBrowser,
 		...esUiCanvas,
+		...esUiChatAside,
 		...esUiChatAsks,
+		...esUiChatAt,
 		...esUiChatAttachments,
+		...esUiChatCanonical,
+		...esUiChatCanvasPreview,
 		...esUiChatComposer,
 		...esUiChatComposerMedia,
+		...esUiChatCredentialCapture,
 		...esUiChatDialogs,
+		...esUiChatDirectory,
 		...esUiChatHeader,
 		...esUiChat,
 		...esUiChatLiveUpdates,
+		...esUiChatMessage,
+		...esUiChatOptions,
 		...esUiChatResponseActions,
+		...esUiChatRunDetails,
+		...esUiChatSessionStatus,
 		...esUiChatSidebarView,
+		...esUiChatSkill,
 		...esUiChatTags,
+		...esUiChatTrace,
 		...esUiChatTranscriptCopy,
 		...esUiCodeReview,
 		...esUiCommandPalette,
