@@ -1,0 +1,181 @@
+{
+	"schema": 1,
+	"kind": "translation-batch",
+	"locale": "vi",
+	"translator": "translator",
+	"model": "radient/auto",
+	"fallback": null,
+	"session": "1cca1d2bb44a",
+	"date": "2026-10-24",
+	"branch": "feat/i18n-agents-vi",
+	"base": "92d6e07625a21cf03e4890d5318920c6454eb8fc",
+	"scope": "Agents batch: 11 new vi namespaces (680 keys) plus 6 ui.hub pager keys (686 keys total). No independent audit or rendered-frame pass claimed.",
+	"keys_translated": 686,
+	"hub_added_keys": 6,
+	"key_counts": {
+		"ui.agents.config": 85,
+		"ui.agents.detail": 93,
+		"ui.agents.editor": 13,
+		"ui.agents.page": 46,
+		"ui.agents.publication": 99,
+		"ui.agents.team": 51,
+		"ui.agents.upload": 53,
+		"ui.hub.agents": 94,
+		"ui.hub.download": 4,
+		"ui.hub.teams": 58,
+		"ui.onboarding.tour": 84
+	},
+	"files": [
+		{
+			"namespace": "ui.agents.config",
+			"file": "vi/ui.agents.config.json",
+			"keys": 85,
+			"sha256": "39e859eeba38ad618c485c299dfb9b5e60a73e7c1468a193f36ece6a908b9b93",
+			"en_sha256": "0e36bb28caa4f698defc0081ca342d320101ad2a72a421f8f37e9e45ed18b543",
+			"context_sha256": "b6da114f89f4bd28684b57c71a28def634a910658b098aafd6bf7596eb2ff1c0"
+		},
+		{
+			"namespace": "ui.agents.detail",
+			"file": "vi/ui.agents.detail.json",
+			"keys": 93,
+			"sha256": "8bd11dbb6f5b2044f7263e2254054129e7c2d0bc30dad1d04ec04dde695c5a5b",
+			"en_sha256": "1b2165d369482a821c996b886b6448fa2148d22a377a5cff71b8e922ef25e168",
+			"context_sha256": "7ece71c18c47033554ed342e9cb123aff2c49756b2ce220220dee55cdc09691b"
+		},
+		{
+			"namespace": "ui.agents.editor",
+			"file": "vi/ui.agents.editor.json",
+			"keys": 13,
+			"sha256": "a7f31015dce6f3b5170c4d7c58f4937cf40b202f1fb0a78e026d4d9832abd969",
+			"en_sha256": "fba54b0f049efb6a194c7988bfaa5db161f465e0b04fd049176eac75a13f18d8",
+			"context_sha256": "1f7c05370df84b60664c38d159ee0234d1a5b237dcfd6ce1a984ebd15405d22e"
+		},
+		{
+			"namespace": "ui.agents.page",
+			"file": "vi/ui.agents.page.json",
+			"keys": 46,
+			"sha256": "b34002259fce696d3e8e677fe32e5cbab4a156a95f5dc6557f78a36cc320d1f4",
+			"en_sha256": "4fa71557f0bc10b694fe46fca73165eb3f4bbfb1d5aeba737038b2d95b2d249e",
+			"context_sha256": "e28f146a455c37a496c8c957f097ecf31fe77fab7844e50934abf5fcab918996"
+		},
+		{
+			"namespace": "ui.agents.publication",
+			"file": "vi/ui.agents.publication.json",
+			"keys": 99,
+			"sha256": "a55166bc35090da9ddb7f1d2e1eca4dc2f5e65c0b83352e1ac518df755448492",
+			"en_sha256": "3adfaf52f92fe9635f711cf2d40ca99d983ff5f39a5c33d2d09a0f00b69942a0",
+			"context_sha256": "de38867c75f3da573e6dc3aa7dd547efdb056197f9c6562443b61c730bb16ae8"
+		},
+		{
+			"namespace": "ui.agents.team",
+			"file": "vi/ui.agents.team.json",
+			"keys": 51,
+			"sha256": "ee7825b675c41e7b286d5c5dfa7f68257dd632c25da01eca8e4356df8a9ab6f1",
+			"en_sha256": "e7a7b948df5f1afb1108903abf007b71af519c3d4b8efcce767ecbebec0c8243",
+			"context_sha256": "e82fcaa7472a9dbc0d137b281ea49b6dc170946d8a5332339cb450c833796937"
+		},
+		{
+			"namespace": "ui.agents.upload",
+			"file": "vi/ui.agents.upload.json",
+			"keys": 53,
+			"sha256": "ea4351ec42189a2d3f1f1b37e97f4b0da0798d9fe06b1e730d66061185d35973",
+			"en_sha256": "38863aaca4bc604c2fd4eb9bcba4399761a9cfd57eadab8790dbe037e8643247",
+			"context_sha256": "6d058be01939c886f0405392aa442febec9696f630709c4cb31a3659cea35c09"
+		},
+		{
+			"namespace": "ui.hub.agents",
+			"file": "vi/ui.hub.agents.json",
+			"keys": 94,
+			"sha256": "7978e8a1e67a36c8a4898335506588eaca540d0b75efe84ed3c71e384e1f393b",
+			"en_sha256": "0498eb7c28af7a72a7973eb2279e2070e5c22bc4d4865c4986e23c983f0162b4",
+			"context_sha256": "096417e8df4790913be74f7f98d1c991fab26a20fa84a339eb5f4a429e7b27d0"
+		},
+		{
+			"namespace": "ui.hub.download",
+			"file": "vi/ui.hub.download.json",
+			"keys": 4,
+			"sha256": "f2c04f03248037a3492b65bb1e0b1659671da5ebbf7682aee6d317b7449247b9",
+			"en_sha256": "050698c925d0a7dece278ebf0d50bf8116ae7f99071889eab3643b9bfd1a78d5",
+			"context_sha256": "8d1ef3d2771c2a11b936b499c120b0b84044216b5a4ee8d9658269b9e5ba8afa"
+		},
+		{
+			"namespace": "ui.hub.teams",
+			"file": "vi/ui.hub.teams.json",
+			"keys": 58,
+			"sha256": "7080bf63a1633c0b1eb452cec6ce541c7efc8eba648260bd422947bfd339fcdf",
+			"en_sha256": "a8ad00d689b74ba21208b99d74bc8c4c1857c036dd08da45c654385594b8ad8c",
+			"context_sha256": "7deb4f812c60fd757fc48187cc09d0c2fdc4ee568e4d0845e103b4627fa65c09"
+		},
+		{
+			"namespace": "ui.onboarding.tour",
+			"file": "vi/ui.onboarding.tour.json",
+			"keys": 84,
+			"sha256": "0c48090a7cbf1074d160679f8fc903d38e9aa2db37b435cf2af5c2f6acc04d76",
+			"en_sha256": "4b80ff5ad817bef1842d792414589ff692ce36fac6c3e5d9c4d86a629572022a",
+			"context_sha256": "8c9f06997b8a5d3f0ff24ed8fffbf8649b26189f26f915dc9f271785fd32ae1a"
+		},
+		{
+			"namespace": "ui.hub",
+			"file": "vi/ui.hub.json",
+			"keys": 185,
+			"added_keys": 6,
+			"sha256": "36c7c8b5f41cf78929702af3b034ba0a75a500c74dd7465ea5682d2c860f2900",
+			"en_sha256": "d6a8d4b0257877628ce579f21208ce600c04e024a28419f4c8a4b56759b8efcc",
+			"context_sha256": "530a59be462d2a94e726de147f93d6b69212d78f83a0e3bd4fda80f67ac395bc"
+		}
+	],
+	"manifest_sha256": "53defe2de8c9139af2eed35363c90ff0db7de5d7b6bbe9d13946271db289b8c3",
+	"checks": [
+		{
+			"name": "generated keys",
+			"command": "node scripts/i18n/generate.mjs --check",
+			"result": "pass",
+			"detail": "reported byte-identical to a fresh generation after the vi bundles were added"
+		},
+		{
+			"name": "ICU structure",
+			"command": "node <session-scratch>/icu_compare.mjs <touched files>",
+			"result": "pass",
+			"detail": "every argument name/type, number/date skeleton, select arm and plural offset preserved; vi uses other-only plural arms; HTML tag sequences identical in onboarding.tour"
+		},
+		{
+			"name": "ICU runtime",
+			"command": "node: parse + IntlMessageFormat over every vi value and every select arm",
+			"result": "pass",
+			"detail": "904 formats from 865 keys (including existing ui.hub values), zero runtime errors"
+		},
+		{
+			"name": "locale key parity",
+			"command": "python key-set comparison for 12 touched namespaces",
+			"result": "pass",
+			"detail": "vi key set equals en for every touched namespace"
+		},
+		{
+			"name": "repository locale-parity guard",
+			"command": "node --test scripts/i18n/locale-parity.test.mjs",
+			"result": "pass-except-named-token",
+			"detail": "vi passes message presence, unique ownership, key completeness, unknown-key and placeholder checks; the English-stub assertion fails only for ui.hub.teams.version = v{version}, listed below. The guard was not edited per task scope."
+		},
+		{
+			"name": "text invariants",
+			"command": "python NFC/bidi/stub scan",
+			"result": "pass-with-named-token",
+			"detail": "all values NFC; no manual bidi control characters; one value identical to English by design (named below)"
+		}
+	],
+	"named_neutral_tokens": [
+		{
+			"key": "ui.hub.teams.version",
+			"value": "v{version}",
+			"reason": "version prefix token; the v is part of the rendered version tag, not translatable prose"
+		}
+	],
+	"not_covered": [
+		{
+			"key": "ui.providers.provider_detail.sign_in_again",
+			"reason": "vi has no ui.providers catalogue at the 92d6e076 base. A one-key file would fail the namespace-completeness gate; the full 190-key namespace is outside the agents batch, and its 189 existing audited values live on feat/i18n-vi-final."
+		}
+	],
+	"findings": [],
+	"independence": "Self-check by the translator only; no independent translation audit performed and none claimed."
+}

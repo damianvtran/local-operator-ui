@@ -1,0 +1,15 @@
+{
+	"ui.agents.editor.cancel": "Hủy",
+	"ui.agents.editor.creating": "Đang tạo…",
+	"ui.agents.editor.discard_changes": "Bỏ thay đổi",
+	"ui.agents.editor.discard_unsaved": "Bỏ các thay đổi chưa lưu?",
+	"ui.agents.editor.empty": "Chưa có gì ở đây.",
+	"ui.agents.editor.keep_editing": "Tiếp tục chỉnh sửa",
+	"ui.agents.editor.retry": "Thử lại",
+	"ui.agents.editor.retrying": "Đang thử lại…",
+	"ui.agents.editor.save_changes": "Lưu thay đổi",
+	"ui.agents.editor.saving": "Đang lưu…",
+	"ui.agents.editor.show_all": "Hiện tất cả",
+	"ui.agents.editor.show_less": "Thu gọn",
+	"ui.agents.editor.unsaved_changes": "Thay đổi chưa lưu"
+}
