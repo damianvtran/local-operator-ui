@@ -51,13 +51,622 @@
     "count": 101,
     "untranslated_stubs": 0,
     "classes": {
-      "format": 67,
-      "cognate": 16,
-      "token": 10,
-      "path": 5,
-      "product": 3
+      "cognate": 23,
+      "functional": 60,
+      "token": 9,
+      "filesystem": 6,
+      "product": 1,
+      "technical": 2
     },
-    "note": "Spot-checked all 101 against the English: Urgent/Agent/Action/Conversation/Assistant/Code/Image are real French cognates, Program Files/ProgramData/Volumes/Applications/Documents are on-disk folder names, the rest are placeholder-only or markup/CSS tokens."
+    "note": "Every byte-identical value was classified individually from its own bytes: no untranslated phrase was found.",
+    "keys": [
+      {
+        "namespace": "ui.chat.asks",
+        "key": "ui.chat.asks.ask_panel.urgent",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat.asks",
+        "key": "ui.chat.asks.ask_panel.label_count",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.asks",
+        "key": "ui.chat.asks.fleet_ask_drawer.verb_name",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.canonical",
+        "key": "ui.chat.canonical.thread_search.role.agent",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat.canonical",
+        "key": "ui.chat.canonical.canonical_transcript.1_action",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat.canonical",
+        "key": "ui.chat.canonical.canonical_transcript.image",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat.canonical",
+        "key": "ui.chat.canonical.fold_media.image",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat.canonical",
+        "key": "ui.chat.canonical.image_group_lightbox.image",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat.canonical",
+        "key": "ui.chat.canonical.fold_media.more",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.canonical",
+        "key": "ui.chat.canonical.image_group_lightbox.count_images",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat.canonical",
+        "key": "ui.chat.canonical.sound_batch_model.name_suffix",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.canonical",
+        "key": "ui.chat.canonical.supplement_row.failedcause",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.canonical",
+        "key": "ui.chat.canonical.older_history_slot.min_260px_olderhistory_hidden",
+        "class": "token",
+        "reason": "markup, CSS custom property, route, id fragment or keyboard shortcut"
+      },
+      {
+        "namespace": "ui.chat.canonical",
+        "key": "ui.chat.canonical.canonical_transcript.actions_actions",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat.canonical",
+        "key": "ui.chat.canonical.canonical_transcript.direction",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.canonical",
+        "key": "ui.chat.canonical.canonical_transcript.image_value",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat.canonical",
+        "key": "ui.chat.canonical.fold_media.image_value",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat.canonical",
+        "key": "ui.chat.canonical.image_gen_card.noun_value",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.canonical",
+        "key": "ui.chat.canonical.image_group_lightbox.image_value",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat.canonical",
+        "key": "ui.chat.canonical.transcript_reducer.stringvalue_value",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.canonical",
+        "key": "ui.chat.canonical.sound_player.action_label",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.credential_capture",
+        "key": "ui.chat.credential_capture.unconfirmed_chip",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.directory",
+        "key": "ui.chat.directory.directory_indicator.applications",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat.directory",
+        "key": "ui.chat.directory.directory_indicator.documents",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat.directory",
+        "key": "ui.chat.directory.directory_indicator.program_files",
+        "class": "filesystem",
+        "reason": "literal volume/folder path shown by the OS"
+      },
+      {
+        "namespace": "ui.chat.directory",
+        "key": "ui.chat.directory.directory_indicator.program_files_x86",
+        "class": "filesystem",
+        "reason": "literal volume/folder path shown by the OS"
+      },
+      {
+        "namespace": "ui.chat.directory",
+        "key": "ui.chat.directory.directory_indicator.programdata",
+        "class": "filesystem",
+        "reason": "literal volume/folder path shown by the OS"
+      },
+      {
+        "namespace": "ui.chat.directory",
+        "key": "ui.chat.directory.directory_indicator.volumes",
+        "class": "filesystem",
+        "reason": "literal volume/folder path shown by the OS"
+      },
+      {
+        "namespace": "ui.chat.directory",
+        "key": "ui.chat.directory.directory_indicator.c_program_files",
+        "class": "filesystem",
+        "reason": "literal volume/folder path shown by the OS"
+      },
+      {
+        "namespace": "ui.chat.directory",
+        "key": "ui.chat.directory.directory_indicator.c_program_files_x86",
+        "class": "filesystem",
+        "reason": "literal volume/folder path shown by the OS"
+      },
+      {
+        "namespace": "ui.chat.header",
+        "key": "ui.chat.header.chat_header.local_operator",
+        "class": "product",
+        "reason": "product name kept as-is"
+      },
+      {
+        "namespace": "ui.chat.header",
+        "key": "ui.chat.header.chat_header_identity_menu.agents",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat.header",
+        "key": "ui.chat.header.chat_header_identity.current",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.header",
+        "key": "ui.chat.header.chat_header_identity.label_closedreason",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.header",
+        "key": "ui.chat.header.chat_header_identity.label_cuesentence",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.header",
+        "key": "ui.chat.header.chat_header_identity_menu.closednoteid_title",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat.header",
+        "key": "ui.chat.header.chat_header_identity.value_description",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.header",
+        "key": "ui.chat.header.chat_header_identity.cue_clause",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.header",
+        "key": "ui.chat.header.chat_header_identity.label_current",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.header",
+        "key": "ui.chat.header.chat_header_identity.agent_trigger",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.slash_commands.action",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.chat_regions.ctrl_shift_l",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.chat_regions.l",
+        "class": "token",
+        "reason": "markup, CSS custom property, route, id fragment or keyboard shortcut"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.sidebar.chat_sidebar.agents",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.sidebar.chat_sidebar.role_menuitem",
+        "class": "token",
+        "reason": "markup, CSS custom property, route, id fragment or keyboard shortcut"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.slash_commands.x",
+        "class": "token",
+        "reason": "markup, CSS custom property, route, id fragment or keyboard shortcut"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.chat_status_strip.outcome",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.composer.composer_status_row.goal_clear_text_label_seam_goal",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.composer.composer_status_row.goal_cleared_text_leading",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.hub_update_mark.detail_action",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.sidebar.chat_sidebar.displayname_name",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.sidebar.chat_sidebar.footname_section_grown_hint",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.sidebar.chat_sidebar.silent_remedy",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.sidebar.chat_sidebar_view.label_position",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.sidebar.chat_sidebar_view.section_grown_hint_key",
+        "class": "token",
+        "reason": "markup, CSS custom property, route, id fragment or keyboard shortcut"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.mermaid_diagram.var_color_warning",
+        "class": "token",
+        "reason": "markup, CSS custom property, route, id fragment or keyboard shortcut"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.mermaid_diagram.var_color_warning_border",
+        "class": "token",
+        "reason": "markup, CSS custom property, route, id fragment or keyboard shortcut"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.mermaid_diagram.var_color_warning_wash",
+        "class": "token",
+        "reason": "markup, CSS custom property, route, id fragment or keyboard shortcut"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.artifact_identity.title_head",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.ask_open_policy.askchipcountclausevalue",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.composer.composer_status_row.job_actionvalue_label_seam_jobclausevalue_busiestclausevalue",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.composer.composer_status_row.loop_labelvalue_loopstatuswordvalue",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.composer.composer_status_row.monitor_actionvalue_label_seam_monitorclausevalue",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.composer.composer_status_row.plan_actionvalue_label_seam_todoclausevalue",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.composer.composer_status_row.subagent_actionvalue_label_seam_childclausevalue_busiestclausevalue",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.composer.composer_status_row.text_label_seam_loopclausevalue",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.composer.composer_status_row.wake_actionvalue_label_seam_wakeclausevalue",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.draft_rows.draft_row_prefix_draftrowtitlevalue",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.draft_rows.value",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.message_grouping.value_value2",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.message_grouping.value_value2_b35da6",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.sidebar.chat_sidebar.clause",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.sidebar.chat_sidebar.detail",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.undo_toasts.detail",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.chat_regions.conversation",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.sidebar.chat_sidebar_view.agents",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat",
+        "key": "ui.chat.composer.composer_status_row.goal_disclosure_label",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.message",
+        "key": "ui.chat.message.message_avatar.assistant",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat.message",
+        "key": "ui.chat.message.code_block.code",
+        "class": "cognate",
+        "reason": "French spells this word the same way"
+      },
+      {
+        "namespace": "ui.chat.message",
+        "key": "ui.chat.message.error_block.settings_section_providers",
+        "class": "token",
+        "reason": "markup, CSS custom property, route, id fragment or keyboard shortcut"
+      },
+      {
+        "namespace": "ui.chat.message",
+        "key": "ui.chat.message.attachment_frame.detail",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.message",
+        "key": "ui.chat.message.attachment_frame.name_detail",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.message",
+        "key": "ui.chat.message.invalid_attachment.getfilenamevalue_reason",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.message",
+        "key": "ui.chat.message.turn_timestamp.value_full",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.options",
+        "key": "ui.chat.options.generation_settings_section.top_k",
+        "class": "technical",
+        "reason": "sampling parameter name kept as-is"
+      },
+      {
+        "namespace": "ui.chat.options",
+        "key": "ui.chat.options.generation_settings_section.top_p",
+        "class": "technical",
+        "reason": "sampling parameter name kept as-is"
+      },
+      {
+        "namespace": "ui.chat.run_details",
+        "key": "ui.chat.run_details.run_detail_mcp.label",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.run_details",
+        "key": "ui.chat.run_details.run_detail_wakes.trailingclause",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.run_details",
+        "key": "ui.chat.run_details.mcp_failure.lead",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.run_details",
+        "key": "ui.chat.run_details.mcp_failure.lead_value",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.run_details",
+        "key": "ui.chat.run_details.run_detail_monitors.healthlabel",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.run_details",
+        "key": "ui.chat.run_details.run_detail_monitors.interval",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.run_details",
+        "key": "ui.chat.run_details.run_detail_monitors.lastchecklabel",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.run_details",
+        "key": "ui.chat.run_details.run_detail_wakes.cadence",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.session_status",
+        "key": "ui.chat.session_status.session_cost.text_cue",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.session_status",
+        "key": "ui.chat.session_status.session_model.fallbackdefault",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.trace",
+        "key": "ui.chat.trace.receipt_row_model.base",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.trace",
+        "key": "ui.chat.trace.trace_fold.verb_object",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.trace",
+        "key": "ui.chat.trace.turn_summary.receipts",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.trace",
+        "key": "ui.chat.trace.turn_summary.value",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      },
+      {
+        "namespace": "ui.chat.trace",
+        "key": "ui.chat.trace.turn_summary.value_75ced7",
+        "class": "functional",
+        "reason": "only placeholders, separators or punctuation"
+      }
+    ]
   },
   "placeholders": {
     "dropped": 0,
