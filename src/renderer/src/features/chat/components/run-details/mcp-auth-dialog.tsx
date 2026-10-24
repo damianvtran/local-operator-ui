@@ -39,13 +39,30 @@ import type { McpRemedyControls } from "./use-mcp-remedy";
  * classified from it — and a render-time recomputation from `state` alone could
  * not know either.
  */
+/**
+ * What a probe that ANSWERED settled on, as a stable code.
+ *
+ * WHY NOT THE SENTENCE: this state is written when the probe resolves. A
+ * translated string kept here freezes the language of that moment, and the
+ * dialog — re-rendered in place on a language switch — would keep showing it.
+ * `probeNoticeMessage` translates the code at render time instead.
+ */
+type ProbeNotice =
+	/** The backend predates secure key entry (and OAuth did not apply). */
+	| "backend-too-old"
+	/** The server declares neither OAuth nor a secret reference. */
+	| "no-sign-in-declared"
+	/** The probe answered, but nothing in it names a method. */
+	| "undetermined";
+
 type Transition =
 	| { kind: "probing" }
 	| { kind: "grant" }
 	| { kind: "running" }
+	/** A probe that ANSWERED without opening a sign-in: a code, not a sentence. */
 	| {
 			kind: "notice";
-			failure: McpFailure;
+			notice: ProbeNotice;
 			actions: McpFailureAction[];
 			/**
 			 * The callout the state wears, and the distinction is the one the app
@@ -55,9 +72,39 @@ type Transition =
 			 * simply cannot continue from here (design review round 3, D1: the refusal
 			 * was chromatically identical to an informational dialog).
 			 */
-			severity: "danger" | "warning";
+			severity: "warning";
+	  }
+	/** The probe itself FAILED; `mcpFailure` classified it. */
+	| {
+			kind: "notice";
+			failure: McpFailure;
+			actions: McpFailureAction[];
+			severity: "danger";
 	  }
 	| { kind: "key"; row: McpServerRow };
+
+/**
+ * The sentence for a probe that answered without opening a sign-in.
+ *
+ * Read at render, not at probe time: the code is what the state carries, so a
+ * language switch re-labels an open dialog without re-running the probe.
+ */
+const probeNoticeMessage = (notice: ProbeNotice): string => {
+	switch (notice) {
+		case "backend-too-old":
+			return t(
+				"ui.chat.run_details.mcp_auth_dialog.update_the_backend_for_secure_mcp_key_entry_oauth_and",
+			);
+		case "no-sign-in-declared":
+			return t(
+				"ui.chat.run_details.mcp_auth_dialog.this_server_does_not_use_oauth_and_declares_no_secret",
+			);
+		case "undetermined":
+			return t(
+				"ui.chat.run_details.mcp_auth_dialog.could_not_determine_this_servers_sign_in_method_check_its",
+			);
+	}
+};
 
 /** One transition owner for slash, sidebar and Settings. A false probe cannot
  * redispatch the original row's stale OAuth remedy. The backend owns consent,
@@ -143,22 +190,11 @@ export function McpAuthDialog({
 				setState({
 					kind: "notice",
 					severity: "warning",
-					failure: {
-						cause: "unknown",
-						phase: "probe",
-						detail: null,
-						message: !secure
-							? t(
-									"ui.chat.run_details.mcp_auth_dialog.update_the_backend_for_secure_mcp_key_entry_oauth_and",
-								)
-							: probe.transport_oauth_supported === false
-								? t(
-										"ui.chat.run_details.mcp_auth_dialog.this_server_does_not_use_oauth_and_declares_no_secret",
-									)
-								: t(
-										"ui.chat.run_details.mcp_auth_dialog.could_not_determine_this_servers_sign_in_method_check_its",
-									),
-					},
+					notice: !secure
+						? "backend-too-old"
+						: probe.transport_oauth_supported === false
+							? "no-sign-in-declared"
+							: "undetermined",
 					actions: mcpConfigActions(),
 				});
 			})
@@ -422,11 +458,12 @@ export function McpAuthDialog({
 						 */}
 						<Alert variant={notice.severity}>
 							<div className="flex flex-col gap-1">
-								<p role="alert">{notice.failure.message}</p>
-								{/* The server's own words, verbatim, where they are a reason this
-								    build cannot restate — the same treatment the run panel gives a
-								    diagnosis, and machine voice for the same reason. */}
-								{notice.failure.detail ? (
+								<p role="alert">
+									{"notice" in notice
+										? probeNoticeMessage(notice.notice)
+										: notice.failure.message}
+								</p>
+								{"failure" in notice && notice.failure.detail ? (
 									<p
 										className="font-mono text-ink-dim text-mono-sm"
 										title={notice.failure.detail}

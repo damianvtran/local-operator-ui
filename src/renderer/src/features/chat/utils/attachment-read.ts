@@ -34,7 +34,7 @@
 import { t } from "../../../../../i18n/messages";
 import { DESKTOP_MESSAGE_MAX_FILES } from "../../../../../shared/attachment-upload";
 import { DESKTOP_MESSAGE_MAX_IMAGES } from "../../../../../shared/desktop-contract";
-import { getFileName } from "./get-file-name";
+import { fileNameForDisplay } from "./get-file-name";
 
 /** Trailing full stops, so a daemon sentence can join this one cleanly. */
 const TRAILING_STOPS = /\.+$/;
@@ -56,7 +56,7 @@ export type AttachmentFailure =
 	  };
 
 const nameOf = (failure: AttachmentFailure): string =>
-	typeof failure === "string" ? getFileName(failure) : failure.name;
+	typeof failure === "string" ? fileNameForDisplay(failure) : failure.name;
 
 /** `detail` without its own full stop, so the clause reads as one sentence. */
 const clauseOf = (detail: string | undefined): string =>

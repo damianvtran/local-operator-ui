@@ -739,14 +739,8 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 											const index = rowIndex;
 											return (
 												<PickerRow
-													key={t(
-														"ui.chat.header.chat_header_identity_menu.value_index",
-														{ value: row.value, index: index },
-													)}
-													id={t(
-														"ui.chat.header.chat_header_identity_menu.listid_index",
-														{ listId, index },
-													)}
+													key={`${row.value}-${index}`}
+													id={`${listId}-${index}`}
 													option={row}
 													index={index}
 													isActive={index === active}

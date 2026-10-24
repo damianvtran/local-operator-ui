@@ -842,41 +842,6 @@
 		"note": "Extracted unchanged from mark-all-read.ts. Do not add a status or action the source does not state.",
 		"placeholders": {}
 	},
-	"ui.chat.markdown_math_guarded.lineending": {
-		"role": "visible interface copy in chat components/markdown-math-guarded.ts",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/markdown-math-guarded.ts. Do not add a status or action the source does not state.",
-		"placeholders": {}
-	},
-	"ui.chat.markdown_math_guarded.mathtext": {
-		"role": "visible interface copy in chat components/markdown-math-guarded.ts",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/markdown-math-guarded.ts. Do not add a status or action the source does not state.",
-		"placeholders": {}
-	},
-	"ui.chat.markdown_math_guarded.mathtextdata": {
-		"role": "visible interface copy in chat components/markdown-math-guarded.ts",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/markdown-math-guarded.ts. Do not add a status or action the source does not state.",
-		"placeholders": {}
-	},
-	"ui.chat.markdown_math_guarded.mathtextsequence": {
-		"role": "visible interface copy in chat components/markdown-math-guarded.ts",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/markdown-math-guarded.ts. Do not add a status or action the source does not state.",
-		"placeholders": {}
-	},
-	"ui.chat.markdown_renderer.noopener_noreferrer": {
-		"role": "visible interface copy in chat components/markdown-renderer.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/markdown-renderer.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {}
-	},
 	"ui.chat.mermaid_diagram.an_unexpected_error_occurred_while_rendering_the_diagram": {
 		"role": "visible interface copy in chat components/mermaid-diagram.tsx",
 		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
@@ -1565,16 +1530,6 @@
 			"dropped": "number"
 		}
 	},
-	"ui.chat.attachments_preview.index_attachment": {
-		"role": "visible interface copy in chat components/attachments-preview.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/attachments-preview.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"index": "number",
-			"attachment": "string"
-		}
-	},
 	"ui.chat.chat_list_sections.prefix_just_now": {
 		"role": "visible interface copy in chat chat-list-sections.ts",
 		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
@@ -1636,24 +1591,6 @@
 		"note": "Extracted unchanged from components/chat-status-strip.tsx. Do not add a status or action the source does not state.",
 		"placeholders": {
 			"outcome": "string"
-		}
-	},
-	"ui.chat.chat_tag_header.errorid_description": {
-		"role": "visible interface copy in chat components/chat-tag-header.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/chat-tag-header.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"errorId": "string"
-		}
-	},
-	"ui.chat.chat_tag_header.errorid_title": {
-		"role": "visible interface copy in chat components/chat-tag-header.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/chat-tag-header.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"errorId": "string"
 		}
 	},
 	"ui.chat.chat_title.new_chat_with_drafttarget": {
@@ -1842,15 +1779,6 @@
 		"placeholders": {
 			"detail": "string",
 			"action": "string"
-		}
-	},
-	"ui.chat.hub_update_mark.hub_update_all_kind": {
-		"role": "visible interface copy in chat components/hub-update-mark.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/hub-update-mark.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"kind": "string"
 		}
 	},
 	"ui.chat.hub_update_mark.update_all_available": {
@@ -2189,24 +2117,6 @@
 		"placeholders": {
 			"hidden": "number",
 			"Show": "string"
-		}
-	},
-	"ui.chat.sidebar.chat_sidebar_view_menu.key_down": {
-		"role": "visible interface copy in chat components/chat-sidebar-view-menu.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/chat-sidebar-view-menu.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"key": "string"
-		}
-	},
-	"ui.chat.sidebar.chat_sidebar_view_menu.key_up": {
-		"role": "visible interface copy in chat components/chat-sidebar-view-menu.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/chat-sidebar-view-menu.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"key": "string"
 		}
 	},
 	"ui.chat.sidebar.sidebar_scope_paging.added_more_chats_arrived": {
@@ -2702,16 +2612,6 @@
 			"askChipCountClauseValue": "string"
 		}
 	},
-	"ui.chat.at_picker.listid_atrowidvalue": {
-		"role": "visible interface copy in chat components/at-picker.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/at-picker.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"listId": "string",
-			"atRowIdValue": "string"
-		}
-	},
 	"ui.chat.attachment_read.value_could_not_be_read_it_may_have_been_moved": {
 		"role": "visible interface copy in chat utils/attachment-read.ts",
 		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
@@ -2775,25 +2675,6 @@
 		"note": "Extracted unchanged from chat-session-subagents.ts. Do not add a status or action the source does not state.",
 		"placeholders": {
 			"wholeValue": "number"
-		}
-	},
-	"ui.chat.composer.composer_highlight.kind_start": {
-		"role": "visible interface copy in chat components/composer-highlight.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/composer-highlight.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"kind": "string",
-			"start": "number"
-		}
-	},
-	"ui.chat.composer.composer_highlight.prose_start": {
-		"role": "visible interface copy in chat components/composer-highlight.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/composer-highlight.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"start": "number"
 		}
 	},
 	"ui.chat.composer.composer_status_row.dismiss_the_finished_goal_label_seam_it_stays_in_the": {
@@ -2923,16 +2804,6 @@
 			"selector": "string",
 			"level": "string",
 			"wanted": "string"
-		}
-	},
-	"ui.chat.hub_update_mark.hub_mark_kind_name": {
-		"role": "visible interface copy in chat components/hub-update-mark.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/hub-update-mark.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"kind": "string",
-			"name": "string"
 		}
 	},
 	"ui.chat.image_actions.the_image_server_answered_status": {
@@ -3168,26 +3039,6 @@
 			"userFacingMessageValue": "string"
 		}
 	},
-	"ui.chat.sidebar.hub_link_sidebar_mark.hub_mark_kind_name": {
-		"role": "visible interface copy in chat components/hub-link-sidebar-mark.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/hub-link-sidebar-mark.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"kind": "string",
-			"name": "string"
-		}
-	},
-	"ui.chat.skill_picker.listid_skillrowidvalue": {
-		"role": "visible interface copy in chat components/skill-picker.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/skill-picker.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"listId": "string",
-			"skillRowIdValue": "string"
-		}
-	},
 	"ui.chat.slash_commands.add_value": {
 		"role": "visible interface copy in chat components/slash-commands.tsx",
 		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
@@ -3195,16 +3046,6 @@
 		"note": "Extracted unchanged from components/slash-commands.tsx. Do not add a status or action the source does not state.",
 		"placeholders": {
 			"value": "string"
-		}
-	},
-	"ui.chat.slash_commands.listid_rowidvalue": {
-		"role": "visible interface copy in chat components/slash-commands.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/slash-commands.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"listId": "string",
-			"rowIdValue": "string"
 		}
 	},
 	"ui.chat.undo_toasts.detail": {
@@ -3673,15 +3514,6 @@
 		}
 	},
 	"ui.chat.slash.contract.click_stages": {
-		"role": "rendered product copy in chat components/slash-contract.ts",
-		"tone": "sentence case; preserve source meaning and punctuation",
-		"length": "short label or one line",
-		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
-		"placeholders": {
-			"label": "Display name or label supplied by the caller."
-		}
-	},
-	"ui.chat.slash.contract.click_runs": {
 		"role": "rendered product copy in chat components/slash-contract.ts",
 		"tone": "sentence case; preserve source meaning and punctuation",
 		"length": "short label or one line",
@@ -4246,5 +4078,7 @@
 		"length": "short label or one line",
 		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
 		"placeholders": {}
-	}
+	},
+	"ui.chat.link_actions.open": "Verb on a local link toolbar: open the file in the app or the OS. Sentence case, one word.",
+	"ui.chat.link_actions.quote": "Verb on a link toolbar: quote the linked text into the composer."
 }

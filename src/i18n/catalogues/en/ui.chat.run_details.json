@@ -131,8 +131,6 @@
 	"ui.chat.run_details.run_detail_monitors.interval": "· {interval}",
 	"ui.chat.run_details.run_detail_monitors.lastchecklabel": "· {lastCheckLabel}",
 	"ui.chat.run_details.run_detail_todos.hidden_hidden": "{hidden, number, ::group-off} hidden",
-	"ui.chat.run_details.run_detail_todos.index_text": "{index, number, ::group-off}-{text}",
-	"ui.chat.run_details.run_detail_todos.phaseindex_value": "{phaseIndex, number, ::group-off}-{value}",
 	"ui.chat.run_details.run_detail_wakes.cadence": "· {cadence}",
 	"ui.chat.run_details.run_detail_wakes.cancel_the_wake_that_fires_duelabel": "Cancel the wake that fires {dueLabel}",
 	"ui.chat.run_details.use_mcp_remedy.not_saved_value_unlock_or_repair_the_encrypted_store_then": "Not saved: {value}. Unlock or repair the encrypted store, then retry.",

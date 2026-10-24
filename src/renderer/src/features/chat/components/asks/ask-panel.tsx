@@ -1289,10 +1289,7 @@ const AskRow = ({
 								{entry.answers.length > 0 ? (
 									entry.answers.map((value, index) => (
 										<span
-											key={t("ui.chat.asks.ask_panel.index_value", {
-												index,
-												value,
-											})}
+											key={`${index}:${value}`}
 											className="whitespace-pre-wrap break-words text-ink text-sm"
 										>
 											{value}

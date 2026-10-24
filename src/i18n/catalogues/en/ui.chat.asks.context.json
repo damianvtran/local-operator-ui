@@ -284,16 +284,6 @@
 			"dropped": "number"
 		}
 	},
-	"ui.chat.asks.ask_panel.index_value": {
-		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/asks/ask-panel.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"index": "number",
-			"value": "string"
-		}
-	},
 	"ui.chat.asks.ask_panel.label_count": {
 		"role": "visible interface copy in chat components/asks/ask-panel.tsx",
 		"tone": "sentence case; preserve the English meaning and any trailing punctuation",

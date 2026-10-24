@@ -498,6 +498,13 @@ function useArgumentRows(
 	tags: TagListState | undefined,
 	enabled: boolean,
 ): SlashArgumentListState {
+	/*
+	 * `argumentRows` builds its labels with `t()`, so the memo below must be
+	 * invalidated when the language changes. A bare subscription is not enough:
+	 * without the value in the dependency list React keeps the rows it built in
+	 * the old language until some other input moves.
+	 */
+	const locale = useI18nLocale();
 	const themeName = useUiPreferencesStore((state) => state.themeName);
 	const { client, provided } = useOptionalQueryClient();
 	// Hooks cannot be called conditionally, so the entity query always runs and
@@ -656,6 +663,7 @@ function useArgumentRows(
 					? themeName
 					: entities.data?.current;
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is the rebuild TRIGGER for the rows' labels, which `argumentRows` reads through `t()` opaquely to this rule.
 	return useMemo(() => {
 		if (!source) {
 			return { rows: [], loading: false, error: null, needsSession: false };
@@ -879,6 +887,7 @@ function useArgumentRows(
 			needsSession: false,
 		};
 	}, [
+		locale,
 		source,
 		localThemes,
 		entities.data,
@@ -952,13 +961,19 @@ export function useSlashCompletion({
 	activeSpec,
 	paneHasSession = false,
 }: SlashCompletionArgs): SlashCompletionState {
+	/*
+	 * The hook builds command rows and error lines with `t()` inside memos, so
+	 * the locale is read ONCE here and carried into their dependency lists.
+	 * Without it a language switch leaves the popup's rows in the old language
+	 * until the input changes.
+	 */
+	const locale = useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureEnabled(capabilities.data, "commands");
 	/*
 	 * The tag surface's own capability. The command description reuses the
-	 * audited `ui.chat.tags.label` key; the slash popup itself is an English
-	 * surface today (its rows and footers are literal), so this memo needs no
-	 * locale subscription of its own.
+	 * audited `ui.chat.tags.label` key; the memo that builds it reads `t()` at
+	 * build time, so `locale` is one of its dependencies.
 	 */
 	const tagsEnabled = desktopFeatureEnabled(capabilities.data, "session_tags");
 	/*
@@ -1005,6 +1020,7 @@ export function useSlashCompletion({
 		client,
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is the re-label TRIGGER; `t()` is read at build time inside this memo.
 	const registry = useMemo(
 		() =>
 			withTagCommand(
@@ -1012,10 +1028,10 @@ export function useSlashCompletion({
 				tagsEnabled && Boolean(sessionId),
 				t("ui.chat.tags.label"),
 			),
-		/* `t` is read at build time of this memo; the popup is the existing
-		   English slash surface, so a live language switch is not a promise it
-		   makes. The tag store's own copy is translated where it is shown. */
-		[query.data, tagsEnabled, sessionId],
+		/* `t` is read at build time of this memo, so the active locale is a
+		   dependency: otherwise a language switch leaves the tag row labelled in
+		   the old language until the catalogue query moves. */
+		[query.data, tagsEnabled, sessionId, locale],
 	);
 	const vocabulary = useMemo(() => argumentVocabulary(registry), [registry]);
 	/*
@@ -1382,6 +1398,7 @@ export function useSlashCompletion({
 		enabled,
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is the trigger the rows' `t()` reads need; the rule cannot see through the call.
 	const argumentMatches = useMemo(() => {
 		if (!effectiveInline || !argumentContext) return [];
 		/*
@@ -1446,6 +1463,7 @@ export function useSlashCompletion({
 		inputValue,
 		paneHasSession,
 		tagList,
+		locale,
 	]);
 
 	/*
@@ -2185,10 +2203,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 							/* biome-ignore lint/a11y/useKeyWithClickEvents: the keyboard is handled on the textarea, not on the option — arrows, Enter and Escape are the composer's, and the click below is the pointer's own gesture on the row the marker is on. */
 							<li
 								key={rowId(row)}
-								id={t("ui.chat.slash_commands.listid_rowidvalue", {
-									listId: listId,
-									rowIdValue: rowId(row),
-								})}
+								id={`${listId}-${rowId(row)}`}
 								ref={index === state.active ? activeRef : null}
 								// biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea; the active option is announced through aria-activedescendant.
 								// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a combobox option cannot be a native <option> here.

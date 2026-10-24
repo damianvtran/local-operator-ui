@@ -83,20 +83,6 @@
 		"note": "Extracted unchanged from components/message-item/error-block.tsx. Do not add a status or action the source does not state.",
 		"placeholders": {}
 	},
-	"ui.chat.message.file_attachment.pasted_file": {
-		"role": "visible interface copy in chat components/message-item/file-attachment.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/message-item/file-attachment.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {}
-	},
-	"ui.chat.message.file_attachment.pasted_image": {
-		"role": "visible interface copy in chat components/message-item/file-attachment.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/message-item/file-attachment.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {}
-	},
 	"ui.chat.message.file_attachment.unknown_error_reading_file": {
 		"role": "visible interface copy in chat components/message-item/file-attachment.tsx",
 		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
@@ -238,16 +224,6 @@
 		"note": "Extracted unchanged from components/message-item/index.tsx. Do not add a status or action the source does not state.",
 		"placeholders": {
 			"getFileNameValue": "string"
-		}
-	},
-	"ui.chat.message.index.id_file": {
-		"role": "visible interface copy in chat components/message-item/index.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/message-item/index.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"id": "string",
-			"file": "string"
 		}
 	},
 	"ui.chat.message.index.is_value": {

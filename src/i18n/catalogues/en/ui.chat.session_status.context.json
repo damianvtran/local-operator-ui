@@ -747,26 +747,6 @@
 			"label": "string"
 		}
 	},
-	"ui.chat.session_status.session_status_strip.index_note": {
-		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"index": "number",
-			"note": "string"
-		}
-	},
-	"ui.chat.session_status.session_status_strip.index_part": {
-		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"index": "number",
-			"part": "string"
-		}
-	},
 	"ui.chat.session_status.session_status_strip.session_readings_last_reading_note": {
 		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
 		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
@@ -1036,16 +1016,6 @@
 			"name": "string"
 		}
 	},
-	"ui.chat.session_status.context_wheel.0_0_size_size2": {
-		"role": "visible interface copy in chat session-status/context-wheel.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from session-status/context-wheel.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"SIZE": "number",
-			"SIZE2": "number"
-		}
-	},
 	"ui.chat.session_status.session_context.formatcontexttokensvalue_tokens_in_use_the_window_this_model_allows_is": {
 		"role": "visible interface copy in chat session-status/session-context.ts",
 		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
@@ -1154,26 +1124,6 @@
 			"contextBreakdownLineValue": "string"
 		}
 	},
-	"ui.chat.session_status.session_status_strip.index_channel": {
-		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"index": "number",
-			"channel": "string"
-		}
-	},
-	"ui.chat.session_status.session_status_strip.index_name": {
-		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from session-status/session-status-strip.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"index": "number",
-			"name": "string"
-		}
-	},
 	"ui.chat.session_status.session_status_strip.reasoning_effort_effortdisplayvalue": {
 		"role": "visible interface copy in chat session-status/session-status-strip.tsx",
 		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
@@ -1271,5 +1221,10 @@
 		"placeholders": {
 			"count": "Numeric count supplied by the caller; preserve ICU plural/select categories."
 		}
-	}
+	},
+	"ui.chat.session_status.session_cost.basis_billed": "Money-basis word beside a spend figure: tokens were billed at the published price. Lower case, as the sized row prints it.",
+	"ui.chat.session_status.session_cost.basis_included": "Money-basis word beside a spend figure: a subscription funded these tokens; the figure is the API-equivalent price. Capitalised here; the row prefixes capitalisation itself.",
+	"ui.chat.session_status.session_cost.basis_estimated": "Money-basis word beside a spend figure: the price is an estimate rather than a published bill.",
+	"ui.chat.session_status.session_cost.subagents_amount": "The child-spend line: \"Subagents\" + the child figure and its basis words. {amount} already holds the money text plus \" · \" separators; keep the label first.",
+	"ui.chat.session_status.session_context.context": "Heading of the context wheel tooltip when no reading exists yet. One word."
 }

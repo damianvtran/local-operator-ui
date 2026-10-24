@@ -9,6 +9,7 @@ import type { FC } from "react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { t } from "../../../../../../i18n/messages";
 import { getFileTypeFromPath } from "../../utils/file-types";
+import { fileNameForDisplay, getFileName } from "../../utils/get-file-name";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
 import { isSpreadsheetFile } from "../../utils/is-spreadsheet-file";
 import { AttachmentFrame, BrokenAttachment } from "./attachment-frame";
@@ -22,45 +23,6 @@ type BaseFileAttachmentProps = {
 
 type FileAttachmentProps = BaseFileAttachmentProps & {
 	conversationId: string;
-};
-
-const RESOURCE_NAME_REGEX = /name=([^;,]+)/;
-
-/**
- * Extracts the filename from a path
- * @param path - The file path or URL
- * @returns The extracted filename
- */
-const PATH_SEPARATOR_REGEX = /[/\\]/;
-const getFileName = (path: string): string => {
-	if (path.startsWith("data:image/")) {
-		// Attempt to get a name from the data URI if it's there (e.g., from a download attribute)
-		// This is a basic heuristic and might not always work.
-		const nameMatch = path.match(RESOURCE_NAME_REGEX);
-		if (nameMatch?.[1]) {
-			try {
-				return decodeURIComponent(nameMatch[1]);
-			} catch (_) {
-				// Fallback if decoding fails
-				return t("ui.chat.message.file_attachment.pasted_image");
-			}
-		}
-		return t("ui.chat.message.file_attachment.pasted_image");
-	}
-	if (path.startsWith("data:")) {
-		const nameMatch = path.match(RESOURCE_NAME_REGEX);
-		if (nameMatch?.[1]) {
-			try {
-				return decodeURIComponent(nameMatch[1]);
-			} catch (_) {
-				return t("ui.chat.message.file_attachment.pasted_file");
-			}
-		}
-		return t("ui.chat.message.file_attachment.pasted_file");
-	}
-	// Handle both local paths and URLs
-	const parts = path.split(PATH_SEPARATOR_REGEX);
-	return parts[parts.length - 1];
 };
 
 /**
@@ -359,7 +321,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 		// `<img>` inside a 200px card with no minimum, which is how an 8x6 pasted
 		// PNG turned into an 8px speck at the top of a message.
 		if (isPastedImage) {
-			const name = getFileName(file);
+			const name = fileNameForDisplay(file);
 			return (
 				<div className="group relative inline-block max-w-full">
 					{hasError ? (
@@ -450,7 +412,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 					onClick={handleClick}
 					title={t(
 						"ui.chat.message.file_attachment.click_to_open_getfilenamevalue",
-						{ getFileNameValue: getFileName(file) },
+						{ getFileNameValue: fileNameForDisplay(file) },
 					)}
 				>
 					{/* Neutral, not accent. A conversation can carry a dozen of these
@@ -458,7 +420,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 					 * the file glyph is identification, not an action. */}
 					<File className="size-4 shrink-0 text-ink-dim" aria-hidden={true} />
 					<span className="truncate text-body-sm text-ink">
-						{getFileName(file)}
+						{fileNameForDisplay(file)}
 					</span>
 				</button>
 				{isLocalFile && (

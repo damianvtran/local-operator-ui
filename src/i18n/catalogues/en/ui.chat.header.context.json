@@ -352,16 +352,6 @@
 			"closedNoteId": "string"
 		}
 	},
-	"ui.chat.header.chat_header_identity_menu.listid_index": {
-		"role": "visible interface copy in chat components/chat-header-identity-menu.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/chat-header-identity-menu.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"listId": "string",
-			"index": "number"
-		}
-	},
 	"ui.chat.header.chat_header_identity_menu.search_noun": {
 		"role": "visible interface copy in chat components/chat-header-identity-menu.tsx",
 		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
@@ -448,16 +438,6 @@
 		"placeholders": {
 			"value": "string",
 			"description": "string"
-		}
-	},
-	"ui.chat.header.chat_header_identity_menu.value_index": {
-		"role": "visible interface copy in chat components/chat-header-identity-menu.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from components/chat-header-identity-menu.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"value": "string",
-			"index": "number"
 		}
 	},
 	"ui.chat.header.chat_header_identity_menu_model.team_team_owns_this_session_value_is_the_speaker_so": {

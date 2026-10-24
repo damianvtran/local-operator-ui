@@ -885,10 +885,17 @@ test("the confirmation asks the reversible question, and the copy is written in 
 	 * `Include archived` control - so a copy edit that quietly dropped one of the three ways
 	 * back would be a claim quietly lost rather than a string quietly changed.
 	 */
+	/*
+	 * A CALL-TIME FUNCTION, not a module constant: `t()` reads the active locale
+	 * when it is called, and a `const` evaluated at import would freeze the boot
+	 * language into an open dialog on a language switch (agent review round 3,
+	 * MAJOR reactivity). The body still leads with the consequence and
+	 * INTERPOLATES the timer.
+	 */
 	assert.match(
 		copy,
-		/export const ARCHIVE_CONFIRM_MESSAGE = t\(\s*"ui\.chat\.archive_confirm\.undo_explanation",\s*\{\s*seconds: ARCHIVE_UNDO_TOAST_MS \/ 1000,?\s*\},?\s*\)/,
-		"the body leads with the consequence and INTERPOLATES the timer, so the copy cannot drift from it",
+		/export const archiveConfirmMessage = \(\): string =>\s*t\(\s*"ui\.chat\.archive_confirm\.undo_explanation",\s*\{\s*seconds: ARCHIVE_UNDO_TOAST_MS \/ 1000,?\s*\},?\s*\)/,
+		"the body is call-time and INTERPOLATES the timer, so the copy cannot drift from it",
 	);
 	const messages = JSON.parse(
 		readFileSync("src/i18n/catalogues/en/ui.chat.json", "utf8"),
@@ -908,11 +915,11 @@ test("the confirmation asks the reversible question, and the copy is written in 
 	);
 	assert.match(
 		copy,
-		/export const ARCHIVE_CONFIRM_VERB = t\(\s*"ui\.chat\.archive_confirm\.archive",?\s*\);/,
+		/export const archiveConfirmVerb = \(\): string =>\s*t\("ui\.chat\.archive_confirm\.archive"\);/,
 	);
 	// And the dialog RENDERS it rather than restating it: two copies of the sentence would be
 	// two places to keep in step with the three facts it promises.
-	assert.match(dialog, /message=\{<p>\{ARCHIVE_CONFIRM_MESSAGE\}<\/p>\}/);
+	assert.match(dialog, /message=\{<p>\{archiveConfirmMessage\(\)\}<\/p>\}/);
 	/*
 	 * THE TITLE NAMES THE CONVERSATION AND ONLY THE NAME GIVES: the name sits in its own
 	 * `min-w-0 truncate` box between two `shrink-0` halves, so a long name ellipsises while
@@ -921,10 +928,13 @@ test("the confirmation asks the reversible question, and the copy is written in 
 	 * carries for the row's own control label (agent review round 2, R2-3), applied to the
 	 * modal.
 	 */
-	assert.match(dialog, /className="shrink-0">\s*\{`\$\{ARCHIVE_CONFIRM_VERB\}/);
 	assert.match(
 		dialog,
-		/candidateTitle === null\s*\?\s*ARCHIVE_CONFIRM_UNNAMED\s*:\s*candidateTitle/,
+		/className="shrink-0">\s*\{`\$\{archiveConfirmVerb\(\)\}/,
+	);
+	assert.match(
+		dialog,
+		/candidateTitle === null\s*\?\s*archiveConfirmUnnamed\(\)\s*:\s*candidateTitle/,
 	);
 	/*
 	 * THE QUOTES ARE OUTSIDE THE CUT (design round 1, D2, read off the long-name frame): quoted

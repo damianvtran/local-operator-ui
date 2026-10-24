@@ -18,7 +18,7 @@
 import { showExternalOpenRefusal } from "@shared/lib/external-open-refusal";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { t } from "../../../../../i18n/messages";
-import { getFileName } from "./get-file-name";
+import { fileNameForDisplay } from "./get-file-name";
 import { type LinkKind, forgetProbe } from "./link-actions";
 
 /**
@@ -44,7 +44,7 @@ export const selectionTouches = (element: Element): boolean => {
 const openFailure = (target: string): string =>
 	t(
 		"ui.chat.link_open.could_not_open_getfilenamevalue_the_file_may_have_been_moved",
-		{ getFileNameValue: getFileName(target) },
+		{ getFileNameValue: fileNameForDisplay(target) },
 	);
 
 /**

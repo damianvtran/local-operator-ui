@@ -8,7 +8,7 @@ import {
 	isArtifactPath,
 } from "@features/chat/utils/artifact-identity";
 import { stripFileUrl } from "@features/chat/utils/canvas-document";
-import { getFileName } from "@features/chat/utils/get-file-name";
+import { fileNameForDisplay } from "@features/chat/utils/get-file-name";
 /*
  * The `ui/` barrel is deliberately not used here, and this is the only reason:
  * `fold` is the app's one case- and accent-insensitive normaliser, the barrel
@@ -419,13 +419,15 @@ export function buildFileRows(documents: CanvasDocument[]): FileRow[] {
 	for (const document of documents) {
 		const name = artifactOf(document)
 			? artifactName(document)
-			: getFileName(document.path);
+			: fileNameForDisplay(document.path);
 		basenameCounts.set(name, (basenameCounts.get(name) ?? 0) + 1);
 	}
 
 	return documents.map((document) => {
 		const artifact = artifactOf(document);
-		const name = artifact ? artifactName(document) : getFileName(document.path);
+		const name = artifact
+			? artifactName(document)
+			: fileNameForDisplay(document.path);
 		const directory = artifact
 			? null
 			: (parentDirectory(document.path) ?? parentDirectory(document.title));

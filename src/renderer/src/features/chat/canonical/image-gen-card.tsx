@@ -530,8 +530,11 @@ function controlLabel(
 	 * A control labelled "Cancel" would imply a guaranteed stop that the frozen
 	 * contract explicitly does not offer.
 	 */
-	if (kind === "cancel") return "Stop";
-	if (kind === "restart") return state === "failed" ? "Retry" : "Restart";
+	if (kind === "cancel") return t("ui.chat.canonical.image_gen_card.stop");
+	if (kind === "restart")
+		return state === "failed"
+			? t("ui.chat.canonical.image_gen_card.retry")
+			: t("ui.chat.canonical.image_gen_card.restart");
 	return t("ui.chat.canonical.image_gen_card.edit_and_restart");
 }
 

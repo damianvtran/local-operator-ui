@@ -6400,9 +6400,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			 * race documented in `transcript-copy-menu.tsx`.
 			 */
 			<TranscriptCopyMenu
-				key={t("ui.chat.canonical.canonical_transcript.turn_summary_key", {
-					key: entry.segment.key,
-				})}
+				key={`turn-summary:${entry.segment.key}`}
 				text={condenseSentence(entry.segment)}
 				markdown={condenseSentence(entry.segment)}
 			>

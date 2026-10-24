@@ -1517,15 +1517,6 @@
 			"value": "number"
 		}
 	},
-	"ui.chat.canonical.canonical_transcript.turn_summary_key": {
-		"role": "visible interface copy in chat canonical/canonical-transcript.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from canonical/canonical-transcript.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"key": "string"
-		}
-	},
 	"ui.chat.canonical.canonical_transcript.worked_for_formatdurationvalue": {
 		"role": "visible interface copy in chat canonical/canonical-transcript.tsx",
 		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
@@ -1665,17 +1656,6 @@
 			"count": "number"
 		}
 	},
-	"ui.chat.canonical.sound_batch.soundowneridvalue_batch_id_id2": {
-		"role": "visible interface copy in chat canonical/sound-batch.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from canonical/sound-batch.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"soundOwnerIdValue": "string",
-			"id": "string",
-			"id2": "string"
-		}
-	},
 	"ui.chat.canonical.sound_batch_model.latest_update_name_item_item_of_total": {
 		"role": "visible interface copy in chat canonical/sound-batch-model.ts",
 		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
@@ -1703,25 +1683,6 @@
 		"note": "Extracted unchanged from canonical/supplement-image-grid.tsx. Do not add a status or action the source does not state.",
 		"placeholders": {
 			"length": "number"
-		}
-	},
-	"ui.chat.canonical.supplement_row.path_name": {
-		"role": "visible interface copy in chat canonical/supplement-row.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from canonical/supplement-row.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"path": "string",
-			"name": "string"
-		}
-	},
-	"ui.chat.canonical.supplement_row.sound_attachment": {
-		"role": "visible interface copy in chat canonical/supplement-row.tsx",
-		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
-		"length": "short label or one line",
-		"note": "Extracted unchanged from canonical/supplement-row.tsx. Do not add a status or action the source does not state.",
-		"placeholders": {
-			"attachment": "string"
 		}
 	},
 	"ui.chat.canonical.transcript_dom_window.duplicate_transcript_entry_key": {
@@ -2261,5 +2222,8 @@
 		"length": "short label or one line",
 		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
 		"placeholders": {}
-	}
+	},
+	"ui.chat.canonical.image_gen_card.stop": "Control that requests cancellation of a running image generation. \"Stop\", not \"Cancel\": the stop is best-effort.",
+	"ui.chat.canonical.image_gen_card.retry": "Control that reruns a failed image generation. Sentence case, one word.",
+	"ui.chat.canonical.image_gen_card.restart": "Control that reruns a cancelled image generation. Sentence case, one word."
 }

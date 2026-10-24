@@ -267,7 +267,14 @@ test("a refusal is stated only while its daemon is there, and the absence takes 
 	 * A control labelled for an act the app cannot perform is the "button that
 	 * provably cannot work" this repository refuses to ship.
 	 */
-	assert.equal(wedged?.actionLabel, "Retry");
+	/*
+	 * The ACT is `retry`; the LABEL is the strip's own `t()` default. The model
+	 * stores no English word (agent review round 3), because a string captured
+	 * here would outlive a locale change; the action enum is what the renderer
+	 * keys on, so that is what this asserts.
+	 */
+	assert.equal(wedged?.action, "retry");
+	assert.equal(wedged?.actionLabel, null);
 
 	/* The same record with the daemon GONE: the absence is the fact now. */
 	const gone = refused("detached");

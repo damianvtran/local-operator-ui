@@ -1007,7 +1007,13 @@ export function ChatSidebar({
 	onSelectConversation,
 	onStageDraft,
 }: Props) {
-	useI18nLocale();
+	/*
+	 * The locale is read as a VALUE, not just subscribed to: `heldRows` builds an
+	 * "untitled chat" title with `t()` inside a memo, and a bare subscription
+	 * would re-render the sidebar while leaving that memo's old-language row in
+	 * place. Carrying it into the dependency list makes a switch rebuild it.
+	 */
+	const locale = useI18nLocale();
 	const navigate = useNavigate();
 	const location = useLocation();
 	const requestPanel = usePanelPresentationStore((state) => state.requestPanel);
@@ -2514,6 +2520,7 @@ export function ChatSidebar({
 	 * the catalogue's own row is the row, and this one would be a second copy on one axis -
 	 * the same defect the partition exists to avoid.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is the re-label TRIGGER for the "untitled chat" title this memo builds with `t()`.
 	const heldRows = useMemo(() => {
 		const listed = new Set(sessions.map((row) => row.session_id));
 		const out: CanonicalSessionRow[] = [];
@@ -2527,7 +2534,7 @@ export function ChatSidebar({
 			});
 		}
 		return out;
-	}, [pinFacts, sessions]);
+	}, [pinFacts, sessions, locale]);
 	const {
 		rows: matching,
 		conversationMatches,

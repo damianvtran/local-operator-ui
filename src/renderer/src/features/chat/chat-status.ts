@@ -71,6 +71,14 @@ export type ChatStatusDisplay = {
 	cause?: DaemonPairingCause | null;
 	/** The one word the strip's action always carries. */
 	action: "retry" | null;
+	/**
+	 * A caller-chosen label for the action, or `null` for the default.
+	 *
+	 * The strip resolves a null to `ui.common.actions.retry` AT RENDER. The
+	 * model does not author the word: a `t()` evaluated here would freeze the
+	 * language of whichever frame first built the reading, and every retry row
+	 * this model produces today wants the same default.
+	 */
 	actionLabel: string | null;
 	/** The dot the dismissed pill carries, per cause. */
 	dot: "danger" | "warning";
@@ -240,7 +248,7 @@ export function chatStatusDisplay(
 			 * reader WHY their credential was refused.
 			 */
 			action: "retry",
-			actionLabel: "Retry",
+			actionLabel: null,
 			dot: "danger",
 		};
 	}
@@ -260,7 +268,7 @@ export function chatStatusDisplay(
 			title: CHAT_STATUS_COPY["internet-offline"],
 			detail: null,
 			action: "retry",
-			actionLabel: "Retry",
+			actionLabel: null,
 			dot: "warning",
 		};
 	}
@@ -292,7 +300,7 @@ export function chatStatusDisplay(
 			title: CHAT_STATUS_COPY.degraded,
 			detail: null,
 			action: "retry",
-			actionLabel: "Retry",
+			actionLabel: null,
 			dot: "warning",
 		};
 	}
@@ -342,7 +350,7 @@ export function chatStatusDisplay(
 				? (serverBannerCopy(snapshotOf(server))?.detail ?? null)
 				: null,
 			action: "retry",
-			actionLabel: "Retry",
+			actionLabel: null,
 			dot: "danger",
 		};
 	}

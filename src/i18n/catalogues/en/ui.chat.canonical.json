@@ -247,7 +247,6 @@
 	"ui.chat.canonical.canonical_transcript.image_value": "Image {value, number, ::group-off}",
 	"ui.chat.canonical.canonical_transcript.job_jobid": " · Job {jobId}",
 	"ui.chat.canonical.canonical_transcript.sound_value": "Sound {value, number, ::group-off}",
-	"ui.chat.canonical.canonical_transcript.turn_summary_key": "turn-summary:{key}",
 	"ui.chat.canonical.canonical_transcript.worked_for_formatdurationvalue": "Worked for {formatDurationValue}",
 	"ui.chat.canonical.checkpoint_model.jump_to_position": "Jump to {position}",
 	"ui.chat.canonical.checkpoint_model.jump_to_position_name": "Jump to {position}, {name}",
@@ -263,12 +262,9 @@
 	"ui.chat.canonical.image_gen_card.the_imagegenmaterialnounvalue_could_not_be_generated": "The {imageGenMaterialNounValue} could not be generated.",
 	"ui.chat.canonical.image_group_lightbox.image_value": "Image {value, number, ::group-off}",
 	"ui.chat.canonical.image_group_lightbox.show_image_value_of_count": "Show image {value, number, ::group-off} of {count, number, ::group-off}",
-	"ui.chat.canonical.sound_batch.soundowneridvalue_batch_id_id2": "{soundOwnerIdValue}:batch:{id}:{id2}",
 	"ui.chat.canonical.sound_batch_model.latest_update_name_item_item_of_total": "Latest update: {name} (item {item, number, ::group-off} of {total, number, ::group-off}).",
 	"ui.chat.canonical.supplement_file_actions.actions_for_value": "Actions for {value}",
 	"ui.chat.canonical.supplement_image_grid.length_images_from_this_run": "{length, number, ::group-off} images from this run",
-	"ui.chat.canonical.supplement_row.path_name": "{path}:{name}",
-	"ui.chat.canonical.supplement_row.sound_attachment": "sound:{attachment}",
 	"ui.chat.canonical.transcript_dom_window.duplicate_transcript_entry_key": "Duplicate transcript entry: {key}",
 	"ui.chat.canonical.transcript_dom_window.invalid_transcript_extent_key": "Invalid transcript extent: {key}",
 	"ui.chat.canonical.transcript_reducer.falling_back_to_stringvalue": ", falling back to {StringValue}",
@@ -296,5 +292,8 @@
 	"ui.chat.canonical.canonical_transcript.never_sent": "never sent · {composed}",
 	"ui.chat.canonical.canonical_transcript.bytes_composed": "{bytes} composed",
 	"ui.chat.canonical.attachment.gone": "This item is no longer in the session",
-	"ui.chat.canonical.supplement_row.details": "Details"
+	"ui.chat.canonical.supplement_row.details": "Details",
+	"ui.chat.canonical.image_gen_card.stop": "Stop",
+	"ui.chat.canonical.image_gen_card.retry": "Retry",
+	"ui.chat.canonical.image_gen_card.restart": "Restart"
 }
