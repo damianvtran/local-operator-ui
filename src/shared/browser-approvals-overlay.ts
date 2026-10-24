@@ -55,7 +55,12 @@ export interface ApprovalsCardRequest {
 	entryId: string;
 	/** The exact origin, scheme/host/port preserved. */
 	origin: string;
-	/** Already display-safe: the queue's `displayAuthority`, never `requester`. */
+	/**
+	 * The requester's DISPLAY label, resolved by the app renderer from the queue's
+	 * `requesterSessionId` (the conversation title, or "An agent"). Never the
+	 * queue's `requester` field, which is an authority boundary, and never
+	 * `displayAuthority`, which is the requested site's host.
+	 */
 	requester: string;
 	/** The locale-independent epoch the card turns into "Expires in 9 min". */
 	expiresAt: number;
@@ -76,6 +81,11 @@ export interface ApprovalsCardModel {
 	locale: string;
 	dir: "ltr" | "rtl";
 	theme: "light" | "dark";
+	/**
+	 * The app's exact palette name (`data-theme`), so the card paints in the
+	 * user's palette rather than a mode default. Null means the mode default.
+	 */
+	palette: string | null;
 	view: "request" | "list";
 	/** Ask the document to focus its dialog after painting (explicit open only). */
 	focus: boolean;

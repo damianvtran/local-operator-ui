@@ -47,6 +47,7 @@ import {
 import { BrowserApprovalsDock } from "./browser-approvals-dock";
 import { defaultApprovalHeaderLabel } from "./browser-approvals-tray";
 import { BrowserConsentBar } from "./browser-consent-bar";
+import { requesterLabel } from "./browser-consent-request";
 import { BrowserFileTransferRow } from "./browser-file-transfer-row";
 import { BrowserFindRow } from "./browser-find-row";
 import { BrowserHandOverDialog } from "./browser-hand-over-dialog";
@@ -349,21 +350,62 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	 * open, because only `open()` carried the context.
 	 */
 	const locale = currentLocale();
-	const documentTheme =
+	/*
+	 * THE MODE COMES FROM THE APP'S OWN SIGNAL, not from the palette's name (F3):
+	 * nine shipped light palettes (alucard, catppuccinLatte, iceberg,
+	 * kanagawaLotus, linen, paper, rosePineDawn, sage, tokyoNightDay) do not
+	 * contain "light", and the old substring test painted all of them dark. The
+	 * exact palette name travels too, so the card paints in the user's palette
+	 * rather than localOperatorLight/Dark.
+	 */
+	const cardPalette =
 		typeof document !== "undefined"
-			? document.documentElement.dataset.theme
-			: undefined;
-	const cardTheme = documentTheme?.toLowerCase().includes("light")
-		? "light"
-		: "dark";
+			? (document.documentElement.dataset.theme ?? null)
+			: null;
+	const cardTheme =
+		typeof document !== "undefined" &&
+		document.documentElement.classList.contains("dark")
+			? "dark"
+			: "light";
+	/*
+	 * WHO ASKED, resolved by the side that has the session titles (F2). The queue
+	 * carries only `requesterSessionId`; main cannot name a conversation, and the
+	 * queue's `requester` is an authority boundary. The map is memoised on the
+	 * ids so a projection tick with the same queue does not restart the card's
+	 * measurement.
+	 */
+	const requesterIdsKey = (state?.pendingConsent ?? [])
+		.map((row) => row.requesterSessionId ?? "")
+		.filter(Boolean)
+		.join("|");
+	const requesterLabels = useMemo(() => {
+		// The labels are catalogue text; touching the locale makes a language
+		// switch invalidate this map (requesterLabel has no locale parameter).
+		void locale;
+		const labels: Record<string, string> = {};
+		for (const id of requesterIdsKey.split("|")) {
+			if (id && !labels[id]) labels[id] = requesterLabel(id, sessions);
+		}
+		return labels;
+		// `locale` is a dependency because `requesterLabel` formats through the
+		// catalogue: a language switch must relabel the map, not only re-push it.
+	}, [requesterIdsKey, sessions, locale]);
 	useEffect(() => {
 		if (!nativeApprovalsCard?.available) return;
 		void window.api?.browser.setApprovalsCardContext({
 			locale,
 			dir: resolveLanguage(locale).dir,
 			theme: cardTheme,
+			palette: cardPalette,
+			requesterLabels,
 		});
-	}, [nativeApprovalsCard?.available, locale, cardTheme]);
+	}, [
+		nativeApprovalsCard?.available,
+		locale,
+		cardTheme,
+		cardPalette,
+		requesterLabels,
+	]);
 	/*
 	 * KEYBOARD ENTRY IS THE SHIELD, AND CLOSING MUST GIVE IT BACK (U1). Close and
 	 * Escape focus the page in main; the shield is app DOM, not page content, so

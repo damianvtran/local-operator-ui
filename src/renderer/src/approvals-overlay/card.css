@@ -129,9 +129,40 @@ html[data-opaque="1"] #approvals-card {
 }
 
 .card-body {
+	display: flex;
+	flex-direction: column;
+	/* Fill the pinned card (the list view sets a min-height) so the footer's
+	   auto margin reaches its foot instead of leaving the empty band outside
+	   the body (D12). */
+	flex: 1 1 auto;
 	min-height: 0;
 	overflow-y: auto;
 	padding: 0 12px;
+	/* The scrollbar is the card surface's, not the platform's (round-2 nit). */
+	scrollbar-width: thin;
+	scrollbar-color: var(--lo-border-control) transparent;
+}
+
+.card-body::-webkit-scrollbar {
+	width: 10px;
+}
+
+.card-body::-webkit-scrollbar-thumb {
+	border: 2px solid var(--lo-elevated);
+	border-radius: 999px;
+	background: var(--lo-border-control);
+}
+
+.card-body::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+/*
+ * The last decision keeps a breathing space above the hairline; a button whose
+ * border touches the divider reads as the footer's own control (round-2 nit).
+ */
+#approvals-request {
+	padding-bottom: 6px;
 }
 
 /*
@@ -233,14 +264,21 @@ html[data-opaque="1"] #approvals-card {
  * mark the scroll boundary so content is not read as cut mid-glyph (D6).
  */
 .card-footer {
+	/*
+	 * PINNED AT THE BOTTOM OF A SHORT VIEW, STICKY IN A LONG ONE. `margin-top:
+	 * auto` in the flex body puts the footer at the card's foot when the list is
+	 * short (D12: it used to sit at the end of the 148px list, leaving an empty
+	 * band below it), and `position: sticky` keeps it at the scrollport's foot
+	 * when the request scrolls.
+	 */
 	position: sticky;
 	bottom: 0;
-	margin: 0 -12px;
+	margin: auto -12px 0;
 	padding: 6px 12px 10px;
 	border-top: 1px solid var(--lo-hairline);
 	background: var(--lo-elevated);
-	box-shadow: 0 -6px 8px -8px
-		color-mix(in srgb, var(--lo-scrim) 55%, transparent);
+	box-shadow: 0 -10px 14px -8px
+		color-mix(in srgb, var(--lo-scrim) 80%, transparent);
 }
 
 .card-review {

@@ -392,12 +392,16 @@ export interface BrowserHostOptions {
 			locale?: string;
 			dir?: "ltr" | "rtl";
 			theme?: "light" | "dark";
+			palette?: string | null;
+			requesterLabels?: Readonly<Record<string, string>>;
 		}) => void;
 		close: () => void;
 		setContext: (input: {
 			locale?: string;
 			dir?: "ltr" | "rtl";
 			theme?: "light" | "dark";
+			palette?: string | null;
+			requesterLabels?: Readonly<Record<string, string>>;
 		}) => void;
 		state: () => { available: boolean; open: boolean };
 	};
@@ -1938,7 +1942,13 @@ export class BrowserHost implements BrowserActionContext {
 			request.theme === "light" || request.theme === "dark"
 				? request.theme
 				: undefined;
-		this.approvalsCard?.open({ locale, dir, theme });
+		const palette =
+			request.palette === null
+				? null
+				: typeof request.palette === "string"
+					? request.palette
+					: undefined;
+		this.approvalsCard?.open({ locale, dir, theme, palette });
 		// The renderer discards the returned projection for the shield toggle
 		// (M2); the push is what makes aria-expanded and the button's selected
 		// style follow main. `onChanged` also re-renders a route that mounted
@@ -1960,6 +1970,12 @@ export class BrowserHost implements BrowserActionContext {
 			input && typeof input === "object"
 				? (input as Record<string, unknown>)
 				: {};
+		const labels =
+			request.requesterLabels &&
+			typeof request.requesterLabels === "object" &&
+			!Array.isArray(request.requesterLabels)
+				? (request.requesterLabels as Record<string, string>)
+				: undefined;
 		this.approvalsCard?.setContext({
 			locale: typeof request.locale === "string" ? request.locale : undefined,
 			dir:
@@ -1970,6 +1986,12 @@ export class BrowserHost implements BrowserActionContext {
 				request.theme === "light" || request.theme === "dark"
 					? request.theme
 					: undefined,
+			...(request.palette === null
+				? { palette: null }
+				: typeof request.palette === "string"
+					? { palette: request.palette }
+					: {}),
+			...(labels ? { requesterLabels: labels } : {}),
 		});
 	}
 
