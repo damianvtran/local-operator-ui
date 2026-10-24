@@ -1,0 +1,94 @@
+/*
+ * S6a's card surface.
+ *
+ * The document's background is TRANSPARENT: the native child is larger than the
+ * card only so the card's shadow can paint, and everything outside the rounded
+ * surface must show the live page underneath. The native view's own background
+ * colour is set to fully transparent by the controller; this file must not paint a
+ * body background or the transparency proof would be measuring the card, not
+ * the compositor.
+ *
+ * COLOUR IS TOKEN ROLES ONLY. The generated theme stylesheet is linked by the
+ * document, and the root's `data-theme` selects the app's palette; there is no
+ * hex, no rgb and no second palette in this file. S6b delivers the same roles
+ * from the app renderer; S6a reads the generated stylesheet directly.
+ */
+html,
+body {
+	margin: 0;
+	padding: 0;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+	background: transparent;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+		sans-serif;
+	color: var(--lo-ink);
+}
+
+#approvals-card {
+	position: absolute;
+	left: 8px;
+	right: 8px;
+	bottom: 8px;
+	box-sizing: border-box;
+	overflow: hidden;
+	/*
+	 * The controller clamps the native view to the content ceiling; the card
+	 * must clamp with it, or a tall document overflows the view and is cut off
+	 * at the HEADER (the card is bottom-pinned). The inset is the same 8 px the
+	 * geometry module places on every side, so the card never leaves the ring.
+	 */
+	max-height: calc(100% - 16px);
+	border: 1px solid var(--lo-border-control);
+	border-radius: 14px;
+	background: var(--lo-elevated);
+	box-shadow: 0 1px 6px color-mix(in srgb, var(--lo-scrim) 60%, transparent);
+	padding: 12px;
+}
+
+html[data-opaque="1"] #approvals-card {
+	left: 0;
+	right: 0;
+	bottom: 0;
+	max-height: 100%;
+	border-radius: 0;
+	box-shadow: none;
+}
+
+.card-header {
+	display: flex;
+	align-items: center;
+	min-height: 28px;
+}
+
+.card-header h1 {
+	margin: 0;
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.4;
+	color: var(--lo-ink);
+}
+
+.card-count {
+	margin: 8px 0 0;
+	color: var(--lo-accent);
+	font-size: 12px;
+	line-height: 1.4;
+}
+
+.card-detail {
+	margin: 4px 0 0;
+	color: var(--lo-ink-muted);
+	font-size: 12px;
+	line-height: 1.4;
+}
+
+.card-brand {
+	margin: 0 0 2px;
+	color: var(--lo-ink-muted);
+	font-size: 11px;
+	font-weight: 500;
+	line-height: 1.3;
+	letter-spacing: 0.02em;
+}

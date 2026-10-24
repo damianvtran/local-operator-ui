@@ -82,8 +82,10 @@ import {
 	ADDRESS_OVERLAY_VISIBLE_MAX_MS,
 	addressListDocumentUrlFor,
 	addressOverlayDocumentUrlFor,
+	documentUrlFor,
 	resolveAddressOverlayGate,
 } from "./browser/address-overlay";
+import { APPROVALS_OVERLAY_S6A_ENV } from "./browser/approvals-overlay";
 import { runBrowserMenuAction } from "./browser/browser-chord";
 import {
 	CONSENT_ATTENTION_CHANNEL,
@@ -2634,6 +2636,15 @@ app
 				? addressListDocumentUrlFor(rendererUrl)
 				: addressOverlayDocumentUrlFor(rendererUrl);
 		/*
+		 * S6a's card document, derived from the same trusted renderer URL. The
+		 * experiment is off unless the exact opt-in is present; the host receives
+		 * no option and creates no child in an ordinary launch.
+		 */
+		const approvalsOverlayS6a = process.env[APPROVALS_OVERLAY_S6A_ENV] === "1";
+		const approvalsOverlayDocumentUrl = approvalsOverlayS6a
+			? documentUrlFor(rendererUrl, "browser-approvals-overlay.html")
+			: null;
+		/*
 		 * The machine-wide feed's two consumers, and the split between them is the
 		 * design: main takes the notifications (so a completion banners with no
 		 * window at all — the operator's own reported case) and the window takes
@@ -4231,6 +4242,14 @@ app
 									visible: addressOverlayGate.visible,
 									product: addressOverlayProduct,
 									documentUrl: addressOverlayDocumentUrl,
+								},
+							}
+						: {}),
+					...(approvalsOverlayS6a && approvalsOverlayDocumentUrl
+						? {
+								approvalsOverlay: {
+									enabled: true,
+									documentUrl: approvalsOverlayDocumentUrl,
 								},
 							}
 						: {}),
