@@ -27,6 +27,7 @@ import type {
 	SyntheticEvent,
 } from "react";
 import {
+	useCallback,
 	useEffect,
 	useId,
 	useLayoutEffect,
@@ -56,6 +57,21 @@ import { isSecurityLoadFailure, siteInfoForUrl } from "../model/site-info";
 import { useAddressOverlayMirror } from "../overlay/use-address-overlay-mirror";
 
 const FILE_SCHEME = /^file:/i;
+
+/**
+ * A press inside a portalled overlay is chrome interacting with chrome, not a
+ * press into the page behind the row. The selector is the established one for
+ * "this node is not where its trigger lives" (see `ask-drawer` and
+ * `use-inline-edit`); the address row's own overflow menu and every tooltip
+ * render through it.
+ */
+function isPortalledChromeTarget(target: Node): boolean {
+	const element = target instanceof Element ? target : target.parentElement;
+	return (
+		element !== null &&
+		element.closest("[data-radix-popper-content-wrapper]") !== null
+	);
+}
 
 /**
  * The browser's address row: ONE placement, permanently in flow between the tab
@@ -92,6 +108,17 @@ export interface AddressFocusRequest {
 	seed?: string;
 	selectAll: boolean;
 }
+
+/**
+ * Why the row gave an edit up without navigating.
+ *
+ * `escape` (Escape) and `cancel` (Enter on an untouched seed) are the reader
+ * leaving the field: the surface requests page focus whenever one is presented,
+ * regardless of where the request that raised the field came from, and falls
+ * back to the chord root on the start page. The row cannot know whether the tab
+ * has a page, so it names the intent and the surface decides.
+ */
+export type AddressDismissIntent = "escape" | "cancel";
 
 export interface BrowserUrlBarProps {
 	/** The row root, for the surface's anchor measurement (the native suggestion
@@ -139,8 +166,11 @@ export interface BrowserUrlBarProps {
 	 * main refuses suggestion projections. The field says so once the user types,
 	 * rather than leaving a silent dead list. */
 	suggestionsUnavailable?: boolean;
-	/** Escape or Enter on an untouched draft: abandon the draft and return focus. */
-	onDismiss?: () => void;
+	/** Escape or Enter on an untouched draft: abandon the draft and hand focus
+	 * back. The intent is escape or cancel; the surface requests page focus for
+	 * both whenever a page is presented, and falls back to the chord root on the
+	 * start page / own state. */
+	onDismiss?: (intent: AddressDismissIntent) => void;
 	/** A commit happened: return focus per the surface's origin rule. */
 	onCommitted?: () => void;
 	addressHistory?: (
@@ -197,6 +227,24 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	onStateChanged,
 }) => {
 	useI18nLocale();
+	/**
+	 * The row's own box. `rootRef` is the surface's anchor handle and the same
+	 * node; keeping an internal ref means the outside-press rule still knows where
+	 * the row is when the component renders without one (stories, the DOM tests).
+	 */
+	const rowEl = useRef<HTMLDivElement | null>(null);
+	/** Stable across renders: a callback ref with a new identity detaches and
+	 * re-attaches on every render, which also re-runs the surface's anchor
+	 * measurement. */
+	const setRowEl = useCallback(
+		(node: HTMLDivElement | null): void => {
+			rowEl.current = node;
+			if (typeof rootRef === "function") rootRef(node);
+			else if (rootRef)
+				(rootRef as { current: HTMLDivElement | null }).current = node;
+		},
+		[rootRef],
+	);
 	/**
 	 * A pane narrower than main's list floor cannot host a usable child, so main
 	 * refuses the projection and the field is all there is. Without this the
@@ -479,25 +527,44 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		const source = rowSubtitle(row);
 		return source.length > 0 ? `${text} — ${source}` : text;
 	};
-	const hasResult = suggestions.rows.length > 0;
+	/**
+	 * A REFUSED INPUT IS ITS OWN FACT, and it is announced whatever the history
+	 * read is doing: it explains what Enter will not do, not what the list holds.
+	 */
+	const refusedInput =
+		suggestions.intent === "blocked" ||
+		// The FILE_SCHEME arm must read the USER's text, not the focus seed: a
+		// `file:` live URL is a page you are on, not an address typed into the
+		// field, and announcing the refusal on focus alone was false (R1-2).
+		(edited && FILE_SCHEME.test(raw.trim()));
 	// A dismissal suppresses the list until the text changes. Without this, the
 	// first Escape restored the raw text but left the rows on screen — the copy
 	// promised a dismissal the layout did not perform.
 	const suppressed = dismissedForText !== null && dismissedForText === raw;
+	/*
+	 * THE EMPTY STATE IS NOT A PANEL (operator decision, 2026-10-24).
+	 *
+	 * Focus used to raise the native suggestion child and paint "No browsing
+	 * history yet." over the page for a field with nothing to suggest — one press
+	 * into permanent chrome and the page was covered by a list nobody asked for,
+	 * whose only exit was a dismissal that had to be invented. A focused field
+	 * with an empty history now shows nothing: no child, no notice, no
+	 * `aria-expanded`.
+	 *
+	 * The notice survives where it explains something: a NON-EMPTY query with no
+	 * match, an unavailable read, and a refused input. The old empty-string arm of
+	 * `listNotice` is therefore unreachable from this component (the catalogue
+	 * entry stays; it is not this change's to delete).
+	 */
 	const listVisible =
 		suggestionsEnabled &&
 		editing &&
 		!composing &&
 		!suppressed &&
 		(autocomplete.error ||
+			refusedInput ||
 			suggestions.rows.length > 0 ||
-			(!autocomplete.loading && !autocomplete.error && !hasResult));
-
-	/** The one line the list shows when it has no rows. Separate from the empty
-	 * field's copy: a filtered no-match and "nothing here yet" are different
-	 * facts, and an error must not look like an empty history. */
-	const refusedInput =
-		suggestions.intent === "blocked" || FILE_SCHEME.test(raw.trim());
+			(query.length > 0 && !autocomplete.loading));
 	const listNotice = autocomplete.error
 		? t("ui.browser.browser_url_bar.address_suggestions_unavailable")
 		: refusedInput
@@ -556,12 +623,72 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		setActiveIndex(-1);
 	};
 
+	/**
+	 * Whether this edit was given up without a commit. Read by `compositionEnd`:
+	 * the browser can deliver a late `compositionend` after a press/main dismissal
+	 * has already blurred the field, and its interim value belongs to a draft the
+	 * row no longer owns. Cleared on the next `focus()`, which is what makes the
+	 * next edit ordinary again.
+	 */
+	const editDismissedRef = useRef(false);
 	const abandon = (): void => {
+		// THE EDIT ENDED, NOT JUST ITS DRAFT. The DOM input otherwise stays
+		// `document.activeElement` after focus was handed to the page, and paints
+		// the focus outline over a field nobody is editing (design round 1, D1).
+		// `abandon()` has already cleared the draft, so the null-`relatedTarget`
+		// blur branch below only clears the generated suffix.
+		editDismissedRef.current = true;
 		setAcceptedTarget(null);
 		setDraft(null);
 		clearGenerated();
 		setDismissedForText(null);
+		inputEl.current?.blur();
 	};
+	/** The listener below must run the LATEST abandonment without re-subscribing
+	 * on every render; `abandon` changes identity each time. */
+	const abandonRef = useRef(abandon);
+	abandonRef.current = abandon;
+
+	/*
+	 * A REAL POINTER PRESS OUTSIDE THE ROW ENDS THE EDIT (operator report,
+	 * 2026-10-24).
+	 *
+	 * Neither existing dismissal covers it: a press on non-focusable chrome (a
+	 * panel's prose, the workspace ground, the tab strip's empty band) produces no
+	 * blur at all, and a blur with a NULL `relatedTarget` is deliberately kept —
+	 * that value is also a native page click and a window deactivation. The press
+	 * itself is the one signal that names where the user went, so it is read in
+	 * the CAPTURE phase (a control that stops propagation is still a press) and
+	 * the edit is abandoned exactly as Escape abandons it.
+	 *
+	 * WHAT IS EXCLUDED, and why: the row's own box (pressing the field, a row
+	 * control or the accessible list is not leaving), and portalled chrome — a
+	 * Radix menu or tooltip content lives outside the row in the DOM but is part
+	 * of it in the interface. No `onDismiss` is called: the press has already
+	 * decided where the caret goes, and moving it would steal that decision.
+	 *
+	 * IT LISTENS WHILE THE FIELD IS EDITING, NOT ONLY WHILE THE LIST IS VISIBLE
+	 * (review round 1, R1-1): the list is closed during IME composition and before
+	 * the first history answer, and a press in either window used to reach nothing,
+	 * so `compositionend` or the late answer re-raised the child after focus had
+	 * left. Attaching on `editing` also costs nothing when the list is closed: the
+	 * press calls the same abandonment (draft, completion, dismissed state, DOM
+	 * focus) and the child is never shown.
+	 */
+	useEffect(() => {
+		if (!editing) return;
+		const onPointerDown = (event: PointerEvent): void => {
+			const target = event.target;
+			if (!(target instanceof Node)) return;
+			if (rowEl.current?.contains(target)) return;
+			if (isPortalledChromeTarget(target)) return;
+			abandonRef.current();
+		};
+		document.addEventListener("pointerdown", onPointerDown, true);
+		return () => {
+			document.removeEventListener("pointerdown", onPointerDown, true);
+		};
+	}, [editing]);
 
 	const commit = (target: string): void => {
 		setAcceptedTarget(null);
@@ -572,7 +699,10 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		setDraft(null);
 		clearGenerated();
 		setDismissedForText(null);
-		// A commit ends the edit: the surface returns focus per its origin rule.
+		// A commit ends the edit: drop DOM focus (the surface then returns it per
+		// its origin rule) and refuse a late composition commit.
+		editDismissedRef.current = true;
+		inputEl.current?.blur();
 		onCommitted?.();
 	};
 
@@ -649,7 +779,21 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			const target = rowTarget(suggestions, index);
 			if (target) commit(target);
 		},
-		onDismiss: () => onDismiss?.(),
+		onDismiss: () => {
+			// MAIN DECIDED THE LIST COMES DOWN (page focus, page pointer, navigation).
+			// Abandoning the edit HERE is what stops the next projection frame from
+			// re-raising the child: the mirror is `listVisible`, which is `editing`,
+			// and a callback that only returned focus left the field editing.
+			// Measured on the baseline: with a `page` origin the focus return is a
+			// no-op in an unfocused window, so the draft survived and re-projected.
+			//
+			// IT IS FOCUS-NEUTRAL, DELIBERATELY: for a page click main has just
+			// focused the page, and the surface's origin rule (chrome for a field
+			// click) would then focus the chord root and take focus OUT of the page
+			// the user just pressed. The press already chose the target, and a
+			// navigation/tab change chose its own. No `onDismiss` here.
+			abandon();
+		},
 		onUnavailable: () => setNarrowAnchor(true),
 	});
 
@@ -661,6 +805,26 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 * the text differs from the text the user dismissed.
 	 */
 	const change = (event: ChangeEvent<HTMLInputElement>): void => {
+		/*
+		 * A LATE IME `input` AFTER THE EDIT ENDED IS NOT AN EDIT (review round 2,
+		 * R2-1). `compositionend` is not the only event that can arrive after a
+		 * press/commit/Enter blurred the field: Chromium can deliver the `input`
+		 * that commits the composition before (or after) it, and this handler used
+		 * to write `edited`/`draft` and re-raise the child with nothing focused.
+		 * The ownership test is shared with `compositionEnd`.
+		 *
+		 * THE VALUE IS RESTORED HERE because there is no state write to re-render
+		 * from once the edit is over: the browser has already written the late text
+		 * into the DOM, and the blurred field would keep it until something else
+		 * rendered.
+		 */
+		if (
+			editDismissedRef.current ||
+			document.activeElement !== event.currentTarget
+		) {
+			event.currentTarget.value = raw;
+			return;
+		}
 		setAcceptedTarget(null);
 		setEdited(true);
 		const next = event.target.value;
@@ -722,6 +886,20 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	const compositionEnd = (event: CompositionEvent<HTMLInputElement>): void => {
 		composingRef.current = false;
 		setComposing(false);
+		/*
+		 * A LATE COMMIT AFTER THE EDIT ENDED IS NOT AN EDIT (review round 1, R1-1).
+		 * `compositionend` can arrive after an outside press or a main dismissal has
+		 * already blurred the field (a blur can even commit the IME), and its value
+		 * then belongs to a draft this row has given up. Adopting it re-seeded
+		 * `edited`/`draft` and could raise the suggestion child after focus had left.
+		 * Only a field that still owns focus and an un-dismissed edit may adopt; the
+		 * same ownership test guards `change()` (review round 2, R2-1).
+		 */
+		if (
+			editDismissedRef.current ||
+			document.activeElement !== event.currentTarget
+		)
+			return;
 		const next = event.currentTarget.value;
 		setEdited(true);
 		setDraft(next);
@@ -730,6 +908,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	};
 
 	const focus = (): void => {
+		editDismissedRef.current = false;
 		if (draft === null) setEdited(false);
 		setDraft((current) => current ?? live);
 		undoRef.current = { stack: [live], redo: [] };
@@ -790,7 +969,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			// and Enter must commit it whatever the draft state (U8).
 			if (untouchedDraft && activeIndex < 0) {
 				abandon();
-				onDismiss?.();
+				onDismiss?.("cancel");
 				return;
 			}
 			// The classification and the commit path agree here: blocked text and a
@@ -824,6 +1003,12 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			const next = usableRawAddress(raw);
 			if (!next) {
 				abandon();
+				// THE KEYBOARD MUST LAND SOMEWHERE. Abandoning without the surface's
+				// handoff left focus on `<body>`: the upshot was a dead keyboard after
+				// Enter on a blank/control-char draft (review round 2, U3-2). Same
+				// cancel intent as untouched Enter; the surface sends it to the page
+				// when one is presented, else to the chord root.
+				onDismiss?.("cancel");
 				return;
 			}
 			// ENTER PRECEDENCE, in the code's own order: (1) a highlighted row
@@ -855,7 +1040,13 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			 * discards the draft and returns focus.
 			 */
 			abandon();
-			onDismiss?.();
+			/* ESCAPE IS A RETURN TO THE PAGE when one is presented (operator
+			 * report, 2026-10-24): the field took the caret from the page, and the
+			 * request's origin does not answer where it should go back to — a click
+			 * into the field is chrome origin even with a page right below it. The
+			 * surface reads the intent and decides (own-state falls back to the
+			 * chord root); this row cannot see whether the tab has a page. */
+			onDismiss?.("escape");
 			return;
 		}
 
@@ -1060,7 +1251,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 
 	return (
 		<div
-			ref={rootRef}
+			ref={setRowEl}
 			/* A CHROME BAND, permanent and in flow between the strip and the page:
 			   4px pad + 28px controls + 4px pad + the 1px rule = 37px. The rule is
 			   `border-control` rather than `hairline` because it is the only separator
