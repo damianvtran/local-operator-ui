@@ -2577,6 +2577,10 @@ try {
 		}
 		await historyScene({ shot, framesDir: FRAMES });
 	} catch (error) {
+		// A named history failure is already at its discriminating step. Let the
+		// outer fatal path own it; serializing the normal matrix would leave every
+		// unexecuted history row pending and could return a misleading success.
+		if (error instanceof HistorySceneRigError) throw error;
 		// A state rig failure must not discard the rows that already passed: it is
 		// recorded once, and the rest of the matrix still runs.
 		event({ event: "visual-states-error", message: String(error) });
