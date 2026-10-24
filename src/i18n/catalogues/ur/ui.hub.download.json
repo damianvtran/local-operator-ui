@@ -1,0 +1,6 @@
+{
+	"ui.hub.download.collision": "“{name}” ڈاؤن لوڈ ہو گیا۔ آپ کے پاس پہلے سے “{collision}” نام کا ایجنٹ ہے، اس لیے اب دو ایجنٹس اسی نام سے جواب دیتے ہیں اور کوئی بھی منتخب ہو سکتا ہے۔ ایک کا نام بدل دیں۔",
+	"ui.hub.download.fallback_agent": "ایجنٹ",
+	"ui.hub.download.renamed": "“{name}” ڈاؤن لوڈ ہو گیا — آپ کے پاس پہلے سے “{previous}” نام کا ایجنٹ ہے۔",
+	"ui.hub.download.succeeded": "“{name}” ہب سے ڈاؤن لوڈ ہو گیا۔"
+}

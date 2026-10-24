@@ -177,5 +177,11 @@
 	"ui.hub.skills.public_hub": "عوامی Agent Hub",
 	"ui.hub.skills.count": "{count, plural, one {{count, number, ::group-off} مہارت} other {{count, number, ::group-off} مہارتیں}}",
 	"ui.hub.skills.count_shared": "{count, plural, one {{organization} کے ساتھ مشترک {count, number, ::group-off} مہارت} other {{organization} کے ساتھ مشترک {count, number, ::group-off} مہارتیں}}",
-	"ui.hub.skills.inventory_unknown": "ربط کی حالت دستیاب نہیں۔"
+	"ui.hub.skills.inventory_unknown": "ربط کی حالت دستیاب نہیں۔",
+	"ui.hub.pager.agent_pages": "ایجنٹوں کے صفحات",
+	"ui.hub.pager.previous_page": "پچھلا صفحہ",
+	"ui.hub.pager.previous": "پچھلا",
+	"ui.hub.pager.next_page": "اگلا صفحہ",
+	"ui.hub.pager.next": "اگلا",
+	"ui.hub.pager.page_of": "صفحہ {page, number, ::group-off} از {count, number, ::group-off}"
 }

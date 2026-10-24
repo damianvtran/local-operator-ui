@@ -1,0 +1,167 @@
+{
+	"translator": "i18n-translator",
+	"model": "radient/auto",
+	"instance": "b6644516fb1d",
+	"locale": "ur",
+	"date": "2026-10-24",
+	"status": "translated",
+	"batch": "agents",
+	"scope": "Translation of the 687 English keys added by feat/i18n-extract-agents (head 92d6e07625) into Urdu: agents config/detail/editor/page/publication/team/upload, hub agents/download/teams and the six pager keys added to ui.hub, the onboarding tour, and one providers key. Existing Urdu values were preserved byte-for-byte; only missing keys were appended, in English key order. Not an audit: no independence is claimed and the ledger entries belong to the audit wave.",
+	"base": "92d6e07625a21cf03e4890d5318920c6454eb8fc",
+	"branch": "feat/i18n-agents-ur",
+	"key_counts": {
+		"total": 687,
+		"namespaces": {
+			"ui.agents.config": 85,
+			"ui.agents.detail": 93,
+			"ui.agents.editor": 13,
+			"ui.agents.page": 46,
+			"ui.agents.publication": 99,
+			"ui.agents.team": 51,
+			"ui.agents.upload": 53,
+			"ui.hub.agents": 94,
+			"ui.hub.download": 4,
+			"ui.hub.pager (added to ui.hub)": 6,
+			"ui.hub.teams": 58,
+			"ui.onboarding.tour": 84,
+			"ui.providers.provider_detail.sign_in_again": 1
+		},
+		"touched_namespace_totals": 1055
+	},
+	"sha256": {
+		"ui.agents.config.json": {
+			"ur": "a4bb243738e95411fa3723858c0237f670d97e845f91857fb8b6f08d8ba3281b",
+			"en": "0e36bb28caa4f698defc0081ca342d320101ad2a72a421f8f37e9e45ed18b543"
+		},
+		"ui.agents.detail.json": {
+			"ur": "30b68666e9035c6409e45ee6841b149e4c01f1cb2fd12914e3529a226006dba2",
+			"en": "1b2165d369482a821c996b886b6448fa2148d22a377a5cff71b8e922ef25e168"
+		},
+		"ui.agents.editor.json": {
+			"ur": "a9cea90bb0b3aabe489c7907f46dae58e5f94735a3eee6b062c2e8a80d0cd5dd",
+			"en": "fba54b0f049efb6a194c7988bfaa5db161f465e0b04fd049176eac75a13f18d8"
+		},
+		"ui.agents.page.json": {
+			"ur": "ce2e083ce947cfe1a02aa19fcb0c56bbdd466a1af8dac6886c2736ff39f46f4a",
+			"en": "4fa71557f0bc10b694fe46fca73165eb3f4bbfb1d5aeba737038b2d95b2d249e"
+		},
+		"ui.agents.publication.json": {
+			"ur": "8a6fc2076b5398deb72ae6435221ff86e59eea71d187dbe3519348145fc89ee7",
+			"en": "3adfaf52f92fe9635f711cf2d40ca99d983ff5f39a5c33d2d09a0f00b69942a0"
+		},
+		"ui.agents.team.json": {
+			"ur": "2987b7722da89c6695a2c753aa4eb8bdc52692bf404195169aa7ff6fc7b9db30",
+			"en": "e7a7b948df5f1afb1108903abf007b71af519c3d4b8efcce767ecbebec0c8243"
+		},
+		"ui.agents.upload.json": {
+			"ur": "3b57d9fefa1e6ca3c9caf57da9660f982f0acf0e2173798ffd85ff58527805ff",
+			"en": "38863aaca4bc604c2fd4eb9bcba4399761a9cfd57eadab8790dbe037e8643247"
+		},
+		"ui.hub.agents.json": {
+			"ur": "54c091bd063abba56160098aecf29498c8529b92fc76d61bc326d7ed37c8b4fa",
+			"en": "0498eb7c28af7a72a7973eb2279e2070e5c22bc4d4865c4986e23c983f0162b4"
+		},
+		"ui.hub.download.json": {
+			"ur": "9110ee28c0a056b5e718de823c009751e1802d911da39f09fedeff2ee360a52a",
+			"en": "050698c925d0a7dece278ebf0d50bf8116ae7f99071889eab3643b9bfd1a78d5"
+		},
+		"ui.hub.json": {
+			"ur": "558e65a4f5901a07d0ad8f752ebfad4d7ee73e3988be128cb9337def614f3867",
+			"en": "d6a8d4b0257877628ce579f21208ce600c04e024a28419f4c8a4b56759b8efcc"
+		},
+		"ui.hub.teams.json": {
+			"ur": "d6221f8411d9bb29a08a23b3548d8924e9f8f0ee4e73c762e567a8c973fcd79d",
+			"en": "a8ad00d689b74ba21208b99d74bc8c4c1857c036dd08da45c654385594b8ad8c"
+		},
+		"ui.onboarding.tour.json": {
+			"ur": "8bb0b4402f9846c04ac5a4276e475a1eeeee7f36ff4932acef39018d9ef842b4",
+			"en": "4b80ff5ad817bef1842d792414589ff692ce36fac6c3e5d9c4d86a629572022a"
+		},
+		"ui.providers.json": {
+			"ur": "3c1cd999980c38bec9278c156f14134534c1d7f6b113810af69202a945f67669",
+			"en": "126a999fb9b26d8f3e2e17231b5d5d5b430d55cd2d468c8b3323d3a041a86632"
+		},
+		"src/i18n/keys.gen.ts": {
+			"sha256": "2a80fad1be17165c1686a1d1bdfb32e117bb3185b6efa8226fb97197cc4336d1"
+		}
+	},
+	"references": {
+		"glossary": {
+			"path": "~/local-operator/i18n/glossary.md",
+			"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+			"revision": "local-operator 24dbccbb78"
+		},
+		"style_guide": {
+			"path": "~/local-operator/i18n/style-guides/ur.md",
+			"sha256": "157b1310a090ca98bd9c4b2262a8ebcf7d5ca92cd91fb5f9c7e82d21fe768c9c"
+		},
+		"ui_i18n_howto": {
+			"path": "docs/I18N.md",
+			"sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+		}
+	},
+	"verification": [
+		{
+			"check": "generator freshness",
+			"command": "node scripts/i18n/generate.mjs --check",
+			"result": "PASS — keys.gen.ts is byte-identical to a fresh generation"
+		},
+		{
+			"check": "per-key ICU/plural/script/NFC/stub",
+			"command": "node <scratch>/verify.mjs (STRICT=1) for the 13 touched namespaces",
+			"result": "PASS — 687 keys checked: identical argument names, select/plural arms, number skeletons, tags and offsets; Urdu plural arms are one/other only; NFC; no manual bidi controls; no Devanagari/danda/Arabic-only letters; no English stubs beyond the three neutral strings listed below"
+		},
+		{
+			"check": "runtime bundle and formatting",
+			"command": "node <scratch>/runtime.mjs (esbuild-bundled messages/locale/keys.gen)",
+			"result": "PASS — 1055 bundled values in touched namespaces equal their file values; representative t() renders show one/other arms, select arms, ::group-off numbers and a switch back to English"
+		},
+		{
+			"check": "namespace parity",
+			"command": "python3 <scratch>/parity.py",
+			"result": "PASS — 13/13 namespaces key-complete (1055 keys), no extra keys, no empty values"
+		},
+		{
+			"check": "literal ratchet and context parity",
+			"command": "node scripts/i18n/check-strings.mjs; node scripts/i18n/context-parity.mjs",
+			"result": "PASS — 392 literals at or below baseline; every English key covered apart from 131 allowed context gaps"
+		},
+		{
+			"check": "coverage gate",
+			"command": "node scripts/i18n/check-coverage.mjs",
+			"result": "PASS (exit 0) — ur carries every English key in the touched namespaces"
+		}
+	],
+	"neutral_identical_values": [
+		"ui.agents.config.result_kind — parentheses plus selector placeholders, no prose",
+		"ui.hub.agents.hub_title — the Agent Hub surface name, kept English by the glossary",
+		"ui.hub.teams.member_kind — selector arms carry only dynamic values",
+		"ui.hub.teams.member_with_kind — selector arms plus name and parentheses",
+		"ui.hub.teams.slot_with_count — placeholders plus a multiplication sign",
+		"ui.hub.teams.version — version prefix plus the published identifier"
+	],
+	"term_choices": {
+		"manager": "مینیجر",
+		"configuration run": "ترتیب کا عمل",
+		"definition (agent/team)": "تعریف",
+		"proactive / reactive": "پیش قدم / جوابی",
+		"built-in": "بلٹ ان",
+		"custom": "حسب ضرورت",
+		"effort tier": "کوشش کا درجہ",
+		"brief (team)": "بریف",
+		"roster": "فہرستِ ارکان",
+		"delist": "ہب سے ہٹائیں",
+		"favourite (verb)": "پسندیدہ بنائیں",
+		"like (verb)": "پسند کریں"
+	},
+	"overflow_notes": [
+		"Urdu runs longer than English in characters; the style guide measures roughly one cell per character. Short-label values over 1.6x English were shortened where a natural shorter phrasing existed (most liked/favourited, roster, trying, pulling, delisting).",
+		"دوبارہ کوشش کریں (Retry) is 16 characters for a 5-character English label but is the string the shipped Urdu product already uses for this action; changing it would break vocabulary consistency.",
+		"Remaining long labels for a reviewer's fit pass: ui.hub.agents.sort_most_favourited (سب سے زیادہ پسندیدہ), ui.hub.teams.roster (فہرستِ ارکان), ui.agents.detail.used_by (استعمال کنندگان)."
+	],
+	"known_gates_not_owned_here": [
+		"ledger-check fails while these nine namespaces have no ledger entry; entries and independent audit belong to the audit wave, not this translation branch.",
+		"No rendered-frame or browser pass was part of this task; visual fit is the design review's scope."
+	],
+	"model_provenance": "Served model label reported by this session is radient/auto (routed); the underlying provider model is not exposed to the session, so none is invented."
+}

@@ -1,0 +1,15 @@
+{
+	"ui.agents.editor.cancel": "منسوخ کریں",
+	"ui.agents.editor.creating": "بنایا جا رہا ہے…",
+	"ui.agents.editor.discard_changes": "تبدیلیاں رد کریں",
+	"ui.agents.editor.discard_unsaved": "اپنی غیر محفوظ تبدیلیاں رد کریں؟",
+	"ui.agents.editor.empty": "ابھی یہاں کچھ نہیں۔",
+	"ui.agents.editor.keep_editing": "ترمیم جاری رکھیں",
+	"ui.agents.editor.retry": "دوبارہ کوشش کریں",
+	"ui.agents.editor.retrying": "دوبارہ کوشش ہو رہی ہے…",
+	"ui.agents.editor.save_changes": "تبدیلیاں محفوظ کریں",
+	"ui.agents.editor.saving": "محفوظ ہو رہا ہے…",
+	"ui.agents.editor.show_all": "سب دکھائیں",
+	"ui.agents.editor.show_less": "کم دکھائیں",
+	"ui.agents.editor.unsaved_changes": "غیر محفوظ تبدیلیاں"
+}
