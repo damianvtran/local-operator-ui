@@ -74,10 +74,30 @@ export class TranscriptionRequestError extends Error {
  *    re-sign-in rather than a retry.
  * 3. The provider's out-of-credits family, named after the provider when its own
  *    error text names one, and pointing at the destination that text gives.
- * 4. The transient class (`isTransientTranscriptionFailure`) - a 5xx, or a
- *    gateway status that names no refusal: the only failure a person fixes by
- *    doing the same thing again, and the one the client has already retried.
+ * 4. The transient class (`isTransientTranscriptionFailure`) FOR THE ONE SHAPE it
+ *    was written for - a 5xx wrapped around a JSON document, which is how #1087
+ *    arrived: the only failure a person fixes by doing the same thing again, and
+ *    the one the client has already retried.
  * 5. Anything else - the reason inside the server's message, then an action.
+ *
+ * WHY THE TRANSIENT CLASS NO LONGER ANSWERS FOR EVERY 5xx (review round 1, gap b).
+ * It used to be asked first, and because "is this retryable" answers TRUE for the
+ * whole 5xx band it rewrote EVERY 5xx into the one sentence - the provider's own
+ * `Could not decode the audio file.`, `The audio could not be decoded.`, and a 5xx
+ * that sent no words at all all came out as "the transcription service had a
+ * temporary fault". That is a diagnosis the app has not made: a 500 carrying a
+ * reason HAS told us what went wrong, and discarding the reason to announce the
+ * class is the same loss of the server's words this module was written to end,
+ * pointed the other way. Retryability and sayability are different questions, and
+ * the class answers only the first. A 5xx with a real sentence is quoted below;
+ * one with an empty body states the absence; the class's sentence is kept for the
+ * relay's own wrapper, whose "Upstream responded 500: {...}" is scaffolding rather
+ * than a reason a reader can use.
+ *
+ * Both orderings matter and both are load-bearing: the named families sit above
+ * the transient check because a refusal carried by a gateway is still a refusal,
+ * and the transient check sits above the generic quote because the wrapper text
+ * quotes as noise.
  *
  * WHY THE BODY FAMILIES ARE ORDERED THIS WAY, stated because a body can match
  * both ("Unauthorized: no credits remaining"): the credits family names a cause
@@ -108,17 +128,29 @@ export function transcriptionFailureMessage(error: unknown): string {
 	 * left to say are that the fault was temporary and that trying again is the
 	 * action.
 	 *
-	 * IT IS ASKED BEFORE THE EMPTY-BODY FALLBACK because a 5xx that sent no words
-	 * still names its own class: "the server gave no reason" would send a reader
-	 * with a temporary fault to the log instead of back to the control. It sits
-	 * AFTER the two refusal families because those are DIAGNOSES and this is the
-	 * absence of one: a 502 that wraps `insufficient_quota` is a refusal the
-	 * gateway happened to carry, and telling that reader to try again would be the
-	 * original defect with a friendlier word. `isTransientTranscriptionFailure`
-	 * re-checks them for the same reason - it is what the client's retry loop asks.
+	 * IT IS ASKED HERE, after every named family and before the generic quote - see
+	 * the precedence note above. What reaches it is the relayed 5xx wrapped around a
+	 * JSON document, which is the shape #1087 arrived in and the one this sentence
+	 * was written for.
+	 *
+	 * RETRYABILITY AND SAYABILITY ARE DIFFERENT QUESTIONS, and only the first is the
+	 * class's to answer. `isTransientTranscriptionFailure` says yes to the whole 5xx
+	 * band because that is the band a retry can help, so gating this sentence on it
+	 * alone made EVERY 5xx say "temporary fault" - a provider's own "Could not
+	 * decode the audio file." included, which has diagnosed itself and whose words
+	 * the reader needs. The guard is therefore the wrapper shape, not the class
+	 * alone: a 5xx carrying a real sentence is quoted below, a 5xx carrying the
+	 * relay's scaffolding and a JSON document gets this sentence, and an empty body
+	 * states the absence rather than inventing a cause it was not given - the
+	 * invariant `transcription-failure-copy.test.mjs` pins, which a PR fixing
+	 * retries has no business rewriting.
 	 */
-	if (isTransientTranscriptionFailure(error)) return UPSTREAM_TEMPORARY;
-	if (flat === "") return NO_REASON;
+	if (flat === "") {
+		return NO_REASON;
+	}
+	if (UPSTREAM_STATUS_ONLY.test(flat) && isTransientTranscriptionFailure(error)) {
+		return UPSTREAM_TEMPORARY;
+	}
 	if (OUT_OF_CREDITS.test(flat)) {
 		const provider = upstreamProvider(flat);
 		const destination = billingDestination(flat);
@@ -185,6 +217,19 @@ export function transcriptionFailureMessage(error: unknown): string {
  * transcription request was refused upstream (HTTP 400)`, `Upstream responded
  * 403: ...`, `refused the request (403)`). Retrying those spends the reader's
  * time and the account's rate limit on a request that cannot start working.
+ *
+ * THE RULE READS AS ONE GATE, NOT THREE (review round 1, gap b). The first cut
+ * named 401/402/403 as its 4xx exclusions and left the real ceiling to the last
+ * line (`status >= 500`), so 404, 409 and 422 were in fact already refused - but
+ * a reader who stopped at the exclusion list would believe the opposite, and a
+ * later edit that moved that last line would quietly make them retryable. The 4xx
+ * band is now stated once, as a range, in the place the reader looks for it.
+ * Enumerating the DENIED statuses was the wrong shape of rule: it can only be
+ * right about the codes someone remembered. Enumerating the RETRIED ones cannot be
+ * wrong about a code nobody thought of, and the ceiling is deliberately narrow -
+ * if a 4xx ever turns out to clear on its own (429 with a Retry-After is the
+ * arguable one), that is a new fact and it should have to be added here on
+ * purpose, with the test's sweep updated to say why.
  */
 export function isTransientTranscriptionFailure(error: unknown): boolean {
 	/*
@@ -197,12 +242,23 @@ export function isTransientTranscriptionFailure(error: unknown): boolean {
 	if (!(error instanceof TranscriptionRequestError)) return false;
 	if (isDesktopRefusalCode(error.code)) return false;
 	const status = error.status;
-	if (status === 402 || status === 401 || status === 403) return false;
+	/*
+	 * EVERY 4xx IS FINAL, and said as a range rather than as the three statuses
+	 * this rule used to name. The relay re-frames an upstream 4xx as its own
+	 * 4xx or as a 502 carrying the refusal in the body, so a 4xx that reaches
+	 * here is still a decision about THIS request - the one question a retry
+	 * cannot re-ask and get a different answer to.
+	 */
+	if (status !== null && status >= 400 && status <= 499) return false;
 	const flat = flatten(error.message);
 	if (OUT_OF_CREDITS.test(flat) || REFUSED_SIGN_IN.test(flat)) return false;
 	if (UPSTREAM_REFUSAL.test(flat)) return false;
-	if (status !== null && status >= 500 && status <= 599) return true;
-	return UPSTREAM_FAILURE.test(flat);
+	/*
+	 * THE ALLOW-LIST: a 5xx, or no status at all (the transport never answered,
+	 * which is the one failure whose own class is "ask again").
+	 */
+	if (status === null) return UPSTREAM_FAILURE.test(flat);
+	return status >= 500 && status <= 599;
 }
 
 /**
@@ -302,6 +358,21 @@ const TRANSCRIPTION_ACCOUNT_OUT_OF_CREDITS =
 
 /** A 5xx the upstream itself answered, relayed in the daemon's own clause. */
 const UPSTREAM_FAILURE = /upstream\s+(?:responded|returned)\s+5\d\d/i;
+
+/**
+ * The relayed 5xx wrapped around a JSON document, which is scaffolding and not a
+ * reason.
+ *
+ * #1087's body is `Upstream responded 500: {"error":"failed to check billing
+ * account"}`: the clause names the hop and the status, and the document is the
+ * provider's diagnostic rather than a sentence for a person. Quoting it is what
+ * put four lines of clipped punctuation in the toast, and quoting it back
+ * unchanged (the other half of review round 1, gap b) is what made the fix stop
+ * firing on the case it was written for. A 5xx shaped this way therefore counts as
+ * having no usable reason, and takes the class's own sentence; the words still
+ * reach the console and the app's log on `error.message`.
+ */
+const UPSTREAM_STATUS_ONLY = /upstream\s+(?:responded|returned)\s+5\d\d\s*:?\s*\{/i;
 
 /**
  * The daemon's wordings for a 4xx REFUSAL from the upstream hop.
