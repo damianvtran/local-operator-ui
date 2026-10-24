@@ -25,5 +25,15 @@
 	"ui.common.forms.searchable_select.clear_value": "Effacer la valeur",
 	"ui.common.forms.searchable_select.no_matches": "Aucun résultat",
 	"ui.common.forms.searchable_select.use": "Utiliser « {text} »",
-	"ui.common.forms.select.unlisted_value": "Absent de toute liste ; enregistré tel que saisi."
+	"ui.common.forms.select.unlisted_value": "Absent de toute liste ; enregistré tel que saisi.",
+	"ui.common.forms.categories_input_chips.add_category": "Ajouter une catégorie…",
+	"ui.common.forms.categories_input_chips.remove_category": "Retirer la catégorie {value}",
+	"ui.common.forms.categories_input_chips.no_categories_selected": "Aucune catégorie sélectionnée",
+	"ui.common.forms.slider_setting.saving": "Enregistrement de {label}",
+	"ui.common.forms.tags_input_chips.add_tag": "Ajouter une étiquette…",
+	"ui.common.forms.tags_input_chips.remove_tag": "Retirer l’étiquette {tag}",
+	"ui.common.forms.tags_input_chips.add_tage0db29": "Ajouter une étiquette",
+	"ui.common.forms.tags_input_chips.no_tags_added": "Aucune étiquette ajoutée",
+	"ui.common.forms.toggle_setting.saving": "Enregistrement de {label}",
+	"ui.common.forms.categories_input_chips.category": "{category, select, investment {Investissement} accounting {Comptabilité} healthcare {Santé} legal {Juridique} software {Logiciels} security {Sécurité} role_play {Jeu de rôle} personal_assistance {Assistance personnelle} education {Éducation} marketing {Marketing} sales {Ventes} research {Recherche} analysis {Analyse} management {Gestion} social_media {Réseaux sociaux} other_category {Autre} other {{category}}}"
 }

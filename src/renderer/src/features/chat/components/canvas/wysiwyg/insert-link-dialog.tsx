@@ -1,5 +1,7 @@
 import { BaseDialog } from "@shared/components/common/base-dialog";
 import { Button, Input, Label } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 import { useEffect, useId, useState } from "react";
@@ -26,6 +28,7 @@ export const InsertLinkDialog: FC<InsertLinkDialogProps> = ({
 	onInsert,
 	initialData,
 }) => {
+	useI18nLocale();
 	const baseId = useId();
 	const urlId = `${baseId}-url`;
 	const textId = `${baseId}-text`;
@@ -60,10 +63,10 @@ export const InsertLinkDialog: FC<InsertLinkDialogProps> = ({
 	const dialogActions = (
 		<>
 			<Button variant="outline" onClick={onClose}>
-				Cancel
+				{t("ui.canvas.insert_link_dialog.cancel")}
 			</Button>
 			<Button variant="primary" onClick={handleInsert} disabled={!isUrlValid}>
-				Insert
+				{t("ui.canvas.insert_link_dialog.insert")}
 			</Button>
 		</>
 	);
@@ -72,7 +75,7 @@ export const InsertLinkDialog: FC<InsertLinkDialogProps> = ({
 		<BaseDialog
 			open={open}
 			onClose={onClose}
-			title="Insert link"
+			title={t("ui.canvas.insert_link_dialog.insert_link")}
 			actions={dialogActions}
 			maxWidth="sm"
 			fullWidth
@@ -80,13 +83,14 @@ export const InsertLinkDialog: FC<InsertLinkDialogProps> = ({
 			<div className={cn("flex flex-col gap-4 pt-2")}>
 				<div className={cn("flex flex-col gap-1.5")}>
 					<Label htmlFor={urlId}>
-						URL <span className={cn("text-danger")}>*</span>
+						{t("ui.canvas.insert_link_dialog.url")}{" "}
+						<span className={cn("text-danger")}>*</span>
 					</Label>
 					<Input
 						autoFocus
 						id={urlId}
 						type="url"
-						placeholder="https://example.com"
+						placeholder={t("ui.canvas.insert_link_dialog.https_example_com")}
 						value={url}
 						onChange={(e) => setUrl(e.target.value)}
 						onKeyDown={handleKeyDown}
@@ -95,11 +99,13 @@ export const InsertLinkDialog: FC<InsertLinkDialogProps> = ({
 					/>
 				</div>
 				<div className={cn("flex flex-col gap-1.5")}>
-					<Label htmlFor={textId}>Text to display</Label>
+					<Label htmlFor={textId}>
+						{t("ui.canvas.insert_link_dialog.text_to_display")}
+					</Label>
 					<Input
 						id={textId}
 						type="text"
-						placeholder="Link text (optional)"
+						placeholder={t("ui.canvas.insert_link_dialog.link_text_optional")}
 						value={text}
 						onChange={(e) => setText(e.target.value)}
 						onKeyDown={handleKeyDown}

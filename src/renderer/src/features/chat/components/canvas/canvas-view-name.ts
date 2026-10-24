@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The accessible name of one canvas view-switcher segment.
  *
@@ -31,7 +32,28 @@ export const viewSegmentName = (
 	counted: number,
 	truncated = false,
 ): string => {
-	const count = `${counted} ${counted === 1 ? noun : `${noun}s`}`;
-	if (truncated) return `${label} view, ${count} shown — this list is capped`;
-	return counted > 0 ? `${label} view, ${count}` : `${label} view`;
+	// Keep the established public signature. Product callers pass the localized
+	// singular noun; the matching catalogue plural avoids translating English
+	// grammar while the generic fallback preserves the helper's old test contract.
+	const pluralNoun =
+		noun === t("ui.canvas.shell.file")
+			? t("ui.canvas.shell.files")
+			: noun === t("ui.canvas.shell.goal")
+				? t("ui.canvas.shell.goals")
+				: `${noun}s`;
+	if (truncated)
+		return t("ui.canvas.view_name.view_shown_this_list_is_capped", {
+			label: label,
+			counted: counted,
+			noun: noun,
+			pluralnoun: pluralNoun,
+		});
+	return counted > 0
+		? t("ui.canvas.view_name.view_count", {
+				label: label,
+				counted: counted,
+				noun: noun,
+				pluralnoun: pluralNoun,
+			})
+		: t("ui.canvas.view_name.view_empty", { label: label });
 };

@@ -6,6 +6,7 @@ import {
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { clipForSpeech } from "@shared/lib/speech-clip";
 import { useSpeechBindingFor } from "@shared/lib/speech-target";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
@@ -74,6 +75,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	onEdit,
 	isUser,
 }) => {
+	useI18nLocale();
 	const [selection, setSelection] = useState<{
 		text: string;
 		html: string;
@@ -489,11 +491,17 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 			style={style}
 		>
 			{showEdit && (
-				<Tooltip content="Ask for an edit">
+				<Tooltip
+					content={t(
+						"ui.common.actions.text_selection_controls.ask_for_an_edit",
+					)}
+				>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Ask for an edit"
+						aria-label={t(
+							"ui.common.actions.text_selection_controls.ask_for_an_edit",
+						)}
 						onClick={handleEdit}
 					>
 						<Sparkles aria-hidden="true" />
@@ -503,21 +511,29 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 			{showSpeech && <SpeakButton control={speechControl} />}
 			{showCopy && (
 				<>
-					<Tooltip content="Copy">
+					<Tooltip
+						content={t("ui.common.actions.text_selection_controls.copy")}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Copy"
+							aria-label={t("ui.common.actions.text_selection_controls.copy")}
 							onClick={handleCopy}
 						>
 							<Copy aria-hidden="true" />
 						</Button>
 					</Tooltip>
-					<Tooltip content="Copy without formatting">
+					<Tooltip
+						content={t(
+							"ui.common.actions.text_selection_controls.copy_without_formatting",
+						)}
+					>
 						<Button
 							variant="ghost"
 							size="icon-sm"
-							aria-label="Copy without formatting"
+							aria-label={t(
+								"ui.common.actions.text_selection_controls.copy_without_formatting",
+							)}
 							onClick={handleCopyWithoutFormatting}
 						>
 							<ClipboardCopy aria-hidden="true" />
@@ -526,11 +542,11 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 				</>
 			)}
 			{showReply && (
-				<Tooltip content="Reply">
+				<Tooltip content={t("ui.common.actions.text_selection_controls.reply")}>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Reply"
+						aria-label={t("ui.common.actions.text_selection_controls.reply")}
 						onClick={handleReply}
 					>
 						<MessageSquareReply aria-hidden="true" />
@@ -538,11 +554,17 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 				</Tooltip>
 			)}
 			{showRefer && (
-				<Tooltip content="Refer to this from file">
+				<Tooltip
+					content={t(
+						"ui.common.actions.text_selection_controls.refer_to_this_from_file",
+					)}
+				>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Refer to this from file"
+						aria-label={t(
+							"ui.common.actions.text_selection_controls.refer_to_this_from_file",
+						)}
 						onClick={handleRefer}
 					>
 						<Reply aria-hidden="true" />
@@ -550,11 +572,17 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 				</Tooltip>
 			)}
 			{linkUrl && (
-				<Tooltip content="Open in browser">
+				<Tooltip
+					content={t(
+						"ui.common.actions.text_selection_controls.open_in_browser",
+					)}
+				>
 					<Button
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Open in browser"
+						aria-label={t(
+							"ui.common.actions.text_selection_controls.open_in_browser",
+						)}
 						onClick={handleOpenInBrowser}
 					>
 						<ExternalLink aria-hidden="true" />

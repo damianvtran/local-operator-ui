@@ -125,5 +125,13 @@
 	"ui.common.updates.update_quiet_indicator.server_update": "Cập nhật máy chủ",
 	"ui.common.updates.wait.minutes": "Đã chờ {minutes, plural, other {{minutes, number, ::group-off} phút}}",
 	"ui.common.updates.wait.minutes_seconds": "Đã chờ {minutes, plural, other {{minutes, number, ::group-off} phút}} {seconds, plural, other {{seconds, number, ::group-off} giây}}",
-	"ui.common.updates.wait.seconds": "Đã chờ {seconds, plural, other {{seconds, number, ::group-off} giây}}"
+	"ui.common.updates.wait.seconds": "Đã chờ {seconds, plural, other {{seconds, number, ::group-off} giây}}",
+	"ui.common.updates.check_for_updates_button.at_an_unknown_time": "vào thời điểm không xác định",
+	"ui.common.updates.update_foot_icon.available_show_the_update_notice": "Đã có {joined}. Hiện thông báo cập nhật.",
+	"ui.common.updates.update_foot_icon.in_progress": "{subject} đang diễn ra{percent}.",
+	"ui.common.updates.update_foot_icon.subject_join": "{left} và {right}",
+	"ui.common.updates.update_notification.rebuilding_the_server_from_this_machine_s_checkout_the_app_waited_for_th": "Đang dựng lại máy chủ từ bản checkout trên máy này. Ứng dụng đã đợi các lượt chạy trên máy này hoàn tất trước, và quá trình dựng lại sẽ cài lại ngay trên bản cài hiện tại — nên một lượt bắt đầu trong lúc chạy vẫn có thể bị gián đoạn — đồng thời có thể mất vài phút (tối đa nửa giờ). Không thể ngắt sau khi bắt đầu.",
+	"ui.common.updates.update_notification.the_new_build": "bản dựng mới",
+	"ui.common.updates.update_quiet_indicator.available": "Đã có {quietoffersubject}",
+	"ui.common.updates.update_quiet_indicator.open_release_details": "{quietoffertext}. Mở chi tiết bản phát hành."
 }

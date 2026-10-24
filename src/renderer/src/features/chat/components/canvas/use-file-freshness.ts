@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSyncExternalStore } from "react";
@@ -157,9 +158,21 @@ export type DocumentFreshness = {
  * one Tab or one hover away instead of never.
  */
 export const FACT_TEXT: Record<FreshnessFact, string> = {
-	missing: "No longer on disk — showing the version we last read.",
-	unreadable: "Could not be read — showing the version we last read.",
-	failed: "Could not be re-read — showing the version we last read.",
+	get missing() {
+		return t(
+			"ui.canvas.use_file_freshness.no_longer_on_disk_showing_the_version_we_last_read",
+		);
+	},
+	get unreadable() {
+		return t(
+			"ui.canvas.use_file_freshness.could_not_be_read_showing_the_version_we_last_read",
+		);
+	},
+	get failed() {
+		return t(
+			"ui.canvas.use_file_freshness.could_not_be_re_read_showing_the_version_we_last_read",
+		);
+	},
 	/*
 	 * THE HOLD'S OWN SENTENCE (UX round 2 U1, tightened in round 3). Two ways out,
 	 * both of which exist: the control loads the file's version (letting the
@@ -167,32 +180,44 @@ export const FACT_TEXT: Record<FreshnessFact, string> = {
 	 * named, is not one of them - and the actionable clause leads here rather than
 	 * trailing, because it is the half a reader has to act on.
 	 */
-	"disk-changed": "Changed on disk — load it, or save to replace it.",
-	"save-replaced": "Your save replaced the change on disk.",
+	get "disk-changed"() {
+		return t(
+			"ui.canvas.use_file_freshness.changed_on_disk_load_it_or_save_to_replace_it",
+		);
+	},
+	get "save-replaced"() {
+		return t(
+			"ui.canvas.use_file_freshness.your_save_replaced_the_change_on_disk",
+		);
+	},
 };
 
 export const FACT_DETAIL: Record<FreshnessFact, string> = {
-	missing:
-		"This file is no longer on disk. The last version we read is still shown, and your unsaved edits are kept - saving writes them back.",
-	unreadable:
-		"This file could not be read. The last version we read is still shown, and your unsaved edits are kept - saving writes them back.",
-	failed:
-		"This file could not be re-read, so the version we last read is still shown.",
-	"disk-changed":
-		/*
-		 * THE BOUNDARY IS IN THE SENTENCE (UX round 1, U1). The row said the edits
-		 * were kept and never said for how long, while the two registries that hold
-		 * them are module state: they survive the close and they do not survive a
-		 * quit. Both readings of the silence - "kept" as "saved", and "kept" as
-		 * "kept for good" - are wrong, and the reader gets to choose at the moment
-		 * they hand their words to the app. NAME THE BOUNDARY where the reader can
-		 * read it, which is here: the detail is the tooltip and the control's
-		 * description, one hover or one Tab from the row, and the same sentence is
-		 * what the close now says out loud (see `close-report.ts`).
-		 */
-		"Your unsaved edits are kept until the app quits, and saving is paused while the file has changed on disk. Load its version to see the change (your unsaved edits are discarded), or save to replace the file with your version.",
-	"save-replaced":
-		"Your save replaced the version that had changed on disk. Re-read the file to see what is there now.",
+	get missing() {
+		return t(
+			"ui.canvas.use_file_freshness.this_file_is_no_longer_on_disk_the_last_version_we_read_is_still_shown_a",
+		);
+	},
+	get unreadable() {
+		return t(
+			"ui.canvas.use_file_freshness.this_file_could_not_be_read_the_last_version_we_read_is_still_shown_and",
+		);
+	},
+	get failed() {
+		return t(
+			"ui.canvas.use_file_freshness.this_file_could_not_be_re_read_so_the_version_we_last_read_is_still_show",
+		);
+	},
+	get "disk-changed"() {
+		return t(
+			"ui.canvas.use_file_freshness.your_unsaved_edits_are_kept_until_the_app_quits_and_saving_is_paused_whi",
+		);
+	},
+	get "save-replaced"() {
+		return t(
+			"ui.canvas.use_file_freshness.your_save_replaced_the_version_that_had_changed_on_disk_re_read_the_file",
+		);
+	},
 };
 
 /**
@@ -234,11 +259,13 @@ export function answerFor(
 		 * produced nothing at all.
 		 */
 		case "identical":
-			return "Up to date";
+			return t("ui.canvas.use_file_freshness.up_to_date");
 		case "unchanged":
-			return forced ? "Up to date" : undefined;
+			return forced ? t("ui.canvas.use_file_freshness.up_to_date") : undefined;
 		case "unavailable":
-			return forced ? "No local file access" : undefined;
+			return forced
+				? t("ui.canvas.use_file_freshness.no_local_file_access")
+				: undefined;
 		default:
 			return undefined;
 	}
@@ -251,13 +278,21 @@ export function answerDetailFor(
 ): string | null | undefined {
 	switch (outcome.status) {
 		case "applied":
-			return "The file's version was re-read from disk and is now on screen.";
+			return t(
+				"ui.canvas.use_file_freshness.the_file_s_version_was_re_read_from_disk_and_is_now_on_screen",
+			);
 		case "identical":
 		case "unchanged":
-			return forced ? "Already up to date — the file is unchanged." : undefined;
+			return forced
+				? t(
+						"ui.canvas.use_file_freshness.already_up_to_date_the_file_is_unchanged",
+					)
+				: undefined;
 		case "unavailable":
 			return forced
-				? "Local file access is unavailable, so there is nothing to re-read from."
+				? t(
+						"ui.canvas.use_file_freshness.local_file_access_is_unavailable_so_there_is_nothing_to_re_read_from",
+					)
 				: undefined;
 		default:
 			return undefined;
@@ -393,8 +428,9 @@ export function useFileFreshness({
 					if (typeof window.api?.readFile !== "function") {
 						return {
 							ok: false,
-							error:
-								"Local file access is unavailable outside the desktop app.",
+							error: t(
+								"ui.canvas.use_file_freshness.local_file_access_is_unavailable_outside_the_desktop_app",
+							),
 						};
 					}
 					try {

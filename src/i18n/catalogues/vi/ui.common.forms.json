@@ -25,5 +25,15 @@
 	"ui.common.forms.searchable_select.clear_value": "Xóa giá trị",
 	"ui.common.forms.searchable_select.no_matches": "Không có kết quả khớp",
 	"ui.common.forms.searchable_select.use": "Dùng \"{text}\"",
-	"ui.common.forms.select.unlisted_value": "Không có trong danh sách nào; lưu nguyên nội dung đã nhập."
+	"ui.common.forms.select.unlisted_value": "Không có trong danh sách nào; lưu nguyên nội dung đã nhập.",
+	"ui.common.forms.categories_input_chips.add_category": "Thêm danh mục…",
+	"ui.common.forms.categories_input_chips.no_categories_selected": "Chưa chọn danh mục",
+	"ui.common.forms.categories_input_chips.remove_category": "Xóa danh mục {value}",
+	"ui.common.forms.slider_setting.saving": "Đang lưu {label}",
+	"ui.common.forms.tags_input_chips.add_tag": "Thêm thẻ…",
+	"ui.common.forms.tags_input_chips.add_tage0db29": "Thêm thẻ",
+	"ui.common.forms.tags_input_chips.no_tags_added": "Chưa thêm thẻ",
+	"ui.common.forms.tags_input_chips.remove_tag": "Xóa thẻ {tag}",
+	"ui.common.forms.toggle_setting.saving": "Đang lưu {label}",
+	"ui.common.forms.categories_input_chips.category": "{category, select, investment {Đầu tư} accounting {Kế toán} healthcare {Y tế} legal {Pháp lý} software {Phần mềm} security {Bảo mật} role_play {Nhập vai} personal_assistance {Trợ lý cá nhân} education {Giáo dục} marketing {Marketing} sales {Bán hàng} research {Nghiên cứu} analysis {Phân tích} management {Quản lý} social_media {Mạng xã hội} other_category {Khác} other {{category}}}"
 }

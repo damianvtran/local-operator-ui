@@ -533,14 +533,14 @@ const FileRowItemComponent = ({
 								)
 							}
 							onShowInCanvas={() => onOpen(document)}
-							tooltip={t("ui.canvas.files.fileActions")}
-							aria-label={t("ui.canvas.files.fileActions")}
+							tooltip={t("ui.canvas.file_row.ui_canvas_files_fileactions")}
+							aria-label={t("ui.canvas.file_row.ui_canvas_files_fileactions")}
 						/>
 					) : (
 						<FileActionsMenu
 							filePath={stripFileUrl(document.path)}
-							tooltip={t("ui.canvas.files.fileActions")}
-							aria-label={t("ui.canvas.files.fileActions")}
+							tooltip={t("ui.canvas.file_row.ui_canvas_files_fileactions")}
+							aria-label={t("ui.canvas.file_row.ui_canvas_files_fileactions")}
 							onShowInCanvas={() => onOpen(document)}
 						/>
 					)}

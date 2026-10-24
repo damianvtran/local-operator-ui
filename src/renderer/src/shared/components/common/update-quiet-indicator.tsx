@@ -141,7 +141,9 @@ export const quietSurfaceLabel = (type: UpdateType): string =>
  * sentence, which is what keeps the label-in-name rule true by construction.
  */
 export const quietOfferText = (offer: QuietIndicatorOffer): string =>
-	`${quietOfferSubject(offer)} available`;
+	t("ui.common.updates.update_quiet_indicator.available", {
+		quietoffersubject: quietOfferSubject(offer),
+	});
 
 export const UpdateQuietIndicatorView: FC<{
 	offers: QuietIndicatorOffer[];
@@ -219,7 +221,10 @@ export const UpdateQuietIndicatorView: FC<{
 						key={offer.type}
 						type="button"
 						data-update-indicator-open={offer.type}
-						aria-label={`${quietOfferText(offer)}. Open release details.`}
+						aria-label={t(
+							"ui.common.updates.update_quiet_indicator.open_release_details",
+							{ quietoffertext: quietOfferText(offer) },
+						)}
 						className={cn(
 							"flex h-6 items-center gap-1.5 rounded-md px-1.5 text-meta text-accent",
 							"hover:bg-row-hover",
