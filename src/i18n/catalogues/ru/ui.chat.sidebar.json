@@ -27,7 +27,7 @@
 	"ui.chat.sidebar.row.in_conversation": "в разговоре",
 	"ui.chat.sidebar.row.matched_in_conversation": ", совпадение в разговоре",
 	"ui.chat.sidebar.row.not_sent": "Ещё не отправлено",
-	"ui.chat.sidebar.row_menu.copy_id": "Скопировать ID сессии",
+	"ui.chat.sidebar.row_menu.copy_id": "Копировать ID сессии",
 	"ui.chat.sidebar.row_menu.fork": "Ответвить разговор",
 	"ui.chat.sidebar.row_menu.move_down": "Переместить разговор вниз",
 	"ui.chat.sidebar.row_menu.move_up": "Переместить разговор вверх",

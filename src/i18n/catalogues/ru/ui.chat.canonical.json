@@ -1,7 +1,7 @@
 {
 	"ui.chat.canonical.sound.batch_attachment_unavailable": "Аудиовложение недоступно.",
 	"ui.chat.canonical.sound.player_failed": "Не удалось воспроизвести звук",
-	"ui.chat.canonical.sound.stop.confirm_label": "Подтверждение остановки",
+	"ui.chat.canonical.sound.stop.confirm_label": "Подтверждение запроса на остановку",
 	"ui.chat.canonical.sound.stop.keep_waiting": "Ждать дальше",
 	"ui.chat.canonical.sound.stop.question": "Остановить генерацию?",
 	"ui.chat.canonical.sound.stop.request_stop": "Запросить остановку",
