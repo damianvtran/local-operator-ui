@@ -16,6 +16,8 @@
 	"ui.chat.composer.starting_recording": "正在启动录音",
 	"ui.chat.composer.start_recording_hint": "开始录音（{shortcut}，或按住{pushToTalk}）",
 	"ui.chat.composer.processing_audio": "正在处理音频",
+	"ui.chat.composer.dictation_failed_transient": "听写失败：转写服务出现临时故障。请重试。",
+	"ui.chat.composer.dictation_failed_transient_take_kept": "听写失败：转写服务出现临时故障。录音已保留，“重试”即可重新发送。",
 	"ui.chat.composer.welcome": "今天有什么需要帮忙的？",
 	"ui.chat.composer.delivery_remedies_hint": "未能送达的消息位于输入框上方的对话中，可选择“重新发送”或“编辑”；按Shift+Tab可移至这些控件。",
 	"ui.chat.composer.secret_ask_notice": "智能体需要你提供敏感信息。请在请求面板中输入，期间仍可继续聊天。",

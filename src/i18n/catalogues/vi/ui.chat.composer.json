@@ -16,6 +16,8 @@
 	"ui.chat.composer.starting_recording": "Đang bắt đầu ghi âm",
 	"ui.chat.composer.start_recording_hint": "Bắt đầu ghi âm ({shortcut} hoặc giữ {pushToTalk})",
 	"ui.chat.composer.processing_audio": "Đang xử lý âm thanh",
+	"ui.chat.composer.dictation_failed_transient": "Đọc chính tả thất bại: dịch vụ chuyển giọng nói thành văn bản gặp sự cố tạm thời. Hãy thử lại.",
+	"ui.chat.composer.dictation_failed_transient_take_kept": "Đọc chính tả thất bại: dịch vụ chuyển giọng nói thành văn bản gặp sự cố tạm thời. Bản ghi âm của bạn được giữ lại — Thử lại sẽ gửi bản ghi âm đi.",
 	"ui.chat.composer.welcome": "Hôm nay tôi có thể giúp gì cho bạn?",
 	"ui.chat.composer.delivery_remedies_hint": "Tin nhắn chưa gửi được có nút Gửi lại và Sửa trong cuộc trò chuyện phía trên ô này: nhấn Shift+Tab để đến các nút đó.",
 	"ui.chat.composer.secret_ask_notice": "Tác nhân đang yêu cầu thông tin bí mật. Hãy nhập vào bảng câu hỏi — bạn vẫn có thể trò chuyện trong lúc này.",
