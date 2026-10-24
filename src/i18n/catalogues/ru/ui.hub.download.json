@@ -1,0 +1,6 @@
+{
+	"ui.hub.download.collision": "Скачан «{name}». У вас уже есть агент с именем «{collision}», поэтому теперь два агента отзываются на это имя и может быть выбран любой из них. Переименуйте одного.",
+	"ui.hub.download.fallback_agent": "Агент",
+	"ui.hub.download.renamed": "Скачан «{name}» — у вас уже был агент с именем «{previous}».",
+	"ui.hub.download.succeeded": "«{name}» скачан с хаба."
+}

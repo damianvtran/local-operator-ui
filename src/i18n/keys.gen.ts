@@ -296,13 +296,20 @@ import hiUiShellRail from "./catalogues/hi/ui.shell.rail.json";
 import hiUiTeamBridge from "./catalogues/hi/ui.teamBridge.json";
 import ruUiAgentMessages from "./catalogues/ru/ui.agentMessages.json";
 import ruUiAgentMessagesSettings from "./catalogues/ru/ui.agentMessages.settings.json";
+import ruUiAgentsConfig from "./catalogues/ru/ui.agents.config.json";
+import ruUiAgentsDetail from "./catalogues/ru/ui.agents.detail.json";
 import ruUiAgentsDialogs from "./catalogues/ru/ui.agents.dialogs.json";
+import ruUiAgentsEditor from "./catalogues/ru/ui.agents.editor.json";
 import ruUiAgents from "./catalogues/ru/ui.agents.json";
 import ruUiAgentsModels from "./catalogues/ru/ui.agents.models.json";
 import ruUiAgentsNavigation from "./catalogues/ru/ui.agents.navigation.json";
+import ruUiAgentsPage from "./catalogues/ru/ui.agents.page.json";
+import ruUiAgentsPublication from "./catalogues/ru/ui.agents.publication.json";
 import ruUiAgentsRefusals from "./catalogues/ru/ui.agents.refusals.json";
 import ruUiAgentsSettings from "./catalogues/ru/ui.agents.settings.json";
 import ruUiAgentsStarters from "./catalogues/ru/ui.agents.starters.json";
+import ruUiAgentsTeam from "./catalogues/ru/ui.agents.team.json";
+import ruUiAgentsUpload from "./catalogues/ru/ui.agents.upload.json";
 import ruUiBrowserChrome from "./catalogues/ru/ui.browser.chrome.json";
 import ruUiBrowser from "./catalogues/ru/ui.browser.json";
 import ruUiCanvas from "./catalogues/ru/ui.canvas.json";
@@ -329,13 +336,17 @@ import ruUiCommonLoading from "./catalogues/ru/ui.common.loading.json";
 import ruUiCommonModels from "./catalogues/ru/ui.common.models.json";
 import ruUiCommonUpdates from "./catalogues/ru/ui.common.updates.json";
 import ruUiConsole from "./catalogues/ru/ui.console.json";
+import ruUiHubAgents from "./catalogues/ru/ui.hub.agents.json";
 import ruUiHubComments from "./catalogues/ru/ui.hub.comments.json";
+import ruUiHubDownload from "./catalogues/ru/ui.hub.download.json";
 import ruUiHub from "./catalogues/ru/ui.hub.json";
 import ruUiHubTaxonomy from "./catalogues/ru/ui.hub.taxonomy.json";
+import ruUiHubTeams from "./catalogues/ru/ui.hub.teams.json";
 import ruUiInstaller from "./catalogues/ru/ui.installer.json";
 import ruUiLibrary from "./catalogues/ru/ui.library.json";
 import ruUiMesh from "./catalogues/ru/ui.mesh.json";
 import ruUiOnboarding from "./catalogues/ru/ui.onboarding.json";
+import ruUiOnboardingTour from "./catalogues/ru/ui.onboarding.tour.json";
 import ruUiProjects from "./catalogues/ru/ui.projects.json";
 import ruUiProviders from "./catalogues/ru/ui.providers.json";
 import ruUiSchedules from "./catalogues/ru/ui.schedules.json";
@@ -835,13 +846,20 @@ export const bundledCatalogues: Readonly<
 	ru: {
 		...ruUiAgentMessages,
 		...ruUiAgentMessagesSettings,
+		...ruUiAgentsConfig,
+		...ruUiAgentsDetail,
 		...ruUiAgentsDialogs,
+		...ruUiAgentsEditor,
 		...ruUiAgents,
 		...ruUiAgentsModels,
 		...ruUiAgentsNavigation,
+		...ruUiAgentsPage,
+		...ruUiAgentsPublication,
 		...ruUiAgentsRefusals,
 		...ruUiAgentsSettings,
 		...ruUiAgentsStarters,
+		...ruUiAgentsTeam,
+		...ruUiAgentsUpload,
 		...ruUiBrowserChrome,
 		...ruUiBrowser,
 		...ruUiCanvas,
@@ -868,13 +886,17 @@ export const bundledCatalogues: Readonly<
 		...ruUiCommonModels,
 		...ruUiCommonUpdates,
 		...ruUiConsole,
+		...ruUiHubAgents,
 		...ruUiHubComments,
+		...ruUiHubDownload,
 		...ruUiHub,
 		...ruUiHubTaxonomy,
+		...ruUiHubTeams,
 		...ruUiInstaller,
 		...ruUiLibrary,
 		...ruUiMesh,
 		...ruUiOnboarding,
+		...ruUiOnboardingTour,
 		...ruUiProjects,
 		...ruUiProviders,
 		...ruUiSchedules,

@@ -177,5 +177,11 @@
 	"ui.hub.skills.public_hub": "Публичный хаб",
 	"ui.hub.skills.count": "{count, plural, one {{count, number, ::group-off} навык} few {{count, number, ::group-off} навыка} many {{count, number, ::group-off} навыков} other {{count, number, ::group-off} навыка}}",
 	"ui.hub.skills.count_shared": "{count, plural, one {{count, number, ::group-off} навык, общий с {organization}} few {{count, number, ::group-off} навыка, общих с {organization}} many {{count, number, ::group-off} навыков, общих с {organization}} other {{count, number, ::group-off} навыка, общих с {organization}}}",
-	"ui.hub.skills.inventory_unknown": "Состояние связи недоступно."
+	"ui.hub.skills.inventory_unknown": "Состояние связи недоступно.",
+	"ui.hub.pager.agent_pages": "Страницы агентов",
+	"ui.hub.pager.previous_page": "Предыдущая страница",
+	"ui.hub.pager.previous": "Назад",
+	"ui.hub.pager.next_page": "Следующая страница",
+	"ui.hub.pager.next": "Далее",
+	"ui.hub.pager.page_of": "Страница {page, number, ::group-off} из {count, number, ::group-off}"
 }

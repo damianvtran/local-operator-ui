@@ -187,5 +187,6 @@
 	"ui.providers.provider_labels.sign_in_or_api_key": "Вход или ключ API",
 	"ui.providers.provider_labels.this_app_could_not_confirm_the_sign": "Приложение не смогло подтвердить вход, сохранённый на этом компьютере",
 	"ui.providers.provider_labels.unavailable": "Недоступно",
-	"ui.providers.sign_in_flow.sign_in_could_not_start": "Не удалось начать вход."
+	"ui.providers.sign_in_flow.sign_in_could_not_start": "Не удалось начать вход.",
+	"ui.providers.provider_detail.sign_in_again": "Войти снова"
 }
