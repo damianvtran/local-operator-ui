@@ -1,0 +1,253 @@
+{
+  "schema": 1,
+  "locale": "zh-CN",
+  "round": 1,
+  "date": "2026-10-23",
+  "source_commit": "7aba1fb840aa53ce090b647130530ae4ea465720",
+  "agent": "translation-auditor",
+  "instance": "8c38294d1379-r1",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "auditor": {
+    "agent": "translation-auditor",
+    "session": "8c38294d1379",
+    "instance": "8c38294d1379-r1",
+    "model": "openrouter/moonshotai/kimi-k3.1-pro",
+    "served_model": "openrouter/moonshotai/kimi-k3.1-pro",
+    "fallback": null
+  },
+  "independence": {
+    "translator_session": "3874e9cb17a0",
+    "independent": true,
+    "statement": "This audit was derived in session 8c38294d1379, independently of translator session 3874e9cb17a0. The auditor did not author or edit the contribution, used no translation API/SDK/MT service, and left the source worktree untouched."
+  },
+  "status": "passed",
+  "verdict": "clean-with-findings",
+  "keys_read": 134,
+  "severity_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 5,
+    "nit": 3
+  },
+  "guidance": {
+    "glossary_path": "/Users/damian/local-operator/i18n/glossary.md",
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "style_guide_path": "/Users/damian/local-operator/i18n/style-guides/zh-CN.md",
+    "style_guide_sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  },
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys_read": 43,
+      "sha256": {
+        "en": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+        "zh-CN": "05091e7028843aa083de7975e3a9682ed66adb3309f1ba6c41e8ecb9c16a25dd",
+        "context": "fe5dc2a0fa4cb9b95ef5c1a30d57aee030fa5edf2b6b54b323562a1c63b8eb3a"
+      },
+      "findings": [
+        {
+          "id": "T-001",
+          "severity": "MINOR",
+          "key": "ui.chat.sidebar.list.empty",
+          "current": "暂无对话。请选择智能体、团队或“新建对话”。",
+          "proposed": "暂无对话。选择智能体、团队或“新建对话”。",
+          "reason": "The zh-CN style guide permits “请” only when the English says “please” in a blocking dialog; this ordinary empty-state instruction does not meet that condition."
+        },
+        {
+          "id": "T-002",
+          "severity": "MINOR",
+          "key": "ui.chat.sidebar.row_menu.fork",
+          "current": "分叉对话",
+          "proposed": "创建对话分支",
+          "reason": "“分叉” is a Git-style calque for fork; “创建对话分支” is the idiomatic Simplified Chinese action for branching a conversation."
+        },
+        {
+          "id": "T-003",
+          "severity": "NIT",
+          "key": "ui.chat.sidebar.list.retry_refresh",
+          "current": "重新刷新",
+          "proposed": "重试刷新",
+          "reason": "“重新刷新” is redundant in native UI Chinese, while “重试刷新” is terser and preserves the deliberate distinction from the connection-level Retry action."
+        },
+        {
+          "id": "T-004",
+          "severity": "NIT",
+          "key": "ui.chat.sidebar.list.connecting",
+          "current": "正在连接对话……",
+          "proposed": "正在连接对话服务……",
+          "reason": "“连接对话” reads as connecting conversations to one another; naming the backend-provided conversation service makes the intended wait idiomatic and unambiguous."
+        }
+      ]
+    },
+    "ui.chat.pickers": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 34,
+      "sha256": {
+        "en": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+        "zh-CN": "96371c2977c74c3a1d72b790b261437daea9df2d868ef2653abdf434e0f60788",
+        "context": "8d3fa914cd52768c98a75c4f41b903b86553335b27e406f98500eab7ff576e64"
+      },
+      "findings": []
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys_read": 30,
+      "sha256": {
+        "en": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
+        "zh-CN": "cd7853e76fa14ee6b5ab34fc4ef32c8165eb929103772adeae958d24a34f34ed",
+        "context": "53145be31fe46bde6578d114653466dc5c6c932947460c10a0022c9e190d9a34"
+      },
+      "findings": [
+        {
+          "id": "T-005",
+          "severity": "MINOR",
+          "key": "ui.chat.canonical.transcript.credential_lost",
+          "current": "会话已不再持有此回答提到的凭据。",
+          "proposed": "此会话中已没有此回答提到的凭据。",
+          "reason": "“持有凭据” is legalistic English-style wording; the proposed security notice is natural Chinese and does not imply deletion, persistence, or disclosure beyond the source."
+        },
+        {
+          "id": "T-006",
+          "severity": "NIT",
+          "key": "ui.chat.canonical.transcript.missing_session",
+          "current": "此对话已不存在于此电脑上。",
+          "proposed": "此电脑上已没有此对话。",
+          "reason": "“不存在于” is a literal English construction; “已没有” states the same local absence in native product Chinese."
+        }
+      ]
+    },
+    "ui.chat.analytics": {
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys_read": 11,
+      "sha256": {
+        "en": "6ac0bbfb50c8ef8c772f229868614aa8d07dfd9f659311d5d396cea5c4611159",
+        "zh-CN": "ed091258a3a0547f31ecf7a221539e4de9afba7f871957b0583eff875172b4e4",
+        "context": "7c25af7f391fbaac6a1718a81b8b258c0b313ba46411f16e95691446828640ff"
+      },
+      "findings": [
+        {
+          "id": "T-007",
+          "severity": "MINOR",
+          "key": "ui.chat.analytics.filters.top_level_only",
+          "current": "仅顶级会话",
+          "proposed": "仅顶层会话",
+          "reason": "The filter describes hierarchy rather than quality or rank, so “顶层” is the native technical term and avoids reading “顶级” as “top-rated”."
+        }
+      ]
+    },
+    "ui.common.file_actions": {
+      "status": "passed",
+      "verdict": "clean-with-findings",
+      "keys_read": 5,
+      "sha256": {
+        "en": "edac3001910c5ba03d5c0552f07c19baeb1bd1e8e9d3c0a6c178a693f9351233",
+        "zh-CN": "e8bbfda82407311afd9bc8a3955bb8df95482cf86b15fd579a3095141f949eaf",
+        "context": "147274f1e573608ac78a0dc45aa14d14a5d2cf89efa953d4f4e012a7fae8d04b"
+      },
+      "findings": [
+        {
+          "id": "T-008",
+          "severity": "MINOR",
+          "key": "ui.common.file_actions.show_in_canvas",
+          "current": "在Canvas中显示；既有 zh-CN 键同时使用“画布”，而本批“在Finder中显示”与既有“在访达中显示”并存",
+          "proposed": "按本批 sidecar 统一保留产品名 Canvas 和 Finder，并将既有“画布/访达”条目迁移到同一写法",
+          "reason": "The scoped values correctly follow their sidecars, but the lane mixes Chinese and English names for the same product destinations, so the required one-term-per-name consistency is not yet true."
+        }
+      ]
+    },
+    "ui.common.viewer": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 4,
+      "sha256": {
+        "en": "660c7e185ebc22d37ecc9b5d02807428f87c477f86431f5cdb07fdec888b78bb",
+        "zh-CN": "eb3cd0c4362aaef50f069d687fd5524a60465f9263a955fc440597673e43f0de",
+        "context": "cd11be98d1d94cba927141b2b6b390af7fdc59a8519ea3ed18361cfd4930c2c9"
+      },
+      "findings": []
+    },
+    "ui.chat.tag_dialogs": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 4,
+      "sha256": {
+        "en": "140fb44d94388706e24ba37c6910a6b753ce0f0701f44e78390a1fffb13c1506",
+        "zh-CN": "c542d1b89d097eea9b6771fcfdb356d7e4f79b6945035d25c8703a1b6fa87d6e",
+        "context": "8f4cc8ca17d926c4f85f4226ff92e7c291babbe7e9868ebb8d9fceb5a8841987"
+      },
+      "findings": []
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 2,
+      "sha256": {
+        "en": "7eea05d7c5b371e7969214abc7bd2961bf6c38fd3e5886e0957493b787878094",
+        "zh-CN": "5eb1da3785990647d1fad1f04dc765f2833394f03d02fa7dae5c81bce3dc90f6",
+        "context": "eae93350935a597d66fe4931a40fed2fa9d40d0b01e03925d2cef22985f628d6"
+      },
+      "findings": []
+    },
+    "ui.chat.commentary_actions": {
+      "status": "passed",
+      "verdict": "clean",
+      "keys_read": 1,
+      "sha256": {
+        "en": "77d6babd2e9fac04e95a550d25f4428e113144c160c34009b89e06608b812868",
+        "zh-CN": "c031da66f5d32a348727ab94eafe27cdcaaefc1f408ff9d3ba8476c08b8368ca",
+        "context": "20901db281f82c025243d688a14bfc490d1b5c01c7fd03e7d8788f35411c3ad1"
+      },
+      "findings": []
+    }
+  },
+  "evidence": {
+    "scope_and_provenance": [
+      "HEAD and audited commit both resolved to 7aba1fb840aa53ce090b647130530ae4ea465720; git diff-tree showed exactly the nine scoped zh-CN catalogue additions, and status was empty before and after the audit.",
+      "Read every English value, zh-CN value, and English context entry side by side: 43 + 34 + 30 + 11 + 5 + 4 + 4 + 2 + 1 = 134 keys. Each file's English, target, and context key sequences are exactly equal, every key belongs to its owning namespace, and there are no extra values.",
+      "The translator receipt was used only as a provenance lead; all source/target/context and guidance hashes above were independently recomputed from bytes."
+    ],
+    "repository_checks": [
+      "node --test scripts/i18n/locale-parity.test.mjs: exit 0; 43 tests, 43 pass, 0 fail, including zh-CN complete-key, unknown-key, ICU-placeholder, duplicate-key, and non-English-stub checks.",
+      "node scripts/i18n/context-parity.mjs: exit 0; 'context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json).'",
+      "node scripts/i18n/generate.mjs --check: exit 0; src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+    ],
+    "icu_and_placeholders": "An independent probe using @formatjs/icu-messageformat-parser and IntlMessageFormat parsed and formatted all 13 ICU-bearing scoped messages at representative counts 0, 1, 2, and 1234. Argument names/types, select arms, and number skeletons match; the only structural locale adaptation is collapsing English plural one/other to zh-CN other. No unresolved, dropped, or renamed placeholders; failures=[].",
+    "select_samples": [
+      "pin -> 无法置顶“标题”。",
+      "unpin -> 无法取消置顶“标题”。",
+      "other -> 无法更新“标题”。"
+    ],
+    "cldr_plural_evidence": {
+      "runtime": "Node v26.12.0 Intl.PluralRules and Intl.NumberFormat",
+      "resolved_categories": ["other"],
+      "samples": [
+        "0: other; ungrouped=0; grouped=0",
+        "1: other; ungrouped=1; grouped=1",
+        "2: other; ungrouped=2; grouped=2",
+        "1234: other; ungrouped=1234; grouped=1,234"
+      ],
+      "formatted_stop_confirm": [
+        "立即停止0个会话",
+        "立即停止1个会话",
+        "立即停止2个会话",
+        "立即停止1234个会话"
+      ],
+      "conclusion": "The target uses only the actual zh-CN CLDR category, renders the count in the sentence, and preserves ::group-off rather than introducing grouped digits."
+    },
+    "pseudo_localization": "A source-only AST pseudo-localization probe transformed literal text in all 134 English messages and both locale forms, preserved the complete ICU structure, reparsed every result, and formatted every result with IntlMessageFormat. 134/134 source messages changed and all pseudo forms parsed/formatted; this is mechanical placeholder/pseudo evidence, not rendered geometry evidence.",
+    "typography_and_rtl": "All 134 targets are NFC; zero manual bidi or zero-width controls, zero ASCII '...' or single-dot ellipses, and zero byte-identical English values. Full-width prose punctuation and double …… ellipses follow the guide. The only ASCII colons are ui.chat.canonical.supplement.details.attempts/model, retained deliberately because their diagnostic sidecars require the source separator. zh-CN is LTR, so RTL layout is not applicable.",
+    "allowed_english_tokens": {
+      "product_or_surface": ["Local Operator", "Canvas", "Finder"],
+      "technical": ["Esc", "HTML", "ID", "token"],
+      "icu_machine_tokens": ["action", "count", "group-off", "max", "name", "number", "other", "pin", "plural", "query", "select", "title", "unpin"],
+      "untranslated_prose": "None found. The complete Latin-run inventory consists only of the explicitly allowed product/technical tokens above and ICU syntax; no scoped value is an English stub."
+    },
+    "security_sensitive_semantics": "Read the actual warning and confirmation copy: provider cancellation remains best-effort, generation continues, audio may still be charged, neither cancellation nor absence of charge is guaranteed; forget/logout copy removes only the named stored credential; stop confirmation preserves session count and immediate stop semantics. No security meaning was weakened.",
+    "static_overflow": "Measured rendered sample text with CJK/full-width=2 cells and ASCII=1. Nine of 134 targets are longer than English: Jobs 4->8 cells (+4), Open folder 11->14 (+3), Opening 8->10 (+2), and six labels +1. No materially long label or new static overflow finding; all other 125 targets are equal or shorter. Dynamic names and real wrapping remain for the later rendered gate.",
+    "limitations": "Catalogue/source audit only. No browser, real-app frame, screen-reader, activation, release, or rendered-fit evidence is claimed; the programme's later real-app frame gate remains required. Product-name consistency finding T-008 includes pre-existing peer entries solely as comparison evidence; the scoped Canvas/Finder values themselves follow their sidecars."
+  }
+}

@@ -1,0 +1,13 @@
+{
+	"ui.chat.analytics.filters.top_level_only": "सिर्फ़ शीर्ष-स्तरीय सत्र",
+	"ui.chat.analytics.search.clear": "खोज साफ़ करें",
+	"ui.chat.analytics.search.sessions": "सत्र खोजें",
+	"ui.chat.analytics.sections.by_channel": "चैनल के अनुसार",
+	"ui.chat.analytics.sections.by_model": "मॉडल के अनुसार",
+	"ui.chat.analytics.sections.by_provider": "प्रोवाइडर के अनुसार",
+	"ui.chat.analytics.sections.by_session": "सत्र के अनुसार",
+	"ui.chat.analytics.sections.totals": "कुल",
+	"ui.chat.analytics.title": "विश्लेषण",
+	"ui.chat.analytics.toolbar.refreshing": "रीफ़्रेश हो रहा है",
+	"ui.chat.analytics.toolbar.this_session_only": "सिर्फ़ यह सत्र"
+}

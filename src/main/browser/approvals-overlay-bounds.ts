@@ -48,6 +48,8 @@ export interface ApprovalsCardBoundsInput {
 	naturalHeight: number;
 	/** Windows/Linux's opaque fallback: no transparent ring, square corners. */
 	opaque?: boolean;
+	/** The card's inline end: right in LTR (default), left in RTL. */
+	dir?: "ltr" | "rtl";
 }
 
 export interface ApprovalsCardBounds {
@@ -74,6 +76,12 @@ function integer(value: number): number {
  * HEIGHT: clamp the measured height to [96, min(480, contentH - 16)]. A card
  * whose ceiling falls below the 96 floor is refused: there is no honest way to
  * paint the whole surface.
+ *
+ * THE ANCHOR IS THE INLINE END, and S6b implements it: with `dir: "rtl"` the
+ * same formula mirrors to the content rect's left edge. The app ships `ur`, so
+ * an unconditional right anchor would put the card on the wrong side of an RTL
+ * page; `dir` travels in the model, and the default (absent) stays LTR so an
+ * S6a call site is unchanged.
  *
  * The view is translated so its trailing/bottom edge meets the content rect
  * exactly; the card surface is then `PAD` inside it. The intersection check is
@@ -119,7 +127,18 @@ export function approvalsCardBoundsFor(
 	);
 	const viewWidth = width + 2 * pad;
 	const viewHeight = height + 2 * pad;
-	const viewX = integer(content.x + content.width - inset - width - pad);
+	/*
+	 * MIRROR THE VIEW, NOT THE CARD. LTR's view right edge is
+	 * `content.right - INSET + PAD` (the ring may sit on the content edge when
+	 * INSET === PAD); RTL is its mirror, so the view's left edge is
+	 * `content.x + INSET - PAD` and the card lands `PAD` inside it. Writing
+	 * `+ pad` here instead would put the card's ring on the wrong side and, at
+	 * 264, push a full-bleed view past the content rect.
+	 */
+	const viewX =
+		input.dir === "rtl"
+			? integer(content.x + inset - pad)
+			: integer(content.x + content.width - inset + pad - viewWidth);
 	const viewY = integer(content.y + content.height - inset - height - pad);
 	const view = {
 		x: viewX,
