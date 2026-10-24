@@ -23,6 +23,7 @@
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { t } from "../../../../../../i18n/messages";
 import {
 	MarkdownRenderer,
 	type MarkdownStyleProps,
@@ -92,7 +93,13 @@ export const AgentReasoning = ({
 						 */}
 						<span className="text-ink-dim text-body-sm">
 							{durationS !== null
-								? `${label} for ${formatDuration(durationS)}`
+								? t(
+										"ui.chat.trace.agent_reasoning.label_for_formatdurationvalue",
+										{
+											label: label,
+											formatDurationValue: formatDuration(durationS),
+										},
+									)
 								: label}
 						</span>
 					</span>

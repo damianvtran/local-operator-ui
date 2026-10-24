@@ -1,4 +1,5 @@
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
+import { t } from "../../../../i18n/messages";
 
 /**
  * The `Pinned chats` section's DESKTOP-LOCAL manual order, as a decision rather
@@ -404,7 +405,11 @@ export function pinMoveNote(
 	position: number,
 	total: number,
 ): string {
-	return `Moved “${label}” to position ${position + 1} of ${total}.`;
+	return t("ui.chat.chat_pin_order.moved_label_to_position_value_of_total", {
+		label: label,
+		value: position + 1,
+		total: total,
+	});
 }
 
 /**
@@ -424,9 +429,15 @@ export function pinMoveBoundaryNote(
 	position: number,
 	total: number,
 ): string {
-	if (total <= 1) return `“${label}” is the only pinned chat.`;
-	if (position <= 0) return `“${label}” is already the first pinned chat.`;
-	return `“${label}” is already the last pinned chat.`;
+	if (total <= 1)
+		return t("ui.chat.chat_pin_order.label_is_the_only_pinned_chat", { label });
+	if (position <= 0)
+		return t("ui.chat.chat_pin_order.label_is_already_the_first_pinned_chat", {
+			label,
+		});
+	return t("ui.chat.chat_pin_order.label_is_already_the_last_pinned_chat", {
+		label,
+	});
 }
 
 /**
@@ -441,7 +452,7 @@ export function pinMoveBoundaryNote(
  * sentence does.
  */
 export function pinMoveUntargetedNote(label: string): string {
-	return `“${label}” is not pinned.`;
+	return t("ui.chat.chat_pin_order.label_is_not_pinned", { label });
 }
 
 /**

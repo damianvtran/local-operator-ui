@@ -1,5 +1,6 @@
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 import type { ContextReading, ContextRung } from "./session-context";
 
 /**
@@ -99,7 +100,10 @@ export const ContextWheel: FC<ContextWheelProps> = ({ reading, className }) => {
 		<svg
 			width={SIZE}
 			height={SIZE}
-			viewBox={`0 0 ${SIZE} ${SIZE}`}
+			viewBox={t("ui.chat.session_status.context_wheel.0_0_size_size2", {
+				SIZE: SIZE,
+				SIZE2: SIZE,
+			})}
 			className={cn("shrink-0", className)}
 			aria-hidden="true"
 			focusable="false"

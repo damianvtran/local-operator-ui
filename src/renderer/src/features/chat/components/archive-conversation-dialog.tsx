@@ -1,8 +1,8 @@
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { type FC, useEffect, useRef } from "react";
+import { t } from "../../../../../i18n/messages";
 import {
 	ARCHIVE_CONFIRM_MESSAGE,
 	ARCHIVE_CONFIRM_UNNAMED,

@@ -61,6 +61,7 @@ import {
 	hubMarkLabel,
 } from "@shared/api/local-operator/hub-updates";
 import { Tooltip } from "@shared/components/ui/tooltip";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	Check,
@@ -72,6 +73,7 @@ import {
 } from "lucide-react";
 import { useId } from "react";
 import { Link } from "react-router-dom";
+import { t } from "../../../../../i18n/messages";
 
 /**
  * "Update all" is offered from TWO waiting items. With one, the row's own mark
@@ -119,6 +121,7 @@ export function HubStateIcon({
 	mark: HubMark;
 	className?: string;
 }) {
+	useI18nLocale();
 	const Glyph = GLYPH_BY_MARK[mark.kind];
 	return (
 		<Glyph
@@ -146,6 +149,7 @@ export function HubUpdateMark({
 	staged: boolean;
 	onPress: () => void;
 }) {
+	useI18nLocale();
 	const describedBy = useId();
 	const shownMark: HubMark = busy ? { kind: "updating" } : mark;
 	const shown = shownMark.kind;
@@ -158,7 +162,11 @@ export function HubUpdateMark({
 		// focus (a `title` never does), so a keyboard reader gets the sentence and
 		// the action it names (design D3; UX U2).
 		<Tooltip
-			content={action ? `${detail} ${action}` : detail}
+			content={
+				action
+					? t("ui.chat.hub_update_mark.detail_action", { detail, action })
+					: detail
+			}
 			side="top"
 			align="center"
 			disableHoverableContent
@@ -166,7 +174,10 @@ export function HubUpdateMark({
 			<button
 				type="button"
 				data-hub-mark={shown}
-				data-testid={`hub-mark-${item.kind}-${item.name}`}
+				data-testid={t("ui.chat.hub_update_mark.hub_mark_kind_name", {
+					kind: item.kind,
+					name: item.name,
+				})}
 				className={cn(
 					"flex size-6 shrink-0 items-center justify-center rounded-md",
 					INK_BY_MARK[shown],
@@ -193,7 +204,9 @@ export function HubUpdateMark({
 					aria-hidden="true"
 				/>
 				<span id={describedBy} className="sr-only">
-					{action ? `${detail} ${action}` : detail}
+					{action
+						? t("ui.chat.hub_update_mark.detail_action", { detail, action })
+						: detail}
 				</span>
 			</button>
 		</Tooltip>
@@ -206,6 +219,7 @@ export function HubUpdateMark({
  * reads as a caption of the name above it.
  */
 export function HubRowNote({ note }: { note: HubNote }) {
+	useI18nLocale();
 	return (
 		<p
 			role={note.tone === "error" ? "alert" : "status"}
@@ -242,6 +256,7 @@ export function HubHeadingControls({
 	onCheck?: () => void;
 	checking?: boolean;
 }) {
+	useI18nLocale();
 	const offerAll = available >= UPDATE_ALL_FROM;
 	if (!offerAll && !onCheck) return null;
 	const noun = HUB_KIND_NOUN[kind];
@@ -250,8 +265,13 @@ export function HubHeadingControls({
 			{offerAll && (
 				<button
 					type="button"
-					data-testid={`hub-update-all-${kind}`}
-					aria-label={`Update all ${available} ${noun} updates from the hub`}
+					data-testid={t("ui.chat.hub_update_mark.hub_update_all_kind", {
+						kind,
+					})}
+					aria-label={t(
+						"ui.chat.hub_update_mark.update_all_available_noun_updates_from_the_hub",
+						{ available, noun },
+					)}
 					aria-disabled={busy || blocked || undefined}
 					className={cn(
 						"h-6 shrink-0 rounded-md px-1.5 text-meta text-accent",
@@ -261,15 +281,22 @@ export function HubHeadingControls({
 						if (!busy && !blocked) onUpdateAll();
 					}}
 				>
-					{busy ? "Updating…" : `Update all (${available})`}
+					{busy
+						? t("ui.chat.hub_update_mark.updating")
+						: t("ui.chat.hub_update_mark.update_all_available", { available })}
 				</button>
 			)}
 			{onCheck && (
-				<Tooltip content="Check the hub for updates now" side="top">
+				<Tooltip
+					content={t("ui.chat.hub_update_mark.check_the_hub_for_updates_now")}
+					side="top"
+				>
 					<button
 						type="button"
 						data-testid="hub-check-now"
-						aria-label="Check the hub for updates now"
+						aria-label={t(
+							"ui.chat.hub_update_mark.check_the_hub_for_updates_now",
+						)}
 						aria-disabled={checking || blocked || undefined}
 						className={cn(
 							"flex size-6 shrink-0 items-center justify-center rounded-md text-ink-dim",
@@ -325,6 +352,7 @@ export function HubSectionLines({
 	note: HubNote | undefined;
 	onDismissRollup: () => void;
 }) {
+	useI18nLocale();
 	if (!reserve && !signIn && !rollup && !note) return null;
 	return (
 		<div
@@ -360,11 +388,11 @@ export function HubSectionLines({
 					<span className="min-w-0">{rollup}</span>
 					<button
 						type="button"
-						aria-label="Dismiss update summary"
+						aria-label={t("ui.chat.hub_update_mark.dismiss_update_summary")}
 						className="shrink-0 rounded-sm px-1 hover:text-ink"
 						onClick={onDismissRollup}
 					>
-						Dismiss
+						{t("ui.chat.hub_update_mark.dismiss")}
 					</button>
 				</output>
 			)}

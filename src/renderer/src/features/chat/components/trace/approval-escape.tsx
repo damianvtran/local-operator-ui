@@ -84,6 +84,7 @@
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { cn } from "@shared/lib/utils";
 import { useCallback, useId, useRef, useState } from "react";
+import { t } from "../../../../../../i18n/messages";
 import type { CommandRun } from "../../pickers/use-picker-backend";
 import { errorText, useSessionCommand } from "../../pickers/use-picker-backend";
 
@@ -246,27 +247,52 @@ export async function runApprovalEscape(
  * rather than `t()` keys.
  */
 export const APPROVAL_ESCAPE_COPY = {
-	setSession: "Set auto for this session",
-	setAll: "Set auto for all sessions",
-	sessionSaved: "Auto for this session — this request still needs an answer.",
-	defaultSaved:
-		"Auto set for this conversation; saved as the default for sessions that follow it. Conversations with their own choice keep it. This request still needs an answer.",
+	get setSession() {
+		return t("ui.chat.trace.approval_escape.set_auto_for_this_session");
+	},
+	get setAll() {
+		return t("ui.chat.trace.approval_escape.set_auto_for_all_sessions");
+	},
+	get sessionSaved() {
+		return t(
+			"ui.chat.trace.approval_escape.auto_for_this_session_this_request_still_needs_an_answer",
+		);
+	},
+	get defaultSaved() {
+		return t(
+			"ui.chat.trace.approval_escape.auto_set_for_this_conversation_saved_as_the_default_for",
+		);
+	},
 	/**
 	 * The half-succeeded all-sessions arm: the default is saved, the live
 	 * conversation's command was refused. It names both facts so the reader can
 	 * see what did and did not change.
 	 */
 	defaultSavedSessionFailed: (detail: string) =>
-		`Auto saved as the default for sessions that follow it. The session part did not apply: ${detail}. This request still needs an answer.`,
-	unchanged: (detail: string) => `Unchanged: ${detail}`,
+		t(
+			"ui.chat.trace.approval_escape.auto_saved_as_the_default_for_sessions_that_follow_it",
+			{ detail },
+		),
+	unchanged: (detail: string) =>
+		t("ui.chat.trace.approval_escape.unchanged_detail", { detail }),
 	/** The prefix a transport failure carries, since no backend detail exists. */
-	notChanged: "The mode was not changed",
+	get notChanged() {
+		return t("ui.chat.trace.approval_escape.the_mode_was_not_changed");
+	},
 	/** The effective-policy line; see `approvalPolicyLine`. */
-	globalDefault: (mode: string) => `Approvals: ${mode} — global default.`,
-	sessionOverride: (mode: string) => `Approvals: ${mode} — session override.`,
+	globalDefault: (mode: string) =>
+		t("ui.chat.trace.approval_escape.approvals_mode_global_default", { mode }),
+	sessionOverride: (mode: string) =>
+		t("ui.chat.trace.approval_escape.approvals_mode_session_override", {
+			mode,
+		}),
 	sessionOverrideOf: (mode: string, globalMode: string) =>
-		`Approvals: ${mode} — session override; global ${globalMode}.`,
-	pinnedRun: (mode: string) => `Approvals: ${mode} — this run.`,
+		t(
+			"ui.chat.trace.approval_escape.approvals_mode_session_override_global_globalmode",
+			{ mode, globalMode },
+		),
+	pinnedRun: (mode: string) =>
+		t("ui.chat.trace.approval_escape.approvals_mode_this_run", { mode }),
 };
 
 /**

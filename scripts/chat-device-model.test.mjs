@@ -240,7 +240,10 @@ test("the plan's destination is the row's device ID, and the address is what get
 		/const row = deviceId \? findRow\(model, deviceId\) : null;/,
 		"the row is resolved by the id the model is keyed by",
 	);
-	assert.match(slot, /const name = row \? row\.name : "this device";/);
+	assert.match(
+		slot,
+		/const name = row\s*\?\s*row\.name\s*:\s*t\("ui\.chat\.session_status\.chat_device_slot\.this_device"\);/,
+	);
 	assert.match(slot, /const to = deviceId \?\? "local";/);
 	/* The address on the wire is that same value, and the draft keeps the id, not the name. */
 	assert.match(slot, /\{ sessionId, to, keep \}/);

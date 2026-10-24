@@ -8,6 +8,7 @@ import {
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import {
 	type SessionFile,
 	type SessionFilesPage,
@@ -123,7 +124,9 @@ export function useSessionFiles(
 			setSnapshot({
 				...EMPTY,
 				state: "unsupported",
-				error: "Remote files cannot be opened on this device.",
+				error: t(
+					"ui.chat.canonical.use_session_files.remote_files_cannot_be_opened_on_this_device",
+				),
 			});
 			return;
 		}
@@ -154,13 +157,17 @@ export function useSessionFiles(
 						setSnapshot({
 							...EMPTY,
 							state: "unsupported",
-							error: "This session's files are not available on this device.",
+							error: t(
+								"ui.chat.canonical.use_session_files.this_sessions_files_are_not_available_on_this_device",
+							),
 						});
 						return;
 					}
 					if (response.status < 200 || response.status >= 300)
 						throw new Error(
-							"The file index could not be read. Retry to reconnect.",
+							t(
+								"ui.chat.canonical.use_session_files.the_file_index_could_not_be_read_retry_to_reconnect",
+							),
 						);
 					const page = (response.body as { result: SessionFilesPage }).result;
 					if (
@@ -168,12 +175,18 @@ export function useSessionFiles(
 						!Array.isArray(page.rows) ||
 						!["ready", "building", "unsupported"].includes(page.state)
 					)
-						throw new Error("The backend returned an invalid file index.");
+						throw new Error(
+							t(
+								"ui.chat.canonical.use_session_files.the_backend_returned_an_invalid_file_index",
+							),
+						);
 					if (page.state === "unsupported") {
 						setSnapshot({
 							...EMPTY,
 							state: "unsupported",
-							error: "Remote files cannot be opened on this device.",
+							error: t(
+								"ui.chat.canonical.use_session_files.remote_files_cannot_be_opened_on_this_device",
+							),
 						});
 						return;
 					}
@@ -190,7 +203,9 @@ export function useSessionFiles(
 						cursors.clear();
 						if (++resets > 4)
 							throw new Error(
-								"Files are changing quickly. Retry after the current turn finishes.",
+								t(
+									"ui.chat.canonical.use_session_files.files_are_changing_quickly_retry_after_the_current_turn_finishes",
+								),
 							);
 						continue;
 					}
@@ -225,7 +240,9 @@ export function useSessionFiles(
 						if (page.cursor_reset) cursors.clear();
 						if (cursors.has(cursor))
 							throw new Error(
-								"The file index repeated a page cursor. Retry to refresh it.",
+								t(
+									"ui.chat.canonical.use_session_files.the_file_index_repeated_a_page_cursor_retry_to_refresh",
+								),
 							);
 						cursors.add(cursor);
 						continue;
@@ -245,8 +262,9 @@ export function useSessionFiles(
 					setSnapshot((old) => ({
 						...old,
 						state: "building",
-						error:
-							"The index is still building. Continue loading to check progress.",
+						error: t(
+							"ui.chat.canonical.use_session_files.the_index_is_still_building_continue_loading_to_check_progress",
+						),
 					}));
 			} catch (error) {
 				if (live())
@@ -256,7 +274,9 @@ export function useSessionFiles(
 						error:
 							error instanceof Error
 								? error.message
-								: "The file index could not be read.",
+								: t(
+										"ui.chat.canonical.use_session_files.the_file_index_could_not_be_read",
+									),
 					}));
 			}
 		})();

@@ -1,0 +1,9 @@
+{
+	"ui.chat.skill.contract.this_backend_cannot_serve_the_skill_catalogue_update_the_backend": "This backend cannot serve the skill catalogue. Update the backend and try again.",
+	"ui.chat.skill.contract.skills_arent_available_right_now": "Skills aren't available right now.",
+	"ui.chat.skill.contract.no_skills_found_see_skills": "No skills found — see /skills",
+	"ui.chat.skill.contract.no_skills_found": "No skills found.",
+	"ui.chat.skill.contract.no_skills_match": "No skills match.",
+	"ui.chat.skill.contract.enter_completes": "Enter completes ${name}; Enter again sends it.",
+	"ui.chat.skill.contract.click_completes": "Click completes ${name}."
+}

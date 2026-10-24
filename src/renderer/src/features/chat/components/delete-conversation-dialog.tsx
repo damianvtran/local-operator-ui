@@ -1,12 +1,9 @@
 import { ConfirmationModal } from "@shared/components/common/confirmation-modal";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { type FC, useEffect, useRef, useState } from "react";
-import {
-	DELETE_GUARD_REMEDY,
-	deleteConversationMessage,
-} from "../delete-conversation";
+import { t } from "../../../../../i18n/messages";
+import { deleteConversationMessage } from "../delete-conversation";
 
 /**
  * The ONE permanent-delete confirmation, asked for from wherever the user asked.
@@ -133,7 +130,11 @@ export const DeleteConversationDialog: FC<{
 					 * sentence names the specific remedy above it.
 					 */}
 					{shownRefusal?.guarded && (
-						<p className="pt-2 text-ink-muted">{DELETE_GUARD_REMEDY}</p>
+						<p className="pt-2 text-ink-muted">
+							{t(
+								"ui.chat.delete_conversation.the_guard_above_is_the_daemons_own_and_nothing_in",
+							)}
+						</p>
 					)}
 				</>
 			}

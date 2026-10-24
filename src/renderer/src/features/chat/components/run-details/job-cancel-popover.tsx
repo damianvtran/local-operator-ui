@@ -34,11 +34,11 @@
  * the keyboard handed back to Keep.
  */
 import { Button } from "@shared/components/ui";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { t } from "../../../../../../i18n/messages";
 import {
 	CARD_WIDTH,
 	cardPlacement,
@@ -129,7 +129,7 @@ export const JobCancelPopover = ({
 		width: window.innerWidth,
 		height: window.innerHeight,
 	});
-	const title = "Cancel this job?";
+	const title = t("ui.chat.run_details.job_cancel_popover.cancel_this_job");
 	return createPortal(
 		/*
 		 * A native `<dialog>` with `open` set: it carries the role the card
@@ -156,7 +156,10 @@ export const JobCancelPopover = ({
 		>
 			<p className={cn("text-ink")}>{title}</p>
 			<p className={cn("pt-1.5 text-ink-muted")}>
-				{`The runtime asks the provider to stop “${label}”. The row says “Cancelled” only when the job settles.`}
+				{t(
+					"ui.chat.run_details.job_cancel_popover.the_runtime_asks_the_provider_to_stop_label_the_row",
+					{ label },
+				)}
 			</p>
 			{refusal !== null && (
 				/*
@@ -196,7 +199,9 @@ export const JobCancelPopover = ({
 					disabled={busy}
 					onClick={onConfirm}
 				>
-					{busy ? "Cancelling…" : "Cancel"}
+					{busy
+						? t("ui.chat.run_details.job_cancel_popover.cancelling")
+						: t("ui.common.actions.cancel")}
 				</Button>
 			</div>
 		</dialog>,

@@ -35,6 +35,7 @@
  * below the fold.
  */
 
+import { t } from "../../../../../i18n/messages";
 import type { ProfileRecencyKind } from "../../../shared/store/ui-preferences-store";
 import type { PickerOption } from "../pickers/picker-host";
 
@@ -106,8 +107,18 @@ export function identityMenuHeadings(kind: ProfileRecencyKind): {
 	all: string;
 } {
 	return kind === "team"
-		? { recents: "Recent teams", all: "All teams" }
-		: { recents: "Recent agents", all: "All agents" };
+		? {
+				recents: t(
+					"ui.chat.header.chat_header_identity_menu_model.recent_teams",
+				),
+				all: t("ui.chat.header.chat_header_identity_menu_model.all_teams"),
+			}
+		: {
+				recents: t(
+					"ui.chat.header.chat_header_identity_menu_model.recent_agents",
+				),
+				all: t("ui.chat.header.chat_header_identity_menu_model.all_agents"),
+			};
 }
 
 /**
@@ -256,7 +267,10 @@ export function identityMenuSeedActive(rows: readonly PickerOption[]): number {
  * just happened to a specific row.
  */
 export function identityMenuRefusalAnnouncement(label: string): string {
-	return `${label} cannot take the seat.`;
+	return t(
+		"ui.chat.header.chat_header_identity_menu_model.label_cannot_take_the_seat",
+		{ label },
+	);
 }
 
 /*
@@ -268,10 +282,12 @@ export function identityMenuRefusalAnnouncement(label: string): string {
  * this app's yet. The untyped variant is an edge (a roster carrying no manager
  * row at all), but it is reachable, so it states the one exit that remains.
  */
-export const IDENTITY_MENU_NO_SETTABLE_TYPED =
-	"No profile here can take the seat — clear the search, or switch the team.";
-export const IDENTITY_MENU_NO_SETTABLE =
-	"No profile can take the seat — switch the team.";
+export const IDENTITY_MENU_NO_SETTABLE_TYPED = t(
+	"ui.chat.header.chat_header_identity_menu_model.no_profile_here_can_take_the_seat_clear_the_search",
+);
+export const IDENTITY_MENU_NO_SETTABLE = t(
+	"ui.chat.header.chat_header_identity_menu_model.no_profile_can_take_the_seat_switch_the_team",
+);
 
 /**
  * What the panel's footer says, or `null` for a list that fits.
@@ -305,15 +321,24 @@ export function identityMenuFooter(input: {
 		 * nothing can be picked, and the count is not the answer the user needs.
 		 * The resolution names the exits that exist; see the constants above.
 		 */
-		if (!hasSettable) return IDENTITY_MENU_NO_SETTABLE_TYPED;
+		if (!hasSettable)
+			return t(
+				"ui.chat.header.chat_header_identity_menu_model.no_profile_here_can_take_the_seat_clear_the_search",
+			);
 		return view.matches === view.total
 			? `${view.total} ${noun} match`
 			: `${view.matches} of ${view.total} ${noun} match`;
 	}
 	if (!overflowing) return null;
 	/* The untyped edge: the whole visible roster is refused. See above. */
-	if (!hasSettable) return IDENTITY_MENU_NO_SETTABLE;
-	return `${view.total} ${noun} in all — scroll, or type to filter`;
+	if (!hasSettable)
+		return t(
+			"ui.chat.header.chat_header_identity_menu_model.no_profile_can_take_the_seat_switch_the_team",
+		);
+	return t(
+		"ui.chat.header.chat_header_identity_menu_model.total_noun_in_all_scroll_or_type",
+		{ total: view.total, noun: noun },
+	);
 }
 
 /*
@@ -434,7 +459,10 @@ export type IdentityAgentConstraint = {
  * `delegate`, and nothing in this app says "coordinating".
  */
 export function identityAgentConstraintCaption(teamLabel: string): string {
-	return `${teamLabel} is led by its manager; only the manager and profiles that can delegate may take this seat.`;
+	return t(
+		"ui.chat.header.chat_header_identity_menu_model.teamlabel_is_led_by_its_manager_only_the_manager_and",
+		{ teamLabel },
+	);
 }
 
 /**
@@ -473,7 +501,15 @@ export function identityAgentClosedCaption(
 	team: string,
 	speaker: string | null,
 ): string {
-	return `team ${team} owns this session: ${speaker ?? "its manager"} is the speaker, so /agent is closed. Run /team clear to detach the team first.`;
+	return t(
+		"ui.chat.header.chat_header_identity_menu_model.team_team_owns_this_session_value_is_the_speaker_so",
+		{
+			team: team,
+			value:
+				speaker ??
+				t("ui.chat.header.chat_header_identity_menu_model.its_manager"),
+		},
+	);
 }
 
 /**
@@ -489,7 +525,10 @@ export function identityAgentClosedCaption(
  * otherwise announce with no name.
  */
 export function identityAgentClosedTitle(teamLabel: string): string {
-	return `Agent seat closed by ${teamLabel}`;
+	return t(
+		"ui.chat.header.chat_header_identity_menu_model.agent_seat_closed_by_teamlabel",
+		{ teamLabel },
+	);
 }
 
 /**
@@ -505,8 +544,9 @@ export function identityAgentClosedTitle(teamLabel: string): string {
  * caption does not - what THIS row would need - while the rule itself keeps
  * one home, the caption.
  */
-export const IDENTITY_AGENT_NOT_SETTABLE_REASON =
-	"Needs a delegating profile here.";
+export const IDENTITY_AGENT_NOT_SETTABLE_REASON = t(
+	"ui.chat.header.chat_header_identity_menu_model.needs_a_delegating_profile_here",
+);
 
 /**
  * The constraint a bound team puts on the agent panel, or `null` when there is

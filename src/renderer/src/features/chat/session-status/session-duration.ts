@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 /**
  * The session's active processing time, as the status band spells it.
  *
@@ -118,8 +119,9 @@ export function durationReading(
  * conversation has been open", and it is not — a conversation left open
  * overnight banks nothing.
  */
-export const DURATION_EXPLANATION =
-	"Time the agent has spent working in this conversation. Time waiting between turns is not counted.";
+export const DURATION_EXPLANATION = t(
+	"ui.chat.session_status.session_duration.time_the_agent_has_spent_working_in_this_conversation_time",
+);
 
 /**
  * The same fact, shorter, for the `aria-label`.
@@ -131,5 +133,6 @@ export const DURATION_EXPLANATION =
  * semicolon and no repetition. Keeping one string for both, which is what
  * round 2 shipped, makes the screen-reader case pay for the tooltip's leisure.
  */
-export const DURATION_LABEL_EXPLANATION =
-	"Time spent working; waiting is not counted.";
+export const DURATION_LABEL_EXPLANATION = t(
+	"ui.chat.session_status.session_duration.time_spent_working_waiting_is_not_counted",
+);

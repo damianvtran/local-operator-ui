@@ -35,6 +35,7 @@
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
+import { t } from "../../../../../i18n/messages";
 import { askResponseSummary, askTimeoutSummary } from "../ask-queue";
 import { summaryFromArgs } from "../components/trace/tool-row-model";
 import { parseReplies } from "../utils/reply-utils";
@@ -279,7 +280,9 @@ export function copyTextForRecord(record: TranscriptRecord): string {
 				const answers = record.answers[question.id] ?? [];
 				return [
 					question.question,
-					answers.length > 0 ? answers.join(", ") : "No answer given",
+					answers.length > 0
+						? answers.join(", ")
+						: t("ui.chat.canonical.transcript_copy.no_answer_given"),
 				].join("\n");
 			});
 			return [askResponseSummary(record), ...answered]

@@ -34,7 +34,7 @@ test("the fold header is bound to the group summary, not a member count", () => 
 const RE_STATUSUNAVAILABLE_INCLUDES_LIVENESS =
 	/statusUnavailable\.includes\("liveness"\)/;
 const RE_LIVENESS_UNREAD_SENTENCE =
-	/livenessUnread\s*\?\s*"The daemon could not read which chats are running[^"]*"\s*:\s*"Nothing running right now\."/;
+	/livenessUnread\s*\?\s*t\(\s*"ui\.chat\.sidebar\.chat_sidebar\.the_daemon_could_not_read_which_chats_are_running_so",?\s*\)\s*:\s*t\(\s*"ui\.chat\.sidebar\.chat_sidebar\.nothing_running_right_now",?\s*\)/;
 
 // Exercise the shipped store and closed IPC schema in memory. The transport
 // fixture records effects; this is deterministic state evidence, not a browser.
@@ -3299,7 +3299,7 @@ test("the header stops announcing that the session has not started once one exis
 	 * the directory the footer names.
 	 */
 	const rung = rendered.match(
-		/starting\s*\?\s*\(loadedTargetDisplay \?\? "Starting the session"\)\s*:\s*draft\?\.sessionId\s*\?\s*([\s\S]{0,200}?)\s*:/,
+		/starting\s*\?\s*\(loadedTargetDisplay \?\?\s*t\("ui\.chat\.chat_page\.starting_the_session"\)\)\s*:\s*draft\?\.sessionId\s*\?\s*([\s\S]{0,200}?)\s*:/,
 	);
 	assert.ok(
 		rung,
@@ -3307,7 +3307,7 @@ test("the header stops announcing that the session has not started once one exis
 	);
 	assert.match(
 		rung[1],
-		/canonical\.frontend\?\.cwd \|\| cwd/,
+		/canonical\.frontend\?\.cwd\s*\|\|\s*cwd/,
 		"the session that exists is not described by its directory, so the header and the immutability note below it are once again about different states",
 	);
 });
@@ -3350,7 +3350,7 @@ test("the pane's unavailable state is centred, clear of the full-bleed bands", (
 	);
 	assert.match(
 		rung[1],
-		/Update the backend to use canonical chats/,
+		/ui\.chat\.chat_page\.update_the_backend_to_use_canonical_chats_your_existing_histories/,
 		"and the sentence itself is still the one the state owes",
 	);
 });

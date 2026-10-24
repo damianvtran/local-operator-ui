@@ -108,6 +108,7 @@ import { mathFromMarkdown } from "mdast-util-math";
 import { math } from "micromark-extension-math";
 import type { Options } from "micromark-extension-math";
 import type { Processor } from "unified";
+import { t } from "../../../../../i18n/messages";
 
 /*
  * The shapes this file reads from micromark's tokenizer protocol, spelled
@@ -181,7 +182,7 @@ const guardedMathText = (
 		tokenize: tokenizeMathText,
 		resolve: resolveMathText,
 		previous,
-		name: "mathText",
+		name: t("ui.chat.markdown_math_guarded.mathtext"),
 	};
 
 	/**
@@ -209,8 +210,8 @@ const guardedMathText = (
 
 		/** Start of math (text). `$a$`, or the first `$` of `$$a$$`. */
 		function start(code: Code): State | undefined {
-			effects.enter("mathText");
-			effects.enter("mathTextSequence");
+			effects.enter(t("ui.chat.markdown_math_guarded.mathtext"));
+			effects.enter(t("ui.chat.markdown_math_guarded.mathtextsequence"));
 			return sequenceOpen(code);
 		}
 
@@ -242,7 +243,7 @@ const guardedMathText = (
 				return nok(code);
 			}
 
-			effects.exit("mathTextSequence");
+			effects.exit(t("ui.chat.markdown_math_guarded.mathtextsequence"));
 			return between(code);
 		}
 
@@ -253,7 +254,9 @@ const guardedMathText = (
 			}
 
 			if (code === DOLLAR_SIGN) {
-				token = effects.enter("mathTextSequence");
+				token = effects.enter(
+					t("ui.chat.markdown_math_guarded.mathtextsequence"),
+				);
 				size = 0;
 				closeGuardPrev = self.previous;
 				return sequenceClose(code);
@@ -268,14 +271,14 @@ const guardedMathText = (
 			}
 
 			if (isLineEnding(code)) {
-				effects.enter("lineEnding");
+				effects.enter(t("ui.chat.markdown_math_guarded.lineending"));
 				effects.consume(code);
-				effects.exit("lineEnding");
+				effects.exit(t("ui.chat.markdown_math_guarded.lineending"));
 				return between;
 			}
 
 			// Data.
-			effects.enter("mathTextData");
+			effects.enter(t("ui.chat.markdown_math_guarded.mathtextdata"));
 			return data(code);
 		}
 
@@ -287,7 +290,7 @@ const guardedMathText = (
 				code === DOLLAR_SIGN ||
 				isLineEnding(code)
 			) {
-				effects.exit("mathTextData");
+				effects.exit(t("ui.chat.markdown_math_guarded.mathtextdata"));
 				return between(code);
 			}
 
@@ -340,13 +343,13 @@ const guardedMathText = (
 					return nok(code);
 				}
 
-				effects.exit("mathTextSequence");
-				effects.exit("mathText");
+				effects.exit(t("ui.chat.markdown_math_guarded.mathtextsequence"));
+				effects.exit(t("ui.chat.markdown_math_guarded.mathtext"));
 				return ok(code);
 			}
 
 			// More or less accents: mark as data.
-			token.type = "mathTextData";
+			token.type = t("ui.chat.markdown_math_guarded.mathtextdata");
 			return data(code);
 		}
 	}

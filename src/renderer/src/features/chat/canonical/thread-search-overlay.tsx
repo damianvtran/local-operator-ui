@@ -12,26 +12,12 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 import type { ThreadFindHit } from "../../../../../shared/desktop-contract";
 import { THREAD_FIND_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import { chatRegionOf } from "../chat-regions";
 import { pressLandsOnOverlay } from "../keyboard-scopes";
 import {
-	THREAD_SEARCH_BUILDING_COPY,
-	THREAD_SEARCH_BUILDING_HINT,
-	THREAD_SEARCH_CLOSE_LABEL,
-	THREAD_SEARCH_EMPTY_COPY,
-	THREAD_SEARCH_ERROR_COPY,
-	THREAD_SEARCH_JUMPING_COPY,
-	THREAD_SEARCH_LIST_LABEL,
-	THREAD_SEARCH_PARTIAL_COPY,
-	THREAD_SEARCH_PLACEHOLDER,
-	THREAD_SEARCH_RECHECK_LABEL,
-	THREAD_SEARCH_RETRY_LABEL,
-	THREAD_SEARCH_ROLE_LABELS,
-	THREAD_SEARCH_STALE_COPY,
-	THREAD_SEARCH_TIER_HINT,
-	THREAD_SEARCH_UNSUPPORTED_COPY,
 	type ThreadSearchState,
 	isThreadSearchPress,
 	splitThreadSearchRanges,
@@ -176,11 +162,22 @@ const ResultRow: FC<{
 			)}
 		>
 			<span className="flex items-center gap-1.5 text-ink-muted text-meta">
-				<span>{THREAD_SEARCH_ROLE_LABELS[hit.role]}</span>
+				<span>
+					{t(
+						hit.role === "user"
+							? "ui.chat.canonical.thread_search.role.you"
+							: "ui.chat.canonical.thread_search.role.agent",
+					)}
+				</span>
 				{hit.tier === "soft" && (
 					<>
-						<span aria-hidden="true">&middot;</span>
-						<span className="text-ink-dim">{THREAD_SEARCH_TIER_HINT}</span>
+						<span aria-hidden="true">
+							{/* i18n: ignore HTML entity renders language-neutral punctuation */}
+							&middot;
+						</span>
+						<span className="text-ink-dim">
+							{t("ui.chat.canonical.thread_search.related_match")}
+						</span>
 					</>
 				)}
 			</span>
@@ -306,8 +303,8 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 						onChange={(event) => onQueryChange(event.target.value)}
 						onKeyDown={onInputKeyDown}
 						maxLength={THREAD_FIND_MAX_CHARS}
-						placeholder={THREAD_SEARCH_PLACEHOLDER}
-						aria-label={THREAD_SEARCH_PLACEHOLDER}
+						placeholder={t("ui.chat.canonical.thread_search.placeholder")}
+						aria-label={t("ui.chat.canonical.thread_search.placeholder")}
 						role="combobox"
 						aria-expanded={showList}
 						aria-controls={showList ? listId : undefined}
@@ -323,7 +320,7 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 						type="button"
 						variant="ghost"
 						size="icon-sm"
-						aria-label={THREAD_SEARCH_CLOSE_LABEL}
+						aria-label={t("ui.chat.canonical.thread_search.close_label")}
 						onClick={onClose}
 					>
 						<X aria-hidden="true" />
@@ -334,17 +331,20 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 			<div className="flex items-start gap-2 px-3 pb-2">
 				<p className="min-w-0 flex-1 text-ink-muted text-meta">
 					{state === "loading" &&
-						(showList ? THREAD_SEARCH_STALE_COPY : "Searching…")}
+						(showList
+							? t("ui.chat.canonical.thread_search.stale")
+							: t("ui.chat.canonical.thread_search.searching"))}
 					{state === "ready" &&
 						(hits.length > 0
 							? threadSearchCountLabel(hits)
-							: THREAD_SEARCH_EMPTY_COPY)}
+							: t("ui.chat.canonical.thread_search.empty"))}
 					{state === "building" &&
 						(partial
-							? THREAD_SEARCH_PARTIAL_COPY
-							: THREAD_SEARCH_BUILDING_COPY)}
-					{state === "unsupported" && THREAD_SEARCH_UNSUPPORTED_COPY}
-					{state === "error" && THREAD_SEARCH_ERROR_COPY}
+							? t("ui.chat.canonical.thread_search.partial")
+							: t("ui.chat.canonical.thread_search.building"))}
+					{state === "unsupported" &&
+						t("ui.chat.canonical.thread_search.unsupported")}
+					{state === "error" && t("ui.chat.canonical.thread_search.error")}
 					{state === "ready" && truncated && showList && (
 						<span className="text-ink-dim">
 							{" "}
@@ -352,7 +352,10 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 						</span>
 					)}
 					{state === "building" && !partial && (
-						<span className="text-ink-dim"> {THREAD_SEARCH_BUILDING_HINT}</span>
+						<span className="text-ink-dim">
+							{" "}
+							{t("ui.chat.canonical.thread_search.building_hint")}
+						</span>
 					)}
 				</p>
 				{retryable && (
@@ -364,8 +367,8 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 						className="shrink-0"
 					>
 						{state === "building"
-							? THREAD_SEARCH_RECHECK_LABEL
-							: THREAD_SEARCH_RETRY_LABEL}
+							? t("ui.chat.canonical.thread_search.recheck")
+							: t("ui.common.actions.retry_again")}
 					</Button>
 				)}
 			</div>
@@ -378,7 +381,7 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 					// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a find-results list is a listbox rather than a native control.
 					// biome-ignore lint/a11y/useSemanticElements: a find-results list is a listbox, not a native select.
 					role="listbox"
-					aria-label={THREAD_SEARCH_LIST_LABEL}
+					aria-label={t("ui.chat.canonical.thread_search.results_label")}
 					/*
 					 * The in-flight list is the PREVIOUS search's: dimmed so the eye reads
 					 * it as a placeholder, `aria-busy` so a screen reader is told the same
@@ -414,7 +417,7 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 				 * element a reader is told to expect it in.
 				 */
 				<output className="block border-t border-hairline px-3 py-1.5 text-ink-muted text-meta">
-					{THREAD_SEARCH_JUMPING_COPY}
+					{t("ui.chat.canonical.thread_search.jumping")}
 				</output>
 			)}
 
@@ -422,15 +425,15 @@ export const ThreadSearchPanel: FC<ThreadSearchPanelProps> = ({
 				<span className="flex items-center gap-1 text-ink-dim text-meta">
 					<KeyboardShortcut shortcut="↑" />
 					<KeyboardShortcut shortcut="↓" />
-					<span>browse</span>
+					<span>{t("ui.chat.canonical.thread_search.hint_browse")}</span>
 				</span>
 				<span className="flex items-center gap-1 text-ink-dim text-meta">
 					<KeyboardShortcut shortcut="↵" />
-					<span>jump</span>
+					<span>{t("ui.chat.canonical.thread_search.hint_jump")}</span>
 				</span>
 				<span className="flex items-center gap-1 text-ink-dim text-meta">
 					<KeyboardShortcut shortcut="esc" />
-					<span>close</span>
+					<span>{t("ui.chat.canonical.thread_search.hint_close")}</span>
 				</span>
 				<span className="ml-auto text-ink-dim text-meta">
 					{threadSearchCap(isMac)}

@@ -1,3 +1,4 @@
+import { t } from "../../../../i18n/messages";
 /**
  * Archiving, as decisions the app can be tested on rather than as JSX conditions.
  *
@@ -179,14 +180,17 @@ export function archiveDestinationApplies(
  * thing again - `archiveDestinationApplies` withholds `/unarchive` for it, so a
  * typed one has to say why rather than claim a state nobody established.
  */
-export const ARCHIVE_UNAVAILABLE_REASON =
-	"This backend cannot archive conversations. Update the backend and try again.";
+export const ARCHIVE_UNAVAILABLE_REASON = t(
+	"ui.chat.chat_archived.this_backend_cannot_archive_conversations_update_the_backend_and_try",
+);
 
-export const ARCHIVE_ALREADY_ARCHIVED_REASON =
-	"This conversation is already archived. Use /unarchive to restore it.";
+export const ARCHIVE_ALREADY_ARCHIVED_REASON = t(
+	"ui.chat.chat_archived.this_conversation_is_already_archived_use_unarchive_to_restore_it",
+);
 
-export const ARCHIVE_NOT_ARCHIVED_REASON =
-	"This conversation is not archived, so there is nothing to restore.";
+export const ARCHIVE_NOT_ARCHIVED_REASON = t(
+	"ui.chat.chat_archived.this_conversation_is_not_archived_so_there_is_nothing_to",
+);
 
 /**
  * The third arm of the same refusal (`archiveDestinationApplies`).
@@ -198,8 +202,9 @@ export const ARCHIVE_NOT_ARCHIVED_REASON =
  * the one route that does reach the conversation (a search, whose hit carries its
  * state).
  */
-export const ARCHIVE_STATE_UNKNOWN_REASON =
-	"This window cannot tell whether that conversation is archived - it is not among the chats listed here. Find it with search and use its row to restore it.";
+export const ARCHIVE_STATE_UNKNOWN_REASON = t(
+	"ui.chat.chat_archived.this_window_cannot_tell_whether_that_conversation_is_archived_it",
+);
 
 /**
  * Whether a search may draw archived conversations.

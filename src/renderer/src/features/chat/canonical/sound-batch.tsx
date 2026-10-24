@@ -1,6 +1,6 @@
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { t } from "../../../../../i18n/messages";
 import { CanonicalAudio, soundOwnerId } from "./canonical-audio";
 import type { SoundBatchItem } from "./sound-batch-model";
 import type { AttachmentScope } from "./use-attachment-url";
@@ -42,7 +42,7 @@ export function SoundBatch({
 						>
 							{item.label}
 							{item.status !== "completed"
-								? ` · ${item.status === "unknown" ? "Status unknown" : item.status === "cancelled" ? "Stopped" : "Failed"}`
+								? ` · ${item.status === "unknown" ? t("ui.chat.canonical.sound_batch.status_unknown") : item.status === "cancelled" ? t("ui.chat.canonical.sound_batch.stopped") : t("ui.chat.canonical.sound_batch.failed")}`
 								: ""}
 						</p>
 						{item.error ? (
@@ -56,7 +56,14 @@ export function SoundBatch({
 						) : item.audio ? (
 							<CanonicalAudio
 								audio={item.audio}
-								ownerId={`${soundOwnerId(item.audio)}:batch:${item.audio.id}:${item.id}`}
+								ownerId={t(
+									"ui.chat.canonical.sound_batch.soundowneridvalue_batch_id_id2",
+									{
+										soundOwnerIdValue: soundOwnerId(item.audio),
+										id: item.audio.id,
+										id2: item.id,
+									},
+								)}
 								scope={scope}
 								label={item.label}
 							/>
@@ -66,7 +73,8 @@ export function SoundBatch({
 							</p>
 						)}
 						<p className={cn("text-meta text-ink-dim")}>
-							{item.costCaption ?? "Cost not yet known."}
+							{item.costCaption ??
+								t("ui.chat.canonical.sound_batch.cost_not_yet_known")}
 						</p>
 					</li>
 				))}

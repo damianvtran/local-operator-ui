@@ -663,7 +663,7 @@ test("an unresolvable typed approval answer renders the sentence, not an unconfi
 		.replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 	assert.match(
 		code,
-		/throw new UserFacingError\(\s*"Reply yes or no to answer the approval request\.",\s*ANSWER_NOT_SENT_CODE,?\s*\)/,
+		/throw new UserFacingError\(\s*t\(\s*"ui\.chat\.chat_page\.reply_yes_or_no_to_answer_the_approval_request",?\s*\),\s*ANSWER_NOT_SENT_CODE,?\s*\)/,
 		"the approval branch must throw UserFacingError carrying ANSWER_NOT_SENT_CODE - a bare Error beside this sentence renders as an unknown outcome with a Retry that cannot work",
 	);
 	assert.doesNotMatch(
@@ -2577,7 +2577,7 @@ test("the pane refuses a typed send while a secret question waits, before any an
 	);
 	assert.match(
 		body.slice(refusal, refusal + 400),
-		/throw new UserFacingError\(\s*SECRET_ANSWER_DOCKED_MESSAGE,\s*ANSWER_NOT_SENT_CODE,\s*\)/,
+		/throw new UserFacingError\(\s*t\(\s*"ui\.chat\.ask_answer\.your_answer_was_not_sent_a_secret_request_is_answered",?\s*\),\s*ANSWER_NOT_SENT_CODE,\s*\)/,
 		"the refusal is the authored sentence with the not-sent code, so the alert offers no press that cannot work",
 	);
 });

@@ -66,6 +66,7 @@
  * already carries as an outcome.
  */
 
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type FC,
@@ -75,6 +76,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../../i18n/messages";
 import {
 	type DetailLine,
 	SUBPIXEL_TOLERANCE,
@@ -177,40 +179,46 @@ export type ToolDetailProps = {
  * all of it, and nothing depends on a measured budget that could disagree with
  * the render at another zoom.
  */
-const DetailLineRow: FC<{ line: DetailLine }> = ({ line }) => (
-	<div
-		className={cn("whitespace-pre-wrap break-words")}
-		style={{ paddingInlineStart: (line.depth - 1) * NEST_STEP_PX }}
-	>
-		{/* The LABEL is the identity and the value is the detail, which is the slot
-		 * rule the tool row above follows: `ink-muted` is a row's label, `ink-dim`
-		 * its detail. These two were the reverse — the key dimmer than its own
-		 * value — which is the only place in the tree the two inks were in that
-		 * order (the colour pass's ledger, F12). */}
-		{line.key ? (
-			<span className={cn("text-ink-muted")}>{line.key}: </span>
-		) : null}
-		<span className={cn("text-ink-dim")}>{line.value}</span>
-	</div>
-);
+const DetailLineRow: FC<{ line: DetailLine }> = ({ line }) => {
+	useI18nLocale();
+	return (
+		<div
+			className={cn("whitespace-pre-wrap break-words")}
+			style={{ paddingInlineStart: (line.depth - 1) * NEST_STEP_PX }}
+		>
+			{/* The LABEL is the identity and the value is the detail, which is the slot
+			 * rule the tool row above follows: `ink-muted` is a row's label, `ink-dim`
+			 * its detail. These two were the reverse — the key dimmer than its own
+			 * value — which is the only place in the tree the two inks were in that
+			 * order (the colour pass's ledger, F12). */}
+			{line.key ? (
+				<span className={cn("text-ink-muted")}>{line.key}: </span>
+			) : null}
+			<span className={cn("text-ink-dim")}>{line.value}</span>
+		</div>
+	);
+};
 
 /** A run of detail lines, in the pane's own vertical rhythm. */
 const DetailLines: FC<{ lines: readonly DetailLine[]; label: string }> = ({
 	lines,
 	label,
-}) => (
-	<div className={cn("flex flex-col gap-1")} data-detail-lines={label}>
-		{lines.map((line, index) => (
-			// The dotted path is unique for every REAL wire payload, but not by
-			// construction: an argument key that itself contains a dot (`{"a.b": 1}`
-			// beside `{a: {b: 2}}`) collides with its own subtree's path. The list is
-			// rebuilt whole on every render and never reordered, so position is the
-			// identity that cannot collide — the same bargain `diff-block.tsx` makes.
-			// biome-ignore lint/suspicious/noArrayIndexKey: an immutable ordered record
-			<DetailLineRow key={index} line={line} />
-		))}
-	</div>
-);
+}) => {
+	useI18nLocale();
+	return (
+		<div className={cn("flex flex-col gap-1")} data-detail-lines={label}>
+			{lines.map((line, index) => (
+				// The dotted path is unique for every REAL wire payload, but not by
+				// construction: an argument key that itself contains a dot (`{"a.b": 1}`
+				// beside `{a: {b: 2}}`) collides with its own subtree's path. The list is
+				// rebuilt whole on every render and never reordered, so position is the
+				// identity that cannot collide — the same bargain `diff-block.tsx` makes.
+				// biome-ignore lint/suspicious/noArrayIndexKey: an immutable ordered record
+				<DetailLineRow key={index} line={line} />
+			))}
+		</div>
+	);
+};
 
 /**
  * What a capped section owes its reader, right now: the LINES below the fold,
@@ -331,12 +339,14 @@ function useSectionReport(ref: RefObject<HTMLDivElement | null>): {
 const Remainder: FC<{ lines: number; overflowing: boolean }> = ({
 	lines,
 	overflowing,
-}) =>
-	overflowing ? (
+}) => {
+	useI18nLocale();
+	return overflowing ? (
 		<span className={cn("mt-1 block text-ink-dim")}>
 			{lines > 0 ? detailOverflowLabel(lines) : "\u00a0"}
 		</span>
 	) : null;
+};
 
 export const ToolDetail: FC<ToolDetailProps> = ({
 	args,
@@ -345,6 +355,7 @@ export const ToolDetail: FC<ToolDetailProps> = ({
 	interrupted = false,
 	note = null,
 }) => {
+	useI18nLocale();
 	const input = argumentLines(args);
 	const structured = resultLines(output);
 	const inputRef = useRef<HTMLDivElement>(null);
@@ -421,7 +432,11 @@ export const ToolDetail: FC<ToolDetailProps> = ({
 							isError && !interrupted ? "text-danger" : "text-ink-dim",
 						)}
 					>
-						{interrupted ? "Interrupted" : isError ? "Error" : "Output"}
+						{interrupted
+							? t("ui.chat.trace.tool_detail.interrupted")
+							: isError
+								? t("ui.chat.trace.tool_detail.error")
+								: t("ui.chat.trace.tool_detail.output")}
 					</span>
 					<div ref={outputRef} className={cn(SECTION_MAX, "overflow-auto")}>
 						{structured ? (

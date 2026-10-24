@@ -12,10 +12,12 @@ import {
 	SecondaryButton,
 } from "@shared/components/common/base-dialog";
 import { Button, DialogDescription, Input, Label } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
-import { MCP_SETTINGS_ACTION_LABEL, type McpFailure } from "./mcp-failure";
+import { t } from "../../../../../../i18n/messages";
+import type { McpFailure } from "./mcp-failure";
 
 /** The server this dialog is for, and the field names its config declares. */
 export type McpKeyTarget = {
@@ -65,6 +67,7 @@ export const McpKeyDialog: FC<McpKeyDialogProps> = ({
 	onOpenSettings,
 	onSave,
 }) => {
+	useI18nLocale();
 	const [values, setValues] = useState<Record<string, string>>({});
 	const [replace, setReplace] = useState(false);
 	const keyNames = target?.keyNames ?? [];
@@ -91,17 +94,26 @@ export const McpKeyDialog: FC<McpKeyDialogProps> = ({
 			maxWidth="sm"
 			title={
 				keyNames.length === 1
-					? `Enter the key for ${target?.name ?? ""}`
-					: `Enter the credentials for ${target?.name ?? ""}`
+					? t("ui.chat.run_details.mcp_key_dialog.enter_the_key_for_value", {
+							value: target?.name ?? "",
+						})
+					: t(
+							"ui.chat.run_details.mcp_key_dialog.enter_the_credentials_for_value",
+							{ value: target?.name ?? "" },
+						)
 			}
 			actions={
 				<>
-					<SecondaryButton onClick={onCancel}>Cancel</SecondaryButton>
+					<SecondaryButton onClick={onCancel}>
+						{t("ui.common.actions.cancel")}
+					</SecondaryButton>
 					<PrimaryButton
 						onClick={() => onSave(values, replace ? [...keyNames] : [])}
 						disabled={!filled || saving}
 					>
-						{saving ? "Saving…" : "Save and reconnect"}
+						{saving
+							? t("ui.chat.run_details.mcp_key_dialog.saving")
+							: t("ui.chat.run_details.mcp_key_dialog.save_and_reconnect")}
 					</PrimaryButton>
 				</>
 			}
@@ -127,8 +139,9 @@ export const McpKeyDialog: FC<McpKeyDialogProps> = ({
 						 * returned snapshot and says the server still needs sign-in when it does,
 						 * which is true against a backend with the resolver and one without it.
 						 */}
-						Saved to the encrypted secret store, then this server is
-						reconnected. These keys may be shared by other servers and sessions.
+						{t(
+							"ui.chat.run_details.mcp_key_dialog.saved_to_the_encrypted_secret_store_then_this_server_is",
+						)}
 					</p>
 					{keyNames.map((name) => (
 						<div key={name} className="flex flex-col gap-1">
@@ -157,7 +170,9 @@ export const McpKeyDialog: FC<McpKeyDialogProps> = ({
 							checked={replace}
 							onChange={(event) => setReplace(event.target.checked)}
 						/>
-						Replace existing values for these shared keys.
+						{t(
+							"ui.chat.run_details.mcp_key_dialog.replace_existing_values_for_these_shared_keys",
+						)}
 					</label>
 					{failure ? (
 						<>
@@ -183,7 +198,9 @@ export const McpKeyDialog: FC<McpKeyDialogProps> = ({
 								data-mcp-failure-action="settings"
 								onClick={onOpenSettings}
 							>
-								{MCP_SETTINGS_ACTION_LABEL}
+								{t(
+									"ui.chat.run_details.mcp_failure.open_this_server_in_settings",
+								)}
 							</Button>
 						</>
 					) : null}

@@ -98,9 +98,11 @@
 
 import { Button } from "@shared/components/ui";
 import { useScrollToBottom } from "@shared/hooks/use-scroll-to-bottom";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { t } from "../../../../../../i18n/messages";
 import type { DesktopChildTranscriptPage } from "../../../../../../shared/desktop-session-contract";
 import { CanonicalTranscript } from "../../canonical/canonical-transcript";
 import type { LoadOlderOutcome } from "../../canonical/load-older";
@@ -295,23 +297,27 @@ const clippedByWire = (text: string): boolean =>
  * here and not on the preview, because this is the only copy of why a child
  * failed — there is nothing a reader can go and read instead.
  */
-const FailureText = ({ text }: { text: string }) => (
-	<>
-		<pre
-			className={cn(
-				"mt-1 max-h-40 overflow-auto rounded-md border border-danger-border bg-danger-wash px-2 py-1.5 font-mono text-mono-sm whitespace-pre-wrap break-words text-ink",
+const FailureText = ({ text }: { text: string }) => {
+	useI18nLocale();
+	return (
+		<>
+			<pre
+				className={cn(
+					"mt-1 max-h-40 overflow-auto rounded-md border border-danger-border bg-danger-wash px-2 py-1.5 font-mono text-mono-sm whitespace-pre-wrap break-words text-ink",
+				)}
+			>
+				{text}
+			</pre>
+			{clippedByWire(text) && (
+				<p className={cn("mt-1 text-meta text-ink-muted")}>
+					{t(
+						"ui.chat.run_details.run_child_reader.shortened_at_the_wire_the_runtime_records_at_most_the",
+					)}
+				</p>
 			)}
-		>
-			{text}
-		</pre>
-		{clippedByWire(text) && (
-			<p className={cn("mt-1 text-meta text-ink-muted")}>
-				Shortened at the wire. The runtime records at most the first 2,000
-				characters of an error.
-			</p>
-		)}
-	</>
-);
+		</>
+	);
+};
 
 /**
  * The clipped result, for the states that have no conversation to read instead.
@@ -342,22 +348,29 @@ const FailureText = ({ text }: { text: string }) => (
  * all — the conversation it belongs to is not on this page — is stated either
  * way, because that is a fact about the PANE and no clip can change it.
  */
-const ResultPreview = ({ text }: { text: string }) => (
-	<div className={cn("mt-1 flex flex-col gap-1")}>
-		<p
-			className={cn(
-				"max-h-40 overflow-auto rounded-md border border-hairline bg-surface px-2 py-1.5 text-body-sm whitespace-pre-wrap break-words text-ink",
-			)}
-		>
-			{text}
-		</p>
-		<p className={cn("text-meta text-ink-muted")}>
-			{clippedByWire(text)
-				? "This is a shortened copy. This subagent's conversation is not available here."
-				: "This subagent's conversation is not available here."}
-		</p>
-	</div>
-);
+const ResultPreview = ({ text }: { text: string }) => {
+	useI18nLocale();
+	return (
+		<div className={cn("mt-1 flex flex-col gap-1")}>
+			<p
+				className={cn(
+					"max-h-40 overflow-auto rounded-md border border-hairline bg-surface px-2 py-1.5 text-body-sm whitespace-pre-wrap break-words text-ink",
+				)}
+			>
+				{text}
+			</p>
+			<p className={cn("text-meta text-ink-muted")}>
+				{clippedByWire(text)
+					? t(
+							"ui.chat.run_details.run_child_reader.this_is_a_shortened_copy_this_subagents_conversation_is_not",
+						)
+					: t(
+							"ui.chat.run_details.run_child_reader.this_subagents_conversation_is_not_available_here",
+						)}
+			</p>
+		</div>
+	);
+};
 
 /**
  * The brief: the child's authored instruction, folded, with the hidden line
@@ -367,6 +380,7 @@ const ResultPreview = ({ text }: { text: string }) => (
  * expand is exactly that question. The count is the whole affordance.
  */
 const BriefBlock = ({ row }: { row: SubagentRow }) => {
+	useI18nLocale();
 	const [expanded, setExpanded] = useState(false);
 	const folded = useMemo(() => foldBrief(row.brief), [row.brief]);
 	if (!row.brief) return null;
@@ -381,7 +395,9 @@ const BriefBlock = ({ row }: { row: SubagentRow }) => {
 				 * has no titles (§ 5.2 keeps the reader's title in the breadcrumb), and
 				 * this names a block inside the body rather than the surface.
 				 */}
-				<span className={cn("text-meta text-ink-muted")}>Delegated with</span>
+				<span className={cn("text-meta text-ink-muted")}>
+					{t("ui.chat.run_details.run_child_reader.delegated_with")}
+				</span>
 				{folded.hidden > 0 && (
 					<Button
 						variant="ghost"
@@ -404,7 +420,12 @@ const BriefBlock = ({ row }: { row: SubagentRow }) => {
 						 * to stop. The unit survives because it is the honest one: the count
 						 * is LINES of one authored instruction, not rows.
 						 */}
-						{expanded ? "Show less" : `Show ${folded.hidden} more lines`}
+						{expanded
+							? t("ui.chat.run_details.run_child_reader.show_less")
+							: t(
+									"ui.chat.run_details.run_child_reader.show_hidden_more_lines",
+									{ hidden: folded.hidden },
+								)}
 					</Button>
 				)}
 			</div>
@@ -451,18 +472,26 @@ const BriefBlock = ({ row }: { row: SubagentRow }) => {
  * true in all of them — this pane — and it keeps § 5.6's job, which is about
  * what the surface does NOT do rather than about what it holds.
  */
-const ReadOnlyFooter = () => (
-	<div className={cn("shrink-0 border-hairline border-t px-3 py-2")}>
-		<p className={cn("text-meta text-ink-muted")}>
-			Read-only — this is the subagent's page, not a way to steer it.
-		</p>
-	</div>
-);
+const ReadOnlyFooter = () => {
+	useI18nLocale();
+	return (
+		<div className={cn("shrink-0 border-hairline border-t px-3 py-2")}>
+			<p className={cn("text-meta text-ink-muted")}>
+				{t(
+					"ui.chat.run_details.run_child_reader.read_only_this_is_the_subagents_page_not_a_way",
+				)}
+			</p>
+		</div>
+	);
+};
 
 /** One quiet line for a state where the body has nothing to paint. */
-const QuietLine = ({ children }: { children: React.ReactNode }) => (
-	<p className={cn("px-3 py-3 text-body-sm text-ink-muted")}>{children}</p>
-);
+const QuietLine = ({ children }: { children: React.ReactNode }) => {
+	useI18nLocale();
+	return (
+		<p className={cn("px-3 py-3 text-body-sm text-ink-muted")}>{children}</p>
+	);
+};
 
 export const RunChildReader = ({
 	row,
@@ -480,6 +509,7 @@ export const RunChildReader = ({
 	onUnopenable,
 	paneWidth,
 }: RunChildReaderProps) => {
+	useI18nLocale();
 	const containerRef = useRef<HTMLDivElement>(null);
 	/**
 	 * The reader's own root, which holds focus for the states that have no
@@ -928,8 +958,9 @@ export const RunChildReader = ({
 					 * forever.
 					 */
 					<QuietLine>
-						This subagent's row carries no session id, so there is no
-						conversation to open from here.
+						{t(
+							"ui.chat.run_details.run_child_reader.this_subagents_row_carries_no_session_id_so_there_is",
+						)}
 					</QuietLine>
 				) : state === "pending" ? (
 					/*
@@ -943,7 +974,11 @@ export const RunChildReader = ({
 					 * appended (round 1, Q10). It is re-probed on the next pulse rather than
 					 * being final.
 					 */
-					<QuietLine>This subagent has no transcript on disk yet.</QuietLine>
+					<QuietLine>
+						{t(
+							"ui.chat.run_details.run_child_reader.this_subagent_has_no_transcript_on_disk_yet",
+						)}
+					</QuietLine>
 				) : state === "gone" ? (
 					/*
 					 * § 10.1's second absence: the child's SESSION DIRECTORY is missing —
@@ -952,10 +987,16 @@ export const RunChildReader = ({
 					 * `pending` case one line above.
 					 */
 					<QuietLine>
-						This subagent's session directory is no longer on disk.
+						{t(
+							"ui.chat.run_details.run_child_reader.this_subagents_session_directory_is_no_longer_on_disk",
+						)}
 					</QuietLine>
 				) : state === "loading" ? (
-					<QuietLine>Loading this subagent's conversation…</QuietLine>
+					<QuietLine>
+						{t(
+							"ui.chat.run_details.run_child_reader.loading_this_subagents_conversation",
+						)}
+					</QuietLine>
 				) : bodyPaintsConversation ? (
 					/*
 					 * ONE CLIP, AT THE SCROLLER'S OWN BOX (design round 2, D6).
@@ -1082,7 +1123,9 @@ export const RunChildReader = ({
 					 * (round 2, C8).
 					 */
 					<QuietLine>
-						This subagent has no conversation on record yet.
+						{t(
+							"ui.chat.run_details.run_child_reader.this_subagent_has_no_conversation_on_record_yet",
+						)}
 					</QuietLine>
 				)}
 				{/*
@@ -1092,7 +1135,9 @@ export const RunChildReader = ({
 				 */}
 				{row.errorText && (
 					<div className={cn("shrink-0 border-hairline border-t px-3 py-2")}>
-						<span className={cn("text-meta text-ink-muted")}>Failed</span>
+						<span className={cn("text-meta text-ink-muted")}>
+							{t("ui.chat.run_details.run_child_reader.failed")}
+						</span>
 						<FailureText text={row.errorText} />
 					</div>
 				)}
@@ -1107,7 +1152,9 @@ export const RunChildReader = ({
 				{!row.errorText && previewsClippedResult && row.resultText && (
 					<div className={cn("shrink-0 border-hairline border-t px-3 py-2")}>
 						<span className={cn("text-meta text-ink-muted")}>
-							{clippedByWire(row.resultText) ? "Result preview" : "Result"}
+							{clippedByWire(row.resultText)
+								? t("ui.chat.run_details.run_child_reader.result_preview")
+								: t("ui.chat.run_details.run_child_reader.result")}
 						</span>
 						<ResultPreview text={row.resultText} />
 					</div>

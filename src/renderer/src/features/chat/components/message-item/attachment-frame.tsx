@@ -27,6 +27,7 @@
 import { cn } from "@shared/lib/utils";
 import { ImageOff } from "lucide-react";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import { t } from "../../../../../../i18n/messages";
 
 export type AttachmentFrameProps = {
 	/**
@@ -143,8 +144,9 @@ export type BrokenAttachmentProps = {
 /**
  * The default sentence: the cause a legacy on-disk path usually has.
  */
-export const ATTACHMENT_MOVED_COPY =
-	"could not be displayed. It may have been moved, renamed, or deleted.";
+export const ATTACHMENT_MOVED_COPY = t(
+	"ui.chat.message.attachment_frame.could_not_be_displayed_it_may_have_been_moved_renamed",
+);
 
 /**
  * What a digest-backed row can honestly say when its bytes do not arrive.
@@ -154,8 +156,9 @@ export const ATTACHMENT_MOVED_COPY =
  * indistinguishable from a 404, and no third-party "may have" clause makes a
  * cause this code cannot observe honest.
  */
-export const ATTACHMENT_UNAVAILABLE_COPY =
-	"could not be displayed. Its stored copy is not available to this reader.";
+export const ATTACHMENT_UNAVAILABLE_COPY = t(
+	"ui.chat.message.attachment_frame.could_not_be_displayed_its_stored_copy_is_not_available",
+);
 
 /**
  * What a digest-backed VIDEO row can honestly say when its bytes do not arrive
@@ -168,8 +171,9 @@ export const ATTACHMENT_UNAVAILABLE_COPY =
  * are indistinguishable from it, and no "may have" clause makes a cause this
  * code cannot observe honest.
  */
-export const VIDEO_UNAVAILABLE_COPY =
-	"could not be played. Its stored copy is not available to this reader.";
+export const VIDEO_UNAVAILABLE_COPY = t(
+	"ui.chat.message.attachment_frame.could_not_be_played_its_stored_copy_is_not_available",
+);
 
 /**
  * What a digest-backed AUDIO row says when its bytes do not arrive or do not
@@ -181,7 +185,9 @@ export const VIDEO_UNAVAILABLE_COPY =
  * played clip, not between the two things a playhead plays. A second sentence
  * that differed would be two spellings of one fact.
  */
-export const AUDIO_UNAVAILABLE_COPY = VIDEO_UNAVAILABLE_COPY;
+export const AUDIO_UNAVAILABLE_COPY = t(
+	"ui.chat.message.attachment_frame.could_not_be_played_its_stored_copy_is_not_available",
+);
 
 /**
  * What the reader sees instead of a torn-page glyph.
@@ -194,7 +200,9 @@ export const AUDIO_UNAVAILABLE_COPY = VIDEO_UNAVAILABLE_COPY;
  */
 export const BrokenAttachment = ({
 	name,
-	detail = ATTACHMENT_MOVED_COPY,
+	detail = t(
+		"ui.chat.message.attachment_frame.could_not_be_displayed_it_may_have_been_moved_renamed",
+	),
 	className,
 	compact = false,
 }: BrokenAttachmentProps) =>
@@ -231,7 +239,10 @@ export const BrokenAttachment = ({
 			 * reader gets to walk past.
 			 */
 			role="img"
-			aria-label={`${name} ${detail}`}
+			aria-label={t("ui.chat.message.attachment_frame.name_detail", {
+				name,
+				detail,
+			})}
 			/*
 			 * The title is the SAME sentence for the pointer reader: at 78px there is no
 			 * room for it as prose and the glyph alone reads as "still loading", so the
@@ -240,7 +251,10 @@ export const BrokenAttachment = ({
 			 * produce it; what failed is this reader's copy, and that is what the
 			 * sentence says.
 			 */
-			title={`${name} ${detail}`}
+			title={t("ui.chat.message.attachment_frame.name_detail", {
+				name,
+				detail,
+			})}
 		>
 			<ImageOff className="size-4 shrink-0 text-ink-dim" aria-hidden={true} />
 		</div>
@@ -254,7 +268,7 @@ export const BrokenAttachment = ({
 			<ImageOff className="size-4 shrink-0 text-ink-dim" aria-hidden={true} />
 			<span className="min-w-0 text-body-sm text-ink-muted">
 				<span className="truncate font-mono text-ink text-mono-sm">{name}</span>
-				{` ${detail}`}
+				{t("ui.chat.message.attachment_frame.detail", { detail })}
 			</span>
 		</div>
 	);

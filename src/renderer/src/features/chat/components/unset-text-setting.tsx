@@ -5,7 +5,9 @@
  */
 
 import { Button } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 
 type UnsetTextSettingProps = {
 	/**
@@ -51,6 +53,7 @@ export const UnsetTextSetting: FC<UnsetTextSettingProps> = ({
 	onSetValue,
 	icon,
 }) => {
+	useI18nLocale();
 	return (
 		<div className="mb-4 flex flex-col rounded-md border border-control bg-surface p-4">
 			<div className="mb-2">
@@ -61,7 +64,9 @@ export const UnsetTextSetting: FC<UnsetTextSettingProps> = ({
 				<span className="mb-3 text-body-sm text-ink-muted">{description}</span>
 			</div>
 			<div className="flex items-center justify-between">
-				<span className="text-meta text-ink-dim">Not set yet</span>
+				<span className="text-meta text-ink-dim">
+					{t("ui.chat.options.unset_text_setting.not_set_yet")}
+				</span>
 				<Button
 					variant="outline"
 					size="sm"
@@ -69,7 +74,8 @@ export const UnsetTextSetting: FC<UnsetTextSettingProps> = ({
 						await onSetValue();
 					}}
 				>
-					Set to default ({defaultDisplayText})
+					{t("ui.chat.options.unset_text_setting.set_to_default")}
+					{defaultDisplayText})
 				</Button>
 			</div>
 		</div>

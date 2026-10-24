@@ -27,6 +27,7 @@
  * content, reads file bytes, or talks to the backend.
  */
 
+import { t } from "../../../../../i18n/messages";
 import type { DesktopHistoryPage } from "../../../../../shared/desktop-session-contract";
 import { CONTROL_SEQUENCES } from "../components/trace/receipt-row-model";
 import type { TranscriptRecord } from "./transcript-reducer";
@@ -362,16 +363,24 @@ export function supplementDisposition(
 // ---------------------------------------------------------------------------
 
 /** The loading line's fixed sentence (memo §2.8 copy table). */
-export const COPY_PREPARING = "Preparing highlights…";
-export const COPY_CANCELLED = "Highlights cancelled";
-export const COPY_FAILED = "Couldn't prepare highlights";
+export const COPY_PREPARING = t(
+	"ui.chat.canonical.supplement_model.preparing_highlights",
+);
+export const COPY_CANCELLED = t(
+	"ui.chat.canonical.supplement_model.highlights_cancelled",
+);
+export const COPY_FAILED = t(
+	"ui.chat.canonical.supplement_model.couldnt_prepare_highlights",
+);
 /** The frame-level fallback (§2.8): shown in place of a frame that died or hung. */
-export const COPY_FRAME_FALLBACK = "Couldn't render this graphic";
+export const COPY_FRAME_FALLBACK = t(
+	"ui.chat.canonical.supplement_model.couldnt_render_this_graphic",
+);
 /** The two control labels of the pointer-surface action pair (D10). */
-export const COPY_ADJUST = "Adjust…";
-export const COPY_CANCEL = "Cancel";
+export const COPY_ADJUST = t("ui.chat.canonical.supplement_model.adjust");
+export const COPY_CANCEL = t("ui.chat.canonical.supplement_model.cancel");
 /** The retry affordance the cancelled/failed/frame lines carry. */
-export const COPY_RETRY = "Retry";
+export const COPY_RETRY = t("ui.chat.canonical.supplement_model.retry");
 
 /**
  * The longest `cause` a reader keeps. The vocabulary is short allowlisted
@@ -393,13 +402,29 @@ export const CAUSE_MAX_CHARS = 64;
  * it is worse than the bare sentence (design round 1, D2).
  */
 export const CAUSE_PHRASES: Record<string, string> = {
-	provider_quota: "provider limit reached",
-	provider_auth: "provider sign-in needed",
-	provider_transient: "provider temporarily unavailable",
-	provider_timeout: "provider timed out",
-	provider_request: "provider refused the request",
-	provider_content: "provider blocked the content",
-	provider_context: "provider context limit",
+	get provider_quota() {
+		return t("ui.chat.canonical.supplement_model.provider_limit_reached");
+	},
+	get provider_auth() {
+		return t("ui.chat.canonical.supplement_model.provider_sign_in_needed");
+	},
+	get provider_transient() {
+		return t(
+			"ui.chat.canonical.supplement_model.provider_temporarily_unavailable",
+		);
+	},
+	get provider_timeout() {
+		return t("ui.chat.canonical.supplement_model.provider_timed_out");
+	},
+	get provider_request() {
+		return t("ui.chat.canonical.supplement_model.provider_refused_the_request");
+	},
+	get provider_content() {
+		return t("ui.chat.canonical.supplement_model.provider_blocked_the_content");
+	},
+	get provider_context() {
+		return t("ui.chat.canonical.supplement_model.provider_context_limit");
+	},
 };
 
 /** The muted phrase for a failed row's typed `cause`; `""` when absent/unknown. */
@@ -428,7 +453,9 @@ export function displayText(value: unknown): string {
 /** The disclosure's words: `3 more files` (memo §2.8). */
 export function moreText(count: number): string {
 	const bounded = Math.max(0, Math.floor(count));
-	return bounded === 1 ? "1 more file" : `${bounded} more files`;
+	return t("ui.chat.canonical.supplement_model.bounded_more_files", {
+		bounded,
+	});
 }
 
 /**
@@ -504,7 +531,9 @@ export function graphicRevealText(
  */
 export function showAllText(count: number): string {
 	const bounded = Math.max(0, Math.floor(count));
-	return bounded === 1 ? "Show all 1 graphic" : `Show all ${bounded} graphics`;
+	return t("ui.chat.canonical.supplement_model.show_all_bounded_graphics", {
+		bounded,
+	});
 }
 
 /** `Source: …` — the block's one caption line (§2.10). */
@@ -979,14 +1008,24 @@ export function failureExplanation(record: SupplementRecord): string {
 			? (record.detail?.at(-1) ?? "")
 			: "";
 	if (DIAGNOSTIC_ACCESS.test(typed))
-		return "The highlights model is unavailable right now. Your answer and files are unchanged.";
+		return t(
+			"ui.chat.canonical.supplement_model.the_highlights_model_is_unavailable_right_now_your_answer_and",
+		);
 	if (DIAGNOSTIC_SERVICE.test(typed))
-		return "The highlights service did not respond. Your answer and files are unchanged.";
+		return t(
+			"ui.chat.canonical.supplement_model.the_highlights_service_did_not_respond_your_answer_and_files",
+		);
 	if (record.error === "bound:cost")
-		return "Highlights stopped at the spending limit or unavailable pricing. Your answer and files are unchanged.";
+		return t(
+			"ui.chat.canonical.supplement_model.highlights_stopped_at_the_spending_limit_or_unavailable_pricing_your",
+		);
 	if (record.error === "bound:time")
-		return "Highlights reached the time limit. Your answer and files are unchanged.";
-	return "Your answer and files are unchanged. You can retry the highlights.";
+		return t(
+			"ui.chat.canonical.supplement_model.highlights_reached_the_time_limit_your_answer_and_files_are",
+		);
+	return t(
+		"ui.chat.canonical.supplement_model.your_answer_and_files_are_unchanged_you_can_retry_the",
+	);
 }
 
 /** One `supplement_progress` event's payload -> a patch, or null if it names no anchor. */

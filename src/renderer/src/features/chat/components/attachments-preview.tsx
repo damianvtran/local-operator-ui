@@ -4,13 +4,13 @@ import {
 	previewFailureReason,
 	useFileBlobUrl,
 } from "@shared/hooks/use-file-blob-url";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { Attachment } from "@shared/store/conversation-input-store";
 import { X } from "lucide-react";
 import type { FC } from "react";
 import { useCallback, useEffect, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import { AttachmentKindIcon, attachmentMetaLine } from "./attachment-file-card";
 
 /**

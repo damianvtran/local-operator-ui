@@ -16,9 +16,11 @@ import {
 import { useAgent } from "@shared/hooks/use-agents";
 import { useClearAgentConversation } from "@shared/hooks/use-clear-agent-conversation";
 import { useUpdateAgent } from "@shared/hooks/use-update-agent";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { Trash2, X } from "lucide-react";
 import type { FC } from "react";
 import { useEffect, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import { GenerationSettingsSection } from "./generation-settings-section";
 import { ModelHostingSection } from "./model-hosting-section";
 
@@ -47,6 +49,7 @@ type ChatOptionsSidebarProps = {
 const ClearConversationSection: FC<{
 	agentId: string;
 }> = ({ agentId }) => {
+	useI18nLocale();
 	const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
 	const clearConversationMutation = useClearAgentConversation();
 
@@ -63,15 +66,17 @@ const ClearConversationSection: FC<{
 				onClick={() => setIsConfirmationOpen(true)}
 			>
 				<Trash2 aria-hidden="true" />
-				Clear conversation
+				{t("ui.chat.options.chat_options_sidebar.clear_conversation")}
 			</Button>
 
 			<ConfirmationModal
 				open={isConfirmationOpen}
-				title="Clear this conversation?"
-				message="Every message in it is deleted from this computer, and there is no undo. The agent itself is not affected."
-				confirmText="Clear"
-				cancelText="Cancel"
+				title={t(
+					"ui.chat.options.chat_options_sidebar.clear_this_conversation",
+				)}
+				message={t("ui.chat.options.delete_warning")}
+				confirmText={t("ui.chat.options.chat_options_sidebar.clear_action")}
+				cancelText={t("ui.chat.dialogs.cancel")}
 				isDangerous
 				onConfirm={handleClearConversation}
 				onCancel={() => setIsConfirmationOpen(false)}
@@ -91,6 +96,7 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
 	onClose,
 	agentId,
 }) => {
+	useI18nLocale();
 	const [savingField, setSavingField] = useState<string | null>(null);
 	const updateAgentMutation = useUpdateAgent();
 
@@ -125,17 +131,19 @@ export const ChatOptionsSidebar: FC<ChatOptionsSidebarProps> = ({
 				<div className="flex items-center justify-between border-hairline border-b px-6 py-4">
 					<div className="flex flex-col gap-0.5">
 						<SheetTitle className="font-semibold text-heading text-ink">
-							Chat options
+							{t("ui.chat.options.chat_options_sidebar.chat_options")}
 						</SheetTitle>
 						<SheetDescription className="text-body-sm text-ink-muted">
-							Customize settings for this agent
+							{t(
+								"ui.chat.options.chat_options_sidebar.customize_settings_for_this_agent",
+							)}
 						</SheetDescription>
 					</div>
 					<Button
 						variant="ghost"
 						size="icon"
 						onClick={onClose}
-						aria-label="Close"
+						aria-label={t("ui.common.actions.close")}
 					>
 						<X aria-hidden="true" />
 					</Button>
