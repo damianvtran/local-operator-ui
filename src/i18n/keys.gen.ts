@@ -490,17 +490,28 @@ import zhCNUiAgentsStarters from "./catalogues/zh-CN/ui.agents.starters.json";
 import zhCNUiBrowserChrome from "./catalogues/zh-CN/ui.browser.chrome.json";
 import zhCNUiBrowser from "./catalogues/zh-CN/ui.browser.json";
 import zhCNUiCanvas from "./catalogues/zh-CN/ui.canvas.json";
+import zhCNUiChatAside from "./catalogues/zh-CN/ui.chat.aside.json";
 import zhCNUiChatAsks from "./catalogues/zh-CN/ui.chat.asks.json";
+import zhCNUiChatAt from "./catalogues/zh-CN/ui.chat.at.json";
 import zhCNUiChatAttachments from "./catalogues/zh-CN/ui.chat.attachments.json";
+import zhCNUiChatCanonical from "./catalogues/zh-CN/ui.chat.canonical.json";
 import zhCNUiChatComposer from "./catalogues/zh-CN/ui.chat.composer.json";
 import zhCNUiChatComposerMedia from "./catalogues/zh-CN/ui.chat.composer_media.json";
+import zhCNUiChatCredentialCapture from "./catalogues/zh-CN/ui.chat.credential_capture.json";
 import zhCNUiChatDialogs from "./catalogues/zh-CN/ui.chat.dialogs.json";
+import zhCNUiChatDirectory from "./catalogues/zh-CN/ui.chat.directory.json";
 import zhCNUiChatHeader from "./catalogues/zh-CN/ui.chat.header.json";
 import zhCNUiChat from "./catalogues/zh-CN/ui.chat.json";
 import zhCNUiChatLiveUpdates from "./catalogues/zh-CN/ui.chat.live_updates.json";
+import zhCNUiChatMessage from "./catalogues/zh-CN/ui.chat.message.json";
+import zhCNUiChatOptions from "./catalogues/zh-CN/ui.chat.options.json";
 import zhCNUiChatResponseActions from "./catalogues/zh-CN/ui.chat.response_actions.json";
+import zhCNUiChatRunDetails from "./catalogues/zh-CN/ui.chat.run_details.json";
+import zhCNUiChatSessionStatus from "./catalogues/zh-CN/ui.chat.session_status.json";
 import zhCNUiChatSidebarView from "./catalogues/zh-CN/ui.chat.sidebar_view.json";
+import zhCNUiChatSkill from "./catalogues/zh-CN/ui.chat.skill.json";
 import zhCNUiChatTags from "./catalogues/zh-CN/ui.chat.tags.json";
+import zhCNUiChatTrace from "./catalogues/zh-CN/ui.chat.trace.json";
 import zhCNUiChatTranscriptCopy from "./catalogues/zh-CN/ui.chat.transcript_copy.json";
 import zhCNUiCodeReview from "./catalogues/zh-CN/ui.code_review.json";
 import zhCNUiCommandPalette from "./catalogues/zh-CN/ui.command_palette.json";
@@ -1034,17 +1045,28 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiBrowserChrome,
 		...zhCNUiBrowser,
 		...zhCNUiCanvas,
+		...zhCNUiChatAside,
 		...zhCNUiChatAsks,
+		...zhCNUiChatAt,
 		...zhCNUiChatAttachments,
+		...zhCNUiChatCanonical,
 		...zhCNUiChatComposer,
 		...zhCNUiChatComposerMedia,
+		...zhCNUiChatCredentialCapture,
 		...zhCNUiChatDialogs,
+		...zhCNUiChatDirectory,
 		...zhCNUiChatHeader,
 		...zhCNUiChat,
 		...zhCNUiChatLiveUpdates,
+		...zhCNUiChatMessage,
+		...zhCNUiChatOptions,
 		...zhCNUiChatResponseActions,
+		...zhCNUiChatRunDetails,
+		...zhCNUiChatSessionStatus,
 		...zhCNUiChatSidebarView,
+		...zhCNUiChatSkill,
 		...zhCNUiChatTags,
+		...zhCNUiChatTrace,
 		...zhCNUiChatTranscriptCopy,
 		...zhCNUiCodeReview,
 		...zhCNUiCommandPalette,

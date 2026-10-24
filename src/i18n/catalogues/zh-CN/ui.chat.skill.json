@@ -1,0 +1,9 @@
+{
+	"ui.chat.skill.contract.this_backend_cannot_serve_the_skill_catalogue_update_the_backend": "此后端无法提供技能目录。请更新后端后重试。",
+	"ui.chat.skill.contract.skills_arent_available_right_now": "技能暂不可用。",
+	"ui.chat.skill.contract.no_skills_found_see_skills": "未找到技能，请查看/skills",
+	"ui.chat.skill.contract.no_skills_found": "未找到技能。",
+	"ui.chat.skill.contract.no_skills_match": "没有匹配的技能。",
+	"ui.chat.skill.contract.enter_completes": "Enter补全${name}；再按Enter发送。",
+	"ui.chat.skill.contract.click_completes": "点击补全${name}。"
+}
