@@ -24,11 +24,14 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, FC, KeyboardEvent } from "react";
 
 /**
- * Raw category ids remain the form values and ICU selectors; only their display
- * labels are localized. The select's other arm preserves an unknown id verbatim.
+ * Raw category ids remain the form values. Only lookup maps the real `other` id
+ * to `other_category`, leaving ICU's mandatory `other` arm free to preserve a
+ * genuinely unknown future id verbatim instead of printing the raw `other` id.
  */
 const categoryLabel = (category: string): string =>
-	t("ui.common.forms.categories_input_chips.category", { category });
+	t("ui.common.forms.categories_input_chips.category", {
+		category: category === "other" ? "other_category" : category,
+	});
 
 type CategoriesInputChipsProps = {
 	/** Current categories */
