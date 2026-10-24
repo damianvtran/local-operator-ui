@@ -188,7 +188,9 @@ import frUiChatCanonical from "./catalogues/fr/ui.chat.canonical.json";
 import frUiChatCommentaryActions from "./catalogues/fr/ui.chat.commentary_actions.json";
 import frUiChatComposer from "./catalogues/fr/ui.chat.composer.json";
 import frUiChatComposerMedia from "./catalogues/fr/ui.chat.composer_media.json";
+import frUiChatDevice from "./catalogues/fr/ui.chat.device.json";
 import frUiChatDialogs from "./catalogues/fr/ui.chat.dialogs.json";
+import frUiChatDirectory from "./catalogues/fr/ui.chat.directory.json";
 import frUiChatHeader from "./catalogues/fr/ui.chat.header.json";
 import frUiChat from "./catalogues/fr/ui.chat.json";
 import frUiChatLiveUpdates from "./catalogues/fr/ui.chat.live_updates.json";
@@ -787,7 +789,9 @@ export const bundledCatalogues: Readonly<
 		...frUiChatCommentaryActions,
 		...frUiChatComposer,
 		...frUiChatComposerMedia,
+		...frUiChatDevice,
 		...frUiChatDialogs,
+		...frUiChatDirectory,
 		...frUiChatHeader,
 		...frUiChat,
 		...frUiChatLiveUpdates,

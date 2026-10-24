@@ -1083,7 +1083,79 @@ const IDENTICAL_OK = new Map([
 		"ui.settings.shortcuts.row.canvas",
 		"product surface name: Canvas is preserved verbatim by the glossary",
 	],
+	// --- ui.chat.directory folder labels. The working-directory menu offers
+	// conventional folder names beside their own paths. Two kinds are identical
+	// in EVERY locale and are named here once, globally: the bare path segments
+	// (the context sidecar records them as untranslatable) and the Windows system
+	// folders that Explorer itself shows in English under every UI language. The
+	// three French cognates below are scoped to `fr:` instead, because hi/zh-CN/
+	// ru/ur/vi must translate those words and a global row would silently exempt
+	// them.
+	[
+		"ui.chat.directory.folder.etc",
+		"filesystem identifier, not copy: the path segment `/etc` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.media",
+		"filesystem identifier, not copy: the path segment `/media` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.mnt",
+		"filesystem identifier, not copy: the path segment `/mnt` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.opt",
+		"filesystem identifier, not copy: the path segment `/opt` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.srv",
+		"filesystem identifier, not copy: the path segment `/srv` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.usr",
+		"filesystem identifier, not copy: the path segment `/usr` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.var",
+		"filesystem identifier, not copy: the path segment `/var` is identical in every locale",
+	],
+	[
+		"ui.chat.directory.folder.program_data",
+		"Windows system folder name Explorer shows in English under every UI language",
+	],
+	[
+		"ui.chat.directory.folder.program_files",
+		"Windows system folder name Explorer shows in English under every UI language",
+	],
+	[
+		"ui.chat.directory.folder.program_files_x86",
+		"Windows system folder name Explorer shows in English under every UI language",
+	],
+	[
+		"fr:ui.chat.directory.folder.applications",
+		"French cognate: « Applications » has the same spelling; scoped to fr so the other locales still translate it",
+	],
+	[
+		"fr:ui.chat.directory.folder.documents",
+		"French cognate: « Documents » has the same spelling; scoped to fr so the other locales still translate it",
+	],
+	[
+		"fr:ui.chat.directory.folder.volumes",
+		"French cognate: « Volumes » has the same spelling; scoped to fr so the other locales still translate it",
+	],
 ]);
+
+/*
+ * An exemption is GLOBAL by default — a value no locale may translate, such as a
+ * filesystem identifier — and may be scoped to one locale with a `<locale>:<key>`
+ * row, for a word that is legitimately identical in that language only. The
+ * scoped form exists because a global row for, say, a French cognate also
+ * exempts hi/zh-CN/ru/ur/vi, where that word must differ: the guard would then
+ * pass on a value nobody translated, which is the failure it is meant to catch.
+ */
+function allowsIdenticalValue(locale, key, table = IDENTICAL_OK) {
+	return table.has(key) || table.has(`${locale}:${key}`);
+}
 
 function localeDirs() {
 	return readdirSync(CATALOGUES, { withFileTypes: true })
@@ -1285,7 +1357,7 @@ for (const locale of localeDirs().filter((name) => name !== SOURCE_LOCALE)) {
 			for (const [key, message] of Object.entries(data)) {
 				const source = english.get(key);
 				if (source === undefined || typeof message !== "string") continue;
-				if (message === source && !IDENTICAL_OK.has(key)) {
+				if (message === source && !allowsIdenticalValue(locale, key)) {
 					stubs.push(`${file}: ${key}`);
 				}
 			}
@@ -1293,3 +1365,23 @@ for (const locale of localeDirs().filter((name) => name !== SOURCE_LOCALE)) {
 		assert.deepEqual(stubs, [], `values identical to English in ${locale}`);
 	});
 }
+
+/*
+ * The scoped-entry guard, proved on its own table: a `<locale>:<key>` row must
+ * exempt exactly one language. If it exempted every locale, a translator could
+ * silence a real stub in six locales by writing one French cognate — the exact
+ * hole this form was added to close — so the property is asserted rather than
+ * assumed from the production table.
+ */
+test("a locale-scoped identical-value exemption does not exempt another locale", () => {
+	const table = new Map([
+		["fr:ui.example.cognate", "French cognate: same spelling"],
+	]);
+	assert.equal(allowsIdenticalValue("fr", "ui.example.cognate", table), true);
+	assert.equal(allowsIdenticalValue("es", "ui.example.cognate", table), false);
+	assert.equal(
+		allowsIdenticalValue("zh-CN", "ui.example.cognate", table),
+		false,
+	);
+	assert.equal(allowsIdenticalValue("fr", "ui.example.other", table), false);
+});
