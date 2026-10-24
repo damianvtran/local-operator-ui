@@ -1,0 +1,6 @@
+{
+	"ui.hub.download.collision": "Descargado “{name}”. Ya tienes un agente llamado “{collision}”, así que ahora dos agentes responden a ese nombre y puede elegirse cualquiera. Cambia el nombre de uno.",
+	"ui.hub.download.fallback_agent": "Agente",
+	"ui.hub.download.renamed": "Descargado “{name}” — ya tienes un agente llamado “{previous}”.",
+	"ui.hub.download.succeeded": "Descargado “{name}” del hub."
+}
