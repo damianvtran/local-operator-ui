@@ -15,7 +15,7 @@ This additive UI companion displays trusted recovery copy returned by successful
 - `node --test scripts/provider-detail-remount.test.mjs`: **23/23 passed**.
 - `node --test scripts/provider-sign-in-flow.test.mjs`: **21/21 passed**.
 - Renderer `tsc --noEmit -p tsconfig.app.json`: **exit0**.
-- Scoped Biome over the four files: **exit0, 11 existing warnings**.
+- Scoped Biome over the four files: **exit0, 11 warnings, including two newly added story regex warnings**. See the Q1 provenance correction below.
 - Old-production baseline witness: **expected exit1**, notice missing under the same successful future-wire fixture.
 - Original authored-fixture failures are retained: deferred helper scope, an incorrect Done expectation for a still-signed-out Radient row, and mismatched story harness/type APIs. Remediation corrected fixtures, not production readiness behavior.
 - No local full-suite pass is claimed; CI and normal publication hooks remain outstanding.
@@ -56,3 +56,9 @@ The initial functional phase checked RAM/load but **omitted a fresh Data-volume 
 Story IDs share prefix `provider-sign-in-onboarding--`: `panel-radient-retained-notice`, `panel-radient-old-backend-no-notice`, `panel-radient-preserved-disabled`, `panel-radient-late-notice-after-cancel`. The accepted scoped-start/capture/restore procedure is in the packet's preflight and receipts. A live review run needs its own resource lease; no server is left running.
 
 Code, QA and design rounds must target the eventual published commit. Local file/blob provenance is not a substituted reviewed-head SHA. No reviewers are added or people notified automatically in this repository.
+
+## Q1 provenance correction — review round 1
+
+The original summary described all 11 scoped lint warnings as existing. That attribution was incorrect: `scoped-lint-final.log` reports two `useTopLevelRegex` warnings on the newly added `openRow(/^Manage /i)` calls in `sign-in-states.stories.tsx`, at lines 1034 and 1126 in the reviewed source. The correct result is **11 warnings total, including two new story regex warnings**; the exit status remains 0.
+
+This addendum answers [QA finding Q1](https://github.com/damianvtran/local-operator-ui/pull/1374#issuecomment-6379130538). The original logs, historical receipts, their hashes, all four source blobs and every captured pixel are unchanged. `proof.json` retains its original `scoped_lint_existing_warnings` field as historical metadata and appends an explicit correction superseding that attribution. This is a metadata-only correction, not a source cleanup or a new test run. The separately recorded normal push hooks passed; no broader CI, native, OAuth or onramp claim is added.

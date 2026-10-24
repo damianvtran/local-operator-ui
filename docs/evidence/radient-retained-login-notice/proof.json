@@ -193,5 +193,19 @@
     "No full suite/native/JWT/OAuth/onramp claim",
     "Initial functional guard omitted Data df; retained in receipts"
   ],
-  "publication_main_inspected": "950df11e69fa6feebcb08cebf2cc251bcd0d2e0f"
+  "publication_main_inspected": "950df11e69fa6feebcb08cebf2cc251bcd0d2e0f",
+  "provenance_corrections": [
+    {
+      "finding": "Q1",
+      "review_url": "https://github.com/damianvtran/local-operator-ui/pull/1374#issuecomment-6379130538",
+      "supersedes_attribution": "automated.scoped_lint_existing_warnings",
+      "scoped_lint_warnings_total": 11,
+      "new_story_regex_warnings": 2,
+      "source_locations": [
+        "src/renderer/src/features/providers/sign-in-states.stories.tsx:1034",
+        "src/renderer/src/features/providers/sign-in-states.stories.tsx:1126"
+      ],
+      "note": "The original all-existing attribution was incorrect. Two useTopLevelRegex warnings concern newly added openRow(/^Manage /i) calls. Original logs, receipt and artifact hashes, source blobs and pixels are unchanged; no new execution is claimed."
+    }
+  ]
 }
