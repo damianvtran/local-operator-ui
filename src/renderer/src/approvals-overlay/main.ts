@@ -171,8 +171,10 @@ function renderSecondary(request: ApprovalsCardRequest): void {
 			`${t("ui.browser.browser_consent_request.allow_all_of")}${t(
 				"ui.browser.browser_consent_request.every_site_under",
 			)}${origin}`,
+			// The standalone gloss form: the `_shared_with` variant begins with a
+			// comma because the consent card concatenates it after the origin.
 			t(
-				"ui.browser.browser_consent_request.kept_until_you_revoke_it_shared_with",
+				"ui.browser.browser_consent_request.kept_until_you_revoke_it_and_shared",
 			),
 		),
 		decisionButton(
@@ -208,6 +210,8 @@ function setView(view: "request" | "list"): void {
 	localView = view;
 	if (requestView) requestView.hidden = view !== "request";
 	if (listView) listView.hidden = view !== "list";
+	if (reviewNode) reviewNode.hidden = view !== "request";
+	if (backNode) backNode.hidden = view !== "list";
 }
 
 function render(): void {
@@ -222,8 +226,7 @@ function render(): void {
 	if (request) {
 		if (requesterNode) {
 			requesterNode.textContent =
-				request.requester ||
-				t("ui.browser.browser_consent_request.an_agent");
+				request.requester || t("ui.browser.browser_consent_request.an_agent");
 		}
 		if (leadNode) {
 			leadNode.textContent = t(
@@ -254,7 +257,8 @@ function render(): void {
 	}
 	renderRows(model.pending);
 	setView(localView);
-	const disabled = model.busy || (request ? (minutesLeft(request.expiresAt) ?? 1) <= 0 : true);
+	const disabled =
+		model.busy || (request ? (minutesLeft(request.expiresAt) ?? 1) <= 0 : true);
 	for (const button of secondaryNode?.querySelectorAll("button") ?? []) {
 		(button as HTMLButtonElement).disabled = disabled;
 	}
@@ -284,9 +288,7 @@ window.__approvalsCard = {
 			brandNode.textContent = t("ui.browser.browser_new_tab.wordmark");
 		}
 		if (titleNode) {
-			titleNode.textContent = t(
-				"ui.browser.browser_approvals_dock.approvals",
-			);
+			titleNode.textContent = t("ui.browser.browser_approvals_dock.approvals");
 		}
 		if (closeNode) {
 			const label = t("ui.common.actions.close");

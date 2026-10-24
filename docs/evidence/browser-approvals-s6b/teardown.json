@@ -1,0 +1,29 @@
+{
+  "at": "2026-10-24T07:05:48Z",
+  "boots": [
+    {
+      "tag": "264-dark",
+      "exitCode": 0,
+      "alive": false,
+      "leftovers": []
+    },
+    {
+      "tag": "264-light",
+      "exitCode": 0,
+      "alive": false,
+      "leftovers": []
+    },
+    {
+      "tag": "900-dark",
+      "exitCode": 0,
+      "alive": false,
+      "leftovers": []
+    },
+    {
+      "tag": "900-light",
+      "exitCode": 0,
+      "alive": false,
+      "leftovers": []
+    }
+  ]
+}

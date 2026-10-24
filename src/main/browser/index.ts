@@ -1164,8 +1164,7 @@ async function initializeBrowserHost(
 						},
 			approvalsCard: approvalsOverlay
 				? {
-						open: (input) =>
-							approvalsOverlay.open({ focus: true, ...input }),
+						open: (input) => approvalsOverlay.open({ focus: true, ...input }),
 						close: () => approvalsOverlay.close("shield"),
 						state: () => approvalsOverlay.state(),
 					}
