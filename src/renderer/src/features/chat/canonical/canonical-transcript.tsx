@@ -1650,11 +1650,11 @@ const AssistantRow = memo(function AssistantRow({
 					 * edge, over the prose - the designer measured it covering text at the
 					 * app's 800px minimum. Reserving 40px here (28px bare Copy target +
 					 * 12px clearance) makes the prose wrap BEFORE the control instead of
-					 * under it; at >=900 the overlay moves out into the `-right-10` gutter
+					 * under it; at >=900 the overlay moves out into the `-end-10` gutter
 					 * and the padding returns to zero, so the wide layout is unchanged.
 					 * A horizontal band only: no reserved ROW, no pill, no smaller target.
 					 */
-					commentaryOverlay && "pr-10 @min-[900px]/chatcol:pr-0",
+					commentaryOverlay && "pe-10 @min-[900px]/chatcol:pe-0",
 					/*
 					 * THE ANSWER'S FOCUS RING, moved off the full-width row wrapper for the
 					 * user bubble's reason: focus is drawn around the content the reader
@@ -1870,7 +1870,7 @@ const AssistantRow = memo(function AssistantRow({
 			 */}
 			{!closesTurn && isFinalResponse(record) && (
 				<div className={cn("mt-1 flex items-center gap-2 text-meta")}>
-					<span className={cn("ml-auto flex shrink-0 items-center gap-2")}>
+					<span className={cn("ms-auto flex shrink-0 items-center gap-2")}>
 						{quotable && (
 							<AnswerActionRow
 								kind="response"
@@ -1888,7 +1888,7 @@ const AssistantRow = memo(function AssistantRow({
 			{commentaryOverlay && (
 				<AnswerActionRow
 					overlay
-					overlayClassName="@min-[900px]/chatcol:-right-10"
+					overlayClassName="@min-[900px]/chatcol:-end-10"
 					kind="commentary"
 					bodyText={remainingContent}
 				/>
@@ -1931,7 +1931,7 @@ const AssistantRow = memo(function AssistantRow({
 				 * caption starts at the content's own left edge - the same rail as the prose
 				 * (`scripts/chat-alignment-geometry.mjs` measures it), and the right cluster
 				 * is `[actions][stamp]` with the stamp rightmost, riding the actions'
-				 * `ml-auto` spacer. The reveal stays opacity-only, so nothing moves when
+				 * `ms-auto` spacer. The reveal stays opacity-only, so nothing moves when
 				 * the buttons appear: the idle and hovered frames of the operator's state,
 				 * and the caption/actions/stamp boxes the geometry script reads per state,
 				 * are under `docs/evidence/chat-canonical-message-actions/` and its
@@ -1973,14 +1973,14 @@ const AssistantRow = memo(function AssistantRow({
 					 */}
 					{quotable && (
 						/*
-						 * `ml-auto` sits on the WRAPPER rather than the row (the row takes no
+						 * `ms-auto` sits on the WRAPPER rather than the row (the row takes no
 						 * className): it is the first box of the right cluster, so it - and
 						 * the stamp that follows it - ride the line's far end while the
 						 * caption keeps the rail. `shrink-0` because the controls are the
 						 * line's fixed part: the caption is the side with slack (it can
 						 * wrap), and the buttons must never be what a narrow column squeezes.
 						 */
-						<span className={cn("ml-auto flex shrink-0")}>
+						<span className={cn("ms-auto flex shrink-0")}>
 							<AnswerActionRow
 								bodyText={remainingContent}
 								agentId={conversationId}
@@ -2003,7 +2003,7 @@ const AssistantRow = memo(function AssistantRow({
 						</span>
 					)}
 					{!closingLineSuppressed && (
-						<span className={cn(!quotable && "ml-auto")}>
+						<span className={cn(!quotable && "ms-auto")}>
 							<TurnTimestamp timestamp={record.ts} scope="answer" />
 						</span>
 					)}
@@ -2352,7 +2352,7 @@ const ToolRow = memo(function ToolRow({
 	);
 	const media =
 		rowMedia.length > 0 ? (
-			<div className={cn("mt-1 ml-5 flex flex-col gap-2")}>
+			<div className={cn("mt-1 ms-5 flex flex-col gap-2")}>
 				{rowMedia.map((ref, index) =>
 					ref.kind === "audio" ? (
 						<CanonicalAudio
@@ -2448,7 +2448,7 @@ const ToolRow = memo(function ToolRow({
  * reuse.
  */
 const ProviderAction: FC<{ action: ProviderErrorAction }> = ({ action }) => (
-	<div className="mt-1 pl-6">
+	<div className="mt-1 ps-6">
 		<Button variant="secondary" size="sm" asChild>
 			<Link to={action.to}>{action.label}</Link>
 		</Button>
@@ -2611,7 +2611,7 @@ const NoticeRow = memo(function NoticeRow({
 			 * connect dialog over this conversation instead of navigating away.
 			 */}
 			{NO_PROVIDER_NOTICE.test(record.text) ? (
-				<div className="mt-1 pl-6">
+				<div className="mt-1 ps-6">
 					<Button
 						variant="secondary"
 						size="sm"

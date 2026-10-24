@@ -470,7 +470,7 @@ function ToolsEditor({
 											onClick={() =>
 												onChange(tools.filter((each) => each !== tool))
 											}
-											className="ml-1 h-4 px-1"
+											className="ms-1 h-4 px-1"
 										>
 											×
 										</Button>

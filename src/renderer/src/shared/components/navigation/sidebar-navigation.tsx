@@ -2046,7 +2046,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	) => {
 		const Icon = icon;
 		return (
-			<BrowserSafeTooltip content={label} side="right">
+			<BrowserSafeTooltip content={label} side={rtl ? "left" : "right"}>
 				<button
 					type="button"
 					{...props.attrs}
@@ -2110,7 +2110,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 				"group-focus-within/sidebar:pointer-events-auto group-focus-within/sidebar:opacity-100",
 			)}
 		>
-			<BrowserSafeTooltip content={toggleLabel} side="right">
+			<BrowserSafeTooltip content={toggleLabel} side={rtl ? "left" : "right"}>
 				<Button
 					variant="ghost"
 					size="icon-sm"

@@ -305,13 +305,13 @@ const AsideQuestion: FC<{ question: string }> = ({ question }) => {
 			 * reads best, and the same meta-step, quiet marker idiom the ask card's
 			 * `Recommended` uses.
 			 */}
-			<span aria-hidden={true} className="mr-1 text-meta text-ink-dim">
+			<span aria-hidden={true} className="me-1 text-meta text-ink-dim">
 				You:
 			</span>
 			{replies.map((reply) => (
 				<span
 					key={reply.id}
-					className="mb-1 block border-hairline border-l-2 py-0.5 pl-2"
+					className="mb-1 block border-hairline border-s-2 py-0.5 ps-2"
 				>
 					{reply.text}
 				</span>

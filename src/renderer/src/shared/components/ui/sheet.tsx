@@ -42,6 +42,9 @@ const sheetVariants = cva(
 			side: {
 				top: "inset-x-0 top-0 border-hairline border-b",
 				bottom: "inset-x-0 bottom-0 border-hairline border-t",
+				start:
+					"inset-y-0 start-0 h-full w-3/4 max-w-sm border-hairline border-e",
+				end: "inset-y-0 end-0 h-full w-3/4 max-w-sm border-hairline border-s",
 				left: "inset-y-0 left-0 h-full w-3/4 max-w-sm border-hairline border-r",
 				right:
 					"inset-y-0 right-0 h-full w-3/4 max-w-sm border-hairline border-l",
@@ -129,7 +132,7 @@ export const SheetContent = forwardRef<
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								className="absolute top-4 right-4"
+								className="absolute top-4 end-4"
 								aria-label={t("ui.common.actions.close")}
 							>
 								<X aria-hidden="true" />
@@ -147,7 +150,7 @@ export const SheetHeader = ({
 	className,
 	...props
 }: HTMLAttributes<HTMLDivElement>) => (
-	<div className={cn("flex flex-col gap-1.5 pr-8", className)} {...props} />
+	<div className={cn("flex flex-col gap-1.5 pe-8", className)} {...props} />
 );
 SheetHeader.displayName = "SheetHeader";
 

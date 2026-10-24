@@ -143,7 +143,7 @@ const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 				// is fixed; changing it breaks the tour silently.
 				data-tour-tag="agent-list-item-button"
 				className={cn(
-					"flex w-full items-center gap-2 rounded-sm py-1.5 pr-9 pl-2 text-left",
+					"flex w-full items-center gap-2 rounded-sm py-1.5 pe-9 ps-2 text-start",
 					"transition-colors duration-fast ease-out-quart",
 					isSelected ? rowCurrent : "hover:bg-row-hover",
 				)}
@@ -197,7 +197,7 @@ const AgentsSidebarItem: FC<AgentsSidebarItemProps> = ({
 			</button>
 			<div
 				className={cn(
-					"pointer-events-none absolute top-0 right-1 flex h-full items-center",
+					"pointer-events-none absolute top-0 end-1 flex h-full items-center",
 					"opacity-0 transition-opacity duration-fast ease-out-quart",
 					"group-hover:pointer-events-auto group-hover:opacity-100",
 					"group-focus-within:pointer-events-auto group-focus-within:opacity-100",

@@ -9,8 +9,11 @@ import React, { act, useState } from "react";
  * `useTopLevelRegex`, and shared by the assertions that name it). */
 const LANDED_CLOSE_CARET = /^BUTTON role=tab in-tab=\d+$/;
 
-/** The watch row names the tab it belongs to. */
+/** The watch row names the tab it belongs to. The title is bidi-isolated
+ * (design round 2, D7): FSI/PDI are invisible in the rendered row but are real
+ * characters in `textContent`, so the words are read without them. */
 const WATCH_ROW = /Watch "Tab 2"/;
+const withoutIsolates = (text) => text.replace(/[\u2066-\u2069]/g, "");
 
 /*
  * WHERE THE CARET GOES AFTER A CLOSE, INCLUDING A CLOSE THAT NEVER LANDS
@@ -510,7 +513,7 @@ test("the popout opens from an INACTIVE tab and offers `Watch` for it, leaving t
 		"and offers the watch row for a tab that is not the one on screen",
 	);
 	assert.match(
-		watch.textContent ?? "",
+		withoutIsolates(watch.textContent ?? ""),
 		WATCH_ROW,
 		`the watch row names its own tab: ${watch.textContent}`,
 	);

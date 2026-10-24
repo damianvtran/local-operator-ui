@@ -365,11 +365,11 @@ export const RunDetailMonitors = ({
 				 * hand-edited index, not through the shipping ceiling.
 				 */}
 				{hidden > 0 && (
-					<li className={cn("pr-3")}>
+					<li className={cn("pe-3")}>
 						<Disclosure
 							disabled={true}
 							summary={`${hidden} more monitor${hidden === 1 ? "" : "s"}`}
-							className={cn("pl-9 text-meta")}
+							className={cn("ps-9 text-meta")}
 						/>
 					</li>
 				)}

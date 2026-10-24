@@ -3511,7 +3511,7 @@ test("the panel renders a staged quote instead of the payload's markup", () => {
 	assert.match(panel, /\(\) => parseReplies\(question\)/);
 	// The quote keeps the transcript's own shape, and the typed words are the
 	// question — so the two surfaces cannot describe one payload two ways.
-	assert.match(panel, /border-hairline border-l-2 py-0\.5 pl-2/);
+	assert.match(panel, /border-hairline border-s-2 py-0\.5 ps-2/);
 	assert.match(panel, /\{remainingContent\}/);
 	// The question reaches the renderer through the reader, not as a string.
 	assert.match(panel, /<AsideQuestion question=\{turn\.question\} \/>/);
@@ -3544,13 +3544,13 @@ test("the question side names its speaker, visibly and for assistive tech", () =
 	// labels do not both reach a screen reader.
 	assert.match(
 		panel,
-		/aria-hidden=\{true\} className="mr-1 text-meta text-ink-dim">\s*You:\s*<\/span>/,
+		/aria-hidden=\{true\} className="me-1 text-meta text-ink-dim">\s*You:\s*<\/span>/,
 	);
 	/*
 	 * And it stays box-neutral: no block, no ground, no padding, no vertical
 	 * margin, no `leading-*`, and no type step other than the two the marker
 	 * uses (`text-meta`, the shared line box, and an `ink-*` colour) - every
-	 * one of those moves the measured box the cap is built on. `mr-1` is
+	 * one of those moves the measured box the cap is built on. `me-1` is
 	 * horizontal-only, which is why a margin is allowed here where the
 	 * vertical ones are not. An unrecognised `text-*` token fails too: the two
 	 * spellings proved safe on this line box are the only ones admitted.

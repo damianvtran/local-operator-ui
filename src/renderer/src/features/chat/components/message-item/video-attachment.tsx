@@ -181,7 +181,7 @@ export const VideoAttachment: FC<VideoAttachmentProps> = memo(
 				/>
 				{isLocalFile && (
 					<div
-						className="file-actions-menu invisible absolute right-1 top-1 z-[2] opacity-0 transition-[opacity,visibility] duration-fast ease-out-quart group-hover:visible group-hover:opacity-100"
+						className="file-actions-menu invisible absolute end-1 top-1 z-[2] opacity-0 transition-[opacity,visibility] duration-fast ease-out-quart group-hover:visible group-hover:opacity-100"
 						onClick={(e) => {
 							e.stopPropagation();
 						}}

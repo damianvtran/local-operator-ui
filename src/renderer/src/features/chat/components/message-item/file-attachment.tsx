@@ -433,7 +433,7 @@ export const FileAttachment: FC<FileAttachmentProps> = memo(
 				 * invalid HTML. */}
 				<button
 					type="button"
-					className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
+					className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-start"
 					onClick={handleClick}
 					title={`Click to open ${getFileName(file)}`}
 				>

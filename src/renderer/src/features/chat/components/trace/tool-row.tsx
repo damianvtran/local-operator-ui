@@ -1022,7 +1022,14 @@ export const ToolRow = ({
 						<span className={cn("sr-only")}>pending</span>
 					</>
 				) : (
-					summaryText
+					/*
+					 * A TOOL SUMMARY IS MACHINE VOICE (design round 1, D2). It carries
+					 * paths and commands, and in an RTL paragraph a leading `/` is a neutral
+					 * character: `tmp/qa-rtl/ledger.md/` reordered the slash onto the far
+					 * side of the run. `dir="ltr"` on an isolated run keeps the token's own
+					 * order without imposing direction on the row it sits in.
+					 */
+					<bdi dir="ltr">{summaryText}</bdi>
 				)}
 			</span>
 			<DiffCounters added={added} removed={removed} />

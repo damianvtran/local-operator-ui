@@ -899,7 +899,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 								? `You are about to publish this agent's instruction set into ${targetDisplayName}, where only its members can read and install it. What is published is what describes the agent:`
 								: "You are about to publish this agent's instruction set to the public Agent Hub. What is published is what describes the agent:"}
 						</p>
-						<ul className="list-disc space-y-1 pl-5 text-body text-ink-muted">
+						<ul className="list-disc space-y-1 ps-5 text-body text-ink-muted">
 							<li>Its name and description</li>
 							<li>Its instructions</li>
 							<li>Its tool surface, effort and delegation, when it has them</li>
@@ -1010,7 +1010,7 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 							// the submit button.
 							<Alert variant="danger">
 								<AlertTitle>This agent cannot be published yet</AlertTitle>
-								<ul className="list-disc space-y-1 pl-5">
+								<ul className="list-disc space-y-1 ps-5">
 									{issues.map((issue) => (
 										<li key={`${issue.field}:${issue.message}`}>
 											{issue.message}

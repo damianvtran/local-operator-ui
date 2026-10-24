@@ -198,7 +198,7 @@ const RECENT_PATH_TRUNCATES_AT = 42;
  * `ms-auto` mic/send group is pinned to the row's inline-end edge, and the row's
  * total demand never grows. What moves on a path change in a live row is the
  * readings cluster - the chip's own right-hand neighbour, 2px after it (its
- * `marginLeft` is -6px against the row's 8px `gap-x-2`, which is what the rig
+ * `marginInlineStart` is -6px against the row's 8px `gap-x-2`, which is what the rig
  * measures painted) - by exactly the path's own delta, capped here: `~` ->
  * `~/src/project` is ~86px (12 characters at the measured 7.2px per character,
  * not the plan's 96.4px).
@@ -285,7 +285,7 @@ const MOVE_COST_SENTENCE =
  * mid-path (design round 2, D11).
  */
 const CHIP_WRAPPER =
-	"ml-2 flex min-w-0 shrink items-center @min-[750px]/chatcol:shrink-0";
+	"ms-2 flex min-w-0 shrink items-center @min-[750px]/chatcol:shrink-0";
 
 /**
  * The chip at the composer's own floor: the glyph, and nothing else.
@@ -1291,7 +1291,7 @@ export const DirectoryIndicator = forwardRef<
 											type="button"
 											aria-label={`Remove ${formatted} from recent directories`}
 											className={cn(
-												"ml-auto shrink-0 rounded-xs p-0.5 text-ink-dim opacity-0 transition-colors duration-fast",
+												"ms-auto shrink-0 rounded-xs p-0.5 text-ink-dim opacity-0 transition-colors duration-fast",
 												"group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100",
 												"hover:text-ink",
 											)}
@@ -1330,7 +1330,7 @@ export const DirectoryIndicator = forwardRef<
 									{dir.name}
 									<span
 										className={cn(
-											"ml-auto min-w-0 truncate",
+											"ms-auto min-w-0 truncate",
 											PATH_TYPE,
 											"text-ink-dim",
 										)}

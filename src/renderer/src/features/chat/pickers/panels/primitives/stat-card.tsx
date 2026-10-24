@@ -98,7 +98,7 @@ export const StatCard = ({
 		<p className={cn("font-mono text-title tabular-nums", TONE_CLASS[tone])}>
 			{value}
 			{unit ? (
-				<span className={cn("ml-1.5 text-ink-muted text-meta")}>{unit}</span>
+				<span className={cn("ms-1.5 text-ink-muted text-meta")}>{unit}</span>
 			) : null}
 		</p>
 		{fraction !== undefined ? (

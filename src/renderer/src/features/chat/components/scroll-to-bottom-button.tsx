@@ -69,7 +69,7 @@ export const ScrollToBottomButton: FC<ScrollToBottomButtonProps> = ({
 			 */
 			data-lo-scroll-to-bottom=""
 			className={cn(
-				"pointer-events-none absolute right-3 bottom-full z-40 mb-3 flex items-center justify-end",
+				"pointer-events-none absolute end-3 bottom-full z-40 mb-3 flex items-center justify-end",
 				"transition-opacity duration-base ease-out-quart",
 				visible ? "opacity-100" : "opacity-0",
 				className,

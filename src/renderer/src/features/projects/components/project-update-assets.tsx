@@ -136,7 +136,7 @@ const MEDIA_BOX = "h-[78px] w-[117px]";
  * open — so hidden and unreachable are not the same thing.
  */
 const ASSET_ACTIONS_REVEAL =
-	"pointer-events-none absolute top-1 right-1 z-[2] flex opacity-0 transition-opacity duration-fast ease-out-quart group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 has-[[aria-expanded=true]]:pointer-events-auto has-[[aria-expanded=true]]:opacity-100";
+	"pointer-events-none absolute top-1 end-1 z-[2] flex opacity-0 transition-opacity duration-fast ease-out-quart group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 has-[[aria-expanded=true]]:pointer-events-auto has-[[aria-expanded=true]]:opacity-100";
 
 /** The reserved state every lazy tile shows before its bytes are admitted. */
 const ReservedTile: FC<{ kind: "image" | "video" | "file" | "audio" }> = ({

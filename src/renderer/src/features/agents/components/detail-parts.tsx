@@ -548,7 +548,7 @@ export function EditFooter({
 				</Button>
 			)}
 			{dirty && !isConfirming ? (
-				<span className="ml-auto text-meta text-ink-dim">Unsaved changes</span>
+				<span className="ms-auto text-meta text-ink-dim">Unsaved changes</span>
 			) : null}
 		</div>
 	);

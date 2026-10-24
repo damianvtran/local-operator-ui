@@ -134,11 +134,11 @@ const ChipButton = forwardRef<
 			title={label}
 			className={cn(
 				/* `h-5` and `rounded-xs` are the identity controls' own contract: the block
-				 * clips at its line height, and a 28/32px control would move it. `pr-1`
+				 * clips at its line height, and a 28/32px control would move it. `pe-1`
 				 * rather than `px-1` because the zero-width carrier below takes one
 				 * `gap-1` slot at the leading edge - `0 + carrier + gap` equals the old
 				 * `px-1` inset in every state, dot present or not. */
-				"inline-flex h-5 max-w-full shrink-0 cursor-pointer items-center gap-1 rounded-xs pr-1",
+				"inline-flex h-5 max-w-full shrink-0 cursor-pointer items-center gap-1 rounded-xs pe-1",
 				"select-none whitespace-nowrap text-body-sm",
 				"text-ink-muted hover:bg-row-hover hover:text-ink",
 				className,
@@ -270,12 +270,12 @@ const PickerRow = ({
 				) : null}
 			</span>
 			{row.facts.length > 0 ? (
-				<span className="w-full pl-5.5 text-meta text-ink-dim">
+				<span className="w-full ps-5.5 text-meta text-ink-dim">
 					{row.facts.join(" · ")}
 				</span>
 			) : null}
 			{row.why ? (
-				<span className="w-full pl-5.5 text-meta text-warning">{row.why}</span>
+				<span className="w-full ps-5.5 text-meta text-warning">{row.why}</span>
 			) : null}
 		</DropdownMenuItem>
 	);

@@ -485,7 +485,7 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 	const field = (
 		<div className="relative px-1 pt-1 pb-1">
 			<Search
-				className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 size-4 text-ink-dim"
+				className="-translate-y-1/2 pointer-events-none absolute top-1/2 start-2.5 size-4 text-ink-dim"
 				aria-hidden="true"
 			/>
 			<Input
@@ -503,7 +503,7 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 				onChange={(event) => setQuery(event.target.value)}
 				onKeyDown={onKeyDown}
 				placeholder={`Search ${noun}`}
-				className="pl-8"
+				className="ps-8"
 				autoComplete="off"
 				spellCheck={false}
 			/>

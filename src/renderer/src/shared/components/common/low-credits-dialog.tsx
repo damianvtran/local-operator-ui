@@ -119,7 +119,7 @@ export const LowCreditsDialog: FC<LowCreditsDialogProps> = ({
 					{t("ui.common.account.low_credits_dialog.plus_get")}{" "}
 					<span className="font-medium text-ink">
 						{isLoadingPrices ? (
-							<Spinner size="sm" className="mr-0.5 align-middle" />
+							<Spinner size="sm" className="me-0.5 align-middle" />
 						) : (
 							formatCurrency(prices?.default_registration_credits)
 						)}

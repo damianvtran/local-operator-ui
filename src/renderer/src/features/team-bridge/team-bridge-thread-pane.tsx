@@ -221,7 +221,7 @@ function TeamBridgeThreadPaneBody({
 							className="block max-h-40 min-h-10 w-full resize-none bg-transparent px-3.5 pt-3 pb-1 text-[14px] text-ink outline-none placeholder:text-ink-dim"
 						/>
 						<div className="flex items-center gap-2 px-2 pb-2">
-							<span className="min-w-0 flex-1 pl-1.5 text-meta-sm text-ink-dim">
+							<span className="min-w-0 flex-1 ps-1.5 text-meta-sm text-ink-dim">
 								{t("ui.teamBridge.composer.hint")}
 							</span>
 							<Button

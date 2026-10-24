@@ -71,8 +71,8 @@ const RailRow: FC<{
 		onClick={onPress}
 		aria-pressed={active}
 		className={cn(
-			"flex h-7 w-full items-center gap-2 rounded-md px-2 text-left text-body-sm",
-			indent && "pl-6",
+			"flex h-7 w-full items-center gap-2 rounded-md px-2 text-start text-body-sm",
+			indent && "ps-6",
 			active ? rowCurrent : "text-ink-muted hover:bg-row-hover hover:text-ink",
 		)}
 	>

@@ -73,13 +73,16 @@ export const DropdownMenuSubTrigger = forwardRef<
 		className={cn(
 			itemClasses,
 			"data-[state=open]:bg-accent-wash",
-			inset && "pl-8",
+			inset && "ps-8",
 			className,
 		)}
 		{...props}
 	>
 		{children}
-		<ChevronRight className="ml-auto text-ink-dim" aria-hidden="true" />
+		<ChevronRight
+			className="ms-auto text-ink-dim rtl:-scale-x-100"
+			aria-hidden="true"
+		/>
 	</DropdownMenuPrimitive.SubTrigger>
 ));
 DropdownMenuSubTrigger.displayName = "DropdownMenuSubTrigger";
@@ -161,7 +164,7 @@ export const DropdownMenuItem = forwardRef<
 		ref={ref}
 		className={cn(
 			itemClasses,
-			inset && "pl-8",
+			inset && "ps-8",
 			destructive && "text-danger data-[highlighted]:bg-danger-wash",
 			className,
 		)}
@@ -177,10 +180,10 @@ export const DropdownMenuCheckboxItem = forwardRef<
 	<DropdownMenuPrimitive.CheckboxItem
 		ref={ref}
 		checked={checked}
-		className={cn(itemClasses, "pl-8", className)}
+		className={cn(itemClasses, "ps-8", className)}
 		{...props}
 	>
-		<span className="absolute left-2 flex size-4 items-center justify-center">
+		<span className="absolute start-2 flex size-4 items-center justify-center">
 			<DropdownMenuPrimitive.ItemIndicator>
 				<Check className="text-accent" aria-hidden="true" />
 			</DropdownMenuPrimitive.ItemIndicator>
@@ -196,10 +199,10 @@ export const DropdownMenuRadioItem = forwardRef<
 >(({ className, children, ...props }, ref) => (
 	<DropdownMenuPrimitive.RadioItem
 		ref={ref}
-		className={cn(itemClasses, "pl-8", className)}
+		className={cn(itemClasses, "ps-8", className)}
 		{...props}
 	>
-		<span className="absolute left-2 flex size-4 items-center justify-center">
+		<span className="absolute start-2 flex size-4 items-center justify-center">
 			<DropdownMenuPrimitive.ItemIndicator>
 				{/* The one legitimate `rounded-full` here: this is a status dot. */}
 				<Circle className="size-2 fill-accent text-accent" aria-hidden="true" />
@@ -220,7 +223,7 @@ export const DropdownMenuLabel = forwardRef<
 		ref={ref}
 		className={cn(
 			"px-2 py-1.5 text-meta text-ink-dim",
-			inset && "pl-8",
+			inset && "ps-8",
 			className,
 		)}
 		{...props}
@@ -246,7 +249,7 @@ export const DropdownMenuShortcut = ({
 	...props
 }: HTMLAttributes<HTMLSpanElement>) => (
 	<span
-		className={cn("ml-auto font-mono text-ink-dim text-mono-sm", className)}
+		className={cn("ms-auto font-mono text-ink-dim text-mono-sm", className)}
 		{...props}
 	/>
 );

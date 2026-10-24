@@ -1311,7 +1311,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 					inputRef.current?.focus();
 				}}
 			>
-				<div className="flex flex-col gap-1 px-5 pt-5 pr-12">
+				<div className="flex flex-col gap-1 px-5 pt-5 pe-12">
 					<DialogTitle className="text-heading text-ink">{title}</DialogTitle>
 					{description ? (
 						<DialogDescription className="text-body-sm text-ink-muted">
@@ -1340,7 +1340,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 						 */}
 						<div className="relative">
 							<Search
-								className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 size-4 text-ink-dim"
+								className="-translate-y-1/2 pointer-events-none absolute top-1/2 start-2.5 size-4 text-ink-dim"
 								aria-hidden="true"
 							/>
 							<Input
@@ -1356,7 +1356,7 @@ export const PickerHost: FC<PickerHostProps> = ({
 								onChange={(event) => setQuery(event.target.value)}
 								onKeyDown={onKeyDown}
 								placeholder={searchPlaceholder}
-								className="pl-8"
+								className="ps-8"
 								autoComplete="off"
 								spellCheck={false}
 							/>

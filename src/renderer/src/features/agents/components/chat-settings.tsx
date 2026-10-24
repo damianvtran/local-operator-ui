@@ -179,7 +179,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 					onClick={() => setIsExpanded(!isExpanded)}
 					aria-expanded={isExpanded}
 					aria-controls={contentId}
-					className="group flex items-center gap-2 py-1 text-left text-heading text-ink"
+					className="group flex items-center gap-2 py-1 text-start text-heading text-ink"
 				>
 					{/*
 					 * Matches `@shared/components/ui/disclosure`: the chevron swaps,
@@ -191,7 +191,7 @@ export const ChatSettings: FC<ChatSettingsProps> = ({
 					<Chevron
 						size={14}
 						aria-hidden="true"
-						className="shrink-0 text-ink-dim transition-colors duration-fast ease-out-quart group-hover:text-ink"
+						className="shrink-0 text-ink-dim transition-colors duration-fast ease-out-quart group-hover:text-ink rtl:-scale-x-100"
 					/>
 					{t("ui.agents.settings.chat.advanced_chat_settings")}
 				</button>

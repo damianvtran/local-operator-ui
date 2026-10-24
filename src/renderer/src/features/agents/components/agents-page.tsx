@@ -683,10 +683,10 @@ export function AgentsPage() {
 					<div className="relative">
 						<Search
 							aria-hidden="true"
-							className="pointer-events-none absolute top-2 left-2 size-4 text-ink-dim"
+							className="pointer-events-none absolute top-2 start-2 size-4 text-ink-dim"
 						/>
 						<Input
-							className="pl-8"
+							className="ps-8"
 							type="search"
 							aria-label="Search agents and teams"
 							placeholder={teamMode ? "Search teams" : "Search agents"}
@@ -1354,7 +1354,7 @@ function Roster({
 									: rowLabel(row)
 							}
 							className={cn(
-								"flex min-h-12 w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left hover:bg-row-hover",
+								"flex min-h-12 w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-start hover:bg-row-hover",
 								/*
 								 * The selected row names the SHARED role rather than painting a
 								 * state of its own: the roster is one of the app's row surfaces, and
@@ -1410,7 +1410,7 @@ function Roster({
 								 * (`memberCountLabel`), the number the detail pane prints, so the
 								 * two surfaces cannot disagree for a team with a member twice.
 								 */}
-								<span className="ml-auto shrink-0 text-meta text-ink-dim tabular-nums">
+								<span className="ms-auto shrink-0 text-meta text-ink-dim tabular-nums">
 									{"members" in row ? (
 										memberCountLabel(row.members)
 									) : (
@@ -1430,9 +1430,9 @@ function Roster({
 							<span className="flex min-h-lh w-full items-baseline text-meta text-ink-muted">
 								{isProfile && classOf(row) === "proactive" ? (
 									<span
-										// `mr-1` and not a trailing space: a flex item's trailing
+										// `me-1` and not a trailing space: a flex item's trailing
 										// whitespace collapses, which glued the dot to the description.
-										className="mr-1 shrink-0"
+										className="me-1 shrink-0"
 										data-testid="roster-row-proactive"
 									>
 										<span className="text-ink">{CLASS_LABEL.proactive}</span>

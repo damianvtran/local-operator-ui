@@ -179,7 +179,7 @@ export const MoveConfirmDialog: FC<{
 						{busy && (
 							<Loader2
 								aria-hidden="true"
-								className="mr-2 size-3.5 animate-spin"
+								className="me-2 size-3.5 animate-spin"
 							/>
 						)}
 						{effective.verb}
@@ -359,7 +359,7 @@ export const InviteDialog: FC<{
 							{pending && (
 								<Loader2
 									aria-hidden="true"
-									className="mr-2 size-3.5 animate-spin"
+									className="me-2 size-3.5 animate-spin"
 								/>
 							)}
 							{t("ui.mesh.mesh_actions.mint_the_token")}
@@ -461,7 +461,7 @@ export const RemoveMemberDialog: FC<{
 							{pending && (
 								<Loader2
 									aria-hidden="true"
-									className="mr-2 size-3.5 animate-spin"
+									className="me-2 size-3.5 animate-spin"
 								/>
 							)}
 							{t("ui.mesh.mesh_actions.remove_the_device")}

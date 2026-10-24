@@ -566,7 +566,7 @@ const AskQuestionField = ({
 									);
 								}}
 								className={cn(
-									"flex w-full items-baseline gap-2 rounded-sm px-2 py-1 text-left",
+									"flex w-full items-baseline gap-2 rounded-sm px-2 py-1 text-start",
 									// Rows, not controls with edges of their own: this list sits
 									// inside the panel's card, so its boundary is its selection
 									// ground and its focus outline (the same idiom as `AskOptions`).
@@ -694,7 +694,7 @@ const AskQuestionField = ({
 							else writeOther({ ...other, open: true });
 						}}
 						className={cn(
-							"flex w-full items-baseline gap-2 rounded-sm px-2 py-1 text-left",
+							"flex w-full items-baseline gap-2 rounded-sm px-2 py-1 text-start",
 							// Same selected-surface exemption as `AskOptions` above: one role
 							// fill, no selected ink on top of the veil. The label is at `ink`,
 							// so this row's hover is cursor-only on glass.
@@ -706,7 +706,7 @@ const AskQuestionField = ({
 						<span className="min-w-0 flex-1">
 							<span>Other</span>
 							{/*
-							 * A REAL SPACE between the label and the hint, not just the `ml-1.5`
+							 * A REAL SPACE between the label and the hint, not just the `ms-1.5`
 							 * margin: a margin is invisible to the accessible-name computation,
 							 * which concatenated the two spans into one announced word -
 							 * `OtherType your answer` - as measured in Chrome's own AX tree
@@ -714,14 +714,14 @@ const AskQuestionField = ({
 							 * in the name; the margin stays for the visual gap, which the stills
 							 * judge.
 							 */} {other.open ? null : (
-								<span className="ml-1.5 text-ink-muted text-xs">
+								<span className="ms-1.5 text-ink-muted text-xs">
 									{OTHER_PROMPT}
 								</span>
 							)}
 						</span>
 					</button>
 					{other.open ? (
-						<div className="pt-1 pr-1 pb-1 pl-7">
+						<div className="pt-1 pe-1 pb-1 ps-7">
 							<AskAnswerField
 								questionId={question.id}
 								fieldRef={otherField}
@@ -1619,7 +1619,7 @@ const AskRow = ({
 									}}
 									data-lo-ask-dismiss-reason={reason}
 									className={cn(
-										"flex w-full min-w-0 flex-col gap-0.5 rounded-md border border-control px-3 py-1.5 text-left hover:bg-sunken",
+										"flex w-full min-w-0 flex-col gap-0.5 rounded-md border border-control px-3 py-1.5 text-start hover:bg-sunken",
 										busy && "text-ink-dim",
 										pressedReason === reason && "bg-sunken",
 									)}

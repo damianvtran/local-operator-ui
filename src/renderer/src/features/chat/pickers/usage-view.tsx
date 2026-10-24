@@ -195,7 +195,7 @@ const LimitRowView: FC<{ row: LimitRow; degraded: boolean }> = ({
 					"min-w-0 truncate text-body-sm",
 					// A per-model cap is subordinate: indented and dimmer, so a 100%
 					// family cap never reads as a dead account (SPEC rule 8).
-					row.subordinate ? "pl-3 text-ink-dim" : "text-ink-muted",
+					row.subordinate ? "ps-3 text-ink-dim" : "text-ink-muted",
 				)}
 			>
 				{row.limit.label}
@@ -313,7 +313,7 @@ const ProviderBlockView: FC<{ block: ProviderBlock }> = ({ block }) => (
 			    jumped horizontally and once changed which column it was in. That
 			    undercuts the one-table scan the layout is built for. */}
 			{block.binding && (
-				<span className={cn("ml-auto flex items-baseline gap-x-2")}>
+				<span className={cn("ms-auto flex items-baseline gap-x-2")}>
 					<span
 						className={cn(
 							AMOUNT_COLUMN,
@@ -350,7 +350,7 @@ const ProviderBlockView: FC<{ block: ProviderBlock }> = ({ block }) => (
 			{!block.binding &&
 				block.report.state === "unavailable" &&
 				!hasMuseAllowanceNote(block.report) && (
-					<span className={cn("ml-auto text-ink-dim text-meta")}>
+					<span className={cn("ms-auto text-ink-dim text-meta")}>
 						Usage unavailable
 					</span>
 				)}
@@ -645,7 +645,7 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 					: "Quota and usage as the providers report it."
 			}
 			toolbar={
-				// `ml-auto` on the action rather than `justify-between` on the row:
+				// `ms-auto` on the action rather than `justify-between` on the row:
 				// the tally renders nothing when there are no windows, and with
 				// `justify-between` its absence left the button sitting at the left
 				// edge of the toolbar instead of staying where it always is.
@@ -696,7 +696,7 @@ export const UsageDialog: FC<UsageDialogProps> = ({
 					 */}
 					<Button
 						ref={actionRef}
-						className={cn("ml-auto")}
+						className={cn("ms-auto")}
 						variant="ghost"
 						size="sm"
 						type="button"

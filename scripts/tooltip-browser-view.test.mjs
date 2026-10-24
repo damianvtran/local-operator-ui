@@ -133,8 +133,13 @@ test("the panel rail's tooltip is conditional on a mounted browser view", () => 
 	);
 	// A tooltip may not pause, so with a view under the pane the label is clipped;
 	// the wrapper mounts it only when no surface is mounted, and `aria-label`
-	// carries the name then. On every other route the tooltip is unchanged.
-	assert.match(rail, /<BrowserSafeTooltip content=\{label\} side="left">/);
+	// carries the name then. On every other route the tooltip is unchanged. The
+	// side is direction-aware: in RTL the rail stands at the window's left, so the
+	// label has to open toward the pane on its right.
+	assert.match(
+		rail,
+		/<BrowserSafeTooltip\s+content=\{label\}\s+side=\{direction === "rtl" \? "right" : "left"\}/,
+	);
 	assert.doesNotMatch(rail, /useSuppressBrowserView/);
 	assert.match(rail, /aria-label=\{ariaLabel \?\? label\}/);
 	// The wrapper itself is the one place the presence decision lives, and it
@@ -152,7 +157,7 @@ test("the collapsed sidebar and profile tooltips are restored conditionally", ()
 		"src/renderer/src/shared/components/navigation/user-profile-sidebar.tsx",
 	]) {
 		const source = read(path);
-		assert.match(source, /<BrowserSafeTooltip content=/);
+		assert.match(source, /<BrowserSafeTooltip\s+content=/);
 	}
 });
 

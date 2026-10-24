@@ -544,7 +544,7 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 						 * state the reveal is for (UX round 3 U3-1, QA round 3 Q3-1; the
 						 * frame and the frame measurement are in the evidence README).
 						 */
-						className="file-actions-menu pointer-events-none absolute top-1 right-1 z-[2] opacity-0 transition-opacity duration-fast ease-out-quart group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 has-[[aria-expanded=true]]:pointer-events-auto has-[[aria-expanded=true]]:opacity-100"
+						className="file-actions-menu pointer-events-none absolute top-1 end-1 z-[2] opacity-0 transition-opacity duration-fast ease-out-quart group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 has-[[aria-expanded=true]]:pointer-events-auto has-[[aria-expanded=true]]:opacity-100"
 						onClick={(e) => {
 							e.stopPropagation();
 						}}

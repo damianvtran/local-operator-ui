@@ -170,7 +170,7 @@ export const BrowserWebauthnDialog: FC<BrowserWebauthnDialogProps> = ({
 											variant="outline"
 											size="sm"
 											disabled={answering}
-											// `whitespace-normal` and `text-left` override the button
+											// `whitespace-normal` and `text-start` override the button
 											// primitive's `whitespace-nowrap` and centred label: a long
 											// display name was cut mid-character at the panel edge with no
 											// ellipsis and no wrap, so the tail that tells two logins
@@ -183,14 +183,14 @@ export const BrowserWebauthnDialog: FC<BrowserWebauthnDialogProps> = ({
 											// state painted enabled-looking text inside a disabled button
 											// (design round 2, N1).
 											className={cn(
-												"h-auto w-full flex-col items-start gap-0.5 py-2 text-left whitespace-normal disabled:[&>span]:text-ink-disabled",
+												"h-auto w-full flex-col items-start gap-0.5 py-2 text-start whitespace-normal disabled:[&>span]:text-ink-disabled",
 											)}
 											onClick={() => onChoose(account.credentialId)}
 											data-tour-tag="browser-webauthn-account"
 										>
 											<span
 												className={cn(
-													"w-full text-left break-words",
+													"w-full text-start break-words",
 													// A label that IS the login is set in the machine voice, so a
 													// row identified by an address does not read as a person's
 													// name (design round 1, D4); the positional fallback is

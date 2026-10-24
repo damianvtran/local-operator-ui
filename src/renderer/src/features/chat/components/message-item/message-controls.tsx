@@ -125,7 +125,7 @@ export const MessageControls: FC<MessageControlsProps> = ({
 							// nothing shifts when it appears. The `elevated` ground plus a
 							// hairline is what makes it read as floating — § 2 keeps the
 							// one shadow for objects that genuinely leave the flow.
-							"message-controls absolute -top-2 right-0 z-10 h-8 rounded-md border border-hairline bg-elevated px-1",
+							"message-controls absolute -top-2 end-0 z-10 h-8 rounded-md border border-hairline bg-elevated px-1",
 							actionRowVisibility(pinned),
 						),
 				className,

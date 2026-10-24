@@ -235,7 +235,7 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 	 *
 	 * The body (`data-board-strip`) is the one two-axis scroller, so its vertical
 	 * scrollbar is on the view's right edge (the round-1 affordance rule) and the
-	 * team straps' `sticky left-3` resolves against a port that really scrolls on
+	 * team straps' `sticky start-3` resolves against a port that really scrolls on
 	 * x. The header row cannot live inside that port without putting content
 	 * behind it, so it is a separate hidden-overflow window above it; setting its
 	 * `scrollLeft` from the body's scroll event is what keeps the headers over
@@ -258,7 +258,7 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 			const next = strip.offsetWidth - strip.clientWidth;
 			if (next !== gutter) {
 				gutter = next;
-				header.style.paddingRight = next > 0 ? `${next}px` : "";
+				header.style.paddingInlineEnd = next > 0 ? `${next}px` : "";
 			}
 		};
 		/* The last offset `sync` wrote to the header. A header scroll event at
@@ -776,7 +776,7 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 			 * synced from the body's scroll event: horizontal scrolling moves the
 			 * header cells with their columns while the body remains the only
 			 * vertical scrollport, so its scrollbar stays at the window's right edge
-			 * and the team straps' `sticky left-3` still resolves against it.
+			 * and the team straps' `sticky start-3` still resolves against it.
 			 *
 			 * WHEEL OVER THE HEADER ROW IS FORWARDED to the body (a native listener
 			 * with `passive: false`), because the 44px band is not a scroll target of
@@ -897,7 +897,7 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 								data-board-team={band.team ?? ""}
 								className="sticky top-0 z-20 flex h-8 items-center bg-canvas px-3 text-meta"
 							>
-								<span className="sticky left-3 flex min-w-0 max-w-[calc(100cqw-2.25rem)] items-center gap-2">
+								<span className="sticky start-3 flex min-w-0 max-w-[calc(100cqw-2.25rem)] items-center gap-2">
 									<span className="truncate text-ink">
 										{band.team == null
 											? t("ui.projects.project_model.no_team")
@@ -1506,7 +1506,7 @@ const CardSessionsPopover: FC<{ project: DesktopProject }> = ({ project }) => {
 										void openConversation(navigate, link.session_id);
 									}}
 									className={cn(
-										"flex w-full items-center gap-2 rounded-sm px-1 py-1.5 text-left text-meta",
+										"flex w-full items-center gap-2 rounded-sm px-1 py-1.5 text-start text-meta",
 										link.exists
 											? "text-ink hover:bg-elevated"
 											: "text-ink-disabled",

@@ -331,7 +331,7 @@ export const AudioRecordingIndicator = ({
 				<span className="shrink-0 font-medium text-body-sm text-accent">
 					{t("ui.chat.composer_media.recording")}
 				</span>
-				<span className="ml-auto flex min-w-0 items-center gap-1.5 text-body-sm text-ink-dim">
+				<span className="ms-auto flex min-w-0 items-center gap-1.5 text-body-sm text-ink-dim">
 					<span className="flex items-center gap-1">
 						<KeyboardShortcut shortcut="Enter" />
 						{t("ui.chat.composer_media.confirms")}
