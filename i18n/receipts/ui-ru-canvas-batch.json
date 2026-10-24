@@ -115,5 +115,173 @@
 		"check_coverage": "red until integration: other locales still lack the extraction keys; the ru/ui.chat.pickers and ru/ui.common.viewer allowance entries are now stale by exactly the 38 completed keys and need a shrink-only --update. No allowance was edited in this branch.",
 		"ledger": "red until independent audit: the four new ru namespaces ship without ledger rows, as expected before the auditor pass",
 		"pseudo_localization": "no pseudo-localization tooling exists in this repository at eb963e1baa; not run"
+	},
+	"remediation": {
+		"round": 1,
+		"date": "2026-10-24",
+		"head_before": "936e3a483b4d675c9827be5f40167da186f86900",
+		"base": "40462495827dfb0e1bfacb8643da805912493a5b",
+		"audit_receipt": "i18n/receipts/0f5238900a89-canvas.json",
+		"auditor": {
+			"agent": "translation-auditor",
+			"session": "0f5238900a89"
+		},
+		"disposition": {
+			"blockers_fixed": 2,
+			"required_majors_fixed": 5,
+			"clear_minors_fixed": 7,
+			"nits_fixed": 1,
+			"deferred": 0,
+			"changed_keys": 25
+		},
+		"changed_namespaces": [
+			"ui.canvas",
+			"ui.chat.pickers",
+			"ui.common.forms",
+			"ui.common.updates",
+			"ui.common.viewer"
+		],
+		"changes": {
+			"ui.canvas": [
+				{
+					"key": "ui.canvas.view_name.view_shown_this_list_is_capped",
+					"finding": "RU-C1 major grammar: «показано {pluralnoun}: N шт.» has the wrong case and an inventory unit",
+					"applied": "{label} · {counted, plural, one {{noun}} few {{pluralnoun}} many {{pluralnoun}} other {{pluralnoun}}}: {counted, number, ::group-off} — показано не всё"
+				},
+				{
+					"key": "ui.canvas.view_name.view_count",
+					"finding": "RU-C1 related key: same wrong case / «шт.» in the uncapped sibling",
+					"applied": "{label} · {counted, plural, one {{noun}} few {{pluralnoun}} many {{pluralnoun}} other {{pluralnoun}}}: {counted, number, ::group-off}"
+				},
+				{
+					"key": "ui.canvas.finder_layout.highlights",
+					"finding": "RU-C4 major glossary: «Избранное» means favourites, the section is item.highlighted",
+					"applied": "Выделенные"
+				},
+				{
+					"key": "ui.canvas.files.highlights",
+					"finding": "RU-C4 related surface: the finder's file-group label used the same wrong term",
+					"applied": "Выделенные"
+				},
+				{
+					"key": "ui.canvas.variable_form_dialog.this_name_cannot_be_sent_use_up_to_128_characters_without_control_charac",
+					"finding": "RU-C5 major grammar: «не только из точек» is ungrammatical and states a different rule",
+					"applied": "Это имя нельзя отправить. Используйте не более 128 символов, без управляющих символов; имя не должно состоять только из точек."
+				}
+			],
+			"ui.chat.pickers": [
+				{
+					"key": "ui.chat.pickers.stop.confirm",
+					"finding": "RU-C2 blocker placeholder: {count} and its ::group-off skeleton dropped in every non-one branch",
+					"applied": "Остановить {count, plural, =1 {эту сессию} one {{count, number, ::group-off} сессию} few {{count, number, ::group-off} сессии} many {{count, number, ::group-off} сессий} other {{count, number, ::group-off} сессии}} сейчас"
+				},
+				{
+					"key": "ui.chat.pickers.destination_pickers.signed_out_environment_variables_and_other_accounts_are_untouched",
+					"finding": "RU-C3 blocker accuracy: «Вход выполнен» says signed in; the state is signed out",
+					"applied": "Выход выполнен. Переменные окружения и другие учётные записи не затронуты."
+				},
+				{
+					"key": "ui.chat.pickers.info_model.runtimes",
+					"finding": "RU-C6 major plural: genitive singular «рантайма» is wrong as the Runtimes heading and as a counted noun",
+					"applied": "рантаймы"
+				},
+				{
+					"key": "ui.chat.pickers.info_model.subagents",
+					"finding": "RU-C6 related key: the counted plural was the genitive-singular «субагента»",
+					"applied": "субагенты"
+				},
+				{
+					"key": "ui.chat.pickers.info_model.count_noun",
+					"finding": "RU-C6 related key: one plural string served few and many, rendering «субагента: 5 шт.»",
+					"applied": "{count, plural, one {{noun}: {count, number, ::group-off}} few {{pluralnoun}: {count, number, ::group-off}} many {{pluralnoun}: {count, number, ::group-off}} other {{pluralnoun}: {count, number, ::group-off}}}"
+				},
+				{
+					"key": "ui.chat.pickers.info_model.of_did_not_report",
+					"finding": "RU-C6 follow-through: the template prefixed «всего:» to the counted phrase, which reads «всего: рантаймы: 5» once the counted form is label-first",
+					"applied": "Без ответа: {formatcount}; {plural}"
+				},
+				{
+					"key": "ui.chat.pickers.destination_pickers.refresh_from_providers",
+					"finding": "RU-C7 minor idiom: «Обновить от провайдеров»",
+					"applied": "Обновить у провайдеров"
+				},
+				{
+					"key": "ui.chat.pickers.destination_pickers.stalled_send_a_message_to_continue",
+					"finding": "RU-C8 minor glossary: «остановлено» collides with a requested stop",
+					"applied": "приостановлено — отправьте сообщение, чтобы продолжить"
+				},
+				{
+					"key": "ui.chat.pickers.destination_pickers.no_models_are_signed_in_yet",
+					"finding": "RU-C9 minor glossary: «авторизована» is a second term for sign-in",
+					"applied": "Ни одна модель ещё не подключена."
+				},
+				{
+					"key": "ui.chat.pickers.fork.search_placeholder",
+					"finding": "RU-C10 minor typography: sidecar requires the shipped ASCII ellipsis",
+					"applied": "Попробуйте другой подход..."
+				},
+				{
+					"key": "ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in",
+					"finding": "RU-C11 minor grammar: the one branch read «(1 требуется вход)» with no subject",
+					"applied": "{scopecount, plural, one {Показать все поддерживаемые модели (требуется вход: {scopecount, number, ::group-off})} few {Показать все поддерживаемые модели (требуется вход: {scopecount, number, ::group-off})} many {Показать все поддерживаемые модели (требуется вход: {scopecount, number, ::group-off})} other {Показать все поддерживаемые модели (требуется вход: {scopecount, number, ::group-off})}}"
+				},
+				{
+					"key": "ui.chat.pickers.usage_view_model.last_known",
+					"finding": "RU-C12 minor overflow: 3.00x the English at a compact status label",
+					"applied": "Последние данные"
+				},
+				{
+					"key": "ui.chat.pickers.destination_pickers.use_team",
+					"finding": "RU-C12 minor overflow: 2.50x the English on a submit button",
+					"applied": "Использовать"
+				},
+				{
+					"key": "ui.chat.pickers.destination_pickers.default_effort",
+					"finding": "RU-C12 minor overflow: 2.29x the English on a key-value label",
+					"applied": "Рассуждения по умолчанию"
+				}
+			],
+			"ui.common.forms": [
+				{
+					"key": "ui.common.forms.slider_setting.saving",
+					"finding": "RU-C13 minor grammar: a nominative label after «Сохранение» needs a colon",
+					"applied": "Сохранение: {label}"
+				},
+				{
+					"key": "ui.common.forms.toggle_setting.saving",
+					"finding": "RU-C13 related key: same nominal-label shape",
+					"applied": "Сохранение: {label}"
+				},
+				{
+					"key": "ui.common.forms.autocomplete_field.saving",
+					"finding": "RU-C13 related key: same nominal-label shape",
+					"applied": "Сохранение: {label}"
+				}
+			],
+			"ui.common.updates": [
+				{
+					"key": "ui.common.updates.update_notification.the_new_build",
+					"finding": "RU-C14 major grammar: the only caller needs the accusative after «переводится на»",
+					"applied": "новую сборку"
+				}
+			],
+			"ui.common.viewer": [
+				{
+					"key": "ui.common.viewer.image_lightbox.previous",
+					"finding": "RU-C15 nit idiom: «Предыдущий материал» adds a noun the source does not have",
+					"applied": "Предыдущее: {medialabel}"
+				},
+				{
+					"key": "ui.common.viewer.image_lightbox.next",
+					"finding": "RU-C15 related key: the sibling carried the same added noun",
+					"applied": "Следующее: {medialabel}"
+				}
+			]
+		},
+		"residual_risks": [
+			"RU-C1: the auditor's exact drop of {noun}/{pluralnoun} is rejected by locale-parity's placeholder-integrity check while the English source keeps them; the applied form keeps both and states the cap as «показано не всё».",
+			"RU-C6: locale-only branch cannot split the label key from the counted noun (the English source passes one `runtimes` value to both). The applied nominative-plural label with `{pluralnoun}: {count}` is grammatical in every Russian category. `ui.chat.pickers.info_model.runtime_trajectories` still places the source's `{bound}` before the counted phrase, so the rare unreported>0 state reads «≥траектории: 12»; a source-side change is needed to carry the bound inside the counted phrase.",
+			"RU-C12: widths were shortened per the auditor's proposals but no rendered frame was captured in this locale-only pipeline; a rendered fit check remains owed."
+		]
 	}
 }
