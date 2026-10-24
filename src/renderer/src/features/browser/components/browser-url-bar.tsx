@@ -805,6 +805,26 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	 * the text differs from the text the user dismissed.
 	 */
 	const change = (event: ChangeEvent<HTMLInputElement>): void => {
+		/*
+		 * A LATE IME `input` AFTER THE EDIT ENDED IS NOT AN EDIT (review round 2,
+		 * R2-1). `compositionend` is not the only event that can arrive after a
+		 * press/commit/Enter blurred the field: Chromium can deliver the `input`
+		 * that commits the composition before (or after) it, and this handler used
+		 * to write `edited`/`draft` and re-raise the child with nothing focused.
+		 * The ownership test is shared with `compositionEnd`.
+		 *
+		 * THE VALUE IS RESTORED HERE because there is no state write to re-render
+		 * from once the edit is over: the browser has already written the late text
+		 * into the DOM, and the blurred field would keep it until something else
+		 * rendered.
+		 */
+		if (
+			editDismissedRef.current ||
+			document.activeElement !== event.currentTarget
+		) {
+			event.currentTarget.value = raw;
+			return;
+		}
 		setAcceptedTarget(null);
 		setEdited(true);
 		const next = event.target.value;
@@ -872,7 +892,8 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 		 * already blurred the field (a blur can even commit the IME), and its value
 		 * then belongs to a draft this row has given up. Adopting it re-seeded
 		 * `edited`/`draft` and could raise the suggestion child after focus had left.
-		 * Only a field that still owns focus and an un-dismissed edit may adopt.
+		 * Only a field that still owns focus and an un-dismissed edit may adopt; the
+		 * same ownership test guards `change()` (review round 2, R2-1).
 		 */
 		if (
 			editDismissedRef.current ||
@@ -982,6 +1003,12 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 			const next = usableRawAddress(raw);
 			if (!next) {
 				abandon();
+				// THE KEYBOARD MUST LAND SOMEWHERE. Abandoning without the surface's
+				// handoff left focus on `<body>`: the upshot was a dead keyboard after
+				// Enter on a blank/control-char draft (review round 2, U3-2). Same
+				// cancel intent as untouched Enter; the surface sends it to the page
+				// when one is presented, else to the chord root.
+				onDismiss?.("cancel");
 				return;
 			}
 			// ENTER PRECEDENCE, in the code's own order: (1) a highlighted row
