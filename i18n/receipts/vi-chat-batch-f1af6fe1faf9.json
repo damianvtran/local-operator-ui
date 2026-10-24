@@ -1,0 +1,407 @@
+{
+  "schema": 1,
+  "receipt_kind": "locale-batch-translation",
+  "date": "2026-10-24",
+  "locale": "vi",
+  "batch": "chat",
+  "branch": "feat/i18n-chat-vi",
+  "requested_base": "5d97575ac4388522267291ffee74d12bd9675b12",
+  "base": "23eaaea7b8^",
+  "translation_commit": "f1af6fe1faf9d67ee7553b375bcbe04402851762",
+  "translator": {
+    "agent": "translator",
+    "session": "cff0e8cad25d",
+    "model": "radient/auto",
+    "actual_model_source": "harness session model (system prompt: Model: radient/auto); no fallback used",
+    "fallback": null
+  },
+  "references": {
+    "glossary": {
+      "path": "local_operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "local_operator/i18n/style-guides/vi.md",
+      "sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    }
+  },
+  "scope": "Every English key added by the chat batch relative to 23eaaea7b8^ (1,733 keys across 15 namespaces). Pre-existing vi values in ui.chat.json, ui.chat.header.json and ui.chat.asks.json were kept byte-for-byte and are not claimed as translated by this batch. No rendered-frame pass and no native-speaker sign-off are claimed; an independent auditor is still required before release.",
+  "counts": {
+    "batch_keys": 1733,
+    "namespaces": 15,
+    "new_namespace_files": 12,
+    "extended_namespace_files": 3
+  },
+  "namespaces": [
+    {
+      "namespace": "ui.chat",
+      "batch_keys": 524,
+      "english_keys": 532,
+      "target_keys": 532,
+      "english_sha256": "dc5765d20ff846c61f3fe8953e69524393561bc2a39f89fa419958d4e4a67346",
+      "target_sha256": "47f17e7a9d7f45577d09fd91309f1a727fb0d47e5bdbc7ff93cabb73f99acb5a",
+      "missing_keys": []
+    },
+    {
+      "namespace": "ui.chat.aside",
+      "batch_keys": 35,
+      "english_keys": 35,
+      "target_keys": 35,
+      "english_sha256": "d8ce04c8e909a73f3050588b2b562b12db3840ae1f4231a66ef3eb5ac76ed1b6",
+      "target_sha256": "d3f4d80e66f674277b2683ede8bff3c9bfb81f1b8d114ea8855b1e9fda9d1fc3",
+      "missing_keys": []
+    },
+    {
+      "namespace": "ui.chat.asks",
+      "batch_keys": 89,
+      "english_keys": 101,
+      "target_keys": 101,
+      "english_sha256": "f5017d10d314fc9e3e94eeff2d5067c559e97ba0c6ffcef4e8ed9d1c39cf67ab",
+      "target_sha256": "49d4dd8e86d952330321cfc7a43b52a3254c965b5335aac11f4df02e4827ec7a",
+      "missing_keys": []
+    },
+    {
+      "namespace": "ui.chat.at",
+      "batch_keys": 11,
+      "english_keys": 11,
+      "target_keys": 11,
+      "english_sha256": "685a75115b95770d8d74cc43c2f250c53bed311c0d117cf51849f72041533694",
+      "target_sha256": "69c1357ce6e5c66a856a41f991d32d11e549bc2fecfe7be0a339094c71702fdf",
+      "missing_keys": []
+    },
+    {
+      "namespace": "ui.chat.canonical",
+      "batch_keys": 267,
+      "english_keys": 297,
+      "target_keys": 267,
+      "english_sha256": "522e7fced024ec756b4b93b21952c4abfb232278a3ca32bba67b45978749eb6d",
+      "target_sha256": "23c58879f022ecc96bd105d5ab06687399341ba87924f447f29f0c0ae75c8b24",
+      "missing_keys": [
+        "ui.chat.canonical.sound.batch_attachment_unavailable",
+        "ui.chat.canonical.sound.player_failed",
+        "ui.chat.canonical.sound.stop.confirm_label",
+        "ui.chat.canonical.sound.stop.keep_waiting",
+        "ui.chat.canonical.sound.stop.question",
+        "ui.chat.canonical.sound.stop.request_stop",
+        "ui.chat.canonical.sound.stop.warning",
+        "ui.chat.canonical.supplement.adjust_placeholder",
+        "ui.chat.canonical.supplement.details.attempts",
+        "ui.chat.canonical.supplement.details.model",
+        "ui.chat.canonical.supplement.file_actions.open_in_canvas",
+        "ui.chat.canonical.supplement.file_actions.open_in_default_app",
+        "ui.chat.canonical.supplement.file_actions.reveal_in_finder",
+        "ui.chat.canonical.supplement.frame.failed",
+        "ui.chat.canonical.supplement.frame.loading",
+        "ui.chat.canonical.supplement.frame.source",
+        "ui.chat.canonical.supplement.preview_unavailable",
+        "ui.chat.canonical.supplement.send",
+        "ui.chat.canonical.transcript.connect_provider",
+        "ui.chat.canonical.transcript.credential_lost",
+        "ui.chat.canonical.transcript.edit",
+        "ui.chat.canonical.transcript.missing_session",
+        "ui.chat.canonical.transcript.missing_session_detail",
+        "ui.chat.canonical.transcript.reconnect",
+        "ui.chat.canonical.transcript.reconnecting",
+        "ui.chat.canonical.transcript.send_again",
+        "ui.chat.canonical.transcript.source_unavailable",
+        "ui.chat.canonical.transcript.stale_caption",
+        "ui.chat.canonical.transcript.start_new_chat",
+        "ui.chat.canonical.transcript.stopped_before_finishing"
+      ]
+    },
+    {
+      "namespace": "ui.chat.canvas_preview",
+      "batch_keys": 2,
+      "english_keys": 2,
+      "target_keys": 2,
+      "english_sha256": "4a29d028e7727502fbefd86b995750910ca3760879769ffa1fc537e5893920a9",
+      "target_sha256": "926e6d57c3e894d551db77fcb9b674bf5d3800bf099f16d08869bd240bba18bf",
+      "missing_keys": []
+    },
+    {
+      "namespace": "ui.chat.credential_capture",
+      "batch_keys": 18,
+      "english_keys": 18,
+      "target_keys": 18,
+      "english_sha256": "1776a41f5dfa3335b5e390e85870cb55756e25c6a2439cd3f42ea4c864515bdd",
+      "target_sha256": "84ca938fd573189dfb2ad92069e12a746d94a0fd56df4efde1ebe64e6cd6066f",
+      "missing_keys": []
+    },
+    {
+      "namespace": "ui.chat.directory",
+      "batch_keys": 42,
+      "english_keys": 42,
+      "target_keys": 42,
+      "english_sha256": "57540488fb400a9a4ac1040c7d7f91f19f25ab313ec87a50ef527da442d3ec6b",
+      "target_sha256": "9f7ca9738b300cd3896440e3b62c31a3a7789c4b4a505035122b5a5784a2de15",
+      "missing_keys": []
+    },
+    {
+      "namespace": "ui.chat.header",
+      "batch_keys": 62,
+      "english_keys": 72,
+      "target_keys": 72,
+      "english_sha256": "ff03f6ca7b3206e77fc260116d2b540cc9f211ea37436863b874770e917158d8",
+      "target_sha256": "e957eb55b1c784daec89fdfec08e603d0b80cfdafbbb5846ab575bd709f58448",
+      "missing_keys": []
+    },
+    {
+      "namespace": "ui.chat.message",
+      "batch_keys": 55,
+      "english_keys": 55,
+      "target_keys": 55,
+      "english_sha256": "95d7b60b2cb1bdc37648cfa896856ce53724e300ed4a6b0448d7562aad452a5a",
+      "target_sha256": "4444c0fe81e24721a7859178fc931f51865bb3ebcf352259a4c4e914b8ab0132",
+      "missing_keys": []
+    },
+    {
+      "namespace": "ui.chat.options",
+      "batch_keys": 33,
+      "english_keys": 33,
+      "target_keys": 33,
+      "english_sha256": "fdfb1ceae54aa5270dd76b67748f56fa14e5d3f47d7770dad8eba755995a5a79",
+      "target_sha256": "d11a2d8fa67c5b95ed3d66ae16ed3b336c719cad79ebbffd1c1d2d433b0a6f8c",
+      "missing_keys": []
+    },
+    {
+      "namespace": "ui.chat.run_details",
+      "batch_keys": 152,
+      "english_keys": 154,
+      "target_keys": 152,
+      "english_sha256": "daf3ddc7d9c0904642876bf3db0746b6c0c68c5fe3b87a1a6730b07f67c90c2f",
+      "target_sha256": "306f996134c4ccafff29fcb90858b1329f6ae0bca6f97b70adc669a92372d8f3",
+      "missing_keys": [
+        "ui.chat.run_details.jobs",
+        "ui.chat.run_details.keep"
+      ]
+    },
+    {
+      "namespace": "ui.chat.session_status",
+      "batch_keys": 162,
+      "english_keys": 162,
+      "target_keys": 162,
+      "english_sha256": "05a6e2dd52cd41fb90dbb6756bb8a8f51c5d22e3769edb3fd6228a0d9a059198",
+      "target_sha256": "0b77ac724d9728021f0854726cbecd0823d6cc13e54fcbf5eb4e2b908a18b071",
+      "missing_keys": []
+    },
+    {
+      "namespace": "ui.chat.skill",
+      "batch_keys": 7,
+      "english_keys": 7,
+      "target_keys": 7,
+      "english_sha256": "919b6643e792d02ed270911df96d96da277bba5b5b91a2d04fac6cf044acfc10",
+      "target_sha256": "cced77e6255997ceec7f077003e01e8b7b8545dcc0386d35af87c8b7c29fc122",
+      "missing_keys": []
+    },
+    {
+      "namespace": "ui.chat.trace",
+      "batch_keys": 274,
+      "english_keys": 274,
+      "target_keys": 274,
+      "english_sha256": "52a0fa5ed78ec2f3bbedf5b67f7abf3cc8d72c7a66ff4383d182358e242fb848",
+      "target_sha256": "707f567b09fcef170ddafa9d30621e27e14d43e047278e8e0f9ccf3442ecf940",
+      "missing_keys": []
+    }
+  ],
+  "plural_policy": {
+    "clusters": "vi CLDR exposes only the other category",
+    "arms_used": {
+      "other": 57,
+      "=0": 8,
+      "=1": 1
+    },
+    "note": "=0 is used where a zero count reads as \"none\" and the existing vi catalogues already do the same; the single =1 keeps the singular clause in ui.chat.canonical.thread_search.truncated (\"the first match shown\"). No one/other agreement branches exist."
+  },
+  "checks": [
+    {
+      "command": "node scripts/i18n/generate.mjs --check",
+      "result": "ok — keys.gen.ts byte-identical to a fresh generation"
+    },
+    {
+      "command": "node scripts/i18n/check-strings.mjs",
+      "result": "ok — 1343 files scanned, 391 literals at or below baseline"
+    },
+    {
+      "command": "node scripts/i18n/context-parity.mjs",
+      "result": "ok — every English key covered apart from 131 allowed gaps in 4 namespaces"
+    },
+    {
+      "command": "per-key ICU + pseudo check (scratchpad/icu-check.mjs)",
+      "result": "checked 1733 keys; problems 0 — both sides parse with @formatjs/icu-messageformat-parser, argument names and ::skeletons match, every plural arm is other/…/=N, both render under vi/en with sample arguments, and bracket pseudo-localisation preserves every interpolated value"
+    },
+    {
+      "command": "locale key-completeness (vi vs en, touched namespaces)",
+      "result": "13 of 15 namespaces key-complete; ui.chat.canonical missing 30 and ui.chat.run_details missing 2 — exactly the pre-existing i18n/coverage-allowance.json vi entries, unchanged by this batch"
+    },
+    {
+      "command": "NFC / bidi scan over all 1,733 values",
+      "result": "0 non-NFC values, 0 manual bidi controls, 0 duplicate keys"
+    }
+  ],
+  "identical_values": {
+    "count": 100,
+    "verdict": "No English prose stubs. All identical values are technical tokens named below.",
+    "tokens": [
+      "paths and ids: /settings?section=providers, time-indicator, volume-control, all:{kind}, section-grown-hint-{key}, {closedNoteId}-title",
+      "CSS/Tailwind tokens: var(--color-warning), var(--color-warning-border), var(--color-warning-wash), @min-[260px]/olderhistory:hidden",
+      "platform folder names kept literal: Program Files, Program Files (x86), ProgramData, Users, Volumes, C:\\Program Files, C:\\Program Files (x86)",
+      "shortcuts and a11y tokens: Ctrl+Shift+L, ⌘⇧L, [x], [role=\"menuitem\"]",
+      "product and format names: Local Operator, PDF",
+      "generation parameter names kept English across the product (same as ui.agents.settings vi): Temperature, Top P, Top K, Seed, Frequency penalty, Presence penalty",
+      "placeholder-only composition templates (no literal prose): the remaining 73 values that consist only of arguments, punctuation and separators"
+    ]
+  },
+  "not_touched": [
+    "i18n/ledger.json: 12 new vi namespaces need audited entries and the three edited vi namespaces (ui.chat, ui.chat.header, ui.chat.asks) hold stale target hashes until re-audited; the translator lane does not edit the ledger.",
+    "i18n/coverage-allowance.json: the vi entries for ui.chat.canonical (30) and ui.chat.run_details (2) are now exactly filled and must be shrunk with node scripts/i18n/check-coverage.mjs --update at integration; the batch brief excludes the allowance file."
+  ],
+  "evidence": {
+    "icu_check_script_sha256": "06314e6852462f130e1584985b4c19e8884347a0ff9522fe57d75efe40d187a9",
+    "worklist_sha256": "22433b6cd3493e06dc2ede4b5a45c21ebff6d00c7add58ab71b2fdf6ab4ec636"
+  },
+  "overflow_risks": [
+    {
+      "key": "ui.chat.trace.tool_row_model.resized_console",
+      "english_cells": 15,
+      "vietnamese_cells": 33,
+      "note": "trace row verb; \"bảng điều khiển\" is the product term for console (shell rail uses it), so it is kept rather than shortened to the English loanword."
+    },
+    {
+      "key": "ui.chat.trace.tool_row_model.resizing_console",
+      "english_cells": 16,
+      "vietnamese_cells": 35,
+      "note": "same as above"
+    },
+    {
+      "key": "ui.chat.trace.tool_row_model.typing_in_console",
+      "english_cells": 17,
+      "vietnamese_cells": 31,
+      "note": "same as above"
+    },
+    {
+      "key": "ui.chat.trace.tool_row_model.checking_console",
+      "english_cells": 16,
+      "vietnamese_cells": 29,
+      "note": "same as above"
+    },
+    {
+      "key": "ui.chat.trace.tool_row_model.typed_in_console",
+      "english_cells": 16,
+      "vietnamese_cells": 29,
+      "note": "same as above"
+    },
+    {
+      "key": "ui.chat.trace.tool_row_model.listing_consoles",
+      "english_cells": 16,
+      "vietnamese_cells": 28,
+      "note": "same as above"
+    },
+    {
+      "key": "ui.chat.trace.supplement_model.provider_timed_out",
+      "english_cells": 18,
+      "vietnamese_cells": 30,
+      "note": "reason clause in a supplement card; wraps, but is the longest of the provider reasons."
+    }
+  ],
+  "term_decisions": [
+    [
+      "aside",
+      "bên lề",
+      "matches the existing composer label \"Hỏi bên lề\""
+    ],
+    [
+      "ask / asks",
+      "câu hỏi",
+      "the question object the agent waits on"
+    ],
+    [
+      "highlights",
+      "điểm nhấn",
+      "per the vi style guide wave-2 call; the canvas file category keeps its existing \"Nổi bật\""
+    ],
+    [
+      "pill",
+      "thẻ",
+      "credential chip in the composer; no existing vi term"
+    ],
+    [
+      "seat (team seat)",
+      "vị trí",
+      "a profile slot in a team"
+    ],
+    [
+      "delegate / delegating profile",
+      "ủy quyền / hồ sơ có thể ủy quyền",
+      "subagent delegation"
+    ],
+    [
+      "checkpoint",
+      "checkpoint",
+      "kept English; no settled vi term and it is a technical object"
+    ],
+    [
+      "batch",
+      "lô",
+      "matches the existing vi update copy"
+    ],
+    [
+      "monitor (object)",
+      "mục giám sát",
+      "section label stays \"Giám sát\""
+    ],
+    [
+      "wake",
+      "lịch đánh thức",
+      "matches existing ui.schedules values; the verb stays \"đánh thức\""
+    ],
+    [
+      "check-in",
+      "điểm danh",
+      "a wake that asks the agent to check in"
+    ],
+    [
+      "harness / runtime / backend",
+      "kept English",
+      "developer register; runtime and backend already kept English in vi catalogues"
+    ],
+    [
+      "borrowed access",
+      "quyền truy cập mượn",
+      "vs \"quyền truy cập\" for ordinary provider access"
+    ],
+    [
+      "spend / cost",
+      "chi tiêu / chi phí",
+      "kept distinct as in English"
+    ],
+    [
+      "to-dos",
+      "việc cần làm",
+      "matches ui.projects"
+    ],
+    [
+      "peer message",
+      "tin nhắn từ phiên khác",
+      "message from another lop session"
+    ],
+    [
+      "judge",
+      "bộ đánh giá",
+      "the outcome judge on a goal"
+    ],
+    [
+      "goal / loop",
+      "mục tiêu / vòng lặp",
+      "—"
+    ],
+    [
+      "canvas / code review / console",
+      "khung vẽ / rà soát mã / bảng điều khiển",
+      "match the shell rail and pane labels"
+    ]
+  ]
+}
