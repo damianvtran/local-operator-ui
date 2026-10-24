@@ -698,8 +698,20 @@ type TranscriptPayloadRecord =
 			id: string;
 			ts: number;
 			askId: string;
-			/** `answered` | `late` | `declined`. Read as a string, for the usual skew reason. */
+			/** `answered` | `late` | `declined` | `dismissed`. Read as a string, for the usual skew reason. */
 			status: string;
+			/**
+			 * WHO settled it and WHY, as the row carries them (harness PR #2833).
+			 *
+			 * `by.surface` is the surface the backend recorded (`desktop`, `phone`,
+			 * `terminal`) and `reason` is the operator's word on a dismissal
+			 * (`answered_in_chat` | `moot`). Both are optional because every other status
+			 * omits them and an older backend has never heard of them — the dismissed
+			 * sentence's `askResponseSummary` branch reads absence as "no surface named"
+			 * rather than inventing one.
+			 */
+			by?: { surface?: string; [key: string]: unknown } | null;
+			reason?: string | null;
 			/**
 			 * The ask's questions, as the row carried them.
 			 *
@@ -3316,6 +3328,16 @@ function durableRecord(
 				ts,
 				askId: String(details.ask_id ?? ""),
 				status: String(details.status ?? "answered"),
+				/*
+				 * THE DISMISSAL'S ATTRIBUTION (harness PR #2833). Passed through as the
+				 * row sent it: an object or `null`, never a guessed surface. The receipt's
+				 * sentence is `askResponseSummary`'s, shared with the other statuses.
+				 */
+				by:
+					details.by && typeof details.by === "object"
+						? (details.by as { surface?: string })
+						: null,
+				reason: typeof details.reason === "string" ? details.reason : null,
 				questions,
 				answers,
 				secretLost: details.secret_lost === true,

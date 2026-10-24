@@ -1,0 +1,48 @@
+{
+ "auditor": "task",
+ "model": "anthropic/claude-opus-5-5",
+ "model_note": "Served model anthropic/claude-opus-5-5 for the whole pass (skill reading, contract reading, catalogue review, ICU validation and artifacts). No provider fallback occurred.",
+ "instance": "pr5-20261023-hi",
+ "session": "fb125765ab49",
+ "parent_session": "1cfce255 (team lopdev manager; id prefix as exposed in this session's spawn chain)",
+ "date": "2026-10-23",
+ "locale": "hi",
+ "namespace": "ui.chat.asks",
+ "status": "changes_requested",
+ "result": "changes_requested",
+ "keys_audited": 10,
+ "keys_substantive": 10,
+ "source_head": "9571f33c537c9ce5d9432f691f969f0b3f86b37a",
+ "requested_head": "5b10cb570b555752ec714d45a777c93bd5925c38",
+ "scope": "PR5 ask-dismiss copy: full fresh audit of all 10 ui.chat.asks keys for hi, read side by side with en and the en context. Requested head 5b10cb570 had moved to 9571f33c5 by audit time; `git diff 5b10cb570 9571f33c5 -- src/i18n i18n` is empty, so the audited bytes are those of both heads. Cross-surface comparison against harness tui.asks/relay.ask at 93f798ddb (lo-stale-ask-surfaces, unmerged branch). No rendered-fit claim.",
+ "sha256": {
+  "en": "a2c4121f4347766ed176dc5d536a990a9c49bf0efff9fdd59be422833f4de6c4",
+  "hi": "aef31929f9b72b793f26472b743091731e440bb98761b3115cf63a86bee49b9b",
+  "context": "f5e2f62d5630e4873ee3084265c8e487beac4854a690df4e824ce0a6135747ea"
+ },
+ "findings": [
+  {
+   "id": "hi-M1",
+   "severity": "MAJOR",
+   "key": "ui.chat.asks.dismiss.moot.note",
+   "issue": "The note addresses the operator with a second-person imperative (आप-imperative «और इंतज़ार न करें»), so it reads as telling the operator to stop waiting for a reply. Per the context sidecar the actor is the agent: dismissing means the agent stops waiting on this ask. The terminal/phone copy for the same English (tui.asks.dismiss.moot_note, relay.ask.dismiss.moot_note) was corrected for exactly this in its own independent audit and names the agent. Root cause is upstream of the translation: the en context sets `tone: \"lowercase fragment, imperative\"` for this key while its `note` says the agent stops waiting, so a translator following the tone line lands on an operator-addressed imperative. Coder should also change that tone line (e.g. 'lowercase fragment naming what the agent stops doing') so a re-translation does not regress.",
+   "current": "और इंतज़ार न करें",
+   "proposed": "एजेंट अब जवाब का इंतज़ार नहीं करेगा"
+  },
+  {
+   "id": "hi-i1",
+   "severity": "INFO",
+   "key": "ui.chat.asks.dismiss.receipt.moot",
+   "issue": "The terminal/phone use «हटा दिया», the desktop uses «हटाया गया», and the title passive «जवाब दिया गया» differs from «जवाब दिया». These are grammar forms of the same terms (glossary: 'a row is violated by a different term, not by a grammar form'). «हटाया गया» matches existing desktop receipts («प्रोजेक्ट हटाया गया»). Not counted."
+  }
+ ],
+ "proposed_values": {
+  "ui.chat.asks.dismiss.moot.note": "एजेंट अब जवाब का इंतज़ार नहीं करेगा"
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+  "contract_docs_I18N_md_origin_main": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+ },
+ "independence": "Independent translation audit by the `task` member of team lopdev (session fb125765ab49), delegated by the team manager. This session produced none of the reviewed copy: it did not translate, edit, commit or push any catalogue, context file or ledger row, and wrote only its own receipts and evidence records. No MT, translation API or SDK was used; all linguistic judgement is the auditor's own. ICU parsing and plural rendering ran the worktree's existing intl-messageformat as validation, not as translation."
+}
