@@ -76,6 +76,41 @@
 		"note": "Shown in place of the count while a hub update is in flight.",
 		"placeholders": {}
 	},
+	"ui.chat.provider_error.action.open_provider_settings": {
+		"role": "action on any other provider error",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "Opens the provider settings grid. The subject is a per-provider setting surface, not the reader's account.",
+		"placeholders": {}
+	},
+	"ui.chat.provider_error.action.open_radient_account": {
+		"role": "action on a Radient billing error",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "Opens the account surface that shows the balance and the top-up entry. `Radient` is the product name and stays untranslated; `account` is the reader's own account.",
+		"placeholders": {}
+	},
+	"ui.chat.provider_error.action.sign_in_radient": {
+		"role": "action on a provider error that is Radient's own sign-in failure",
+		"tone": "verb phrase, sentence case, no trailing punctuation",
+		"note": "`Radient` is the product name and stays untranslated; `Sign in` is the action. Only shown when the failing provider is Radient itself.",
+		"placeholders": {}
+	},
+	"ui.chat.provider_error.headline.out_of_credits": {
+		"role": "headline on an out-of-credits provider error",
+		"tone": "statement with the vendor's own body",
+		"note": "`{status}` already carries its leading space and parentheses (` (HTTP 402)`), so do not add punctuation around it. `{body}` is the provider's own sentence, shown verbatim and never translated. `Out of credits` is the app's own diagnosis.",
+		"placeholders": {
+			"status": "the HTTP status with its own parentheses and a leading space, or an empty string.",
+			"body": "the provider's own sentence, taken from the wire. Never translate or paraphrase it."
+		}
+	},
+	"ui.chat.provider_error.headline.out_of_credits_refused": {
+		"role": "headline on an out-of-credits error with no body",
+		"tone": "statement",
+		"note": "Used when the relay gave a status but no body. `Radient` is the product name and stays untranslated. `{status}` carries its own leading space and parentheses.",
+		"placeholders": {
+			"status": "the HTTP status with its own parentheses and a leading space, or an empty string."
+		}
+	},
 	"ui.chat.question_dock.asking": {
 		"role": "collapsed question pill caption",
 		"tone": "short status sentence, no trailing punctuation",

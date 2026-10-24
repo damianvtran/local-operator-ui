@@ -2096,6 +2096,14 @@ export type MessageParams = {
 	"ui.chat.hub_update.update_all": { count: number };
 	"ui.chat.hub_update.update_all_label": { kind: string; count: number };
 	"ui.chat.hub_update.updating": undefined;
+	"ui.chat.provider_error.action.open_provider_settings": undefined;
+	"ui.chat.provider_error.action.open_radient_account": undefined;
+	"ui.chat.provider_error.action.sign_in_radient": undefined;
+	"ui.chat.provider_error.headline.out_of_credits": {
+		status: string;
+		body: string;
+	};
+	"ui.chat.provider_error.headline.out_of_credits_refused": { status: string };
 	"ui.chat.question_dock.asking": undefined;
 	"ui.chat.question_dock.from_agent_label": undefined;
 	"ui.chat.question_dock.secret_answer_label": undefined;
@@ -2757,7 +2765,11 @@ export type MessageParams = {
 		seconds: number;
 	};
 	"ui.common.updates.wait.seconds": { seconds: number };
+	"ui.common.viewer.close": { kind: string };
+	"ui.common.viewer.next": { kind: string };
 	"ui.common.viewer.opening": undefined;
+	"ui.common.viewer.position": { kind: string; index: number; count: number };
+	"ui.common.viewer.previous": { kind: string };
 	"ui.common.viewer.reset_view": undefined;
 	"ui.common.viewer.zoom_in": undefined;
 	"ui.common.viewer.zoom_out": undefined;
