@@ -56,7 +56,11 @@ import { BrowserLoadFailure } from "./browser-load-failure";
 import { BrowserNewTab } from "./browser-new-tab";
 import { BrowserPageMenu } from "./browser-page-menu";
 import { BrowserTabStrip } from "./browser-tab-strip";
-import { type AddressFocusRequest, BrowserUrlBar } from "./browser-url-bar";
+import {
+	type AddressDismissIntent,
+	type AddressFocusRequest,
+	BrowserUrlBar,
+} from "./browser-url-bar";
 
 /**
  * The browser surface: everything that exists once per host.
@@ -471,16 +475,53 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	);
 	const [rowWidth, setRowWidth] = useState(0);
 
+	/*
+	 * ONE OWN-STATE FACT, TWO CONSUMERS (convergence round). The page menu and the
+	 * chord hook must agree on "this tab has no page to control": a start
+	 * projection (`""` included), a settled `about:blank`, or a failed load. In
+	 * particular `about:blank` while a submitted navigation is loading is NOT
+	 * own-state — the menu is enabled there, so the chords must be too.
+	 */
+	const navFailure = state?.navFailure ?? null;
+	const onStartPage = browserOwnStateFor(activeTab, chrome.pendingUrl);
+	const browserOwnState = onStartPage || navFailure !== null;
+
 	const chordRootRef = useRef<HTMLDivElement | null>(null);
-	const returnBrowserFocus = useCallback(() => {
-		if (returnTo.current === "page") {
-			void browserBridge()
-				?.focusPage()
-				.catch(() => {});
-			return;
-		}
-		chordRootRef.current?.focus({ preventScroll: true });
-	}, []);
+	/**
+	 * WHERE A DISMISSED EDIT HANDS FOCUS BACK.
+	 *
+	 * Escape and Enter on an untouched seed are a return to the PAGE whenever one
+	 * is presented (operator report, 2026-10-24): the field took the caret from
+	 * the page it was editing, and the request's origin cannot answer where it
+	 * belongs afterwards — a click into the field records `chrome` even with a
+	 * page right below it, which parked a keyboard user on the chord root behind
+	 * the page. The own-state test is the page fact, not the origin: a start page,
+	 * a settled `about:blank` or a failed load has nothing to type into, so the
+	 * chord root is still right. A committed navigation keeps the request-origin
+	 * rule; a main-decided dismissal never reaches this callback, because main
+	 * (or the press) has already put focus where it belongs. */
+	const returnBrowserFocus = useCallback(
+		(intent?: AddressDismissIntent) => {
+			if (intent === "escape" || intent === "cancel") {
+				if (browserOwnState) {
+					chordRootRef.current?.focus({ preventScroll: true });
+					return;
+				}
+				void browserBridge()
+					?.focusPage()
+					.catch(() => {});
+				return;
+			}
+			if (returnTo.current === "page") {
+				void browserBridge()
+					?.focusPage()
+					.catch(() => {});
+				return;
+			}
+			chordRootRef.current?.focus({ preventScroll: true });
+		},
+		[browserOwnState],
+	);
 
 	const raiseAddress = useCallback(
 		(options?: { origin?: "page" | "chrome"; seed?: string }) => {
@@ -501,17 +542,6 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	addressController.current = {
 		raise: raiseAddress,
 	};
-
-	/*
-	 * ONE OWN-STATE FACT, TWO CONSUMERS (convergence round). The page menu and the
-	 * chord hook must agree on "this tab has no page to control": a start
-	 * projection (`""` included), a settled `about:blank`, or a failed load. In
-	 * particular `about:blank` while a submitted navigation is loading is NOT
-	 * own-state — the menu is enabled there, so the chords must be too.
-	 */
-	const navFailure = state?.navFailure ?? null;
-	const onStartPage = browserOwnStateFor(activeTab, chrome.pendingUrl);
-	const browserOwnState = onStartPage || navFailure !== null;
 
 	const {
 		root: chordRoot,
