@@ -196,3 +196,75 @@ test("technical and directional surfaces keep their physical semantics", () => {
 	const mesh = source("src/renderer/src/features/mesh/mesh-canvas.tsx");
 	assert.match(mesh, /absolute top-0 left-0/);
 });
+
+test("one direction provider gives every portalled menu the locale direction", () => {
+	const provider = source("src/renderer/src/shared/i18n/locale-direction.tsx");
+	assert.match(provider, /useTextDirection\(\)/);
+	assert.match(provider, /<Direction\.Provider dir=\{direction\}>/);
+	const entry = source("src/renderer/src/main.tsx");
+	assert.match(
+		entry,
+		/<LocaleDirectionProvider>\s*<App \/>\s*<\/LocaleDirectionProvider>/,
+		"the provider wraps the app, so menus opened on any route inherit it",
+	);
+	// The logical insets the review names were converted on the primitive; they
+	// are only inline-start/end when a direction reaches the portalled content.
+	const menus = source(
+		"src/renderer/src/shared/components/ui/dropdown-menu.tsx",
+	);
+	assert.match(menus, /inset && "ps-8"/);
+	assert.match(menus, /className="ms-auto text-ink-dim rtl:-scale-x-100"/);
+	assert.match(menus, /<span className="absolute start-2 flex size-4/);
+	/*
+	 * The tab panel's collision padding is physical while the approvals pill sits
+	 * at the inline end, so the protected edge has to follow the locale - the
+	 * one physical number in the popover that the direction cannot move for it.
+	 */
+	const tabs = source(
+		"src/renderer/src/features/browser/components/browser-tab-strip.tsx",
+	);
+	assert.match(
+		tabs,
+		/direction === "rtl" \? \{ left: 120 \} : \{ right: 120 \}/,
+		"the collision padding follows the pill's edge, not LTR's",
+	);
+});
+
+test("technical runs are isolated inside RTL prose", () => {
+	assert.match(
+		source("src/renderer/src/features/chat/components/trace/tool-row.tsx"),
+		/<bdi dir="ltr">\{summaryText\}<\/bdi>/,
+		"a tool summary keeps its own order: a leading slash must not move",
+	);
+	assert.match(
+		source(
+			"src/renderer/src/features/chat/components/message-item/turn-timestamp.tsx",
+		),
+		/<bdi>\{formatTurnTimestamp\(date, now\)\}<\/bdi>/,
+	);
+	const summary = source(
+		"src/renderer/src/features/chat/components/trace/turn-summary.tsx",
+	);
+	assert.equal(
+		summary.match(/<bdi>\{actionClause\}<\/bdi>/g)?.length,
+		2,
+		"both action-count render sites isolate the count",
+	);
+	const freshness = source(
+		"src/renderer/src/features/chat/components/canvas/document-freshness-bar.tsx",
+	);
+	assert.match(freshness, /<bdi>Modified<\/bdi> <bdi>\{modifiedText\}<\/bdi>/);
+});
+
+test("direction-dependent glyphs and truncation follow the locale", () => {
+	assert.match(
+		source("src/renderer/src/shared/components/ui/disclosure.tsx"),
+		/<ChevronRight className="size-3\.5 rtl:-scale-x-100" aria-hidden=\{true\} \/>/,
+		"the collapsed chevron mirrors; the open ChevronDown is direction-neutral",
+	);
+	const tabs = source(
+		"src/renderer/src/features/browser/components/browser-tab-strip.tsx",
+	);
+	const auto = tabs.match(/<span[^>]*\bdir="auto"[^>]*>/g) ?? [];
+	assert.equal(auto.length, 2, "both tab-title spans take their own direction");
+});

@@ -1386,6 +1386,15 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 										<span
 											className="min-w-0 grow truncate"
 											title={tab.title}
+											/*
+											 * A TAB TITLE IS THE PAGE'S OWN TEXT, not the tab's chrome: a
+											 * Latin title inside the RTL tab row put its ellipsis at the
+											 * logical end and ate the first character (`3 …rowser
+											 * chrome`). `dir="auto"` gives the run its own base direction
+											 * from its first strong character, while the badge and close
+											 * keep the tab's RTL order (design round 1, D5).
+											 */
+											dir="auto"
 											data-tour-tag="browser-tab-title"
 										>
 											{tab.title}
@@ -1478,7 +1487,16 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 													 * longer covered; a panel that fits is untouched); the bound is what
 													 * the pinned middleware actually is.
 													 */
-													collisionPadding={{ right: 120 }}
+													/*
+													 * `collisionPadding` is PHYSICAL (Radix measures it against window
+													 * edges), while the pill sits at the window's inline END: the right
+													 * edge in LTR, the left in Urdu. Keeping the LTR inset in RTL would
+													 * protect the edge the pill is not on and let the panel cover it on
+													 * the other (design round 1, D1).
+													 */
+													collisionPadding={
+														direction === "rtl" ? { left: 120 } : { right: 120 }
+													}
 													/*
 													 * THE CLOSE RECORD WINS (QA round 2, Q2-1): while a close this menu
 													 * started is still deciding where the caret goes, Radix's own
@@ -2046,7 +2064,11 @@ export const BrowserTabStrip: FC<BrowserTabStripProps> = ({
 											)}
 										/>
 										<TabMark tab={tab} />
-										<span className="min-w-0 grow truncate" title={tab.title}>
+										<span
+											className="min-w-0 grow truncate"
+											dir="auto"
+											title={tab.title}
+										>
 											{tab.title}
 										</span>
 									</button>
