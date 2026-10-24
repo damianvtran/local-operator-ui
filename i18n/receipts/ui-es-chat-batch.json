@@ -62,7 +62,7 @@
       "keys": 297,
       "batch_keys": 267,
       "source_sha256": "522e7fced024ec756b4b93b21952c4abfb232278a3ca32bba67b45978749eb6d",
-      "target_sha256": "285aa8d9ec115e04c510e67d6a399f6b9d66dd4a9c191ff0d99dbfbb7279426f"
+      "target_sha256": "c8bd27a28c4eea6e9cc9a5dde2b9558093b1e7097d9f6c4b613cbc30e60aa24e"
     },
     "ui.chat.canvas_preview": {
       "status": "translated",

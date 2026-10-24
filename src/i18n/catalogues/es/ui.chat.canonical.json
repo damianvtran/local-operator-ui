@@ -287,7 +287,7 @@
 	"ui.chat.canonical.trace_fold_model.other_actions": "{other, plural, one {y # acción más} many {y # de acciones más} other {y # acciones más}}",
 	"ui.chat.canonical.fold_media.more_images": "{more, plural, one {+# imagen más} many {+# de imágenes más} other {+# imágenes más}}",
 	"ui.chat.canonical.sound_player.action_label": "{action} {label}",
-	"ui.chat.canonical.sound_batch_model.summary": "{completed, plural, one {# completado} many {# de completados} other {# completados}} · {failed, plural, one {# falló} many {# de fallidos} other {# fallaron}}{cancelled, plural, =0 {} other { · # cancelados/detenidos}}{unknown, plural, =0 {} other { · # con estado desconocido}}{hasAttention, select, true {. Requiere atención: {attention}} other {}}",
+	"ui.chat.canonical.sound_batch_model.summary": "{completed, plural, one {# completado} many {# de completados} other {# completados}} · {failed, plural, one {# falló} many {# de fallidos} other {# fallaron}}{cancelled, plural, =0 {} one { · # cancelado/detenido} many { · # de cancelados/detenidos} other { · # cancelados/detenidos}}{unknown, plural, =0 {} other { · # con estado desconocido}}{hasAttention, select, true {. Requiere atención: {attention}} other {}}",
 	"ui.chat.canonical.transcript_reducer.retrying": "Reintentando tras un error (intento {attempt}){fallback}",
 	"ui.chat.canonical.canonical_transcript.never_sent": "nunca enviado · {composed}",
 	"ui.chat.canonical.canonical_transcript.bytes_composed": "{bytes} compuestos",
