@@ -1,7 +1,7 @@
 {
-  "at": "2026-10-24T17:24:41.629Z",
-  "head": "7f20a501a341cb4ce8ca6daaf91ae9e8ca0440b6",
-  "scratch": "/Users/damian/.local-operator/sessions/c4aaba06f9e9/scratchpad/s6c-proof-5ZQ5v4",
+  "at": "2026-10-24T17:27:18.487Z",
+  "head": "2bdf94571c82077e5ed6200d6ce869c63e75d107",
+  "scratch": "/Users/damian/.local-operator/sessions/c4aaba06f9e9/scratchpad/s6c-proof-VgEMFk",
   "rows": [
     {
       "id": "A1-enabled-auto-present",
@@ -111,7 +111,7 @@
       "status": "PASS",
       "detail": {
         "baseline": {
-          "id": "window:45021:0",
+          "id": "window:45130:0",
           "visible": true,
           "focused": false,
           "bounds": {
@@ -158,7 +158,7 @@
           ]
         },
         "after": {
-          "id": "window:45021:0",
+          "id": "window:45130:0",
           "visible": true,
           "focused": false,
           "bounds": {
@@ -235,7 +235,7 @@
         "card": {
           "available": true,
           "open": true,
-          "visible": true
+          "visible": false
         },
         "dock": false
       }
@@ -246,14 +246,14 @@
       "detail": {
         "pending": [
           {
-            "entryId": "8ba448a3e8c04040a960662b32625a99",
+            "entryId": "5a443ebed61446269eadacbb2306b3bb",
             "origin": "https://pending.example",
             "authority": "pending.example",
             "broad": {
               "scope": "domain",
               "key": "pending.example"
             },
-            "expiresAt": 1792863288620,
+            "expiresAt": 1792863448268,
             "requesterSessionId": "s6c-other"
           }
         ],
@@ -270,14 +270,14 @@
       "detail": {
         "pending": [
           {
-            "entryId": "8ba448a3e8c04040a960662b32625a99",
+            "entryId": "5a443ebed61446269eadacbb2306b3bb",
             "origin": "https://pending.example",
             "authority": "pending.example",
             "broad": {
               "scope": "domain",
               "key": "pending.example"
             },
-            "expiresAt": 1792863288620,
+            "expiresAt": 1792863448268,
             "requesterSessionId": "s6c-other"
           }
         ],
@@ -299,9 +299,19 @@
       "id": "F-native-composite",
       "status": "BLOCKED",
       "detail": {
-        "command": "screencapture -x -o -l <window id>",
-        "observed": "could not create image from window",
-        "reason": "the native card composite needs macOS Screen Recording; this host refused the window capture, so only the real-app documents (app route + card child) are captured"
+        "command": "screencapture -x -o -l 45130",
+        "window": {
+          "id": "window:45130:0",
+          "bounds": {
+            "x": 464,
+            "y": 45,
+            "width": 1160,
+            "height": 900
+          },
+          "visible": true,
+          "focused": false
+        },
+        "observed": "could not create image from window"
       }
     }
   ],
