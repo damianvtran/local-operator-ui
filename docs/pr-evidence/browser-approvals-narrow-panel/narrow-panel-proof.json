@@ -1,0 +1,557 @@
+{
+  "at": "2026-10-24T19:34:58.505Z",
+  "head": "43dbfdaec21101b85746376e9a3cf1113aab2265",
+  "scratch": "/Users/damian/.local-operator/sessions/c4aaba06f9e9/scratchpad/narrow-panel-proof-zgFbeR",
+  "rows": [
+    {
+      "id": "L-populated-light-full-width",
+      "status": "PASS",
+      "detail": {
+        "layout": "full",
+        "panel": {
+          "x": 0,
+          "y": 204.4,
+          "width": 264,
+          "height": 695.6,
+          "right": 264,
+          "bottom": 900
+        },
+        "content": {
+          "x": 0,
+          "y": 204.4,
+          "width": 0,
+          "height": 695.6,
+          "right": 0,
+          "bottom": 900
+        },
+        "row": {
+          "x": 0,
+          "y": 204.4,
+          "width": 264,
+          "height": 695.6,
+          "right": 264,
+          "bottom": 900
+        },
+        "position": "static",
+        "display": "flex",
+        "theme": "localOperatorLight",
+        "dark": false,
+        "panelHeight": 688,
+        "panelScrollHeight": 1891
+      }
+    },
+    {
+      "id": "L-populated-light-reason-wrap",
+      "status": "PASS",
+      "detail": {
+        "reason": {
+          "text": "An agent from another session wants to open a-very-long-subdomain-for-the-narrow-panel-proof.example.test.",
+          "length": 106,
+          "clientWidth": 190,
+          "scrollWidth": 190,
+          "overflowWrap": "anywhere",
+          "lineWidths": [
+            {
+              "top": 724,
+              "width": 145.23
+            },
+            {
+              "top": 746,
+              "width": 48.7
+            },
+            {
+              "top": 747,
+              "width": 14.41
+            },
+            {
+              "top": 769,
+              "width": 172.8
+            },
+            {
+              "top": 791,
+              "width": 122.41
+            },
+            {
+              "top": 812,
+              "width": 129.6
+            },
+            {
+              "top": 811,
+              "width": 4.01
+            }
+          ]
+        },
+        "panelHeight": {
+          "client": 688,
+          "scroll": 1891
+        },
+        "displacement": {
+          "contentBefore": 264,
+          "contentAfter": 0,
+          "panelWidth": 264,
+          "rowWidth": 264
+        }
+      }
+    },
+    {
+      "id": "L-populated-light-allow-deny",
+      "status": "PASS",
+      "detail": {
+        "allow": {
+          "index": 2,
+          "tag": "browser-consent-once",
+          "text": "Allow once",
+          "disabled": false,
+          "rect": {
+            "x": 45,
+            "y": 534.37,
+            "width": 78.75,
+            "height": 28,
+            "right": 123.75,
+            "bottom": 562.37
+          },
+          "panel": {
+            "left": 0,
+            "top": 204.4,
+            "right": 264,
+            "bottom": 900
+          },
+          "insideHorizontally": true,
+          "insideVertically": true,
+          "hitSelf": true,
+          "hit": "BUTTON[browser-consent-once]"
+        },
+        "deny": {
+          "index": 6,
+          "tag": "browser-consent-deny",
+          "text": "Don't allow",
+          "disabled": false,
+          "rect": {
+            "x": 154.47,
+            "y": 534.37,
+            "width": 80.53,
+            "height": 28,
+            "right": 235,
+            "bottom": 562.37
+          },
+          "panel": {
+            "left": 0,
+            "top": 204.4,
+            "right": 264,
+            "bottom": 900
+          },
+          "insideHorizontally": true,
+          "insideVertically": true,
+          "hitSelf": true,
+          "hit": "BUTTON[browser-consent-deny]"
+        }
+      }
+    },
+    {
+      "id": "L-populated-light-grants",
+      "status": "PASS",
+      "detail": {
+        "revoke": {
+          "index": 7,
+          "tag": "browser-revoke-approval",
+          "text": "Revoke",
+          "disabled": false,
+          "rect": {
+            "x": 176.31,
+            "y": 534.43,
+            "width": 59.69,
+            "height": 28,
+            "right": 236,
+            "bottom": 562.43
+          },
+          "panel": {
+            "left": 0,
+            "top": 204.4,
+            "right": 264,
+            "bottom": 900
+          },
+          "insideHorizontally": true,
+          "insideVertically": true,
+          "hitSelf": true,
+          "hit": "BUTTON[browser-revoke-approval]"
+        },
+        "revokeAll": {
+          "index": 8,
+          "tag": "browser-revoke-all",
+          "text": "Revoke all site approvals",
+          "disabled": false,
+          "rect": {
+            "x": 12,
+            "y": 535.53,
+            "width": 232,
+            "height": 28,
+            "right": 244,
+            "bottom": 563.53
+          },
+          "panel": {
+            "left": 0,
+            "top": 204.4,
+            "right": 264,
+            "bottom": 900
+          },
+          "insideHorizontally": true,
+          "insideVertically": true,
+          "hitSelf": true,
+          "hit": "BUTTON[browser-revoke-all]"
+        }
+      }
+    },
+    {
+      "id": "L-populated-light-controls",
+      "status": "PASS",
+      "detail": {
+        "controlCount": 12,
+        "failures": []
+      }
+    },
+    {
+      "id": "L-populated-dark-full-width",
+      "status": "PASS",
+      "detail": {
+        "layout": "full",
+        "panel": {
+          "x": 0,
+          "y": 179,
+          "width": 264,
+          "height": 721,
+          "right": 264,
+          "bottom": 900
+        },
+        "content": {
+          "x": 0,
+          "y": 179,
+          "width": 0,
+          "height": 721,
+          "right": 0,
+          "bottom": 900
+        },
+        "row": {
+          "x": 0,
+          "y": 179,
+          "width": 264,
+          "height": 721,
+          "right": 264,
+          "bottom": 900
+        },
+        "position": "static",
+        "display": "flex",
+        "theme": "localOperatorDark",
+        "dark": true,
+        "panelHeight": 713,
+        "panelScrollHeight": 1848
+      }
+    },
+    {
+      "id": "L-populated-dark-reason-wrap",
+      "status": "PASS",
+      "detail": {
+        "reason": {
+          "text": "An agent from another session wants to open a-very-long-subdomain-for-the-narrow-panel-proof.example.test.",
+          "length": 106,
+          "clientWidth": 190,
+          "scrollWidth": 190,
+          "overflowWrap": "anywhere",
+          "lineWidths": [
+            {
+              "top": 699,
+              "width": 145.23
+            },
+            {
+              "top": 720,
+              "width": 48.7
+            },
+            {
+              "top": 722,
+              "width": 14.41
+            },
+            {
+              "top": 743,
+              "width": 172.8
+            },
+            {
+              "top": 765,
+              "width": 122.41
+            },
+            {
+              "top": 787,
+              "width": 129.6
+            },
+            {
+              "top": 785,
+              "width": 4.01
+            }
+          ]
+        },
+        "panelHeight": {
+          "client": 713,
+          "scroll": 1848
+        },
+        "displacement": {
+          "contentBefore": 264,
+          "contentAfter": 0,
+          "panelWidth": 264,
+          "rowWidth": 264
+        }
+      }
+    },
+    {
+      "id": "L-populated-dark-allow-deny",
+      "status": "PASS",
+      "detail": {
+        "allow": {
+          "index": 2,
+          "tag": "browser-consent-once",
+          "text": "Allow once",
+          "disabled": false,
+          "rect": {
+            "x": 45,
+            "y": 521.47,
+            "width": 78.75,
+            "height": 28,
+            "right": 123.75,
+            "bottom": 549.47
+          },
+          "panel": {
+            "left": 0,
+            "top": 179,
+            "right": 264,
+            "bottom": 900
+          },
+          "insideHorizontally": true,
+          "insideVertically": true,
+          "hitSelf": true,
+          "hit": "BUTTON[browser-consent-once]"
+        },
+        "deny": {
+          "index": 6,
+          "tag": "browser-consent-deny",
+          "text": "Don't allow",
+          "disabled": false,
+          "rect": {
+            "x": 154.47,
+            "y": 521.47,
+            "width": 80.53,
+            "height": 28,
+            "right": 235,
+            "bottom": 549.47
+          },
+          "panel": {
+            "left": 0,
+            "top": 179,
+            "right": 264,
+            "bottom": 900
+          },
+          "insideHorizontally": true,
+          "insideVertically": true,
+          "hitSelf": true,
+          "hit": "BUTTON[browser-consent-deny]"
+        }
+      }
+    },
+    {
+      "id": "L-populated-dark-grants",
+      "status": "PASS",
+      "detail": {
+        "revoke": {
+          "index": 7,
+          "tag": "browser-revoke-approval",
+          "text": "Revoke",
+          "disabled": false,
+          "rect": {
+            "x": 176.31,
+            "y": 521.73,
+            "width": 59.69,
+            "height": 28,
+            "right": 236,
+            "bottom": 549.73
+          },
+          "panel": {
+            "left": 0,
+            "top": 179,
+            "right": 264,
+            "bottom": 900
+          },
+          "insideHorizontally": true,
+          "insideVertically": true,
+          "hitSelf": true,
+          "hit": "BUTTON[browser-revoke-approval]"
+        },
+        "revokeAll": {
+          "index": 8,
+          "tag": "browser-revoke-all",
+          "text": "Revoke all site approvals",
+          "disabled": false,
+          "rect": {
+            "x": 12,
+            "y": 535.84,
+            "width": 232,
+            "height": 28,
+            "right": 244,
+            "bottom": 563.84
+          },
+          "panel": {
+            "left": 0,
+            "top": 179,
+            "right": 264,
+            "bottom": 900
+          },
+          "insideHorizontally": true,
+          "insideVertically": true,
+          "hitSelf": true,
+          "hit": "BUTTON[browser-revoke-all]"
+        }
+      }
+    },
+    {
+      "id": "L-populated-dark-controls",
+      "status": "PASS",
+      "detail": {
+        "controlCount": 12,
+        "failures": []
+      }
+    },
+    {
+      "id": "L-empty-state",
+      "status": "PASS",
+      "detail": {
+        "dark": {
+          "panel": {
+            "x": 0,
+            "y": 106,
+            "width": 264,
+            "height": 794,
+            "right": 264,
+            "bottom": 900
+          },
+          "content": {
+            "x": 0,
+            "y": 106,
+            "width": 0,
+            "height": 794,
+            "right": 0,
+            "bottom": 900
+          },
+          "row": {
+            "x": 0,
+            "y": 106,
+            "width": 264,
+            "height": 794,
+            "right": 264,
+            "bottom": 900
+          },
+          "layout": "full",
+          "position": "static",
+          "display": "flex",
+          "panelClientWidth": 256,
+          "panelClientHeight": 794,
+          "panelScrollWidth": 256,
+          "panelScrollHeight": 938,
+          "theme": "localOperatorDark",
+          "dark": true,
+          "reason": null,
+          "controlCount": 4
+        },
+        "light": {
+          "panel": {
+            "x": 0,
+            "y": 106,
+            "width": 264,
+            "height": 794,
+            "right": 264,
+            "bottom": 900
+          },
+          "content": {
+            "x": 0,
+            "y": 106,
+            "width": 0,
+            "height": 794,
+            "right": 0,
+            "bottom": 900
+          },
+          "row": {
+            "x": 0,
+            "y": 106,
+            "width": 264,
+            "height": 794,
+            "right": 264,
+            "bottom": 900
+          },
+          "layout": "full",
+          "position": "static",
+          "display": "flex",
+          "panelClientWidth": 256,
+          "panelClientHeight": 794,
+          "panelScrollWidth": 256,
+          "panelScrollHeight": 938,
+          "theme": "localOperatorLight",
+          "dark": false,
+          "reason": null,
+          "controlCount": 4
+        }
+      }
+    },
+    {
+      "id": "L-error-state",
+      "status": "BLOCKED",
+      "detail": {
+        "command": "open http://127.0.0.1:45999/",
+        "observed": "Error: open failed: 200 {\"id\":\"s6c-open\",\"ok\":false,\"error\":{\"code\":\"nav_failed\",\"message\":\"ERR_CONNECTION_REFUSED\",\"data\":{\"error_code\":-102}}}",
+        "reason": "the host returned the navigation refusal to the caller; the dock has no error state of its own, and at 264 the page content that would paint the browser's error line is displaced to zero. The panel is unchanged, which is what host-error-dark shows.",
+        "frame": "host-error-dark"
+      }
+    },
+    {
+      "id": "L-loading-state",
+      "status": "BLOCKED",
+      "detail": {
+        "busySeen": false,
+        "frame": "post-decision-dark",
+        "reason": "the only loading cue the dock owns is the decision-busy spinner (browser-consent-busy), and the host answers inside the same paint; a CDP screenshot captured the post-decision panel, not the spinner. No persistent loading state exists to frame."
+      }
+    }
+  ],
+  "frames": [
+    {
+      "label": "empty-dark",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/empty-dark.png"
+    },
+    {
+      "label": "empty-light",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/empty-light.png"
+    },
+    {
+      "label": "populated-light",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/populated-light.png"
+    },
+    {
+      "label": "populated-light-decisions",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/populated-light-decisions.png"
+    },
+    {
+      "label": "populated-light-grants",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/populated-light-grants.png"
+    },
+    {
+      "label": "populated-dark",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/populated-dark.png"
+    },
+    {
+      "label": "populated-dark-decisions",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/populated-dark-decisions.png"
+    },
+    {
+      "label": "populated-dark-grants",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/populated-dark-grants.png"
+    },
+    {
+      "label": "host-error-dark",
+      "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-narrow-panel/docs/pr-evidence/browser-approvals-narrow-panel/frames/host-error-dark.png"
+    }
+  ],
+  "mode": "headless"
+}
