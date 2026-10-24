@@ -83,7 +83,7 @@
 	"ui.common.updates.update_notification.the_install_is_now_at_v2": "Установка теперь на {detail}, но сервер, обслуживающий приложение, всё ещё работает на {detail2}. Перезапуск не удался.",
 	"ui.common.updates.update_notification.the_install_is_now_at_v3": "Установка теперь на {detail}, но сервер, обслуживающий приложение, был запущен вне Local Operator и оставлен работающим{detail2}.",
 	"ui.common.updates.update_notification.the_last_update_didn_t_finish": "Последнее обновление не завершилось",
-	"ui.common.updates.update_notification.the_new_build": "новой сборке",
+	"ui.common.updates.update_notification.the_new_build": "новую сборку",
 	"ui.common.updates.update_notification.the_new_build_has_landed_nothing_in_flight_was_cut_off_the_turns_": "Новая сборка установлена. Текущие операции не прерваны — ходы на этом компьютере продолжались, — и сервер сейчас перезапускается на новую сборку, поэтому он офлайн, пока возвращается: обычно несколько секунд, до половины минуты. Затем приложение снова запускает рантайм для сессий, оставшихся без него, что может занять до минуты.",
 	"ui.common.updates.update_notification.the_new_version": "новой версии",
 	"ui.common.updates.update_notification.the_server_did_not_come_back_after_the_restart": "Сервер не вернулся после перезапуска",
