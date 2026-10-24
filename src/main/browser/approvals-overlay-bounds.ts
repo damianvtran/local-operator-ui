@@ -3,14 +3,15 @@
  *
  * The card is not a shelf and not a pause: it is a child `WebContentsView`
  * painted over the live page, sized to the card and anchored to the content
- * rect's inline-end corner. Keeping the arithmetic here (rather than in the
+ * rect's bottom-right corner. Keeping the arithmetic here (rather than in the
  * controller) is what lets the evidence run assert the exact numbers without an
  * Electron process, and it is the same split `address-overlay-list.ts` uses for
  * the suggestion list.
  *
- * THE INLINE-END ANCHOR IS DELIBERATE. The app ships RTL catalogues (`ur`), so
- * "bottom-right" is a direction, not a coordinate: in RTL the same formula
- * anchors the card's inline end to the content rect's left edge.
+ * THE ANCHOR IS LTR-ONLY IN S6a. The card's native view is anchored to the
+ * content rect's bottom-right corner; RTL placement is S6b work, not a claim
+ * this slice can make (the host does not pass a direction and the probe does not
+ * render one).
  *
  * No shadow, minimum width or readability fallback lives here. The card paints
  * its own surface inside `PAD`; this module only answers where the native view
@@ -28,8 +29,8 @@ export const APPROVALS_CARD_MAX_HEIGHT = 480;
 export const APPROVALS_CARD_MIN_HEIGHT = 96;
 /** The visible ring between the card surface and the content rect edge. The
  * native view extends `PAD` past the card on every side so the card's shadow
- * can paint; that ring is inside the view and therefore swallows pointer input
- * (a measured fact in the evidence, not a hidden surprise). */
+ * can paint; hit routing through that ring is UNPROVEN in S6a (native evidence
+ * is blocked), so this is geometry only, not a pointer claim. */
 export const APPROVALS_CARD_INSET = 8;
 export const APPROVALS_CARD_PAD = 8;
 
@@ -107,9 +108,14 @@ export function approvalsCardBoundsFor(
 	const natural = Number.isFinite(input.naturalHeight)
 		? input.naturalHeight
 		: APPROVALS_CARD_MIN_HEIGHT;
+	/*
+	 * Round UP, not down: a measured card of 99.6 DIP must get a 100 DIP surface,
+	 * or the view shaves the top of the card and clips its shadow. The floor is a
+	 * minimum for a nearly empty card, never a substitute for the measurement.
+	 */
 	const height = Math.min(
 		ceiling,
-		Math.max(APPROVALS_CARD_MIN_HEIGHT, Math.floor(natural)),
+		Math.max(APPROVALS_CARD_MIN_HEIGHT, Math.ceil(natural)),
 	);
 	const viewWidth = width + 2 * pad;
 	const viewHeight = height + 2 * pad;

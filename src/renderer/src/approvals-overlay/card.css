@@ -33,6 +33,13 @@ body {
 	bottom: 8px;
 	box-sizing: border-box;
 	overflow: hidden;
+	/*
+	 * The controller clamps the native view to the content ceiling; the card
+	 * must clamp with it, or a tall document overflows the view and is cut off
+	 * at the HEADER (the card is bottom-pinned). The inset is the same 8 px the
+	 * geometry module places on every side, so the card never leaves the ring.
+	 */
+	max-height: calc(100% - 16px);
 	border: 1px solid var(--lo-border-control);
 	border-radius: 14px;
 	background: var(--lo-elevated);
@@ -44,6 +51,7 @@ html[data-opaque="1"] #approvals-card {
 	left: 0;
 	right: 0;
 	bottom: 0;
+	max-height: 100%;
 	border-radius: 0;
 	box-shadow: none;
 }
@@ -76,7 +84,11 @@ html[data-opaque="1"] #approvals-card {
 	line-height: 1.4;
 }
 
-html[dir="rtl"] #approvals-card {
-	direction: rtl;
-	text-align: start;
+.card-brand {
+	margin: 0 0 2px;
+	color: var(--lo-ink-muted);
+	font-size: 11px;
+	font-weight: 500;
+	line-height: 1.3;
+	letter-spacing: 0.02em;
 }

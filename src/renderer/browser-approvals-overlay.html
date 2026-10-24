@@ -7,12 +7,13 @@
       S6a's inert card document (docs/design/browser-approvals-card.md).
 
       THIS DOCUMENT HAS NO TRUST BOUNDARY YET. It is a static, unfocused
-      presentation surface used to prove the native child's transparency,
-      geometry, hit ring and lifecycle before S6b adds a purpose-built preload
-      and two sender-pinned IPC channels. It has no preload, no IPC, no remote
-      content, no inline script and no focus target. The count and theme are
-      supplied as query parameters by the controller; the module only paints
-      text with `textContent`.
+      presentation surface used to measure the native child's geometry and
+      lifecycle before S6b adds a purpose-built preload and two sender-pinned
+      IPC channels. It has no preload, no IPC, no remote content, no inline
+      script and no focus target. The first paint's count and the palette are
+      query parameters; the live count arrives through `setCount`, which owns
+      the catalogue lookup and the ICU plural. Compositing and the 8 px ring's
+      hit routing are NOT measurable in this slice and are not claimed.
 
       CSP: every capability the card does not need is denied. Script and style
       are emitted by the app's own build (`script-src 'self'`, `style-src
@@ -27,6 +28,7 @@
   </head>
   <body>
     <main id="approvals-card" aria-hidden="true">
+      <p class="card-brand" id="approvals-brand"></p>
       <header class="card-header">
         <h1 id="approvals-title"></h1>
       </header>
