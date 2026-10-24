@@ -589,3 +589,276 @@ test("a reloaded row's pending text comes home with the claim too", () => {
 		"the message that failed\n\ntyped during the create hop",
 	);
 });
+
+/*
+ * THE OPERATOR'S SECOND REPORT (2026-10-23), AT THE STORE. A New chat with a
+ * team keys a STABLE draft row, and the row's `draftRequestId` persists across
+ * launches. A daemon that restarted (or a draft that expired) answers that
+ * request's receipt by REPLAYING the id it minted the first time - an id its
+ * registry no longer serves. The pane streams on `sessionId ?? draft.warmId`,
+ * so its bridge 404s, and the renderer used to commit `missing` for an id a
+ * DRAFT was standing on: "This conversation is no longer on this machine" under
+ * a header that says "New chat with <team>".
+ *
+ * These three cases pin the store's half of the fix:
+ *   - the dead warm is retired and the mint's request id re-minted, while every
+ *     field that states the draft's INTENT (target, model, peer) and every
+ *     composer word stay put, and a replay of the same verdict is a no-op;
+ *   - a row that already points at a conversation is NOT this action's (its
+ *     pointer belongs to `retireDraftsForSession`, and its warm is not the
+ *     thing a stream 404 was about);
+ *   - the missing notice's press lands on a new chat that carries the box.
+ */
+const TEAM_KEY = `draft:team:${STABLE_TEAM}`;
+const WARM_DEAD = "warm-dead-0001";
+
+/** A fresh team draft holding only what a replayed receipt gave it. */
+function seedWarmDraft() {
+	store.setState({
+		sessions: [],
+		forgotten: {},
+		activeSessionId: null,
+		activeDraftKey: TEAM_KEY,
+		validatingSessionId: null,
+		drafts: {
+			[TEAM_KEY]: {
+				key: TEAM_KEY,
+				target: { kind: "team", name: STABLE_TEAM },
+				model: {
+					provider: "radient",
+					model_id: "mock-model",
+					reasoning_effort: null,
+				},
+				peer: "damians-macbook",
+				createRequestId: "create-warm-1",
+				admissionRequestId: "admit-warm-1",
+				draftRequestId: "mint-request-1",
+				warmId: WARM_DEAD,
+			},
+		},
+	});
+	useConversationInputStore.setState({
+		inputByConversation: {
+			[TEAM_KEY]: {
+				currentInput: "half a sentence the user typed",
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+			},
+		},
+	});
+}
+
+test("a dead warm id is retired while the draft's own intent and words stay", () => {
+	reset();
+	seedWarmDraft();
+	store.getState().retireDraftWarm(WARM_DEAD);
+	const row = store.getState().drafts[TEAM_KEY];
+	assert.equal(
+		row.warmId,
+		undefined,
+		"the bridge id is gone: the next read of `streamId` opens nothing",
+	);
+	assert.notEqual(
+		row.draftRequestId,
+		"mint-request-1",
+		"the mint's request id is re-minted, or its receipt would replay the dead id",
+	);
+	assert.equal(typeof row.draftRequestId, "string");
+	assert.deepEqual(
+		row.target,
+		{ kind: "team", name: STABLE_TEAM },
+		"the destination is the user's, not a fact about the dead runtime",
+	);
+	assert.equal(row.model?.model_id, "mock-model");
+	assert.equal(row.peer, "damians-macbook");
+	assert.equal(
+		store.getState().activeDraftKey,
+		TEAM_KEY,
+		"the pane is still the new chat it always was",
+	);
+	assert.equal(
+		useConversationInputStore.getState().getCurrentInput(TEAM_KEY),
+		"half a sentence the user typed",
+		"the composer's words are filed under the draft key and do not move",
+	);
+	const minted = row.draftRequestId;
+	store.getState().retireDraftWarm(WARM_DEAD);
+	assert.equal(
+		store.getState().drafts[TEAM_KEY].draftRequestId,
+		minted,
+		"a second verdict about the same warm is a no-op, so a reconnect cannot re-mint",
+	);
+	assert.equal(store.getState().drafts[TEAM_KEY].warmId, undefined);
+});
+
+test("a row that points at a conversation is not retireDraftWarm's to touch", () => {
+	reset();
+	const stable = seedBoundDraft();
+	store.setState((state) => ({
+		drafts: {
+			...state.drafts,
+			[stable]: { ...state.drafts[stable], warmId: WARM_DEAD },
+		},
+	}));
+	store.getState().retireDraftWarm(WARM_DEAD);
+	const row = store.getState().drafts[stable];
+	assert.equal(
+		row.sessionId,
+		DEAD,
+		"the conversation pointer is `retireDraftsForSession`'s, not this action's",
+	);
+	assert.equal(row.warmId, WARM_DEAD, "and its warm is left where it was");
+});
+
+test("the missing notice's press lands on a new chat carrying the whole box, once", () => {
+	reset();
+	store.setState({
+		activeSessionId: DEAD,
+		activeDraftKey: null,
+		drafts: {},
+	});
+	useConversationInputStore.setState({
+		inputByConversation: {
+			[DEAD]: {
+				currentInput: "the words the dead conversation was holding",
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [{ id: "chip-1", path: "/tmp/report.pdf" }],
+			},
+		},
+	});
+	const key = store.getState().startNewChat(DEAD);
+	assert.match(
+		key,
+		/^draft:/,
+		"a plain new chat, the same row the shortcut stages",
+	);
+	assert.equal(store.getState().activeDraftKey, key);
+	/*
+	 * THE WHOLE-ROW MOVE (agent review round 1, R1-1): `returnInFlight` folds the
+	 * payload into `pendingText`/`attachments` for the composer to adopt, so the
+	 * claim is the *row*, not `currentInput` - the retired-draft path's own
+	 * convention.
+	 */
+	const moved = useConversationInputStore.getState().inputByConversation[key];
+	assert.equal(
+		moved?.pendingText,
+		"the words the dead conversation was holding",
+		"the words follow the reader instead of being orphaned under the dead id",
+	);
+	assert.deepEqual(
+		moved?.attachments.map((chip) => chip.path),
+		["/tmp/report.pdf"],
+		"and so does the chip: a file must not stay filed under a conversation that is gone",
+	);
+	assert.equal(
+		useConversationInputStore.getState().inputByConversation[DEAD],
+		undefined,
+		"a move, not a copy: the old key is gone, so nothing can resurrect it",
+	);
+	assert.equal(
+		store.getState().drafts[key].target,
+		undefined,
+		"no destination is guessed from the conversation that is gone",
+	);
+	/*
+	 * AND THE SELECTION IS CLEARED (QA round 1, Q1): a route or a relaunch that
+	 * still names the dead conversation must not re-open it over an empty box.
+	 */
+	assert.equal(store.getState().activeSessionId, null);
+	assert.equal(store.getState().validatingSessionId, null);
+});
+
+/*
+ * THE ROW WHOSE WORDS ARE STILL WAITING TO BE ADOPTED (agent review round 2,
+ * R2-2). `returnInFlight` folds `currentInput` and then deletes the source row,
+ * so a row holding only `pendingText` - a returned payload that landed in the
+ * same turn as the 404, or one whose adoption a masked capture skipped - would
+ * be deleted with its words still in it. The press adopts first, exactly as the
+ * retired-draft path does.
+ */
+test("a row still holding pendingText is adopted before the press deletes it", () => {
+	reset();
+	store.setState({
+		activeSessionId: DEAD,
+		activeDraftKey: null,
+		drafts: {},
+	});
+	useConversationInputStore.setState({
+		inputByConversation: {
+			[DEAD]: {
+				currentInput: "",
+				pendingText: "words still waiting to be adopted",
+				submittedMessages: [],
+				currentHistoryIndex: null,
+				replies: [],
+				attachments: [],
+			},
+		},
+	});
+	const key = store.getState().startNewChat(DEAD);
+	const moved = useConversationInputStore.getState().inputByConversation[key];
+	assert.equal(
+		moved?.pendingText,
+		"words still waiting to be adopted",
+		"the un-adopted words must follow the reader, not be deleted with the row",
+	);
+	assert.equal(
+		useConversationInputStore.getState().inputByConversation[DEAD],
+		undefined,
+		"and the adopted row is still a move, not a copy",
+	);
+});
+
+/*
+ * THE HOOK'S HALF, PINNED AT THE SOURCE. `useCanonicalSessionStream` cannot be
+ * bundled here (it is React and a live stream), and the property that matters is
+ * an ORDER: for a draft's bridge the 404 arm must return before the session
+ * arm's `missing: true` commit, and the session arm must still make it. This
+ * reads the shipped file, so it fails on the base tree and on any refactor that
+ * re-merges the two arms. The behavioural half - the notice absent, the draft
+ * intact and the send landing - is the `team-newchat` driver scene.
+ */
+test("the 404 arm tells a draft's bridge from a conversation, in that order", async () => {
+	const { readFileSync } = await import("node:fs");
+	const source = readFileSync(
+		"src/renderer/src/shared/hooks/use-canonical-session.ts",
+		"utf8",
+	);
+	const branch = source.indexOf(
+		'if (event.kind === "error" && event.status === 404)',
+	);
+	assert.notEqual(branch, -1, "the 404 branch moved; re-read this pin");
+	const tail = source.slice(branch);
+	const draftArm = tail.indexOf("if (!isSession) {");
+	const missingCommit = tail.indexOf("missing: true");
+	assert.notEqual(draftArm, -1, "the draft arm is what this fix adds");
+	assert.ok(
+		draftArm < missingCommit,
+		"the draft arm must be read BEFORE the session arm's missing commit",
+	);
+	const arm = tail.slice(draftArm, missingCommit);
+	assert.match(
+		arm,
+		/retireDraftWarm\(/,
+		"the dead warm is retired through the store action",
+	);
+	assert.match(
+		arm,
+		/return;/,
+		"and the arm returns: no missing, no unavailable",
+	);
+	assert.doesNotMatch(arm, /missing: true/, "the draft arm never commits it");
+	const sessionArm = tail.slice(
+		Math.max(0, missingCommit - 400),
+		missingCommit + 1200,
+	);
+	assert.match(
+		sessionArm,
+		/status: "unavailable"/,
+		"the session arm still paints the terminal state for a conversation",
+	);
+});
