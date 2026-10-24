@@ -2062,7 +2062,21 @@ export function seedPendingSends(
 	if (!entries) return state;
 	let seeded = state;
 	for (const entry of entries.values()) {
-		seeded = appendPendingUser(seeded, entry.id, entry.text, entry.images);
+		/*
+		 * The files travel with the row here for the same reason `applyPendingSend`
+		 * passes them: the seed is what a freshly mounted pane paints FIRST, so a
+		 * seed that dropped them would show the message without its card until the
+		 * owner's durable row arrived - the exact window this function exists to
+		 * close for the row's text.
+		 */
+		seeded = appendPendingUser(
+			seeded,
+			entry.id,
+			entry.text,
+			entry.images,
+			undefined,
+			entry.documents,
+		);
 	}
 	return seeded;
 }
