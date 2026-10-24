@@ -25,7 +25,10 @@
  * the pickers means one cache entry either can read.
  */
 
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	DesktopControlError,
+	desktopResult,
+} from "@shared/api/local-operator/desktop-api";
 import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
 import { keepPreviousData } from "@tanstack/react-query";
 import type { DesktopModelSelection } from "../../../../shared/desktop-contract";
@@ -45,13 +48,27 @@ export type DraftSelectionTarget = {
 /**
  * The readings a DRAFT pane can open a picker for.
  *
- * Two, and not the context reading: nothing has been measured before the first
+ * Three, and not the context reading: nothing has been measured before the first
  * turn, so there is no breakdown to show and no control to offer (R19/R21 of the
  * design). Named by destination rather than by command, because a chip has no
  * command line: the names are the ones `DESTINATIONS` already routes on, so one
  * table still answers "which adapter presents this".
+ *
+ * `/fast` is the one member with no chip to open it (issue #1265): the typed
+ * command is its only door, which is why its row also carries the dispatcher's
+ * `draftSelection` route. The type is the same either way, because the picker
+ * and the pane's selection do not care which door mounted the dialog.
  */
-export type DraftPickerDestination = "session.model" | "session.effort";
+export type DraftPickerDestination =
+	| "session.model"
+	| "session.effort"
+	/*
+	 * `/fast` (issue #1265): the same two-mode shape as the other two, because the
+	 * dial is a property of the model the conversation will be born on and a new
+	 * chat has no session to command. Its pick is a third reading of the one
+	 * `DraftPickerSession` - see `FastPicker`'s draft branch.
+	 */
+	| "session.fast";
 
 /**
  * The one identity string for a selection, in the spelling the picker's rows and
@@ -110,6 +127,15 @@ export function draftPreviewKey(target: DraftSelectionTarget) {
 		target.target?.name ?? null,
 		selectionSelector(target.model),
 		target.model?.reasoning_effort ?? null,
+		/*
+		 * The dial too, and for the reason the model and the rung are here: the
+		 * preview's answer depends on it. Without this key a fast pick re-read the
+		 * SAME cache entry the pane had before the pick - the entry whose snapshot
+		 * says the dial is off - so a confirmed pick would resolve to the reading it
+		 * just replaced: the picker's mark would stay on the old state and the pick
+		 * would look like it did nothing.
+		 */
+		target.model?.fast_mode ?? null,
 	] as const;
 }
 
@@ -265,6 +291,149 @@ export function effortCarry(
 }
 
 /**
+ * What a MODEL pick on a draft says about a fast dial the user had already set.
+ *
+ * The model pick builds a FRESH selection (`{provider, model_id,
+ * reasoning_effort: null}`), because a new model has its own ladder and its own
+ * tier; the fast dial is not part of the new model's identity, so it does not
+ * ride the pick. That is the same act the effort carry refuses to do in
+ * silence (UX U1, design D7), and it is what design review round 1's D1 and
+ * agent review round 1's F2 both filed: set `/fast` On, pick another model from
+ * the chip one click away, and the pane is born standard with nothing said.
+ *
+ * CARRYING THE DIAL IS NOT THE ANSWER, and the review says why: `fast_mode:
+ * true` on a model without the tier is a 422 that refuses the WHOLE pick (the
+ * core raises `fast_mode_unsupported`), so a carry would turn "change model"
+ * into "you cannot change model". So the pick states what happened instead,
+ * read off the RESOLUTION rather than the request - the sentence names the dial
+ * the first turn will actually get.
+ *
+ * The clause is only printed when the pane HAD the dial on: a pane that never
+ * picked one has nothing to report, and an explicit `Off` is not a loss.
+ *
+ * THE OFF SENTENCE NAMES THE CAUSE (round 2's follow-up nit): "fast mode is off"
+ * is the outcome, and the reader's question is why a pick they did not make toggled
+ * it. This function only ever runs for a MODEL PICK, so the cause is always the
+ * change of model.
+ */
+export function fastModelPickNotice(
+	carried: boolean | null | undefined,
+	dial: "on" | "off" | null,
+): string | null {
+	if (carried !== true) return null;
+	if (dial === "on") return "Fast mode stays on for this model.";
+	if (dial === "off") return "Changing the model turned fast mode off.";
+	return "This model does not support fast mode, so it stays off.";
+}
+
+/**
+ * What a pane says when a dial the user SET cannot ride this backend's wire.
+ *
+ * The cause is the SERVICE, not the model, which is why the model-pick sentence
+ * above would be a lie here: the model has the tier, and the daemon refuses the
+ * field. Round 2's F1 follow-up is the case - a draft row persisted with
+ * `fast_mode: true` meets a core that predates `DraftModel.fast_mode` - and the
+ * answer is not to send it and let the whole body 422 (see
+ * `draftModelForWire`), nor to drop it in silence, which is the discard the
+ * effort carry exists to prevent.
+ */
+export const FAST_UNAVAILABLE_SENTENCE =
+	"Fast mode is off: this version of the Local Operator service cannot carry it.";
+
+/**
+ * The notice's own code, so the statement survives the machinery that retires the
+ * lock answer (QA round 2, Q1).
+ *
+ * The sentence above goes into the composer's `muted` register, the same one the
+ * lock answer uses, and the retirement effect keyed on `muted` alone - so on a
+ * restored draft, where nothing is pending, admitting or gated, the line was
+ * cleared in the commit after it was set and never reached the screen.
+ * `lockAnswerOutlived` retires only the lock answer now, which is the one muted
+ * notice that names no code; this states which condition this one is rather than
+ * borrowing the lock's silence.
+ */
+export const FAST_UNAVAILABLE_CODE = "fast_unavailable";
+
+/**
+ * The selection a draft may SEND, given whether this backend carries the dial.
+ *
+ * `DraftModel` is `extra="forbid"` on the core, so a persisted `fast_mode` meets
+ * a backend that cannot parse it with a 422 for the WHOLE body - and the same
+ * field rides `sessions.preview` (draft-selection.ts's own sender),
+ * `sessions.draft` (the warm mint) and `sessions.create`. Dropping it at the
+ * senders is the guard; the ROW is left alone, because the dial was the user's
+ * choice and a capable backend restores it, and the pane says so in the same
+ * breath (`FAST_UNAVAILABLE_SENTENCE`, surfaced by the chat page).
+ *
+ * A selection with no `fast_mode` is returned by IDENTITY: the ordinary body
+ * must stay byte-for-byte what every caller sent before the field existed.
+ */
+export function draftModelForWire(
+	model: DesktopModelSelection | null | undefined,
+	carriesFast: boolean,
+): DesktopModelSelection | null {
+	if (!model) return null;
+	if (carriesFast || model.fast_mode === undefined) return model;
+	const { fast_mode: _dropped, ...rest } = model;
+	return rest;
+}
+
+/**
+ * The sentence a SUCCESSFUL pick's result strip prints, for either shape of pick.
+ *
+ * ONE PLACE FOR THE COMPOSITION, because the two branches used to choose between
+ * `carry.confirmation` and `describe` at the call site - and the model pick's
+ * dial notice lived inside `describe`, so it ran only when no effort rung was
+ * carried (design review round 2, D6: effort -> high, `/fast` -> On, model chip
+ * -> pick B, and the dial went off with nothing said). The notice is composed
+ * AFTER the branch, so it cannot be skipped by the branch that wins.
+ */
+export function pickResultText(input: {
+	/** The effort carry decision, when this pick changes a model and had a rung. */
+	carried: EffortCarry | null;
+	/** The selector the resolved answer names, for `carried.confirmation`. */
+	selector: string;
+	/** The pick's own sentence, used when no carry decision produced one. */
+	described: string;
+	/** The notice that is true regardless of which branch spoke, or `null`. */
+	notice: string | null;
+}): string {
+	const base =
+		input.carried?.checked === true
+			? input.carried.confirmation(input.selector)
+			: input.described;
+	return input.notice ? `${base} ${input.notice}` : base;
+}
+
+/**
+ * What a fast pick says when the REQUEST itself failed.
+ *
+ * The catch used to print `The fast dial could not be set. <error.message>`,
+ * which put the daemon's own text on screen - and on the one deployment the
+ * route meets in the field it put `The request has invalid fields.` there: a
+ * core older than `DraftModel.fast_mode` (local-operator#2848) refuses the whole
+ * body, because that model is `extra="forbid"` (design review round 1, D4).
+ *
+ * Three outcomes, distinguished by what the backend said rather than by the
+ * status alone:
+ *  - `fast_mode_unsupported` is the core's own code for a model without the
+ *    tier, and the reader's next act is to pick another model, not to update
+ *    anything;
+ *  - a 422 WITHOUT a code is the older core that has never heard of the field,
+ *    and that is the update sentence;
+ *  - anything else (a dropped connection, a timeout) names the failure and the
+ *    one thing to try.
+ */
+export function fastPickFailure(error: unknown): string {
+	const refusal = error instanceof DesktopControlError ? error : null;
+	if (refusal?.code === "fast_mode_unsupported")
+		return "This model cannot run fast mode. Pick a model that can.";
+	if (refusal?.status === 422)
+		return "Fast mode is not available on this version of the Local Operator service. Update Local Operator, then try again.";
+	return "Fast mode was not changed. Try again.";
+}
+
+/**
  * Where the pane's resolution IS, for the states in which it has no reading yet.
  *
  * A draft's model and effort readings are the backend's own answer for its
@@ -295,11 +464,26 @@ export type DraftResolution =
  *
  * `staleTime` says the resolution is config state: it changes when the selection
  * changes, not between two paints of one pane.
+ *
+ * THE WIRE MODEL IS FILTERED HERE, at the sender, because the preview is the
+ * first request a persisted `fast_mode` rides (round 2's F1 follow-up): a
+ * backend without `draft_fast` refuses the field for the WHOLE body, so the pane
+ * would fail to resolve anything at all - and the pickers' own previews would
+ * fail with it. The KEY is built from the filtered selection too, so a pane whose
+ * dial cannot ride has the same cache entry as the same selection without one:
+ * two entries would be two answers to one question.
  */
-export function draftPreviewQuery(target: DraftSelectionTarget) {
+export function draftPreviewQuery(
+	target: DraftSelectionTarget,
+	carriesFast: boolean,
+) {
+	const wire: DraftSelectionTarget = {
+		...target,
+		model: draftModelForWire(target.model, carriesFast),
+	};
 	return {
-		queryKey: draftPreviewKey(target),
-		queryFn: () => fetchDraftPreview(target),
+		queryKey: draftPreviewKey(wire),
+		queryFn: () => fetchDraftPreview(wire),
 		placeholderData: keepPreviousData,
 		staleTime: 30_000,
 		retry: false,
