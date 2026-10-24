@@ -2,8 +2,8 @@
 	"ui.chat.pickers.approvals.title": "टूल स्वीकृतियाँ",
 	"ui.chat.pickers.commands.title": "कमांड",
 	"ui.chat.pickers.copy.title": "कॉपी करें",
-	"ui.chat.pickers.credential.forget": "भूलें",
-	"ui.chat.pickers.credential.forget_confirmation": "इस सत्र से {name} भूलें",
+	"ui.chat.pickers.credential.forget": "भुलाएँ",
+	"ui.chat.pickers.credential.forget_confirmation": "इस सत्र से {name} भुलाएँ",
 	"ui.chat.pickers.credential.title": "क्रेडेंशियल",
 	"ui.chat.pickers.effort.title": "तर्क का प्रयास",
 	"ui.chat.pickers.fast.premium_acknowledgement": "मुझे समझ है कि फ़ास्ट मोड में प्रति टोकन लागत ज़्यादा हो सकती है",
@@ -30,7 +30,7 @@
 	"ui.chat.pickers.skills.loading": "लोड हो रहा है",
 	"ui.chat.pickers.skills.title": "कौशल",
 	"ui.chat.pickers.stop.all_sessions": "सभी सत्र ({count, number, ::group-off})",
-	"ui.chat.pickers.stop.confirm": "अभी {count, plural, one {इस सत्र को} other {{count, number, ::group-off} सत्रों को}} रोकें",
+	"ui.chat.pickers.stop.confirm": "अभी {count, plural, =0 {{count, number, ::group-off} सत्र को} one {इस सत्र को} other {{count, number, ::group-off} सत्रों को}} रोकें",
 	"ui.chat.pickers.stop.title": "रोकें",
 	"ui.chat.pickers.theme.title": "थीम"
 }
