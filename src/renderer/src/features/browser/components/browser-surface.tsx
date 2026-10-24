@@ -815,18 +815,17 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			/*
 			 * THE ROUTE HOST IS A FULL-HEIGHT PANEL and the pane host is not. On the
 			 * route the pane's ground reaches y0 (`panel-flush` cancels the shell's
-			 * ordinary-content pad) and, being ONE column, the root is also its own
-			 * `panel-top-pad`: flush pads nothing, so without the pad the tab strip,
-			 * `+`, approvals and page menu sat at y≈4-36 under the drag lane and the
-			 * traffic lights (agent review round 1, F1). In the slot the enclosing
-			 * `browser-pane.tsx` column already pads from y0, so `h-full` is right
-			 * and a second pad here would double it. Both hosts stay `relative` so
-			 * the surface's own absolutes never escape to an unrelated ancestor; the
-			 * permanent address row owns its own in-flow placement below the strip.
+			 * ordinary-content pad). Its chrome child owns the titlebar clearance so
+			 * the reserved lane, tab track and permanent address row share one paint
+			 * owner instead of exposing the pane ground above the tab track. In the
+			 * slot the enclosing `browser-pane.tsx` column already pads from y0, so
+			 * `h-full` is right and a second pad here would double it. Both hosts stay
+			 * `relative` so the surface's own absolutes never escape to an unrelated
+			 * ancestor.
 			 */
 			className={
 				isRoutePage
-					? "panel-flush panel-top-pad relative flex min-h-0 flex-1 flex-col bg-elevated outline-none!"
+					? "panel-flush relative flex min-h-0 flex-1 flex-col bg-elevated outline-none!"
 					: "relative flex h-full min-h-0 flex-col bg-elevated outline-none!"
 			}
 			/* The pane ground of the Browser ROUTE (inside the pane slot the enclosing
@@ -838,6 +837,14 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			data-glass-chrome-live={isRoutePage && glassLivePage ? "" : undefined}
 			data-tour-tag={surfaceTag}
 		>
+			{/* ROUTE CHROME IS ONE OWNER: S5's permanent address row belongs in the
+			    same band as the strip, and the titlebar clearance must paint on that
+			    band rather than on the elevated pane. In a pane the enclosing column
+			    already owns the pad and alpha, so this wrapper adds neither. */}
+			<div
+				className={isRoutePage ? "panel-top-pad bg-sunken" : undefined}
+				data-glass-region={isRoutePage ? "chrome" : undefined}
+			>
 			{/* THE STRIP CONSUMES THESE TWO HANDS, so they are passed through rather than
 			    `void`-ed: a close's own outcome is what bounds its caret restore (review
 			    round 2, A-2), and discarding it here would leave the one caller that needs
@@ -1007,6 +1014,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				addressHistory={(request) => chrome.addressHistory(request)}
 				onStateChanged={chrome.onStateChanged}
 			/>
+			</div>
 			<BrowserFindRow chrome={chrome} returnToPage={findReturnToPage} />
 			{state?.pageControls?.notice && (
 				<output

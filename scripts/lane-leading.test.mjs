@@ -45,6 +45,13 @@ const LIBRARY_PAGE =
 	"src/renderer/src/features/library/components/library-page.tsx";
 const BROWSER_SURFACE =
 	"src/renderer/src/features/browser/components/browser-surface.tsx";
+const BROWSER_TAB_STRIP =
+	"src/renderer/src/features/browser/components/browser-tab-strip.tsx";
+const ROUTE_CHROME_WRAPPER =
+	/className=\{isRoutePage \? "panel-top-pad bg-sunken" : undefined\}[\s\S]{0,200}?data-glass-region=\{isRoutePage \? "chrome" : undefined\}[\s\S]{0,300}?<div ref=\{stripRef\} className="relative">/;
+const STRIP_CHROME_ROLE = /data-glass-region="chrome"/;
+const NESTED_CHROME_TRANSPARENT =
+	/html\[data-glass~="pane"\]\s*\[data-glass-region="chrome"\]\s*\[data-glass-region="chrome"\]\s*\{\s*background-color: transparent;\s*\}/;
 const CHAT_PAGE = "src/renderer/src/features/chat/components/chat-page.tsx";
 const CHAT_CONTENT =
 	"src/renderer/src/features/chat/components/chat-content.tsx";
@@ -109,15 +116,15 @@ const PANEL_COLUMNS = [
 	},
 	{
 		/*
-		 * The Browser ROUTE host is its own panel column as well as its flush root:
-		 * it is one column (strip, toolbar, page), so the root pads itself. Without
-		 * the pad the tab strip, `+`, the approvals button and the page menu sat at
-		 * y≈4-36 under the drag lane and the traffic lights (agent review round 1,
-		 * F1). The pane host is NOT listed: `browser-pane.tsx` pads its column.
+		 * The Browser ROUTE host stays flush and full-height, while its chrome child
+		 * owns the pad and material from y0 through the tab track and permanent
+		 * address row. The pane host is NOT listed: `browser-pane.tsx` pads its own
+		 * column.
 		 */
 		path: BROWSER_SURFACE,
 		classes: [
-			'"panel-flush panel-top-pad relative flex min-h-0 flex-1 flex-col bg-elevated outline-none!"',
+			'"panel-flush relative flex min-h-0 flex-1 flex-col bg-elevated outline-none!"',
+			'className={isRoutePage ? "panel-top-pad bg-sunken" : undefined}',
 		],
 	},
 	{
@@ -227,7 +234,7 @@ test("the panel root utility is the only way a route reaches y0", () => {
 		{
 			path: BROWSER_SURFACE,
 			literal:
-				'"panel-flush panel-top-pad relative flex min-h-0 flex-1 flex-col bg-elevated outline-none!"',
+				'"panel-flush relative flex min-h-0 flex-1 flex-col bg-elevated outline-none!"',
 		},
 		{
 			path: CHAT_PAGE,
@@ -240,6 +247,30 @@ test("the panel root utility is the only way a route reaches y0", () => {
 			`${path} lost its flush root (${literal}): without it the page starts at the shell's ordinary-content pad and its own ground cannot reach y0`,
 		);
 	}
+});
+
+test("the Browser route paints its lane, tab track and address row with one chrome owner", () => {
+	const surface = readSource(BROWSER_SURFACE);
+	const strip = readSource(BROWSER_TAB_STRIP);
+	const styles = readSource("src/renderer/src/styles/index.css");
+	const wrapperAt = surface.search(ROUTE_CHROME_WRAPPER);
+	const stripAt = surface.indexOf("<BrowserTabStrip", wrapperAt);
+	const rowAt = surface.indexOf("<BrowserUrlBar", stripAt);
+	const findAt = surface.indexOf("<BrowserFindRow", rowAt);
+	assert.ok(
+		wrapperAt >= 0 && stripAt > wrapperAt && rowAt > stripAt && findAt > rowAt,
+		"the route-only wrapper must pad and paint through y0 around both the strip and S5's permanent address row, before the find row and page",
+	);
+	assert.match(
+		strip,
+		STRIP_CHROME_ROLE,
+		"the strip keeps its established chrome role and active-tab stacking contract",
+	);
+	assert.match(
+		styles,
+		NESTED_CHROME_TRANSPARENT,
+		"nested route chrome must be transparent so only the lane-and-track wrapper paints chrome alpha",
+	);
 });
 
 test("no flush root leaves its content under the lane", () => {

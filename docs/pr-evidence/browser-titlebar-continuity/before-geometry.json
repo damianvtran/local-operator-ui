@@ -1,0 +1,123 @@
+{
+  "status": "headless-only",
+  "mode": "headless",
+  "nativeCapture": "not attempted; hidden-window validation only",
+  "focusRequested": false,
+  "rest": {
+    "content": {
+      "x": 260,
+      "y": 69,
+      "width": 1120,
+      "height": 831
+    },
+    "strip": {
+      "x": 260,
+      "y": 32,
+      "width": 1120,
+      "height": 37
+    },
+    "popout": null,
+    "barCount": 0,
+    "dockCount": 0,
+    "popoutPresent": false,
+    "addressTrigger": true,
+    "triggerText": "127.0.0.1:56783",
+    "triggerWidth": 123,
+    "hash": "#/browser"
+  },
+  "restBand": {
+    "stripBottom": 69,
+    "pageTop": 69,
+    "stripHeight": 37,
+    "bandPx": 0,
+    "intruders": [],
+    "dockPresentAtRest": false,
+    "dockSelector": "[data-address-dock-height]"
+  },
+  "chrome": {
+    "glassAttribute": "sidebar canvas pane",
+    "glassState": {
+      "capability": {
+        "supported": true,
+        "mechanism": "vibrancy",
+        "reason": "ok",
+        "materials": [
+          "window",
+          "menu",
+          "popover"
+        ],
+        "defaultMaterial": "window",
+        "liquid": true,
+        "defaultEnabled": true,
+        "liveToggle": true
+      },
+      "settings": {
+        "enabled": true,
+        "coverage": "full",
+        "intensity": 50,
+        "material": "window"
+      },
+      "active": true,
+      "restartRequired": false
+    },
+    "owners": [
+      {
+        "tag": "DIV",
+        "rect": {
+          "x": 260,
+          "y": 32,
+          "width": 1120,
+          "height": 37,
+          "top": 32,
+          "right": 1380,
+          "bottom": 69,
+          "left": 260
+        },
+        "background": "color(srgb 0.168627 0.152941 0.129412 / 0.82)",
+        "containsStrip": true
+      }
+    ],
+    "strip": {
+      "x": 260,
+      "y": 32,
+      "width": 1120,
+      "height": 37,
+      "top": 32,
+      "right": 1380,
+      "bottom": 69,
+      "left": 260
+    },
+    "stripBackground": "color(srgb 0.168627 0.152941 0.129412 / 0.82)",
+    "content": {
+      "x": 260,
+      "y": 69,
+      "width": 1120,
+      "height": 831,
+      "top": 69,
+      "right": 1380,
+      "bottom": 900,
+      "left": 260
+    },
+    "sidebar": {
+      "x": 0,
+      "y": 276,
+      "width": 260,
+      "height": 576,
+      "top": 276,
+      "right": 260,
+      "bottom": 852,
+      "left": 0
+    },
+    "activeTab": {
+      "x": 545,
+      "y": 37.25,
+      "width": 166,
+      "height": 31.5,
+      "top": 37.25,
+      "right": 711,
+      "bottom": 68.75,
+      "left": 545
+    },
+    "popout": null
+  }
+}
