@@ -311,7 +311,7 @@ export const AgentDetailsPage: React.FC = () => {
 						onClick={handleBack}
 						aria-label="Back to Agent Hub"
 					>
-						<ArrowLeft />
+						<ArrowLeft className="rtl:-scale-x-100" />
 					</Button>
 					<Avatar className="size-11 shrink-0">
 						<AvatarFallback>

@@ -79,7 +79,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 		<div className="flex flex-col gap-4 pt-6">
 			<div>
 				<h3 className="flex items-center font-semibold text-heading text-ink">
-					<span className="mr-2 flex items-center rounded-sm bg-accent-wash p-1 text-accent">
+					<span className="me-2 flex items-center rounded-sm bg-accent-wash p-1 text-accent">
 						<SlidersHorizontal size={16} aria-hidden="true" />
 					</span>
 					Generation settings
@@ -88,7 +88,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 							variant="ghost"
 							size="icon-sm"
 							type="button"
-							className="ml-1 text-accent"
+							className="ms-1 text-accent"
 							aria-label="More info"
 						>
 							<Info aria-hidden="true" />
@@ -274,7 +274,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 					description="Sequences that will cause the model to stop generating text."
 					defaultValue={[]}
 					defaultDisplayText="empty"
-					icon={<Settings size={16} className="mr-2.5" aria-hidden="true" />}
+					icon={<Settings size={16} className="me-2.5" aria-hidden="true" />}
 					onSetValue={async () => {
 						await updateAgentSetting(
 							"stop",
@@ -405,7 +405,7 @@ export const GenerationSettingsSection: FC<GenerationSettingsSectionProps> = ({
 					description="Random number seed for deterministic generation."
 					defaultValue={42}
 					defaultDisplayText="42"
-					icon={<Settings size={16} className="mr-2.5" aria-hidden="true" />}
+					icon={<Settings size={16} className="me-2.5" aria-hidden="true" />}
 					onSetValue={async () => {
 						await updateAgentSetting(
 							"seed",

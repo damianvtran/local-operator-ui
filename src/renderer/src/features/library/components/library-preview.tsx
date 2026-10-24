@@ -566,7 +566,7 @@ export const LibraryPreview: FC<LibraryPreviewProps> = ({
 						<Button
 							variant="link"
 							size="sm"
-							className="h-auto max-w-full min-w-0 justify-start whitespace-normal text-left"
+							className="h-auto max-w-full min-w-0 justify-start whitespace-normal text-start"
 							title={`${t("ui.library.preview.from_conversation", {
 								title:
 									asset.occurrences[0].session_title ||
