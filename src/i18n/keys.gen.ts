@@ -235,13 +235,20 @@ import frUiShellRail from "./catalogues/fr/ui.shell.rail.json";
 import frUiTeamBridge from "./catalogues/fr/ui.teamBridge.json";
 import hiUiAgentMessages from "./catalogues/hi/ui.agentMessages.json";
 import hiUiAgentMessagesSettings from "./catalogues/hi/ui.agentMessages.settings.json";
+import hiUiAgentsConfig from "./catalogues/hi/ui.agents.config.json";
+import hiUiAgentsDetail from "./catalogues/hi/ui.agents.detail.json";
 import hiUiAgentsDialogs from "./catalogues/hi/ui.agents.dialogs.json";
+import hiUiAgentsEditor from "./catalogues/hi/ui.agents.editor.json";
 import hiUiAgents from "./catalogues/hi/ui.agents.json";
 import hiUiAgentsModels from "./catalogues/hi/ui.agents.models.json";
 import hiUiAgentsNavigation from "./catalogues/hi/ui.agents.navigation.json";
+import hiUiAgentsPage from "./catalogues/hi/ui.agents.page.json";
+import hiUiAgentsPublication from "./catalogues/hi/ui.agents.publication.json";
 import hiUiAgentsRefusals from "./catalogues/hi/ui.agents.refusals.json";
 import hiUiAgentsSettings from "./catalogues/hi/ui.agents.settings.json";
 import hiUiAgentsStarters from "./catalogues/hi/ui.agents.starters.json";
+import hiUiAgentsTeam from "./catalogues/hi/ui.agents.team.json";
+import hiUiAgentsUpload from "./catalogues/hi/ui.agents.upload.json";
 import hiUiBrowserChrome from "./catalogues/hi/ui.browser.chrome.json";
 import hiUiBrowser from "./catalogues/hi/ui.browser.json";
 import hiUiCanvas from "./catalogues/hi/ui.canvas.json";
@@ -267,13 +274,17 @@ import hiUiCommonLoading from "./catalogues/hi/ui.common.loading.json";
 import hiUiCommonModels from "./catalogues/hi/ui.common.models.json";
 import hiUiCommonUpdates from "./catalogues/hi/ui.common.updates.json";
 import hiUiConsole from "./catalogues/hi/ui.console.json";
+import hiUiHubAgents from "./catalogues/hi/ui.hub.agents.json";
 import hiUiHubComments from "./catalogues/hi/ui.hub.comments.json";
+import hiUiHubDownload from "./catalogues/hi/ui.hub.download.json";
 import hiUiHub from "./catalogues/hi/ui.hub.json";
 import hiUiHubTaxonomy from "./catalogues/hi/ui.hub.taxonomy.json";
+import hiUiHubTeams from "./catalogues/hi/ui.hub.teams.json";
 import hiUiInstaller from "./catalogues/hi/ui.installer.json";
 import hiUiLibrary from "./catalogues/hi/ui.library.json";
 import hiUiMesh from "./catalogues/hi/ui.mesh.json";
 import hiUiOnboarding from "./catalogues/hi/ui.onboarding.json";
+import hiUiOnboardingTour from "./catalogues/hi/ui.onboarding.tour.json";
 import hiUiProjects from "./catalogues/hi/ui.projects.json";
 import hiUiProviders from "./catalogues/hi/ui.providers.json";
 import hiUiSchedules from "./catalogues/hi/ui.schedules.json";
@@ -772,13 +783,20 @@ export const bundledCatalogues: Readonly<
 	hi: {
 		...hiUiAgentMessages,
 		...hiUiAgentMessagesSettings,
+		...hiUiAgentsConfig,
+		...hiUiAgentsDetail,
 		...hiUiAgentsDialogs,
+		...hiUiAgentsEditor,
 		...hiUiAgents,
 		...hiUiAgentsModels,
 		...hiUiAgentsNavigation,
+		...hiUiAgentsPage,
+		...hiUiAgentsPublication,
 		...hiUiAgentsRefusals,
 		...hiUiAgentsSettings,
 		...hiUiAgentsStarters,
+		...hiUiAgentsTeam,
+		...hiUiAgentsUpload,
 		...hiUiBrowserChrome,
 		...hiUiBrowser,
 		...hiUiCanvas,
@@ -804,13 +822,17 @@ export const bundledCatalogues: Readonly<
 		...hiUiCommonModels,
 		...hiUiCommonUpdates,
 		...hiUiConsole,
+		...hiUiHubAgents,
 		...hiUiHubComments,
+		...hiUiHubDownload,
 		...hiUiHub,
 		...hiUiHubTaxonomy,
+		...hiUiHubTeams,
 		...hiUiInstaller,
 		...hiUiLibrary,
 		...hiUiMesh,
 		...hiUiOnboarding,
+		...hiUiOnboardingTour,
 		...hiUiProjects,
 		...hiUiProviders,
 		...hiUiSchedules,

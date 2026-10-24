@@ -177,5 +177,11 @@
 	"ui.hub.skills.public_hub": "सार्वजनिक हब",
 	"ui.hub.skills.count": "{count, plural, one {{count, number, ::group-off} कौशल} other {{count, number, ::group-off} कौशल}}",
 	"ui.hub.skills.count_shared": "{count, plural, one {{organization} के साथ साझा {count, number, ::group-off} कौशल} other {{organization} के साथ साझा {count, number, ::group-off} कौशल}}",
-	"ui.hub.skills.inventory_unknown": "लिंक स्थिति उपलब्ध नहीं है।"
+	"ui.hub.skills.inventory_unknown": "लिंक स्थिति उपलब्ध नहीं है।",
+	"ui.hub.pager.agent_pages": "एजेंट पेज",
+	"ui.hub.pager.previous_page": "पिछला पेज",
+	"ui.hub.pager.previous": "पिछला",
+	"ui.hub.pager.next_page": "अगला पेज",
+	"ui.hub.pager.next": "अगला",
+	"ui.hub.pager.page_of": "कुल {count, number, ::group-off} में से पेज {page, number, ::group-off}"
 }

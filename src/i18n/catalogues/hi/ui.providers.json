@@ -187,5 +187,6 @@
 	"ui.providers.provider_detail.the_sign_in_page": "साइन इन पेज",
 	"ui.providers.provider_grid.row_action": "{action}: {brand}",
 	"ui.providers.provider_detail.code_expiry": "कोड की समय-सीमा {minutes, plural, other {{minutes, number, ::group-off} min}} में खत्म होगी",
-	"ui.providers.provider_detail.link_expiry": "लिंक की समय-सीमा {minutes, plural, other {{minutes, number, ::group-off} min}} में खत्म होगी"
+	"ui.providers.provider_detail.link_expiry": "लिंक की समय-सीमा {minutes, plural, other {{minutes, number, ::group-off} min}} में खत्म होगी",
+	"ui.providers.provider_detail.sign_in_again": "फिर साइन इन करें"
 }
