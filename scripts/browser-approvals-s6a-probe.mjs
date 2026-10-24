@@ -80,7 +80,7 @@ app.whenReady().then(async () => {
           // A rebuild can close this view mid-evaluate; the pending promise then
           // never settles, so bound every read rather than hang the whole probe.
           const document = await Promise.race([
-            view.webContents.executeJavaScript("(() => ({ href: location.href, innerWidth, innerHeight, natural: window.__approvalsCard ? window.__approvalsCard.naturalHeight() : null, card: (() => { const r = document.getElementById('approvals-card')?.getBoundingClientRect(); return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null; })() }))()"),
+            view.webContents.executeJavaScript("(() => ({ href: location.href, innerWidth, innerHeight, natural: (() => { const el = document.getElementById('approvals-card'); if (!el) return null; const previous = el.style.maxHeight; el.style.maxHeight = 'none'; const height = el.getBoundingClientRect().height; el.style.maxHeight = previous; return height; })(), card: (() => { const r = document.getElementById('approvals-card')?.getBoundingClientRect(); return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null; })() }))()"),
             new Promise((_, reject) => setTimeout(() => reject(new Error("read-timeout")), 1000)),
           ]);
           last = { view: view.getBounds(), document, facts: snapshot };
@@ -102,7 +102,7 @@ app.whenReady().then(async () => {
     return { view: last ? last.view : null, document: last ? last.document : null, facts: controller.facts(), timeout: true };
   };
   controller.onLayout({ presented: true, contentRect: pageRect, revision: 1 });
-  controller.setPending(2);
+  controller.setModel({ entries: [{ entryId: "s6a-0", origin: "https://example.test", displayAuthority: "Agent", expiresAt: Date.now() + 600000 }, { entryId: "s6a-1", origin: "https://example.test", displayAuthority: "Agent", expiresAt: Date.now() + 600000 }] });
   const shown = await settle(cardViewWidth(${WIDTH}));
   const facts = shown.facts;
   page.webContents.sendInputEvent({ type: "keyDown", keyCode: "b" });
@@ -121,10 +121,10 @@ app.whenReady().then(async () => {
   page.setBounds(pageRect);
   controller.onLayout({ presented: true, contentRect: pageRect, revision: 3 });
   const restored = await settle(cardViewWidth(${WIDTH}));
-  controller.setPending(0);
+  controller.setModel({ entries: [] });
   await new Promise((r) => setTimeout(r, 100));
   const afterHide = { pageBounds: page.getBounds(), pageVisible: page.getVisible(), focused: webContents.getFocusedWebContents()?.id ?? null, pageFocused: page.webContents.isFocused(), cardVisible: controller.facts().visible };
-  controller.setPending(2);
+  controller.setModel({ entries: [{ entryId: "s6a-0", origin: "https://example.test", displayAuthority: "Agent", expiresAt: Date.now() + 600000 }, { entryId: "s6a-1", origin: "https://example.test", displayAuthority: "Agent", expiresAt: Date.now() + 600000 }] });
   await new Promise((r) => setTimeout(r, 800));
   let frame = null;
   const sourceId = win.getMediaSourceId();

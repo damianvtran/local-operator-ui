@@ -19,6 +19,27 @@ import { build } from "esbuild";
 const ROOT = process.cwd();
 const STUB = `
 const state = { views: [], sessions: [], focus: 9 };
+export const ipcListeners = new Map();
+export const ipcMain = {
+  on: (channel, listener) => {
+    const list = ipcListeners.get(channel) ?? [];
+    list.push(listener);
+    ipcListeners.set(channel, list);
+  },
+  removeListener: (channel, listener) => {
+    const list = (ipcListeners.get(channel) ?? []).filter((entry) => entry !== listener);
+    ipcListeners.set(channel, list);
+  },
+};
+export function emitIpc(channel, event, payload) {
+  for (const listener of ipcListeners.get(channel) ?? []) listener(event, payload);
+}
+export function listenerCount(channel) {
+  return (ipcListeners.get(channel) ?? []).length;
+}
+export function resetIpc() {
+  ipcListeners.clear();
+}
 const handlers = new WeakMap();
 export const constructorOptions = [];
 export const focusState = state;
@@ -47,8 +68,10 @@ export class WebContentsView {
     this.focusCalls = 0;
     this.destroyed = false;
     this.handlers = new Map();
+    this.mainFrame = { url: "file:///tmp/browser-approvals-overlay.html" };
     this.webContents = {
       id: 70 + state.views.length,
+      mainFrame: this.mainFrame,
       setWindowOpenHandler: () => {},
       on: (event, cb) => {
         const list = this.handlers.get(event) ?? [];
@@ -71,9 +94,11 @@ export class WebContentsView {
       close: () => {
         this.destroyed = true;
       },
+      // Auto-present must never call this; explicit open uses the host's gated
+      // focusTarget, not webContents.focus(), so the stub still has no path.
       focus: () => {
         this.focusCalls += 1;
-        throw new Error("S6a must not focus the card");
+        throw new Error("the controller must not call webContents.focus()");
       },
     };
     state.views.push(this);
@@ -111,7 +136,10 @@ const bundle = await build({
 		contents: `
       export * from "./src/main/browser/approvals-overlay";
       export * from "./src/main/browser/approvals-overlay-bounds";
+      export * from "./src/main/browser/approvals-overlay-model";
+      export * from "./src/shared/browser-approvals-overlay";
       export * as electron from "electron";
+      export { emitIpc, listenerCount, resetIpc } from "electron";
     `,
 		resolveDir: ROOT,
 	},
@@ -125,6 +153,14 @@ const moduleUrl = `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[
 const mod = await import(moduleUrl);
 
 const rect = (x, y, width, height) => ({ x, y, width, height });
+/** One live queue entry per index; the controller's builder does the rest. */
+const entries = (n) =>
+	Array.from({ length: n }, (_, index) => ({
+		entryId: `entry-${index}`,
+		origin: `https://example${index}.test`,
+		displayAuthority: `Agent ${index}`,
+		expiresAt: Date.now() + 600_000,
+	}));
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
 /**
@@ -263,7 +299,7 @@ test("geometry: resize rebuild keeps the card at the new width", async () => {
 		contentRect: rect(0, 0, 264, 600),
 		revision: 1,
 	});
-	controller.setPending(2);
+	controller.setModel({ entries: entries(2) });
 	await waitFor(
 		() =>
 			controller.facts().ready &&
@@ -340,7 +376,7 @@ test("controller: a zero-width load is not measured as the card height", async (
 		contentRect: rect(0, 0, 1000, 700),
 		revision: 1,
 	});
-	controller.setPending(2);
+	controller.setModel({ entries: entries(2) });
 	assert.equal(
 		children.at(-1).bounds.height,
 		112,
@@ -460,7 +496,7 @@ test("controller: auto-presents unfocused, last, transparent, and hides without 
 		false,
 		"no card before the queue asks",
 	);
-	controller.setPending(2);
+	controller.setModel({ entries: entries(2) });
 	await waitFor(
 		() =>
 			controller.facts().ready &&
@@ -514,7 +550,7 @@ test("controller: auto-presents unfocused, last, transparent, and hides without 
 		contentRect: rect(0, 0, 1000, 700),
 		revision: 5,
 	});
-	controller.setPending(0);
+	controller.setModel({ entries: [] });
 	assert.equal(view.visible, false, "an empty queue hides the card");
 	assert.equal(view.focusCalls, 0);
 	controller.dispose("test");
@@ -546,7 +582,7 @@ test("controller: the opaque fallback is a full-bleed opaque view", async () => 
 		contentRect: rect(0, 0, 264, 600),
 		revision: 1,
 	});
-	controller.setPending(1);
+	controller.setModel({ entries: entries(1) });
 	await waitFor(
 		() => controller.facts().ready && controller.facts().visible,
 		"the opaque card",
@@ -554,5 +590,546 @@ test("controller: the opaque fallback is a full-bleed opaque view", async () => 
 	const view = children.at(-1);
 	assert.equal(view.backgroundColor, "#1b1f24");
 	assert.deepEqual(view.bounds, { x: 0, y: 400, width: 264, height: 200 });
+	controller.dispose("test");
+});
+
+test("geometry: RTL anchors the card's inline end to the content rect's left edge", () => {
+	const ltr = mod.approvalsCardBoundsFor({
+		contentRect: rect(0, 0, 900, 600),
+		naturalHeight: 200,
+		dir: "ltr",
+	});
+	const rtl = mod.approvalsCardBoundsFor({
+		contentRect: rect(0, 0, 900, 600),
+		naturalHeight: 200,
+		dir: "rtl",
+	});
+	assert.equal(ltr.view.x, 900 - 368);
+	assert.equal(
+		rtl.view.x,
+		0,
+		"the view's left edge is the content's left edge",
+	);
+	assert.equal(rtl.card.x, 8, "the card keeps the same 8 DIP inset");
+	assert.equal(rtl.view.y, ltr.view.y, "the vertical anchor is unchanged");
+	assert.equal(rtl.view.width, ltr.view.width);
+});
+
+test("model: hostile fields are rebuilt from the allow-list, never forwarded", () => {
+	const model = mod.sanitizeApprovalsCardModel({
+		v: 1,
+		seq: 7,
+		locale: "fr-FR",
+		dir: "rtl",
+		theme: "purple",
+		view: "evil",
+		focus: "yes",
+		count: 99,
+		busy: 1,
+		error: "boom",
+		request: {
+			entryId: "e1",
+			origin: "https://example.test/path",
+			requester: "x".repeat(100_000),
+			expiresAt: 123,
+		},
+		pending: [{ entryId: "e1", origin: "javascript:alert(1)", requester: "" }],
+	});
+	assert.equal(model.seq, 7);
+	assert.equal(model.dir, "rtl");
+	assert.equal(model.theme, "dark", "an unknown theme is not passed through");
+	assert.equal(model.view, "request");
+	assert.equal(model.focus, false, "only the literal true focuses");
+	assert.equal(model.error, null, "an unknown error code is dropped");
+	assert.equal(
+		model.request.origin,
+		"https://example.test",
+		"the origin is normalised",
+	);
+	assert.equal(model.request.requester.length, 256, "the requester is capped");
+	assert.equal(model.pending.length, 0, "a non-http origin cannot be painted");
+});
+
+test("model: the production queue names the requester, never the site", () => {
+	const model = mod.approvalsCardModelFrom({
+		seq: 1,
+		entries: [
+			{
+				entryId: "e1",
+				origin: "https://example.test",
+				displayAuthority: "example.test",
+				requester: "session:session-a",
+				requesterSessionId: "session-a",
+				expiresAt: Date.now() + 60_000,
+				broad: { scope: "domain", key: "example.test" },
+			},
+			{
+				entryId: "e2",
+				origin: "https://example.test",
+				displayAuthority: "example.test",
+				requester: "session:session-b",
+				requesterSessionId: "session-b",
+				expiresAt: Date.now() + 60_000,
+			},
+		],
+		requesterLabels: {
+			"session-a": "Fix the login flow",
+			"session-b": "Draft a release note",
+		},
+		locale: "en",
+		dir: "ltr",
+		theme: "dark",
+	});
+	assert.equal(model.request.requester, "Fix the login flow");
+	assert.notEqual(model.request.requester, "example.test");
+	assert.equal(model.pending[1].requester, "Draft a release note");
+});
+
+test("model: the app's exact palette survives sanitisation, junk does not", () => {
+	const parsed = (palette) =>
+		mod.sanitizeApprovalsCardModel({
+			v: 1,
+			seq: 1,
+			locale: "fr",
+			dir: "ltr",
+			theme: "light",
+			palette,
+			view: "request",
+			focus: false,
+			count: 0,
+			busy: false,
+			request: null,
+			pending: [],
+			error: null,
+		})?.palette ?? null;
+	assert.equal(parsed("catppuccinLatte"), "catppuccinLatte");
+	assert.equal(parsed("</style><script>"), null);
+});
+
+test("model: a non-session requester is not rendered from the site", () => {
+	const model = mod.approvalsCardModelFrom({
+		seq: 1,
+		entries: [
+			{
+				entryId: "e1",
+				origin: "https://example.test",
+				displayAuthority: "example.test",
+				expiresAt: Date.now() + 60_000,
+				broad: { scope: "domain", key: "example.test" },
+			},
+		],
+		locale: "en",
+		dir: "ltr",
+		theme: "dark",
+	});
+	// The document falls back to its localized "An agent"; main never invents a
+	// label from the requested host (F2).
+	assert.equal(model.request.requester, "");
+	assert.equal(model.request.broadKey, "example.test");
+});
+
+test("model: the pending list is capped and the request skips dismissed entries", () => {
+	const many = Array.from({ length: 40 }, (_, index) => ({
+		entryId: `e${index}`,
+		origin: `https://e${index}.test`,
+		displayAuthority: `Agent ${index}`,
+		expiresAt: Date.now() + 60_000,
+	}));
+	const model = mod.approvalsCardModelFrom({
+		seq: 1,
+		entries: many,
+		locale: "en",
+		dir: "ltr",
+		theme: "dark",
+		dismissed: new Set(["e0"]),
+	});
+	assert.equal(model.pending.length, 20);
+	assert.equal(model.count, 20);
+	assert.equal(model.request.entryId, "e1", "the dismissed entry is skipped");
+});
+
+test("controller: explicit open focuses the card through the gated helper; close returns the page", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+		},
+	};
+	const window = { contentView, isDestroyed: () => false };
+	const focused = [];
+	let pageFocused = 0;
+	const page = {
+		isDestroyed: () => false,
+		focus: () => {
+			pageFocused += 1;
+		},
+	};
+	const controller = new mod.ApprovalsOverlayController({
+		window,
+		documentUrl: "file:///tmp/browser-approvals-overlay.html",
+		pageWebContents: () => page,
+		focusTarget: (target) => {
+			focused.push(target);
+		},
+	});
+	controller.onLayout({
+		presented: true,
+		contentRect: rect(0, 0, 600, 500),
+		revision: 1,
+	});
+	controller.setModel({ entries: entries(1), locale: "fr-FR", dir: "rtl" });
+	await waitFor(
+		() => controller.facts().ready && controller.facts().visible,
+		"the auto-presented card",
+	);
+	assert.equal(focused.length, 0, "auto-present takes no focus");
+	assert.equal(pageFocused, 0);
+	const view = children.at(-1);
+	assert.equal(view.bounds.x, 0, "the RTL model mirrors the native view");
+	assert.equal(controller.facts().explicitOpen, false);
+
+	controller.open({ focus: true });
+	await waitFor(() => focused.length > 0, "the explicit open's focus");
+	assert.equal(focused.at(-1), view.webContents);
+	assert.equal(controller.facts().explicitOpen, true);
+
+	controller.close("test");
+	assert.equal(
+		focused.at(-1),
+		page,
+		"close hands the page to the gated focus helper",
+	);
+	assert.equal(controller.facts().visible, false);
+});
+
+test("controller: the two card channels are sender-pinned, seq-checked and route decisions once", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+		},
+	};
+	const window = { contentView, isDestroyed: () => false };
+	const responded = [];
+	const controller = new mod.ApprovalsOverlayController({
+		window,
+		documentUrl: "file:///tmp/browser-approvals-overlay.html",
+		respond: (entryId, decision) => {
+			responded.push([entryId, decision]);
+			return { ok: true };
+		},
+	});
+	controller.onLayout({
+		presented: true,
+		contentRect: rect(0, 0, 600, 500),
+		revision: 1,
+	});
+	controller.setModel({ entries: entries(2) });
+	await waitFor(
+		() => controller.facts().ready && controller.facts().visible,
+		"the auto-presented card",
+	);
+	const view = children.at(-1);
+	const event = { sender: view.webContents, senderFrame: view.mainFrame };
+	const seq = controller.facts().seq;
+	const entryId = controller.facts().requestEntryId;
+	assert.ok(entryId);
+
+	// A forged sender, a stale seq and an unknown entry all drop without acting.
+	mod.emitIpc(
+		mod.APPROVALS_CARD_DISMISS_CHANNEL,
+		{
+			sender: {},
+			senderFrame: null,
+		},
+		{ seq, entryId },
+	);
+	mod.emitIpc(mod.APPROVALS_CARD_DISMISS_CHANNEL, event, {
+		seq: seq - 1,
+		entryId,
+	});
+	mod.emitIpc("browser-approvals-card-decide", event, {
+		seq,
+		entryId: "not-live",
+		decision: "once",
+	});
+	assert.equal(controller.facts().actions.dropped, 3);
+	assert.equal(responded.length, 0);
+	assert.equal(controller.facts().visible, true);
+
+	// The live entry decides, through the one `respond` callback. The dropped
+	// actions above repainted the card with a fresh seq, so the live action uses
+	// the seq the document now carries (the same rule a real card follows).
+	mod.emitIpc("browser-approvals-card-decide", event, {
+		seq: controller.facts().seq,
+		entryId,
+		decision: "once",
+	});
+	assert.deepEqual(responded, [[entryId, "once"]]);
+	assert.equal(controller.facts().actions.decided, 1);
+
+	// Dismiss closes the card without deciding and drops the count.
+	const nextSeq = controller.facts().seq;
+	mod.emitIpc("browser-approvals-card-dismiss", event, {
+		seq: nextSeq,
+		entryId: controller.facts().requestEntryId,
+	});
+	assert.equal(controller.facts().actions.dismissed, 1);
+	assert.equal(responded.length, 1, "dismiss never decides");
+	controller.dispose("test");
+});
+
+test("controller: dispose detaches both card channels", () => {
+	const controller = new mod.ApprovalsOverlayController({
+		window: { contentView: { children: [] }, isDestroyed: () => false },
+		documentUrl: "file:///tmp/browser-approvals-overlay.html",
+	});
+	mod.resetIpc();
+	controller.dispose("test");
+	assert.equal(mod.listenerCount("browser-approvals-card-dismiss"), 0);
+	assert.equal(mod.listenerCount("browser-approvals-card-decide"), 0);
+});
+
+test("controller: auto-present is not an explicit open, and the latch clears on empty", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+		},
+	};
+	const controller = new mod.ApprovalsOverlayController({
+		window: { contentView, isDestroyed: () => false },
+		documentUrl: "file:///tmp/browser-approvals-overlay.html",
+	});
+	controller.onLayout({
+		presented: true,
+		contentRect: rect(0, 0, 900, 600),
+		revision: 1,
+	});
+	controller.setModel({ entries: entries(1) });
+	await waitFor(
+		() => controller.facts().ready && controller.facts().visible,
+		"auto-present",
+	);
+	// M1: the shield must not read an auto-presented card as "open" — the first
+	// click would close it instead of opening/focusing.
+	assert.equal(controller.state().open, false);
+	assert.equal(controller.state().visible, true);
+	controller.open({ focus: true });
+	assert.equal(controller.state().open, true);
+	controller.close("test");
+	assert.equal(controller.state().open, false);
+	controller.setModel({ entries: [] });
+	assert.equal(controller.state().open, false);
+	assert.equal(controller.state().visible, false);
+	controller.dispose("test");
+});
+
+test("controller: an open with an empty queue arms nothing (M3)", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+		},
+	};
+	const focused = [];
+	const controller = new mod.ApprovalsOverlayController({
+		window: { contentView, isDestroyed: () => false },
+		documentUrl: "file:///tmp/browser-approvals-overlay.html",
+		focusTarget: (target) => focused.push(target),
+	});
+	controller.onLayout({
+		presented: true,
+		contentRect: rect(0, 0, 900, 600),
+		revision: 1,
+	});
+	controller.setModel({ entries: [] });
+	controller.open({ focus: true });
+	assert.equal(controller.state().open, false, "an empty open arms nothing");
+	controller.setModel({ entries: entries(1) });
+	await waitFor(
+		() => controller.facts().ready && controller.facts().visible,
+		"arrival",
+	);
+	assert.equal(focused.length, 0, "the next arrival must not be focused");
+	assert.equal(controller.state().open, false);
+	controller.dispose("test");
+});
+
+test("controller: a fully dismissed queue is recallable from the shield (U3)", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+		},
+	};
+	let changed = 0;
+	const controller = new mod.ApprovalsOverlayController({
+		window: { contentView, isDestroyed: () => false },
+		documentUrl: "file:///tmp/browser-approvals-overlay.html",
+		onChanged: () => {
+			changed += 1;
+		},
+	});
+	controller.onLayout({
+		presented: true,
+		contentRect: rect(0, 0, 900, 600),
+		revision: 1,
+	});
+	controller.setModel({ entries: entries(1) });
+	await waitFor(
+		() => controller.facts().ready && controller.facts().visible,
+		"auto-present",
+	);
+	const view = children.at(-1);
+	const event = { sender: view.webContents, senderFrame: view.mainFrame };
+	mod.emitIpc("browser-approvals-card-dismiss", event, {
+		seq: controller.facts().seq,
+		entryId: controller.facts().requestEntryId,
+	});
+	await waitFor(() => !controller.facts().visible, "dismissed");
+	assert.equal(controller.facts().pending, 1, "still pending and counted");
+	// F1: the card's own dismissal must push the projection and clear the
+	// explicit latch; otherwise the shield's first press is a stale no-op.
+	assert.ok(changed > 0, "a card dismissal pushed the projection");
+	assert.equal(controller.state().open, false);
+	controller.open({ focus: true });
+	await waitFor(() => controller.facts().visible, "recalled");
+	assert.equal(controller.facts().visible, true);
+	assert.equal(controller.state().open, true);
+	controller.dispose("test");
+});
+
+test("controller: a selected pending entry may be decided, not only the oldest (D9)", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+		},
+	};
+	const responded = [];
+	const controller = new mod.ApprovalsOverlayController({
+		window: { contentView, isDestroyed: () => false },
+		documentUrl: "file:///tmp/browser-approvals-overlay.html",
+		respond: (entryId, decision) => responded.push([entryId, decision]),
+	});
+	controller.onLayout({
+		presented: true,
+		contentRect: rect(0, 0, 900, 600),
+		revision: 1,
+	});
+	controller.setModel({ entries: entries(2) });
+	await waitFor(
+		() => controller.facts().ready && controller.facts().visible,
+		"auto-present",
+	);
+	const view = children.at(-1);
+	mod.emitIpc(
+		"browser-approvals-card-decide",
+		{
+			sender: view.webContents,
+			senderFrame: view.mainFrame,
+		},
+		{
+			seq: controller.facts().seq,
+			entryId: "entry-1",
+			decision: "site",
+		},
+	);
+	assert.deepEqual(responded, [["entry-1", "site"]]);
+	controller.dispose("test");
+});
+
+test("controller: setContext re-pushes the locale and mirrors the view (U5)", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const index = children.indexOf(view);
+			if (index !== -1) children.splice(index, 1);
+		},
+	};
+	const controller = new mod.ApprovalsOverlayController({
+		window: { contentView, isDestroyed: () => false },
+		documentUrl: "file:///tmp/browser-approvals-overlay.html",
+	});
+	controller.onLayout({
+		presented: true,
+		contentRect: rect(0, 0, 900, 600),
+		revision: 1,
+	});
+	controller.setModel({ entries: entries(1), locale: "en", dir: "ltr" });
+	await waitFor(
+		() => controller.facts().ready && controller.facts().visible,
+		"auto-present",
+	);
+	const before = controller.facts().seq;
+	controller.setContext({ locale: "fr", dir: "rtl" });
+	await waitFor(
+		() => controller.facts().bounds?.view?.x === 0,
+		"the RTL layout pass",
+	);
+	assert.ok(controller.facts().seq > before, "the model was re-pushed");
 	controller.dispose("test");
 });

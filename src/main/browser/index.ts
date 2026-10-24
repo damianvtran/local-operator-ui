@@ -40,7 +40,7 @@ import {
 	AddressOverlayController,
 	type AddressOverlayFacts,
 } from "./address-overlay";
-import { ApprovalStore } from "./approvals";
+import { ApprovalStore, type ConsentDecision } from "./approvals";
 import {
 	ApprovalsOverlayController,
 	approvalsExpiryDelay,
@@ -59,7 +59,11 @@ import {
 import { ConsentNotifier } from "./consent-notifier";
 import { DownloadArmer } from "./downloads";
 import type { DriveableView } from "./electron-types";
-import { BrowserHost, isReportableLoadFailure } from "./host";
+import {
+	BrowserHost,
+	isReportableLoadFailure,
+	sessionRequesterOf,
+} from "./host";
 import {
 	PRODUCT_ADDRESS_OVERLAY_EVENT,
 	type RegisterBrowserIpcOptions,
@@ -256,6 +260,8 @@ export interface StartBrowserHostOptions {
 	approvalsOverlay?: {
 		enabled: boolean;
 		documentUrl: string;
+		/** S6b's purpose-built preload for the card document. */
+		preloadPath: string;
 	};
 	log: (message: string) => void;
 }
@@ -860,14 +866,46 @@ async function initializeBrowserHost(
 		 * the registry so the observer can call it, and before `approvals` so the
 		 * store's change hook can push the live count into it.
 		 */
+		/*
+		 * The host is constructed after this controller, and `respondToConsent`
+		 * lives on it; the indirection keeps ONE decision implementation (the
+		 * store's `respond` + `onChanged`) instead of a second copy here.
+		 */
+		let respondToConsent:
+			| ((entryId: string, decision: ConsentDecision) => unknown)
+			| null = null;
 		const approvalsOverlay =
 			options.approvalsOverlay?.enabled === true &&
 			approvalsOverlayEnabled(process.env)
 				? new ApprovalsOverlayController({
 						window: options.window,
 						documentUrl: options.approvalsOverlay.documentUrl,
+						preloadPath: options.approvalsOverlay.preloadPath,
 						opaque: process.platform !== "darwin",
+						// The projection is the renderer's only view of the shield; a
+						// dismissal from the card itself must push it (F1).
+						onChanged: () => notifyChanged(),
 						log,
+						respond: (entryId, decision) => {
+							if (!respondToConsent) {
+								throw new Error("browser_unavailable");
+							}
+							return respondToConsent(entryId, decision);
+						},
+						// The registry narrows its page handle to the fields the action
+						// context uses; the underlying object is an Electron WebContents,
+						// whose `focus()` is what the gated helper needs.
+						pageWebContents: () =>
+							(registry.activeTab?.view.webContents ?? null) as unknown as {
+								isDestroyed(): boolean;
+								focus(): void;
+							} | null,
+						focusTarget: (target) =>
+							focusBrowserChordTarget(
+								options.window,
+								target,
+								options.windowShow,
+							),
 					})
 				: null;
 
@@ -1086,8 +1124,14 @@ async function initializeBrowserHost(
 				clearTimeout(approvalsExpiryTimer);
 				approvalsExpiryTimer = null;
 			}
-			const entries = approvals.pendingEntries();
-			approvalsOverlay?.setPending(entries.length);
+			// The queue's `requester` is an authority boundary; the card gets the
+			// session id so the renderer-pushed display label can name WHO asked
+			// (F2), never the requested site's host.
+			const entries = approvals.pendingEntries().map((entry) => ({
+				...entry,
+				requesterSessionId: sessionRequesterOf(entry.requester),
+			}));
+			approvalsOverlay?.setModel({ entries });
 			if (entries.length === 0) return;
 			const delay = approvalsExpiryDelay(entries);
 			// A small positive margin lets the store's own `now` pass the boundary
@@ -1131,7 +1175,17 @@ async function initializeBrowserHost(
 									? "unavailable"
 									: "platform",
 						},
+			approvalsCard: approvalsOverlay
+				? {
+						open: (input) => approvalsOverlay.open({ focus: true, ...input }),
+						close: () => approvalsOverlay.close("shield"),
+						setContext: (context) => approvalsOverlay.setContext(context),
+						state: () => approvalsOverlay.state(),
+					}
+				: undefined,
 		});
+		respondToConsent = (entryId, decision) =>
+			host.respondToConsent(entryId, decision);
 		// The store exists from here on; every later clear reaches it. Assigned
 		// together with `historyFilePath`, so a host without a store leaves the
 		// slot null and the clear paths simply do not touch history.

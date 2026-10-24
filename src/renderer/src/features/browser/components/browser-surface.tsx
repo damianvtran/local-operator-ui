@@ -8,7 +8,7 @@ import {
 import { Spinner } from "@shared/components/common/spinner";
 import { Badge, countLabel } from "@shared/components/ui";
 import { Button, Tooltip } from "@shared/components/ui";
-import { t } from "@shared/i18n";
+import { currentLocale, resolveLanguage, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { AlertTriangle, Globe, ShieldCheck, X } from "lucide-react";
@@ -47,6 +47,7 @@ import {
 import { BrowserApprovalsDock } from "./browser-approvals-dock";
 import { defaultApprovalHeaderLabel } from "./browser-approvals-tray";
 import { BrowserConsentBar } from "./browser-consent-bar";
+import { requesterLabel } from "./browser-consent-request";
 import { BrowserFileTransferRow } from "./browser-file-transfer-row";
 import { BrowserFindRow } from "./browser-find-row";
 import { BrowserHandOverDialog } from "./browser-hand-over-dialog";
@@ -287,6 +288,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	   from (round-2 Q2-2). */
 	const pageMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
 	const [dockOpen, setDockOpen] = useState(false);
+
 	/* A menu-opened dock mounts while Radix is still closing; the heading focus is
 	   re-requested once the menu has handed focus back (round 3, U13). */
 	const [dockFocusRequest, setDockFocusRequest] = useState(0);
@@ -330,6 +332,95 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	);
 
 	const state = chrome.state;
+	/**
+	 * WHICH SURFACE THE SHIELD DESCRIBES. The native card (S6b) is the product
+	 * path when the launch built it; the DOM dock is the fallback. One boolean
+	 * feeds the button's selected style, aria-expanded and toggle, so the two
+	 * states cannot disagree.
+	 */
+	const nativeApprovalsCard = state?.approvalsCard;
+	const approvalsOpen = nativeApprovalsCard?.available
+		? Boolean(nativeApprovalsCard.open)
+		: dockOpen;
+	/*
+	 * THE CARD'S LOCALE FOLLOWS THE APP, INCLUDING WHEN IT AUTO-PRESENTS (U5).
+	 * The renderer is the only side that resolves the locale, so it pushes the
+	 * resolved tag and direction to main whenever the route mounts or the locale
+	 * changes; without this the card rendered in `en` until the first explicit
+	 * open, because only `open()` carried the context.
+	 */
+	const locale = currentLocale();
+	/*
+	 * THE MODE COMES FROM THE APP'S OWN SIGNAL, not from the palette's name (F3):
+	 * nine shipped light palettes (alucard, catppuccinLatte, iceberg,
+	 * kanagawaLotus, linen, paper, rosePineDawn, sage, tokyoNightDay) do not
+	 * contain "light", and the old substring test painted all of them dark. The
+	 * exact palette name travels too, so the card paints in the user's palette
+	 * rather than localOperatorLight/Dark.
+	 */
+	const cardPalette =
+		typeof document !== "undefined"
+			? (document.documentElement.dataset.theme ?? null)
+			: null;
+	const cardTheme =
+		typeof document !== "undefined" &&
+		document.documentElement.classList.contains("dark")
+			? "dark"
+			: "light";
+	/*
+	 * WHO ASKED, resolved by the side that has the session titles (F2). The queue
+	 * carries only `requesterSessionId`; main cannot name a conversation, and the
+	 * queue's `requester` is an authority boundary. The map is memoised on the
+	 * ids so a projection tick with the same queue does not restart the card's
+	 * measurement.
+	 */
+	const requesterIdsKey = (state?.pendingConsent ?? [])
+		.map((row) => row.requesterSessionId ?? "")
+		.filter(Boolean)
+		.join("|");
+	const requesterLabels = useMemo(() => {
+		// The labels are catalogue text; touching the locale makes a language
+		// switch invalidate this map (requesterLabel has no locale parameter).
+		void locale;
+		const labels: Record<string, string> = {};
+		for (const id of requesterIdsKey.split("|")) {
+			if (id && !labels[id]) labels[id] = requesterLabel(id, sessions);
+		}
+		return labels;
+		// `locale` is a dependency because `requesterLabel` formats through the
+		// catalogue: a language switch must relabel the map, not only re-push it.
+	}, [requesterIdsKey, sessions, locale]);
+	useEffect(() => {
+		if (!nativeApprovalsCard?.available) return;
+		void window.api?.browser.setApprovalsCardContext({
+			locale,
+			dir: resolveLanguage(locale).dir,
+			theme: cardTheme,
+			palette: cardPalette,
+			requesterLabels,
+		});
+	}, [
+		nativeApprovalsCard?.available,
+		locale,
+		cardTheme,
+		cardPalette,
+		requesterLabels,
+	]);
+	/*
+	 * KEYBOARD ENTRY IS THE SHIELD, AND CLOSING MUST GIVE IT BACK (U1). Close and
+	 * Escape focus the page in main; the shield is app DOM, not page content, so
+	 * the trigger button is focused here on the true→false transition. Without
+	 * this a keyboard user who opened the card had no way back into the chrome.
+	 */
+	const cardWasOpen = useRef(false);
+	useEffect(() => {
+		const isOpen = Boolean(nativeApprovalsCard?.open);
+		if (cardWasOpen.current && !isOpen) {
+			approvalsTriggerRef.current?.focus();
+		}
+		cardWasOpen.current = isOpen;
+	}, [nativeApprovalsCard?.open]);
+
 	// The scope filter, applied to the projection the strip, the URL bar and the
 	// waiting chips all read. `state?.tabs` is a fresh array per projection, so the
 	// filter is memoised on it rather than on `state`.
@@ -944,12 +1035,33 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 										<Button
 											ref={approvalsTriggerRef}
 											variant={
-												queue.count > 0 || dockOpen ? "outline" : "ghost"
+												queue.count > 0 || approvalsOpen ? "outline" : "ghost"
 											}
 											size="icon-sm"
-											className={dockOpen ? "bg-row-selected" : undefined}
-											onClick={() => setDockOpen((open) => !open)}
-											aria-expanded={dockOpen}
+											className={approvalsOpen ? "bg-row-selected" : undefined}
+											onClick={() => {
+												/*
+												 * S6b: when the host built the native card, the shield
+												 * opens THAT surface (focused) instead of the DOM dock;
+												 * the dock is the fallback for a launch without it.
+												 * The locale/direction are resolved in the renderer
+												 * because main has no catalogue (UX U2).
+												 */
+												if (nativeApprovalsCard?.available) {
+													if (nativeApprovalsCard.open) {
+														void window.api?.browser.closeApprovalsCard();
+													} else {
+														const locale = currentLocale();
+														void window.api?.browser.openApprovalsCard({
+															locale,
+															dir: resolveLanguage(locale).dir,
+														});
+													}
+													return;
+												}
+												setDockOpen((open) => !open);
+											}}
+											aria-expanded={approvalsOpen}
 											aria-label={
 												queue.count > 0
 													? t("ui.browser.browser_url_bar.approvals_waiting", {
@@ -1059,24 +1171,25 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			    resolved row the user is still reading (spec 3.4's bounded memory). One
 			    pending request and no resolved rows is the common case and the tray then
 			    renders the card alone, which is the band the user already knows. */}
-			{(queue.rows.length > 0 || queue.resolved.length > 0) && (
-				// `aria-live` because this band appears without the user's action: the
-				// agent navigated, and the prompt must be announced rather than merely
-				// painted (design 9.2's whole reason for the bar).
-				<div aria-live="polite">
-					<BrowserConsentBar
-						rows={queue.rows}
-						resolved={queue.resolved}
-						selectedEntryId={selectedRow?.request.entryId ?? null}
-						onSelect={setSelectedEntryId}
-						busy={busy}
-						onDecide={decide}
-						dockOpen={dockOpen}
-						onToggleDock={() => setDockOpen((open) => !open)}
-						headerLabel={approvalHeaderLabel}
-					/>
-				</div>
-			)}
+			{!nativeApprovalsCard?.available &&
+				(queue.rows.length > 0 || queue.resolved.length > 0) && (
+					// `aria-live` because this band appears without the user's action: the
+					// agent navigated, and the prompt must be announced rather than merely
+					// painted (design 9.2's whole reason for the bar).
+					<div aria-live="polite">
+						<BrowserConsentBar
+							rows={queue.rows}
+							resolved={queue.resolved}
+							selectedEntryId={selectedRow?.request.entryId ?? null}
+							onSelect={setSelectedEntryId}
+							busy={busy}
+							onDecide={decide}
+							dockOpen={dockOpen}
+							onToggleDock={() => setDockOpen((open) => !open)}
+							headerLabel={approvalHeaderLabel}
+						/>
+					</div>
+				)}
 			{chrome.error && (
 				<output
 					className="flex items-center gap-2 border-control border-b bg-danger-wash px-3 py-1.5"
@@ -1276,7 +1389,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					)}
 				</div>
 				<BrowserApprovalsDock
-					open={dockOpen}
+					open={nativeApprovalsCard?.available ? false : dockOpen}
 					focusRequest={dockFocusRequest}
 					rows={queue.rows}
 					resolved={queue.resolved}

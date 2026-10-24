@@ -908,6 +908,26 @@ const api = {
 		reopenTab: (sessionId?: string | null): Promise<unknown> =>
 			ipcRenderer.invoke("browser-reopen-tab", sessionId ?? null),
 		focusPage: (): Promise<void> => ipcRenderer.invoke("browser-focus-page"),
+		/** S6b: open/close the native approvals card. The renderer passes the
+		 * locale and direction it resolved; main has no catalogue, and the card is
+		 * a second document whose lang/dir must follow the app (UX U2). */
+		openApprovalsCard: (input: {
+			locale?: string;
+			dir?: "ltr" | "rtl";
+			theme?: "light" | "dark";
+			palette?: string | null;
+		}): Promise<unknown> =>
+			ipcRenderer.invoke("browser-approvals-card-open", input),
+		closeApprovalsCard: (): Promise<unknown> =>
+			ipcRenderer.invoke("browser-approvals-card-close"),
+		setApprovalsCardContext: (input: {
+			locale?: string;
+			dir?: "ltr" | "rtl";
+			theme?: "light" | "dark";
+			palette?: string | null;
+			requesterLabels?: Readonly<Record<string, string>>;
+		}): Promise<unknown> =>
+			ipcRenderer.invoke("browser-approvals-card-context", input),
 		onChord: (
 			callback: (
 				message: import("../shared/browser-chord").BrowserChordMessage,

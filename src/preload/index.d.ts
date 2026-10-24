@@ -153,6 +153,22 @@ declare global {
 				setChordFocus: (focused: boolean) => Promise<void>;
 				reopenTab: (sessionId?: string | null) => Promise<unknown>;
 				focusPage: () => Promise<void>;
+				/** S6b: the native approvals card. The renderer passes the resolved
+				 * locale and direction; main has no catalogue. */
+				openApprovalsCard: (input: {
+					locale?: string;
+					dir?: "ltr" | "rtl";
+					theme?: "light" | "dark";
+					palette?: string | null;
+				}) => Promise<unknown>;
+				closeApprovalsCard: () => Promise<unknown>;
+				setApprovalsCardContext: (input: {
+					locale?: string;
+					dir?: "ltr" | "rtl";
+					theme?: "light" | "dark";
+					palette?: string | null;
+					requesterLabels?: Readonly<Record<string, string>>;
+				}) => Promise<unknown>;
 				onChord: (
 					callback: (
 						message: import("../shared/browser-chord").BrowserChordMessage,

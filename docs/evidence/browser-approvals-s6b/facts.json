@@ -1,0 +1,123 @@
+{
+  "at": "2026-10-24T11:44:36Z",
+  "htmlSha": "db94ef2e5fd2",
+  "assets": [
+    "assets/approvalsOverlay-DfX37EO0.js",
+    "assets/approvalsOverlay-Dx9qo8hX.css",
+    "assets/messages-B-6W58IA.js"
+  ],
+  "cells": {
+    "264-dark": {
+      "view": {
+        "x": 0,
+        "y": 306,
+        "width": 264,
+        "height": 414
+      },
+      "card": {
+        "x": 8,
+        "y": 8.234375,
+        "width": 248,
+        "height": 397.765625
+      },
+      "footerTop": 352,
+      "rows": {
+        "Q2-decisions-above-fold": "PASS",
+        "A1-auto-present-unfocused": "PASS",
+        "I6-shield-toggle": "PASS",
+        "I1-allow-once": "PASS",
+        "I2-click-outside": "PASS",
+        "I3-ring-click": "BLOCKED",
+        "I5-page-click-keeps-card": "PASS",
+        "I7-tab-order": "PASS",
+        "I8-stale-seq": "PASS",
+        "I4-escape": "PASS",
+        "G-rtl-anchor": "PASS"
+      }
+    },
+    "264-light": {
+      "view": {
+        "x": 0,
+        "y": 306,
+        "width": 264,
+        "height": 414
+      },
+      "card": {
+        "x": 8,
+        "y": 8.234375,
+        "width": 248,
+        "height": 397.765625
+      },
+      "footerTop": 352,
+      "rows": {
+        "Q2-decisions-above-fold": "PASS",
+        "A1-auto-present-unfocused": "PASS",
+        "I6-shield-toggle": "PASS",
+        "I1-allow-once": "PASS",
+        "I2-click-outside": "PASS",
+        "I3-ring-click": "BLOCKED",
+        "I5-page-click-keeps-card": "PASS",
+        "I7-tab-order": "PASS",
+        "I8-stale-seq": "PASS",
+        "I4-escape": "PASS",
+        "G-rtl-anchor": "PASS"
+      }
+    },
+    "900-dark": {
+      "view": {
+        "x": 532,
+        "y": 355,
+        "width": 368,
+        "height": 365
+      },
+      "card": {
+        "x": 8,
+        "y": 8.2265625,
+        "width": 352,
+        "height": 348.7734375
+      },
+      "footerTop": 303,
+      "rows": {
+        "Q2-decisions-above-fold": "PASS",
+        "A1-auto-present-unfocused": "PASS",
+        "I6-shield-toggle": "PASS",
+        "I1-allow-once": "PASS",
+        "I2-click-outside": "PASS",
+        "I3-ring-click": "BLOCKED",
+        "I5-page-click-keeps-card": "PASS",
+        "I7-tab-order": "PASS",
+        "I8-stale-seq": "PASS",
+        "I4-escape": "PASS",
+        "G-rtl-anchor": "PASS"
+      }
+    },
+    "900-light": {
+      "view": {
+        "x": 532,
+        "y": 355,
+        "width": 368,
+        "height": 365
+      },
+      "card": {
+        "x": 8,
+        "y": 8.2265625,
+        "width": 352,
+        "height": 348.7734375
+      },
+      "footerTop": 303,
+      "rows": {
+        "Q2-decisions-above-fold": "PASS",
+        "A1-auto-present-unfocused": "PASS",
+        "I6-shield-toggle": "PASS",
+        "I1-allow-once": "PASS",
+        "I2-click-outside": "PASS",
+        "I3-ring-click": "BLOCKED",
+        "I5-page-click-keeps-card": "PASS",
+        "I7-tab-order": "PASS",
+        "I8-stale-seq": "PASS",
+        "I4-escape": "PASS",
+        "G-rtl-anchor": "PASS"
+      }
+    }
+  }
+}

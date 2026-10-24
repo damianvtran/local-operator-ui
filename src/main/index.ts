@@ -4250,6 +4250,10 @@ app
 								approvalsOverlay: {
 									enabled: true,
 									documentUrl: approvalsOverlayDocumentUrl,
+									preloadPath: join(
+										__dirname,
+										"../preload/browser-approvals-overlay.js",
+									),
 								},
 							}
 						: {}),

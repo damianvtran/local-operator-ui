@@ -135,6 +135,9 @@ export const BROWSER_IPC_CHANNELS = [
 	"browser-page-control",
 	"browser-reopen-tab",
 	"browser-focus-page",
+	"browser-approvals-card-open",
+	"browser-approvals-card-close",
+	"browser-approvals-card-context",
 	"browser-new-tab",
 	"browser-reorder-tabs",
 	"browser-tab-action",
@@ -352,6 +355,21 @@ export function registerBrowserIpc(options: RegisterBrowserIpcOptions): void {
 	ipcMain.handle("browser-reopen-tab", (event, sessionId: unknown) =>
 		authorize(event).reopenClosed(optionalConversationOrThrow(sessionId)),
 	);
+	ipcMain.handle("browser-approvals-card-open", (event, input: unknown) => {
+		const host = authorize(event);
+		return host.openApprovalsCard(input);
+	});
+
+	ipcMain.handle("browser-approvals-card-close", (event) => {
+		const host = authorize(event);
+		return host.closeApprovalsCard();
+	});
+
+	ipcMain.handle("browser-approvals-card-context", (event, input: unknown) => {
+		const host = authorize(event);
+		host.setApprovalsCardContext(input);
+	});
+
 	ipcMain.handle("browser-focus-page", (event) => {
 		authorize(event);
 		options.focusPage?.();
