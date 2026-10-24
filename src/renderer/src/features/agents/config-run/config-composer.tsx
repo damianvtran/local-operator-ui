@@ -1066,16 +1066,19 @@ export function ConfigComposer({
 	 * hero keeps its object-free words: it is a different arm, with the heading and
 	 * the chips standing beside it to say what the box is for.
 	 *
-	 * IT MUST FIT ON ONE LINE AT EVERY PANE WIDTH THE APP CAN PRODUCE (design review
-	 * round 2 D1 = QA Q1 = UX U3). The idle docked box is one row tall and does not
-	 * auto-grow, so a placeholder that wraps is clipped mid-sentence with a stray
-	 * scrollbar thumb in an empty box. The narrowest docked pane is 416 px: the
-	 * shell's sidebar docks from 1024 px at up to 320 px wide, and the roster is a
-	 * fixed 288 px. The box's text area is the pane less 88 px of insets (measured:
-	 * 328 px at 416, 388 px at 476). The previous 71-character sentence measured
-	 * 444 px and needed a 532 px pane; this one measures 301 px. It still names the job (a change) and, naming neither
-	 * object, cannot contradict whichever tab is open. Do not lengthen it without
-	 * re-running the pane-width sweep.
+	 * IT MUST STAY READABLE AT EVERY PANE WIDTH THE APP CAN PRODUCE (design review
+	 * round 2 D1 = QA Q1 = UX U3). Readable wrapping is accepted; clipping and
+	 * vertical overflow are not. The idle docked box has a fixed height and does
+	 * not auto-grow, so the native boundary check must inspect the wrapped result
+	 * rather than assume a one-line placeholder. The narrowest docked pane is
+	 * 392 px at native 1000 px: sidebar 320 + roster 288 + detail 392. The box's
+	 * content box is the pane less 88 px of insets: 304 px. Native QA measured the
+	 * unwrapped placeholder at 301.1709 px there, and its frame shows readable
+	 * wrapping with nothing clipped. scrollHeight == clientHeight == 55 proves no
+	 * vertical overflow, not a line count. The previous 71-character sentence
+	 * measured 444 px and needed a 532 px pane. This one still names the job (a
+	 * change) and, naming neither object, cannot contradict whichever tab is open.
+	 * Do not lengthen it without re-running the native pane-width boundary check.
 	 */
 	const placeholder = about
 		? `Change ${about.name}…`
