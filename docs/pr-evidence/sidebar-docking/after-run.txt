@@ -1,0 +1,183 @@
+renderer-driver: frame timezone pinned to America/New_York (ambient TZ=America/Toronto)
+[build] current: assets 2026-10-24T00:47:54.231Z >= sources 2026-10-24T00:42:38.500Z
+[note] csp for this run's backend
+        out/renderer/index.html: http://127.0.0.1:18080 added to frame-src, media-src, img-src (build output only; src/ untouched)
+  serve records 1 linked from /Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/sidebar-docking-merge-b1b252d/config/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking
+  scratch       /Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/driver-tmp/lo-renderer-driver-37910
+  frames        /Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head
+  app cwd       /Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/driver-tmp/lo-renderer-driver-37910/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:18080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0_supports-color@8.1.1/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["filesFacts","hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","soundsArm","soundsEnd","soundsFacts","soundsScrub","soundsScrubFinish","soundsSpeech","stageLiveConsents","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:18080","backend":"http://127.0.0.1:18080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:18080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] the docking scene runs in a hidden, unfocused native window
+[PASS] the isolated fixture populates the sidebar
+[note] synthetic session navigation
+        {"route":"/chat/20a68eacec85"}
+[PASS] the isolated fixture populates the real transcript
+[PASS] sidebar-docking-1380-expanded-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 37.3 vs 32.1 own / 237.3 other
+[note] frame
+        {"label":"sidebar-docking-1380-expanded-dark","path":"/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1380-expanded-dark.png","bytes":254706,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":7}
+[PASS] sidebar-docking-1380-expanded-dark is a settled, toast-free frame
+[note] sidebar-docking-1380-expanded-dark geometry
+        {"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"document":{"scrollWidth":1380,"clientWidth":1380,"bodyScrollWidth":1380},"mode":"docked","sidebar":{"x":0,"y":0,"width":320,"height":900,"right":320,"bottom":900},"chat":{"x":320,"y":0,"width":1016,"height":900,"right":1336,"bottom":900},"rail":{"x":1336,"y":32,"width":44,"height":868,"right":1380,"bottom":900},"row":{"x":320,"y":0,"width":1016,"height":900,"right":1336,"bottom":900},"preference":{"collapsed":false,"width":320},"sheetCount":0,"openDialogCount":0,"sessionRows":3,"populated":{"question":true,"answer":true,"characters":153}}
+[PASS] sidebar-docking-1380-expanded-dark: docked is drawn from collapsed=false
+[PASS] sidebar-docking-1380-expanded-dark: no sidebar overlay sheet or dialog opened
+[PASS] sidebar-docking-1380-expanded-dark: the stored 320px width was not rewritten
+[PASS] sidebar-docking-1380-expanded-dark: no horizontal document overflow
+[PASS] sidebar-docking-1380-expanded-dark: populated conversation remains mounted; a drawn list has rows
+[PASS] the CSS viewport reached 1023px
+[PASS] sidebar-docking-1023-expanded-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 38.7 vs 32.1 own / 237.3 other
+[note] frame
+        {"label":"sidebar-docking-1023-expanded-dark","path":"/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1023-expanded-dark.png","bytes":238545,"pixels":{"width":2046,"height":1800},"viewport":{"width":1023,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":2}
+[PASS] sidebar-docking-1023-expanded-dark is a settled, toast-free frame
+[note] sidebar-docking-1023-expanded-dark geometry
+        {"viewport":{"width":1023,"height":900,"devicePixelRatio":2},"document":{"scrollWidth":1023,"clientWidth":1023,"bodyScrollWidth":1023},"mode":"docked","sidebar":{"x":0,"y":0,"width":320,"height":900,"right":320,"bottom":900},"chat":{"x":320,"y":0,"width":659,"height":900,"right":979,"bottom":900},"rail":{"x":979,"y":32,"width":44,"height":868,"right":1023,"bottom":900},"row":{"x":320,"y":0,"width":659,"height":900,"right":979,"bottom":900},"preference":{"collapsed":false,"width":320},"sheetCount":0,"openDialogCount":0,"sessionRows":3,"populated":{"question":true,"answer":true,"characters":153}}
+[PASS] sidebar-docking-1023-expanded-dark: docked is drawn from collapsed=false
+[PASS] sidebar-docking-1023-expanded-dark: no sidebar overlay sheet or dialog opened
+[PASS] sidebar-docking-1023-expanded-dark: the stored 320px width was not rewritten
+[PASS] sidebar-docking-1023-expanded-dark: no horizontal document overflow
+[PASS] sidebar-docking-1023-expanded-dark: populated conversation remains mounted; a drawn list has rows
+[PASS] sidebar-docking-1023-keyboard-collapsed-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 36.2 vs 32.1 own / 237.3 other
+[note] frame
+        {"label":"sidebar-docking-1023-keyboard-collapsed-dark","path":"/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1023-keyboard-collapsed-dark.png","bytes":129391,"pixels":{"width":2046,"height":1800},"viewport":{"width":1023,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":5}
+[PASS] sidebar-docking-1023-keyboard-collapsed-dark is a settled, toast-free frame
+[note] sidebar-docking-1023-keyboard-collapsed-dark geometry
+        {"viewport":{"width":1023,"height":900,"devicePixelRatio":2},"document":{"scrollWidth":1023,"clientWidth":1023,"bodyScrollWidth":1023},"mode":"strip","sidebar":{"x":0,"y":0,"width":56,"height":900,"right":56,"bottom":900},"chat":{"x":56,"y":0,"width":923,"height":900,"right":979,"bottom":900},"rail":{"x":979,"y":32,"width":44,"height":868,"right":1023,"bottom":900},"row":{"x":56,"y":0,"width":923,"height":900,"right":979,"bottom":900},"preference":{"collapsed":true,"width":320},"sheetCount":0,"openDialogCount":0,"sessionRows":0,"populated":{"question":true,"answer":true,"characters":153}}
+[PASS] sidebar-docking-1023-keyboard-collapsed-dark: strip is drawn from collapsed=true
+[PASS] sidebar-docking-1023-keyboard-collapsed-dark: no sidebar overlay sheet or dialog opened
+[PASS] sidebar-docking-1023-keyboard-collapsed-dark: the stored 320px width was not rewritten
+[PASS] sidebar-docking-1023-keyboard-collapsed-dark: no horizontal document overflow
+[PASS] sidebar-docking-1023-keyboard-collapsed-dark: populated conversation remains mounted; a drawn list has rows
+[PASS] sidebar-docking-1023-keyboard-expanded-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 39.1 vs 32.1 own / 237.3 other
+[note] frame
+        {"label":"sidebar-docking-1023-keyboard-expanded-dark","path":"/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1023-keyboard-expanded-dark.png","bytes":242019,"pixels":{"width":2046,"height":1800},"viewport":{"width":1023,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":5}
+[PASS] sidebar-docking-1023-keyboard-expanded-dark is a settled, toast-free frame
+[note] sidebar-docking-1023-keyboard-expanded-dark geometry
+        {"viewport":{"width":1023,"height":900,"devicePixelRatio":2},"document":{"scrollWidth":1023,"clientWidth":1023,"bodyScrollWidth":1023},"mode":"docked","sidebar":{"x":0,"y":0,"width":320,"height":900,"right":320,"bottom":900},"chat":{"x":320,"y":0,"width":659,"height":900,"right":979,"bottom":900},"rail":{"x":979,"y":32,"width":44,"height":868,"right":1023,"bottom":900},"row":{"x":320,"y":0,"width":659,"height":900,"right":979,"bottom":900},"preference":{"collapsed":false,"width":320},"sheetCount":0,"openDialogCount":0,"sessionRows":3,"populated":{"question":true,"answer":true,"characters":153}}
+[PASS] sidebar-docking-1023-keyboard-expanded-dark: docked is drawn from collapsed=false
+[PASS] sidebar-docking-1023-keyboard-expanded-dark: no sidebar overlay sheet or dialog opened
+[PASS] sidebar-docking-1023-keyboard-expanded-dark: the stored 320px width was not rewritten
+[PASS] sidebar-docking-1023-keyboard-expanded-dark: no horizontal document overflow
+[PASS] sidebar-docking-1023-keyboard-expanded-dark: populated conversation remains mounted; a drawn list has rows
+[PASS] sidebar-docking-1023-pointer-collapsed-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 35.7 vs 32.1 own / 237.3 other
+[note] frame
+        {"label":"sidebar-docking-1023-pointer-collapsed-dark","path":"/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1023-pointer-collapsed-dark.png","bytes":127047,"pixels":{"width":2046,"height":1800},"viewport":{"width":1023,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":1}
+[PASS] sidebar-docking-1023-pointer-collapsed-dark is a settled, toast-free frame
+[note] sidebar-docking-1023-pointer-collapsed-dark geometry
+        {"viewport":{"width":1023,"height":900,"devicePixelRatio":2},"document":{"scrollWidth":1023,"clientWidth":1023,"bodyScrollWidth":1023},"mode":"strip","sidebar":{"x":0,"y":0,"width":56,"height":900,"right":56,"bottom":900},"chat":{"x":56,"y":0,"width":923,"height":900,"right":979,"bottom":900},"rail":{"x":979,"y":32,"width":44,"height":868,"right":1023,"bottom":900},"row":{"x":56,"y":0,"width":923,"height":900,"right":979,"bottom":900},"preference":{"collapsed":true,"width":320},"sheetCount":0,"openDialogCount":0,"sessionRows":0,"populated":{"question":true,"answer":true,"characters":153}}
+[PASS] sidebar-docking-1023-pointer-collapsed-dark: strip is drawn from collapsed=true
+[PASS] sidebar-docking-1023-pointer-collapsed-dark: no sidebar overlay sheet or dialog opened
+[PASS] sidebar-docking-1023-pointer-collapsed-dark: the stored 320px width was not rewritten
+[PASS] sidebar-docking-1023-pointer-collapsed-dark: no horizontal document overflow
+[PASS] sidebar-docking-1023-pointer-collapsed-dark: populated conversation remains mounted; a drawn list has rows
+[PASS] the CSS viewport reached 800px
+[PASS] sidebar-docking-800-collapsed-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 36.3 vs 32.1 own / 237.3 other
+[note] frame
+        {"label":"sidebar-docking-800-collapsed-dark","path":"/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-800-collapsed-dark.png","bytes":120245,"pixels":{"width":1600,"height":1800},"viewport":{"width":800,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":1}
+[PASS] sidebar-docking-800-collapsed-dark is a settled, toast-free frame
+[note] sidebar-docking-800-collapsed-dark geometry
+        {"viewport":{"width":800,"height":900,"devicePixelRatio":2},"document":{"scrollWidth":800,"clientWidth":800,"bodyScrollWidth":800},"mode":"strip","sidebar":{"x":0,"y":0,"width":56,"height":900,"right":56,"bottom":900},"chat":{"x":56,"y":0,"width":700,"height":900,"right":756,"bottom":900},"rail":{"x":756,"y":32,"width":44,"height":868,"right":800,"bottom":900},"row":{"x":56,"y":0,"width":700,"height":900,"right":756,"bottom":900},"preference":{"collapsed":true,"width":320},"sheetCount":0,"openDialogCount":0,"sessionRows":0,"populated":{"question":true,"answer":true,"characters":153}}
+[PASS] sidebar-docking-800-collapsed-dark: strip is drawn from collapsed=true
+[PASS] sidebar-docking-800-collapsed-dark: no sidebar overlay sheet or dialog opened
+[PASS] sidebar-docking-800-collapsed-dark: the stored 320px width was not rewritten
+[PASS] sidebar-docking-800-collapsed-dark: no horizontal document overflow
+[PASS] sidebar-docking-800-collapsed-dark: populated conversation remains mounted; a drawn list has rows
+[PASS] sidebar-docking-800-expanded-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 39.4 vs 32.1 own / 237.3 other
+[note] frame
+        {"label":"sidebar-docking-800-expanded-dark","path":"/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-800-expanded-dark.png","bytes":226540,"pixels":{"width":1600,"height":1800},"viewport":{"width":800,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":1}
+[PASS] sidebar-docking-800-expanded-dark is a settled, toast-free frame
+[note] sidebar-docking-800-expanded-dark geometry
+        {"viewport":{"width":800,"height":900,"devicePixelRatio":2},"document":{"scrollWidth":800,"clientWidth":800,"bodyScrollWidth":800},"mode":"docked","sidebar":{"x":0,"y":0,"width":276,"height":900,"right":276,"bottom":900},"chat":{"x":276,"y":0,"width":480,"height":900,"right":756,"bottom":900},"rail":{"x":756,"y":32,"width":44,"height":868,"right":800,"bottom":900},"row":{"x":276,"y":0,"width":480,"height":900,"right":756,"bottom":900},"preference":{"collapsed":false,"width":320},"sheetCount":0,"openDialogCount":0,"sessionRows":3,"populated":{"question":true,"answer":true,"characters":153}}
+[PASS] sidebar-docking-800-expanded-dark: docked is drawn from collapsed=false
+[PASS] sidebar-docking-800-expanded-dark: no sidebar overlay sheet or dialog opened
+[PASS] sidebar-docking-800-expanded-dark: the stored 320px width was not rewritten
+[PASS] sidebar-docking-800-expanded-dark: no horizontal document overflow
+[PASS] sidebar-docking-800-expanded-dark: populated conversation remains mounted; a drawn list has rows
+[PASS] 800px dock + chat floor + rail tile the viewport exactly
+[PASS] sidebar-docking-800-expanded-light draws the light palette its name claims
+        DOM localOperatorLight #f2ede3; mean luma 236.3 vs 237.3 own / 32.1 other
+[note] frame
+        {"label":"sidebar-docking-800-expanded-light","path":"/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-800-expanded-light.png","bytes":225819,"pixels":{"width":1600,"height":1800},"viewport":{"width":800,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":1}
+[PASS] sidebar-docking-800-expanded-light is a settled, toast-free frame
+[note] sidebar-docking-800-expanded-light geometry
+        {"viewport":{"width":800,"height":900,"devicePixelRatio":2},"document":{"scrollWidth":800,"clientWidth":800,"bodyScrollWidth":800},"mode":"docked","sidebar":{"x":0,"y":0,"width":276,"height":900,"right":276,"bottom":900},"chat":{"x":276,"y":0,"width":480,"height":900,"right":756,"bottom":900},"rail":{"x":756,"y":32,"width":44,"height":868,"right":800,"bottom":900},"row":{"x":276,"y":0,"width":480,"height":900,"right":756,"bottom":900},"preference":{"collapsed":false,"width":320},"sheetCount":0,"openDialogCount":0,"sessionRows":3,"populated":{"question":true,"answer":true,"characters":153}}
+[PASS] sidebar-docking-800-expanded-light: docked is drawn from collapsed=false
+[PASS] sidebar-docking-800-expanded-light: no sidebar overlay sheet or dialog opened
+[PASS] sidebar-docking-800-expanded-light: the stored 320px width was not rewritten
+[PASS] sidebar-docking-800-expanded-light: no horizontal document overflow
+[PASS] sidebar-docking-800-expanded-light: populated conversation remains mounted; a drawn list has rows
+[PASS] the CSS viewport reached 1380px
+[PASS] sidebar-docking-1380-restored-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 37.4 vs 32.1 own / 237.3 other
+[note] frame
+        {"label":"sidebar-docking-1380-restored-dark","path":"/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1380-restored-dark.png","bytes":256912,"pixels":{"width":2760,"height":1800},"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"attempts":2,"stable":true,"toastFree":true,"toastWaitMs":2}
+[PASS] sidebar-docking-1380-restored-dark is a settled, toast-free frame
+[note] sidebar-docking-1380-restored-dark geometry
+        {"viewport":{"width":1380,"height":900,"devicePixelRatio":2},"document":{"scrollWidth":1380,"clientWidth":1380,"bodyScrollWidth":1380},"mode":"docked","sidebar":{"x":0,"y":0,"width":320,"height":900,"right":320,"bottom":900},"chat":{"x":320,"y":0,"width":1016,"height":900,"right":1336,"bottom":900},"rail":{"x":1336,"y":32,"width":44,"height":868,"right":1380,"bottom":900},"row":{"x":320,"y":0,"width":1016,"height":900,"right":1336,"bottom":900},"preference":{"collapsed":false,"width":320},"sheetCount":0,"openDialogCount":0,"sessionRows":3,"populated":{"question":true,"answer":true,"characters":153}}
+[PASS] sidebar-docking-1380-restored-dark: docked is drawn from collapsed=false
+[PASS] sidebar-docking-1380-restored-dark: no sidebar overlay sheet or dialog opened
+[PASS] sidebar-docking-1380-restored-dark: the stored 320px width was not rewritten
+[PASS] sidebar-docking-1380-restored-dark: no horizontal document overflow
+[PASS] sidebar-docking-1380-restored-dark: populated conversation remains mounted; a drawn list has rows
+[PASS] the CSS viewport reached 1023px
+[PASS] the canvas reached the docked mode that requires the sidebar yield
+[PASS] sidebar-docking-1023-canvas-yield-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 40.6 vs 32.1 own / 237.3 other
+[note] frame
+        {"label":"sidebar-docking-1023-canvas-yield-dark","path":"/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1023-canvas-yield-dark.png","bytes":168367,"pixels":{"width":2046,"height":1800},"viewport":{"width":1023,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":4}
+[PASS] sidebar-docking-1023-canvas-yield-dark is a settled, toast-free frame
+[note] sidebar-docking-1023-canvas-yield-dark geometry
+        {"viewport":{"width":1023,"height":900,"devicePixelRatio":2},"document":{"scrollWidth":1023,"clientWidth":1023,"bodyScrollWidth":1023},"mode":"strip","sidebar":{"x":0,"y":0,"width":56,"height":900,"right":56,"bottom":900},"chat":{"x":56,"y":0,"width":480,"height":900,"right":536,"bottom":900},"rail":{"x":979,"y":32,"width":44,"height":868,"right":1023,"bottom":900},"row":{"x":56,"y":0,"width":923,"height":900,"right":979,"bottom":900},"preference":{"collapsed":false,"width":320},"sheetCount":0,"openDialogCount":0,"sessionRows":0,"populated":{"question":true,"answer":true,"characters":153}}
+[PASS] sidebar-docking-1023-canvas-yield-dark: strip is drawn from collapsed=false
+[PASS] sidebar-docking-1023-canvas-yield-dark: no sidebar overlay sheet or dialog opened
+[PASS] sidebar-docking-1023-canvas-yield-dark: the stored 320px width was not rewritten
+[PASS] sidebar-docking-1023-canvas-yield-dark: no horizontal document overflow
+[PASS] sidebar-docking-1023-canvas-yield-dark: populated conversation remains mounted; a drawn list has rows
+[PASS] the canvas closed through its real rail control
+[PASS] sidebar-docking-1023-canvas-restored-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 38.7 vs 32.1 own / 237.3 other
+[note] frame
+        {"label":"sidebar-docking-1023-canvas-restored-dark","path":"/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1023-canvas-restored-dark.png","bytes":240231,"pixels":{"width":2046,"height":1800},"viewport":{"width":1023,"height":900,"devicePixelRatio":2},"attempts":3,"stable":true,"toastFree":true,"toastWaitMs":7}
+[PASS] sidebar-docking-1023-canvas-restored-dark is a settled, toast-free frame
+[note] sidebar-docking-1023-canvas-restored-dark geometry
+        {"viewport":{"width":1023,"height":900,"devicePixelRatio":2},"document":{"scrollWidth":1023,"clientWidth":1023,"bodyScrollWidth":1023},"mode":"docked","sidebar":{"x":0,"y":0,"width":320,"height":900,"right":320,"bottom":900},"chat":{"x":320,"y":0,"width":659,"height":900,"right":979,"bottom":900},"rail":{"x":979,"y":32,"width":44,"height":868,"right":1023,"bottom":900},"row":{"x":320,"y":0,"width":659,"height":900,"right":979,"bottom":900},"preference":{"collapsed":false,"width":320},"sheetCount":0,"openDialogCount":0,"sessionRows":3,"populated":{"question":true,"answer":true,"characters":153}}
+[PASS] sidebar-docking-1023-canvas-restored-dark: docked is drawn from collapsed=false
+[PASS] sidebar-docking-1023-canvas-restored-dark: no sidebar overlay sheet or dialog opened
+[PASS] sidebar-docking-1023-canvas-restored-dark: the stored 320px width was not rewritten
+[PASS] sidebar-docking-1023-canvas-restored-dark: no horizontal document overflow
+[PASS] sidebar-docking-1023-canvas-restored-dark: populated conversation remains mounted; a drawn list has rows
+[note] renderer diagnostics
+        {"consoleEntries":0,"consoleErrors":[],"networkFailures":[],"requestCount":14}
+[PASS] no renderer console errors during docking
+[PASS] no failed network requests during docking
+[PASS] no process from this run outlived its boot
+
+frames: sidebar-docking-1023-canvas-restored-dark.png, sidebar-docking-1023-canvas-yield-dark.png, sidebar-docking-1023-expanded-dark.png, sidebar-docking-1023-keyboard-collapsed-dark.png, sidebar-docking-1023-keyboard-expanded-dark.png, sidebar-docking-1023-pointer-collapsed-dark.png, sidebar-docking-1380-expanded-dark.png, sidebar-docking-1380-restored-dark.png, sidebar-docking-800-collapsed-dark.png, sidebar-docking-800-expanded-dark.png, sidebar-docking-800-expanded-light.png
+frames directory: /Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head
+app log: /Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/driver-tmp/lo-renderer-driver-37910/app-scene.log
+scratch kept: /Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/driver-tmp/lo-renderer-driver-37910 (the frames are also in --out)
+
+ALL CHECKS PASSED

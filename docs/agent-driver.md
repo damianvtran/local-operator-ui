@@ -94,6 +94,22 @@ scene. `--window-size WxH` sets the window (default 1380x900, the app's own
 default). The scratch tree is kept and its path printed; `--clean` removes it,
 `--out <dir>` puts frames somewhere you choose.
 
+**`--scene sidebar-docking` exercises #1077 against a populated synthetic
+conversation on an isolated daemon.** It drives the real Cmd/Ctrl+B chord and
+the strip/dock pointer controls through CDP at 1380, 1023 and 800 CSS px, checks
+the persisted preference and the absence of a sheet, and reads sidebar/chat/rail
+boxes plus document overflow. At 800 with a stored 320px width the drawn dock is
+capped to 276px so the 480px chat floor and 44px rail still fit; widening
+restores 320 without rewriting storage. It also checks the separate canvas
+fit-yield and captures settled dark/light frames. The base tree is the negative
+control: the same scene records its forced strip and overlay failures before the
+head-only matrix continues. Viewport changes use `Emulation.setDeviceMetricsOverride`,
+so the recorded CSS viewport is the asserted size; native-window resize and
+process-restart persistence are independent QA's lanes. The scene requires
+`--backend`, `--backend-records`, `--session <id>`,
+`--seed-onboarding-complete`, and the mock transcript marker named in
+`scripts/sidebar-docking-scene.mjs`.
+
 **`--scene authoring-refresh` is the one scene whose write comes from OUTSIDE the
 app.** Its subject is an agent creating a team or a profile on the backend, so
 the write is an HTTP request from this script's own Node process to the
