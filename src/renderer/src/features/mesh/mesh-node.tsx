@@ -299,22 +299,34 @@ export const MeshNetworkNode: FC<NetworkNodeProps> = ({
 				</span>
 				<span
 					/*
-					 * The member count, and `epoch` as the element's `title` rather than as a
-					 * second line: a lane has one line of room, and the epoch is the fact a
-					 * reader consults once (when something was revoked) rather than the one
-					 * they scan. Keeping it in the title spends no vertical space and keeps
-					 * the number on screen - the plan § 5's node contract, and #498's design
-					 * round 1, D10.
+					 * The LIVE member count, then the revoked count as its own clause, and
+					 * `epoch` as the element's `title` rather than as a second line: a lane
+					 * has one line of room, and the epoch is the fact a reader consults once
+					 * (when something was revoked) rather than the one they scan. Keeping it
+					 * in the title spends no vertical space and keeps the number on screen -
+					 * the plan § 5's node contract, and #498's design round 1, D10.
+					 *
+					 * WHY THIS IS TEXT AND NOT THE DISCLOSURE: a lane is a heading-like
+					 * row with a fixed height in the solved geometry, and the shared
+					 * disclosure's body renders in flow - opening one here would grow a box
+					 * the layout has already priced. The tab's census band above the canvas
+					 * carries the one count that opens into the audit rows
+					 * (`mesh-revoked.tsx`); this lane only reports its network's share.
 					 */
 					title={t("ui.mesh.mesh_list.epoch", { epoch: network.epoch })}
 					className="block truncate text-meta text-ink-dim"
 				>
 					{t("ui.mesh.mesh_graph.device_count", { count: network.memberCount })}
-					{network.revokedCount > 0
-						? t("ui.mesh.mesh_list.revoked_count", {
+					{/* The revoked clause's separator is markup, not the copy's leading space: see
+					 * `mesh-list.tsx` (design review round 1, D2). */}
+					{network.revokedCount > 0 ? (
+						<>
+							{" · "}
+							{t("ui.mesh.mesh_list.revoked_count", {
 								count: network.revokedCount,
-							})
-						: ""}
+							})}
+						</>
+					) : null}
 				</span>
 			</span>
 		</li>

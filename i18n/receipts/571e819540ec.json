@@ -1,0 +1,45 @@
+{
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-chat",
+  "instance": "571e819540ec",
+  "locale": "ru",
+  "namespace": "ui.mesh",
+  "scope": "Final independent audit of ui.mesh.mesh_list.revoked_toggle_label: meaning (revoked membership records, not devices), register, grammar/plural agreement, hi participle read as state, and terminology against each locale's mesh_graph.revoked_membership, mesh_list.revoked_count and mesh_list.member.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "namespaces": {
+    "ui.mesh": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "keys_audited": 1,
+      "new_keys_audited": 1,
+      "sha256": {
+        "en": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
+        "ru": "bced28c8b3e25761ca11d6adb99b113b89ebb552799dbba75458c0a9bb09c789"
+      },
+      "findings": [],
+      "dimensions": {
+        "accuracy": "PASS. Plural accusative after Показать correct; noun of its own revoked_membership, distinct from member=участник.",
+        "register": "PASS. Compact imperative suitable as an accessible control name; sentence case, no terminal punctuation.",
+        "terminology": "PASS unless a finding below says otherwise; checked against the same locale's mesh_graph.revoked_membership, mesh_list.revoked_count and mesh_list.member."
+      },
+      "new_keys": [
+        "ui.mesh.mesh_list.revoked_toggle_label"
+      ],
+      "reason": "Reviewed the new key against the English source, the English context note, and this locale's neighbouring mesh_list keys after the orphan removals."
+    }
+  },
+  "limits": [
+    "No native-speaker sign-off; judgements from grammar and in-catalogue terminology.",
+    "Nothing rendered: the accessible name was not exercised under an assistive technology.",
+    "Only this one key was audited, not the rest of the ui.mesh namespace.",
+    "Same auditor session and model as the first pass (f30162bb4fad); this instance id keys this locale's receipt within that run."
+  ],
+  "findings_summary": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 1
+  },
+  "first_pass_instance": "f30162bb4fad"
+}

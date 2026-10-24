@@ -3118,8 +3118,6 @@ export type MessageParams = {
 	"ui.mesh.mesh_card.reach": undefined;
 	"ui.mesh.mesh_card.recall_to_this_device": undefined;
 	"ui.mesh.mesh_card.remove_from": undefined;
-	"ui.mesh.mesh_card.revoked": undefined;
-	"ui.mesh.mesh_card.revoked_membership": undefined;
 	"ui.mesh.mesh_card.show_in_list": undefined;
 	"ui.mesh.mesh_card.shown_of": { shown: number; total: number };
 	"ui.mesh.mesh_card.status": undefined;
@@ -3182,8 +3180,8 @@ export type MessageParams = {
 	"ui.mesh.mesh_list.name": undefined;
 	"ui.mesh.mesh_list.on_device_no_answer": { device: string };
 	"ui.mesh.mesh_list.on_device_state": { device: string; state: string };
-	"ui.mesh.mesh_list.revoked": undefined;
 	"ui.mesh.mesh_list.revoked_count": { count: number };
+	"ui.mesh.mesh_list.revoked_toggle_label": undefined;
 	"ui.mesh.mesh_list.show_all_panel": { count: number };
 	"ui.mesh.mesh_list.sort_conversations": undefined;
 	"ui.mesh.mesh_list.sort_devices_by": undefined;

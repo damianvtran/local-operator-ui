@@ -605,10 +605,14 @@ export const OverlappingNetworks: Story = {
 
 /**
  * Every named state at once: a suspected identity, an unreachable device carrying
- * the backend's own reason, and a REVOKED membership drawn as a dashed edge.
+ * the backend's own reason, and a REVOKED membership the tab counts but does not
+ * draw as a device.
  *
  * The two devices that take a hue are the ones a reader has to find, which is what
- * the tab's first sentence promises ("where is the odd one out").
+ * the tab's first sentence promises ("where is the odd one out"). `old-laptop` is
+ * the counter-example the change is about: its membership is `active: false`, so
+ * it is an audit row behind the census band's revoked count - NOT a third device card
+ * beside a live peer, which is what the story drew before.
  */
 export const Misconfigured: Story = {
 	render: () => {
