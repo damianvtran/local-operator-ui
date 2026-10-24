@@ -86,6 +86,13 @@ Verified mechanically at commit time: each file decodes as a 1380x900 PNG, the
 full 8-bit value range, i.e. they are real renders rather than blank captures or
 solid fills.
 
+The frames were captured from a build of the remediation commit `63c3d8168`. The
+rebase onto `origin/main` (`4f535bfcb`) that follows it changes no file on either
+surface: `git diff 63c3d8168 HEAD -- src/renderer/src/shared/components/composer
+src/renderer/src/features/chat/components/canvas
+src/renderer/src/shared/api/local-operator src/i18n/catalogues` touches only
+`ui.browser.*`, the browser pane's copy.
+
 Verified by a person/agent reading these bytes at the remediation commit: all
 four `after` frames. The canvas failure frame shows the typed prompt still in
 the field, the field still editable, the row below it and no toast. The composer
