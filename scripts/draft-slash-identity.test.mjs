@@ -59,6 +59,7 @@ const COMPOSER =
 	"src/renderer/src/shared/components/composer/message-input.tsx";
 const SLASH_COMMANDS =
 	"src/renderer/src/features/chat/components/slash-commands.tsx";
+const DISPATCH = "src/renderer/src/features/chat/components/slash-dispatch.ts";
 
 /* Hoisted for the linter (`useTopLevelRegex`), like the assertions they feed. */
 const SLASH_SESSION_STATUS_GATE = /slashSessionId\s*=\s*sessionStatus\s*\?/;
@@ -72,6 +73,11 @@ const SPLASH_CLASS_READS_YIELD =
 	/showSplash\s*\?\s*"flex w-full flex-col items-center gap-6 py-4"/;
 const DRAFT_ROSTER_EMPTY_COPY_GUARD =
 	/emptyCopy:\s*rows\.length === 0\s*\?\s*draftRosterSource/;
+/* The one predicate's call sites (agent review round 1, F5). */
+const DRAFT_ROUTE_CALL = /draftSelectionRoute\(\s*([^)]*)\)/g;
+const DRAFT_ROUTE_CAPABILITIES_ARG = /capabilities\.data/;
+const DRAFT_PRESENTER_FORWARD =
+	/\.\.\.\(carriedDraft \? \{ draft: carriedDraft \} : \{\}\)/;
 
 /*
  * The minimum the bundle's import chain touches at module scope: the stores
@@ -273,8 +279,14 @@ test("the fast row's pick is carried by a draft's own selection (issue #1265)", 
 	 * the first row to declare that, and the typed command is its only door (the
 	 * model and effort dialogs have chips; this one has none), which is why the same
 	 * shared `useDraftPick` resolver the two chips reach is the one it reaches.
+	 *
+	 * ITS VALUE IS THE CAPABILITY ITS PICK NEEDS (agent review round 1, F1), not a
+	 * bare `true`: the draft model is `extra="forbid"` on the core, so a backend
+	 * that can select a draft's model (`draft_selection`) but does not carry the
+	 * dial (`draft_fast`) would refuse the WHOLE body the moment `/fast` opened on
+	 * it. The row names the key; the route asks it.
 	 */
-	assert.equal(DESTINATIONS["session.fast"].draftSelection, true);
+	assert.equal(DESTINATIONS["session.fast"].draftSelection, "draft_fast");
 	for (const [destination, entry] of Object.entries(DESTINATIONS)) {
 		if (entry.kind !== "picker" || destination === "session.fast") continue;
 		assert.equal(
@@ -291,19 +303,45 @@ test("the fast row's pick is carried by a draft's own selection (issue #1265)", 
 	 */
 	assert.equal(destinationNeedsSession("session.fast"), true);
 	const draft = { target: { cwd: "/tmp/example" }, select: () => undefined };
+	/* The two capability documents the route is asked with: a core that carries
+	 * the birth field, and the one that shipped `draft_selection` without it. */
+	const CAPABLE = {
+		desktop_available: true,
+		features: { draft_selection: 1, draft_fast: 1 },
+	};
+	const NO_FAST = {
+		desktop_available: true,
+		features: { draft_selection: 1 },
+	};
 	/*
-	 * Three conditions, and each one is a way the route must answer "no":
+	 * FOUR conditions, and each one is a way the route must answer "no":
 	 */
-	assert.equal(draftSelectionRoute("session.fast", "", draft), draft);
+	assert.equal(draftSelectionRoute("session.fast", "", draft, CAPABLE), draft);
+	/*
+	 * The fourth: the capability the row NAMES (agent review round 1, F1). A core
+	 * that advertises `draft_selection` but not `draft_fast` cannot carry the field
+	 * its pick writes, so the ordinary refusal is the answer - not a dialog whose
+	 * premium acknowledgement can only end in a 422 for the whole create body.
+	 */
+	assert.equal(
+		draftSelectionRoute("session.fast", "", draft, NO_FAST),
+		undefined,
+		"`draft_selection` without `draft_fast` must not open the draft's fast route",
+	);
+	assert.equal(
+		draftSelectionRoute("session.fast", "", draft, undefined),
+		undefined,
+		"no capability answer (an unpaired backend) is not an advertisement",
+	);
 	for (const args of ["on", "off", " on "]) {
 		assert.equal(
-			draftSelectionRoute("session.fast", args, draft),
+			draftSelectionRoute("session.fast", args, draft, CAPABLE),
 			undefined,
 			`\`/fast ${args}\` is the owner's argument form, not the draft's pick`,
 		);
 	}
 	assert.equal(
-		draftSelectionRoute("session.fast", "", undefined),
+		draftSelectionRoute("session.fast", "", undefined, CAPABLE),
 		undefined,
 		"no draft context (no preview answered, or no capability) means the ordinary refusal",
 	);
@@ -319,11 +357,48 @@ test("the fast row's pick is carried by a draft's own selection (issue #1265)", 
 		undefined,
 	]) {
 		assert.equal(
-			draftSelectionRoute(destination, "", draft),
+			draftSelectionRoute(destination, "", draft, CAPABLE),
 			undefined,
 			`${destination} must not be handed the pane's selection`,
 		);
 	}
+});
+
+test("the dispatcher asks the one route predicate at both of its call sites (agent review round 1, F5)", () => {
+	/*
+	 * ONE PREDICATE, TWO CALLERS - the claim the PR body makes and that nothing
+	 * used to guard (agent review round 1, F5). Inline the conditions back into the
+	 * gate and the suite stayed green, so the shared function's whole reason (a row
+	 * cannot be exempted from the refusal without being presented with the context
+	 * it was exempted for) had no regression guard.
+	 *
+	 * Counted rather than named, because the failure this pins is a second COPY of
+	 * the rule: a third call site would itself be a change this test should see, and
+	 * one it can accept deliberately by raising the number here.
+	 */
+	const source = readFileSync(DISPATCH, "utf8");
+	const calls = [...source.matchAll(DRAFT_ROUTE_CALL)];
+	assert.equal(
+		calls.length,
+		2,
+		`expected exactly the gate and the presenter to ask draftSelectionRoute, found ${calls.length}`,
+	);
+	for (const call of calls) {
+		assert.match(
+			call[1],
+			DRAFT_ROUTE_CAPABILITIES_ARG,
+			"both call sites must ask with the backend's own capability document",
+		);
+	}
+	/*
+	 * The PRESENTER half: the gate can exempt a row only if the dialog it mounts is
+	 * handed the pane's selection, and this is the line that does it.
+	 */
+	assert.match(
+		source,
+		DRAFT_PRESENTER_FORWARD,
+		"the presenter must forward the draft the gate passed",
+	);
 });
 
 test("the composer's entity session is gated on the wire's own pattern, not sessionStatus", () => {

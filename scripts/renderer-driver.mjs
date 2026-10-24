@@ -26528,6 +26528,13 @@ async function sceneNewChat(cdp) {
  * path the change must not move. On the base tree the same steps would prove
  * nothing this pair is about.
  *
+ * THE ANSWER IT REQUIRES IS A SETTLED TURN, NOT A SENTENCE (QA round 1, Q2):
+ * the reply's words belong to whichever provider answered, so the check asks for
+ * a completed assistant row (`data-record-kind` + `data-completion-complete`).
+ * It therefore passes against a real provider with a working key and fails on a
+ * turn that never answered - unlike the fixture text it used to require, which
+ * only the rig could ever return.
+ *
  * THE NEW CHAT IS THE OPERATOR'S OWN GESTURE, not a route the scene invented:
  * the app-wide Cmd-N stages a fresh draft exactly as the New chat row does
  * (`sceneNewChat` is the scene that proves that press, and this one reuses
@@ -26770,22 +26777,46 @@ async function sceneSessionlessSlash(cdp) {
 	 *
 	 * THE PAIR IS THE DEFECT AND ITS ABSENCE. `refused` (the base tree) is the
 	 * report: the dispatcher's sentence and no dialog. `open` (this tree) is the
-	 * same dialog a conversation gets, mounted over the draft.
+	 * same dialog a conversation gets, mounted over the draft - on a backend that
+	 * ADVERTISES `draft_fast`. A backend with `draft_selection` and no
+	 * `draft_fast` is the third outcome: the route asks the capability the pick
+	 * writes, refuses before the dialog opens, and the scene reports the update
+	 * sentence as the correct result rather than a missing dialog (agent review
+	 * round 1, F1).
 	 *
 	 * THE PICK IS MADE FOR REAL, because "no pick could be made" was the defect.
 	 * The premium acknowledgement is ticked first - a draft states
 	 * `premium_pricing` for itself now (the dispatcher's `sessionlessActionData`,
 	 * the constant the backend's `native_action` sends a session) - and the `On`
 	 * row's gate is ASSERTED rather than clicked through. What comes back depends
-	 * on the BACKEND, and the scene claims only what holds for both: a backend
-	 * that carries the birth field answers applied and the pane's record carries
-	 * `fast_mode: true`; one that predates it refuses the body (its `DraftModel`
-	 * is `extra="forbid"`), the dialog says so, and the record stays empty. The
-	 * check below is that the DIALOG AND THE RECORD AGREE - which is what rules
-	 * out the silent drop this route must not ship - and `note` records which
-	 * outcome this run got, so a reader is never left to infer it from a frame.
+	 * on the BACKEND, and the scene claims only what holds for every backend that
+	 * reaches the dialog: one that carries the birth field answers applied and the
+	 * pane's record carries `fast_mode: true`; one that advertises the field but
+	 * refuses this model answers `fast_mode_unsupported` (its `DraftModel` is
+	 * `extra="forbid"`, so a refused pick is a refused request), the dialog says
+	 * so, and the record stays empty. The check below is that the DIALOG AND THE
+	 * RECORD AGREE - which is what rules out the silent drop this route must not
+	 * ship - and `note` records which outcome this run got, so a reader is never
+	 * left to infer it from a frame.
 	 */
 	const FAST_REFUSAL = "/fast needs an open conversation. Start one first.";
+	/*
+	 * THE OTHER CORRECT OUTCOME ON THIS TREE (agent review round 1, F1): a backend
+	 * that advertises `draft_selection` without `draft_fast` cannot carry the field
+	 * the pick writes, so the route refuses `/fast` on a draft before the dialog
+	 * opens rather than demanding the premium acknowledgement and answering the
+	 * only pick it offers with a whole-body 422. The scene accepts either outcome
+	 * and says WHICH one it got, because on such a backend the absence of a dialog
+	 * is the fix working, not the defect.
+	 */
+	const FAST_NO_CAPABILITY =
+		"/fast is not available on this version of the Local Operator service. Update Local Operator, then try again.";
+	const FAST_SENTENCES = [FAST_REFUSAL, FAST_NO_CAPABILITY];
+	/* Every one of those sentences present on screen, as an array literal the page
+	 * can evaluate: the scene reports which refusal it saw rather than matching
+	 * one and calling the other a timeout. */
+	const fastSentencesOnScreen = `(${JSON.stringify(FAST_SENTENCES)}).filter((sentence) => document.body.innerText.includes(sentence))`;
+	const fastArrives = `Boolean(document.querySelector('${DIALOG}')) || ${fastSentencesOnScreen}.length > 0`;
 	await clickAt(cdp, `${COMPOSER} textarea`);
 	const fastBox = await clearComposer();
 	check(
@@ -26796,11 +26827,7 @@ async function sceneSessionlessSlash(cdp) {
 	await cdp.send("Input.insertText", { text: "/fast" });
 	await wait(400);
 	await pressEnter();
-	let fastArrived = await waitForCondition(
-		cdp,
-		`Boolean(document.querySelector('${DIALOG}')) || document.body.innerText.includes(${JSON.stringify(FAST_REFUSAL)})`,
-		5_000,
-	);
+	let fastArrived = await waitForCondition(cdp, fastArrives, 5_000);
 	let fastPresses = 1;
 	if (!fastArrived.ok) {
 		/* `/fast` is an inline-argument row (`on`/`off`), so a completed popup can
@@ -26818,35 +26845,29 @@ async function sceneSessionlessSlash(cdp) {
 		}
 		await pressEnter();
 		fastPresses = 2;
-		fastArrived = await waitForCondition(
-			cdp,
-			`Boolean(document.querySelector('${DIALOG}')) || document.body.innerText.includes(${JSON.stringify(FAST_REFUSAL)})`,
-			8_000,
-		);
+		fastArrived = await waitForCondition(cdp, fastArrives, 8_000);
 	}
 	const fastRead = await cdp.evaluate(`(() => {
 		const dialog = document.querySelector('${DIALOG}');
 		const title = dialog ? dialog.querySelector('h2') : null;
 		return {
 			picker: title ? title.textContent.trim() : null,
-			refusal: document.body.innerText.includes(${JSON.stringify(FAST_REFUSAL)})
-				? ${JSON.stringify(FAST_REFUSAL)}
-				: null,
+			refusals: ${fastSentencesOnScreen},
 		};
 	})()`);
 	frames.push(await captureSettled(cdp, `sessionless-fast-${suffix}`));
 	if (!open) {
 		check(
 			"/fast is refused with the dispatcher's own sentence on a draft",
-			fastRead.refusal === FAST_REFUSAL && fastRead.picker === null,
-			`refusal ${JSON.stringify(fastRead.refusal)}, picker ${JSON.stringify(fastRead.picker)} (settled after ${fastArrived.waitedMs}ms on press ${fastPresses})`,
+			fastRead.refusals.includes(FAST_REFUSAL) && fastRead.picker === null,
+			`refusals ${JSON.stringify(fastRead.refusals)}, picker ${JSON.stringify(fastRead.picker)} (settled after ${fastArrived.waitedMs}ms on press ${fastPresses})`,
 		);
 		note(
 			"draft /fast pick skipped",
 			"--slash-expect refused: the base tree has no dialog to pick in, and a click there would be a gesture this run is not making",
 		);
 	}
-	if (open) {
+	if (open && fastRead.picker !== null) {
 		check(
 			"/fast opens its picker on a pane with no conversation",
 			fastRead.picker === "Fast mode",
@@ -26854,8 +26875,26 @@ async function sceneSessionlessSlash(cdp) {
 		);
 		check(
 			"/fast prints no refusal sentence on a draft",
-			fastRead.refusal === null,
-			JSON.stringify(fastRead.refusal),
+			fastRead.refusals.length === 0,
+			JSON.stringify(fastRead.refusals),
+		);
+	}
+	if (open && fastRead.picker === null) {
+		/*
+		 * NO DIALOG IS A RESULT, NOT A TIMEOUT, and it has two causes this check tells
+		 * apart: the capability sentence (a backend without `draft_fast`, where this
+		 * tree's refusal IS the fix) or the ordinary one (a tree whose route never
+		 * arrived - the base half, run under the wrong expectation).
+		 */
+		check(
+			"a backend without draft_fast refuses /fast on a draft before the dialog, with the update sentence",
+			fastRead.refusals.includes(FAST_NO_CAPABILITY) &&
+				!fastRead.refusals.includes(FAST_REFUSAL),
+			`refusals ${JSON.stringify(fastRead.refusals)}, picker ${JSON.stringify(fastRead.picker)} (settled after ${fastArrived.waitedMs}ms on press ${fastPresses})`,
+		);
+		note(
+			"draft /fast pick skipped",
+			"this backend advertises draft_selection without draft_fast, so the draft route is closed by the capability gate and no dialog exists to pick in",
 		);
 	}
 	/*
@@ -26935,13 +26974,6 @@ async function sceneSessionlessSlash(cdp) {
 			`after ${fastClosed.waitedMs}ms`,
 		);
 	}
-	if (open && fastRead.picker !== "Fast mode") {
-		note(
-			"draft /fast pick skipped",
-			"the dialog did not open on this tree, so there is no row to pick - the `opens` check above is the whole answer for this half",
-		);
-	}
-
 	/*
 	 * THE LIVE HALF (open only): a message is sent and answered, and `/theme` on
 	 * the conversation it creates must still present the picker - the
@@ -26999,14 +27031,24 @@ async function sceneSessionlessSlash(cdp) {
 		);
 		const answered = await waitForCondition(
 			cdp,
-			`(() => {
-				const log = document.querySelector('[role="log"]');
-				return Boolean(log && log.textContent.includes("from the mock provider"));
-			})()`,
+			/*
+			 * THE ANSWER'S WORDS ARE THE PROVIDER'S, so this asks for the SHAPE the
+			 * scene needs rather than for a reply text (QA round 1, Q2). The previous
+			 * form required `from the mock provider`, which only the fixture provider
+			 * returns, so the scene could never pass against a real provider even when
+			 * the send, the create and the owner-path `/fast` all worked - a test that
+			 * only passes in the rig. What is required is an ASSISTANT ROW THAT
+			 * COMPLETED WITH TEXT: `data-completion-complete` is emitted only for a
+			 * record that is complete and, for an assistant turn, is no longer
+			 * streaming and carries text (`canonical-transcript.tsx`), so a turn that
+			 * errored before answering has no such row. Which model answered, and what
+			 * it said, is not this scene's subject.
+			 */
+			`(() => Boolean(document.querySelector('[role="log"] [data-record-kind="assistant"][data-completion-complete="true"]')))()`,
 			60_000,
 		);
 		check(
-			"the mock provider answered, so the pane is on a live conversation",
+			"the turn settled as a completed assistant row, so the pane is on a live conversation",
 			answered.ok,
 			`after ${answered.waitedMs}ms`,
 		);

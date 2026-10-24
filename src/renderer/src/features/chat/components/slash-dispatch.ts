@@ -46,7 +46,10 @@ import {
 	useAidaResolver,
 	useAidaTarget,
 } from "@features/aida/use-aida-target";
-import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	type DesktopCapabilities,
+	desktopResult,
+} from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	desktopKeys,
@@ -107,6 +110,7 @@ import type {
 import {
 	DESTINATIONS,
 	destinationNeedsSession,
+	draftSelectionCapability,
 	draftSelectionRoute,
 } from "../pickers/picker-registry";
 import { isNativeAction } from "../pickers/use-picker-backend";
@@ -275,9 +279,55 @@ function draftPickerSpec(
  * One function for the two doors that present a picker without a session (the
  * typed command and `openDraftPicker`), so a row cannot gain the flag through
  * one of them and lose it through the other.
+ *
+ * EXPORTED FOR THE SUITE, not for a second caller (agent review round 1, F3):
+ * the only thing that carries `premium_pricing` to a draft is this function, and
+ * the assertions that used to stand in for it matched pre-existing lines of the
+ * SESSION path, so the gate could have been deleted with the suite green. The
+ * two answers below are asserted directly, and the presenter's use of it is
+ * pinned as source.
  */
-function sessionlessActionData(destination: string): Record<string, unknown> {
+export function sessionlessActionData(
+	destination: string,
+): Record<string, unknown> {
 	return destination === "session.fast" ? { premium_pricing: true } : {};
+}
+
+/**
+ * What the dispatcher says when a draft-route row cannot open, in the words for
+ * WHY.
+ *
+ * Three states, and they were one sentence before (design review round 1, D2):
+ * `/fast on` on a new chat answered "needs an open conversation. Start one
+ * first", which (a) diagnoses a missing conversation the pane does not have and
+ * (b) recommends the dummy-message workaround issue #1265 exists to remove. The
+ * argument form is the only reason the bare route did not carry it, so the
+ * sentence names the form that works - and it only does so where that form
+ * WOULD work: `draftSelectionRoute` decides the bare form's answer, and its
+ * `draft_fast` condition is what makes "type `/fast` on its own" honest rather
+ * than a second false instruction on a backend that cannot carry the dial (agent
+ * review round 1, F1).
+ *
+ * EXPORTED FOR THE SUITE for the same reason `sessionlessActionData` is: the three
+ * answers are copy a reader meets on a reachable path, and only the predicate's
+ * own answers were pinned. The test asserts each branch.
+ */
+export function draftRouteRefusal(
+	name: string,
+	destination: string | undefined,
+	draft: DraftPickerSession | undefined,
+	capabilities: DesktopCapabilities | null | undefined,
+): string {
+	const ordinary = `/${name} needs an open conversation. Start one first.`;
+	/* No draft context: the pane has not answered which model the first turn would
+	 * run (or cannot select one at all), so the bare route has nothing to carry
+	 * and this row's own refusal is still the honest one. */
+	if (!draft) return ordinary;
+	const capability = draftSelectionCapability(destination);
+	if (!capability) return ordinary;
+	if (!desktopFeatureEnabled(capabilities, capability))
+		return `/${name} is not available on this version of the Local Operator service. Update Local Operator, then try again.`;
+	return `/${name} takes no argument on a new chat. Type /${name} on its own to set it for the first message.`;
 }
 
 /**
@@ -1138,6 +1188,7 @@ export function useSlashDispatch({
 					spec.destination,
 					commandArgs,
 					draftPicker,
+					capabilities.data,
 				);
 				invoker.current =
 					document.activeElement instanceof HTMLElement
@@ -1241,6 +1292,7 @@ export function useSlashDispatch({
 					spec.destination,
 					args,
 					draftPicker,
+					capabilities.data,
 				);
 				if (destinationNeedsSession(spec.destination)) {
 					/*
@@ -1257,7 +1309,12 @@ export function useSlashDispatch({
 					 */
 					if (!(draftKind && !chartForm) && !carriedDraft) {
 						note(
-							`/${spec.name} needs an open conversation. Start one first.`,
+							draftRouteRefusal(
+								spec.name,
+								spec.destination,
+								draftPicker,
+								capabilities.data,
+							),
 							true,
 						);
 						return "consumed";
@@ -1650,6 +1707,13 @@ export function useSlashDispatch({
 			 * it without the context it was exempted for.
 			 */
 			draftPicker,
+			/*
+			 * And the document the route's FOURTH condition reads (agent review round 1,
+			 * F1): a `dispatch` closed over a capabilities answer from before the
+			 * negotiation landed would refuse `/fast` on a backend that had just started
+			 * advertising `draft_fast` — or, worse, open it on one that never had.
+			 */
+			capabilities.data,
 		],
 	);
 

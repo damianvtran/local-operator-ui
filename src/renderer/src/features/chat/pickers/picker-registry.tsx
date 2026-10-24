@@ -24,7 +24,11 @@
 import type { FC } from "react";
 import type { NativeDesktopAction } from "../../../../../shared/desktop-control-contract";
 import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
-import type { DesktopFeature } from "../../../shared/api/local-operator/desktop-hooks";
+import type { DesktopCapabilities } from "../../../shared/api/local-operator/desktop-api";
+import {
+	type DesktopFeature,
+	desktopFeatureEnabled,
+} from "../../../shared/api/local-operator/desktop-hooks";
 import type { ChatTarget } from "../../../shared/api/local-operator/profile-hooks";
 import type { ArgumentSource } from "../components/slash-argument-rows";
 import { TAG_INLINE_ARGUMENT } from "../components/slash-argument-rows";
@@ -194,8 +198,19 @@ export type DestinationEntry =
 			 * ordinary sense, which is what keeps the palette's route question and the
 			 * composer's copy answered the same. It only answers when the pane HAS a
 			 * draft to carry the pick — no preview answered, no capability, no route.
+			 *
+			 * ITS VALUE IS THE CAPABILITY THE PICK NEEDS ON THE WIRE, not a bare
+			 * `true` (agent review round 1, F1). `draft_selection` publishes that a
+			 * draft's selection can be picked AT ALL; this names the key that publishes
+			 * the thing THIS row writes. `/fast` writes `fast_mode` on the draft model,
+			 * which only a backend advertising `draft_fast` can carry — the draft model
+			 * is `extra="forbid"` on the core, so a picker opened against a backend
+			 * without it demands a premium acknowledgement whose only outcome is a 422
+			 * for the whole body. Naming the capability on the row (rather than
+			 * inferring it from the destination string) is what makes a new draft-
+			 * writing row state its own requirement.
 			 */
-			draftSelection?: true;
+			draftSelection?: DesktopFeature;
 	  } & ArgsBehavior)
 	| ({
 			kind: "machine-panel";
@@ -422,8 +437,13 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 		 * resolved for the first turn and born with it (issue #1265). The row
 		 * declares the draft route because the typed command is this dial's ONLY
 		 * door — unlike `/model` and `/effort`, it has no strip chip to open it.
+		 *
+		 * AND IT NAMES `draft_fast` BECAUSE THE PICK WRITES `fast_mode`: this row is
+		 * the one that can take a whole create body down with a field the backend
+		 * does not carry. A core with `draft_selection` but without `draft_fast`
+		 * gets the refusal instead of a dialog (agent review round 1, F1).
 		 */
-		draftSelection: true,
+		draftSelection: "draft_fast",
 	},
 	"session.goal": { kind: "picker", component: GoalPicker },
 	"session.loop": { kind: "picker", component: LoopPicker },
@@ -692,15 +712,32 @@ export function destinationNeedsSession(
 }
 
 /**
+ * The capability a row's DRAFT pick needs, when the row declares the route.
+ *
+ * `undefined` means the row does not declare it (every row but `/fast` today),
+ * so there is no draft pick to gate. Kept as its own read rather than inlined
+ * at the two places that need the answer - `draftSelectionRoute` below and the
+ * dispatcher's refusal COPY, which must not tell a reader to try the bare form
+ * on a backend that would refuse that too - so the table remains the one place
+ * that says what a row's draft pick requires (agent review round 1, F1).
+ */
+export function draftSelectionCapability(
+	destination: string | undefined,
+): DesktopFeature | undefined {
+	const entry = destination ? DESTINATIONS[destination] : undefined;
+	return entry?.kind === "picker" ? entry.draftSelection : undefined;
+}
+
+/**
  * The pane's own selection, when THIS row's pick is that selection's to carry.
  *
  * ONE RULE, TWO CALLERS, and that is the whole reason it is a function: the
  * dispatcher's refusal gate asks it to decide whether `/fast` may open on a
  * pane with no conversation, and the presenter asks it again to decide whether
- * the dialog it mounts gets the pane. Two copies of the same three conditions
- * is how a gate would exempt a row whose presenter then dropped the context —
- * a dialog whose pick resolves against nothing and falls back to a session
- * command, which is the defect (issue #1265) this route exists to remove.
+ * the dialog it mounts gets the pane. Two copies of the same conditions is how
+ * a gate would exempt a row whose presenter then dropped the context - a dialog
+ * whose pick resolves against nothing and falls back to a session command,
+ * which is the defect (issue #1265) this route exists to remove.
  *
  * It lives beside `destinationNeedsSession` rather than in the dispatcher
  * because it is a fact about the TABLE (does this row's pick travel a draft's
@@ -709,8 +746,16 @@ export function destinationNeedsSession(
  *
  *   - the row does not declare `draftSelection` (every row but `/fast` today);
  *   - the pane has no draft context (`draftPickable` off, or the preview has not
- *     answered yet — `chat-page.tsx` hands it only once a pick can be honoured),
+ *     answered yet - `chat-page.tsx` hands it only once a pick can be honoured),
  *     so the ordinary refusal is the honest answer;
+ *   - the backend does not advertise the capability the row NAMES. This is the
+ *     fourth condition, and it is the one that keeps a pick off a wire that
+ *     cannot carry it: `draft_selection` says a draft's model can be picked,
+ *     `draft_fast` says the picked body may carry `fast_mode`, and the core's
+ *     draft model is `extra="forbid"`, so a `/fast` opened against a backend
+ *     without the second would demand the premium acknowledgement and then
+ *     refuse the only pick it offers with a 422 for the WHOLE body (agent
+ *     review round 1, F1);
  *   - the command was typed WITH an argument. An argument form is the owner's
  *     path (`/fast on` posts to a session today), and the draft's pick must not
  *     swallow it: this dialog has no argument reading, so a bare word here would
@@ -721,10 +766,11 @@ export function draftSelectionRoute(
 	destination: string | undefined,
 	args: string,
 	draft: DraftPickerSession | undefined,
+	capabilities: DesktopCapabilities | null | undefined,
 ): DraftPickerSession | undefined {
 	if (!draft || args.trim() !== "") return undefined;
-	const entry = destination ? DESTINATIONS[destination] : undefined;
-	if (entry?.kind !== "picker" || entry.draftSelection !== true)
+	const capability = draftSelectionCapability(destination);
+	if (!capability || !desktopFeatureEnabled(capabilities, capability))
 		return undefined;
 	return draft;
 }

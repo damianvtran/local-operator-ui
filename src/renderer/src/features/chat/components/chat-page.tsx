@@ -1478,6 +1478,12 @@ function SessionPanel({
 	 *   - `catalogues` — the picker's list. `models.catalogue` is where its rows come
 	 *     from, and a picker that opens onto an empty list is a dead control wearing
 	 *     a live one's clothes.
+	 *
+	 * `/fast` is NOT one of these chips, and it needs a FOURTH: the core field its
+	 * pick writes (`draft_fast`) is a capability of the row, not of the pane, so
+	 * `draftSelectionRoute` asks it there and this flag stays exactly as it was —
+	 * a core with `draft_selection` but without `draft_fast` keeps its model and
+	 * effort chips AND refuses `/fast` on a draft (agent review round 1, F1).
 	 */
 	/*
 	 * Retire whatever the composer's error line is holding.

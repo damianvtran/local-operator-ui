@@ -102,6 +102,8 @@ import {
 	NO_DRAFT_TARGET,
 	draftPreviewQuery,
 	effortCarry,
+	fastModelPickNotice,
+	fastPickFailure,
 	selectionFromModel,
 	selectionSelector,
 } from "../draft-selection";
@@ -617,6 +619,21 @@ function useDraftPick(
 					 */
 					refusal: (resolved: CanonicalFrontendSync) => string | null;
 				};
+				/**
+				 * What a FAILED request says, when the caller has better words than the
+				 * transport's.
+				 *
+				 * Without it the catch below prints `${refused} ${errorText(error)}`, which
+				 * is the right shape for a model or effort pick (the backend's reason is
+				 * the useful half) and the wrong one for the fast dial: the only failure
+				 * this route meets in the field is a core too old to carry
+				 * `DraftModel.fast_mode`, whose whole-body 422 says `The request has invalid
+				 * fields.` - implementer language naming nothing the reader can act on
+				 * (design review round 1, D4). Owned by the caller because only it knows
+				 * what ITS pick meant, and pure so the mapping is asserted rather than
+				 * read.
+				 */
+				failure?: (error: unknown) => string;
 			},
 		) => {
 			if (!draft) return;
@@ -710,8 +727,16 @@ function useDraftPick(
 				 * one who closed it during the wait — the rule UX U2 set for the session's
 				 * picker, which has the same wait for the opposite reason (a cold runtime
 				 * bind there, a resolution here).
+				 *
+				 * `failure` is the caller's own words for a pick it can describe better
+				 * than the transport can; see its note. Omitted, the reason is appended,
+				 * which is what the model and effort picks want.
 				 */
-				refuse(`${reading.refused} ${errorText(error)}`);
+				refuse(
+					reading.failure
+						? reading.failure(error)
+						: `${reading.refused} ${errorText(error)}`,
+				);
 			} finally {
 				setBusy(false);
 			}
@@ -1421,11 +1446,36 @@ export const ModelPicker: FC<PickerContext> = ({
 				 * (`picked ?? draft.target.model`), advanced by every pick.
 				 */
 				const carried = carriedRung(draftPick.selection);
+				/*
+				 * AND THE DIAL THE PANE HOLDS, for the same reason (agent review round
+				 * 1, F2; design review round 1, D1). The pick below is a fresh
+				 * selection - a new model has its own ladder and its own fast tier -
+				 * so it carries no `fast_mode`, and before this the user who had just
+				 * set `/fast` On learned about the reset only from a chip badge that
+				 * disappeared. Read from the LIVE selection, like the rung: this
+				 * dialog's own receipt, not the snapshot it opened on.
+				 */
+				const carriedFast = draftPick.selection?.fast_mode ?? null;
 				await draftPick.pick(
 					{ provider, model_id: modelId, reasoning_effort: null },
 					{
-						describe: (resolved) =>
-							`This conversation will run ${selectorOfResolution(resolved, option.label)}.`,
+						/*
+						 * The confirmation names the model AND what happened to the dial.
+						 * The clause is read off the RESOLUTION (the model the first turn
+						 * will actually run), so a model with no fast tier says so
+						 * instead of claiming an `off` dial it does not have; see
+						 * `fastModelPickNotice`.
+						 */
+						describe: (resolved) => {
+							const selector = selectorOfResolution(resolved, option.label);
+							const notice = fastModelPickNotice(
+								carriedFast,
+								fastModeState(bandReadings(resolved.snapshot, null).identity),
+							);
+							return notice
+								? `This conversation will run ${selector}. ${notice}`
+								: `This conversation will run ${selector}.`;
+						},
 						carry: carried,
 						refused: "The model was not changed.",
 					},
@@ -3732,8 +3782,12 @@ function dialSelection(
  * that ignored the field lands here — while `off` is what the model already is,
  * so the pick is applied and nothing moves. The sentence says that instead of
  * claiming a dial the model does not have.
+ *
+ * EXPORTED FOR THE SUITE: these are the sentences the pick shows, and the
+ * DIRECTION of a failed pick is exactly the kind of claim that can be wrong with
+ * no other on-screen signal (design review round 1, D4).
  */
-function draftFastReading(
+export function draftFastReading(
 	resolved: CanonicalFrontendSync,
 	requested: "on" | "off",
 ): { applied: boolean; sentence: string } {
@@ -3741,7 +3795,7 @@ function draftFastReading(
 	if (dial === null) {
 		return {
 			applied: requested === "off",
-			sentence: "This model reports no fast tier, so the dial stays off.",
+			sentence: "This model does not support fast mode, so it stays off.",
 		};
 	}
 	if (dial === requested) {
@@ -3755,7 +3809,14 @@ function draftFastReading(
 	}
 	return {
 		applied: false,
-		sentence: `The backend resolved this model with the fast dial ${dial}, so the pick was not recorded.`,
+		/*
+		 * The direction is read from BOTH dials, because this branch is reachable in
+		 * both: a resolution that did not apply `on` names the off it got, and one
+		 * that did not apply `off` must not be told it "was not turned on".
+		 */
+		sentence: `Fast mode is ${dial} for this model, so it was not turned ${
+			requested === "on" ? "on" : "off"
+		}.`,
 	};
 }
 
@@ -3836,7 +3897,8 @@ export const FastPicker: FC<PickerContext> = ({
 			selection ? { ...selection, fast_mode: requested === "on" } : null,
 			{
 				describe: (resolved) => draftFastReading(resolved, requested).sentence,
-				refused: "The fast dial could not be set.",
+				refused: "Fast mode was not set.",
+				failure: fastPickFailure,
 				applied: {
 					refusal: (resolved) => {
 						const reading = draftFastReading(resolved, requested);
@@ -3851,7 +3913,21 @@ export const FastPicker: FC<PickerContext> = ({
 			open
 			onClose={onClose}
 			title={t("ui.chat.pickers.fast.title")}
-			description="Applies to this session only."
+			/*
+			 * A DRAFT speaks "conversation", because that is what its first message
+			 * starts; "this session" is the noun of a pane that has one, and the
+			 * result strip in this same dialog already says "for the first message"
+			 * (design review round 1, D3). One key would be cheaper than the split
+			 * and is deliberately not added here: `ui.chat.pickers` exists in
+			 * English only, and the coverage gate's shrink-only allowance refuses a
+			 * new English key in an incomplete namespace, so the key rides the
+			 * namespace's translation programme rather than this fix.
+			 */
+			description={
+				draft
+					? "Applies to the conversation this chat starts."
+					: "Applies to this session only."
+			}
 			options={options}
 			onPick={(value) =>
 				draft ? draftFast(value) : void command.run("fast", value)
