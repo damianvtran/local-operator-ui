@@ -2,41 +2,40 @@
 /**
  * Exercise the production diff plugin with real CodeMirror state/decorations.
  * No DOM imitation or browser engine: rendering and accept/reject are checked
- * in the live editor fixture. esbuild transpiles the module in memory -- the
- * same dependency the other script-side TS harnesses in this repository use,
- * and no longer the TypeScript compiler: TypeScript 7's package exports only
+ * in the live editor fixture. esbuild bundles the module and its renderer
+ * aliases in memory, as the other script-side TS harnesses do. It does not use
+ * the TypeScript compiler: TypeScript 7's package exports only
  * `version`/`versionMajorMinor` from its root, so the `ts.transpileModule` this
  * script used to call does not exist there any more.
  */
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { EditorState } from "@codemirror/state";
-import { transform } from "esbuild";
+import { build } from "esbuild";
 
 const source = new URL(
 	"../src/renderer/src/features/chat/components/canvas/code-editor-diff.ts",
 	import.meta.url,
 );
 const filename = process.argv[2] || fileURLToPath(source);
-const compiled = (
-	await transform(readFileSync(filename, "utf8"), {
-		loader: "ts",
-		format: "cjs",
-		target: "es2022",
-	})
-).code;
-const module = { exports: {} };
-// Execute exactly the checked-in implementation, not a reimplementation of its
-// ranges. createRequire resolves dependencies from this repository even when a
-// before-fix source snapshot is passed as an explicit argument.
-new Function("require", "module", "exports", compiled)(
-	createRequire(source),
-	module,
-	module.exports,
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const bundle = await build({
+	entryPoints: [filename],
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	// The extracted labels use the renderer's @shared/i18n alias; a bare CJS
+	// transform cannot resolve it, while the desktop tests already bundle aliases.
+	alias: {
+		"@shared": resolve(root, "src/renderer/src/shared"),
+		"@features": resolve(root, "src/renderer/src/features"),
+	},
+});
+const { diffHighlight } = await import(
+	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
-const { diffHighlight } = module.exports;
 
 for (const document of ["", "Existing trailing text"]) {
 	for (const replacement of [

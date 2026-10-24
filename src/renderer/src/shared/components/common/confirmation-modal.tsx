@@ -1,4 +1,6 @@
 import { DialogDescription } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { TriangleAlert } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useRef } from "react";
 import {
@@ -108,8 +110,8 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 	open,
 	title,
 	message,
-	confirmText = "Confirm",
-	cancelText = "Cancel",
+	confirmText = t("ui.common.actions.confirmation_modal.confirm"),
+	cancelText = t("ui.common.actions.confirmation_modal.cancel"),
 	isDangerous = false,
 	onConfirm,
 	onCancel,
@@ -149,6 +151,8 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 	 * button, because two dialogs can be open at once and a document-wide query
 	 * would reach for whichever happens to be first in the tree.
 	 */
+
+	useI18nLocale();
 	const cancelRef = useRef<HTMLButtonElement | null>(null);
 	useEffect(() => {
 		if (!open || focusCancelSignal === undefined) return;
