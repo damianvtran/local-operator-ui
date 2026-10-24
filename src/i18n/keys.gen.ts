@@ -243,27 +243,38 @@ import hiUiAgentsStarters from "./catalogues/hi/ui.agents.starters.json";
 import hiUiBrowserChrome from "./catalogues/hi/ui.browser.chrome.json";
 import hiUiBrowser from "./catalogues/hi/ui.browser.json";
 import hiUiCanvas from "./catalogues/hi/ui.canvas.json";
+import hiUiChatAnalytics from "./catalogues/hi/ui.chat.analytics.json";
 import hiUiChatAsks from "./catalogues/hi/ui.chat.asks.json";
 import hiUiChatAttachments from "./catalogues/hi/ui.chat.attachments.json";
+import hiUiChatCanonical from "./catalogues/hi/ui.chat.canonical.json";
+import hiUiChatCommentaryActions from "./catalogues/hi/ui.chat.commentary_actions.json";
 import hiUiChatComposer from "./catalogues/hi/ui.chat.composer.json";
 import hiUiChatComposerMedia from "./catalogues/hi/ui.chat.composer_media.json";
 import hiUiChatDialogs from "./catalogues/hi/ui.chat.dialogs.json";
 import hiUiChatHeader from "./catalogues/hi/ui.chat.header.json";
 import hiUiChat from "./catalogues/hi/ui.chat.json";
 import hiUiChatLiveUpdates from "./catalogues/hi/ui.chat.live_updates.json";
+import hiUiChatPickers from "./catalogues/hi/ui.chat.pickers.json";
 import hiUiChatResponseActions from "./catalogues/hi/ui.chat.response_actions.json";
+import hiUiChatRunDetails from "./catalogues/hi/ui.chat.run_details.json";
+import hiUiChatSidebar from "./catalogues/hi/ui.chat.sidebar.json";
 import hiUiChatSidebarView from "./catalogues/hi/ui.chat.sidebar_view.json";
+import hiUiChatTagDialogs from "./catalogues/hi/ui.chat.tag_dialogs.json";
 import hiUiChatTags from "./catalogues/hi/ui.chat.tags.json";
+import hiUiChatTranscriptCopy from "./catalogues/hi/ui.chat.transcript_copy.json";
 import hiUiCodeReview from "./catalogues/hi/ui.code_review.json";
 import hiUiCommandPalette from "./catalogues/hi/ui.command_palette.json";
+import hiUiCommonAccount from "./catalogues/hi/ui.common.account.json";
 import hiUiCommonActions from "./catalogues/hi/ui.common.actions.json";
 import hiUiCommonConnection from "./catalogues/hi/ui.common.connection.json";
 import hiUiCommonEditing from "./catalogues/hi/ui.common.editing.json";
 import hiUiCommonErrors from "./catalogues/hi/ui.common.errors.json";
+import hiUiCommonFileActions from "./catalogues/hi/ui.common.file_actions.json";
 import hiUiCommonForms from "./catalogues/hi/ui.common.forms.json";
 import hiUiCommonLoading from "./catalogues/hi/ui.common.loading.json";
 import hiUiCommonModels from "./catalogues/hi/ui.common.models.json";
 import hiUiCommonUpdates from "./catalogues/hi/ui.common.updates.json";
+import hiUiCommonViewer from "./catalogues/hi/ui.common.viewer.json";
 import hiUiConsole from "./catalogues/hi/ui.console.json";
 import hiUiHubComments from "./catalogues/hi/ui.hub.comments.json";
 import hiUiHub from "./catalogues/hi/ui.hub.json";
@@ -272,6 +283,7 @@ import hiUiInstaller from "./catalogues/hi/ui.installer.json";
 import hiUiLibrary from "./catalogues/hi/ui.library.json";
 import hiUiMesh from "./catalogues/hi/ui.mesh.json";
 import hiUiOnboarding from "./catalogues/hi/ui.onboarding.json";
+import hiUiPresence from "./catalogues/hi/ui.presence.json";
 import hiUiProjects from "./catalogues/hi/ui.projects.json";
 import hiUiProviders from "./catalogues/hi/ui.providers.json";
 import hiUiSchedules from "./catalogues/hi/ui.schedules.json";
@@ -778,27 +790,38 @@ export const bundledCatalogues: Readonly<
 		...hiUiBrowserChrome,
 		...hiUiBrowser,
 		...hiUiCanvas,
+		...hiUiChatAnalytics,
 		...hiUiChatAsks,
 		...hiUiChatAttachments,
+		...hiUiChatCanonical,
+		...hiUiChatCommentaryActions,
 		...hiUiChatComposer,
 		...hiUiChatComposerMedia,
 		...hiUiChatDialogs,
 		...hiUiChatHeader,
 		...hiUiChat,
 		...hiUiChatLiveUpdates,
+		...hiUiChatPickers,
 		...hiUiChatResponseActions,
+		...hiUiChatRunDetails,
+		...hiUiChatSidebar,
 		...hiUiChatSidebarView,
+		...hiUiChatTagDialogs,
 		...hiUiChatTags,
+		...hiUiChatTranscriptCopy,
 		...hiUiCodeReview,
 		...hiUiCommandPalette,
+		...hiUiCommonAccount,
 		...hiUiCommonActions,
 		...hiUiCommonConnection,
 		...hiUiCommonEditing,
 		...hiUiCommonErrors,
+		...hiUiCommonFileActions,
 		...hiUiCommonForms,
 		...hiUiCommonLoading,
 		...hiUiCommonModels,
 		...hiUiCommonUpdates,
+		...hiUiCommonViewer,
 		...hiUiConsole,
 		...hiUiHubComments,
 		...hiUiHub,
@@ -807,6 +830,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiLibrary,
 		...hiUiMesh,
 		...hiUiOnboarding,
+		...hiUiPresence,
 		...hiUiProjects,
 		...hiUiProviders,
 		...hiUiSchedules,
