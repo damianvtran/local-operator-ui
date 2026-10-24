@@ -7,7 +7,7 @@
   "pr": "#1389",
   "branch": "feat/i18n-surfaces-batch",
   "round": 3,
-  "instance": "19fdfcee9e91",
+  "instance": "19fdfcee9e91-surfaces",
   "status": "passed",
   "audited_head": "f0e395ef280ad131b3d960e87058aba0bd63cf30",
   "previous_audited_head": "7a1fdf200ce785f959b2e140b4a361ebbf8b4b3c",
@@ -43,7 +43,8 @@
     "actual_model_source": "harness session model (system prompt: Model: radient/auto); no fallback used",
     "fallback": null,
     "independent_from_translators": true,
-    "independence_basis": "Separate session from the surfaces translator session 352ac9921511 named in the batch translator receipt; this run read the catalogue bytes at f0e395ef28 and edited no translated value. The round-1 es surfaces receipt (766edc0f038b) was authored by a different auditor session."
+    "independence_basis": "Separate session from the surfaces translator session 352ac9921511 named in the batch translator receipt; this run read the catalogue bytes at f0e395ef28 and edited no translated value. The round-1 es surfaces receipt (766edc0f038b) was authored by a different auditor session.",
+    "instance": "19fdfcee9e91-surfaces"
   },
   "references": {
     "glossary": {
