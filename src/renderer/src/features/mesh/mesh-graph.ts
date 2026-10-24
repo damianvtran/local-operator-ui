@@ -275,12 +275,20 @@ export function meshGraph(input: {
 	 * THE AUDIT ROWS ARE COLLECTED BEFORE THE NODES, because the node pass must
 	 * skip exactly the memberships this pass keeps. A tombstone with no device id
 	 * cannot be named in either place: the same rule the node pass states below.
+	 *
+	 * A MEMBER IS REVOKED ONLY WHEN IT SAYS SO (agent review round 1, F1). The
+	 * parser this graph is built from defaults a MISSING `active` to live
+	 * (`mesh-types.ts`: `flag(raw.active, true)`), so `member.active` here read an
+	 * absent field as a tombstone - a member the parser had called live vanished
+	 * from the nodes and reappeared as a revoked audit row. `!== false` is the
+	 * parser's rule: only an explicit `false` is revoked. The three `active` reads
+	 * in this file (here, the node's own memberships, and the peer's) all use it.
 	 */
 	const revoked: RevokedMembership[] = [];
 	for (const network of topology.networks) {
 		const networkName = networkLabel(network);
 		for (const member of network.members) {
-			if (!text(member.device_id) || member.active) continue;
+			if (!text(member.device_id) || member.active !== false) continue;
 			revoked.push({
 				networkId: network.network_id,
 				networkName,
@@ -306,7 +314,7 @@ export function meshGraph(input: {
 			epoch: network.epoch,
 			trust: network.trust,
 			memberCount: network.members.filter(
-				(member) => member.active && text(member.device_id),
+				(member) => member.active !== false && text(member.device_id),
 			).length,
 			revokedCount: revokedByNetwork.get(network.network_id) ?? 0,
 		}))
@@ -331,7 +339,7 @@ export function meshGraph(input: {
 		 * is `revoked`, collected above.
 		 */
 		for (const member of network.members.filter(
-			(entry) => text(entry.device_id) && entry.active,
+			(entry) => text(entry.device_id) && entry.active !== false,
 		)) {
 			const list = memberships.get(member.device_id) ?? [];
 			list.push({ member, networkId: network.network_id, networkName: label });

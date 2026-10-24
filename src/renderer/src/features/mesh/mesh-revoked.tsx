@@ -41,6 +41,7 @@ export const MeshRevoked: FC<{
 	 * opens an empty list would be an affordance for nothing.
 	 */
 	if (revoked.length === 0) return null;
+	const count = t("ui.mesh.mesh_list.revoked_count", { count: revoked.length });
 	return (
 		<Disclosure
 			/*
@@ -59,11 +60,43 @@ export const MeshRevoked: FC<{
 			 * (`ChevronRight` closed, `ChevronDown` open); only its side moves.
 			 */
 			chevron="trailing"
-			triggerClassName="inline-flex w-auto align-baseline text-meta text-ink-dim hover:text-ink"
+			/*
+			 * THE CHEVRON IS THE ONE RESTING CUE (design review round 1, D1). The shared
+			 * slot paints `ink-disabled`, which is right where a chevron annotates a trace
+			 * that is always there - but here it is the only mark that says "2 revoked" is
+			 * a control, and on the canvas it measured 2.37:1, under the 3:1 floor for a
+			 * non-text mark. `ink-dim` is read from the same role scale (6.24:1 on canvas
+			 * and 6.24:1 in the list) and the slot appends this class last, so the
+			 * override cannot leak into the disclosures that rely on the dim default.
+			 */
+			chevronClassName="text-ink-dim"
+			/*
+			 * THE MEASUREMENT IS NOT THE TRIGGER'S BOX (design review round 1, D5). The
+			 * shared row is `min-h-6` with `py-0.5`, so an inline trigger in the census
+			 * sentence grew that line 6px (canvas well 177 to 183). `min-h-auto` plus
+			 * zero vertical padding drops the row to the line's own height; the fixed 2px
+			 * of padding is what a line box had already absorbed, so no other disclosure
+			 * (a real row, not an inline fragment) changes.
+			 */
+			rowClassName="min-h-auto py-0"
+			triggerClassName="inline-flex w-auto items-center gap-1 align-baseline text-meta text-ink-dim hover:text-ink"
 			triggerData={{ "data-mesh-revoked-toggle": "" }}
-			summary={t("ui.mesh.mesh_list.revoked_count", {
-				count: revoked.length,
-			})}
+			/*
+			 * AN ACCESSIBLE NAME THAT IS NOT A COUNT (design review round 1, D3). The
+			 * visible text is "2 revoked"; read alone that names a number of devices,
+			 * which is exactly the misreading this change exists to end. The label says
+			 * what the disclosure holds, so the visible count stays short.
+			 */
+			triggerLabel={t("ui.mesh.mesh_list.revoked_toggle_label")}
+			/*
+			 * THE SEPARATOR IS A BOX, NOT A LEADING SPACE (design review round 1, D2).
+			 * The fragment's leading boundary space is eaten once the trigger becomes a
+			 * flex item, so the band read "compute.internal· 2 revoked": the line's own
+			 * separator is restored by the trigger's `gap-1`, the same 4px the rows below
+			 * separate their fields with. The glyph stays in the copy, where it belongs;
+			 * only the copy's cosmetic leading pad is dropped before it becomes a box.
+			 */
+			summary={count.trimStart()}
 		>
 			<ul
 				data-mesh-revoked=""
@@ -75,31 +108,46 @@ export const MeshRevoked: FC<{
 				 */
 				className="m-0 flex list-none flex-col gap-1 p-0"
 			>
-				{revoked.map((member) => (
-					<li
-						key={`${member.networkId}:${member.deviceId}`}
-						data-mesh-revoked-member={member.deviceId}
-						className="flex flex-wrap items-baseline gap-x-2 text-meta text-ink-dim"
-					>
-						{/*
-						 * THE NETWORK IS NAMED because this list is the tab's, not one
-						 * heading's: a tombstone belongs to a membership, and two networks can
-						 * hold two burned ids under the same device name.
-						 */}
-						<span>{member.networkName}</span>
-						<span className="text-body-sm text-ink">{member.label}</span>
-						{/*
-						 * THE ID IS MACHINE VOICE and stays monospace: it is the burned
-						 * identity an operator needs when they compare this screen with the
-						 * relay's own records, which is the one thing a tombstone is for.
-						 */}
-						<span className="font-mono">{member.deviceId}</span>
-						<span>
-							{member.role ? `${member.role} · ` : ""}
-							{t("ui.mesh.mesh_graph.revoked_membership")}
-						</span>
-					</li>
-				))}
+				{revoked.map((member) => {
+					/*
+					 * THE BURNED ID LEADS, AND CARRIES THE INK (design review round 1, D4).
+					 * A tombstone's two rows share a recorded name (a device renamed and
+					 * re-paired leaves two rows called `cloud-node-1`), so leading with the
+					 * name painted the identical word at `text-ink` 14.03:1 and the differing
+					 * id at `ink-dim` 6.24:1: the rows scanned as duplicates. The id is the
+					 * only field the rows are told apart by, so it leads and keeps the
+					 * heading ink; the name follows in the muted ink a secondary field wears.
+					 */
+					return (
+						<li
+							key={`${member.networkId}:${member.deviceId}`}
+							data-mesh-revoked-member={member.deviceId}
+							className="flex flex-wrap items-baseline gap-x-2 text-meta text-ink-dim"
+						>
+							{/*
+							 * THE NETWORK IS NAMED because this list is the tab's, not one
+							 * heading's: a tombstone belongs to a membership, and two networks can
+							 * hold two burned ids under the same device name.
+							 */}
+							<span>{member.networkName}</span>
+							{/*
+							 * THE ID IS MACHINE VOICE and stays monospace: it is the burned
+							 * identity an operator needs when they compare this screen with the
+							 * relay's own records, which is the one thing a tombstone is for.
+							 */}
+							<span className="font-mono text-body-sm text-ink">
+								{member.deviceId}
+							</span>
+							<span className="text-body-sm text-ink-muted">
+								{member.label}
+							</span>
+							<span>
+								{member.role ? `${member.role} · ` : ""}
+								{t("ui.mesh.mesh_graph.revoked_membership")}
+							</span>
+						</li>
+					);
+				})}
 			</ul>
 		</Disclosure>
 	);

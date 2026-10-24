@@ -183,8 +183,11 @@ export function destinationsWithVerdicts(
 			 * for the turn to finish - is only reachable by asking. Disabling it here would take
 			 * that remedy off the accessible path on every destination at once, which is the
 			 * opposite of what the menu is for. A destination that can only refuse FOR ITS OWN
-			 * REASON (`third_device`, `unreachable`, `suspect_device`, `revoked_membership`) is
+			 * REASON (`third_device`, `unreachable`, `suspect_device`) is
 			 * annotated, and the menu renders it disabled with the route's sentence.
+			 * `revoked_membership` used to be listed here; the tombstone change removed the
+			 * code with the nodes it targeted, and a stale revoked id now resolves as
+			 * `unknown_device` like any other identity no membership admits.
 			 */
 			refused:
 				verdict.kind === "refused" && verdict.code !== "busy"
