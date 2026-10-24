@@ -292,6 +292,15 @@ export interface LoadFailure {
  *
  * A zero code is the "provisional load failed" marker Electron also emits; it names
  * no failure either.
+ *
+ * RE-EVALUATED 2026-10-24 against the current recovery paths. `did-start-loading`
+ * clears the mark when a retry (or any new load) starts and `did-navigate` clears
+ * it on the commit (`browser/index.ts`), so a stop, a redirect chain and a
+ * superseded load never leave a stale panel behind. Measured on Electron 44.3.0:
+ * a superseded load rejects with `ERR_ABORTED (-3)` while a redirect chain
+ * resolves on its final commit; the read-only `query` action (DOCUMENT_SCOPED and
+ * TAB_SCOPED) never navigates, so it cannot produce either. The decision stands:
+ * reporting aborts would make the panel cry wolf on ordinary browsing.
  */
 export function isReportableLoadFailure(code: number): boolean {
 	return code !== 0 && code !== -3;
@@ -1517,12 +1526,18 @@ export class BrowserHost implements BrowserActionContext {
 			// failures that path cannot see.
 			//
 			// AN ABORT IS NOT EXEMPTED HERE, unlike the view's own `did-fail-load`
-			// path (`isReportableLoadFailure` drops `ERR_ABORTED`): that path reads a
-			// NUMERIC net code and this catch has none — its own timeout rejection is
-			// the only shape it produces itself — so a parity check would be a second,
-			// guessing spelling of the exemption. Nothing committed and nothing came
-			// back, so the mark is honest; a stop or a superseding navigation clears it
-			// through the same wiring on the commit that follows (round-1 n-1).
+			// path (`isReportableLoadFailure` drops `ERR_ABORTED`). RE-EVALUATED
+			// 2026-10-24, and the exemption still does not belong here: the catch's
+			// OWN timeout rejection carries no net code, and the one rejection
+			// `history.restore` itself produces with an abort is a SUPERSEDING
+			// navigation (Electron 44.3.0: `ERR_ABORTED (-3) loading '<new url>'`).
+			// That navigation fires `did-navigate`, so `committed` is true and no
+			// mark is written; if a mark were written first, the ordinary clear on
+			// the commit retires it. A user STOP during a restore rejects
+			// `ERR_FAILED (-2)`, not `ERR_ABORTED`: no page came back, so the mark
+			// is honest. A redirect chain resolves on its final commit. Matching a
+			// code here would therefore be either dead code behind the commit guard
+			// or a second, guessing spelling of the exemption.
 			if (
 				!committed &&
 				!this.loadFailures.has(tabId) &&
