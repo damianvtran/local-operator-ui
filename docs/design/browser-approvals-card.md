@@ -149,14 +149,15 @@ geometry; the content-driven height and its 480 ceiling; the RTL view mirror
 outside-click and page-click non-dismissal; Escape without a decision; the
 shield open/close focus handoff; the Tab order; and a stale `seq` dropping.
 
-**Round-3 driven rows (source `1d08bf2358`, rebased onto `main` `4046249582`;
+**Round-3 driven rows (source `703f2ce5a3`, rebased onto `main` `4046249582`;
 the built artifact hashes are pinned in `facts.json`):** four cells (264/900 ×
 dark/light) on the built document — auto-present unfocused, geometry and
 Q2-above-fold, RTL, the eight input rows (I3 ring BLOCKED), locale/requester/
 palette and the nine document frames (request 264/368 × dark/light, list
 264/368, catppuccinLatte, expired, stale error). A stalled fixture load records
 `BOOT-fixture-load` and exits instead of hanging; the four rows below are
-complete runs, never a retry relabelled.
+complete runs, never a retry relabelled. I4 also asserts the rendered
+origin/requester after a dismissal, the Q-S6b-1 regression.
 The probe uses a private `--user-data-dir` and `--disable-gpu`, no `HOME`
 override, and reaps its process group; all four boots exit 0 with no leftover
 Electron. The earlier "environment BLOCKED" claim was wrong: a sized child
