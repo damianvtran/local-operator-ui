@@ -60,7 +60,9 @@ export type CatalogueInput =
  * payload does not support. The chat picker already has this third group; using
  * its wording keeps the two surfaces describing one unknown the same way.
  */
-export const SIGN_IN_UNKNOWN_GROUP = "Sign-in state unknown";
+export const SIGN_IN_UNKNOWN_GROUP = t(
+	"ui.settings.model.model_setting_options.copy_sign_in_unknown_group",
+);
 const SIGN_IN_UNKNOWN_GROUP_KEY =
 	"ui.settings.model.model_setting_options.copy_sign_in_unknown_group";
 
@@ -70,7 +72,9 @@ const SIGN_IN_UNKNOWN_GROUP_KEY =
  * Its own heading rather than a neighbour's, so a rescued row can never split
  * or duplicate the heading of a group it is not really in.
  */
-export const CURRENT_VALUE_GROUP = "Current value";
+export const CURRENT_VALUE_GROUP = t(
+	"ui.settings.model.model_setting_options.copy_current_value_group",
+);
 const CURRENT_VALUE_GROUP_KEY =
 	"ui.settings.model.model_setting_options.copy_current_value_group";
 

@@ -1,0 +1,11 @@
+{
+	"ui.common.time.yesterday_at": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Yesterday {time}",
+		"placeholders": {
+			"time": "Runtime value; preserve the placeholder and insert it without translation."
+		}
+	}
+}

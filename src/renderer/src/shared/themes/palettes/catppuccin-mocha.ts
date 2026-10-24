@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -38,8 +39,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const catppuccinMocha: ThemeDefinition = {
 	id: "catppuccinMocha",
 	name: "Catppuccin Mocha",
-	description:
-		"The original flavour — the deepest navy under the Catppuccin pastels.",
+	get description() {
+		return t("ui.settings.appearance.theme.catppuccin_mocha");
+	},
 	palette: {
 		mode: "dark",
 

@@ -1,3 +1,4 @@
+import { t } from "../../../../i18n/messages";
 /**
  * @file use-radient-session-issue.ts
  * @description
@@ -459,7 +460,7 @@ export function useRadientSessionIssue(): UseRadientSessionIssue {
 							kind: "settled",
 							message: userFacingMessage(
 								error,
-								"The sign-in page could not be opened. Try again.",
+								t("ui.common.account.sign_in_page_failed"),
 							),
 							canRetry: true,
 						});
@@ -565,7 +566,7 @@ export function useRadientSessionIssue(): UseRadientSessionIssue {
 					// with different remedies, and both already say which they are.
 					message: userFacingMessage(
 						error,
-						"The sign-in could not be started. Try again.",
+						t("ui.common.account.sign_in_start_failed"),
 					),
 					/*
 					 * A refusal is retryable only when retrying can differ. A conflict

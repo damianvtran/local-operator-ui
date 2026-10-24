@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * Hook for fetching system prompt from the Local Operator API
  *
@@ -45,7 +46,9 @@ export const useSystemPrompt = () => {
 				}
 
 				if (response.status >= 400) {
-					throw new Error(response.message || "Failed to fetch system prompt");
+					throw new Error(
+						response.message || t("ui.common.errors.system_prompt_fetch"),
+					);
 				}
 
 				return response.result as SystemPromptResponse;
@@ -53,7 +56,7 @@ export const useSystemPrompt = () => {
 				const errorMessage =
 					error instanceof Error
 						? error.message
-						: "An unknown error occurred while fetching system prompt";
+						: t("ui.common.errors.system_prompt_fetch_unknown");
 
 				showErrorToast(errorMessage);
 				throw error;

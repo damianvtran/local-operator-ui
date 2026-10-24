@@ -125,5 +125,16 @@
 	"ui.common.updates.update_quiet_indicator.server_update": "Server update",
 	"ui.common.updates.wait.minutes": "Waiting {minutes, plural, one {{minutes, number, ::group-off} minute} other {{minutes, number, ::group-off} minutes}} so far",
 	"ui.common.updates.wait.minutes_seconds": "Waiting {minutes, plural, one {{minutes, number, ::group-off} minute} other {{minutes, number, ::group-off} minutes}} {seconds, plural, one {{seconds, number, ::group-off} second} other {{seconds, number, ::group-off} seconds}} so far",
-	"ui.common.updates.wait.seconds": "Waiting {seconds, plural, one {{seconds, number, ::group-off} second} other {{seconds, number, ::group-off} seconds}} so far"
+	"ui.common.updates.wait.seconds": "Waiting {seconds, plural, one {{seconds, number, ::group-off} second} other {{seconds, number, ::group-off} seconds}} so far",
+	"ui.common.updates.install.verifying": "Verifying the update against the app it will replace…",
+	"ui.common.updates.install.staging": "Staging the update next to the app it will replace…",
+	"ui.common.updates.install.starting": "Starting the installer. The app closes for a moment…",
+	"ui.common.updates.install.preparing": "Preparing to install…",
+	"ui.common.updates.install.succeeded": "Local Operator updated to v{version}.",
+	"ui.common.updates.error.server_unreachable": "The app could not reach the update server. Check this machine's connection, then try again.",
+	"ui.common.updates.error.download": "The update could not be downloaded. Check this machine's connection, then start the download again.",
+	"ui.common.updates.error.install": "The update could not be installed. Check this machine's connection, then start it again from the update panel.",
+	"ui.common.updates.error.quit": "The app could not quit to finish the install. Quit the app yourself, then let the update finish.",
+	"ui.common.updates.error.check_incomplete": "The update check could not finish. The app will try again at its next check.",
+	"ui.common.updates.error.version_unknown_required": "Unknown (update required)"
 }

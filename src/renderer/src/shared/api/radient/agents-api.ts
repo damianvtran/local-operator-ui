@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 /**
  * Radient Agents API
  *
@@ -490,14 +491,14 @@ export const readPublicHub = async <T>(
 		 */
 		console.error("The public hub could not be reached:", error);
 		throw new PublicHubError(
-			"The public hub could not be reached.",
+			t("ui.common.errors.public_hub_unreachable"),
 			null,
 			error,
 		);
 	}
 	if (!response.ok) {
 		throw new PublicHubError(
-			`The public hub answered ${response.status}.`,
+			t("ui.common.errors.public_hub_status", { status: response.status }),
 			response.status,
 		);
 	}
@@ -506,7 +507,7 @@ export const readPublicHub = async <T>(
 		body = await response.json();
 	} catch {
 		throw new PublicHubError(
-			"The public hub answered with a body that is not JSON.",
+			t("ui.common.errors.public_hub_json"),
 			response.status,
 		);
 	}
@@ -516,7 +517,7 @@ export const readPublicHub = async <T>(
 		!("result" in (body as Record<string, unknown>))
 	) {
 		throw new PublicHubError(
-			"The public hub answered with a body this app cannot read.",
+			t("ui.common.errors.public_hub_body"),
 			response.status,
 		);
 	}

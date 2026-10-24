@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -40,7 +41,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const forest: ThemeDefinition = {
 	id: "forest",
 	name: "Forest",
-	description: "Deep pine shadow lit by moss-green light through the canopy.",
+	get description() {
+		return t("ui.settings.appearance.theme.forest");
+	},
 	palette: {
 		mode: "dark",
 		/*
