@@ -1,4 +1,6 @@
 import { Separator } from "@shared/components/ui/separator";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type FC, useEffect } from "react";
 import type { PickerContext } from "../destination-pickers";
@@ -62,42 +64,50 @@ type EstimateTableRow = {
 	text: string;
 };
 
-const ESTIMATE_COLUMNS: Column<EstimateTableRow>[] = [
+const ESTIMATE_COLUMNS = (): Column<EstimateTableRow>[] => [
 	{
 		key: "row",
 		/* `Block`, not `Row`: the labels below are the system blocks the request
 		   is built from, and a header that names the table's shape instead of its
 		   content is a column nobody can read. */
-		header: "Block",
+		header: t("ui.chat.pickers.context_panel.block"),
 		cell: (row) => row.label,
 	},
 	{
 		key: "tokens",
-		header: "Tokens",
+		header: t("ui.chat.pickers.context_panel.tokens"),
 		numeric: true,
 		cell: (row) => row.text,
 	},
 ];
 
 /** The pre-`numbers` fallback: the owner's pairs, two columns, no bars. */
-const OwnerRowsTable: FC<{ rows: [string, string][] }> = ({ rows }) => (
-	<DataTable<[string, string]>
-		label="Next request estimate"
-		columns={[
-			{ key: "row", header: "Block", cell: (row) => row[0] },
-			{
-				key: "tokens",
-				header: "Tokens",
-				numeric: true,
-				cell: (row) => row[1],
-			},
-		]}
-		rows={rows}
-		rowKey={(row) => row[0]}
-	/>
-);
+export const OwnerRowsTable: FC<{ rows: [string, string][] }> = ({ rows }) => {
+	useI18nLocale();
+	return (
+		<DataTable<[string, string]>
+			label={t("ui.chat.pickers.context_panel.next_request_estimate")}
+			columns={[
+				{
+					key: "row",
+					header: t("ui.chat.pickers.context_panel.block"),
+					cell: (row) => row[0],
+				},
+				{
+					key: "tokens",
+					header: t("ui.chat.pickers.context_panel.tokens"),
+					numeric: true,
+					cell: (row) => row[1],
+				},
+			]}
+			rows={rows}
+			rowKey={(row) => row[0]}
+		/>
+	);
+};
 
 const EstimateRows: FC<{ block: ContextBlock }> = ({ block }) => {
+	useI18nLocale();
 	const numbers = block.numbers;
 	const rows: EstimateTableRow[] = estimateRows(numbers).map((row) => ({
 		key: row.key,
@@ -115,15 +125,18 @@ const EstimateRows: FC<{ block: ContextBlock }> = ({ block }) => {
 	return (
 		<>
 			<DataTable<EstimateTableRow>
-				label="Next request estimate by row"
-				columns={ESTIMATE_COLUMNS}
+				label={t("ui.chat.pickers.context_panel.next_request_estimate_by_row")}
+				columns={ESTIMATE_COLUMNS()}
 				rows={rows}
 				rowKey={(row) => row.key}
 				leading={(row) => (
 					<ProportionBar
 						fraction={row.fraction}
 						className="w-24"
-						srLabel={`${row.label}: ${formatPercent(row.fraction)} of this estimate`}
+						srLabel={t("ui.chat.pickers.context_panel.of_this_estimate", {
+							label: row.label,
+							formatpercent: formatPercent(row.fraction),
+						})}
 					/>
 				)}
 			/>
@@ -139,11 +152,14 @@ const EstimateRows: FC<{ block: ContextBlock }> = ({ block }) => {
 					<ProportionBar
 						fraction={share}
 						className="w-24"
-						srLabel={`Total: ${formatPercent(share)} of the context window`}
+						srLabel={t(
+							"ui.chat.pickers.context_panel.total_of_the_context_window",
+							{ formatpercent: formatPercent(share) },
+						)}
 					/>
 				</span>
 				<span className={cn("min-w-0 flex-1 text-body-sm text-ink")}>
-					Total
+					{t("ui.chat.pickers.context_panel.total")}
 				</span>
 				<span
 					className={cn(
@@ -164,6 +180,7 @@ export const ContextPanel: FC<ContextPanelProps> = ({
 	result,
 	onClose,
 }) => {
+	useI18nLocale();
 	const block = contextBlockOf(outcome);
 	const unavailable = isBreakdownUnavailable(outcome);
 	const measured = headline(frontend);
@@ -175,18 +192,24 @@ export const ContextPanel: FC<ContextPanelProps> = ({
 			open
 			onClose={onClose}
 			shell="panel"
-			bodyLabel="Context estimate region"
-			title="Context"
-			description={block?.title ?? "What the next request will carry."}
+			bodyLabel={t("ui.chat.pickers.context_panel.context_estimate_region")}
+			title={t("ui.chat.pickers.context_panel.context")}
+			description={
+				block?.title ??
+				t("ui.chat.pickers.context_panel.what_the_next_request_will_carry")
+			}
 			body={
 				busy ? (
-					<PanelNotice kind="loading" text="Asking the owner." />
+					<PanelNotice
+						kind="loading"
+						text={t("ui.chat.pickers.context_panel.asking_the_owner")}
+					/>
 				) : errorText ? (
 					<PanelNotice kind="unavailable" text={errorText} />
 				) : (
 					<PanelStack>
 						<PanelSection
-							title="This conversation"
+							title={t("ui.chat.pickers.context_panel.this_conversation")}
 							meta={
 								/*
 								 * The meta follows the value, like `/info`'s context note: over an
@@ -194,8 +217,10 @@ export const ContextPanel: FC<ContextPanelProps> = ({
 								 * measurement nobody took (QA round 1, Q3).
 								 */
 								measured.fraction === null
-									? "live · not measured yet"
-									: "live · measured on the last request"
+									? t("ui.chat.pickers.context_panel.live_not_measured_yet")
+									: t(
+											"ui.chat.pickers.context_panel.live_measured_on_the_last_request",
+										)
 							}
 						>
 							{/*
@@ -214,7 +239,9 @@ export const ContextPanel: FC<ContextPanelProps> = ({
 									 * and a reader moves between them (design round 1, D9).
 									 */
 									className={cn("min-w-0 max-w-96 flex-1")}
-									srLabel={`Context window: ${measured.value}`}
+									srLabel={t("ui.chat.pickers.context_panel.context_window", {
+										value: measured.value,
+									})}
 								/>
 								<p
 									className={cn(
@@ -224,29 +251,42 @@ export const ContextPanel: FC<ContextPanelProps> = ({
 								>
 									{measured.value}
 									{measured.estimated ? (
-										<span className={cn("text-ink-muted")}> estimate</span>
+										<span className={cn("text-ink-muted")}>
+											{" "}
+											{t("ui.chat.pickers.context_panel.estimate")}
+										</span>
 									) : null}
 								</p>
 							</div>
 						</PanelSection>
 						{unavailable ? (
-							<PanelSection title="Next request">
+							<PanelSection
+								title={t("ui.chat.pickers.context_panel.next_request")}
+							>
 								<PanelNotice
 									kind="empty"
-									text="The breakdown is not available for this session yet. Send a turn and open it again."
+									text={t(
+										"ui.chat.pickers.context_panel.the_breakdown_is_not_available_for_this_session_yet_send_a_turn_and_open",
+									)}
 								/>
 							</PanelSection>
 						) : !block ? (
-							<PanelSection title="Next request">
+							<PanelSection
+								title={t("ui.chat.pickers.context_panel.next_request")}
+							>
 								<PanelNotice
 									kind="empty"
-									text="The owner returned no breakdown."
+									text={t(
+										"ui.chat.pickers.context_panel.the_owner_returned_no_breakdown",
+									)}
 								/>
 							</PanelSection>
 						) : (
 							<PanelSection
-								title="Next request"
-								meta="≈ estimated · tokenized when this panel opened"
+								title={t("ui.chat.pickers.context_panel.next_request")}
+								meta={t(
+									"ui.chat.pickers.context_panel.estimated_tokenized_when_this_panel_opened",
+								)}
 							>
 								{numbers ? (
 									<EstimateRows block={block} />
@@ -264,11 +304,13 @@ export const ContextPanel: FC<ContextPanelProps> = ({
 						)}
 						{cacheRead > 0 ? (
 							<PanelSection
-								title="Last cache read"
-								meta="exact, from the last provider reply"
+								title={t("ui.chat.pickers.context_panel.last_cache_read")}
+								meta={t(
+									"ui.chat.pickers.context_panel.exact_from_the_last_provider_reply",
+								)}
 							>
 								<StatCard
-									label="Tokens read"
+									label={t("ui.chat.pickers.context_panel.tokens_read")}
 									value={formatContextTokens(cacheRead)}
 								/>
 							</PanelSection>

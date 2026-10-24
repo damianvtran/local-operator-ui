@@ -25,5 +25,15 @@
 	"ui.common.forms.searchable_select.clear_value": "清空值",
 	"ui.common.forms.searchable_select.no_matches": "无匹配项",
 	"ui.common.forms.searchable_select.use": "使用“{text}”",
-	"ui.common.forms.select.unlisted_value": "未列入任何列表，将按输入内容保存。"
+	"ui.common.forms.select.unlisted_value": "未列入任何列表，将按输入内容保存。",
+	"ui.common.forms.categories_input_chips.add_category": "添加类别……",
+	"ui.common.forms.categories_input_chips.remove_category": "移除类别{value}",
+	"ui.common.forms.categories_input_chips.no_categories_selected": "未选择类别",
+	"ui.common.forms.slider_setting.saving": "正在保存{label}",
+	"ui.common.forms.tags_input_chips.add_tag": "添加标签……",
+	"ui.common.forms.tags_input_chips.remove_tag": "移除标签{tag}",
+	"ui.common.forms.tags_input_chips.add_tage0db29": "添加标签",
+	"ui.common.forms.tags_input_chips.no_tags_added": "未添加标签",
+	"ui.common.forms.toggle_setting.saving": "正在保存{label}",
+	"ui.common.forms.categories_input_chips.category": "{category, select, investment {投资} accounting {会计} healthcare {医疗} legal {法律} software {软件} security {安全} role_play {角色扮演} personal_assistance {个人助理} education {教育} marketing {营销} sales {销售} research {研究} analysis {分析} management {管理} social_media {社交媒体} other_category {其他} other {{category}}}"
 }

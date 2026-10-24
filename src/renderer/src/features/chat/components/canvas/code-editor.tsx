@@ -7,6 +7,7 @@ import {
 } from "@codemirror/view";
 import type { EditDiff } from "@shared/api/local-operator/types";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { getTheme } from "@shared/themes";
@@ -69,6 +70,7 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 	conversationId,
 	agentId,
 }) => {
+	const locale = useI18nLocale();
 	const [content, setContent] = useState(document.content);
 	const originalContentRef = useRef(document.content);
 	const isInitialLoadRef = useRef(true);
@@ -109,10 +111,12 @@ const CodeEditorComponent: FC<CodeEditorProps> = ({
 	);
 	const searchTheme = getSearchTheme(isDark);
 	const codeEditorTheme = getCodeMirrorTheme(isDark);
-	const diffExtension = useMemo(
-		() => diffHighlight(reviewState),
-		[reviewState],
-	);
+	// A new extension makes react-codemirror reconfigure the plugin and rebuild
+	// its imperative diff widgets; their labels do not live in React's render.
+	const diffExtension = useMemo(() => {
+		void locale;
+		return diffHighlight(reviewState);
+	}, [reviewState, locale]);
 
 	useEffect(() => {
 		const view = editorRef.current?.view;

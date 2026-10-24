@@ -25,5 +25,15 @@
 	"ui.common.forms.searchable_select.clear_value": "मान मिटाएँ",
 	"ui.common.forms.searchable_select.no_matches": "कोई मिलान नहीं",
 	"ui.common.forms.searchable_select.use": "\"{text}\" इस्तेमाल करें",
-	"ui.common.forms.select.unlisted_value": "किसी सूची में नहीं; जैसा टाइप किया है वैसा सहेजा गया।"
+	"ui.common.forms.select.unlisted_value": "किसी सूची में नहीं; जैसा टाइप किया है वैसा सहेजा गया।",
+	"ui.common.forms.categories_input_chips.add_category": "श्रेणी जोड़ें...",
+	"ui.common.forms.categories_input_chips.remove_category": "श्रेणी {value} हटाएँ",
+	"ui.common.forms.categories_input_chips.no_categories_selected": "कोई श्रेणी नहीं चुनी गई",
+	"ui.common.forms.slider_setting.saving": "{label} सहेजा जा रहा है",
+	"ui.common.forms.tags_input_chips.add_tag": "टैग जोड़ें...",
+	"ui.common.forms.tags_input_chips.remove_tag": "टैग {tag} हटाएँ",
+	"ui.common.forms.tags_input_chips.add_tage0db29": "टैग जोड़ें",
+	"ui.common.forms.tags_input_chips.no_tags_added": "कोई टैग नहीं जोड़ा गया",
+	"ui.common.forms.toggle_setting.saving": "{label} सहेजा जा रहा है",
+	"ui.common.forms.categories_input_chips.category": "{category, select, investment {निवेश} accounting {लेखांकन} healthcare {स्वास्थ्य सेवा} legal {कानूनी} software {सॉफ़्टवेयर} security {सुरक्षा} role_play {रोल प्ले} personal_assistance {निजी सहायता} education {शिक्षा} marketing {मार्केटिंग} sales {बिक्री} research {शोध} analysis {विश्लेषण} management {प्रबंधन} social_media {सोशल मीडिया} other_category {अन्य} other {{category}}}"
 }
