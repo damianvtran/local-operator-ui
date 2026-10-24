@@ -1,7 +1,7 @@
 # S6c — enabled-path proof and real-app documents
 
 App head: `7f20a501a3` (built `out/` from this tree). Proof run head:
-`2bdf94571c` (the proof rig executes the composite attempt; app code unchanged
+`fd5af18447` (the proof rig executes the composite attempt; app code unchanged
 since `7f20a5`).
 Command:
 
@@ -32,7 +32,7 @@ auto-present there. The window is visible but never focused.
 | I4 Escape leaves pending | PASS | `https://pending.example` still in `pendingConsent`; card open false. |
 | I6 Close leaves pending | PASS | same pending entry after explicit open + close. |
 | P1 built app | PASS | `out/renderer/browser-approvals-overlay.html` exists. |
-| F native composite | **BLOCKED** | This run executed `screencapture -x -o -l 45130` against the visible, unfocused window: `could not create image from window` (macOS Screen Recording unavailable on this host). The documents above are not a composite. |
+| F native composite | **BLOCKED** | This run executed `screencapture -x -o -l 45728` against the visible, unfocused window: `could not create image from window` (macOS Screen Recording unavailable on this host). The documents above are not a composite. |
 
 Machine-readable: [s6c-proof.json](s6c-proof.json).
 

@@ -1,7 +1,7 @@
 {
-  "at": "2026-10-24T17:27:18.487Z",
-  "head": "2bdf94571c82077e5ed6200d6ce869c63e75d107",
-  "scratch": "/Users/damian/.local-operator/sessions/c4aaba06f9e9/scratchpad/s6c-proof-VgEMFk",
+  "at": "2026-10-24T18:32:48.414Z",
+  "head": "fd5af18447c5923e9de2808f4ae2a6a2c58475ad",
+  "scratch": "/Users/damian/.local-operator/sessions/c4aaba06f9e9/scratchpad/s6c-proof-xak0WS",
   "rows": [
     {
       "id": "A1-enabled-auto-present",
@@ -111,7 +111,7 @@
       "status": "PASS",
       "detail": {
         "baseline": {
-          "id": "window:45130:0",
+          "id": "window:45728:0",
           "visible": true,
           "focused": false,
           "bounds": {
@@ -158,7 +158,7 @@
           ]
         },
         "after": {
-          "id": "window:45130:0",
+          "id": "window:45728:0",
           "visible": true,
           "focused": false,
           "bounds": {
@@ -246,14 +246,14 @@
       "detail": {
         "pending": [
           {
-            "entryId": "5a443ebed61446269eadacbb2306b3bb",
+            "entryId": "14a6d76dda694407ad9b05c1eba7c520",
             "origin": "https://pending.example",
             "authority": "pending.example",
             "broad": {
               "scope": "domain",
               "key": "pending.example"
             },
-            "expiresAt": 1792863448268,
+            "expiresAt": 1792867401546,
             "requesterSessionId": "s6c-other"
           }
         ],
@@ -270,14 +270,14 @@
       "detail": {
         "pending": [
           {
-            "entryId": "5a443ebed61446269eadacbb2306b3bb",
+            "entryId": "14a6d76dda694407ad9b05c1eba7c520",
             "origin": "https://pending.example",
             "authority": "pending.example",
             "broad": {
               "scope": "domain",
               "key": "pending.example"
             },
-            "expiresAt": 1792863448268,
+            "expiresAt": 1792867401546,
             "requesterSessionId": "s6c-other"
           }
         ],
@@ -299,9 +299,9 @@
       "id": "F-native-composite",
       "status": "BLOCKED",
       "detail": {
-        "command": "screencapture -x -o -l 45130",
+        "command": "screencapture -x -o -l 45728",
         "window": {
-          "id": "window:45130:0",
+          "id": "window:45728:0",
           "bounds": {
             "x": 464,
             "y": 45,
