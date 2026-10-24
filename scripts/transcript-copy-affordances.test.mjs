@@ -1750,3 +1750,28 @@ test("the shared strip never mounts beside an owning strip without an observer",
 	);
 	await rig.unmount();
 });
+
+/*
+ * A DISMISSAL IS A RECEIPT, NOT AN ANSWER FRAME. The row carries the ask's
+ * questions, but nothing was answered, so copying it must not manufacture
+ * "No answer given" for each of them — the harness refuses the same shape in
+ * `asks/render.py::response_text`. The sentence is the whole receipt.
+ */
+test("a dismissed ask copies one sentence, not a question with no answer", () => {
+	const record = {
+		kind: "ask_response",
+		id: "ask-response-a1",
+		ts: 0,
+		askId: "a1",
+		status: "dismissed",
+		by: { surface: "desktop" },
+		reason: "moot",
+		questions: [{ id: "q1", question: "Which environment?" }],
+		answers: {},
+		secretLost: false,
+	};
+	assert.equal(
+		mod.copyTextForRecord(record),
+		"Dismissed by you (desktop) — no longer needed (ask a1)",
+	);
+});
