@@ -1,0 +1,776 @@
+{
+  "status": "headless-only",
+  "nativeWindowCapture": false,
+  "base": [
+    {
+      "frame": "glass-dark.png",
+      "theme": "localOperatorDark",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": true,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": true,
+        "restartRequired": false
+      },
+      "glassAttribute": "sidebar canvas pane",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "dpr": 2
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "row": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      }
+    },
+    {
+      "frame": "flat-dark.png",
+      "theme": "localOperatorDark",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": false,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": false,
+        "restartRequired": false
+      },
+      "glassAttribute": "",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "dpr": 2
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "row": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      }
+    },
+    {
+      "frame": "glass-light.png",
+      "theme": "localOperatorLight",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": true,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": true,
+        "restartRequired": false
+      },
+      "glassAttribute": "sidebar canvas pane",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "dpr": 2
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "row": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      }
+    },
+    {
+      "frame": "flat-light.png",
+      "theme": "localOperatorLight",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": false,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": false,
+        "restartRequired": false
+      },
+      "glassAttribute": "",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "dpr": 2
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "row": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      }
+    },
+    {
+      "frame": "narrow.png",
+      "theme": "localOperatorDark",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": true,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": true,
+        "restartRequired": false
+      },
+      "glassAttribute": "sidebar canvas pane",
+      "viewport": {
+        "width": 560,
+        "height": 900,
+        "dpr": 1
+      },
+      "strip": {
+        "x": 80,
+        "y": 32,
+        "width": 480,
+        "height": 37,
+        "top": 32,
+        "right": 560,
+        "bottom": 69,
+        "left": 80
+      },
+      "row": {
+        "x": 80,
+        "y": 69,
+        "width": 480,
+        "height": 37,
+        "top": 69,
+        "right": 560,
+        "bottom": 106,
+        "left": 80
+      },
+      "content": {
+        "x": 80,
+        "y": 106,
+        "width": 480,
+        "height": 794,
+        "top": 106,
+        "right": 560,
+        "bottom": 900,
+        "left": 80
+      }
+    },
+    {
+      "frame": "overflow.png",
+      "theme": "localOperatorLight",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": true,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": true,
+        "restartRequired": false
+      },
+      "glassAttribute": "sidebar canvas pane",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "dpr": 2
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "row": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      }
+    }
+  ],
+  "after": [
+    {
+      "frame": "glass-dark.png",
+      "theme": "localOperatorDark",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": true,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": true,
+        "restartRequired": false
+      },
+      "glassAttribute": "sidebar canvas pane",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "dpr": 2
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "row": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      }
+    },
+    {
+      "frame": "flat-dark.png",
+      "theme": "localOperatorDark",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": false,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": false,
+        "restartRequired": false
+      },
+      "glassAttribute": "",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "dpr": 2
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "row": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      }
+    },
+    {
+      "frame": "glass-light.png",
+      "theme": "localOperatorLight",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": true,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": true,
+        "restartRequired": false
+      },
+      "glassAttribute": "sidebar canvas pane",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "dpr": 2
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "row": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      }
+    },
+    {
+      "frame": "flat-light.png",
+      "theme": "localOperatorLight",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": false,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": false,
+        "restartRequired": false
+      },
+      "glassAttribute": "",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "dpr": 2
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "row": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      }
+    },
+    {
+      "frame": "narrow.png",
+      "theme": "localOperatorDark",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": true,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": true,
+        "restartRequired": false
+      },
+      "glassAttribute": "sidebar canvas pane",
+      "viewport": {
+        "width": 560,
+        "height": 900,
+        "dpr": 1
+      },
+      "strip": {
+        "x": 80,
+        "y": 32,
+        "width": 480,
+        "height": 37,
+        "top": 32,
+        "right": 560,
+        "bottom": 69,
+        "left": 80
+      },
+      "row": {
+        "x": 80,
+        "y": 69,
+        "width": 480,
+        "height": 37,
+        "top": 69,
+        "right": 560,
+        "bottom": 106,
+        "left": 80
+      },
+      "content": {
+        "x": 80,
+        "y": 106,
+        "width": 480,
+        "height": 794,
+        "top": 106,
+        "right": 560,
+        "bottom": 900,
+        "left": 80
+      }
+    },
+    {
+      "frame": "overflow.png",
+      "theme": "localOperatorLight",
+      "glass": {
+        "capability": {
+          "supported": true,
+          "mechanism": "vibrancy",
+          "reason": "ok",
+          "materials": [
+            "window",
+            "menu",
+            "popover"
+          ],
+          "defaultMaterial": "window",
+          "liquid": true,
+          "defaultEnabled": true,
+          "liveToggle": true
+        },
+        "settings": {
+          "enabled": true,
+          "coverage": "full",
+          "intensity": 80,
+          "material": "window"
+        },
+        "active": true,
+        "restartRequired": false
+      },
+      "glassAttribute": "sidebar canvas pane",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "dpr": 2
+      },
+      "strip": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "row": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "content": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      }
+    }
+  ]
+}

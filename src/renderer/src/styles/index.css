@@ -2339,7 +2339,7 @@ html[data-glass~="pane"] [data-glass-chrome-live] [data-glass-region="chrome"] {
  * their existing paint unchanged.
  */
 html[data-glass~="pane"]
-	[data-glass-region="chrome"]
+	[data-browser-route-chrome]
 	[data-glass-region="chrome"] {
 	background-color: transparent;
 }

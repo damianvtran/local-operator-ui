@@ -738,6 +738,9 @@ export class AddressOverlayController {
 	private lastSeq: number;
 	private shownSeq: number;
 	private lastProjection: AddressListProjection | null;
+	/** A sanitized v2 projection whose anchor preceded the matching page rect.
+	 * It can resize a hidden reusable child on the next layout, never re-open it. */
+	private pendingResizeProjection: AddressListProjection | null;
 	/** The rectangle last applied for a projection. `onLayout`'s unchanged-key
 	 * re-assert uses THIS, never the S1 top-strip rule: an S2 child sits at the
 	 * dock, and re-raising it with the S1 rectangle would move the list. */
@@ -822,6 +825,7 @@ export class AddressOverlayController {
 		this.lastSeq = 0;
 		this.shownSeq = -1;
 		this.lastProjection = null;
+		this.pendingResizeProjection = null;
 		this.lastAppliedBounds = null;
 		this.lastMeasurement = null;
 		this.themeFact = "absent";
@@ -888,7 +892,10 @@ export class AddressOverlayController {
 			}
 			// A moved page, a changed tab or a torn-down presentation invalidates the
 			// popout as a whole. The product field row lives in the renderer, so main
-			// tells it to come down rather than only hiding the native list.
+			// tells it to come down rather than only hiding the native list. A narrow
+			// anchor that arrived just before this rect may still resize the reusable
+			// child, but the dismissal and hidden state are unchanged.
+			this.resizeDeferredChild(next);
 			this.hide("layout");
 			// The first pass has no popout to lower (previousKey "none").
 			if (this.product && previousKey !== "none") this.emitDismiss("layout");
@@ -1298,6 +1305,7 @@ export class AddressOverlayController {
 		this.themeFact = projection.themeFact;
 
 		if (!projection.visible) {
+			this.pendingResizeProjection = null;
 			if (projection.seq > this.lastSeq) this.lastSeq = projection.seq;
 			this.hide("projection_hidden");
 			return { accepted: true, shown: false, reason: null, bounds: null };
@@ -1372,10 +1380,17 @@ export class AddressOverlayController {
 			const tooNarrow =
 				projection.v === 2 &&
 				projection.anchor.width < ADDRESS_LIST_MIN_WIDTH_DIP;
+			if (projection.v === 2 && !tooNarrow) {
+				// ResizeObserver delivery is not atomic across the row and page. Keep
+				// the sanitized geometry only so the matching layout can resize the
+				// hidden child; it is not shown and main's consistency check is intact.
+				this.pendingResizeProjection = projection;
+			}
 			return this.refuseProjection(
 				tooNarrow ? "anchor_too_narrow" : "anchor_inconsistent",
 			);
 		}
+		this.pendingResizeProjection = null;
 
 		this.generation += 1;
 		const generation = this.generation;
@@ -1467,6 +1482,44 @@ export class AddressOverlayController {
 		this.state = "shown";
 		this.hiddenReason = null;
 		return { accepted: true, shown: true, reason: null, bounds };
+	}
+
+	private resizeDeferredChild(snapshot: AddressOverlayLayoutSnapshot): void {
+		const projection = this.pendingResizeProjection;
+		this.pendingResizeProjection = null;
+		// Only the refusal path above hides before this helper runs. A shown child
+		// keeps the established lastAppliedBounds path below; this branch must not
+		// turn a deferred resize into a second presentation mechanism.
+		if (
+			this.state === "shown" ||
+			projection === null ||
+			projection.v !== 2 ||
+			projection.tabId !== snapshot.activeTabId ||
+			!snapshot.presented ||
+			snapshot.contentRect === null
+		) {
+			return;
+		}
+		const bounds = addressListBoundsV2For(
+			projection.anchor,
+			snapshot.contentRect,
+			projection.view,
+			this.ownerSize(),
+		);
+		const view = this.view;
+		if (bounds === null || !view || !this.viewUsable(view)) return;
+		try {
+			// Chromium does not deliver a resize to a hidden WebContentsView renderer.
+			// These synchronous calls yield no compositor frame: the child becomes
+			// measurable at the new bounds, then returns to the dismissal's hidden
+			// state in the same main-task turn rather than re-opening the list.
+			const wasVisible = view.getVisible();
+			if (!wasVisible) view.setVisible(true);
+			view.setBounds(bounds);
+			if (!wasVisible) view.setVisible(false);
+		} catch (error) {
+			this.releaseChild(`layout_error:${String(error)}`);
+		}
 	}
 
 	private refuseProjection(

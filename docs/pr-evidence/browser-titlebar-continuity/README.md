@@ -6,18 +6,24 @@ Current `origin/main` (`75a5d07eba077d8dc7cf1538a7b3c3a03ebf9183`, package versi
 
 The Browser route root remains a flush, full-height elevated pane. A route-only chrome wrapper now owns `panel-top-pad`, the sunken/chrome material, and the complete y0–106 lane + tab strip + permanent address row box. S5's `BrowserUrlBar` stays in flow immediately below `BrowserTabStrip`; the find row and page remain outside the wrapper.
 
-Matching the lane to the tab track removes the horizontal tone seam without moving tabs into the 32px traffic-light/drag lane. The nested strip and address row keep their established `data-glass-region="chrome"` roles, but the glass rule clears their backgrounds so only the wrapper paints the shared alpha. Flat theme materials are unchanged.
+Matching the lane to the tab track removes the horizontal tone seam without moving tabs into the 32px traffic-light/drag lane. The nested strip and address row keep their established `data-glass-region="chrome"` roles, but a selector keyed to the wrapper's dedicated `data-browser-route-chrome` attribute clears their backgrounds so only the wrapper paints the shared alpha. In flat mode the strip and row retain their existing materials; the lane intentionally moves from elevated to the tab track's sunken rung.
 
 The retired popout-anchor assertions/evidence were dropped. Q-2 remains relevant because S5 focus raises still feed the history scene: its named `HistorySceneRigError` now propagates through both catches, and the process-level regression checks the real exit and matrix. Q-1's same-layout test was removed from this PR and remains with its separate follow-up; no Q-1 production fix is claimed here.
+
+Q-3 exposed a non-atomic row/page resize: a valid narrow anchor could be refused against the preceding page rect, leaving the hidden native child at its old width. Main now applies that deferred geometry when the matching rect arrives, using a synchronous visible–resize–hide sequence because hidden `WebContentsView` renderers do not deliver resize. The final dismissal and main's consistency guard are unchanged. See `q3-remediation.md` for the RED/GREEN controller test and real H8 results.
 
 ## Rendered evidence — headless only
 
 All captures used the real built Electron app with `--window-mode=headless`, scratch HOME/config/profile/log roots, and renderer `Page.captureScreenshot`. No visible/inactive/normal Electron window was used.
 
 - `before.png`: clean base `75a5d07eba077d8dc7cf1538a7b3c3a03ebf9183`, full glass (`enabled=true`, `coverage=full`, `intensity=80`, `material=window`), renderer SHA-256 `07e69c29ace307c3440a7adefb25f0baf68c85237226b4c31ffca2b87bca0420`.
-- `after.png`: rebased change, renderer SHA-256 `1e124aff0abd297f179a0e3a7b2010d6439c2e32d4e15caf1a8f914b1da0e464`. The same chrome material continues from y0 through the permanent address row.
+- `after.png`: remediated change, renderer SHA-256 `1542f7961d63c2abb6532abd3ae275753a588671b6e7811dac715a4a941e897d`. The same chrome material continues from y0 through the permanent address row.
+- `before-light.png` / `after-light.png`: the glass light pair (`localOperatorLight`).
+- `before-flat-dark.png` / `after-flat-dark.png` and `before-flat-light.png` / `after-flat-light.png`: glass-off pairs. The lane intentionally takes the strip's sunken material in both themes.
 - `narrow.png`: direct 560px narrow neighbour on the same after build.
 - `overflow.png`: nine tabs with three off screen on the same after build.
+
+`frame-metadata.json` records each frame's actual theme, glass settings and attribute, viewport and DPR. Standard frames are 1380×900 at DPR 2; narrow is 560×900 at DPR 1. All six before/after states keep strip y32, row y69 and page y106.
 
 The fixture page was really loaded and scrolled (`scrollY=1200`, `innerHeight=794`, page marker `y=300`). The large black page region is expected: renderer capture does not include the separate native `WebContentsView`. These are not native composite or traffic-light screenshots.
 
@@ -45,15 +51,13 @@ Bounded command, run separately in clean-base and rebased-head worktrees after r
 node scripts/browser-chrome-s4b-probe.mjs --out <scratch>
 ```
 
-`base-matrix.md` and `matrix.md` are the actual second base/head full-matrix outputs. Neither is represented as clean:
+`base-matrix.md` and `matrix.md` are actual full-matrix outputs. Neither is represented as clean:
 
-- Base (same result twice): **31 PASS / 8 FAIL / 6 BLOCKED / 0 pending**.
-- Head (same result twice): **26 PASS / 7 FAIL / 11 BLOCKED / 1 pending**.
-- Seven FAIL rows are shared by base and head: T1, T3, V4, V8, V13, V14, V15. They are upstream S4b-era assertions against retired S5 trigger/popout behaviour; this rebase does not claim to repair them.
-- Base H4 failed twice (`vpnCommitted=false`); head H4 passed twice. No Q-1 fix is claimed from that timing difference.
-- Both full head runs reached H8, captured the owner narrow frame, then timed out capturing the native child. H8/H11/H12/H6/H7 became BLOCKED and R2-notices remained pending through the generic history catch.
-
-The discriminating isolated head history control then passed **13/13** rows, including H4 and H8; see `history-only.md`. This isolates the remaining full-matrix capture timeout to the long-run rig path rather than hiding it, but does not make the full matrix green.
+- Base (same result twice before remediation): **31 PASS / 8 FAIL / 6 BLOCKED / 0 pending**.
+- Remediated head: **32 PASS / 7 FAIL / 6 BLOCKED / 0 pending**.
+- Seven FAIL rows are shared by base and head: T1, T3, V4, V8, V13, V14, V15. They are upstream S4b-era assertions against retired S5 trigger/popout behaviour; this PR does not claim to repair them.
+- Base H4 failed twice (`vpnCommitted=false`); remediated head H4 passed. No Q-1 fix is claimed from that timing difference.
+- Before remediation, head H8 repeatedly retained `viewport=1120`, `titleWidth=874` and timed out on capture. Two post-fix isolated runs each passed **13/13**, with H8 at `viewport=360`, `titleWidth=114`, `geometryOk=true`, `captureError=null`. The terminal full matrix also passes H8 and has no downstream pending cascade. See `q3-remediation.md` and `history-only.md`.
 
 Direct geometry rows R1/R2/R2-NC and page preservation P1/P2/D1 passed on base and head. D2/F1/BL1 retain their existing native-focus/fault-injection/composite limitations. No native drag-lane hit routing, native composite pixels, traffic-light pixels, or physical native interactions are claimed.
 
@@ -71,13 +75,14 @@ node scripts/run-desktop-tests.mjs \
   scripts/browser-tab-strip-focus.test.mjs scripts/browser-page-menu.test.mjs \
   scripts/browser-page-menu-focus.test.mjs scripts/browser-address-history.test.mjs \
   scripts/browser-address-autocomplete.test.mjs scripts/browser-chrome-gaps.test.mjs
-# 222 passed, 0 failed
+# 223 passed, 0 failed
 
 pnpm lint:scripts
 # passed; 3 changed scripts lint-clean against origin/main
 
-pnpm check-types:renderer
-# passed
+pnpm exec tsc --noEmit -p tsconfig.node.json
+pnpm exec tsc --noEmit -p tsconfig.app.json
+# both passed
 
 pnpm check-themes
 # passed; 186211 contrast assertions across 59 themes, generated CSS current,

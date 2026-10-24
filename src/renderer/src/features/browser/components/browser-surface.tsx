@@ -844,6 +844,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			<div
 				className={isRoutePage ? "panel-top-pad bg-sunken" : undefined}
 				data-glass-region={isRoutePage ? "chrome" : undefined}
+				data-browser-route-chrome={isRoutePage ? "" : undefined}
 			>
 				{/* THE STRIP CONSUMES THESE TWO HANDS, so they are passed through rather than
 			    `void`-ed: a close's own outcome is what bounds its caret restore (review
