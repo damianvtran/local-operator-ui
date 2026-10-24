@@ -2,5 +2,11 @@
 	"ui.chat.dialogs.archive_action": "Архивировать",
 	"ui.chat.dialogs.cancel": "Отмена",
 	"ui.chat.dialogs.delete_action": "Удалить",
-	"ui.chat.dialogs.delete_title": "Удалить этот разговор?"
+	"ui.chat.dialogs.delete_title": "Удалить этот разговор?",
+	"ui.chat.dialogs.options.clear_confirm": "Очистить",
+	"ui.chat.dialogs.options.clear_conversation": "Очистить разговор",
+	"ui.chat.dialogs.options.clear_message": "Все сообщения в нём удаляются с этого компьютера без возможности отмены. Сам агент не затрагивается.",
+	"ui.chat.dialogs.options.clear_title": "Очистить этот разговор?",
+	"ui.chat.dialogs.options.description": "Настройте параметры этого агента",
+	"ui.chat.dialogs.options.title": "Параметры чата"
 }
