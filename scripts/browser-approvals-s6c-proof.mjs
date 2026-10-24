@@ -821,17 +821,68 @@ async function captureDocuments(proof) {
 			`FRAME\t${state.label}\tcontent=${content.width}x${content.height} appTheme=${theme} cardTheme=${cardTheme}`,
 		);
 	}
+	// The native composite is the one row a document capture cannot answer.
+	// Attempt it on this run, with the card visible, and record what the OS
+	// actually did rather than restating an earlier observation.
+	const windowInfo = JSON.parse(
+		await main.eval(`(() => {
+			const { BrowserWindow } = process.mainModule.require("electron");
+			const win = BrowserWindow.getAllWindows()[0];
+			return JSON.stringify({ id: win.getMediaSourceId(), bounds: win.getContentBounds(), visible: win.isVisible(), focused: win.isFocused() });
+		})()`),
+	);
+	const cgid = Number(String(windowInfo.id).split(":")[1]);
+	const compositePath = join(dir, "native-composite.png");
+	let composite = { pass: false, detail: {} };
+	try {
+		execFileSync(
+			"screencapture",
+			["-x", "-o", "-l", String(cgid), compositePath],
+			{
+				stdio: ["ignore", "pipe", "pipe"],
+			},
+		);
+		const dims = execFileSync(
+			"sips",
+			["-g", "pixelWidth", "-g", "pixelHeight", compositePath],
+			{
+				encoding: "utf8",
+			},
+		)
+			.split("\n")
+			.filter((line) => line.includes("pixel"))
+			.join(" ");
+		composite = {
+			pass: true,
+			detail: {
+				command: `screencapture -x -o -l ${cgid}`,
+				window: windowInfo,
+				path: compositePath,
+				dims,
+			},
+		};
+		result.frames.push({
+			label: "native-composite",
+			path: compositePath,
+			window: windowInfo,
+			dims,
+		});
+	} catch (error) {
+		composite = {
+			pass: false,
+			detail: {
+				command: `screencapture -x -o -l ${cgid}`,
+				window: windowInfo,
+				observed: String(error?.stderr ?? error?.message ?? error).trim(),
+			},
+		};
+	}
 	result.rows.push(
 		record(
 			"F-native-composite",
-			false,
-			{
-				command: "screencapture -x -o -l <window id>",
-				observed: "could not create image from window",
-				reason:
-					"the native card composite needs macOS Screen Recording; this host refused the window capture, so only the real-app documents (app route + card child) are captured",
-			},
-			true,
+			composite.pass,
+			composite.detail,
+			!composite.pass,
 		),
 	);
 }
