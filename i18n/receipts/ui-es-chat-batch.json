@@ -30,8 +30,8 @@
   },
   "counts": {
     "batch_keys": 1733,
-    "pre_existing_keys_carried": 30,
-    "pre_existing_keys_newly_translated": 32,
+    "pre_existing_keys_preserved": 30,
+    "pre_existing_keys_translated": 32,
     "files": 15,
     "target_keys_total": 1795
   },
