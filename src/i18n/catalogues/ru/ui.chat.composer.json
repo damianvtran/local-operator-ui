@@ -39,7 +39,7 @@
 	"ui.chat.composer.placeholder.busy": "Агент занят",
 	"ui.chat.composer.placeholder.answer": "Введите свой ответ…",
 	"ui.chat.composer.placeholder.secret_answer": "Ответьте на запрос секрета на панели запросов",
-	"ui.chat.composer.placeholder.aside": "Спросите отдельно — Esc закрывает вопрос",
+	"ui.chat.composer.placeholder.aside": "Спросите без записи — Esc закрывает вопрос",
 	"ui.chat.composer.placeholder.sending": "Отправка сообщения",
 	"ui.chat.composer.placeholder.stopping": "Остановка хода",
 	"ui.chat.composer.placeholder.recording": "Запись",

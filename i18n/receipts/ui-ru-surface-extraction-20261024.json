@@ -357,5 +357,72 @@
     "conflicting_proposals": "Where the two audits proposed different exact values for one key, one variant was applied and is named above: rollup.review takes the second auditor’s impersonal form to match the sibling rollup shape; mark.applied takes the second auditor’s head-noun sentence because the sibling marks are full sentences; miniView takes the first auditor’s parenthetical label because it is shorter for the compact quick-send surface and reads more idiomatically.",
     "repair_evidence": "Real Russian runtime renders captured at 1, 2, 5, 1,5 and 1234 for the plural rollup; 1/2/1,5/1234 for the four miniView forms and the byte cap; the 471-key structural ICU, all-key render, plural and pseudo checks were re-run on this head.",
     "static_fit": "Unchanged from round 1 except that the run-details and byte-cap strings are now shorter; no rendered-frame or geometry claim is made here. Static fit remains a separate review."
+  },
+  "independent_audit_remediation": {
+    "round": 1,
+    "date": "2026-10-24",
+    "head_before": "7a1fdf200ce785f959b2e140b4a361ebbf8b4b3c",
+    "base": "40462495827dfb0e1bfacb8643da805912493a5b",
+    "audit_receipt": "i18n/receipts/0f5238900a89-surfaces.json",
+    "auditor": {
+      "agent": "translation-auditor",
+      "session": "0f5238900a89"
+    },
+    "disposition": {
+      "blockers_fixed": 0,
+      "required_majors_fixed": 0,
+      "clear_minors_fixed": 3,
+      "nits_fixed": 0,
+      "deferred": 1,
+      "changed_keys": 5
+    },
+    "changed_namespaces": [
+      "ui.chat.canonical",
+      "ui.chat.composer",
+      "ui.common.errors"
+    ],
+    "changes": {
+      "ui.chat.canonical": [
+        {
+          "key": "ui.chat.canonical.transcript.missing_session",
+          "finding": "RU-S1 minor glossary: «устройство» used for the source's «machine»",
+          "applied": "Этого разговора больше нет на этом компьютере."
+        },
+        {
+          "key": "ui.chat.canonical.transcript.missing_session_detail",
+          "finding": "RU-S1 related key: the same sentence pair used «устройство» for the machine",
+          "applied": "Он был удалён или принадлежит компьютеру, к которому это приложение не подключено."
+        }
+      ],
+      "ui.chat.composer": [
+        {
+          "key": "ui.chat.composer.placeholder.aside",
+          "finding": "RU-S2 minor accuracy: «отдельно» drops the source's off-the-record promise",
+          "applied": "Спросите без записи — Esc закрывает вопрос"
+        }
+      ],
+      "ui.common.errors": [
+        {
+          "key": "ui.common.errors.speech_radient_sign_in",
+          "finding": "RU-S3 minor glossary: «сеанс» replaces the batch's «вход» for sign-in",
+          "applied": "Вход в Radient больше не работает. Войдите снова в настройках."
+        },
+        {
+          "key": "ui.common.errors.speech_radient_sign_in_legacy",
+          "finding": "RU-S3 related key: the legacy spelling carried the same drift",
+          "applied": "Вход в Radient больше не работает. Войдите снова на странице настроек."
+        }
+      ]
+    },
+    "deferred": [
+      {
+        "key": "ui.chat.canonical.supplement.file_actions.open_in_canvas",
+        "finding": "RU-S4 nit consistency: «Открыть в Canvas» vs the shipped ru surface term «Холст»",
+        "reason": "The en sidecar says Canvas is the product's pane name and stays untranslated, while every other shipped ru surface renders it «Холст». That is a source/context conflict, not a translator deviation; changing this key in isolation would split ru across two terms. Resolved at source with the extraction owner."
+      }
+    ],
+    "residual_risks": [
+      "RU-S4 is recorded in the audit thread rather than a new issue, per the repository's no-issue rule for deferred findings."
+    ]
   }
 }
