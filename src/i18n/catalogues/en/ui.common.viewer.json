@@ -2,5 +2,9 @@
 	"ui.common.viewer.opening": "Opening…",
 	"ui.common.viewer.reset_view": "Reset view",
 	"ui.common.viewer.zoom_in": "Zoom in",
-	"ui.common.viewer.zoom_out": "Zoom out"
+	"ui.common.viewer.zoom_out": "Zoom out",
+	"ui.common.viewer.image_lightbox.previous": "Previous {medialabel}",
+	"ui.common.viewer.image_lightbox.next": "Next {medialabel}",
+	"ui.common.viewer.image_lightbox.close": "Close {medialabel}",
+	"ui.common.viewer.image_lightbox.asset_of": "Asset {index, number, ::group-off} of {count, number, ::group-off}"
 }

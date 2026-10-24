@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import type { DesktopContextNumbers } from "../../../../../../shared/desktop-contract";
 import type { SlashOutcome } from "../use-picker-backend";
 import { formatContextTokens, formatPercent, formatWindow } from "./formatters";
@@ -43,7 +44,9 @@ export function isBreakdownUnavailable(
 ): boolean {
 	return Boolean(
 		outcome?.kind === "notice" &&
-			outcome.text?.includes("context breakdown unavailable"),
+			outcome.text?.includes(
+				t("ui.chat.pickers.context_model.context_breakdown_unavailable"),
+			),
 	);
 }
 
@@ -68,13 +71,28 @@ export type EstimateRow = {
  * different kind of fact (an exact measurement rather than an estimate) and the
  * second is the denominator, not a row.
  */
-const ESTIMATE_ROWS: { key: keyof DesktopContextNumbers; label: string }[] = [
-	{ key: "instructions", label: "Instructions" },
-	{ key: "tool_inventory", label: "Tool inventory" },
-	{ key: "tool_schemas", label: "Tool schemas" },
-	{ key: "environment", label: "Environment" },
-	{ key: "knowledge_mcp_goal", label: "Skills / MCP / goal" },
-	{ key: "messages", label: "Messages" },
+const ESTIMATE_ROWS = (): {
+	key: keyof DesktopContextNumbers;
+	label: string;
+}[] => [
+	{
+		key: "instructions",
+		label: t("ui.chat.pickers.context_model.instructions"),
+	},
+	{
+		key: "tool_inventory",
+		label: t("ui.chat.pickers.context_model.tool_inventory"),
+	},
+	{
+		key: "tool_schemas",
+		label: t("ui.chat.pickers.context_model.tool_schemas"),
+	},
+	{ key: "environment", label: t("ui.chat.pickers.context_model.environment") },
+	{
+		key: "knowledge_mcp_goal",
+		label: t("ui.chat.pickers.context_model.skills_mcp_goal"),
+	},
+	{ key: "messages", label: t("ui.chat.pickers.context_model.messages") },
 ];
 
 /**
@@ -89,7 +107,7 @@ export function estimateRows(
 ): EstimateRow[] {
 	if (!numbers) return [];
 	const total = numbers.total;
-	return ESTIMATE_ROWS.map(({ key, label }) => {
+	return ESTIMATE_ROWS().map(({ key, label }) => {
 		const value = numbers[key];
 		return {
 			key,
@@ -144,7 +162,11 @@ export function headline(
 		frontend.context_tokens === null ||
 		!frontend.context_window
 	) {
-		return { value: "not measured", fraction: null, estimated: false };
+		return {
+			value: t("ui.chat.pickers.context_model.not_measured"),
+			fraction: null,
+			estimated: false,
+		};
 	}
 	const fraction = frontend.context_tokens / frontend.context_window;
 	return {

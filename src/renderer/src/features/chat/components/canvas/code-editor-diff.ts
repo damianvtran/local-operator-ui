@@ -7,6 +7,7 @@ import {
 	WidgetType,
 } from "@codemirror/view";
 import type { EditDiff } from "@shared/api/local-operator/types";
+import { t } from "@shared/i18n";
 
 const MONO_FAMILY = "var(--font-mono)";
 
@@ -77,7 +78,7 @@ class DiffWidget extends WidgetType {
 		container.style.fontSize = "var(--text-mono)";
 
 		const label = document.createElement("div");
-		label.textContent = "Proposed change:";
+		label.textContent = t("ui.canvas.code_editor_diff.proposed_change");
 		label.style.fontSize = "var(--text-meta)";
 		label.style.fontWeight = "600";
 		label.style.color = "var(--color-info)";
@@ -90,11 +91,21 @@ class DiffWidget extends WidgetType {
 		diffWrapper.style.gap = "4px";
 
 		if (this.oldText.trim()) {
-			appendDiffBlock(diffWrapper, "- Remove:", this.oldText, "danger");
+			appendDiffBlock(
+				diffWrapper,
+				t("ui.canvas.code_editor_diff.remove"),
+				this.oldText,
+				"danger",
+			);
 		}
 
 		if (this.newText.trim()) {
-			appendDiffBlock(diffWrapper, "+ Add:", this.newText, "success");
+			appendDiffBlock(
+				diffWrapper,
+				t("ui.canvas.code_editor_diff.add"),
+				this.newText,
+				"success",
+			);
 		}
 
 		container.appendChild(diffWrapper);

@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import type {
 	DesktopSessionReport,
 	DesktopToolCallStats,
@@ -68,12 +69,11 @@ export const subtreeUnmeasured = (report: DesktopSessionReport): boolean =>
 /** The Totals meta: the counts, the failures when there are any, and the scope. */
 export function totalsMeta(report: DesktopSessionReport): string {
 	const aggregate = report.aggregate;
-	let meta = `${aggregate.calls} ${aggregate.calls === 1 ? "request" : "requests"}`;
-	if (aggregate.ok_calls !== aggregate.calls) {
-		meta += ` (${aggregate.calls - aggregate.ok_calls} failed)`;
-	}
-	if (hasDescendants(report)) meta += " · cost incl. subagents";
-	return meta;
+	return t("ui.chat.pickers.session_report_model.totals_meta", {
+		calls: aggregate.calls,
+		failed: aggregate.calls - aggregate.ok_calls,
+		scope: hasDescendants(report) ? "descendants" : "own",
+	});
 }
 
 /**
@@ -99,22 +99,29 @@ export const costValue = (report: DesktopSessionReport): string =>
 export function costNote(report: DesktopSessionReport): string | undefined {
 	const aggregate = report.aggregate;
 	if (aggregate.cost_known_calls === 0) {
-		return "No call in this session has a published price";
+		return t(
+			"ui.chat.pickers.session_report_model.no_call_in_this_session_has_a_published_price",
+		);
 	}
 	if (!hasDescendants(report)) return undefined;
 	const descendants = report.descendants_aggregate;
 	if (subtreeUnmeasured(report) || descendants === null) {
-		return "subagent spend not measured";
+		return t(
+			"ui.chat.pickers.session_report_model.subagent_spend_not_measured",
+		);
 	}
-	return `${formatMicroUsd(
-		aggregate.cost_micro,
-		aggregate.cost_known_calls,
-		aggregate.calls,
-	)} own · ${formatMicroUsd(
-		descendants.cost_micro,
-		descendants.cost_known_calls,
-		descendants.calls,
-	)} subagents`;
+	return t("ui.chat.pickers.session_report_model.own_subagents", {
+		formatmicrousd: formatMicroUsd(
+			aggregate.cost_micro,
+			aggregate.cost_known_calls,
+			aggregate.calls,
+		),
+		formatmicrousd2: formatMicroUsd(
+			descendants.cost_micro,
+			descendants.cost_known_calls,
+			descendants.calls,
+		),
+	});
 }
 
 /**
@@ -138,23 +145,47 @@ export const COMPONENT_KEYS = [
 
 /** Human labels for each component key (`analytics/model.py` `COMPONENT_LABELS`). */
 export const COMPONENT_LABELS: Record<string, string> = {
-	system_prompt: "System prompt",
-	custom_instructions: "Custom instructions (agents/teams)",
-	tool_inventory: "Tool inventory",
-	tool_schemas: "Tool schemas",
-	environment: "Environment",
-	knowledge: "Knowledge / skills",
-	conversation: "Conversation",
-	tool_results: "Tool results",
-	images: "Images (est.)",
+	get system_prompt() {
+		return t("ui.chat.pickers.session_report_model.system_prompt");
+	},
+	get custom_instructions() {
+		return t(
+			"ui.chat.pickers.session_report_model.custom_instructions_agents_teams",
+		);
+	},
+	get tool_inventory() {
+		return t("ui.chat.pickers.session_report_model.tool_inventory");
+	},
+	get tool_schemas() {
+		return t("ui.chat.pickers.session_report_model.tool_schemas");
+	},
+	get environment() {
+		return t("ui.chat.pickers.session_report_model.environment");
+	},
+	get knowledge() {
+		return t("ui.chat.pickers.session_report_model.knowledge_skills");
+	},
+	get conversation() {
+		return t("ui.chat.pickers.session_report_model.conversation");
+	},
+	get tool_results() {
+		return t("ui.chat.pickers.session_report_model.tool_results");
+	},
+	get images() {
+		return t("ui.chat.pickers.session_report_model.images_est");
+	},
 };
 
 /** The metric the section tables are ranked and drawn by. */
 export type SessionMetric = "tokens" | "cost";
 
 export const SESSION_METRIC_LABEL: Record<SessionMetric, string> = {
-	tokens: "Tokens",
-	cost: "Cost",
+	get tokens() {
+		return t("ui.chat.pickers.session_report_model.tokens");
+	},
+	get cost() {
+		return t("ui.chat.pickers.session_report_model.cost");
+	},
 };
 
 /** One aggregated row of a proportional section. */
@@ -264,9 +295,15 @@ export function spendBasisLegend(report: DesktopSessionReport): string | null {
 	}
 	return (
 		[...buckets]
-			.map(
-				([basis, bucket]) =>
-					`${channelBasisWords([basis])[0] ?? "Without a tracked basis"} ${formatMicroUsd(bucket.micro, bucket.known, bucket.calls)}${basis === "subscription_api_equivalent" ? " (API-equivalent)" : ""}`,
+			.map(([basis, bucket]) =>
+				t("ui.chat.pickers.session_report_model.basis_spend", {
+					label:
+						channelBasisWords([basis])[0] ??
+						t("ui.chat.pickers.session_report_model.without_a_tracked_basis"),
+					amount: formatMicroUsd(bucket.micro, bucket.known, bucket.calls),
+					equivalent:
+						basis === "subscription_api_equivalent" ? "true" : "false",
+				}),
 			)
 			.join(" · ") || null
 	);
@@ -274,8 +311,8 @@ export function spendBasisLegend(report: DesktopSessionReport): string | null {
 
 export const spendBasisTitle = (report: DesktopSessionReport): string =>
 	report.descendants_by_basis === undefined
-		? "Spend by basis (own)"
-		: "Spend by basis";
+		? t("ui.chat.pickers.session_report_model.spend_by_basis_own")
+		: t("ui.chat.pickers.session_report_model.spend_by_basis");
 
 /**
  * Purpose rows.
@@ -323,7 +360,9 @@ export function reportShapeProblem(
 	report: DesktopSessionReport,
 ): string | null {
 	if (!Array.isArray(report.by_purpose)) {
-		return "Part of this session's usage could not be read. Update the backend and try again.";
+		return t(
+			"ui.chat.pickers.session_report_model.part_of_this_session_s_usage_could_not_be_read_update_the_backend_and_tr",
+		);
 	}
 	return null;
 }
@@ -368,13 +407,22 @@ export type TimingRow = {
 	samples: number;
 };
 
-const TIMING_ROWS: {
+const TIMING_ROWS = (): {
 	key: keyof DesktopSessionReport["timings"];
 	label: string;
-}[] = [
-	{ key: "duration_ms", label: "Duration" },
-	{ key: "ttft_ms", label: "First output" },
-	{ key: "preparation_ms", label: "Preparation" },
+}[] => [
+	{
+		key: "duration_ms",
+		label: t("ui.chat.pickers.session_report_model.duration"),
+	},
+	{
+		key: "ttft_ms",
+		label: t("ui.chat.pickers.session_report_model.first_output"),
+	},
+	{
+		key: "preparation_ms",
+		label: t("ui.chat.pickers.session_report_model.preparation"),
+	},
 ];
 
 /**
@@ -387,14 +435,14 @@ const TIMING_ROWS: {
  * mean over no samples is not a zero.
  */
 export const timingRows = (report: DesktopSessionReport): TimingRow[] =>
-	TIMING_ROWS.map(({ key, label }) => {
+	TIMING_ROWS().map(({ key, label }) => {
 		const summary = report.timings[key];
 		if (!summary || summary.samples === 0) {
 			return {
 				key,
 				label,
-				mean: "unknown (0 samples)",
-				range: "unknown",
+				mean: t("ui.chat.pickers.session_report_model.unknown_0_samples"),
+				range: t("ui.chat.pickers.session_report_model.unknown"),
 				samples: 0,
 			};
 		}

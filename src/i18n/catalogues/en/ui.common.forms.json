@@ -25,5 +25,14 @@
 	"ui.common.forms.searchable_select.clear_value": "Clear value",
 	"ui.common.forms.searchable_select.no_matches": "No matches",
 	"ui.common.forms.searchable_select.use": "Use \"{text}\"",
-	"ui.common.forms.select.unlisted_value": "Not in any listing; saved as typed."
+	"ui.common.forms.select.unlisted_value": "Not in any listing; saved as typed.",
+	"ui.common.forms.categories_input_chips.add_category": "Add category...",
+	"ui.common.forms.categories_input_chips.remove_category": "Remove category {value}",
+	"ui.common.forms.categories_input_chips.no_categories_selected": "No categories selected",
+	"ui.common.forms.slider_setting.saving": "Saving {label}",
+	"ui.common.forms.tags_input_chips.add_tag": "Add tag...",
+	"ui.common.forms.tags_input_chips.remove_tag": "Remove tag {tag}",
+	"ui.common.forms.tags_input_chips.add_tage0db29": "Add tag",
+	"ui.common.forms.tags_input_chips.no_tags_added": "No tags added",
+	"ui.common.forms.toggle_setting.saving": "Saving {label}"
 }

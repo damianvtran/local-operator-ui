@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 import type { DesktopUsageAggregate } from "../../../../../../shared/desktop-contract";
 import {
 	type AnalyticsMetric,
@@ -88,12 +89,24 @@ export const asSessionSortKey = (key: string): SessionSortKey | null =>
 
 /** The column heading a sort key is announced by. */
 const SORT_LABEL: Record<SessionSortKey, string> = {
-	session: "Session",
-	calls: "Calls",
-	tokens: "Tokens",
-	cost: "Cost",
-	cache: CACHE_HIT_LABEL,
-	rate: TOK_PER_SECOND_LABEL,
+	get session() {
+		return t("ui.chat.pickers.analytics_session_state.session");
+	},
+	get calls() {
+		return t("ui.chat.pickers.analytics_session_state.calls");
+	},
+	get tokens() {
+		return t("ui.chat.pickers.analytics_session_state.tokens");
+	},
+	get cost() {
+		return t("ui.chat.pickers.analytics_session_state.cost");
+	},
+	get cache() {
+		return CACHE_HIT_LABEL();
+	},
+	get rate() {
+		return TOK_PER_SECOND_LABEL();
+	},
 };
 
 export type SessionTableState = {
@@ -630,9 +643,6 @@ export function enrichSessionRows(
 export const isNarrowed = (state: SessionTableState): boolean =>
 	state.query.trim() !== "" || state.filters.topLevelOnly;
 
-/** `session` / `sessions`, by the count the sentence counts. */
-const noun = (count: number): string => (count === 1 ? "session" : "sessions");
-
 /**
  * The visible line that says what the table is showing, or `null` when nothing
  * is narrowing it.
@@ -658,12 +668,25 @@ export function sessionMatchLine(input: {
 }): string | null {
 	const query = input.query.trim();
 	if (query === "" && !input.topLevelOnly) return null;
-	const counted = `${formatCount(input.matched)} of ${formatCount(input.total)} ${noun(input.total)}`;
 	const searched =
 		query === ""
-			? counted
-			: `${counted} ${input.matched === 1 ? "matches" : "match"} "${query}"`;
-	return input.topLevelOnly ? `${searched} · top-level only` : searched;
+			? t("ui.chat.pickers.analytics_session_state.match_count", {
+					matchedtext: formatCount(input.matched),
+					totaltext: formatCount(input.total),
+					total: input.total,
+				})
+			: t("ui.chat.pickers.analytics_session_state.match_query", {
+					matchedtext: formatCount(input.matched),
+					totaltext: formatCount(input.total),
+					total: input.total,
+					matched: input.matched,
+					query: query,
+				});
+	return input.topLevelOnly
+		? t("ui.chat.pickers.analytics_session_state.top_level_only", {
+				searched: searched,
+			})
+		: searched;
 }
 
 /**
@@ -706,28 +729,51 @@ export function sessionAnnouncement(
 ): string {
 	switch (change) {
 		case "sort":
-			return `Sorted by ${SORT_LABEL[context.sortKey]}, ${sortWord(context.sortKey, context.sortDirection)}.`;
+			return t("ui.chat.pickers.analytics_session_state.sorted_by", {
+				value: SORT_LABEL[context.sortKey],
+				sortword: sortWord(context.sortKey, context.sortDirection),
+			});
 		case "search": {
 			const query = context.query.trim();
 			/* Clearing the field is its own sentence: `No sessions match ""` is
 			   what the general branch would say about an empty query. */
-			if (context.query === "") return "Search cleared.";
+			if (context.query === "")
+				return t("ui.chat.pickers.analytics_session_state.search_cleared");
 			/* A field holding ONLY spaces has not been cleared, and saying so
 			   contradicts the state the reader can see: the spaces are still in
 			   the field and the clear control is still beside them. This branch
 			   is reached by trimming, so it cannot be folded into the one above
 			   — the two states differ in the raw value, not in the trimmed one. */
 			if (query === "") return "";
-			if (context.matched === 0) return `No sessions match "${query}".`;
-			return `${formatCount(context.matched)} ${noun(context.matched)} ${context.matched === 1 ? "matches" : "match"} "${query}".`;
+			if (context.matched === 0)
+				return t(
+					"ui.chat.pickers.analytics_session_state.no_sessions_match890478",
+					{ query: query },
+				);
+			return t("ui.chat.pickers.analytics_session_state.search_match", {
+				matchedtext: formatCount(context.matched),
+				matched: context.matched,
+				query: query,
+			});
 		}
 		case "filter":
 			return context.topLevelOnly
-				? `Top-level only: ${context.matched === 0 ? "no sessions" : `${formatCount(context.matched)} ${noun(context.matched)}`}.`
-				: `Top-level only off: ${formatCount(context.matched)} ${noun(context.matched)}.`;
+				? context.matched === 0
+					? t("ui.chat.pickers.analytics_session_state.filter_top_zero")
+					: t("ui.chat.pickers.analytics_session_state.filter_top", {
+							matchedtext: formatCount(context.matched),
+							matched: context.matched,
+						})
+				: t("ui.chat.pickers.analytics_session_state.top_level_only_off", {
+						matchedtext: formatCount(context.matched),
+						matched: context.matched,
+					});
 		case "page":
 			/* 1-based, because it is read, not computed with. */
-			return `Page ${context.page + 1} of ${context.pageCount}.`;
+			return t("ui.chat.pickers.analytics_session_state.page_of", {
+				page: context.page + 1,
+				pagecount: context.pageCount,
+			});
 		case null:
 			return "";
 	}
@@ -735,8 +781,13 @@ export function sessionAnnouncement(
 
 /** "highest/lowest first" for a value column, "A to Z"/"Z to A" for a label. */
 function sortWord(key: SessionSortKey, direction: SortDirection): string {
-	if (key === "session") return direction === "asc" ? "A to Z" : "Z to A";
-	return direction === "desc" ? "highest first" : "lowest first";
+	if (key === "session")
+		return direction === "asc"
+			? t("ui.chat.pickers.analytics_session_state.a_to_z")
+			: t("ui.chat.pickers.analytics_session_state.z_to_a");
+	return direction === "desc"
+		? t("ui.chat.pickers.analytics_session_state.highest_first")
+		: t("ui.chat.pickers.analytics_session_state.lowest_first");
 }
 
 /**
@@ -773,16 +824,30 @@ export function sessionEmptyText(input: {
 	if (input.total === 0 || input.matched > 0) return null;
 	if (input.topLevelOnly && input.filtered === 0)
 		return {
-			text: "No top-level sessions in this window.",
+			text: t(
+				"ui.chat.pickers.analytics_session_state.no_top_level_sessions_in_this_window",
+			),
 			detail:
 				input.total === 1
-					? "The one session in this window has a parent."
-					: `All ${formatCount(input.total)} sessions in this window have a parent.`,
+					? t(
+							"ui.chat.pickers.analytics_session_state.the_one_session_in_this_window_has_a_parent",
+						)
+					: t(
+							"ui.chat.pickers.analytics_session_state.all_sessions_in_this_window_have_a_parent",
+							{ formatcount: formatCount(input.total) },
+						),
 		};
 	return {
-		text: `No sessions match "${input.query.trim()}".`,
-		detail: `${formatCount(input.filtered)} ${noun(input.filtered)} ${
-			input.topLevelOnly ? "match the filter" : "in this window"
-		}. Clear the search to see ${input.filtered === 1 ? "it" : "them"}.`,
+		text: t("ui.chat.pickers.analytics_session_state.no_sessions_match", {
+			value: input.query.trim(),
+		}),
+		detail: t(
+			"ui.chat.pickers.analytics_session_state.clear_the_search_to_see",
+			{
+				filteredtext: formatCount(input.filtered),
+				filtered: input.filtered,
+				scope: input.topLevelOnly ? "filtered" : "window",
+			},
+		),
 	};
 }
