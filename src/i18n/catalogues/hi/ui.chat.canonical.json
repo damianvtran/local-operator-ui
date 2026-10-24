@@ -26,7 +26,7 @@
 	"ui.chat.canonical.supplement.adjust_placeholder": "ग्राफ़िक में बदलाव करें…",
 	"ui.chat.canonical.supplement.details.attempts": "प्रयास: {count, number, ::group-off}",
 	"ui.chat.canonical.supplement.details.model": "मॉडल: {name}",
-	"ui.chat.canonical.supplement.file_actions.open_in_canvas": "कैनवस में खोलें",
+	"ui.chat.canonical.supplement.file_actions.open_in_canvas": "Canvas में खोलें",
 	"ui.chat.canonical.supplement.file_actions.open_in_default_app": "डिफ़ॉल्ट ऐप में खोलें",
 	"ui.chat.canonical.supplement.file_actions.reveal_in_finder": "Finder में दिखाएँ",
 	"ui.chat.canonical.supplement.frame.failed": "यह ग्राफ़िक रेंडर नहीं हो सका",
