@@ -1,0 +1,861 @@
+{
+  "geometry": [
+    {
+      "label": "sidebar-docking-1380-expanded-dark",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "document": {
+        "scrollWidth": 1380,
+        "clientWidth": 1380,
+        "bodyScrollWidth": 1380
+      },
+      "mode": "docked",
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 900,
+        "right": 320,
+        "bottom": 900
+      },
+      "chat": {
+        "x": 320,
+        "y": 0,
+        "width": 1016,
+        "height": 900,
+        "right": 1336,
+        "bottom": 900
+      },
+      "rail": {
+        "x": 1336,
+        "y": 32,
+        "width": 44,
+        "height": 868,
+        "right": 1380,
+        "bottom": 900
+      },
+      "row": {
+        "x": 320,
+        "y": 0,
+        "width": 1016,
+        "height": 900,
+        "right": 1336,
+        "bottom": 900
+      },
+      "preference": {
+        "collapsed": false,
+        "width": 320
+      },
+      "sheetCount": 0,
+      "openDialogCount": 0,
+      "sessionRows": 3,
+      "populated": {
+        "question": true,
+        "answer": true,
+        "characters": 153
+      }
+    },
+    {
+      "label": "sidebar-docking-1023-expanded-dark",
+      "viewport": {
+        "width": 1023,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "document": {
+        "scrollWidth": 1023,
+        "clientWidth": 1023,
+        "bodyScrollWidth": 1023
+      },
+      "mode": "docked",
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 900,
+        "right": 320,
+        "bottom": 900
+      },
+      "chat": {
+        "x": 320,
+        "y": 0,
+        "width": 659,
+        "height": 900,
+        "right": 979,
+        "bottom": 900
+      },
+      "rail": {
+        "x": 979,
+        "y": 32,
+        "width": 44,
+        "height": 868,
+        "right": 1023,
+        "bottom": 900
+      },
+      "row": {
+        "x": 320,
+        "y": 0,
+        "width": 659,
+        "height": 900,
+        "right": 979,
+        "bottom": 900
+      },
+      "preference": {
+        "collapsed": false,
+        "width": 320
+      },
+      "sheetCount": 0,
+      "openDialogCount": 0,
+      "sessionRows": 3,
+      "populated": {
+        "question": true,
+        "answer": true,
+        "characters": 153
+      }
+    },
+    {
+      "label": "sidebar-docking-1023-keyboard-collapsed-dark",
+      "viewport": {
+        "width": 1023,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "document": {
+        "scrollWidth": 1023,
+        "clientWidth": 1023,
+        "bodyScrollWidth": 1023
+      },
+      "mode": "strip",
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 56,
+        "height": 900,
+        "right": 56,
+        "bottom": 900
+      },
+      "chat": {
+        "x": 56,
+        "y": 0,
+        "width": 923,
+        "height": 900,
+        "right": 979,
+        "bottom": 900
+      },
+      "rail": {
+        "x": 979,
+        "y": 32,
+        "width": 44,
+        "height": 868,
+        "right": 1023,
+        "bottom": 900
+      },
+      "row": {
+        "x": 56,
+        "y": 0,
+        "width": 923,
+        "height": 900,
+        "right": 979,
+        "bottom": 900
+      },
+      "preference": {
+        "collapsed": true,
+        "width": 320
+      },
+      "sheetCount": 0,
+      "openDialogCount": 0,
+      "sessionRows": 0,
+      "populated": {
+        "question": true,
+        "answer": true,
+        "characters": 153
+      }
+    },
+    {
+      "label": "sidebar-docking-1023-keyboard-expanded-dark",
+      "viewport": {
+        "width": 1023,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "document": {
+        "scrollWidth": 1023,
+        "clientWidth": 1023,
+        "bodyScrollWidth": 1023
+      },
+      "mode": "docked",
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 900,
+        "right": 320,
+        "bottom": 900
+      },
+      "chat": {
+        "x": 320,
+        "y": 0,
+        "width": 659,
+        "height": 900,
+        "right": 979,
+        "bottom": 900
+      },
+      "rail": {
+        "x": 979,
+        "y": 32,
+        "width": 44,
+        "height": 868,
+        "right": 1023,
+        "bottom": 900
+      },
+      "row": {
+        "x": 320,
+        "y": 0,
+        "width": 659,
+        "height": 900,
+        "right": 979,
+        "bottom": 900
+      },
+      "preference": {
+        "collapsed": false,
+        "width": 320
+      },
+      "sheetCount": 0,
+      "openDialogCount": 0,
+      "sessionRows": 3,
+      "populated": {
+        "question": true,
+        "answer": true,
+        "characters": 153
+      }
+    },
+    {
+      "label": "sidebar-docking-1023-pointer-collapsed-dark",
+      "viewport": {
+        "width": 1023,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "document": {
+        "scrollWidth": 1023,
+        "clientWidth": 1023,
+        "bodyScrollWidth": 1023
+      },
+      "mode": "strip",
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 56,
+        "height": 900,
+        "right": 56,
+        "bottom": 900
+      },
+      "chat": {
+        "x": 56,
+        "y": 0,
+        "width": 923,
+        "height": 900,
+        "right": 979,
+        "bottom": 900
+      },
+      "rail": {
+        "x": 979,
+        "y": 32,
+        "width": 44,
+        "height": 868,
+        "right": 1023,
+        "bottom": 900
+      },
+      "row": {
+        "x": 56,
+        "y": 0,
+        "width": 923,
+        "height": 900,
+        "right": 979,
+        "bottom": 900
+      },
+      "preference": {
+        "collapsed": true,
+        "width": 320
+      },
+      "sheetCount": 0,
+      "openDialogCount": 0,
+      "sessionRows": 0,
+      "populated": {
+        "question": true,
+        "answer": true,
+        "characters": 153
+      }
+    },
+    {
+      "label": "sidebar-docking-800-collapsed-dark",
+      "viewport": {
+        "width": 800,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "document": {
+        "scrollWidth": 800,
+        "clientWidth": 800,
+        "bodyScrollWidth": 800
+      },
+      "mode": "strip",
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 56,
+        "height": 900,
+        "right": 56,
+        "bottom": 900
+      },
+      "chat": {
+        "x": 56,
+        "y": 0,
+        "width": 700,
+        "height": 900,
+        "right": 756,
+        "bottom": 900
+      },
+      "rail": {
+        "x": 756,
+        "y": 32,
+        "width": 44,
+        "height": 868,
+        "right": 800,
+        "bottom": 900
+      },
+      "row": {
+        "x": 56,
+        "y": 0,
+        "width": 700,
+        "height": 900,
+        "right": 756,
+        "bottom": 900
+      },
+      "preference": {
+        "collapsed": true,
+        "width": 320
+      },
+      "sheetCount": 0,
+      "openDialogCount": 0,
+      "sessionRows": 0,
+      "populated": {
+        "question": true,
+        "answer": true,
+        "characters": 153
+      }
+    },
+    {
+      "label": "sidebar-docking-800-expanded-dark",
+      "viewport": {
+        "width": 800,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "document": {
+        "scrollWidth": 800,
+        "clientWidth": 800,
+        "bodyScrollWidth": 800
+      },
+      "mode": "docked",
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 276,
+        "height": 900,
+        "right": 276,
+        "bottom": 900
+      },
+      "chat": {
+        "x": 276,
+        "y": 0,
+        "width": 480,
+        "height": 900,
+        "right": 756,
+        "bottom": 900
+      },
+      "rail": {
+        "x": 756,
+        "y": 32,
+        "width": 44,
+        "height": 868,
+        "right": 800,
+        "bottom": 900
+      },
+      "row": {
+        "x": 276,
+        "y": 0,
+        "width": 480,
+        "height": 900,
+        "right": 756,
+        "bottom": 900
+      },
+      "preference": {
+        "collapsed": false,
+        "width": 320
+      },
+      "sheetCount": 0,
+      "openDialogCount": 0,
+      "sessionRows": 3,
+      "populated": {
+        "question": true,
+        "answer": true,
+        "characters": 153
+      }
+    },
+    {
+      "label": "sidebar-docking-800-expanded-light",
+      "viewport": {
+        "width": 800,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "document": {
+        "scrollWidth": 800,
+        "clientWidth": 800,
+        "bodyScrollWidth": 800
+      },
+      "mode": "docked",
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 276,
+        "height": 900,
+        "right": 276,
+        "bottom": 900
+      },
+      "chat": {
+        "x": 276,
+        "y": 0,
+        "width": 480,
+        "height": 900,
+        "right": 756,
+        "bottom": 900
+      },
+      "rail": {
+        "x": 756,
+        "y": 32,
+        "width": 44,
+        "height": 868,
+        "right": 800,
+        "bottom": 900
+      },
+      "row": {
+        "x": 276,
+        "y": 0,
+        "width": 480,
+        "height": 900,
+        "right": 756,
+        "bottom": 900
+      },
+      "preference": {
+        "collapsed": false,
+        "width": 320
+      },
+      "sheetCount": 0,
+      "openDialogCount": 0,
+      "sessionRows": 3,
+      "populated": {
+        "question": true,
+        "answer": true,
+        "characters": 153
+      }
+    },
+    {
+      "label": "sidebar-docking-1380-restored-dark",
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "document": {
+        "scrollWidth": 1380,
+        "clientWidth": 1380,
+        "bodyScrollWidth": 1380
+      },
+      "mode": "docked",
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 900,
+        "right": 320,
+        "bottom": 900
+      },
+      "chat": {
+        "x": 320,
+        "y": 0,
+        "width": 1016,
+        "height": 900,
+        "right": 1336,
+        "bottom": 900
+      },
+      "rail": {
+        "x": 1336,
+        "y": 32,
+        "width": 44,
+        "height": 868,
+        "right": 1380,
+        "bottom": 900
+      },
+      "row": {
+        "x": 320,
+        "y": 0,
+        "width": 1016,
+        "height": 900,
+        "right": 1336,
+        "bottom": 900
+      },
+      "preference": {
+        "collapsed": false,
+        "width": 320
+      },
+      "sheetCount": 0,
+      "openDialogCount": 0,
+      "sessionRows": 3,
+      "populated": {
+        "question": true,
+        "answer": true,
+        "characters": 153
+      }
+    },
+    {
+      "label": "sidebar-docking-1023-canvas-yield-dark",
+      "viewport": {
+        "width": 1023,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "document": {
+        "scrollWidth": 1023,
+        "clientWidth": 1023,
+        "bodyScrollWidth": 1023
+      },
+      "mode": "strip",
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 56,
+        "height": 900,
+        "right": 56,
+        "bottom": 900
+      },
+      "chat": {
+        "x": 56,
+        "y": 0,
+        "width": 480,
+        "height": 900,
+        "right": 536,
+        "bottom": 900
+      },
+      "rail": {
+        "x": 979,
+        "y": 32,
+        "width": 44,
+        "height": 868,
+        "right": 1023,
+        "bottom": 900
+      },
+      "row": {
+        "x": 56,
+        "y": 0,
+        "width": 923,
+        "height": 900,
+        "right": 979,
+        "bottom": 900
+      },
+      "preference": {
+        "collapsed": false,
+        "width": 320
+      },
+      "sheetCount": 0,
+      "openDialogCount": 0,
+      "sessionRows": 0,
+      "populated": {
+        "question": true,
+        "answer": true,
+        "characters": 153
+      }
+    },
+    {
+      "label": "sidebar-docking-1023-canvas-restored-dark",
+      "viewport": {
+        "width": 1023,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "document": {
+        "scrollWidth": 1023,
+        "clientWidth": 1023,
+        "bodyScrollWidth": 1023
+      },
+      "mode": "docked",
+      "sidebar": {
+        "x": 0,
+        "y": 0,
+        "width": 320,
+        "height": 900,
+        "right": 320,
+        "bottom": 900
+      },
+      "chat": {
+        "x": 320,
+        "y": 0,
+        "width": 659,
+        "height": 900,
+        "right": 979,
+        "bottom": 900
+      },
+      "rail": {
+        "x": 979,
+        "y": 32,
+        "width": 44,
+        "height": 868,
+        "right": 1023,
+        "bottom": 900
+      },
+      "row": {
+        "x": 320,
+        "y": 0,
+        "width": 659,
+        "height": 900,
+        "right": 979,
+        "bottom": 900
+      },
+      "preference": {
+        "collapsed": false,
+        "width": 320
+      },
+      "sheetCount": 0,
+      "openDialogCount": 0,
+      "sessionRows": 3,
+      "populated": {
+        "question": true,
+        "answer": true,
+        "characters": 153
+      }
+    }
+  ],
+  "frames": [
+    {
+      "label": "sidebar-docking-1380-expanded-dark",
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1380-expanded-dark.png",
+      "bytes": 254706,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "attempts": 3,
+      "stable": true,
+      "toastFree": true,
+      "toastWaitMs": 7
+    },
+    {
+      "label": "sidebar-docking-1023-expanded-dark",
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1023-expanded-dark.png",
+      "bytes": 238545,
+      "pixels": {
+        "width": 2046,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1023,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "attempts": 2,
+      "stable": true,
+      "toastFree": true,
+      "toastWaitMs": 2
+    },
+    {
+      "label": "sidebar-docking-1023-keyboard-collapsed-dark",
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1023-keyboard-collapsed-dark.png",
+      "bytes": 129391,
+      "pixels": {
+        "width": 2046,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1023,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "attempts": 2,
+      "stable": true,
+      "toastFree": true,
+      "toastWaitMs": 5
+    },
+    {
+      "label": "sidebar-docking-1023-keyboard-expanded-dark",
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1023-keyboard-expanded-dark.png",
+      "bytes": 242019,
+      "pixels": {
+        "width": 2046,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1023,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "attempts": 3,
+      "stable": true,
+      "toastFree": true,
+      "toastWaitMs": 5
+    },
+    {
+      "label": "sidebar-docking-1023-pointer-collapsed-dark",
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1023-pointer-collapsed-dark.png",
+      "bytes": 127047,
+      "pixels": {
+        "width": 2046,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1023,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "attempts": 2,
+      "stable": true,
+      "toastFree": true,
+      "toastWaitMs": 1
+    },
+    {
+      "label": "sidebar-docking-800-collapsed-dark",
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-800-collapsed-dark.png",
+      "bytes": 120245,
+      "pixels": {
+        "width": 1600,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 800,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "attempts": 2,
+      "stable": true,
+      "toastFree": true,
+      "toastWaitMs": 1
+    },
+    {
+      "label": "sidebar-docking-800-expanded-dark",
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-800-expanded-dark.png",
+      "bytes": 226540,
+      "pixels": {
+        "width": 1600,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 800,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "attempts": 2,
+      "stable": true,
+      "toastFree": true,
+      "toastWaitMs": 1
+    },
+    {
+      "label": "sidebar-docking-800-expanded-light",
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-800-expanded-light.png",
+      "bytes": 225819,
+      "pixels": {
+        "width": 1600,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 800,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "attempts": 2,
+      "stable": true,
+      "toastFree": true,
+      "toastWaitMs": 1
+    },
+    {
+      "label": "sidebar-docking-1380-restored-dark",
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1380-restored-dark.png",
+      "bytes": 256912,
+      "pixels": {
+        "width": 2760,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1380,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "attempts": 2,
+      "stable": true,
+      "toastFree": true,
+      "toastWaitMs": 2
+    },
+    {
+      "label": "sidebar-docking-1023-canvas-yield-dark",
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1023-canvas-yield-dark.png",
+      "bytes": 168367,
+      "pixels": {
+        "width": 2046,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1023,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "attempts": 3,
+      "stable": true,
+      "toastFree": true,
+      "toastWaitMs": 4
+    },
+    {
+      "label": "sidebar-docking-1023-canvas-restored-dark",
+      "path": "/Users/damian/.local-operator/sessions/1d55e5a11da2/scratchpad/issue-1077-remediation/d1-native/frames/head/sidebar-docking-1023-canvas-restored-dark.png",
+      "bytes": 240231,
+      "pixels": {
+        "width": 2046,
+        "height": 1800
+      },
+      "viewport": {
+        "width": 1023,
+        "height": 900,
+        "devicePixelRatio": 2
+      },
+      "attempts": 3,
+      "stable": true,
+      "toastFree": true,
+      "toastWaitMs": 7
+    }
+  ],
+  "console": [],
+  "consoleErrors": [],
+  "networkFailures": [],
+  "requests": [
+    "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/browser-webauthn-prompt-DtpQg49J.js",
+    "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/brand-mark-Bv0Hu-Cz.png",
+    "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/GeistMonoNerdFontMono-Regular-CWdDX7GJ.otf",
+    "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/index.html",
+    "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/index-bUquJe4n.js",
+    "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/index-BDzV3bGH.js",
+    "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/path-utils-CKvVXTlE.js",
+    "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/error-boundary-ZYkSCpZC.js",
+    "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/conversation-input-sync-7ZrxePUF.js",
+    "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/console-mirror-0VCyM-hV.js",
+    "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/index-ZovyVTxQ.css",
+    "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/conversation-input-sync-CAX4_ErH.css",
+    "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/console-mirror-DOrYoP_4.css",
+    "file:///Users/damian/local-operator-ui/.worktrees/issue-1077-sidebar-docking/out/renderer/assets/index-DHKnfVbX.css"
+  ]
+}

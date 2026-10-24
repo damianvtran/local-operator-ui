@@ -99,7 +99,6 @@
 		"src/renderer/src/features/chat/session-status/session-model-access.tsx": 2,
 		"src/renderer/src/features/chat/session-status/session-status-strip.tsx": 3,
 		"src/renderer/src/shared/components/common/categories-input-chips.tsx": 1,
-		"src/renderer/src/shared/components/common/chat-layout.tsx": 1,
 		"src/renderer/src/shared/components/common/find-replace-widget.tsx": 8,
 		"src/renderer/src/shared/components/common/sidebar-header.tsx": 2,
 		"src/renderer/src/shared/components/common/tags-input-chips.tsx": 2,
