@@ -142,7 +142,7 @@ export const ProjectFilePreviewDialog: FC<ProjectFilePreviewDialogProps> = ({
 					target.focus();
 				}}
 			>
-				<div className="shrink-0 border-hairline border-b px-4 py-3 pr-12">
+				<div className="shrink-0 border-hairline border-b px-4 py-3 pe-12">
 					<DialogTitle className="truncate text-title" title={path ?? ""}>
 						{name}
 					</DialogTitle>

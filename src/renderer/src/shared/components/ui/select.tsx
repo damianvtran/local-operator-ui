@@ -181,7 +181,7 @@ export const SelectLabel = forwardRef<
 >(({ className, ...props }, ref) => (
 	<SelectPrimitive.Label
 		ref={ref}
-		className={cn("px-2 py-1.5 pl-8 text-meta text-ink-dim", className)}
+		className={cn("px-2 py-1.5 ps-8 text-meta text-ink-dim", className)}
 		{...props}
 	/>
 ));
@@ -194,7 +194,7 @@ export const SelectItem = forwardRef<
 	<SelectPrimitive.Item
 		ref={ref}
 		className={cn(
-			"relative flex w-full select-none items-center gap-2 rounded-sm py-1.5 pr-2 pl-8",
+			"relative flex w-full select-none items-center gap-2 rounded-sm py-1.5 pe-2 ps-8",
 			"text-body-sm text-ink transition-colors duration-fast",
 			"data-[highlighted]:bg-accent-wash",
 			"data-[disabled]:pointer-events-none data-[disabled]:text-ink-disabled",
@@ -202,7 +202,7 @@ export const SelectItem = forwardRef<
 		)}
 		{...props}
 	>
-		<span className="absolute left-2 flex size-4 items-center justify-center">
+		<span className="absolute start-2 flex size-4 items-center justify-center">
 			<SelectPrimitive.ItemIndicator>
 				<Check className="size-4 text-accent" aria-hidden="true" />
 			</SelectPrimitive.ItemIndicator>

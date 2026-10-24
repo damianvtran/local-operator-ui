@@ -488,7 +488,7 @@ export const MeshDeviceNode: FC<DeviceNodeProps> = ({
 					 * coordinates (`DEVICE_HEIGHT`), and `justify-between` absorbs the fractions of a
 					 * line so those three rows cannot add up to 96.4 px and push the next node down.
 					 */
-					"flex w-full flex-col justify-between rounded-t-[5px] px-3 pt-2 pb-2 text-left",
+					"flex w-full flex-col justify-between rounded-t-[5px] px-3 pt-2 pb-2 text-start",
 					// A CONTROL'S CURSOR (UX review round 1, U6): this is the click-to-inspect target
 					// and Tailwind's preflight leaves buttons at `cursor: default`, so the title
 					// read like a label. `cursor-pointer` is the app's own spelling.
@@ -779,7 +779,7 @@ const SessionChip: FC<SessionChipProps> = ({
 					 * THE TEXT MOVED INTO ITS OWN SPAN with that change: a flex container cannot
 					 * ellipsise its own text, so the truncation lives on the one span that still can.
 					 */
-					"flex min-h-6 w-full max-w-32 items-center rounded-sm border border-hairline bg-surface px-1.5 text-left text-meta text-ink-muted",
+					"flex min-h-6 w-full max-w-32 items-center rounded-sm border border-hairline bg-surface px-1.5 text-start text-meta text-ink-muted",
 					// THE CURSOR SAYS IT CAN BE GRABBED (UX review round 1, U6): the chips are
 					// the draggable things and the only cue was a `title` tooltip the reader had
 					// to wait for. `cursor-pointer` is the app's own spelling for a control.

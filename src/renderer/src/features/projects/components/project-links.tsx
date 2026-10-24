@@ -201,7 +201,7 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 										if (clickable) openConversation(link.session_id);
 									}}
 									className={cn(
-										"flex min-w-0 flex-1 items-center gap-2 text-left",
+										"flex min-w-0 flex-1 items-center gap-2 text-start",
 										clickable ? "cursor-pointer" : "cursor-default opacity-100",
 									)}
 								>

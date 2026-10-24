@@ -10,7 +10,7 @@ import {
 } from "@shared/components/ui";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { isRadientAccountFailure } from "@shared/hooks/use-radient-user-query";
-import { useI18nLocale } from "@shared/i18n/use-locale";
+import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { cn } from "@shared/lib/utils";
 import { LogOut, RotateCw, Settings, Shield, User } from "lucide-react";
 import { useCallback, useMemo } from "react";
@@ -56,7 +56,7 @@ type UserProfileSidebarProps = {
  */
 export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 	({ expanded, useAuth = false }) => {
-		useI18nLocale();
+		const direction = useTextDirection();
 		const navigate = useNavigate();
 
 		const { user, isAuthenticated, accountRead, signOut } = useRadientAuth();
@@ -244,7 +244,10 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 		const labelled = expanded ? (
 			row
 		) : (
-			<BrowserSafeTooltip content={collapsedLabel} side="right">
+			<BrowserSafeTooltip
+				content={collapsedLabel}
+				side={direction === "rtl" ? "left" : "right"}
+			>
 				{row}
 			</BrowserSafeTooltip>
 		);
@@ -264,7 +267,10 @@ export const UserProfileSidebar: FC<UserProfileSidebarProps> = React.memo(
 				{expanded ? (
 					<DropdownMenuTrigger asChild>{row}</DropdownMenuTrigger>
 				) : (
-					<BrowserSafeTooltip content={collapsedLabel} side="right">
+					<BrowserSafeTooltip
+						content={collapsedLabel}
+						side={direction === "rtl" ? "left" : "right"}
+					>
 						<DropdownMenuTrigger asChild>{row}</DropdownMenuTrigger>
 					</BrowserSafeTooltip>
 				)}

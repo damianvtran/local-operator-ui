@@ -104,7 +104,7 @@ const CardPicture: FC<{ asset: DesktopLibraryAsset; large?: boolean }> = ({
 
 const HighlightMark: FC = () => (
 	<span
-		className="absolute top-1.5 left-1.5 flex size-5 items-center justify-center rounded-full bg-elevated"
+		className="absolute top-1.5 start-1.5 flex size-5 items-center justify-center rounded-full bg-elevated"
 		title={t("ui.library.card.highlighted")}
 	>
 		<Star size={12} aria-hidden="true" className="fill-current text-accent" />
@@ -268,7 +268,7 @@ export const LibraryCard: FC<
 			type="button"
 			onClick={() => actions.onSelect(asset.id)}
 			aria-pressed={selected}
-			className="flex w-full flex-1 flex-col text-left focus-visible:outline-offset-2"
+			className="flex w-full flex-1 flex-col text-start focus-visible:outline-offset-2"
 		>
 			{audio ? null : (
 				<div className="relative">
@@ -295,7 +295,7 @@ export const LibraryCard: FC<
 				</div>
 			)}
 			{select}
-			<div className="invisible absolute top-1.5 right-1.5 group-focus-within:visible group-hover:visible [@media(pointer:coarse)]:visible">
+			<div className="invisible absolute top-1.5 end-1.5 group-focus-within:visible group-hover:visible [@media(pointer:coarse)]:visible">
 				<LibraryAssetMenu
 					asset={asset}
 					onAsk={() => actions.onAsk(asset)}
@@ -327,7 +327,7 @@ export const LibraryRow: FC<
 			type="button"
 			onClick={() => actions.onSelect(asset.id)}
 			aria-pressed={selected}
-			className="flex min-w-0 flex-1 items-center gap-3 text-left"
+			className="flex min-w-0 flex-1 items-center gap-3 text-start"
 		>
 			<CardPicture asset={asset} />
 			<div className="flex min-w-0 flex-1 flex-col gap-0.5">

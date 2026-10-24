@@ -488,7 +488,7 @@ const seamSurface = () => {
 };
 /* The inset as the element applies it: a named pixel, conditional on the gate. */
 const SEAM_STYLE =
-	/rightPaneDocked\s*\?\s*\{ paddingRight: CHAT_SEAM_INSET_PX \}\s*: undefined/;
+	/rightPaneDocked\s*\?\s*\{ paddingInlineEnd: CHAT_SEAM_INSET_PX \}\s*: undefined/;
 
 /** The separator's vertical hit band: its width and how far it reaches in. */
 const verticalBand = () => {
@@ -558,7 +558,7 @@ test("the separator's reach into the chat column is cleared before the scrollbar
 	assert.match(
 		surface,
 		SEAM_STYLE,
-		"the chat column's inner surface no longer applies `CHAT_SEAM_INSET_PX` as `rightPaneDocked ? { paddingRight: … } : undefined`; applied unconditionally it narrows every chat surface when no pane is open",
+		"the chat column's inner surface no longer applies `CHAT_SEAM_INSET_PX` as `rightPaneDocked ? { paddingInlineEnd: … } : undefined`; applied unconditionally it narrows every chat surface when no pane is open",
 	);
 });
 

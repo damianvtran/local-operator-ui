@@ -890,7 +890,7 @@ const ASK_VALUE_WIDE = "@min-[270px]/chatcol:hidden";
  * § 3). The row asks each chip whether IT is the first rendered one; a chip does
  * not ask about the others.
  */
-const FIRST_CHIP = "-ml-1.5";
+const FIRST_CHIP = "-ms-1.5";
 
 /**
  * The goal's and the loop's own LINES — the arrangement this row now has at EVERY

@@ -152,7 +152,7 @@ const SupplementFileLine = memo(function SupplementFileLine({
 			<FileGlyph path={actionPath} />
 			<button
 				type="button"
-				className="min-w-0 flex-1 truncate text-left text-ink hover:text-ink-dim"
+				className="min-w-0 flex-1 truncate text-start text-ink hover:text-ink-dim"
 				data-supplement-file=""
 				title={actionPath}
 				onClick={() => {
@@ -161,7 +161,7 @@ const SupplementFileLine = memo(function SupplementFileLine({
 			>
 				{displayText(label)}
 				{suffix && suffix !== label && (
-					<span className="ml-2 text-ink-muted">{displayText(suffix)}</span>
+					<span className="ms-2 text-ink-muted">{displayText(suffix)}</span>
 				)}
 			</button>
 			{size && <span className="shrink-0 text-ink-dim">{size}</span>}

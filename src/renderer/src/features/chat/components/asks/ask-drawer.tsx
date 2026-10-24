@@ -1046,7 +1046,7 @@ export const AskDrawer = ({
 						onClick={() => onClose({ dismissSlot: true })}
 						data-tour-tag="close-asks-button"
 					>
-						<PanelRightClose aria-hidden="true" />
+						<PanelRightClose aria-hidden="true" className="rtl:-scale-x-100" />
 					</Button>
 				</Tooltip>
 			</div>
