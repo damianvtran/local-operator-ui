@@ -1,0 +1,13 @@
+{
+	"ui.chat.analytics.filters.top_level_only": "仅顶级会话",
+	"ui.chat.analytics.search.clear": "清除搜索",
+	"ui.chat.analytics.search.sessions": "搜索会话",
+	"ui.chat.analytics.sections.by_channel": "按渠道",
+	"ui.chat.analytics.sections.by_model": "按模型",
+	"ui.chat.analytics.sections.by_provider": "按提供商",
+	"ui.chat.analytics.sections.by_session": "按会话",
+	"ui.chat.analytics.sections.totals": "总计",
+	"ui.chat.analytics.title": "数据分析",
+	"ui.chat.analytics.toolbar.refreshing": "正在刷新",
+	"ui.chat.analytics.toolbar.this_session_only": "仅当前会话"
+}

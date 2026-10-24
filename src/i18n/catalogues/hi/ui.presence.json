@@ -1,0 +1,11 @@
+{
+	"ui.presence.unknown": "अज्ञात",
+	"ui.presence.link_down_last_seen": "लिंक डाउन · अंतिम संपर्क {age}",
+	"ui.presence.device_link_down": "लिंक डाउन · {reason} · अंतिम संपर्क {age}",
+	"ui.presence.device_unreachable": "डिवाइस तक पहुँचा नहीं जा सका",
+	"ui.presence.just_now": "अभी-अभी",
+	"ui.presence.minutes_ago": "{count, number} मि. पहले",
+	"ui.presence.hours_ago": "{count, number} घं. पहले",
+	"ui.presence.days_ago": "{count, number} दिन पहले",
+	"ui.presence.link_down_compact": "लिंक डाउन · {age}"
+}
