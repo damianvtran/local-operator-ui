@@ -331,7 +331,7 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 										onClick={() => onSelect(row.request.entryId)}
 										aria-expanded={selected}
 										data-tour-tag="browser-approvals-waiting-row"
-										className="flex w-full items-center gap-2 px-2 py-1.5 text-left"
+										className="flex w-full items-center gap-2 px-2 py-1.5 text-start"
 									>
 										{/* The ordinal the tray's chip and the tab's `Waiting n` chip
 										    both carry (§5.2) — the same number, from the same model. */}

@@ -1023,7 +1023,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 										{relative(shown.last_message_at, locale)}
 									</span>
 								)}
-								<div className="ml-auto flex items-center gap-1">
+								<div className="ms-auto flex items-center gap-1">
 									{shown && !previewSelected && !readOnly && onNotifyChange && (
 										<TeamBridgeConversationMenu
 											conversation={shown}
@@ -1215,7 +1215,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 											 */}
 											<span
 												className={cn(
-													"min-w-0 flex-1 truncate pl-1.5 text-meta-sm text-ink-dim transition-opacity duration-fast",
+													"min-w-0 flex-1 truncate ps-1.5 text-meta-sm text-ink-dim transition-opacity duration-fast",
 													draft.trim() ? "opacity-100" : "opacity-0",
 												)}
 												aria-hidden={!draft.trim()}
@@ -1259,7 +1259,7 @@ export const TeamBridgePageView: FC<TeamBridgePageViewProps> = ({
 					/* At the supported 800px minimum a second flex column leaves only
 					   152px for the timeline. Take over its whole region below 1024px,
 					   rather than shrinking either reading measure. The 288px rail stays. */
-					<div className="absolute inset-y-0 right-0 left-72 z-20 min-w-0 @min-[1024px]/bridge:static @min-[1024px]/bridge:w-[min(26rem,45%)] @min-[1024px]/bridge:min-w-72 @min-[1024px]/bridge:shrink-0">
+					<div className="absolute inset-y-0 end-0 start-72 z-20 min-w-0 @min-[1024px]/bridge:static @min-[1024px]/bridge:w-[min(26rem,45%)] @min-[1024px]/bridge:min-w-72 @min-[1024px]/bridge:shrink-0">
 						{renderThreadPane ? (
 							renderThreadPane(threadSelection, () => {
 								setThreadSelection(null);

@@ -1009,8 +1009,8 @@ test("the first chip cancels its own padding, whichever chip is first", () => {
 	 * activity chip and no goal. The assertion is over the rendered class string, so
 	 * it is the behaviour and not this file's belief about it.
 	 */
-	const firstClass = "-ml-1.5";
-	const count = (markup) => (markup.match(/-ml-1\.5/g) ?? []).length;
+	const firstClass = "-ms-1.5";
+	const count = (markup) => (markup.match(/-ms-1\.5/g) ?? []).length;
 
 	// No goal: the plan chip leads.
 	const planFirst = renderRow({
@@ -1416,7 +1416,7 @@ test("the ask item leads the row when nothing stands ahead of it", () => {
 		frontend: askFrontend([wireAsk("a-1")]),
 		runDetails: NO_DETAILS,
 	});
-	assert.ok(askFirst.indexOf("data-status-asks") < askFirst.indexOf("-ml-1.5"));
+	assert.ok(askFirst.indexOf("data-status-asks") < askFirst.indexOf("-ms-1.5"));
 });
 
 test("the ask item renders only where the host wires the door", () => {
@@ -2057,7 +2057,7 @@ test("the row's own layout: each flexible chip owns a line, and the alignment de
 	 * each chip asks whether IT is the first one, and the plan chip's own term still
 	 * reads the same way it did with two chips.
 	 */
-	assert.match(source, /const FIRST_CHIP = "-ml-1\.5";/);
+	assert.match(source, /const FIRST_CHIP = "-ms-1\.5";/);
 	/*
 	 * The goal is no longer a chip that ASKS whether it is first: it is the row's
 	 * first item whenever it renders, and the cancellation it wears is the same
@@ -5781,9 +5781,9 @@ test("the standing facts order the wakes before the watches", () => {
 		frontend: frontend(""),
 		runDetails: monitorsOf([wireMonitor("m1", "loom-pr-1710", 60_000)]),
 	});
-	assert.equal((only.match(/-ml-1\.5/g) ?? []).length, 1);
+	assert.equal((only.match(/-ms-1\.5/g) ?? []).length, 1);
 	assert.ok(
-		only.indexOf("data-status-monitors") < only.indexOf("-ml-1.5"),
+		only.indexOf("data-status-monitors") < only.indexOf("-ms-1.5"),
 		"the monitor chip renders before its own padding cancellation",
 	);
 });

@@ -299,7 +299,7 @@ export const BrowserPane: FC<BrowserPaneProps> = ({ sessionId, onClose }) => {
 						onClick={onClose}
 						data-tour-tag="browser-pane-close"
 					>
-						<PanelRightClose aria-hidden="true" />
+						<PanelRightClose aria-hidden="true" className="rtl:-scale-x-100" />
 					</Button>
 				</Tooltip>
 			</div>
