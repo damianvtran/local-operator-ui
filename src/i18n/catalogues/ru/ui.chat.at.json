@@ -1,0 +1,13 @@
+{
+	"ui.chat.at.contract.this_backend_cannot_carry_file_references_update_the_backend_and": "Этот бэкенд не поддерживает ссылки на файлы. Обновите бэкенд и повторите попытку.",
+	"ui.chat.at.contract.nothing_to_insert_esc_closes": "Нечего вставить · Esc закрывает",
+	"ui.chat.at.contract.reading_this_folder": "Читаем эту папку…",
+	"ui.chat.at.contract.this_folder_is_empty": "Эта папка пуста.",
+	"ui.chat.at.contract.could_not_read_this_folder_it_may_need_a_permission": "Не удалось прочитать эту папку. Возможно, для неё нужно разрешение, которого у этого приложения нет.",
+	"ui.chat.at.contract.could_not_read_this_folder_check_that_it_exists_and": "Не удалось прочитать эту папку. Проверьте, что она существует и что вы можете её открыть.",
+	"ui.chat.at.contract.enter_opens": "Enter открывает {path}",
+	"ui.chat.at.contract.enter_inserts": "Enter вставляет {token}",
+	"ui.chat.at.contract.footer": "{verb} · Esc закрывает",
+	"ui.chat.at.contract.nothing_matches": "В {scope} нет совпадений по запросу «{query}».",
+	"ui.chat.at.contract.no_files_match": "В {scope} нет файлов по запросу «{query}»."
+}

@@ -1,0 +1,196 @@
+{
+	"locale": "ru",
+	"translator": "translator (lopdev team subagent)",
+	"agent": "i18n-translator",
+	"session": "c30ee3949549",
+	"served_model": "radient/auto",
+	"date": "2026-10-24",
+	"status": "translated",
+	"awaiting": "independent i18n-auditor pass; ledger rows are added after the audit",
+	"source": {
+		"extraction_head": "5d97575ac4388522267291ffee74d12bd9675b12",
+		"branch_base": "5d97575ac4388522267291ffee74d12bd9675b12",
+		"merge_base": "9c5ddd18390c66cccd48b34cab0544e863a522d8",
+		"added_keys": 1733,
+		"note": "Corrected base pin: the first pass was built on 23eaaea7b8 (1,758 added keys); this branch is rebuilt on 5d97575ac4 per the coordinator's correction, with the 38 keys that head pruned removed and the 11 keys it changed or added translated (link_actions.open/quote, image_gen_card.stop/retry/restart, session_cost.basis_billed/included/estimated/subagents_amount, session_context.context, agent_reasoning.reasoning, ui.chat.canvas_preview)."
+	},
+	"scope": {
+		"assigned_keys": 1733,
+		"completeness_keys": 62,
+		"note": "All 1,733 keys the batch adds are translated. Russian already carried three of the fifteen namespaces, so their 30 pre-existing English keys keep their audited values (ui.chat 8, ui.chat.header 10, ui.chat.asks 12). ui.chat.canonical and ui.chat.run_details existed only in English: their 32 pre-existing keys are translated here as well, because a shipped locale file must cover its whole namespace. The remaining twelve namespaces are created complete. Total: 1,795 Russian keys across 15 namespaces. No key outside the English source exists."
+	},
+	"glossary": {
+		"path": "~/local-operator/i18n/glossary.md",
+		"sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+	},
+	"style_guide": {
+		"path": "~/local-operator/i18n/style-guides/ru.md",
+		"sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+	},
+	"namespaces": {
+		"ui.chat": {
+			"keys": 532,
+			"added_in_batch": 524,
+			"sha256": {
+				"en": "dc5765d20ff846c61f3fe8953e69524393561bc2a39f89fa419958d4e4a67346",
+				"ru": "6f519b3d20db50618c50a68aca59b800767c9de033da00626df503efd7d746e6",
+				"context": "f95436a7c1e91f17b47a5f45059f58ef63749cedef54b02d10b29260477be426"
+			}
+		},
+		"ui.chat.aside": {
+			"keys": 35,
+			"added_in_batch": 35,
+			"sha256": {
+				"en": "d8ce04c8e909a73f3050588b2b562b12db3840ae1f4231a66ef3eb5ac76ed1b6",
+				"ru": "39cb914479c96f700ccef49123afb2934d638ab9605e714625eb01e8783badea",
+				"context": "522fcbc0c965224e7d4fb8cb8200e7c68889c9ee73d073b09c6cb2af827b8431"
+			}
+		},
+		"ui.chat.asks": {
+			"keys": 101,
+			"added_in_batch": 89,
+			"sha256": {
+				"en": "f5017d10d314fc9e3e94eeff2d5067c559e97ba0c6ffcef4e8ed9d1c39cf67ab",
+				"ru": "a11d999be73a35f28cf81862f5e2258c115d7dbc2ebb81d16df9fc83da639b03",
+				"context": "0e1f544932e7c9c6c94bbb0d4e2066910d80e33060ad23bbbb57d5bb9c1b637c"
+			}
+		},
+		"ui.chat.at": {
+			"keys": 11,
+			"added_in_batch": 11,
+			"sha256": {
+				"en": "685a75115b95770d8d74cc43c2f250c53bed311c0d117cf51849f72041533694",
+				"ru": "6cafb3c3c4db19f204a5b838b6d965c80d5714d57d0bd3090f48f0287d51eb34",
+				"context": "da529439f1aa5970aff5b833b40900524c2cfd465abe96296e3b9cecf5ec555e"
+			}
+		},
+		"ui.chat.canonical": {
+			"keys": 297,
+			"added_in_batch": 267,
+			"sha256": {
+				"en": "522e7fced024ec756b4b93b21952c4abfb232278a3ca32bba67b45978749eb6d",
+				"ru": "165ed167c429daf972966a9f698e92320273d49a06240e6b76881cc6f219dff3",
+				"context": "af353a188112ef28df7dfda8c7139fa5bd33506a40b112392e1e40fbe32116f2"
+			}
+		},
+		"ui.chat.canvas_preview": {
+			"keys": 2,
+			"added_in_batch": 2,
+			"sha256": {
+				"en": "4a29d028e7727502fbefd86b995750910ca3760879769ffa1fc537e5893920a9",
+				"ru": "d94ce5f85a84d48b6020f1da774f286d2bcaa570dbff88bff1a305e1da22f89e",
+				"context": "5f336900e740bf4ebc7819837676fc2eeffe6deb69b8181ebc440e962d580a06"
+			}
+		},
+		"ui.chat.credential_capture": {
+			"keys": 18,
+			"added_in_batch": 18,
+			"sha256": {
+				"en": "1776a41f5dfa3335b5e390e85870cb55756e25c6a2439cd3f42ea4c864515bdd",
+				"ru": "b998f57fd2eefa3df0d47f15d6a4c969b22ba235339ec18688a681b72372c54c",
+				"context": "bf6e3bb8cd70e39cba3aad66b0d92aa38ebad880ac49405fb1affd032f6f3b1f"
+			}
+		},
+		"ui.chat.directory": {
+			"keys": 42,
+			"added_in_batch": 42,
+			"sha256": {
+				"en": "57540488fb400a9a4ac1040c7d7f91f19f25ab313ec87a50ef527da442d3ec6b",
+				"ru": "8bf381867d79532289048d32b216ec6fc43679dbf7a9702dc55f4c4d5414a4c2",
+				"context": "4bfdbc219bccc88fbdcaf3c62897b168d5604d5acbbb5f70f040c95c941c2daa"
+			}
+		},
+		"ui.chat.header": {
+			"keys": 72,
+			"added_in_batch": 62,
+			"sha256": {
+				"en": "ff03f6ca7b3206e77fc260116d2b540cc9f211ea37436863b874770e917158d8",
+				"ru": "c437858d054776c70dfaa042e0214be5778e282cec8eec01046a2d014685e8f0",
+				"context": "0d601a99861fc8b23207f117b90b697ba88ddd4f6419a68021f34c177158ea2e"
+			}
+		},
+		"ui.chat.message": {
+			"keys": 55,
+			"added_in_batch": 55,
+			"sha256": {
+				"en": "95d7b60b2cb1bdc37648cfa896856ce53724e300ed4a6b0448d7562aad452a5a",
+				"ru": "4f6569cd7b239fa03fc9b6516a5399eaf96ed0cb37c74d85649dfafb9c01528b",
+				"context": "0278baa63867980cd08d18e47e282af12a6330b7c6a785f0157e7a01cceb4230"
+			}
+		},
+		"ui.chat.options": {
+			"keys": 33,
+			"added_in_batch": 33,
+			"sha256": {
+				"en": "fdfb1ceae54aa5270dd76b67748f56fa14e5d3f47d7770dad8eba755995a5a79",
+				"ru": "87a3e1d7fb0b295bbede1538a80e6f43c9bafc5559c83d0999dd2925828595e1",
+				"context": "4609f41205d7d0b14dd07e98a629b9fb40f74f870106e78b30a3b210eb7f13db"
+			}
+		},
+		"ui.chat.run_details": {
+			"keys": 154,
+			"added_in_batch": 152,
+			"sha256": {
+				"en": "daf3ddc7d9c0904642876bf3db0746b6c0c68c5fe3b87a1a6730b07f67c90c2f",
+				"ru": "28fa9f7e9e9956bed22d6aa83e34ffad8978c46497592ef39fbd2ea352c74dc7",
+				"context": "dcb2cf6f636814a1866186e8864fd6817033fa8de027049b365f362c53b5d384"
+			}
+		},
+		"ui.chat.session_status": {
+			"keys": 162,
+			"added_in_batch": 162,
+			"sha256": {
+				"en": "05a6e2dd52cd41fb90dbb6756bb8a8f51c5d22e3769edb3fd6228a0d9a059198",
+				"ru": "0562f005da8de1dd1c76a4eba61913e73f9621bbeb3935b3c60286063d427e12",
+				"context": "91544a1523e2ccd3a50041e3530ded39255a614f571c50264991ed8e92ca90e7"
+			}
+		},
+		"ui.chat.skill": {
+			"keys": 7,
+			"added_in_batch": 7,
+			"sha256": {
+				"en": "919b6643e792d02ed270911df96d96da277bba5b5b91a2d04fac6cf044acfc10",
+				"ru": "2c7f62426a28bd29fd7faac4a47420889822e8f79737b1afa5f6683aa9ee2ad5",
+				"context": "012b41d3b048ae9575012522051687b87e3b3a8189dab9121985052ea04f965d"
+			}
+		},
+		"ui.chat.trace": {
+			"keys": 274,
+			"added_in_batch": 274,
+			"sha256": {
+				"en": "52a0fa5ed78ec2f3bbedf5b67f7abf3cc8d72c7a66ff4383d182358e242fb848",
+				"ru": "4caccb7df308fb0173db0c4f3cb162ddee086fca73050e73727d738b292080b9",
+				"context": "b54b6acb4399743d207d8a793080555f1cab291761de90cf3e6e9f3ce9c70016"
+			}
+		}
+	},
+	"translator_calls": {
+		"register": "formal «вы», lowercase mid-sentence; infinitive action labels; sentence case; «ёлочки» in prose; em dash with spaces; no typographic spacing before punctuation",
+		"chosen_terms": {
+			"aside": "отдельный вопрос (matches the existing «Спросить отдельно» composer copy)",
+			"highlights (supplement cards)": "акценты",
+			"judge (goal check)": "проверяющий",
+			"to-do": "задача (job stays «задание», per the ru style guide)",
+			"wake": "пробуждение",
+			"canvas": "холст (existing catalogue usage)",
+			"credential (single stored value)": "секрет; the store stays «хранилище учётных данных»",
+			"pill (masked credential chip)": "плашка",
+			"prompt suggestions": "imperative forms, because these strings are the user's own words to the agent, not product copy addressed to the user",
+			"raw transcript tab": "Исходный текст"
+		},
+		"plurals": "every Russian plural carries one/few/many/other; exact =N arms from the English source are preserved; select arms mirror English exactly",
+		"token_exemptions": "85 language-neutral values (placeholder-and-punctuation formats, DOM ids/routes, CSS custom properties, keyboard chords, literal Windows folder/path names, product names, and Top K/Top P) are declared in scripts/i18n/locale-parity.test.mjs IDENTICAL_OK with per-key reasons",
+		"overflow": "no value exceeds an annotated maxCells/character budget in the English sidecars. Flagged risk: ui.chat.header.chat_tabs.raw renders «Исходный текст» (14 cells) against English «Raw» (3) in a tab; if the tab strips truncate, the shipped label should shorten to «Текст»."
+	},
+	"checks": {
+		"generate_check": "ok — keys.gen.ts byte-identical to a fresh generation after adding the 15 ru namespaces",
+		"locale_parity_ru": "6/6 pass (non-empty, one key one file, complete namespace, no unknown keys, ICU arguments, no English stubs)",
+		"locale_parity_whole_suite": "red by design in a one-locale lane: the other six locales do not yet carry the batch's English keys; no ru assertion fails",
+		"icu_pseudo_check": "PASS — 1,795/1,795 keys across 15 namespaces: argument names, select arms, plural arms (ru CLDR set), and number/date skeletons match English; IntlMessageFormat('ru') renders at 1/2/5/1.5 without unresolved braces; a marker-wrapped pseudo pass parses and renders. Ran the lane-local checker (sha256 79059a7dfacf11d1ab471dad66a8d0364375ea6e1a88a06b77403228a7a5503a); it is not committed.",
+		"context_parity": "ok — every English key is covered, apart from the existing shrink-only allowance",
+		"check_strings": "ok — 1,343 files scanned, 391 literals at or below baseline",
+		"check_coverage": "red until integration: other locales still lack the extraction keys; the ru allowance also holds 32 now-covered keys (ui.chat.canonical 30, ui.chat.run_details 2) that a shrink-only --update must drop. No allowance was edited in this branch.",
+		"ledger": "red until independent audit: the ten new ru namespaces ship without ledger rows, as expected before the auditor pass",
+		"nfc_bidi": "ok — every file is NFC and carries no manual bidi control"
+	}
+}

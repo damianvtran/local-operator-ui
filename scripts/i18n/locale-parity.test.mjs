@@ -708,6 +708,351 @@ const IDENTICAL_OK = new Map([
 		"ui.shell.sidebar_navigation.agent_hub",
 		"Product name (Agent Hub), preserved verbatim by the programme glossary.",
 	],
+	// --- Chat renderer batch (ru): language-neutral tokens and product/folder
+	// names introduced by the chat/transcript/trace extraction. Every value below
+	// is byte-identical because it is structure (placeholders, punctuation, a DOM
+	// id, a route, a CSS property, a shortcut, a folder name or a product name),
+	// not skipped prose; the Russian words around them are translated per key.
+	[
+		"ui.chat.artifact_identity.title_head",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.ask_open_policy.askchipcountclausevalue",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.asks.ask_panel.label_count",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.asks.fleet_ask_drawer.verb_name",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.canonical.canonical_transcript.direction",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.canonical.fold_media.more",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.canonical.image_gen_card.noun_value",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.canonical.older_history_slot.min_260px_olderhistory_hidden",
+		"Machine token (DOM id, route or path fragment); never translated.",
+	],
+	[
+		"ui.chat.canonical.sound_batch_model.name_suffix",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.canonical.sound_player.action_label",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.canonical.supplement_row.failedcause",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.canonical.transcript_reducer.stringvalue_value",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.chat_regions.ctrl_shift_l",
+		"Keyboard shortcut: the chord is a key name, never translated.",
+	],
+	[
+		"ui.chat.chat_regions.l",
+		"Keyboard shortcut: the chord is a key name, never translated.",
+	],
+	[
+		"ui.chat.chat_status_strip.outcome",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.composer.composer_status_row.askdeadlinesubject",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.composer.composer_status_row.goal_clear_text_label_seam_goal",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.composer.composer_status_row.goal_cleared_text_leading",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.composer.composer_status_row.goal_disclosure_label",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.composer.composer_status_row.job_actionvalue_label_seam_jobclausevalue_busiestclausevalue",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.composer.composer_status_row.loop_labelvalue_loopstatuswordvalue",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.composer.composer_status_row.monitor_actionvalue_label_seam_monitorclausevalue",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.composer.composer_status_row.plan_actionvalue_label_seam_todoclausevalue",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.composer.composer_status_row.stateword",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.composer.composer_status_row.subagent_actionvalue_label_seam_childclausevalue_busiestclausevalue",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.composer.composer_status_row.text_label_seam_loopclausevalue",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.composer.composer_status_row.wake_actionvalue_label_seam_wakeclausevalue",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.credential_capture.unconfirmed_chip",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.directory.directory_indicator.c_program_files",
+		"Literal Windows folder or path name; translating it would misname the directory.",
+	],
+	[
+		"ui.chat.directory.directory_indicator.c_program_files_x86",
+		"Literal Windows folder or path name; translating it would misname the directory.",
+	],
+	[
+		"ui.chat.directory.directory_indicator.program_files",
+		"Literal Windows folder or path name; translating it would misname the directory.",
+	],
+	[
+		"ui.chat.directory.directory_indicator.program_files_x86",
+		"Literal Windows folder or path name; translating it would misname the directory.",
+	],
+	[
+		"ui.chat.directory.directory_indicator.programdata",
+		"Literal Windows folder or path name; translating it would misname the directory.",
+	],
+	[
+		"ui.chat.directory.directory_indicator.state_label",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.draft_rows.draft_row_prefix_draftrowtitlevalue",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.draft_rows.value",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.header.chat_header.local_operator",
+		"Product name (Local Operator), preserved verbatim by the programme glossary.",
+	],
+	[
+		"ui.chat.header.chat_header_identity.cue_clause",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.header.chat_header_identity.current",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.header.chat_header_identity.label_closedreason",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.header.chat_header_identity.label_cuesentence",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.header.chat_header_identity.label_current",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.header.chat_header_identity.trigger_action_label",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.header.chat_header_identity.triggerlabel_label_closedreason",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.header.chat_header_identity.value_description",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.header.chat_header_identity_menu.closednoteid_title",
+		"Machine token (DOM id, route or path fragment); never translated.",
+	],
+	[
+		"ui.chat.hub_update_mark.detail_action",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.mermaid_diagram.var_color_warning",
+		"CSS custom-property name; a machine token, never translated.",
+	],
+	[
+		"ui.chat.mermaid_diagram.var_color_warning_border",
+		"CSS custom-property name; a machine token, never translated.",
+	],
+	[
+		"ui.chat.mermaid_diagram.var_color_warning_wash",
+		"CSS custom-property name; a machine token, never translated.",
+	],
+	[
+		"ui.chat.message.attachment_frame.detail",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.message.attachment_frame.name_detail",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.message.error_block.settings_section_providers",
+		"Machine token (DOM id, route or path fragment); never translated.",
+	],
+	[
+		"ui.chat.message.invalid_attachment.getfilenamevalue_reason",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.message.turn_timestamp.value_full",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.message_grouping.value_value2",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.message_grouping.value_value2_b35da6",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.options.generation_settings_section.top_k",
+		"Model sampling parameter name kept English by the ru style guide (the same call the guide records for the ui.agents.settings.chat sampling keys).",
+	],
+	[
+		"ui.chat.options.generation_settings_section.top_p",
+		"Model sampling parameter name kept English by the ru style guide (the same call the guide records for the ui.agents.settings.chat sampling keys).",
+	],
+	[
+		"ui.chat.run_details.mcp_failure.lead",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.run_details.mcp_failure.lead_value",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.run_details.run_detail_mcp.label",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.run_details.run_detail_model.value",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.run_details.run_detail_monitors.healthlabel",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.run_details.run_detail_monitors.interval",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.run_details.run_detail_monitors.lastchecklabel",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.run_details.run_detail_wakes.cadence",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.run_details.run_detail_wakes.trailingclause",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.session_status.session_cost.text_cue",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.session_status.session_model.fallbackdefault",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.sidebar.chat_sidebar.all_kind",
+		"Machine token (DOM id, route or path fragment); never translated.",
+	],
+	[
+		"ui.chat.sidebar.chat_sidebar.clause",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.sidebar.chat_sidebar.detail",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.sidebar.chat_sidebar.displayname_name",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.sidebar.chat_sidebar.role_menuitem",
+		"ARIA/CSS selector literal; a machine token, never translated.",
+	],
+	[
+		"ui.chat.sidebar.chat_sidebar.silent_remedy",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.sidebar.chat_sidebar_view.label_position",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.sidebar.chat_sidebar_view.section_grown_hint_key",
+		"Machine token (DOM id, route or path fragment); never translated.",
+	],
+	[
+		"ui.chat.slash_commands.x",
+		"Language-neutral key hint token ([x]); there are no words to translate.",
+	],
+	[
+		"ui.chat.trace.receipt_row_model.base",
+		"Machine token (DOM id, route or path fragment); never translated.",
+	],
+	[
+		"ui.chat.trace.trace_fold.verb_object",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.trace.turn_summary.receipts",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.trace.turn_summary.value",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.trace.turn_summary.value_75ced7",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
+	[
+		"ui.chat.undo_toasts.detail",
+		"Language-neutral: placeholders and punctuation only; there are no words to translate.",
+	],
 ]);
 
 function localeDirs() {

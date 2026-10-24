@@ -305,17 +305,29 @@ import ruUiAgentsStarters from "./catalogues/ru/ui.agents.starters.json";
 import ruUiBrowserChrome from "./catalogues/ru/ui.browser.chrome.json";
 import ruUiBrowser from "./catalogues/ru/ui.browser.json";
 import ruUiCanvas from "./catalogues/ru/ui.canvas.json";
+import ruUiChatAside from "./catalogues/ru/ui.chat.aside.json";
 import ruUiChatAsks from "./catalogues/ru/ui.chat.asks.json";
+import ruUiChatAt from "./catalogues/ru/ui.chat.at.json";
 import ruUiChatAttachments from "./catalogues/ru/ui.chat.attachments.json";
+import ruUiChatCanonical from "./catalogues/ru/ui.chat.canonical.json";
+import ruUiChatCanvasPreview from "./catalogues/ru/ui.chat.canvas_preview.json";
 import ruUiChatComposer from "./catalogues/ru/ui.chat.composer.json";
 import ruUiChatComposerMedia from "./catalogues/ru/ui.chat.composer_media.json";
+import ruUiChatCredentialCapture from "./catalogues/ru/ui.chat.credential_capture.json";
 import ruUiChatDialogs from "./catalogues/ru/ui.chat.dialogs.json";
+import ruUiChatDirectory from "./catalogues/ru/ui.chat.directory.json";
 import ruUiChatHeader from "./catalogues/ru/ui.chat.header.json";
 import ruUiChat from "./catalogues/ru/ui.chat.json";
 import ruUiChatLiveUpdates from "./catalogues/ru/ui.chat.live_updates.json";
+import ruUiChatMessage from "./catalogues/ru/ui.chat.message.json";
+import ruUiChatOptions from "./catalogues/ru/ui.chat.options.json";
 import ruUiChatResponseActions from "./catalogues/ru/ui.chat.response_actions.json";
+import ruUiChatRunDetails from "./catalogues/ru/ui.chat.run_details.json";
+import ruUiChatSessionStatus from "./catalogues/ru/ui.chat.session_status.json";
 import ruUiChatSidebarView from "./catalogues/ru/ui.chat.sidebar_view.json";
+import ruUiChatSkill from "./catalogues/ru/ui.chat.skill.json";
 import ruUiChatTags from "./catalogues/ru/ui.chat.tags.json";
+import ruUiChatTrace from "./catalogues/ru/ui.chat.trace.json";
 import ruUiCodeReview from "./catalogues/ru/ui.code_review.json";
 import ruUiCommandPalette from "./catalogues/ru/ui.command_palette.json";
 import ruUiCommonAccount from "./catalogues/ru/ui.common.account.json";
@@ -843,17 +855,29 @@ export const bundledCatalogues: Readonly<
 		...ruUiBrowserChrome,
 		...ruUiBrowser,
 		...ruUiCanvas,
+		...ruUiChatAside,
 		...ruUiChatAsks,
+		...ruUiChatAt,
 		...ruUiChatAttachments,
+		...ruUiChatCanonical,
+		...ruUiChatCanvasPreview,
 		...ruUiChatComposer,
 		...ruUiChatComposerMedia,
+		...ruUiChatCredentialCapture,
 		...ruUiChatDialogs,
+		...ruUiChatDirectory,
 		...ruUiChatHeader,
 		...ruUiChat,
 		...ruUiChatLiveUpdates,
+		...ruUiChatMessage,
+		...ruUiChatOptions,
 		...ruUiChatResponseActions,
+		...ruUiChatRunDetails,
+		...ruUiChatSessionStatus,
 		...ruUiChatSidebarView,
+		...ruUiChatSkill,
 		...ruUiChatTags,
+		...ruUiChatTrace,
 		...ruUiCodeReview,
 		...ruUiCommandPalette,
 		...ruUiCommonAccount,

@@ -1,0 +1,9 @@
+{
+	"ui.chat.skill.contract.this_backend_cannot_serve_the_skill_catalogue_update_the_backend": "Этот бэкенд не может обслуживать каталог навыков. Обновите бэкенд и повторите попытку.",
+	"ui.chat.skill.contract.skills_arent_available_right_now": "Навыки сейчас недоступны.",
+	"ui.chat.skill.contract.no_skills_found_see_skills": "Навыки не найдены — см. /skills",
+	"ui.chat.skill.contract.no_skills_found": "Навыки не найдены.",
+	"ui.chat.skill.contract.no_skills_match": "Нет подходящих навыков.",
+	"ui.chat.skill.contract.enter_completes": "Enter дополняет ${name}; повторное нажатие Enter отправляет.",
+	"ui.chat.skill.contract.click_completes": "Клик дополняет ${name}."
+}
