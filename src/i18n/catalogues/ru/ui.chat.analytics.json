@@ -1,5 +1,5 @@
 {
-	"ui.chat.analytics.filters.top_level_only": "Только верхнего уровня",
+	"ui.chat.analytics.filters.top_level_only": "Только сессии верхнего уровня",
 	"ui.chat.analytics.search.clear": "Очистить поиск",
 	"ui.chat.analytics.search.sessions": "Поиск сессий",
 	"ui.chat.analytics.sections.by_channel": "По каналам",
