@@ -1123,8 +1123,38 @@ test("a draft's refusal names the form that works, and only where it would work 
 			status: "failed",
 			retry: () => undefined,
 		}),
-		"/fast needs this conversation's model, which was not resolved. Retry it from the model reading.",
+		"/fast needs this conversation's model, which was not resolved. Press Retry, then try again.",
 	);
+	/*
+	 * AND ONLY THE ROWS THAT DECLARE THE ROUTE ANSWER WITH THE MODEL (design
+	 * review round 3, D8). The resolution copy ran before the capability check, so
+	 * `/rename hello` on a resolving new chat was told its MODEL was resolving -
+	 * a fact about a command that needs a conversation, not a model. The row is
+	 * asked first now; the session-addressed rows keep their own sentence in every
+	 * resolution state.
+	 */
+	for (const status of ["pending", "failed"]) {
+		const resolution =
+			status === "pending"
+				? { status: "pending" }
+				: { status: "failed", retry: () => undefined };
+		assert.equal(
+			draftRouteRefusal(
+				"rename",
+				"session.rename",
+				undefined,
+				CAPABLE,
+				resolution,
+			),
+			"/rename needs an open conversation. Start one first.",
+			`/rename must not inherit the model-resolution copy (${status})`,
+		);
+		assert.equal(
+			draftRouteRefusal("goal", "session.goal", undefined, CAPABLE, resolution),
+			"/goal needs an open conversation. Start one first.",
+			`/goal must not inherit the model-resolution copy (${status})`,
+		);
+	}
 	/* No draft context, and a row that declares no draft route: the ordinary
 	 * refusal is still the honest one. */
 	assert.equal(
@@ -1298,8 +1328,8 @@ test("a model pick that resets the fast dial says so, in the resolved dial's own
 	);
 	assert.equal(
 		fastModelPickNotice(true, "off"),
-		"Changing model turned fast mode off.",
-		"the outcome AND the cause: the pick is the reason it moved",
+		"Changing the model turned fast mode off.",
+		"the outcome AND the cause, in the article the rest of the strip uses",
 	);
 	assert.equal(
 		fastModelPickNotice(true, null),
@@ -1343,15 +1373,17 @@ test("the model pick's notice is COMPOSED onto whichever confirmation wins (roun
 		/notice: reading\.notice\?\.\(resolved\) \?\? null,/,
 		"the caller's notice is an input to that composition",
 	);
+	/*
+	 * ONE EXPRESSION, MATCHED WHOLE (code review round 3, minor 1). The dial read
+	 * used to be pinned on its own, and `fastModeState(bandReadings(...))` also
+	 * occurs in `FastPicker`'s own reading - so substituting the CALL SITE's
+	 * argument with a constant kept the suite green. The closure is matched as one
+	 * line here: it occurs exactly once, and `"off"` in place of the read fails.
+	 */
 	assert.match(
 		picker,
-		/notice: \(resolved\) =>\s*fastModelPickNotice\(\s*carriedFast,/,
-		"the model pick states the dial it reset through the notice",
-	);
-	assert.match(
-		picker,
-		/fastModeState\(bandReadings\(resolved\.snapshot, null\)\.identity\)/,
-		"the notice's dial is the RESOLVED one: this expression is the reading it names",
+		/notice: \(resolved\) =>\s*fastModelPickNotice\(\s*carriedFast,\s*fastModeState\(bandReadings\(resolved\.snapshot, null\)\.identity\),/,
+		"the model pick states the dial it reset, read off the RESOLUTION",
 	);
 });
 
@@ -1374,11 +1406,11 @@ test("a pick's result sentence carries the notice on EITHER branch (round 2, D6)
 		carried,
 		selector: "openrouter/b",
 		described: "This conversation will run openrouter/b.",
-		notice: "Changing model turned fast mode off.",
+		notice: "Changing the model turned fast mode off.",
 	});
 	assert.equal(
 		withCarry,
-		"This conversation will run openrouter/b at high effort. Changing model turned fast mode off.",
+		"This conversation will run openrouter/b at high effort. Changing the model turned fast mode off.",
 		"the carry branch must state the dial too; this is the round-2 defect",
 	);
 
@@ -1397,11 +1429,11 @@ test("a pick's result sentence carries the notice on EITHER branch (round 2, D6)
 		carried: null,
 		selector: "openrouter/b",
 		described: "This conversation will run openrouter/b.",
-		notice: "Changing model turned fast mode off.",
+		notice: "Changing the model turned fast mode off.",
 	});
 	assert.equal(
 		noCarry,
-		"This conversation will run openrouter/b. Changing model turned fast mode off.",
+		"This conversation will run openrouter/b. Changing the model turned fast mode off.",
 	);
 });
 
