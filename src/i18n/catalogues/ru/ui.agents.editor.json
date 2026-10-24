@@ -4,7 +4,7 @@
 	"ui.agents.editor.discard_changes": "Отменить изменения",
 	"ui.agents.editor.discard_unsaved": "Отменить несохранённые изменения?",
 	"ui.agents.editor.empty": "Здесь пока пусто.",
-	"ui.agents.editor.keep_editing": "Продолжить редактирование",
+	"ui.agents.editor.keep_editing": "Продолжить",
 	"ui.agents.editor.retry": "Повторить",
 	"ui.agents.editor.retrying": "Повторная попытка…",
 	"ui.agents.editor.save_changes": "Сохранить изменения",

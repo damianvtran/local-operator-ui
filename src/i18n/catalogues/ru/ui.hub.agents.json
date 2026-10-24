@@ -18,7 +18,7 @@
 	"ui.hub.agents.delist": "Снять с хаба",
 	"ui.hub.agents.delist_body": "«{name}» сразу исчезнет с хаба, и никто не сможет его скачать. Позже вы сможете загрузить его снова.",
 	"ui.hub.agents.delist_confirm": "Снять",
-	"ui.hub.agents.delist_failed": "Не удалось удалить агента с хаба",
+	"ui.hub.agents.delist_failed": "Не удалось снять агента с хаба",
 	"ui.hub.agents.delist_help": "Навсегда снять этого агента с Хаба агентов",
 	"ui.hub.agents.delist_succeeded": "Агент снят с хаба",
 	"ui.hub.agents.delist_title": "Снять этого агента с хаба?",
@@ -79,7 +79,7 @@
 	"ui.hub.agents.status_agents_public": "Агенты в публичном хабе",
 	"ui.hub.agents.status_count_organization": "{kind, select, agent {{count, plural, one {{count, number, ::group-off} агент} few {{count, number, ::group-off} агента} many {{count, number, ::group-off} агентов} other {{count, number, ::group-off} агента}} в организации {organization}} team {{count, plural, one {{count, number, ::group-off} команда} few {{count, number, ::group-off} команды} many {{count, number, ::group-off} команд} other {{count, number, ::group-off} команды}} в организации {organization}} other {{count, number, ::group-off} {kind} в организации {organization}}}",
 	"ui.hub.agents.status_count_public": "{kind, select, agent {{count, plural, one {{count, number, ::group-off} агент} few {{count, number, ::group-off} агента} many {{count, number, ::group-off} агентов} other {{count, number, ::group-off} агента}} в публичном хабе} team {{count, plural, one {{count, number, ::group-off} команда} few {{count, number, ::group-off} команды} many {{count, number, ::group-off} команд} other {{count, number, ::group-off} команды}} в публичном хабе} other {{count, number, ::group-off} {kind} в публичном хабе}}",
-	"ui.hub.agents.status_teams_organization": "Команды, общие для {organization}",
+	"ui.hub.agents.status_teams_organization": "Команды, которыми поделились с {organization}",
 	"ui.hub.agents.team_plan_body": "Совместное использование агентов внутри организации входит в тариф Team. Владелец {organization} может активировать его в консоли Radient, после чего агенты организации появятся здесь.",
 	"ui.hub.agents.team_plan_required": "Этой организации нужен активный тариф Team",
 	"ui.hub.agents.that_organization": "та организация",
@@ -92,5 +92,5 @@
 	"ui.hub.agents.updated_at": "Последнее изменение: {age} ({date})",
 	"ui.hub.agents.updating": "Обновление…",
 	"ui.hub.agents.view_details": "Показать сведения об агенте {name}",
-	"ui.hub.agents.viewer_state_unavailable": "Не удалось прочитать ваши лайки и избранное, поэтому состояние этого агента не отображается."
+	"ui.hub.agents.viewer_state_unavailable": "Не удалось прочитать ваши лайки и избранное, поэтому ваше состояние для этого агента не отображается."
 }
