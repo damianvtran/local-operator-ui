@@ -99,7 +99,6 @@ import {
 	Search,
 	Settings,
 	Store,
-	X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FC, ReactNode, PointerEvent as ReactPointerEvent } from "react";
@@ -365,7 +364,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	const rtl = useTextDirection() === "rtl";
 	const navigate = useNavigate();
 	const currentView = useCurrentView();
-	const { expanded, mode, onCollapse } = useSidebarFrame();
+	const { expanded, onCollapse } = useSidebarFrame();
 	const openCommandPalette = useUiPreferencesStore(
 		(state) => state.openCommandPalette,
 	);
@@ -1863,30 +1862,20 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	);
 
 	/*
-	 * THE ONE TOGGLE, and its glyph follows WHERE the sidebar is drawn (design
-	 * round 1, D3). Docked, it collapses to the strip: `‹`. In the sheet it
-	 * closes the sheet: `×`, because the sheet is a layer that goes away rather
-	 * than a column that narrows. In the strip it expands: `›` (the dock at
-	 * >=1024, the sheet below - the shell decides which, `chat-layout.tsx`). The
-	 * sheet used to draw the docked `‹` beside the dialog primitive's own `×`,
-	 * one over the other in a single focus-ringed box.
+	 * THE ONE TOGGLE. Docked, it collapses to the strip (`‹`); in the strip it
+	 * expands the dock (`›`). Both directions write the same persisted preference
+	 * at every window width, so the glyph never depends on a viewport threshold.
 	 */
-	const toggleLabel =
-		mode === "overlay"
-			? t("ui.shell.sidebar_navigation.close_sidebar")
-			: expanded
-				? t("ui.shell.sidebar_navigation.collapse_sidebar")
-				: t("ui.shell.sidebar_navigation.expand_sidebar");
-	const ToggleGlyph =
-		mode === "overlay"
-			? X
-			: expanded
-				? rtl
-					? ChevronRight
-					: ChevronLeft
-				: rtl
-					? ChevronLeft
-					: ChevronRight;
+	const toggleLabel = expanded
+		? t("ui.shell.sidebar_navigation.collapse_sidebar")
+		: t("ui.shell.sidebar_navigation.expand_sidebar");
+	const ToggleGlyph = expanded
+		? rtl
+			? ChevronRight
+			: ChevronLeft
+		: rtl
+			? ChevronLeft
+			: ChevronRight;
 	const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
 	const catalogueReady = desktopFeatureEnabled(
 		capabilities.data,
@@ -2102,11 +2091,9 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	};
 
 	/*
-	 * The collapse/close control in the brand row, revealed when the column is
-	 * pointed at or contains focus - Linear, Notion and Slack all put it in the
-	 * header and reveal it on hover. In the SHEET it is always drawn: it is the
-	 * sheet's one visible close, and a close that appears only on hover in a layer
-	 * the user just opened is a close they have to hunt for.
+	 * The collapse control in the brand row, revealed when the column is pointed
+	 * at or contains focus - Linear, Notion and Slack all put it in the header
+	 * and reveal it on hover.
 	 *
 	 * `pointer-events-none` gates the mouse only; focus is unaffected, so the
 	 * button keeps its place in the tab order and reveals itself with
@@ -2118,12 +2105,9 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	const collapseToggle = (
 		<div
 			className={cn(
-				mode !== "overlay" &&
-					cn(
-						"pointer-events-none opacity-0 transition-opacity duration-fast ease-out-quart",
-						"group-hover/sidebar:pointer-events-auto group-hover/sidebar:opacity-100",
-						"group-focus-within/sidebar:pointer-events-auto group-focus-within/sidebar:opacity-100",
-					),
+				"pointer-events-none opacity-0 transition-opacity duration-fast ease-out-quart",
+				"group-hover/sidebar:pointer-events-auto group-hover/sidebar:opacity-100",
+				"group-focus-within/sidebar:pointer-events-auto group-focus-within/sidebar:opacity-100",
 			)}
 		>
 			<BrowserSafeTooltip content={toggleLabel} side="right">
@@ -2132,7 +2116,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					size="icon-sm"
 					onClick={onCollapse}
 					aria-label={toggleLabel}
-					aria-expanded={mode === "overlay" ? undefined : expanded}
+					aria-expanded={expanded}
 					aria-keyshortcuts={sidebarToggleCap(isMac)}
 				>
 					<ToggleGlyph aria-hidden="true" />
