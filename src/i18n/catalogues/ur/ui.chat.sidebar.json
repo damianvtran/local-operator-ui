@@ -40,6 +40,7 @@
 	"ui.chat.sidebar.search.searching": "گفتگو میں تلاش جاری ہے…",
 	"ui.chat.sidebar.search.too_long": "تلاش {max, number, ::group-off} حروف تک محدود ہے۔ یہ تلاش اس سے لمبی ہے، اس لیے صرف چیٹ کے نام تلاش کیے جا رہے ہیں۔",
 	"ui.chat.sidebar.search.unavailable": "گفتگو کی تلاش دستیاب نہیں، اس لیے یہ صرف نام سے ملے ہوئے نتائج ہیں۔",
+	"ui.chat.sidebar.section.current_chat": "موجودہ چیٹ",
 	"ui.chat.sidebar.teams.create": "ٹیم بنائیں",
 	"ui.chat.sidebar.teams.loading": "ٹیمیں لوڈ ہو رہی ہیں…"
 }
