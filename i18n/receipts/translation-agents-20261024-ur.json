@@ -109,7 +109,7 @@
 		{
 			"check": "per-key ICU/plural/script/NFC/stub",
 			"command": "node <scratch>/verify.mjs (STRICT=1) for the 13 touched namespaces",
-			"result": "PASS — 687 keys checked: identical argument names, select/plural arms, number skeletons, tags and offsets; Urdu plural arms are one/other only; NFC; no manual bidi controls; no Devanagari/danda/Arabic-only letters; no English stubs beyond the three neutral strings listed below"
+			"result": "PASS — 687 keys checked: identical argument names, select/plural arms, number skeletons, tags and offsets; Urdu plural arms are one/other only; NFC; no manual bidi controls; no Devanagari/danda/Arabic-only letters; no English stubs beyond the six neutral strings listed below"
 		},
 		{
 			"check": "runtime bundle and formatting",
