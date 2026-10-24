@@ -210,11 +210,22 @@
   "plural_policy": {
     "clusters": "vi CLDR exposes only the other category",
     "arms_used": {
-      "other": 57,
-      "=0": 8,
+      "other": 45,
+      "=0": 3,
       "=1": 1
     },
-    "note": "=0 is used where a zero count reads as \"none\" and the existing vi catalogues already do the same; the single =1 keeps the singular clause in ui.chat.canonical.thread_search.truncated (\"the first match shown\"). No one/other agreement branches exist."
+    "note": "CORRECTED 2026-10-24 after audit 74305114d654. The earlier counts (other 57, =0 8, =1 1) were not derived from the files. Re-measured: 41 plural messages, 45 plural blocks, 49 arms — other 45, =0 3 (ui.chat.sidebar.chat_sidebar.builtin_offer and two in ui.chat.canonical.sound_batch_model.summary), =1 1 (ui.chat.canonical.thread_search.truncated). The auditor's replacement counts (43 messages / 43 other arms) do not reproduce under this count either; the figures above are the measured ones. No one/few/many category arm exists, so the vi policy (other only, exact =N arms where a count must read specially) holds. =0 is used where a zero count reads as \"none\", as the existing vi catalogues already do. The remediation commit rebuilt builtin_offer's structure, so the post-fix figure for the same key set is 41 plural messages, 46 blocks, 51 arms — other 46, =0 3, =1 2.",
+    "measured": {
+      "at": "translation commit f1af6fe1faf9 (1,736 vi values touched: 1,733 new keys + 3 pre-existing values re-touched)",
+      "plural_messages": 41,
+      "plural_blocks": 45,
+      "arms": {
+        "other": 45,
+        "=0": 3,
+        "=1": 1
+      },
+      "method": "every batch value parsed with @formatjs/icu-messageformat-parser; plural/select blocks and their selectors counted recursively"
+    }
   },
   "checks": [
     {
@@ -231,7 +242,7 @@
     },
     {
       "command": "per-key ICU + pseudo check (scratchpad/icu-check.mjs)",
-      "result": "checked 1733 keys; problems 0 — both sides parse with @formatjs/icu-messageformat-parser, argument names and ::skeletons match, every plural arm is other/…/=N, both render under vi/en with sample arguments, and bracket pseudo-localisation preserves every interpolated value"
+      "result": "checked 1733 keys; problems 0 for placeholders, argument names and ::skeletons. CORRECTED 2026-10-24 after audit 74305114d654: the check compared argument names and skeletons, NOT plural arm sets, so its \"match\" claim did not cover branch structure and missed the structural collapse in ui.chat.sidebar.chat_sidebar.builtin_offer (en: three {count, plural} blocks; vi: one). The key was rebuilt in the remediation commit; the re-run (same parser, plural blocks compared) reports 0 argument/select problems and one intentional locale deviation — vi carries no one/other agreement block, because vi CLDR exposes no one category."
     },
     {
       "command": "locale key-completeness (vi vs en, touched namespaces)",
@@ -257,7 +268,7 @@
   },
   "not_touched": [
     "i18n/ledger.json: 12 new vi namespaces need audited entries and the three edited vi namespaces (ui.chat, ui.chat.header, ui.chat.asks) hold stale target hashes until re-audited; the translator lane does not edit the ledger.",
-    "i18n/coverage-allowance.json: the vi entries for ui.chat.canonical (30) and ui.chat.run_details (2) are now exactly filled and must be shrunk with node scripts/i18n/check-coverage.mjs --update at integration; the batch brief excludes the allowance file."
+    "i18n/coverage-allowance.json: the vi entries for ui.chat.canonical (30 missing keys) and ui.chat.run_details (2) are NOT filled by this batch — the vi missing sets still equal those entries exactly (re-checked 2026-10-24: 30 and 2), so they stay as pre-existing debt and must not be shrunk or removed. CORRECTED after audit 74305114d654: the earlier claim that the batch had filled them was wrong, and check-coverage --update would change nothing for vi."
   ],
   "evidence": {
     "icu_check_script_sha256": "06314e6852462f130e1584985b4c19e8884347a0ff9522fe57d75efe40d187a9",
@@ -301,10 +312,28 @@
       "note": "same as above"
     },
     {
-      "key": "ui.chat.trace.supplement_model.provider_timed_out",
+      "key": "ui.chat.canonical.supplement_model.provider_timed_out",
       "english_cells": 18,
       "vietnamese_cells": 30,
-      "note": "reason clause in a supplement card; wraps, but is the longest of the provider reasons."
+      "note": "reason clause in a supplement card; wraps, but is the longest of the provider reasons. Key name CORRECTED 2026-10-24 after audit 74305114d654: this string lives in ui.chat.canonical; ui.chat.trace carries no supplement_model keys."
+    },
+    {
+      "key": "ui.chat.options.chat_options_sidebar.clear_this_conversation",
+      "english_cells": 24,
+      "vietnamese_cells": 47,
+      "note": "Added by the round-1 remediation: the clear-conversation confirmation title. Sentence-length Vietnamese against a short English title; the modal title has no maxCells budget in the sidecar but is the one label here a reviewer should see rendered."
+    },
+    {
+      "key": "ui.chat.trace.trace_labels.delegated_work",
+      "english_cells": 14,
+      "vietnamese_cells": 21,
+      "note": "Added by the round-1 remediation: trace row label, the same compact-row class as the tool_row_model verbs flagged above."
+    },
+    {
+      "key": "ui.chat.trace.trace_labels.delegating_work",
+      "english_cells": 15,
+      "vietnamese_cells": 23,
+      "note": "Added by the round-1 remediation: the in-progress sibling of delegated_work."
     }
   ],
   "term_decisions": [
@@ -403,5 +432,82 @@
       "khung vẽ / rà soát mã / bảng điều khiển",
       "match the shell rail and pane labels"
     ]
-  ]
+  ],
+  "remediation": {
+    "round": 1,
+    "date": "2026-10-24",
+    "auditor_receipt": "i18n/receipts/74305114d654-chat-vi.json",
+    "auditor": {
+      "agent": "translation-auditor",
+      "session": "74305114d654",
+      "model": "radient/auto"
+    },
+    "applied_by": {
+      "agent": "translator",
+      "session": "e076b5e7cd24",
+      "model": "radient/auto",
+      "fallback": null,
+      "note": "Same translator lane as the batch; the auditor stayed independent."
+    },
+    "changed": {
+      "keys": 46,
+      "files": [
+        "src/i18n/catalogues/vi/ui.chat.json",
+        "src/i18n/catalogues/vi/ui.chat.canonical.json",
+        "src/i18n/catalogues/vi/ui.chat.credential_capture.json",
+        "src/i18n/catalogues/vi/ui.chat.header.json",
+        "src/i18n/catalogues/vi/ui.chat.options.json",
+        "src/i18n/catalogues/vi/ui.chat.session_status.json",
+        "src/i18n/catalogues/vi/ui.chat.trace.json"
+      ],
+      "note": "Value-only edits: key order and file formatting unchanged; no key added or removed and no English catalogue touched."
+    },
+    "findings": {
+      "ui.chat.interrupt_turn.this_backend_predates_the_stop_control_so_this_turn_cannot": "fixed: reason clause restored; /stop is a warning again, not an instruction",
+      "ui.chat.attachment_read.this_draft_carries_total_images_and_one": "fixed: second remedy restored",
+      "ui.chat.slash.contract.staged": "fixed: dàn → nạp, and the five related slash-contract strings with it",
+      "ui.chat.approval_words.approve": "fixed: Chấp thuận → Phê duyệt (glossary), plus the question-dock instruction that names the label",
+      "ui.chat.radient_session_issue.message_this_surface_cannot_take_the_pasted_code_so_finish": "fixed: Bề mặt này → Cửa sổ này",
+      "ui.chat.chat_tag_groups.untagged": "fixed: Không nhãn → Chưa gắn nhãn, matching ui.chat.tags.untagged",
+      "ui.chat.ask_answer.that_question_had_already_been_settled_or_moved_on_so": "fixed: moved on is no longer rendered as forwarded",
+      "ui.chat.chat_session_status.asksoutstandinglabelvalue_outstanding_the_agent_is_not_blocked_on_you": "fixed: direction of blocked-on restored",
+      "ui.chat.interrupt_turn.stopped_this_turn_subagents_and_backgroundjobs_are": "fixed: ASCII hyphen → em dash, plus the six related strings",
+      "ui.chat.sidebar.chat_sidebar.builtin_offer": "fixed: the third {count, plural} use (it/them) restored and the count block rebuilt as =0/other. Recorded locale decision, not a deviation: vi keeps # for counts where English spells 0–6 as words and carries no one/other agreement block, because vi CLDR exposes only the other category and the style guide forbids one/other branches.",
+      "ui.chat.message_budget.this_command_is_size_more_than_the": "fixed: the nine message-budget strings share the «có kích thước … vượt quá giới hạn … của một …» frame",
+      "ui.chat.composer.tips.ask_for_parallel_work_and_the_agent_fans_out_subagents": "fixed: tỏa ra → chia việc cho",
+      "ui.chat.canonical.sound_player.label_position": "fixed: head noun first (Vị trí {label})",
+      "ui.chat.credential_capture.store_unconfirmed": "fixed: chưa xác nhận đã lưu, and the credential_store_unconfirmed sibling",
+      "ui.chat.header.chat_header_identity_menu_model.agent_seat_closed_by_teamlabel": "fixed: ghế → vị trí, one term across the six seat strings",
+      "ui.chat.options.chat_options_sidebar.clear_conversation": "fixed: Xóa toàn bộ tin nhắn, and the confirmation title",
+      "ui.chat.session_status.session_model.the_owner_cannot_currently_provide_borrowed_access_or_borrowing_permission": "fixed: «or choose another model» restored",
+      "ui.chat.trace.tool_row_model.sent_keys": "fixed: khóa → phím for console keystrokes, and sending_keys",
+      "ui.chat.trace.trace_labels.delegated_work": "fixed: việc → công việc, and delegating_work",
+      "ui.chat.trace.tool_row_model.updated_secure_input": "fixed: ô nhập bảo mật, and updating_secure_input",
+      "ui.chat.trace.question_dock.prefix_held_while_this_answers_fate_is_unknown_it_may": "fixed: fate clause replaced with the delivery-outcome clause"
+    },
+    "deferred": [
+      {
+        "keys": [
+          "ui.command_palette.use_palette_sources.clear_conversation",
+          "ui.command_palette.command_palette.clear_this_conversation"
+        ],
+        "reason": "The clear_conversation finding says the command palette already uses the messages-centric wording; it does not — both palette strings still read «Xóa cuộc trò chuyện». They are outside this batch's namespaces and ui.command_palette carries an audited ledger row, so changing them would stale that row and needs its own remediation round with an auditor."
+      }
+    ],
+    "receipt_corrections": [
+      "plural_policy.arms_used (and a measured block beside it)",
+      "not_touched[1] — the coverage allowance was not filled by the batch",
+      "checks[3] — the ICU check compared arguments, not plural arms",
+      "overflow_risks[6].key — supplement_model.provider_timed_out lives in ui.chat.canonical"
+    ],
+    "gates": {
+      "generate --check": "pass — keys.gen.ts byte-identical to a fresh generation",
+      "check-strings": "pass — 1343 files scanned, 391 literals at or below baseline",
+      "context-parity": "pass — every English key covered apart from 131 allowed gaps in 4 namespaces",
+      "check-coverage": "unchanged from the pre-fix head: the same 12 added-key findings for other locales, none for vi",
+      "ledger-check": "unchanged finding set from the pre-fix head (75 findings across 438 entries); only the recomputed target hashes in the already-stale vi/ui.chat and vi/ui.chat.header rows moved",
+      "icu parity re-run": "0 argument/select problems over 1,736 values; plural blocks compared, with one intentional locale deviation (no one/other agreement block)",
+      "scope": "no English catalogue, other locale, generated file, ledger or allowance file was edited"
+    }
+  }
 }

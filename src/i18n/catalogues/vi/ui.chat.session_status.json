@@ -40,7 +40,7 @@
 	"ui.chat.session_status.session_model.reasoning_effort_for_this_session": "Mức suy luận cho phiên này.",
 	"ui.chat.session_status.session_model.the_device_running_this_session_has_no_effective_provider_access": "Thiết bị đang chạy phiên này không có quyền truy cập nhà cung cấp hiệu lực. Hãy đăng nhập hoặc khôi phục quyền trên thiết bị đó, hoặc chọn mô hình khác.",
 	"ui.chat.session_status.session_model.the_level_this_model_runs_at_by_default_this_backend": "Mức mô hình này chạy mặc định. Backend này không báo nó chấp nhận những mức nào khác.",
-	"ui.chat.session_status.session_model.the_owner_cannot_currently_provide_borrowed_access_or_borrowing_permission": "Chủ sở hữu hiện không thể cấp quyền truy cập mượn, hoặc không có quyền cho mượn. Hãy khôi phục quyền truy cập hoặc quyền của chủ sở hữu trước khi thử lại.",
+	"ui.chat.session_status.session_model.the_owner_cannot_currently_provide_borrowed_access_or_borrowing_permission": "Chủ sở hữu hiện không thể cấp quyền truy cập mượn, hoặc không có quyền cho mượn. Hãy khôi phục quyền truy cập hoặc quyền của chủ sở hữu trước khi thử lại, hoặc chọn mô hình khác.",
 	"ui.chat.session_status.session_model.the_owner_device": "thiết bị chủ sở hữu",
 	"ui.chat.session_status.session_model.the_runtime_resolved_borrowed_access_for_this_session_every_new": "Runtime đã xác định quyền truy cập mượn cho phiên này. Mỗi yêu cầu mới đều kiểm tra lại chủ sở hữu.",
 	"ui.chat.session_status.session_model.the_serving_device_has_no_effective_provider_access_for_this": "Thiết bị phục vụ không có quyền truy cập nhà cung cấp hiệu lực cho phiên này. Hãy kết nối tài khoản hoặc chọn mô hình khác.",

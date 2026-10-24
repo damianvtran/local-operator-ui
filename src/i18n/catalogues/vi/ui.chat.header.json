@@ -52,7 +52,7 @@
 	"ui.chat.header.chat_header_identity.triggerlabel_label_closedreason": "{triggerLabel}: {label}. {closedReason}",
 	"ui.chat.header.chat_header_identity_menu.closednoteid_title": "{closedNoteId}-title",
 	"ui.chat.header.chat_header_identity_menu.search_noun": "Tìm {noun}",
-	"ui.chat.header.chat_header_identity_menu_model.agent_seat_closed_by_teamlabel": "Ghế tác nhân bị đóng bởi {teamLabel}",
+	"ui.chat.header.chat_header_identity_menu_model.agent_seat_closed_by_teamlabel": "Vị trí tác nhân bị đóng bởi {teamLabel}",
 	"ui.chat.header.chat_header_identity_menu_model.label_cannot_take_the_seat": "{label} không thể nhận vị trí này.",
 	"ui.chat.header.chat_header_identity_menu_model.teamlabel_is_led_by_its_manager_only_the_manager_and": "{teamLabel} do quản lý của nhóm dẫn dắt; chỉ quản lý và các hồ sơ có thể ủy quyền mới được nhận vị trí này.",
 	"ui.chat.header.chat_header_identity_menu_model.needs_a_delegating_profile_here": "Cần một hồ sơ có thể ủy quyền ở đây.",

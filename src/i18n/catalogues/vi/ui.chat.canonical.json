@@ -172,7 +172,7 @@
 	"ui.chat.canonical.provider_error_guidance.out_of_credits_status_body": "Hết tín dụng{status}: {body}",
 	"ui.chat.canonical.provider_error_guidance.out_of_credits_status_radient_refused_the_request": "Hết tín dụng{status}: Radient từ chối yêu cầu",
 	"ui.chat.canonical.sound_batch_model.name_suffix": "{name} ({suffix, number, ::group-off})",
-	"ui.chat.canonical.sound_player.label_position": "{label} vị trí",
+	"ui.chat.canonical.sound_player.label_position": "Vị trí {label}",
 	"ui.chat.canonical.supplement_image_grid.open_displayname": "Mở {displayName}",
 	"ui.chat.canonical.supplement_model.bounded_more_files": "{bounded, plural, other {# tệp nữa}}",
 	"ui.chat.canonical.supplement_model.show_all_bounded_graphics": "{bounded, plural, other {Hiện tất cả # hình ảnh}}",

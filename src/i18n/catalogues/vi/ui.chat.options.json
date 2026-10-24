@@ -1,7 +1,7 @@
 {
 	"ui.chat.options.chat_options_sidebar.chat_options": "Tùy chọn trò chuyện",
-	"ui.chat.options.chat_options_sidebar.clear_conversation": "Xóa cuộc trò chuyện",
-	"ui.chat.options.chat_options_sidebar.clear_this_conversation": "Xóa cuộc trò chuyện này?",
+	"ui.chat.options.chat_options_sidebar.clear_conversation": "Xóa toàn bộ tin nhắn",
+	"ui.chat.options.chat_options_sidebar.clear_this_conversation": "Xóa toàn bộ tin nhắn trong cuộc trò chuyện này?",
 	"ui.chat.options.chat_options_sidebar.customize_settings_for_this_agent": "Tùy chỉnh cài đặt cho tác nhân này",
 	"ui.chat.options.generation_settings_section.enter_stop_sequences_one_per_line": "Nhập chuỗi dừng (mỗi dòng một chuỗi)…",
 	"ui.chat.options.generation_settings_section.generation_settings": "Cài đặt tạo phản hồi",
