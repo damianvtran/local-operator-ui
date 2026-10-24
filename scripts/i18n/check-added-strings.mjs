@@ -8,8 +8,9 @@
  * Covered additions:
  *   - copy-valued object properties such as `{ label: "New chat" }`;
  *   - expression-valued copy attributes such as `aria-label={"New chat"}`;
- *   - static literal arms of conditionals and `+` concatenations, plus the
- *     literal spans of template expressions in either sink.
+ *   - static literal arms of conditionals, logical fallbacks and `+`
+ *     concatenations, plus literal spans of template expressions in either sink;
+ *   - static text in JSX expression containers, including logical branches.
  *
  * This is a static sink check, not a claim about arbitrary runtime or server
  * text. Dynamic values, non-copy property names, and calls such as `t()` do not
@@ -123,10 +124,21 @@ function staticTextNodes(node) {
 				...staticTextNodes(node.whenTrue),
 				...staticTextNodes(node.whenFalse),
 			];
-		case SyntaxKind.BinaryExpression:
-			return node.operatorToken.kind === SyntaxKind.PlusToken
-				? [...staticTextNodes(node.left), ...staticTextNodes(node.right)]
-				: [];
+		case SyntaxKind.BinaryExpression: {
+			const operator = node.operatorToken.kind;
+			if (operator === SyntaxKind.AmpersandAmpersandToken) {
+				// Only the right arm of && can become copy; the left is its guard.
+				return staticTextNodes(node.right);
+			}
+			if (
+				operator === SyntaxKind.PlusToken ||
+				operator === SyntaxKind.BarBarToken ||
+				operator === SyntaxKind.QuestionQuestionToken
+			) {
+				return [...staticTextNodes(node.left), ...staticTextNodes(node.right)];
+			}
+			return [];
+		}
 		case SyntaxKind.ParenthesizedExpression:
 		case SyntaxKind.AsExpression:
 		case SyntaxKind.SatisfiesExpression:
@@ -178,6 +190,12 @@ export function findAddedCopyViolations(sourceFile, addedLines) {
 				initializer.expression
 			) {
 				take(initializer.expression, `attribute:${name}`);
+			}
+		} else if (node.kind === SyntaxKind.JsxExpression) {
+			// Attribute expressions are handled by their named copy sink above.
+			// Every other JSX expression container is rendered child text.
+			if (node.parent?.kind !== SyntaxKind.JsxAttribute && node.expression) {
+				take(node.expression, "jsx-expression");
 			}
 		}
 		node.forEachChild(visit);
