@@ -1,0 +1,242 @@
+{
+	"ui.agents.page.add_agent_manually": {
+		"role": "Action or accessible label in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.add_team_manually": {
+		"role": "Action or accessible label in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.agent_run_description": {
+		"role": "Explanatory or consent copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.page.agents": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.agents_read_failed": {
+		"role": "Validation or failure feedback in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.ask_for_agent": {
+		"role": "Action or accessible label in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.ask_for_team": {
+		"role": "Action or accessible label in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.back_to_list": {
+		"role": "Action or accessible label in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.backend_unreachable": {
+		"role": "Validation or failure feedback in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.browse_by_type": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.connecting_backend": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.definition_read_failed": {
+		"role": "Validation or failure feedback in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "User-supplied definition or member name; preserve verbatim"
+		}
+	},
+	"ui.agents.page.detail_read_failure_description": {
+		"role": "Explanatory or consent copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.page.discard_agent": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.page.discard_changes": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.discard_team": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.page.discard_unsaved": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.finish_edit_first": {
+		"role": "Action or accessible label in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.keep_editing": {
+		"role": "Action or accessible label in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.loading_capabilities": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.loading_saved_agent": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.mark_new": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.mark_updated": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.newer_backend_required": {
+		"role": "Validation or failure feedback in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.page.no_agents": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.page.no_description": {
+		"role": "Explanatory or consent copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.no_scoped_agents": {
+		"role": "Dynamic status or complete sentence in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"scope": "Roster scope selector: custom, installed, builtin, or other"
+		},
+		"note": "Preserve all ICU select arms and machine selector values; translate only the rendered prose."
+	},
+	"ui.agents.page.no_search_matches": {
+		"role": "Dynamic status or complete sentence in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"search": "Entered search text; preserve verbatim"
+		}
+	},
+	"ui.agents.page.no_teams": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.page.or_add_agent": {
+		"role": "Action or accessible label in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.or_add_team": {
+		"role": "Action or accessible label in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.read_failure_description": {
+		"role": "Explanatory or consent copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.page.request_failed": {
+		"role": "Validation or failure feedback in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.scope_all": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.scope_builtin": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.scope_custom": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.scope_installed": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.search_agents": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.search_all": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.search_teams": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.show_owned_by": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.team_run_description": {
+		"role": "Explanatory or consent copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.page.teams": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.teams_read_failed": {
+		"role": "Validation or failure feedback in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.title": {
+		"role": "Field, section, state, or status copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.page.update_backend_description": {
+		"role": "Explanatory or consent copy in the agents and teams roster",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	}
+}

@@ -1,0 +1,525 @@
+{
+	"ui.hub.agents.back_to_hub": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.browse_by_type": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.cancel": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.card_favourite_unread": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.agents.card_like_unread": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.agents.card_sign_in_favourite": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.agents.card_sign_in_like": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.card_unknown_author": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.card_updated": {
+		"role": "Dynamic status or complete sentence in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"age": "Localized relative age, including ago where applicable"
+		}
+	},
+	"ui.hub.agents.cards_viewer_state_unavailable": {
+		"role": "Failure or empty-state feedback in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.agents.catalogue_unavailable": {
+		"role": "Failure or empty-state feedback in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.agents.clear_filter": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.clear_search": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.created_at": {
+		"role": "Dynamic status or complete sentence in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"age": "Localized relative age, including ago where applicable",
+			"date": "Locale-formatted calendar date"
+		}
+	},
+	"ui.hub.agents.created_by": {
+		"role": "Dynamic status or complete sentence in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "User-supplied agent or team name; preserve verbatim"
+		}
+	},
+	"ui.hub.agents.created_by_email": {
+		"role": "Dynamic status or complete sentence in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "User-supplied agent or team name; preserve verbatim",
+			"email": "Account email address; preserve verbatim"
+		}
+	},
+	"ui.hub.agents.delist": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.delist_body": {
+		"role": "Explanatory copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "User-supplied agent or team name; preserve verbatim"
+		}
+	},
+	"ui.hub.agents.delist_confirm": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.delist_failed": {
+		"role": "Failure or empty-state feedback in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.delist_help": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.agents.delist_succeeded": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.delist_title": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.delisting": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.download": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.download_failed": {
+		"role": "Failure or empty-state feedback in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.download_help": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.download_named": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "User-supplied agent or team name; preserve verbatim"
+		}
+	},
+	"ui.hub.agents.downloads": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.empty_category_body": {
+		"role": "Explanatory copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.agents.empty_hub_body": {
+		"role": "Explanatory copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.agents.empty_search_body": {
+		"role": "Explanatory copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.agents.favourite": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.favourite_failed": {
+		"role": "Failure or empty-state feedback in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.favourite_unavailable": {
+		"role": "Failure or empty-state feedback in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.get": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.hub_empty": {
+		"role": "Failure or empty-state feedback in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.hub_load_failed": {
+		"role": "Failure or empty-state feedback in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.hub_subtitle": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.agents.hub_title": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.like": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.like_failed": {
+		"role": "Failure or empty-state feedback in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.like_unavailable": {
+		"role": "Failure or empty-state feedback in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.list_load_failed": {
+		"role": "Failure or empty-state feedback in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.agents.load_failed": {
+		"role": "Failure or empty-state feedback in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.loading_agents": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.loading_details": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.loading_teams": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.no_agents_in_category": {
+		"role": "Dynamic status or complete sentence in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"category": "Category display label"
+		}
+	},
+	"ui.hub.agents.no_description": {
+		"role": "Explanatory copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.no_org_agents": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.agents.no_search_matches": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.not_found": {
+		"role": "Failure or empty-state feedback in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.org_agents_body": {
+		"role": "Explanatory copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"organization": "Organization display name; preserve verbatim"
+		}
+	},
+	"ui.hub.agents.org_backend_update_required": {
+		"role": "Failure or empty-state feedback in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.agents.organization": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.organization_access_denied": {
+		"role": "Failure or empty-state feedback in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.agents.organization_access_denied_body": {
+		"role": "Explanatory copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"organization": "Organization display name; preserve verbatim"
+		}
+	},
+	"ui.hub.agents.organizations_unavailable": {
+		"role": "Failure or empty-state feedback in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.public_hub": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.publish_agent": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.search_agents": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.search_description": {
+		"role": "Explanatory copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.search_in": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.search_name": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.show_hub_of": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.showing": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.sign_in_feature": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.agents.sign_in_required_body": {
+		"role": "Explanatory copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.agents.sign_in_to_use": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.sort_agents": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.sort_most_downloaded": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.sort_most_favourited": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.sort_most_liked": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.sort_name_ascending": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.sort_newest": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.sort_recently_updated": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.status_agents_public": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.status_count_organization": {
+		"role": "Dynamic status or complete sentence in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"kind": "ICU selector: agent or team",
+			"count": "Non-negative integer count",
+			"organization": "Organization display name; preserve verbatim"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.hub.agents.status_count_public": {
+		"role": "Dynamic status or complete sentence in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"kind": "ICU selector: agent or team",
+			"count": "Non-negative integer count"
+		},
+		"note": "Preserve ICU syntax, selector values, and number formatting; add locale-appropriate CLDR plural categories."
+	},
+	"ui.hub.agents.status_teams_organization": {
+		"role": "Dynamic status or complete sentence in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"organization": "Organization display name; preserve verbatim"
+		}
+	},
+	"ui.hub.agents.team_plan_body": {
+		"role": "Explanatory copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"organization": "Organization display name; preserve verbatim"
+		}
+	},
+	"ui.hub.agents.team_plan_required": {
+		"role": "Failure or empty-state feedback in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.hub.agents.that_organization": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.this_organization": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.try_again": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.trying": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.unfavourite": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.unknown_author": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.unlike": {
+		"role": "Action or accessible label in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.updated_at": {
+		"role": "Dynamic status or complete sentence in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"age": "Localized relative age, including ago where applicable",
+			"date": "Locale-formatted calendar date"
+		}
+	},
+	"ui.hub.agents.updating": {
+		"role": "Field, filter, section, or status copy in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.hub.agents.view_details": {
+		"role": "Dynamic status or complete sentence in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "User-supplied agent or team name; preserve verbatim"
+		}
+	},
+	"ui.hub.agents.viewer_state_unavailable": {
+		"role": "Failure or empty-state feedback in Agent Hub agent discovery and details",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	}
+}

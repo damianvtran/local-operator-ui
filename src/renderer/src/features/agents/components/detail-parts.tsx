@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The pieces a definition's detail pane is built from — one copy, for agents and
  * for teams.
@@ -120,7 +121,7 @@ export const TITLE_LINE_HEIGHT =
  */
 export function ReadBlock({
 	text,
-	empty = "Nothing here yet.",
+	empty = t("ui.agents.editor.empty"),
 	mono = false,
 }: {
 	text: string;
@@ -201,7 +202,9 @@ export function ReadBlock({
 					aria-expanded={expanded}
 					onClick={() => setExpanded((value) => !value)}
 				>
-					{expanded ? "Show less" : "Show all"}
+					{expanded
+						? t("ui.agents.editor.show_less")
+						: t("ui.agents.editor.show_all")}
 				</Button>
 			) : null}
 		</div>
@@ -248,10 +251,10 @@ export function sourceLabel(
 	source: "builtin" | "installed" | "custom",
 ): string {
 	return source === "builtin"
-		? "Built-in"
+		? t("ui.agents.page.scope_builtin")
 		: source === "installed"
-			? "Installed"
-			: "Custom";
+			? t("ui.agents.page.scope_installed")
+			: t("ui.agents.page.scope_custom");
 }
 
 /**
@@ -332,8 +335,8 @@ export function EditFooter({
 	pending,
 	onSave,
 	onCancel,
-	saveLabel = "Save changes",
-	pendingLabel = "Saving…",
+	saveLabel = t("ui.agents.editor.save_changes"),
+	pendingLabel = t("ui.agents.editor.saving"),
 	dirtyHint,
 	submit,
 	confirming,
@@ -506,10 +509,10 @@ export function EditFooter({
 			{isConfirming ? (
 				<>
 					<span className="text-body-sm text-ink-muted">
-						{dirtyHint ?? "Discard your unsaved changes?"}
+						{dirtyHint ?? t("ui.agents.editor.discard_unsaved")}
 					</span>
 					<Button variant="danger" onClick={onCancel}>
-						Discard changes
+						{t("ui.agents.editor.discard_changes")}
 					</Button>
 					<Button
 						ref={keepEditingRef}
@@ -524,7 +527,7 @@ export function EditFooter({
 							primaryRef.current?.focus();
 						}}
 					>
-						Keep editing
+						{t("ui.agents.editor.keep_editing")}
 					</Button>
 				</>
 			) : (
@@ -544,11 +547,13 @@ export function EditFooter({
 					}}
 					disabled={pending}
 				>
-					Cancel
+					{t("ui.agents.editor.cancel")}
 				</Button>
 			)}
 			{dirty && !isConfirming ? (
-				<span className="ml-auto text-meta text-ink-dim">Unsaved changes</span>
+				<span className="ml-auto text-meta text-ink-dim">
+					{t("ui.agents.editor.unsaved_changes")}
+				</span>
 			) : null}
 		</div>
 	);
@@ -655,7 +660,9 @@ export function PaneError({
 			<p className="text-body-sm text-ink">{what}</p>
 			<p className="text-body-sm text-ink-muted">{meaning}</p>
 			<Button variant="secondary" onClick={onRetry} disabled={retrying}>
-				{retrying ? "Retrying…" : "Retry"}
+				{retrying
+					? t("ui.agents.editor.retrying")
+					: t("ui.agents.editor.retry")}
 			</Button>
 		</div>
 	);

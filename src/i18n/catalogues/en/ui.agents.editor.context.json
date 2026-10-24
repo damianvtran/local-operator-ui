@@ -1,0 +1,67 @@
+{
+	"ui.agents.editor.cancel": {
+		"role": "Action or accessible label in the shared agent editor",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.editor.creating": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.editor.discard_changes": {
+		"role": "Field, section, state, or status copy in the shared agent editor",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.editor.discard_unsaved": {
+		"role": "Field, section, state, or status copy in the shared agent editor",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.editor.empty": {
+		"role": "Field, section, state, or status copy in the shared agent editor",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.editor.keep_editing": {
+		"role": "Action or accessible label in the shared agent editor",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.editor.retry": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.editor.retrying": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.editor.save_changes": {
+		"role": "Action or accessible label in the shared agent editor",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.editor.saving": {
+		"role": "Product action, state, example, or dynamic label in the owned agents and hub surfaces",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.editor.show_all": {
+		"role": "Field, section, state, or status copy in the shared agent editor",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.editor.show_less": {
+		"role": "Field, section, state, or status copy in the shared agent editor",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.editor.unsaved_changes": {
+		"role": "Field, section, state, or status copy in the shared agent editor",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	}
+}

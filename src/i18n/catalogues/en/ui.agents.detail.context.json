@@ -1,0 +1,498 @@
+{
+	"ui.agents.detail.add": {
+		"role": "Action or accessible label in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.add_tool": {
+		"role": "Action or accessible label in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.all_tools": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.all_tools_description": {
+		"role": "Explanatory copy in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.detail.ask_for_change": {
+		"role": "Action or accessible label in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.built_in_agent": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.built_in_description": {
+		"role": "Explanatory copy in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "Built-in agents are read-only until installed or duplicated; preserve both available actions."
+	},
+	"ui.agents.detail.can_message_independently": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.changed_from_packaged": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.changed_while_editing": {
+		"role": "Agent validation, save, or concurrency feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.detail.choose_effort": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.class_now_proactive": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "Agent name"
+		}
+	},
+	"ui.agents.detail.class_now_reactive": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "Agent name"
+		}
+	},
+	"ui.agents.detail.compare_packaged": {
+		"role": "Action or accessible label in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.detail.configured_effort": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.conflict_description": {
+		"role": "Explanatory copy in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "A concurrent writer changed the agent. The draft is retained and saving writes only edited fields."
+	},
+	"ui.agents.detail.create_agent": {
+		"role": "Action or accessible label in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.create_copy": {
+		"role": "Action or accessible label in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.create_failed": {
+		"role": "Agent validation, save, or concurrency feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.created_name": {
+		"role": "Dynamic agent operation status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "Agent name"
+		}
+	},
+	"ui.agents.detail.creating": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.delegation_effort": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.delegation_effort_description": {
+		"role": "Explanatory copy in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.detail.discard_agent_changes": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.detail.discard_new_agent": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.duplicate_as_new_agent": {
+		"role": "Action or accessible label in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.duplicate_description": {
+		"role": "Explanatory copy in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "Agent name"
+		}
+	},
+	"ui.agents.detail.duplicate_title": {
+		"role": "Action or accessible label in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.edit": {
+		"role": "Action or accessible label in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.effort_tier": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.effort_tiers_helper": {
+		"role": "Explanatory copy in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.detail.effort_value": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"effort": "Effort tier value; machine value inherit stays English"
+		}
+	},
+	"ui.agents.detail.give_every_tool": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.install_failed": {
+		"role": "Agent validation, save, or concurrency feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.install_to_edit": {
+		"role": "Action or accessible label in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.installed_name": {
+		"role": "Action or accessible label in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "Agent name"
+		}
+	},
+	"ui.agents.detail.installing": {
+		"role": "Action or accessible label in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.instructions": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.instructions_description": {
+		"role": "Explanatory copy in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.detail.instructions_required": {
+		"role": "Agent validation, save, or concurrency feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.kind_label": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.kind_role": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.kind_specialist": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.loading_effort": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.may_delegate_description": {
+		"role": "Explanatory copy in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.may_delegate_subagents": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.messaging": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.messaging_description": {
+		"role": "Explanatory copy in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.detail.meta_delegates": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.meta_specialist": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.modified": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.more_actions": {
+		"role": "Action or accessible label in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.name": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.name_and_role": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.name_invalid": {
+		"role": "Agent validation, save, or concurrency feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.detail.name_required": {
+		"role": "Agent validation, save, or concurrency feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.name_taken": {
+		"role": "Agent validation, save, or concurrency feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"placeholders": {
+			"name": "Agent name"
+		}
+	},
+	"ui.agents.detail.new_agent": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.new_agent_description": {
+		"role": "Explanatory copy in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.detail.new_chat": {
+		"role": "Action or accessible label in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.no_delegate_description": {
+		"role": "Explanatory copy in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.detail.no_description": {
+		"role": "Explanatory copy in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.detail.no_instructions": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.no_team_uses": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.no_tools": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "All tools is the adjacent switch label."
+	},
+	"ui.agents.detail.off": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.on": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.origin": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.origin_builtin": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.origin_custom": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.origin_installed": {
+		"role": "Action or accessible label in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.reload_saved_version": {
+		"role": "Action or accessible label in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.remove_tool": {
+		"role": "Action or accessible label in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"tool": "Tool identifier; keep the identifier unchanged"
+		}
+	},
+	"ui.agents.detail.save_alert_title": {
+		"role": "Agent validation, save, or concurrency feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.save_changes": {
+		"role": "Action or accessible label in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.save_failed": {
+		"role": "Agent validation, save, or concurrency feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.save_unconfirmed": {
+		"role": "Agent validation, save, or concurrency feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.detail.saved_name": {
+		"role": "Dynamic agent operation status",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label",
+		"placeholders": {
+			"name": "Agent name"
+		}
+	},
+	"ui.agents.detail.source": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.switch_failed": {
+		"role": "Agent validation, save, or concurrency feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.switching": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.tool_already_listed": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.tool_name": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.tool_name_invalid": {
+		"role": "Agent validation, save, or concurrency feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.detail.tools": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.unconfirmed_description": {
+		"role": "Explanatory copy in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines",
+		"note": "The write outcome is unknown; do not imply that it either succeeded or failed."
+	},
+	"ui.agents.detail.unconfirmed_title": {
+		"role": "Agent validation, save, or concurrency feedback",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.use_session_effort": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.used_by": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.used_by_description": {
+		"role": "Explanatory copy in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.detail.when_to_use": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	},
+	"ui.agents.detail.when_to_use_description": {
+		"role": "Explanatory copy in the agent detail or creation pane",
+		"tone": "Concise, plain product language",
+		"length_hint": "One or two wrapped lines"
+	},
+	"ui.agents.detail.when_to_use_label": {
+		"role": "Agent detail or creation field, section, state, or status copy",
+		"tone": "Concise, plain product language",
+		"length_hint": "Short label"
+	}
+}
