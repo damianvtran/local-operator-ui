@@ -2,5 +2,11 @@
 	"ui.chat.dialogs.delete_title": "¿Eliminar esta conversación?",
 	"ui.chat.dialogs.delete_action": "Eliminar",
 	"ui.chat.dialogs.archive_action": "Archivar",
-	"ui.chat.dialogs.cancel": "Cancelar"
+	"ui.chat.dialogs.cancel": "Cancelar",
+	"ui.chat.dialogs.options.clear_confirm": "Borrar",
+	"ui.chat.dialogs.options.clear_conversation": "Borrar conversación",
+	"ui.chat.dialogs.options.clear_message": "Todos los mensajes de esta conversación se borran de este dispositivo y no hay forma de deshacerlo. El agente no se ve afectado.",
+	"ui.chat.dialogs.options.clear_title": "¿Borrar esta conversación?",
+	"ui.chat.dialogs.options.description": "Personaliza los ajustes de este agente",
+	"ui.chat.dialogs.options.title": "Opciones del chat"
 }
