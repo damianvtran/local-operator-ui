@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 /**
  * One classification of "what is wrong with the backend", and one sentence per
  * outcome, shared by every surface that reports it.
@@ -122,7 +123,9 @@ export const BACKEND_ERROR_REMEDY: Record<BackendErrorKind, string> = {
 	// instruction (UX round 2, U2).
 	deadline: "",
 	unauthorized: "",
-	outdated: "Update the server and try again.",
+	get outdated() {
+		return t("ui.common.connection.backend.remedy_outdated");
+	},
 	unknown: "",
 };
 
@@ -138,15 +141,22 @@ export const BACKEND_ERROR_REMEDY: Record<BackendErrorKind, string> = {
  * advise on gets the surface's lead sentence and nothing more.
  */
 export const BACKEND_ERROR_DIAGNOSIS: Record<BackendErrorKind, string> = {
-	unreachable: "The Local Operator server is not answering.",
-	deadline: "The Local Operator server did not answer in time.",
-	unauthorized:
-		"This app cannot authenticate to the running Local Operator server.",
+	get unreachable() {
+		return t("ui.common.connection.backend.diagnosis_unreachable");
+	},
+	get deadline() {
+		return t("ui.common.connection.backend.diagnosis_deadline");
+	},
+	get unauthorized() {
+		return t("ui.common.connection.backend.diagnosis_unauthorized");
+	},
 	// "may need an update" hedged while the sentence after it issued a command
 	// (design D9). 404 on the desktop route is not a "may": it is the ONLY
 	// status an update repairs, and the confidence of the diagnosis has to match
 	// the confidence of the imperative.
-	outdated: "The Local Operator server is older than this app expects.",
+	get outdated() {
+		return t("ui.common.connection.backend.diagnosis_outdated");
+	},
 	unknown: "",
 };
 
@@ -200,20 +210,25 @@ export function backendLoadErrorMessage(lead: string, error: unknown): string {
  *    use that plane and no control is offered at all (design § 2, § 3.2).
  */
 export const BACKEND_PAIRING_SENTENCE: Record<DaemonPairingCause, string> = {
-	successor:
-		"The Local Operator server was replaced while this app was running. Pairing with the new one.",
-	"governed-elsewhere":
-		"The Local Operator server on this machine is already managed by another program, so this app cannot use its settings, provider sign-in, slash commands or MCP management.",
+	get successor() {
+		return t("ui.common.connection.backend.pairing_successor");
+	},
+	get "governed-elsewhere"() {
+		return t("ui.common.connection.backend.pairing_governed");
+	},
 	// The age is the fixable part, so it is named - and so is what the daemon's OWN
 	// users lose, which is nothing: an older daemon answers /health and its own
 	// routes fine, and saying so is a decision rather than an implication
 	// (design § 3.3).
-	"pre-handshake":
-		"The Local Operator server on this machine is older than the pairing handshake this app uses, so this app cannot drive its controls. The server itself, and anything you run against it from the terminal, are unaffected.",
-	"credential-refused":
-		"This app's credential for the running Local Operator server was refused, so provider sign-in, settings, slash commands and MCP management are unavailable.",
-	unpaired:
-		"This app is not paired with the running Local Operator server, so provider sign-in, settings, slash commands and MCP management are unavailable.",
+	get "pre-handshake"() {
+		return t("ui.common.connection.backend.pairing_pre_handshake");
+	},
+	get "credential-refused"() {
+		return t("ui.common.connection.backend.pairing_credential_refused");
+	},
+	get unpaired() {
+		return t("ui.common.connection.backend.pairing_unpaired");
+	},
 };
 
 /**
@@ -244,16 +259,21 @@ export const BACKEND_PAIRING_SENTENCE: Record<DaemonPairingCause, string> = {
  * user's conversations, it also says where they still are (design round 1, D6).
  */
 export const BACKEND_PANE_SENTENCE: Record<DaemonPairingCause, string> = {
-	successor:
-		"This conversation cannot be read here until the app finishes pairing with the replacement server. Your chats are still on that server.",
-	"governed-elsewhere":
-		"This conversation cannot be read here: the server's desktop controls belong to another program. Your chats are still on that server.",
-	"pre-handshake":
-		"This conversation cannot be read here: that server is older than the pairing handshake this app uses. Your chats are still on that server.",
-	"credential-refused":
-		"This conversation cannot be read here: the server refused this app's credential. Your chats are still on that server.",
-	unpaired:
-		"This conversation cannot be read here: the app is not paired with the running server. Your chats are still on that server.",
+	get successor() {
+		return t("ui.common.connection.backend.pane_successor");
+	},
+	get "governed-elsewhere"() {
+		return t("ui.common.connection.backend.pane_governed");
+	},
+	get "pre-handshake"() {
+		return t("ui.common.connection.backend.pane_pre_handshake");
+	},
+	get "credential-refused"() {
+		return t("ui.common.connection.backend.pane_credential_refused");
+	},
+	get unpaired() {
+		return t("ui.common.connection.backend.pane_unpaired");
+	},
 };
 
 /**
@@ -369,11 +389,13 @@ export function backendCompatibilityMessage(input: {
 	if (cause !== null) return BACKEND_PAIRING_SENTENCE[cause];
 	if (!answered) {
 		if (kind === "unreachable")
-			return `${BACKEND_ERROR_DIAGNOSIS.unreachable} Provider sign-in, settings, slash commands and MCP management need it running.`;
+			return t("ui.common.connection.backend.compatibility_unreachable", {
+				diagnosis: BACKEND_ERROR_DIAGNOSIS.unreachable,
+			});
 		if (kind === "unauthorized")
 			// "protected controls are unavailable" was jargon two sentences away
 			// from this file's own plain list of the same surfaces (design D10).
-			return "This app cannot authenticate to the running Local Operator server, so provider sign-in, settings, slash commands and MCP management are unavailable.";
+			return t("ui.common.connection.backend.compatibility_unauthorized");
 		if (kind === "deadline")
 			// A server that has been silent for the app's whole budget is a wedged
 			// server, which is the case this banner exists for. It names that, and
@@ -383,7 +405,9 @@ export function backendCompatibilityMessage(input: {
 			// branch is reached in every state, including ones where the banner does
 			// offer a Retry (review round 3). It is also not "as expected": nothing
 			// arrived at all, which is a different fact from an unexpected answer.
-			return `${BACKEND_ERROR_DIAGNOSIS.deadline} Provider sign-in, settings, slash commands and MCP management need it answering.`;
+			return t("ui.common.connection.backend.compatibility_deadline", {
+				diagnosis: BACKEND_ERROR_DIAGNOSIS.deadline,
+			});
 		if (kind === "outdated")
 			// The trailing clause read "stay off until then", whose antecedent left
 			// with the remedy when it was extracted into the shared sentence --
@@ -391,7 +415,9 @@ export function backendCompatibilityMessage(input: {
 			// consequence to the diagnosis with "so" removes the dangling referent
 			// rather than restating the remedy in a second set of words, which is
 			// what lets a test assert the two surfaces agree by string.
-			return `The Local Operator server is older than this app expects, so provider sign-in, settings, slash commands and MCP management are off. ${BACKEND_ERROR_REMEDY.outdated}`;
+			return t("ui.common.connection.backend.compatibility_outdated", {
+				remedy: BACKEND_ERROR_REMEDY.outdated,
+			});
 	}
 	// S5: a backend this app holds no bearer for, with no cause established yet.
 	// The sentence is the pairing table's and it offers no ownership instruction:
@@ -407,8 +433,10 @@ export function backendCompatibilityMessage(input: {
 		// install, so a backend that was running, current and merely erroring got
 		// the same several-minute remedy as one that predates the contract. State
 		// the failure and stop.
-		return "Provider sign-in, settings, slash commands and MCP management are unavailable because the Local Operator server did not answer as expected.";
-	return `The Local Operator server is missing ${missing.join(", ")} support. Update it to enable those surfaces.`;
+		return t("ui.common.connection.backend.compatibility_unknown");
+	return t("ui.common.connection.backend.compatibility_missing", {
+		features: missing.join(", "),
+	});
 }
 
 /**
@@ -547,16 +575,21 @@ export function retryDesktopMutation(
  */
 export const BACKEND_PAIRING_CARD_SENTENCE: Record<DaemonPairingCause, string> =
 	{
-		successor:
-			"Your settings could not be loaded: the app is pairing with the server that replaced the one it was using.",
-		"governed-elsewhere":
-			"Your settings could not be loaded: another program is managing this machine's Local Operator server, so this page cannot read or change them here.",
-		"pre-handshake":
-			"Your settings could not be loaded: the server this app is talking to is older than the pairing handshake, so this page cannot read them from it.",
-		"credential-refused":
-			"Your settings could not be loaded: the server refused this app's credential, so this page cannot read them from it.",
-		unpaired:
-			"Your settings could not be loaded: this app is not paired with the running server, so this page cannot read them from it.",
+		get successor() {
+			return t("ui.common.connection.backend.card_successor");
+		},
+		get "governed-elsewhere"() {
+			return t("ui.common.connection.backend.card_governed");
+		},
+		get "pre-handshake"() {
+			return t("ui.common.connection.backend.card_pre_handshake");
+		},
+		get "credential-refused"() {
+			return t("ui.common.connection.backend.card_credential_refused");
+		},
+		get unpaired() {
+			return t("ui.common.connection.backend.card_unpaired");
+		},
 	};
 
 /**

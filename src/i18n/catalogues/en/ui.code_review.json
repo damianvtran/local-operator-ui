@@ -73,5 +73,6 @@
 	"ui.code_review.row.opens_browser": "opens in your browser",
 	"ui.code_review.row.refresh_error": "Couldn't refresh: {error}",
 	"ui.code_review.row.stale_error": "Stale — last known, not current: {error}",
-	"ui.code_review.tool.more": "{count, plural, one {{countText}{capped} more seen in tool output} other {{countText}{capped} more seen in tool output}}"
+	"ui.code_review.tool.more": "{count, plural, one {{countText}{capped} more seen in tool output} other {{countText}{capped} more seen in tool output}}",
+	"ui.code_review.refresh.try_again": "try again"
 }

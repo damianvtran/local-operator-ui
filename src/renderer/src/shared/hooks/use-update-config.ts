@@ -1,3 +1,4 @@
+import { t } from "../../../../i18n/messages";
 /**
  * Hook for updating configuration
  */
@@ -27,7 +28,9 @@ export const useUpdateConfig = () => {
 				const response = await client.config.updateConfig(update);
 
 				if (response.status >= 400) {
-					throw new Error(response.message || "Failed to update configuration");
+					throw new Error(
+						response.message || t("ui.common.errors.configuration_update"),
+					);
 				}
 
 				return response.result;
@@ -35,7 +38,7 @@ export const useUpdateConfig = () => {
 				const errorMessage =
 					error instanceof Error
 						? error.message
-						: "An unknown error occurred while updating configuration";
+						: t("ui.common.errors.configuration_update_unknown");
 
 				showErrorToast(errorMessage);
 				throw error;
@@ -66,7 +69,7 @@ export const useUpdateConfig = () => {
 				type: "all", // Refetch all related queries at once
 			});
 
-			showSuccessToast("Configuration updated");
+			showSuccessToast(t("ui.common.actions.configuration_updated"));
 		},
 		onError: (error) => {
 			console.error("Error updating configuration:", error);

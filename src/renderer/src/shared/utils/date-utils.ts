@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { t } from "../../../../i18n/messages";
 
 import { formatDate, formatDateTime, formatTime } from "@shared/i18n";
 
@@ -147,7 +148,7 @@ export const formatTurnTimestamp = (
 		const yesterday = new Date(now);
 		yesterday.setDate(now.getDate() - 1);
 		if (date.toDateString() === yesterday.toDateString()) {
-			return `Yesterday ${time}`;
+			return t("ui.common.time.yesterday_at", { time });
 		}
 
 		const monthDay = formatDate(date, {

@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * Local Operator API - Health Endpoints
  */
@@ -36,7 +37,7 @@ export const HealthApi = {
 	 * Handles backward compatibility with older server versions
 	 *
 	 * @param healthResponse - The health check response
-	 * @returns The server version or "Unknown (update required)" if not available
+	 * @returns The server version or t("ui.common.updates.error.version_unknown_required") if not available
 	 */
 	getServerVersion(healthResponse: HealthCheckResponse): string {
 		// Check if the response has the result field with version information
@@ -45,6 +46,6 @@ export const HealthApi = {
 		}
 
 		// For older server versions that don't have the version information
-		return "Unknown (update required)";
+		return t("ui.common.updates.error.version_unknown_required");
 	},
 };

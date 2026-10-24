@@ -1,3 +1,5 @@
+import { t } from "../../../../../i18n/messages";
+
 /**
  * One sentence per way a dictation can fail, chosen in one place.
  *
@@ -70,12 +72,12 @@ export class TranscriptionRequestError extends Error {
 export function transcriptionFailureMessage(error: unknown): string {
 	const status =
 		error instanceof TranscriptionRequestError ? error.status : null;
-	if (status === 402) return OUT_OF_RADIENT_CREDITS;
-	if (status === 401 || status === 403) return SIGN_IN_REFUSED;
+	if (status === 402) return outOfRadientCredits();
+	if (status === 401 || status === 403) return signInRefused();
 
 	const detail = error instanceof Error ? error.message : "";
 	const flat = flatten(detail);
-	if (flat === "") return NO_REASON;
+	if (flat === "") return noReason();
 	if (OUT_OF_CREDITS.test(flat)) {
 		const provider = upstreamProvider(flat);
 		const destination = billingDestination(flat);
@@ -100,19 +102,23 @@ export function transcriptionFailureMessage(error: unknown): string {
 		 */
 		if (destination !== null)
 			return provider === null
-				? `Dictation failed: the account behind dictation is out of credits. If it's yours, top it up at ${destination}.`
-				: `Dictation failed: the ${provider} account behind dictation is out of credits. If it's yours, top it up at ${destination}.`;
-		return TRANSCRIPTION_ACCOUNT_OUT_OF_CREDITS;
+				? t("ui.common.errors.dictation_credits_destination", { destination })
+				: t("ui.common.errors.dictation_provider_credits_destination", {
+						provider,
+						destination,
+					});
+		return t("ui.common.errors.dictation_account_credits");
 	}
-	if (REFUSED_SIGN_IN.test(flat)) return SIGN_IN_REFUSED;
+	if (REFUSED_SIGN_IN.test(flat)) return signInRefused();
 	/*
 	 * The reason's own full stop is dropped before the action is appended, and a
 	 * CLIPPED reason takes a space instead: `… .` is not a sentence boundary,
 	 * it is a rendering artefact.
 	 */
-	const reason = lowerOpening(reasonFrom(flat));
-	const end = reason.endsWith("…") ? " " : ". ";
-	return `Dictation failed: ${reason.replace(TRAILING_FULL_STOP, "")}${end}${UNKNOWN_ACTION}`;
+	const reason = lowerOpening(reasonFrom(flat)).replace(TRAILING_FULL_STOP, "");
+	return reason.endsWith("…")
+		? t("ui.common.errors.dictation_unknown_clipped", { reason })
+		: t("ui.common.errors.dictation_unknown", { reason });
 }
 
 /**
@@ -160,8 +166,8 @@ const TRAILING_FULL_STOP = /\.$/;
  * thing beside it makes the reader learn the same fact twice (review round 1,
  * D3).
  */
-const OUT_OF_RADIENT_CREDITS =
-	"Dictation failed: you're out of Radient credits. Get more credits, then try again.";
+const outOfRadientCredits = (): string =>
+	t("ui.common.errors.dictation_radient_credits");
 
 /**
  * The server answered and refused this app's credential.
@@ -177,8 +183,8 @@ const OUT_OF_RADIENT_CREDITS =
  * it: the credential was refused, so the action is the sign-in, and the retry is
  * the family's one closing verb.
  */
-const SIGN_IN_REFUSED =
-	"Dictation failed: your Radient sign-in was refused. Sign in to Radient, then try again.";
+const signInRefused = (): string =>
+	t("ui.common.errors.dictation_sign_in_refused");
 
 /**
  * A provider's out-of-credits refusal that names no destination.
@@ -190,8 +196,6 @@ const SIGN_IN_REFUSED =
  * (round 2, D9): "top it up" is advice the reader can take only if the account is
  * theirs, and the sentence has just said it may not be.
  */
-const TRANSCRIPTION_ACCOUNT_OUT_OF_CREDITS =
-	"Dictation failed: the account behind dictation is out of credits. If it's yours, top it up.";
 
 /**
  * Nothing to quote, and no cause worth guessing at.
@@ -202,8 +206,7 @@ const TRANSCRIPTION_ACCOUNT_OUT_OF_CREDITS =
  * prefix is the family's colon rather than a comma (round 2, D12): one shape for
  * the five sentences that open `Dictation failed:` reads as one voice.
  */
-const NO_REASON =
-	"Dictation failed: the server gave no reason. Try again, or report it with the app's log.";
+const noReason = (): string => t("ui.common.errors.dictation_no_reason");
 
 /**
  * What to do about a failure whose cause the app cannot name.
@@ -219,7 +222,6 @@ const NO_REASON =
  * which is the `backend-service.log` support already asks for), so the sentence
  * names the artifact that exists.
  */
-const UNKNOWN_ACTION = "Try again, or report it with the app's log.";
 
 /**
  * The ways an upstream provider says "the account has no money on it".
@@ -395,5 +397,6 @@ function clip(detail: string): string {
  * said whether the app had heard anything at all - a user reads that as a
  * broken gesture.
  */
-export const EMPTY_TRANSCRIPTION_MESSAGE =
-	"No words were picked up. Try again a little closer to the microphone.";
+export const EMPTY_TRANSCRIPTION_MESSAGE = t(
+	"ui.common.errors.dictation_empty",
+);

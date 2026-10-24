@@ -745,7 +745,7 @@ export function meshRefusal(error: unknown): MeshRefusal {
 	const status = typeof held?.status === "number" ? held.status : null;
 	return {
 		code,
-		sentence: text(held?.message) || "the move was refused",
+		sentence: text(held?.message) || t("ui.mesh.errors.move_refused"),
 		status,
 		// A 503 IS the unconfirmed answer whatever code it carries, and a code with no
 		// status is one this process synthesised (the renderer's own deadline), which is
