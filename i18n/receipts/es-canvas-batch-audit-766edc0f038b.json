@@ -1,0 +1,1146 @@
+{
+  "schema": 1,
+  "audit_kind": "independent-namespace-delta-translation-audit",
+  "date": "2026-10-24",
+  "locale": "es",
+  "batch": "canvas",
+  "pr": "#1388",
+  "branch": "feat/i18n-canvas-batch",
+  "audited_head": "936e3a483b4d675c9827be5f40167da186f86900",
+  "translation_commit": "57aad8da32d3e6fd368033f4ecd83fcfc223102d",
+  "base": "d96d68795b1f261b3aac8c65d7ca821f6641c5fa",
+  "auditor": {
+    "agent": "translation-auditor",
+    "session": "766edc0f038b",
+    "model": "radient/auto",
+    "actual_model_source": "harness session model (system prompt: Model: radient/auto); no fallback used",
+    "fallback": null,
+    "independent_from_translators": true,
+    "independence_basis": "Separate session from both translators (canvas translator session f21dffa6aee9; surfaces translator session 352ac9921511, per their receipts). This auditor read the catalogue bytes and did not author or edit any value."
+  },
+  "references": {
+    "glossary": {
+      "path": "local_operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "local_operator/i18n/style-guides/es.md",
+      "sha256": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca8"
+    }
+  },
+  "scope": "All values translated by the batch (keys present at the translation commit and absent from its parent) in the touched es namespaces, read against the English source and the en context sidecars at the audited head. Pre-existing values were machine-scanned for the same terminology and identical-value checks but not re-audited semantically. No rendered-frame pass and no native-speaker sign-off are claimed.",
+  "method": [
+    "Read 100% of the batch values in the es catalogue against en and en.context.json.",
+    "Parsed ICU arguments, plural and select arms; compared every placeholder, number/date skeleton, markup token, backtick and whitespace byte.",
+    "Checked Spanish CLDR categories one/many/other; 'few' absent; every plural arm uses the locale's categories.",
+    "Checked NFC, manual bidi controls, NBSP/NNBSP/ZWSP/BOM/SHY, duplicate keys.",
+    "Scanned whole touched namespaces for glossary/terminology drift, register and identical values."
+  ],
+  "namespaces": {
+    "ui.canvas": {
+      "batch_keys": 290,
+      "head_keys": 347,
+      "sha256": {
+        "en": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+        "context": "4bc0f2bc47d4b0e826ebb10ba78ff965c550debef54f47c912b9e257fd1784f8",
+        "es": "7e4db512636cafdc2356f5a6b30b527e9ecd9a1f07190d0f91be186a9f1e3013"
+      },
+      "status": "changes_requested",
+      "finding_ids": [
+        "CA-1",
+        "CA-5",
+        "CA-6",
+        "CA-9",
+        "CA-13",
+        "CA-16"
+      ],
+      "identical_values": 36
+    },
+    "ui.chat.pickers": {
+      "batch_keys": 686,
+      "head_keys": 720,
+      "sha256": {
+        "en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+        "context": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9",
+        "es": "d917b21fc0cdcc79406e3bdbf29cd193e2bb502a2943d1982d1c71ca9085c166"
+      },
+      "status": "changes_requested",
+      "finding_ids": [
+        "CA-2",
+        "CA-3",
+        "CA-4",
+        "CA-5",
+        "CA-7",
+        "CA-8",
+        "CA-11",
+        "CA-12",
+        "CA-13",
+        "CA-15",
+        "CA-17"
+      ],
+      "identical_values": 22
+    },
+    "ui.common.actions": {
+      "batch_keys": 30,
+      "head_keys": 36,
+      "sha256": {
+        "en": "d65be7beac66c209a55db5d8a672ff8a8a743eea49ba21593120d4b8664603b2",
+        "context": "29a6cc54f8605ab2612775708bf5eb202a89e6708167d8a7c3f329a536b339db",
+        "es": "8b02efbc6a28578bbd3abdaf2ba9fbdb6f7e653d6d22bd8f9db206e97f3147c0"
+      },
+      "status": "clean-with-findings",
+      "finding_ids": [
+        "CA-5",
+        "CA-14"
+      ],
+      "identical_values": 0
+    },
+    "ui.common.forms": {
+      "batch_keys": 10,
+      "head_keys": 37,
+      "sha256": {
+        "en": "c87c16b1169f32105e017fd27eb80047446938b1b45046c28bcf693856898238",
+        "context": "c11472cc390fe7771e08dcd34bb633e63797f979a113feaa47d70d06daea38b4",
+        "es": "f3aad3e820cca8b74f731272ac0e1f0f5256ba5752eec4dd246448cdce9cc7a7"
+      },
+      "status": "clean",
+      "finding_ids": [],
+      "identical_values": 0
+    },
+    "ui.common.layout": {
+      "batch_keys": 8,
+      "head_keys": 8,
+      "sha256": {
+        "en": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+        "context": "318673c640a31e11f5249127c8ef5a76d63c16c3c191960824391d934766bd39",
+        "es": "0f4c910af697c1f52b7b9531f42ed5698be5573316a00f290d9a5db1058f1fed"
+      },
+      "status": "clean-with-findings",
+      "finding_ids": [
+        "CA-10"
+      ],
+      "identical_values": 1
+    },
+    "ui.common.speech": {
+      "batch_keys": 5,
+      "head_keys": 5,
+      "sha256": {
+        "en": "fa6a973f1a6a36f25218e884174299ba154e124baaddc87594bd516c8d07d8f6",
+        "context": "740828525702d67b6ee0ecf7eb0a3f1582167989355bd12d0579d698b982267a",
+        "es": "04e760d104c108047767d26d0e016e760dd0c35d49d4052da6ac0782abc7989d"
+      },
+      "status": "clean",
+      "finding_ids": [],
+      "identical_values": 0
+    },
+    "ui.common.updates": {
+      "batch_keys": 8,
+      "head_keys": 135,
+      "sha256": {
+        "en": "1f81721263fa4c7d74219bd2c0af82b908bf2fb4491df074e99e2215ad00d667",
+        "context": "cb4a160ef62b1760d4622b29c90e130cff1b4165ac770dab200ebc54eca38bee",
+        "es": "8992e26afae082b1eaae0ee2cbd1d983e88e20c91497da9c0f9c6e6458eed0f2"
+      },
+      "status": "clean",
+      "finding_ids": [],
+      "identical_values": 0
+    },
+    "ui.common.viewer": {
+      "batch_keys": 4,
+      "head_keys": 8,
+      "sha256": {
+        "en": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+        "context": "8b324e966ddb4aaef92ec3b3465f8ac6a80982529bcbd3b45a3c1cf1f9b28dd8",
+        "es": "8c2e0cfbe0d28250e5d005bc93d10eee355ad024057b9e3b70df5ae3170cd28c"
+      },
+      "status": "clean",
+      "finding_ids": [],
+      "identical_values": 0
+    }
+  },
+  "findings": [
+    {
+      "id": "CA-1",
+      "severity": "major",
+      "namespaces": [
+        "ui.canvas"
+      ],
+      "keys": [
+        "ui.canvas.create_file_dialog.change_the_working_directory_from_the_composer_to_create_the_file_elsewh"
+      ],
+      "current": "Cambia el directorio de trabajo desde el editor para crear el archivo en otro lugar.",
+      "proposed": "Cambia el directorio de trabajo desde el cuadro de mensaje para crear el archivo en otro lugar.",
+      "reason": "The English names the composer; 'editor' names the code editor. The established es name for the composer surface on this branch is 'cuadro' (ui.chat.composer.delivery_remedies_hint: 'encima de este cuadro'), so the instruction points at the wrong control.",
+      "values": [
+        {
+          "key": "ui.canvas.create_file_dialog.change_the_working_directory_from_the_composer_to_create_the_file_elsewh",
+          "value": "Cambia el directorio de trabajo desde el editor para crear el archivo en otro lugar."
+        }
+      ]
+    },
+    {
+      "id": "CA-2",
+      "severity": "major",
+      "namespaces": [
+        "ui.chat.pickers"
+      ],
+      "keys": [
+        "ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears"
+      ],
+      "current": "Guarda un secreto con nombre para las herramientas de esta sesión. El valor nunca aparece en el editor, la transcripción ni el recibo del comando.",
+      "proposed": "Guarda un secreto con nombre para las herramientas de esta sesión. El valor nunca aparece en el cuadro de mensaje, la transcripción ni el recibo del comando.",
+      "reason": "Same term error as CA-1: the security claim is about the composer, and 'editor' substitutes a different surface.",
+      "values": [
+        {
+          "key": "ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears",
+          "value": "Guarda un secreto con nombre para las herramientas de esta sesión. El valor nunca aparece en el editor, la transcripción ni el recibo del comando."
+        }
+      ]
+    },
+    {
+      "id": "CA-3",
+      "severity": "major",
+      "namespaces": [
+        "ui.chat.pickers"
+      ],
+      "keys": [
+        "ui.chat.pickers.model_catalogue_listing.some_providers_did_not_answer_the_rows_below_are_the_ones_that_did"
+      ],
+      "current": "Las filas siguientes son los que sí respondieron (all three plural arms).",
+      "proposed": "Las filas siguientes son las que sí respondieron. (or: Las filas siguientes corresponden a los proveedores que sí respondieron.)",
+      "reason": "'filas' is feminine; 'los que' has no masculine antecedent in the sentence and reads ungrammatical in every plural arm.",
+      "values": [
+        {
+          "key": "ui.chat.pickers.model_catalogue_listing.some_providers_did_not_answer_the_rows_below_are_the_ones_that_did",
+          "value": "{length, plural, one {Un proveedor no respondió ({length, number, ::group-off}). Las filas siguientes son los que sí respondieron.} many {Algunos proveedores no respondieron ({length, number, ::group-off}). Las filas siguientes son los que sí respondieron.} other {Algunos proveedores no respondieron ({length, number, ::group-off}). Las filas siguientes son los que sí respondieron.}}"
+        }
+      ]
+    },
+    {
+      "id": "CA-4",
+      "severity": "minor",
+      "namespaces": [
+        "ui.chat.pickers"
+      ],
+      "keys": [
+        "ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes",
+        "ui.chat.pickers.picker_host.arrows_move_enter_connects_esc_closes",
+        "ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes5710e2"
+      ],
+      "current": "Las flechas mueven ... (bare intransitive use).",
+      "proposed": "Usa las flechas para moverte; Intro elige; Esc cierra (or: Las flechas mueven la selección).",
+      "reason": "'mover' is transitive in this sense; bare 'Las flechas mueven' is a calque of 'Arrows move' and reads incomplete.",
+      "values": [
+        {
+          "key": "ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes",
+          "value": "Las flechas mueven, Enter elige, Esc cierra"
+        },
+        {
+          "key": "ui.chat.pickers.picker_host.arrows_move_enter_connects_esc_closes",
+          "value": "Las flechas mueven · Enter conecta {activeconnectprovider} · Esc cierra"
+        },
+        {
+          "key": "ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes5710e2",
+          "value": "Las flechas mueven · Enter elige {activelabel} · Esc cierra"
+        }
+      ]
+    },
+    {
+      "id": "CA-5",
+      "severity": "minor",
+      "namespaces": [
+        "ui.canvas",
+        "ui.common.actions",
+        "ui.chat.pickers"
+      ],
+      "keys": [
+        "ui.canvas.inline_edit.apply_all_enter",
+        "ui.canvas.inline_edit.apply_all_ctrl_enter",
+        "ui.canvas.inline_edit.confirm_recording_enter",
+        "ui.common.actions.find_replace_widget.replace_enter",
+        "ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter",
+        "ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes",
+        "ui.chat.pickers.picker_host.arrows_move_enter_connects_esc_closes",
+        "ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes5710e2"
+      ],
+      "current": "Same key is 'Intro' in Aplicar todo (⌘+Intro)/Aplicar todo (Ctrl+Intro) and 'Enter' in Confirmar grabación (Enter)/Reemplazar (Enter)/Reemplazar todo (Cmd/Ctrl+Enter)/Enter elige.",
+      "proposed": "Choose one spelling; 'Intro' matches the Spanish keyboard label and the surfaces batch (ui.chat.composer.placeholder.waiting, ui.chat.canonical.send_failure.aside_still_answering).",
+      "reason": "Glossary consistency: the same physical key is named two ways in the same locale; a user sees both.",
+      "values": [
+        {
+          "key": "ui.canvas.inline_edit.apply_all_enter",
+          "value": "Aplicar todo (⌘+Intro)"
+        },
+        {
+          "key": "ui.canvas.inline_edit.apply_all_ctrl_enter",
+          "value": "Aplicar todo (Ctrl+Intro)"
+        },
+        {
+          "key": "ui.canvas.inline_edit.confirm_recording_enter",
+          "value": "Confirmar grabación (Enter)"
+        },
+        {
+          "key": "ui.common.actions.find_replace_widget.replace_enter",
+          "value": "Reemplazar (Enter)"
+        },
+        {
+          "key": "ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter",
+          "value": "Reemplazar todo (Cmd/Ctrl+Enter)"
+        },
+        {
+          "key": "ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes",
+          "value": "Las flechas mueven, Enter elige, Esc cierra"
+        },
+        {
+          "key": "ui.chat.pickers.picker_host.arrows_move_enter_connects_esc_closes",
+          "value": "Las flechas mueven · Enter conecta {activeconnectprovider} · Esc cierra"
+        },
+        {
+          "key": "ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes5710e2",
+          "value": "Las flechas mueven · Enter elige {activelabel} · Esc cierra"
+        }
+      ]
+    },
+    {
+      "id": "CA-6",
+      "severity": "minor",
+      "namespaces": [
+        "ui.canvas"
+      ],
+      "keys": [
+        "ui.canvas.create_file_dialog.creating"
+      ],
+      "current": "Creando…",
+      "proposed": "Creando...",
+      "reason": "The English sidecar for this key says 'preserve the three ASCII periods'; the value uses U+2026, changing the required byte shape.",
+      "values": [
+        {
+          "key": "ui.canvas.create_file_dialog.creating",
+          "value": "Creando…"
+        }
+      ]
+    },
+    {
+      "id": "CA-7",
+      "severity": "minor",
+      "namespaces": [
+        "ui.chat.pickers"
+      ],
+      "keys": [
+        "ui.chat.pickers.destination_pickers.this_session_runs_choosing_another_applies_to_this_session_only_unless_y",
+        "ui.chat.pickers.destination_pickers.this_conversation_will_run"
+      ],
+      "current": "Esta sesión ejecuta {shownselector}. / Esta conversación ejecutará {selectorofresolution}.",
+      "proposed": "Esta sesión se ejecuta con {shownselector}. / Esta conversación se ejecutará con {selectorofresolution}.",
+      "reason": "A session runs on a model; 'ejecutar {model}' reads as executing the model, a calque of 'runs {model}'.",
+      "values": [
+        {
+          "key": "ui.chat.pickers.destination_pickers.this_session_runs_choosing_another_applies_to_this_session_only_unless_y",
+          "value": "Esta sesión ejecuta {shownselector}. Elegir otro se aplica solo a esta sesión, a menos que también lo establezcas como predeterminado."
+        },
+        {
+          "key": "ui.chat.pickers.destination_pickers.this_conversation_will_run",
+          "value": "Esta conversación ejecutará {selectorofresolution}."
+        }
+      ]
+    },
+    {
+      "id": "CA-8",
+      "severity": "minor",
+      "namespaces": [
+        "ui.chat.pickers"
+      ],
+      "keys": [
+        "ui.chat.pickers.destination_pickers.skills_discoverable_from_this_session_s_working_directory_scope_listed_i"
+      ],
+      "current": "Habilidades detectables desde el directorio de trabajo de esta sesión (ámbito {value}). Estar en la lista no significa estar seleccionada para el prompt.",
+      "proposed": "Habilidades detectables desde el directorio de trabajo de esta sesión (ámbito {value}). Que aparezca en la lista no significa que esté seleccionada para el prompt.",
+      "reason": "The bare infinitive clause has no explicit subject and 'seleccionada' floats; the que-clause agrees with 'habilidad' and reads naturally.",
+      "values": [
+        {
+          "key": "ui.chat.pickers.destination_pickers.skills_discoverable_from_this_session_s_working_directory_scope_listed_i",
+          "value": "Habilidades detectables desde el directorio de trabajo de esta sesión (ámbito {value}). Estar en la lista no significa estar seleccionada para el prompt."
+        }
+      ]
+    },
+    {
+      "id": "CA-9",
+      "severity": "minor",
+      "namespaces": [
+        "ui.canvas"
+      ],
+      "keys": [
+        "ui.canvas.file_rows.archives"
+      ],
+      "current": "Archivos comprimidos",
+      "proposed": "Comprimidos (if the chip row is tight) or verify the rendered chip",
+      "reason": "2.5x the English length (8 -> 20) in a category chip row whose peers are 5-16 characters; it is the longest label in the group and the first truncation candidate. The sidecar records no maxCells.",
+      "values": [
+        {
+          "key": "ui.canvas.file_rows.archives",
+          "value": "Archivos comprimidos"
+        }
+      ]
+    },
+    {
+      "id": "CA-10",
+      "severity": "minor",
+      "namespaces": [
+        "ui.common.layout"
+      ],
+      "keys": [
+        "ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width"
+      ],
+      "current": "Cambia el ancho de las preguntas. Haz doble clic para restablecer el ancho compartido del panel.",
+      "proposed": "Cambia el ancho de las consultas. Haz doble clic para restablecer el ancho compartido del panel.",
+      "reason": "The asks surface is 'consultas' in ui.chat.asks ('Descartar esta consulta'), ui.chat.composer.secret_ask_notice ('panel de consultas') and ui.settings.shortcuts.row.asks ('Consultas'); 'preguntas' is a second term for the same surface.",
+      "values": [
+        {
+          "key": "ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width",
+          "value": "Cambia el ancho de las preguntas. Haz doble clic para restablecer el ancho compartido del panel."
+        }
+      ]
+    },
+    {
+      "id": "CA-11",
+      "severity": "minor",
+      "namespaces": [
+        "ui.chat.pickers"
+      ],
+      "keys": [
+        "ui.chat.pickers.destination_pickers.repeats_turns_toward_a_goal_approval_and_question_gates_still_stop_and_w"
+      ],
+      "current": "Repite turnos para alcanzar un objetivo. Las confirmaciones y preguntas siguen deteniendo el proceso y esperando tu respuesta; el bucle nunca responde por ti.",
+      "proposed": "Repite turnos para alcanzar un objetivo. Las aprobaciones y preguntas siguen deteniendo el proceso y esperando tu respuesta; el bucle nunca responde por ti.",
+      "reason": "The glossary maps approvals -> aprobaciones, and the same panel uses 'Aprobaciones predeterminadas' and 'Modo de aprobación'; 'confirmaciones' is a second term for the same gate.",
+      "values": [
+        {
+          "key": "ui.chat.pickers.destination_pickers.repeats_turns_toward_a_goal_approval_and_question_gates_still_stop_and_w",
+          "value": "Repite turnos para alcanzar un objetivo. Las confirmaciones y preguntas siguen deteniendo el proceso y esperando tu respuesta; el bucle nunca responde por ti."
+        }
+      ]
+    },
+    {
+      "id": "CA-12",
+      "severity": "minor",
+      "namespaces": [
+        "ui.chat.pickers"
+      ],
+      "keys": [
+        "ui.chat.pickers.analytics_model.cache_hit_rate",
+        "ui.chat.pickers.analytics_model.cache_reads_as_a_share_of_read_context_tokens_means_no_call_reported_a_c",
+        "ui.chat.pickers.context_panel.last_cache_read",
+        "ui.chat.pickers.info_model.cache_dir",
+        "ui.chat.pickers.session_panel.cache_hit_rate",
+        "ui.chat.pickers.session_panel.of_context_from_cache",
+        "ui.chat.pickers.usage_view_model.cached"
+      ],
+      "current": "'caché' (accented) in these values; 'cache' (unaccented) in ui.settings.shortcuts.reserved.browser_reload_cache ('ignorando la cache') and ui.browser.clear_cache ('Borrar cache').",
+      "proposed": "Pick one spelling and record it; the es style guide's kept-English list names 'cache', while the new pickers copy uses 'caché'.",
+      "reason": "Glossary consistency: the same term appears with two spellings across the product; name both.",
+      "values": [
+        {
+          "key": "ui.chat.pickers.analytics_model.cache_hit_rate",
+          "value": "Tasa de aciertos de caché"
+        },
+        {
+          "key": "ui.chat.pickers.analytics_model.cache_reads_as_a_share_of_read_context_tokens_means_no_call_reported_a_c",
+          "value": "Lecturas de caché como proporción de los tokens de contexto leídos; — significa que ninguna llamada indicó un total de contexto."
+        },
+        {
+          "key": "ui.chat.pickers.context_panel.last_cache_read",
+          "value": "Última lectura de caché"
+        },
+        {
+          "key": "ui.chat.pickers.info_model.cache_dir",
+          "value": "Directorio de caché"
+        },
+        {
+          "key": "ui.chat.pickers.session_panel.cache_hit_rate",
+          "value": "Tasa de aciertos de caché"
+        },
+        {
+          "key": "ui.chat.pickers.session_panel.of_context_from_cache",
+          "value": "de contexto desde caché"
+        },
+        {
+          "key": "ui.chat.pickers.usage_view_model.cached",
+          "value": "En caché"
+        }
+      ]
+    },
+    {
+      "id": "CA-13",
+      "severity": "nit",
+      "namespaces": [
+        "ui.chat.pickers",
+        "ui.canvas"
+      ],
+      "keys": [
+        "ui.chat.pickers.usage_view_model.sign_in_expired_run_login",
+        "ui.chat.pickers.usage_view_model.usage_unavailable_last_known",
+        "ui.canvas.use_file_freshness.changed_on_disk_load_it_or_save_to_replace_it",
+        "ui.canvas.use_file_freshness.already_up_to_date_the_file_is_unchanged"
+      ],
+      "current": "La sesión caducó; ejecuta ... / Uso no disponible; último valor conocido ... / Cambió en el disco; cárgalo ... / Ya está actualizado; el archivo no ha cambiado.",
+      "proposed": "Use ' — ' where the English uses an em dash, unless the semicolon is a recorded locale call.",
+      "reason": "The es style guide says em dash ' — ' with spaces; the translator systematically substitutes a semicolon in status/error copy. Grammatical, but a style deviation.",
+      "values": [
+        {
+          "key": "ui.chat.pickers.usage_view_model.sign_in_expired_run_login",
+          "value": "La sesión caducó; ejecuta /login {provider}"
+        },
+        {
+          "key": "ui.chat.pickers.usage_view_model.usage_unavailable_last_known",
+          "value": "Uso no disponible; último valor conocido {age}"
+        },
+        {
+          "key": "ui.canvas.use_file_freshness.changed_on_disk_load_it_or_save_to_replace_it",
+          "value": "Cambió en el disco; cárgalo o guarda para reemplazarlo."
+        },
+        {
+          "key": "ui.canvas.use_file_freshness.already_up_to_date_the_file_is_unchanged",
+          "value": "Ya está actualizado; el archivo no ha cambiado."
+        }
+      ]
+    },
+    {
+      "id": "CA-14",
+      "severity": "nit",
+      "namespaces": [
+        "ui.common.actions"
+      ],
+      "keys": [
+        "ui.common.actions.text_selection_controls.refer_to_this_from_file"
+      ],
+      "current": "Referirse a esto desde el archivo",
+      "proposed": "Hacer referencia a esto desde el archivo",
+      "reason": "'Referirse a esto' is an awkward infinitive action label; 'Hacer referencia' is the idiomatic verb phrase.",
+      "values": [
+        {
+          "key": "ui.common.actions.text_selection_controls.refer_to_this_from_file",
+          "value": "Referirse a esto desde el archivo"
+        }
+      ]
+    },
+    {
+      "id": "CA-15",
+      "severity": "nit",
+      "namespaces": [
+        "ui.chat.pickers"
+      ],
+      "keys": [
+        "ui.chat.pickers.info_model.not_listening"
+      ],
+      "current": "sin escuchar",
+      "proposed": "sin respuesta (or: inactivo)",
+      "reason": "A port does not 'listen' literally in Spanish UI; 'sin escuchar' calques the English socket metaphor.",
+      "values": [
+        {
+          "key": "ui.chat.pickers.info_model.not_listening",
+          "value": "sin escuchar"
+        }
+      ]
+    },
+    {
+      "id": "CA-16",
+      "severity": "minor",
+      "namespaces": [
+        "ui.canvas"
+      ],
+      "keys": [
+        "ui.canvas.shell.canvas_view",
+        "ui.canvas.shell.close_canvas"
+      ],
+      "current": "Vista de Canvas / Cerrar Canvas (capital C mid-sentence)",
+      "proposed": "Vista de canvas / Cerrar canvas (or record 'Canvas' as the product name and apply it everywhere).",
+      "reason": "Glossary consistency: the pre-existing catalogue uses lowercase mid-sentence ('Abrir canvas', 'Cerrar canvas' in ui.command_palette and ui.shell.rail), the English source is lowercase, and the surfaces shortcuts keys use lowercase; this batch introduces 'Canvas' in two keys.",
+      "values": [
+        {
+          "key": "ui.canvas.shell.canvas_view",
+          "value": "Vista de Canvas"
+        },
+        {
+          "key": "ui.canvas.shell.close_canvas",
+          "value": "Cerrar Canvas"
+        }
+      ]
+    },
+    {
+      "id": "CA-17",
+      "severity": "nit",
+      "namespaces": [
+        "ui.chat.pickers"
+      ],
+      "keys": [
+        "ui.chat.pickers.table_pager.range"
+      ],
+      "current": "{from}–{to} de {totaltext} {total, plural, one {{label}} other {{plurallabel}}}",
+      "proposed": "Add a Spanish 'many' arm that reuses {plurallabel}: many {de {plurallabel}}.",
+      "reason": "Spanish CLDR selects 'many' at exact million multiples; with no many arm the pager would render '1.000.000 sesiones' instead of '1.000.000 de sesiones'. The English message carries only label/plurallabel, so the many arm can reuse plurallabel without a new placeholder.",
+      "values": [
+        {
+          "key": "ui.chat.pickers.table_pager.range",
+          "value": "{from}–{to} de {totaltext} {total, plural, one {{label}} other {{plurallabel}}}"
+        }
+      ]
+    }
+  ],
+  "identical_values": [
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.markdown_md",
+      "value": "Markdown (.md)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.general",
+      "value": "General",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "same-form-in-es",
+      "reason": "General is the same word in Spanish."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.html_html",
+      "value": "HTML (.html)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.css_css",
+      "value": "CSS (.css)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.javascript_js",
+      "value": "JavaScript (.js)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.jsx_jsx",
+      "value": "JSX (.jsx)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.typescript_ts",
+      "value": "TypeScript (.ts)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.tsx_tsx",
+      "value": "TSX (.tsx)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.python_py",
+      "value": "Python (.py)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.go_go",
+      "value": "Go (.go)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.java_java",
+      "value": "Java (.java)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.c_cs",
+      "value": "C# (.cs)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.php_php",
+      "value": "PHP (.php)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.ruby_rb",
+      "value": "Ruby (.rb)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.rust_rs",
+      "value": "Rust (.rs)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.json_json",
+      "value": "JSON (.json)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.yaml_yaml",
+      "value": "YAML (.yaml)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.yaml_yml",
+      "value": "YAML (.yml)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.xml_xml",
+      "value": "XML (.xml)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.toml_toml",
+      "value": "TOML (.toml)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.ini_ini",
+      "value": "INI (.ini)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.env",
+      "value": ".env",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "filename-or-identifier",
+      "reason": "Filename/identifier kept verbatim."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.dockerfile",
+      "value": "Dockerfile",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "filename-or-identifier",
+      "reason": "Filename/identifier kept verbatim."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.c_c",
+      "value": "C (.c)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.c_cpp",
+      "value": "C++ (.cpp)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.swift_swift",
+      "value": "Swift (.swift)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.kotlin_kt",
+      "value": "Kotlin (.kt)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.create_file_dialog.scala_scala",
+      "value": "Scala (.scala)",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "proper-name-or-extension",
+      "reason": "Technology name plus file extension; Spanish keeps the official spelling and the literal extension."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.shell.variables",
+      "value": "Variables",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "same-form-in-es",
+      "reason": "The Spanish word has the same form as the English value."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.shell.canvas",
+      "value": "Canvas",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "product-surface-name",
+      "reason": "Canvas is the product surface name; Spanish keeps it."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.pdf_preview.pdf",
+      "value": "PDF: {title}",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "acronym-plus-placeholder",
+      "reason": "PDF acronym plus the {title} placeholder; nothing to translate."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.variable_form_dialog.example_key_example_value",
+      "value": "'{ \"example_key\": \"example_value\" }'",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "sample-literal",
+      "reason": "Sample JSON literal; value content is machine-facing, not prose."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.variable_form_dialog.item1_item2",
+      "value": "[ \"item1\", \"item2\" ]",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "sample-literal",
+      "reason": "Sample JSON literal; value content is machine-facing, not prose."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.insert_image_dialog.users_eren_documents_image_png",
+      "value": "/Users/eren/Documents/image.png",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "sample-path",
+      "reason": "Sample file path kept verbatim."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.insert_link_dialog.url",
+      "value": "URL",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "acronym-or-sample-url",
+      "reason": "URL acronym or sample URL kept verbatim."
+    },
+    {
+      "namespace": "ui.canvas",
+      "key": "ui.canvas.insert_link_dialog.https_example_com",
+      "value": "https://example.com",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "acronym-or-sample-url",
+      "reason": "URL acronym or sample URL kept verbatim."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.destination_pickers.k",
+      "value": "{value, number, ::group-off}k",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "unit-suffix",
+      "reason": "A number-skeleton plus the k unit suffix; no prose."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.destination_pickers.skill",
+      "value": "skill://",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "uri-scheme",
+      "reason": "skill:// is a URI scheme, not prose."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.destination_pickers.my_api_key",
+      "value": "MY_API_KEY",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "identifier",
+      "reason": "API-key identifier placeholder kept verbatim."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.analytics_panel.tokens",
+      "value": "Tokens",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "kept-english-glossary",
+      "reason": "Glossary keeps token/tokens in English; Spanish tokens is the same form."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.context_panel.total",
+      "value": "Total",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "same-form-in-es",
+      "reason": "The Spanish word has the same form as the English value."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.info_model.runtimes",
+      "value": "runtimes",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "kept-english-style-guide",
+      "reason": "Style guide keeps runtime in English."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.info_model.term",
+      "value": "TERM",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "env-var",
+      "reason": "Environment-variable name kept verbatim."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.info_model.colorterm",
+      "value": "COLORTERM",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "env-var",
+      "reason": "Environment-variable name kept verbatim."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.session_panel.tokens",
+      "value": "Tokens",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "kept-english-glossary",
+      "reason": "Glossary keeps token/tokens in English; Spanish tokens is the same form."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.analytics_model.tokens",
+      "value": "Tokens",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "kept-english-glossary",
+      "reason": "Glossary keeps token/tokens in English; Spanish tokens is the same form."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.analytics_session_state.tokens",
+      "value": "Tokens",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "kept-english-glossary",
+      "reason": "Glossary keeps token/tokens in English; Spanish tokens is the same form."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.context_panel.tokens",
+      "value": "Tokens",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "kept-english-glossary",
+      "reason": "Glossary keeps token/tokens in English; Spanish tokens is the same form."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.session_report_model.tokens",
+      "value": "Tokens",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "kept-english-glossary",
+      "reason": "Glossary keeps token/tokens in English; Spanish tokens is the same form."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.info_model.python",
+      "value": "Python {python_version}",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "product-name",
+      "reason": "Python is a product name; {python_version} is a placeholder."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.info_model.pid",
+      "value": "pid {pid, number, ::group-off}",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "technical-abbreviation",
+      "reason": "pid is a technical field abbreviation; the number skeleton is preserved."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.info_model.pid_7837d5",
+      "value": "pid {pid, number, ::group-off}",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "technical-abbreviation",
+      "reason": "pid is a technical field abbreviation; the number skeleton is preserved."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.usage_view_model.note_with_period",
+      "value": "{note}.",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "placeholder-only",
+      "reason": "Only placeholders, separators and punctuation; no prose to translate."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.destination_pickers.completed_only",
+      "value": "{completed, number, ::group-off}",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "placeholder-only",
+      "reason": "Only placeholders, separators and punctuation; no prose to translate."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.info_model.runtime",
+      "value": "runtime",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "kept-english-style-guide",
+      "reason": "Style guide keeps runtime in English."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.info_model.runtime_trajectories",
+      "value": "{runtimecount} · {bound}{trajectorycount}",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "placeholder-only",
+      "reason": "Placeholders and a separator only; no prose."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.info_model.no",
+      "value": "no",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "same-form-in-es",
+      "reason": "The Spanish word has the same form as the English value."
+    },
+    {
+      "namespace": "ui.chat.pickers",
+      "key": "ui.chat.pickers.usage_view_model.tokens",
+      "value": "tokens",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "kept-english-glossary",
+      "reason": "Glossary keeps token/tokens in English; Spanish tokens is the same form."
+    },
+    {
+      "namespace": "ui.common.layout",
+      "key": "ui.common.layout.chat_layout.mac",
+      "value": "MAC",
+      "classification": "IDENTICAL_OK",
+      "scope": "batch",
+      "reason_class": "technical-token",
+      "reason": "Platform/modifier token; not prose."
+    }
+  ],
+  "stubs": [],
+  "totals": {
+    "batch_keys_read": 1041,
+    "head_keys_in_touched_namespaces": 1296,
+    "namespace_count": 8,
+    "blocker": 0,
+    "major": 3,
+    "minor": 10,
+    "nit": 4,
+    "batch_identical_values": 59,
+    "pre_existing_identical_values": 0,
+    "identical_ok": 59,
+    "stubs": 0
+  },
+  "verdict": "changes_requested",
+  "limitations": [
+    "Translator provenance receipts were read only for scope/counts; their target hashes predate the merge of main for ui.chat.pickers and ui.common.viewer (canvas) and ui.chat.canonical, ui.chat.composer and ui.common.viewer (surfaces). The batch values themselves are byte-identical at ship commit and head; only main's additional keys differ.",
+    "Overflow findings are source-length inspections; the sidecars carry no maxCells/maxChars for these keys, so a rendered check is still required.",
+    "No native-speaker sign-off is claimed."
+  ]
+}
