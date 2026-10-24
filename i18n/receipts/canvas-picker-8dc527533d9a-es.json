@@ -11,7 +11,7 @@
   },
   "scope": {
     "repository": "damianvtran/local-operator-ui",
-    "worktree": "feat/i18n-canvas-es",
+    "worktree": "feat/i18n-canvas-es-fix",
     "extraction_head": "eb963e1baa63078a708161efd19336d4a32429c7",
     "manifest_base": "f6b9aae9ce5594e79dddb0d654edc4b4a0862331",
     "manifest_sha256": "b9faa8d3abc3f81c100b54657549e4065135f98ba2e12a10c4f606c5b4dd778e",
@@ -176,5 +176,211 @@
       "note": "38 characters versus 21 in English; no shorter natural phrasing found."
     }
   ],
-  "limitations": "Translator provenance only: no independent audit, native-speaker sign-off, rendered-fit evidence, ledger verdict, allowance/baseline change or release claim."
+  "limitations": "Translator provenance only: no independent audit, native-speaker sign-off, rendered-fit evidence, ledger verdict, allowance/baseline change or release claim.",
+  "remediation": {
+    "round": 1,
+    "date": "2026-10-24",
+    "head_before": "936e3a483b4d675c9827be5f40167da186f86900",
+    "base": "d96d68795b1f261b3aac8c65d7ca821f6641c5fa",
+    "audit_receipt": "i18n/receipts/es-canvas-batch-audit-766edc0f038b.json",
+    "auditor": {
+      "agent": "translation-auditor",
+      "session": "766edc0f038b"
+    },
+    "disposition": {
+      "required_majors_fixed": 3,
+      "clear_minors_fixed": 9,
+      "nits_fixed": 3,
+      "deferred": 2,
+      "changed_keys": 31
+    },
+    "changed_namespaces": [
+      "ui.canvas",
+      "ui.chat.pickers",
+      "ui.common.actions",
+      "ui.common.layout"
+    ],
+    "changes": {
+      "ui.canvas": [
+        {
+          "key": "ui.canvas.create_file_dialog.change_the_working_directory_from_the_composer_to_create_the_file_elsewh",
+          "finding": "CA-1 major composer term",
+          "applied": "Cambia el directorio de trabajo desde el cuadro de mensaje para crear el archivo en otro lugar."
+        },
+        {
+          "key": "ui.canvas.inline_edit.confirm_recording_enter",
+          "finding": "CA-5 minor Enter/Intro",
+          "applied": "Confirmar grabación (Intro)"
+        },
+        {
+          "key": "ui.canvas.create_file_dialog.creating",
+          "finding": "CA-6 minor ASCII ellipsis",
+          "applied": "Creando..."
+        },
+        {
+          "key": "ui.canvas.use_file_freshness.changed_on_disk_load_it_or_save_to_replace_it",
+          "finding": "CA-13 nit em dash",
+          "applied": "Cambió en el disco — cárgalo o guarda para reemplazarlo."
+        },
+        {
+          "key": "ui.canvas.use_file_freshness.already_up_to_date_the_file_is_unchanged",
+          "finding": "CA-13 nit em dash",
+          "applied": "Ya está actualizado — el archivo no ha cambiado."
+        },
+        {
+          "key": "ui.canvas.shell.canvas_view",
+          "finding": "CA-16 minor sentence case",
+          "applied": "Vista de canvas"
+        },
+        {
+          "key": "ui.canvas.shell.close_canvas",
+          "finding": "CA-16 minor sentence case",
+          "applied": "Cerrar canvas"
+        }
+      ],
+      "ui.chat.pickers": [
+        {
+          "key": "ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears",
+          "finding": "CA-2 major composer term",
+          "applied": "Guarda un secreto con nombre para las herramientas de esta sesión. El valor nunca aparece en el cuadro de mensaje, la transcripción ni el recibo del comando."
+        },
+        {
+          "key": "ui.chat.pickers.model_catalogue_listing.some_providers_did_not_answer_the_rows_below_are_the_ones_that_did",
+          "finding": "CA-3 major feminine agreement",
+          "applied": "{length, plural, one {Un proveedor no respondió ({length, number, ::group-off}). Las filas siguientes son las que sí respondieron.} many {Algunos proveedores no respondieron ({length, number, ::group-off}). Las filas siguientes son las que sí respondieron.} other {Algunos proveedores no respondieron ({length, number, ::group-off}). Las filas siguientes son las que sí respondieron.}}"
+        },
+        {
+          "key": "ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes",
+          "finding": "CA-4 minor incomplete 'mover' + CA-5 Enter/Intro",
+          "applied": "Las flechas mueven la selección, Intro elige, Esc cierra"
+        },
+        {
+          "key": "ui.chat.pickers.picker_host.arrows_move_enter_connects_esc_closes",
+          "finding": "CA-4 minor incomplete 'mover' + CA-5 Enter/Intro",
+          "applied": "Las flechas mueven la selección · Intro conecta {activeconnectprovider} · Esc cierra"
+        },
+        {
+          "key": "ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes5710e2",
+          "finding": "CA-4 minor incomplete 'mover' + CA-5 Enter/Intro",
+          "applied": "Las flechas mueven la selección · Intro elige {activelabel} · Esc cierra"
+        },
+        {
+          "key": "ui.chat.pickers.picker_host.the_row_you_were_on_is_gone_enter_picks",
+          "finding": "CA-5 minor Enter/Intro (same key family)",
+          "applied": "La fila en la que estabas ya no está · Intro elige {retargetedlabel}"
+        },
+        {
+          "key": "ui.chat.pickers.destination_pickers.this_session_runs_choosing_another_applies_to_this_session_only_unless_y",
+          "finding": "CA-7 minor 'ejecuta {model}' calque",
+          "applied": "Esta sesión se ejecuta con {shownselector}. Elegir otro se aplica solo a esta sesión, a menos que también lo establezcas como predeterminado."
+        },
+        {
+          "key": "ui.chat.pickers.destination_pickers.this_conversation_will_run",
+          "finding": "CA-7 minor 'ejecutará {model}' calque",
+          "applied": "Esta conversación se ejecutará con {selectorofresolution}."
+        },
+        {
+          "key": "ui.chat.pickers.destination_pickers.skills_discoverable_from_this_session_s_working_directory_scope_listed_i",
+          "finding": "CA-8 minor floating participle",
+          "applied": "Habilidades detectables desde el directorio de trabajo de esta sesión (ámbito {value}). Que aparezca en la lista no significa que esté seleccionada para el prompt."
+        },
+        {
+          "key": "ui.chat.pickers.destination_pickers.repeats_turns_toward_a_goal_approval_and_question_gates_still_stop_and_w",
+          "finding": "CA-11 minor approvals term",
+          "applied": "Repite turnos para alcanzar un objetivo. Las aprobaciones y preguntas siguen deteniendo el proceso y esperando tu respuesta; el bucle nunca responde por ti."
+        },
+        {
+          "key": "ui.chat.pickers.analytics_model.cache_hit_rate",
+          "finding": "CA-12 minor cache spelling",
+          "applied": "Tasa de aciertos de cache"
+        },
+        {
+          "key": "ui.chat.pickers.analytics_model.cache_reads_as_a_share_of_read_context_tokens_means_no_call_reported_a_c",
+          "finding": "CA-12 minor cache spelling",
+          "applied": "Lecturas de cache como proporción de los tokens de contexto leídos; — significa que ninguna llamada indicó un total de contexto."
+        },
+        {
+          "key": "ui.chat.pickers.context_panel.last_cache_read",
+          "finding": "CA-12 minor cache spelling",
+          "applied": "Última lectura de cache"
+        },
+        {
+          "key": "ui.chat.pickers.info_model.cache_dir",
+          "finding": "CA-12 minor cache spelling",
+          "applied": "Directorio de cache"
+        },
+        {
+          "key": "ui.chat.pickers.session_panel.cache_hit_rate",
+          "finding": "CA-12 minor cache spelling",
+          "applied": "Tasa de aciertos de cache"
+        },
+        {
+          "key": "ui.chat.pickers.session_panel.of_context_from_cache",
+          "finding": "CA-12 minor cache spelling",
+          "applied": "de contexto desde cache"
+        },
+        {
+          "key": "ui.chat.pickers.usage_view_model.cached",
+          "finding": "CA-12 minor cache spelling",
+          "applied": "En cache"
+        },
+        {
+          "key": "ui.chat.pickers.usage_view_model.sign_in_expired_run_login",
+          "finding": "CA-13 nit em dash",
+          "applied": "La sesión caducó — ejecuta /login {provider}"
+        },
+        {
+          "key": "ui.chat.pickers.usage_view_model.usage_unavailable_last_known",
+          "finding": "CA-13 nit em dash",
+          "applied": "Uso no disponible — último valor conocido {age}"
+        },
+        {
+          "key": "ui.chat.pickers.table_pager.range",
+          "finding": "CA-17 nit Spanish many arm",
+          "applied": "{from}–{to} de {totaltext} {total, plural, one {{label}} many {de {plurallabel}} other {{plurallabel}}}"
+        }
+      ],
+      "ui.common.actions": [
+        {
+          "key": "ui.common.actions.find_replace_widget.replace_enter",
+          "finding": "CA-5 minor Enter/Intro",
+          "applied": "Reemplazar (Intro)"
+        },
+        {
+          "key": "ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter",
+          "finding": "CA-5 minor Enter/Intro",
+          "applied": "Reemplazar todo (Cmd/Ctrl+Intro)"
+        },
+        {
+          "key": "ui.common.actions.text_selection_controls.refer_to_this_from_file",
+          "finding": "CA-14 nit idiomatic action label",
+          "applied": "Hacer referencia a esto desde el archivo"
+        }
+      ],
+      "ui.common.layout": [
+        {
+          "key": "ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width",
+          "finding": "CA-10 minor asks term",
+          "applied": "Cambia el ancho de las consultas. Haz doble clic para restablecer el ancho compartido del panel."
+        }
+      ]
+    },
+    "deferred": [
+      {
+        "key": "ui.canvas.file_rows.archives",
+        "finding": "CA-9 minor length",
+        "reason": "The label renders in a DropdownMenuCheckboxItem filter menu and a free-flowing selected-kinds line (finder-files-view.tsx:548 and :614), not a fixed-width chip row; the sidecar records no maxCells and neither surface uses truncate. 20 characters is therefore not a graduated overflow, and 'Archivos comprimidos' is the accurate name for the archives group."
+      },
+      {
+        "key": "ui.chat.pickers.info_model.not_listening",
+        "finding": "CA-15 nit wording",
+        "deferred_value": "sin escuchar",
+        "reason": "\"escuchar\" is the settled Spanish term for a listening socket; the audit's alternatives ('sin respuesta', 'inactivo') name a different condition. Nit, no exact proposal."
+      }
+    ],
+    "observations": [
+      "The pre-existing ui.common.updates.update_notification.still_installing_a_slow_connection_or_a_cold_cache_can_hold_this_ value uses 'caché' and sits outside this batch; it was left byte-identical and is recorded here so the locale's cache-spelling decision is visible to the next audit.",
+      "The ui.canvas and ui.common.actions ledger rows were already stale on the batch head (English source moved); this value-only round changes neither row's finding class and the ledger is intentionally untouched."
+    ]
+  }
 }
