@@ -1,3 +1,4 @@
+import { t } from "@shared/i18n";
 /**
  * The Library's data layer: reads, writes, byte fetches and the chat
  * association, all over the frozen `library.*` desktop ops.
@@ -422,7 +423,7 @@ export function useLibraryBytes(
 				error:
 					response.kind === "error"
 						? response.detail
-						: "This preview could not be loaded.",
+						: t("ui.library.errors.preview_load"),
 				loading: false,
 			});
 		});

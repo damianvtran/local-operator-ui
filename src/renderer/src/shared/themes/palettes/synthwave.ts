@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -63,7 +64,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const synthwave: ThemeDefinition = {
 	id: "synthwave",
 	name: "Synthwave '84",
-	description: "Hot pink and cyan on a deep purple-navy night drive.",
+	get description() {
+		return t("ui.settings.appearance.theme.synthwave");
+	},
 	palette: {
 		mode: "dark",
 

@@ -78,11 +78,11 @@ test("ask scope and tooltip stay delegated to their chat-owned derivation", () =
 
 test("tooltip action select and English missing-key fallback use the live locale", () => {
 	try {
-		model.registerCatalogue("fr", {
+		model.registerCatalogue("xx-missing", {
 			"ui.shell.rail.browser.tooltip":
 				"{state, select, open {fixture close{chord}} other {fixture open{chord}}}",
 		});
-		model.setLocale("fr");
+		model.setLocale("xx-missing");
 		assert.equal(
 			model.browserRailLabels(true, 0, null).tooltip,
 			"fixture close",

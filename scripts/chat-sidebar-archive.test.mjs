@@ -237,7 +237,7 @@ test("the archived row carries a marker that is not in the contested trailing sl
 	 * query is on screen - or be dropped from the row that most needs both.
 	 */
 	const markerAt = rows.indexOf("<Archive");
-	const titleAt = rows.lastIndexOf('{row.title || "Untitled chat"}');
+	const titleAt = rows.lastIndexOf("{conversationTitleForDisplay(row.title)}");
 	assert.ok(
 		markerAt !== -1 && titleAt !== -1 && markerAt < titleAt,
 		"the marker must precede the title's span, outside the trailing slot's rule",

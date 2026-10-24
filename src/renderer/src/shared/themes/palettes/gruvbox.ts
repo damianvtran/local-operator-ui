@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -40,8 +41,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const gruvbox: ThemeDefinition = {
 	id: "gruvbox",
 	name: "Gruvbox",
-	description:
-		"Retro groove after dark — warm charcoal under the gruvbox brights.",
+	get description() {
+		return t("ui.settings.appearance.theme.gruvbox");
+	},
 	palette: {
 		mode: "dark",
 

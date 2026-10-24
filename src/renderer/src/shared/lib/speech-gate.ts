@@ -1,3 +1,5 @@
+import { t } from "@shared/i18n";
+
 /**
  * @file speech-gate.ts
  * @description
@@ -148,20 +150,21 @@ export function radientSpeechBlock(state: {
  * fixing the state, and which design round 1's D2 now puts in front of a
  * screen-reader reader a second time as the control's description.
  */
-const REASONS: Record<SpeechControl, Record<RadientSpeechBlock, string>> = {
+const REASONS: Record<
+	SpeechControl,
+	Record<RadientSpeechBlock, () => string>
+> = {
 	recording: {
-		checking: "Checking your Radient sign-in…",
-		"sign-in": "Sign in to Radient in Settings to enable recording",
-		"could-not-check":
-			"Your Radient sign-in could not be checked, so recording is unavailable for now",
-		offline: "Recording is unavailable while Local Operator is offline",
+		checking: () => t("ui.common.speech.control.checking"),
+		"sign-in": () => t("ui.common.speech.control.recording_sign_in"),
+		"could-not-check": () => t("ui.common.speech.control.recording_unknown"),
+		offline: () => t("ui.common.speech.control.recording_offline"),
 	},
 	"speaking-aloud": {
-		checking: "Checking your Radient sign-in…",
-		"sign-in": "Sign in to Radient in Settings to enable speaking aloud",
-		"could-not-check":
-			"Your Radient sign-in could not be checked, so speaking aloud is unavailable for now",
-		offline: "Speaking aloud is unavailable while Local Operator is offline",
+		checking: () => t("ui.common.speech.control.checking"),
+		"sign-in": () => t("ui.common.speech.control.speaking_sign_in"),
+		"could-not-check": () => t("ui.common.speech.control.speaking_unknown"),
+		offline: () => t("ui.common.speech.control.speaking_offline"),
 	},
 };
 
@@ -176,7 +179,7 @@ export function speechUnavailableReason(
 	control: SpeechControl,
 	block: RadientSpeechBlock,
 ): string {
-	return REASONS[control][block];
+	return REASONS[control][block]();
 }
 
 /**
@@ -199,8 +202,8 @@ export function speechUnavailableReason(
  * copy decision; two classifications would be the defect this module exists to
  * prevent.
  */
-const SETTINGS_REASONS: Record<RadientSpeechBlock, string> = {
-	checking: "Checking whether this machine can speak aloud…",
+const SETTINGS_REASONS: Record<RadientSpeechBlock, () => string> = {
+	checking: () => t("ui.common.speech.settings.checking"),
 	/*
 	 * BOTH REMEDIES, and the command printed BARE (design review round 1, D5;
 	 * UX review round 1, U3). The daemon's own sentence for this arm - rendered
@@ -215,8 +218,7 @@ const SETTINGS_REASONS: Record<RadientSpeechBlock, string> = {
 	 * only where nothing can serve, which is the claim this state exists to keep
 	 * true (see the `inert` computation in `speech-section.tsx`).
 	 */
-	"sign-in":
-		"Nothing can speak aloud yet: run /login radient to sign in, or store a provider key in the Model providers section",
+	"sign-in": () => t("ui.common.speech.settings.sign_in"),
 	/*
 	 * PROVIDER-ORIENTED, not account-oriented, and that is the fix for a sentence
 	 * that could be false. Every other arm here renders only beside a daemon report
@@ -231,9 +233,8 @@ const SETTINGS_REASONS: Record<RadientSpeechBlock, string> = {
 	 * states is the credential the daemon actually reads (agent review round 1,
 	 * M2).
 	 */
-	"could-not-check":
-		"Nothing can speak aloud yet. A Radient sign-in or a stored provider key is what changes that",
-	offline: "Local Operator is offline, so nothing can speak aloud right now",
+	"could-not-check": () => t("ui.common.speech.settings.unknown"),
+	offline: () => t("ui.common.speech.settings.offline"),
 };
 
 /**
@@ -242,5 +243,5 @@ const SETTINGS_REASONS: Record<RadientSpeechBlock, string> = {
  * @param block - the classification the disabled control already renders from.
  */
 export function speechSettingsNote(block: RadientSpeechBlock): string {
-	return SETTINGS_REASONS[block];
+	return SETTINGS_REASONS[block]();
 }

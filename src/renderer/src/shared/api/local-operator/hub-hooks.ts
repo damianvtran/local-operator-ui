@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { t } from "../../../../../i18n/messages";
 import { retryDesktopQuery } from "./backend-error";
 import {
 	desktopResult,
@@ -116,8 +117,7 @@ export type HubApplyOptions = {
 	dryRun?: boolean;
 };
 
-const STILL_WORKING =
-	"This is taking longer than expected. It may still finish; the mark will update.";
+const stillWorking = (): string => t("ui.hub.updates.slow_note");
 
 export function useHubActions() {
 	const queryClient = useQueryClient();
@@ -161,7 +161,7 @@ export function useHubActions() {
 					error instanceof HubMutationUpgradeRequired
 						? error.message
 						: isDeadlineExceeded(error)
-							? STILL_WORKING
+							? stillWorking()
 							: userFacingMessage(error, fallback),
 				tone: "error",
 			});
@@ -211,7 +211,7 @@ export function useHubActions() {
 							: {}),
 						...(options.dryRun ? { dryRun: true } : {}),
 					}),
-				`Couldn't update ${name} from the hub. Try again.`,
+				t("ui.hub.updates.error.update_named", { name }),
 			);
 			// A preview is read by its caller; leaving a sentence for it would be
 			// an answer to a press the person did not make.
@@ -235,7 +235,7 @@ export function useHubActions() {
 						kind,
 						name,
 					}),
-				`Couldn't retry ${name}. Try again.`,
+				t("ui.hub.updates.error.retry_named", { name }),
 			);
 			if (response)
 				noteFor(
@@ -254,7 +254,7 @@ export function useHubActions() {
 						op: "hub.check",
 						requestId: crypto.randomUUID(),
 					}),
-				"Couldn't check the hub. Try again.",
+				t("ui.hub.updates.error.check"),
 			);
 			if (response)
 				store.getState().setNote("check", {
@@ -272,7 +272,7 @@ export function useHubActions() {
 						requestId: crypto.randomUUID(),
 						kind,
 					}),
-				"Couldn't update from the hub. Try again.",
+				t("ui.hub.updates.error.update_all"),
 			);
 			if (response)
 				store.getState().setRollup(kind, hubRollup(response.reports ?? []));

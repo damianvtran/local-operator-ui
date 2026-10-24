@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -62,7 +63,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const vaporwave: ThemeDefinition = {
 	id: "vaporwave",
 	name: "Vaporwave",
-	description: "Dusty pink and faded teal pastels on deep mall-purple.",
+	get description() {
+		return t("ui.settings.appearance.theme.vaporwave");
+	},
 	palette: {
 		mode: "dark",
 

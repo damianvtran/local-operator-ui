@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 /**
  * Local Operator API - Schedules Endpoints
  *
@@ -41,7 +42,10 @@ export const SchedulesApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`List all schedules request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.schedules_list_all", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -70,7 +74,10 @@ export const SchedulesApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`Create schedule for agent request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.schedule_create", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -102,7 +109,10 @@ export const SchedulesApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`List schedules for agent request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.schedules_list_agent", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -128,7 +138,10 @@ export const SchedulesApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`Get schedule by ID request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.schedule_get", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -157,7 +170,10 @@ export const SchedulesApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`Edit schedule request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.schedule_edit", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -183,7 +199,10 @@ export const SchedulesApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`Remove schedule request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.schedule_remove", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 

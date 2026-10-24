@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 /**
  * Local Operator API - Credentials Endpoints
  */
@@ -22,7 +23,10 @@ async function readOpenCredentialList(
 	});
 	if (!response.ok) {
 		throw new Error(
-			`List credentials request failed: ${response.status} ${response.statusText}`,
+			t("ui.common.errors.credentials_list", {
+				status: response.status,
+				statusText: response.statusText,
+			}),
 		);
 	}
 	return response.json() as Promise<CRUDResponse<CredentialListResult>>;
@@ -46,7 +50,10 @@ export const CredentialsApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`List credentials request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.credentials_list", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -63,7 +70,9 @@ export const CredentialsApi = {
 	async listOpenCredentials(baseUrl: string): Promise<CredentialListResult> {
 		const response = await readOpenCredentialList(baseUrl);
 		if (response.status >= 400 || !response.result) {
-			throw new Error(response.message || "Failed to fetch credentials");
+			throw new Error(
+				response.message || t("ui.common.errors.credentials_fetch"),
+			);
 		}
 		return response.result;
 	},
@@ -88,7 +97,10 @@ export const CredentialsApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`Update credential request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.credential_update_request", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 

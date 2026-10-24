@@ -771,5 +771,74 @@
 			"seconds": "Elapsed seconds cardinal; pluralize second/seconds."
 		},
 		"plural_guidance": "English one/other is source grammar, not a target-locale limit. Russian needs native few/many; Arabic needs zero/two and native few/many where appropriate. Keep count-invariant English status words unchanged while allowing native agreement."
+	},
+	"ui.common.updates.install.verifying": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Verifying the update against the app it will replace…"
+	},
+	"ui.common.updates.install.staging": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Staging the update next to the app it will replace…"
+	},
+	"ui.common.updates.install.starting": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Starting the installer. The app closes for a moment…"
+	},
+	"ui.common.updates.install.preparing": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Preparing to install…"
+	},
+	"ui.common.updates.install.succeeded": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Local Operator updated to v{version}.",
+		"placeholders": {
+			"version": "Runtime value; preserve the placeholder and insert it without translation."
+		}
+	},
+	"ui.common.updates.error.server_unreachable": {
+		"role": "Hub update chable",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The app could not reach the update server. Check this machine's connection, then try again."
+	},
+	"ui.common.updates.error.download": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The update could not be downloaded. Check this machine's connection, then start the download again."
+	},
+	"ui.common.updates.error.install": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The update could not be installed. Check this machine's connection, then start it again from the update panel."
+	},
+	"ui.common.updates.error.quit": {
+		"role": "Hub update ",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The app could not quit to finish the install. Quit the app yourself, then let the update finish."
+	},
+	"ui.common.updates.error.check_incomplete": {
+		"role": "Hub update lete",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The update check could not finish. The app will try again at its next check."
+	},
+	"ui.common.updates.error.version_unknown_required": {
+		"role": "Hub update own_required",
+		"tone": "Concise factual status.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Unknown (update required)"
 	}
 }

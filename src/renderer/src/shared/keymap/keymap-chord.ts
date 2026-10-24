@@ -26,6 +26,7 @@
  * made unambiguous for every stored blob, so the order is a belt to that brace.
  */
 
+import { t } from "../../../../i18n/messages";
 import {
 	type MiniViewPlatform,
 	formatQuickSendDisplay,
@@ -199,7 +200,9 @@ export function buildChordMap(
  * so a caller that shows the sentence passes the platform it read.
  */
 const needsModifierSentence = (platform: MiniViewPlatform): string =>
-	platform === "mac" ? "A shortcut needs ⌘ or Ctrl." : "A shortcut needs Ctrl.";
+	platform === "mac"
+		? t("ui.settings.shortcuts.capture.needs_modifier_mac")
+		: t("ui.settings.shortcuts.capture.needs_modifier");
 
 /**
  * Why a captured chord cannot be assigned, as the sentence shown under the
@@ -224,14 +227,16 @@ export function captureRefusal(
 	platform: MiniViewPlatform = "linux",
 ): string | null {
 	const normalized = chord === null ? null : normalizeChord(chord);
-	if (normalized === null) return "That key cannot be bound.";
+	if (normalized === null) return t("ui.settings.shortcuts.capture.unbindable");
 	if (!chordHasPrimary(normalized)) return needsModifierSentence(platform);
 	const reserved = RESERVED_CHORDS.get(normalized);
 	if (reserved !== undefined) return reserved;
 	for (const action of KEYMAP_ACTIONS) {
 		if (action.id === actionId) continue;
 		if (effectiveChord(action.id, bindings) === normalized) {
-			return `Already assigned to ${action.label}.`;
+			return t("ui.settings.shortcuts.capture.already_assigned", {
+				label: action.label,
+			});
 		}
 	}
 	return null;

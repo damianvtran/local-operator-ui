@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -41,7 +42,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const linen: ThemeDefinition = {
 	id: "linen",
 	name: "Linen",
-	description: "Cool off-white linen with soft dusty-pastel states.",
+	get description() {
+		return t("ui.settings.appearance.theme.linen");
+	},
 	palette: {
 		mode: "light",
 		canvas: "#DEE0DB",

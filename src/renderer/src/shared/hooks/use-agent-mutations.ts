@@ -1,3 +1,4 @@
+import { t } from "../../../../i18n/messages";
 /**
  * Hooks for agent mutations (create, delete, import, export)
  */
@@ -25,7 +26,9 @@ export const useCreateAgent = () => {
 				const response = await client.agents.createAgent(newAgent);
 
 				if (response.status >= 400) {
-					throw new Error(response.message || "Failed to create agent");
+					throw new Error(
+						response.message || t("ui.common.errors.agent_create_simple"),
+					);
 				}
 
 				return response.result;
@@ -33,7 +36,7 @@ export const useCreateAgent = () => {
 				const errorMessage =
 					error instanceof Error
 						? error.message
-						: "An unknown error occurred while creating the agent";
+						: t("ui.common.errors.agent_create_unknown");
 
 				showErrorToast(errorMessage);
 				throw error;
@@ -42,7 +45,7 @@ export const useCreateAgent = () => {
 		onSuccess: () => {
 			// Invalidate agents query to refetch the list
 			queryClient.invalidateQueries({ queryKey: agentsQueryKey });
-			showSuccessToast("Agent created");
+			showSuccessToast(t("ui.common.actions.agent_created"));
 		},
 		onError: (error) => {
 			console.error("Error creating agent:", error);
@@ -66,7 +69,7 @@ export const useDeleteAgent = () => {
 
 				if (response.status >= 400) {
 					throw new Error(
-						response.message || `Failed to delete agent ${agentId}`,
+						response.message || t("ui.common.errors.agent_delete", { agentId }),
 					);
 				}
 
@@ -75,7 +78,7 @@ export const useDeleteAgent = () => {
 				const errorMessage =
 					error instanceof Error
 						? error.message
-						: `An unknown error occurred while deleting agent ${agentId}`;
+						: t("ui.common.errors.agent_delete_unknown", { agentId });
 
 				showErrorToast(errorMessage);
 				throw error;
@@ -89,7 +92,7 @@ export const useDeleteAgent = () => {
 			});
 			// Invalidate agents query to refetch the list
 			queryClient.invalidateQueries({ queryKey: agentsQueryKey });
-			showSuccessToast("Agent deleted");
+			showSuccessToast(t("ui.common.actions.agent_deleted"));
 		},
 		onError: (error) => {
 			console.error("Error deleting agent:", error);
@@ -112,7 +115,9 @@ export const useImportAgent = () => {
 				const response = await client.agents.importAgent(file);
 
 				if (response.status >= 400) {
-					throw new Error(response.message || "Failed to import agent");
+					throw new Error(
+						response.message || t("ui.common.errors.agent_import"),
+					);
 				}
 
 				return response.result;
@@ -120,7 +125,7 @@ export const useImportAgent = () => {
 				const errorMessage =
 					error instanceof Error
 						? error.message
-						: "An unknown error occurred while importing the agent";
+						: t("ui.common.errors.agent_import_unknown");
 
 				showErrorToast(errorMessage);
 				throw error;
@@ -129,7 +134,7 @@ export const useImportAgent = () => {
 		onSuccess: (data) => {
 			// Invalidate agents query to refetch the list
 			queryClient.invalidateQueries({ queryKey: agentsQueryKey });
-			showSuccessToast("Agent imported");
+			showSuccessToast(t("ui.common.actions.agent_imported"));
 			return data;
 		},
 		onError: (error) => {
@@ -154,14 +159,14 @@ export const useExportAgent = () => {
 				const errorMessage =
 					error instanceof Error
 						? error.message
-						: `An unknown error occurred while exporting agent ${agentId}`;
+						: t("ui.common.errors.agent_export_unknown", { agentId });
 
 				showErrorToast(errorMessage);
 				throw error;
 			}
 		},
 		onSuccess: () => {
-			showSuccessToast("Agent exported");
+			showSuccessToast(t("ui.common.actions.agent_exported"));
 		},
 		onError: (error) => {
 			console.error("Error exporting agent:", error);

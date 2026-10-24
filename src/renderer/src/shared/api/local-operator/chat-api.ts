@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 /**
  * Local Operator API - Chat Endpoints
  */
@@ -38,7 +39,10 @@ export const ChatApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`Chat request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.chat_request", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -71,7 +75,10 @@ export const ChatApi = {
 
 		if (!response.ok) {
 			throw new Error(
-				`Chat with agent request failed: ${response.status} ${response.statusText}`,
+				t("ui.common.errors.chat_agent", {
+					status: response.status,
+					statusText: response.statusText,
+				}),
 			);
 		}
 
@@ -104,7 +111,10 @@ export const ChatApi = {
 
 			if (!response.ok) {
 				throw new Error(
-					`Async chat request failed: ${response.status} ${response.statusText}`,
+					t("ui.common.errors.chat_async", {
+						status: response.status,
+						statusText: response.statusText,
+					}),
 				);
 			}
 
@@ -146,7 +156,10 @@ export const ChatApi = {
 
 			if (!response.ok) {
 				throw new Error(
-					`Async agent chat request failed: ${response.status} ${response.statusText}`,
+					t("ui.common.errors.chat_agent_async", {
+						status: response.status,
+						statusText: response.statusText,
+					}),
 				);
 			}
 
@@ -188,7 +201,10 @@ export const ChatApi = {
 
 			if (!response.ok) {
 				throw new Error(
-					`Edit file with agent request failed: ${response.status} ${response.statusText}`,
+					t("ui.common.errors.chat_edit_file", {
+						status: response.status,
+						statusText: response.statusText,
+					}),
 				);
 			}
 

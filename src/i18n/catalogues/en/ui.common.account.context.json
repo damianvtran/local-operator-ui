@@ -106,5 +106,144 @@
 		"tone": "Explain the compatibility prerequisite and repair.",
 		"note": "Backend lacks the sign-in capability; update and restart are required before this control can be used.",
 		"length": "One compatibility explanation; wrapping allowed."
+	},
+	"ui.common.account.top_up": {
+		"role": "Account guidance",
+		"tone": "Clear, calm and actionable.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Top up in Radient console"
+	},
+	"ui.common.account.free_credits_unknown": {
+		"role": "Account guidance",
+		"tone": "Clear, calm and actionable.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: your free credits"
+	},
+	"ui.common.account.free_credits": {
+		"role": "Account guidance",
+		"tone": "Clear, calm and actionable.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: {amount} in free credits",
+		"placeholders": {
+			"amount": "Already formatted currency amount or localized free-credit phrase."
+		}
+	},
+	"ui.common.account.verify_pending": {
+		"role": "Account guidance",
+		"tone": "Clear, calm and actionable.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Verify your email to claim {amount}. Check your inbox for the link Radient sent.",
+		"placeholders": {
+			"amount": "Already formatted currency amount or localized free-credit phrase."
+		}
+	},
+	"ui.common.account.verify_expired": {
+		"role": "Account guidance",
+		"tone": "Clear, calm and actionable.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The link to claim {amount} has expired. Request a new one from the verification page.",
+		"placeholders": {
+			"amount": "Already formatted currency amount or localized free-credit phrase."
+		}
+	},
+	"ui.common.account.open_verification": {
+		"role": "Account guidance",
+		"tone": "Clear, calm and actionable.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Open verification page"
+	},
+	"ui.common.account.request_new_link": {
+		"role": "Account guidance",
+		"tone": "Clear, calm and actionable.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Request a new link"
+	},
+	"ui.common.account.verify_none": {
+		"role": "Account guidance",
+		"tone": "Clear, calm and actionable.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: No signup grant is attached to this account. Open the verification page to check the account."
+	},
+	"ui.common.account.out_unknown_verify": {
+		"role": "Account guidance",
+		"tone": "Clear, calm and actionable.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: You're out of credits. If you haven't verified your email yet, verify it to claim free credits and start using Local Operator for free."
+	},
+	"ui.common.account.out_unknown_top_up": {
+		"role": "Account guidance",
+		"tone": "Clear, calm and actionable.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Otherwise, top up in the Radient console."
+	},
+	"ui.common.account.out_unverified_none": {
+		"role": "Account guidance",
+		"tone": "Clear, calm and actionable.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: You haven't verified your email yet. Open the verification page to check whether free credits are waiting on your account."
+	},
+	"ui.common.account.out_unverified_claim": {
+		"role": "Account guidance",
+		"tone": "Clear, calm and actionable.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: You haven't verified your email yet. Verify to claim {amount} and start using Local Operator for free.",
+		"placeholders": {
+			"amount": "Already formatted currency amount or localized free-credit phrase."
+		}
+	},
+	"ui.common.account.out_unverified_expired": {
+		"role": "Account guidance",
+		"tone": "Clear, calm and actionable.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The link you were sent has expired. Request a new one on the verification page."
+	},
+	"ui.common.account.out_unverified_inbox": {
+		"role": "Account guidance",
+		"tone": "Clear, calm and actionable.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Check your inbox for the link Radient sent."
+	},
+	"ui.common.account.out_verified": {
+		"role": "Account guidance",
+		"tone": "Clear, calm and actionable.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: You're out of credits. Top up in the Radient console."
+	},
+	"ui.common.account.first_top_up_bonus": {
+		"role": "Account guidance",
+		"tone": "Clear, calm and actionable.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Get an extra {bonus} free on your first top-up of {minimum} or more.",
+		"placeholders": {
+			"bonus": "Already formatted bonus currency amount.",
+			"minimum": "Already formatted minimum top-up currency amount."
+		}
+	},
+	"ui.common.account.signed_out": {
+		"role": "Account guidance",
+		"tone": "Clear, calm and actionable.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Successfully signed out"
+	},
+	"ui.common.account.sign_out_failed": {
+		"role": "Account guidance",
+		"tone": "Clear, calm and actionable.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: Failed to sign out: {error}",
+		"placeholders": {
+			"error": "Available error detail; do not translate technical identifiers inside it."
+		}
+	},
+	"ui.common.account.sign_in_page_failed": {
+		"role": "Account guidance",
+		"tone": "Clear, calm and actionable.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The sign-in page could not be opened. Try again."
+	},
+	"ui.common.account.sign_in_start_failed": {
+		"role": "Account guidance",
+		"tone": "Clear, calm and actionable.",
+		"length": "One toast, status line, settings row, or hub update sentence; keep compact.",
+		"note": "English source: The sign-in could not be started. Try again."
 	}
 }

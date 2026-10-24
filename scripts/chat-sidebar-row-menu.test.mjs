@@ -521,7 +521,7 @@ test("Rename conversation is the menu's fifth row, and it acts on the row it was
 		"the request no longer names the register's rename picker, the row's own button as the invoker, and the row's conversation",
 	);
 	assert.ok(
-		request.includes('{ subjectName: row.title || "Untitled chat" }'),
+		request.includes("{ subjectName: conversationTitleForDisplay(row.title) }"),
 		"the request no longer carries the name the row DRAWS - the presenter holds a pane, not the row that was pointed at",
 	);
 	assert.ok(

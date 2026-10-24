@@ -109,7 +109,7 @@ import {
 } from "@shared/api/local-operator/desktop-api";
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import {
-	EMPTY_TRANSCRIPTION_MESSAGE,
+	emptyTranscriptionMessage,
 	isTransientTranscriptionFailure,
 	transcriptionFailureMessage,
 	transcriptionFailureRowMessage,
@@ -144,10 +144,10 @@ import {
 import { cn } from "@shared/lib/utils";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
-	CLEAR_LABEL,
-	RETRY_LABEL,
 	SEND_FAILURE_COPY,
 	buildSendPayload,
+	clearLabel,
+	retryLabel,
 } from "@shared/store/canonical-sessions-store";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
@@ -7001,7 +7001,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * gesture that did not work. Info, not error - the request
 					 * succeeded; the take held no speech.
 					 */
-					showInfoToast(EMPTY_TRANSCRIPTION_MESSAGE);
+					showInfoToast(emptyTranscriptionMessage());
 				}
 				// The take landed: nothing is left to offer back.
 				setDictationFailure(null);
@@ -8279,7 +8279,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										)}
 										onClick={() => sendError.onRetry?.()}
 									>
-										{RETRY_LABEL}
+										{retryLabel()}
 									</Button>
 								)}
 								{composerAlert.clear && sendError?.onClear && (
@@ -8299,7 +8299,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										)}
 										onClick={() => sendError.onClear?.()}
 									>
-										{CLEAR_LABEL}
+										{clearLabel()}
 									</Button>
 								)}
 							</>

@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 import type { ThemeDefinition } from "../palette-contract";
 
 /**
@@ -38,7 +39,9 @@ import type { ThemeDefinition } from "../palette-contract";
 export const palenight: ThemeDefinition = {
 	id: "palenight",
 	name: "Palenight",
-	description: "Material Palenight: deep navy under a soft violet accent.",
+	get description() {
+		return t("ui.settings.appearance.theme.palenight");
+	},
 	palette: {
 		mode: "dark",
 
