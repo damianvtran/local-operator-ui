@@ -34,9 +34,18 @@ export const shouldReinitialiseComposer = (
  * Hook for managing message input with robust per-conversation persistence and log-based history navigation.
  */
 
-import { type MessageKey, t } from "@shared/i18n";
+/*
+ * THE CORE, BY A RELATIVE SPECIFIER (this file's existing reason, one door
+ * along): `@shared/i18n` re-exports the renderer's query-client writer, so a
+ * suite that bundles THIS hook by hand - `echo-delivery.test.mjs` does, with a
+ * minimal React stub - would drag the query client and `useContext` into its
+ * bundle for a `t()` that needs neither. The singular formatter entry point is
+ * the core module itself, which imports nothing from the renderer.
+ */
+import type { MessageKey } from "@shared/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
+import { t } from "../../../../i18n/messages";
 // The chip objects this module writes back when a refusal hands a payload over
 // are minted here rather than carried from the send, exactly as the composer's
 // own restore writes them (`message-input.tsx`'s `addAttachment(conversationId,

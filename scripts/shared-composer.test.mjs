@@ -308,6 +308,7 @@ const bundle = await build({
 			} from "./src/renderer/src/shared/hooks/use-message-input";
 			export { resolvePushToTalkBinding, isDictationActive } from "./src/renderer/src/shared/hooks/use-speech-to-text-manager";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
+			export { t } from "@shared/i18n";
 		`,
 		resolveDir: worktree,
 		loader: "tsx",
@@ -344,6 +345,7 @@ const {
 	MessageInput,
 	composerPlaceholder,
 	isDictationActive,
+	t,
 	resolvePushToTalkBinding,
 	useConversationInputStore,
 } = await import(bundlePath.href);
@@ -1638,7 +1640,7 @@ test("placeholderOverride replaces the invitation; every state sentence outranks
 	const plain = await mount();
 	assert.equal(
 		plain.textarea()?.getAttribute("placeholder"),
-		COMPOSER_PLACEHOLDER.idle,
+		t(COMPOSER_PLACEHOLDER.idle),
 		"without the override the app's own invitation stands",
 	);
 
@@ -1652,7 +1654,7 @@ test("placeholderOverride replaces the invitation; every state sentence outranks
 	});
 	assert.equal(
 		busy.textarea()?.getAttribute("placeholder"),
-		COMPOSER_PLACEHOLDER.busy,
+		t(COMPOSER_PLACEHOLDER.busy),
 		"a refused box still says why rather than showing the host's invitation",
 	);
 
@@ -1677,7 +1679,7 @@ test("placeholderOverride replaces the invitation; every state sentence outranks
 	);
 	assert.equal(
 		composerPlaceholder({ ...base, idle: "Host copy", unavailable: true }),
-		COMPOSER_PLACEHOLDER.unavailable,
+		t(COMPOSER_PLACEHOLDER.unavailable),
 		"and a state sentence still outranks it",
 	);
 	/*
@@ -1695,7 +1697,7 @@ test("placeholderOverride replaces the invitation; every state sentence outranks
 			sendingUnsettled: true,
 			awaitingReply: true,
 		}),
-		COMPOSER_PLACEHOLDER.stopping,
+		t(COMPOSER_PLACEHOLDER.stopping),
 		"a Stop press in flight is answered where the finger is",
 	);
 	assert.equal(
@@ -1704,7 +1706,7 @@ test("placeholderOverride replaces the invitation; every state sentence outranks
 			sendingUnsettled: true,
 			awaitingReply: true,
 		}),
-		COMPOSER_PLACEHOLDER.sending,
+		t(COMPOSER_PLACEHOLDER.sending),
 		"and without a press the send sentence is unchanged",
 	);
 
