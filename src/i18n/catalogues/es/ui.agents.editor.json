@@ -1,0 +1,15 @@
+{
+	"ui.agents.editor.cancel": "Cancelar",
+	"ui.agents.editor.creating": "Creando…",
+	"ui.agents.editor.discard_changes": "Descartar cambios",
+	"ui.agents.editor.discard_unsaved": "¿Descartar los cambios sin guardar?",
+	"ui.agents.editor.empty": "Aún no hay nada aquí.",
+	"ui.agents.editor.keep_editing": "Seguir editando",
+	"ui.agents.editor.retry": "Reintentar",
+	"ui.agents.editor.retrying": "Reintentando…",
+	"ui.agents.editor.save_changes": "Guardar cambios",
+	"ui.agents.editor.saving": "Guardando…",
+	"ui.agents.editor.show_all": "Mostrar todo",
+	"ui.agents.editor.show_less": "Mostrar menos",
+	"ui.agents.editor.unsaved_changes": "Cambios sin guardar"
+}

@@ -107,13 +107,20 @@ import enUiShellRail from "./catalogues/en/ui.shell.rail.json";
 import enUiTeamBridge from "./catalogues/en/ui.teamBridge.json";
 import esUiAgentMessages from "./catalogues/es/ui.agentMessages.json";
 import esUiAgentMessagesSettings from "./catalogues/es/ui.agentMessages.settings.json";
+import esUiAgentsConfig from "./catalogues/es/ui.agents.config.json";
+import esUiAgentsDetail from "./catalogues/es/ui.agents.detail.json";
 import esUiAgentsDialogs from "./catalogues/es/ui.agents.dialogs.json";
+import esUiAgentsEditor from "./catalogues/es/ui.agents.editor.json";
 import esUiAgents from "./catalogues/es/ui.agents.json";
 import esUiAgentsModels from "./catalogues/es/ui.agents.models.json";
 import esUiAgentsNavigation from "./catalogues/es/ui.agents.navigation.json";
+import esUiAgentsPage from "./catalogues/es/ui.agents.page.json";
+import esUiAgentsPublication from "./catalogues/es/ui.agents.publication.json";
 import esUiAgentsRefusals from "./catalogues/es/ui.agents.refusals.json";
 import esUiAgentsSettings from "./catalogues/es/ui.agents.settings.json";
 import esUiAgentsStarters from "./catalogues/es/ui.agents.starters.json";
+import esUiAgentsTeam from "./catalogues/es/ui.agents.team.json";
+import esUiAgentsUpload from "./catalogues/es/ui.agents.upload.json";
 import esUiBrowserChrome from "./catalogues/es/ui.browser.chrome.json";
 import esUiBrowser from "./catalogues/es/ui.browser.json";
 import esUiCanvas from "./catalogues/es/ui.canvas.json";
@@ -141,13 +148,17 @@ import esUiCommonLoading from "./catalogues/es/ui.common.loading.json";
 import esUiCommonModels from "./catalogues/es/ui.common.models.json";
 import esUiCommonUpdates from "./catalogues/es/ui.common.updates.json";
 import esUiConsole from "./catalogues/es/ui.console.json";
+import esUiHubAgents from "./catalogues/es/ui.hub.agents.json";
 import esUiHubComments from "./catalogues/es/ui.hub.comments.json";
+import esUiHubDownload from "./catalogues/es/ui.hub.download.json";
 import esUiHub from "./catalogues/es/ui.hub.json";
 import esUiHubTaxonomy from "./catalogues/es/ui.hub.taxonomy.json";
+import esUiHubTeams from "./catalogues/es/ui.hub.teams.json";
 import esUiInstaller from "./catalogues/es/ui.installer.json";
 import esUiLibrary from "./catalogues/es/ui.library.json";
 import esUiMesh from "./catalogues/es/ui.mesh.json";
 import esUiOnboarding from "./catalogues/es/ui.onboarding.json";
+import esUiOnboardingTour from "./catalogues/es/ui.onboarding.tour.json";
 import esUiPresence from "./catalogues/es/ui.presence.json";
 import esUiProjects from "./catalogues/es/ui.projects.json";
 import esUiProviders from "./catalogues/es/ui.providers.json";
@@ -640,13 +651,20 @@ export const bundledCatalogues: Readonly<
 	es: {
 		...esUiAgentMessages,
 		...esUiAgentMessagesSettings,
+		...esUiAgentsConfig,
+		...esUiAgentsDetail,
 		...esUiAgentsDialogs,
+		...esUiAgentsEditor,
 		...esUiAgents,
 		...esUiAgentsModels,
 		...esUiAgentsNavigation,
+		...esUiAgentsPage,
+		...esUiAgentsPublication,
 		...esUiAgentsRefusals,
 		...esUiAgentsSettings,
 		...esUiAgentsStarters,
+		...esUiAgentsTeam,
+		...esUiAgentsUpload,
 		...esUiBrowserChrome,
 		...esUiBrowser,
 		...esUiCanvas,
@@ -674,13 +692,17 @@ export const bundledCatalogues: Readonly<
 		...esUiCommonModels,
 		...esUiCommonUpdates,
 		...esUiConsole,
+		...esUiHubAgents,
 		...esUiHubComments,
+		...esUiHubDownload,
 		...esUiHub,
 		...esUiHubTaxonomy,
+		...esUiHubTeams,
 		...esUiInstaller,
 		...esUiLibrary,
 		...esUiMesh,
 		...esUiOnboarding,
+		...esUiOnboardingTour,
 		...esUiPresence,
 		...esUiProjects,
 		...esUiProviders,

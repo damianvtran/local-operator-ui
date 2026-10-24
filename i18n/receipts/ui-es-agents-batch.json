@@ -1,0 +1,168 @@
+{
+  "locale": "es",
+  "translator": "i18n-translator role (lop team 'lopdev', session 0abbacc30169)",
+  "model": "radient/auto",
+  "date": "2026-10-24",
+  "status": "translated",
+  "awaiting": "independent i18n-auditor pass; ledger rows are added after the audit - this branch deliberately adds no ledger, allowance or shipped-locale rows",
+  "source": {
+    "english_branch": "feat/i18n-extract-agents",
+    "english_head": "92d6e07625a21cf03e4890d5318920c6454eb8fc",
+    "scope": "the 700-key agents/hub/onboarding batch: 680 keys in 11 new namespaces plus 7 keys added to two existing namespaces (6 ui.hub, 1 ui.providers)",
+    "style_guide": "i18n/style-guides/es.md (neutral Spanish, tu, infinitive labels, sentence case, one/many/other)",
+    "glossary": "i18n/glossary.md"
+  },
+  "namespaces": {
+    "ui.agents.config": {
+      "keys": 85,
+      "sha256": {
+        "en": "0e36bb28caa4f698defc0081ca342d320101ad2a72a421f8f37e9e45ed18b543",
+        "es": "b4924606981dff9b8a1379781fe53670ae9ee7ee2c40f1b97ab304bf4dd9b85e"
+      }
+    },
+    "ui.agents.detail": {
+      "keys": 93,
+      "sha256": {
+        "en": "1b2165d369482a821c996b886b6448fa2148d22a377a5cff71b8e922ef25e168",
+        "es": "6bf642dd50385baeb0250b572da05fc91f71005b5458ad53e8f80b78aa8db908"
+      }
+    },
+    "ui.agents.editor": {
+      "keys": 13,
+      "sha256": {
+        "en": "fba54b0f049efb6a194c7988bfaa5db161f465e0b04fd049176eac75a13f18d8",
+        "es": "fd608237c273b5b66f5a731941c092c3cdd520b5b3d2f90c089e57f808e6755b"
+      }
+    },
+    "ui.agents.page": {
+      "keys": 46,
+      "sha256": {
+        "en": "4fa71557f0bc10b694fe46fca73165eb3f4bbfb1d5aeba737038b2d95b2d249e",
+        "es": "6c6a94bc1ac922c10074f613cf84654d0c9e9661de1d1a7ccc44a74a22517761"
+      }
+    },
+    "ui.agents.publication": {
+      "keys": 99,
+      "sha256": {
+        "en": "3adfaf52f92fe9635f711cf2d40ca99d983ff5f39a5c33d2d09a0f00b69942a0",
+        "es": "369ef1c781edf375631ddde8d4469f9b1f68fe343671ccbf0ffa5493207fce92"
+      }
+    },
+    "ui.agents.team": {
+      "keys": 51,
+      "sha256": {
+        "en": "e7a7b948df5f1afb1108903abf007b71af519c3d4b8efcce767ecbebec0c8243",
+        "es": "73a763b0b6aea736bf4163d34e967f1c41a63b9c0d2a64e12ef08c952d695258"
+      }
+    },
+    "ui.agents.upload": {
+      "keys": 53,
+      "sha256": {
+        "en": "38863aaca4bc604c2fd4eb9bcba4399761a9cfd57eadab8790dbe037e8643247",
+        "es": "654d1d23148ac4c251be38291fa8a6df407d62cb2024647d31e0f994e7089b17"
+      }
+    },
+    "ui.hub": {
+      "keys": 185,
+      "sha256": {
+        "en": "d6a8d4b0257877628ce579f21208ce600c04e024a28419f4c8a4b56759b8efcc",
+        "es": "2f6fa723a179b28010dd4b83965333fbabbeede4d697d10a556128031013555d"
+      }
+    },
+    "ui.hub.agents": {
+      "keys": 94,
+      "sha256": {
+        "en": "0498eb7c28af7a72a7973eb2279e2070e5c22bc4d4865c4986e23c983f0162b4",
+        "es": "c4c2fd6d03d17ebe6ec7f0698e18e4410601e53445f9bb092474b23a1d53c748"
+      }
+    },
+    "ui.hub.download": {
+      "keys": 4,
+      "sha256": {
+        "en": "050698c925d0a7dece278ebf0d50bf8116ae7f99071889eab3643b9bfd1a78d5",
+        "es": "3be5d01df31f72db9fb7a06d777039e3849ea885be6dcc193a0f20822908452d"
+      }
+    },
+    "ui.hub.teams": {
+      "keys": 58,
+      "sha256": {
+        "en": "a8ad00d689b74ba21208b99d74bc8c4c1857c036dd08da45c654385594b8ad8c",
+        "es": "55300f74ed66fc2f01da0f78208e01b570d8387c85c76233655d847c5ba6ecfc"
+      }
+    },
+    "ui.onboarding.tour": {
+      "keys": 84,
+      "sha256": {
+        "en": "4b80ff5ad817bef1842d792414589ff692ce36fac6c3e5d9c4d86a629572022a",
+        "es": "dd8ed19a59144f27c8f40d9f781c4270c6ea42394debae4acaf0ce4719eef9ad"
+      }
+    },
+    "ui.providers": {
+      "keys": 190,
+      "sha256": {
+        "en": "126a999fb9b26d8f3e2e17231b5d5d5b430d55cd2d468c8b3323d3a041a86632",
+        "es": "7d8d2fab474c71c9c662215a6f14a52bf465001a24232781d22454e63c1584d3"
+      }
+    }
+  },
+  "merged_namespaces": {
+    "ui.hub": {
+      "added": [
+        "ui.hub.pager.agent_pages",
+        "ui.hub.pager.previous_page",
+        "ui.hub.pager.previous",
+        "ui.hub.pager.next_page",
+        "ui.hub.pager.next",
+        "ui.hub.pager.page_of"
+      ],
+      "existing_values": "preserved byte-for-byte; new keys inserted at their English positions"
+    },
+    "ui.providers": {
+      "added": [
+        "ui.providers.provider_detail.sign_in_again"
+      ],
+      "existing_values": "preserved byte-for-byte; new key inserted at its English position"
+    }
+  },
+  "checks": {
+    "generate_check": "node scripts/i18n/generate.mjs --check -> byte-identical to a fresh generation (keys.gen.ts regenerated and committed with this change: 22 added lines, all es namespace imports/bundle entries)",
+    "icu_verification": "translator-executed per-key check over 687 translated keys (13 namespaces): ICU parse both sides, argument name+type equality, select/plural arm equality (es 'many' allowed as the guide records), number/date skeletons, markup and entity sequences, keyboard chords, NFC, no bidi controls, trailing/leading punctuation, key order. PASS.",
+    "tour_markup_check": "parsed-literal pass over ui.onboarding.tour: no stray apostrophes in Spanish prose and identical tag sequences after ICU unquoting",
+    "locale_parity_es": "node --test scripts/i18n/locale-parity.test.mjs -> [es] missing-key, unknown-key, placeholder and namespace tests PASS; [es] 'is not an English stub' FAILS on exactly four language-neutral values (see neutral_identical)",
+    "es_activation": "node --test scripts/i18n/es-activation.test.mjs -> 3/3 pass",
+    "typed_keys_and_format": "node --test scripts/i18n/typed-keys.test.mjs scripts/i18n/format.test.mjs -> 14/14 pass",
+    "context_parity": "node --test scripts/i18n/context-parity.test.mjs -> 8/8 pass",
+    "control_run": "the two failures in exclusive-feature-copy.test.mjs and shell-rail-copy.test.mjs (display headings, tooltip action) reproduce unchanged at 92d6e07625 in a clean detached worktree: pre-existing on the source branch, not caused by these catalogues",
+    "known_red_gates": "pnpm check-i18n cannot be green on this branch yet: the ledger gate reports each new es namespace as 'shipped without a ledger entry' and the es/ui.hub + es/ui.providers rows as stale against the moved English source; fr/hi/ru/ur/vi/zh-CN still miss the 7 keys the batch added to ui.hub and ui.providers. Both belong to the audit/batch stage, not to this translation."
+  },
+  "neutral_identical": {
+    "note": "Four values are byte-identical to English because the correct Spanish is the same string. scripts/i18n/locale-parity.test.mjs IDENTICAL_OK is a gate script this lane must not edit, so these need one exempt entry each (key + reason) before the es PR can be green; nothing else in es is identical to English.",
+    "keys": {
+      "ui.hub.agents.hub_title": "Agent Hub is the product surface name, kept English by glossary §1 and by the es copy everywhere else ('Volver al Agent Hub').",
+      "ui.hub.teams.pull": "pull is in the glossary's kept-English set for git/hub operations; the es guides elsewhere render it as 'Pull ahora'.",
+      "ui.hub.teams.slot_with_count": "Language-neutral: {role} plus a multiplication sign and {count}; no words to translate.",
+      "ui.hub.teams.version": "Language-neutral: the version prefix 'v' plus {version}; no words to translate."
+    }
+  },
+  "terms_chosen": {
+    "manager": "gestor (agent that leads the chat; 'agente gestor', 'Gestor:')",
+    "listing": "ficha (a published catalogue entry: 'Actualizar la ficha existente', 'Abrir la ficha')",
+    "brief": "resumen ('Resumen del proyecto', 'Resumen de colaboración') - 'brief' has no settled Spanish product term and a calque was avoided",
+    "starter": "agente incluido ('Instalado desde un agente incluido')",
+    "roster": "plantilla (hub team member list heading)",
+    "delist": "retirar del hub ('Retirar agente', 'Agente retirado del hub')",
+    "configuration run": "ejecución de configuración (matches the existing audited es copy in the team conflict description)",
+    "built-in": "integrado (matches ui.agents.starters)",
+    "rule_fragments": "the {label}{rule}. keys gained a colon ('Categorías: {rule}.') and the shared rule_* strings became impersonal ('no se admiten…') because Spanish participles cannot agree with every label's gender and number; the composed sentence stays grammatical for Nombre, Descripción, El cuerpo de instrucciones, Herramientas, Categorías, Etiquetas and Cuándo usarlo",
+    "quotes": "typographic quotes are the es “ ” pair in prose; straight quotes survive only where the string delimits literal characters ('/', '\\', ':', '-', '.')"
+  },
+  "overflow_risks": {
+    "note": "No maxCells budget exists in this batch's context sidecars; these are width judgements, not gate failures.",
+    "flags": [
+      "ui.agents.detail.on / off: 'Activado' / 'Desactivado' are 8 and 11 cells against 'On' / 'Off' (2 and 3). No shorter correct pair exists; 'Sí/No' would misdescribe a mode.",
+      "ui.agents.page.scope_custom / scope_builtin / scope_installed: 'Personalizados', 'Integrados', 'Instalados' in a filter chip row where English uses 'Custom', 'Built-in', 'Installed'. 'Propios' would be shorter but breaks the glossary's 'integrado' family.",
+      "ui.agents.detail.tool_name: 'Nombre de la herramienta' (24) for a 9-cell field label; the field row wraps.",
+      "ui.hub.agents.favourite / unfavourite: 'Añadir a favoritos' / 'Quitar de favoritos' (19/20) against 'Favourite agent' / 'Unfavourite agent' (15/18) - kept short deliberately; longer phrasings were avoided."
+    ]
+  }
+}
