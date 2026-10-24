@@ -284,6 +284,7 @@
     "context": "b54b6acb4399743d207d8a793080555f1cab291761de90cf3e6e9f3ce9c70016"
    },
    "finding_ids": [
+    "UR-CHAT-R1-B3",
     "UR-CHAT-R1-M1",
     "UR-CHAT-R1-n7"
    ]
@@ -307,6 +308,22 @@
    "current": "اس سیشن کا ڈیوائس منسلک ہے، مگر بیک اینڈ نے ابھی اس کی رسائی نہیں بتائی۔",
    "proposed": "یہ لاگ اِن مستعار نہیں لیا جا سکتا۔ اس سیشن کو چلانے والے ڈیوائس پر سائن اِن کریں، یا دوسرا ماڈل منتخب کریں۔",
    "reason": "The source says this login cannot be borrowed and directs a sign-in on the device running the session or another model; the target says the device is connected but the backend has not yet reported its access. That is a different status and omits both the restriction and the remedy."
+  },
+  {
+   "id": "UR-CHAT-R1-B3",
+   "severity": "BLOCKER",
+   "namespace": "ui.chat.trace",
+   "key": "ui.chat.trace.receipt_row_model.cancel_with_wake",
+   "current": " — wake( سے منسوخ کریں",
+   "proposed": "Keep byte-identical to English: \" — cancel with wake(\" and \"Scheduled wake \". Source fix preferred: move both markers out of the catalogue into locale-independent constants.",
+   "reason": "These two values are not display copy. wakeReceiptHeadline() splits the persisted wake envelope on t(cancel_with_wake) and strips t(scheduled_wake) as a prefix; the envelope is model-facing English, so the translated delimiters never match. The row then shows the full envelope, cancel how-to included — the exact leak the function exists to prevent.",
+   "also_affects": [
+    {
+     "key": "ui.chat.trace.receipt_row_model.scheduled_wake",
+     "current": "شیڈول شدہ بیداری ",
+     "proposed": "Scheduled wake "
+    }
+   ]
   },
   {
    "id": "UR-CHAT-R1-M1",
