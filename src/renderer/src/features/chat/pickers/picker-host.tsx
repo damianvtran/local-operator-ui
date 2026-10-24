@@ -705,6 +705,12 @@ export const PickerRow: FC<PickerRowProps> = memo(
 			data-current={option.current || undefined}
 			data-hovered={isHovered || undefined}
 			data-picked={isPicked || undefined}
+			/*
+			 * The ROW'S OWN VALUE, so a scene picks a named row rather than a position or
+			 * a label: `fast-picker-options.ts` already publishes `on`/`off` as the value
+			 * it posts, and the label beside it is catalogue copy a locale may reword.
+			 */
+			data-option-value={option.value}
 			onMouseEnter={() => onHover(index)}
 			onMouseDown={(event) => {
 				// mousedown, not click: keeps focus in the search input, the same
@@ -1582,7 +1588,18 @@ export const PickerHost: FC<PickerHostProps> = ({
 
 				{result && (
 					<div className="px-5 pt-3">
+						{/*
+						 * `data-picker-result` is the TONE, published for the same reason
+						 * every other scene hook here is a data attribute: a capture can
+						 * read the sentence, and only this attribute says whether the pick
+						 * was applied or refused without a scene matching copy (which the
+						 * i18n catalogues make locale-dependent). The draft scenes read it
+						 * to require that what the dialog CLAIMS and what the pane RECORDED
+						 * agree (issue #1265) - a success sentence over an unrecorded dial
+						 * is exactly the silent drop that route must not ship.
+						 */}
 						<output
+							data-picker-result={result.tone}
 							className={cn(
 								"block rounded-md border px-3 py-2 text-body-sm",
 								TONE_CLASS[result.tone],

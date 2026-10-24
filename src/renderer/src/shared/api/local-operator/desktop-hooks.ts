@@ -409,6 +409,22 @@ export type DesktopFeature =
 	 */
 	| "draft_selection"
 	/**
+	 * `sessions.preview` and `sessions.create` accepting `fast_mode` on a draft's
+	 * model selection (`DraftModel.fast_mode`), so a NEW chat can be born on the
+	 * speed dial (issue #1265). The core half publishes it as
+	 * `features.draft_fast` (local-operator#2848, `server/features.py`).
+	 *
+	 * ITS OWN KEY RATHER THAN A BUMP OF `draft_selection`, and the reason is the
+	 * wire rather than taste: the draft model is `extra="forbid"` on the core, so
+	 * a backend that can select a draft's model but does not carry the dial
+	 * refuses the WHOLE create body - the model and the effort rung with it - the
+	 * moment the renderer sends a `fast_mode` it never asked about. A renderer on
+	 * such a backend keeps its model and effort chips exactly as they are and
+	 * leaves the speed route closed: `/fast` refuses on a draft rather than
+	 * opening a dialog whose only pick must end in a 422.
+	 */
+	| "draft_fast"
+	/**
 	 * `sessions.draft` plus the draft allow-list on `events`/`watch`/`warm`, and
 	 * `sessions.create` accepting `draft_id`: a NEW chat's runtime can be engaged
 	 * from the first keystroke instead of on the send.

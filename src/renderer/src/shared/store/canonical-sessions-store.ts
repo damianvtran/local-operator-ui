@@ -73,6 +73,12 @@ import {
 	mergeCompletionAttention,
 } from "../../../../shared/desktop-session-contract";
 import type { LaunchTarget } from "../../../../shared/open-session";
+/*
+ * The one filter for the draft model that goes on the wire (round 2's F1
+ * follow-up). A pure function with no React or store dependency, which is why
+ * the direction is safe: this store is below it, and nothing there reads state.
+ */
+import { draftModelForWire } from "../../features/chat/draft-selection";
 import {
 	type PeerDeviceFact,
 	applyPeerDeviceFact,
@@ -2870,9 +2876,19 @@ export async function admitChatDraft(
 					input.cwd,
 					draft.target,
 					draft.createRequestId,
-					// The pane's own pick, or nothing at all: a draft that was never
-					// picked from omits the field from the create body entirely.
-					draft.model ?? null,
+					/*
+					 * The pane's own pick, or nothing at all: a draft that was never
+					 * picked from omits the field from the create body entirely.
+					 *
+					 * AND FILTERED WITH THE ROW'S DIAL WHEN THE BACKEND CANNOT CARRY IT
+					 * (round 2's F1 follow-up). The field is `extra="forbid"` on the
+					 * core, so replaying a persisted `fast_mode` at a daemon that
+					 * predates it refuses the model, the effort rung and the send with
+					 * it - which is why the strip happens here rather than only at the
+					 * picker. The ROW keeps the dial (the user's choice; a capable
+					 * backend restores it) and the pane says so.
+					 */
+					draftModelForWire(draft.model ?? null, store.draftFastCarries),
 					// The pre-engaged runtime, when the first keystroke's mint adopted
 					// one. `undefined` here is the ordinary path — an older backend, a
 					// send before the mint answered — and the create then mints fresh
@@ -3807,6 +3823,19 @@ type CanonicalSessionsState = {
 	 * direction and also exactly the behaviour every older daemon keeps.
 	 */
 	draftWarmable: boolean;
+	/**
+	 * Whether this daemon carries `DraftModel.fast_mode` (`features.draft_fast`),
+	 * as published by the mounted pane (`setDraftFastCarries`).
+	 *
+	 * It gates the FIELD on every request this store builds from a draft's
+	 * selection - the create and the warm mint - because the draft model is
+	 * `extra="forbid"` on the core: a row persisted with `fast_mode: true` and
+	 * replayed against a core that predates the field refuses the WHOLE body, not
+	 * just the dial. `false` until something says otherwise, which is the
+	 * fail-closed direction: an unanswered capability read sends the body every
+	 * older daemon accepts.
+	 */
+	draftFastCarries: boolean;
 	activeSessionId: string | null;
 	activeDraftKey: string | null;
 	drafts: Record<string, ChatDraft>;
@@ -4190,6 +4219,12 @@ type CanonicalSessionsState = {
 	 * for the whole message.
 	 */
 	setDraftWarmable: (warmable: boolean) => void;
+	/**
+	 * Publish whether this daemon carries `DraftModel.fast_mode`. A no-op when the
+	 * value has not moved, for the same reason its sibling above is: it is called
+	 * from an effect on every capability change.
+	 */
+	setDraftFastCarries: (carries: boolean) => void;
 	/**
 	 * Clear the refusal once its message's turn on the toast surface is over.
 	 *
@@ -5738,6 +5773,10 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			// by default, and the absent flag is what keeps every older daemon on
 			// today's wiring.
 			draftWarmable: false,
+			// Fail-closed beside it, and for the same reason: a daemon that has not
+			// advertised `draft_fast` must not receive the field, because its refusal
+			// takes the whole create body (model and effort rung) with it.
+			draftFastCarries: false,
 			// Seeded from the launch argument when there is one, so the very first
 			// render is already the requested conversation rather than the persisted
 			// one. `merge` below holds the same line against hydration, which would
@@ -6540,6 +6579,10 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			setCatalogueActivityHead: (activityHead) => {
 				if (get().catalogueActivityHead !== activityHead)
 					set({ catalogueActivityHead: activityHead });
+			},
+			setDraftFastCarries: (carries) => {
+				if (get().draftFastCarries === carries) return;
+				set({ draftFastCarries: carries });
 			},
 			setDraftWarmable: (warmable) => {
 				if (get().draftWarmable === warmable) return;
@@ -7719,14 +7762,23 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				const requestId = draft.draftRequestId ?? crypto.randomUUID();
 				if (!draft.draftRequestId)
 					get().updateDraft(key, { draftRequestId: requestId });
+				/*
+				 * Omitted when nothing was picked, exactly as `sessions.create` and the
+				 * preview omit it: the configured default is the backend's to resolve.
+				 * Filtered the same way when this backend cannot carry the dial (round
+				 * 2's F1 follow-up): the mint is a whole-body request too, so an
+				 * unfiltered one spends the keystroke on a 422.
+				 */
+				const wireModel = draftModelForWire(
+					draft.model ?? null,
+					state.draftFastCarries,
+				);
 				void desktopResult<{ draft_id: string }>({
 					op: "sessions.draft",
 					requestId,
 					cwd: state.cwd,
 					...(draft.target ? { target: draft.target } : {}),
-					// Omitted when nothing was picked, exactly as `sessions.create` and the
-					// preview omit it: the configured default is the backend's to resolve.
-					...(draft.model ? { model: draft.model } : {}),
+					...(wireModel ? { model: wireModel } : {}),
 				})
 					.then((result) => {
 						/*
