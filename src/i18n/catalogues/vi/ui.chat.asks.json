@@ -1,0 +1,14 @@
+{
+	"ui.chat.asks.context.messages_since": "{count, plural, other {# tin nhắn của bạn kể từ khi câu hỏi này được đưa ra}} (tin nhắn gần nhất lúc {time})",
+	"ui.chat.asks.dismiss.answered_in_chat.note": "bạn đã trả lời trong cuộc trò chuyện",
+	"ui.chat.asks.dismiss.answered_in_chat.title": "Đã trả lời trong cuộc trò chuyện",
+	"ui.chat.asks.dismiss.cancel": "Hủy",
+	"ui.chat.asks.dismiss.heading": "Bỏ qua câu hỏi này",
+	"ui.chat.asks.dismiss.in_flight": "Đang bỏ qua…",
+	"ui.chat.asks.dismiss.moot.note": "tác nhân sẽ không chờ câu trả lời nữa",
+	"ui.chat.asks.dismiss.moot.title": "Không còn cần nữa",
+	"ui.chat.asks.dismiss.receipt.answered_in_chat": "Đã bỏ qua — đã giải quyết trong cuộc trò chuyện",
+	"ui.chat.asks.dismiss.receipt.moot": "Đã bỏ qua — không còn cần nữa",
+	"ui.chat.asks.dismiss.refused": "Không thể bỏ qua câu hỏi này — không có gì được gửi đi.",
+	"ui.chat.asks.dismiss.trigger": "Bỏ qua…"
+}

@@ -1,0 +1,76 @@
+{
+ "auditor": "task",
+ "model": "anthropic/claude-opus-5-5",
+ "model_note": "Served model anthropic/claude-opus-5-5 for the whole round-5 pass. No provider fallback occurred. The session runtime restarted at the start of this round (Python kernel reset), but the model did not change.",
+ "instance": "pr5-20261023-r5-hi",
+ "session": "fb125765ab49",
+ "parent_session": "1cfce255 (team lopdev manager; id prefix as exposed in this session's spawn chain)",
+ "date": "2026-10-23",
+ "locale": "hi",
+ "namespace": "ui.chat.asks",
+ "round": 5,
+ "status": "passed",
+ "result": "clean",
+ "keys_audited": 12,
+ "keys_substantive": 1,
+ "keys_verified_unchanged": 11,
+ "source_head": "5de3195e703d76b8ebbb744be1e8e46e5f48faa5",
+ "previous_head": "b47b4dd8a2eabb935fe9a0f910b00387ac3109ce",
+ "scope": "PR #1363 round-5 delta audit of ui.chat.asks for hi at 5de3195e7: new key dismiss.refused (no placeholders; the panel appends the owner's refusal sentence after it with a space). Key-by-key and raw-line comparison against the prior audited head b47b4dd8a (round 3): the only change is the one added line, and the other 11 values are identical. The en catalogue changed only by the same added key; the en context changed only by the new dismiss.refused entry. ICU/CLDR (messages_since rendered at 1, 2, 5 and 1,000,000), NFC and bidi were re-run over all 12 keys. No rendered-fit claim.",
+ "sha256": {
+  "en": "c89158c597dfcf7fdab1fb7008052ef13f50be9d3f5834ba2b0d0fd9b6e1c292",
+  "hi": "48416d3c2131c435bb47bf437655c177aa798faa6f3452bb666845ec815e597a",
+  "context": "62e3940bc5374489c12b498d6b4cbee94ee0f3340ef67fc67f1a67ea4ba7697f"
+ },
+ "findings": [
+  {
+   "id": "hi-r5-i1",
+   "severity": "INFO",
+   "key": "ui.chat.asks.dismiss.refused",
+   "issue": "«यह सवाल हटाया नहीं जा सका — कुछ भी नहीं भेजा गया।» states both facts, reuses हटाना/सवाल, matches the corpus «… नहीं … जा सका — …।» pattern, and ends with a danda per the hi guide. ask-panel.tsx joins this sentence and the owner's refusal sentence with join(\" \"), so a following sentence starts after one ASCII space. That is fine for all locales (zh-CN after 。 reads acceptably; ur sentence order stays logical under dir=rtl). Code-level, not a catalogue defect. Not counted."
+  }
+ ],
+ "history": [
+  {
+   "round": 3,
+   "path": "i18n/receipts/pr5-hi-r3.json",
+   "sha256": "018b5dfb9289f087b1d32e3e55944ae88d34044eb2911b36e3db592cbb97c1b4",
+   "instance": "pr5-20261023-r3-hi",
+   "result": "clean",
+   "target_sha256": "1297fc5473edeb3d02614d67fa27c2c8f4879715bb50e2e9c4635e4976c89a41",
+   "en_sha256": "b5eb54e51a1a9e49ade6dd210c7376a1aaff0c597fb480485e0a47ffdbb9a753",
+   "context_sha256": "218cc05ebbb63f375875be61cd418caa2d0aac8043bcc9346e19b521d3d37d7c",
+   "record": "i18n/audits/evidence/hi/ui.chat.asks/pr5-20261023-r3/record.json"
+  }
+ ],
+ "validation": {
+  "icu_errors": [],
+  "plural_arms": [
+   "one",
+   "other"
+  ],
+  "cldr_categories": [
+   "one",
+   "other"
+  ],
+  "arms_match_cldr": true,
+  "placeholders_match_en": true,
+  "new_key_placeholders": [],
+  "key_parity": "12/12",
+  "nfc": true,
+  "bidi_controls": 0,
+  "ascii_apostrophes": 0,
+  "plural_samples": {
+   "1": "इस सवाल के बाद से आपका 1 संदेश (अंतिम संदेश 7:36 pm)",
+   "2": "इस सवाल के बाद से आपके 2 संदेश (अंतिम संदेश 7:36 pm)",
+   "5": "इस सवाल के बाद से आपके 5 संदेश (अंतिम संदेश 7:36 pm)",
+   "1000000": "इस सवाल के बाद से आपके 10,00,000 संदेश (अंतिम संदेश 7:36 pm)"
+  }
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5",
+  "contract_docs_I18N_md_origin_main": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+ },
+ "independence": "Independent translation audit by the `task` member of team lopdev (session fb125765ab49), delegated by the team manager; the same independent auditor as rounds 1-4. This session produced none of the reviewed copy: the new key was written by the coder in 5de3195e7. It did not edit, commit or push any catalogue, context file or ledger row, and wrote only its own receipts and evidence records. No MT, translation API or SDK was used. ICU parsing ran the worktree's existing intl-messageformat as validation."
+}
