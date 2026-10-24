@@ -42,6 +42,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { withMockKeychain } from "./chrome-keychain.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
@@ -187,15 +188,14 @@ function launchApp(mode) {
 	);
 	app = spawn(
 		electron,
-		[
+		withMockKeychain([
 			".",
 			`--user-data-dir=${USER_DATA}`,
 			`--remote-debugging-port=${devtoolsPort}`,
 			`--inspect=${inspectPort}`,
 			`--window-mode=${mode}`,
-			"--use-mock-keychain",
 			...(mode === "inactive" ? ["--window-size=600x900"] : []),
-		],
+		]),
 		{
 			env,
 			cwd: ROOT,
