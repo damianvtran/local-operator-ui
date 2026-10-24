@@ -1,0 +1,894 @@
+{
+ "schema": 1,
+ "kind": "translation-audit",
+ "locale": "hi",
+ "locale_name": "Hindi",
+ "batch": "chat (15 ui.chat.* namespaces, base 5d97575ac4)",
+ "branch": "feat/i18n-chat-hi",
+ "audited_heads": {
+  "base": "5d97575ac4388522267291ffee74d12bd9675b12",
+  "head": "6bb2437b741840395c5825dd176db1581de14be4"
+ },
+ "date": "2026-10-24",
+ "audited_at": "2026-10-24T18:44:06Z",
+ "auditor": {
+  "agent": "translation-auditor",
+  "role": "independent translation auditor (team lopdev); authored no value in this batch",
+  "team": "lopdev",
+  "session": "d27baab654de",
+  "instance": "d27baab654de",
+  "model": "radient/auto",
+  "served_model": "radient/auto",
+  "fallback_used": false,
+  "model_provenance": "Harness-reported model for this session is radient/auto; the routed provider model is not exposed to the session and is not claimed. No fallback was reported or observed.",
+  "independence": "Audit session d27baab654de is distinct from the chat translator; this session authored no catalogue value in the batch. Findings were read from the catalogue bytes and call sites at the audited head, not from translator summaries."
+ },
+ "translator": {
+  "agent": "i18n-translator (chat batch)",
+  "model": "radient/auto",
+  "session": null,
+  "provenance_source": "i18n/receipts/chat-batch-5d97575a-hi.json at 6bb2437b74; that receipt records no session id.",
+  "fallback_used": "not reported in the translator receipt"
+ },
+ "guidance": {
+  "glossary": {
+   "path": "i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "i18n/style-guides/hi.md",
+   "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "contracts": [
+   "docs/I18N.md (sha256 34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca)",
+   "AGENTS.md (sha256 b05f5fd1472fe1617783e51bc709df8e6f079a87ceda0f2ff97fff539be320af at 6bb2437b74)"
+  ]
+ },
+ "scope": "15 hi namespace files at head 6bb2437b741840395c5825dd176db1581de14be4; 1,795 values read: 1,733 batch keys + 32 namespace-completion keys in ui.chat.canonical (30) and ui.chat.run_details (2) + the 30 pre-existing hi values in ui.chat (8), ui.chat.asks (12) and ui.chat.header (10). Full namespace key sets checked: 0 missing, 0 extra.",
+ "method": [
+  "Read every scoped hi value with its English source and the English context sidecar (role, tone, length, placeholders, maxCells) at the audited head.",
+  "Byte-compared en and hi; every exact match among the scoped values classified as an IDENTICAL_OK technical/product token or as a stub. Stubs: 0.",
+  "Parsed every scoped value with @formatjs/icu-messageformat-parser; compared argument names/styles, number/date skeletons, plural/select option sets, tag names and # nodes; then rendered every plural/select message through intl-messageformat at hi counts 0, 1, 2 and 5 (168 renders, 0 errors).",
+  "Checked hi CLDR categories: every plural has one and other (plus explicit =0/=2..=6 where the source has them); 0 selects one; no few/many/zero/ordinal arms.",
+  "Compared every {placeholder}, ICU structure, markup token, backtick span and newline; checked NFC, manual bidi controls, Devanagari digits, ZWJ/ZWNJ, duplicate JSON keys, terminal punctuation and danda usage.",
+  "Scanned the full scope for glossary/register drift: session, agent, subagent/child, tool, transcript, approvals, project, model, prompt, compaction, schedule, monitor, wake, job, runtime, credential, workspace, team, skill, surface, manager; address form आप only, no तुम/तू, no '!'.",
+  "Read call sites for values whose meaning depended on composition (subagent section prefix, archive failure toast, approval instruction, turn-summary duration, device-picker heading, quote action, canonical chat).",
+  "Read the translator receipt but did not treat its summaries as evidence; all findings above were verified from catalogue bytes and code at the audited head. No rendered-frame pass and no native-speaker sign-off are claimed."
+ ],
+ "mechanical": {
+  "keys_read": 1795,
+  "batch_keys": 1733,
+  "namespace_completion_keys": 32,
+  "pre_existing_hindi_values_read": 30,
+  "key_completeness": "0 missing, 0 extra across all 15 namespaces",
+  "icu_parse_errors": 0,
+  "icu_structure_diffs": 0,
+  "plural_select_renders": 168,
+  "render_errors": 0,
+  "placeholder_differences": 0,
+  "markup_or_newline_differences": 0,
+  "backtick_differences": 0,
+  "nfc_violations": 0,
+  "bidi_controls": 0,
+  "devanagari_digits": 0,
+  "zwj_zwnj": 0,
+  "duplicate_json_keys": 0,
+  "terminal_punctuation_mismatches": 1,
+  "danda_terminated_values": 431,
+  "ascii_period_terminated_values": 1,
+  "maxcells_exceeded": 0,
+  "maxcells_keys_checked": 70,
+  "identical_to_english": 88,
+  "identical_legitimate_tokens": 88,
+  "identical_untranslated_stubs": 0,
+  "plural_messages": 42,
+  "plural_messages_with_one_and_other": 42,
+  "plural_messages_with_inappropriate_categories": 0,
+  "plural_nodes": 48,
+  "terminal_punctuation_note": "19 terminal differences were reviewed: 18 are intentional fragment-introducing colons or the source’s ASCII \"...\" rendered as U+2026; 1 is the dropped final danda in F-14."
+ },
+ "identical_summary": {
+  "count": 88,
+  "stubs": 0,
+  "classification": "All 88 are language-neutral tokens: placeholders/format skeletons, CSS/utility selectors, keyboard glyphs, product names (Local Operator), OS folder names (Program Files/ProgramData/Users), file-format acronyms (PDF), sampling parameter names (Top K/Top P, kept English by all seven locales), and composition fragments whose text is entirely {arguments}. None is an untranslated English sentence.",
+  "keys": [
+   "ui.chat.artifact_identity.title_head",
+   "ui.chat.asks.ask_panel.label_count",
+   "ui.chat.asks.ask_panel.word_question",
+   "ui.chat.asks.fleet_ask_drawer.verb_name",
+   "ui.chat.canonical.canonical_transcript.direction",
+   "ui.chat.canonical.fold_media.more",
+   "ui.chat.canonical.image_gen_card.noun_value",
+   "ui.chat.canonical.older_history_slot.min_260px_olderhistory_hidden",
+   "ui.chat.canonical.sound_batch_model.name_suffix",
+   "ui.chat.canonical.sound_player.action_label",
+   "ui.chat.canonical.supplement_row.failedcause",
+   "ui.chat.canonical.transcript_reducer.stringvalue_value",
+   "ui.chat.canvas_preview.pdf_title",
+   "ui.chat.chat_regions.ctrl_shift_l",
+   "ui.chat.chat_regions.l",
+   "ui.chat.chat_status_strip.outcome",
+   "ui.chat.composer.composer_status_row.askdeadlinesubject",
+   "ui.chat.composer.composer_status_row.goal_clear_text_label_seam_goal",
+   "ui.chat.composer.composer_status_row.goal_cleared_text_leading",
+   "ui.chat.composer.composer_status_row.goal_disclosure_label",
+   "ui.chat.composer.composer_status_row.job_actionvalue_label_seam_jobclausevalue_busiestclausevalue",
+   "ui.chat.composer.composer_status_row.loop_labelvalue_loopstatuswordvalue",
+   "ui.chat.composer.composer_status_row.monitor_actionvalue_label_seam_monitorclausevalue",
+   "ui.chat.composer.composer_status_row.plan_actionvalue_label_seam_todoclausevalue",
+   "ui.chat.composer.composer_status_row.stateword",
+   "ui.chat.composer.composer_status_row.subagent_actionvalue_label_seam_childclausevalue_busiestclausevalue",
+   "ui.chat.composer.composer_status_row.text_label_seam_loopclausevalue",
+   "ui.chat.composer.composer_status_row.wake_actionvalue_label_seam_wakeclausevalue",
+   "ui.chat.credential_capture.unconfirmed_chip",
+   "ui.chat.delete_conversation.title",
+   "ui.chat.directory.directory_indicator.c_program_files",
+   "ui.chat.directory.directory_indicator.c_program_files_x86",
+   "ui.chat.directory.directory_indicator.program_files",
+   "ui.chat.directory.directory_indicator.program_files_x86",
+   "ui.chat.directory.directory_indicator.programdata",
+   "ui.chat.directory.directory_indicator.shown_move_cost_sentence",
+   "ui.chat.directory.directory_indicator.state_label",
+   "ui.chat.directory.directory_indicator.users",
+   "ui.chat.draft_rows.draft_row_prefix_draftrowtitlevalue",
+   "ui.chat.draft_rows.value",
+   "ui.chat.header.chat_header.local_operator",
+   "ui.chat.header.chat_header_identity.current",
+   "ui.chat.header.chat_header_identity.label_closedreason",
+   "ui.chat.header.chat_header_identity.label_cuesentence",
+   "ui.chat.header.chat_header_identity.label_current",
+   "ui.chat.header.chat_header_identity.trigger_action_label",
+   "ui.chat.header.chat_header_identity.triggerlabel_label_closedreason",
+   "ui.chat.header.chat_header_identity.value_description",
+   "ui.chat.header.chat_header_identity_menu.closednoteid_title",
+   "ui.chat.hub_update_mark.detail_action",
+   "ui.chat.mermaid_diagram.var_color_warning",
+   "ui.chat.mermaid_diagram.var_color_warning_border",
+   "ui.chat.mermaid_diagram.var_color_warning_wash",
+   "ui.chat.message.attachment_frame.detail",
+   "ui.chat.message.attachment_frame.name_detail",
+   "ui.chat.message.error_block.settings_section_providers",
+   "ui.chat.message.invalid_attachment.getfilenamevalue_reason",
+   "ui.chat.message.turn_timestamp.value_full",
+   "ui.chat.message_grouping.value_value2",
+   "ui.chat.message_grouping.value_value2_b35da6",
+   "ui.chat.options.generation_settings_section.top_k",
+   "ui.chat.options.generation_settings_section.top_p",
+   "ui.chat.run_details.run_detail_mcp.label",
+   "ui.chat.run_details.run_detail_model.value",
+   "ui.chat.run_details.run_detail_monitors.healthlabel",
+   "ui.chat.run_details.run_detail_monitors.interval",
+   "ui.chat.run_details.run_detail_monitors.lastchecklabel",
+   "ui.chat.run_details.run_detail_wakes.cadence",
+   "ui.chat.run_details.run_detail_wakes.trailingclause",
+   "ui.chat.session_status.session_cost.text_cue",
+   "ui.chat.session_status.session_model.fallbackdefault",
+   "ui.chat.sidebar.chat_sidebar.all_kind",
+   "ui.chat.sidebar.chat_sidebar.clause",
+   "ui.chat.sidebar.chat_sidebar.detail",
+   "ui.chat.sidebar.chat_sidebar.displayname_name",
+   "ui.chat.sidebar.chat_sidebar.footname_section_grown_hint",
+   "ui.chat.sidebar.chat_sidebar.pin_label",
+   "ui.chat.sidebar.chat_sidebar.role_menuitem",
+   "ui.chat.sidebar.chat_sidebar.silent_remedy",
+   "ui.chat.sidebar.chat_sidebar_view.label_position",
+   "ui.chat.sidebar.chat_sidebar_view.section_grown_hint_key",
+   "ui.chat.slash_commands.x",
+   "ui.chat.trace.receipt_row_model.base",
+   "ui.chat.trace.trace_fold.verb_object",
+   "ui.chat.trace.turn_summary.receipts",
+   "ui.chat.trace.turn_summary.value",
+   "ui.chat.trace.turn_summary.value_75ced7",
+   "ui.chat.undo_toasts.detail"
+  ]
+ },
+ "counts": {
+  "blocker": 0,
+  "major": 5,
+  "minor": 15,
+  "nit": 2,
+  "total_findings": 22
+ },
+ "overall_verdict": "changes_requested",
+ "verdict_reason": "No blockers: all 1,795 values are present, every placeholder/ICU arm/markup token survives, hi plural categories are correct, and there are no stubs. Five majors are visible-copy defects that need correction before the namespace is ledger-eligible: the subagent section prefix, the archive-failure toast composition, the quote action's false friend, the reversed MCP key-sharing sentence, and the approval instruction naming English buttons that are not on screen.",
+ "namespaces": {
+  "ui.chat": {
+   "batch_keys": 524,
+   "head_keys": 532,
+   "sha256": {
+    "en": "dc5765d20ff846c61f3fe8953e69524393561bc2a39f89fa419958d4e4a67346",
+    "target": "658b06fd4af4eb9008ba3d87bd6bce630b62f5349d222adedbddfd7e282b35c5",
+    "context": "f95436a7c1e91f17b47a5f45059f58ef63749cedef54b02d10b29260477be426"
+   },
+   "identical_values": 37,
+   "status": "changes_requested",
+   "finding_ids": [
+    "F-02",
+    "F-03",
+    "F-06",
+    "F-07",
+    "F-08",
+    "F-15",
+    "F-16",
+    "F-18"
+   ]
+  },
+  "ui.chat.aside": {
+   "batch_keys": 35,
+   "head_keys": 35,
+   "sha256": {
+    "en": "d8ce04c8e909a73f3050588b2b562b12db3840ae1f4231a66ef3eb5ac76ed1b6",
+    "target": "4d6c61c4e3237156978d00e9f83fde91b3468ff286c380d69b4f760fc79c7bf0",
+    "context": "522fcbc0c965224e7d4fb8cb8200e7c68889c9ee73d073b09c6cb2af827b8431"
+   },
+   "identical_values": 0,
+   "status": "clean",
+   "finding_ids": []
+  },
+  "ui.chat.asks": {
+   "batch_keys": 89,
+   "head_keys": 101,
+   "sha256": {
+    "en": "f5017d10d314fc9e3e94eeff2d5067c559e97ba0c6ffcef4e8ed9d1c39cf67ab",
+    "target": "0e996bb18011a96c1a45ce15e83119dcf60b411ffc7257ae4de4468a520e25ad",
+    "context": "0e1f544932e7c9c6c94bbb0d4e2066910d80e33060ad23bbbb57d5bb9c1b637c"
+   },
+   "identical_values": 3,
+   "status": "clean-with-findings",
+   "finding_ids": [
+    "F-09"
+   ]
+  },
+  "ui.chat.at": {
+   "batch_keys": 11,
+   "head_keys": 11,
+   "sha256": {
+    "en": "685a75115b95770d8d74cc43c2f250c53bed311c0d117cf51849f72041533694",
+    "target": "839499ee6f5560813e9b38dc04457389341a4a8f4ab488de589d788de074c19c",
+    "context": "da529439f1aa5970aff5b833b40900524c2cfd465abe96296e3b9cecf5ec555e"
+   },
+   "identical_values": 0,
+   "status": "clean",
+   "finding_ids": []
+  },
+  "ui.chat.canonical": {
+   "batch_keys": 267,
+   "head_keys": 297,
+   "sha256": {
+    "en": "522e7fced024ec756b4b93b21952c4abfb232278a3ca32bba67b45978749eb6d",
+    "target": "47d8e12da2b7ea6418c51d6ac1ce5da379b5f3d85d448f710185a40f984997e4",
+    "context": "af353a188112ef28df7dfda8c7139fa5bd33506a40b112392e1e40fbe32116f2"
+   },
+   "identical_values": 8,
+   "status": "changes_requested",
+   "finding_ids": [
+    "F-03",
+    "F-06",
+    "F-10",
+    "F-19",
+    "F-22"
+   ]
+  },
+  "ui.chat.canvas_preview": {
+   "batch_keys": 2,
+   "head_keys": 2,
+   "sha256": {
+    "en": "4a29d028e7727502fbefd86b995750910ca3760879769ffa1fc537e5893920a9",
+    "target": "7079cb07771512792b2e8e9b2e5f438ffaa149fac8c3809f277c9b13226d961e",
+    "context": "5f336900e740bf4ebc7819837676fc2eeffe6deb69b8181ebc440e962d580a06"
+   },
+   "identical_values": 1,
+   "status": "clean-with-findings",
+   "finding_ids": [
+    "F-06"
+   ]
+  },
+  "ui.chat.credential_capture": {
+   "batch_keys": 18,
+   "head_keys": 18,
+   "sha256": {
+    "en": "1776a41f5dfa3335b5e390e85870cb55756e25c6a2439cd3f42ea4c864515bdd",
+    "target": "299b0313910188380bae458aedee67b9e496d03cbb1ca38b5a269cdb632e0514",
+    "context": "bf6e3bb8cd70e39cba3aad66b0d92aa38ebad880ac49405fb1affd032f6f3b1f"
+   },
+   "identical_values": 1,
+   "status": "clean",
+   "finding_ids": []
+  },
+  "ui.chat.directory": {
+   "batch_keys": 42,
+   "head_keys": 42,
+   "sha256": {
+    "en": "57540488fb400a9a4ac1040c7d7f91f19f25ab313ec87a50ef527da442d3ec6b",
+    "target": "cb70a32c5fba43d809a7b04786716185ff67dda9c6abca075cb8b4a10cc3d834",
+    "context": "4bfdbc219bccc88fbdcaf3c62897b168d5604d5acbbb5f70f040c95c941c2daa"
+   },
+   "identical_values": 8,
+   "status": "clean-with-findings",
+   "finding_ids": [
+    "F-08"
+   ]
+  },
+  "ui.chat.header": {
+   "batch_keys": 62,
+   "head_keys": 72,
+   "sha256": {
+    "en": "ff03f6ca7b3206e77fc260116d2b540cc9f211ea37436863b874770e917158d8",
+    "target": "31759b89cdd26e67af66ca9bad85b5a3730f4494f92c6d10a5c2ad66b21d02c7",
+    "context": "0d601a99861fc8b23207f117b90b697ba88ddd4f6419a68021f34c177158ea2e"
+   },
+   "identical_values": 9,
+   "status": "clean-with-findings",
+   "finding_ids": [
+    "F-11"
+   ]
+  },
+  "ui.chat.message": {
+   "batch_keys": 55,
+   "head_keys": 55,
+   "sha256": {
+    "en": "95d7b60b2cb1bdc37648cfa896856ce53724e300ed4a6b0448d7562aad452a5a",
+    "target": "905e5893a7e3e4bc8618a8b771997df5e6fbdc560d99ce0c37c830d76cd6ca5a",
+    "context": "0278baa63867980cd08d18e47e282af12a6330b7c6a785f0157e7a01cceb4230"
+   },
+   "identical_values": 5,
+   "status": "clean",
+   "finding_ids": []
+  },
+  "ui.chat.options": {
+   "batch_keys": 33,
+   "head_keys": 33,
+   "sha256": {
+    "en": "fdfb1ceae54aa5270dd76b67748f56fa14e5d3f47d7770dad8eba755995a5a79",
+    "target": "38fc5be447259fa40d5372aeb3835e8b301865aa7c0829cbb5b56d62ee5c442f",
+    "context": "4609f41205d7d0b14dd07e98a629b9fb40f74f870106e78b30a3b210eb7f13db"
+   },
+   "identical_values": 2,
+   "status": "clean-with-findings",
+   "finding_ids": [
+    "F-17"
+   ]
+  },
+  "ui.chat.run_details": {
+   "batch_keys": 152,
+   "head_keys": 154,
+   "sha256": {
+    "en": "daf3ddc7d9c0904642876bf3db0746b6c0c68c5fe3b87a1a6730b07f67c90c2f",
+    "target": "f673c42cef2a0a36e2ffd5a9717e9af3ca960d50d51b74d8f32a3c6d89de8326",
+    "context": "dcb2cf6f636814a1866186e8864fd6817033fa8de027049b365f362c53b5d384"
+   },
+   "identical_values": 7,
+   "status": "changes_requested",
+   "finding_ids": [
+    "F-01",
+    "F-04",
+    "F-06",
+    "F-08",
+    "F-21"
+   ]
+  },
+  "ui.chat.session_status": {
+   "batch_keys": 162,
+   "head_keys": 162,
+   "sha256": {
+    "en": "05a6e2dd52cd41fb90dbb6756bb8a8f51c5d22e3769edb3fd6228a0d9a059198",
+    "target": "d10c68a8cde89f1af8034ff326b79b0b40e137960c3c11674d85bc8b50b421b1",
+    "context": "91544a1523e2ccd3a50041e3530ded39255a614f571c50264991ed8e92ca90e7"
+   },
+   "identical_values": 2,
+   "status": "clean-with-findings",
+   "finding_ids": [
+    "F-12",
+    "F-13",
+    "F-14"
+   ]
+  },
+  "ui.chat.skill": {
+   "batch_keys": 7,
+   "head_keys": 7,
+   "sha256": {
+    "en": "919b6643e792d02ed270911df96d96da277bba5b5b91a2d04fac6cf044acfc10",
+    "target": "d9fb6bf3e20d555d62cb8f94a3877a37f7ebd620f553a3ac0652f20895455e88",
+    "context": "012b41d3b048ae9575012522051687b87e3b3a8189dab9121985052ea04f965d"
+   },
+   "identical_values": 0,
+   "status": "clean",
+   "finding_ids": []
+  },
+  "ui.chat.trace": {
+   "batch_keys": 274,
+   "head_keys": 274,
+   "sha256": {
+    "en": "52a0fa5ed78ec2f3bbedf5b67f7abf3cc8d72c7a66ff4383d182358e242fb848",
+    "target": "d387cb832fe06fc677165c92f093dc87e8d93fbe981d176265a6d8e734ea5af8",
+    "context": "b54b6acb4399743d207d8a793080555f1cab291761de90cf3e6e9f3ce9c70016"
+   },
+   "identical_values": 5,
+   "status": "changes_requested",
+   "finding_ids": [
+    "F-05",
+    "F-06",
+    "F-20"
+   ]
+  }
+ },
+ "findings": [
+  {
+   "id": "F-01",
+   "severity": "major",
+   "namespaces": [
+    "ui.chat.run_details"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.run_details.run_child_subagents.subagents_of",
+     "current": "के उप-एजेंट",
+     "proposed": "उप-एजेंट:"
+    }
+   ],
+   "reason": "The value is a bare prefix concatenated before the owner name (run-child-subagents.tsx renders <span>prefix</span><span>{ownerLabel}</span>), so 'के उप-एजेंट' renders as 'के उप-एजेंट Alice' — a postposition stranded before its noun. 'उप-एजेंट:' reads 'उप-एजेंट: Alice' and keeps the section label's meaning."
+  },
+  {
+   "id": "F-02",
+   "severity": "major",
+   "namespaces": [
+    "ui.chat"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.undo_toasts.archive_failed",
+     "current": "{action} “{title}” नहीं हो सका।{detail}",
+     "proposed": "“{title}” को {action} नहीं किया जा सका।{detail}"
+    },
+    {
+     "key": "ui.chat.undo_toasts.archive_action",
+     "current": "संग्रहित करें",
+     "proposed": "संग्रहित"
+    },
+    {
+     "key": "ui.chat.undo_toasts.unarchive_action",
+     "current": "संग्रह हटाएँ",
+     "proposed": "संग्रह से बाहर"
+    }
+   ],
+   "reason": "The toast composes 'Could not {action} “title”' with {action} = the imperative 'संग्रहित करें'/'संग्रह हटाएँ'; the Hindi string yields 'संग्रहित करें “X” नहीं हो सका', an imperative followed by a passive failure. The proposed template plus verbal-noun actions reads '“X” को संग्रहित नहीं किया जा सका'."
+  },
+  {
+   "id": "F-03",
+   "severity": "major",
+   "namespaces": [
+    "ui.chat",
+    "ui.chat.canonical"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.link_actions.quote",
+     "current": "कोट करें",
+     "proposed": "उद्धृत करें"
+    },
+    {
+     "key": "ui.chat.canonical.transcript.quote",
+     "current": "कोट करें",
+     "proposed": "उद्धृत करें"
+    }
+   ],
+   "reason": "'कोट करें' uses कोट (a coat) as a transliteration of 'quote'; it is a false friend, not the Hindi verb. All seven other locales translate the action (fr Citer, es Citar, ru Цитировать, ur اقتباس)."
+  },
+  {
+   "id": "F-04",
+   "severity": "major",
+   "namespaces": [
+    "ui.chat.run_details"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.run_details.mcp_key_dialog.saved_to_the_encrypted_secret_store_then_this_server_is",
+     "current": "एन्क्रिप्टेड सीक्रेट स्टोर में सहेजा जाता है, फिर यह सर्वर दोबारा कनेक्ट होता है। ये कुंजियाँ अन्य सर्वर और सत्र भी साझा कर सकते हैं।",
+     "proposed": "एन्क्रिप्टेड सीक्रेट स्टोर में सहेजा जाता है, फिर यह सर्वर दोबारा कनेक्ट होता है। इन कुंजियों को अन्य सर्वर और सत्र भी साझा कर सकते हैं।"
+    }
+   ],
+   "reason": "The English says other servers/sessions may share the keys; the current Hindi says the keys may share other servers and sessions (reversed agency), and 'कुंजियाँ ... कर सकते हैं' also disagrees in gender/gender-number with feminine plural कुंजियाँ. The proposed sentence keeps the keys as object."
+  },
+  {
+   "id": "F-05",
+   "severity": "major",
+   "namespaces": [
+    "ui.chat.trace"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.trace.question_dock.choose_approve_or_deny_above_type_yes_no_1_or",
+     "current": "ऊपर Approve या Deny चुनें, yes, no, 1 या 2 लिखकर भेजें, या टर्न रोकने के लिए संदेश बॉक्स में Escape दबाएँ।",
+     "proposed": "ऊपर “स्वीकृति दें” या “अस्वीकार करें” चुनें, yes, no, 1 या 2 लिखकर भेजें, या टर्न रोकने के लिए संदेश बॉक्स में Escape दबाएँ।"
+    }
+   ],
+   "reason": "The buttons above the sentence are localized through ui.chat.approval_words.approve/deny ('स्वीकृति दें'/'अस्वीकार करें'), so 'Approve या Deny' names labels the reader cannot see. Every other chat locale translates the two names here."
+  },
+  {
+   "id": "F-06",
+   "severity": "minor",
+   "namespaces": [
+    "ui.chat",
+    "ui.chat.canonical",
+    "ui.chat.canvas_preview",
+    "ui.chat.run_details",
+    "ui.chat.trace"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.link_actions.too_large_for_the_canvas_preview",
+     "current": "कैनवास पूर्वावलोकन के लिए बहुत बड़ा",
+     "proposed": "कैनवास प्रीव्यू के लिए बहुत बड़ा"
+    },
+    {
+     "key": "ui.chat.link_actions.too_large_for_the_canvas_preview_so_open_uses_the",
+     "current": "कैनवास पूर्वावलोकन के लिए बहुत बड़ा, इसलिए खोलने पर डिफ़ॉल्ट ऐप इस्तेमाल होगा",
+     "proposed": "कैनवास प्रीव्यू के लिए बहुत बड़ा, इसलिए खोलने पर डिफ़ॉल्ट ऐप इस्तेमाल होगा"
+    },
+    {
+     "key": "ui.chat.run_details.run_child_reader.result_preview",
+     "current": "परिणाम पूर्वावलोकन",
+     "proposed": "परिणाम प्रीव्यू"
+    },
+    {
+     "key": "ui.chat.trace.tool_row_model.previewed_rename",
+     "current": "नाम बदलने का पूर्वावलोकन किया",
+     "proposed": "नाम बदलने का प्रीव्यू किया"
+    },
+    {
+     "key": "ui.chat.trace.tool_row_model.previewing_rename",
+     "current": "नाम बदलने का पूर्वावलोकन कर रहा है",
+     "proposed": "नाम बदलने का प्रीव्यू कर रहा है"
+    }
+   ],
+   "reason": "One English term, two Hindi terms in the same batch: प्रीव्यू (ui.chat.canvas_preview.html_title, ui.chat.canonical.supplement.preview_unavailable) and पूर्वावलोकन (the five keys above). Existing hi catalogues use प्रीव्यू 18 times and पूर्वावलोकन 7, so the shorter, dominant term is the recommended unification; record the choice in the hi guide."
+  },
+  {
+   "id": "F-07",
+   "severity": "minor",
+   "namespaces": [
+    "ui.chat"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.chat_page.this_legacy_link_has_no_canonical_chat_its_saved_history",
+     "current": "इस पुराने लिंक की कोई canonical चैट नहीं है। इसका सहेजा इतिहास नहीं बदला है।",
+     "proposed": "इस पुराने लिंक की कोई कैनोनिकल चैट नहीं है। इसका सहेजा इतिहास नहीं बदला है।"
+    },
+    {
+     "key": "ui.chat.chat_page.update_the_backend_to_use_canonical_chats_your_existing_histories",
+     "current": "canonical चैट इस्तेमाल करने के लिए बैकएंड अपडेट करें। आपके मौजूदा इतिहास नहीं बदले हैं।",
+     "proposed": "कैनोनिकल चैट इस्तेमाल करने के लिए बैकएंड अपडेट करें। आपके मौजूदा इतिहास नहीं बदले हैं।"
+    }
+   ],
+   "reason": "'canonical' is split between the Devanagari कैनोनिकल (chat_page.canonical_chat, sidebar_catalogue_gate.backend_notice) and untouched Latin canonical (the two keys above). Other locales translate it consistently (ru Канонический, ur کینونیکل); unify on कैनोनिकल or record the kept-English call."
+  },
+  {
+   "id": "F-08",
+   "severity": "minor",
+   "namespaces": [
+    "ui.chat",
+    "ui.chat.directory",
+    "ui.chat.run_details"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.at_picker.directory",
+     "current": "डायरेक्टरी",
+     "proposed": "फ़ोल्डर"
+    },
+    {
+     "key": "ui.chat.composer.tips.type_to_point_the_agent_at_a_file_in_this",
+     "current": "इस डायरेक्टरी की फ़ाइल की ओर एजेंट को इंगित करने के लिए @ टाइप करें",
+     "proposed": "इस फ़ोल्डर की फ़ाइल की ओर एजेंट को इंगित करने के लिए @ टाइप करें"
+    },
+    {
+     "key": "ui.chat.directory.directory_indicator.browse_for_directory",
+     "current": "डायरेक्टरी ब्राउज़ करें…",
+     "proposed": "फ़ोल्डर ब्राउज़ करें…"
+    },
+    {
+     "key": "ui.chat.directory.directory_indicator.custom_directory",
+     "current": "कस्टम डायरेक्टरी",
+     "proposed": "कस्टम फ़ोल्डर"
+    },
+    {
+     "key": "ui.chat.directory.directory_indicator.default_directories",
+     "current": "डिफ़ॉल्ट डायरेक्टरियाँ",
+     "proposed": "डिफ़ॉल्ट फ़ोल्डर"
+    },
+    {
+     "key": "ui.chat.directory.directory_indicator.enter_directory_path",
+     "current": "डायरेक्टरी का पाथ दर्ज करें",
+     "proposed": "फ़ोल्डर का पाथ दर्ज करें"
+    },
+    {
+     "key": "ui.chat.directory.directory_indicator.no_recent_directories",
+     "current": "कोई हालिया डायरेक्टरी नहीं",
+     "proposed": "कोई हालिया फ़ोल्डर नहीं"
+    },
+    {
+     "key": "ui.chat.directory.directory_indicator.recent_directories",
+     "current": "हालिया डायरेक्टरियाँ",
+     "proposed": "हालिया फ़ोल्डर"
+    },
+    {
+     "key": "ui.chat.directory.directory_indicator.shown_is_not_a_directory_on_this_computer",
+     "current": "{shown} इस कंप्यूटर पर डायरेक्टरी नहीं है",
+     "proposed": "{shown} इस कंप्यूटर पर फ़ोल्डर नहीं है"
+    },
+    {
+     "key": "ui.chat.directory.directory_indicator.trimmed_is_not_a_directory_on_this_computer",
+     "current": "{trimmed} इस कंप्यूटर पर डायरेक्टरी नहीं है",
+     "proposed": "{trimmed} इस कंप्यूटर पर फ़ोल्डर नहीं है"
+    },
+    {
+     "key": "ui.chat.run_details.run_child_reader.this_subagents_session_directory_is_no_longer_on_disk",
+     "current": "इस उप-एजेंट की सत्र डायरेक्टरी अब डिस्क पर नहीं है।",
+     "proposed": "इस उप-एजेंट का सत्र फ़ोल्डर अब डिस्क पर नहीं है।"
+    }
+   ],
+   "reason": "English 'directory' is both डायरेक्टरी and फ़ोल्डर, and the same widget mixes them ('Enter directory path' = डायरेक्टरी का पाथ beside 'Working directory path' = कार्य फ़ोल्डर का पाथ). Existing hi copy uses फ़ोल्डर 21 times and डायरेक्टरी once outside this batch, so फ़ोल्डर is the consistent term."
+  },
+  {
+   "id": "F-09",
+   "severity": "minor",
+   "namespaces": [
+    "ui.chat.asks"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.asks.dismiss.receipt.answered_in_chat",
+     "current": "हटाया गया — चैट में तय हो गया",
+     "proposed": "हटाया गया — चैट में निपट गया"
+    },
+    {
+     "key": "ui.chat.asks.queue.settled_in_chat",
+     "current": "चैट में तय हो गया",
+     "proposed": "चैट में निपट गया"
+    }
+   ],
+   "reason": "'settled' is निपट throughout the ask panel ('निपटे', 'सभी सवाल निपट गए', 'निपट चुका था') but these two status lines use तय हो गया, which means 'decided' rather than resolved. Unify on निपट."
+  },
+  {
+   "id": "F-10",
+   "severity": "minor",
+   "namespaces": [
+    "ui.chat.canonical"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.canonical.trace_fold_model.todo_read",
+     "current": "todo पढ़ना",
+     "proposed": "टूडू पढ़ना"
+    },
+    {
+     "key": "ui.chat.canonical.trace_fold_model.todo_reads",
+     "current": "todo पढ़ना",
+     "proposed": "टूडू पढ़ना"
+    },
+    {
+     "key": "ui.chat.canonical.trace_fold_model.todo_update",
+     "current": "todo अपडेट",
+     "proposed": "टूडू अपडेट"
+    },
+    {
+     "key": "ui.chat.canonical.trace_fold_model.todo_updates",
+     "current": "todo अपडेट",
+     "proposed": "टूडू अपडेट"
+    }
+   ],
+   "reason": "These four trace-fold labels leave 'todo' in Latin while the rest of the batch uses टूडू (9 values, including To-dos, to-do open, read/updated todos). Same term, same screen family."
+  },
+  {
+   "id": "F-11",
+   "severity": "minor",
+   "namespaces": [
+    "ui.chat.header"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.header.chat_header_identity_menu_model.needs_a_delegating_profile_here",
+     "current": "यहाँ काम सौंपने वाला प्रोफ़ाइल चाहिए।",
+     "proposed": "यहाँ काम सौंपने वाली प्रोफ़ाइल चाहिए।"
+    },
+    {
+     "key": "ui.chat.header.chat_header_identity_menu_model.no_profile_can_take_the_seat_switch_the_team",
+     "current": "कोई प्रोफ़ाइल यह सीट नहीं ले सकता — टीम बदलें।",
+     "proposed": "कोई प्रोफ़ाइल यह सीट नहीं ले सकती — टीम बदलें।"
+    },
+    {
+     "key": "ui.chat.header.chat_header_identity_menu_model.no_profile_here_can_take_the_seat_clear_the_search",
+     "current": "यहाँ कोई प्रोफ़ाइल यह सीट नहीं ले सकता — खोज साफ़ करें, या टीम बदलें।",
+     "proposed": "यहाँ कोई प्रोफ़ाइल यह सीट नहीं ले सकती — खोज साफ़ करें, या टीम बदलें।"
+    }
+   ],
+   "reason": "प्रोफ़ाइल is feminine; the three seat-picker sentences use masculine वाला/सकता, producing visible gender disagreement. The proposed forms agree."
+  },
+  {
+   "id": "F-12",
+   "severity": "minor",
+   "namespaces": [
+    "ui.chat.session_status"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.session_status.chat_device_model.move_this_conversation_to",
+     "current": "इस बातचीत को यहाँ ले जाएँ:",
+     "proposed": "इस बातचीत को कहाँ ले जाएँ:"
+    },
+    {
+     "key": "ui.chat.session_status.chat_device_model.start_the_conversation_on",
+     "current": "बातचीत यहाँ शुरू करें:",
+     "proposed": "बातचीत कहाँ शुरू करें:"
+    }
+   ],
+   "reason": "These are headings above a device picker, not sentences about the current device; 'यहाँ' (here) names the wrong place. 'कहाँ' asks the destination the list answers, matching the English 'to'/'on' heading."
+  },
+  {
+   "id": "F-13",
+   "severity": "minor",
+   "namespaces": [
+    "ui.chat.session_status"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.session_status.session_context.no_reading_yet_the_first_turn_reports_what_the_request",
+     "current": "अभी कोई रीडिंग नहीं। पहला टर्न बताता है कि अनुरोध में क्या गया।",
+     "proposed": "अभी कोई रीडिंग नहीं। पहला टर्न बताता है कि अनुरोध में क्या शामिल था।"
+    }
+   ],
+   "reason": "'अनुरोध में क्या गया' is incomplete ('what went in the request' with no verb complement); 'क्या शामिल था' states what the request carried, as the English does."
+  },
+  {
+   "id": "F-14",
+   "severity": "minor",
+   "namespaces": [
+    "ui.chat.session_status"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.session_status.chat_device_model.this_conversation_runs_on_name_which_did_not_answer_the",
+     "current": "यह बातचीत {name} पर चलती है, जिसने पिछली रीडिंग का जवाब नहीं दिया{because}",
+     "proposed": "यह बातचीत {name} पर चलती है, जिसने पिछली रीडिंग का जवाब नहीं दिया{because}।"
+    }
+   ],
+   "reason": "The English puts the full stop after {because}; the Hindi value ends at the placeholder, so the sentence loses its terminal danda whenever a reason is rendered (and also when it is empty)."
+  },
+  {
+   "id": "F-15",
+   "severity": "minor",
+   "namespaces": [
+    "ui.chat"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.usage.unlimited",
+     "current": "भुगतान वाला असीमित कोटा",
+     "proposed": "असीमित सशुल्क कोटा"
+    },
+    {
+     "key": "ui.chat.usage.continue",
+     "current": "शामिल कोटा इस्तेमाल हो गया; आगे क्रेडिट इस्तेमाल होंगे।",
+     "proposed": "प्लान में शामिल कोटा खत्म हो गया; अब क्रेडिट लगेंगे।"
+    }
+   ],
+   "reason": "'भुगतान वाला असीमित कोटा' literally says 'the paying unlimited quota' and 'शामिल कोटा' says 'included quota' without saying included in what; both are calques. The proposed wording names the paid allowance and the plan-included quota naturally."
+  },
+  {
+   "id": "F-16",
+   "severity": "minor",
+   "namespaces": [
+    "ui.chat"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.sidebar.chat_sidebar.new_agent_or_team",
+     "current": "नया एजेंट या टीम",
+     "proposed": "नया एजेंट या नई टीम"
+    }
+   ],
+   "reason": "The single adjective नया agrees with एजेंट but not with feminine टीम; repeating the adjective makes both nouns agree."
+  },
+  {
+   "id": "F-17",
+   "severity": "minor",
+   "namespaces": [
+    "ui.chat.options"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.options.generation_settings_section.random_number_seed_for_deterministic_generation",
+     "current": "निश्चित जनरेशन के लिए रैंडम नंबर सीड",
+     "proposed": "निश्चित जनरेशन के लिए यादृच्छिक संख्या सीड"
+    }
+   ],
+   "reason": "'random' appears as रैंडम here and यादृच्छिकता in controls_randomness_in_responses in the same settings section. Unify on यादृच्छिक (or record रैंडम as the settled loan)."
+  },
+  {
+   "id": "F-18",
+   "severity": "minor",
+   "namespaces": [
+    "ui.chat"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.radient_session_issue.settings_under_providers_is_where_it_can_be_cleared",
+     "current": "इसे सेटिंग्स में, Providers के अंतर्गत साफ़ किया जा सकता है।",
+     "proposed": "इसे सेटिंग्स में, मॉडल प्रोवाइडर के अंतर्गत साफ़ किया जा सकता है।"
+    }
+   ],
+   "reason": "The Settings navigation item is localized as मॉडल प्रोवाइडर (ui.settings.navigation.settings_sidebar.model_providers), so sending the reader to 'Providers' names a label the Hindi UI does not show."
+  },
+  {
+   "id": "F-19",
+   "severity": "minor",
+   "namespaces": [
+    "ui.chat.canonical"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.canonical.image_gen_card.edit_and_restart",
+     "current": "संपादित करें और फिर शुरू करें",
+     "proposed": "बदलें और फिर चलाएँ"
+    }
+   ],
+   "reason": "The label is a button with no maxCells budget and grows from 16 to 29 characters; the shorter proposed phrasing is 21 characters and keeps 'edit' + 'run again'. Flag for a rendered-width check if the button is pinned."
+  },
+  {
+   "id": "F-20",
+   "severity": "minor",
+   "namespaces": [
+    "ui.chat.trace"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.trace.turn_summary.took",
+     "current": "लिया",
+     "proposed": "समय"
+    },
+    {
+     "key": "ui.chat.trace.turn_summary.completed",
+     "current": "पूरा",
+     "proposed": "पूर्ण"
+    }
+   ],
+   "reason": "turn-summary.tsx renders {took}{formatDuration(durationS)} with no separator, so 'लिया' precedes the duration ('लिया 12s') although Hindi puts the verb after its object; 'समय' reads 'समय 12s'. The sr-only trailing 'पूरा' also disagrees with feminine कार्रवाई in the accessible name; invariant 'पूर्ण' avoids it."
+  },
+  {
+   "id": "F-21",
+   "severity": "nit",
+   "namespaces": [
+    "ui.chat.run_details"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.run_details.run_detail_monitors.cancel_refused",
+     "current": "रद्द करने से मना किया गया",
+     "proposed": "रद्द नहीं किया जा सका"
+    }
+   ],
+   "reason": "'रद्द करने से मना किया गया' is a literal 'was refused from cancelling'; the state is that the cancellation did not succeed. The proposed sentence states the outcome."
+  },
+  {
+   "id": "F-22",
+   "severity": "nit",
+   "namespaces": [
+    "ui.chat.canonical"
+   ],
+   "instances": [
+    {
+     "key": "ui.chat.canonical.canonical_transcript.nothing_composed",
+     "current": "कुछ रचा नहीं गया",
+     "proposed": "कुछ भी नहीं बना"
+    },
+    {
+     "key": "ui.chat.canonical.canonical_transcript.bytes_composed",
+     "current": "{bytes} रचा गया",
+     "proposed": "{bytes} बनाया गया"
+    }
+   ],
+   "reason": "'रचा' is literary 'composed (a poem/work)'; in this UI 'composed' means the message content was built. 'बना/बनाया' is the ordinary register used elsewhere in the batch."
+  }
+ ]
+}
