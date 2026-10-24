@@ -1,0 +1,6 @@
+{
+	"ui.hub.download.collision": "Đã tải xuống “{name}”. Bạn đã có tác nhân tên “{collision}”, nên giờ có hai tác nhân cùng tên và tác nhân nào cũng có thể được chọn. Hãy đổi tên một trong hai.",
+	"ui.hub.download.fallback_agent": "Tác nhân",
+	"ui.hub.download.renamed": "Đã tải xuống “{name}” — bạn đã có tác nhân tên “{previous}”.",
+	"ui.hub.download.succeeded": "Đã tải xuống “{name}” từ trung tâm."
+}

@@ -420,13 +420,20 @@ import urUiShellRail from "./catalogues/ur/ui.shell.rail.json";
 import urUiTeamBridge from "./catalogues/ur/ui.teamBridge.json";
 import viUiAgentMessages from "./catalogues/vi/ui.agentMessages.json";
 import viUiAgentMessagesSettings from "./catalogues/vi/ui.agentMessages.settings.json";
+import viUiAgentsConfig from "./catalogues/vi/ui.agents.config.json";
+import viUiAgentsDetail from "./catalogues/vi/ui.agents.detail.json";
 import viUiAgentsDialogs from "./catalogues/vi/ui.agents.dialogs.json";
+import viUiAgentsEditor from "./catalogues/vi/ui.agents.editor.json";
 import viUiAgents from "./catalogues/vi/ui.agents.json";
 import viUiAgentsModels from "./catalogues/vi/ui.agents.models.json";
 import viUiAgentsNavigation from "./catalogues/vi/ui.agents.navigation.json";
+import viUiAgentsPage from "./catalogues/vi/ui.agents.page.json";
+import viUiAgentsPublication from "./catalogues/vi/ui.agents.publication.json";
 import viUiAgentsRefusals from "./catalogues/vi/ui.agents.refusals.json";
 import viUiAgentsSettings from "./catalogues/vi/ui.agents.settings.json";
 import viUiAgentsStarters from "./catalogues/vi/ui.agents.starters.json";
+import viUiAgentsTeam from "./catalogues/vi/ui.agents.team.json";
+import viUiAgentsUpload from "./catalogues/vi/ui.agents.upload.json";
 import viUiBrowserChrome from "./catalogues/vi/ui.browser.chrome.json";
 import viUiBrowser from "./catalogues/vi/ui.browser.json";
 import viUiCanvas from "./catalogues/vi/ui.canvas.json";
@@ -453,13 +460,17 @@ import viUiCommonLoading from "./catalogues/vi/ui.common.loading.json";
 import viUiCommonModels from "./catalogues/vi/ui.common.models.json";
 import viUiCommonUpdates from "./catalogues/vi/ui.common.updates.json";
 import viUiConsole from "./catalogues/vi/ui.console.json";
+import viUiHubAgents from "./catalogues/vi/ui.hub.agents.json";
 import viUiHubComments from "./catalogues/vi/ui.hub.comments.json";
+import viUiHubDownload from "./catalogues/vi/ui.hub.download.json";
 import viUiHub from "./catalogues/vi/ui.hub.json";
 import viUiHubTaxonomy from "./catalogues/vi/ui.hub.taxonomy.json";
+import viUiHubTeams from "./catalogues/vi/ui.hub.teams.json";
 import viUiInstaller from "./catalogues/vi/ui.installer.json";
 import viUiLibrary from "./catalogues/vi/ui.library.json";
 import viUiMesh from "./catalogues/vi/ui.mesh.json";
 import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
+import viUiOnboardingTour from "./catalogues/vi/ui.onboarding.tour.json";
 import viUiProjects from "./catalogues/vi/ui.projects.json";
 import viUiSchedules from "./catalogues/vi/ui.schedules.json";
 import viUiSettingsAccount from "./catalogues/vi/ui.settings.account.json";
@@ -963,13 +974,20 @@ export const bundledCatalogues: Readonly<
 	vi: {
 		...viUiAgentMessages,
 		...viUiAgentMessagesSettings,
+		...viUiAgentsConfig,
+		...viUiAgentsDetail,
 		...viUiAgentsDialogs,
+		...viUiAgentsEditor,
 		...viUiAgents,
 		...viUiAgentsModels,
 		...viUiAgentsNavigation,
+		...viUiAgentsPage,
+		...viUiAgentsPublication,
 		...viUiAgentsRefusals,
 		...viUiAgentsSettings,
 		...viUiAgentsStarters,
+		...viUiAgentsTeam,
+		...viUiAgentsUpload,
 		...viUiBrowserChrome,
 		...viUiBrowser,
 		...viUiCanvas,
@@ -996,13 +1014,17 @@ export const bundledCatalogues: Readonly<
 		...viUiCommonModels,
 		...viUiCommonUpdates,
 		...viUiConsole,
+		...viUiHubAgents,
 		...viUiHubComments,
+		...viUiHubDownload,
 		...viUiHub,
 		...viUiHubTaxonomy,
+		...viUiHubTeams,
 		...viUiInstaller,
 		...viUiLibrary,
 		...viUiMesh,
 		...viUiOnboarding,
+		...viUiOnboardingTour,
 		...viUiProjects,
 		...viUiSchedules,
 		...viUiSettingsAccount,
