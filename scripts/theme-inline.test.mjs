@@ -107,7 +107,13 @@ function mount(action) {
 			effects.push(fn);
 		},
 		useI18nLocale: () => {},
-		t: (key) => PICKERS_ENGLISH[key] ?? key,
+		t: (key, values) => {
+			const message = PICKERS_ENGLISH[key] ?? key;
+			if (!values) return message;
+			return message.replace(/\{(\w+)\}/g, (placeholder, name) =>
+				Object.hasOwn(values, name) ? String(values[name]) : placeholder,
+			);
+		},
 		PickerHost: (props) => props,
 	};
 	const module = { exports: {} };
