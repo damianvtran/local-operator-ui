@@ -41,5 +41,6 @@
 	"ui.chat.sidebar.search.too_long": "搜索词最多{max, number, ::group-off}个字符。当前搜索词超出限制，因此仅搜索对话名称。",
 	"ui.chat.sidebar.search.unavailable": "对话搜索不可用，当前结果仅为名称匹配。",
 	"ui.chat.sidebar.teams.create": "创建团队",
-	"ui.chat.sidebar.teams.loading": "正在加载团队……"
+	"ui.chat.sidebar.teams.loading": "正在加载团队……",
+	"ui.chat.sidebar.section.current_chat": "当前对话"
 }
