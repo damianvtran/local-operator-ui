@@ -4,6 +4,7 @@ import { cn } from "@shared/lib/utils";
 import { formatCalendarDateTime } from "@shared/utils/date-utils";
 import { RefreshCw } from "lucide-react";
 import { type FC, useId } from "react";
+import { t } from "../../../../../../i18n";
 import { useFileFreshness } from "./use-file-freshness";
 
 /**
@@ -209,7 +210,8 @@ export const DocumentFreshnessBar: FC<{
 							stamp
 						) : (
 							<>
-								<bdi>Modified</bdi> <bdi>{modifiedText}</bdi>
+								<bdi>{t("ui.canvas.files.modified")}</bdi>{" "}
+								<bdi>{modifiedText}</bdi>
 							</>
 						)}
 					</span>

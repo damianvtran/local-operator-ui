@@ -253,7 +253,11 @@ test("technical runs are isolated inside RTL prose", () => {
 	const freshness = source(
 		"src/renderer/src/features/chat/components/canvas/document-freshness-bar.tsx",
 	);
-	assert.match(freshness, /<bdi>Modified<\/bdi> <bdi>\{modifiedText\}<\/bdi>/);
+	assert.match(
+		freshness,
+		/<bdi>\{t\("ui\.canvas\.files\.modified"\)\}<\/bdi>\{" "\}\s*<bdi>\{modifiedText\}<\/bdi>/,
+		"the word is the shipped key, not a JSX literal; the date stays its own run",
+	);
 });
 
 test("direction-dependent glyphs and truncation follow the locale", () => {
