@@ -66,6 +66,24 @@ export default defineConfig({
 		// No bytecode plugin here on purpose -- see the note above. It is absent
 		// rather than an empty spread, so the decision reads as one.
 		plugins: [externalizeDepsPlugin()],
+		/*
+		 * TWO PRELOADS. The app window's is `index`; S6b's card gets its own
+		 * purpose-built bridge so the smallest possible surface (two verbs) is the
+		 * one exposed to a second document. An explicit object input is required:
+		 * electron-vite otherwise builds the single default `index` entry and the
+		 * card's preload path would not exist at runtime.
+		 */
+		build: {
+			rollupOptions: {
+				input: {
+					index: resolve(__dirname, "src/preload/index.ts"),
+					"browser-approvals-overlay": resolve(
+						__dirname,
+						"src/preload/browser-approvals-overlay.ts",
+					),
+				},
+			},
+		},
 	},
 	renderer: {
 		resolve: {
