@@ -1,0 +1,164 @@
+{
+  "status": "headless-only",
+  "mode": "headless",
+  "nativeWindowCapture": false,
+  "frame": "frames/owner-rest.png",
+  "chrome": {
+    "glassAttribute": "sidebar canvas pane",
+    "owners": [
+      {
+        "tag": "DIV",
+        "tourTag": null,
+        "rect": {
+          "x": 260,
+          "y": 0,
+          "width": 1120,
+          "height": 106,
+          "top": 0,
+          "right": 1380,
+          "bottom": 106,
+          "left": 260
+        },
+        "background": "color(srgb 0.168627 0.152941 0.129412 / 0.73)",
+        "containsStrip": true,
+        "containsRow": true
+      },
+      {
+        "tag": "DIV",
+        "tourTag": "browser-tab-strip",
+        "rect": {
+          "x": 260,
+          "y": 32,
+          "width": 1120,
+          "height": 37,
+          "top": 32,
+          "right": 1380,
+          "bottom": 69,
+          "left": 260
+        },
+        "background": "rgba(0, 0, 0, 0)",
+        "containsStrip": true,
+        "containsRow": false
+      },
+      {
+        "tag": "DIV",
+        "tourTag": "browser-url-bar",
+        "rect": {
+          "x": 260,
+          "y": 69,
+          "width": 1120,
+          "height": 37,
+          "top": 69,
+          "right": 1380,
+          "bottom": 106,
+          "left": 260
+        },
+        "background": "rgba(0, 0, 0, 0)",
+        "containsStrip": false,
+        "containsRow": true
+      }
+    ],
+    "route": {
+      "rect": {
+        "x": 260,
+        "y": 0,
+        "width": 1120,
+        "height": 900,
+        "top": 0,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      },
+      "background": "rgba(0, 0, 0, 0)"
+    },
+    "strip": {
+      "rect": {
+        "x": 260,
+        "y": 32,
+        "width": 1120,
+        "height": 37,
+        "top": 32,
+        "right": 1380,
+        "bottom": 69,
+        "left": 260
+      },
+      "background": "rgba(0, 0, 0, 0)"
+    },
+    "row": {
+      "rect": {
+        "x": 260,
+        "y": 69,
+        "width": 1120,
+        "height": 37,
+        "top": 69,
+        "right": 1380,
+        "bottom": 106,
+        "left": 260
+      },
+      "background": "rgba(0, 0, 0, 0)"
+    },
+    "content": {
+      "rect": {
+        "x": 260,
+        "y": 106,
+        "width": 1120,
+        "height": 794,
+        "top": 106,
+        "right": 1380,
+        "bottom": 900,
+        "left": 260
+      },
+      "background": "rgba(0, 0, 0, 0)"
+    },
+    "activeTab": {
+      "rect": {
+        "x": 545,
+        "y": 37.25,
+        "width": 166,
+        "height": 31.5,
+        "top": 37.25,
+        "right": 711,
+        "bottom": 68.75,
+        "left": 545
+      },
+      "background": "rgba(0, 0, 0, 0)"
+    },
+    "sidebar": {
+      "rect": {
+        "x": 0,
+        "y": 276,
+        "width": 260,
+        "height": 576,
+        "top": 276,
+        "right": 260,
+        "bottom": 852,
+        "left": 0
+      },
+      "background": "rgba(0, 0, 0, 0)"
+    },
+    "glassState": {
+      "capability": {
+        "supported": true,
+        "mechanism": "vibrancy",
+        "reason": "ok",
+        "materials": [
+          "window",
+          "menu",
+          "popover"
+        ],
+        "defaultMaterial": "window",
+        "liquid": true,
+        "defaultEnabled": true,
+        "liveToggle": true
+      },
+      "settings": {
+        "enabled": true,
+        "coverage": "full",
+        "intensity": 80,
+        "material": "window"
+      },
+      "active": true,
+      "restartRequired": false
+    }
+  }
+}

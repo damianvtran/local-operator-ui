@@ -2332,6 +2332,18 @@ html[data-glass~="pane"] [data-glass-chrome-live] [data-glass-region="chrome"] {
 	);
 }
 /*
+ * The ROUTE's outer chrome wrapper paints from y0 through the tab track. The
+ * nested strip keeps its chrome role (including the segmented-track exclusion
+ * and active-tab stacking contract), but must not lay the same alpha over the
+ * wrapper a second time. Pane-hosted strips have no chrome ancestor and keep
+ * their existing paint unchanged.
+ */
+html[data-glass~="pane"]
+	[data-browser-route-chrome]
+	[data-glass-region="chrome"] {
+	background-color: transparent;
+}
+/*
  * A chrome band inside a CONVERSATION's rail pane (the browser opened beside a
  * chat) is not the page's chrome: that pane already owns the alpha, so the bands
  * clear into it rather than stacking a second raw surface over the pane's
