@@ -12,6 +12,7 @@ import {
 	type ResolvedRow,
 	approvalScopeLabel,
 } from "../model/approval-queue-model";
+import { approvalsDockClasses } from "../model/approvals-dock-layout";
 import { requesterLabel } from "./browser-consent-request";
 import {
 	BrowserConsentRequest,
@@ -65,6 +66,12 @@ import {
 
 export interface BrowserApprovalsDockProps {
 	open: boolean;
+	/**
+	 * The measured row says the side-by-side layout cannot keep both the panel
+	 * and the page. The dock then takes the full width IN FLOW; the surface
+	 * shrinks the content element, it never overlays it.
+	 */
+	fullWidth?: boolean;
 	/** Bumped when a caller needs the heading focused after an external close
 	 * sequence (the folded ⋯ menu closes after this component mounts). */
 	focusRequest?: number;
@@ -108,6 +115,7 @@ function grantedWhen(grantedAt: number): string {
 
 export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 	open,
+	fullWidth = false,
 	focusRequest = 0,
 	rows,
 	resolved,
@@ -202,28 +210,19 @@ export const BrowserApprovalsDock: FC<BrowserApprovalsDockProps> = ({
 		<section
 			aria-label={t("ui.browser.browser_approvals_dock.approvals")}
 			data-tour-tag={surfaceTag}
+			data-dock-layout={fullWidth ? "full" : "side"}
 			className={cn(
 				"flex shrink-0 flex-col gap-4 overflow-y-auto px-3 py-3",
-				// The sole boundary between this chrome and a live page (§4.2).
-				"border-control border-l bg-surface",
-				// A fixed width rather than a drag handle: the canvas dock needs
-				// resizing because its content has no natural size, while a list of rows
-				// does (§4.2). 24rem at a 1280px surface and above, 20rem below it.
-				// CAPPED SO THE PAGE KEEPS A PAGE (design round 1, D7). The dock is a
-				// flex SIBLING of the content element, so its width comes straight out of
-				// the page: at the pane's 480 floor a fixed 24rem left the page 160px, and
-				// 96px when the window was wide enough for the 24rem form - the broken
-				// mobile column section 7.3's own floor exists to prevent, and the one
-				// failure a native-view pane cannot signal, because a page 160px wide looks
-				// exactly like a pane that is laid out correctly (measured in
-				// `docs/evidence/browser-pane/pane-dock-narrow`: 160x531 reported).
-				//
-				// The 15rem reserved here is the 240px page floor the surface names as the
-				// design's own, so the two numbers AGREE rather than contradicting each
-				// other: the page never goes below 240px and the dock gives way, never the
-				// page. At 640 - the pane's default - the cap cannot fire (400px is on
-				// offer for a 320px dock), so the default state is untouched.
-				"w-80 max-w-[calc(100%-15rem)] min-[1280px]:w-96",
+				// The sole boundary between chrome and a live page (§4.2). At full
+				// width there is no live page beside the panel, so the edge is the
+				// row's edge and the border is not a boundary at all.
+				"border-control bg-surface",
+				!fullWidth && "border-l",
+				// The side form is a fixed width rather than a drag handle: a list of
+				// rows has a natural size (§4.2), 24rem at a 1280px surface and 20rem
+				// below. The cap keeps the 240px page floor; the full form arrives when
+				// that arithmetic can no longer keep both (approvals-dock-layout.ts).
+				approvalsDockClasses(fullWidth),
 			)}
 		>
 			<div className="flex items-start justify-between gap-2">
