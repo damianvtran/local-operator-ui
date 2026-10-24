@@ -24,14 +24,18 @@ import { t } from "../../i18n";
  * items read as more navigation. The separator is an item here so the rule,
  * not the Electron adapter, owns the grouping.
  *
- * THE EDITABLE CASE (D2). The same event fires over text fields, where the
+ * THE EDITABLE CASE (D2, U8). The same event fires over text fields, where the
  * platform expectation is an edit menu. Offering Back/Forward there — and no
  * Cut/Copy/Paste — would take the native edit menu away and give nothing
  * back, so an editable target gets the standard edit items INSTEAD of the
  * navigation group (the smaller correct option: a right-click inside a text
  * field is an editing gesture, and duplicating both groups makes one long
- * menu serving two gestures). The actions are the contents' own
- * (`cut`/`copy`/`paste`/`selectAll` in `index.ts`), never a reimplementation.
+ * menu serving two gestures). Undo and Redo lead the group, above Cut/Copy,
+ * because they are the actions a user reaches for first after an accidental
+ * edit, and they are separated from the clipboard actions the way every
+ * platform browser separates history from clipboard (U8). The actions are the
+ * contents' own (`undo`/`redo`/`cut`/`copy`/`paste`/`selectAll` in
+ * `index.ts`), never a reimplementation.
  *
  * LINK ITEMS ONLY OVER A LINK, AND ONLY FOR OPENABLE LINKS. Copy is offered
  * for any link target Chromium reports. Open-in-new-tab additionally requires
@@ -51,6 +55,8 @@ export type PageContextMenuItemId =
 	| "copy-link"
 	| "open-link"
 	| "copy-page"
+	| "undo"
+	| "redo"
 	| "cut"
 	| "copy"
 	| "paste"
@@ -78,6 +84,8 @@ export interface PageContextMenuInput {
 	 * that lies, and the contents' own action is a no-op when it cannot run.
 	 */
 	editFlags?: {
+		canUndo?: boolean;
+		canRedo?: boolean;
 		canCut?: boolean;
 		canCopy?: boolean;
 		canPaste?: boolean;
@@ -111,6 +119,17 @@ export function buildPageContextMenuItems(
 	if (input.isEditable) {
 		const flags = input.editFlags ?? {};
 		return [
+			{
+				id: "undo",
+				label: t("ui.browser.page_context_menu.undo"),
+				enabled: flags.canUndo ?? true,
+			},
+			{
+				id: "redo",
+				label: t("ui.browser.page_context_menu.redo"),
+				enabled: flags.canRedo ?? true,
+			},
+			SEPARATOR,
 			{
 				id: "cut",
 				label: t("ui.browser.page_context_menu.cut"),
