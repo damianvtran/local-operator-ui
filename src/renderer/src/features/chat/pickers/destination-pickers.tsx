@@ -327,18 +327,22 @@ export function modelPickerOptions(
 		 * on purpose: the suite pins that the old one cannot come back to this
 		 * file, and a comment quoting it exactly would re-arm that pin).
 		 */
-		description: `${row.provider}${row.aggregated ? ", aggregated" : ""}${
-			rowAuthOf(row, known) === "needs-sign-in" ? ", needs sign-in" : ""
+		description: `${row.provider}${row.aggregated ? t("ui.chat.pickers.destination_pickers.aggregated") : ""}${
+			rowAuthOf(row, known) === "needs-sign-in"
+				? t("ui.chat.pickers.destination_pickers.needs_sign_in")
+				: ""
 		}${pricePair(row) ? ` · ${pricePair(row)}` : ""}`,
 		meta: row.context_window
-			? `${Math.round(row.context_window / 1000)}k`
+			? t("ui.chat.pickers.destination_pickers.k", {
+					value: Math.round(row.context_window / 1000),
+				})
 			: undefined,
 		current: options.shownSelector === (row.selector ?? row.value),
 		group: !known
-			? "Sign-in state unknown"
+			? t("ui.chat.pickers.destination_pickers.sign_in_state_unknown")
 			: row.connected
-				? "Signed in"
-				: "Needs sign-in",
+				? t("ui.chat.pickers.destination_pickers.signed_in")
+				: t("ui.chat.pickers.destination_pickers.needs_sign_in660cb8"),
 		/*
 		 * WHAT A PICK ON THIS ROW DOES, when picking it is not the ordinary
 		 * switch (design review round 1, D2; QA round 1, Q-1). A needs-sign-in
@@ -410,7 +414,8 @@ function selectorOfResolution(
  * sentence into the transcript when the dialog is gone (reviewer round 1, minor
  * 4) — two spellings of one fact would drift, so there is one constant.
  */
-const DEFAULT_SAVE_FAILURE = "The default was not saved";
+const DEFAULT_SAVE_FAILURE = () =>
+	t("ui.chat.pickers.destination_pickers.the_default_was_not_saved");
 
 /**
  * A default checkbox's label, at the height of its TALLEST wording.
@@ -675,9 +680,10 @@ function useDraftPick(
 			if (!draft) return;
 			if (!next) {
 				refuse(
-					reading.refused
-						? `${reading.refused} This pane has not resolved a model to change.`
-						: "This pane has not resolved a model to change.",
+					t(
+						"ui.chat.pickers.destination_pickers.this_pane_has_not_resolved_a_model_to_change",
+						{ refused: reading.refused ?? "" },
+					).trimStart(),
 				);
 				return;
 			}
@@ -854,7 +860,7 @@ export const ModelPicker: FC<PickerContext> = ({
 	note,
 	draft,
 }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	/*
 	 * `false` is the shipped registry's own document; the live listing is a
 	 * SEPARATE key (see the promotion beside the query, and why it is the second
@@ -1143,7 +1149,9 @@ export const ModelPicker: FC<PickerContext> = ({
 	useEffect(() => {
 		if (!catalogue.isFetching) setAsked(false);
 	}, [catalogue.isFetching]);
-	const refreshingLabel = asked ? "Refreshing…" : "Checking…";
+	const refreshingLabel = asked
+		? t("ui.chat.pickers.destination_pickers.refreshing")
+		: t("ui.chat.pickers.destination_pickers.checking");
 	const command = useSessionCommand(sessionId);
 	/*
 	 * A DRAFT pane's own reading, from the ONE query the pane itself reads.
@@ -1288,6 +1296,8 @@ export const ModelPicker: FC<PickerContext> = ({
 		(row) => selectorOf(row) === shownSelector,
 	);
 	const options = useMemo<PickerOption[]>(() => {
+		// t() reads at call time; locale is therefore a real invalidation input.
+		void locale;
 		// `connected` is also true when the credential store could not be read,
 		// which is why every model once sat under "Connected" on a fixture with
 		// no credentials at all (D5). With that unknown, the picker still lists
@@ -1298,7 +1308,7 @@ export const ModelPicker: FC<PickerContext> = ({
 			credentialsKnown: known,
 			shownSelector,
 		});
-	}, [catalogueDocument, scoped, shownSelector]);
+	}, [catalogueDocument, scoped, shownSelector, locale]);
 
 	/*
 	 * The listing call takes the provenance `drawnCatalogue` decided above — one
@@ -1361,10 +1371,11 @@ export const ModelPicker: FC<PickerContext> = ({
 		showAll || scoped.removed > 0 || (scopeCount !== null && scopeCount > 0) ? (
 			<PickerCheck checked={showAll} onCheckedChange={setShowAll} tone="muted">
 				{scopeCount !== null && scopeCount > 0
-					? `Show all supported models (${scopeCount} ${
-							scopeCount === 1 ? "needs" : "need"
-						} sign-in)`
-					: "Show all supported models"}
+					? t(
+							"ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in",
+							{ scopecount: scopeCount },
+						)
+					: t("ui.chat.pickers.destination_pickers.show_all_supported_models")}
 			</PickerCheck>
 		) : null;
 
@@ -1419,16 +1430,19 @@ export const ModelPicker: FC<PickerContext> = ({
 							 * known, in the same words the strip uses, and it does NOT claim the
 							 * model was unchanged when only the default was not saved.
 							 */
-							note(`${DEFAULT_SAVE_FAILURE}: ${errorText(error)}`, true);
+							note(`${DEFAULT_SAVE_FAILURE()}: ${errorText(error)}`, true);
 							throw error;
 						}
 					},
 					// Named as the label names it (QA round 3, Q4; UX U10).
 					(selector) => ({
 						tone: "success",
-						text: `Default for new sessions: ${modelName(selector)}`,
+						text: t(
+							"ui.chat.pickers.destination_pickers.default_for_new_sessions",
+							{ modelname: modelName(selector) },
+						),
 					}),
-					DEFAULT_SAVE_FAILURE,
+					DEFAULT_SAVE_FAILURE(),
 				);
 				if (saved === null) {
 					// Untick so ticking again is the retry (UX round 1, U3).
@@ -1522,7 +1536,15 @@ export const ModelPicker: FC<PickerContext> = ({
 					{ provider, model_id: modelId, reasoning_effort: null },
 					{
 						describe: (resolved) =>
-							`This conversation will run ${selectorOfResolution(resolved, option.label)}.`,
+							t(
+								"ui.chat.pickers.destination_pickers.this_conversation_will_run",
+								{
+									selectorofresolution: selectorOfResolution(
+										resolved,
+										option.label,
+									),
+								},
+							),
 						/*
 						 * The dial's clause is a NOTICE rather than part of `describe`
 						 * (design review round 2, D6). `pick` appends it after whichever
@@ -1538,7 +1560,9 @@ export const ModelPicker: FC<PickerContext> = ({
 								fastModeState(bandReadings(resolved.snapshot, null).identity),
 							),
 						carry: carried,
-						refused: "The model was not changed.",
+						refused: t(
+							"ui.chat.pickers.destination_pickers.the_model_was_not_changed",
+						),
 					},
 				);
 				return;
@@ -1584,7 +1608,13 @@ export const ModelPicker: FC<PickerContext> = ({
 				 * the dialog's, so it is still there to write to; the sentence is the
 				 * strip's own, from the same call's result, so the two never disagree.
 				 */
-				note(`The model was not changed. ${failure.text}`, true);
+				note(
+					t(
+						"ui.chat.pickers.destination_pickers.the_model_was_not_changed6dd4bb",
+						{ text: failure.text },
+					),
+					true,
+				);
 				/*
 				 * A ticked box under a failed switch says what the default is now,
 				 * rather than nothing (review round 1, m2).
@@ -1595,8 +1625,11 @@ export const ModelPicker: FC<PickerContext> = ({
 						tone: failure.tone,
 						// Named as the ticked label names it, so the two agree (UX U10).
 						text: saved
-							? `Model not changed. Default for new sessions stays ${modelName(saved)}.`
-							: `${DEFAULT_SAVE_FAILURE}.`,
+							? t(
+									"ui.chat.pickers.destination_pickers.model_not_changed_default_for_new_sessions_stays",
+									{ modelname: modelName(saved) },
+								)
+							: `${DEFAULT_SAVE_FAILURE()}.`,
 					});
 				}
 				return;
@@ -1656,14 +1689,23 @@ export const ModelPicker: FC<PickerContext> = ({
 	 * model a tick would save until one is saved.
 	 */
 	const persistWordings = [
-		"Also make this the default for new sessions",
-		"Picks here also set the default for new sessions",
-		`Default for new sessions: ${modelName(
-			savedModel ??
-				(modelInForce
-					? `${modelInForce.provider}/${modelInForce.model_id}`
-					: ""),
-		)}. Picks here update it too.`,
+		t(
+			"ui.chat.pickers.destination_pickers.also_make_this_the_default_for_new_sessions",
+		),
+		t(
+			"ui.chat.pickers.destination_pickers.picks_here_also_set_the_default_for_new_sessions",
+		),
+		t(
+			"ui.chat.pickers.destination_pickers.default_for_new_sessions_picks_here_update_it_too",
+			{
+				modelname: modelName(
+					savedModel ??
+						(modelInForce
+							? `${modelInForce.provider}/${modelInForce.model_id}`
+							: ""),
+				),
+			},
+		),
 	] as const;
 	const onPersistDefaultChange = (checked: boolean) => {
 		persistDefaultRef.current = checked;
@@ -1744,7 +1786,10 @@ export const ModelPicker: FC<PickerContext> = ({
 			description={
 				draft
 					? shownSelector
-						? `This conversation starts on ${shownSelector} and keeps running on it. Choosing another changes that; your default is unchanged.`
+						? t(
+								"ui.chat.pickers.destination_pickers.this_conversation_starts_on_and_keeps_running_on_it_choosing_another_cha",
+								{ shownselector: shownSelector },
+							)
 						: /*
 							 * No claim about what the model in force is NOT (design D18).
 							 *
@@ -1756,10 +1801,17 @@ export const ModelPicker: FC<PickerContext> = ({
 							 * is true in every state, and it is the half the resolved branch
 							 * above already writes.
 							 */
-							"Choose the model this conversation starts on and keeps running on. Your default is unchanged."
+							t(
+								"ui.chat.pickers.destination_pickers.choose_the_model_this_conversation_starts_on_and_keeps_running_on_your_d",
+							)
 					: shownSelector
-						? `This session runs ${shownSelector}. Choosing another applies to this session only unless you also set it as the default.`
-						: "Choose the model for this session."
+						? t(
+								"ui.chat.pickers.destination_pickers.this_session_runs_choosing_another_applies_to_this_session_only_unless_y",
+								{ shownselector: shownSelector },
+							)
+						: t(
+								"ui.chat.pickers.destination_pickers.choose_the_model_for_this_session",
+							)
 			}
 			options={options}
 			/*
@@ -1774,7 +1826,9 @@ export const ModelPicker: FC<PickerContext> = ({
 			notice={listing.notice}
 			noticeDetail={listing.noticeDetail}
 			emptyText={
-				emptyOffersConnect ? "No models are signed in yet." : undefined
+				emptyOffersConnect
+					? t("ui.chat.pickers.destination_pickers.no_models_are_signed_in_yet")
+					: undefined
 			}
 			emptyAction={
 				emptyOffersConnect ? (
@@ -1788,7 +1842,7 @@ export const ModelPicker: FC<PickerContext> = ({
 					</Button>
 				) : undefined
 			}
-			searchPlaceholder="Search models"
+			searchPlaceholder={t("ui.chat.pickers.destination_pickers.search_models")}
 			// Detail stays on the selected model, not every list row. These are
 			// provider-stated facts, not a claim of entitlement or future billing.
 			form={
@@ -1805,74 +1859,76 @@ export const ModelPicker: FC<PickerContext> = ({
 							})}
 						</p>
 						<PickerKeyValue
-							label="Context"
+							label={t("ui.chat.pickers.destination_pickers.context")}
 							value={
 								selectedDetails.context_window > 0
 									? selectedDetails.context_window.toLocaleString()
-									: "Unknown"
+									: t("ui.chat.pickers.destination_pickers.unknown")
 							}
 						/>
 						<PickerKeyValue
-							label="Output limit"
+							label={t("ui.chat.pickers.destination_pickers.output_limit")}
 							value={
 								selectedDetails.max_output_tokens &&
 								selectedDetails.max_output_tokens > 0
 									? selectedDetails.max_output_tokens.toLocaleString()
-									: "Unknown"
+									: t("ui.chat.pickers.destination_pickers.unknown")
 							}
 						/>
 						{selectedDetails.family && (
 							<PickerKeyValue
-								label="Family"
+								label={t("ui.chat.pickers.destination_pickers.family")}
 								value={selectedDetails.family}
 								mono={false}
 							/>
 						)}
 						{selectedDetails.release_date && (
 							<PickerKeyValue
-								label="Released"
+								label={t("ui.chat.pickers.destination_pickers.released")}
 								value={selectedDetails.release_date}
 								mono={false}
 							/>
 						)}
 						{typeof selectedDetails.supports_tools === "boolean" && (
 							<PickerKeyValue
-								label="Tools"
+								label={t("ui.chat.pickers.destination_pickers.tools")}
 								value={
-									selectedDetails.supports_tools ? "Supported" : "Not supported"
+									selectedDetails.supports_tools
+										? t("ui.chat.pickers.destination_pickers.supported")
+										: t("ui.chat.pickers.destination_pickers.not_supported")
 								}
 								mono={false}
 							/>
 						)}
 						{typeof selectedDetails.reasoning === "boolean" && (
 							<PickerKeyValue
-								label="Reasoning"
+								label={t("ui.chat.pickers.destination_pickers.reasoning")}
 								value={
 									selectedDetails.reasoning
 										? selectedDetails.reasoning_efforts?.join(", ") ||
-											"Supported"
-										: "Not supported"
+											t("ui.chat.pickers.destination_pickers.supported")
+										: t("ui.chat.pickers.destination_pickers.not_supported")
 								}
 								mono={false}
 							/>
 						)}
 						{selectedDetails.reasoning_default_effort && (
 							<PickerKeyValue
-								label="Default effort"
+								label={t("ui.chat.pickers.destination_pickers.default_effort")}
 								value={selectedDetails.reasoning_default_effort}
 								mono={false}
 							/>
 						)}
 						{selectedDetails.modalities?.input?.length ? (
 							<PickerKeyValue
-								label="Native inputs"
+								label={t("ui.chat.pickers.destination_pickers.native_inputs")}
 								value={selectedDetails.modalities.input.join(", ")}
 								mono={false}
 							/>
 						) : null}
 						{selectedDetails.modalities?.output?.length ? (
 							<PickerKeyValue
-								label="Native outputs"
+								label={t("ui.chat.pickers.destination_pickers.native_outputs")}
 								value={selectedDetails.modalities.output.join(", ")}
 								mono={false}
 							/>
@@ -1897,17 +1953,17 @@ export const ModelPicker: FC<PickerContext> = ({
 			 */
 			busyText={
 				draft
-					? "Resolving the model…"
+					? t("ui.chat.pickers.destination_pickers.resolving_the_model")
 					: command.busy
-						? "Switching the model…"
-						: "Saving the default…"
+						? t("ui.chat.pickers.destination_pickers.switching_the_model")
+						: t("ui.chat.pickers.destination_pickers.saving_the_default")
 			}
 			busyLabel={
 				draft
-					? "Resolving the model"
+					? t("ui.chat.pickers.destination_pickers.resolving_the_model24577b")
 					: command.busy
-						? "Switching the model"
-						: "Saving the default"
+						? t("ui.chat.pickers.destination_pickers.switching_the_model8e7138")
+						: t("ui.chat.pickers.destination_pickers.saving_the_default9573f2")
 			}
 			result={draft ? draftPick.result : pickResult}
 			toolbar={
@@ -2048,7 +2104,7 @@ export const ModelPicker: FC<PickerContext> = ({
 									{refreshingLabel}
 								</span>
 							) : (
-								"Refresh from providers"
+								t("ui.chat.pickers.destination_pickers.refresh_from_providers")
 							)}
 						</Button>
 					</div>
@@ -2130,9 +2186,14 @@ export const EffortPicker: FC<PickerContext> = ({
 						}),
 					() => ({
 						tone: "success",
-						text: `Default effort for new sessions: ${effortDisplay(value)}.`,
+						text: t(
+							"ui.chat.pickers.destination_pickers.default_effort_for_new_sessions",
+							{ effortdisplay: effortDisplay(value) },
+						),
 					}),
-					"The effort default was not saved",
+					t(
+						"ui.chat.pickers.destination_pickers.the_effort_default_was_not_saved6143e6",
+					),
 				);
 				if (!saved) {
 					// Untick on failure so ticking again IS the retry; a box left ticked
@@ -2218,7 +2279,7 @@ export const EffortPicker: FC<PickerContext> = ({
 	);
 	const label = model
 		? `${model.provider}/${model.model_id}`
-		: "the current model";
+		: t("ui.chat.pickers.destination_pickers.the_current_model");
 	/*
 	 * An empty rung list has TWO causes and they are different facts, only one
 	 * of which is about the model.
@@ -2259,11 +2320,20 @@ export const EffortPicker: FC<PickerContext> = ({
 	 * default is the ticked label's to state, not the strip's too (U11).
 	 */
 	const saveAsDefaultWordings = [
-		"Also make this the default effort for new sessions",
-		"Picks here also set the default effort for new sessions",
-		`Default effort for new sessions: ${effortDisplay(
-			savedRung ?? (typeof rungInForce === "string" ? rungInForce : ""),
-		)}. Picks here update it too.`,
+		t(
+			"ui.chat.pickers.destination_pickers.also_make_this_the_default_effort_for_new_sessions",
+		),
+		t(
+			"ui.chat.pickers.destination_pickers.picks_here_also_set_the_default_effort_for_new_sessions",
+		),
+		t(
+			"ui.chat.pickers.destination_pickers.default_effort_for_new_sessions_picks_here_update_it_too",
+			{
+				effortdisplay: effortDisplay(
+					savedRung ?? (typeof rungInForce === "string" ? rungInForce : ""),
+				),
+			},
+		),
 	] as const;
 	const defaultLine =
 		defaultSetting.result?.tone === "success" && saveAsDefault
@@ -2334,22 +2404,42 @@ export const EffortPicker: FC<PickerContext> = ({
 								 * a ladder is what makes levels offerable here, so the sentence
 								 * names the act instead of leaving the reader waiting.
 								 */
-								`${label} has not reported its effort levels yet. They appear after the first turn, or pick a model that reports them.`
-							: `${label} has not reported its effort levels yet. They appear after the next turn, or run /effort <level> to set one now.`
+								t(
+									"ui.chat.pickers.destination_pickers.has_not_reported_its_effort_levels_yet_they_appear_after_the_first_turn",
+									{ label: label },
+								)
+							: t(
+									"ui.chat.pickers.destination_pickers.has_not_reported_its_effort_levels_yet_they_appear_after_the_next_turn_o",
+									{ label: label },
+								)
 						: draft
-							? `${label} has no adjustable effort. Pick another model.`
-							: `${label} has no adjustable effort. Pick a reasoning model with /model first.`
+							? t(
+									"ui.chat.pickers.destination_pickers.has_no_adjustable_effort_pick_another_model",
+									{ label: label },
+								)
+							: t(
+									"ui.chat.pickers.destination_pickers.has_no_adjustable_effort_pick_a_reasoning_model_with_model_first",
+									{ label: label },
+								)
 					: draft
-						? `Effort levels ${label} supports. This sets the level this conversation starts on and keeps running on; your default is unchanged.`
-						: `Effort levels ${label} supports. Applies to this session unless you also make it the default for new sessions.`
+						? t(
+								"ui.chat.pickers.destination_pickers.effort_levels_supports_this_sets_the_level_this_conversation_starts_on_a",
+								{ label: label },
+							)
+						: t(
+								"ui.chat.pickers.destination_pickers.effort_levels_supports_applies_to_this_session_unless_you_also_make_it_t",
+								{ label: label },
+							)
 			}
 			options={options}
 			loading={loading}
 			loadError={loadError}
 			emptyText={
 				unresolved
-					? "Not known yet."
-					: "Effort is not adjustable on this model."
+					? t("ui.chat.pickers.destination_pickers.not_known_yet")
+					: t(
+							"ui.chat.pickers.destination_pickers.effort_is_not_adjustable_on_this_model",
+						)
 			}
 			onPick={(value) => {
 				if (!draft) {
@@ -2375,8 +2465,13 @@ export const EffortPicker: FC<PickerContext> = ({
 							defaultSetting.setResult({
 								tone: refusal.tone,
 								text: saved
-									? `Effort not changed. Default for new sessions stays ${effortDisplay(saved)}.`
-									: "The effort default was not saved.",
+									? t(
+											"ui.chat.pickers.destination_pickers.effort_not_changed_default_for_new_sessions_stays",
+											{ effortdisplay: effortDisplay(saved) },
+										)
+									: t(
+											"ui.chat.pickers.destination_pickers.the_effort_default_was_not_saved",
+										),
 							});
 						});
 					return;
@@ -2394,8 +2489,14 @@ export const EffortPicker: FC<PickerContext> = ({
 				void draftPick.pick(
 					selection ? { ...selection, reasoning_effort: value } : null,
 					{
-						describe: () => `Effort for this conversation: ${value}.`,
-						refused: "The effort was not changed.",
+						describe: () =>
+							t(
+								"ui.chat.pickers.destination_pickers.effort_for_this_conversation",
+								{ value: value },
+							),
+						refused: t(
+							"ui.chat.pickers.destination_pickers.the_effort_was_not_changed",
+						),
 					},
 				);
 			}}
@@ -2428,17 +2529,19 @@ export const EffortPicker: FC<PickerContext> = ({
 			 */
 			busyText={
 				draft
-					? "Resolving the effort…"
+					? t("ui.chat.pickers.destination_pickers.resolving_the_effort")
 					: command.busy
-						? "Switching the effort…"
-						: "Saving the default…"
+						? t("ui.chat.pickers.destination_pickers.switching_the_effort")
+						: t("ui.chat.pickers.destination_pickers.saving_the_default")
 			}
 			busyLabel={
 				draft
-					? "Resolving the effort"
+					? t("ui.chat.pickers.destination_pickers.resolving_the_effortd0fa08")
 					: command.busy
-						? "Switching the effort"
-						: "Saving the default"
+						? t(
+								"ui.chat.pickers.destination_pickers.switching_the_effort87b64b",
+							)
+						: t("ui.chat.pickers.destination_pickers.saving_the_default9573f2")
 			}
 		/>
 	);
@@ -2447,7 +2550,7 @@ export const EffortPicker: FC<PickerContext> = ({
 // ------------------------------------------------------------------ theme
 
 export const ThemePicker: FC<PickerContext> = ({ onClose, action }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const themeName = useUiPreferencesStore((state) => state.themeName);
 	const setTheme = useUiPreferencesStore((state) => state.setTheme);
 	const [result, setResult] = useState<PickerResult | null>(null);
@@ -2478,30 +2581,36 @@ export const ThemePicker: FC<PickerContext> = ({ onClose, action }) => {
 			) ?? null
 		);
 	}, [action.args]);
-	const options = useMemo<PickerOption[]>(
-		() =>
-			Object.values(themes).map((theme) => ({
-				value: theme.id,
-				label: theme.name,
-				description: theme.description,
-				current: theme.id === themeName,
-				group: theme.id.startsWith("localOperator")
-					? "Local Operator"
-					: "Ports",
-			})),
-		[themeName],
-	);
+	const options = useMemo<PickerOption[]>(() => {
+		void locale;
+		return Object.values(themes).map((theme) => ({
+			value: theme.id,
+			label: theme.name,
+			description: theme.description,
+			current: theme.id === themeName,
+			group: theme.id.startsWith("localOperator")
+				? "Local Operator"
+				: t("ui.chat.pickers.destination_pickers.ports"),
+		}));
+	}, [themeName, locale]);
 	// A typed argument (`/theme dracula`) is a direct pick when it names a theme.
 	useEffect(() => {
 		const wanted = action.args.trim();
 		if (!wanted) return;
 		if (requested) {
 			setTheme(requested.id as ThemeName);
-			setResult({ tone: "success", text: `Theme: ${requested.name}` });
+			setResult({
+				tone: "success",
+				text: t("ui.chat.pickers.destination_pickers.theme", {
+					name: requested.name,
+				}),
+			});
 		} else {
 			setResult({
 				tone: "warning",
-				text: `No desktop theme named "${wanted}".`,
+				text: t("ui.chat.pickers.destination_pickers.no_desktop_theme_named", {
+					wanted: wanted,
+				}),
 			});
 		}
 	}, [action.args, requested, setTheme]);
@@ -2510,7 +2619,9 @@ export const ThemePicker: FC<PickerContext> = ({ onClose, action }) => {
 			open
 			onClose={onClose}
 			title={t("ui.chat.pickers.theme.title")}
-			description="Desktop theme. The terminal keeps its own tui.theme setting."
+			description={t(
+				"ui.chat.pickers.destination_pickers.desktop_theme_the_terminal_keeps_its_own_tui_theme_setting",
+			)}
 			/*
 			 * THE CONFIRMATION SHAPE (issue #676): no `options` at all while the
 			 * argument names the theme, so the host draws its no-list body and the
@@ -2522,7 +2633,12 @@ export const ThemePicker: FC<PickerContext> = ({ onClose, action }) => {
 			options={requested ? undefined : options}
 			onPick={(value, option) => {
 				setTheme(value as ThemeName);
-				setResult({ tone: "success", text: `Theme: ${option.label}` });
+				setResult({
+					tone: "success",
+					text: t("ui.chat.pickers.destination_pickers.theme_058ec5", {
+						label: option.label,
+					}),
+				});
 			}}
 			result={result}
 		/>
@@ -2695,7 +2811,10 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 		? admission
 			? {
 					...command.result,
-					text: `${command.result.text}\nRequest admitted once${admission.duplicate ? " (already admitted)" : ""}.`,
+					text: t("ui.chat.pickers.destination_pickers.request_admitted_once", {
+						text: command.result.text,
+						duplicate: admission.duplicate ? "true" : "false",
+					}),
 				}
 			: command.result
 		: null;
@@ -2714,18 +2833,26 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 			open
 			onClose={onClose}
 			title={
-				chartMode ? "Team chart" : which === "team" ? "Team" : "Agent profile"
+				chartMode
+					? t("ui.chat.pickers.destination_pickers.team_chart")
+					: which === "team"
+						? t("ui.chat.pickers.destination_pickers.team")
+						: t("ui.chat.pickers.destination_pickers.agent_profile")
 			}
 			description={
 				chartMode
-					? "Pick a team to see how it resolves."
-					: `${spec.description}. ${activeLabel ? `Active: ${activeLabel}.` : ""}`
+					? t(
+							"ui.chat.pickers.destination_pickers.pick_a_team_to_see_how_it_resolves",
+						)
+					: `${spec.description}. ${activeLabel ? t("ui.chat.pickers.destination_pickers.active", { activelabel: activeLabel }) : ""}`
 			}
 			options={options}
 			loading={listLoading}
 			loadError={listError ? errorText(listErrorDetail) : null}
 			emptyText={
-				which === "team" ? "No teams are registered." : "No profiles found."
+				which === "team"
+					? t("ui.chat.pickers.destination_pickers.no_teams_are_registered")
+					: t("ui.chat.pickers.destination_pickers.no_profiles_found")
 			}
 			onPick={(value) => setSelected(value)}
 			busy={command.busy}
@@ -2768,18 +2895,34 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 						{chartMode ? null : draftMode ? (
 							<p className="text-ink-muted text-meta">
 								{which === "team"
-									? "Your first message starts the chat with this team."
-									: "Your first message starts the chat with this profile."}
+									? t(
+											"ui.chat.pickers.destination_pickers.your_first_message_starts_the_chat_with_this_team",
+										)
+									: t(
+											"ui.chat.pickers.destination_pickers.your_first_message_starts_the_chat_with_this_profile",
+										)}
 							</p>
 						) : (
 							<PickerField
-								label="Request (optional)"
-								hint="Sent once with the attachment; it becomes the first turn."
+								label={t(
+									"ui.chat.pickers.destination_pickers.request_optional",
+								)}
+								hint={t(
+									"ui.chat.pickers.destination_pickers.sent_once_with_the_attachment_it_becomes_the_first_turn",
+								)}
 							>
 								<Textarea
 									value={request}
 									onChange={(event) => setRequest(event.target.value)}
-									placeholder={`What should ${readableProfileName(selectedRow, selected)} do?`}
+									placeholder={t(
+										"ui.chat.pickers.destination_pickers.what_should_do",
+										{
+											readableprofilename: readableProfileName(
+												selectedRow,
+												selected,
+											),
+										},
+									)}
 									rows={3}
 								/>
 							</PickerField>
@@ -2791,11 +2934,11 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 			submitLabel={
 				draftMode
 					? which === "team"
-						? "Use team"
-						: "Use profile"
+						? t("ui.chat.pickers.destination_pickers.use_team")
+						: t("ui.chat.pickers.destination_pickers.use_profile")
 					: which === "team"
-						? "Attach team"
-						: "Use profile"
+						? t("ui.chat.pickers.destination_pickers.attach_team")
+						: t("ui.chat.pickers.destination_pickers.use_profile")
 			}
 			submitDisabled={!selected}
 		/>
@@ -2856,20 +2999,28 @@ export const SkillsPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 			open
 			onClose={onClose}
 			title={t("ui.chat.pickers.skills.title")}
-			description={`Skills discoverable from this session's working directory (${
-				list.data?.data.scope ?? "discoverable"
-			} scope). Listed is not the same as selected into the prompt.`}
+			description={t(
+				"ui.chat.pickers.destination_pickers.skills_discoverable_from_this_session_s_working_directory_scope_listed_i",
+				{
+					value:
+						list.data?.data.scope ??
+						t("ui.chat.pickers.destination_pickers.discoverable"),
+				},
+			)}
 			options={options}
 			loading={list.isLoading}
 			loadError={list.isError ? errorText(list.error) : null}
-			emptyText="No skills are discoverable from this session's directory."
+			emptyText={t(
+				"ui.chat.pickers.destination_pickers.no_skills_are_discoverable_from_this_session_s_directory",
+			)}
 			onPick={(value) => setSelected(value)}
 			form={
 				selected ? (
 					<div className="rounded-md border border-hairline bg-sunken px-3 py-2">
 						<p className="font-mono text-ink text-mono-sm">
 							{/* i18n: ignore protocol scheme shown to the user, not prose */}
-							skill://{selected}
+							{t("ui.chat.pickers.destination_pickers.skill")}
+							{selected}
 						</p>
 						{detail.isLoading ? (
 							<p className="text-ink-dim text-meta">
@@ -2877,7 +3028,9 @@ export const SkillsPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 							</p>
 						) : (
 							<pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap font-mono text-ink-muted text-mono-sm">
-								{body?.body ?? body?.text ?? "No detail returned."}
+								{body?.body ??
+									body?.text ??
+									t("ui.chat.pickers.destination_pickers.no_detail_returned")}
 							</pre>
 						)}
 					</div>
@@ -2947,8 +3100,10 @@ function readForkEntryExcerpt(data: Record<string, unknown>): string | null {
  * gap. The typed-code mapping that would replace this note lands with the core
  * slice (in flight in `damianvtran/local-operator`) and is declared on the PR.
  */
-export const FORK_CUT_NOTE =
-	"If that message was sent just now, it may not be in the conversation's history yet.";
+export const FORK_CUT_NOTE = (): string =>
+	t(
+		"ui.chat.pickers.destination_pickers.if_that_message_was_sent_just_now_it_may_not_be_in_the_conversation_s_hi",
+	);
 
 /**
  * Fork the conversation - all of it, or the prefix that ends at one message.
@@ -3067,27 +3222,36 @@ export const ForkPicker: FC<PickerContext> = ({
 				tone: "success",
 				text: `${
 					cutEntryId
-						? "Forked from this message. Everything after it stays in the original, which is unchanged."
-						: "Forked at the next safe boundary into a new conversation. The original conversation is unchanged."
+						? t(
+								"ui.chat.pickers.destination_pickers.forked_from_this_message_everything_after_it_stays_in_the_original_which",
+							)
+						: t(
+								"ui.chat.pickers.destination_pickers.forked_at_the_next_safe_boundary_into_a_new_conversation_the_original_co",
+							)
 				}${
 					cutEntryId &&
 					result.data.cut_entry_id &&
 					result.data.cut_entry_id !== cutEntryId
-						? "\nThe fork starts before the message you chose: a cut cannot separate a tool call from its results."
+						? t(
+								"ui.chat.pickers.destination_pickers.the_fork_starts_before_the_message_you_chose_a_cut_cannot_separate_a_too",
+							)
 						: ""
 				}${
 					result.data.admission
-						? `\nYour message was admitted once: ${result.data.admission.detail}.`
+						? t(
+								"ui.chat.pickers.destination_pickers.your_message_was_admitted_once",
+								{ detail: result.data.admission.detail },
+							)
 						: ""
 				}`,
 			}),
-			"The fork was not created",
+			t("ui.chat.pickers.destination_pickers.the_fork_was_not_created"),
 			/*
 			 * Appended to the owner's own detail rather than replacing it; see
 			 * `FORK_CUT_NOTE` for the two reasons and for what the note deliberately
 			 * does NOT say.
 			 */
-			cutEntryId ? FORK_CUT_NOTE : undefined,
+			cutEntryId ? FORK_CUT_NOTE() : undefined,
 		);
 		if (value) rebind(value.data.session_id);
 	}, [op, sessionId, message, rebind, cutEntryId, capabilities.data]);
@@ -3095,20 +3259,37 @@ export const ForkPicker: FC<PickerContext> = ({
 		<PickerHost
 			open
 			onClose={onClose}
-			title={cutEntryId ? "Fork from this message" : "Fork this conversation"}
+			title={
+				cutEntryId
+					? t("ui.chat.pickers.destination_pickers.fork_from_this_message")
+					: t("ui.chat.pickers.destination_pickers.fork_this_conversation")
+			}
 			description={
 				cutEntryId
-					? `Copies this conversation up to and including ${
-							cutExcerpt
-								? `this message: "${cutExcerpt}"`
-								: "the message you chose"
-						}. Everything after it is left behind, and the original keeps running and is not modified.`
-					: "Copies the complete history into a new conversation at the next safe boundary (after the current assistant step and its tool results). The original keeps running and is not modified."
+					? t(
+							"ui.chat.pickers.destination_pickers.copies_this_conversation_up_to_and_including_everything_after_it_is_left",
+							{
+								value: cutExcerpt
+									? t("ui.chat.pickers.destination_pickers.this_message", {
+											cutexcerpt: cutExcerpt,
+										})
+									: t(
+											"ui.chat.pickers.destination_pickers.the_message_you_chose",
+										),
+							},
+						)
+					: t(
+							"ui.chat.pickers.destination_pickers.copies_the_complete_history_into_a_new_conversation_at_the_next_safe_bou",
+						)
 			}
 			form={
 				<PickerField
-					label="First message in the fork (optional)"
-					hint="Delivered exactly once to the new conversation."
+					label={t(
+						"ui.chat.pickers.destination_pickers.first_message_in_the_fork_optional",
+					)}
+					hint={t(
+						"ui.chat.pickers.destination_pickers.delivered_exactly_once_to_the_new_conversation",
+					)}
 				>
 					<Textarea
 						value={message}
@@ -3119,7 +3300,7 @@ export const ForkPicker: FC<PickerContext> = ({
 				</PickerField>
 			}
 			onSubmit={submit}
-			submitLabel="Fork"
+			submitLabel={t("ui.chat.pickers.destination_pickers.fork")}
 			busy={op.busy}
 			result={op.result}
 		/>
@@ -3196,7 +3377,10 @@ export function useSessionRows(
 const SESSION_ROWS_KEY = ["desktop", "sessions", "rows"] as const;
 
 function sessionLabel(row: SessionRow) {
-	return row.name?.trim() || `Untitled ${row.id}`;
+	return (
+		row.name?.trim() ||
+		t("ui.chat.pickers.destination_pickers.untitled", { id: row.id })
+	);
 }
 
 /**
@@ -3233,7 +3417,7 @@ export const StopPicker: FC<PickerContext> = ({
 	onClose,
 	action,
 }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const rows = useSessionRows();
 	const [targets, setTargets] = useState<Set<string>>(
 		() => new Set(action.args.trim() === "all" ? [] : [sessionId]),
@@ -3241,17 +3425,19 @@ export const StopPicker: FC<PickerContext> = ({
 	const [all, setAll] = useState(action.args.trim() === "all");
 	const [confirmed, setConfirmed] = useState(false);
 	const op = useOperation();
-	const options = useMemo<PickerOption[]>(
-		() =>
-			(rows.data ?? []).map((row) => ({
-				value: row.id,
-				label: sessionLabel(row),
-				description: sessionActivity(row, "cold (no owner running)"),
-				meta: row.id,
-				current: targets.has(row.id) || all,
-			})),
-		[rows.data, targets, all],
-	);
+	const options = useMemo<PickerOption[]>(() => {
+		void locale;
+		return (rows.data ?? []).map((row) => ({
+			value: row.id,
+			label: sessionLabel(row),
+			description: sessionActivity(
+				row,
+				t("ui.chat.pickers.destination_pickers.cold_no_owner_running"),
+			),
+			meta: row.id,
+			current: targets.has(row.id) || all,
+		}));
+	}, [rows.data, targets, all, locale]);
 	const chosen = all ? (rows.data ?? []).map((row) => row.id) : [...targets];
 	const submit = useCallback(async () => {
 		if (chosen.length === 0 || !confirmed) return;
@@ -3274,13 +3460,15 @@ export const StopPicker: FC<PickerContext> = ({
 						(row) =>
 							`${row.session_id}: ${
 								row.status === "already_stopped"
-									? "nothing was running"
-									: "stop requested (acknowledged, not a completed exit)"
+									? t("ui.chat.pickers.destination_pickers.nothing_was_running")
+									: t(
+											"ui.chat.pickers.destination_pickers.stop_requested_acknowledged_not_a_completed_exit",
+										)
 							}`,
 					)
 					.join("\n"),
 			}),
-			"Stop was not accepted",
+			t("ui.chat.pickers.destination_pickers.stop_was_not_accepted"),
 		);
 	}, [op, chosen, confirmed]);
 	return (
@@ -3288,7 +3476,9 @@ export const StopPicker: FC<PickerContext> = ({
 			open
 			onClose={onClose}
 			title={t("ui.chat.pickers.stop.title")}
-			description="Ends the chosen sessions' current work through the runtime's own stop protocol. /resume reopens a stopped conversation."
+			description={t(
+				"ui.chat.pickers.destination_pickers.ends_the_chosen_sessions_current_work_through_the_runtime_s_own_stop_pro",
+			)}
 			options={options}
 			loading={rows.isLoading}
 			loadError={rows.isError ? errorText(rows.error) : null}
@@ -3318,7 +3508,7 @@ export const StopPicker: FC<PickerContext> = ({
 				</PickerCheck>
 			}
 			onSubmit={submit}
-			submitLabel="Stop"
+			submitLabel={t("ui.chat.pickers.destination_pickers.stop")}
 			submitDisabled={!confirmed || chosen.length === 0}
 			busy={op.busy}
 			result={op.result}
@@ -3329,9 +3519,11 @@ export const StopPicker: FC<PickerContext> = ({
 // -------------------------------------------------------------------- copy
 
 export const CopyPicker: FC<PickerContext> = ({ canonical, onClose }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const [result, setResult] = useState<PickerResult | null>(null);
 	const options = useMemo<PickerOption[]>(() => {
+		// t() reads at call time; locale is therefore a real invalidation input.
+		void locale;
 		const rows: PickerOption[] = [];
 		const records = canonical.transcript.records;
 		for (let i = records.length - 1; i >= 0 && rows.length < 60; i--) {
@@ -3340,37 +3532,45 @@ export const CopyPicker: FC<PickerContext> = ({ canonical, onClose }) => {
 				rows.push({
 					value: `message:${record.id}`,
 					label: record.text.replace(/\s+/g, " ").slice(0, 80),
-					group: "Messages",
-					meta: "message",
+					group: t("ui.chat.pickers.destination_pickers.messages"),
+					meta: t("ui.chat.pickers.destination_pickers.message"),
 				});
 				const fences = record.text.match(/```[\w-]*\n[\s\S]*?```/g) ?? [];
 				fences.forEach((fence, index) => {
 					const code = fence.replace(/^```[\w-]*\n/, "").replace(/```$/, "");
 					rows.push({
 						value: `code:${record.id}:${index}`,
-						label: code.split("\n")[0].slice(0, 80) || "(code)",
-						group: "Code blocks",
-						meta: `${code.split("\n").length} lines`,
+						label:
+							code.split("\n")[0].slice(0, 80) ||
+							t("ui.chat.pickers.destination_pickers.code"),
+						group: t("ui.chat.pickers.destination_pickers.code_blocks"),
+						meta: t("ui.chat.pickers.destination_pickers.lines", {
+							length: code.split("\n").length,
+						}),
 					});
 				});
 				rows.push({
 					value: `quote:${record.id}`,
 					label: `> ${record.text.replace(/\s+/g, " ").slice(0, 70)}`,
-					group: "As quote",
-					meta: "quote",
+					group: t("ui.chat.pickers.destination_pickers.as_quote"),
+					meta: t("ui.chat.pickers.destination_pickers.quote"),
 				});
 			}
 			if (record.kind === "tool" && record.output) {
 				rows.push({
 					value: `output:${record.id}`,
-					label: `${record.toolName} output`,
-					group: "Tool output",
-					meta: `${record.output.length} chars`,
+					label: t("ui.chat.pickers.destination_pickers.output", {
+						toolname: record.toolName,
+					}),
+					group: t("ui.chat.pickers.destination_pickers.tool_output"),
+					meta: t("ui.chat.pickers.destination_pickers.chars", {
+						length: record.output.length,
+					}),
 				});
 			}
 		}
 		return rows;
-	}, [canonical.transcript.records]);
+	}, [canonical.transcript.records, locale]);
 
 	const onPick = useCallback(
 		async (value: string) => {
@@ -3397,12 +3597,16 @@ export const CopyPicker: FC<PickerContext> = ({ canonical, onClose }) => {
 				await navigator.clipboard.writeText(text);
 				setResult({
 					tone: "success",
-					text: `Copied ${text.length} characters.`,
+					text: t("ui.chat.pickers.destination_pickers.copied_characters", {
+						length: text.length,
+					}),
 				});
 			} catch (error) {
 				setResult({
 					tone: "error",
-					text: `Clipboard refused: ${errorText(error)}`,
+					text: t("ui.chat.pickers.destination_pickers.clipboard_refused", {
+						errortext: errorText(error),
+					}),
 				});
 			}
 		},
@@ -3413,9 +3617,11 @@ export const CopyPicker: FC<PickerContext> = ({ canonical, onClose }) => {
 			open
 			onClose={onClose}
 			title={t("ui.chat.pickers.copy.title")}
-			description="Pick a message, a code block, or a quoted excerpt. It goes to the clipboard."
+			description={t(
+				"ui.chat.pickers.destination_pickers.pick_a_message_a_code_block_or_a_quoted_excerpt_it_goes_to_the_clipboard",
+			)}
 			options={options}
-			emptyText="Nothing to copy yet."
+			emptyText={t("ui.chat.pickers.destination_pickers.nothing_to_copy_yet")}
 			onPick={onPick}
 			result={result}
 		/>
@@ -3430,27 +3636,28 @@ export const ResumePicker: FC<PickerContext> = ({
 	rebind,
 	action,
 }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const rows = useSessionRows();
 	const [result, setResult] = useState<PickerResult | null>(null);
-	const options = useMemo<PickerOption[]>(
-		() =>
-			(rows.data ?? [])
-				.slice()
-				.sort((a, b) => (b.mtime ?? 0) - (a.mtime ?? 0))
-				.map((row) => ({
-					value: row.id,
-					label: sessionLabel(row),
-					description: sessionActivity(
-						row,
-						"cold, reopens on the next message",
+	const options = useMemo<PickerOption[]>(() => {
+		void locale;
+		return (rows.data ?? [])
+			.slice()
+			.sort((a, b) => (b.mtime ?? 0) - (a.mtime ?? 0))
+			.map((row) => ({
+				value: row.id,
+				label: sessionLabel(row),
+				description: sessionActivity(
+					row,
+					t(
+						"ui.chat.pickers.destination_pickers.cold_reopens_on_the_next_message",
 					),
-					meta: new Date((row.mtime ?? 0) * 1000).toLocaleString(),
-					current: row.id === sessionId,
-					keywords: [row.id],
-				})),
-		[rows.data, sessionId],
-	);
+				),
+				meta: new Date((row.mtime ?? 0) * 1000).toLocaleString(),
+				current: row.id === sessionId,
+				keywords: [row.id],
+			}));
+	}, [rows.data, sessionId, locale]);
 	// `/resume <id>` with a known id is a direct pick.
 	useEffect(() => {
 		const wanted = action.args.trim();
@@ -3460,7 +3667,12 @@ export const ResumePicker: FC<PickerContext> = ({
 		);
 		if (hit) {
 			rebind(hit.id);
-			setResult({ tone: "success", text: `Resumed ${sessionLabel(hit)}.` });
+			setResult({
+				tone: "success",
+				text: t("ui.chat.pickers.destination_pickers.resumed", {
+					sessionlabel: sessionLabel(hit),
+				}),
+			});
 		}
 	}, [action.args, rows.data, rebind]);
 	return (
@@ -3468,14 +3680,23 @@ export const ResumePicker: FC<PickerContext> = ({
 			open
 			onClose={onClose}
 			title={t("ui.chat.pickers.resume.title")}
-			description="Every canonical session, live or cold. Picking one attaches this window to it; nothing is restarted until you send a message."
+			description={t(
+				"ui.chat.pickers.destination_pickers.every_canonical_session_live_or_cold_picking_one_attaches_this_window_to",
+			)}
 			options={options}
 			loading={rows.isLoading}
 			loadError={rows.isError ? errorText(rows.error) : null}
-			searchPlaceholder="Search by title or id"
+			searchPlaceholder={t(
+				"ui.chat.pickers.destination_pickers.search_by_title_or_id",
+			)}
 			onPick={(value, option) => {
 				rebind(value);
-				setResult({ tone: "success", text: `Resumed ${option.label}.` });
+				setResult({
+					tone: "success",
+					text: t("ui.chat.pickers.destination_pickers.resumed_2d9cda", {
+						label: option.label,
+					}),
+				});
 			}}
 			result={result}
 		/>
@@ -3504,9 +3725,12 @@ export const NewSessionPicker: FC<PickerContext> = ({
 			},
 			(id) => ({
 				tone: "success",
-				text: `New conversation ${id}. The previous one keeps running.`,
+				text: t(
+					"ui.chat.pickers.destination_pickers.new_conversation_the_previous_one_keeps_running",
+					{ id: id },
+				),
 			}),
-			"The conversation was not created",
+			t("ui.chat.pickers.destination_pickers.the_conversation_was_not_created"),
 		);
 		if (value) rebind(value);
 	}, [op, createSession, cwd, canonical.frontend?.cwd, rebind]);
@@ -3515,17 +3739,21 @@ export const NewSessionPicker: FC<PickerContext> = ({
 			open
 			onClose={onClose}
 			title={t("ui.chat.pickers.new_session.title")}
-			description="Starts a fresh canonical session. Work in the current one continues."
+			description={t(
+				"ui.chat.pickers.destination_pickers.starts_a_fresh_canonical_session_work_in_the_current_one_continues",
+			)}
 			form={
 				<PickerField
-					label="Working directory"
-					hint="Must exist on this machine."
+					label={t("ui.chat.pickers.destination_pickers.working_directory")}
+					hint={t(
+						"ui.chat.pickers.destination_pickers.must_exist_on_this_machine",
+					)}
 				>
 					<Input value={cwd} onChange={(event) => setCwd(event.target.value)} />
 				</PickerField>
 			}
 			onSubmit={submit}
-			submitLabel="Create"
+			submitLabel={t("ui.chat.pickers.destination_pickers.create")}
 			submitDisabled={!cwd.trim()}
 			busy={op.busy}
 			result={op.result}
@@ -3585,7 +3813,9 @@ export const GoalPicker: FC<PickerContext> = ({
 		(judge?.state === "waiting" ? "waiting" : "idle");
 	const judgeLine =
 		judgeWord === "stalled"
-			? "stalled — send a message to continue"
+			? t(
+					"ui.chat.pickers.destination_pickers.stalled_send_a_message_to_continue",
+				)
 			: judgeWord;
 	return (
 		<PickerHost
@@ -3615,10 +3845,16 @@ export const GoalPicker: FC<PickerContext> = ({
 						 * canvas view is the discoverable one, and the typed command keeps its place
 						 * in the `/goal` receipt rather than being repeated in a description.
 						 */
-						"This goal is settled. It stays in the goal history — dismiss it to clear the chip, or find it in the canvas's Goals view."
+						t(
+							"ui.chat.pickers.destination_pickers.this_goal_is_settled_it_stays_in_the_goal_history_dismiss_it_to_clear_th",
+						)
 					: current
-						? "The standing goal is prepended to every turn. Clear it to remove it."
-						: "A standing goal the agent keeps in view on every turn."
+						? t(
+								"ui.chat.pickers.destination_pickers.the_standing_goal_is_prepended_to_every_turn_clear_it_to_remove_it",
+							)
+						: t(
+								"ui.chat.pickers.destination_pickers.a_standing_goal_the_agent_keeps_in_view_on_every_turn",
+							)
 			}
 			form={
 				<>
@@ -3640,7 +3876,7 @@ export const GoalPicker: FC<PickerContext> = ({
 							{current}
 						</p>
 					)}
-					<PickerField label="Goal">
+					<PickerField label={t("ui.chat.pickers.destination_pickers.goal")}>
 						<Textarea
 							value={goal}
 							onChange={(event) => setGoal(event.target.value)}
@@ -3658,14 +3894,14 @@ export const GoalPicker: FC<PickerContext> = ({
 					 * goal would invent a judge.
 					 */}
 					{capable && hasGoal && (
-						<PickerField label="Judge">
+						<PickerField label={t("ui.chat.pickers.destination_pickers.judge")}>
 							<span className="text-ink-muted text-body-sm">{judgeLine}</span>
 						</PickerField>
 					)}
 				</>
 			}
 			onSubmit={() => void command.run(GOAL_COMMAND, goal.trim())}
-			submitLabel="Set goal"
+			submitLabel={t("ui.chat.pickers.destination_pickers.set_goal")}
 			submitDisabled={!goal.trim()}
 			actions={
 				current ? (
@@ -3702,8 +3938,14 @@ export const GoalPicker: FC<PickerContext> = ({
 };
 
 const APPROVAL_DESCRIPTIONS: Record<string, string> = {
-	ask: "write and command tools prompt before running",
-	auto: "tools run without asking",
+	get ask() {
+		return t(
+			"ui.chat.pickers.destination_pickers.write_and_command_tools_prompt_before_running",
+		);
+	},
+	get auto() {
+		return t("ui.chat.pickers.destination_pickers.tools_run_without_asking");
+	},
 };
 
 export const ApprovalsPicker: FC<PickerContext> = ({
@@ -3763,9 +4005,12 @@ export const ApprovalsPicker: FC<PickerContext> = ({
 					}),
 				(row) => ({
 					tone: "success",
-					text: `Default approvals for all sessions that follow it: ${String(row?.value ?? value)}. This session follows it unless it has its own choice.`,
+					text: t(
+						"ui.chat.pickers.destination_pickers.default_approvals_for_all_sessions_that_follow_it_this_session_follows_i",
+						{ string: String(row?.value ?? value) },
+					),
 				}),
-				"The default was not saved",
+				t("ui.chat.pickers.destination_pickers.the_default_was_not_saved"),
 			);
 			await defaults.refetch();
 		},
@@ -3776,20 +4021,27 @@ export const ApprovalsPicker: FC<PickerContext> = ({
 			open
 			onClose={onClose}
 			title={t("ui.chat.pickers.approvals.title")}
-			description="Whether write and command tools ask before running."
+			description={t(
+				"ui.chat.pickers.destination_pickers.whether_write_and_command_tools_ask_before_running",
+			)}
 			options={options}
 			loading={entities.isLoading}
 			onPick={onPick}
 			toolbar={
 				<PickerSegment
-					label="Scope"
+					label={t("ui.chat.pickers.destination_pickers.scope")}
 					value={scope}
 					onChange={setScope}
 					options={[
-						{ value: "session", label: "This session" },
+						{
+							value: "session",
+							label: t("ui.chat.pickers.destination_pickers.this_session"),
+						},
 						{
 							value: "default",
-							label: "Default for all sessions that follow it",
+							label: t(
+								"ui.chat.pickers.destination_pickers.default_for_all_sessions_that_follow_it",
+							),
 						},
 					]}
 				/>
@@ -3983,16 +4235,16 @@ export const FastPicker: FC<PickerContext> = ({
 			 * A DRAFT speaks "conversation", because that is what its first message
 			 * starts; "this session" is the noun of a pane that has one, and the
 			 * result strip in this same dialog already says "for the first message"
-			 * (design review round 1, D3). One key would be cheaper than the split
-			 * and is deliberately not added here: `ui.chat.pickers` exists in
-			 * English only, and the coverage gate's shrink-only allowance refuses a
-			 * new English key in an incomplete namespace, so the key rides the
-			 * namespace's translation programme rather than this fix.
+			 * (design review round 1, D3). The draft sentence rides as the literal
+			 * main shipped: the canvas translations were audited before it existed,
+			 * and a new English key here would fail coverage for all seven locales.
 			 */
 			description={
 				draft
 					? "Applies to the conversation this chat starts."
-					: "Applies to this session only."
+					: t(
+							"ui.chat.pickers.destination_pickers.applies_to_this_session_only",
+						)
 			}
 			options={options}
 			onPick={(value) =>
@@ -4114,9 +4366,11 @@ export const RenamePicker: FC<PickerContext> = ({
 			open
 			onClose={onClose}
 			title={t("ui.chat.pickers.rename.title")}
-			description="An explicit name takes precedence over the generated title."
+			description={t(
+				"ui.chat.pickers.destination_pickers.an_explicit_name_takes_precedence_over_the_generated_title",
+			)}
 			form={
-				<PickerField label="Name">
+				<PickerField label={t("ui.chat.pickers.destination_pickers.name")}>
 					<Input
 						value={name}
 						onChange={(event) => setName(event.target.value)}
@@ -4173,7 +4427,7 @@ export const RenamePicker: FC<PickerContext> = ({
 					else showInfoToast(result.text);
 				}
 			}}
-			submitLabel="Rename"
+			submitLabel={t("ui.chat.pickers.destination_pickers.rename")}
 			submitDisabled={!name.trim()}
 			busy={command.busy}
 			result={command.result}
@@ -4212,20 +4466,42 @@ export const LoopPicker: FC<PickerContext> = ({
 			open
 			onClose={onClose}
 			title={t("ui.chat.pickers.loop.title")}
-			description="Repeats turns toward a goal. Approval and question gates still stop and wait for you; the loop never answers them."
+			description={t(
+				"ui.chat.pickers.destination_pickers.repeats_turns_toward_a_goal_approval_and_question_gates_still_stop_and_w",
+			)}
 			body={
 				loop && loop.status !== "idle" ? (
 					<div className="rounded-md border border-hairline bg-sunken px-3 py-2">
-						<PickerKeyValue label="Status" value={loop.status} />
 						<PickerKeyValue
-							label="Completed"
-							value={`${loop.completed}${loop.iterations ? ` of ${loop.iterations}` : ""}`}
+							label={t("ui.chat.pickers.destination_pickers.status")}
+							value={loop.status}
+						/>
+						<PickerKeyValue
+							label={t("ui.chat.pickers.destination_pickers.completed")}
+							value={
+								loop.iterations
+									? t("ui.chat.pickers.destination_pickers.completed_of", {
+											completed: loop.completed,
+											iterations: loop.iterations,
+										})
+									: t("ui.chat.pickers.destination_pickers.completed_only", {
+											completed: loop.completed,
+										})
+							}
 						/>
 						{loop.goal && (
-							<PickerKeyValue label="Goal" value={loop.goal} mono={false} />
+							<PickerKeyValue
+								label={t("ui.chat.pickers.destination_pickers.goal")}
+								value={loop.goal}
+								mono={false}
+							/>
 						)}
 						{loop.reason && (
-							<PickerKeyValue label="Reason" value={loop.reason} mono={false} />
+							<PickerKeyValue
+								label={t("ui.chat.pickers.destination_pickers.reason")}
+								value={loop.reason}
+								mono={false}
+							/>
 						)}
 					</div>
 				) : undefined
@@ -4234,21 +4510,36 @@ export const LoopPicker: FC<PickerContext> = ({
 				running ? undefined : (
 					<div className="flex flex-col gap-3">
 						<PickerSegment
-							label="Loop mode"
+							label={t("ui.chat.pickers.destination_pickers.loop_mode")}
 							value={mode}
 							onChange={setMode}
 							options={[
-								{ value: "count", label: "Fixed number of turns" },
-								{ value: "goal", label: "Until a goal is met" },
+								{
+									value: "count",
+									label: t(
+										"ui.chat.pickers.destination_pickers.fixed_number_of_turns",
+									),
+								},
+								{
+									value: "goal",
+									label: t(
+										"ui.chat.pickers.destination_pickers.until_a_goal_is_met",
+									),
+								},
 							]}
 						/>
 						{mode === "count" ? (
 							<PickerField
-								label="Turns (1 to 25)"
+								label={t("ui.chat.pickers.destination_pickers.turns_1_to_25")}
 								hint={
 									standingGoal
-										? `Uses the standing goal: ${standingGoal}`
-										: "Set a standing goal with /goal first, or switch to a goal loop."
+										? t(
+												"ui.chat.pickers.destination_pickers.uses_the_standing_goal",
+												{ standinggoal: standingGoal },
+											)
+										: t(
+												"ui.chat.pickers.destination_pickers.set_a_standing_goal_with_goal_first_or_switch_to_a_goal_loop",
+											)
 								}
 							>
 								<Input
@@ -4260,7 +4551,12 @@ export const LoopPicker: FC<PickerContext> = ({
 								/>
 							</PickerField>
 						) : (
-							<PickerField label="Goal" hint="A judge decides when it is met.">
+							<PickerField
+								label={t("ui.chat.pickers.destination_pickers.goal")}
+								hint={t(
+									"ui.chat.pickers.destination_pickers.a_judge_decides_when_it_is_met",
+								)}
+							>
 								<Textarea
 									value={goal}
 									onChange={(event) => setGoal(event.target.value)}
@@ -4272,7 +4568,7 @@ export const LoopPicker: FC<PickerContext> = ({
 				)
 			}
 			onSubmit={running ? undefined : submit}
-			submitLabel="Start loop"
+			submitLabel={t("ui.chat.pickers.destination_pickers.start_loop")}
 			submitDisabled={
 				mode === "count" ? !count.trim() || !standingGoal : !goal.trim()
 			}
@@ -4296,7 +4592,7 @@ export const LoopPicker: FC<PickerContext> = ({
 };
 
 export const CredentialPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const [key, setKey] = useState("");
 	const [value, setValue] = useState("");
 	const [confirmForget, setConfirmForget] = useState(false);
@@ -4319,16 +4615,15 @@ export const CredentialPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 	 * round 1, Q3). The reading lives in `credential-capture.ts` beside the mint
 	 * guard that needs the same names, so the two cannot drift apart again.
 	 */
-	const options = useMemo<PickerOption[]>(
-		() =>
-			credentialNamesFrom(list.data).map((name) => ({
-				value: name,
-				label: name,
-				meta: "stored",
-				current: name === key,
-			})),
-		[list.data, key],
-	);
+	const options = useMemo<PickerOption[]>(() => {
+		void locale;
+		return credentialNamesFrom(list.data).map((name) => ({
+			value: name,
+			label: name,
+			meta: t("ui.chat.pickers.destination_pickers.stored"),
+			current: name === key,
+		}));
+	}, [list.data, key, locale]);
 	const store = useCallback(async () => {
 		if (!key.trim() || !value) return;
 		await op.perform(
@@ -4342,9 +4637,12 @@ export const CredentialPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 				}),
 			() => ({
 				tone: "success",
-				text: `Stored ${key.trim()}. The value was not echoed.`,
+				text: t(
+					"ui.chat.pickers.destination_pickers.stored_the_value_was_not_echoed",
+					{ value: key.trim() },
+				),
 			}),
-			"The credential was not stored",
+			t("ui.chat.pickers.destination_pickers.the_credential_was_not_stored"),
 		);
 		// The secret leaves renderer memory as soon as the backend has it.
 		setValue("");
@@ -4361,8 +4659,13 @@ export const CredentialPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 					key: key.trim(),
 					confirmed: true,
 				}),
-			() => ({ tone: "success", text: `Forgot ${key.trim()}.` }),
-			"The credential was not removed",
+			() => ({
+				tone: "success",
+				text: t("ui.chat.pickers.destination_pickers.forgot", {
+					value: key.trim(),
+				}),
+			}),
+			t("ui.chat.pickers.destination_pickers.the_credential_was_not_removed"),
 		);
 		setConfirmForget(false);
 		await list.refetch();
@@ -4372,23 +4675,32 @@ export const CredentialPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 			open
 			onClose={onClose}
 			title={t("ui.chat.pickers.credential.title")}
-			description="Stores a secret for this session's tools by name. The value never appears in the composer, the transcript, or the command receipt."
+			description={t(
+				"ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears",
+			)}
 			options={options}
 			loading={list.isLoading}
-			emptyText="No credentials stored yet."
+			emptyText={t(
+				"ui.chat.pickers.destination_pickers.no_credentials_stored_yet",
+			)}
 			onPick={(picked) => setKey(picked)}
 			form={
 				<div className="flex flex-col gap-3">
-					<PickerField label="Name">
+					<PickerField label={t("ui.chat.pickers.destination_pickers.name")}>
 						<Input
 							value={key}
 							onChange={(event) => setKey(event.target.value)}
-							placeholder="MY_API_KEY"
+							placeholder={t("ui.chat.pickers.destination_pickers.my_api_key")}
 							// i18n: ignore sample environment variable name, not prose
 							autoComplete="off"
 						/>
 					</PickerField>
-					<PickerField label="Value" hint="Masked. Cleared after storing.">
+					<PickerField
+						label={t("ui.chat.pickers.destination_pickers.value")}
+						hint={t(
+							"ui.chat.pickers.destination_pickers.masked_cleared_after_storing",
+						)}
+					>
 						<Input
 							type="password"
 							value={value}
@@ -4410,7 +4722,7 @@ export const CredentialPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 				</div>
 			}
 			onSubmit={store}
-			submitLabel="Store"
+			submitLabel={t("ui.chat.pickers.destination_pickers.store")}
 			submitDisabled={!key.trim() || !value}
 			actions={
 				confirmForget ? (
@@ -4434,26 +4746,29 @@ export const CredentialPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 // ------------------------------------------------------------ auth flows
 
 export const LoginPicker: FC<PickerContext> = ({ onClose, action }) => {
-	useI18nLocale();
+	const locale = useI18nLocale();
 	const navigate = useNavigate();
 	const providers = useDesktopProviders(true);
-	const options = useMemo<PickerOption[]>(
-		() =>
-			(providers.data ?? []).map((provider: DesktopProvider) => ({
-				value: provider.id,
-				label: provider.name,
-				description: provider.auth_methods
-					.map((method) => method.label)
-					.join(", "),
-				meta: provider.configured
-					? `${provider.stored_credentials} stored`
-					: undefined,
-				current: provider.configured,
-				keywords: provider.search_aliases,
-				group: provider.configured ? "Signed in" : "Available",
-			})),
-		[providers.data],
-	);
+	const options = useMemo<PickerOption[]>(() => {
+		void locale;
+		return (providers.data ?? []).map((provider: DesktopProvider) => ({
+			value: provider.id,
+			label: provider.name,
+			description: provider.auth_methods
+				.map((method) => method.label)
+				.join(", "),
+			meta: provider.configured
+				? t("ui.chat.pickers.destination_pickers.stored54112c", {
+						stored_credentials: provider.stored_credentials,
+					})
+				: undefined,
+			current: provider.configured,
+			keywords: provider.search_aliases,
+			group: provider.configured
+				? t("ui.chat.pickers.destination_pickers.signed_in")
+				: t("ui.chat.pickers.destination_pickers.available"),
+		}));
+	}, [providers.data, locale]);
 	// `/login <provider>` opens that provider directly.
 	useEffect(() => {
 		const wanted = action.args.trim();
@@ -4474,7 +4789,9 @@ export const LoginPicker: FC<PickerContext> = ({ onClose, action }) => {
 			open
 			onClose={onClose}
 			title={t("ui.chat.pickers.login.title")}
-			description="Opens the provider's sign-in methods in Settings. Browser and device flows run through the backend; keys are entered in a masked field there."
+			description={t(
+				"ui.chat.pickers.destination_pickers.opens_the_provider_s_sign_in_methods_in_settings_browser_and_device_flow",
+			)}
 			options={options}
 			loading={providers.isLoading}
 			loadError={providers.isError ? errorText(providers.error) : null}
@@ -4541,9 +4858,11 @@ export const LogoutPicker: FC<PickerContext> = ({ onClose, action }) => {
 				}),
 			() => ({
 				tone: "success",
-				text: "Signed out. Environment variables and other accounts are untouched.",
+				text: t(
+					"ui.chat.pickers.destination_pickers.signed_out_environment_variables_and_other_accounts_are_untouched",
+				),
 			}),
-			"Sign-out failed",
+			t("ui.chat.pickers.destination_pickers.sign_out_failed"),
 		);
 		setConfirmed(false);
 		setSelected(null);
@@ -4564,12 +4883,18 @@ export const LogoutPicker: FC<PickerContext> = ({ onClose, action }) => {
 			open
 			onClose={onClose}
 			title={t("ui.chat.pickers.logout.title")}
-			description="Removes one stored account. Credentials supplied through environment variables cannot be removed here and keep working."
+			description={t(
+				"ui.chat.pickers.destination_pickers.removes_one_stored_account_credentials_supplied_through_environment_vari",
+			)}
 			options={options}
 			loading={accounts.isLoading}
 			loadError={accounts.isError ? errorText(accounts.error) : null}
 			emptyText={
-				wanted ? `No stored account for ${wanted}.` : "No stored accounts."
+				wanted
+					? t("ui.chat.pickers.destination_pickers.no_stored_account_for", {
+							wanted: wanted,
+						})
+					: t("ui.chat.pickers.destination_pickers.no_stored_accounts")
 			}
 			onPick={(value) => setSelected(Number(value))}
 			form={
@@ -4584,7 +4909,7 @@ export const LogoutPicker: FC<PickerContext> = ({ onClose, action }) => {
 				) : undefined
 			}
 			onSubmit={selected !== null ? submit : undefined}
-			submitLabel="Sign out"
+			submitLabel={t("ui.chat.pickers.destination_pickers.sign_out")}
 			submitDisabled={!confirmed}
 			busy={op.busy}
 			result={op.result}
@@ -4622,40 +4947,44 @@ export const HelpPalette: FC<PickerContext> = ({
 	onClose,
 	dispatch,
 }) => {
-	useI18nLocale();
-	const options = useMemo<PickerOption[]>(
-		() =>
-			commands.map((command) => ({
-				value: command.name,
-				label: `/${command.name}${command.aliases.length ? `  (${command.aliases.map((a) => `/${a}`).join(", ")})` : ""}`,
-				description: command.description,
-				// The right-hand column used to print the routing id
-				// (`transcript.clear`, `radient.mobile`) as the most prominent
-				// thing on every row. That is internal vocabulary, not something a
-				// user can act on, so the meta now says only what the command
-				// TAKES. Destinations remain searchable below.
-				meta:
-					command.arguments === "none"
-						? ""
-						: command.arguments === "required"
-							? "Needs an argument"
-							: "Takes an argument",
-				keywords: [...command.aliases, command.destination, command.execution],
-				group:
-					command.execution === "owner"
-						? "Session (runs on the owner)"
-						: "Desktop",
-			})),
-		[commands],
-	);
+	const locale = useI18nLocale();
+	const options = useMemo<PickerOption[]>(() => {
+		void locale;
+		return commands.map((command) => ({
+			value: command.name,
+			label: `/${command.name}${command.aliases.length ? `  (${command.aliases.map((a) => `/${a}`).join(", ")})` : ""}`,
+			description: command.description,
+			// The right-hand column used to print the routing id
+			// (`transcript.clear`, `radient.mobile`) as the most prominent
+			// thing on every row. That is internal vocabulary, not something a
+			// user can act on, so the meta now says only what the command
+			// TAKES. Destinations remain searchable below.
+			meta:
+				command.arguments === "none"
+					? ""
+					: command.arguments === "required"
+						? t("ui.chat.pickers.destination_pickers.needs_an_argument")
+						: t("ui.chat.pickers.destination_pickers.takes_an_argument"),
+			keywords: [...command.aliases, command.destination, command.execution],
+			group:
+				command.execution === "owner"
+					? t("ui.chat.pickers.destination_pickers.session_runs_on_the_owner")
+					: t("ui.chat.pickers.destination_pickers.desktop"),
+		}));
+	}, [commands, locale]);
 	return (
 		<PickerHost
 			open
 			onClose={onClose}
 			title={t("ui.chat.pickers.commands.title")}
-			description={`${commands.length} commands. Pick one to run it; commands that take an argument open their picker.`}
+			description={t(
+				"ui.chat.pickers.destination_pickers.commands_pick_one_to_run_it_commands_that_take_an_argument_open_their_pi",
+				{ length: commands.length },
+			)}
 			options={options}
-			searchPlaceholder="Search commands"
+			searchPlaceholder={t(
+				"ui.chat.pickers.destination_pickers.search_commands",
+			)}
 			onPick={(value) => {
 				onClose();
 				dispatch({ name: value, args: "" });
@@ -4670,7 +4999,10 @@ export const HelpPalette: FC<PickerContext> = ({
  * The sentence's own head, in one place: the inline strip and the toast that
  * carries the same failure once the dialog is gone must not disagree (review U6).
  */
-const RELOAD_FAILURE_PREFIX = "The conversation could not be reopened";
+const RELOAD_FAILURE_PREFIX = () =>
+	t(
+		"ui.chat.pickers.destination_pickers.the_conversation_could_not_be_reopened",
+	);
 
 /**
  * The sentence a successful reload leaves behind.
@@ -4697,11 +5029,17 @@ export const reloadReceipt = (
 	cold: boolean,
 	recentRows: number,
 ): string =>
-	`Reopened ${subject}: ${
-		cold
-			? "no session was running, so it was reopened from history"
-			: "reattached to the running session"
-	}, ${recentRows} recent ${recentRows === 1 ? "row" : "rows"}.`;
+	t("ui.chat.pickers.destination_pickers.reopened_recent", {
+		subject: subject,
+		value: cold
+			? t(
+					"ui.chat.pickers.destination_pickers.no_session_was_running_so_it_was_reopened_from_history",
+				)
+			: t(
+					"ui.chat.pickers.destination_pickers.reattached_to_the_running_session",
+				),
+		recentrows: recentRows,
+	});
 
 export const ReloadPicker: FC<PickerContext> = ({
 	sessionId,
@@ -4768,7 +5106,7 @@ export const ReloadPicker: FC<PickerContext> = ({
 					value.payload.history.entries.length,
 				),
 			}),
-			RELOAD_FAILURE_PREFIX,
+			RELOAD_FAILURE_PREFIX(),
 		);
 		/*
 		 * FAILURE KEEPS THE DIALOG (issue #679). `op.perform` answers `null` when the
@@ -4786,7 +5124,7 @@ export const ReloadPicker: FC<PickerContext> = ({
 		 */
 		if (snapshot === null) {
 			if (closed.current && failureText.current !== null) {
-				showErrorToast(`${RELOAD_FAILURE_PREFIX}: ${failureText.current}`);
+				showErrorToast(`${RELOAD_FAILURE_PREFIX()}: ${failureText.current}`);
 			}
 			return;
 		}
@@ -4823,9 +5161,11 @@ export const ReloadPicker: FC<PickerContext> = ({
 			open
 			onClose={onClose}
 			title={t("ui.chat.pickers.reload.title")}
-			description="Re-reads the canonical session from the backend and re-attaches the stream. No turn is resubmitted."
+			description={t(
+				"ui.chat.pickers.destination_pickers.re_reads_the_canonical_session_from_the_backend_and_re_attaches_the_stre",
+			)}
 			onSubmit={submit}
-			submitLabel="Reload"
+			submitLabel={t("ui.chat.pickers.destination_pickers.reload")}
 			busy={op.busy}
 			result={op.result}
 		/>

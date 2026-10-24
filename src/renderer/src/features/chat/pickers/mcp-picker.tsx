@@ -4,6 +4,8 @@ import {
 	SecondaryButton,
 } from "@shared/components/common/base-dialog";
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { McpAuthDialog } from "../components/run-details/mcp-auth-dialog";
@@ -15,6 +17,7 @@ import { parseMcpIntent } from "./mcp-command";
 /** Mounted by the existing destination registry, retaining the command's own
  * session and verb. No Settings navigation, URL intent, or duplicate registry. */
 export function McpPicker({ sessionId, action, onClose }: PickerContext) {
+	useI18nLocale();
 	const query = useQuery({
 		queryKey: mcpKeys.list(sessionId),
 		queryFn: () => fetchMcpList(sessionId),
@@ -44,22 +47,36 @@ export function McpPicker({ sessionId, action, onClose }: PickerContext) {
 		<BaseDialog
 			open
 			onClose={onClose}
-			title="MCP servers"
+			title={t("ui.chat.pickers.mcp_picker.mcp_servers")}
 			maxWidth="sm"
-			actions={<SecondaryButton onClick={onClose}>Close</SecondaryButton>}
+			actions={
+				<SecondaryButton onClick={onClose}>
+					{t("ui.chat.pickers.mcp_picker.close")}
+				</SecondaryButton>
+			}
 		>
 			<div className="flex flex-col gap-2 p-1.5 text-body text-ink-muted">
 				{query.isLoading ? (
-					<p>Loading configured MCP servers…</p>
+					<p>
+						{t("ui.chat.pickers.mcp_picker.loading_configured_mcp_servers")}
+					</p>
 				) : query.error ? (
 					<>
-						<p role="alert">Could not load MCP servers.</p>
-						<Button onClick={() => void query.refetch()}>Retry</Button>
+						<p role="alert">
+							{t("ui.chat.pickers.mcp_picker.could_not_load_mcp_servers")}
+						</p>
+						<Button onClick={() => void query.refetch()}>
+							{t("ui.chat.pickers.mcp_picker.retry")}
+						</Button>
 					</>
 				) : intent.kind === "error" ? (
 					<p role="alert">{intent.message}</p>
 				) : rows.length === 0 ? (
-					<p>No MCP servers are configured for this conversation.</p>
+					<p>
+						{t(
+							"ui.chat.pickers.mcp_picker.no_mcp_servers_are_configured_for_this_conversation",
+						)}
+					</p>
 				) : (
 					rows.map((row) => (
 						<Button

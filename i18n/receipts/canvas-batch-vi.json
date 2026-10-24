@@ -1,0 +1,200 @@
+{
+  "schema": 1,
+  "kind": "translator-provenance",
+  "locale": "vi",
+  "batch": "canvas/picker extraction — 1,041 newly extracted en keys",
+  "agent": "Local Operator subagent, team lopdev, role translator",
+  "session": "1bbb997ac79c",
+  "served_model": "radient/auto",
+  "model_provenance": "The runtime served radient/auto for this session (parent model switched mid-run; the translator turn resumed on the same transcript). No other model produced any catalogue value; no translation API, SDK or MT service was used.",
+  "date": "2026-10-24",
+  "source": {
+    "repo": "damianvtran/local-operator-ui",
+    "worktree": "/Users/damian/local-operator-ui/.worktrees/i18n-canvas-vi",
+    "branch": "feat/i18n-canvas-vi",
+    "head": "eb963e1baa63078a708161efd19336d4a32429c7",
+    "manifest_base_sha": "f6b9aae9ce5594e79dddb0d654edc4b4a0862331",
+    "selection": "Exactly the 1,041 keys in the manager-supplied manifest; no older backfill key was duplicated, no en or other-locale file was touched. The five ui.canvas alias keys whose English values were key ids were given real source copy upstream in eb963e1baa and translated here.",
+    "rebased_onto": "eb963e1baa63078a708161efd19336d4a32429c7 (fix(i18n): give canvas alias keys real English copy)"
+  },
+  "guide": {
+    "repo": "damianvtran/local-operator",
+    "commit": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+    "glossary_sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "vi_style_guide_sha256": "0a99f5643a262a1c1994f08746fab2473ade5946573eedf20c95107b40b9fa97"
+  },
+  "namespaces": {
+    "ui.canvas": {
+      "assigned_keys": 290,
+      "file_keys": {
+        "en": 347,
+        "vi": 347
+      },
+      "sha256": {
+        "en": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+        "context": "4bc0f2bc47d4b0e826ebb10ba78ff965c550debef54f47c912b9e257fd1784f8",
+        "vi": "099709dc5c2fd65dfc9350943818865e991d4e1fb22818f013771b427938e7f4"
+      }
+    },
+    "ui.chat.pickers": {
+      "assigned_keys": 686,
+      "file_keys": {
+        "en": 720,
+        "vi": 686
+      },
+      "sha256": {
+        "en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+        "context": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9",
+        "vi": "b65bc5b6375a450ad8045dc21ef52b4ebb44df3ff9c7db9e2180811776f3af92"
+      }
+    },
+    "ui.common.actions": {
+      "assigned_keys": 30,
+      "file_keys": {
+        "en": 36,
+        "vi": 36
+      },
+      "sha256": {
+        "en": "d65be7beac66c209a55db5d8a672ff8a8a743eea49ba21593120d4b8664603b2",
+        "context": "29a6cc54f8605ab2612775708bf5eb202a89e6708167d8a7c3f329a536b339db",
+        "vi": "a26a6cc9565608095af1925b2a3ddd96db58091033827b1e467724ea003c1cf3"
+      }
+    },
+    "ui.common.forms": {
+      "assigned_keys": 10,
+      "file_keys": {
+        "en": 37,
+        "vi": 37
+      },
+      "sha256": {
+        "en": "c87c16b1169f32105e017fd27eb80047446938b1b45046c28bcf693856898238",
+        "context": "c11472cc390fe7771e08dcd34bb633e63797f979a113feaa47d70d06daea38b4",
+        "vi": "124d30c6cc98637d1b2ac3567072d662c2943fede765ed4c83e08fe4b56ac11e"
+      }
+    },
+    "ui.common.layout": {
+      "assigned_keys": 8,
+      "file_keys": {
+        "en": 8,
+        "vi": 8
+      },
+      "sha256": {
+        "en": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+        "context": "318673c640a31e11f5249127c8ef5a76d63c16c3c191960824391d934766bd39",
+        "vi": "8eb978ebdec1aaf91083f11750f52a70dbf2c5d430ea0a0e2f1130b4daf85981"
+      }
+    },
+    "ui.common.speech": {
+      "assigned_keys": 5,
+      "file_keys": {
+        "en": 5,
+        "vi": 5
+      },
+      "sha256": {
+        "en": "fa6a973f1a6a36f25218e884174299ba154e124baaddc87594bd516c8d07d8f6",
+        "context": "740828525702d67b6ee0ecf7eb0a3f1582167989355bd12d0579d698b982267a",
+        "vi": "4c36f1b63f3b8684394ff2ea6c3663bc0e39a9cd9412329386f6179d33c525d2"
+      }
+    },
+    "ui.common.updates": {
+      "assigned_keys": 8,
+      "file_keys": {
+        "en": 135,
+        "vi": 135
+      },
+      "sha256": {
+        "en": "1f81721263fa4c7d74219bd2c0af82b908bf2fb4491df074e99e2215ad00d667",
+        "context": "cb4a160ef62b1760d4622b29c90e130cff1b4165ac770dab200ebc54eca38bee",
+        "vi": "553a68179c4f2c1687b353c890cfe13b822c7bc4d7baeb11a6a11e2d12141fae"
+      }
+    },
+    "ui.common.viewer": {
+      "assigned_keys": 4,
+      "file_keys": {
+        "en": 8,
+        "vi": 4
+      },
+      "sha256": {
+        "en": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+        "context": "8b324e966ddb4aaef92ec3b3465f8ac6a80982529bcbd3b45a3c1cf1f9b28dd8",
+        "vi": "9be7c849bc46ae477d82840de5d66339f3844264d466fd788cc0dbad4365331e"
+      }
+    }
+  },
+  "checks": [
+    {
+      "command": "node scripts/i18n/generate.mjs --check",
+      "result": "pass — keys.gen.ts byte-identical to a fresh generation (the committed diff only wires the four new vi namespace files)"
+    },
+    {
+      "command": "node scripts/i18n/context-parity.mjs",
+      "result": "pass — every English key is covered apart from 131 allowed gaps in 4 namespaces"
+    },
+    {
+      "command": "node --test scripts/i18n/locale-parity.test.mjs — [vi] preserves every ICU placeholder",
+      "result": "pass"
+    },
+    {
+      "command": "node --test scripts/i18n/locale-parity.test.mjs — [vi] names only keys the English source defines",
+      "result": "pass"
+    },
+    {
+      "command": "derived ICU sweep (intl-messageformat parser over the 1,041 assigned keys, en vs vi)",
+      "result": "1041/1041 messages parse; 1041/1041 argument-name sets identical"
+    },
+    {
+      "command": "shipped t() render smoke in vi (17 cases: select arms, plural arms, ::group-off, shortcuts, newline-bearing message)",
+      "result": "fail on 51 language-neutral values (file-type labels, sample paths/URLs, ICU-only counters, TERM/COLORTERM/MY_API_KEY/skill://, pid, runtime); the reviewed IDENTICAL_OK exemption list is a gate-script edit and out of the translator's write scope"
+    },
+    {
+      "command": "node --test scripts/i18n/locale-parity.test.mjs — [vi] carries EVERY key of each namespace file it ships",
+      "result": "fail, by design for this tranche: ui.chat.pickers missing 34 and ui.common.viewer missing 4 pre-existing keys outside the assigned manifest; integration adds them"
+    },
+    {
+      "command": "node --test scripts/i18n/locale-parity.test.mjs — [vi] is not an English stub",
+      "result": "fail on 55 language-neutral values (file-type labels, sample paths/URLs, ICU counters, TERM/COLORTERM/MY_API_KEY/skill://, pid, runtime); the reviewed IDENTICAL_OK exemption list is a gate-script edit and out of the translator's write scope"
+    },
+    {
+      "command": "node --test scripts/i18n/locale-parity.test.mjs — re-run after rebase onto eb963e1baa",
+      "result": "unchanged: [vi] placeholder integrity and unknown-keys pass; complete-key-set fails on the 38 allowance-recorded backfill keys; English-stub fails on the 51 neutral values"
+    },
+    {
+      "command": "derived ICU sweep after the alias translation (en now carries real copy)",
+      "result": "1041/1041 messages parse; 1041/1041 argument-name sets identical"
+    }
+  ],
+  "decisions": {
+    "register": "bạn at first contact only; plain verbs elsewhere; sentence case; no exclamation marks; “…” for en ellipsis; NFC throughout",
+    "terms": {
+      "effort": "mức suy luận",
+      "fork": "tách nhánh",
+      "snapshot": "ảnh chụp",
+      "ledger": "sổ cái",
+      "quota": "hạn ngạch",
+      "usage": "mức sử dụng",
+      "owner (runtime)": "tiến trình chủ",
+      "judge": "trình đánh giá",
+      "rollup": "tổng hợp",
+      "cold/stalled": "nguội / bị đình trệ",
+      "Muse": "Muse (product, kept)",
+      "runtime, host, token, cache, script, prompt, backend, desktop": "kept English per the vi style guide"
+    },
+    "plural_policy": "other-only for Vietnamese, except three messages whose caller passes a singular/plural noun pair (ui.canvas.view_name.view_count, ui.canvas.view_name.view_shown_this_list_is_capped, ui.chat.pickers.info_model.count_noun, ui.chat.pickers.table_pager.range): the source arms are preserved so every English argument name survives the placeholder gate; both arms render the caller's Vietnamese noun, which does not inflect. Recorded as a deliberate, auditable deviation from the guide's other-only rule."
+  },
+  "overflow": {
+    "measured": "18 keys with vi/en length ratio >= 1.6 and English <= 42 chars; none exceed 80 characters",
+    "tightened": [
+      "ui.chat.pickers.usage_view.provider_usage",
+      "ui.chat.pickers.usage_view.checking_provider_usage",
+      "ui.chat.pickers.usage_view.loading_provider_usage",
+      "ui.chat.pickers.session_panel.tool_call_validity"
+    ],
+    "flagged": "remaining long forms are full sentences/empty states rather than pinned labels; the widest are ui.chat.pickers.usage_view_model.no_windows_reported (2.10x) and ui.chat.pickers.failovers_model.no_model_recorded (2.00x)"
+  },
+  "source_defects_noticed": [
+    "Resolved upstream in eb963e1baa: five ui.canvas English values were key ids rather than copy (ui.canvas.file_row.ui_canvas_files_fileactions, ui.canvas.file_viewer.ui_canvas_files_saveerror, ui.canvas.finder_files_view.ui_canvas_files_fileactions, .ui_canvas_files_imageactions, .ui_canvas_files_searchplaceholder). This branch is rebased onto that fix and the vi values are translated (Thao tác với tệp / Không lưu được tệp / Thao tác với ảnh / Tìm tệp), reusing the existing ui.canvas.files wording.",
+    "The manager manifest's `english` field is truncated for at least ui.common.forms.categories_input_chips.category ({category, select, …}); hashes and checks in this receipt were re-derived from the en catalogues, not the manifest."
+  ],
+  "status": "translated",
+  "awaiting": "independent i18n-auditor pass; ledger rows are added after the audit"
+}

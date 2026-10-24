@@ -426,7 +426,10 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 	const isVideo = mediaKind === "video";
 	const positionLabel = (index: number, count: number) =>
 		mediaLabel === "asset"
-			? `Asset ${index + 1} of ${count}`
+			? t("ui.common.viewer.image_lightbox.asset_of", {
+					index: index + 1,
+					count: count,
+				})
 			: groupPositionLabel(index, count);
 	/*
 	 * WHICH PICTURE FAILED, rather than a boolean this component resets. The
@@ -910,8 +913,12 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label={`Previous ${mediaLabel}`}
-								title={`Previous ${mediaLabel}`}
+								aria-label={t("ui.common.viewer.image_lightbox.previous", {
+									medialabel: mediaLabel,
+								})}
+								title={t("ui.common.viewer.image_lightbox.previous", {
+									medialabel: mediaLabel,
+								})}
 								onClick={group?.onPrev}
 								className={cn(
 									"pointer-events-auto fixed top-0 bottom-0 left-4 my-auto",
@@ -924,8 +931,12 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 							<Button
 								variant="ghost"
 								size="icon-sm"
-								aria-label={`Next ${mediaLabel}`}
-								title={`Next ${mediaLabel}`}
+								aria-label={t("ui.common.viewer.image_lightbox.next", {
+									medialabel: mediaLabel,
+								})}
+								title={t("ui.common.viewer.image_lightbox.next", {
+									medialabel: mediaLabel,
+								})}
 								onClick={group?.onNext}
 								className={cn(
 									"pointer-events-auto fixed top-0 right-4 bottom-0 my-auto",
@@ -990,8 +1001,12 @@ export const ImageLightbox: FC<ImageLightboxProps> = ({
 								"pointer-events-auto fixed top-4 right-4",
 								CHROME_PLATE,
 							)}
-							aria-label={`Close ${mediaLabel}`}
-							title={`Close ${mediaLabel}`}
+							aria-label={t("ui.common.viewer.image_lightbox.close", {
+								medialabel: mediaLabel,
+							})}
+							title={t("ui.common.viewer.image_lightbox.close", {
+								medialabel: mediaLabel,
+							})}
 						>
 							<X aria-hidden="true" />
 						</Button>

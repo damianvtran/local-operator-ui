@@ -288,49 +288,6 @@
 		},
 		{
 			"locale": "fr",
-			"namespace": "ui.chat.pickers",
-			"reason": "English copy landed after the locale waves; no translated catalogue carries it yet.",
-			"owner": "i18n-translator lane",
-			"payoff": "2026-12-31",
-			"missing": [
-				"ui.chat.pickers.approvals.title",
-				"ui.chat.pickers.commands.title",
-				"ui.chat.pickers.copy.title",
-				"ui.chat.pickers.credential.forget",
-				"ui.chat.pickers.credential.forget_confirmation",
-				"ui.chat.pickers.credential.title",
-				"ui.chat.pickers.effort.title",
-				"ui.chat.pickers.fast.premium_acknowledgement",
-				"ui.chat.pickers.fast.title",
-				"ui.chat.pickers.fork.search_placeholder",
-				"ui.chat.pickers.goal.clear",
-				"ui.chat.pickers.goal.mark_done",
-				"ui.chat.pickers.goal.placeholder",
-				"ui.chat.pickers.goal.title",
-				"ui.chat.pickers.login.title",
-				"ui.chat.pickers.logout.confirm",
-				"ui.chat.pickers.logout.title",
-				"ui.chat.pickers.loop.cancel",
-				"ui.chat.pickers.loop.title",
-				"ui.chat.pickers.models.connect_provider",
-				"ui.chat.pickers.models.native_details",
-				"ui.chat.pickers.models.set_as_default",
-				"ui.chat.pickers.models.title",
-				"ui.chat.pickers.new_session.title",
-				"ui.chat.pickers.profile.loading_detail",
-				"ui.chat.pickers.reload.title",
-				"ui.chat.pickers.rename.title",
-				"ui.chat.pickers.resume.title",
-				"ui.chat.pickers.skills.loading",
-				"ui.chat.pickers.skills.title",
-				"ui.chat.pickers.stop.all_sessions",
-				"ui.chat.pickers.stop.confirm",
-				"ui.chat.pickers.stop.title",
-				"ui.chat.pickers.theme.title"
-			]
-		},
-		{
-			"locale": "fr",
 			"namespace": "ui.chat.run_details",
 			"reason": "English copy landed after the locale waves; no translated catalogue carries it yet.",
 			"owner": "i18n-translator lane",
@@ -417,19 +374,6 @@
 				"ui.common.file_actions.open_folder",
 				"ui.common.file_actions.preview",
 				"ui.common.file_actions.show_in_canvas"
-			]
-		},
-		{
-			"locale": "fr",
-			"namespace": "ui.common.viewer",
-			"reason": "English copy landed after the locale waves; no translated catalogue carries it yet.",
-			"owner": "i18n-translator lane",
-			"payoff": "2026-12-31",
-			"missing": [
-				"ui.common.viewer.opening",
-				"ui.common.viewer.reset_view",
-				"ui.common.viewer.zoom_in",
-				"ui.common.viewer.zoom_out"
 			]
 		},
 		{
@@ -781,49 +725,6 @@
 		},
 		{
 			"locale": "ru",
-			"namespace": "ui.chat.pickers",
-			"reason": "English copy landed after the locale waves; no translated catalogue carries it yet.",
-			"owner": "i18n-translator lane",
-			"payoff": "2026-12-31",
-			"missing": [
-				"ui.chat.pickers.approvals.title",
-				"ui.chat.pickers.commands.title",
-				"ui.chat.pickers.copy.title",
-				"ui.chat.pickers.credential.forget",
-				"ui.chat.pickers.credential.forget_confirmation",
-				"ui.chat.pickers.credential.title",
-				"ui.chat.pickers.effort.title",
-				"ui.chat.pickers.fast.premium_acknowledgement",
-				"ui.chat.pickers.fast.title",
-				"ui.chat.pickers.fork.search_placeholder",
-				"ui.chat.pickers.goal.clear",
-				"ui.chat.pickers.goal.mark_done",
-				"ui.chat.pickers.goal.placeholder",
-				"ui.chat.pickers.goal.title",
-				"ui.chat.pickers.login.title",
-				"ui.chat.pickers.logout.confirm",
-				"ui.chat.pickers.logout.title",
-				"ui.chat.pickers.loop.cancel",
-				"ui.chat.pickers.loop.title",
-				"ui.chat.pickers.models.connect_provider",
-				"ui.chat.pickers.models.native_details",
-				"ui.chat.pickers.models.set_as_default",
-				"ui.chat.pickers.models.title",
-				"ui.chat.pickers.new_session.title",
-				"ui.chat.pickers.profile.loading_detail",
-				"ui.chat.pickers.reload.title",
-				"ui.chat.pickers.rename.title",
-				"ui.chat.pickers.resume.title",
-				"ui.chat.pickers.skills.loading",
-				"ui.chat.pickers.skills.title",
-				"ui.chat.pickers.stop.all_sessions",
-				"ui.chat.pickers.stop.confirm",
-				"ui.chat.pickers.stop.title",
-				"ui.chat.pickers.theme.title"
-			]
-		},
-		{
-			"locale": "ru",
 			"namespace": "ui.chat.run_details",
 			"reason": "English copy landed after the locale waves; no translated catalogue carries it yet.",
 			"owner": "i18n-translator lane",
@@ -928,19 +829,6 @@
 				"ui.common.file_actions.open_folder",
 				"ui.common.file_actions.preview",
 				"ui.common.file_actions.show_in_canvas"
-			]
-		},
-		{
-			"locale": "ru",
-			"namespace": "ui.common.viewer",
-			"reason": "English copy landed after the locale waves; no translated catalogue carries it yet.",
-			"owner": "i18n-translator lane",
-			"payoff": "2026-12-31",
-			"missing": [
-				"ui.common.viewer.opening",
-				"ui.common.viewer.reset_view",
-				"ui.common.viewer.zoom_in",
-				"ui.common.viewer.zoom_out"
 			]
 		},
 		{

@@ -1,0 +1,408 @@
+{
+  "schema": 1,
+  "kind": "translator-receipt",
+  "locale": "ur",
+  "locale_name": "Urdu",
+  "status": "translated",
+  "awaiting": "independent i18n-auditor review; ledger rows, IDENTICAL_OK entries and coverage reconciliation are integration tasks",
+  "translator": {
+    "agent": "translator",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "eaf7a455f71b",
+    "model": "radient/auto",
+    "model_provenance": "Served model tag reported by the harness for this session at translation time (radient/auto). No narrower underlying model id was exposed and no separate fallback was observed; no other model is claimed.",
+    "date": "2026-10-24"
+  },
+  "source": {
+    "manifest_name": "i18n-canvas-new-keys.json",
+    "manifest_sha256": "b9faa8d3abc3f81c100b54657549e4065135f98ba2e12a10c4f606c5b4dd778e",
+    "batch_keys": 1041,
+    "manifest_base_sha": "f6b9aae9ce5594e79dddb0d654edc4b4a0862331",
+    "manifest_extraction_commit": "4c97393be5f164fa8882403fd5c37a0795286b74",
+    "rebased_onto_extraction_head": "eb963e1baa63078a708161efd19336d4a32429c7",
+    "worktree": "/Users/damian/local-operator-ui/.worktrees/i18n-canvas-ur",
+    "branch": "feat/i18n-canvas-ur",
+    "source_fix_applied": "eb963e1baa replaces five English alias values that were key ids with real copy; the five corresponding Urdu values were retranslated after rebasing onto that commit.",
+    "manifest_caveat": "The manifest's captured English for ui.common.forms.categories_input_chips.category is truncated to '{category, select, …}'. The current English catalogue value was used as the authoritative source for that key; the key list and translation scope are unchanged. Five manifest values for canvas alias keys were key ids until eb963e1baa and were treated as source bugs, not copy."
+  },
+  "namespaces": {
+    "ui.canvas": {
+      "assigned_keys": 290,
+      "target_keys": 347,
+      "english_keys": 347,
+      "sha256": {
+        "en": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+        "target": "a442eee0623c4fa40862de7a86958d2d36a1acfeb99495038c25df2b6821dfac",
+        "context": "4bc0f2bc47d4b0e826ebb10ba78ff965c550debef54f47c912b9e257fd1784f8"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.canvas.json",
+        "target": "src/i18n/catalogues/ur/ui.canvas.json",
+        "context": "src/i18n/catalogues/en/ui.canvas.context.json"
+      }
+    },
+    "ui.chat.pickers": {
+      "assigned_keys": 686,
+      "target_keys": 686,
+      "english_keys": 720,
+      "sha256": {
+        "en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+        "target": "f64df2bbdcefe4efb8d1f687ab51324da6ecebe4fe888134ac7f89efa35b86d6",
+        "context": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+        "target": "src/i18n/catalogues/ur/ui.chat.pickers.json",
+        "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+      }
+    },
+    "ui.common.actions": {
+      "assigned_keys": 30,
+      "target_keys": 36,
+      "english_keys": 36,
+      "sha256": {
+        "en": "d65be7beac66c209a55db5d8a672ff8a8a743eea49ba21593120d4b8664603b2",
+        "target": "8d8ca1c085f3ac068f9f8765e93dd3d6fc2305e9da04246bc0b918d76450298a",
+        "context": "29a6cc54f8605ab2612775708bf5eb202a89e6708167d8a7c3f329a536b339db"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.actions.json",
+        "target": "src/i18n/catalogues/ur/ui.common.actions.json",
+        "context": "src/i18n/catalogues/en/ui.common.actions.context.json"
+      }
+    },
+    "ui.common.forms": {
+      "assigned_keys": 10,
+      "target_keys": 37,
+      "english_keys": 37,
+      "sha256": {
+        "en": "c87c16b1169f32105e017fd27eb80047446938b1b45046c28bcf693856898238",
+        "target": "2d869ab5f846cd2ccf8227bd5d21ed4ae8223d3f273e5e4355678698b60c4635",
+        "context": "c11472cc390fe7771e08dcd34bb633e63797f979a113feaa47d70d06daea38b4"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.forms.json",
+        "target": "src/i18n/catalogues/ur/ui.common.forms.json",
+        "context": "src/i18n/catalogues/en/ui.common.forms.context.json"
+      }
+    },
+    "ui.common.layout": {
+      "assigned_keys": 8,
+      "target_keys": 8,
+      "english_keys": 8,
+      "sha256": {
+        "en": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+        "target": "d6f37cb2b8c03d079bf52b50b811f5e0febde9ddbe88bbbe87681f9d1e4776c2",
+        "context": "318673c640a31e11f5249127c8ef5a76d63c16c3c191960824391d934766bd39"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.layout.json",
+        "target": "src/i18n/catalogues/ur/ui.common.layout.json",
+        "context": "src/i18n/catalogues/en/ui.common.layout.context.json"
+      }
+    },
+    "ui.common.speech": {
+      "assigned_keys": 5,
+      "target_keys": 5,
+      "english_keys": 5,
+      "sha256": {
+        "en": "fa6a973f1a6a36f25218e884174299ba154e124baaddc87594bd516c8d07d8f6",
+        "target": "e161eed70853a74841cb6e434fe15b06172b7a072fb74b8d365edfa0e5c30dd2",
+        "context": "740828525702d67b6ee0ecf7eb0a3f1582167989355bd12d0579d698b982267a"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.speech.json",
+        "target": "src/i18n/catalogues/ur/ui.common.speech.json",
+        "context": "src/i18n/catalogues/en/ui.common.speech.context.json"
+      }
+    },
+    "ui.common.updates": {
+      "assigned_keys": 8,
+      "target_keys": 135,
+      "english_keys": 135,
+      "sha256": {
+        "en": "1f81721263fa4c7d74219bd2c0af82b908bf2fb4491df074e99e2215ad00d667",
+        "target": "cc364e0e4efc32ccc66e9c8d28b236c3d857ef06f3ea548e643c483d8a67bcdc",
+        "context": "cb4a160ef62b1760d4622b29c90e130cff1b4165ac770dab200ebc54eca38bee"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.updates.json",
+        "target": "src/i18n/catalogues/ur/ui.common.updates.json",
+        "context": "src/i18n/catalogues/en/ui.common.updates.context.json"
+      }
+    },
+    "ui.common.viewer": {
+      "assigned_keys": 4,
+      "target_keys": 4,
+      "english_keys": 8,
+      "sha256": {
+        "en": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+        "target": "98f315cc8893fb9a23553ce0bbc0345d65b15113aa73d3e3ee5a223231b421bf",
+        "context": "8b324e966ddb4aaef92ec3b3465f8ac6a80982529bcbd3b45a3c1cf1f9b28dd8"
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.viewer.json",
+        "target": "src/i18n/catalogues/ur/ui.common.viewer.json",
+        "context": "src/i18n/catalogues/en/ui.common.viewer.context.json"
+      }
+    }
+  },
+  "checks": {
+    "generate_check": {
+      "command": "node scripts/i18n/generate.mjs --check",
+      "result": "PASS",
+      "actual": "src/i18n/keys.gen.ts is byte-identical to a fresh generation."
+    },
+    "context_parity": {
+      "command": "node scripts/i18n/context-parity.mjs",
+      "result": "PASS",
+      "actual": "context-parity: ok — every English key is covered, apart from 131 allowed gap(s) in 4 namespace(s) (shrink-only; see i18n/context-allowance.json)."
+    },
+    "ur_activation": {
+      "command": "node --test scripts/i18n/ur-activation.test.mjs",
+      "result": "PASS 3/3",
+      "actual": "ur bundled values checked: 4566; settings/console/onboarding, ungrouped counts and the no-bidi/no-forbidden-script/NFC checks all passed."
+    },
+    "icu_semantic": {
+      "method": "Parsed every assigned English and Urdu value with @formatjs/icu-messageformat-parser and compared order-insensitive node multisets (argument names, argument types, number/date skeletons, plural offsets, plural/select option sets and nested branch contents; literal order ignored).",
+      "keys": 1041,
+      "source_messages_with_args": 202,
+      "source_plural_messages": 33,
+      "source_select_messages": 12,
+      "mismatches": 0
+    },
+    "scope": {
+      "assigned_keys": 1041,
+      "missing": 0,
+      "extra_keys_not_in_english": 0,
+      "duplicate_json_keys": 0,
+      "key_order": "every target file preserves the English source order for the keys it carries",
+      "target_values_total": 1258,
+      "pre_existing_values_total": 217
+    },
+    "hygiene": {
+      "nfc_non_normalized": 0,
+      "manual_bidi_controls": 0,
+      "forbidden_script_or_punctuation": 0,
+      "note": "Scanned every target value: no RLM/LRM/FSI/PDI, no Devanagari or danda, no Arabic-only yeh/kaf/teh-marbuta; all values are NFC."
+    },
+    "identical_values": {
+      "count": 46,
+      "keys": [
+        "ui.canvas:ui.canvas.create_file_dialog.c_c",
+        "ui.canvas:ui.canvas.create_file_dialog.c_cpp",
+        "ui.canvas:ui.canvas.create_file_dialog.c_cs",
+        "ui.canvas:ui.canvas.create_file_dialog.css_css",
+        "ui.canvas:ui.canvas.create_file_dialog.dockerfile",
+        "ui.canvas:ui.canvas.create_file_dialog.env",
+        "ui.canvas:ui.canvas.create_file_dialog.go_go",
+        "ui.canvas:ui.canvas.create_file_dialog.html_html",
+        "ui.canvas:ui.canvas.create_file_dialog.ini_ini",
+        "ui.canvas:ui.canvas.create_file_dialog.java_java",
+        "ui.canvas:ui.canvas.create_file_dialog.javascript_js",
+        "ui.canvas:ui.canvas.create_file_dialog.json_json",
+        "ui.canvas:ui.canvas.create_file_dialog.jsx_jsx",
+        "ui.canvas:ui.canvas.create_file_dialog.kotlin_kt",
+        "ui.canvas:ui.canvas.create_file_dialog.markdown_md",
+        "ui.canvas:ui.canvas.create_file_dialog.php_php",
+        "ui.canvas:ui.canvas.create_file_dialog.python_py",
+        "ui.canvas:ui.canvas.create_file_dialog.ruby_rb",
+        "ui.canvas:ui.canvas.create_file_dialog.rust_rs",
+        "ui.canvas:ui.canvas.create_file_dialog.scala_scala",
+        "ui.canvas:ui.canvas.create_file_dialog.swift_swift",
+        "ui.canvas:ui.canvas.create_file_dialog.toml_toml",
+        "ui.canvas:ui.canvas.create_file_dialog.tsx_tsx",
+        "ui.canvas:ui.canvas.create_file_dialog.typescript_ts",
+        "ui.canvas:ui.canvas.create_file_dialog.xml_xml",
+        "ui.canvas:ui.canvas.create_file_dialog.yaml_yaml",
+        "ui.canvas:ui.canvas.create_file_dialog.yaml_yml",
+        "ui.canvas:ui.canvas.insert_image_dialog.users_eren_documents_image_png",
+        "ui.canvas:ui.canvas.insert_link_dialog.https_example_com",
+        "ui.canvas:ui.canvas.insert_link_dialog.url",
+        "ui.canvas:ui.canvas.pdf_preview.pdf",
+        "ui.canvas:ui.canvas.shell.canvas",
+        "ui.canvas:ui.canvas.variable_form_dialog.example_key_example_value",
+        "ui.canvas:ui.canvas.variable_form_dialog.item1_item2",
+        "ui.chat.pickers:ui.chat.pickers.destination_pickers.completed_only",
+        "ui.chat.pickers:ui.chat.pickers.destination_pickers.k",
+        "ui.chat.pickers:ui.chat.pickers.destination_pickers.my_api_key",
+        "ui.chat.pickers:ui.chat.pickers.destination_pickers.skill",
+        "ui.chat.pickers:ui.chat.pickers.info_model.colorterm",
+        "ui.chat.pickers:ui.chat.pickers.info_model.count_noun",
+        "ui.chat.pickers:ui.chat.pickers.info_model.pid",
+        "ui.chat.pickers:ui.chat.pickers.info_model.pid_7837d5",
+        "ui.chat.pickers:ui.chat.pickers.info_model.python",
+        "ui.chat.pickers:ui.chat.pickers.info_model.runtime_trajectories",
+        "ui.chat.pickers:ui.chat.pickers.info_model.term",
+        "ui.common.layout:ui.common.layout.chat_layout.mac"
+      ],
+      "assessment": "All 46 are intentional kept-token values: file-type and extension labels, product/surface names (Canvas, Python, PDF), environment identifiers (TERM, COLORTERM), literal URL/path/JSON examples, and placeholder-only templates. No untranslated prose was found. The five canvas alias keys that were identical key ids before eb963e1baa are now translated real copy and are not in this list. The shared IDENTICAL_OK list in scripts/i18n/locale-parity.test.mjs needs a reviewed entry per key at integration; this batch must not edit that gate."
+    },
+    "locale_parity": {
+      "command": "node --test scripts/i18n/locale-parity.test.mjs",
+      "result": "ur: 2 EXPECTED FAILURES, 4 checks pass",
+      "passing": [
+        "ships at least one message",
+        "defines each key in at most one namespace file",
+        "names only keys the English source defines",
+        "preserves every ICU placeholder from the English source"
+      ],
+      "failures": [
+        "carries EVERY key: ur/ui.chat.pickers.json is missing 34 older keys and ur/ui.common.viewer.json is missing 4 older keys, all outside this manifest and left for the integration/backfill batch",
+        "not an English stub: the 46 intentional identical-token values above need IDENTICAL_OK entries at integration"
+      ]
+    },
+    "ledger_check": {
+      "command": "node scripts/i18n/ledger-check.mjs",
+      "result": "FAILED (expected)",
+      "actual": "88 findings across 438 entries repo-wide; 16 are ur: stale source and target hashes plus outdated auditor receipts for ui.canvas, ui.common.actions, ui.common.forms and ui.common.updates after the extraction, and no ledger row yet for ui.chat.pickers, ui.common.layout, ui.common.speech and ui.common.viewer. Ledger rows require the independent audit; none were created here."
+    },
+    "coverage_check": {
+      "command": "node scripts/i18n/check-coverage.mjs",
+      "result": "FAILED (expected)",
+      "actual": "coverage-check: 6246 missing key(s) are not allowed repo-wide. This locale still misses 38 older keys outside this manifest (34 in ui.chat.pickers, 4 in ui.common.viewer); all 1041 assigned keys are present."
+    },
+    "targeted_suites": {
+      "canvas_picker_review_remediation": {
+        "command": "node --test scripts/i18n/canvas-picker-review-remediation.test.mjs",
+        "result": "PASS 10/10"
+      },
+      "common_control_copy": {
+        "command": "node --test scripts/i18n/common-control-copy.test.mjs",
+        "result": "PASS 6/6"
+      },
+      "common_status_copy": {
+        "command": "node --test scripts/i18n/common-status-copy.test.mjs",
+        "result": "PASS 7/7"
+      },
+      "exclusive_feature_copy": {
+        "command": "node --test scripts/i18n/exclusive-feature-copy.test.mjs",
+        "result": "6/7; PRE-EXISTING failure, not caused by this batch",
+        "actual": "Same-code control at eb963e1baa (clean worktree, no Urdu changes) fails identically: expected 'No conversations yet', actual 'Aucune conversation pour l’instant' in the command-palette empty state. The fixture registers only two French keys but the real fr bundle now answers the third; this is unrelated to the Urdu catalogues."
+      }
+    },
+    "runtime_render": {
+      "method": "Bundled the real src/i18n/messages + locale modules with esbuild and rendered through t() after setLocale(\"ur\").",
+      "actual": [
+        "category other_category → \"دیگر\"",
+        "category investment → \"سرمایہ کاری\"",
+        "unknown category id quantum_unknown → \"quantum_unknown\" (raw id fallback, not translated as other_category)",
+        "asset_of {index:1,count:3} → \"اثاثہ 1 / 3\"",
+        "canvas files count {count:3} → \"3 فائلیں\"",
+        "match_query matched=1 → \"9 سیشنز میں سے 1 “x” سے مماثل ہے\"",
+        "match_query matched=2 → \"9 سیشنز میں سے 2 “x” سے مماثل ہیں\"",
+        "viewer close {medialabel:\"تصویر\"} → \"تصویر بند کریں\"",
+        "speech first characters → \"ابتدائی 500 حروف پڑھے جا رہے ہیں۔ باقی متن بلند آواز میں نہیں پڑھا جائے گا۔\"",
+        "stop.confirm (older key outside this manifest) falls back to English, as expected for an unscoped key"
+      ]
+    },
+    "pseudo_localization": {
+      "result": "NOT RUN",
+      "reason": "No pseudo-localization runner exists in this worktree (`git ls-files scripts/i18n | grep -i pseudo` returns nothing). docs/I18N.md lists pseudo-localization as audit evidence where applicable; no pseudo or rendered-fit claim is made."
+    }
+  },
+  "terms": {
+    "kept_english": [
+      "Canvas",
+      "Local Operator",
+      "MCP",
+      "Muse",
+      "URL",
+      "TERM",
+      "COLORTERM",
+      "pid",
+      "skill://",
+      "MY_API_KEY",
+      "Python",
+      "Markdown",
+      "HTML",
+      "CSS",
+      "JavaScript",
+      "JSX",
+      "TypeScript",
+      "TSX",
+      "Go",
+      "Java",
+      "C",
+      "C++",
+      "C#",
+      "PHP",
+      "Ruby",
+      "Rust",
+      "Swift",
+      "Kotlin",
+      "Scala",
+      "JSON",
+      "YAML",
+      "XML",
+      "TOML",
+      "INI",
+      "Dockerfile",
+      ".env",
+      "MAC",
+      "PDF"
+    ],
+    "endorsed_or_existing": {
+      "session": "سیشن",
+      "agent": "ایجنٹ",
+      "subagent": "ذیلی ایجنٹ",
+      "team": "ٹیم",
+      "tool": "ٹول",
+      "skill": "مہارت",
+      "approvals": "منظوریاں",
+      "credential": "اسناد",
+      "cost": "لاگت",
+      "usage": "استعمال",
+      "settings": "ترتیبات"
+    },
+    "chosen": {
+      "context": "کانٹیکسٹ (technical loanword; no glossary row)",
+      "reasoning_effort": "کوشش (follows the existing ui.settings.model.default_effort copy; reasoning is not separately rendered)",
+      "allowance": "کوٹہ (no glossary row; the same word also renders quota, so an auditor should confirm the distinction where both concepts meet)",
+      "failover": "فیل اوور",
+      "trajectory": "ٹریجیکٹری / ٹریجیکٹریز",
+      "fork": "فورک (matches the existing ui.chat.tags forked-conversation wording)",
+      "loop": "لوپ",
+      "scope": "دائرہ کار",
+      "window_period": "مدت (reserved for an analytics period so it is not confused with a UI ونڈو)",
+      "spend": "خرچ",
+      "undo": "واپس کریں (rejected کالعدم کریں, which means annul rather than undo)",
+      "redo": "دوبارہ کریں"
+    }
+  },
+  "overflow": {
+    "no_rendered_claim": true,
+    "flagged": [
+      "ui.chat.pickers.mcp_picker.retry — 'Retry' (5) → 'دوبارہ کوشش کریں' (16), 3.2x; house wording, but tight in an icon-sized dialog control",
+      "ui.chat.pickers.destination_pickers.reload — 'Reload' (6) → 'دوبارہ لوڈ کریں' (15), 2.5x; picker header button",
+      "ui.chat.pickers.usage_view.asking_providers — 'Asking providers' (16) → 32 characters; status line may wrap or truncate",
+      "ui.canvas.inline_edit.apply_all_enter — 'Apply all (⌘+Enter)' → 'سب لاگو کریں (⌘+Enter)'; floating inline-edit toolbar",
+      "ui.chat.pickers.destination_pickers.use_team — 'Use team' (8) → 16 characters; narrow picker action row"
+    ],
+    "shortened_for_fit": [
+      "ui.chat.pickers.usage_view_model.requests — 'req' → 'درخواست' rather than the longer plural",
+      "ui.canvas.inline_edit.editing — 'Editing' → 'زیر ترمیم'"
+    ]
+  },
+  "scope_control": {
+    "english_catalogues_modified": false,
+    "other_locales_modified": false,
+    "application_code_modified": false,
+    "gate_scripts_modified": false,
+    "note": "This translation commit does not change en; its base eb963e1baa carries the five-value English alias fix. The generated keys.gen.ts diff contains only imports and bundle entries for the four newly carried ur catalogues.",
+    "files_written": [
+      "src/i18n/catalogues/ur/ui.canvas.json (modified: 290 assigned keys appended)",
+      "src/i18n/catalogues/ur/ui.chat.pickers.json (new: 686 assigned keys)",
+      "src/i18n/catalogues/ur/ui.common.actions.json (modified: 30 assigned keys appended)",
+      "src/i18n/catalogues/ur/ui.common.forms.json (modified: 10 assigned keys appended)",
+      "src/i18n/catalogues/ur/ui.common.layout.json (new: 8 keys)",
+      "src/i18n/catalogues/ur/ui.common.speech.json (new: 5 keys)",
+      "src/i18n/catalogues/ur/ui.common.updates.json (modified: 8 assigned keys appended)",
+      "src/i18n/catalogues/ur/ui.common.viewer.json (new: 4 keys)",
+      "src/i18n/keys.gen.ts (generated)",
+      "i18n/receipts/ui-ur-canvas-pickers-20261024.json (this receipt)"
+    ]
+  },
+  "limitations": "Catalogue translation and mechanical/runtime checks only. No independent native audit, ledger verdict, second-auditor approval, pseudo-localization, screenshot, rendered-fit, native-bidi or release claim. The locale remains partial by design: 38 older keys outside this manifest fall back to English until integration. The shared identical-value guard and ledger/coverage gates stay red until reviewed integration entries and independent audits land."
+}

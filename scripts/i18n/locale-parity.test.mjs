@@ -708,6 +708,189 @@ const IDENTICAL_OK = new Map([
 		"ui.shell.sidebar_navigation.agent_hub",
 		"Product name (Agent Hub), preserved verbatim by the programme glossary.",
 	],
+	// --- ui.canvas / ui.chat.pickers / ui.common.layout tokens introduced by the
+	// canvas and picker extraction. Every value below is fully rendered copy whose
+	// words are technology names, file names, machine tokens, JSON examples or
+	// placeholder-and-punctuation compositions. Russian writes them exactly as the
+	// source does, so identical is the translation rather than a stub; a differing
+	// value would invent notation. One entry serves every locale that keeps the
+	// token unchanged.
+	[
+		"ui.canvas.create_file_dialog.c_c",
+		"Technology name and file extension only (C (.c)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.c_cpp",
+		"Technology name and file extension only (C++ (.cpp)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.c_cs",
+		"Technology name and file extension only (C# (.cs)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.css_css",
+		"Technology name and file extension only (CSS (.css)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.dockerfile",
+		"File name Dockerfile is a machine token; never translated.",
+	],
+	[
+		"ui.canvas.create_file_dialog.env",
+		"File name .env is a machine token; never translated.",
+	],
+	[
+		"ui.canvas.create_file_dialog.go_go",
+		"Technology name and file extension only (Go (.go)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.html_html",
+		"Technology name and file extension only (HTML (.html)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.ini_ini",
+		"Format name and file extension only (INI (.ini)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.java_java",
+		"Technology name and file extension only (Java (.java)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.javascript_js",
+		"Technology name and file extension only (JavaScript (.js)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.json_json",
+		"Technology name and file extension only (JSON (.json)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.jsx_jsx",
+		"Technology name and file extension only (JSX (.jsx)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.kotlin_kt",
+		"Technology name and file extension only (Kotlin (.kt)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.markdown_md",
+		"Technology name and file extension only (Markdown (.md)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.php_php",
+		"Technology name and file extension only (PHP (.php)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.python_py",
+		"Technology name and file extension only (Python (.py)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.ruby_rb",
+		"Technology name and file extension only (Ruby (.rb)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.rust_rs",
+		"Technology name and file extension only (Rust (.rs)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.scala_scala",
+		"Technology name and file extension only (Scala (.scala)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.swift_swift",
+		"Technology name and file extension only (Swift (.swift)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.toml_toml",
+		"Format name and file extension only (TOML (.toml)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.tsx_tsx",
+		"Technology name and file extension only (TSX (.tsx)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.typescript_ts",
+		"Technology name and file extension only (TypeScript (.ts)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.xml_xml",
+		"Format name and file extension only (XML (.xml)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.yaml_yaml",
+		"Format name and file extension only (YAML (.yaml)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.create_file_dialog.yaml_yml",
+		"Format name and file extension only (YAML (.yml)); both stay Latin in Russian.",
+	],
+	[
+		"ui.canvas.insert_image_dialog.users_eren_documents_image_png",
+		"Sample absolute path in a placeholder; an example path, not prose, and paths stay Latin.",
+	],
+	[
+		"ui.canvas.insert_link_dialog.https_example_com",
+		"Sample URL in a placeholder; an example address, not prose.",
+	],
+	[
+		"ui.canvas.insert_link_dialog.url",
+		"URL acronym is kept Latin and undeclined by the ru style guide.",
+	],
+	[
+		"ui.canvas.pdf_preview.pdf",
+		"PDF acronym plus a title placeholder; the format name is kept English.",
+	],
+	[
+		"ui.canvas.variable_form_dialog.example_key_example_value",
+		"JSON example object; machine syntax with sample keys, never translated.",
+	],
+	[
+		"ui.canvas.variable_form_dialog.item1_item2",
+		"JSON example array; machine syntax with sample items, never translated.",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.completed_only",
+		"Placeholder only ({completed, number, ::group-off}); renders a bare count with no words.",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.my_api_key",
+		"Environment-variable-style token (MY_API_KEY); never translated.",
+	],
+	[
+		"ui.chat.pickers.destination_pickers.skill",
+		"Opaque `skill://` scheme token; never translated.",
+	],
+	[
+		"ui.chat.pickers.info_model.colorterm",
+		"Environment-variable name COLORTERM; a machine token, never translated.",
+	],
+	[
+		"ui.chat.pickers.info_model.pid",
+		"Machine field name `pid` plus a numeric placeholder; no prose to translate.",
+	],
+	[
+		"ui.chat.pickers.info_model.pid_7837d5",
+		"Machine field name `pid` plus a numeric placeholder; no prose to translate.",
+	],
+	[
+		"ui.chat.pickers.info_model.python",
+		"Technology name Python plus a version placeholder; both stay Latin.",
+	],
+	[
+		"ui.chat.pickers.info_model.runtime_trajectories",
+		"Placeholders and a middle dot only; no words to translate.",
+	],
+	[
+		"ui.chat.pickers.info_model.term",
+		"Environment-variable name TERM; a machine token, never translated.",
+	],
+	[
+		"ui.chat.pickers.usage_view_model.note_with_period",
+		"Placeholder plus final punctuation only ({note}.); no words to translate.",
+	],
+	[
+		"ui.common.layout.chat_layout.mac",
+		"Platform label MAC for the macOS modifier cluster; no prose to translate.",
+	],
 ]);
 
 function localeDirs() {
