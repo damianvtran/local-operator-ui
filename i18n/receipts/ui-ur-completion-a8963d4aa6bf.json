@@ -21,7 +21,7 @@
 			"namespace": "ui.chat.sidebar",
 			"keys": 43,
 			"source_sha256": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
-			"target_sha256": "a5557ccaeb9e0c57c466f901b71543fb39dff23da32ceb1fd9234bb666b3372c",
+			"target_sha256": "872f25eb7db98a41750a371a079d666165b5f4c9a82655a5536260b116fb933d",
 			"context_sha256": "fe5dc2a0fa4cb9b95ef5c1a30d57aee030fa5edf2b6b54b323562a1c63b8eb3a",
 			"translator": {
 				"agent": "i18n-translator",
@@ -157,7 +157,7 @@
 			"namespace": "ui.presence",
 			"keys": 9,
 			"source_sha256": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
-			"target_sha256": "04f341a8a1c3755ff8d6ed935027b5161204bf674173fcaaf89c4db2db00a2a9",
+			"target_sha256": "d9a74ddecafc812311a97695780ce283f81c959f7119041522c80e7eaf32b395",
 			"context_sha256": "f78dc27ea4c00befbb3b48ce6723230a23c6e4388bf5ace429c2b445447aae44",
 			"translator": {
 				"agent": "i18n-translator",
