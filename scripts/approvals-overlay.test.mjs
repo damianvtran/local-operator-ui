@@ -1,12 +1,13 @@
 /**
  * S6a's approvals card: pure geometry and the inert controller's lifecycle.
  *
- * What this proves: the formula lands the card at the content rect's inline-end
- * corner, the transparent view is created with `#00000000`, the child is added
+ * What this proves: the formula lands the card at the content rect's bottom-right
+ * corner (S6a is LTR-only; RTL placement is S6b), the transparent view is created with `#00000000`, the child is added
  * last, the page is never touched by the controller, tab switches with an
- * unchanged rect keep the card, a resize reapplies the formula, and an empty
- * queue or `presented:false` hides it. It also pins the one product promise of
- * this slice: no `webContents.focus()` call is made anywhere.
+ * unchanged rect keep the card, a content-rect resize rebuilds the child at the
+ * new size (Electron 44.3.0 leaves the replacement viewport at the old size),
+ * and an empty queue or `presented:false` hides it. It also pins the one product
+ * promise of this slice: no focus call is made anywhere.
  *
  * What it cannot prove: native transparency, the 8px ring's hit routing, or
  * macOS compositing. Those are the probe's rows, not a jsdom claim.
@@ -80,6 +81,9 @@ export class WebContentsView {
   setBounds(bounds) {
     this.bounds = { ...bounds };
   }
+  getBounds() {
+    return this.bounds ? { ...this.bounds } : { x: 0, y: 0, width: 0, height: 0 };
+  }
   setVisible(visible) {
     this.visible = visible;
   }
@@ -123,7 +127,29 @@ const mod = await import(moduleUrl);
 const rect = (x, y, width, height) => ({ x, y, width, height });
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
-test("geometry: wide content anchors the card to the content rect's inline end", () => {
+/**
+ * Wait for a condition instead of sleeping a fixed number of milliseconds.
+ * A show and a rebuild are two document loads plus a measurement, so a fixed
+ * 30 ms wait is a race on a loaded machine; the evidence tests must pick the
+ * settled child, not whichever load happened to finish.
+ */
+async function waitFor(
+	predicate,
+	label,
+	timeout = 4000,
+	snapshot = () => null,
+) {
+	const started = Date.now();
+	while (Date.now() - started < timeout) {
+		if (predicate()) return;
+		await sleep(10);
+	}
+	throw new Error(
+		`timed out waiting for ${label}: ${JSON.stringify(snapshot())}`,
+	);
+}
+
+test("geometry: wide content anchors the card to the content rect's bottom-right corner", () => {
 	const bounds = mod.approvalsCardBoundsFor({
 		contentRect: rect(0, 0, 1000, 700),
 		naturalHeight: 200,
@@ -154,6 +180,186 @@ test("geometry: 264 content is full-bleed with an 8px ring, 248-wide card", () =
 		width: 248,
 		height: 220,
 	});
+});
+
+test("geometry: a fractional measured card rounds up, not down to the floor", () => {
+	const bounds = mod.approvalsCardBoundsFor({
+		contentRect: rect(0, 0, 264, 600),
+		naturalHeight: 99.594,
+	});
+	assert.equal(bounds.height, 100);
+	assert.equal(bounds.view.height, 116);
+	assert.equal(bounds.view.y + 8, bounds.card.y);
+});
+
+test("controller: S6a is opt-in on the exact env value only", () => {
+	assert.equal(mod.approvalsOverlayEnabled({}), false);
+	assert.equal(
+		mod.approvalsOverlayEnabled({ [mod.APPROVALS_OVERLAY_S6A_ENV]: "0" }),
+		false,
+	);
+	assert.equal(
+		mod.approvalsOverlayEnabled({ [mod.APPROVALS_OVERLAY_S6A_ENV]: "true" }),
+		false,
+	);
+	assert.equal(
+		mod.approvalsOverlayEnabled({ [mod.APPROVALS_OVERLAY_S6A_ENV]: "1" }),
+		true,
+	);
+});
+
+test("expiry: scheduling follows the earliest live entry", () => {
+	assert.equal(mod.approvalsExpiryDelay([], 1000), null);
+	assert.equal(
+		mod.approvalsExpiryDelay([{ expiresAt: 1500 }, { expiresAt: 1200 }], 1000),
+		200,
+	);
+	assert.equal(mod.approvalsExpiryDelay([{ expiresAt: 900 }], 1000), 0);
+});
+
+test("document: the count is a first-paint fallback, and zero is omitted", () => {
+	const at = (count) =>
+		new URL(
+			mod.approvalsDocumentUrl(
+				"file:///app/out/renderer/browser-approvals-overlay.html",
+				count,
+				"dark",
+				false,
+			),
+		);
+	assert.equal(at(0).searchParams.get("count"), null);
+	assert.equal(at(2).searchParams.get("count"), "2");
+	const light = new URL(
+		mod.approvalsDocumentUrl("file:///x.html", 1, "light", true),
+	);
+	assert.equal(light.searchParams.get("theme"), "light");
+	assert.equal(light.searchParams.get("opaque"), "1");
+});
+
+test("geometry: resize rebuild keeps the card at the new width", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const i = children.indexOf(view);
+			if (i !== -1) children.splice(i, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const i = children.indexOf(view);
+			if (i !== -1) children.splice(i, 1);
+		},
+	};
+	const window = { contentView, isDestroyed: () => false };
+	const controller = new mod.ApprovalsOverlayController({
+		window,
+		documentUrl: "https://example.test/browser-approvals-overlay.html",
+		theme: "dark",
+	});
+	controller.onLayout({
+		presented: true,
+		contentRect: rect(0, 0, 264, 600),
+		revision: 1,
+	});
+	controller.setPending(2);
+	await waitFor(
+		() =>
+			controller.facts().ready &&
+			controller.facts().visible &&
+			children.at(-1)?.bounds.width === 264,
+		"the first show at 264",
+	);
+	const first = children.at(-1);
+	assert.equal(first.bounds.width, 264);
+	controller.onLayout({
+		presented: true,
+		contentRect: rect(0, 0, 900, 600),
+		revision: 2,
+	});
+	await waitFor(
+		() =>
+			controller.facts().ready &&
+			controller.facts().visible &&
+			children.at(-1)?.bounds.width === 368,
+		"the resize to 900",
+	);
+	const second = children.at(-1);
+	assert.notEqual(second, first, "the resize must create a fresh child");
+	assert.equal(second.bounds.width, 368);
+	assert.equal(second.bounds.x, 532);
+	controller.onLayout({
+		presented: true,
+		contentRect: rect(0, 0, 264, 600),
+		revision: 3,
+	});
+	await waitFor(
+		() =>
+			controller.facts().ready &&
+			controller.facts().visible &&
+			children.at(-1)?.bounds.width === 264,
+		"the resize back to 264",
+	);
+	const third = children.at(-1);
+	assert.notEqual(third, second, "the way back is a rebuild too");
+	assert.equal(third.bounds.width, 264);
+	assert.equal(third.bounds.x, 0);
+});
+
+test("controller: a zero-width load is not measured as the card height", async () => {
+	const children = [];
+	const contentView = {
+		get children() {
+			return children;
+		},
+		addChildView(view) {
+			const i = children.indexOf(view);
+			if (i !== -1) children.splice(i, 1);
+			children.push(view);
+		},
+		removeChildView(view) {
+			const i = children.indexOf(view);
+			if (i !== -1) children.splice(i, 1);
+		},
+	};
+	const controller = new mod.ApprovalsOverlayController({
+		window: { contentView, isDestroyed: () => false },
+		documentUrl: "https://example.test/browser-approvals-overlay.html",
+		theme: "dark",
+	});
+	// The construction-time document loads into a 0x0 view and must not pin the
+	// 200 DIP the stub measures there.
+	await waitFor(
+		() => controller.facts().ready,
+		"the zero-width construction load",
+	);
+	assert.equal(controller.facts().bounds, null, "no bounds before a layout");
+	controller.onLayout({
+		presented: true,
+		contentRect: rect(0, 0, 1000, 700),
+		revision: 1,
+	});
+	controller.setPending(2);
+	assert.equal(
+		children.at(-1).bounds.height,
+		112,
+		"first show rebuilds at the 96 DIP floor, not the 0-width measurement",
+	);
+	await waitFor(
+		() => controller.facts().bounds?.view?.height === 216,
+		"the re-measure at a usable width",
+		4000,
+		() => ({
+			facts: controller.facts(),
+			children: children.map((view) => view.bounds),
+		}),
+	);
+	assert.equal(
+		children.at(-1).bounds.height,
+		216,
+		"the re-measure at a usable width drives the final bounds",
+	);
 });
 
 test("geometry: the width ceiling and 359/360/420 boundaries are exact", () => {
@@ -245,7 +451,6 @@ test("controller: auto-presents unfocused, last, transparent, and hides without 
 	});
 	const pageRect = rect(0, 0, 1000, 700);
 	controller.onLayout({
-		activeTabId: 1,
 		presented: true,
 		contentRect: pageRect,
 		revision: 1,
@@ -256,7 +461,13 @@ test("controller: auto-presents unfocused, last, transparent, and hides without 
 		"no card before the queue asks",
 	);
 	controller.setPending(2);
-	await sleep(30);
+	await waitFor(
+		() =>
+			controller.facts().ready &&
+			controller.facts().visible &&
+			controller.facts().bounds?.view?.height === 216,
+		"the auto-presented card",
+	);
 	const view = children.at(-1);
 	assert.ok(view, "the card is attached");
 	assert.equal(view.visible, true);
@@ -267,7 +478,6 @@ test("controller: auto-presents unfocused, last, transparent, and hides without 
 	assert.equal(controller.facts().presented, true);
 
 	controller.onLayout({
-		activeTabId: 2,
 		presented: true,
 		contentRect: { ...pageRect },
 		revision: 2,
@@ -284,7 +494,6 @@ test("controller: auto-presents unfocused, last, transparent, and hides without 
 	);
 
 	controller.onLayout({
-		activeTabId: 2,
 		presented: true,
 		contentRect: rect(0, 0, 1200, 700),
 		revision: 3,
@@ -292,7 +501,6 @@ test("controller: auto-presents unfocused, last, transparent, and hides without 
 	assert.deepEqual(view.bounds, { x: 832, y: 484, width: 368, height: 216 });
 
 	controller.onLayout({
-		activeTabId: 2,
 		presented: false,
 		contentRect: null,
 		revision: 4,
@@ -302,7 +510,6 @@ test("controller: auto-presents unfocused, last, transparent, and hides without 
 	assert.equal(controller.facts().presented, false);
 
 	controller.onLayout({
-		activeTabId: 2,
 		presented: true,
 		contentRect: rect(0, 0, 1000, 700),
 		revision: 5,
@@ -335,13 +542,15 @@ test("controller: the opaque fallback is a full-bleed opaque view", async () => 
 		opaque: true,
 	});
 	controller.onLayout({
-		activeTabId: 1,
 		presented: true,
 		contentRect: rect(0, 0, 264, 600),
 		revision: 1,
 	});
 	controller.setPending(1);
-	await sleep(30);
+	await waitFor(
+		() => controller.facts().ready && controller.facts().visible,
+		"the opaque card",
+	);
 	const view = children.at(-1);
 	assert.equal(view.backgroundColor, "#1b1f24");
 	assert.deepEqual(view.bounds, { x: 0, y: 400, width: 264, height: 200 });

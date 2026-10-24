@@ -44,7 +44,7 @@ const cardUrl = ${JSON.stringify(`file://${CARD}`)};
 const fixture = ${JSON.stringify(`file://${FIXTURE}`)};
 app.commandLine.appendSwitch("use-mock-keychain");
 app.whenReady().then(async () => {
-  const win = new BrowserWindow({ show: false, width: ${WIDTH}, height: 720, backgroundColor: "#000000" });
+  const win = new BrowserWindow({ show: false, width: Math.max(900, ${WIDTH}), height: 720, backgroundColor: "#000000" });
   const controller = new ApprovalsOverlayController({ window: win, documentUrl: cardUrl, theme: ${JSON.stringify(THEME)} });
   const page = new WebContentsView({ webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } });
   win.contentView.addChildView(page);
@@ -59,23 +59,73 @@ app.whenReady().then(async () => {
   page.webContents.sendInputEvent({ type: "keyUp", keyCode: "a" });
   await new Promise((r) => setTimeout(r, 100));
   const typed = await page.webContents.executeJavaScript("document.getElementById('status').textContent");
-  controller.onLayout({ activeTabId: 1, presented: true, contentRect: pageRect, revision: 1 });
+  const currentCard = () => win.contentView.children[win.contentView.children.length - 1];
+  // The document viewport is the CARD VIEW's width (the card plus its 16 DIP
+  // ring), not the page content width the probe argument names.
+  const cardViewWidth = (contentWidth) => Math.min(352, contentWidth - 16) + 16;
+  /*
+   * Poll rather than sleep: a show and a content-rect resize both rebuild the
+   * child (Electron 44.3.0 leaves a replacement viewport at its load width), so
+   * a fixed wait records whichever load happened to finish. Settle on the
+   * controller's own ready/visible facts AND the document's viewport width.
+   */
+  const settle = async (expectedWidth, timeout = 20000) => {
+    const started = Date.now();
+    let last = null;
+    while (Date.now() - started < timeout) {
+      const view = currentCard();
+      const snapshot = controller.facts();
+      if (view && snapshot.ready && snapshot.visible) {
+        try {
+          // A rebuild can close this view mid-evaluate; the pending promise then
+          // never settles, so bound every read rather than hang the whole probe.
+          const document = await Promise.race([
+            view.webContents.executeJavaScript("(() => ({ href: location.href, innerWidth, innerHeight, natural: window.__approvalsCard ? window.__approvalsCard.naturalHeight() : null, card: (() => { const r = document.getElementById('approvals-card')?.getBoundingClientRect(); return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null; })() }))()"),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("read-timeout")), 1000)),
+          ]);
+          last = { view: view.getBounds(), document, facts: snapshot };
+          // Width alone is not settled: a show can have its final width while the
+          // height measurement is still driving the second rebuild. Require the
+          // controller's card height to equal the document's measured (unclamped)
+          // height before calling it settled.
+          const natural = Number(document.natural);
+          const heightSettled = !Number.isFinite(natural) || snapshot.bounds?.card?.height === Math.ceil(natural);
+          if (String(document.innerWidth) === String(expectedWidth) && heightSettled) {
+            return { view: view.getBounds(), document, facts: snapshot, timeout: false };
+          }
+        } catch (error) {
+          // A rebuild between the facts read and the evaluate is normal.
+        }
+      }
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    return { view: last ? last.view : null, document: last ? last.document : null, facts: controller.facts(), timeout: true };
+  };
+  controller.onLayout({ presented: true, contentRect: pageRect, revision: 1 });
   controller.setPending(2);
-  await new Promise((r) => setTimeout(r, 1400));
-  const facts = controller.facts();
+  const shown = await settle(cardViewWidth(${WIDTH}));
+  const facts = shown.facts;
   page.webContents.sendInputEvent({ type: "keyDown", keyCode: "b" });
   page.webContents.sendInputEvent({ type: "char", keyCode: "b" });
   page.webContents.sendInputEvent({ type: "keyUp", keyCode: "b" });
   await new Promise((r) => setTimeout(r, 100));
   const typedAfter = await page.webContents.executeJavaScript("document.getElementById('status').textContent");
-  const cardView = win.contentView.children[win.contentView.children.length - 1];
   const afterProbe = await page.webContents.executeJavaScript("window.__probe()");
-  const afterShow = { pageBounds: page.getBounds(), pageVisible: page.getVisible(), focused: webContents.getFocusedWebContents()?.id ?? null, typed, typedAfter, pageWebContentsId: page.webContents.id, pageProbe: afterProbe, pageFocused: page.webContents.isFocused(), cardFocused: cardView.webContents.isFocused(), windowFocused: win.isFocused() };
+  const cardHref = await currentCard().webContents.executeJavaScript("location.href");
+  const afterShow = { pageBounds: page.getBounds(), pageVisible: page.getVisible(), focused: webContents.getFocusedWebContents()?.id ?? null, typed, typedAfter, pageWebContentsId: page.webContents.id, pageProbe: afterProbe, cardHref, settledWidth: shown.document ? shown.document.innerWidth : null, settledNatural: shown.document ? shown.document.natural : null, settleTimeout: shown.timeout, pageFocused: page.webContents.isFocused(), cardFocused: currentCard().webContents.isFocused(), windowFocused: win.isFocused() };
+  const resizedWidth = ${WIDTH} === 264 ? 900 : 264;
+  const resizedRect = { ...pageRect, x: 0, width: resizedWidth };
+  page.setBounds(resizedRect);
+  controller.onLayout({ presented: true, contentRect: resizedRect, revision: 2 });
+  const resized = await settle(cardViewWidth(resizedWidth));
+  page.setBounds(pageRect);
+  controller.onLayout({ presented: true, contentRect: pageRect, revision: 3 });
+  const restored = await settle(cardViewWidth(${WIDTH}));
   controller.setPending(0);
   await new Promise((r) => setTimeout(r, 100));
   const afterHide = { pageBounds: page.getBounds(), pageVisible: page.getVisible(), focused: webContents.getFocusedWebContents()?.id ?? null, pageFocused: page.webContents.isFocused(), cardVisible: controller.facts().visible };
   controller.setPending(2);
-  await new Promise((r) => setTimeout(r, 100));
+  await new Promise((r) => setTimeout(r, 800));
   let frame = null;
   const sourceId = win.getMediaSourceId();
   try {
@@ -92,11 +142,27 @@ app.whenReady().then(async () => {
   }
   try {
     const cardView = win.contentView.children[win.contentView.children.length - 1];
-    const png = await cardView.webContents.capturePage();
-    writeFileSync(out + "/s6a-card-capture.png", png.toPNG());
+    /*
+     * capturePage() needs a display surface; a hidden WebContentsView has none
+     * ("Current display surface not available for capture" measured on 44.3.0).
+     * Page.captureScreenshot over the child's own debugger renders the document
+     * without a window, which is the frame this slice can honestly evidence.
+     */
+    let captured = false;
+    try {
+      const debuggerSession = cardView.webContents.debugger;
+      if (!debuggerSession.isAttached()) debuggerSession.attach("1.3");
+      const shot = await debuggerSession.sendCommand("Page.captureScreenshot", { format: "png" });
+      writeFileSync(out + "/s6a-card-capture.png", Buffer.from(shot.data, "base64"));
+      captured = true;
+    } catch (error) { writeFileSync(out + "/s6a-cdp-capture-error.txt", String(error)); }
+    if (!captured) {
+      const png = await cardView.webContents.capturePage();
+      writeFileSync(out + "/s6a-card-capture.png", png.toPNG());
+    }
     writeFileSync(out + "/s6a-page-capture.png", (await page.webContents.capturePage()).toPNG());
   } catch (error) { writeFileSync(out + "/s6a-capturePage-error.txt", String(error)); }
-  writeFileSync(out + "/s6a-facts.json", JSON.stringify({ before, afterShow, afterHide, facts, sourceId, frameBytes: frame ? frame.length : 0 }, null, 2));
+  writeFileSync(out + "/s6a-facts.json", JSON.stringify({ before, afterShow, resized, restored, afterHide, facts, sourceId, frameBytes: frame ? frame.length : 0 }, null, 2));
   controller.dispose("probe"); win.close(); app.quit();
 });
 `,
@@ -126,11 +192,14 @@ child.stderr.on("data", (c) => {
 	err += c;
 });
 const code = await new Promise((resolveExit) => {
-	child.on("exit", resolveExit);
-	setTimeout(() => {
+	const kill = setTimeout(() => {
 		child.kill("SIGTERM");
 		resolveExit("timeout");
-	}, 45000);
+	}, 120000);
+	child.on("exit", (exitCode) => {
+		clearTimeout(kill);
+		resolveExit(exitCode);
+	});
 });
 if (code !== 0) {
 	writeFileSync(join(OUT, "s6a-app-stderr.txt"), err);

@@ -42,8 +42,9 @@ import {
 } from "./address-overlay";
 import { ApprovalStore } from "./approvals";
 import {
-	APPROVALS_OVERLAY_S6A_ENV,
 	ApprovalsOverlayController,
+	approvalsExpiryDelay,
+	approvalsOverlayEnabled,
 } from "./approvals-overlay";
 import {
 	browserChromeOwnsChord,
@@ -861,7 +862,7 @@ async function initializeBrowserHost(
 		 */
 		const approvalsOverlay =
 			options.approvalsOverlay?.enabled === true &&
-			process.env[APPROVALS_OVERLAY_S6A_ENV] === "1"
+			approvalsOverlayEnabled(process.env)
 				? new ApprovalsOverlayController({
 						window: options.window,
 						documentUrl: options.approvalsOverlay.documentUrl,
@@ -1048,6 +1049,14 @@ async function initializeBrowserHost(
 			},
 		});
 
+		/*
+		 * The card must leave when the LAST live request expires, not only when a
+		 * request/respond/tab event happens to call back. Arm one timer at the
+		 * earliest live `expiresAt`; `pendingEntries()` filters by `now`, so the
+		 * callback re-pushes the expiry-aware count with no extra traffic.
+		 */
+		let approvalsExpiryTimer: ReturnType<typeof setTimeout> | null = null;
+		let syncApprovalsOverlay = (): void => {};
 		const approvals = new ApprovalStore({
 			dir: join(options.userDataDir, "browser"),
 			onChanged: () => {
@@ -1066,11 +1075,29 @@ async function initializeBrowserHost(
 				// S6a's card is auto-presented from the same live queue the shield
 				// counts. It is unfocused and has no decision path; this is the only
 				// producer of its visibility.
-				approvalsOverlay?.setPending(approvals.pendingEntries().length);
+				syncApprovalsOverlay();
 			},
 			log,
 		});
-		approvalsOverlay?.setPending(approvals.pendingEntries().length);
+		syncApprovalsOverlay = () => {
+			// An ordinary launch has no card at all: no read, no timer, no clock.
+			if (!approvalsOverlay) return;
+			if (approvalsExpiryTimer) {
+				clearTimeout(approvalsExpiryTimer);
+				approvalsExpiryTimer = null;
+			}
+			const entries = approvals.pendingEntries();
+			approvalsOverlay?.setPending(entries.length);
+			if (entries.length === 0) return;
+			const delay = approvalsExpiryDelay(entries);
+			// A small positive margin lets the store's own `now` pass the boundary
+			// before the count is read, rather than racing the same millisecond.
+			if (delay !== null) {
+				approvalsExpiryTimer = setTimeout(syncApprovalsOverlay, delay + 25);
+				approvalsExpiryTimer.unref?.();
+			}
+		};
+		syncApprovalsOverlay();
 
 		const profileDir = browserStoragePath(browserSession) ?? "";
 		const facts = {
@@ -1497,6 +1524,10 @@ async function initializeBrowserHost(
 				// The overlay child goes before the page views: its webContents is a
 				// child of the same window, and disposal is idempotent with rollback.
 				addressOverlay?.dispose("host-stop");
+				if (approvalsExpiryTimer) {
+					clearTimeout(approvalsExpiryTimer);
+					approvalsExpiryTimer = null;
+				}
 				approvalsOverlay?.dispose("host-stop");
 				registry.destroyAll();
 				await Promise.allSettled([...releases]);
