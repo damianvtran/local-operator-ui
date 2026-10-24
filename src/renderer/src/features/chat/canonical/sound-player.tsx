@@ -53,7 +53,6 @@
  */
 
 import { Spinner } from "@shared/components/common/spinner";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -69,6 +68,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 import {
 	BAR_RADIUS,
 	ariaValueText,
@@ -445,7 +445,9 @@ export const SoundPlayer = ({
 	};
 
 	const compact = variant === "compact";
-	const sliderLabel = `${label} position`;
+	const sliderLabel = t("ui.chat.canonical.sound_player.label_position", {
+		label,
+	});
 
 	return (
 		<div
@@ -478,7 +480,12 @@ export const SoundPlayer = ({
 				className={ICON_BUTTON_CLASS}
 				disabled={loading}
 				onClick={() => void toggle()}
-				aria-label={`${playing ? "Pause" : "Play"} ${label}`}
+				aria-label={t("ui.chat.canonical.sound_player.action_label", {
+					action: playing
+						? t("ui.chat.canonical.sound_player.pause")
+						: t("ui.chat.canonical.sound_player.play"),
+					label,
+				})}
 			>
 				{loading ? (
 					<Spinner size="sm" />
@@ -522,7 +529,9 @@ export const SoundPlayer = ({
 					/>
 					<canvas
 						ref={inkCanvasRef}
-						style={{ clipPath: "inset(0 100% 0 0)" }}
+						style={{
+							clipPath: "inset(0 100% 0 0)",
+						}}
 						className="absolute inset-0 h-full w-full text-ink-muted"
 					/>
 					<span
@@ -531,7 +540,9 @@ export const SoundPlayer = ({
 							"pointer-events-none absolute top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-ink-muted group-hover:bg-ink group-focus-visible:bg-accent",
 							scrubbing && "bg-accent",
 						)}
-						style={{ left: "var(--sound-progress, 0%)" }}
+						style={{
+							left: "var(--sound-progress, 0%)",
+						}}
 					/>
 				</div>
 			</div>

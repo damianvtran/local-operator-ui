@@ -52,6 +52,7 @@
  * survive (a screenshot, a greyscale print, a colour-blind reader).
  */
 import { cn } from "@shared/lib/utils";
+import { t } from "../../../../../i18n/messages";
 
 /**
  * `recommended` as a row index, or `null` when it is not one - THE ONE
@@ -110,7 +111,7 @@ export function AskRecommendedBadge({ className }: { className?: string }) {
 			)}
 		>
 			<span aria-hidden="true">▸</span>
-			Recommended
+			{t("ui.chat.ask_recommended.recommended")}
 		</span>
 	);
 }

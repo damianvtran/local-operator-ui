@@ -135,7 +135,9 @@
  */
 
 import { Button } from "@shared/components/ui/button";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
+import { t } from "../../../../../i18n/messages";
 import { foldMediaRows, foldMediaSlots } from "../canonical/trace-fold-model";
 import { CanonicalImage } from "./canonical-image";
 import type { TranscriptImage } from "./transcript-reducer";
@@ -156,7 +158,10 @@ const foldMediaLabel = (
 	_image: TranscriptImage,
 	index: number,
 	count: number,
-): string => (count === 1 ? "Image" : `Image ${index + 1}`);
+): string =>
+	count === 1
+		? t("ui.chat.canonical.fold_media.image")
+		: t("ui.chat.canonical.fold_media.image_value", { value: index + 1 });
 
 export type FoldMediaProps = {
 	/** The run's images, in row order (`foldImages`). */
@@ -207,6 +212,7 @@ export const FoldMedia = ({
 	uncapped = false,
 	indent = "content",
 }: FoldMediaProps) => {
+	useI18nLocale();
 	const { shown, more } = foldMediaSlots(images.length, { uncapped });
 	/*
 	 * Row lengths, which only matter once the tiles need more than one row: the
@@ -299,8 +305,10 @@ export const FoldMedia = ({
 			 */
 			aria-label={
 				images.length === 1
-					? "1 image from this run"
-					: `${images.length} images from this run`
+					? t("ui.chat.canonical.fold_media.1_image_from_this_run")
+					: t("ui.chat.canonical.fold_media.length_images_from_this_run", {
+							length: images.length,
+						})
 			}
 			data-fold-media=""
 			className={cn(
@@ -368,15 +376,15 @@ export const FoldMedia = ({
 						 * still travels with the count for a reader who cannot see
 						 * the symbol's position in the row.
 						 */
-						aria-label={`+${more} more image${more === 1 ? "" : "s"}`}
+						aria-label={t("ui.chat.canonical.fold_media.more_images", { more })}
 						/*
 						 * The SAME sentence as the name, `+` included: the pointer reader
 						 * meets the same string a speech user reads off the screen, and the
 						 * visible label is a substring of both (WCAG 2.5.3).
 						 */
-						title={`+${more} more image${more === 1 ? "" : "s"}`}
+						title={t("ui.chat.canonical.fold_media.more_images", { more })}
 					>
-						{`+${more}`}
+						{t("ui.chat.canonical.fold_media.more", { more })}
 					</Button>
 				</li>
 			)}

@@ -14,7 +14,6 @@ import {
 	PopoverContent,
 } from "@shared/components/ui/popover";
 import { Tooltip } from "@shared/components/ui/tooltip";
-import { type WithoutParams, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -27,6 +26,7 @@ import {
 	TriangleAlert,
 } from "lucide-react";
 import { useId, useRef, useState } from "react";
+import { type WithoutParams, t } from "../../../../../i18n/messages";
 
 const ICON = {
 	healthy: Link2,
@@ -114,7 +114,10 @@ export function HubLinkSidebarMark({
 						ref={button}
 						type="button"
 						data-hub-mark={actions.isPending ? "busy" : mark.kind}
-						data-testid={`hub-mark-${link.kind}-${link.name}`}
+						data-testid={t(
+							"ui.chat.sidebar.hub_link_sidebar_mark.hub_mark_kind_name",
+							{ kind: link.kind, name: link.name },
+						)}
 						aria-label={actionLabel}
 						aria-disabled={
 							(!actions.canWrite &&

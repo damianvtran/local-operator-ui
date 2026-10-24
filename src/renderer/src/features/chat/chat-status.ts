@@ -18,6 +18,7 @@
  * the mapping in both directions is the whole file.
  */
 
+import { t } from "../../../../i18n/messages";
 import {
 	type DaemonPairing,
 	type DaemonPairingCause,
@@ -86,11 +87,24 @@ export type ChatStatusDisplay = {
  * distinguishes the two (`connectivityIssue`), so the strip must too.
  */
 export const CHAT_STATUS_COPY = {
-	unreachable: "Can't reach the Local Operator server. Sending will wait.",
-	"credential-refused":
-		"The running server refused this app's credential, so sign-in, settings and slash commands are unavailable.",
-	degraded: "The server is answering slowly. Your messages are queued.",
-	"internet-offline": "This machine is offline. Sending will wait.",
+	get unreachable() {
+		return t(
+			"ui.chat.chat_status.cant_reach_the_local_operator_server_sending_will_wait",
+		);
+	},
+	get "credential-refused"() {
+		return t(
+			"ui.chat.chat_status.the_running_server_refused_this_apps_credential_so_sign_in",
+		);
+	},
+	get degraded() {
+		return t(
+			"ui.chat.chat_status.the_server_is_answering_slowly_your_messages_are_queued",
+		);
+	},
+	get "internet-offline"() {
+		return t("ui.chat.chat_status.this_machine_is_offline_sending_will_wait");
+	},
 } as const satisfies Record<ChatStatusKind, string>;
 
 /**

@@ -80,6 +80,7 @@
 
 import { soundCostCaption } from "./sound-cost-caption";
 export { soundCostCaption } from "./sound-cost-caption";
+import { t } from "../../../../../i18n/messages";
 import {
 	type SoundBatchItem,
 	soundBatchCostCaption,
@@ -214,11 +215,13 @@ export function imageGenMaterial(toolName: string): ImageGenMaterial {
  * (no second player path: a settled artifact enters the session index the
  * Files/Highlights surfaces already read).
  */
-export const CANCEL_QUEUED_COPY =
-	"Stopped before the provider was called; you will not be charged.";
+export const CANCEL_QUEUED_COPY = t(
+	"ui.chat.canonical.image_gen_card_model.stopped_before_the_provider_was_called_you_will_not_be",
+);
 
-export const CANCEL_RUNNING_COPY =
-	"Stop requested. The provider has no cancellation endpoint; the generation continues and will be charged if it produces audio. Checking for settlement.";
+export const CANCEL_RUNNING_COPY = t(
+	"ui.chat.canonical.image_gen_card_model.stop_requested_the_provider_has_no_cancellation_endpoint_the_generation",
+);
 
 /**
  * THE RATE-LIMITED SENTENCE (sound phase, 2026-10-17). The server's fixed copy
@@ -230,8 +233,9 @@ export const CANCEL_RUNNING_COPY =
  * result's own message always wins (the failure arm's verbatim rule), and this
  * sentence is the absence's copy rather than a replacement for supplied text.
  */
-export const AUDIO_RATE_LIMITED_COPY =
-	"Audio generation is busy right now. Wait a moment and try again.";
+export const AUDIO_RATE_LIMITED_COPY = t(
+	"ui.chat.canonical.image_gen_card_model.audio_generation_is_busy_right_now_wait_a_moment_and",
+);
 
 /**
  * The material's noun, as the card's sentences spell it.
@@ -248,7 +252,7 @@ export function imageGenMaterialNoun(material: ImageGenMaterial): string {
 		case "voiceover":
 			return "voiceover";
 		case "sound-effect":
-			return "sound effect";
+			return t("ui.chat.canonical.image_gen_card_model.sound_effect");
 		default:
 			return "image";
 	}
@@ -684,7 +688,9 @@ export function imageGenCardView(
 				canonical.error ??
 				record.output ??
 				(canonical.errorType === "audio_rate_limited"
-					? AUDIO_RATE_LIMITED_COPY
+					? t(
+							"ui.chat.canonical.image_gen_card_model.audio_generation_is_busy_right_now_wait_a_moment_and",
+						)
 					: null),
 			errorType: sound
 				? humanErrorClass(canonical.errorType, canonical.error ?? record.output)
@@ -806,7 +812,9 @@ function soundSettlementCaption(details: unknown): string | null {
 	return result.settled === null &&
 		result.cost_usd === null &&
 		cost?.basis === "quote"
-		? "Settlement pending — the final charge will appear once the provider reports it."
+		? t(
+				"ui.chat.canonical.image_gen_card_model.settlement_pending_the_final_charge_will_appear_once_the_provider",
+			)
 		: null;
 }
 

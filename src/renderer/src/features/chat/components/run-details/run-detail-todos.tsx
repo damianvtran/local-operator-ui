@@ -14,6 +14,7 @@
 
 import { Separator } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type LucideIcon,
@@ -23,6 +24,7 @@ import {
 	SquareSlash,
 } from "lucide-react";
 import type { Ref } from "react";
+import { t } from "../../../../../../i18n/messages";
 import {
 	type RunDetails,
 	type TodoItemStatus,
@@ -77,6 +79,7 @@ const HIDDEN_STATE: Partial<Record<TodoItemStatus, string>> = {
 };
 
 const TodoRow = ({ item }: { item: TodoItemView }) => {
+	useI18nLocale();
 	const Mark = TODO_MARK[item.status];
 	const tag = settledTag(item);
 	const reason = blockedReason(item);
@@ -184,6 +187,7 @@ export const RunDetailTodos = ({
 	 */
 	sectionRef?: Ref<HTMLElement>;
 }) => {
+	useI18nLocale();
 	const { phases } = visibleTodoPhases(details.todos);
 	return (
 		<section ref={sectionRef} className={cn("flex flex-col pb-1.5")}>
@@ -192,7 +196,9 @@ export const RunDetailTodos = ({
 					"flex items-baseline justify-between gap-2 px-3 pt-2 pb-1",
 				)}
 			>
-				<span className={cn("shrink-0 text-meta text-ink-muted")}>To-dos</span>
+				<span className={cn("shrink-0 text-meta text-ink-muted")}>
+					{t("ui.chat.run_details.run_detail_todos.to_dos")}
+				</span>
 				<span
 					className={cn(
 						"min-w-0 flex-1 truncate text-right text-meta text-ink-dim",
@@ -244,7 +250,10 @@ export const RunDetailTodos = ({
 				const leadsThePlan = phaseIndex === 0;
 				return (
 					<div
-						key={`${phaseIndex}-${phase.name ?? "__flat"}`}
+						key={t("ui.chat.run_details.run_detail_todos.phaseindex_value", {
+							phaseIndex: phaseIndex,
+							value: phase.name ?? "__flat",
+						})}
 						className={cn("flex flex-col")}
 					>
 						{phase.name === null && !leadsThePlan && <Separator />}
@@ -280,14 +289,21 @@ export const RunDetailTodos = ({
 									 * not a control and not a second count.
 									 */
 									<span className={cn("shrink-0 text-ink-dim text-meta")}>
-										· {phase.hidden} hidden
+										· {phase.hidden}{" "}
+										{t("ui.chat.run_details.run_detail_todos.hidden")}
 									</span>
 								)}
 							</div>
 						)}
 						<ul className={cn("flex flex-col")}>
 							{phase.items.map((item, index) => (
-								<TodoRow key={`${index}-${item.text}`} item={item} />
+								<TodoRow
+									key={t("ui.chat.run_details.run_detail_todos.index_text", {
+										index: index,
+										text: item.text,
+									})}
+									item={item}
+								/>
 							))}
 							{/*
 							 * Disclosed INSIDE the phase that lost the rows (`§6.3`), so the
@@ -321,7 +337,10 @@ export const RunDetailTodos = ({
 								<li className={cn("pr-3")}>
 									<Disclosure
 										disabled={true}
-										summary={`${phase.hidden} hidden`}
+										summary={t(
+											"ui.chat.run_details.run_detail_todos.hidden_hidden",
+											{ hidden: phase.hidden },
+										)}
 										className={cn("pl-9 text-meta")}
 									/>
 								</li>

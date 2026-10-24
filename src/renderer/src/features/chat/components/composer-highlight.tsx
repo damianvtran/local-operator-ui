@@ -68,9 +68,11 @@
  * `scrollHeight` autosize is untouched); and it binds no key of its own.
  */
 
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { FC, ReactNode, RefObject } from "react";
 import { useLayoutEffect, useMemo, useRef } from "react";
+import { t } from "../../../../../i18n/messages";
 import { type SlashHighlightRun, runInkClass } from "./slash-highlight";
 
 /**
@@ -173,6 +175,7 @@ export const ComposerHighlight: FC<ComposerHighlightProps> = ({
 	refused = false,
 	children,
 }) => {
+	useI18nLocale();
 	/*
 	 * TWO nodes, and the split is the point rather than tidiness. `mirrorRef` is
 	 * the GLYPH LAYER: the text column, scrolled by the transform. The element
@@ -298,10 +301,19 @@ export const ComposerHighlight: FC<ComposerHighlightProps> = ({
 						 */}
 						{segments.map((segment) =>
 							segment.kind === "prose" ? (
-								<span key={`prose:${segment.start}`}>{segment.text}</span>
+								<span
+									key={t("ui.chat.composer.composer_highlight.prose_start", {
+										start: segment.start,
+									})}
+								>
+									{segment.text}
+								</span>
 							) : (
 								<span
-									key={`${segment.kind}:${segment.start}`}
+									key={t("ui.chat.composer.composer_highlight.kind_start", {
+										kind: segment.kind,
+										start: segment.start,
+									})}
 									data-slash-run={segment.kind}
 									/*
 									 * The disabled step reaches the RUNS too: the mirror's container

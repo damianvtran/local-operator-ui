@@ -33,6 +33,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Check, ChevronDown, Monitor } from "lucide-react";
 import {
@@ -43,6 +44,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 import { MoveConfirmDialog } from "../../mesh/mesh-actions";
 import type { MovePlan } from "../../mesh/mesh-drop";
 import {
@@ -83,12 +85,15 @@ const EMPTY_PLAN: MovePlan = {
  * everywhere it would be redundant. Never `success` and never `accent`: nothing has
  * gone wrong and nothing is being asked for.
  */
-const StateDot = ({ tone }: { tone: keyof typeof STATE_DOT }) => (
-	<span
-		aria-hidden="true"
-		className={cn("size-1.5 shrink-0 rounded-full", STATE_DOT[tone])}
-	/>
-);
+const StateDot = ({ tone }: { tone: keyof typeof STATE_DOT }) => {
+	useI18nLocale();
+	return (
+		<span
+			aria-hidden="true"
+			className={cn("size-1.5 shrink-0 rounded-full", STATE_DOT[tone])}
+		/>
+	);
+};
 
 /** `warning` when the placement is a device that did not answer; otherwise quiet. */
 const dotTone = (placement: DevicePlacement): keyof typeof STATE_DOT | null => {
@@ -213,6 +218,7 @@ const PickerRow = ({
 	busy: boolean;
 	onPick: (row: DeviceRow) => void;
 }) => {
+	useI18nLocale();
 	const ineligible = row.state === "ineligible";
 	const standsDown = ineligible || busy;
 	return (
@@ -321,112 +327,115 @@ const DevicePicker = ({
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	children: ReactNode;
-}) => (
-	<DropdownMenu modal={false} open={open} onOpenChange={onOpenChange}>
-		<DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
-		<DropdownMenuContent
-			align="start"
-			side="bottom"
-			data-device-picker=""
-			data-device-picker-busy={busy ? "" : undefined}
-			className="flex max-h-[26rem] w-80 flex-col overflow-hidden"
-		>
-			<div
-				data-device-picker-list=""
-				className="min-h-0 flex-1 overflow-y-auto"
+}) => {
+	useI18nLocale();
+	return (
+		<DropdownMenu modal={false} open={open} onOpenChange={onOpenChange}>
+			<DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
+			<DropdownMenuContent
+				align="start"
+				side="bottom"
+				data-device-picker=""
+				data-device-picker-busy={busy ? "" : undefined}
+				className="flex max-h-[26rem] w-80 flex-col overflow-hidden"
 			>
-				<DropdownMenuLabel className="text-meta text-ink-dim">
-					{model.heading}
-				</DropdownMenuLabel>
-				<PickerRow row={model.self} busy={busy} onPick={onPick} />
-				{model.sections.map((section) => (
-					<div key={section.key}>
+				<div
+					data-device-picker-list=""
+					className="min-h-0 flex-1 overflow-y-auto"
+				>
+					<DropdownMenuLabel className="text-meta text-ink-dim">
+						{model.heading}
+					</DropdownMenuLabel>
+					<PickerRow row={model.self} busy={busy} onPick={onPick} />
+					{model.sections.map((section) => (
+						<div key={section.key}>
+							<DropdownMenuSeparator />
+							<DropdownMenuLabel className="flex items-center justify-between text-meta text-ink-dim">
+								<span className="truncate">{section.name}</span>
+								<span>{devices(section.count)}</span>
+							</DropdownMenuLabel>
+							{section.rows.map((row) => (
+								<PickerRow
+									key={row.deviceId}
+									row={row}
+									busy={busy}
+									onPick={onPick}
+								/>
+							))}
+						</div>
+					))}
+					{model.guidance ? (
+						/*
+						 * A DEVICE IN NO NETWORK. The Mesh tab's rail row is gated on membership
+						 * and network creation is CLI-only, so the honest instruction names the
+						 * command that exists rather than a button that does not. Drawn only for an
+						 * ANSWERED read: see `model.readFailure` below, which is what an empty list
+						 * means when nobody answered.
+						 */
+						<p
+							data-device-guidance=""
+							className="px-2 py-1.5 text-meta text-ink-dim"
+						>
+							{model.guidance}
+						</p>
+					) : null}
+				</div>
+				{model.footer ||
+				model.readFailure ||
+				model.inFlight ||
+				model.offerCheckAgain ? (
+					<>
 						<DropdownMenuSeparator />
-						<DropdownMenuLabel className="flex items-center justify-between text-meta text-ink-dim">
-							<span className="truncate">{section.name}</span>
-							<span>{devices(section.count)}</span>
-						</DropdownMenuLabel>
-						{section.rows.map((row) => (
-							<PickerRow
-								key={row.deviceId}
-								row={row}
-								busy={busy}
-								onPick={onPick}
-							/>
-						))}
-					</div>
-				))}
-				{model.guidance ? (
-					/*
-					 * A DEVICE IN NO NETWORK. The Mesh tab's rail row is gated on membership
-					 * and network creation is CLI-only, so the honest instruction names the
-					 * command that exists rather than a button that does not. Drawn only for an
-					 * ANSWERED read: see `model.readFailure` below, which is what an empty list
-					 * means when nobody answered.
-					 */
-					<p
-						data-device-guidance=""
-						className="px-2 py-1.5 text-meta text-ink-dim"
-					>
-						{model.guidance}
-					</p>
+						<div className="flex shrink-0 items-center gap-2 px-2 py-1.5">
+							{/*
+							 * ONE BAND, FOUR SENTENCES, IN THE ORDER THAT MATTERS: a move in flight
+							 * outranks everything (nothing here can be pressed anyway), then the read's
+							 * own failure, then the consequence of the default pick.
+							 */}
+							{model.inFlight ? (
+								<span
+									data-device-in-flight=""
+									className="min-w-0 flex-1 text-meta text-ink"
+								>
+									{model.inFlight}
+								</span>
+							) : model.readFailure ? (
+								<span
+									data-device-read-failure=""
+									className="min-w-0 flex-1 text-meta text-warning"
+								>
+									{model.readFailure}
+								</span>
+							) : model.footer ? (
+								<span
+									data-device-footer=""
+									className="min-w-0 flex-1 text-meta text-ink-dim"
+								>
+									{model.footer}
+								</span>
+							) : (
+								<span className="min-w-0 flex-1" />
+							)}
+							{model.offerCheckAgain ? (
+								<DropdownMenuItem
+									data-device-recheck=""
+									aria-disabled={busy || undefined}
+									onSelect={() => {
+										if (busy) return;
+										onCheckAgain();
+									}}
+									className="shrink-0 px-1 py-0 text-meta"
+								>
+									{t("ui.chat.session_status.chat_header_device.check_again")}
+								</DropdownMenuItem>
+							) : null}
+						</div>
+					</>
 				) : null}
-			</div>
-			{model.footer ||
-			model.readFailure ||
-			model.inFlight ||
-			model.offerCheckAgain ? (
-				<>
-					<DropdownMenuSeparator />
-					<div className="flex shrink-0 items-center gap-2 px-2 py-1.5">
-						{/*
-						 * ONE BAND, FOUR SENTENCES, IN THE ORDER THAT MATTERS: a move in flight
-						 * outranks everything (nothing here can be pressed anyway), then the read's
-						 * own failure, then the consequence of the default pick.
-						 */}
-						{model.inFlight ? (
-							<span
-								data-device-in-flight=""
-								className="min-w-0 flex-1 text-meta text-ink"
-							>
-								{model.inFlight}
-							</span>
-						) : model.readFailure ? (
-							<span
-								data-device-read-failure=""
-								className="min-w-0 flex-1 text-meta text-warning"
-							>
-								{model.readFailure}
-							</span>
-						) : model.footer ? (
-							<span
-								data-device-footer=""
-								className="min-w-0 flex-1 text-meta text-ink-dim"
-							>
-								{model.footer}
-							</span>
-						) : (
-							<span className="min-w-0 flex-1" />
-						)}
-						{model.offerCheckAgain ? (
-							<DropdownMenuItem
-								data-device-recheck=""
-								aria-disabled={busy || undefined}
-								onSelect={() => {
-									if (busy) return;
-									onCheckAgain();
-								}}
-								className="shrink-0 px-1 py-0 text-meta"
-							>
-								Check again
-							</DropdownMenuItem>
-						) : null}
-					</div>
-				</>
-			) : null}
-		</DropdownMenuContent>
-	</DropdownMenu>
-);
+			</DropdownMenuContent>
+		</DropdownMenu>
+	);
+};
 
 /**
  * The control, and the one question a destructive pick has to ask.
@@ -455,6 +464,7 @@ export const ChatHeaderDevice = ({
 	onPick: (deviceId: string | null, keep: boolean) => void;
 	onCheckAgain: () => void;
 }) => {
+	useI18nLocale();
 	/*
 	 * WHERE THE CONVERSATION IS NOW, for the recall's loss sentence. A pick on a
 	 * `gone` pane is a recall too - the copy the dialog names is the one on the peer

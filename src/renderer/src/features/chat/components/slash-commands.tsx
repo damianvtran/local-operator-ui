@@ -52,7 +52,7 @@ import type {
 	ReusableTeam,
 } from "@shared/api/local-operator/profile-hooks";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
-import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -68,6 +68,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 import type { TagCategory } from "../../../../../shared/desktop-contract";
 import type { CanonicalModel } from "../../../../../shared/desktop-session-contract";
 import { archiveDestinationApplies } from "../chat-archived";
@@ -687,7 +688,7 @@ function useArgumentRows(
 				rows: argumentRows("providers", providers.data ?? [], null),
 				loading: providers.isLoading,
 				error: providers.isError
-					? "The list could not be loaded. Try again."
+					? t("ui.chat.slash_commands.the_list_could_not_be_loaded_try_again")
 					: null,
 				needsSession: false,
 			};
@@ -731,7 +732,9 @@ function useArgumentRows(
 					argumentRows("providers", providers.data, null),
 				)[0]?.choice.value;
 				if (named && (storedById.get(named) ?? 0) <= 0) {
-					emptyCopy = "No stored credential to remove.";
+					emptyCopy = t(
+						"ui.chat.slash_commands.no_stored_credential_to_remove",
+					);
 				}
 			}
 			return {
@@ -745,7 +748,7 @@ function useArgumentRows(
 				 */
 				loading: accounts.isLoading || providers.isLoading,
 				error: accounts.isError
-					? "The list could not be loaded. Try again."
+					? t("ui.chat.slash_commands.the_list_could_not_be_loaded_try_again")
 					: null,
 				needsSession: false,
 			};
@@ -769,7 +772,9 @@ function useArgumentRows(
 						? MCP_EMPTY_SLOT_COPY
 						: undefined,
 				loading: mcp.isLoading,
-				error: mcp.isError ? "The list could not be loaded. Try again." : null,
+				error: mcp.isError
+					? t("ui.chat.slash_commands.the_list_could_not_be_loaded_try_again")
+					: null,
 				needsSession: false,
 			};
 		}
@@ -801,11 +806,13 @@ function useArgumentRows(
 				emptyCopy:
 					rows.length === 0
 						? draftRosterSource === "team"
-							? "No teams are registered."
-							: "No profiles found."
+							? t("ui.chat.slash_commands.no_teams_are_registered")
+							: t("ui.chat.slash_commands.no_profiles_found")
 						: undefined,
 				loading: list.isLoading,
-				error: list.isError ? "The list could not be loaded. Try again." : null,
+				error: list.isError
+					? t("ui.chat.slash_commands.the_list_could_not_be_loaded_try_again")
+					: null,
 				needsSession: false,
 			};
 		}
@@ -867,7 +874,7 @@ function useArgumentRows(
 			rows: argumentRows(source, entities.data?.entities ?? [], current),
 			loading: entities.isLoading,
 			error: entities.isError
-				? "The list could not be loaded. Try again."
+				? t("ui.chat.slash_commands.the_list_could_not_be_loaded_try_again")
 				: null,
 			needsSession: false,
 		};
@@ -1788,6 +1795,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	onPick,
 	onActionPick,
 }) => {
+	useI18nLocale();
 	const listId = state.listId;
 	const activeRef = useRef<HTMLLIElement | null>(null);
 	/*
@@ -1921,8 +1929,12 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	const footer = activeAction
 		? {
 				text: activeAction.disabled
-					? "A current model is needed to set a default."
-					: "Enter sets the current model as the default for new sessions.",
+					? t(
+							"ui.chat.slash_commands.a_current_model_is_needed_to_set_a_default",
+						)
+					: t(
+							"ui.chat.slash_commands.enter_sets_the_current_model_as_the_default_for_new",
+						),
 				key: activeAction.disabled ? null : "Enter",
 			}
 		: enterFooter({
@@ -2043,7 +2055,9 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 				? t("ui.chat.tags.create_name", { name: activeArgument.value })
 				: activeArgument.applied
 					? t("ui.chat.tags.remove_named", { name: activeArgument.value })
-					: `Add “${activeArgument.value}”`;
+					: t("ui.chat.slash_commands.add_value", {
+							value: activeArgument.value,
+						});
 	const baseFooter =
 		typeof footer === "string" ? footer : (footer?.text ?? null);
 	const footerText =
@@ -2051,12 +2065,12 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			? state.tagPending
 				? t("ui.chat.tags.applying")
 				: unambiguousActive
-					? `Enter ${tagVerb}`
+					? t("ui.chat.slash_commands.enter_tagverb", { tagVerb })
 					: baseFooter
 			: baseFooter;
 	const clickText =
 		tagListShown && activeArgument && !state.tagPending
-			? `Click ${tagVerb}`
+			? t("ui.chat.slash_commands.click_tagverb", { tagVerb })
 			: click;
 	/*
 	 * ONE OWNER FOR A REGISTRY LOAD FAILURE. `argumentEmptyCopy` already prints
@@ -2087,7 +2101,11 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			// biome-ignore lint/a11y/useFocusableInteractive: the textarea keeps focus; the listbox is reached through aria-activedescendant, so it is not in the tab order.
 			// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>.
 			role="listbox"
-			aria-label={argument ? "Command arguments" : "Slash commands"}
+			aria-label={
+				argument
+					? t("ui.chat.slash_commands.command_arguments")
+					: t("ui.chat.slash_commands.slash_commands")
+			}
 			className={cn(
 				"@container/slash absolute bottom-full left-0 right-0 z-20 mb-1",
 				// `overflow-hidden`, not `overflow-y-auto`: the SCROLL belongs to the
@@ -2156,7 +2174,9 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			>
 				{state.matches.length === 0 ? (
 					<div className="px-3 py-2 text-body-sm text-ink-muted">
-						{argument ? emptyArgumentCopy : "No commands match."}
+						{argument
+							? emptyArgumentCopy
+							: t("ui.chat.slash_commands.no_commands_match")}
 					</div>
 				) : (
 					<ul>
@@ -2165,7 +2185,10 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 							/* biome-ignore lint/a11y/useKeyWithClickEvents: the keyboard is handled on the textarea, not on the option — arrows, Enter and Escape are the composer's, and the click below is the pointer's own gesture on the row the marker is on. */
 							<li
 								key={rowId(row)}
-								id={`${listId}-${rowId(row)}`}
+								id={t("ui.chat.slash_commands.listid_rowidvalue", {
+									listId: listId,
+									rowIdValue: rowId(row),
+								})}
 								ref={index === state.active ? activeRef : null}
 								// biome-ignore lint/a11y/useFocusableInteractive: focus stays in the composer textarea; the active option is announced through aria-activedescendant.
 								// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a combobox option cannot be a native <option> here.
@@ -2327,7 +2350,9 @@ function actionRowContent(row: ArgumentActionRow) {
 			<span className="min-w-0 flex-1 truncate text-ink-muted">
 				{row.description}
 			</span>
-			<span className="shrink-0 text-meta text-ink-dim">Action</span>
+			<span className="shrink-0 text-meta text-ink-dim">
+				{t("ui.chat.slash_commands.action")}
+			</span>
 		</>
 	);
 }
@@ -2366,7 +2391,7 @@ function argumentRowContent(
 							? t("ui.chat.tags.remove_named", { name: value.name })
 							: t("ui.chat.tags.add")
 						: value.current
-							? "Current"
+							? t("ui.chat.slash_commands.current")
 							: undefined
 				}
 				className={cn(
@@ -2378,7 +2403,7 @@ function argumentRowContent(
 			>
 				{source === "session-tags"
 					? value.applied
-						? "[x]"
+						? t("ui.chat.slash_commands.x")
 						: "[ ]"
 					: value.current
 						? "●"

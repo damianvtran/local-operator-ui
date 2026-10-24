@@ -22,6 +22,7 @@
  * in the tests that moved with it.
  */
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
+import { t } from "../../../../i18n/messages";
 import { deviceName } from "./device/chat-device-model";
 /** The device a remote row is spoken of by: the wire's own name when it carried
  * one, else the id's tail - `deviceName`'s ONE rule, shared with the header's
@@ -34,7 +35,7 @@ export function remoteDeviceLabel(row: CanonicalSessionRow): string {
 		deviceName(
 			typeof row.owner_device_name === "string" ? row.owner_device_name : "",
 			typeof row.owner_device === "string" ? row.owner_device : "",
-		) || "another device"
+		) || t("ui.chat.chat_remote.another_device")
 	);
 }
 
@@ -111,5 +112,5 @@ export function remoteUnreachableClause(row: CanonicalSessionRow): string {
 		typeof row.unreachable_reason === "string"
 			? row.unreachable_reason.trim()
 			: "";
-	return `unreachable · ${reason || "it did not answer"}`;
+	return `unreachable · ${reason || t("ui.chat.chat_remote.it_did_not_answer")}`;
 }

@@ -829,7 +829,7 @@ test("the store no longer carries a reader-less `sessionByAgent` map", () => {
 	);
 	assert.match(
 		page,
-		/This legacy link has no canonical chat\. Its saved history is unchanged\./,
+		/ui\.chat\.chat_page\.this_legacy_link_has_no_canonical_chat_its_saved_history/,
 		"the sentence itself is unchanged: old links are still told the truth",
 	);
 	assert.doesNotMatch(

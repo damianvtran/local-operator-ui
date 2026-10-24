@@ -13,6 +13,7 @@
  * holding a second definition that could drift from the schema.
  */
 
+import { t } from "../../../../../i18n/messages";
 import type {
 	ThreadFindAnswer,
 	ThreadFindHit,
@@ -201,16 +202,29 @@ export function splitThreadSearchRanges(
  */
 export const THREAD_SEARCH_ROLE_LABELS: Record<ThreadFindHit["role"], string> =
 	{
-		user: "You",
-		agent: "Agent",
+		user: t("ui.chat.canonical.thread_search.role.you"),
+		agent: t("ui.chat.canonical.thread_search.role.agent"),
 	};
 
 /** The mark a soft hit carries instead of a highlighted range (D3/D9). */
-export const THREAD_SEARCH_TIER_HINT = "related match";
+export const THREAD_SEARCH_TIER_HINT = t(
+	"ui.chat.canonical.thread_search.related_match",
+);
 
-export const THREAD_SEARCH_PLACEHOLDER = "Search this conversation";
-export const THREAD_SEARCH_LIST_LABEL = "Search results";
-export const THREAD_SEARCH_CLOSE_LABEL = "Close search";
+/*
+ * These eager English values remain only for the pure-model compatibility
+ * assertions. Renderers must resolve the same keys at render time so a live
+ * locale switch cannot leave a module-scope snapshot on screen.
+ */
+export const THREAD_SEARCH_PLACEHOLDER = t(
+	"ui.chat.canonical.thread_search.placeholder",
+);
+export const THREAD_SEARCH_LIST_LABEL = t(
+	"ui.chat.canonical.thread_search.results_label",
+);
+export const THREAD_SEARCH_CLOSE_LABEL = t(
+	"ui.chat.canonical.thread_search.close_label",
+);
 
 /**
  * The count line's spelling, off the hit list rather than a total the wire
@@ -228,31 +242,43 @@ export function threadSearchCountLabel(hits: readonly ThreadFindHit[]): string {
 	const exact = hits.filter((hit) => hit.tier === "exact").length;
 	const soft = hits.length - exact;
 	if (soft === 0) {
-		return hits.length === 1 ? "1 match" : `${hits.length} matches`;
+		return t("ui.chat.canonical.thread_search.count_exact", {
+			count: hits.length,
+		});
 	}
 	if (exact === 0) {
-		return soft === 1 ? "1 related match" : `${soft} related matches`;
+		return t("ui.chat.canonical.thread_search.count_related", { count: soft });
 	}
-	return `${exact} exact · ${soft} related`;
+	return t("ui.chat.canonical.thread_search.count_split", { exact, soft });
 }
 
 /**
  * The panel's sentences, one per state (design D9's copy rules: every state
  * says what happened, and the recoverable ones say what to do).
  */
-export const THREAD_SEARCH_EMPTY_COPY = "No messages match this search.";
-export const THREAD_SEARCH_BUILDING_COPY = "Still indexing this conversation.";
-export const THREAD_SEARCH_BUILDING_HINT =
-	"Results appear as the index catches up.";
-export const THREAD_SEARCH_PARTIAL_COPY =
-	"Newer messages may be missing while the index catches up.";
-export const THREAD_SEARCH_UNSUPPORTED_COPY =
-	"This conversation lives on another device, so it cannot be searched here.";
-export const THREAD_SEARCH_ERROR_COPY =
-	"This conversation could not be searched.";
-export const THREAD_SEARCH_RETRY_LABEL = "Try again";
+export const THREAD_SEARCH_EMPTY_COPY = t(
+	"ui.chat.canonical.thread_search.empty",
+);
+export const THREAD_SEARCH_BUILDING_COPY = t(
+	"ui.chat.canonical.thread_search.building",
+);
+export const THREAD_SEARCH_BUILDING_HINT = t(
+	"ui.chat.canonical.thread_search.building_hint",
+);
+export const THREAD_SEARCH_PARTIAL_COPY = t(
+	"ui.chat.canonical.thread_search.partial",
+);
+export const THREAD_SEARCH_UNSUPPORTED_COPY = t(
+	"ui.chat.canonical.thread_search.unsupported",
+);
+export const THREAD_SEARCH_ERROR_COPY = t(
+	"ui.chat.canonical.thread_search.error",
+);
+export const THREAD_SEARCH_RETRY_LABEL = t("ui.common.actions.retry_again");
 /** The building state's control: a re-check, not a retry — nothing failed. */
-export const THREAD_SEARCH_RECHECK_LABEL = "Check again";
+export const THREAD_SEARCH_RECHECK_LABEL = t(
+	"ui.chat.canonical.thread_search.recheck",
+);
 
 /**
  * What the reader is told when a hit cannot be reached at all.
@@ -265,8 +291,9 @@ export const THREAD_SEARCH_RECHECK_LABEL = "Check again";
  * own gesture — scroll up for older pages — is the one that changes the
  * answer.
  */
-export const THREAD_SEARCH_JUMP_MISS_COPY =
-	"Could not reach that message. It is further back than the loaded history — scroll up in the transcript to load more.";
+export const THREAD_SEARCH_JUMP_MISS_COPY = t(
+	"ui.chat.canonical.thread_search.jump_miss",
+);
 
 /**
  * The stale-list marker: a new ask is in flight behind a retained list.
@@ -279,8 +306,9 @@ export const THREAD_SEARCH_JUMP_MISS_COPY =
  * previous search's, and the highlight is the row about to open — but the
  * panel now says so instead of letting the reader assume.
  */
-export const THREAD_SEARCH_STALE_COPY =
-	"Updating — the list below is the previous search's.";
+export const THREAD_SEARCH_STALE_COPY = t(
+	"ui.chat.canonical.thread_search.stale",
+);
 
 /**
  * What the panel says while a revealed hit is being sought in the transcript.
@@ -290,11 +318,13 @@ export const THREAD_SEARCH_STALE_COPY =
  * all until the row landed or the toast spoke. The line is the panel's own
  * report; the landing belongs to the transcript.
  */
-export const THREAD_SEARCH_JUMPING_COPY = "Going to that message…";
+export const THREAD_SEARCH_JUMPING_COPY = t(
+	"ui.chat.canonical.thread_search.jumping",
+);
 
 /** The line a truncated list carries, so a floor is never read as a total. */
 export function threadSearchTruncatedLabel(count: number): string {
-	return count === 1 ? "(the first match shown)" : `(first ${count} shown)`;
+	return t("ui.chat.canonical.thread_search.truncated", { count });
 }
 
 /**

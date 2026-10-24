@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 /**
  * The identity of a session ARTIFACT: media the harness generated and filed in
  * its attachment store, which has bytes and a digest but no path on the user's
@@ -182,12 +183,16 @@ export const ARTIFACT_HEAD_LENGTH = 8;
  * shorter menu (no Open file / Open folder) is unexplained (UX U4, design D7).
  */
 export function artifactCue(kind: ArtifactIdentityKind): string {
-	if (kind === "file") return "File kept in this session";
+	if (kind === "file")
+		return t("ui.chat.artifact_identity.file_kept_in_this_session");
 	// "Generated sound" rather than "Generated audio": the cue shares the word
 	// the row's own fallback name and the Sounds section use (`artifactCue` is
 	// read by the tooltip alone, but one kind should read one way).
-	if (kind === "audio") return "Generated sound, kept in this session";
-	return `Generated ${kind}, kept in this session`;
+	if (kind === "audio")
+		return t("ui.chat.artifact_identity.generated_sound_kept_in_this_session");
+	return t("ui.chat.artifact_identity.generated_kind_kept_in_this_session", {
+		kind,
+	});
 }
 
 /**
@@ -207,7 +212,10 @@ export function artifactTooltip(artifact: {
 	// repeating the head would read `Video 9277c383 . 9277c383`.
 	const named = artifact.title.includes(head)
 		? artifact.title
-		: `${artifact.title} \u00b7 ${head}`;
+		: t("ui.chat.artifact_identity.title_head", {
+				title: artifact.title,
+				head: head,
+			});
 	return `${named} \u00b7 ${artifactCue(artifact.kind)}`;
 }
 

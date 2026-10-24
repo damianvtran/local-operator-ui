@@ -47,6 +47,7 @@
  */
 
 import { ImageLightbox } from "@shared/components/common/image-lightbox";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import {
 	clampGroupIndex,
 	wrapGroupIndex,
@@ -61,8 +62,8 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 import {
-	ATTACHMENT_UNAVAILABLE_COPY,
 	AttachmentFrame,
 	BrokenAttachment,
 } from "../components/message-item/attachment-frame";
@@ -104,7 +105,13 @@ const defaultLabelFor = (
 	image: TranscriptImage,
 	index: number,
 	count: number,
-): string => image.name ?? (count === 1 ? "Image" : `Image ${index + 1}`);
+): string =>
+	image.name ??
+	(count === 1
+		? t("ui.chat.canonical.image_group_lightbox.image")
+		: t("ui.chat.canonical.image_group_lightbox.image_value", {
+				value: index + 1,
+			}));
 
 /**
  * A picture the group does not have, for the index arithmetic to land on if a
@@ -143,14 +150,16 @@ export type ImageGroupLightboxProps = {
 const StableColdSlot = ({
 	cold,
 	children,
-}: { cold: boolean; children: ReactNode }) =>
-	cold ? (
+}: { cold: boolean; children: ReactNode }) => {
+	useI18nLocale();
+	return cold ? (
 		<div className="flex h-[79px] w-[117px] items-start leading-none">
 			{children}
 		</div>
 	) : (
 		children
 	);
+};
 
 export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 	images,
@@ -161,6 +170,7 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 	restoreFocusTo,
 	labelFor = defaultLabelFor,
 }) => {
+	useI18nLocale();
 	const count = images.length;
 	const [selected, setSelected] = useState(() => clampGroupIndex(index, count));
 	/*
@@ -209,16 +219,16 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 	/*
 	 * WHERE FOCUS GOES WHEN THE WALK MOVES THE PICTURE. A strip tile that held
 	 * focus must not keep reading as the current one: the walk follows the picture
-	 * to the new tile's own control where one exists — every slot's label is
-	 * static, so the target can be named before the re-render — and where it does
-	 * not (a picture with no bytes draws a receipt, which has no control to take
+	 * to the new tile's own control where one exists — the slot's stable index,
+	 * not its localized label, names the target before the re-render — and where it
+	 * does not (a picture with no bytes draws a receipt, which has no control to take
 	 * focus) focus leaves the tiles for the layer instead, so no stale tile wears
 	 * a ring the walk did not put there. The check is `fromStrip` rather than
 	 * "always": a reader pointing at the frame keeps their focus on the frame.
 	 */
 	const focusFor = (index: number) => {
 		const tile = stripRef.current?.querySelector<HTMLButtonElement>(
-			`button[aria-label="Show image ${index + 1} of ${count}"]`,
+			`[data-image-slot="${index + 1}"] button`,
 		);
 		if (tile) tile.focus();
 		else layerRef.current?.focus();
@@ -360,7 +370,9 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 				/* biome-ignore lint/a11y/useSemanticElements: the element already IS the one the rule suggests - the explicit role is the WebKit fix above, not a substitute for `ul`. */
 				role="list"
 				ref={attachStrip}
-				aria-label={`${count} images`}
+				aria-label={t("ui.chat.canonical.image_group_lightbox.count_images", {
+					count,
+				})}
 				data-image-filmstrip=""
 				/*
 				 * `px-2` rather than `p-1` (design round 1, D1-6): the focus ring needs
@@ -431,16 +443,28 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 										 * reader, and "of 3" is what tells this one from its
 										 * neighbours.
 										 */
-										label: `Show image ${tileIndex + 1} of ${count}`,
-										title: `Show image ${tileIndex + 1} of ${count}`,
+										label: t(
+											"ui.chat.canonical.image_group_lightbox.show_image_value_of_count",
+											{ value: tileIndex + 1, count: count },
+										),
+										title: t(
+											"ui.chat.canonical.image_group_lightbox.show_image_value_of_count",
+											{ value: tileIndex + 1, count: count },
+										),
 										current: tileIndex === safeIndex,
 									}}
 								/>
 							) : (
 								<button
 									type="button"
-									aria-label={`Show image ${tileIndex + 1} of ${count}`}
-									title={`Show image ${tileIndex + 1} of ${count}`}
+									aria-label={t(
+										"ui.chat.canonical.image_group_lightbox.show_image_value_of_count",
+										{ value: tileIndex + 1, count: count },
+									)}
+									title={t(
+										"ui.chat.canonical.image_group_lightbox.show_image_value_of_count",
+										{ value: tileIndex + 1, count: count },
+									)}
 									className="group/tile inline-block max-w-full cursor-zoom-in rounded-sm leading-none"
 									onClick={() => {
 										admit([tileIndex]);
@@ -483,7 +507,12 @@ export const ImageGroupLightbox: FC<ImageGroupLightboxProps> = ({
 			 * moved/renamed/deleted cause a path could honestly carry.
 			 */
 			fallback={
-				<BrokenAttachment name={label} detail={ATTACHMENT_UNAVAILABLE_COPY} />
+				<BrokenAttachment
+					name={label}
+					detail={t(
+						"ui.chat.message.attachment_frame.could_not_be_displayed_its_stored_copy_is_not_available",
+					)}
+				/>
 			}
 			layerRef={layerRef}
 			group={{ index: safeIndex, count, onPrev, onNext, filmstrip }}

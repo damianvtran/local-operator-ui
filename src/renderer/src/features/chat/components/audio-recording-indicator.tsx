@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { t } from "../../../../../i18n/messages";
 
 import { acquireAudioMeterStream } from "./audio-meter-stream";
 import {

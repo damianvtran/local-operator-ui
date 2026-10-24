@@ -50,10 +50,10 @@
  */
 
 import { Button } from "@shared/components/ui";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { Ref } from "react";
+import { t } from "../../../../../../i18n/messages";
 import { type JobCancelSection, jobRowCanCancel } from "./job-controls-model";
 import {
 	type RunDetails,
@@ -96,7 +96,9 @@ const JobRow = ({
 					size="sm"
 					data-job-cancel={row.id}
 					/* The accessible name names the act and the row, the wakes' rule. */
-					aria-label={`Cancel ${row.label}`}
+					aria-label={t("ui.chat.run_details.run_detail_jobs.cancel_label", {
+						label: row.label,
+					})}
 					/* The danger wash on hover is the wake line's own cancel ink; nothing
 				   lifts, and the focus ring is the shared Button's own. `h-6` (24px)
 				   is the HIT floor rather than the row's own rhythm. */

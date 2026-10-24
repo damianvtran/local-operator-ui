@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 /**
  * The empty-chat suggestion pool, and how a sample is drawn from it.
  *
@@ -78,8 +79,8 @@
 
 export const DEFAULT_MESSAGE_SUGGESTIONS: readonly string[] = [
 	// The pinned opening four: one verb each, four different capabilities.
-	"Set up Linear MCP for me",
-	"Create a team of agents",
+	t("ui.chat.composer.suggestions.set_up_linear_mcp_for_me"),
+	t("ui.chat.composer.suggestions.create_a_team_of_agents"),
 	/*
 	 * Shortened from the recommended "Turn on phone access for this session".
 	 * Measured at the 550px column floor, the longer wording put the pinned four
@@ -89,14 +90,14 @@ export const DEFAULT_MESSAGE_SUGGESTIONS: readonly string[] = [
 	 * band still says what phone access is for, and the 810px measure is
 	 * unaffected either way.
 	 */
-	"Turn on phone access",
-	"Show me what the agent did last turn",
+	t("ui.chat.composer.suggestions.turn_on_phone_access"),
+	t("ui.chat.composer.suggestions.show_me_what_the_agent_did_last_turn"),
 	// The tail, sampled after the first draw: still one verb each, still four
 	// different jobs.
-	"Build a code-review agent",
-	"Wake me tomorrow morning with a summary",
-	"Schedule a task that runs every morning",
-	"Review this repo and open a pull request",
+	t("ui.chat.composer.suggestions.build_a_code_review_agent"),
+	t("ui.chat.composer.suggestions.wake_me_tomorrow_morning_with_a_summary"),
+	t("ui.chat.composer.suggestions.schedule_a_task_that_runs_every_morning"),
+	t("ui.chat.composer.suggestions.review_this_repo_and_open_a_pull_request"),
 ];
 
 /**

@@ -11,6 +11,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../../i18n/messages";
 import { getFileTypeFromPath } from "../../utils/file-types";
 import {
 	classifyAttachmentSource,
@@ -18,11 +19,7 @@ import {
 } from "../../utils/image-actions";
 import { isCanvasSupported } from "../../utils/is-canvas-supported";
 import { ImageActionsMenu } from "../image-actions-menu";
-import {
-	ATTACHMENT_UNAVAILABLE_COPY,
-	AttachmentFrame,
-	BrokenAttachment,
-} from "./attachment-frame";
+import { AttachmentFrame, BrokenAttachment } from "./attachment-frame";
 
 /**
  * Props for the ImageAttachment component (base)
@@ -346,7 +343,12 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 					const message =
 						error instanceof Error
 							? error.message
-							: String(error ?? "Unknown error reading file");
+							: String(
+									error ??
+										t(
+											"ui.chat.message.image_attachment.unknown_error_reading_file",
+										),
+								);
 					return fallbackAction(message);
 				}
 			}
@@ -480,8 +482,18 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 					 * for a mouse and effectively absent for a reader (UX round 1, U1-1).
 					 * The name now states what pressing it does.
 					 */
-					aria-label={press ? press.label : `Expand ${name}`}
-					title={press ? press.title : `Click to expand ${name}`}
+					aria-label={
+						press
+							? press.label
+							: t("ui.chat.message.image_attachment.expand_name", { name })
+					}
+					title={
+						press
+							? press.title
+							: t("ui.chat.message.image_attachment.click_to_expand_name", {
+									name,
+								})
+					}
 					aria-current={press?.current ? "true" : undefined}
 				>
 					{picture}
@@ -588,7 +600,13 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 						fallback={
 							<BrokenAttachment
 								name={name}
-								detail={isLocalFile ? undefined : ATTACHMENT_UNAVAILABLE_COPY}
+								detail={
+									isLocalFile
+										? undefined
+										: t(
+												"ui.chat.message.attachment_frame.could_not_be_displayed_its_stored_copy_is_not_available",
+											)
+								}
 							/>
 						}
 					/>

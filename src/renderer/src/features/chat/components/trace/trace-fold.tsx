@@ -77,6 +77,7 @@
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
+import { t } from "../../../../../../i18n/messages";
 import { foldMediaClause } from "../../canonical/trace-fold-model";
 import type {
 	FoldLive,
@@ -346,7 +347,10 @@ export const TraceFold = ({
 									 * would otherwise be reachable only by expanding the fold; the tooltip
 									 * keeps it one hover away (design round 1, D1).
 									 */
-									title={`${live.verb} ${live.object}`}
+									title={t("ui.chat.trace.trace_fold.verb_object", {
+										verb: live.verb,
+										object: live.object,
+									})}
 								>
 									<span className={cn("text-accent")}>{live.verb}</span>{" "}
 									<span className={cn("font-mono text-mono-sm text-ink-muted")}>

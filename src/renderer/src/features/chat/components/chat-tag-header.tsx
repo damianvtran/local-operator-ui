@@ -16,7 +16,6 @@ import {
 	PopoverAnchor,
 	PopoverContent,
 } from "@shared/components/ui";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useSessionTagsStore } from "@shared/store/session-tags-store";
@@ -36,6 +35,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 import type { TagCategory } from "../../../../../shared/desktop-contract";
 
 /**
@@ -466,8 +466,13 @@ export function ChatTagHeader({
 								role="alertdialog"
 								align="end"
 								className="w-64 space-y-2 p-3"
-								aria-labelledby={`${errorId}-title`}
-								aria-describedby={`${errorId}-description`}
+								aria-labelledby={t("ui.chat.chat_tag_header.errorid_title", {
+									errorId,
+								})}
+								aria-describedby={t(
+									"ui.chat.chat_tag_header.errorid_description",
+									{ errorId },
+								)}
 								onOpenAutoFocus={(event) => {
 									// Cancel is focused: the safe answer is the default one.
 									event.preventDefault();
@@ -481,11 +486,16 @@ export function ChatTagHeader({
 									if (event.key === "Escape") event.stopPropagation();
 								}}
 							>
-								<p id={`${errorId}-title`} className="text-body-sm text-ink">
+								<p
+									id={t("ui.chat.chat_tag_header.errorid_title", { errorId })}
+									className="text-body-sm text-ink"
+								>
 									{t("ui.chat.tags.delete_title", { name: label })}
 								</p>
 								<p
-									id={`${errorId}-description`}
+									id={t("ui.chat.chat_tag_header.errorid_description", {
+										errorId,
+									})}
 									className="text-meta text-ink-dim"
 								>
 									{t("ui.chat.tags.delete_description", {

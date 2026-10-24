@@ -1,3 +1,4 @@
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type CanonicalSessionRow,
@@ -17,6 +18,7 @@ import {
 	Pause,
 	WifiOff,
 } from "lucide-react";
+import { t } from "../../../../../i18n/messages";
 import {
 	peerLinkDownLabel,
 	peerUncertainLabel,
@@ -105,6 +107,7 @@ export function ChatAsksOutstanding({
 	 * and `null` is the same absence - neither is a claim of zero. */
 	open?: number | null;
 }) {
+	useI18nLocale();
 	const count = typeof open === "number" ? open : row.asks_open;
 	if (typeof count !== "number" || !Number.isFinite(count) || count <= 0)
 		return null;
@@ -120,7 +123,10 @@ export function ChatAsksOutstanding({
 		 */
 		<span
 			role="img"
-			aria-label={`${asksOutstandingLabel(count)} outstanding. The agent is not blocked on you.`}
+			aria-label={t(
+				"ui.chat.chat_session_status.asksoutstandinglabelvalue_outstanding_the_agent_is_not_blocked_on_you",
+				{ asksOutstandingLabelValue: asksOutstandingLabel(count) },
+			)}
 			className={cn("inline-flex shrink-0 items-center gap-0.5")}
 		>
 			{/*
@@ -269,6 +275,7 @@ export function SubagentRunningMark({
 	/** The rig/test hook (`data-subagent-mark`). Passed only where the mark stands for the ROW's own running subagents - the `delegating` rung shares the component but not the hook. */
 	mark?: string;
 }) {
+	useI18nLocale();
 	return (
 		<span
 			aria-hidden="true"
@@ -302,6 +309,7 @@ export function ChatSessionStatus({
 	row,
 	nowSeconds = Date.now() / 1000,
 }: { row: CanonicalSessionRow; nowSeconds?: number }) {
+	useI18nLocale();
 	const code = row.status?.code;
 	/*
 	 * `delegating`'s mark is the RUNNING MARK below rather than a Lucide icon:
@@ -453,7 +461,9 @@ export function ChatSessionStatus({
 			<span className="sr-only">
 				{linkDown
 					? peerLinkDownLabel(row, nowSeconds)
-					: (uncertainLabel ?? row.status?.label ?? "Recent")}
+					: (uncertainLabel ??
+						row.status?.label ??
+						t("ui.chat.chat_session_status.recent"))}
 				{/*
 				 * THE UNREAD SEMANTIC IS AN INK STEP, so on its own it tells a screen
 				 * reader nothing — the arrival is visible only to someone looking at
@@ -484,7 +494,7 @@ export function ChatSessionStatus({
 				 * keeps the name true if that label is ever reworded for a code whose
 				 * ink does not step between read and unseen.
 				 */}
-				{unreadMark !== null ? ", unread" : ""}
+				{unreadMark !== null ? t("ui.chat.chat_session_status.unread") : ""}
 			</span>
 		</span>
 	);

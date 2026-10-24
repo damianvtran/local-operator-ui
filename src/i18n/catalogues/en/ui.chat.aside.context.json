@@ -1,0 +1,256 @@
+{
+	"ui.chat.aside.aside_panel.add_to_conversation": {
+		"role": "visible interface copy in chat components/aside-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/aside-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside_panel.aside": {
+		"role": "visible interface copy in chat components/aside-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/aside-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside_panel.close_the_aside": {
+		"role": "accessible name or tooltip in chat components/aside-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/aside-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside_panel.off_the_record_nothing_here_joins_the_conversation": {
+		"role": "visible interface copy in chat components/aside-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/aside-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside_panel.question": {
+		"role": "visible interface copy in chat components/aside-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/aside-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside_panel.the_aside_exchange": {
+		"role": "accessible name or tooltip in chat components/aside-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/aside-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside_panel.thinking": {
+		"role": "visible interface copy in chat components/aside-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/aside-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside_panel.type_a_question_in_the_composer_below_the_answer_lands": {
+		"role": "visible interface copy in chat components/aside-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/aside-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside_panel.you": {
+		"role": "visible interface copy in chat components/aside-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/aside-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.asking_the_aside": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.nothing_to_add": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.nothing_to_add_yet": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.the_aside_answered": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.the_aside_was_not_added_to_the_conversation": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.the_aside_was_not_answered": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.the_exchange_is_still_settling_a_moment_before_it_can": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.the_model_didnt_reply_in_text_ask_again": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.this_conversation_is_working_adding_the_aside_while_it_runs": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside_panel.add_the_aside_to_the_conversation": {
+		"role": "visible interface copy in chat components/aside-panel.tsx",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from components/aside-panel.tsx. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.the_aside_answered_sentence": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"sentence": "string"
+		}
+	},
+	"ui.chat.aside.aside.the_request_has_invalid_fields": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.ask_again_here_to_keep_this_exchange_or_press_esc": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.queued_this_aside_joins_the_conversation_when_the_current_turn": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.the_aside_could_not_be_confirmed_in_the_conversation_if": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.the_aside_is_still_answering_press_enter_again_once_the": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.the_aside_was_not_added_to_the_conversation_add_it": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.this_aside_cant_continue_press_esc_to_close_it_which": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.this_aside_is_queued_to_join_the_conversation_ask_again": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.press_asideadoptcapvalue_again_to_add_the_aside_to_the_conversation": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"asideAdoptCapValue": "string"
+		}
+	},
+	"ui.chat.aside.aside.the_aside_answered_value": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "short label or one line",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"value": "string"
+		}
+	},
+	"ui.chat.aside.aside.your_aside_asidequotedquestionvalue_got_no_answer_asideoffpanelcausevalue": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {
+			"asideQuotedQuestionValue": "string",
+			"asideOffPanelCauseValue": "string"
+		}
+	},
+	"ui.chat.aside.aside.the_aside_was_not_added_this_conversation_has_closed_so": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.the_conversation_stopped_in_the_middle_of_a_tool_call": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.this_conversation_is_busy_and_the_version_its_running_cant": {
+		"role": "visible interface copy in chat aside.ts",
+		"tone": "sentence case; preserve the English meaning and any trailing punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Extracted unchanged from aside.ts. Do not add a status or action the source does not state.",
+		"placeholders": {}
+	},
+	"ui.chat.aside.aside.the_aside_was_not_answered_inline": {
+		"role": "rendered product copy in chat aside.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	}
+}

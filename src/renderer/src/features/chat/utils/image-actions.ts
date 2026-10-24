@@ -1,4 +1,5 @@
 import { blobAt } from "@shared/lib/blob-url-cache";
+import { t } from "../../../../../i18n/messages";
 import { isArtifactPath } from "./artifact-identity";
 import { mimeTypeForPath } from "./file-kind";
 
@@ -139,25 +140,53 @@ export type ImageActionsOptions = {
 	mediaKind?: "image" | "video" | "audio";
 };
 
-const OPEN_FILE: ImageAction = { id: "open-file", label: "Open file" };
+const OPEN_FILE: ImageAction = {
+	id: "open-file",
+	get label() {
+		return t("ui.chat.image_actions.open_file");
+	},
+};
 const SHOW_IN_CANVAS: ImageAction = {
 	id: "show-in-canvas",
-	label: "Show in canvas",
+	get label() {
+		return t("ui.chat.image_actions.show_in_canvas");
+	},
 };
-const SAVE_AS: ImageAction = { id: "save-as", label: "Save as\u2026" };
-const OPEN_FOLDER: ImageAction = { id: "open-folder", label: "Open folder" };
+const SAVE_AS: ImageAction = {
+	id: "save-as",
+	get label() {
+		return t("ui.chat.image_actions.save_as");
+	},
+};
+const OPEN_FOLDER: ImageAction = {
+	id: "open-folder",
+	get label() {
+		return t("ui.chat.image_actions.open_folder");
+	},
+};
 const COPY_FILE_PATH: ImageAction = {
 	id: "copy-file-path",
-	label: "Copy file path",
+	get label() {
+		return t("ui.chat.image_actions.copy_file_path");
+	},
 };
-const COPY_IMAGE: ImageAction = { id: "copy-image", label: "Copy image" };
+const COPY_IMAGE: ImageAction = {
+	id: "copy-image",
+	get label() {
+		return t("ui.chat.image_actions.copy_image");
+	},
+};
 const COPY_IMAGE_URL: ImageAction = {
 	id: "copy-image-url",
-	label: "Copy image URL",
+	get label() {
+		return t("ui.chat.image_actions.copy_image_url");
+	},
 };
 const OPEN_IN_BROWSER: ImageAction = {
 	id: "open-in-browser",
-	label: "Open in browser",
+	get label() {
+		return t("ui.chat.image_actions.open_in_browser");
+	},
 };
 
 /**
@@ -181,7 +210,12 @@ export function imageActions(
 	const canvas: ImageAction[] = [
 		...(canShowInCanvas ? [SHOW_IN_CANVAS] : []),
 		...(canExpand
-			? [{ id: "expand-image" as const, label: "Expand image" }]
+			? [
+					{
+						id: "expand-image" as const,
+						label: t("ui.chat.image_actions.expand_image"),
+					},
+				]
 			: []),
 	];
 	switch (kind) {
@@ -314,7 +348,8 @@ export const barePath = (source: string): string =>
  */
 export function blobFromDataUrl(source: string): Blob {
 	const comma = source.indexOf(",");
-	if (comma === -1) throw new Error("Malformed data URL");
+	if (comma === -1)
+		throw new Error(t("ui.chat.image_actions.malformed_data_url"));
 	const header = source.slice(5, comma);
 	const payload = source.slice(comma + 1);
 	const mimeType = header.split(";")[0] || "application/octet-stream";
@@ -364,25 +399,37 @@ export async function resolveCopyableImage(
 	if (kind === "blob") {
 		const blob = blobAt(src ?? file);
 		if (blob === null) {
-			throw new Error("These image bytes are not available in this window");
+			throw new Error(
+				t(
+					"ui.chat.image_actions.these_image_bytes_are_not_available_in_this_window",
+				),
+			);
 		}
 		return blob;
 	}
 	if (kind === "http") {
 		const response = await fetch(src ?? file);
 		if (!response.ok) {
-			throw new Error(`The image server answered ${response.status}`);
+			throw new Error(
+				t("ui.chat.image_actions.the_image_server_answered_status", {
+					status: response.status,
+				}),
+			);
 		}
 		return response.blob();
 	}
 	const read = window.api?.readFileBytes;
 	if (typeof read !== "function") {
-		throw new Error("This window cannot read local files");
+		throw new Error(
+			t("ui.chat.image_actions.this_window_cannot_read_local_files"),
+		);
 	}
 	const path = barePath(file);
 	const result = await read(path);
 	if (!result.success) {
-		throw new Error(result.error ?? `Could not read ${path}`);
+		throw new Error(
+			result.error ?? t("ui.chat.image_actions.could_not_read_path", { path }),
+		);
 	}
 	// The MIME is what the clipboard entry needs to be an IMAGE paste; the
 	// extension is the same source the viewers take their type from
@@ -458,13 +505,18 @@ export const needsPngEncode = (type: string): boolean =>
  * generic sentence while the specific one reaches the log.
  */
 export async function pngForClipboard(blob: Blob): Promise<Blob> {
-	if (blob.size === 0) throw new Error("This image has no bytes to copy");
+	if (blob.size === 0)
+		throw new Error(t("ui.chat.image_actions.this_image_has_no_bytes_to_copy"));
 	if (!needsPngEncode(blob.type)) return blob;
 	const url = URL.createObjectURL(blob);
 	try {
 		const image = await decodeImage(url);
 		if (image.naturalWidth === 0 || image.naturalHeight === 0) {
-			throw new Error("This image could not be decoded for the clipboard");
+			throw new Error(
+				t(
+					"ui.chat.image_actions.this_image_could_not_be_decoded_for_the_clipboard",
+				),
+			);
 		}
 		const canvas = document.createElement("canvas");
 		canvas.width = image.naturalWidth;
@@ -472,7 +524,9 @@ export async function pngForClipboard(blob: Blob): Promise<Blob> {
 		const context = canvas.getContext("2d");
 		if (context === null) {
 			throw new Error(
-				"This window cannot re-encode the image for the clipboard",
+				t(
+					"ui.chat.image_actions.this_window_cannot_re_encode_the_image_for_the_clipboard",
+				),
 			);
 		}
 		context.drawImage(image, 0, 0);
@@ -480,7 +534,11 @@ export async function pngForClipboard(blob: Blob): Promise<Blob> {
 			canvas.toBlob(resolve, "image/png");
 		});
 		if (png === null) {
-			throw new Error("This image could not be re-encoded for the clipboard");
+			throw new Error(
+				t(
+					"ui.chat.image_actions.this_image_could_not_be_re_encoded_for_the_clipboard",
+				),
+			);
 		}
 		return png;
 	} finally {
@@ -494,7 +552,13 @@ function decodeImage(url: string): Promise<HTMLImageElement> {
 		const image = new Image();
 		image.onload = () => resolve(image);
 		image.onerror = () =>
-			reject(new Error("This image could not be decoded for the clipboard"));
+			reject(
+				new Error(
+					t(
+						"ui.chat.image_actions.this_image_could_not_be_decoded_for_the_clipboard",
+					),
+				),
+			);
 		image.src = url;
 	});
 }

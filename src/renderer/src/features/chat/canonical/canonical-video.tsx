@@ -38,10 +38,10 @@
 
 import { cn } from "@shared/lib/utils";
 import { useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import {
 	AttachmentFrame,
 	BrokenAttachment,
-	VIDEO_UNAVAILABLE_COPY,
 } from "../components/message-item/attachment-frame";
 import type { TranscriptImage } from "./transcript-reducer";
 import {
@@ -79,7 +79,14 @@ export const CanonicalVideo = ({
 	 */
 	const [decodeFailed, setDecodeFailed] = useState(false);
 	if (source.state === "missing" || decodeFailed) {
-		return <BrokenAttachment name={label} detail={VIDEO_UNAVAILABLE_COPY} />;
+		return (
+			<BrokenAttachment
+				name={label}
+				detail={t(
+					"ui.chat.message.attachment_frame.could_not_be_played_its_stored_copy_is_not_available",
+				)}
+			/>
+		);
 	}
 	if (source.state === "resolving") {
 		/*

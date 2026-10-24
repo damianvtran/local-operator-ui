@@ -29,6 +29,7 @@
  */
 
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
+import { t } from "../../../../i18n/messages";
 
 /**
  * The one code whose `status.label` the backend already folds the counts into.
@@ -163,7 +164,11 @@ export function subagentClause(
 	}
 	const parts: string[] = [];
 	if (running) {
-		parts.push(`${mentioned(whole(row.subagents_running as number))} running`);
+		parts.push(
+			t("ui.chat.chat_session_subagents.mentionedvalue_running", {
+				mentionedValue: mentioned(whole(row.subagents_running as number)),
+			}),
+		);
 	}
 	if (queued) {
 		/*
@@ -174,8 +179,12 @@ export function subagentClause(
 		 */
 		parts.push(
 			running
-				? `${whole(row.subagents_queued as number)} queued`
-				: `${mentioned(whole(row.subagents_queued as number))} queued`,
+				? t("ui.chat.chat_session_subagents.wholevalue_queued", {
+						wholeValue: whole(row.subagents_queued as number),
+					})
+				: t("ui.chat.chat_session_subagents.mentionedvalue_queued", {
+						mentionedValue: mentioned(whole(row.subagents_queued as number)),
+					}),
 		);
 	}
 	return `, ${parts.join(" · ")}`;

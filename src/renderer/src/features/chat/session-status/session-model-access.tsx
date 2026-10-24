@@ -53,8 +53,10 @@ import {
 	AlertTitle,
 	Button,
 } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
+import { t } from "../../../../../i18n/messages";
 import { CHAT_MEASURE } from "../chat-measure";
 import {
 	type ModelAccessReading,
@@ -80,6 +82,7 @@ export const SessionModelAccessBand: FC<SessionModelAccessBandProps> = ({
 	onConnect,
 	isSmallView = false,
 }) => {
+	useI18nLocale();
 	const presentation = modelAccessPresentation(access);
 	return (
 		/*
@@ -120,7 +123,7 @@ export const SessionModelAccessBand: FC<SessionModelAccessBandProps> = ({
 							className="cursor-pointer text-body-sm underline"
 							onClick={onSwitchModel}
 						>
-							Switch model
+							{t("ui.chat.session_status.session_model_access.switch_model")}
 						</Button>
 					)}
 					{presentation.canConnect && (
@@ -131,7 +134,7 @@ export const SessionModelAccessBand: FC<SessionModelAccessBandProps> = ({
 							className="cursor-pointer text-body-sm underline"
 							onClick={onConnect}
 						>
-							Connect
+							{t("ui.chat.session_status.session_model_access.connect")}
 						</Button>
 					)}
 				</div>

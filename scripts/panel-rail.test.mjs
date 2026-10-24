@@ -1800,17 +1800,19 @@ test("the header no longer renders the five triggers or their shed ladder", () =
 	);
 	for (const label of [
 		't("ui.chat.header.open_run_details")',
-		"Close asks",
-		"Open browser",
-		"Open console",
-		"Open canvas",
+		't("ui.chat.header.chat_header.close_asks")',
+		't("ui.chat.header.chat_header.open_browser")',
+		't("ui.chat.header.chat_header.open_console")',
+		't("ui.chat.header.chat_header.open_canvas")',
 	]) {
 		assert.ok(header.includes(label), `the ... menu lost its "${label}" entry`);
 	}
 	/* The asks row's label is the sibling toggle spelling, and its PLACEMENT mirrors
 	   the rail's order (between Run details and Open browser). */
 	assert.ok(
-		header.includes('{asksOpen ? "Close asks" : "Open asks"}'),
+		/\{asksOpen\s*\?\s*t\("ui\.chat\.header\.chat_header\.close_asks"\)\s*:\s*t\("ui\.chat\.header\.chat_header\.open_asks"\)\}/.test(
+			header,
+		),
 		"the asks row must be the same toggle sentence as the browser row's",
 	);
 	/* The run row's label is keyed now (close/open) and its ternary can wrap:
@@ -1819,9 +1821,11 @@ test("the header no longer renders the five triggers or their shed ladder", () =
 	const runAt = header.search(
 		/\{isRunPanelOpen\s*\?\s*t\("ui\.chat\.header\.close_run_details"\)\s*:\s*t\("ui\.chat\.header\.open_run_details"\)\}/,
 	);
-	const asksAt = header.indexOf('{asksOpen ? "Close asks" : "Open asks"}');
-	const browserAt = header.indexOf(
-		'{isBrowserPaneOpen ? "Close browser" : "Open browser"}',
+	const asksAt = header.search(
+		/\{asksOpen\s*\?\s*t\("ui\.chat\.header\.chat_header\.close_asks"\)\s*:\s*t\("ui\.chat\.header\.chat_header\.open_asks"\)\}/,
+	);
+	const browserAt = header.search(
+		/\{isBrowserPaneOpen\s*\?\s*t\("ui\.chat\.header\.chat_header\.close_browser"\)\s*:\s*t\("ui\.chat\.header\.chat_header\.open_browser"\)\}/,
 	);
 	assert.ok(
 		runAt >= 0 && asksAt > runAt && browserAt > asksAt,

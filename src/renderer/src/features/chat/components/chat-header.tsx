@@ -19,7 +19,6 @@ import {
 	Skeleton,
 } from "@shared/components/ui";
 import { useHomeDirectory } from "@shared/hooks";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -43,6 +42,7 @@ import {
 	X,
 } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useRef, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import type { AskScope } from "../ask-queue";
 import { archiveControlLabel } from "../chat-archived";
 /*
@@ -298,8 +298,8 @@ type ChatHeaderProps = {
 const PATH_CHIP_CHARS = 40;
 
 export const ChatHeader: FC<ChatHeaderProps> = ({
-	agentName = "Local Operator",
-	description = "Your on-device AI assistant",
+	agentName = t("ui.chat.header.chat_header.local_operator"),
+	description = t("ui.chat.header.chat_header.your_on_device_ai_assistant"),
 	descriptionPending = false,
 	identity,
 	deviceSlot,
@@ -541,7 +541,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 		const { result } = await renameCommand.run(
 			"rename",
 			next,
-			"Could not rename the conversation",
+			t("ui.chat.header.chat_header.could_not_rename_the_conversation"),
 		);
 		if (result.tone === "error") {
 			showErrorToast(result.text);
@@ -911,17 +911,17 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							 */
 							aria-label={
 								renameSaving
-									? "Saving the conversation name"
+									? t("ui.chat.header.chat_header.saving_the_conversation_name")
 									: renaming
-										? "Cancel rename"
-										: "Rename conversation"
+										? t("ui.chat.header.chat_header.cancel_rename")
+										: t("ui.chat.header.chat_header.rename_conversation")
 							}
 							title={
 								renameSaving
-									? "Saving the conversation name"
+									? t("ui.chat.header.chat_header.saving_the_conversation_name")
 									: renaming
-										? "Cancel rename"
-										: "Rename conversation"
+										? t("ui.chat.header.chat_header.cancel_rename")
+										: t("ui.chat.header.chat_header.rename_conversation")
 							}
 							/*
 							 * THE BUSY CUE, in the identity trigger's pattern: `aria-busy`
@@ -1422,7 +1422,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 										<Archive aria-hidden="true" />
 									)}
 									<span>
-										{archived ? "Restore conversation" : "Archive conversation"}
+										{archived
+											? t("ui.chat.header.chat_header.restore_conversation")
+											: t("ui.chat.header.chat_header.archive_conversation")}
 									</span>
 								</DropdownMenuItem>
 							)}
@@ -1510,14 +1512,20 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								 */
 								<DropdownMenuItem onSelect={() => onToggleAsks()}>
 									<AsksScopeIcon scope={asksScope} aria-hidden={true} />
-									<span>{asksOpen ? "Close asks" : "Open asks"}</span>
+									<span>
+										{asksOpen
+											? t("ui.chat.header.chat_header.close_asks")
+											: t("ui.chat.header.chat_header.open_asks")}
+									</span>
 								</DropdownMenuItem>
 							)}
 							{onToggleBrowser && (
 								<DropdownMenuItem onSelect={() => onToggleBrowser()}>
 									<Globe aria-hidden="true" />
 									<span>
-										{isBrowserPaneOpen ? "Close browser" : "Open browser"}
+										{isBrowserPaneOpen
+											? t("ui.chat.header.chat_header.close_browser")
+											: t("ui.chat.header.chat_header.open_browser")}
 									</span>
 								</DropdownMenuItem>
 							)}
@@ -1525,7 +1533,9 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								<DropdownMenuItem onSelect={() => onOpenConsole()}>
 									<SquareTerminal aria-hidden="true" />
 									<span>
-										{isConsolePaneOpen ? "Close console" : "Open console"}
+										{isConsolePaneOpen
+											? t("ui.chat.header.chat_header.close_console")
+											: t("ui.chat.header.chat_header.open_console")}
 									</span>
 								</DropdownMenuItem>
 							)}
@@ -1541,7 +1551,11 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								 */
 								<DropdownMenuItem onSelect={() => setCanvasOpen(!isCanvasOpen)}>
 									<FileText aria-hidden="true" />
-									<span>{isCanvasOpen ? "Close canvas" : "Open canvas"}</span>
+									<span>
+										{isCanvasOpen
+											? t("ui.chat.header.chat_header.close_canvas")
+											: t("ui.chat.header.chat_header.open_canvas")}
+									</span>
 								</DropdownMenuItem>
 							)}
 							{onOpenCodeReview && (
@@ -1554,8 +1568,8 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 									<GitPullRequest aria-hidden="true" />
 									<span>
 										{isCodeReviewPaneOpen
-											? "Close code review"
-											: "Open code review"}
+											? t("ui.chat.header.chat_header.close_code_review")
+											: t("ui.chat.header.chat_header.open_code_review")}
 									</span>
 								</DropdownMenuItem>
 							)}

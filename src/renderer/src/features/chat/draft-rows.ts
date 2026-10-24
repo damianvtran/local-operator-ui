@@ -46,6 +46,7 @@
  * the claim resolves.
  */
 import type { ChatDraft } from "@shared/store/canonical-sessions-store";
+import { t } from "../../../../i18n/messages";
 
 /** What every draft row's label starts with, so the list states what the row is. */
 export const DRAFT_ROW_PREFIX = "Draft: ";
@@ -96,7 +97,9 @@ export const draftRowTitle = (text: string): string => {
 	// four hundred characters the eye never sees.
 	const CAPPED = 48;
 	return trimmed.length > CAPPED
-		? `${trimmed.slice(0, CAPPED).trimEnd()}…`
+		? t("ui.chat.draft_rows.value", {
+				value: trimmed.slice(0, CAPPED).trimEnd(),
+			})
 		: trimmed;
 };
 
@@ -115,7 +118,7 @@ export const discardDraftLabel = (label: string): string => {
 	const title = label.startsWith(DRAFT_ROW_PREFIX)
 		? label.slice(DRAFT_ROW_PREFIX.length)
 		: label;
-	return `Discard draft “${title}”`;
+	return t("ui.chat.draft_rows.discard_draft_title", { title });
 };
 
 /**
@@ -207,7 +210,10 @@ export function untargetedDraftRows(
 		if (text.trim().length === 0) continue;
 		rows.push({
 			key,
-			label: `${DRAFT_ROW_PREFIX}${draftRowTitle(text)}`,
+			label: t("ui.chat.draft_rows.draft_row_prefix_draftrowtitlevalue", {
+				DRAFT_ROW_PREFIX: DRAFT_ROW_PREFIX,
+				draftRowTitleValue: draftRowTitle(text),
+			}),
 			text,
 			pending: draft.pending === true,
 		});
