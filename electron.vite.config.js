@@ -120,6 +120,16 @@ export default defineConfig({
 				__dirname,
 				"src/renderer/browser-address-overlay-list.html",
 			),
+			/*
+			 * S6a's inert approvals card. Listed in BOTH halves for the same reason
+			 * as the address documents: this list serves it in development and
+			 * `rollupOptions.input` emits it in the build. A document declared in only
+			 * one half 404s in the other, which is how the S1 probe first failed.
+			 */
+			approvalsOverlay: resolve(
+				__dirname,
+				"src/renderer/browser-approvals-overlay.html",
+			),
 		},
 		build: {
 			// electron-vite defaults the renderer to minify:false on the assumption
@@ -177,6 +187,11 @@ export default defineConfig({
 					addressOverlayList: resolve(
 						__dirname,
 						"src/renderer/browser-address-overlay-list.html",
+					),
+					/* S6a's card: the BUILD half of the pair above. */
+					approvalsOverlay: resolve(
+						__dirname,
+						"src/renderer/browser-approvals-overlay.html",
 					),
 				},
 			},

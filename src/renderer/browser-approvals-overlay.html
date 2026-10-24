@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en" data-theme="localOperatorDark">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Local Operator Approvals Card</title>
+    <!--
+      S6a's inert card document (docs/design/browser-approvals-card.md).
+
+      THIS DOCUMENT HAS NO TRUST BOUNDARY YET. It is a static, unfocused
+      presentation surface used to measure the native child's geometry and
+      lifecycle before S6b adds a purpose-built preload and two sender-pinned
+      IPC channels. It has no preload, no IPC, no remote content, no inline
+      script and no focus target. The first paint's count and the palette are
+      query parameters; the live count arrives through `setCount`, which owns
+      the catalogue lookup and the ICU plural. Compositing and the 8 px ring's
+      hit routing are NOT measurable in this slice and are not claimed.
+
+      CSP: every capability the card does not need is denied. Script and style
+      are emitted by the app's own build (`script-src 'self'`, `style-src
+      'self'`), so there is no inline allowance and no hash to keep in sync.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; font-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <link rel="stylesheet" href="/src/styles/themes.generated.css" />
+    <link rel="stylesheet" href="/src/approvals-overlay/card.css" />
+  </head>
+  <body>
+    <main id="approvals-card" aria-hidden="true">
+      <p class="card-brand" id="approvals-brand"></p>
+      <header class="card-header">
+        <h1 id="approvals-title"></h1>
+      </header>
+      <p class="card-count" id="approvals-count"></p>
+      <p class="card-detail" id="approvals-detail"></p>
+    </main>
+    <script type="module" src="/src/approvals-overlay/main.ts"></script>
+  </body>
+</html>

@@ -129,7 +129,12 @@ export function addressListDocumentUrlFor(rendererUrl: string): string {
 	return documentUrlFor(rendererUrl, ADDRESS_LIST_DOCUMENT);
 }
 
-function documentUrlFor(rendererUrl: string, document: string): string {
+/**
+ * Shared sibling-document derivation. Exported for S6a's card so a second
+ * overlay does not grow a second spelling of "trusted renderer URL's sibling";
+ * the caller still supplies the document name, never a caller-supplied path.
+ */
+export function documentUrlFor(rendererUrl: string, document: string): string {
 	return INDEX_DOCUMENT_SUFFIX.test(rendererUrl)
 		? rendererUrl.replace(INDEX_DOCUMENT_SUFFIX, `/${document}`)
 		: `${rendererUrl.replace(TRAILING_SLASH, "")}/${document}`;
