@@ -21,9 +21,9 @@ import {
 	setDictationActive,
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
+import { t } from "@shared/i18n";
 import { speechUnavailableReason } from "@shared/lib/speech-gate";
 import { cn } from "@shared/lib/utils";
-import { t } from "@shared/i18n";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import type { Attachment } from "@shared/store/conversation-input-store";
 import { normalizePath } from "@shared/utils/path-utils";
@@ -519,6 +519,13 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	}, [audioBlob]);
 
 	useEffect(() => {
+		/*
+		 * `dictationRetry` is READ ONLY AS A TRIGGER, which is why it appears here
+		 * rather than in the body: the retained take is already in `audioBlob`, so a
+		 * retry has no other way to ask for a second attempt than to be a value this
+		 * effect depends on. Reading it is the whole of its job.
+		 */
+		void dictationRetry;
 		if (audioBlob) {
 			handleSendAudio();
 		}
