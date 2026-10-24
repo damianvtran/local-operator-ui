@@ -235,10 +235,17 @@ function SessionPanel({
 	identity,
 	draftKey,
 	sessionId,
+	onStartNewChat,
 }: {
 	identity: string;
 	draftKey: string | null;
 	sessionId?: string;
+	/**
+	 * The missing notice's route move, owned by `ChatPage` (agent review round 1 /
+	 * QA round 1, Q1): the panel and the transcript below it can stage the fresh
+	 * draft, but only the page holds `navigate`.
+	 */
+	onStartNewChat: () => void;
 }) {
 	const draftIdentity = useCanonicalSessionsStore((state) =>
 		paneDraftKey(draftKey, sessionId, state.drafts),
@@ -4463,6 +4470,7 @@ function SessionPanel({
 				<ChatContent
 					activeTab={tab}
 					onTabChange={setTab}
+					onStartNewChat={onStartNewChat}
 					/*
 					 * THE DEVICE CONTROL'S TWO SURFACES, composed here because this is the one
 					 * place that knows both halves of the pane's identity: the live `sessionId`
@@ -5057,6 +5065,18 @@ export function ChatPage() {
 		setRouteError(null);
 		navigate("/chat");
 	};
+	/**
+	 * The missing notice's way out, as a ROUTE (agent review round 1 / QA round 1,
+	 * Q1): the transcript owns the button but not `navigate`, and this page is the
+	 * one place that can move the view without a second router. The store action
+	 * has already staged the fresh draft and cleared the selection by the time this
+	 * runs; what is left is the address, or a reload would re-open the dead
+	 * conversation the press just left.
+	 */
+	const startNewChatRoute = useCallback(() => {
+		setRouteError(null);
+		navigate("/chat");
+	}, [navigate]);
 	/*
 	 * THERE IS NO `select` HERE ANY MORE, and its absence is the change rather than
 	 * an omission: the sidebar's rows used to call back into this route so that the
@@ -5202,6 +5222,7 @@ export function ChatPage() {
 						identity={identity}
 						draftKey={draftKey}
 						sessionId={id}
+						onStartNewChat={startNewChatRoute}
 					/>
 				</div>
 			) : (

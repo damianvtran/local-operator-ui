@@ -3,7 +3,12 @@ import { drainLogs } from "../log-capture";
 import { SCROLL_DIRECTIONS, sleep } from "../policy/adapter";
 import type { LogEntry, ScrollResult } from "../protocol";
 import type { TabRecord, TabRef } from "../registry";
-import { type AXNode, compactAX } from "../vendor/driver/ax-compact";
+import {
+	type AXNode,
+	compactAX,
+	windowSnapshot,
+} from "../vendor/driver/ax-compact";
+import { locatorSuggestions } from "../vendor/driver/ax-locator";
 import {
 	CDP_DEADLINE_MS,
 	SCRIPTING_DEADLINE_MS,
@@ -132,6 +137,14 @@ export async function snapshot(
 ): Promise<Record<string, unknown>> {
 	const record = ctx.registry.requireSurface(params.tab);
 	const contents = record.view.webContents;
+	// The scope is resolved BEFORE the a11y read, and the order is the contract:
+	// a selector that matches nothing must fail as a typed element_not_found
+	// naming the selector, without paying for a whole tree first (agent review
+	// round 1, R1-3 — the comment claimed this order while the read came first).
+	const scope = stringParam(params, "selector");
+	const rootBackendNodeId = scope
+		? await backendNodeIdForSelector(ctx, record.view, scope)
+		: undefined;
 	// Enabling the a11y domain for the read window is documented CDP hygiene: a
 	// bare `getFullAXTree` on a freshly attached target can return a degraded tree
 	// on some Chromium builds.
@@ -149,24 +162,70 @@ export async function snapshot(
 		// disable, and a failed disable must not replace the read's outcome.
 		await ctx.cdp.send(contents, "Accessibility.disable", {}).catch(() => {});
 	}
-	const { snapshot: topRendered, refs: topRefs } = compactAX(
-		nodes,
-		record.epoch,
-	);
+	const {
+		snapshot: topRendered,
+		refs: topRefs,
+		scoped,
+		framesInScope,
+	} = compactAX(nodes, record.epoch, { rootBackendNodeId });
+	if (rootBackendNodeId !== undefined && !scoped) {
+		// The DOM element exists but contributes no accessible node
+		// (display:none, aria-hidden, or inside a closed <details>). "matched
+		// nothing" would be a lie here; name the state the agent has to change.
+		throw new BrowserHostError(
+			"element_not_found",
+			`selector ${scope} matched an element with no accessibility subtree (hidden, aria-hidden, or inside a collapsed section); expand it first, then snapshot again`,
+		);
+	}
 	const refs: Record<string, TabRef> = { ...topRefs };
 	let rendered = topRendered;
 	// Frames are walked only when the page's own tree shows one, so a page with no
-	// iframe sends exactly the commands it always sent (ARCH-1).
-	if (nodes.some(isFrameNode)) {
+	// iframe sends exactly the commands it always sent (ARCH-1). A SCOPED read
+	// deliberately does not walk them: the caller asked for one subtree, and a
+	// frame block would arrive from a different document than the scope names.
+	if (!scope && nodes.some(isFrameNode)) {
 		const blocks = await frameSnapshots(ctx, record, nodes, refs);
 		if (blocks.length) rendered = [rendered, ...blocks].join("\n");
 	}
 	record.refs = refs;
 	ctx.registry.touch(record);
+	// Windowed at the TEXT level, after refs are minted, so a ref keeps its name
+	// across pages: an agent that pages a form and then clicks a ref it saw two
+	// calls ago clicks the element it read. The numbers are what the footer in
+	// the Python tool renders.
+	// A scoped read deliberately does not walk frames, but silence is the failure
+	// this lane exists to kill: a scoped subtree that CONTAINS a frame host would
+	// otherwise read as "this section is one line" (agent review round 1, R1-2).
+	//
+	// THE COUNT IS THE SCOPE'S OWN (agent review round 2, R2-1): gating on the
+	// page's tree told a caller that a frameless section held a frame it was not
+	// seeing, and — because the note was appended before the window — it also
+	// inflated `total_lines` and could match `search=`. Appending it AFTER the
+	// window keeps it a remark about the scope, not a line of the tree.
+	let note = "";
+	if (scope && framesInScope > 0) {
+		const frames = framesInScope;
+		note =
+			`\n- (a scoped snapshot does not read frames: this section contains ${frames} frame` +
+			`${frames === 1 ? "" : "s"}; snapshot without selector= for their contents)`;
+	}
+	const page = windowSnapshot(rendered, {
+		search: stringParam(params, "search"),
+		start: numberParam(params, "start") ?? 1,
+		limit: numberParam(params, "limit") ?? 0,
+	});
 	return {
-		snapshot: rendered,
+		snapshot: page.text + note,
 		refs: Object.keys(refs).length,
 		epoch: record.epoch,
+		scoped,
+		frames_in_scope: framesInScope,
+		total_lines: page.totalLines,
+		matched_lines: page.matchedLines,
+		returned_lines: page.returnedLines,
+		start: page.start,
+		limit: page.limit,
+		search: page.search,
 		...pageOf(record.view),
 	};
 }
@@ -593,12 +652,97 @@ export async function nodeIdForSelector(
 		},
 	);
 	if (!queried?.nodeId) {
+		// The miss names the elements that DO exist (measured: nine CSS guesses,
+		// each a whole tool call, each answering only "element not found").
 		throw new BrowserHostError(
 			"element_not_found",
 			`selector ${selector} matched nothing`,
+			{ candidates: await missCandidates(ctx, view, selector) },
 		);
 	}
 	return queried.nodeId;
+}
+
+/** The page's accessibility tree for a read that needs it (locators,
+ *  candidates). Enable → read → disable, the documented window `snapshot` uses.
+ *
+ *  What serializes two commands on ONE tab is the host's per-tab command lane
+ *  (`host.ts` → `registry.lane`, `busy` set in `registry.ts`), NOT `CdpPool`:
+ *  `cdp.ts`'s `send` calls `debugger.sendCommand` immediately with no per-target
+ *  lock. Naming the wrong mechanism is how a future reader trusts a lock that
+ *  does not exist — the extension needed an explicit queue for this exact hazard
+ *  (`commands/ax-tree.ts`) (agent review round 1, R1-2; the claim moved here
+ *  with the helper and was corrected in place).
+ *
+ *  TOP-FRAME ONLY, and that is MEASURED, not promised (agent review round 1,
+ *  R1-1): driven against the built app on 2026-10-23 over `iframe#pay-frame`
+ *  (same site, port 8766) holding a button named "Pay now", `click
+ *  text="Pay now"` answered `element_not_found` while `snapshot` showed the
+ *  frame's contents through its own sessions. A locator therefore cannot land
+ *  in a frame, cannot bypass `assertFrameNotDenied`, and cannot mis-report
+ *  `frame_origin`; frames stay reachable through the explicit `>>>` hop.
+ *
+ *  Lives here rather than in `input.ts` because both the locator resolver and
+ *  the miss diagnostics need it, and `page.ts` is what `input.ts` imports (the
+ *  reverse would be a cycle). */
+export async function readAccessibilityTree(
+	ctx: BrowserActionContext,
+	contents: import("../electron-types").DriveableView["webContents"],
+): Promise<AXNode[]> {
+	await ctx.cdp.send(contents, "Accessibility.enable", {});
+	try {
+		const tree = await ctx.cdp.send<{ nodes?: AXNode[] }>(
+			contents,
+			"Accessibility.getFullAXTree",
+			{},
+		);
+		return Array.isArray(tree?.nodes) ? tree.nodes : [];
+	} finally {
+		await ctx.cdp.send(contents, "Accessibility.disable", {}).catch(() => {});
+	}
+}
+
+/** The closest real elements for a selector that matched nothing, in the shape
+ *  the tool renders (`role`, `name`, `locator`). Best-effort: a tree read that
+ *  fails must not replace the caller's own error. */
+async function missCandidates(
+	ctx: BrowserActionContext,
+	view: import("../electron-types").DriveableView,
+	selector: string,
+): Promise<Array<{ role: string; name: string; locator: string }>> {
+	const nodes = await readAccessibilityTree(ctx, view.webContents).catch(
+		() => [],
+	);
+	return locatorSuggestions(nodes, selector);
+}
+
+/** A CSS selector's element, named by the id the ACCESSIBILITY tree uses.
+ *
+ * `snapshot` scoping needs this rather than `nodeIdForSelector`: the AX tree
+ * indexes nodes by `backendDOMNodeId`, while frontend node ids belong to one
+ * session's document. The describe hop translates, and `depth: 0` keeps it to
+ * the element itself. It lives here, beside `nodeIdForSelector`, because the
+ * document-request dance and the typed miss should have exactly one spelling.
+ */
+export async function backendNodeIdForSelector(
+	ctx: BrowserActionContext,
+	view: import("../electron-types").DriveableView,
+	selector: string,
+): Promise<number> {
+	const nodeId = await nodeIdForSelector(ctx, view, selector);
+	const described = await ctx.cdp.send<{ node?: { backendNodeId?: number } }>(
+		view.webContents,
+		"DOM.describeNode",
+		{ nodeId, depth: 0 },
+	);
+	const backendNodeId = described?.node?.backendNodeId;
+	if (backendNodeId === undefined) {
+		throw new BrowserHostError(
+			"element_not_found",
+			`selector ${selector} has no backend node id`,
+		);
+	}
+	return backendNodeId;
 }
 
 /** Re-exported for `input.ts`, which resolves refs against the same table. */

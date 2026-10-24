@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|mini-view|drafts|stale-team-draft|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-default-effort|settings-language|settings-transcript-display|settings-account-policy|settings-gate|agent-messages|palette|palette-recents|hit-zones|route-tops|project-detail|project-update-assets|project-open|library-asset|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|plain-newchat-lifecycle|sidebar-bottom|sidebar-layout|mini-view|drafts|stale-team-draft|team-newchat|scrollbar-fade|composer-drop|output-artifact|image-copy|hub-links|hub-skills|hub-skills-egress|none|skill-seal>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -284,6 +284,7 @@ import {
 } from "./sidebar-layout-scene.mjs";
 import { SEAL_AUDIT_PURPOSE } from "./skill-seal-fixture.mjs";
 import { sceneSounds } from "./sounds-scene.mjs";
+import { sceneTeamNewchat } from "./team-newchat-scene.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 import { sceneTurnHighlights } from "./turn-highlights-scene.mjs";
 
@@ -49156,6 +49157,41 @@ async function main() {
 			"--scene imagegen-card needs --backend-records: the serve record is how the app admits the daemon this run owns, and without it the run photographs a disconnected app",
 		);
 	}
+	/*
+	 * A New chat with a team whose replayed draft receipt names a dead warm id.
+	 * Every requirement is an instrument: the daemon is the 404, the serve record
+	 * is how the app admits it, the seeded request id IS the operator's persisted
+	 * shape, and the two expectations are different claims about the same screen.
+	 */
+	if (SCENE === "team-newchat" && BACKEND === null) {
+		throw new Error(
+			"--scene team-newchat needs --backend: the defect is the daemon's answer to a replayed receipt, and a run with no reachable backend has no bridge to 404",
+		);
+	}
+	if (SCENE === "team-newchat" && BACKEND_RECORDS === null) {
+		throw new Error(
+			"--scene team-newchat needs --backend-records: the serve record is how the app admits the daemon this run owns, and without it the run photographs a disconnected app",
+		);
+	}
+	if (
+		SCENE === "team-newchat" &&
+		(argValue("--team", null) === null ||
+			argValue("--expect", null) === null ||
+			(argValue("--expect", null) !== "carry" &&
+				argValue("--draft-request-id", null) === null))
+	) {
+		throw new Error(
+			"--scene team-newchat needs --team <name> and --expect <broken|fresh|immediate|carry>; the draft halves also need --draft-request-id <uuid> (the receipt whose replay names the dead id), while carry drives a genuinely missing conversation and has no receipt",
+		);
+	}
+	if (
+		SCENE === "team-newchat" &&
+		!process.argv.includes("--seed-onboarding-complete")
+	) {
+		throw new Error(
+			"--scene team-newchat needs --seed-onboarding-complete: the first-run wizard owns the window otherwise, and a frame of it would not be the pane under test",
+		);
+	}
 	if (
 		SCENE === "image-copy" &&
 		COPY_EXPECT !== "after" &&
@@ -49457,6 +49493,24 @@ async function main() {
 				await sceneSidebarBinPromptness(cdp);
 			else if (SCENE === "drafts") await sceneDrafts(cdp);
 			else if (SCENE === "stale-team-draft") await sceneStaleTeamDraft(cdp);
+			else if (SCENE === "team-newchat")
+				await sceneTeamNewchat({
+					cdp,
+					verb,
+					capture: captureSettled,
+					/*
+					 * The UN-SETTLED capture too: the window between the bridge's
+					 * answer and the settled pane can only be held by a frame that does
+					 * not wait for two identical screenshots (design round 1, D2).
+					 */
+					captureRaw: capture,
+					check,
+					note,
+					wait,
+					waitForCondition,
+					clickAt,
+					pressChord,
+				});
 			else if (SCENE === "undo-toasts-stacked")
 				await sceneUndoToastsStacked(cdp);
 			/*

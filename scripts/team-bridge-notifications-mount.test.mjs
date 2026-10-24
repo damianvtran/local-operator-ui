@@ -76,10 +76,10 @@ export const TeamBridgeApi = {
 		if (fixture.directoryGate) await fixture.directoryGate;
 		return { members: fixture.directoryMembers };
 	},
-	async identity() {
-		fixture.calls.identity += 1;
-		return fixture.identity;
-	},
+	async status() {
+ fixture.calls.identity += 1;
+ return {account_id: fixture.identity, state: "ready", local: {enabled: true}, read_only: false};
+ },
 	async listConversations() {
 		fixture.calls.conversations += 1;
 		if (fixture.listGate) await fixture.listGate;
@@ -199,6 +199,12 @@ const mount = async () => {
 	const { createRoot } = await import("react-dom/client");
 	const client = new QueryClient({
 		defaultOptions: { queries: { retry: false, gcTime: 1_000 } },
+	});
+	// This policy fixture seeds an already-validated account in the REAL auth
+	// cache. Auth commissioning/transitions are exercised separately by the
+	// production-singleton team-bridge-auth-owner-mount lane, not claimed here.
+	client.setQueryData(["radient-user", "user"], {
+		account: { id: fixture.identity },
 	});
 	// Seed actual shared queries, not a replacement policy hook. App settings
 	// writes update this same cache while history/directory can be pending.
