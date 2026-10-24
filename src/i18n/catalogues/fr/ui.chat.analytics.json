@@ -1,0 +1,13 @@
+{
+	"ui.chat.analytics.filters.top_level_only": "Sessions principales uniquement",
+	"ui.chat.analytics.search.clear": "Effacer la recherche",
+	"ui.chat.analytics.search.sessions": "Rechercher des sessions",
+	"ui.chat.analytics.sections.by_channel": "Par canal",
+	"ui.chat.analytics.sections.by_model": "Par modèle",
+	"ui.chat.analytics.sections.by_provider": "Par fournisseur",
+	"ui.chat.analytics.sections.by_session": "Par session",
+	"ui.chat.analytics.sections.totals": "Totaux",
+	"ui.chat.analytics.title": "Statistiques",
+	"ui.chat.analytics.toolbar.refreshing": "Actualisation",
+	"ui.chat.analytics.toolbar.this_session_only": "Cette session uniquement"
+}
