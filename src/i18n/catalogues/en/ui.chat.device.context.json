@@ -3,42 +3,47 @@
 		"role": "device chip visible label while a move is in flight",
 		"tone": "verb phrase, sentence case, no trailing punctuation",
 		"length": "Four words plus the device name.",
-		"note": "The chip's visible text in the chat header while this pane's move has not been confirmed. It must stay short enough to sit in the title block; keep the device name in the placeholder.",
+		"note": "The chip's visible text in the chat header while this pane's move has not been confirmed. It must stay short enough to sit in the title block; keep the device name in the placeholder. The chip truncates at narrow widths; maxCells is an advisory translation target, not measured fit.",
 		"placeholders": {
 			"name": "the other device's display name, as the user gave it. Keep it verbatim; never translate a device name."
-		}
+		},
+		"maxCells": 24
 	},
 	"ui.chat.device.label.new_on": {
 		"role": "device chip visible label for a draft created on another device",
 		"tone": "noun phrase with the tense marker `New`, sentence case, no trailing punctuation",
 		"length": "Three words plus the device name.",
-		"note": "The word `New` is the whole defence against reading the chip as a live session: the conversation does not exist yet and WILL be created there. Do not drop or soften the tense marker.",
+		"note": "The word `New` is the whole defence against reading the chip as a live session: the conversation does not exist yet and WILL be created there. Do not drop or soften the tense marker. The chip truncates at narrow widths; maxCells is an advisory translation target, not measured fit.",
 		"placeholders": {
 			"name": "the other device's display name, as the user gave it. Keep it verbatim; never translate a device name."
-		}
+		},
+		"maxCells": 20
 	},
 	"ui.chat.device.label.new_on_this_device": {
 		"role": "device chip visible label for a draft created on this machine",
 		"tone": "noun phrase with the tense marker `New`, sentence case, no trailing punctuation",
 		"length": "Four words.",
-		"note": "Same tense rule as the other draft arm: nothing exists yet. `this device` is the local machine.",
-		"placeholders": {}
+		"note": "Same tense rule as the other draft arm: nothing exists yet. `this device` is the local machine. The chip truncates at narrow widths; maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {},
+		"maxCells": 20
 	},
 	"ui.chat.device.label.on": {
 		"role": "device chip visible label for a live conversation on another device",
 		"tone": "prepositional phrase, sentence case, no trailing punctuation",
 		"length": "Two words plus the device name.",
-		"note": "Contrasts with `New on …`: this conversation exists and runs there. Keep the device name in the placeholder.",
+		"note": "Contrasts with `New on …`: this conversation exists and runs there. Keep the device name in the placeholder. The chip truncates at narrow widths; maxCells is an advisory translation target, not measured fit.",
 		"placeholders": {
 			"name": "the other device's display name, as the user gave it. Keep it verbatim; never translate a device name."
-		}
+		},
+		"maxCells": 20
 	},
 	"ui.chat.device.label.on_this_device": {
 		"role": "device chip visible label for a live conversation on this machine",
 		"tone": "prepositional phrase, sentence case, no trailing punctuation",
 		"length": "Three words.",
-		"note": "This conversation exists and runs here. Must not be used for a draft; the draft arm carries `New`.",
-		"placeholders": {}
+		"note": "This conversation exists and runs here. Must not be used for a draft; the draft arm carries `New`. The chip truncates at narrow widths; maxCells is an advisory translation target, not measured fit.",
+		"placeholders": {},
+		"maxCells": 20
 	},
 	"ui.chat.device.sentence.draft_elsewhere": {
 		"role": "accessible name and tooltip of the device chip on a draft",

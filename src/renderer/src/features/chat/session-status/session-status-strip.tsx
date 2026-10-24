@@ -1,6 +1,7 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Tooltip } from "@shared/components/ui";
 import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { Info, Zap } from "lucide-react";
 import {
@@ -1046,6 +1047,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	costChannels = false,
 	className,
 }) => {
+	useI18nLocale();
 	/*
 	 * A draft with no snapshot is a pane whose resolution has not answered yet,
 	 * which is a STATE rather than nothing to say (UX U3): it renders the pending
