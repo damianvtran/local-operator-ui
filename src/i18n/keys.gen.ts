@@ -428,17 +428,25 @@ import viUiAgentsStarters from "./catalogues/vi/ui.agents.starters.json";
 import viUiBrowserChrome from "./catalogues/vi/ui.browser.chrome.json";
 import viUiBrowser from "./catalogues/vi/ui.browser.json";
 import viUiCanvas from "./catalogues/vi/ui.canvas.json";
+import viUiChatAnalytics from "./catalogues/vi/ui.chat.analytics.json";
 import viUiChatAsks from "./catalogues/vi/ui.chat.asks.json";
 import viUiChatAttachments from "./catalogues/vi/ui.chat.attachments.json";
+import viUiChatCanonical from "./catalogues/vi/ui.chat.canonical.json";
+import viUiChatCommentaryActions from "./catalogues/vi/ui.chat.commentary_actions.json";
 import viUiChatComposer from "./catalogues/vi/ui.chat.composer.json";
 import viUiChatComposerMedia from "./catalogues/vi/ui.chat.composer_media.json";
 import viUiChatDialogs from "./catalogues/vi/ui.chat.dialogs.json";
 import viUiChatHeader from "./catalogues/vi/ui.chat.header.json";
 import viUiChat from "./catalogues/vi/ui.chat.json";
 import viUiChatLiveUpdates from "./catalogues/vi/ui.chat.live_updates.json";
+import viUiChatPickers from "./catalogues/vi/ui.chat.pickers.json";
 import viUiChatResponseActions from "./catalogues/vi/ui.chat.response_actions.json";
+import viUiChatRunDetails from "./catalogues/vi/ui.chat.run_details.json";
+import viUiChatSidebar from "./catalogues/vi/ui.chat.sidebar.json";
 import viUiChatSidebarView from "./catalogues/vi/ui.chat.sidebar_view.json";
+import viUiChatTagDialogs from "./catalogues/vi/ui.chat.tag_dialogs.json";
 import viUiChatTags from "./catalogues/vi/ui.chat.tags.json";
+import viUiChatTranscriptCopy from "./catalogues/vi/ui.chat.transcript_copy.json";
 import viUiCodeReview from "./catalogues/vi/ui.code_review.json";
 import viUiCommandPalette from "./catalogues/vi/ui.command_palette.json";
 import viUiCommonAccount from "./catalogues/vi/ui.common.account.json";
@@ -446,10 +454,12 @@ import viUiCommonActions from "./catalogues/vi/ui.common.actions.json";
 import viUiCommonConnection from "./catalogues/vi/ui.common.connection.json";
 import viUiCommonEditing from "./catalogues/vi/ui.common.editing.json";
 import viUiCommonErrors from "./catalogues/vi/ui.common.errors.json";
+import viUiCommonFileActions from "./catalogues/vi/ui.common.file_actions.json";
 import viUiCommonForms from "./catalogues/vi/ui.common.forms.json";
 import viUiCommonLoading from "./catalogues/vi/ui.common.loading.json";
 import viUiCommonModels from "./catalogues/vi/ui.common.models.json";
 import viUiCommonUpdates from "./catalogues/vi/ui.common.updates.json";
+import viUiCommonViewer from "./catalogues/vi/ui.common.viewer.json";
 import viUiConsole from "./catalogues/vi/ui.console.json";
 import viUiHubComments from "./catalogues/vi/ui.hub.comments.json";
 import viUiHub from "./catalogues/vi/ui.hub.json";
@@ -458,7 +468,9 @@ import viUiInstaller from "./catalogues/vi/ui.installer.json";
 import viUiLibrary from "./catalogues/vi/ui.library.json";
 import viUiMesh from "./catalogues/vi/ui.mesh.json";
 import viUiOnboarding from "./catalogues/vi/ui.onboarding.json";
+import viUiPresence from "./catalogues/vi/ui.presence.json";
 import viUiProjects from "./catalogues/vi/ui.projects.json";
+import viUiProviders from "./catalogues/vi/ui.providers.json";
 import viUiSchedules from "./catalogues/vi/ui.schedules.json";
 import viUiSettingsAccount from "./catalogues/vi/ui.settings.account.json";
 import viUiSettingsAppearance from "./catalogues/vi/ui.settings.appearance.json";
@@ -969,17 +981,25 @@ export const bundledCatalogues: Readonly<
 		...viUiBrowserChrome,
 		...viUiBrowser,
 		...viUiCanvas,
+		...viUiChatAnalytics,
 		...viUiChatAsks,
 		...viUiChatAttachments,
+		...viUiChatCanonical,
+		...viUiChatCommentaryActions,
 		...viUiChatComposer,
 		...viUiChatComposerMedia,
 		...viUiChatDialogs,
 		...viUiChatHeader,
 		...viUiChat,
 		...viUiChatLiveUpdates,
+		...viUiChatPickers,
 		...viUiChatResponseActions,
+		...viUiChatRunDetails,
+		...viUiChatSidebar,
 		...viUiChatSidebarView,
+		...viUiChatTagDialogs,
 		...viUiChatTags,
+		...viUiChatTranscriptCopy,
 		...viUiCodeReview,
 		...viUiCommandPalette,
 		...viUiCommonAccount,
@@ -987,10 +1007,12 @@ export const bundledCatalogues: Readonly<
 		...viUiCommonConnection,
 		...viUiCommonEditing,
 		...viUiCommonErrors,
+		...viUiCommonFileActions,
 		...viUiCommonForms,
 		...viUiCommonLoading,
 		...viUiCommonModels,
 		...viUiCommonUpdates,
+		...viUiCommonViewer,
 		...viUiConsole,
 		...viUiHubComments,
 		...viUiHub,
@@ -999,7 +1021,9 @@ export const bundledCatalogues: Readonly<
 		...viUiLibrary,
 		...viUiMesh,
 		...viUiOnboarding,
+		...viUiPresence,
 		...viUiProjects,
+		...viUiProviders,
 		...viUiSchedules,
 		...viUiSettingsAccount,
 		...viUiSettingsAppearance,
