@@ -1,0 +1,371 @@
+{
+  "at": "2026-10-24T17:24:41.629Z",
+  "head": "7f20a501a341cb4ce8ca6daaf91ae9e8ca0440b6",
+  "scratch": "/Users/damian/.local-operator/sessions/c4aaba06f9e9/scratchpad/s6c-proof-5ZQ5v4",
+  "rows": [
+    {
+      "id": "A1-enabled-auto-present",
+      "status": "PASS",
+      "detail": {
+        "card": {
+          "available": true,
+          "open": false,
+          "visible": true
+        },
+        "dom": {
+          "dock": false,
+          "band": false,
+          "shieldExpanded": "false",
+          "content": {
+            "x": 260,
+            "y": 106,
+            "width": 540,
+            "height": 794
+          },
+          "hash": "#/browser"
+        },
+        "cardDom": {
+          "lang": "en",
+          "dir": "ltr",
+          "theme": "localOperatorDark",
+          "hasFocus": false,
+          "active": "",
+          "requester": "An agent from another session · ther",
+          "origin": "https://pending.example"
+        }
+      }
+    },
+    {
+      "id": "D1-dock-absent",
+      "status": "PASS",
+      "detail": {
+        "dock": false,
+        "band": false,
+        "shieldExpanded": "false",
+        "card": {
+          "available": true,
+          "open": false,
+          "visible": true
+        },
+        "hash": "#/browser"
+      }
+    },
+    {
+      "id": "A2-page-focus-unchanged",
+      "status": "PASS",
+      "detail": {
+        "baseline": {
+          "active": "name",
+          "focus": 0,
+          "blur": 0,
+          "keys": 0,
+          "innerWidth": 540,
+          "innerHeight": 794,
+          "visibility": "visible",
+          "hasFocus": true
+        },
+        "after": {
+          "active": "name",
+          "focus": 0,
+          "blur": 0,
+          "keys": 0,
+          "innerWidth": 540,
+          "innerHeight": 794,
+          "visibility": "visible",
+          "hasFocus": true
+        },
+        "card": {
+          "lang": "en",
+          "dir": "ltr",
+          "theme": "localOperatorDark",
+          "hasFocus": false,
+          "active": "",
+          "requester": "An agent from another session · ther",
+          "origin": "https://pending.example"
+        }
+      }
+    },
+    {
+      "id": "A3-typing-continues",
+      "status": "PASS",
+      "detail": {
+        "baseline": {
+          "active": "name",
+          "focus": 0,
+          "blur": 0,
+          "keys": 0,
+          "innerWidth": 540,
+          "innerHeight": 794,
+          "visibility": "visible",
+          "hasFocus": true
+        },
+        "typed": {
+          "value": "aa",
+          "active": "name",
+          "keys": 1
+        }
+      }
+    },
+    {
+      "id": "A4-bounds-and-presented",
+      "status": "PASS",
+      "detail": {
+        "baseline": {
+          "id": "window:45021:0",
+          "visible": true,
+          "focused": false,
+          "bounds": {
+            "x": 464,
+            "y": 45,
+            "width": 800,
+            "height": 900
+          },
+          "focusedContents": null,
+          "views": [
+            {
+              "url": "file:///Users/damian/local-operator-ui/.worktrees/browser-approvals-s6c/out/renderer/browser-approvals-overlay.html?theme=dark",
+              "bounds": {
+                "x": 0,
+                "y": 0,
+                "width": 0,
+                "height": 0
+              },
+              "visible": false,
+              "focused": false
+            },
+            {
+              "url": "about:blank",
+              "bounds": {
+                "x": 0,
+                "y": 0,
+                "width": 1280,
+                "height": 720
+              },
+              "visible": false,
+              "focused": false
+            },
+            {
+              "url": "http://127.0.0.1:45871/",
+              "bounds": {
+                "x": 260,
+                "y": 106,
+                "width": 540,
+                "height": 794
+              },
+              "visible": true,
+              "focused": false
+            }
+          ]
+        },
+        "after": {
+          "id": "window:45021:0",
+          "visible": true,
+          "focused": false,
+          "bounds": {
+            "x": 464,
+            "y": 45,
+            "width": 800,
+            "height": 900
+          },
+          "focusedContents": null,
+          "views": [
+            {
+              "url": "about:blank",
+              "bounds": {
+                "x": 0,
+                "y": 0,
+                "width": 1280,
+                "height": 720
+              },
+              "visible": false,
+              "focused": false
+            },
+            {
+              "url": "http://127.0.0.1:45871/",
+              "bounds": {
+                "x": 260,
+                "y": 106,
+                "width": 540,
+                "height": 794
+              },
+              "visible": true,
+              "focused": false
+            },
+            {
+              "url": "",
+              "bounds": {
+                "x": 432,
+                "y": 788,
+                "width": 368,
+                "height": 112
+              },
+              "visible": true,
+              "focused": false
+            }
+          ]
+        },
+        "page": {
+          "active": "name",
+          "focus": 0,
+          "blur": 0,
+          "keys": 0,
+          "innerWidth": 540,
+          "innerHeight": 794,
+          "visibility": "visible",
+          "hasFocus": true
+        }
+      }
+    },
+    {
+      "id": "R1-shield-route",
+      "status": "PASS",
+      "detail": {
+        "card": {
+          "available": true,
+          "open": true,
+          "visible": true
+        },
+        "shieldExpanded": "true"
+      }
+    },
+    {
+      "id": "R2-menu-route",
+      "status": "PASS",
+      "detail": {
+        "card": {
+          "available": true,
+          "open": true,
+          "visible": true
+        },
+        "dock": false
+      }
+    },
+    {
+      "id": "I4-escape-pending",
+      "status": "PASS",
+      "detail": {
+        "pending": [
+          {
+            "entryId": "8ba448a3e8c04040a960662b32625a99",
+            "origin": "https://pending.example",
+            "authority": "pending.example",
+            "broad": {
+              "scope": "domain",
+              "key": "pending.example"
+            },
+            "expiresAt": 1792863288620,
+            "requesterSessionId": "s6c-other"
+          }
+        ],
+        "card": {
+          "available": true,
+          "open": false,
+          "visible": false
+        }
+      }
+    },
+    {
+      "id": "I6-close-pending",
+      "status": "PASS",
+      "detail": {
+        "pending": [
+          {
+            "entryId": "8ba448a3e8c04040a960662b32625a99",
+            "origin": "https://pending.example",
+            "authority": "pending.example",
+            "broad": {
+              "scope": "domain",
+              "key": "pending.example"
+            },
+            "expiresAt": 1792863288620,
+            "requesterSessionId": "s6c-other"
+          }
+        ],
+        "card": {
+          "available": true,
+          "open": false,
+          "visible": false
+        }
+      }
+    },
+    {
+      "id": "P1-built-app",
+      "status": "PASS",
+      "detail": {
+        "build": "out/renderer/browser-approvals-overlay.html"
+      }
+    },
+    {
+      "id": "F-native-composite",
+      "status": "BLOCKED",
+      "detail": {
+        "command": "screencapture -x -o -l <window id>",
+        "observed": "could not create image from window",
+        "reason": "the native card composite needs macOS Screen Recording; this host refused the window capture, so only the real-app documents (app route + card child) are captured"
+      }
+    }
+  ],
+  "mode": "inactive",
+  "frames": [
+    {
+      "label": "264-dark",
+      "app": {
+        "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-s6c/docs/pr-evidence/browser-approvals-s6c/frames/app-264-dark.png",
+        "content": {
+          "width": 264,
+          "height": 794
+        },
+        "theme": "localOperatorDark"
+      },
+      "card": {
+        "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-s6c/docs/pr-evidence/browser-approvals-s6c/frames/card-264-dark.png",
+        "theme": "localOperatorDark"
+      }
+    },
+    {
+      "label": "264-light",
+      "app": {
+        "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-s6c/docs/pr-evidence/browser-approvals-s6c/frames/app-264-light.png",
+        "content": {
+          "width": 264,
+          "height": 794
+        },
+        "theme": "localOperatorLight"
+      },
+      "card": {
+        "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-s6c/docs/pr-evidence/browser-approvals-s6c/frames/card-264-light.png",
+        "theme": "localOperatorLight"
+      }
+    },
+    {
+      "label": "900-dark",
+      "app": {
+        "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-s6c/docs/pr-evidence/browser-approvals-s6c/frames/app-900-dark.png",
+        "content": {
+          "width": 900,
+          "height": 794
+        },
+        "theme": "localOperatorDark"
+      },
+      "card": {
+        "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-s6c/docs/pr-evidence/browser-approvals-s6c/frames/card-900-dark.png",
+        "theme": "localOperatorDark"
+      }
+    },
+    {
+      "label": "900-light",
+      "app": {
+        "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-s6c/docs/pr-evidence/browser-approvals-s6c/frames/app-900-light.png",
+        "content": {
+          "width": 900,
+          "height": 794
+        },
+        "theme": "localOperatorLight"
+      },
+      "card": {
+        "path": "/Users/damian/local-operator-ui/.worktrees/browser-approvals-s6c/docs/pr-evidence/browser-approvals-s6c/frames/card-900-light.png",
+        "theme": "localOperatorLight"
+      }
+    }
+  ]
+}
