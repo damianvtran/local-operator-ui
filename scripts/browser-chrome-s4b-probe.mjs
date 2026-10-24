@@ -337,6 +337,8 @@ async function typeInAddressField(cdp, text) {
 }
 
 /** The owner listbox's rows, including the machine-readable source. */
+class HistorySceneRigError extends Error {}
+
 function suggestionRows(cdp) {
 	return evaluate(
 		cdp,
@@ -441,14 +443,18 @@ async function historyScene({ shot, framesDir }) {
 		await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", ...params });
 		await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", ...params });
 	};
-	const raise = async (cdp) => {
+	const raise = async (cdp, step) => {
 		await press(cdp, "l", "KeyL", 4);
 		// S5: the row is permanent; a raise means the ROW took focus.
-		return waitFor(
+		const raised = await waitFor(
 			cdp,
 			`document.activeElement === document.querySelector('[data-tour-tag="browser-address"]')`,
 			6_000,
 		);
+		if (!raised)
+			throw new HistorySceneRigError(
+				`history scene: ${step}: address row did not take focus`,
+			);
 	};
 	const openPage = async (cdp, url) => {
 		await evaluate(
@@ -708,8 +714,7 @@ async function historyScene({ shot, framesDir }) {
 			(tab) => tab.url === fixture,
 		);
 		await focusChrome(cdp);
-		if (!(await raise(cdp)))
-			throw new Error("history scene: the address row did not take focus");
+		await raise(cdp, "run 2 initial focus");
 
 		// H10 (U9): Enter on an untouched draft with no row selected gives focus
 		// back and navigates nothing.
@@ -732,10 +737,7 @@ async function historyScene({ shot, framesDir }) {
 			{ untouchedClosed, untouchedUrl, afterUntouchedUrl },
 		);
 		await focusChrome(cdp);
-		if (!(await raise(cdp)))
-			throw new Error(
-				"history scene: the address row did not take focus again",
-			);
+		await raise(cdp, "re-focus before H1");
 
 		// H1: history row, no open tab, source marks it.
 		await typeInAddressField(cdp, host);
@@ -827,7 +829,7 @@ async function historyScene({ shot, framesDir }) {
 			20_000,
 		).catch(() => {});
 		await focusChrome(cdp);
-		await raise(cdp);
+		await raise(cdp, "H2 search");
 
 		// H2: github is search intent; the search row is first and selected.
 		await typeInAddressField(cdp, "github");
@@ -887,7 +889,7 @@ async function historyScene({ shot, framesDir }) {
 
 		// H3: the operator's wording, then H4b: Enter commits THAT query.
 		await focusChrome(cdp);
-		await raise(cdp);
+		await raise(cdp, "H3/H4 VPN search");
 		await typeInAddressField(cdp, "what is a vpn");
 		await waitFor(
 			cdp,
@@ -976,7 +978,7 @@ async function historyScene({ shot, framesDir }) {
 		);
 		await sleep(400);
 		await focusChrome(cdp);
-		await raise(cdp);
+		await raise(cdp, "H5 open-tab suggestion");
 		await typeInAddressField(cdp, host);
 		await waitFor(
 			cdp,
@@ -1035,7 +1037,7 @@ async function historyScene({ shot, framesDir }) {
 		// H6: a query the (now empty) store cannot match shows the notice, not a
 		// search row and not a false history row.
 		await focusChrome(cdp);
-		await raise(cdp);
+		await raise(cdp, "H6 no-match query");
 		await typeInAddressField(cdp, "zzz-nohistory.example");
 		await sleep(300);
 		await frameScene(cdp, "owner-no-match.png");
@@ -1065,7 +1067,7 @@ async function historyScene({ shot, framesDir }) {
 		await evaluate(cdp, `document.documentElement.dir = "rtl"`);
 		await sleep(200);
 		await focusChrome(cdp);
-		await raise(cdp);
+		await raise(cdp, "H7 RTL query");
 		await typeInAddressField(cdp, "github");
 		await waitFor(
 			cdp,
@@ -1097,7 +1099,7 @@ async function historyScene({ shot, framesDir }) {
 		// H11: a complete host query must not match the lookalike domain; the
 		// real www page's other paths stay as rows (the root is the inline target).
 		await focusChrome(cdp);
-		await raise(cdp);
+		await raise(cdp, "H11 host boundary query");
 		await typeInAddressField(cdp, "www.example.com");
 		await waitFor(
 			cdp,
@@ -1175,6 +1177,7 @@ async function historyScene({ shot, framesDir }) {
 		stopTwo = await two.stop();
 		two = null;
 	} catch (error) {
+		if (error instanceof HistorySceneRigError) throw error;
 		for (const id of [
 			"H1",
 			"H2",
