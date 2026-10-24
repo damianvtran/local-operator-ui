@@ -2908,6 +2908,7 @@ export type MessageParams = {
 	"ui.library.page.no_matches": undefined;
 	"ui.library.page.no_matches_detail": undefined;
 	"ui.library.page.preview": undefined;
+	"ui.library.page.resize_preview": undefined;
 	"ui.library.page.results": undefined;
 	"ui.library.page.retry": undefined;
 	"ui.library.page.reverse_order": undefined;

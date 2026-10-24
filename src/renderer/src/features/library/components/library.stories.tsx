@@ -20,7 +20,7 @@ import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, waitFor } from "@storybook/test";
 import type { FC, ReactNode } from "react";
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
 import { glassPaintFor } from "../../../../../shared/window-glass";
 import "../../../styles/index.css";
@@ -998,14 +998,18 @@ const ShellLibrary: FC<{ nowMs: number; route?: string }> = ({
 	</div>
 );
 
-const RouteTo: FC<{ path: string; children: ReactNode }> = ({
+const RouteTo: FC<{ path: string; fixed?: boolean; children: ReactNode }> = ({
 	path,
+	fixed = true,
 	children,
 }) => {
 	const navigate = useNavigate();
+	const routed = useRef(false);
 	useEffect(() => {
+		if (routed.current && !fixed) return;
+		routed.current = true;
 		navigate(path, { replace: true });
-	}, [navigate, path]);
+	}, [fixed, navigate, path]);
 	return (
 		<Routes>
 			<Route path="/library" element={children} />
@@ -1019,6 +1023,11 @@ const page = (
 		route?: string;
 		view?: "grid" | "list";
 		shell?: boolean;
+		compact?: boolean;
+		docked?: boolean;
+		workspaceWidth?: number;
+		preserveDockWidth?: boolean;
+		freeNavigation?: boolean;
 	},
 ) => {
 	stub = {
@@ -1041,6 +1050,8 @@ const page = (
 	try {
 		if (state.view) localStorage.setItem("library-view", state.view);
 		else localStorage.removeItem("library-view");
+		if (!state.preserveDockWidth)
+			localStorage.removeItem("library-details-width");
 		sessionStorage.removeItem("library-filters");
 	} catch {
 		/* storage is not what these stories are about */
@@ -1049,8 +1060,11 @@ const page = (
 	return state.shell ? (
 		<ShellLibrary nowMs={NOW} route={route} />
 	) : (
-		<div className="h-screen">
-			<RouteTo path={route}>
+		<div
+			className={`${state.compact ? "h-[640px]" : "h-screen"} ${state.docked ? "flex" : ""}`}
+			style={{ width: state.workspaceWidth }}
+		>
+			<RouteTo path={route} fixed={!state.freeNavigation}>
 				<LibraryPage nowMs={NOW} />
 			</RouteTo>
 		</div>
@@ -1197,6 +1211,170 @@ export const RowsFavouritedOnBright: Story = {
 			brightThumbnails: BRIGHT_ROWS.map((row) => row.id),
 			view: "list",
 		}),
+};
+
+/*
+ * The real page and shell at the dock's default and keyboard-driven bounds.
+ * The plays leave the actual persisted width in place, so these frames also
+ * prove the separator's value and the drawer's painted width agree.
+ */
+export const DockedPreview: Story = {
+	render: () =>
+		page({
+			docked: true,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: async () => {
+		await waitFor(() => {
+			expect(document.querySelector("[data-library-dock]")).not.toBeNull();
+			expect(document.querySelector("[data-library-preview]")).not.toBeNull();
+			expect(document.querySelector("[data-library-composer]")).not.toBeNull();
+		});
+	},
+};
+export const DockedPreviewNarrow: Story = {
+	render: () =>
+		page({
+			docked: true,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: async () => {
+		const separator = await waitFor(() => {
+			const node = document.querySelector<HTMLElement>('[role="separator"]');
+			if (!node) throw new Error("the dock separator is not mounted");
+			return node;
+		});
+		separator.dispatchEvent(
+			new KeyboardEvent("keydown", { key: "Home", bubbles: true }),
+		);
+		await waitFor(() =>
+			expect(
+				document.querySelector<HTMLElement>("[data-library-dock]")?.style.width,
+			).toBe("320px"),
+		);
+	},
+};
+const playResizeEnd =
+	(expected: string): Story["play"] =>
+	async () => {
+		const separator = await waitFor(() => {
+			const node = document.querySelector<HTMLElement>('[role="separator"]');
+			if (!node) throw new Error("the dock separator is not mounted");
+			return node;
+		});
+		separator.dispatchEvent(
+			new KeyboardEvent("keydown", { key: "End", bubbles: true }),
+		);
+		await waitFor(() =>
+			expect(
+				document.querySelector<HTMLElement>("[data-library-dock]")?.style.width,
+			).toBe(expected),
+		);
+	};
+
+export const DockedPreviewWide: Story = {
+	render: () =>
+		page({
+			docked: true,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: playResizeEnd("720px"),
+};
+/* The smallest dock-eligible workspaces exercise the real toolbar at its
+ * 320px results floor, rather than leaving a deceptively comfortable surplus. */
+export const DockedPreviewConstrained1152: Story = {
+	render: () =>
+		page({
+			docked: true,
+			workspaceWidth: 1152,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: playResizeEnd("640px"),
+};
+export const DockedPreviewConstrained1200: Story = {
+	render: () =>
+		page({
+			docked: true,
+			workspaceWidth: 1200,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: playResizeEnd("688px"),
+};
+/* These two fixtures deliberately KEEP the stored width: cross-document
+ * restoration and close/reopen need the real preference read, not a reset. */
+export const DockedPreviewPersistent: Story = {
+	render: () =>
+		page({
+			docked: true,
+			preserveDockWidth: true,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: DockedPreview.play,
+};
+export const DockedReopen: Story = {
+	render: () =>
+		page({ docked: true, preserveDockWidth: true, freeNavigation: true }),
+};
+export const StandaloneNarrow: Story = {
+	render: () =>
+		page({
+			docked: true,
+			workspaceWidth: 1000,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: async () => {
+		await waitFor(() => {
+			expect(document.querySelector("[data-library-preview]")).not.toBeNull();
+			expect(document.querySelector('[role="separator"]')).toBeNull();
+		});
+	},
+};
+export const DockedEmpty: Story = {
+	render: () =>
+		page({
+			docked: true,
+			route: "/library/assets/la_missing",
+		}),
+	play: async () => {
+		await waitFor(() =>
+			expect(document.querySelector("[data-library-dock]")).not.toBeNull(),
+		);
+	},
+};
+export const DockedPreviewCompact: Story = {
+	render: () =>
+		page({
+			compact: true,
+			docked: true,
+			route: "/library/assets/la_0000000000000023",
+		}),
+	play: DockedPreview.play,
+};
+export const TrajectoryCompact: Story = {
+	render: () =>
+		page({
+			compact: true,
+			docked: true,
+			route: "/library/assets/la_0000000000000023",
+			linkedChat: true,
+			trajectory: "populated",
+		}),
+	play: async () => {
+		const disclosure = await waitFor(() => {
+			const node = [...document.querySelectorAll("button")].find((button) =>
+				button.textContent?.includes("Chat about this asset"),
+			);
+			if (!node) throw new Error("the trajectory disclosure is not mounted");
+			return node;
+		});
+		await userEvent.click(disclosure);
+		await waitFor(() => {
+			expect(document.querySelector("[data-library-composer]")).not.toBeNull();
+			expect(document.body.textContent).toContain(
+				"Which invoices are still open for March?",
+			);
+		});
+	},
 };
 
 /*
