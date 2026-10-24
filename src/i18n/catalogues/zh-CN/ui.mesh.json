@@ -169,7 +169,7 @@
 	"ui.mesh.mesh_list.on_device_no_answer": "位于{device}（未响应）",
 	"ui.mesh.mesh_list.sort_devices_by": "设备排序依据",
 	"ui.mesh.mesh_list.epoch": "成员版本{epoch, number, ::group-off}",
-	"ui.mesh.mesh_list.revoked_count": "· {count, plural, other {{count, number, ::group-off}项已撤销}}",
+	"ui.mesh.mesh_list.revoked_count": "{count, plural, other {{count, number, ::group-off}项已撤销}}",
 	"ui.mesh.mesh_list.revoked_toggle_label": "显示已撤销的成员资格",
 	"ui.mesh.mesh_list.member": "成员",
 	"ui.mesh.mesh_list.move_conversation": "移动{conversation}",

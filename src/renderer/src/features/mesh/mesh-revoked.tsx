@@ -90,13 +90,34 @@ export const MeshRevoked: FC<{
 			triggerLabel={t("ui.mesh.mesh_list.revoked_toggle_label")}
 			/*
 			 * THE SEPARATOR IS A BOX, NOT A LEADING SPACE (design review round 1, D2).
-			 * The fragment's leading boundary space is eaten once the trigger becomes a
-			 * flex item, so the band read "compute.internal· 2 revoked": the line's own
-			 * separator is restored by the trigger's `gap-1`, the same 4px the rows below
-			 * separate their fields with. The glyph stays in the copy, where it belongs;
-			 * only the copy's cosmetic leading pad is dropped before it becomes a box.
+			 * The first fix trimmed the fragment's leading space and left the separator to the
+			 * trigger's `gap-1`; measured on the rebuilt frame, that gap opened between the
+			 * full stop and the chevron at the END of the count, not between the device name
+			 * and the count, so the band still read `compute.internal· 2 revoked`. The
+			 * fragment no longer carries a leading space at all (`revoked_count` is now the
+			 * bare count in every catalogue) and the call site writes ` · ` as markup in front
+			 * of the count, so the separation comes from the line's own glyph instead of a
+			 * leading space inside the flex item. THE SEPARATOR IS A BOX OF ITS OWN: the
+			 * census line is `display: flex`, and this disclosure is `display: contents`, so
+			 * the trigger's own `<button>` is a direct flex item of that line. A flex item
+			 * drops a leading space it cannot fit (flexbox `hasLeadingSpace`), which is why
+			 * neither a bare `{" · "}` text node nor three separate string expressions
+			 * survived - measured on the rebuilt frame, the button's first text node held the
+			 * space and `getClientRects()` returned zero rects for it, so the band still read
+			 * `compute.internal· 2 revoked`. The separator is therefore a `whitespace-pre`
+			 * `inline-block` that is NOT the flex item's own edge: the box carries its own
+			 * width. It is `aria-hidden`, because the accessible name is the audit-only
+			 * label below, not a reading of the separator. The trigger keeps `gap-1` between
+			 * the count and its chevron.
 			 */
-			summary={count.trimStart()}
+			summary={
+				<>
+					<span aria-hidden="true" className="inline-block whitespace-pre">
+						{" · "}
+					</span>
+					{count}
+				</>
+			}
 		>
 			<ul
 				data-mesh-revoked=""

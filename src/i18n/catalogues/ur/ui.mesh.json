@@ -169,7 +169,7 @@
 	"ui.mesh.mesh_list.on_device_no_answer": "{device} پر — جواب نہیں دے رہی",
 	"ui.mesh.mesh_list.sort_devices_by": "ڈیوائسز کی ترتیب کی بنیاد",
 	"ui.mesh.mesh_list.epoch": "دور {epoch, number, ::group-off}",
-	"ui.mesh.mesh_list.revoked_count": " · {count, plural, other {{count, number, ::group-off} منسوخ شدہ}}",
+	"ui.mesh.mesh_list.revoked_count": "{count, plural, other {{count, number, ::group-off} منسوخ شدہ}}",
 	"ui.mesh.mesh_list.revoked_toggle_label": "منسوخ شدہ رکنیتیں دکھائیں",
 	"ui.mesh.mesh_list.member": "رکن",
 	"ui.mesh.mesh_list.move_conversation": "{conversation} منتقل کریں",

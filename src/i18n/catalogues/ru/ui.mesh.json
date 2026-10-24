@@ -188,7 +188,7 @@
 	"ui.mesh.mesh_list.on_device_no_answer": "на {device} (не отвечает)",
 	"ui.mesh.mesh_list.on_device_state": "на {device}{state}",
 	"ui.mesh.mesh_list.revoked_toggle_label": "Показать отозванные участия",
-	"ui.mesh.mesh_list.revoked_count": " · {count, plural, one {отозвано: {count, number, ::group-off}} few {отозвано: {count, number, ::group-off}} many {отозвано: {count, number, ::group-off}} other {отозвано: {count, number, ::group-off}}}",
+	"ui.mesh.mesh_list.revoked_count": "{count, plural, one {отозвано: {count, number, ::group-off}} few {отозвано: {count, number, ::group-off}} many {отозвано: {count, number, ::group-off}} other {отозвано: {count, number, ::group-off}}}",
 	"ui.mesh.mesh_list.show_all_panel": "показать {count, plural, one {{count, number, ::group-off} в панели} few {все {count, number, ::group-off} в панели} many {все {count, number, ::group-off} в панели} other {{count, number, ::group-off} в панели}}",
 	"ui.mesh.mesh_list.sort_conversations": "Разговоры",
 	"ui.mesh.mesh_list.sort_devices_by": "Сортировать устройства по",

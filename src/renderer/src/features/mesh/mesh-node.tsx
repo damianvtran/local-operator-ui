@@ -317,11 +317,16 @@ export const MeshNetworkNode: FC<NetworkNodeProps> = ({
 					className="block truncate text-meta text-ink-dim"
 				>
 					{t("ui.mesh.mesh_graph.device_count", { count: network.memberCount })}
-					{network.revokedCount > 0
-						? t("ui.mesh.mesh_list.revoked_count", {
+					{/* The revoked clause's separator is markup, not the copy's leading space: see
+					 * `mesh-list.tsx` (design review round 1, D2). */}
+					{network.revokedCount > 0 ? (
+						<>
+							{" · "}
+							{t("ui.mesh.mesh_list.revoked_count", {
 								count: network.revokedCount,
-							})
-						: ""}
+							})}
+						</>
+					) : null}
 				</span>
 			</span>
 		</li>

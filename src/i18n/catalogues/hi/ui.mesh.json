@@ -169,7 +169,7 @@
 	"ui.mesh.mesh_list.on_device_no_answer": "{device} पर (जवाब नहीं दे रहा)",
 	"ui.mesh.mesh_list.sort_devices_by": "डिवाइस का क्रम तय करें",
 	"ui.mesh.mesh_list.epoch": "सदस्यता epoch {epoch, number, ::group-off}",
-	"ui.mesh.mesh_list.revoked_count": " · {count, plural, other {{count, number, ::group-off} रद्द}}",
+	"ui.mesh.mesh_list.revoked_count": "{count, plural, other {{count, number, ::group-off} रद्द}}",
 	"ui.mesh.mesh_list.revoked_toggle_label": "रद्द की गई सदस्यताएँ दिखाएँ",
 	"ui.mesh.mesh_list.member": "सदस्य",
 	"ui.mesh.mesh_list.move_conversation": "{conversation} को ले जाएँ",

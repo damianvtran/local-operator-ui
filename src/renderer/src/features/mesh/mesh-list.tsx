@@ -255,11 +255,22 @@ export const MeshList: FC<MeshListProps> = ({
 							 * a second toggle here would be a second way to inspect one fact. The
 							 * lane and this heading only report the number.
 							 */}
-							{network.revokedCount > 0
-								? t("ui.mesh.mesh_list.revoked_count", {
+							{/*
+							 * THE SEPARATOR IS MARKUP, NOT THE COPY'S LEADING SPACE (design review round
+							 * 1, D2). It is written the way the line's `trust · count` pair above
+							 * already writes its own, so the space belongs to the layout that renders it
+							 * and cannot be swallowed by a flex container. The same fragment is inline in
+							 * the census band's trigger, where a leading boundary space in the flex item
+							 * was dropped and the line read `compute.internal· 2 revoked`.
+							 */}
+							{network.revokedCount > 0 ? (
+								<>
+									{" · "}
+									{t("ui.mesh.mesh_list.revoked_count", {
 										count: network.revokedCount,
-									})
-								: ""}
+									})}
+								</>
+							) : null}
 						</span>
 					</h2>
 					<ul className="m-0 flex list-none flex-col gap-1 p-0">

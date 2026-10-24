@@ -4149,8 +4149,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.mesh",
-			"source_sha256": "b5f3ede41903cada061a01484ee6be88aa8cac927cb0a9fbe59364d90a8cebc3",
-			"target_sha256": "0866cabf64b9ec2d232f3478b248fea3d265e4b5899b66b56876bb34c3236efb",
+			"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
+			"target_sha256": "8ca7bc27a7c2239a82312e194c37ca5bc8dba560878d95aa1735ba2bed7a5e4a",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -4170,7 +4170,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/d30b20f4de1e.json",
-					"receipt_sha256": "9df121c64b5116eaf842c2eaeb05095c10e4b544133f0fdd6f3eb2db771e5e7d",
+					"receipt_sha256": "29c93941b73244192fc1a431dc8bfc6cdc368d2126697325ba661bef8fa51728",
 					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 				}
 			],
@@ -6207,8 +6207,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.mesh",
-			"source_sha256": "b5f3ede41903cada061a01484ee6be88aa8cac927cb0a9fbe59364d90a8cebc3",
-			"target_sha256": "322a45cf4ebc3f4ce688119f5d1975600fa0e9ddc90b24708bafd68279352ab8",
+			"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
+			"target_sha256": "3aa8d776350353385f5906cf63e342f0f4947c60d390ee23ceb27e0e29ebe76d",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6228,7 +6228,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/3c29edabebe5.json",
-					"receipt_sha256": "2d77ccc6aff873899825b804f93bb1435f2013de51a4e97f3c8c38bbc04ace65",
+					"receipt_sha256": "490aceee0adbb9200991befe0860e4e6cc5b489fecf89b8a4fe43b0f9926cf76",
 					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 				}
 			],
@@ -6787,8 +6787,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.mesh",
-			"source_sha256": "b5f3ede41903cada061a01484ee6be88aa8cac927cb0a9fbe59364d90a8cebc3",
-			"target_sha256": "3fee61e5b74ae129b817662844c119e35ed375d4c50184fc47195b57070b6c0a",
+			"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
+			"target_sha256": "bced28c8b3e25761ca11d6adb99b113b89ebb552799dbba75458c0a9bb09c789",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -6808,7 +6808,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/571e819540ec.json",
-					"receipt_sha256": "281bf4a428286779c8e6f7dfef8784d3bf22e8004c773d6c1a5e21c9dfe3ad61",
+					"receipt_sha256": "8a0f84a7b5504bbc549ff313037eb243f71b9635e9004441e695ffcebabfe995",
 					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 				}
 			],
@@ -8886,8 +8886,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.mesh",
-			"source_sha256": "b5f3ede41903cada061a01484ee6be88aa8cac927cb0a9fbe59364d90a8cebc3",
-			"target_sha256": "4f703ca26ff4bb43aa335523d6d808136e29b7915e735fccffaa8ce36decec06",
+			"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
+			"target_sha256": "9e7554059375a27d6c78c5b21d33570c7995384bf4083a791b85e62c8f3cd77b",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -8908,7 +8908,7 @@
 						"nit": 1
 					},
 					"receipt": "i18n/receipts/878a55c1f552.json",
-					"receipt_sha256": "e6962147fb5cc27fff9ccbbf12c5148d4c678ea72e8af2352b0978c51ffa7432",
+					"receipt_sha256": "3289a97415d49dc1bed3437943b5f0e63509651281ad369db11b2dbbc1262c4e",
 					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 				}
 			],
@@ -13249,8 +13249,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.mesh",
-			"source_sha256": "b5f3ede41903cada061a01484ee6be88aa8cac927cb0a9fbe59364d90a8cebc3",
-			"target_sha256": "88bc79621df895fe358305b371cc9d40cbe55ce576c026e98281419e7abcc784",
+			"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
+			"target_sha256": "c2b77593e736b5f64581f7077f02c62744de6f29a81774707096a1f5ccd04bb6",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -13269,8 +13269,8 @@
 						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/f30162bb4fad.json",
-					"receipt_sha256": "1fc0a715c0939b0d8ae38b88c9f66c0eb9f826868ae672c20196340ebdf059a3",
+					"receipt": "i18n/receipts/f30162bb4fad-hi.json",
+					"receipt_sha256": "c1237747a943aebcb0df16bee9292f2cfa61e17d871e1cedda3be813e60ce2ae",
 					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 				}
 			],
@@ -14401,8 +14401,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.mesh",
-			"source_sha256": "b5f3ede41903cada061a01484ee6be88aa8cac927cb0a9fbe59364d90a8cebc3",
-			"target_sha256": "979a27ff6b2c5e95e325ffa146dbb1f0b156d9be18be8e6e58ede725523a6372",
+			"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
+			"target_sha256": "7a1398aedbe87638c362604b6c13e1772323df34c0abad41594791ed1b5d96ea",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -14422,7 +14422,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/d507767766d2.json",
-					"receipt_sha256": "cd76d055bd56ee30068cf718b8f34d5dfef0f0e27f39ec37ee9d613cec6b14b3",
+					"receipt_sha256": "934a823466ea64c7f611d8b44c20ef1c6dc8bc96a6150ad4d8abc98889f1e19a",
 					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 				}
 			],
@@ -18825,8 +18825,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.mesh",
-			"source_sha256": "b5f3ede41903cada061a01484ee6be88aa8cac927cb0a9fbe59364d90a8cebc3",
-			"target_sha256": "960f26e5f8d68ad5445382f9291c567fe53da9c8fcda06d2af6bb22209422fdf",
+			"source_sha256": "a97dc0de31c228ade190b047217eed31193cfe553cc58f248746849edf8427aa",
+			"target_sha256": "1abccb2ffedceb8a081266adcd75508286fd2e729dae41cac7fcb85fce29ec1e",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -18846,7 +18846,7 @@
 						"nit": 0
 					},
 					"receipt": "i18n/receipts/e73be64ade76.json",
-					"receipt_sha256": "2a43e028991159a5895fbd08e7301d7a275fef29f6cc489507ab44ef506e7dc2",
+					"receipt_sha256": "1451a86c62b454a2b766b16d0c68ff847607ada5e42df836cfe1af744e6214cb",
 					"scope": "ui.mesh.mesh_list.revoked_toggle_label only"
 				}
 			],

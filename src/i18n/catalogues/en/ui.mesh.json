@@ -169,7 +169,7 @@
 	"ui.mesh.mesh_list.on_device_no_answer": "on {device} (not answering)",
 	"ui.mesh.mesh_list.sort_devices_by": "Sort devices by",
 	"ui.mesh.mesh_list.epoch": "epoch {epoch, number, ::group-off}",
-	"ui.mesh.mesh_list.revoked_count": " · {count, plural, other {{count, number, ::group-off} revoked}}",
+	"ui.mesh.mesh_list.revoked_count": "{count, plural, other {{count, number, ::group-off} revoked}}",
 	"ui.mesh.mesh_list.revoked_toggle_label": "Show revoked memberships",
 	"ui.mesh.mesh_list.member": "member",
 	"ui.mesh.mesh_list.move_conversation": "Move {conversation}",
