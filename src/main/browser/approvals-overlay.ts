@@ -6,7 +6,7 @@
  * hiding that page has to be another native child added above it. This module
  * is the smallest honest version of that surface: it creates one child, gives it
  * the geometry owned by `approvals-overlay-bounds.ts`, presents it when the
- * live queue is non-empty, and never focuses it.
+ * live queue is non-empty, and never takes focus.
  *
  * WHAT S6a DELIBERATELY DOES NOT HAVE: a preload, an IPC channel, a focus call,
  * a dismiss path, a decision path, or a renderer-side pause registration. The
@@ -16,10 +16,10 @@
  * scriptable document is allowed near the trust boundary. S6b replaces the
  * static document with a purpose-built, sandboxed, IPC-speaking card.
  *
- * AUTOPRESENT IS UNFOCUSED. `setShow`/`setVisible` never call
- * `webContents.focus()`: the page keeps typing, the card does not steal the
- * first responder, and the operator's only recall affordance remains the
- * shield (and, for S6a, the card is a visible experiment, not a product claim).
+ * AUTOPRESENT IS UNFOCUSED. The controller never calls focus on the child or
+ * the page: the page keeps typing, the card does not steal the first responder,
+ * and the operator's only recall affordance remains the shield (and, for S6a,
+ * the card is a visible experiment, not a product claim).
  *
  * LIFETIME: one lazy child per host window; hidden rather than destroyed when
  * the queue empties or the page stops being presented. A tab switch with an
@@ -32,7 +32,6 @@ import { randomUUID } from "node:crypto";
 import {
 	type BrowserWindow,
 	WebContentsView,
-	nativeTheme,
 	session,
 	webContents,
 } from "electron";
@@ -123,8 +122,9 @@ export class ApprovalsOverlayController {
 		this.window = deps.window;
 		this.documentUrl = deps.documentUrl;
 		this.opaque = deps.opaque === true;
-		this.theme =
-			deps.theme ?? (nativeTheme.shouldUseDarkColors ? "dark" : "light");
+		// S6a is a fixture surface: the evidence path chooses the palette, and an
+		// ordinary launch has no child at all. S6b delivers real theme tokens.
+		this.theme = deps.theme ?? "dark";
 		this.log = deps.log ?? (() => {});
 		this.view = null;
 		this.childListeners = [];

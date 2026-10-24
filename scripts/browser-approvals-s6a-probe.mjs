@@ -9,6 +9,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { withNotificationsOff } from "./notifications-off.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const requireFromRepo = createRequire(join(ROOT, "package.json"));
@@ -27,7 +28,7 @@ const FIXTURE = join(OUT, "fixture.html");
 const CARD = join(ROOT, "out/renderer/browser-approvals-overlay.html");
 writeFileSync(
 	FIXTURE,
-	`<!doctype html><html><body style="margin:0;background:#204060;color:#fff;font:16px sans-serif"><div style="padding:16px"><h1>Fixture page</h1><p id="status">ready</p><button id="click" style="position:absolute;left:24px;top:24px">click</button></div><script>let clicks=0,keys=0;document.getElementById("click").onclick=()=>{clicks+=1;document.getElementById("status").textContent="clicks:"+clicks};document.addEventListener("keydown",()=>{keys+=1;document.getElementById("status").textContent="keys:"+keys})</script></body></html>`,
+	`<!doctype html><html><body style="margin:0;background:#204060;color:#fff;font:16px sans-serif"><div style="padding:16px"><h1>Fixture page</h1><p id="status">ready</p><button id="click" style="position:absolute;left:24px;top:24px">click</button></div><script>let clicks=0,keys=0,focusEvents=0,blurEvents=0;window.addEventListener("focus",()=>{focusEvents+=1});window.addEventListener("blur",()=>{blurEvents+=1});document.getElementById("click").onclick=()=>{clicks+=1;document.getElementById("status").textContent="clicks:"+clicks};document.addEventListener("keydown",()=>{keys+=1;document.getElementById("status").textContent="keys:"+keys});window.__probe=()=>({focusEvents,blurEvents,activeElement:document.activeElement?.tagName??null,status:document.getElementById("status").textContent})</script></body></html>`,
 );
 const entry = join(OUT, "s6a-entry.ts");
 writeFileSync(
@@ -49,15 +50,9 @@ app.whenReady().then(async () => {
   const pageRect = { x: 0, y: 120, width: ${WIDTH}, height: 600 };
   page.setBounds(pageRect); page.setVisible(true);
   await page.webContents.loadURL(fixture);
-  win.show();
-  app.focus({ steal: true });
-  win.focus();
-  for (let i = 0; i < 30 && !win.isFocused(); i += 1) {
-    await new Promise((r) => setTimeout(r, 100));
-  }
-  page.webContents.focus();
   await new Promise((r) => setTimeout(r, 250));
-  const before = { pageBounds: page.getBounds(), pageVisible: page.getVisible(), focused: webContents.getFocusedWebContents()?.id ?? null };
+  const beforeProbe = await page.webContents.executeJavaScript("window.__probe()");
+  const before = { pageBounds: page.getBounds(), pageVisible: page.getVisible(), focused: webContents.getFocusedWebContents()?.id ?? null, pageProbe: beforeProbe };
   page.webContents.sendInputEvent({ type: "keyDown", keyCode: "a" });
   page.webContents.sendInputEvent({ type: "char", keyCode: "a" });
   page.webContents.sendInputEvent({ type: "keyUp", keyCode: "a" });
@@ -73,13 +68,13 @@ app.whenReady().then(async () => {
   await new Promise((r) => setTimeout(r, 100));
   const typedAfter = await page.webContents.executeJavaScript("document.getElementById('status').textContent");
   const cardView = win.contentView.children[win.contentView.children.length - 1];
-  const afterShow = { pageBounds: page.getBounds(), pageVisible: page.getVisible(), focused: webContents.getFocusedWebContents()?.id ?? null, typed, typedAfter, pageWebContentsId: page.webContents.id, pageFocused: page.webContents.isFocused(), cardFocused: cardView.webContents.isFocused(), windowFocused: win.isFocused() };
+  const afterProbe = await page.webContents.executeJavaScript("window.__probe()");
+  const afterShow = { pageBounds: page.getBounds(), pageVisible: page.getVisible(), focused: webContents.getFocusedWebContents()?.id ?? null, typed, typedAfter, pageWebContentsId: page.webContents.id, pageProbe: afterProbe, pageFocused: page.webContents.isFocused(), cardFocused: cardView.webContents.isFocused(), windowFocused: win.isFocused() };
   controller.setPending(0);
   await new Promise((r) => setTimeout(r, 100));
   const afterHide = { pageBounds: page.getBounds(), pageVisible: page.getVisible(), focused: webContents.getFocusedWebContents()?.id ?? null, pageFocused: page.webContents.isFocused(), cardVisible: controller.facts().visible };
   controller.setPending(2);
   await new Promise((r) => setTimeout(r, 100));
-  win.hide();
   let frame = null;
   const sourceId = win.getMediaSourceId();
   try {
@@ -113,11 +108,11 @@ await build({
 	outfile: MAIN,
 	external: ["electron"],
 });
-const env = {
+const env = withNotificationsOff({
 	...process.env,
 	HOME: join(OUT, "home"),
 	LOCAL_OPERATOR_UI_BROWSER_APPROVALS_OVERLAY_S6A: "1",
-};
+});
 for (const key of Object.keys(env))
 	if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
 const child = spawn(ELECTRON_BIN, [MAIN], {
