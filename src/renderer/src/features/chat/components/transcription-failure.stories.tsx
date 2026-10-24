@@ -68,14 +68,11 @@ const ToastOnce = ({ message }: { message: string }) => {
 };
 
 /** The relay's answer, drawn as the machine voice it is, under the toast. */
-const RelayFrame = ({
-	status,
-	detail,
-}: { status: number | null; detail: string }) => (
+const RelayFrame = ({ status, detail }: { status: number; detail: string }) => (
 	<div className="h-screen bg-canvas p-8">
 		<div className="mx-auto max-w-2xl">
 			<p className="text-meta text-ink-muted">Relay answer</p>
-			<p className="mt-1 text-body">HTTP {status ?? "no answer"}</p>
+			<p className="mt-1 text-body">HTTP {status}</p>
 			<p className="mt-4 text-meta text-ink-muted">
 				Detail, exactly as the server sent it
 			</p>
@@ -101,7 +98,7 @@ const Refusal = ({
 	detail,
 	override,
 }: {
-	status: number | null;
+	status: number;
 	detail: string;
 	/** Set only by the before frame, which is the copy this change replaced. */
 	override?: string;

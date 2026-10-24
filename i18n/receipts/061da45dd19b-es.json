@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "auditor": "i18n-auditor",
+  "model": "deepseek/deepseek-flash",
+  "instance": "061da45dd19b-es",
+  "locale": "es",
+  "namespace": "ui.chat.composer",
+  "date": "2026-10-24",
+  "status": "passed",
+  "sha256": {
+    "es": "809cb71b2b6394758f0f2a3814b8350c7c5647b54342691b4c1b55f0c0c88917",
+    "en": "12ebdb50d49dfe5e7101fc29293485d5366f5a52ae7ac3c7dca9ef985fcde8c9"
+  },
+  "findings": [
+    {
+      "severity": "minor",
+      "key": "ui.chat.composer.dictation_failed_transient_take_kept",
+      "summary": "Colon followed by a capitalised control label (\"se conserva: Reintentar\"). Spanish orthography wants lowercase after a colon unless the label is quoted, and every other colon+capital in the es catalogue precedes a proper noun (Recomendado: Radient, Windows: Mica…). Meaning is unaffected; the retained-take fact and the control are both clear."
+    }
+  ]
+}

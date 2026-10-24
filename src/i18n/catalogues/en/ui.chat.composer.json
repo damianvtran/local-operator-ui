@@ -16,6 +16,8 @@
 	"ui.chat.composer.starting_recording": "Starting recording",
 	"ui.chat.composer.start_recording_hint": "Start recording ({shortcut} or hold {pushToTalk})",
 	"ui.chat.composer.processing_audio": "Processing audio",
+	"ui.chat.composer.dictation_failed_transient": "Dictation failed: the transcription service had a temporary fault. Try again.",
+	"ui.chat.composer.dictation_failed_transient_take_kept": "Dictation failed: the transcription service had a temporary fault. Your recording is kept — Retry sends it again.",
 	"ui.chat.composer.welcome": "What can I help you with today?",
 	"ui.chat.composer.delivery_remedies_hint": "The message that could not be delivered has Send again and Edit controls in the conversation above this box: press Shift+Tab to reach them.",
 	"ui.chat.composer.secret_ask_notice": "The agent is asking for a secret. Enter it in the asks panel — you can keep chatting meanwhile.",
