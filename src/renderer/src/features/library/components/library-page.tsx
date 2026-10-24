@@ -261,7 +261,7 @@ const LibrarianRow: FC<{ enabled: boolean; nowMs: number }> = ({
 					{t("ui.library.librarian.unorganized", { count: unorganized })}
 				</span>
 			)}
-			<div className="ml-auto flex items-center gap-1">
+			<div className="ms-auto flex items-center gap-1">
 				<Button
 					variant="ghost"
 					size="sm"
@@ -843,13 +843,13 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 							<h1 className="text-title text-ink">
 								{t("ui.library.page.title")}
 							</h1>
-							<span className="ml-2 text-meta tabular-nums text-ink-dim">
+							<span className="ms-2 text-meta tabular-nums text-ink-dim">
 								{t("ui.library.page.loaded_count", {
 									loaded: String(rows.length),
 									total: String(total),
 								})}
 							</span>
-							<div className="ml-auto flex items-center rounded-sm border border-control">
+							<div className="ms-auto flex items-center rounded-sm border border-control">
 								<Button
 									variant="ghost"
 									size="icon-sm"
@@ -878,7 +878,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 								<Search
 									size={14}
 									aria-hidden="true"
-									className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-ink-dim"
+									className="pointer-events-none absolute top-1/2 start-2.5 -translate-y-1/2 text-ink-dim"
 								/>
 								<Input
 									ref={searchRef}
@@ -890,7 +890,7 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 									placeholder={t("ui.library.page.search")}
 									aria-label={t("ui.library.page.search")}
 									data-library-search=""
-									className="border-0 bg-elevated pl-8"
+									className="border-0 bg-elevated ps-8"
 								/>
 							</div>
 							<DropdownMenu>
@@ -1229,7 +1229,10 @@ export const LibraryPage: FC<{ nowMs?: number }> = ({ nowMs }) => {
 			)}
 
 			<Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
-				<SheetContent side="left" className="w-80 max-w-[calc(100vw-32px)] p-0">
+				<SheetContent
+					side="start"
+					className="w-80 max-w-[calc(100vw-32px)] p-0"
+				>
 					<div className="flex h-full flex-col">
 						<div className="flex items-center justify-between px-4 py-3">
 							<span className="text-heading text-ink">

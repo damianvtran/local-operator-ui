@@ -532,7 +532,7 @@ function ComposerStatus({
 					// sentence itself is the paragraph BELOW the row (see `ComposerStatus`).
 					<span className="flex-1" aria-hidden="true" />
 				)}
-				<div className="ml-auto flex shrink-0 items-center gap-1">
+				<div className="ms-auto flex shrink-0 items-center gap-1">
 					{about ? (
 						<>
 							{/* Plain text, not an accent badge: the accent is spent on Send and the focus ring (D16). */}
@@ -566,7 +566,7 @@ function ComposerStatus({
 							{watching ? (
 								<ChevronDown className="size-3.5" />
 							) : (
-								<ChevronRight className="size-3.5" />
+								<ChevronRight className="size-3.5 rtl:-scale-x-100" />
 							)}
 							Watch
 						</Button>
@@ -1306,7 +1306,7 @@ export function ConfigComposer({
 								 */
 								variant="ghost"
 								size="sm"
-								className="-ml-2 h-auto max-w-full justify-start whitespace-normal break-words px-2 py-1 text-left text-body-sm text-ink-muted hover:bg-elevated hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent"
+								className="-ml-2 h-auto max-w-full justify-start whitespace-normal break-words px-2 py-1 text-start text-body-sm text-ink-muted hover:bg-elevated hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent"
 								disabled={disabled}
 								onClick={() => {
 									setBoxText(example);

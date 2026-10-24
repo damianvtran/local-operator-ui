@@ -4,7 +4,7 @@
  * ## What this replaces, and why
  *
  * Until #672, the app's answer to "there is a new version" was a card pinned
- * `fixed top-4 right-4 z-50` over whatever the person was doing - raised by the
+ * `fixed top-4 end-4 z-50` over whatever the person was doing - raised by the
  * start-up check, the five-minute check and the post-wake check, so a busy week
  * of releases interrupted the view several times a day and deferral only
  * silenced the exact version that had already arrived. The card is the right

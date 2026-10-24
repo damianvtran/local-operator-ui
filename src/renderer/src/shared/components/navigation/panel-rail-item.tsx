@@ -1,4 +1,5 @@
 import { BrowserSafeTooltip, Button } from "@shared/components/ui";
+import { useTextDirection } from "@shared/i18n/use-document-direction";
 import { cn } from "@shared/lib/utils";
 import {
 	type ButtonHTMLAttributes,
@@ -85,6 +86,7 @@ const IDLE =
 
 export const PanelRailItem = forwardRef<HTMLButtonElement, PanelRailItemProps>(
 	({ id, label, ariaLabel, pressed, children, className, ...props }, ref) => {
+		const direction = useTextDirection();
 		const rail = useContext(PanelRailRovingContext);
 		const register = rail?.register;
 		useLayoutEffect(() => register?.(id), [register, id]);
@@ -100,7 +102,10 @@ export const PanelRailItem = forwardRef<HTMLButtonElement, PanelRailItemProps>(
 		 * every chat, schedule and settings screen (round-1 D2).
 		 */
 		return (
-			<BrowserSafeTooltip content={label} side="left">
+			<BrowserSafeTooltip
+				content={label}
+				side={direction === "rtl" ? "right" : "left"}
+			>
 				<Button
 					ref={ref}
 					variant="ghost"

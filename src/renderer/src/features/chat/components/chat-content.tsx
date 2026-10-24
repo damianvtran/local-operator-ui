@@ -2312,7 +2312,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						data-glass-region="canvas"
 						/*
 						 * THE SEAM INSET: 8px given back while a separator is drawn on this
-						 * column's right edge, and it is a SCROLLBAR clearance rather than
+						 * column's inline-end edge, and it is a SCROLLBAR clearance rather than
 						 * spacing. `CHAT_SEAM_INSET_PX` carries the numbers and the reasoning
 						 * (the separator reaches 6px in, the bar is 8px wide and sat flush).
 						 *
@@ -2330,7 +2330,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * from - is untouched.
 						 */
 						style={
-							rightPaneDocked ? { paddingRight: CHAT_SEAM_INSET_PX } : undefined
+							rightPaneDocked
+								? { paddingInlineEnd: CHAT_SEAM_INSET_PX }
+								: undefined
 						}
 						className="panel-top-pad flex h-full min-h-0 grow flex-col overflow-hidden rounded-none bg-canvas"
 					>

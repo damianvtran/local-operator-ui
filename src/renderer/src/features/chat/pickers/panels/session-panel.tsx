@@ -388,7 +388,7 @@ export const SessionPanel: FC<SessionPanelProps> = ({
 								/>
 								<p
 									className={cn(
-										"ml-auto shrink-0 font-mono text-body-sm tabular-nums",
+										"ms-auto shrink-0 font-mono text-body-sm tabular-nums",
 										measured === null ? "text-ink-dim" : "text-ink",
 									)}
 								>

@@ -3015,9 +3015,9 @@ test("the pinned strip control appears only when a tab is off screen, and counts
 	assert.ok(
 		strip.includes('variant="ghost"') &&
 			strip.includes(
-				'className="ml-2 shrink-0 self-center focus-visible:-outline-offset-2!"',
+				'className="ms-2 shrink-0 self-center focus-visible:-outline-offset-2!"',
 			),
-		"the new-tab control shares toolbar ghost grammar and keeps an eight-pixel gap",
+		"the new-tab control shares toolbar ghost grammar and keeps a logical inline-start gap",
 	);
 	assert.ok(
 		/aria-label=\{t\(\s*"ui\.browser\.browser_tab_strip\.all_tabs_unshown_accessible",\s*\{\s*count: tabsOffScreen,?\s*\},?\s*\)\}/.test(
