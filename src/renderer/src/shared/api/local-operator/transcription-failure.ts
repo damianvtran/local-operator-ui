@@ -20,7 +20,11 @@
  * is the sentence a person reads.
  */
 
-import { isDesktopRefusalCode } from "../../../../../shared/desktop-contract";
+import { t } from "../../../../../i18n";
+import {
+	DESKTOP_REFUSAL_CODE,
+	isDesktopRefusalCode,
+} from "../../../../../shared/desktop-contract";
 
 /**
  * A refused transcription, carrying the three things the copy and the retry
@@ -43,15 +47,22 @@ import { isDesktopRefusalCode } from "../../../../../shared/desktop-contract";
  * Typed as a class rather than a shape so a caller cannot mistake an unrelated
  * `Error` for one of these: the mapper below reads `status` only from this type
  * and treats every other throwable as "no status".
+ *
+ * `status` is a plain number, not `number | null`: the one production
+ * constructor (`transcription-api.ts`) always passes the relay's own numeric
+ * status, including the 503 the desktop plane composes for a transport failure.
+ * A `null` arm used to sit in the classifier for "nothing answered"; nothing
+ * could reach it (#1087 review round 1, NIT 1), and an arm no production shape
+ * can produce is a shape pinned by a test rather than by the app.
  */
 export class TranscriptionRequestError extends Error {
-	/** The HTTP status the relay saw, or null when nothing answered. */
-	readonly status: number | null;
+	/** The HTTP status the relay saw. */
+	readonly status: number;
 
 	/** The pairing/link refusal this was, when the desktop plane wrote it. */
 	readonly code?: string;
 
-	constructor(status: number | null, detail: string, code?: string) {
+	constructor(status: number, detail: string, code?: string) {
 		super(detail);
 		this.name = "TranscriptionRequestError";
 		this.status = status;
@@ -152,7 +163,7 @@ export function transcriptionFailureMessage(error: unknown): string {
 		UPSTREAM_STATUS_ONLY.test(flat) &&
 		isTransientTranscriptionFailure(error)
 	) {
-		return UPSTREAM_TEMPORARY;
+		return upstreamTemporary();
 	}
 	if (OUT_OF_CREDITS.test(flat)) {
 		const provider = upstreamProvider(flat);
@@ -236,14 +247,27 @@ export function transcriptionFailureMessage(error: unknown): string {
  */
 export function isTransientTranscriptionFailure(error: unknown): boolean {
 	/*
-	 * A TRANSPORT REFUSAL IS NOT A SERVER FAULT. The desktop plane composes these
+	 * A PAIRING REFUSAL IS NOT A SERVER FAULT. The desktop plane composes these
 	 * itself (`desktop-api.ts` -> `mediaError`): no credential, a refused
-	 * credential, a plane that does not accept controls, or a server that did not
-	 * answer. They carry statuses that overlap the gateway class (503 above all),
-	 * and retrying them cannot fix the pairing they name.
+	 * credential, or a plane that does not accept controls. They carry statuses
+	 * that overlap the gateway class (503 above all), and retrying them cannot fix
+	 * the pairing they name.
+	 *
+	 * `transport.failed` IS NOT ONE OF THEM (#1087 review round 1, F3). The
+	 * desktop contract says so explicitly (`desktop-contract.ts`, on
+	 * `DESKTOP_REFUSAL_CODE.transportFailed`): a refused socket or a reset
+	 * establishes nothing about the daemon's plane, so it is the one failure whose
+	 * own class is "ask again". Excluding the whole code table made a daemon
+	 * restart strand the take with no attempt and no control - #1087's exact
+	 * symptom, one transport hop along. Only the three pairing codes are refused
+	 * here; the transport code falls through to the 5xx allow-list below.
 	 */
 	if (!(error instanceof TranscriptionRequestError)) return false;
-	if (isDesktopRefusalCode(error.code)) return false;
+	if (
+		isDesktopRefusalCode(error.code) &&
+		error.code !== DESKTOP_REFUSAL_CODE.transportFailed
+	)
+		return false;
 	const status = error.status;
 	/*
 	 * EVERY 4xx IS FINAL, and said as a range rather than as the three statuses
@@ -252,15 +276,15 @@ export function isTransientTranscriptionFailure(error: unknown): boolean {
 	 * here is still a decision about THIS request - the one question a retry
 	 * cannot re-ask and get a different answer to.
 	 */
-	if (status !== null && status >= 400 && status <= 499) return false;
+	if (status >= 400 && status <= 499) return false;
 	const flat = flatten(error.message);
 	if (OUT_OF_CREDITS.test(flat) || REFUSED_SIGN_IN.test(flat)) return false;
 	if (UPSTREAM_REFUSAL.test(flat)) return false;
 	/*
-	 * THE ALLOW-LIST: a 5xx, or no status at all (the transport never answered,
-	 * which is the one failure whose own class is "ask again").
+	 * THE ALLOW-LIST: a 5xx. There is no "no status" arm here because there is no
+	 * such shape: the relay always reports a status, and a thrown transport error
+	 * reaches the renderer as the desktop plane's own 503 (handled above).
 	 */
-	if (status === null) return UPSTREAM_FAILURE.test(flat);
 	return status >= 500 && status <= 599;
 }
 
@@ -277,9 +301,37 @@ export function isTransientTranscriptionFailure(error: unknown): boolean {
  * app cannot make. It does not quote the body either: the truncated JSON that used
  * to stand here was the diagnostic, and it read as a refusal. That body still
  * reaches the console and the app's log on `error.message`.
+ *
+ * THE SENTENCE IS KEYED AND READ AT CALL TIME (#1087 review round 1, D5). The
+ * control beside it was already `ui.common.actions.retry`, so an English sentence
+ * with a translated button was the one mixed-language row in the family. `t()` is
+ * called inside the function rather than at module load: a module-scope lookup
+ * would freeze whichever locale the bundle happened to evaluate under.
  */
-const UPSTREAM_TEMPORARY =
-	"Dictation failed: the transcription service had a temporary fault. Try again.";
+function upstreamTemporary(): string {
+	return t("ui.chat.composer.dictation_failed_transient");
+}
+
+/**
+ * The sentence a surface shows when it can spend the retained take (#1087).
+ *
+ * THE ROW AND THE TOAST SAY DIFFERENT THINGS ON PURPOSE (design round 1, D1). The
+ * toast has no control, so its sentence ends by naming the action the reader must
+ * take somewhere else ("Try again."). The row sits beside a `Retry` control and
+ * gets its own sentence instead: that the take survived the failure, and that the
+ * control is what sends it again. Repeating the toast's imperative under a second
+ * label 11px away named the same action twice and left the one fact this state
+ * exists for - the recording is still here - unsaid.
+ *
+ * Anything outside the transient class gets the toast's own sentence, so a caller
+ * may use this unconditionally and still show the refusal it was given.
+ */
+export function transcriptionFailureRowMessage(error: unknown): string {
+	if (isTransientTranscriptionFailure(error)) {
+		return t("ui.chat.composer.dictation_failed_transient_take_kept");
+	}
+	return transcriptionFailureMessage(error);
+}
 
 /**
  * The reason's own opening capital, lowered into the family's shape.
@@ -359,9 +411,6 @@ const SIGN_IN_REFUSED =
 const TRANSCRIPTION_ACCOUNT_OUT_OF_CREDITS =
 	"Dictation failed: the account behind dictation is out of credits. If it's yours, top it up.";
 
-/** A 5xx the upstream itself answered, relayed in the daemon's own clause. */
-const UPSTREAM_FAILURE = /upstream\s+(?:responded|returned)\s+5\d\d/i;
-
 /**
  * The relayed 5xx wrapped around a JSON document, which is scaffolding and not a
  * reason.
@@ -388,9 +437,17 @@ const UPSTREAM_STATUS_ONLY =
  * 4xx in the text" because a provider's JSON error body can carry numbers of its
  * own, and a false positive here would refuse to retry a fault that would have
  * cleared.
+ *
+ * THE RELAYED BODY'S OWN CODE IS MATCHED TOO (#1087 review round 1, F7). A
+ * provider's refusal can arrive re-wrapped as the daemon's 502 with none of the
+ * three wordings above, e.g. `{"error":{"code":400,"message":"bad audio"}}`;
+ * without this arm that document was retried twice as a temporary server fault.
+ * The match is on a `code` field holding a 4xx number, which is the one place a
+ * provider states the class machine-readably, and the boundary keeps a 5-digit
+ * number out of it.
  */
 const UPSTREAM_REFUSAL =
-	/refused upstream\s*\(HTTP\s*4\d\d\)|upstream\s+(?:responded|returned)\s+4\d\d|\((?:HTTP\s*)?4\d\d\)/i;
+	/refused upstream\s*\(HTTP\s*4\d\d\)|upstream\s+(?:responded|returned)\s+4\d\d|\((?:HTTP\s*)?4\d\d\)|["']code["']\s*:\s*4\d\d\b/i;
 
 /**
  * Nothing to quote, and no cause worth guessing at.

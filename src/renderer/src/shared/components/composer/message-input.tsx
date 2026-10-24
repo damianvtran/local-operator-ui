@@ -112,6 +112,7 @@ import {
 	EMPTY_TRANSCRIPTION_MESSAGE,
 	isTransientTranscriptionFailure,
 	transcriptionFailureMessage,
+	transcriptionFailureRowMessage,
 } from "@shared/api/local-operator/transcription-failure";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { ErrorBoundary } from "@shared/components/common/error-boundary";
@@ -2031,6 +2032,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * which is what the effect's trigger actually means.
 		 */
 		const sentTakeRef = useRef<{ blob: Blob; attempt: number } | null>(null);
+		/*
+		 * THE BURST BELONGS TO THIS COMPOSER (#1087 review round 1, F4). A retry
+		 * burst outlives neither the surface that started it nor a newer take: the
+		 * controller is aborted on unmount and whenever another send begins, so the
+		 * remaining attempts are not issued into a component nobody is watching.
+		 */
+		const transcriptionAbortRef = useRef<AbortController | null>(null);
+		useEffect(
+			() => () => {
+				transcriptionAbortRef.current?.abort();
+			},
+			[],
+		);
 		/*
 		 * The hint Enter's refusal shows (UX round 3 U13). A countdown, not a toggle,
 		 * so it cannot outlive the moment it explains.
@@ -6934,6 +6948,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		const handleSendAudio = useCallback(async () => {
 			if (!audioBlob) return;
+			/*
+			 * ONE BURST AT A TIME, bounded to this component (#1087 review round 1,
+			 * F4). Starting another send supersedes the previous controller so a
+			 * stale burst cannot keep issuing requests; unmount aborts too.
+			 */
+			transcriptionAbortRef.current?.abort();
+			const controller = new AbortController();
+			transcriptionAbortRef.current = controller;
 
 			try {
 				setIsTranscribing(true);
@@ -6945,6 +6967,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						}),
 					},
 					{
+						signal: controller.signal,
 						/*
 						 * THE RETRY IS WRITTEN DOWN WHERE SUPPORT LOOKS (#1087). The app's
 						 * own log is the artifact support asks for, and "the hop was tried
@@ -6984,6 +7007,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				setDictationFailure(null);
 				setAudioBlob(null); // Clear the blob after sending
 			} catch (error) {
+				/*
+				 * AN ABORTED BURST IS NOT A FAILURE TO REPORT. The surface that owned it
+				 * is gone, or a newer take replaced it; a toast about a request nobody is
+				 * waiting for would outlive the state it describes.
+				 */
+				if (controller.signal.aborted) return;
 				// The raw server message stays on the console; the toast names the
 				// cause in a sentence a person can act on (see
 				// `transcriptionFailureMessage`), because "please try again" cannot
@@ -6997,15 +7026,23 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * back rather than left in a state nothing can reach. A refusal keeps the
 				 * old behaviour: re-sending a decision cannot change it, and offering to
 				 * would be the "try again" lie this copy exists to delete.
+				 *
+				 * THE ROW SPEAKS FOR ITSELF (design round 1, D1/D2). It carries the
+				 * retained-take sentence (`transcriptionFailureRowMessage`), not the
+				 * toast's, and the toast is withheld for this class: the row is the one
+				 * surface with the control, and two copies of the same sentence eleven
+				 * pixels apart - the louder one without the control, over the composer's
+				 * own mic and send - was the duplication this deletes.
 				 */
+				const transient = isTransientTranscriptionFailure(error);
 				setDictationFailure(
-					isTransientTranscriptionFailure(error)
-						? transcriptionFailureMessage(error)
-						: null,
+					transient ? transcriptionFailureRowMessage(error) : null,
 				);
-				showErrorToast(transcriptionFailureMessage(error));
+				if (!transient) showErrorToast(transcriptionFailureMessage(error));
 			} finally {
-				setIsTranscribing(false);
+				if (transcriptionAbortRef.current === controller) {
+					setIsTranscribing(false);
+				}
 			}
 		}, [audioBlob, appendTranscriptText]);
 
@@ -9409,24 +9446,49 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						 * It renders only once the attempts are spent (`!isTranscribing`), so
 						 * the row never appears while a send is still in flight.
 						 */}
-						{dictationFailure !== null && !isTranscribing && (
-							<div
-								data-dictation-retry=""
-								className="mt-1 flex items-center gap-2 px-2 [min-height:1.5rem]"
-							>
-								<span className="font-medium text-body-sm text-ink-muted">
-									{dictationFailure}
-								</span>
-								<Button
-									type="button"
-									variant="link"
-									size="sm"
-									onClick={retryDictation}
+						{dictationFailure !== null &&
+							!isTranscribing &&
+							audioBlob !== null && (
+								<div
+									data-dictation-retry=""
+									className="mt-1 flex items-center gap-2 px-2 [min-height:1.5rem]"
 								>
-									{t("ui.common.actions.retry")}
-								</Button>
-							</div>
-						)}
+									{/*
+									 * AN ERROR REGISTER, not the metadata one (design round 1,
+									 * D6). The row sat in `ink-muted` with no mark at all, so it
+									 * read as the same quiet status as "Processing audio" - and
+									 * the toast it replaces carried the danger icon. The take is
+									 * still here, but the attempt failed: the icon says which,
+									 * and the sentence stays at reading ink.
+									 */}
+									<CircleAlert
+										aria-hidden="true"
+										className="size-3.5 shrink-0 text-danger"
+									/>
+									<span className="font-medium text-body-sm text-ink-muted">
+										{dictationFailure}
+									</span>
+									<Button
+										type="button"
+										variant="link"
+										size="sm"
+										/*
+										 * A REAL TARGET AND A VISIBLE AFFORDANCE (design round 1,
+										 * D3). The `link` variant's `h-auto p-0` left this
+										 * control 29x12px - the text's own line box - and the
+										 * underline appeared only on hover, so the one recovery
+										 * control in the state was a colour-only word. `h-7 px-2`
+										 * restores a 28px target (the size every other `sm`
+										 * control in the row takes) and `underline` makes it
+										 * look pressable at rest.
+										 */
+										className="h-7 shrink-0 px-2 underline"
+										onClick={retryDictation}
+									>
+										{t("ui.common.actions.retry")}
+									</Button>
+								</div>
+							)}
 						{/*
 						 * The composer's controls and the session's readings, on ONE row, at EVERY width.
 						 *

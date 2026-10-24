@@ -38,6 +38,7 @@ const bundle = await build({
 			export {
 				isTransientTranscriptionFailure,
 				transcriptionFailureMessage,
+				transcriptionFailureRowMessage,
 				TranscriptionRequestError,
 			} from "./src/renderer/src/shared/api/local-operator/transcription-failure";
 			export { DESKTOP_REFUSAL_CODE } from "./src/shared/desktop-contract";
@@ -60,6 +61,7 @@ const {
 	planTranscriptionRetry,
 	isTransientTranscriptionFailure,
 	transcriptionFailureMessage,
+	transcriptionFailureRowMessage,
 	TranscriptionRequestError,
 	DESKTOP_REFUSAL_CODE,
 } = await import(
@@ -83,6 +85,17 @@ const SUCCESS = {
 	kind: "json",
 	body: { result: { text: "hello there" } },
 };
+
+/**
+ * The composer's row condition, which must also require the retained bytes (F5):
+ * `dictationFailure !== null` alone leaves a dead Retry after a new take aborts.
+ */
+const ROW_OFFER_CONDITION =
+	/dictationFailure !== null &&[\s\S]{0,160}audioBlob !== null/;
+
+/** What the retained-take row's English must say (design round 1, D1). */
+const ROW_SAYS_TAKE_KEPT = /kept/;
+const ROW_NAMES_CONTROL = /Retry/;
 
 /** A take, in the shape the composer hands the client. */
 function take() {
@@ -153,8 +166,25 @@ test("only a fault time can fix is transient, and a refusal never is", () => {
 		new TranscriptionRequestError(500, "Upstream responded 502: bad gateway"),
 		// The daemon's own internal fault (`stt/errors.py` leaves 500 to it).
 		new TranscriptionRequestError(500, "Internal Server Error"),
-		// A coded 503 is the desktop plane's, and the code is what saves it - see
-		// the refusal table below.
+		/*
+		 * THE DESKTOP PLANE'S OWN TRANSPORT FAILURE (#1087 review round 1, F3).
+		 * A refused socket or a reset is NOT a pairing condition
+		 * (`desktop-contract.ts`, `DESKTOP_REFUSAL_CODE.transportFailed` says so
+		 * explicitly: nothing was established about the daemon's plane), so it is
+		 * the one coded failure whose own class is "ask again". Excluding the whole
+		 * code table used to strand the take here with no attempt and no control.
+		 */
+		new TranscriptionRequestError(
+			503,
+			"The Local Operator server did not answer this request.",
+			DESKTOP_REFUSAL_CODE.transportFailed,
+		),
+		// A 5-digit `code` in a relayed body is not a 4xx: the code arm's number
+		// boundary, pinned so the F7 match cannot widen into any leading 4.
+		new TranscriptionRequestError(
+			502,
+			'{"error":{"code":4004,"message":"gateway plumbing"}}',
+		),
 	];
 	for (const error of transient) {
 		assert.equal(
@@ -182,6 +212,16 @@ test("only a fault time can fix is transient, and a refusal never is", () => {
 			'{"error":"insufficient_quota: you have no credits remaining"}',
 		),
 		new TranscriptionRequestError(502, "Unauthorized: invalid api key"),
+		/*
+		 * THE RELAYED 4xx THAT NAMES NO WORDING (#1087 review round 1, F7). The
+		 * provider's refusal arrives re-wrapped as the daemon's 502 and the body
+		 * carries the class in its `code` field rather than in prose; this used to
+		 * be retried twice because none of the three wordings matched.
+		 */
+		new TranscriptionRequestError(
+			502,
+			'{"error":{"code":400,"message":"bad audio"}}',
+		),
 		// The statuses that are already sentences of their own.
 		new TranscriptionRequestError(402, "Payment Required"),
 		new TranscriptionRequestError(401, "Unauthorized"),
@@ -195,10 +235,18 @@ test("only a fault time can fix is transient, and a refusal never is", () => {
 			"This app is not paired with the running Local Operator server, so this control is unavailable.",
 			DESKTOP_REFUSAL_CODE.noCredential,
 		),
+		// The other two pairing codes are refusals for the same reason the
+		// transport code is not: the plane answered, and the answer is about the
+		// link rather than about the request.
 		new TranscriptionRequestError(
 			503,
-			"The Local Operator server did not answer this request.",
-			DESKTOP_REFUSAL_CODE.transportFailed,
+			"The server refused this app's credential.",
+			DESKTOP_REFUSAL_CODE.refused,
+		),
+		new TranscriptionRequestError(
+			503,
+			"The desktop plane is closed.",
+			DESKTOP_REFUSAL_CODE.planeClosed,
 		),
 		// Nothing that is not one of these errors at all.
 		new Error("Failed to fetch"),
@@ -248,7 +296,7 @@ test("no 4xx is retried, whatever its body says", () => {
 		}
 	}
 });
-test("the transient sentence names the fault as temporary and names the action", () => {
+test("the transient sentences name the fault and its action, and the row names the control", () => {
 	/*
 	 * One sentence, chosen in one place, so the composer and the canvas's inline
 	 * editor say the same thing. It must NOT quote the upstream body: the clipped
@@ -272,6 +320,44 @@ test("the transient sentence names the fault as temporary and names the action",
 			`the transient sentence must not carry ${JSON.stringify(forbidden)}`,
 		);
 	}
+	/*
+	 * THE ROW HAS ITS OWN SENTENCE (design round 1, D1). The defect was the same
+	 * sentence in two vocabularies: an inert "Try again." followed 11px later by
+	 * a live control saying the same thing, with nothing on screen saying the take
+	 * survived. The row's sentence must differ from the toast's, say the recording
+	 * is kept, and name the control that spends it - the toast keeps its own
+	 * closing imperative because it has no control to point at.
+	 */
+	const row = transcriptionFailureRowMessage(
+		new TranscriptionRequestError(502, UPSTREAM_500_DETAIL),
+	);
+	assert.notEqual(
+		row,
+		sentence,
+		"the row must not repeat the toast's sentence",
+	);
+	for (const required of ["kept", "Retry"]) {
+		assert.ok(
+			row.includes(required),
+			`the row sentence must name ${JSON.stringify(required)}: ${row}`,
+		);
+	}
+	assert.ok(
+		!row.includes("Try again."),
+		`the row must not repeat the toast's imperative beside a control: ${row}`,
+	);
+	/*
+	 * A refusal has no retained-take offer, so the row function answers with the
+	 * toast's own sentence rather than inventing one. Both surfaces gate the row
+	 * on the transient class (F2); this keeps a future caller from getting a
+	 * sentence that promises a retry the classifier will not make.
+	 */
+	assert.equal(
+		transcriptionFailureRowMessage(
+			new TranscriptionRequestError(402, "Payment Required"),
+		),
+		"Dictation failed: you're out of Radient credits. Get more credits, then try again.",
+	);
 	// A refusal that arrives inside the same gateway status keeps its own sentence:
 	// the precedence is the point, not an accident of ordering.
 	assert.equal(
@@ -464,6 +550,65 @@ test("a refusal is thrown on the first attempt, with no wait between", async () 
 	}
 });
 
+test("an aborted burst issues nothing, and an abort during the wait stops the next attempt", async () => {
+	/*
+	 * THE BURST IS BOUNDED TO THE SURFACE (#1087 review round 1, F4). Closing the
+	 * inline editor or navigating away used to leave the remaining attempts to
+	 * run and apply their result to state nobody was watching; the caller passes
+	 * an AbortSignal, and both checks are asserted here rather than inferred from
+	 * the loop's shape: before the first send, and after a wait.
+	 */
+	const aborted = new AbortController();
+	aborted.abort();
+	const firstRelay = installRelay([ENVELOPE_502, SUCCESS]);
+	const noDelays = [];
+	try {
+		await assert.rejects(
+			() =>
+				TranscriptionApi.createTranscriptionWithRetry(
+					"http://127.0.0.1:1",
+					take(),
+					{ signal: aborted.signal, sleep: recordingSleep(noDelays) },
+				),
+			(error) => error?.name === "AbortError",
+		);
+		assert.equal(
+			firstRelay.calls.length,
+			0,
+			"a surface that is already gone issues no request at all",
+		);
+		assert.deepEqual(noDelays, []);
+	} finally {
+		firstRelay.restore();
+	}
+
+	const controller = new AbortController();
+	const secondRelay = installRelay([ENVELOPE_502, ENVELOPE_502, SUCCESS]);
+	try {
+		await assert.rejects(
+			() =>
+				TranscriptionApi.createTranscriptionWithRetry(
+					"http://127.0.0.1:1",
+					take(),
+					{
+						signal: controller.signal,
+						sleep: async () => {
+							controller.abort();
+						},
+					},
+				),
+			(error) => error?.name === "AbortError",
+		);
+		assert.equal(
+			secondRelay.calls.length,
+			1,
+			"the attempt after the abort is never issued",
+		);
+	} finally {
+		secondRelay.restore();
+	}
+});
+
 test("a coded 503 is a pairing fact the client carries through, not a retried fault", async () => {
 	/*
 	 * THE CODE IS LOAD-BEARING (#1087). The desktop plane answers its own refusals
@@ -539,6 +684,17 @@ test("both dictation surfaces take the retrying client, and the composer keeps t
 		composer.includes('t("ui.common.actions.retry")'),
 		"the retry control reuses an audited catalogue key, not an inline label",
 	);
+	/*
+	 * F5: the offer is withdrawn when there is nothing left to spend. Starting a
+	 * new recording or aborting one clears `audioBlob` but not the sentence, and
+	 * Retry then calls into a `if (!audioBlob) return` - a silent no-op. The row
+	 * condition therefore carries the blob check, and the canvas already did.
+	 */
+	assert.match(
+		composer,
+		ROW_OFFER_CONDITION,
+		"the composer hides the offer once the retained take is gone",
+	);
 
 	const canvas = await readFile(
 		"src/renderer/src/features/chat/components/canvas/inline-edit.tsx",
@@ -549,30 +705,74 @@ test("both dictation surfaces take the retrying client, and the composer keeps t
 		"the canvas's dictation takes the same retry, so the shared sentence is true there too",
 	);
 	/*
-	 * GAP (a), canvas side: automatic retries are exhausted by this point, so the
-	 * offer must exist or the operator re-records a take the app is still holding.
-	 * The canvas needs all four pieces the composer has - the flag the failure
-	 * sets, the retained blob, the nudge that re-arms the one auto-send effect, and
-	 * the control - because any one of them missing turns the retry into a button
-	 * that does nothing.
+	 * F2: the canvas offers the retry THE CLASS allows, not every failure. An
+	 * unconditional offer put a Retry beside a 402/401/403 or a pairing 503 that
+	 * could only reproduce the refusal - the "try again" lie the composer's own
+	 * comment says this copy exists to delete.
 	 */
 	assert.ok(
-		canvas.includes("setDictationFailure(transcriptionFailureMessage(error))"),
-		"the canvas keeps the failure sentence, not just the toast that dismisses",
+		canvas.includes(
+			"const transient = isTransientTranscriptionFailure(error);",
+		),
+		"the canvas asks the classifier before it keeps the failure",
+	);
+	assert.ok(
+		canvas.includes("transient ? transcriptionFailureRowMessage(error) : null"),
+		"the canvas keeps only a transient failure's sentence, and keeps the row's own",
 	);
 	assert.ok(
 		canvas.includes("data-dictation-retry"),
-		"the canvas renders the Retry control in the slot the transcribing row vacates",
+		"the canvas renders the Retry control",
+	);
+	/*
+	 * F1 and D4: THE ROW IS ADDITIVE. It used to be the third arm of the same
+	 * ternary as the textarea, so any failure replaced the field - the typed
+	 * prompt vanished, the editor could not be typed into, and the only exit
+	 * unmounted it. The composer renders the row below its input; the canvas must
+	 * do the same, and these assertions are about that shape rather than about a
+	 * comment claiming it.
+	 */
+	assert.ok(
+		!canvas.includes(": dictationFailure !== null ?"),
+		"the failure row is not the ternary arm that replaces the textarea",
+	);
+	assert.ok(
+		canvas.indexOf("<textarea") !== -1 &&
+			canvas.indexOf("<textarea") < canvas.indexOf("data-dictation-retry"),
+		"the canvas renders the row after the textarea, not in its place",
 	);
 	assert.ok(
 		canvas.includes("[audioBlob, handleSendAudio, dictationRetry]"),
 		"the retry nudge re-arms the same auto-send effect rather than adding a second send path",
 	);
+	/*
+	 * F6: THE TAKE SURVIVES A FAILURE, asserted on the branches rather than on the
+	 * first textual occurrence of two strings. The old check compared the index of
+	 * the first `setAudioBlob(null)` with the index of the failure line, which a
+	 * clear placed immediately BEFORE that line - inside the catch - would have
+	 * passed: it pinned order of first occurrences, not the success path.
+	 */
+	const handlerStart = canvas.indexOf("const handleSendAudio");
 	assert.ok(
-		// The blob is cleared on success only, so a failed take still has its bytes.
-		canvas.indexOf("setAudioBlob(null)") <
-			canvas.indexOf("setDictationFailure(transcriptionFailureMessage(error))"),
-		"the take survives a failure; it is cleared only on the success path above it",
+		handlerStart !== -1,
+		"the canvas's send path is where the test looks",
+	);
+	const tryStart = canvas.indexOf("try {", handlerStart);
+	const catchStart = canvas.indexOf("} catch (error) {", tryStart);
+	const finallyStart = canvas.indexOf("} finally {", catchStart);
+	assert.ok(
+		tryStart !== -1 && catchStart > tryStart && finallyStart > catchStart,
+		"the send path's try/catch/finally are found in order",
+	);
+	const successArm = canvas.slice(tryStart, catchStart);
+	const failureArm = canvas.slice(catchStart, finallyStart);
+	assert.ok(
+		successArm.includes("setAudioBlob(null)"),
+		"the success path retires the take",
+	);
+	assert.ok(
+		!failureArm.includes("setAudioBlob(null)"),
+		"the failure arm must not clear the take, wherever in it the clear is written",
 	);
 	assert.ok(
 		canvas.includes('t("ui.common.actions.retry")'),
@@ -580,25 +780,66 @@ test("both dictation surfaces take the retrying client, and the composer keeps t
 	);
 });
 
-test("no translation work is owed: the row reuses audited copy", async () => {
+test("the retained-take sentences are keyed and translated, not inline English", async () => {
 	/*
-	 * THE LEDGER DECIDES THE COPY (deliberate, and worth stating because the first
-	 * cut of this row did the opposite). `check-i18n:catalogues` requires every new
-	 * English key to exist in EVERY shipped locale, with an independent auditor's
-	 * receipt per file - so two new keys are eight translated files and eight
-	 * audits, a translation workstream of its own. The row therefore shows the
-	 * failure SENTENCE the shared mapper already choses (all dictation copy is
-	 * English-only today, which is why the toasts carry it) and a control labelled
-	 * with `ui.common.actions.retry`, a key every locale already ships and has had
-	 * audited. Nothing new to translate, and the sentence stays in one place.
+	 * D5, AND WHY THIS TEST REPLACES ITS PREDECESSOR. The old test asserted that
+	 * NO translation was owed - that the row reused audited copy and added no
+	 * key. That was the decision, and review round 1 (D5) overturned it: the
+	 * control was keyed while the sentence beside it was hardcoded English, so
+	 * every non-English locale rendered a translated button under an English
+	 * sentence. The sentence is now keyed, and this asserts the thing that used to
+	 * be argued from the ledger: both keys exist in English, both exist in every
+	 * gated locale, and the module reads them through `t()` rather than carrying
+	 * the literals.
 	 */
-	const catalogue = JSON.parse(
+	const en = JSON.parse(
 		await readFile("src/i18n/catalogues/en/ui.chat.composer.json", "utf8"),
 	);
+	const toast = en["ui.chat.composer.dictation_failed_transient"];
+	const row = en["ui.chat.composer.dictation_failed_transient_take_kept"];
 	assert.equal(
-		catalogue["ui.chat.composer.dictation_take_kept"],
-		undefined,
-		"the withdrawn keys must not linger in the catalogue",
+		toast,
+		"Dictation failed: the transcription service had a temporary fault. Try again.",
+	);
+	assert.match(row, ROW_SAYS_TAKE_KEPT);
+	assert.match(row, ROW_NAMES_CONTROL);
+	const languages = JSON.parse(await readFile("i18n/languages.json", "utf8"));
+	const gated = languages.languages.filter(
+		(entry) => entry.status === "supported",
+	);
+	assert.ok(gated.length > 0, "the manifest names gated locales");
+	for (const { code } of gated) {
+		const target = JSON.parse(
+			await readFile(
+				`src/i18n/catalogues/${code}/ui.chat.composer.json`,
+				"utf8",
+			),
+		);
+		for (const key of [
+			"ui.chat.composer.dictation_failed_transient",
+			"ui.chat.composer.dictation_failed_transient_take_kept",
+		]) {
+			assert.equal(
+				typeof target[key],
+				"string",
+				`${code} must carry ${key} (no coverage-allowance entry covers it)`,
+			);
+			assert.ok(
+				target[key].trim() !== "" && target[key] !== en[key],
+				`${code} ${key} must be translated, not copied English`,
+			);
+		}
+	}
+	const module = await readFile(
+		"src/renderer/src/shared/api/local-operator/transcription-failure.ts",
+		"utf8",
+	);
+	assert.ok(
+		module.includes('t("ui.chat.composer.dictation_failed_transient")') &&
+			module.includes(
+				't("ui.chat.composer.dictation_failed_transient_take_kept")',
+			),
+		"the module reads both sentences from the catalogue",
 	);
 	const common = JSON.parse(
 		await readFile("src/i18n/catalogues/en/ui.common.actions.json", "utf8"),

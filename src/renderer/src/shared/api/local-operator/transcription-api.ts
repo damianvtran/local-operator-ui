@@ -46,12 +46,35 @@ export interface TranscriptionRetryOptions {
 		error: unknown;
 	}) => void;
 	/** The wait itself. Tests inject one that resolves immediately. */
-	sleep?: (ms: number) => Promise<void>;
+	sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
+	/**
+	 * The surface's lifetime. A retry burst stops at the next check when this
+	 * aborts, and a wait in progress resolves at once rather than leaving its
+	 * timer armed (#1087 review round 1, F4).
+	 */
+	signal?: AbortSignal;
 }
 
-const defaultSleep = (ms: number) =>
+/**
+ * The wait, with the abort honoured for its whole duration.
+ *
+ * The timer is cleared on abort rather than left to fire: the caller has gone,
+ * and a timer that outlives it is the thing F4 was about even when the promise
+ * it would resolve is already settled.
+ */
+const defaultSleep = (ms: number, signal?: AbortSignal) =>
 	new Promise<void>((resolve) => {
-		setTimeout(resolve, ms);
+		if (signal?.aborted) {
+			resolve();
+			return;
+		}
+		const settle = () => {
+			clearTimeout(timer);
+			signal?.removeEventListener("abort", settle);
+			resolve();
+		};
+		const timer = setTimeout(settle, ms);
+		signal?.addEventListener("abort", settle, { once: true });
 	});
 
 /** What the policy decided about one failure: wait this long, then send again. */
@@ -185,6 +208,13 @@ export const TranscriptionApi = {
 	 * `params.file` is re-read per attempt from the same immutable `File`, so the
 	 * bytes are the SAME bytes and nothing is re-encoded or re-recorded between
 	 * attempts.
+	 *
+	 * THE BURST BELONGS TO THE SURFACE THAT STARTED IT (#1087 review round 1, F4).
+	 * `options.signal` is checked before every send and before every wait, so a
+	 * closed editor or a navigated-away composer stops the burst instead of issuing
+	 * the remaining requests and applying their result to state nobody is watching.
+	 * The failure the caller sees is the abort itself, not the last refusal: the
+	 * surface checks its own signal and stays silent.
 	 */
 	async createTranscriptionWithRetry(
 		baseUrl: string,
@@ -192,7 +222,9 @@ export const TranscriptionApi = {
 		options: TranscriptionRetryOptions = {},
 	): Promise<CRUDResponse<RadientTranscriptionResponseData>> {
 		const sleep = options.sleep ?? defaultSleep;
+		const { signal } = options;
 		for (let attempt = 1; ; attempt += 1) {
+			signal?.throwIfAborted();
 			try {
 				return await TranscriptionApi.createTranscription(baseUrl, params);
 			} catch (error) {
@@ -204,7 +236,8 @@ export const TranscriptionApi = {
 				const plan = planTranscriptionRetry(error, attempt);
 				if (plan === null) throw error;
 				options.onRetry?.({ ...plan, error });
-				await sleep(plan.delayMs);
+				await sleep(plan.delayMs, signal);
+				signal?.throwIfAborted();
 			}
 		}
 	},

@@ -16,6 +16,8 @@
 	"ui.chat.composer.starting_recording": "Iniciando grabación",
 	"ui.chat.composer.start_recording_hint": "Iniciar grabación ({shortcut} o mantén {pushToTalk})",
 	"ui.chat.composer.processing_audio": "Procesando audio",
+	"ui.chat.composer.dictation_failed_transient": "Error de dictado: el servicio de transcripción sufrió un fallo temporal. Vuelve a intentarlo.",
+	"ui.chat.composer.dictation_failed_transient_take_kept": "Error de dictado: el servicio de transcripción sufrió un fallo temporal. Tu grabación se conserva: Reintentar la envía de nuevo.",
 	"ui.chat.composer.welcome": "¿En qué puedo ayudarte hoy?",
 	"ui.chat.composer.delivery_remedies_hint": "El mensaje que no se pudo entregar tiene los controles Enviar de nuevo y Editar en la conversación, encima de este cuadro: pulsa Mayús+Tab para llegar a ellos.",
 	"ui.chat.composer.secret_ask_notice": "El agente está pidiendo un secreto. Escríbelo en el panel de consultas; puedes seguir chateando mientras tanto.",

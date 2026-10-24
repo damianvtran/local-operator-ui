@@ -2,7 +2,9 @@ import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { TranscriptionApi } from "@shared/api/local-operator/transcription-api";
 import {
 	EMPTY_TRANSCRIPTION_MESSAGE,
+	isTransientTranscriptionFailure,
 	transcriptionFailureMessage,
+	transcriptionFailureRowMessage,
 } from "@shared/api/local-operator/transcription-failure";
 import type {
 	AgentEditFileRequest,
@@ -36,6 +38,7 @@ import {
 	Check,
 	ChevronLeft,
 	ChevronRight,
+	CircleAlert,
 	Mic,
 	Paperclip,
 	Send,
@@ -178,6 +181,19 @@ export const InlineEdit: FC<InlineEditProps> = ({
 	 */
 	const [dictationFailure, setDictationFailure] = useState<string | null>(null);
 	const [dictationRetry, setDictationRetry] = useState(0);
+	/*
+	 * THE BURST BELONGS TO THIS POPOVER (#1087 review round 1, F4). Closing the
+	 * editor unmounts it and aborts the controller; a newer send supersedes it.
+	 * Without this the burst kept issuing requests after the editor was gone and
+	 * applied the transcript to state nothing was showing.
+	 */
+	const transcriptionAbortRef = useRef<AbortController | null>(null);
+	useEffect(
+		() => () => {
+			transcriptionAbortRef.current?.abort();
+		},
+		[],
+	);
 	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 	const audioChunksRef = useRef<Blob[]>([]);
 	const [platform, setPlatform] = useState("");
@@ -455,6 +471,14 @@ export const InlineEdit: FC<InlineEditProps> = ({
 
 	const handleSendAudio = useCallback(async () => {
 		if (!audioBlob) return;
+		/*
+		 * ONE BURST AT A TIME, bounded to this popover (#1087 review round 1, F4).
+		 * The editor unmounts on Escape/X, and a burst that kept running would
+		 * still apply its transcript to state nobody is looking at.
+		 */
+		transcriptionAbortRef.current?.abort();
+		const controller = new AbortController();
+		transcriptionAbortRef.current = controller;
 
 		try {
 			setIsTranscribing(true);
@@ -474,6 +498,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 					}),
 				},
 				{
+					signal: controller.signal,
 					onRetry: ({ attempt, total, delayMs, error }) => {
 						console.warn(
 							`Transcription attempt ${attempt}/${total} failed with a transient upstream fault; retrying in ${delayMs} ms.`,
@@ -500,21 +525,36 @@ export const InlineEdit: FC<InlineEditProps> = ({
 			// sit over a transcript that already arrived.
 			setDictationFailure(null);
 		} catch (error) {
+			/*
+			 * AN ABORTED BURST IS NOT A FAILURE TO REPORT: the editor is gone, or a
+			 * newer take replaced this one. A toast about it would outlive the state
+			 * it describes.
+			 */
+			if (controller.signal.aborted) return;
 			// The raw server message stays on the console; the surface names the cause
 			// in a sentence a person can act on (see
 			// `transcriptionFailureMessage`), because "please try again" cannot fix
 			// an account with no credits or a refused sign-in.
 			console.error("Error transcribing audio:", error);
 			/*
-			 * THE SENTENCE IS KEPT, NOT JUST SHOWN. The toast dismisses; the operator
-			 * who dismissed it, or who looked away while it timed out, still needs to
-			 * know why the take did not go and what the next step is. The row below
-			 * carries both, and `audioBlob` still holds the bytes it would spend.
+			 * THE SENTENCE IS KEPT, NOT JUST SHOWN, AND ONLY WHEN RETRYING CAN HELP
+			 * (#1087 review round 1, F1/F2; design round 1, D4).
+			 *
+			 * The toast dismisses, so the row exists to carry the offer past it. But
+			 * a refusal cannot be fixed by sending the same bytes again, and a row
+			 * whose only control reproduces the refusal is the "try again" lie this
+			 * copy exists to delete - the composer already gates on the same class.
+			 * So the row is the transient class's, and the toast is the refusal's.
 			 */
-			setDictationFailure(transcriptionFailureMessage(error));
-			showErrorToast(transcriptionFailureMessage(error));
+			const transient = isTransientTranscriptionFailure(error);
+			setDictationFailure(
+				transient ? transcriptionFailureRowMessage(error) : null,
+			);
+			if (!transient) showErrorToast(transcriptionFailureMessage(error));
 		} finally {
-			setIsTranscribing(false);
+			if (transcriptionAbortRef.current === controller) {
+				setIsTranscribing(false);
+			}
 		}
 	}, [audioBlob]);
 
@@ -907,46 +947,6 @@ export const InlineEdit: FC<InlineEditProps> = ({
 							</span>
 							<WaveformAnimation />
 						</div>
-					) : dictationFailure !== null ? (
-						/*
-						 * THE OFFER, in the slot the transcribing row vacates (#1087).
-						 *
-						 * It is a row and not a toast action because a toast dismisses,
-						 * and the take it would spend is already in hand - the composer
-						 * says the same and shows the same control, so the two surfaces
-						 * of one relay do not disagree about what a spent retry leaves
-						 * the operator holding. Gated on `!isTranscribing` so the
-						 * sentence never sits over a take that is on its way again.
-						 */
-						<div
-							data-dictation-retry
-							className={cn(
-								"flex min-h-[50px] flex-1 flex-col items-start justify-center gap-1 px-1.5 py-2",
-							)}
-						>
-							<span className={cn("text-body-sm text-ink-muted")}>
-								{dictationFailure}
-							</span>
-							<Button
-								type="button"
-								size="sm"
-								variant="ghost"
-								disabled={isTranscribing || audioBlob === null}
-								onClick={() => {
-									/*
-									 * Clear first, then nudge: the row goes away the moment the
-									 * retry is accepted, and the effect above re-runs the one send
-									 * path from the retained blob. Without a blob there is nothing
-									 * to spend, so the button stays disabled rather than becoming
-									 * a control that does nothing.
-									 */
-									setDictationFailure(null);
-									setDictationRetry((n) => n + 1);
-								}}
-							>
-								{t("ui.common.actions.retry")}
-							</Button>
-						</div>
 					) : (
 						<textarea
 							ref={textareaRef}
@@ -975,6 +975,66 @@ export const InlineEdit: FC<InlineEditProps> = ({
 							}}
 						/>
 					)}
+					{/*
+					 * THE OFFER, BELOW THE FIELD RATHER THAN IN ITS PLACE (#1087 review
+					 * round 1, F1; design round 1, D4).
+					 *
+					 * This row used to be the third arm of the ternary above, so ANY failure
+					 * replaced the `<textarea>`: the operator's typed prompt disappeared,
+					 * the field could not be typed into, and the only exit (close) unmounted
+					 * the editor and lost the prompt with no other store. The composer never
+					 * had that bug - it renders the row BELOW its input - so the two surfaces
+					 * of one relay disagreed about whether the field survives a failure.
+					 * It is additive here now: the textarea stays mounted and editable, and
+					 * this row explains the failed take beside it.
+					 *
+					 * Transient failures only, and only while the bytes are still there to
+					 * spend (`audioBlob`): the composer gates on both, and a refusal has no
+					 * retry that could change its answer.
+					 */}
+					{dictationFailure !== null &&
+						!isTranscribing &&
+						audioBlob !== null && (
+							<div
+								data-dictation-retry
+								className={cn("flex items-center gap-2 px-1.5 py-1")}
+							>
+								{/* An error register, not the metadata one (design round 1, D6). */}
+								<CircleAlert
+									aria-hidden="true"
+									className={cn("size-3.5 shrink-0 text-danger")}
+								/>
+								<span className={cn("text-body-sm text-ink-muted")}>
+									{dictationFailure}
+								</span>
+								<Button
+									type="button"
+									size="sm"
+									variant="link"
+									/*
+									 * A real target and a visible affordance (design round 1, D3),
+									 * matching the composer's control: the `link` variant's
+									 * `h-auto p-0` collapses to the text line box, and the
+									 * underline only appeared on hover.
+									 */
+									className={cn("h-7 shrink-0 px-2 underline")}
+									disabled={isTranscribing || audioBlob === null}
+									onClick={() => {
+										/*
+										 * Clear first, then nudge: the row goes away the moment the
+										 * retry is accepted, and the effect above re-runs the one send
+										 * path from the retained blob. Without a blob there is nothing
+										 * to spend, so the button stays disabled rather than becoming
+										 * a control that does nothing.
+										 */
+										setDictationFailure(null);
+										setDictationRetry((n) => n + 1);
+									}}
+								>
+									{t("ui.common.actions.retry")}
+								</Button>
+							</div>
+						)}
 					{/* Attach and dictate are the same two affordances the chat
 					    composer carries, so they read the same: neutral until you
 					    reach for them, with the accent left for the primary action.

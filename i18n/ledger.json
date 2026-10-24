@@ -2542,8 +2542,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
-			"target_sha256": "a5c64a6dad8d7c0519ba4c8e81a4dc65c4fd92f65b93d1aeca245ffcedb340c1",
+			"source_sha256": "12ebdb50d49dfe5e7101fc29293485d5366f5a52ae7ac3c7dca9ef985fcde8c9",
+			"target_sha256": "809cb71b2b6394758f0f2a3814b8350c7c5647b54342691b4c1b55f0c0c88917",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -2552,23 +2552,49 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
-					"result": "clean",
-					"instance": "bf867ef95b69",
-					"receipt": "i18n/receipts/bf867ef95b69.json",
-					"receipt_sha256": "86b46ebfa009ea531acaffdf851dff6741db3829fc8667c2480ca923c32831ce",
-					"scope": "76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..0b52d734f7220a58861d98855f2685f9074110d8; full independent source-copy audit",
-					"note": "Automatic fallback from anthropic/claude-sonnet-5-5 before audit; actual model openai/gpt-6.1-sol. Source-copy audit only; separate high-visibility second audit and rendered fit required.",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-24",
+					"result": "clean-with-findings",
+					"instance": "061da45dd19b-es",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
-					}
+					},
+					"receipt": "i18n/receipts/061da45dd19b-es.json",
+					"receipt_sha256": "4dc06723f73f87b2e6b8d42b7bb8520bfcde8b0f98ef633098a3f08dcb0a686c",
+					"scope": "Round 2 at 2026-10-24 on the remediation tree: the two retained-take keys in ui.chat.composer, and round 1's formatting and copy findings re-checked against the current bytes.",
+					"note": "Two new keys (toast sentence and retained-take row). Round 2 audit passed; minor/nit findings recorded, not churned."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+					"target_sha256": "a5c64a6dad8d7c0519ba4c8e81a4dc65c4fd92f65b93d1aeca245ffcedb340c1",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "bf867ef95b69",
+							"receipt": "i18n/receipts/bf867ef95b69.json",
+							"receipt_sha256": "86b46ebfa009ea531acaffdf851dff6741db3829fc8667c2480ca923c32831ce",
+							"scope": "76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..0b52d734f7220a58861d98855f2685f9074110d8; full independent source-copy audit",
+							"note": "Automatic fallback from anthropic/claude-sonnet-5-5 before audit; actual model openai/gpt-6.1-sol. Source-copy audit only; separate high-visibility second audit and rendered fit required.",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							}
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
@@ -2902,8 +2928,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
-			"target_sha256": "c52bea44cef9c409b6ccc1ac16eaa685500bc25bc8a27aa9740977c369b7dda0",
+			"source_sha256": "12ebdb50d49dfe5e7101fc29293485d5366f5a52ae7ac3c7dca9ef985fcde8c9",
+			"target_sha256": "bc9957b66eb9237f9dd95883a6ffcdc7909534d11f4071443f28a70b7cce9f42",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -2912,23 +2938,49 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
-					"instance": "7c40d1c357cf",
-					"result": "clean-with-findings",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-24",
+					"result": "clean",
+					"instance": "061da45dd19b-fr",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7c40d1c357cf-round2.json",
-					"receipt_sha256": "bb0dd9cf343d3c859d940a5b6be5274972456cd386589af0535486a598dbec9e",
-					"scope": "Full round 1 76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..6f04ff634be8863dbb3b7f13fe3352e666143d33; delta 6f04ff634be8863dbb3b7f13fe3352e666143d33..718219be27f3b17e605f2c2af35a20c0c19af88e; unchanged coverage retained",
-					"note": "Actual model openai/gpt-6.1-sol; automatic Anthropic quota fallback disclosed in receipt. F3/F4 remain nonblocking notes."
+					"receipt": "i18n/receipts/061da45dd19b-fr.json",
+					"receipt_sha256": "106dacd3753a98bbb4899fd7608557d4252378b6a791cc3deecb76ca5d74d411",
+					"scope": "Round 2 at 2026-10-24 on the remediation tree: the two retained-take keys in ui.chat.composer, and round 1's formatting and copy findings re-checked against the current bytes.",
+					"note": "Two new keys (toast sentence and retained-take row). Round 2 audit passed; minor/nit findings recorded, not churned."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+					"target_sha256": "c52bea44cef9c409b6ccc1ac16eaa685500bc25bc8a27aa9740977c369b7dda0",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"instance": "7c40d1c357cf",
+							"result": "clean-with-findings",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7c40d1c357cf-round2.json",
+							"receipt_sha256": "bb0dd9cf343d3c859d940a5b6be5274972456cd386589af0535486a598dbec9e",
+							"scope": "Full round 1 76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..6f04ff634be8863dbb3b7f13fe3352e666143d33; delta 6f04ff634be8863dbb3b7f13fe3352e666143d33..718219be27f3b17e605f2c2af35a20c0c19af88e; unchanged coverage retained",
+							"note": "Actual model openai/gpt-6.1-sol; automatic Anthropic quota fallback disclosed in receipt. F3/F4 remain nonblocking notes."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -3330,8 +3382,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
-			"target_sha256": "3cfc2c160b8ff30cd7e0a46a6fadf3b4573377f922dbaa887861974b90511956",
+			"source_sha256": "12ebdb50d49dfe5e7101fc29293485d5366f5a52ae7ac3c7dca9ef985fcde8c9",
+			"target_sha256": "61e92c6ebe9b057835f22d37a56a043b33a8e23850e476cec90b91cb6361308c",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -3341,23 +3393,49 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-24",
 					"result": "clean",
-					"instance": "4c5ca9d6810d",
-					"receipt": "i18n/receipts/4c5ca9d6810d.json",
-					"receipt_sha256": "92f91f7b4425ae15ecf4a5f55f7ff776108095d483bd64163b782eb1c2da0269",
-					"scope": "Full independent copy audit, all keys at recorded source/target hashes",
+					"instance": "061da45dd19b-ru",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"note": "Automatic fallback from anthropic/claude-sonnet-5-5 due to quota. Copy audit only; rendered and second high-visibility audit gates remain separate."
+					"receipt": "i18n/receipts/061da45dd19b-ru.json",
+					"receipt_sha256": "86f5dcf01c135d0b06ee943934108e35e72d6288730d24d24532e5346f650f81",
+					"scope": "Round 2 at 2026-10-24 on the remediation tree: the two retained-take keys in ui.chat.composer, and round 1's formatting and copy findings re-checked against the current bytes.",
+					"note": "Two new keys (toast sentence and retained-take row). Round 2 audit passed; minor/nit findings recorded, not churned."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+					"target_sha256": "3cfc2c160b8ff30cd7e0a46a6fadf3b4573377f922dbaa887861974b90511956",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "4c5ca9d6810d",
+							"receipt": "i18n/receipts/4c5ca9d6810d.json",
+							"receipt_sha256": "92f91f7b4425ae15ecf4a5f55f7ff776108095d483bd64163b782eb1c2da0269",
+							"scope": "Full independent copy audit, all keys at recorded source/target hashes",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"note": "Automatic fallback from anthropic/claude-sonnet-5-5 due to quota. Copy audit only; rendered and second high-visibility audit gates remain separate."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
@@ -10591,8 +10669,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
-			"target_sha256": "0c79e441c7bd7521c2b6bb119d6dfcabc1a685833a14d5c7475e393fbd70cd0d",
+			"source_sha256": "12ebdb50d49dfe5e7101fc29293485d5366f5a52ae7ac3c7dca9ef985fcde8c9",
+			"target_sha256": "ad6aa6e0381c1da74c12396f2ace960f575f09214d83180bfc7e1bc645f416b4",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -10601,21 +10679,21 @@
 			},
 			"auditors": [
 				{
-					"agent": "reviewer",
+					"agent": "i18n-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-18",
+					"date": "2026-10-24",
 					"result": "clean",
-					"instance": "4c6c213dd0d8",
+					"instance": "061da45dd19b-zh-cn",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4c6c213dd0d8.json",
-					"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
-					"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks; audited bytes are 46420b7eb2's, replayed byte-identically as 30566d8100.",
-					"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
+					"receipt": "i18n/receipts/061da45dd19b-zh-cn.json",
+					"receipt_sha256": "844ff5392ac0a6ee92f2d021658cd5c511f5818794f521c4c595bd9a92a84346",
+					"scope": "Round 2 at 2026-10-24 on the remediation tree: the two retained-take keys in ui.chat.composer, and round 1's formatting and copy findings re-checked against the current bytes.",
+					"note": "Two new keys (toast sentence and retained-take row). Round 2 audit passed; minor/nit findings recorded, not churned."
 				}
 			],
 			"status": "audited",
@@ -10640,6 +10718,30 @@
 							"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
 							"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
 							"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+					"target_sha256": "0c79e441c7bd7521c2b6bb119d6dfcabc1a685833a14d5c7475e393fbd70cd0d",
+					"auditors": [
+						{
+							"agent": "reviewer",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "4c6c213dd0d8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4c6c213dd0d8.json",
+							"receipt_sha256": "99e0592c9ae5be34e0f97e6daa70acad9bf13cc65782598311f187ecb8744401",
+							"scope": "Register-only audit of the re-derived zh-CN rows: 141 changed strings read natively, 158 您 -> 0, mechanical key/ICU/punctuation checks; audited bytes are 46420b7eb2's, replayed byte-identically as 30566d8100.",
+							"note": "Receipt 4c6c213dd0d8. Superseded entries retain the prior full audits."
 						}
 					],
 					"status": "audited"
@@ -12228,8 +12330,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
-			"target_sha256": "a0c2fa0c3a94869933de815b2657af69196bfaccfc7463d2f98dd84cfb4e3cd3",
+			"source_sha256": "12ebdb50d49dfe5e7101fc29293485d5366f5a52ae7ac3c7dca9ef985fcde8c9",
+			"target_sha256": "b23713ea4a4f1c0ce0fbd624bfa41386437079644fca0784d66aa357c2e79b22",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -12238,23 +12340,49 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
-					"result": "clean",
-					"instance": "4f53d9a1df52",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-24",
+					"result": "clean-with-findings",
+					"instance": "061da45dd19b-hi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/4f53d9a1df52.json",
-					"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
-					"scope": "hi ui.chat.composer vs en source — round 1 independent full pass, 34 keys",
-					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+					"receipt": "i18n/receipts/061da45dd19b-hi.json",
+					"receipt_sha256": "12d806daf39a1dbd02f45a9c1a2c5a037afbdd77a9ade69d6b3949787dab684d",
+					"scope": "Round 2 at 2026-10-24 on the remediation tree: the two retained-take keys in ui.chat.composer, and round 1's formatting and copy findings re-checked against the current bytes.",
+					"note": "Two new keys (toast sentence and retained-take row). Round 2 audit passed; minor/nit findings recorded, not churned."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+					"target_sha256": "a0c2fa0c3a94869933de815b2657af69196bfaccfc7463d2f98dd84cfb4e3cd3",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "4f53d9a1df52",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4f53d9a1df52.json",
+							"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
+							"scope": "hi ui.chat.composer vs en source — round 1 independent full pass, 34 keys",
+							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
@@ -15493,8 +15621,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
-			"target_sha256": "66aa8330c2e0d6de8adc509c9dce22cf092d37b906f1849eda0b4c684b231bbb",
+			"source_sha256": "12ebdb50d49dfe5e7101fc29293485d5366f5a52ae7ac3c7dca9ef985fcde8c9",
+			"target_sha256": "f4fca37afff69f7c56b407cd5eb7d95a8a5afeb24fc726127d0938a6230ad2af",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -15503,23 +15631,49 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
-					"result": "clean",
-					"instance": "6a1c5f8e3d29",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-24",
+					"result": "clean-with-findings",
+					"instance": "061da45dd19b-vi",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/6a1c5f8e3d29.json",
-					"receipt_sha256": "b89d416d59d13757353b742e959568d2ff0fd3f8ca34203ad18c4d69af997958",
-					"scope": "full namespace; post-remediation verification of round-1 native audit findings",
-					"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+					"receipt": "i18n/receipts/061da45dd19b-vi.json",
+					"receipt_sha256": "70b1eb87d955229d2287f4e056d759d906d1fc8275a3c69d1a7104559f022d86",
+					"scope": "Round 2 at 2026-10-24 on the remediation tree: the two retained-take keys in ui.chat.composer, and round 1's formatting and copy findings re-checked against the current bytes.",
+					"note": "Two new keys (toast sentence and retained-take row). Round 2 audit passed; minor/nit findings recorded, not churned."
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+					"target_sha256": "66aa8330c2e0d6de8adc509c9dce22cf092d37b906f1849eda0b4c684b231bbb",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "6a1c5f8e3d29",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6a1c5f8e3d29.json",
+							"receipt_sha256": "b89d416d59d13757353b742e959568d2ff0fd3f8ca34203ad18c4d69af997958",
+							"scope": "full namespace; post-remediation verification of round-1 native audit findings",
+							"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
@@ -16596,8 +16750,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.composer",
-			"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
-			"target_sha256": "e43d7b11e77f3bd14f62d419d40b9b7621ceebdc35816a550a6ccc8326eabf7e",
+			"source_sha256": "12ebdb50d49dfe5e7101fc29293485d5366f5a52ae7ac3c7dca9ef985fcde8c9",
+			"target_sha256": "c8fef2ffb838ab3e8ec564768d66c3484ab007784fca1f44ba21f925b78da9a5",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -16606,20 +16760,20 @@
 			"auditors": [
 				{
 					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-24",
 					"result": "clean",
-					"instance": "e97b3d2b7977",
+					"instance": "061da45dd19b-ur",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/e97b3d2b7977.json",
-					"receipt_sha256": "bafa5c6568734126b6f2b871bd7ec4dfc0c4e1c8486e39007ecee7c83aab8e60",
-					"scope": "Post-review remediation delta: welcome gender-neutral fix (M1) at the final bytes.",
-					"note": "Agent-review round 1 M1 fixed; independent post-review audit zero findings."
+					"receipt": "i18n/receipts/061da45dd19b-ur.json",
+					"receipt_sha256": "cc70de16274eedc9893ad1213d658863a42989345deaf8bac59b3033ace5bd2d",
+					"scope": "Round 2 at 2026-10-24 on the remediation tree: the two retained-take keys in ui.chat.composer, and round 1's formatting and copy findings re-checked against the current bytes.",
+					"note": "Two new keys (toast sentence and retained-take row). Round 2 audit passed; minor/nit findings recorded, not churned."
 				}
 			],
 			"status": "audited",
@@ -16644,6 +16798,30 @@
 							"receipt_sha256": "9cf5311d3e87ee9ff90304782aae6ea3a5535cb78213ad107f9f48c737df1d63",
 							"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
 							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "c81a017e28a496b6bdd2f327ec652a21ffc8541d9ae4f48a62e573af833eff93",
+					"target_sha256": "e43d7b11e77f3bd14f62d419d40b9b7621ceebdc35816a550a6ccc8326eabf7e",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "e97b3d2b7977",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/e97b3d2b7977.json",
+							"receipt_sha256": "bafa5c6568734126b6f2b871bd7ec4dfc0c4e1c8486e39007ecee7c83aab8e60",
+							"scope": "Post-review remediation delta: welcome gender-neutral fix (M1) at the final bytes.",
+							"note": "Agent-review round 1 M1 fixed; independent post-review audit zero findings."
 						}
 					],
 					"status": "audited"
