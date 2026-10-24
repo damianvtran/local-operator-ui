@@ -1,0 +1,256 @@
+{
+  "schema": 1,
+  "kind": "translator-provenance",
+  "locale": "hi",
+  "date": "2026-10-24",
+  "agent": "translator",
+  "team": "lopdev",
+  "session": "8912e084cc57",
+  "served_model": "radient/auto",
+  "fallback_used": false,
+  "model_provenance": "All 687 values were authored in this session while it was served by radient/auto. No automatic fallback was reported or used.",
+  "worktree_head": "92d6e07625a21cf03e4890d5318920c6454eb8fc",
+  "status": "translated",
+  "awaiting": "independent i18n auditor pass; ledger rows are added after the audit",
+  "manifest": {
+    "path": "/Users/damian/.local-operator/sessions/8912e084cc57/scratchpad/i18n-hi/en-added.json",
+    "sha256": "454c6fcadee794ef7e7adc38c1c06e0e46dc8b099cabfb499e38cb5304060d89",
+    "base_sha": "92d6e07625a21cf03e4890d5318920c6454eb8fc",
+    "assigned_keys": 687
+  },
+  "source": "agents/hub/onboarding/attachments extraction batch at 92d6e07625a21cf03e4890d5318920c6454eb8fc",
+  "totals": {
+    "files": 13,
+    "keys": 687
+  },
+  "namespaces": {
+    "ui.agents.config.json": {
+      "status": "translated",
+      "keys": 85,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.config.json",
+        "hi": "src/i18n/catalogues/hi/ui.agents.config.json",
+        "context": "src/i18n/catalogues/en/ui.agents.config.context.json"
+      },
+      "sha256": {
+        "en": "0e36bb28caa4f698defc0081ca342d320101ad2a72a421f8f37e9e45ed18b543",
+        "hi": "24bb19ebce0066f8042ccd427e815a23893138ca8da35fafcc073af5e2a02f3d",
+        "context": "b6da114f89f4bd28684b57c71a28def634a910658b098aafd6bf7596eb2ff1c0"
+      }
+    },
+    "ui.agents.detail.json": {
+      "status": "translated",
+      "keys": 93,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.detail.json",
+        "hi": "src/i18n/catalogues/hi/ui.agents.detail.json",
+        "context": "src/i18n/catalogues/en/ui.agents.detail.context.json"
+      },
+      "sha256": {
+        "en": "1b2165d369482a821c996b886b6448fa2148d22a377a5cff71b8e922ef25e168",
+        "hi": "5e5e42a2971d5896422c7c38531bb3790f7b28dbdd17c639ac9873bc3db44518",
+        "context": "7ece71c18c47033554ed342e9cb123aff2c49756b2ce220220dee55cdc09691b"
+      }
+    },
+    "ui.agents.editor.json": {
+      "status": "translated",
+      "keys": 13,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.editor.json",
+        "hi": "src/i18n/catalogues/hi/ui.agents.editor.json",
+        "context": "src/i18n/catalogues/en/ui.agents.editor.context.json"
+      },
+      "sha256": {
+        "en": "fba54b0f049efb6a194c7988bfaa5db161f465e0b04fd049176eac75a13f18d8",
+        "hi": "552b0259c582858426c331b13447db532bf57d005533bf62ed5481cc8d9c7e74",
+        "context": "1f7c05370df84b60664c38d159ee0234d1a5b237dcfd6ce1a984ebd15405d22e"
+      }
+    },
+    "ui.agents.page.json": {
+      "status": "translated",
+      "keys": 46,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.page.json",
+        "hi": "src/i18n/catalogues/hi/ui.agents.page.json",
+        "context": "src/i18n/catalogues/en/ui.agents.page.context.json"
+      },
+      "sha256": {
+        "en": "4fa71557f0bc10b694fe46fca73165eb3f4bbfb1d5aeba737038b2d95b2d249e",
+        "hi": "3b5be49a5b5ac5c9c764546f8f1e77875ddcc6d1a4b9a9e52e96b6d5c7ffcd29",
+        "context": "e28f146a455c37a496c8c957f097ecf31fe77fab7844e50934abf5fcab918996"
+      }
+    },
+    "ui.agents.publication.json": {
+      "status": "translated",
+      "keys": 99,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.publication.json",
+        "hi": "src/i18n/catalogues/hi/ui.agents.publication.json",
+        "context": "src/i18n/catalogues/en/ui.agents.publication.context.json"
+      },
+      "sha256": {
+        "en": "3adfaf52f92fe9635f711cf2d40ca99d983ff5f39a5c33d2d09a0f00b69942a0",
+        "hi": "d8c0de8ad77d6cac1238c89f50b00ec76e4dd7ca046cb637d30311574563791f",
+        "context": "de38867c75f3da573e6dc3aa7dd547efdb056197f9c6562443b61c730bb16ae8"
+      }
+    },
+    "ui.agents.team.json": {
+      "status": "translated",
+      "keys": 51,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.team.json",
+        "hi": "src/i18n/catalogues/hi/ui.agents.team.json",
+        "context": "src/i18n/catalogues/en/ui.agents.team.context.json"
+      },
+      "sha256": {
+        "en": "e7a7b948df5f1afb1108903abf007b71af519c3d4b8efcce767ecbebec0c8243",
+        "hi": "3a90eb33d063c15e7ce827f072a0a7ff607698027e1f3fa058e2d9d742576ca5",
+        "context": "e82fcaa7472a9dbc0d137b281ea49b6dc170946d8a5332339cb450c833796937"
+      }
+    },
+    "ui.agents.upload.json": {
+      "status": "translated",
+      "keys": 53,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.agents.upload.json",
+        "hi": "src/i18n/catalogues/hi/ui.agents.upload.json",
+        "context": "src/i18n/catalogues/en/ui.agents.upload.context.json"
+      },
+      "sha256": {
+        "en": "38863aaca4bc604c2fd4eb9bcba4399761a9cfd57eadab8790dbe037e8643247",
+        "hi": "949435d7a89b5790ef9a1d73813d73d5fb31b0f51acd1f5a55fe0ef2c5e871d6",
+        "context": "6d058be01939c886f0405392aa442febec9696f630709c4cb31a3659cea35c09"
+      }
+    },
+    "ui.hub.agents.json": {
+      "status": "translated",
+      "keys": 94,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.hub.agents.json",
+        "hi": "src/i18n/catalogues/hi/ui.hub.agents.json",
+        "context": "src/i18n/catalogues/en/ui.hub.agents.context.json"
+      },
+      "sha256": {
+        "en": "0498eb7c28af7a72a7973eb2279e2070e5c22bc4d4865c4986e23c983f0162b4",
+        "hi": "92d570affc1876d8874b5dc31ed491537a406f8deea302518fe1a0675d062f0d",
+        "context": "096417e8df4790913be74f7f98d1c991fab26a20fa84a339eb5f4a429e7b27d0"
+      }
+    },
+    "ui.hub.download.json": {
+      "status": "translated",
+      "keys": 4,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.hub.download.json",
+        "hi": "src/i18n/catalogues/hi/ui.hub.download.json",
+        "context": "src/i18n/catalogues/en/ui.hub.download.context.json"
+      },
+      "sha256": {
+        "en": "050698c925d0a7dece278ebf0d50bf8116ae7f99071889eab3643b9bfd1a78d5",
+        "hi": "d7e054aa8a9fda88b8e356ae4514d20e10fe73547142d88bfea94d76330f37ce",
+        "context": "8d1ef3d2771c2a11b936b499c120b0b84044216b5a4ee8d9658269b9e5ba8afa"
+      }
+    },
+    "ui.hub.teams.json": {
+      "status": "translated",
+      "keys": 58,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.hub.teams.json",
+        "hi": "src/i18n/catalogues/hi/ui.hub.teams.json",
+        "context": "src/i18n/catalogues/en/ui.hub.teams.context.json"
+      },
+      "sha256": {
+        "en": "a8ad00d689b74ba21208b99d74bc8c4c1857c036dd08da45c654385594b8ad8c",
+        "hi": "efd99953f4b8e38b3c9250f62871f83f1629064d9e18ec40ae4cb89e9b95f53b",
+        "context": "7deb4f812c60fd757fc48187cc09d0c2fdc4ee568e4d0845e103b4627fa65c09"
+      }
+    },
+    "ui.onboarding.tour.json": {
+      "status": "translated",
+      "keys": 84,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.onboarding.tour.json",
+        "hi": "src/i18n/catalogues/hi/ui.onboarding.tour.json",
+        "context": "src/i18n/catalogues/en/ui.onboarding.tour.context.json"
+      },
+      "sha256": {
+        "en": "4b80ff5ad817bef1842d792414589ff692ce36fac6c3e5d9c4d86a629572022a",
+        "hi": "c36104edfa8765780fb9f244ff7789a6ac99820eb7a2147f4cac0a8077a81bee",
+        "context": "8c9f06997b8a5d3f0ff24ed8fffbf8649b26189f26f915dc9f271785fd32ae1a"
+      }
+    },
+    "ui.hub.json": {
+      "status": "translated",
+      "keys": 6,
+      "added_keys": [
+        "ui.hub.pager.agent_pages",
+        "ui.hub.pager.previous_page",
+        "ui.hub.pager.previous",
+        "ui.hub.pager.next_page",
+        "ui.hub.pager.next",
+        "ui.hub.pager.page_of"
+      ],
+      "note": "Existing Hindi values preserved byte-for-byte; only the listed English keys were added in English key order.",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.hub.json",
+        "hi": "src/i18n/catalogues/hi/ui.hub.json",
+        "context": "src/i18n/catalogues/en/ui.hub.context.json"
+      },
+      "sha256": {
+        "en": "d6a8d4b0257877628ce579f21208ce600c04e024a28419f4c8a4b56759b8efcc",
+        "hi": "2508e77410a4aeb5fef958fc0cdec878fc7589322e1db35550bec9d445520b9c",
+        "context": "530a59be462d2a94e726de147f93d6b69212d78f83a0e3bd4fda80f67ac395bc"
+      }
+    },
+    "ui.providers.json": {
+      "status": "translated",
+      "keys": 1,
+      "added_keys": [
+        "ui.providers.provider_detail.sign_in_again"
+      ],
+      "note": "Existing Hindi values preserved byte-for-byte; only the listed English keys were added in English key order.",
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.providers.json",
+        "hi": "src/i18n/catalogues/hi/ui.providers.json",
+        "context": "src/i18n/catalogues/en/ui.providers.context.json"
+      },
+      "sha256": {
+        "en": "126a999fb9b26d8f3e2e17231b5d5d5b430d55cd2d468c8b3323d3a041a86632",
+        "hi": "11e860c206ecbc15719476d6ebad57c06d29e1a99d7938fcfe48ecf2b830bced",
+        "context": "7727e8aa71e2386919354da768ce610ae4dcefc138b4a87ff50b906803d61b9b"
+      }
+    }
+  },
+  "checks": {
+    "generate_check": "PASS: node scripts/i18n/generate.mjs --check reports keys.gen.ts byte-identical to a fresh generation (keys.gen.ts carries the new hi bundles).",
+    "locale_parity": "PASS: node --test --test-name-pattern='\\[hi\\]' scripts/i18n/locale-parity.test.mjs — 6/6 tests, 0 failures (key completeness, no unknown keys, placeholder integrity, no English stubs).",
+    "icu_verification": "PASS: per-key script over all 687 added keys — ICU parse, argument names/styles, select arms, plural one/other CLDR categories, ::group-off skeletons, markup tag sequences, NFC, no manual bidi controls, and rendered 0/1/2/5 through intl-messageformat.",
+    "context_parity": "PASS: node scripts/i18n/context-parity.mjs — ok with the existing shrink-only allowance; no context sidecars were edited."
+  },
+  "terms": {
+    "definition": "परिभाषा",
+    "delegation": "प्रत्यायोजन",
+    "effort tier": "प्रयास श्रेणी",
+    "listing": "लिस्टिंग",
+    "delist": "हब से हटाएँ",
+    "favourite": "पसंदीदा",
+    "like": "लाइक",
+    "brief": "ब्रीफ़",
+    "roster": "सदस्य सूची",
+    "hub": "हब",
+    "agent hub": "एजेंट हब",
+    "install": "इंस्टॉल",
+    "pull": "pull",
+    "backend": "बैकएंड",
+    "composer": "कंपोज़र",
+    "sign in": "साइन इन",
+    "Team plan": "Team प्लान",
+    "proactive": "पहल करने वाला",
+    "reactive": "जवाब देने वाला",
+    "subagent": "उप-एजेंट"
+  },
+  "overflow_flags": [
+    "ui.hub.teams.version: \"संस्करण {version}\" is wider than the English \"v{version}\" badge; if the chip is fixed-width, it may wrap.",
+    "Short labels shortened for fit: ui.agents.config.configured → \"कॉन्फ़िगर\"; ui.agents.detail.meta_delegates → \"सौंपता है\"."
+  ],
+  "notes": "The English delta is 687 keys, not 700: 680 in eleven new hi namespaces plus 7 additions to ui.hub and ui.providers. Existing Hindi values in those two files are byte-identical to the base."
+}

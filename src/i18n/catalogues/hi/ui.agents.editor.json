@@ -1,0 +1,15 @@
+{
+	"ui.agents.editor.cancel": "रद्द करें",
+	"ui.agents.editor.creating": "बनाया जा रहा है…",
+	"ui.agents.editor.discard_changes": "बदलाव छोड़ें",
+	"ui.agents.editor.discard_unsaved": "आपके बिना सहेजे बदलाव छोड़ें?",
+	"ui.agents.editor.empty": "अभी यहाँ कुछ नहीं है।",
+	"ui.agents.editor.keep_editing": "संपादन जारी रखें",
+	"ui.agents.editor.retry": "फिर कोशिश करें",
+	"ui.agents.editor.retrying": "फिर कोशिश हो रही है…",
+	"ui.agents.editor.save_changes": "बदलाव सहेजें",
+	"ui.agents.editor.saving": "सहेजा जा रहा है…",
+	"ui.agents.editor.show_all": "सभी दिखाएँ",
+	"ui.agents.editor.show_less": "कम दिखाएँ",
+	"ui.agents.editor.unsaved_changes": "बिना सहेजे बदलाव"
+}
