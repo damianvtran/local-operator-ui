@@ -1,0 +1,11 @@
+{
+	"ui.chat.transcript_copy.menu.copy_text": "टेक्स्ट कॉपी करें",
+	"ui.chat.transcript_copy.menu.copy_markdown": "Markdown के रूप में कॉपी करें",
+	"ui.chat.transcript_copy.menu.copy_selection": "चयन कॉपी करें",
+	"ui.chat.transcript_copy.toast.copied_markdown": "Markdown के रूप में कॉपी हुआ",
+	"ui.chat.transcript_copy.toast.copied_selection": "चयन कॉपी हुआ",
+	"ui.chat.transcript_copy.row.your_message": "आपका संदेश",
+	"ui.chat.transcript_copy.row.agent_message": "एजेंट का संदेश",
+	"ui.chat.transcript_copy.selection.copy": "चयन कॉपी करें",
+	"ui.chat.transcript_copy.selection.toolbar": "चयन की कार्रवाइयाँ"
+}

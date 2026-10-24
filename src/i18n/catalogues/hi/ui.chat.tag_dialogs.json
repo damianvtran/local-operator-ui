@@ -1,0 +1,6 @@
+{
+	"ui.chat.tag_dialogs.deleted_name": "“{name}” हटाया गया",
+	"ui.chat.tag_dialogs.created_assigned": "“{name}” बनाकर इस बातचीत में जोड़ दिया गया",
+	"ui.chat.tag_dialogs.assign_created_failed": "“{name}” बन गया, लेकिन इसे इस बातचीत में नहीं जोड़ा जा सका। जोड़ने के लिए सूची से इसे चुनें।",
+	"ui.chat.tag_dialogs.changed_elsewhere": "टैग कहीं और बदले गए। सूची अब इस बातचीत के मौजूदा टैग दिखा रही है; अपना बदलाव लागू करने के लिए फिर चुनें।"
+}

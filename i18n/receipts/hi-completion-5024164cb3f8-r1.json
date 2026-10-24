@@ -1,0 +1,368 @@
+{
+  "auditor": "translation-auditor",
+  "agent": "translation-auditor",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "actual_model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "fallback_usage": "none",
+  "model_note": "Actual served model for this audit: openrouter/moonshotai/kimi-k3.1-pro. No provider fallback was disclosed or used.",
+  "instance": "hi-completion-5024164cb3f8-r1",
+  "session": "5024164cb3f8",
+  "team": "lopdev",
+  "date": "2026-10-23",
+  "locale": "hi",
+  "round": 1,
+  "source_head": "678ff11a7a201c345ff6134c078b382ef8226477",
+  "translator_session": "93388133b0e0",
+  "status": "changes_requested",
+  "result": "changes_requested",
+  "keys_audited": 170,
+  "scope": "Independent round-1 native Hindi audit of all 170 newly committed keys in 12 namespaces at 678ff11a7a201c345ff6134c078b382ef8226477: English/target/context read key by key; semantics, idiom, polite आप register, glossary, exact key order, ICU/CLDR, pseudo-localization, Devanagari/nukta/danda/typography and static formatted-cell expansion.",
+  "summary": {
+    "blocker": 0,
+    "major": 2,
+    "minor": 3,
+    "nit": 0,
+    "info": 2,
+    "clean_namespaces": 9,
+    "clean_with_findings_namespaces": 1,
+    "changes_requested_namespaces": 2
+  },
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "revision": "24dbccbb784bd1c9b690ce4601f489791ceacb09",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    "receipt_contract": "scripts/i18n/ledger-assemble.mjs lines 43-57 and scripts/i18n/ledger-rules.mjs deriveReceiptAudit, read at audited head"
+  },
+  "validation": {
+    "key_order": "PASS: 170/170 en/hi keys identical in set and insertion order; 170/170 English context keys also in the same order.",
+    "icu": "PASS: @formatjs/icu-messageformat-parser parsed all en/hi messages; 20 parameterized keys had identical argument/type/select/plural/number-skeleton signatures. No parse or signature errors. A deliberate {query}→{queryX} negative control was detected.",
+    "pseudo_localization": "PASS: 340/340 pseudo variants (en+hi for 170 keys), with literal text expanded by 40% and wrapped, parsed and formatted without altering ICU signatures.",
+    "cldr": "Intl.PluralRules(hi): categories one/other; 0→one, 1→one, 2→other. Actual stop.confirm samples: 0=अभी इस सत्र को रोकें; 1=अभी इस सत्र को रोकें; 2=अभी 2 सत्रों को रोकें. Proposed =0 branch parsed and rendered 0=अभी 0 सत्र रोकें, 1=अभी इस सत्र को रोकें, 2=अभी 2 सत्रों को रोकें.",
+    "number_formatting": "PASS: stop.all_sessions 0/1/2/1234 rendered सभी सत्र (0)/(1)/(2)/(1234) with ::group-off preserved; presence.minutes_ago 1234567 rendered 12,34,567 मि. पहले; account.detail rendered $5 USD.",
+    "unicode_typography": "PASS: 170/170 NFC; Devanagari digits 0; ZWJ/ZWNJ 0; bidi controls 0; ASCII apostrophes 0; unintended ASCII terminal full stops 0; curly quotes 7/7 balanced; danda 40; nukta counts फ़27 ज़9 ड़4 ढ़2; no फाइल/फोल्डर/जरूरत/ज्यादा/डिफॉल्ट/रीफ्रेश/फास्ट/ग्राफिक/सरफेस. The one ASCII ... is intentional in fork.search_placeholder and matches the sidecar.",
+    "allowed_latin": [
+      "Esc",
+      "ID",
+      "Local Operator",
+      "Canvas",
+      "Finder",
+      "HTML",
+      "USD",
+      "Radient",
+      "Radient Automatic",
+      "Radient Pass",
+      "Markdown",
+      "[redacted]",
+      "ICU placeholders/selectors and ::group-off",
+      "${detail}"
+    ],
+    "untranslated_prose": [],
+    "rtl": "Not applicable: Hindi is LTR. No RTL or bidi completion claim.",
+    "static_overflow": "Rich cell_len measured all 170 formatted en/hi pairs using representative arguments. 144 Hindi strings were shorter/equal and 26 longer. Threshold delta>=4 cells and ratio>=1.25 flagged plus_get 9→16 (+7,1.78x) and copy_markdown 16→21 (+5,1.31x). No scoped sidecar declares maxCells. Static cells are not CSS pixel/clip evidence; both are INFO for the real-app gate.",
+    "built_in_commands": [
+      {
+        "command": "node scripts/i18n/generate.mjs --check",
+        "result": "PASS: keys.gen.ts byte-identical to fresh generation."
+      },
+      {
+        "command": "node scripts/i18n/context-parity.mjs",
+        "result": "PASS: every English key covered apart from 131 allowed gaps in 4 namespaces."
+      },
+      {
+        "command": "node scripts/i18n/check-coverage.mjs",
+        "result": "PASS: 7 gated languages over 72 namespaces; 1047 allowed keys remain across 61 pairs."
+      },
+      {
+        "command": "node --test scripts/i18n/locale-parity.test.mjs scripts/i18n/format.test.mjs",
+        "result": "PASS: 51 tests, 0 fail, including hi key/placeholder/non-stub parity."
+      }
+    ],
+    "rendered_fit": "NOT EXECUTED. No real-app frame, native shaping, CSS overflow, clipping or rendered-width claim; the separate real-app gate must inspect the two INFO strings and general layout."
+  },
+  "independence": "Independent translation-auditor in session 5024164cb3f8, team lopdev; translator was session 93388133b0e0. This session authored none of the reviewed copy and did not edit, commit or push any source catalogue, context, allowance, generated, receipt or ledger file. No MT, translation API or SDK was used. Only this session scratchpad was written.",
+  "limitations": [
+    "No rendered-fit or real-app claim.",
+    "No RTL claim; Hindi is LTR.",
+    "Static cell measurements use Rich cell_len and representative ICU values, not browser CSS geometry."
+  ],
+  "namespaces": {
+    "ui.chat.sidebar": {
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 43,
+      "sha256": {
+        "en": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
+        "hi": "75c694c9196e7838ec4ca67e17b9b5cfefd81c376acd4f2f06383fb84238088b",
+        "context": "fe5dc2a0fa4cb9b95ef5c1a30d57aee030fa5edf2b6b54b323562a1c63b8eb3a"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.chat.pickers": {
+      "status": "changes_requested",
+      "result": "changes_requested",
+      "keys_audited": 34,
+      "sha256": {
+        "en": "65f926679cefe21229f8d755f71d64381c5d6706c2d33c62cb63141e8f01352d",
+        "hi": "f6c4b7276d9306a6ebef60e35d4ef3f871d96d88bc8def3eef2aa64edd245d9b",
+        "context": "8d3fa914cd52768c98a75c4f41b903b86553335b27e406f98500eab7ff576e64"
+      },
+      "findings": [
+        {
+          "id": "HI-COMP-R1-M1",
+          "severity": "MAJOR",
+          "key": "ui.chat.pickers.stop.confirm",
+          "path": "src/i18n/catalogues/hi/ui.chat.pickers.json:33",
+          "current": "अभी {count, plural, one {इस सत्र को} other {{count, number, ::group-off} सत्रों को}} रोकें",
+          "proposed": "{count, plural, =0 {अभी {count, number, ::group-off} सत्र रोकें} one {अभी इस सत्र को रोकें} other {अभी {count, number, ::group-off} सत्रों को रोकें}}",
+          "reason": "Hindi CLDR selects one for 0, so the reachable zero-selection label says “अभी इस सत्र को रोकें” (stop this session) although no session is selected; add an exact =0 branch. Submission is disabled at zero, so this is not a blocker."
+        },
+        {
+          "id": "HI-COMP-R1-m1",
+          "severity": "MINOR",
+          "key": "ui.chat.pickers.credential.forget + ui.chat.pickers.credential.forget_confirmation",
+          "path": "src/i18n/catalogues/hi/ui.chat.pickers.json:5-6",
+          "current": "भूलें / इस सत्र से {name} भूलें",
+          "proposed": "हटाएँ / इस सत्र से {name} हटाएँ",
+          "reason": "“भूलें” reads as an instruction to mentally forget and “इस सत्र से … भूलें” is a calque; the control removes a stored credential, which “हटाएँ” states directly and idiomatically."
+        }
+      ],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 1,
+        "minor": 1,
+        "nit": 0
+      }
+    },
+    "ui.chat.canonical": {
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 30,
+      "sha256": {
+        "en": "771482d2bdef4f9d40bfbdaa35e8eebed300b0e6f9a477318557c26d1770e5a7",
+        "hi": "b3c5cf01039c07ad21d37114244154686b9d04f32fd912a8b69ab101ecc593d5",
+        "context": "53145be31fe46bde6578d114653466dc5c6c932947460c10a0022c9e190d9a34"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.common.account": {
+      "status": "changes_requested",
+      "result": "changes_requested",
+      "keys_audited": 18,
+      "sha256": {
+        "en": "72e2a848a2aa4b46ecdc0ede34ed5f59b280b73e3fc544d5e563ce22ab2743e0",
+        "hi": "e02b0b36d4abe5c4f7e6fa652bf72cf5ec11133f4d02659bfca6c5f88525b2dd",
+        "context": "d3576fe1e83a51325e07df3b999a0e9c029c63b19aefad771edeb54be4dd3bcf"
+      },
+      "findings": [
+        {
+          "id": "HI-COMP-R1-M2",
+          "severity": "MAJOR",
+          "key": "ui.common.account.low_credits_dialog.unlock_the_full_power_of_local_operator_with",
+          "path": "src/i18n/catalogues/hi/ui.common.account.json:13",
+          "current": "Local Operator की पूरी क्षमता का उपयोग करें:",
+          "proposed": "Local Operator की पूरी क्षमता अनलॉक करने के लिए:",
+          "reason": "With the separately inserted “Radient Pass”, the current sentence means “Use Local Operator’s full capability: Radient Pass” and loses the source’s unlock-with-product relationship; the proposal renders “Local Operator की पूरी क्षमता अनलॉक करने के लिए: Radient Pass.”"
+        },
+        {
+          "id": "HI-COMP-R1-m2",
+          "severity": "MINOR",
+          "key": "ui.common.account.low_credits_dialog.radient_automatic_is_often_cheaper_than_bringing_your_own_key_its",
+          "path": "src/i18n/catalogues/hi/ui.common.account.json:9",
+          "current": "अपनी कुंजी लाने के मुकाबले Radient Automatic अक्सर सस्ता पड़ता है: इसकी स्मार्ट मॉडल राउटिंग आपके एजेंट वर्कफ़्लो के हर चरण के लिए सबसे किफ़ायती मॉडल चुनती है।",
+          "proposed": "अपनी कुंजी इस्तेमाल करने के मुकाबले Radient Automatic अक्सर सस्ता पड़ता है: इसकी स्मार्ट मॉडल राउटिंग आपके एजेंटिक वर्कफ़्लो के हर चरण के लिए सबसे किफ़ायती मॉडल चुनती है।",
+          "reason": "“अपनी कुंजी लाने” is a literal bring-your-own-key calque, and “एजेंटिक वर्कफ़्लो” preserves the source’s agentic-workflow term more exactly than “एजेंट वर्कफ़्लो”."
+        },
+        {
+          "id": "HI-COMP-R1-I1",
+          "severity": "INFO",
+          "key": "ui.common.account.low_credits_dialog.plus_get",
+          "path": "src/i18n/catalogues/hi/ui.common.account.json:8",
+          "current": "साथ ही, पहली खरीद पर",
+          "proposed": "Rendered check in the low-credit dialog; no source-only shortening required.",
+          "reason": "Static Rich cell_len measured 9 English cells versus 16 Hindi cells (+7, 1.78×), but no maxCells is declared and the longer prefix is balanced by the shorter suffix in the assembled offer."
+        }
+      ],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 1,
+        "minor": 1,
+        "nit": 0
+      }
+    },
+    "ui.chat.analytics": {
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 11,
+      "sha256": {
+        "en": "6ac0bbfb50c8ef8c772f229868614aa8d07dfd9f659311d5d396cea5c4611159",
+        "hi": "66e3fc0b92b8ecd18c84a395252ee305323aa4f475aa534c95f23217dcb5f4b0",
+        "context": "7c25af7f391fbaac6a1718a81b8b258c0b313ba46411f16e95691446828640ff"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.chat.transcript_copy": {
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "a81115a3e17a63068b79b4c66d86edaa1417a145f0b1fcc14d34deae8cd1734b",
+        "hi": "6cb139d2b9ca77d5984d840f96fb8a11f6a45bea7b903badd373255df4181884",
+        "context": "955b217858b3ac8c2ab4a20e7ad47298c683698c5c65c0012f681ba6b23d4c8b"
+      },
+      "findings": [
+        {
+          "id": "HI-COMP-R1-I2",
+          "severity": "INFO",
+          "key": "ui.chat.transcript_copy.menu.copy_markdown",
+          "path": "src/i18n/catalogues/hi/ui.chat.transcript_copy.json:3",
+          "current": "Markdown के रूप में कॉपी करें",
+          "proposed": "Rendered check in the transcript context menu; retain the wording if it fits.",
+          "reason": "Static Rich cell_len measured 16 English cells versus 21 Hindi cells (+5, 1.31×); there is no declared maxCells budget, so clipping is unverified rather than inferred."
+        }
+      ],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.presence": {
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 9,
+      "sha256": {
+        "en": "7dc0d4c3bb4c18fb15501b630c7f1b2bc1f2f1ec8dabe131d3a3498b50a142a8",
+        "hi": "4e8151ad012ae84995ddeeb019d8205aea681e924808cb0c4618750edd8fa666",
+        "context": "f78dc27ea4c00befbb3b48ce6723230a23c6e4388bf5ace429c2b445447aae44"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.common.file_actions": {
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 5,
+      "sha256": {
+        "en": "edac3001910c5ba03d5c0552f07c19baeb1bd1e8e9d3c0a6c178a693f9351233",
+        "hi": "55d2436b6494d53f1a9320fd0913d72a76436f7abe330f3fa2b220e883905ef7",
+        "context": "147274f1e573608ac78a0dc45aa14d14a5d2cf89efa953d4f4e012a7fae8d04b"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.common.viewer": {
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 4,
+      "sha256": {
+        "en": "660c7e185ebc22d37ecc9b5d02807428f87c477f86431f5cdb07fdec888b78bb",
+        "hi": "c8331714ad3c229d3dedcda201bbaacedb812d2c41f8702bbd7c9d9febb58df0",
+        "context": "cd11be98d1d94cba927141b2b6b390af7fdc59a8519ea3ed18361cfd4930c2c9"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.chat.tag_dialogs": {
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 4,
+      "sha256": {
+        "en": "140fb44d94388706e24ba37c6910a6b753ce0f0701f44e78390a1fffb13c1506",
+        "hi": "a16348b6812c7bbb0395d21c160d16f45fa78283a30db9ebfe98d54c2e641cab",
+        "context": "8f4cc8ca17d926c4f85f4226ff92e7c291babbe7e9868ebb8d9fceb5a8841987"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    },
+    "ui.chat.run_details": {
+      "status": "passed",
+      "result": "clean-with-findings",
+      "keys_audited": 2,
+      "sha256": {
+        "en": "7eea05d7c5b371e7969214abc7bd2961bf6c38fd3e5886e0957493b787878094",
+        "hi": "1b5e0c349466a93d277f7e0d015cb4c75d06a962f8587cecc44e9ea1a4a0c35d",
+        "context": "eae93350935a597d66fe4931a40fed2fa9d40d0b01e03925d2cef22985f628d6"
+      },
+      "findings": [
+        {
+          "id": "HI-COMP-R1-m3",
+          "severity": "MINOR",
+          "key": "ui.chat.run_details.jobs",
+          "path": "src/i18n/catalogues/hi/ui.chat.run_details.json:2",
+          "current": "जॉब",
+          "proposed": "जॉब्स",
+          "reason": "The heading names a list of jobs, and the established core Hindi plural uses “जॉब्स” (tui.status.jobs); the singular “जॉब” creates avoidable cross-surface plural drift."
+        }
+      ],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+      }
+    },
+    "ui.chat.commentary_actions": {
+      "status": "passed",
+      "result": "clean",
+      "keys_audited": 1,
+      "sha256": {
+        "en": "77d6babd2e9fac04e95a550d25f4428e113144c160c34009b89e06608b812868",
+        "hi": "497e7230b4cad9f2ab17b6c69a0e2a32d30803b93d14a9a7708919b18e2e575d",
+        "context": "20901db281f82c025243d688a14bfc490d1b5c01c7fd03e7d8788f35411c3ad1"
+      },
+      "findings": [],
+      "finding_counts": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+      }
+    }
+  }
+}
