@@ -136,9 +136,20 @@ const CanvasTabsComponent: FC<CanvasTabsProps> = ({
 		// the scrollable width without resizing the strip itself.
 	}, [documents]);
 
+	/*
+	 * The locale is a VALUE, not just a subscription. A pasted document's label
+	 * is derived from its path at render time (`artifactTabLabels`), so a
+	 * language switch has to rebuild the map; without the value in the deps the
+	 * tabs keep the previous language until a document opens or closes.
+	 */
+	const locale = useI18nLocale();
 	// Before the early return below, with the other hooks. See `artifactTabLabels`:
 	// only a clashing artifact name changes, so a file tab's label is its title.
-	const labels = useMemo(() => artifactTabLabels(documents), [documents]);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is the re-label TRIGGER; the map reads it through `t()` inside `artifactTabLabels`, which the rule cannot follow across the call.
+	const labels = useMemo(
+		() => artifactTabLabels(documents),
+		[documents, locale],
+	);
 
 	// The active id can point at a document that has just been closed, so the
 	// selection is derived rather than stored: falling back to the first tab

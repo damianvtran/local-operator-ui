@@ -1,3 +1,4 @@
+import { t } from "../../../../../i18n/messages";
 /**
  * The one place the chat decides that a failure names a provider account the
  * reader can act on, and where that action goes.
@@ -165,8 +166,14 @@ export function radientOutOfCreditsWording(row: {
 	return {
 		label: "billing",
 		headline: body
-			? `Out of credits${status}: ${body}`
-			: `Out of credits${status}: Radient refused the request`,
+			? t(
+					"ui.chat.canonical.provider_error_guidance.out_of_credits_status_body",
+					{ status, body },
+				)
+			: t(
+					"ui.chat.canonical.provider_error_guidance.out_of_credits_status_radient_refused_the_request",
+					{ status },
+				),
 	};
 }
 
@@ -219,7 +226,10 @@ export function providerErrorGuidance(row: {
 	 * say) gets the surface named rather than a specific account assumed.
 	 */
 	if (failure === "sign-in" && radientNamed)
-		return { label: "Sign in to Radient", to: RADIENT_PROVIDER_SETTINGS };
+		return {
+			label: t("ui.chat.canonical.provider_error_guidance.sign_in_to_radient"),
+			to: RADIENT_PROVIDER_SETTINGS,
+		};
 	/*
 	 * The billing class lands on the account section when the failure is
 	 * Radient's: that surface carries the balance, the verify-to-claim callout
@@ -229,9 +239,16 @@ export function providerErrorGuidance(row: {
 	 * honest in-app destination.
 	 */
 	if (failure === "billing" && radientNamed)
-		return { label: "Open Radient account", to: RADIENT_ACCOUNT_SETTINGS };
+		return {
+			label: t(
+				"ui.chat.canonical.provider_error_guidance.open_radient_account",
+			),
+			to: RADIENT_ACCOUNT_SETTINGS,
+		};
 	return {
-		label: "Open provider settings",
+		label: t(
+			"ui.chat.canonical.provider_error_guidance.open_provider_settings",
+		),
 		to: radientNamed ? RADIENT_PROVIDER_SETTINGS : PROVIDER_SETTINGS,
 	};
 }

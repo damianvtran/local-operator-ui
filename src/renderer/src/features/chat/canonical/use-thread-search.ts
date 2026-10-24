@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import type {
 	ThreadFindAnswer,
 	ThreadFindHit,
@@ -254,7 +255,12 @@ export function useThreadSearch({
 					 * console log once per generation: without the latch a follow-up
 					 * and a retry would each repeat the same sentence.
 					 */
-					logOnce("thread search could not be answered:", error);
+					logOnce(
+						t(
+							"ui.chat.canonical.use_thread_search.thread_search_could_not_be_answered",
+						),
+						error,
+					);
 					cancelFollowUp();
 					followUpFor.current = null;
 					hitCount.current = 0;

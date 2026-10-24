@@ -1,0 +1,55 @@
+{
+	"ui.chat.skill.contract.this_backend_cannot_serve_the_skill_catalogue_update_the_backend": {
+		"role": "rendered product copy in chat components/skill-contract.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.skill.contract.skills_arent_available_right_now": {
+		"role": "rendered product copy in chat components/skill-contract.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.skill.contract.no_skills_found_see_skills": {
+		"role": "rendered product copy in chat components/skill-contract.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.skill.contract.no_skills_found": {
+		"role": "rendered product copy in chat components/skill-contract.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.skill.contract.no_skills_match": {
+		"role": "rendered product copy in chat components/skill-contract.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.skill.contract.enter_completes": {
+		"role": "rendered product copy in chat components/skill-contract.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"name": "Display name or label supplied by the caller."
+		}
+	},
+	"ui.chat.skill.contract.click_completes": {
+		"role": "rendered product copy in chat components/skill-contract.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"name": "Display name or label supplied by the caller."
+		}
+	}
+}

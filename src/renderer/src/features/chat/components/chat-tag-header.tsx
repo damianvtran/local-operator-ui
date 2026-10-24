@@ -16,7 +16,6 @@ import {
 	PopoverAnchor,
 	PopoverContent,
 } from "@shared/components/ui";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useSessionTagsStore } from "@shared/store/session-tags-store";
@@ -36,6 +35,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 import type { TagCategory } from "../../../../../shared/desktop-contract";
 
 /**

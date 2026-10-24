@@ -26,6 +26,7 @@ import {
 import { resyncCanonicalSession } from "@shared/hooks/use-canonical-session";
 import { useMutation } from "@tanstack/react-query";
 import { useCallback } from "react";
+import { t } from "../../../../../../i18n/messages";
 import {
 	type MonitorCancelOutcome,
 	type MonitorControls,
@@ -58,7 +59,11 @@ export const useMonitorControls = ({
 			 */
 			if (!sessionId)
 				return Promise.reject(
-					new Error("There is no conversation to cancel a monitor on."),
+					new Error(
+						t(
+							"ui.chat.run_details.use_monitor_controls.there_is_no_conversation_to_cancel_a_monitor_on",
+						),
+					),
 				);
 			return MonitorsApi.cancel(sessionId, monitorId);
 		},
@@ -74,7 +79,12 @@ export const useMonitorControls = ({
 				} catch (error) {
 					return {
 						ok: false,
-						detail: userFacingMessage(error, "Could not cancel the monitor."),
+						detail: userFacingMessage(
+							error,
+							t(
+								"ui.chat.run_details.use_monitor_controls.could_not_cancel_the_monitor",
+							),
+						),
 					};
 				} finally {
 					/*

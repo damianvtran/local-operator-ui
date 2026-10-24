@@ -267,7 +267,14 @@ test("a refusal is stated only while its daemon is there, and the absence takes 
 	 * A control labelled for an act the app cannot perform is the "button that
 	 * provably cannot work" this repository refuses to ship.
 	 */
-	assert.equal(wedged?.actionLabel, "Retry");
+	/*
+	 * The ACT is `retry`; the LABEL is the strip's own `t()` default. The model
+	 * stores no English word (agent review round 3), because a string captured
+	 * here would outlive a locale change; the action enum is what the renderer
+	 * keys on, so that is what this asserts.
+	 */
+	assert.equal(wedged?.action, "retry");
+	assert.equal(wedged?.actionLabel, null);
 
 	/* The same record with the daemon GONE: the absence is the fact now. */
 	const gone = refused("detached");
@@ -421,27 +428,30 @@ test("the strip is one live region, one Retry, and one dismissal", () => {
 	// refusal's answer speaks the refusal's vocabulary, and the reachability
 	// sentence stays for the rows it describes - chosen on the same fact-key the
 	// dismissal rides.
-	assert.match(source, /Retrying…/);
-	assert.match(source, /Still unreachable\./);
+	assert.match(source, /ui\.chat\.chat_status_strip\.retrying/);
+	assert.match(source, /ui\.chat\.chat_status_strip\.still_unreachable/);
 	assert.match(
 		source,
-		/The server is running, but this app's credential is still refused\./,
+		/ui\.chat\.chat_status_strip\.the_server_is_running_but_this_apps_credential_is_still/,
 	);
 	assert.match(source, /key\?\.startsWith\("credential-refused"\)/);
 	// The dismissal is a REAL collapse (a pill that re-expands), not a hide.
 	assert.match(source, /data-lo-status-pill=""/);
 	assert.match(source, /data-lo-status-strip=""/);
-	assert.match(source, /aria-label=\{`Connection status/);
+	assert.match(
+		source,
+		/aria-label=\{t\("ui\.chat\.chat_status_strip\.details_label",/,
+	);
 	/*
 	 * The pill's name is the strip's own TWO lines, not the first of them: it carried
 	 * `display.title` alone, so dismissing a strip whose second line was Retry's own
 	 * outcome dropped the newest fact about the root cause (UX round 1's U12).
 	 */
+	assert.match(source, /title: display\.title/);
 	assert.match(
 		source,
-		/aria-label=\{`Connection status: \$\{display\.title\}\$/,
+		/outcome:\s*outcome\s*\?\s*t\("ui\.chat\.chat_status_strip\.outcome",\s*\{\s*outcome\s*\}\)/,
 	);
-	assert.match(source, /outcome \? ` \$\{outcome\}` : ""/);
 	/*
 	 * And the outcome is RETIRED with the state it was reported against: a sentence a
 	 * Retry wrote cannot ride into a state the reader reached later (U5's contradiction,

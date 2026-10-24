@@ -37,7 +37,9 @@
  */
 
 import { Button } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { type FC, type RefObject, useEffect, useRef } from "react";
+import { t } from "../../../../../i18n/messages";
 import type { QuotaNoticeAction } from "../../../../../shared/desktop-contract";
 import type {
 	QuotaNoticeModel,
@@ -63,6 +65,7 @@ const ActionButton: FC<{
 	onPressStarted: (event: { detail?: number }) => void;
 	resendRef: RefObject<HTMLButtonElement>;
 }> = ({ action, model, onPressStarted, resendRef }) => {
+	useI18nLocale();
 	if (action.id === "resend_verification") {
 		return (
 			<Button
@@ -118,6 +121,7 @@ const ActionButton: FC<{
 export const QuotaNoticeLine: FC<{ selection?: QuotaNoticeSelection }> = ({
 	selection = null,
 }) => {
+	useI18nLocale();
 	const model = useQuotaNotice(selection);
 	const resendRef = useRef<HTMLButtonElement>(null);
 	const statusRef = useRef<HTMLOutputElement>(null);
@@ -203,7 +207,7 @@ export const QuotaNoticeLine: FC<{ selection?: QuotaNoticeSelection }> = ({
 					}}
 					data-quota-notice-dismiss=""
 				>
-					Dismiss
+					{t("ui.chat.session_status.quota_notice_line.dismiss")}
 				</Button>
 				{model.statusSentence ? (
 					/*

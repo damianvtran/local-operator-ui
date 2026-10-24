@@ -39,6 +39,7 @@
  */
 
 import type { DesktopFeatureState } from "@shared/api/local-operator/desktop-hooks";
+import { t } from "../../../../i18n/messages";
 import type { DaemonPairingCause } from "../../../../shared/backend-status";
 /*
  * The sentence table is imported by RELATIVE path, not by the `@shared` alias.
@@ -199,7 +200,13 @@ export function catalogueGate({
 		notice:
 			withdrawn && !storeFailed && !coveredByCompatibilityBanner
 				? (backendPairingSentence(state, cause) ??
-					`Update the backend to use canonical chats. Existing histories are unchanged.${lastKnownRows ? " Showing the last chats and teams that loaded." : ""}`)
+					t("ui.chat.sidebar.sidebar_catalogue_gate.backend_notice", {
+						lastKnown: lastKnownRows
+							? t(
+									"ui.chat.sidebar.sidebar_catalogue_gate.showing_the_last_chats_and_teams_that_loaded",
+								)
+							: "",
+					}))
 				: null,
 	};
 }

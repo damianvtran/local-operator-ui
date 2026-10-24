@@ -51,6 +51,7 @@ import {
 import { fetchMcpProbe, mcpKeys } from "@shared/api/local-operator/mcp-list";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
+import { t } from "../../../../../../i18n/messages";
 import type { DesktopMcpState } from "../../../../../../shared/desktop-control-contract";
 import {
 	type McpFailure,
@@ -373,8 +374,17 @@ export function useMcpRemedy({
 					const result = stored.data;
 					const why =
 						result?.code === "replace_confirmation_required"
-							? "Confirm replacement of the existing shared keys before saving."
-							: `Not saved: ${(result?.failed_ids ?? Object.keys(values)).join(", ")}. Unlock or repair the encrypted store, then retry.`;
+							? t(
+									"ui.chat.run_details.use_mcp_remedy.confirm_replacement_of_the_existing_shared_keys_before_saving",
+								)
+							: t(
+									"ui.chat.run_details.use_mcp_remedy.not_saved_value_unlock_or_repair_the_encrypted_store_then",
+									{
+										value: (result?.failed_ids ?? Object.keys(values)).join(
+											", ",
+										),
+									},
+								);
 					// An OUTCOME rather than an exception: the write answered, and the
 					// answer is what the sentence reports. Its cause is `unknown` because
 					// only the failed IDs are known — the store's reason is not on this
@@ -388,7 +398,9 @@ export function useMcpRemedy({
 							message:
 								why +
 								(result?.saved_ids.length
-									? ` Saved: ${result.saved_ids.join(", ")}.`
+									? t("ui.chat.run_details.use_mcp_remedy.saved_value", {
+											value: result.saved_ids.join(", "),
+										})
 									: ""),
 						},
 					}));
@@ -423,8 +435,9 @@ export function useMcpRemedy({
 						cause: "unknown",
 						phase: "reconnect",
 						detail: null,
-						message:
-							"The keys were saved, but this server is not connected. Check the credentials and server setup, then retry.",
+						message: t(
+							"ui.chat.run_details.use_mcp_remedy.the_keys_were_saved_but_this_server_is_not_connected",
+						),
 					},
 				}));
 				return false;

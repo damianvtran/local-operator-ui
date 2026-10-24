@@ -1,0 +1,91 @@
+{
+	"ui.chat.at.contract.this_backend_cannot_carry_file_references_update_the_backend_and": {
+		"role": "rendered product copy in chat components/at-contract.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.at.contract.nothing_to_insert_esc_closes": {
+		"role": "rendered product copy in chat components/at-contract.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.at.contract.reading_this_folder": {
+		"role": "rendered product copy in chat components/at-contract.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.at.contract.this_folder_is_empty": {
+		"role": "rendered product copy in chat components/at-contract.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.at.contract.could_not_read_this_folder_it_may_need_a_permission": {
+		"role": "rendered product copy in chat components/at-contract.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.at.contract.could_not_read_this_folder_check_that_it_exists_and": {
+		"role": "rendered product copy in chat components/at-contract.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "one or more complete sentences; allow wrapping",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {}
+	},
+	"ui.chat.at.contract.enter_opens": {
+		"role": "rendered product copy in chat components/at-contract.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"path": "File, directory or working-directory value supplied by the caller."
+		}
+	},
+	"ui.chat.at.contract.enter_inserts": {
+		"role": "rendered product copy in chat components/at-contract.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"token": "Runtime value substituted into this message; preserve the ICU argument and its formatting."
+		}
+	},
+	"ui.chat.at.contract.footer": {
+		"role": "rendered product copy in chat components/at-contract.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"verb": "Command or action text supplied by the caller."
+		}
+	},
+	"ui.chat.at.contract.nothing_matches": {
+		"role": "rendered product copy in chat components/at-contract.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"query": "Runtime value substituted into this message; preserve the ICU argument and its formatting.",
+			"scope": "Runtime value substituted into this message; preserve the ICU argument and its formatting."
+		}
+	},
+	"ui.chat.at.contract.no_files_match": {
+		"role": "rendered product copy in chat components/at-contract.ts",
+		"tone": "sentence case; preserve source meaning and punctuation",
+		"length": "short label or one line",
+		"note": "Keep commands, model names and identifiers unchanged. Preserve ICU arguments and plural/select arms.",
+		"placeholders": {
+			"query": "Runtime value substituted into this message; preserve the ICU argument and its formatting.",
+			"scope": "Runtime value substituted into this message; preserve the ICU argument and its formatting."
+		}
+	}
+}

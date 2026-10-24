@@ -1,3 +1,4 @@
+import { t } from "../../../../../../i18n/messages";
 import type { TranscriptRecord } from "../../canonical/transcript-reducer";
 import type { WorkingLineState } from "../../canonical/working-line-model";
 
@@ -177,7 +178,9 @@ const CHILD_STATE_WORD = {
  * sentence would be a second spelling free to drift from the one the model
  * matches.
  */
-export const CANCELLED_BEFORE_START = "cancelled before it started";
+export const CANCELLED_BEFORE_START = t(
+	"ui.chat.run_details.run_detail_model.cancelled_before_it_started",
+);
 
 /**
  * The rank the overflow slice evicts by (`subagent_panel._EVICTION_RANK:256-262`).
@@ -266,8 +269,10 @@ const CLAUSE_SEAM = ", ";
  * this one is not, and a control whose name did not flip would tell a reader
  * that pressing it opens something they are already looking at.
  */
-const LABEL_OPEN = "Open run details";
-const LABEL_CLOSE = "Close run details";
+const LABEL_OPEN = () =>
+	t("ui.chat.run_details.run_detail_model.open_run_details");
+const LABEL_CLOSE = () =>
+	t("ui.chat.run_details.run_detail_model.close_run_details");
 /**
  * The seam between the action and its first clause.
  *
@@ -279,7 +284,8 @@ const LABEL_CLOSE = "Close run details";
 export const LABEL_SEAM = " — ";
 
 /** The TUI's name for a plan that arrived with no phases of its own. */
-const IMPLICIT_PHASE_NAME = "Todos";
+const IMPLICIT_PHASE_NAME = () =>
+	t("ui.chat.run_details.run_detail_model.todos");
 
 /* ------------------------------------------------------------------ */
 /* Derived rows                                                        */
@@ -991,7 +997,9 @@ const formatContext = (
 	if (window === null || window <= 0) return null;
 	const percent = (tokens / window) * 100;
 	if (percent < 1) return "<1%";
-	return `${Math.round(percent)}%`;
+	return t("ui.chat.run_details.run_detail_model.value", {
+		value: Math.round(percent),
+	});
 };
 
 /**
@@ -1341,7 +1349,9 @@ const deriveChild = (
 	 * stated, and a second copy under a result label would be that fact twice
 	 * plus a shortening claim over a 27-character value the wire never clipped.
 	 */
-	const cancelledBeforeStart = fullResultText === CANCELLED_BEFORE_START;
+	const cancelledBeforeStart =
+		fullResultText ===
+		t("ui.chat.run_details.run_detail_model.cancelled_before_it_started");
 	const launchPrompts = toWireStringMap(job.launch_prompts);
 	const launchMessageId = wireText(job.launch_message_id);
 	const rawPrompt = wireText(job.prompt).trim();
@@ -1360,7 +1370,7 @@ const deriveChild = (
 		// publishes for that state, so spending the fold's generic `cancelled`
 		// would say strictly less than the wire does (`CANCELLED_BEFORE_START`).
 		stateWord: cancelledBeforeStart
-			? CANCELLED_BEFORE_START
+			? t("ui.chat.run_details.run_detail_model.cancelled_before_it_started")
 			: status === "unknown"
 				? unrecognisedStateWord(rawStatus)
 				: CHILD_STATE_WORD[status],
@@ -1669,7 +1679,11 @@ export const formatWakeCadence = (
 	if (everyMs === null) return "once";
 	const cadence = `every ${formatWakeDuration(everyMs)}`;
 	if (remaining === null) return cadence;
-	if (remaining === 0) return `${cadence} · no deliveries left`;
+	if (remaining === 0)
+		return t(
+			"ui.chat.run_details.run_detail_model.cadence_no_deliveries_left",
+			{ cadence },
+		);
 	return `${cadence} · ${remaining} left`;
 };
 
@@ -1692,7 +1706,9 @@ export const formatWakeCadence = (
  * wake-delivery row's envelope vocabulary is not the one either surface uses.
  */
 export const wakeClause = (count: number): string =>
-	count === 1 ? "1 wake armed" : `${count} wakes armed`;
+	t("ui.chat.run_details.run_detail_model.count_wakes_armed", {
+		count,
+	});
 
 /**
  * The count clause: `1 monitor armed` / `2 monitors armed`.
@@ -1711,7 +1727,7 @@ export const wakeClause = (count: number): string =>
  * `wakeClause`'s own note about the band's `N scheduled`.
  */
 export const monitorClause = (count: number): string =>
-	count === 1 ? "1 monitor armed" : `${count} monitors armed`;
+	t("ui.chat.run_details.run_detail_model.count_monitors_armed", { count });
 
 /**
  * One wire schedule as a row, or `null` when the record carries nothing a user
@@ -1910,7 +1926,10 @@ const deriveMonitor = (
 		lastCheckLabel:
 			lastCheckAt === null
 				? ""
-				: `last check ${formatWakeDue(lastCheckAt, nowMs)}`,
+				: t(
+						"ui.chat.run_details.run_detail_model.last_check_formatwakeduevalue",
+						{ formatWakeDueValue: formatWakeDue(lastCheckAt, nowMs) },
+					),
 		healthLabel: disabled
 			? oneLine(wireText(record.disabled_reason))
 			: failing
@@ -2203,7 +2222,7 @@ const retimeRows = (rows: SubagentRow[], nowMs: number): SubagentRow[] => {
 const isNamedPhase = (phase: unknown): boolean => {
 	if (!isRecord(phase)) return false;
 	const name = wireText(phase.name);
-	return name !== "" && name !== IMPLICIT_PHASE_NAME;
+	return name !== "" && name !== IMPLICIT_PHASE_NAME();
 };
 
 /* ------------------------------------------------------------------ */
@@ -2563,7 +2582,11 @@ export type McpRemedy =
  * there, over the same `env`/`headers` map).
  */
 const MCP_WORDS: Record<string, string> = {
-	"auth-required": "Manage this server's credentials in Settings",
+	get "auth-required"() {
+		return t(
+			"ui.chat.run_details.run_detail_model.manage_this_servers_credentials_in_settings",
+		);
+	},
 };
 
 /**
@@ -2581,8 +2604,12 @@ const MCP_WORDS: Record<string, string> = {
  * nothing else this surface owns.
  */
 export const MCP_CONTROL_WORD = {
-	grant: "Grant account access",
-	key: "Enter API key",
+	get grant() {
+		return t("ui.chat.run_details.run_detail_model.grant_account_access");
+	},
+	get key() {
+		return t("ui.chat.run_details.run_detail_model.enter_api_key");
+	},
 	reconnect: "Reconnect",
 	reload: "Reload",
 } as const;
@@ -3096,7 +3123,10 @@ export function mcpTally(
 	rows: readonly McpServerRow[],
 	maxChars?: number,
 ): string {
-	if (mcpServersAreCold(rows)) return MCP_COLD_LINE;
+	if (mcpServersAreCold(rows))
+		return t(
+			"ui.chat.run_details.run_detail_model.no_session_is_running_server_status_cannot_be_checked",
+		);
 	const connected = rows.filter((row) => row.status === "connected").length;
 	const problems = rows.filter((row) => row.problem).length;
 	const base = `${connected} of ${rows.length} connected`;
@@ -3139,8 +3169,9 @@ export function mcpTally(
  * claiming three servers are down when none was asked to be up. It lights no
  * dot, because nothing is wrong.
  */
-export const MCP_COLD_LINE =
-	"No session is running — server status cannot be checked.";
+export const MCP_COLD_LINE = t(
+	"ui.chat.run_details.run_detail_model.no_session_is_running_server_status_cannot_be_checked",
+);
 
 /** Every MCP name that is asking for something right now. */
 export function mcpProblemNames(rows: readonly McpServerRow[]): string[] {
@@ -3833,10 +3864,14 @@ type TodoClauseCounts = Pick<RunDetails, "openTodos" | "droppedTodos">;
 export const todoClause = (counts: TodoClauseCounts): string => {
 	if (counts.openTodos > 0) {
 		return counts.openTodos === 1
-			? "1 to-do open"
-			: `${counts.openTodos} to-dos open`;
+			? t("ui.chat.run_details.run_detail_model.1_to_do_open")
+			: t("ui.chat.run_details.run_detail_model.opentodos_to_dos_open", {
+					openTodos: counts.openTodos,
+				});
 	}
-	return counts.droppedTodos > 0 ? "All to-dos closed" : "All to-dos resolved";
+	return counts.droppedTodos > 0
+		? t("ui.chat.run_details.run_detail_model.all_to_dos_closed")
+		: t("ui.chat.run_details.run_detail_model.all_to_dos_resolved");
 };
 
 const failureClause = (count: number): string =>
@@ -3863,7 +3898,7 @@ const attentionClause = (count: number): string =>
 
 /** The MCP ledger's clause, with the protocol's own name left singular. */
 const mcpClause = (count: number): string =>
-	`${plural(count, "MCP server")} ${attentionVerb(count)} attention`;
+	`${plural(count, t("ui.chat.run_details.run_detail_model.mcp_server"))} ${attentionVerb(count)} attention`;
 
 /**
  * The tooltip and `aria-label` copy (`§3.3`, `§6.2`).
@@ -3923,7 +3958,7 @@ export function runDetailTriggerLabel(
 	} = {},
 ): string {
 	const chord = options.cap ?? null;
-	const prefix = `${options.open ? LABEL_CLOSE : LABEL_OPEN}${chord === null ? "" : ` (${chord})`}`;
+	const prefix = `${options.open ? LABEL_CLOSE() : LABEL_OPEN()}${chord === null ? "" : ` (${chord})`}`;
 	if (!details) return prefix;
 	const attention: string[] = [];
 	const counts: string[] = [];
@@ -4022,7 +4057,9 @@ export function childStateLabel(row: SubagentRow): string {
  */
 export const childCountLabel = (row: SubagentRow): string | null =>
 	row.childCount > 0
-		? `${row.childCount} child${row.childCount === 1 ? "" : "ren"}`
+		? t("ui.chat.run_details.run_detail_model.child_count", {
+				count: row.childCount,
+			})
 		: null;
 
 /**

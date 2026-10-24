@@ -68,6 +68,7 @@
  * which is what lets the whole matrix be asserted without an Electron process.
  */
 
+import { t } from "../../../../../i18n/messages";
 import { type TargetEvidence, normalizeFileUrl } from "./link-grammar";
 import {
 	MAX_EAGER_READ_BYTES,
@@ -654,16 +655,18 @@ const MISSING_NOTE_MAX_CHARS = 40;
  * The full path is still on the anchor above the strip and in `title`.
  */
 export function missingNote(target: string): { note: string; title: string } {
-	const title = `No file at ${target}`;
+	const title = t("ui.chat.link_actions.no_file_at_target", { target });
 	const base = baseName(target) || target;
 	const parts = target.split("/").filter(Boolean);
 	const directory = parts.length > 1 ? parts[parts.length - 2] : "";
-	const withDirectory = directory ? `No file at …/${directory}/${base}` : title;
+	const withDirectory = directory
+		? t("ui.chat.link_actions.no_file_at_directory_base", { directory, base })
+		: title;
 	return {
 		note:
 			withDirectory.length <= MISSING_NOTE_MAX_CHARS
 				? withDirectory
-				: `No file at ${base}`,
+				: t("ui.chat.link_actions.no_file_at_base", { base }),
 		title,
 	};
 }
@@ -713,21 +716,22 @@ export function linkToolbarModel(input: {
 }): LinkToolbarModel | null {
 	const { kind, target, probe, quotable, canOpenInCanvas } = input;
 	if (kind === "other") return null;
-	const leading = quotable ? [action("quote", "Quote")] : [];
-	const trailing = quotable ? [] : [action("quote", "Quote")];
+	const quote = action("quote", t("ui.chat.link_actions.quote"));
+	const leading = quotable ? [quote] : [];
+	const trailing = quotable ? [] : [quote];
 	const name = baseName(target) || target;
 
 	if (kind === "url") {
 		return {
 			actions: [
 				...leading,
-				action("copy", "Copy link"),
-				action("open", "Open in browser"),
+				action("copy", t("ui.chat.link_actions.copy_link")),
+				action("open", t("ui.chat.link_actions.open_in_browser")),
 				...trailing,
 			],
 			note: null,
 			noteTitle: null,
-			label: `Actions for ${name}`,
+			label: t("ui.chat.link_actions.actions_for_name", { name }),
 		};
 	}
 
@@ -741,10 +745,14 @@ export function linkToolbarModel(input: {
 	if (missing) {
 		const reason = missingNote(target);
 		return {
-			actions: [...leading, action("copy", "Copy path"), ...trailing],
+			actions: [
+				...leading,
+				action("copy", t("ui.chat.link_actions.copy_path")),
+				...trailing,
+			],
 			note: reason.note,
 			noteTitle: reason.title,
-			label: `Actions for ${name}`,
+			label: t("ui.chat.link_actions.actions_for_name", { name }),
 		};
 	}
 	/*
@@ -770,13 +778,13 @@ export function linkToolbarModel(input: {
 	return {
 		actions: [
 			...leading,
-			action("copy", "Copy path"),
+			action("copy", t("ui.chat.link_actions.copy_path")),
 			...fileActions,
 			...trailing,
 		],
-		note: overCeiling ? TOO_LARGE_NOTE : null,
-		noteTitle: overCeiling ? TOO_LARGE_TITLE : null,
-		label: `Actions for ${name}`,
+		note: overCeiling ? TOO_LARGE_NOTE() : null,
+		noteTitle: overCeiling ? TOO_LARGE_TITLE() : null,
+		label: t("ui.chat.link_actions.actions_for_name", { name }),
 	};
 }
 
@@ -790,9 +798,10 @@ export function linkToolbarModel(input: {
  * button reads as a bug unless the strip says why. Sentence case, and short enough
  * to sit in the strip's own line, because it renders beside the buttons.
  */
-const TOO_LARGE_NOTE = "Too large for the canvas preview";
-const TOO_LARGE_TITLE =
-	"Too large for the canvas preview, so Open uses the default app";
+const TOO_LARGE_NOTE = () =>
+	t("ui.chat.link_actions.too_large_for_the_canvas_preview");
+const TOO_LARGE_TITLE = () =>
+	t("ui.chat.link_actions.too_large_for_the_canvas_preview_so_open_uses_the");
 
 /**
  * Whether the press on this path would REFUSE it for the read ceiling.
@@ -856,7 +865,8 @@ function actionListFor(input: {
 	probe: ProbedTarget;
 	canOpenInCanvas: boolean;
 }): LinkAction[] {
-	if (input.isDirectory) return [action("open", "Open")];
+	if (input.isDirectory)
+		return [action("open", t("ui.chat.link_actions.open"))];
 	/*
 	 * Where the app can show the file itself, the canvas is what `Open` means and
 	 * the OS gets a press of its own: the operator's ask is that a supported file
@@ -867,10 +877,13 @@ function actionListFor(input: {
 	 */
 	if (canvasActionFor(input)) {
 		return [
-			action("open", "Open in canvas"),
-			action("open-default", "Open in default app"),
-			action("open-folder", "Open folder"),
+			action("open", t("ui.chat.link_actions.open_in_canvas")),
+			action("open-default", t("ui.chat.link_actions.open_in_default_app")),
+			action("open-folder", t("ui.chat.link_actions.open_folder")),
 		];
 	}
-	return [action("open", "Open"), action("open-folder", "Open folder")];
+	return [
+		action("open", t("ui.chat.link_actions.open")),
+		action("open-folder", t("ui.chat.link_actions.open_folder")),
+	];
 }

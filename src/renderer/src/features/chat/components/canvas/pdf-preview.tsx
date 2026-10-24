@@ -1,5 +1,6 @@
 import type { CanvasDocument } from "@features/chat/types/canvas";
 import { mimeTypeForPath } from "@features/chat/utils/file-kind";
+import { documentNameForDisplay } from "@features/chat/utils/get-file-name";
 import { useFileBlobUrl } from "@shared/hooks/use-file-blob-url";
 import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
@@ -75,6 +76,8 @@ import {
 const PdfPreviewComponent: FC<{ document: CanvasDocument }> = ({
 	document,
 }) => {
+	/* A pasted document's name is derived from its path with `t()` at render
+	 * time, so the memoised preview subscribes to the locale itself. */
 	useI18nLocale();
 	const state = useFileBlobUrl(document.path, {
 		mtimeMs: document.lastAgentModified,
@@ -98,7 +101,9 @@ const PdfPreviewComponent: FC<{ document: CanvasDocument }> = ({
 				{state.status === "ready" ? (
 					<iframe
 						src={`${state.url}#toolbar=0`}
-						title={t("ui.canvas.pdf_preview.pdf", { title: document.title })}
+						title={t("ui.canvas.pdf_preview.pdf", {
+							title: documentNameForDisplay(document),
+						})}
 						className={cn("h-full w-full border-0 bg-surface")}
 					/>
 				) : state.status === "loading" ? (

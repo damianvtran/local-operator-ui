@@ -27,8 +27,10 @@
  * inspection.
  */
 
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { MessageCircleQuestion } from "lucide-react";
+import { t } from "../../../../../../i18n/messages";
 import { MarkdownRenderer } from "../markdown-renderer";
 
 export type AgentQuestionProps = {
@@ -55,11 +57,12 @@ export const AgentQuestion = ({
 	busy = false,
 	className,
 }: AgentQuestionProps) => {
+	useI18nLocale();
 	if (!content) return null;
 
 	return (
 		<section
-			aria-label="Question from the agent"
+			aria-label={t("ui.chat.trace.agent_question.question_from_the_agent")}
 			className={cn(
 				"flex gap-3 rounded-md border border-accent bg-accent-wash px-4 py-3",
 				className,
@@ -71,7 +74,9 @@ export const AgentQuestion = ({
 			/>
 			<div className="flex min-w-0 flex-1 flex-col gap-1">
 				<p className="font-medium text-accent text-meta">
-					{busy ? "Sending your answer…" : "Waiting for your answer"}
+					{busy
+						? t("ui.chat.trace.agent_question.sending_your_answer")
+						: t("ui.chat.trace.agent_question.waiting_for_your_answer")}
 				</p>
 				{/* The body is `ink`, not `accent`.
 				 *

@@ -51,7 +51,6 @@ import { TextSelectionControls } from "@shared/components/common/text-selection-
 import { Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { useCompletionView } from "@shared/hooks/use-completion-view";
-import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -95,6 +94,7 @@ import {
 	useState,
 } from "react";
 import { Link } from "react-router-dom";
+import { t } from "../../../../../i18n/messages";
 import type {
 	CanonicalFrontendState,
 	PendingDesktopGate,
@@ -187,7 +187,6 @@ import { SETTLE_MS } from "./scroll-paging";
 import { SentFileCard } from "./sent-file-card";
 import { editTextOf, skillRowOf } from "./skill-row";
 import { SupplementRow } from "./supplement-row";
-import { THREAD_SEARCH_JUMP_MISS_COPY } from "./thread-search-model";
 import { ThreadSearchOverlay } from "./thread-search-overlay";
 import {
 	type FoldGroup,
@@ -399,7 +398,9 @@ function condenseSentence(segment: SegmentPlan): string {
 	 * ("At least N actions - earlier rows of this turn are not loaded").
 	 */
 	const minimum = (stated: string) =>
-		segment.facts.partial ? `at least ${stated}` : stated;
+		segment.facts.partial
+			? t("ui.chat.canonical.canonical_transcript.at_least_stated", { stated })
+			: stated;
 	if (segment.facts.group !== null) {
 		/*
 		 * A GROUP BAR'S SENTENCE IS THE GROUP'S OWN CLAUSES (design §5): the count
@@ -441,7 +442,8 @@ function condenseSentence(segment: SegmentPlan): string {
 	 * follow-up section appearing after the answer is not "the turn condensing",
 	 * and saying so would announce the answer's own turn twice.
 	 */
-	const lead = segment.label ?? "Turn condensed";
+	const lead =
+		segment.label ?? t("ui.chat.canonical.canonical_transcript.turn_condensed");
 	return parts.length === 0 ? `${lead}.` : `${lead}: ${parts.join(", ")}.`;
 }
 
@@ -857,7 +859,11 @@ const userImageLabel = (
 	count: number,
 ): string =>
 	image.name ??
-	(count === 1 ? "Attached image" : `Attached image ${index + 1}`);
+	(count === 1
+		? t("ui.chat.canonical.canonical_transcript.attached_image")
+		: t("ui.chat.canonical.canonical_transcript.attached_image_value", {
+				value: index + 1,
+			}));
 
 /**
  * The tool row's rule, which differs from the user row's in the NOUN only: an
@@ -869,7 +875,13 @@ const toolImageLabel = (
 	image: TranscriptImage,
 	index: number,
 	count: number,
-): string => image.name ?? (count === 1 ? "Image" : `Image ${index + 1}`);
+): string =>
+	image.name ??
+	(count === 1
+		? t("ui.chat.canonical.canonical_transcript.image")
+		: t("ui.chat.canonical.canonical_transcript.image_value", {
+				value: index + 1,
+			}));
 
 /**
  * The audio sibling of `toolImageLabel`: the same rule (the wire's own name
@@ -884,7 +896,13 @@ const toolAudioLabel = (
 	audio: TranscriptImage,
 	index: number,
 	count: number,
-): string => audio.name ?? (count === 1 ? "Sound" : `Sound ${index + 1}`);
+): string =>
+	audio.name ??
+	(count === 1
+		? t("ui.chat.canonical.canonical_transcript.sound")
+		: t("ui.chat.canonical.canonical_transcript.sound_value", {
+				value: index + 1,
+			}));
 
 const UserRow = memo(function UserRow({
 	record,
@@ -1338,7 +1356,9 @@ const UserRow = memo(function UserRow({
 										"hover:text-ink",
 									)}
 								>
-									{expanded ? "Show less" : "Show more"}
+									{expanded
+										? t("ui.chat.canonical.canonical_transcript.show_less")
+										: t("ui.chat.canonical.canonical_transcript.show_more")}
 								</button>
 							)}
 							{(record.documents?.length ?? 0) > 0 && (
@@ -1507,7 +1527,8 @@ const UserRow = memo(function UserRow({
 								aria-hidden="true"
 								className={cn("size-3.5 shrink-0")}
 							/>
-							{undelivered.message ?? "Not delivered"}
+							{undelivered.message ??
+								t("ui.chat.canonical.canonical_transcript.not_delivered")}
 						</span>
 						{undelivered.retry !== false && (
 							<button
@@ -1711,8 +1732,12 @@ const AssistantRow = memo(function AssistantRow({
 				{record.truncated && (
 					<p className={cn("mb-1 text-ink-dim text-meta")}>
 						{record.truncated === "prefix"
-							? "Earlier text of this answer is not on screen"
-							: "Part of this answer may be missing"}
+							? t(
+									"ui.chat.canonical.canonical_transcript.earlier_text_of_this_answer_is_not_on_screen",
+								)
+							: t(
+									"ui.chat.canonical.canonical_transcript.part_of_this_answer_may_be_missing",
+								)}
 					</p>
 				)}
 				{/*
@@ -1950,14 +1975,22 @@ const AssistantRow = memo(function AssistantRow({
 						<>
 							<span className={cn("text-ink-dim")}>
 								{foot.durationS !== null
-									? `Worked for ${formatDuration(foot.durationS)}`
-									: "Worked"}
+									? t(
+											"ui.chat.canonical.canonical_transcript.worked_for_formatdurationvalue",
+											{ formatDurationValue: formatDuration(foot.durationS) },
+										)
+									: t("ui.chat.canonical.canonical_transcript.worked")}
 							</span>
 							<span aria-hidden={true} className={cn("text-ink-dim")}>
 								·
 							</span>
 							<span className={cn("text-ink-dim")}>
-								{foot.actions === 1 ? "1 action" : `${foot.actions} actions`}
+								{foot.actions === 1
+									? t("ui.chat.canonical.canonical_transcript.1_action")
+									: t(
+											"ui.chat.canonical.canonical_transcript.actions_actions",
+											{ actions: foot.actions },
+										)}
 							</span>
 							{/* NO FAILURE TALLY (operator, 2026-09-29, issue #6): the
 							 * foot's `· N failed` control is retired with the bar's —
@@ -2039,7 +2072,13 @@ function toolRecordSummary(
 		// size is the record of how far the model got before nothing would receive
 		// it (`ToolCard.mark_not_run`). An empty payload is named rather than
 		// rendered as `0 B`, which would claim a measurement.
-		return `never sent · ${record.argumentBytes ? `${formatBytes(record.argumentBytes)} composed` : "nothing composed"}`;
+		return t("ui.chat.canonical.canonical_transcript.never_sent", {
+			composed: record.argumentBytes
+				? t("ui.chat.canonical.canonical_transcript.bytes_composed", {
+						bytes: formatBytes(record.argumentBytes),
+					})
+				: t("ui.chat.canonical.canonical_transcript.nothing_composed"),
+		});
 	if (composing)
 		return `composing${record.argumentBytes ? ` · ${formatBytes(record.argumentBytes)}` : ""}`;
 	if (queued)
@@ -2271,7 +2310,9 @@ const ToolRow = memo(function ToolRow({
 					interruptedNotRun ? "text-ink-dim" : "text-danger",
 				)}
 			>
-				{interruptedNotRun ? "Interrupted" : "Not run"}
+				{interruptedNotRun
+					? t("ui.chat.canonical.canonical_transcript.interrupted")
+					: t("ui.chat.canonical.canonical_transcript.not_run")}
 			</span>
 			<div className={cn(DETAIL_SECTION_MAX, "overflow-auto")}>
 				<pre
@@ -2675,15 +2716,26 @@ const HubRow = memo(function HubRow({
 			<ToolLedgerRow
 				toolName="hub"
 				verbless
-				summary={`From ${hubIdentity(receipt)}`}
+				summary={t(
+					"ui.chat.canonical.canonical_transcript.from_hubidentityvalue",
+					{ hubIdentityValue: hubIdentity(receipt) },
+				)}
 				outcome="receipt"
 				durationS={null}
 				details={
 					<div className={cn("flex flex-col gap-2 px-3")}>
 						<p className={cn("text-body-sm text-ink-muted")}>
 							{hubIdentity(receipt)}
-							{receipt.direction ? ` · ${receipt.direction}` : ""}
-							{receipt.jobId && receipt.label ? ` · Job ${receipt.jobId}` : ""}
+							{receipt.direction
+								? t("ui.chat.canonical.canonical_transcript.direction", {
+										direction: receipt.direction,
+									})
+								: ""}
+							{receipt.jobId && receipt.label
+								? t("ui.chat.canonical.canonical_transcript.job_jobid", {
+										jobId: receipt.jobId,
+									})
+								: ""}
 						</p>
 						{Object.values(receipt.sender).some(Boolean) ? (
 							<p className={cn("text-body-sm text-ink-muted")}>
@@ -2705,7 +2757,9 @@ const HubRow = memo(function HubRow({
 					key={image.id}
 					image={image}
 					scope={scope}
-					label={image.name ?? "Image"}
+					label={
+						image.name ?? t("ui.chat.canonical.canonical_transcript.image")
+					}
 				/>
 			))}
 		</MessageContainer>
@@ -2901,7 +2955,9 @@ const AskReceiptRow = memo(function AskReceiptRow({
 								>
 									{(record.answers[question.id] ?? []).length > 0
 										? (record.answers[question.id] ?? []).join(", ")
-										: "No answer given"}
+										: t(
+												"ui.chat.canonical.canonical_transcript.no_answer_given",
+											)}
 								</p>
 							</div>
 						))}
@@ -3444,8 +3500,10 @@ const OPEN_TRACE_MS = 60_000;
  * changes the answer, and a refusal without it is a dead end. The search
  * jump's copy carries the same tail.
  */
-const CHECKPOINT_JUMP_MISS_COPY =
-	"Could not reach that turn. It is further back than the loaded history — scroll up in the transcript to load more.";
+const CHECKPOINT_JUMP_MISS_COPY = () =>
+	t(
+		"ui.chat.canonical.canonical_transcript.could_not_reach_that_turn_it_is_further_back_than",
+	);
 
 /**
  * A fold group as the aggregation pass hands it on: the partition's own
@@ -4811,11 +4869,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * refusal speaks, so that is the argument rather than a second loop.
 	 */
 	const jumpToCheckpoint = useCallback(
-		(id: string) => void jumpTo(id, CHECKPOINT_JUMP_MISS_COPY),
+		(id: string) => void jumpTo(id, CHECKPOINT_JUMP_MISS_COPY()),
 		[jumpTo],
 	);
 	const jumpToSearchHit = useCallback(
-		(id: string) => jumpTo(id, THREAD_SEARCH_JUMP_MISS_COPY),
+		(id: string) => jumpTo(id, t("ui.chat.canonical.thread_search.jump_miss")),
 		[jumpTo],
 	);
 	/*

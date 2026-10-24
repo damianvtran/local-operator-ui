@@ -1,5 +1,6 @@
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import type {
 	Checkpoint,
 	CheckpointManifest,
@@ -248,7 +249,9 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 			} catch (error) {
 				if (epoch !== epochRef.current) return;
 				logOnce(
-					"checkpoints are unavailable for this conversation; the rail stays hidden:",
+					t(
+						"ui.chat.canonical.use_checkpoints.checkpoints_are_unavailable_for_this_conversation_the_rail_stays_hidden",
+					),
 					error,
 				);
 				stopPoll();
@@ -336,7 +339,9 @@ export function useCheckpoints(sessionId: string): UseCheckpointsResult {
 				} catch (error) {
 					if (epoch !== epochRef.current) return;
 					logOnce(
-						"checkpoint naming is unavailable; the cards keep their fallback text:",
+						t(
+							"ui.chat.canonical.use_checkpoints.checkpoint_naming_is_unavailable_the_cards_keep_their_fallback_text",
+						),
 						error,
 					);
 				}

@@ -262,7 +262,11 @@ test("both doors call the one helper with their own id, and neither invents one"
 		"src/renderer/src/features/chat/copy-session-id.ts",
 		"utf8",
 	);
-	assert.match(helper, /"Session ID copied"/, "the success label moved");
+	assert.match(
+		helper,
+		/t\("ui\.chat\.copy_session_id\.session_id_copied"\)/,
+		"the success label moved",
+	);
 	assert.equal(
 		/["`]Session ID copied\.["`]/.test(helper),
 		false,

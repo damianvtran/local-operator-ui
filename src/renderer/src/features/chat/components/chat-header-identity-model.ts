@@ -11,6 +11,7 @@
  * without a DOM, and the component only maps their answers onto pixels.
  */
 
+import { t } from "../../../../../i18n/messages";
 import type { CanonicalEffectiveIdentity } from "../../../../../shared/desktop-session-contract";
 import { teamDisplayName } from "../../../shared/api/local-operator/team-display";
 import {
@@ -243,8 +244,12 @@ export type HeaderIdentityView = {
  * could not be asked is held or falls back to the description chip instead
  * (`headerIdentityControlsShown`).
  */
-export const NO_TEAM_LABEL = "No team";
-export const NO_AGENT_LABEL = "No agent";
+export const NO_TEAM_LABEL = t(
+	"ui.chat.header.chat_header_identity_model.no_team",
+);
+export const NO_AGENT_LABEL = t(
+	"ui.chat.header.chat_header_identity_model.no_agent",
+);
 
 /**
  * The runtime's own default for a team that names no manager (`Team.manager` in
@@ -264,7 +269,9 @@ export const DEFAULT_TEAM_MANAGER = "manager";
  * speaker`), which is distinguishable from the team chip beside it where the
  * team's name was not (design D5).
  */
-export const ITS_MANAGER_LABEL = "its manager";
+export const ITS_MANAGER_LABEL = t(
+	"ui.chat.header.chat_header_identity_model.its_manager",
+);
 
 /**
  * The label ladder, for both controls, from the two sources in their
@@ -331,7 +338,7 @@ export function resolveHeaderIdentity(
 		: undefined;
 	const teamLabel = teamValue
 		? teamDisplayName(teamRow ?? { name: teamValue })
-		: NO_TEAM_LABEL;
+		: t("ui.chat.header.chat_header_identity_model.no_team");
 	/*
 	 * ONE STATEMENT OF WHO IS SPEAKING. Under the strict rule the agent slot
 	 * is the team's, so the label is the speaker and NOT `active_agent`: the
@@ -369,7 +376,8 @@ export function resolveHeaderIdentity(
 				? hostSpeaker
 				: catalogueManager;
 		seat = {
-			speaker: named ?? ITS_MANAGER_LABEL,
+			speaker:
+				named ?? t("ui.chat.header.chat_header_identity_model.its_manager"),
 			speakerKnown: named !== null,
 			team: strictTeam,
 			sentence: identityAgentClosedCaption(strictTeam, named),
@@ -386,7 +394,8 @@ export function resolveHeaderIdentity(
 		teamValue,
 		teamLabel,
 		agentValue,
-		agentLabel: agentValue ?? NO_AGENT_LABEL,
+		agentLabel:
+			agentValue ?? t("ui.chat.header.chat_header_identity_model.no_agent"),
 		/*
 		 * The manager value the CONSTRAINT reads (see the field's own docblock for
 		 * why it is quieter than the label fallback above: a row that is not there

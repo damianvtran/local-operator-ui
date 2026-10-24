@@ -66,9 +66,11 @@
  */
 
 import { Button, Input } from "@shared/components/ui";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { MessageCircleQuestion } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { t } from "../../../../../../i18n/messages";
 import type { PendingDesktopGate } from "../../../../../../shared/desktop-session-contract";
 import { APPROVAL_OPTIONS, gateIsSecret } from "../../ask-answer";
 import { composerField, focusComposer } from "../../composer-field";
@@ -177,8 +179,12 @@ export const questionDockHint = (
 		 * scopes are the point, so the clause is the dock's own.
 		 */
 		return held
-			? "Answer from the composer instead: type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn."
-			: "Choose Approve or Deny above, type yes, no, 1, or 2 and send, or press Escape in the message box to stop the turn.";
+			? t(
+					"ui.chat.trace.question_dock.answer_from_the_composer_instead_type_yes_no_1_or",
+				)
+			: t(
+					"ui.chat.trace.question_dock.choose_approve_or_deny_above_type_yes_no_1_or",
+				);
 	const prefix =
 		gate.question_total > 1
 			? `Question ${gate.question_index + 1} of ${gate.question_total}. `
@@ -208,12 +214,24 @@ export const questionDockHint = (
 	 */
 	if (gate.kind === "ask" && gateIsSecret(gate))
 		return held
-			? `${prefix}Held while this answer's fate is unknown — it may have landed, so nothing can send again · Esc in the card hides it`
-			: `${prefix}Type or paste the secret above · Enter sends · Esc hides`;
-	if (gate.options.length === 0) return `${prefix}Type your answer below.`;
+			? t(
+					"ui.chat.trace.question_dock.prefix_held_while_this_answers_fate_is_unknown_it_may",
+					{ prefix },
+				)
+			: t(
+					"ui.chat.trace.question_dock.prefix_type_or_paste_the_secret_above_enter_sends_esc",
+					{ prefix },
+				);
+	if (gate.options.length === 0)
+		return t("ui.chat.trace.question_dock.prefix_type_your_answer_below", {
+			prefix,
+		});
 	const digits =
 		gate.options.length === 1 ? "1" : `1-${Math.min(gate.options.length, 9)}`;
-	return `${prefix}Up/Down choose · Enter or ${digits} answers · Esc hides · or type your own answer below`;
+	return t(
+		"ui.chat.trace.question_dock.prefix_up_down_choose_enter_or_digits_answers_esc_hides",
+		{ prefix, digits },
+	);
 };
 
 /**
@@ -283,11 +301,12 @@ const SecretAnswer = ({
 	/** Submit the typed value; absent where the surface cannot answer. */
 	onAnswer?: (value: string) => void;
 }) => {
+	useI18nLocale();
 	const ready = value.trim().length > 0 && !busy && Boolean(onAnswer);
 	return (
 		<form
 			data-ask-secret=""
-			aria-label="Secret answer"
+			aria-label={t("ui.chat.trace.question_dock.secret_answer")}
 			className="flex flex-col gap-2"
 			onSubmit={(event) => {
 				event.preventDefault();
@@ -306,13 +325,15 @@ const SecretAnswer = ({
 			 * paints no record of it in the transcript.
 			 */}
 			<p className="text-ink-dim text-meta">
-				Hidden as you type — sent to the agent, not shown in the transcript.
+				{t(
+					"ui.chat.trace.question_dock.hidden_as_you_type_sent_to_the_agent_not_shown",
+				)}
 			</p>
 			<div className="flex items-center gap-2">
 				<Input
 					type="password"
-					aria-label="Secret value"
-					placeholder="Paste the secret"
+					aria-label={t("ui.chat.trace.question_dock.secret_value")}
+					placeholder={t("ui.chat.trace.question_dock.paste_the_secret")}
 					autoComplete="off"
 					autoCapitalize="none"
 					autoCorrect="off"
@@ -325,7 +346,7 @@ const SecretAnswer = ({
 					className="min-w-0 flex-1"
 				/>
 				<Button type="submit" variant="primary" disabled={!ready}>
-					Send
+					{t("ui.chat.trace.question_dock.send")}
 				</Button>
 			</div>
 		</form>
@@ -341,6 +362,7 @@ export const QuestionDock = ({
 	sessionId,
 	className,
 }: QuestionDockProps) => {
+	useI18nLocale();
 	const key = questionKeyOf(gate);
 	const [collapsedKey, setCollapsedKey] = useState<string | null>(null);
 	const collapsed = collapsedKey === key;
@@ -485,7 +507,7 @@ export const QuestionDock = ({
 				 */}
 				<button
 					type="button"
-					aria-label="Show the agent's question"
+					aria-label={t("ui.chat.trace.question_dock.show_the_agents_question")}
 					onClick={() => {
 						setCollapsedKey(null);
 						setExpandedByPress(true);
@@ -499,11 +521,13 @@ export const QuestionDock = ({
 						aria-hidden={true}
 						className="size-3.5 text-accent"
 					/>
-					<span>The agent is asking</span>
+					<span>{t("ui.chat.trace.question_dock.the_agent_is_asking")}</span>
 					<span aria-hidden={true} className="text-ink-dim">
 						·
 					</span>
-					<span className="text-ink-muted">Show</span>
+					<span className="text-ink-muted">
+						{t("ui.chat.trace.question_dock.show")}
+					</span>
 				</button>
 			</div>
 		);
@@ -513,7 +537,7 @@ export const QuestionDock = ({
 		<div className={cn("pb-2", className)} data-lo-question-dock="expanded">
 			<section
 				ref={cardRef}
-				aria-label="Question from the agent"
+				aria-label={t("ui.chat.trace.question_dock.question_from_the_agent")}
 				/*
 				 * Focusable by pointer (`-1`, not in the Tab order): a press anywhere on
 				 * the card makes it the focus scope, so Escape reaches the handler
@@ -540,7 +564,9 @@ export const QuestionDock = ({
 					 * (design round 1, D3; UX round 1, U2).
 					 */}
 					<p className="font-medium text-ink-muted text-meta">
-						{sending ? "Sending your answer…" : "The agent is asking"}
+						{sending
+							? t("ui.chat.trace.question_dock.sending_your_answer")
+							: t("ui.chat.trace.question_dock.the_agent_is_asking")}
 					</p>
 					{/*
 					 * The ordinal eyebrow, for every kind whose rows print digits: an ask's
@@ -550,8 +576,10 @@ export const QuestionDock = ({
 					{options.length > 0 && (
 						<p aria-hidden={true} className="ml-auto text-ink-dim text-meta">
 							{options.length === 1
-								? "1 to answer"
-								: `1-${Math.min(options.length, 9)} to answer`}
+								? t("ui.chat.trace.question_dock.1_to_answer")
+								: t("ui.chat.trace.question_dock.1_value_to_answer", {
+										value: Math.min(options.length, 9),
+									})}
 						</p>
 					)}
 				</div>

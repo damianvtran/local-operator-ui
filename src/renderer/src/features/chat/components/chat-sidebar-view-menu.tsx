@@ -79,7 +79,6 @@ import {
 } from "@features/chat/chat-sidebar-view";
 import { Button } from "@shared/components/ui";
 import { Switch } from "@shared/components/ui/switch";
-import { type WithoutParams, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
@@ -96,6 +95,7 @@ import {
 	Users,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import { type WithoutParams, t } from "../../../../../i18n/messages";
 
 // Stable model IDs stay separate from copy: store order/hidden state must not
 // become translated strings. Resolve these keys only while rendering the menu.

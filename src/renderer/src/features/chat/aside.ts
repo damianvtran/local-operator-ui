@@ -38,6 +38,7 @@ import {
 	useAsideStore,
 } from "@shared/store/aside-store";
 import { v4 as uuidv4 } from "uuid";
+import { t } from "../../../../i18n/messages";
 import {
 	ASIDE_ADOPT_REFUSED_CODE,
 	type AsideAdoptRefusedReason,
@@ -64,10 +65,15 @@ const RE_SENTENCE_END = /(?<=[.!?])\s/;
  * would read as two different facts, which is why the composition lives here
  * rather than at either call site.
  */
-export const ASIDE_NOT_ANSWERED_SENTENCE = "The aside was not answered.";
+export const ASIDE_NOT_ANSWERED_SENTENCE = t(
+	"ui.chat.aside.aside.the_aside_was_not_answered",
+);
 
 export function asideAskFailure(error: unknown): string {
-	return userFacingMessage(error, ASIDE_NOT_ANSWERED_SENTENCE);
+	return userFacingMessage(
+		error,
+		t("ui.chat.aside.aside.the_aside_was_not_answered"),
+	);
 }
 
 /**
@@ -134,8 +140,9 @@ export function asideModelDeclined(error: unknown): boolean {
  * brings it back (the operator's ruling on U11 - Esc's destruction needs its own
  * warning, wherever the panel sends the user to it).
  */
-export const ASIDE_CONTINUATION_ESCAPE =
-	"This aside can't continue. Press Esc to close it, which discards this exchange, then start a new one with /btw.";
+export const ASIDE_CONTINUATION_ESCAPE = t(
+	"ui.chat.aside.aside.this_aside_cant_continue_press_esc_to_close_it_which",
+);
 
 /**
  * The two real options after the MODEL declined a follow-up, and what each costs.
@@ -157,8 +164,9 @@ export const ASIDE_CONTINUATION_ESCAPE =
  * above it, so Esc there costs nothing and the owner's own sentence is enough (U1's
  * rule that a clause is printed only where it is true).
  */
-export const ASIDE_DECLINED_OPTIONS =
-	"Ask again here to keep this exchange, or press Esc to close the aside and discard it.";
+export const ASIDE_DECLINED_OPTIONS = t(
+	"ui.chat.aside.aside.ask_again_here_to_keep_this_exchange_or_press_esc",
+);
 
 /**
  * The remedy the owner's declined sentence ENDS with, which this panel then repeats.
@@ -193,8 +201,8 @@ export function asidePanelRefusal(error: unknown, continued: boolean): string {
 	const sentence = asideAskFailure(error);
 	if (!continued) return sentence;
 	if (!asideModelDeclined(error))
-		return `${sentence} ${ASIDE_CONTINUATION_ESCAPE}`;
-	return `${sentence.replace(RE_OWNER_TRAILING_REMEDY, "")} ${ASIDE_DECLINED_OPTIONS}`;
+		return `${sentence} ${t("ui.chat.aside.aside.this_aside_cant_continue_press_esc_to_close_it_which")}`;
+	return `${sentence.replace(RE_OWNER_TRAILING_REMEDY, "")} ${t("ui.chat.aside.aside.ask_again_here_to_keep_this_exchange_or_press_esc")}`;
 }
 
 /**
@@ -231,7 +239,13 @@ export function asideQuotedQuestion(question: string): string {
  * exactly the question and what became of it.
  */
 export function asideOffPanelRefusal(question: string, error: unknown): string {
-	return `Your aside ${asideQuotedQuestion(question)} got no answer: ${asideOffPanelCause(error)}`;
+	return t(
+		"ui.chat.aside.aside.your_aside_asidequotedquestionvalue_got_no_answer_asideoffpanelcausevalue",
+		{
+			asideQuotedQuestionValue: asideQuotedQuestion(question),
+			asideOffPanelCauseValue: asideOffPanelCause(error),
+		},
+	);
 }
 
 /**
@@ -277,7 +291,7 @@ export const ASIDE_OFF_PANEL_MAX_CHARS = 200;
  */
 function asideOffPanelCause(error: unknown): string {
 	return asideModelDeclined(error)
-		? "The model didn't reply in text. Ask again."
+		? t("ui.chat.aside.aside.the_model_didnt_reply_in_text_ask_again")
 		: asideAskFailure(error);
 }
 
@@ -312,8 +326,9 @@ function asideOffPanelCause(error: unknown): string {
  * composer withholds its suffix through `ASIDE_STILL_ANSWERING_CODE` while this line
  * is up.
  */
-export const ASIDE_ASK_BUSY =
-	"The aside is still answering. Press Enter again once the answer is in.";
+export const ASIDE_ASK_BUSY = t(
+	"ui.chat.aside.aside.the_aside_is_still_answering_press_enter_again_once_the",
+);
 
 /**
  * The sentence an ask is refused with while the exchange is QUEUED to join the
@@ -323,15 +338,23 @@ export const ASIDE_ASK_BUSY =
  * follow-up typed here could only fail after leaving the box. The panel is
  * read-only until the pair lands, and this is the composer's half of that.
  */
-export const ASIDE_ASK_QUEUED =
-	"This aside is queued to join the conversation. Ask again once it has been added.";
+export const ASIDE_ASK_QUEUED = t(
+	"ui.chat.aside.aside.this_aside_is_queued_to_join_the_conversation_ask_again",
+);
 
 export function asideAskBlockedReason(
 	state: Parameters<typeof lastAsideStream>[0],
 	sessionId: string,
 ): string | null {
-	if (state.attached[sessionId]?.queued) return ASIDE_ASK_QUEUED;
-	return lastAsideStream(state, sessionId)?.streaming ? ASIDE_ASK_BUSY : null;
+	if (state.attached[sessionId]?.queued)
+		return t(
+			"ui.chat.aside.aside.this_aside_is_queued_to_join_the_conversation_ask_again",
+		);
+	return lastAsideStream(state, sessionId)?.streaming
+		? t(
+				"ui.chat.aside.aside.the_aside_is_still_answering_press_enter_again_once_the",
+			)
+		: null;
 }
 
 /**
@@ -418,7 +441,8 @@ export function reportUncarriedAsideRefusal(
  * producer's exact string and why the producer is named: a change to one side has
  * to be made to both.
  */
-const UNKNOWN_FIELDS_REFUSAL = "The request has invalid fields.";
+const UNKNOWN_FIELDS_REFUSAL = () =>
+	t("ui.chat.aside.aside.the_request_has_invalid_fields");
 
 /**
  * Whether a failed ask is an owner refusing the field THIS app sent.
@@ -440,7 +464,7 @@ function refusedTheSubscriptionField(
 		weSentTheField &&
 		error instanceof DesktopControlError &&
 		error.status === 422 &&
-		error.message === UNKNOWN_FIELDS_REFUSAL
+		error.message === UNKNOWN_FIELDS_REFUSAL()
 	);
 }
 
@@ -705,8 +729,9 @@ export function asideAdoptStatus(
 }
 
 /** The line a queued adopt leaves on the panel until the pair lands. */
-export const ASIDE_ADOPT_QUEUED =
-	"Queued — this aside joins the conversation when the current turn finishes.";
+export const ASIDE_ADOPT_QUEUED = t(
+	"ui.chat.aside.aside.queued_this_aside_joins_the_conversation_when_the_current_turn",
+);
 
 /**
  * The panel's sentence for the owner's typed refusal (`aside_adopt_refused`).
@@ -721,22 +746,31 @@ export const ASIDE_ADOPT_REFUSED_SENTENCES: Record<
 	AsideAdoptRefusedReason,
 	string
 > = {
-	session_closed:
-		"The aside was not added: this conversation has closed, so there is nothing to add it to.",
+	get session_closed() {
+		return t(
+			"ui.chat.aside.aside.the_aside_was_not_added_this_conversation_has_closed_so",
+		);
+	},
 	/*
 	 * The tail is a tool call with no result, and no turn is running (D10): what
 	 * clears it is the next prompt's turn, so the sentence names that and never
 	 * tells the user to wait for a turn that is not happening.
 	 */
-	open_tool_batch:
-		"The conversation stopped in the middle of a tool call, so the aside was not added. Send a message to continue the conversation, then add the aside.",
+	get open_tool_batch() {
+		return t(
+			"ui.chat.aside.aside.the_conversation_stopped_in_the_middle_of_a_tool_call",
+		);
+	},
 	/*
 	 * An owner older than the queue refused a mid-turn adopt (D9). Transient: it
 	 * lasts only while that owner is alive, and the reply finishing is what makes
 	 * the same press work.
 	 */
-	turn_running:
-		"This conversation is busy, and the version it's running can't queue an aside. Add it when the reply finishes.",
+	get turn_running() {
+		return t(
+			"ui.chat.aside.aside.this_conversation_is_busy_and_the_version_its_running_cant",
+		);
+	},
 };
 
 /** The sentence a failed adopt leaves on the panel. */
@@ -750,7 +784,7 @@ export function asideAdoptFailure(error: unknown): string {
 	}
 	return userFacingMessage(
 		error,
-		"The aside was not added to the conversation.",
+		t("ui.chat.aside.aside.the_aside_was_not_added_to_the_conversation"),
 	);
 }
 
@@ -787,16 +821,18 @@ async function queuedAdoptionIds(
 export const ASIDE_QUEUED_RETRY_MS = 1_500;
 
 /** The panel's sentence when a queued pair did not reach the transcript. */
-export const ASIDE_ADOPT_NOT_LANDED =
-	"The aside was not added to the conversation. Add it again to try once more.";
+export const ASIDE_ADOPT_NOT_LANDED = t(
+	"ui.chat.aside.aside.the_aside_was_not_added_to_the_conversation_add_it",
+);
 
 /**
  * The same outcome when the pair's ids could not be read, so absence cannot be
  * proven. It says what is known and offers the press, which is safe either way:
  * the owner skips a pair it already saved, by message id.
  */
-export const ASIDE_ADOPT_UNCONFIRMED =
-	"The aside could not be confirmed in the conversation. If it is not there, add it again.";
+export const ASIDE_ADOPT_UNCONFIRMED = t(
+	"ui.chat.aside.aside.the_aside_could_not_be_confirmed_in_the_conversation_if",
+);
 
 /**
  * What a queued panel does with the transcript and the turn's state it was
@@ -909,7 +945,13 @@ export function settleQueuedAdoption(
 						.unqueueAdoption(
 							sessionId,
 							asideId,
-							known > 0 ? ASIDE_ADOPT_NOT_LANDED : ASIDE_ADOPT_UNCONFIRMED,
+							known > 0
+								? t(
+										"ui.chat.aside.aside.the_aside_was_not_added_to_the_conversation_add_it",
+									)
+								: t(
+										"ui.chat.aside.aside.the_aside_could_not_be_confirmed_in_the_conversation_if",
+									),
 						);
 				}, ASIDE_QUEUED_RETRY_MS),
 			);
@@ -1023,7 +1065,10 @@ export const asideAdoptCap = (isMac: boolean): string =>
  * new promise.
  */
 export const asideAdoptConfirm = (isMac: boolean): string =>
-	`Press ${asideAdoptCap(isMac)} again to add the aside to the conversation. Once added, it stays there.`;
+	t(
+		"ui.chat.aside.aside.press_asideadoptcapvalue_again_to_add_the_aside_to_the_conversation",
+		{ asideAdoptCapValue: asideAdoptCap(isMac) },
+	);
 
 /**
  * How long after the confirm a second adopt chord is still read as the same gesture.
@@ -1140,16 +1185,20 @@ export function asideAdoptBlockedReason(
 	queueSupported = false,
 ): string | null {
 	if (!stream) {
-		return "Nothing to add yet.";
+		return t("ui.chat.aside.aside.nothing_to_add_yet");
 	}
 	if (stream.error !== null) {
-		return "Nothing to add.";
+		return t("ui.chat.aside.aside.nothing_to_add");
 	}
 	if (sessionStreaming && !queueSupported) {
-		return "This conversation is working. Adding the aside while it runs would splice a message into a live turn.";
+		return t(
+			"ui.chat.aside.aside.this_conversation_is_working_adding_the_aside_while_it_runs",
+		);
 	}
 	if (stream.streaming) {
-		return "The exchange is still settling — a moment before it can be added.";
+		return t(
+			"ui.chat.aside.aside.the_exchange_is_still_settling_a_moment_before_it_can",
+		);
 	}
 	return null;
 }
@@ -1395,12 +1444,15 @@ export function asideAnnouncement(
 	stream: AsideStream | undefined,
 ): string | null {
 	if (!stream) return null;
-	if (stream.error !== null) return "The aside was not answered";
-	if (stream.streaming) return "Asking the aside";
+	if (stream.error !== null)
+		return t("ui.chat.aside.aside.the_aside_was_not_answered_inline");
+	if (stream.streaming) return t("ui.chat.aside.aside.asking_the_aside");
 	const sentence =
 		asideAnnounceableText(stream.text.trim()).split(RE_SENTENCE_END)[0] ?? "";
-	if (sentence.length === 0) return "The aside answered";
+	if (sentence.length === 0) return t("ui.chat.aside.aside.the_aside_answered");
 	return sentence.length > ASIDE_ANNOUNCED_CHARS
-		? `The aside answered: ${sentence.slice(0, ASIDE_ANNOUNCED_CHARS)}\u2026`
-		: `The aside answered: ${sentence}`;
+		? t("ui.chat.aside.aside.the_aside_answered_value", {
+				value: sentence.slice(0, ASIDE_ANNOUNCED_CHARS),
+			})
+		: t("ui.chat.aside.aside.the_aside_answered_sentence", { sentence });
 }

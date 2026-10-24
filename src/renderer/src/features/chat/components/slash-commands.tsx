@@ -52,7 +52,7 @@ import type {
 	ReusableTeam,
 } from "@shared/api/local-operator/profile-hooks";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
-import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -68,6 +68,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { t } from "../../../../../i18n/messages";
 import type { TagCategory } from "../../../../../shared/desktop-contract";
 import type { CanonicalModel } from "../../../../../shared/desktop-session-contract";
 import { archiveDestinationApplies } from "../chat-archived";
@@ -497,6 +498,13 @@ function useArgumentRows(
 	tags: TagListState | undefined,
 	enabled: boolean,
 ): SlashArgumentListState {
+	/*
+	 * `argumentRows` builds its labels with `t()`, so the memo below must be
+	 * invalidated when the language changes. A bare subscription is not enough:
+	 * without the value in the dependency list React keeps the rows it built in
+	 * the old language until some other input moves.
+	 */
+	const locale = useI18nLocale();
 	const themeName = useUiPreferencesStore((state) => state.themeName);
 	const { client, provided } = useOptionalQueryClient();
 	// Hooks cannot be called conditionally, so the entity query always runs and
@@ -655,6 +663,7 @@ function useArgumentRows(
 					? themeName
 					: entities.data?.current;
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is the rebuild TRIGGER for the rows' labels, which `argumentRows` reads through `t()` opaquely to this rule.
 	return useMemo(() => {
 		if (!source) {
 			return { rows: [], loading: false, error: null, needsSession: false };
@@ -687,7 +696,7 @@ function useArgumentRows(
 				rows: argumentRows("providers", providers.data ?? [], null),
 				loading: providers.isLoading,
 				error: providers.isError
-					? "The list could not be loaded. Try again."
+					? t("ui.chat.slash_commands.the_list_could_not_be_loaded_try_again")
 					: null,
 				needsSession: false,
 			};
@@ -731,7 +740,9 @@ function useArgumentRows(
 					argumentRows("providers", providers.data, null),
 				)[0]?.choice.value;
 				if (named && (storedById.get(named) ?? 0) <= 0) {
-					emptyCopy = "No stored credential to remove.";
+					emptyCopy = t(
+						"ui.chat.slash_commands.no_stored_credential_to_remove",
+					);
 				}
 			}
 			return {
@@ -745,7 +756,7 @@ function useArgumentRows(
 				 */
 				loading: accounts.isLoading || providers.isLoading,
 				error: accounts.isError
-					? "The list could not be loaded. Try again."
+					? t("ui.chat.slash_commands.the_list_could_not_be_loaded_try_again")
 					: null,
 				needsSession: false,
 			};
@@ -769,7 +780,9 @@ function useArgumentRows(
 						? MCP_EMPTY_SLOT_COPY
 						: undefined,
 				loading: mcp.isLoading,
-				error: mcp.isError ? "The list could not be loaded. Try again." : null,
+				error: mcp.isError
+					? t("ui.chat.slash_commands.the_list_could_not_be_loaded_try_again")
+					: null,
 				needsSession: false,
 			};
 		}
@@ -801,11 +814,13 @@ function useArgumentRows(
 				emptyCopy:
 					rows.length === 0
 						? draftRosterSource === "team"
-							? "No teams are registered."
-							: "No profiles found."
+							? t("ui.chat.slash_commands.no_teams_are_registered")
+							: t("ui.chat.slash_commands.no_profiles_found")
 						: undefined,
 				loading: list.isLoading,
-				error: list.isError ? "The list could not be loaded. Try again." : null,
+				error: list.isError
+					? t("ui.chat.slash_commands.the_list_could_not_be_loaded_try_again")
+					: null,
 				needsSession: false,
 			};
 		}
@@ -867,11 +882,12 @@ function useArgumentRows(
 			rows: argumentRows(source, entities.data?.entities ?? [], current),
 			loading: entities.isLoading,
 			error: entities.isError
-				? "The list could not be loaded. Try again."
+				? t("ui.chat.slash_commands.the_list_could_not_be_loaded_try_again")
 				: null,
 			needsSession: false,
 		};
 	}, [
+		locale,
 		source,
 		localThemes,
 		entities.data,
@@ -945,13 +961,19 @@ export function useSlashCompletion({
 	activeSpec,
 	paneHasSession = false,
 }: SlashCompletionArgs): SlashCompletionState {
+	/*
+	 * The hook builds command rows and error lines with `t()` inside memos, so
+	 * the locale is read ONCE here and carried into their dependency lists.
+	 * Without it a language switch leaves the popup's rows in the old language
+	 * until the input changes.
+	 */
+	const locale = useI18nLocale();
 	const capabilities = useDesktopCapabilities();
 	const enabled = desktopFeatureEnabled(capabilities.data, "commands");
 	/*
 	 * The tag surface's own capability. The command description reuses the
-	 * audited `ui.chat.tags.label` key; the slash popup itself is an English
-	 * surface today (its rows and footers are literal), so this memo needs no
-	 * locale subscription of its own.
+	 * audited `ui.chat.tags.label` key; the memo that builds it reads `t()` at
+	 * build time, so `locale` is one of its dependencies.
 	 */
 	const tagsEnabled = desktopFeatureEnabled(capabilities.data, "session_tags");
 	/*
@@ -998,6 +1020,7 @@ export function useSlashCompletion({
 		client,
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is the re-label TRIGGER; `t()` is read at build time inside this memo.
 	const registry = useMemo(
 		() =>
 			withTagCommand(
@@ -1005,10 +1028,10 @@ export function useSlashCompletion({
 				tagsEnabled && Boolean(sessionId),
 				t("ui.chat.tags.label"),
 			),
-		/* `t` is read at build time of this memo; the popup is the existing
-		   English slash surface, so a live language switch is not a promise it
-		   makes. The tag store's own copy is translated where it is shown. */
-		[query.data, tagsEnabled, sessionId],
+		/* `t` is read at build time of this memo, so the active locale is a
+		   dependency: otherwise a language switch leaves the tag row labelled in
+		   the old language until the catalogue query moves. */
+		[query.data, tagsEnabled, sessionId, locale],
 	);
 	const vocabulary = useMemo(() => argumentVocabulary(registry), [registry]);
 	/*
@@ -1375,6 +1398,7 @@ export function useSlashCompletion({
 		enabled,
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `locale` is the trigger the rows' `t()` reads need; the rule cannot see through the call.
 	const argumentMatches = useMemo(() => {
 		if (!effectiveInline || !argumentContext) return [];
 		/*
@@ -1439,6 +1463,7 @@ export function useSlashCompletion({
 		inputValue,
 		paneHasSession,
 		tagList,
+		locale,
 	]);
 
 	/*
@@ -1788,6 +1813,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	onPick,
 	onActionPick,
 }) => {
+	useI18nLocale();
 	const listId = state.listId;
 	const activeRef = useRef<HTMLLIElement | null>(null);
 	/*
@@ -1921,8 +1947,12 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	const footer = activeAction
 		? {
 				text: activeAction.disabled
-					? "A current model is needed to set a default."
-					: "Enter sets the current model as the default for new sessions.",
+					? t(
+							"ui.chat.slash_commands.a_current_model_is_needed_to_set_a_default",
+						)
+					: t(
+							"ui.chat.slash_commands.enter_sets_the_current_model_as_the_default_for_new",
+						),
 				key: activeAction.disabled ? null : "Enter",
 			}
 		: enterFooter({
@@ -2043,7 +2073,9 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 				? t("ui.chat.tags.create_name", { name: activeArgument.value })
 				: activeArgument.applied
 					? t("ui.chat.tags.remove_named", { name: activeArgument.value })
-					: `Add “${activeArgument.value}”`;
+					: t("ui.chat.slash_commands.add_value", {
+							value: activeArgument.value,
+						});
 	const baseFooter =
 		typeof footer === "string" ? footer : (footer?.text ?? null);
 	const footerText =
@@ -2051,12 +2083,12 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			? state.tagPending
 				? t("ui.chat.tags.applying")
 				: unambiguousActive
-					? `Enter ${tagVerb}`
+					? t("ui.chat.slash_commands.enter_tagverb", { tagVerb })
 					: baseFooter
 			: baseFooter;
 	const clickText =
 		tagListShown && activeArgument && !state.tagPending
-			? `Click ${tagVerb}`
+			? t("ui.chat.slash_commands.click_tagverb", { tagVerb })
 			: click;
 	/*
 	 * ONE OWNER FOR A REGISTRY LOAD FAILURE. `argumentEmptyCopy` already prints
@@ -2087,7 +2119,11 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			// biome-ignore lint/a11y/useFocusableInteractive: the textarea keeps focus; the listbox is reached through aria-activedescendant, so it is not in the tab order.
 			// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>.
 			role="listbox"
-			aria-label={argument ? "Command arguments" : "Slash commands"}
+			aria-label={
+				argument
+					? t("ui.chat.slash_commands.command_arguments")
+					: t("ui.chat.slash_commands.slash_commands")
+			}
 			className={cn(
 				"@container/slash absolute bottom-full left-0 right-0 z-20 mb-1",
 				// `overflow-hidden`, not `overflow-y-auto`: the SCROLL belongs to the
@@ -2156,7 +2192,9 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			>
 				{state.matches.length === 0 ? (
 					<div className="px-3 py-2 text-body-sm text-ink-muted">
-						{argument ? emptyArgumentCopy : "No commands match."}
+						{argument
+							? emptyArgumentCopy
+							: t("ui.chat.slash_commands.no_commands_match")}
 					</div>
 				) : (
 					<ul>
@@ -2327,7 +2365,9 @@ function actionRowContent(row: ArgumentActionRow) {
 			<span className="min-w-0 flex-1 truncate text-ink-muted">
 				{row.description}
 			</span>
-			<span className="shrink-0 text-meta text-ink-dim">Action</span>
+			<span className="shrink-0 text-meta text-ink-dim">
+				{t("ui.chat.slash_commands.action")}
+			</span>
 		</>
 	);
 }
@@ -2366,7 +2406,7 @@ function argumentRowContent(
 							? t("ui.chat.tags.remove_named", { name: value.name })
 							: t("ui.chat.tags.add")
 						: value.current
-							? "Current"
+							? t("ui.chat.slash_commands.current")
 							: undefined
 				}
 				className={cn(
@@ -2378,7 +2418,7 @@ function argumentRowContent(
 			>
 				{source === "session-tags"
 					? value.applied
-						? "[x]"
+						? t("ui.chat.slash_commands.x")
 						: "[ ]"
 					: value.current
 						? "●"

@@ -78,8 +78,30 @@
 
 import { cn } from "@shared/lib/utils";
 import type { KeyboardEvent } from "react";
+import { t } from "../../../../../../i18n/messages";
 import type { PendingDesktopGate } from "../../../../../../shared/desktop-session-contract";
 import { AskRecommendedBadge, recommendedIndex } from "../ask-recommended";
+
+/*
+ * Approval labels are also the client's stable answer values. Translate only
+ * the exact client-owned pairs at render time; model-authored options and the
+ * value passed to onAnswer remain untouched.
+ */
+const presentedOption = (
+	option: PendingDesktopGate["options"][number],
+): { label: string; description?: string } => {
+	if (option.description === "Run the action and continue the turn.")
+		return {
+			label: option.label,
+			description: t("ui.chat.trace.approval.approve_description"),
+		};
+	if (option.description === "Refuse the action; the turn continues.")
+		return {
+			label: option.label,
+			description: t("ui.chat.trace.approval.deny_description"),
+		};
+	return option;
+};
 
 export type AskOptionsProps = {
 	/** The gate's options, in the order the wire carried them. */
@@ -215,7 +237,7 @@ export const AskOptions = ({
 		 * stays 8px (`mt-1` 4px + `py-1` 4px).
 		 */
 		<fieldset
-			aria-label="Answer options"
+			aria-label={t("ui.chat.trace.ask_options.answer_options")}
 			className="flex min-w-0 max-h-[380px] flex-col gap-0.5 overflow-y-auto border-0 p-1"
 			onKeyDown={(event) => {
 				const buttons = Array.from(
@@ -235,149 +257,152 @@ export const AskOptions = ({
 				else onAnswer(options[intent.index].label);
 			}}
 		>
-			{options.map((option, index) => (
-				<button
-					key={`${requestId}-${String(index)}`}
-					type="button"
-					data-ask-option=""
-					disabled={busy}
-					onClick={() => onAnswer(option.label)}
-					className={cn(
-						// A full-width 34px row at radius 6 (§F1). TWO couplings keep its box
-						// around a wrapped description (issue #762), and the first is the
-						// defect the reporter's screenshot shows:
-						//
-						// 1. `shrink-0`: the band is a capped flex column (`max-h-[380px]`),
-						//    so without this a tall list is COMPRESSED to fit the cap
-						//    instead of scrolling — nine wrapped rows measure 372px of
-						//    content and each row's box ends ~37px short of its own column,
-						//    which is what puts the next row's ordinal and label on top of
-						//    the description above it. The band's `overflow-y-auto` is the
-						//    intended behaviour; the shrink was starving it.
-						// 2. `items-start`, NOT `items-baseline`: the keycap is aligned to
-						//    the column's first line by the ordinal's own line box (its
-						//    `leading` below), not by a baseline coupling across a column
-						//    that can be multi-line.
-						"flex min-h-[34px] w-full shrink-0 items-start gap-3 rounded-sm px-2 py-2 text-left",
-						// Colour-only transition: hover is a colour step, and nothing on
-						// this card lifts, scales or translates.
-						"transition-colors duration-fast ease-out-quart",
-						// The roving selection IS focus, so the selected row takes the same
-						// ground as the hovered one: the eye reads one "this row" state.
-						// `sunken`, not `row-hover`: on the card's `elevated` ground
-						// `row-hover` is ΔE00 0.00 in some palettes, and `elevated` ->
-						// `sunken` is the measured step (`question dock option row hover
-						// fill` in scripts/contrast-contract.mjs).
-						"hover:bg-sunken focus-visible:bg-sunken",
-						// Disabled changes colour, never opacity.
-						"disabled:bg-transparent disabled:text-ink-disabled",
-					)}
-				>
-					{/*
-					 * The ordinal is decoration, and `aria-hidden` is what keeps it
-					 * that way: without it the accessible name reads "1. Popup is
-					 * open" and a reader has to parse a number that means nothing to
-					 * the agent. It is kept visible because it is the shortcut the
-					 * terminal card teaches (digits 1-9 jump to an option) and
-					 * because a numbered list is how the model wrote the question —
-					 * and typing that numeral now resolves to this label rather than
-					 * sending "1", so the numeral is no longer a lie.
-					 *
-					 * Which is exactly why it stops at nine. `resolveNumericAnswer`
-					 * accepts 1-9, and the terminal's shortcut has no tenth rung
-					 * either, so a `10.` here would be a key that cannot be pressed —
-					 * the same class of lie as the numeral that used to reach the
-					 * wire verbatim. Rows past nine lose the ordinal column and stay
-					 * pressable, which is the honest drawing of what they are (UX
-					 * round 2, U11).
-					 */}
-					{index >= 9 && <span aria-hidden={true} className="w-4 shrink-0" />}
-					{index < 9 && (
-						<span
-							aria-hidden={true}
-							className={cn(
-								// The keycap column: a fixed width so every label starts on one
-								// edge, `ink-dim` because it is a hint rather than content.
-								"w-4 shrink-0 text-center font-mono text-mono-sm",
-								// The numeral rides the label column's FIRST line through its
-								// line box, now that the row no longer baseline-aligns it
-								// (issue #762): `text-body-sm` at its own leading is that first
-								// line box, and `leading` utilities are em-relative, so the
-								// label's own tokens are what has to be named. A later change
-								// to the label step carries the keycap with it.
-								"leading-[calc(var(--text-body-sm)*var(--text-body-sm--line-height))]",
-								busy ? "text-ink-disabled" : "text-ink-dim",
-							)}
-						>
-							{index + 1}
-						</span>
-					)}
-					<span className="flex min-w-0 flex-1 flex-col gap-0.5">
-						<span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-							<span
-								className={cn(
-									"min-w-0 text-body-sm",
-									busy ? "text-ink-disabled" : "text-ink",
-									/*
-									 * THE LABEL IS BOLDED WHERE IT IS RECOMMENDED (operator ask,
-									 * 2026-10-04). It was reported in the same size, weight and ink
-									 * as every other label, so the only signal was the word beside
-									 * it - and the word read as part of the description. The weight
-									 * step is the half that survives when the badge is skimmed past,
-									 * and `semibold` rather than a colour: a hue here would fail AA
-									 * on the light theme (see `ask-recommended.tsx`), and the accent
-									 * is already spent on the callout above.
-									 */
-									marked === index && "font-semibold",
-								)}
-							>
-								{option.label}
-							</span>
-							{marked === index && (
-								/*
-								 * The glyph + word mark, and the reason it is a shared module
-								 * rather than a span here: the drawer card carries the same fact
-								 * through a different wire shape, and the two must not be able to
-								 * drift into two treatments (see `ask-recommended.tsx`).
-								 *
-								 * NOT the accent and NOT uppercase. The caps were borrowed from
-								 * a surface that has no hue to work with (`ask_picker.py` draws
-								 * its badge at `fg` + bold); here the accent is already spent on
-								 * the callout above, so a second accent spend makes it say two
-								 * things on one frame and takes the screen past § 2's budget of
-								 * three (design round 1, D2, measured: the badge and the callout
-								 * border were the same `rgb` in every palette).
-								 *
-								 * Two elements, not one, and that is what keeps it visible while
-								 * the roving selection moves: this is keyed on `marked`, the
-								 * cursor rides `focus-visible:bg-sunken` on whichever row the
-								 * user arrows onto, and neither reads the other.
-								 */
-								<AskRecommendedBadge
-									className={busy ? "text-ink-disabled" : undefined}
-								/>
-							)}
-						</span>
+			{options.map((option, index) => {
+				const presented = presentedOption(option);
+				return (
+					<button
+						key={`${requestId}-${String(index)}`}
+						type="button"
+						data-ask-option=""
+						disabled={busy}
+						onClick={() => onAnswer(option.label)}
+						className={cn(
+							// A full-width 34px row at radius 6 (§F1). TWO couplings keep its box
+							// around a wrapped description (issue #762), and the first is the
+							// defect the reporter's screenshot shows:
+							//
+							// 1. `shrink-0`: the band is a capped flex column (`max-h-[380px]`),
+							//    so without this a tall list is COMPRESSED to fit the cap
+							//    instead of scrolling — nine wrapped rows measure 372px of
+							//    content and each row's box ends ~37px short of its own column,
+							//    which is what puts the next row's ordinal and label on top of
+							//    the description above it. The band's `overflow-y-auto` is the
+							//    intended behaviour; the shrink was starving it.
+							// 2. `items-start`, NOT `items-baseline`: the keycap is aligned to
+							//    the column's first line by the ordinal's own line box (its
+							//    `leading` below), not by a baseline coupling across a column
+							//    that can be multi-line.
+							"flex min-h-[34px] w-full shrink-0 items-start gap-3 rounded-sm px-2 py-2 text-left",
+							// Colour-only transition: hover is a colour step, and nothing on
+							// this card lifts, scales or translates.
+							"transition-colors duration-fast ease-out-quart",
+							// The roving selection IS focus, so the selected row takes the same
+							// ground as the hovered one: the eye reads one "this row" state.
+							// `sunken`, not `row-hover`: on the card's `elevated` ground
+							// `row-hover` is ΔE00 0.00 in some palettes, and `elevated` ->
+							// `sunken` is the measured step (`question dock option row hover
+							// fill` in scripts/contrast-contract.mjs).
+							"hover:bg-sunken focus-visible:bg-sunken",
+							// Disabled changes colour, never opacity.
+							"disabled:bg-transparent disabled:text-ink-disabled",
+						)}
+					>
 						{/*
-						 * The consequence line stays. Both the phone card and the
-						 * terminal picker show it, and it is frequently the only thing
-						 * that distinguishes two options whose labels are near
-						 * synonyms — dropping it makes the user answer a thinner
-						 * question than the model asked.
+						 * The ordinal is decoration, and `aria-hidden` is what keeps it
+						 * that way: without it the accessible name reads "1. Popup is
+						 * open" and a reader has to parse a number that means nothing to
+						 * the agent. It is kept visible because it is the shortcut the
+						 * terminal card teaches (digits 1-9 jump to an option) and
+						 * because a numbered list is how the model wrote the question —
+						 * and typing that numeral now resolves to this label rather than
+						 * sending "1", so the numeral is no longer a lie.
+						 *
+						 * Which is exactly why it stops at nine. `resolveNumericAnswer`
+						 * accepts 1-9, and the terminal's shortcut has no tenth rung
+						 * either, so a `10.` here would be a key that cannot be pressed —
+						 * the same class of lie as the numeral that used to reach the
+						 * wire verbatim. Rows past nine lose the ordinal column and stay
+						 * pressable, which is the honest drawing of what they are (UX
+						 * round 2, U11).
 						 */}
-						{option.description && (
+						{index >= 9 && <span aria-hidden={true} className="w-4 shrink-0" />}
+						{index < 9 && (
 							<span
+								aria-hidden={true}
 								className={cn(
-									"text-body-sm",
-									busy ? "text-ink-disabled" : "text-ink-muted",
+									// The keycap column: a fixed width so every label starts on one
+									// edge, `ink-dim` because it is a hint rather than content.
+									"w-4 shrink-0 text-center font-mono text-mono-sm",
+									// The numeral rides the label column's FIRST line through its
+									// line box, now that the row no longer baseline-aligns it
+									// (issue #762): `text-body-sm` at its own leading is that first
+									// line box, and `leading` utilities are em-relative, so the
+									// label's own tokens are what has to be named. A later change
+									// to the label step carries the keycap with it.
+									"leading-[calc(var(--text-body-sm)*var(--text-body-sm--line-height))]",
+									busy ? "text-ink-disabled" : "text-ink-dim",
 								)}
 							>
-								{option.description}
+								{index + 1}
 							</span>
 						)}
-					</span>
-				</button>
-			))}
+						<span className="flex min-w-0 flex-1 flex-col gap-0.5">
+							<span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+								<span
+									className={cn(
+										"min-w-0 text-body-sm",
+										busy ? "text-ink-disabled" : "text-ink",
+										/*
+										 * THE LABEL IS BOLDED WHERE IT IS RECOMMENDED (operator ask,
+										 * 2026-10-04). It was reported in the same size, weight and ink
+										 * as every other label, so the only signal was the word beside
+										 * it - and the word read as part of the description. The weight
+										 * step is the half that survives when the badge is skimmed past,
+										 * and `semibold` rather than a colour: a hue here would fail AA
+										 * on the light theme (see `ask-recommended.tsx`), and the accent
+										 * is already spent on the callout above.
+										 */
+										marked === index && "font-semibold",
+									)}
+								>
+									{presented.label}
+								</span>
+								{marked === index && (
+									/*
+									 * The glyph + word mark, and the reason it is a shared module
+									 * rather than a span here: the drawer card carries the same fact
+									 * through a different wire shape, and the two must not be able to
+									 * drift into two treatments (see `ask-recommended.tsx`).
+									 *
+									 * NOT the accent and NOT uppercase. The caps were borrowed from
+									 * a surface that has no hue to work with (`ask_picker.py` draws
+									 * its badge at `fg` + bold); here the accent is already spent on
+									 * the callout above, so a second accent spend makes it say two
+									 * things on one frame and takes the screen past § 2's budget of
+									 * three (design round 1, D2, measured: the badge and the callout
+									 * border were the same `rgb` in every palette).
+									 *
+									 * Two elements, not one, and that is what keeps it visible while
+									 * the roving selection moves: this is keyed on `marked`, the
+									 * cursor rides `focus-visible:bg-sunken` on whichever row the
+									 * user arrows onto, and neither reads the other.
+									 */
+									<AskRecommendedBadge
+										className={busy ? "text-ink-disabled" : undefined}
+									/>
+								)}
+							</span>
+							{/*
+							 * The consequence line stays. Both the phone card and the
+							 * terminal picker show it, and it is frequently the only thing
+							 * that distinguishes two options whose labels are near
+							 * synonyms — dropping it makes the user answer a thinner
+							 * question than the model asked.
+							 */}
+							{presented.description && (
+								<span
+									className={cn(
+										"text-body-sm",
+										busy ? "text-ink-disabled" : "text-ink-muted",
+									)}
+								>
+									{presented.description}
+								</span>
+							)}
+						</span>
+					</button>
+				);
+			})}
 		</fieldset>
 	);
 };

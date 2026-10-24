@@ -74,6 +74,7 @@ import {
 	showWarningToast,
 } from "@shared/utils/toast-manager";
 import { useEffect, useRef } from "react";
+import { t } from "../../../../../i18n/messages";
 import {
 	ARCHIVE_FAILURE_TOAST_MS,
 	ARCHIVE_OFFERED_VERB,
@@ -258,14 +259,22 @@ export function UndoToasts() {
 		};
 		if (newest === "failure" && archiveFailure) {
 			showWarningToast(
-				`Could not ${archiveFailure.archived ? "archive" : "unarchive"} “${archiveFailureTitle}”.${archiveFailure.detail ? ` ${archiveFailure.detail}` : ""}`,
+				t("ui.chat.undo_toasts.archive_failed", {
+					action: archiveFailure.archived
+						? t("ui.chat.undo_toasts.archive_action")
+						: t("ui.chat.undo_toasts.unarchive_action"),
+					title: archiveFailureTitle,
+					detail: archiveFailure.detail
+						? t("ui.chat.undo_toasts.detail", { detail: archiveFailure.detail })
+						: "",
+				}),
 				{
 					id: ARCHIVE_TOAST_ID,
 					duration: ARCHIVE_FAILURE_TOAST_MS,
 					onAutoClose: settle("failure", archiveFailure.at),
 					onDismiss: settle("failure", archiveFailure.at),
 					action: {
-						label: "Retry",
+						label: t("ui.common.actions.retry"),
 						/*
 						 * SONNER DISMISSES THE TOAST AFTER AN ACTION UNLESS THE HANDLER
 						 * PREVENTS IT. 2.0.3's action button is `onClick(event); if
@@ -335,7 +344,7 @@ export function UndoToasts() {
 					onAutoClose: settle("offer", archiveUndo.at),
 					onDismiss: settle("offer", archiveUndo.at),
 					action: {
-						label: "Undo",
+						label: t("ui.chat.undo_toasts.undo"),
 						/*
 						 * THE UNDO SENDS ITS WRITE AND NOTHING ELSE (agent review round 2,
 						 * R2-1), the Retry's own rule one control over: a `dismissToast(id)`
@@ -411,7 +420,7 @@ export function UndoToasts() {
 				onAutoClose: settle,
 				onDismiss: settle,
 				action: {
-					label: "Undo",
+					label: t("ui.chat.undo_toasts.undo"),
 					onClick: (event) => {
 						event.preventDefault();
 						/*

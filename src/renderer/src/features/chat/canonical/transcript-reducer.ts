@@ -27,6 +27,7 @@
  * nothing changed. The view's memoisation is only as good as that gate.
  */
 
+import { t } from "../../../../../i18n/messages";
 import {
 	type CanonicalContentBlock,
 	type CanonicalFrontendState,
@@ -2140,7 +2141,10 @@ function compactionOutcome(detail: string): {
 	text: string;
 	level: "info" | "warning" | "error";
 } {
-	const sentence = detail.trim() || "compaction did not run";
+	const detailSentence = detail.trim();
+	const sentence =
+		detailSentence ||
+		t("ui.chat.canonical.transcript_reducer.compaction_failed");
 	/*
 	 * The separator yields to the backend's own punctuation: its common detail
 	 * already carries a colon ("nothing to compact: the whole conversation is ~8
@@ -2149,8 +2153,16 @@ function compactionOutcome(detail: string): {
 	 * is the runtime's and not this renderer's to rewrite.
 	 */
 	return {
-		text: `Compaction did not run${sentence.includes(":") ? " — " : ": "}${sentence}`,
-		level: sentence.startsWith("compaction failed") ? "error" : "warning",
+		text: t("ui.chat.canonical.transcript_reducer.compaction_did_not_run", {
+			separator: sentence.includes(":") ? " — " : ": ",
+			sentence,
+		}),
+		// The backend marker is parsed in English; only the fallback shown when
+		// detail is empty is catalogue copy.
+		level:
+			!detailSentence || detailSentence.startsWith("compaction failed")
+				? "error"
+				: "warning",
 	};
 }
 
@@ -2185,8 +2197,13 @@ export function compactionSettledLine(before: number, after: number): string {
 	const from = formatTokens(before);
 	const to = formatTokens(after);
 	return from === to
-		? `Context compacted to ${to} tokens`
-		: `Context compacted, ${from} to ${to} tokens`;
+		? t("ui.chat.canonical.transcript_reducer.context_compacted_to_to_tokens", {
+				to,
+			})
+		: t(
+				"ui.chat.canonical.transcript_reducer.context_compacted_from_to_to_tokens",
+				{ from, to },
+			);
 }
 
 /**
@@ -2197,7 +2214,9 @@ export function compactionSettledLine(before: number, after: number): string {
  * saw the live line learns that the context was compacted and nothing more,
  * which is what the transcript can honestly say.
  */
-export const COMPACTED_LINE = "Context compacted";
+export const COMPACTED_LINE = t(
+	"ui.chat.canonical.transcript_reducer.context_compacted",
+);
 
 /**
  * One pass, one row: the live settled line and the durable row are two
@@ -2358,7 +2377,8 @@ const ASK_TIMEOUT_CUSTOM_TYPE = "ask_timeout";
  * local-operator — the two repos render the same sentence for the same record,
  * and drift between them is the divergence this feature exists to remove.
  */
-const CLOSED_OUTCOME_TEXT = "Completed — runtime retired/disposed";
+const CLOSED_OUTCOME_TEXT = () =>
+	t("ui.chat.canonical.transcript_reducer.completed_runtime_retired_disposed");
 /*
  * The retire-for-build row's sentence (core kind `retired`, 2026-09-29; seed
  * 7e797aaaf6e7): a bound-expired build drain cut a live turn, so the row stays
@@ -2369,8 +2389,10 @@ const CLOSED_OUTCOME_TEXT = "Completed — runtime retired/disposed";
  * `harness/rows.py::RETIRED_NOTICE_TEXT`, so both repos print the same words
  * for the same record (the discipline `CLOSED_OUTCOME_TEXT` above states).
  */
-const RETIRED_OUTCOME_TEXT =
-	"Retired for an update — a turn was in flight and was cut; its earlier output is kept";
+const RETIRED_OUTCOME_TEXT = () =>
+	t(
+		"ui.chat.canonical.transcript_reducer.retired_for_an_update_a_turn_was_in_flight_and",
+	);
 const WAKE_PROMPT_CUSTOM_TYPE = "wake_prompt";
 /**
  * The harness's MCP-unavailable warning, which takes its own arm in `customRow`.
@@ -2542,7 +2564,7 @@ function customRow(
 			level: "info",
 			headline: text,
 			detail: null,
-			category: "Audio settlement",
+			category: t("ui.chat.canonical.transcript_reducer.audio_settlement"),
 			provider: null,
 		};
 	}
@@ -3121,7 +3143,9 @@ function durableRecord(
 		 * idempotent, and it is stated where the recomputation would otherwise live.
 		 */
 		const kept =
-			previous?.kind === "compaction" ? previous.text : COMPACTED_LINE;
+			previous?.kind === "compaction"
+				? previous.text
+				: t("ui.chat.canonical.transcript_reducer.context_compacted");
 		// The entry's own figure, which is the pass's fingerprint: `append_compaction`
 		// writes `tokens_before` and no after-figure, and that one number is what lets
 		// this row be paired with its live line by identity rather than by clock.
@@ -3169,7 +3193,7 @@ function durableRecord(
 					id: details.anchor,
 					ts,
 					complete: true,
-					text: CLOSED_OUTCOME_TEXT,
+					text: CLOSED_OUTCOME_TEXT(),
 					level: "info",
 				};
 			}
@@ -3183,7 +3207,7 @@ function durableRecord(
 					id: details.anchor,
 					ts,
 					complete: true,
-					text: RETIRED_OUTCOME_TEXT,
+					text: RETIRED_OUTCOME_TEXT(),
 					level: "warning",
 				};
 			}
@@ -3196,7 +3220,9 @@ function durableRecord(
 					ts,
 					complete: true,
 					text:
-						details.kind === "error" ? "Stopped with an error" : "Interrupted",
+						details.kind === "error"
+							? t("ui.chat.canonical.transcript_reducer.stopped_with_an_error")
+							: t("ui.chat.canonical.transcript_reducer.interrupted"),
 					level: details.kind === "error" ? "error" : "warning",
 				};
 			}
@@ -3460,7 +3486,11 @@ function durableRecord(
 		if (isHarnessChromeText(text)) return null;
 		// Harness-authored user rows (recovery notices, wake prompts) are
 		// machine voice: they render as notices rather than as the person.
-		if (text.startsWith("Harness recovery notice:")) {
+		if (
+			text.startsWith(
+				t("ui.chat.canonical.transcript_reducer.harness_recovery_notice"),
+			)
+		) {
 			return { kind: "notice", id: entry.id, ts, text, level: "warning" };
 		}
 		/*
@@ -6509,7 +6539,7 @@ export function applyEvent(
 				? failure.text
 				: before && after
 					? compactionSettledLine(before, after)
-					: COMPACTED_LINE;
+					: t("ui.chat.canonical.transcript_reducer.context_compacted");
 			// Still keyed by the pass, because it is the id a replayed end matches
 			// and the id the collapse below recognises as the live projection.
 			const id = `compaction:${state.generation}:${before}:${after}`;
@@ -6556,11 +6586,15 @@ export function applyEvent(
 			);
 		}
 		case "retry_start": {
-			const text = `Retrying after an error (attempt ${String(event.attempt ?? "?")})${
-				event.fallback_model
-					? `, falling back to ${String(event.fallback_model)}`
-					: ""
-			}`;
+			const text = t("ui.chat.canonical.transcript_reducer.retrying", {
+				attempt: String(event.attempt ?? "?"),
+				fallback: event.fallback_model
+					? t(
+							"ui.chat.canonical.transcript_reducer.falling_back_to_stringvalue",
+							{ StringValue: String(event.fallback_model) },
+						)
+					: "",
+			});
 			const id = `retry:${state.generation}:${String(event.attempt ?? "")}`;
 			if (state.index.has(id)) return state;
 			return upsert(state, {
@@ -6574,7 +6608,12 @@ export function applyEvent(
 		case "subagent_end": {
 			const id = `subagent:${String(event.job_id ?? "")}`;
 			const status = String(event.status ?? "");
-			const text = `${String(event.label ?? "Subagent")} ${status || "finished"}`;
+			const text = t("ui.chat.canonical.transcript_reducer.stringvalue_value", {
+				StringValue: String(
+					event.label ?? t("ui.chat.canonical.transcript_reducer.subagent"),
+				),
+				value: status || "finished",
+			});
 			const current = state.records[state.index.get(id) ?? -1];
 			if (current && current.kind === "notice" && current.text === text)
 				return state;
@@ -7864,12 +7903,12 @@ export function withRecoveredOutcome(
 		complete: true,
 		text:
 			kind === "closed"
-				? CLOSED_OUTCOME_TEXT
+				? CLOSED_OUTCOME_TEXT()
 				: kind === "retired"
-					? RETIRED_OUTCOME_TEXT
+					? RETIRED_OUTCOME_TEXT()
 					: kind === "error"
-						? "Stopped with an error"
-						: "Interrupted",
+						? t("ui.chat.canonical.transcript_reducer.stopped_with_an_error")
+						: t("ui.chat.canonical.transcript_reducer.interrupted"),
 		level:
 			kind === "closed"
 				? "info"

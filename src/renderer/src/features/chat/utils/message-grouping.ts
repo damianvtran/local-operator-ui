@@ -25,6 +25,7 @@
  * itself uses — filters the list first.
  */
 
+import { t } from "../../../../../i18n/messages";
 import type { Message } from "../types/message";
 
 /** How a row relates vertically to the row above it. */
@@ -79,20 +80,31 @@ const DATE_FORMAT = new Intl.DateTimeFormat(undefined, {
  * exact stamp of any single message is still one hover away on its meta row.
  */
 export const formatDividerLabel = (date: Date, now = new Date()): string => {
-	if (isSameDay(date, now)) return `Today ${TIME_FORMAT.format(date)}`;
+	if (isSameDay(date, now))
+		return t("ui.chat.message_grouping.today_value", {
+			value: TIME_FORMAT.format(date),
+		});
 
 	const yesterday = new Date(now);
 	yesterday.setDate(now.getDate() - 1);
 	if (isSameDay(date, yesterday))
-		return `Yesterday ${TIME_FORMAT.format(date)}`;
+		return t("ui.chat.message_grouping.yesterday_value", {
+			value: TIME_FORMAT.format(date),
+		});
 
 	const weekAgo = new Date(now);
 	weekAgo.setDate(now.getDate() - 6);
 	if (date > weekAgo) {
-		return `${WEEKDAY_FORMAT.format(date)} ${TIME_FORMAT.format(date)}`;
+		return t("ui.chat.message_grouping.value_value2", {
+			value: WEEKDAY_FORMAT.format(date),
+			value2: TIME_FORMAT.format(date),
+		});
 	}
 
-	return `${DATE_FORMAT.format(date)}, ${TIME_FORMAT.format(date)}`;
+	return t("ui.chat.message_grouping.value_value2_b35da6", {
+		value: DATE_FORMAT.format(date),
+		value2: TIME_FORMAT.format(date),
+	});
 };
 
 /**

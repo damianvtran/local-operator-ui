@@ -10,6 +10,7 @@ import { t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type FC, memo, useState } from "react";
+import { documentNameForDisplay } from "../../utils/get-file-name";
 import { ImageActionsMenu } from "../image-actions-menu";
 import {
 	FileViewerState,
@@ -105,7 +106,7 @@ const ArtifactImagePreview: FC<{ document: CanvasDocument }> = ({
 					<ImageActionsMenu
 						file={document.path}
 						src={url ?? undefined}
-						label={document.title}
+						label={documentNameForDisplay(document)}
 						mediaKind="image"
 						saveName={artifactFileName(artifact)}
 						resolveBytes={() =>
@@ -124,7 +125,7 @@ const ArtifactImagePreview: FC<{ document: CanvasDocument }> = ({
 				<div className={cn("flex min-h-0 flex-1 items-center justify-center")}>
 					<img
 						src={url}
-						alt={document.title}
+						alt={documentNameForDisplay(document)}
 						onError={() => setUndecodableUrl(url)}
 						className={cn("h-full w-full bg-sunken object-contain")}
 					/>
@@ -140,7 +141,7 @@ const ArtifactImagePreview: FC<{ document: CanvasDocument }> = ({
 									"ui.canvas.image_preview.this_image_is_no_longer_in_the_session",
 								)
 					}
-					detail={document.title}
+					detail={documentNameForDisplay(document)}
 				/>
 			)}
 		</div>
@@ -208,14 +209,14 @@ const PathImagePreview: FC<{ document: CanvasDocument }> = ({ document }) => {
 				<ImageActionsMenu
 					file={document.path}
 					src={url ?? document.path}
-					label={document.title}
+					label={documentNameForDisplay(document)}
 				/>
 			</ViewerChrome>
 			{url !== null ? (
 				<div className={cn("flex min-h-0 flex-1 items-center justify-center")}>
 					<img
 						src={url}
-						alt={document.title}
+						alt={documentNameForDisplay(document)}
 						onError={() => setUndecodableUrl(url)}
 						className={cn("h-full w-full bg-sunken object-contain")}
 					/>

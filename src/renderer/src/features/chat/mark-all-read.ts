@@ -4,6 +4,7 @@ import {
 	unreadAckableRows,
 	unreadMarkKind,
 } from "@shared/store/canonical-sessions-store";
+import { t } from "../../../../i18n/messages";
 
 /*
  * The decisions behind the sidebar's bulk read receipt, kept out of the
@@ -71,7 +72,6 @@ export const markAllReadCopy = (
 	const ackable = unreadAckableRows(rows);
 	const count = ackable.length;
 	const elsewhere = ackable.filter((row) => !row.active).length;
-	const chat = count === 1 ? "chat" : "chats";
 	/*
 	 * A mark the batch cannot name: a DRAWN mark with no token, which is what the
 	 * batch request has nothing to send for. Named only when one exists, because
@@ -107,22 +107,32 @@ export const markAllReadCopy = (
 	 * `tokenless` alone, and both.
 	 */
 	const sentences = [
-		`Mark ${count} unread ${chat} as read${
-			elsewhere > 0 ? `, including ${elsewhere} in Previous chats` : ""
-		}.`,
+		t("ui.chat.mark_all_read.confirm", {
+			count,
+			elsewhere:
+				elsewhere > 0
+					? t("ui.chat.mark_all_read.including_elsewhere_in_previous_chats", {
+							elsewhere,
+						})
+					: "",
+		}),
 	];
 	if (tokenless > 0)
 		sentences.push(
-			`${tokenless} unread ${
-				tokenless === 1 ? "mark" : "marks"
-			} with no completion token cannot be cleared.`,
+			t("ui.chat.mark_all_read.tokenless_marks", { count: tokenless }),
 		);
 	return {
 		count,
-		label: `Mark all ${count} read`,
+		label: t("ui.chat.mark_all_read.mark_all_count_read", {
+			count,
+		}),
 		scope: sentences.join(" "),
 		nameSuffix:
-			elsewhere > 0 ? `, including ${elsewhere} in Previous chats` : "",
+			elsewhere > 0
+				? t("ui.chat.mark_all_read.including_elsewhere_in_previous_chats", {
+						elsewhere,
+					})
+				: "",
 	};
 };
 
@@ -156,8 +166,12 @@ export type MarkAllReadReceipt = {
  */
 export const markAllReadDeferredSentence = (count: number): string =>
 	count === 1
-		? "1 lives on another device and clears when that device updates."
-		: `${count} live on other devices and clear when those devices update.`;
+		? t(
+				"ui.chat.mark_all_read.1_lives_on_another_device_and_clears_when_that_device",
+			)
+		: t("ui.chat.mark_all_read.count_live_on_other_devices_and_clear", {
+				count,
+			});
 
 /**
  * The receipt sentence for a bulk acknowledgement.
@@ -185,7 +199,10 @@ export const markAllReadReceipt = (
 	 * still showing marks (design N3).
 	 */
 	if (receipt.attempted === 0)
-		return { tone: "success", message: "Nothing to clear." };
+		return {
+			tone: "success",
+			message: t("ui.chat.mark_all_read.nothing_to_clear"),
+		};
 	/*
 	 * `unknown` MINUS `deferred`: the two sentences below would otherwise report
 	 * one item twice and, worse, report a deferral as a failure (see the type's
@@ -196,28 +213,27 @@ export const markAllReadReceipt = (
 		receipt.superseded > 0
 			? `${receipt.superseded} ${
 					receipt.superseded === 1
-						? "has a newer result and stays"
-						: "have newer results and stay"
+						? t("ui.chat.mark_all_read.has_a_newer_result_and_stays")
+						: t("ui.chat.mark_all_read.have_newer_results_and_stay")
 				} unread.`
 			: null,
 		unknown > 0
-			? `${unknown} could not be cleared and ${
-					unknown === 1 ? "stays" : "stay"
-				} unread.`
+			? t("ui.chat.mark_all_read.unknown_unread", { count: unknown })
 			: null,
 		receipt.deferred > 0 ? markAllReadDeferredSentence(receipt.deferred) : null,
 	].filter((sentence): sentence is string => sentence !== null);
 	if (receipt.cleared === 0)
 		return {
 			tone: "warning",
-			message: ["Nothing was cleared.", ...remainder].join(" "),
+			message: [
+				t("ui.chat.mark_all_read.nothing_was_cleared"),
+				...remainder,
+			].join(" "),
 		};
 	return {
 		tone: "success",
 		message: [
-			`Marked ${receipt.cleared} ${
-				receipt.cleared === 1 ? "chat" : "chats"
-			} as read.`,
+			t("ui.chat.mark_all_read.marked_read", { count: receipt.cleared }),
 			...remainder,
 		].join(" "),
 	};

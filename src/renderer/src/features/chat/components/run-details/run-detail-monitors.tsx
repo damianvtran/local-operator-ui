@@ -63,9 +63,11 @@
 
 import { Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { ScanEye } from "lucide-react";
 import type { Ref } from "react";
+import { t } from "../../../../../../i18n/messages";
 import {
 	type MonitorRow,
 	type RunDetails,
@@ -114,6 +116,7 @@ const MonitorRowView = ({
 	/** The pane body's cancel interaction: the ask, and this row's own state. */
 	cancel: MonitorCancelSection;
 }) => {
+	useI18nLocale();
 	/* The row's current cancel state, or undefined for the plain control. */
 	const cancelState = cancel.stateFor(row);
 	/*
@@ -185,7 +188,9 @@ const MonitorRowView = ({
 					 * to yield after the health tail and before the due slot.
 					 */}
 					<span className={cn("shrink-0 text-ink-dim text-meta")}>
-						{`· ${row.interval}`}
+						{t("ui.chat.run_details.run_detail_monitors.interval", {
+							interval: row.interval,
+						})}
 					</span>
 					{row.lastCheckLabel && (
 						<span
@@ -194,7 +199,9 @@ const MonitorRowView = ({
 							)}
 							title={row.lastCheckLabel}
 						>
-							{`· ${row.lastCheckLabel}`}
+							{t("ui.chat.run_details.run_detail_monitors.lastchecklabel", {
+								lastCheckLabel: row.lastCheckLabel,
+							})}
 						</span>
 					)}
 					{row.healthLabel && (
@@ -205,7 +212,9 @@ const MonitorRowView = ({
 							)}
 							title={row.healthLabel}
 						>
-							{`· ${row.healthLabel}`}
+							{t("ui.chat.run_details.run_detail_monitors.healthlabel", {
+								healthLabel: row.healthLabel,
+							})}
 						</span>
 					)}
 				</div>
@@ -256,7 +265,7 @@ const MonitorRowView = ({
 						title={cancelState.detail}
 						data-monitor-cancel-state="refused"
 					>
-						Cancel refused
+						{t("ui.chat.run_details.run_detail_monitors.cancel_refused")}
 					</span>
 				)}
 				<Button
@@ -274,7 +283,10 @@ const MonitorRowView = ({
 					aria-label={
 						cancelState?.kind === "cancelled"
 							? undefined
-							: `Cancel monitor ${row.name}`
+							: t(
+									"ui.chat.run_details.run_detail_monitors.cancel_monitor_name",
+									{ name: row.name },
+								)
 					}
 					disabled={cancelState?.kind === "cancelled"}
 					onClick={() => cancel.request(row)}
@@ -291,7 +303,9 @@ const MonitorRowView = ({
 						"disabled:text-ink-dim",
 					)}
 				>
-					{cancelState?.kind === "cancelled" ? "Cancelled" : "Cancel"}
+					{cancelState?.kind === "cancelled"
+						? t("ui.chat.run_details.run_detail_monitors.cancelled")
+						: t("ui.common.actions.cancel")}
 				</Button>
 			</div>
 		</li>
@@ -323,6 +337,7 @@ export const RunDetailMonitors = ({
 	 */
 	cancel: MonitorCancelSection;
 }) => {
+	useI18nLocale();
 	const { rows, hidden } = visibleMonitors(details.monitors);
 	return (
 		<section ref={sectionRef} className={cn("flex flex-col pb-1.5")}>
@@ -338,7 +353,7 @@ export const RunDetailMonitors = ({
 				)}
 			>
 				<span className={cn("shrink-0 text-meta text-ink-muted")}>
-					Monitors
+					{t("ui.chat.run_details.run_detail_monitors.monitors")}
 				</span>
 				<span
 					className={cn(
@@ -368,7 +383,10 @@ export const RunDetailMonitors = ({
 					<li className={cn("pr-3")}>
 						<Disclosure
 							disabled={true}
-							summary={`${hidden} more monitor${hidden === 1 ? "" : "s"}`}
+							summary={t(
+								"ui.chat.run_details.run_detail_monitors.more_monitors",
+								{ hidden },
+							)}
 							className={cn("pl-9 text-meta")}
 						/>
 					</li>

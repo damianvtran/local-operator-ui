@@ -1,3 +1,4 @@
+import { t } from "../../../../i18n/messages";
 /**
  * The chat surface's four regions, and the key that walks between them
  * (spec §C4; UX-BASELINE U2 and U6).
@@ -67,10 +68,18 @@ export type ChatRegion = (typeof CHAT_REGIONS)[number];
  * landmark named by nothing is still reachable by `F6`.
  */
 export const CHAT_REGION_LABEL: Record<ChatRegion, string> = {
-	sidebar: "Chats",
-	header: "Conversation",
-	transcript: "Conversation",
-	composer: "Message composer",
+	get sidebar() {
+		return t("ui.chat.chat_regions.chats");
+	},
+	get header() {
+		return t("ui.chat.chat_regions.conversation");
+	},
+	get transcript() {
+		return t("ui.chat.chat_regions.conversation");
+	},
+	get composer() {
+		return t("ui.chat.chat_regions.message_composer");
+	},
 };
 
 /** One step of the walk: forward, or back. */
@@ -305,7 +314,7 @@ export const chatTagsChordCap = (isMac: boolean): string =>
 
 /** The chord as printed prose (`⌘⇧L`), for a sentence rather than a key cap. */
 export const chatTagsChordText = (isMac: boolean): string =>
-	isMac ? "⌘⇧L" : "Ctrl+Shift+L";
+	isMac ? t("ui.chat.chat_regions.l") : t("ui.chat.chat_regions.ctrl_shift_l");
 
 /** The attribute each row act's control carries, so the chord can find it. */
 export const CHAT_ROW_ACT_ATTR: Record<ChatRowAct, string> = {

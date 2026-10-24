@@ -5,10 +5,10 @@ import {
 	pickerActiveIndex,
 } from "@features/chat/chat-tag-picker";
 import { Input } from "@shared/components/ui";
-import { t } from "@shared/i18n";
 import { cn } from "@shared/lib/utils";
 import { Check, Plus } from "lucide-react";
 import { type RefObject, useEffect, useId, useRef, useState } from "react";
+import { t } from "../../../../../i18n/messages";
 import type { TagCategory } from "../../../../../shared/desktop-contract";
 
 /**
