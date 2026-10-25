@@ -315,6 +315,14 @@ export function watchQuickSend(options: {
 		);
 	}
 
+	// Run the initial read even when the file already exists and no filesystem
+	// event follows registration. watchFile only reports stat CHANGES; without
+	// this scheduled read, `onConfigChange` consumers could wait forever for the
+	// documented startup refresh on an untouched config. It is still debounced
+	// and content-fingerprinted, so an immediate real event collapses into the
+	// same single revision rather than publishing twice.
+	schedule();
+
 	return {
 		stop(): void {
 			if (stopped) return;
