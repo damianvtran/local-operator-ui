@@ -1,0 +1,173 @@
+{
+ "audit_id": "att-attachments-r2-20261021",
+ "date": "2026-10-21",
+ "locale": "zh-CN",
+ "namespace": "ui.teamBridge",
+ "source_commit": "8cf05961d64322fe64ebccd6282069c7f52f12f3",
+ "source_base": "cf1d7c616ca36bd48c0bf160d64a08514b7c2b08",
+ "scope": "Round-2 delta of #1314 (cf1d7c616c..8cf05961d6): 9 zh-CN values changed/added applying att-r1-zh-cn and design D1, including the changed en attachments.expired_staged and new attachments.expired_staged_retry / attachments.preview_unavailable. Other 162 values byte-unchanged and inherited from att-r1-zh-cn.",
+ "status": "audited",
+ "translator": {
+  "agent": "coder",
+  "model": "anthropic/claude-opus-5-5",
+  "date": "2026-10-21",
+  "session": "03594b2dcc02",
+  "job": "bc0c4b952eaa",
+  "commit": "cedfe88fc6"
+ },
+ "auditors": [
+  {
+   "agent": "translation-auditor",
+   "model": "anthropic/claude-opus-5-5",
+   "date": "2026-10-21",
+   "result": "clean-with-findings",
+   "instance": "att-r2-zh-cn",
+   "findings": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 0,
+    "nit": 1
+   },
+   "receipt": "i18n/receipts/att-r2-zh-cn.json",
+   "receipt_sha256": "98f1329f08c9f78585937671507db2f5d50a7f020860657e69dab82375be56ab",
+   "scope": "Team Bridge image attachments round 2: remediation delta (9 keys) independently audited at head 8cf05961d6; all att-r1-zh-cn findings verified applied or superseded by the D1 source change. Catalogue audit only, not rendered-fit, activation or release approval.",
+   "note": "Round 2: ATT-ZH-R2-01 NIT (expired_staged_retry). All round-1 findings closed. No rendered-fit claim."
+  }
+ ],
+ "audit_rounds": [
+  {
+   "round": 1,
+   "instance": "att-r1-zh-cn",
+   "session": "366e5a448425",
+   "job": "57c07e3808ab",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 23,
+   "target_sha256": "941547bb3bd80e153820fbd9c6a2ba680f626e2f908e629240a8a9ace3bf13d0",
+   "findings": [
+    {
+     "id": "ATT-ZH-01",
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.position"
+    },
+    {
+     "id": "ATT-ZH-02",
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.error_type"
+    },
+    {
+     "id": "ATT-ZH-03",
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.expired_staged"
+    },
+    {
+     "id": "ATT-ZH-04",
+     "severity": "MINOR",
+     "key": "ui.teamBridge.attachments.remove_all"
+    },
+    {
+     "id": "ATT-ZH-05",
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.uploading"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/att-r1-zh-cn.json",
+    "sha256": "41e2204a1dee73226bfff2716a3445f0c40b45d6fea26c9903a07732cb3efe5c"
+   }
+  },
+  {
+   "round": 2,
+   "instance": "att-r2-zh-cn",
+   "session": "12aab7b684ab",
+   "job": "d8717b64c01a",
+   "model": "anthropic/claude-opus-5-5",
+   "status": "passed",
+   "keys_audited": 9,
+   "target_sha256": "9a66cc5265c438481620c908d75ea93399da3dad5dc0ffa46cc9b75f63cdec40",
+   "findings": [
+    {
+     "id": "ATT-ZH-R2-01",
+     "severity": "NIT",
+     "key": "ui.teamBridge.attachments.expired_staged_retry"
+    }
+   ],
+   "round1_dispositions": [
+    {
+     "finding": "ATT-ZH-01",
+     "keys": "position/open",
+     "verified": "applied verbatim: '第{index}张图片（共{count}张）' / '打开第{index}张图片（共{count}张）'; composed remove '移除第2张图片（共3张）'"
+    },
+    {
+     "finding": "ATT-ZH-02",
+     "keys": "error_type/error_offline",
+     "verified": "applied verbatim: no spaces around Latin runs, 格式 added"
+    },
+    {
+     "finding": "ATT-ZH-03",
+     "keys": "expired_staged",
+     "verified": "superseded by source change (design D1): en no longer has the conditional retry; zh now '此图片已无法发送。请将其移除，然后重新添加。' plus new expired_staged_retry. Reasonable answer; the proposed context note is moot because the conditional is gone"
+    },
+    {
+     "finding": "ATT-ZH-04",
+     "keys": "remove_all",
+     "verified": "applied verbatim: '移除所有图片'"
+    },
+    {
+     "finding": "ATT-ZH-05",
+     "keys": "uploading",
+     "verified": "applied: ends U+2026 U+2026 ('……')"
+    },
+    {
+     "finding": "observation",
+     "keys": "code",
+     "verified": "answered in code: chip, placeholder and scheduled tile now use aria-label + aria-describedby on separate nodes (team-bridge-attachments.tsx:113-126, 482-486, 757-760); no `${label}. ${reason}` join remains (grep)"
+    }
+   ],
+   "receipt": {
+    "path": "i18n/receipts/att-r2-zh-cn.json",
+    "sha256": "98f1329f08c9f78585937671507db2f5d50a7f020860657e69dab82375be56ab"
+   }
+  }
+ ],
+ "files": {
+  "en": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.json",
+   "sha256": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed"
+  },
+  "target": {
+   "path": "src/i18n/catalogues/zh-CN/ui.teamBridge.json",
+   "sha256": "9a66cc5265c438481620c908d75ea93399da3dad5dc0ffa46cc9b75f63cdec40"
+  },
+  "context": {
+   "path": "src/i18n/catalogues/en/ui.teamBridge.context.json",
+   "sha256": "09acfc1ecfb2533c8c340eb706b74b4f3ee68f367ad1bc60e41c06b549ca4f1a"
+  }
+ },
+ "references": {
+  "glossary": {
+   "path": "~/local-operator/i18n/glossary.md",
+   "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+  },
+  "style_guide": {
+   "path": "~/local-operator/i18n/style-guides/zh-CN.md",
+   "sha256": "8f95d89debbd0af848e72e4805e256ef9566632e520a5c6d9b37928cd617142c"
+  }
+ },
+ "independence": "Translator (coder session 03594b2dcc02, job bc0c4b952eaa) and round-2 auditor (translation-auditor session 12aab7b684ab, job d8717b64c01a) are different agents in different sessions; the round-2 auditor is also distinct from the round-1 auditor session 366e5a448425. The auditor never edited catalogues, ran no git operations and did not run ledger-assemble.",
+ "limitations": [
+  "Browser not used; no rendered-fit, screenshots, glyph metrics, pseudo-localization or activation evidence claimed.",
+  "Round 2 covers the remediation delta and direct regression surfaces only; unchanged values rely on att-r1 and its inherited receipts.",
+  "Open finding(s) ATT-ZH-R2-01 await the coder's disposition; a round-3 delta audit applies only if values change."
+ ],
+ "retained_rounds": [
+  {
+   "path": "i18n/receipts/att-r1-zh-cn.json",
+   "sha256": "41e2204a1dee73226bfff2716a3445f0c40b45d6fea26c9903a07732cb3efe5c"
+  },
+  {
+   "path": "i18n/receipts/att-r2-zh-cn.json",
+   "sha256": "98f1329f08c9f78585937671507db2f5d50a7f020860657e69dab82375be56ab"
+  }
+ ]
+}

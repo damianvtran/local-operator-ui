@@ -371,10 +371,19 @@ export async function refreshAfterSend(
 export function useSendTeamBridgeMessage(
 	conversationId: string,
 	tenantId?: string,
-): UseMutationResult<unknown, Error, { clientRef: string; body: string }> {
+): UseMutationResult<
+	unknown,
+	Error,
+	{ clientRef: string; body: string; attachmentIds?: readonly string[] }
+> {
 	const client = useQueryClient();
 	const owner = useBridgeOwner();
-	type Input = { clientRef: string; body: string };
+	type Input = {
+		clientRef: string;
+		body: string;
+		/* A staged image set this message binds; omitted (never `[]`) for text. */
+		attachmentIds?: readonly string[];
+	};
 	const mutation = useMutation<
 		unknown,
 		Error,

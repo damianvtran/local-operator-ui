@@ -1,0 +1,59 @@
+{
+ "auditor": "translation-auditor",
+ "model": "anthropic/claude-opus-5-5",
+ "instance": "att-r2-es",
+ "session": "12aab7b684ab",
+ "job": "d8717b64c01a",
+ "date": "2026-10-21",
+ "locale": "es",
+ "translator": "coder",
+ "translator_session": "03594b2dcc02",
+ "translator_job": "bc0c4b952eaa",
+ "namespace": "ui.teamBridge",
+ "status": "passed",
+ "keys_audited": 6,
+ "scope": "Round-2 delta audit of #1314: git diff cf1d7c616c..8cf05961d6 -- src/i18n/catalogues (es: 6 values changed/added — expired_staged, expired_staged_retry, preview_unavailable, remove, retry, retry_load). Includes the changed en attachments.expired_staged and new en attachments.expired_staged_retry / attachments.preview_unavailable with their context notes. Every round-1 finding of att-r1-es re-verified against the bytes. The other 165 es values are byte-identical to cf1d7c616c (line-level diff shows only these keys plus schedule.discard_attempt gaining a trailing comma, value unchanged) and stay covered by att-r1-es and its inherited receipts. PR head 8cf05961d6 re-checked via gh. Catalogue audit only, not rendered-fit/activation/release.",
+ "source_head": "8cf05961d64322fe64ebccd6282069c7f52f12f3",
+ "source_base": "cf1d7c616ca36bd48c0bf160d64a08514b7c2b08",
+ "sha256": {
+  "en": "a1e4452d733cee31812938d27106ff5b8cb15a74e4da6eaddbc8d9c1519fe8ed",
+  "es": "34ebfffbe978805ce0afa8a5e92cbfea3743587485494b3cb86c4cd4af51b8c9",
+  "context": "09acfc1ecfb2533c8c340eb706b74b4f3ee68f367ad1bc60e41c06b549ca4f1a"
+ },
+ "findings": [],
+ "round1_dispositions": [
+  {
+   "finding": "r1 MINOR (no id)",
+   "severity": "MINOR",
+   "keys": "retry_load",
+   "verified": "applied: 'Reintentar' (= list.retry and the chip retry verb)"
+  },
+  {
+   "finding": "r1 NIT (no id)",
+   "severity": "NIT",
+   "keys": "remove/retry",
+   "verified": "applied: 'Quitar: {label}' / 'Reintentar: {label}' (no space before colon, correct for es); composed tooltip 'Quitar: Imagen 2 de 3'"
+  }
+ ],
+ "inherited_receipt": {
+  "path": "i18n/receipts/att-r1-es.json",
+  "sha256": "d267d3689a22c7bb760db10ddadfddf11813ce2609606ad870e393a07eb922ba",
+  "base": "cf1d7c616c",
+  "target_sha256": "cf5d345b07f1425343eb091cab1959f258695532177ad5f473036231a730eebb",
+  "keys_inherited": 165,
+  "unchanged_values_verified": true
+ },
+ "reference_sha256": {
+  "glossary": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+  "style_guide": "654661145add9037429af16f6799953c03e21fbad176e697c3890eb00d861b39"
+ },
+ "validation": {
+  "independence": "Auditor session 12aab7b684ab (job d8717b64c01a, translation-auditor, served model anthropic/claude-opus-5-5 per this session's selected_model record) is a new instance, distinct from translator coder session 03594b2dcc02 (job bc0c4b952eaa, remediation commits 1ffc748e68/cedfe88fc6) and from the round-1 auditor session f5b05da4cf25. Values read from working-tree bytes at 8cf05961d6 (equal to git show 8cf05961d6); translator/remediation summaries were checked, not relied on. No catalogue or code edits, no git operations, no ledger-assemble.",
+  "semantics": "New/changed keys: expired_staged « Esta imagen ya no está lista para enviarse. Quítala y vuelve a añadirla. » matches the new en; expired_staged_retry « … Vuelve a intentarlo o quítala. » mirrors error_upload; preview_unavailable « Vista previa no disponible » = locale term (teamBridge.preview.chip, projects) and sibling « Imagen no disponible ». tú imperatives, quitar/añadir/reintentar consistent with the namespace.",
+  "icu": "Parsed all 25 attachments.* values in en and es with @formatjs/icu-messageformat-parser: argument names/types identical (0 mismatches); the 3 new/changed keys are argument-free in en and es. in_message/limit plural arms unchanged in structure. Formatted with intl-messageformat: position(2,3)/open/remove composed strings render as recorded in the round-1 dispositions.",
+  "typography": "Changed values NFC, no bidi controls, no ASCII apostrophe or '...', no doubled/edge spaces. Colon with no preceding space (es rule).",
+  "overflow": "expired_staged/expired_staged_retry render in the 12 px wrapping status/alert line under the composer and in the chip's sr-only description; preview_unavailable is a title tooltip plus a hidden aria-describedby node (team-bridge-attachments.tsx:128-132, 761-763, 786-788): no fixed-width visible surface, so no fit risk.",
+  "rtl": "Not applicable (es is LTR).",
+  "limitations": "Browser not used; no rendered-fit, screenshots, glyph metrics, pseudo-localization or activation claim."
+ }
+}
