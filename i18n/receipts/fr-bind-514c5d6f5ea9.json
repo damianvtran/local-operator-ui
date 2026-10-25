@@ -1,0 +1,96 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "current-byte rebind",
+  "date": "2026-10-25",
+  "locale": "fr",
+  "namespace": "ui.common.errors",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "merge": "ab9bd739c21ebc24c22b9d4fb25ce78a43c4fede",
+  "instance": "fr-bind-514c5d6f5ea9",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); authored no catalogue value for PR #1403 and edited no catalogue or ledger",
+    "team": "lopdev",
+    "harness": "Local Operator",
+    "session": "e2287a4a6524",
+    "model": "deepseek/deepseek-flash",
+    "actual_model": "deepseek/deepseek-flash",
+    "model_source": "harness session banner (system prompt line 'Model: deepseek/deepseek-flash'); no fallback used",
+    "fallback": null,
+    "independence": "This run read the catalogue bytes with git show, wrote no translated value, and edited no catalogue, English source, context sidecar, ledger or allowance file. It did not author any fr value under audit. Prior value sets were audited by other sessions; this receipt re-binds the current bytes and records which prior receipt each set comes from. The four new desktop_refusal values were audited independently in fr-final-71a6fccf5747 at d784571d90; this run re-read them at the same bytes.",
+    "instance": "fr-bind-514c5d6f5ea9"
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "binding": "Current-byte re-bind at PR #1403 head 0adbb37b94. The fr file is byte-identical to the independent audit fr-final-71a6fccf5747 at the pre-merge branch head d784571d90 (en 79e061d415b6, fr 514c5d6f5ea9); that audit found one non-gating minor (FR-FINAL-03) and no major. This run re-read all eight values and carries that minor unchanged.",
+  "scope": "All 8 ui.common.errors keys for fr at current PR head 0adbb37b94, read against the English source and its context sidecar. The four desktop_refusal keys added by this PR and the four pre-existing error-boundary keys were read.",
+  "sha256": {
+    "en": "79e061d415b61aed65c06e6800b379b332048a200d8d88f6cbbf4647eba593db",
+    "fr": "514c5d6f5ea9f90b994f17c9bcc1d2f6d46d0222748c1e41b3456705045386ac",
+    "context": "33432e29556ed7d91eac12edeff1998b623da3fcb48e3515b045e1e0b5c84049"
+  },
+  "keys_read": 8,
+  "key_set": "equal to English: 8/8, same key order, no missing or extra key, no duplicate key, no English stub",
+  "icu": "All 8 values parse with @formatjs/icu-messageformat-parser. No placeholders, select arms or number skeletons in this namespace.",
+  "register": "Calm factual sentences with full stops; no second person and no instruction added, matching all four desktop_refusal sidecars and the error-boundary tone. « Local Operator » kept as the product name without an article.",
+  "glossary": "« appairée » matches ui.projects.projects_page and ui.mesh.mesh_page; « identifiant » is the glossary’s credentials rendering; « serveur Local Operator » / « en cours d’exécution » for the running server; « ce contrôle est indisponible » matches the fr catalogue’s UI-widget sense (ui.settings.appearance.window_glass).",
+  "typography": "U+2019 apostrophes; no ASCII punctuation, straight quotes, NBSP or bidi controls; NFC-clean.",
+  "findings": [
+    {
+      "id": "FR-FINAL-03",
+      "severity": "minor",
+      "key": "ui.common.errors.desktop_refusal.plane_closed",
+      "current": "Le serveur Local Operator en cours d’exécution n’accepte pas les contrôles de bureau de cette application.",
+      "proposed": "Le serveur Local Operator en cours d’exécution n’accepte pas les commandes de cette application de bureau.",
+      "reason": "« contrôles de bureau » is an invented compound: the fr catalogue uses « Bureau » for the OS desktop (the macOS Desktop folder label and the window-glass wallpaper copy), never for the desktop app, and the settled term for a desktop application is « application de bureau ». Read cold, the sentence says the server does not accept the app’s office/desktop checks, not that the desktop control plane is closed. « les commandes de cette application de bureau » carries the English sense; the two siblings’ « ce contrôle est indisponible » is a different UI-widget sense and is correct.",
+      "disposition": "inherited from fr-final-71a6fccf5747 (FR-FINAL-03), still present at the current bytes; non-gating minor."
+    }
+  ],
+  "inherited_findings": [],
+  "observations": [],
+  "prior_audits": [
+    {
+      "instance": "fr-final-71a6fccf5747",
+      "receipt": "i18n/receipts/fr-final-71a6fccf5747.json",
+      "receipt_sha256": "80f2d8ce5a2ed9ae127515a3092da3db86c5bd81d9ca93870e966b47ee3005fd",
+      "covers": "clean-with-findings audit of all 8 values at d784571d90, same en/fr/context bytes as head; 1 minor (FR-FINAL-03), 0 blocker/major",
+      "namespace_block_sha256": {
+        "en": "79e061d415b61aed65c06e6800b379b332048a200d8d88f6cbbf4647eba593db",
+        "fr": "514c5d6f5ea9f90b994f17c9bcc1d2f6d46d0222748c1e41b3456705045386ac"
+      }
+    },
+    {
+      "instance": "7c40d1c357cf",
+      "receipt": "i18n/receipts/7c40d1c357cf-round2.json",
+      "receipt_sha256": "bb0dd9cf343d3c859d940a5b6be5274972456cd386589af0535486a598dbec9e",
+      "covers": "clean audit of the four pre-existing error-boundary keys at 718219be; those values are unchanged"
+    }
+  ],
+  "method": [
+    "Pulled every value with git show <head>:<path>; did not check out or edit the PR worktree catalogue.",
+    "Compared key list and order with English in both directions.",
+    "Parsed every message with @formatjs/icu-messageformat-parser.",
+    "Re-read the four new diagnoses and the four error-boundary values against the sidecar role/tone/note and the fr style guide; checked the prior FR-FINAL-03 finding against the current bytes.",
+    "Confirmed the fr file hash equals the prior audit’s fr hash, so the prior verdict and finding transfer by byte identity."
+  ],
+  "verdict": "clean-with-findings — 8/8 values read; 0 blocker, 0 major, 1 minor (FR-FINAL-03, « contrôles de bureau »). The other three diagnoses are accurate and consistent with the locale’s sibling sentences.",
+  "limitations": "Static catalogue audit only; no rendered French screen was built or captured, and no native-speaker sign-off is claimed.",
+  "ledger_binding": {
+    "agent": "translation-auditor",
+    "model": "deepseek/deepseek-flash",
+    "result": "clean-with-findings",
+    "instance": "fr-bind-514c5d6f5ea9",
+    "receipt": "i18n/receipts/fr-bind-514c5d6f5ea9.json",
+    "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 1,
+      "nit": 0
+    },
+    "scope": "current-byte rebind at 0adbb37b94; all 8 keys; FR-FINAL-03 minor carried",
+    "note": "Re-binds fr/ui.common.errors to en 79e061d415b6 / fr 514c5d6f5ea9 at PR #1403 head."
+  }
+}

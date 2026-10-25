@@ -2707,8 +2707,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.header",
-			"source_sha256": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
-			"target_sha256": "dcb7d933e979b0e9f643e3a16f3760f2c5b963323edc0c30620b750ce905752b",
+			"source_sha256": "04fa4fb0f73dc33811c40b9574f92b8bc0ddafb8a458242497a92400c009e3f0",
+			"target_sha256": "0662c7cbe58aec6ccfe17e48fb6f0e257f53a948ef6dcbfcedd28a5f821a52f5",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -2716,24 +2716,48 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-25",
 					"result": "clean-with-findings",
-					"instance": "bf867ef95b69",
-					"receipt": "i18n/receipts/bf867ef95b69.json",
-					"receipt_sha256": "86b46ebfa009ea531acaffdf851dff6741db3829fc8667c2480ca923c32831ce",
-					"scope": "76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..0b52d734f7220a58861d98855f2685f9074110d8; full independent source-copy audit",
-					"note": "Automatic fallback from anthropic/claude-sonnet-5-5 before audit; actual model openai/gpt-6.1-sol. Source-copy audit only; separate high-visibility second audit and rendered fit required.",
+					"instance": "es-bind-0662c7cbe58a",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
 						"nit": 0
-					}
+					},
+					"receipt": "i18n/receipts/es-bind-0662c7cbe58a.json",
+					"receipt_sha256": "dcc108719d9ad40e07b461bbe28fb51b66cf00fdcb895b2b5991384d12170cd6"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+					"target_sha256": "dcb7d933e979b0e9f643e3a16f3760f2c5b963323edc0c30620b750ce905752b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean-with-findings",
+							"instance": "bf867ef95b69",
+							"receipt": "i18n/receipts/bf867ef95b69.json",
+							"receipt_sha256": "86b46ebfa009ea531acaffdf851dff6741db3829fc8667c2480ca923c32831ce",
+							"scope": "76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..0b52d734f7220a58861d98855f2685f9074110d8; full independent source-copy audit",
+							"note": "Automatic fallback from anthropic/claude-sonnet-5-5 before audit; actual model openai/gpt-6.1-sol. Source-copy audit only; separate high-visibility second audit and rendered fit required.",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							}
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
@@ -2853,8 +2877,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.common.errors",
-			"source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
-			"target_sha256": "d51b9ed14d6df005e74b3586a23244c63b7cb5dac23335be06c01f4779e48db3",
+			"source_sha256": "79e061d415b61aed65c06e6800b379b332048a200d8d88f6cbbf4647eba593db",
+			"target_sha256": "9f3835e7f6fcd60f2753e472be46da0470a6016b0f2fd8d0556978145a598633",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -2862,24 +2886,48 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "bf867ef95b69",
-					"receipt": "i18n/receipts/bf867ef95b69.json",
-					"receipt_sha256": "86b46ebfa009ea531acaffdf851dff6741db3829fc8667c2480ca923c32831ce",
-					"scope": "76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..0b52d734f7220a58861d98855f2685f9074110d8; full independent source-copy audit",
-					"note": "Automatic fallback from anthropic/claude-sonnet-5-5 before audit; actual model openai/gpt-6.1-sol. Source-copy audit only; separate high-visibility second audit and rendered fit required.",
+					"instance": "es-bind-9f3835e7f6fc",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
-					}
+					},
+					"receipt": "i18n/receipts/es-bind-9f3835e7f6fc.json",
+					"receipt_sha256": "ead041166b0f1db85a33b2592e7d06877b995c35405a0c226cd0e8f7a96ab3ce"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
+					"target_sha256": "d51b9ed14d6df005e74b3586a23244c63b7cb5dac23335be06c01f4779e48db3",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "bf867ef95b69",
+							"receipt": "i18n/receipts/bf867ef95b69.json",
+							"receipt_sha256": "86b46ebfa009ea531acaffdf851dff6741db3829fc8667c2480ca923c32831ce",
+							"scope": "76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..0b52d734f7220a58861d98855f2685f9074110d8; full independent source-copy audit",
+							"note": "Automatic fallback from anthropic/claude-sonnet-5-5 before audit; actual model openai/gpt-6.1-sol. Source-copy audit only; separate high-visibility second audit and rendered fit required.",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							}
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
@@ -3145,7 +3193,7 @@
 			"locale": "fr",
 			"namespace": "ui.chat.composer",
 			"source_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
-			"target_sha256": "944d792aafbbbba2b0e2c75336ab6d1f6a38323cd22bf7f54fb51045d1c5daec",
+			"target_sha256": "64b9c66fc88c54d51235c558cb4b424d907f4ba0f04123e949980531d76d4c86",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -3155,19 +3203,17 @@
 				{
 					"agent": "translation-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
+					"date": "2026-10-25",
 					"result": "clean-with-findings",
-					"instance": "fr-extract-da12aa6ade20-r2",
+					"instance": "fr-bind-64b9c66fc88c",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/fr-extract-da12aa6ade20-r2.json",
-					"receipt_sha256": "c56cf3241e239dc06441c5cff8c944ab04f7b81584390228b0c497e1d956842d",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/fr-bind-64b9c66fc88c.json",
+					"receipt_sha256": "692538d5e2b11eb5d27c07040b12ddfc5fee3f6a07d91e468d02f258fd241a50"
 				}
 			],
 			"status": "audited",
@@ -3248,14 +3294,38 @@
 					"source_sha256": "12ebdb50d49dfe5e7101fc29293485d5366f5a52ae7ac3c7dca9ef985fcde8c9",
 					"status": "audited",
 					"target_sha256": "bc9957b66eb9237f9dd95883a6ffcdc7909534d11f4071443f28a70b7cce9f42"
+				},
+				{
+					"source_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+					"target_sha256": "944d792aafbbbba2b0e2c75336ab6d1f6a38323cd22bf7f54fb51045d1c5daec",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "fr-extract-da12aa6ade20-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/fr-extract-da12aa6ade20-r2.json",
+							"receipt_sha256": "c56cf3241e239dc06441c5cff8c944ab04f7b81584390228b0c497e1d956842d",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.header",
-			"source_sha256": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
-			"target_sha256": "636be1bdb3ea9c04d89e187285b0122f7026b56401dbf596ec753f1572fbb9dd",
+			"source_sha256": "04fa4fb0f73dc33811c40b9574f92b8bc0ddafb8a458242497a92400c009e3f0",
+			"target_sha256": "5cfb8aea064075820f9c79136f5a0194efe7f6089b9b2d5a1aa96c399c69abb3",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -3263,24 +3333,48 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
-					"instance": "7c40d1c357cf",
-					"result": "clean-with-findings",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-25",
+					"result": "clean",
+					"instance": "fr-bind-5cfb8aea0640",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
+						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7c40d1c357cf-round2.json",
-					"receipt_sha256": "bb0dd9cf343d3c859d940a5b6be5274972456cd386589af0535486a598dbec9e",
-					"scope": "Full round 1 76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..6f04ff634be8863dbb3b7f13fe3352e666143d33; delta 6f04ff634be8863dbb3b7f13fe3352e666143d33..718219be27f3b17e605f2c2af35a20c0c19af88e; unchanged coverage retained",
-					"note": "Actual model openai/gpt-6.1-sol; automatic Anthropic quota fallback disclosed in receipt. F3/F4 remain nonblocking notes."
+					"receipt": "i18n/receipts/fr-bind-5cfb8aea0640.json",
+					"receipt_sha256": "3ddaaeba9f00ff0f1fce4e99867a310f2ed5cf040edf112e233d6eed3e523bc0"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+					"target_sha256": "636be1bdb3ea9c04d89e187285b0122f7026b56401dbf596ec753f1572fbb9dd",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"instance": "7c40d1c357cf",
+							"result": "clean-with-findings",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7c40d1c357cf-round2.json",
+							"receipt_sha256": "bb0dd9cf343d3c859d940a5b6be5274972456cd386589af0535486a598dbec9e",
+							"scope": "Full round 1 76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..6f04ff634be8863dbb3b7f13fe3352e666143d33; delta 6f04ff634be8863dbb3b7f13fe3352e666143d33..718219be27f3b17e605f2c2af35a20c0c19af88e; unchanged coverage retained",
+							"note": "Actual model openai/gpt-6.1-sol; automatic Anthropic quota fallback disclosed in receipt. F3/F4 remain nonblocking notes."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -3400,8 +3494,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.common.errors",
-			"source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
-			"target_sha256": "0870c5d466c9e7f2153c47f7a77370b9711f15d0464689b44fe489aaea97e6ef",
+			"source_sha256": "79e061d415b61aed65c06e6800b379b332048a200d8d88f6cbbf4647eba593db",
+			"target_sha256": "514c5d6f5ea9f90b994f17c9bcc1d2f6d46d0222748c1e41b3456705045386ac",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -3409,24 +3503,48 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
-					"instance": "7c40d1c357cf",
-					"result": "clean",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "fr-bind-514c5d6f5ea9",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/7c40d1c357cf-round2.json",
-					"receipt_sha256": "bb0dd9cf343d3c859d940a5b6be5274972456cd386589af0535486a598dbec9e",
-					"scope": "Full round 1 76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..6f04ff634be8863dbb3b7f13fe3352e666143d33; delta 6f04ff634be8863dbb3b7f13fe3352e666143d33..718219be27f3b17e605f2c2af35a20c0c19af88e; unchanged coverage retained",
-					"note": "Actual model openai/gpt-6.1-sol; automatic Anthropic quota fallback disclosed in receipt. F3/F4 remain nonblocking notes."
+					"receipt": "i18n/receipts/fr-bind-514c5d6f5ea9.json",
+					"receipt_sha256": "ac9a542d8321e69870799b56460ca94e39d13d28883e2fa4fce97c6f025ba51c"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
+					"target_sha256": "0870c5d466c9e7f2153c47f7a77370b9711f15d0464689b44fe489aaea97e6ef",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"instance": "7c40d1c357cf",
+							"result": "clean",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/7c40d1c357cf-round2.json",
+							"receipt_sha256": "bb0dd9cf343d3c859d940a5b6be5274972456cd386589af0535486a598dbec9e",
+							"scope": "Full round 1 76dda0304bfa4b54ebd42cccd32bbd05841ca4a3..6f04ff634be8863dbb3b7f13fe3352e666143d33; delta 6f04ff634be8863dbb3b7f13fe3352e666143d33..718219be27f3b17e605f2c2af35a20c0c19af88e; unchanged coverage retained",
+							"note": "Actual model openai/gpt-6.1-sol; automatic Anthropic quota fallback disclosed in receipt. F3/F4 remain nonblocking notes."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "fr",
@@ -3752,8 +3870,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.header",
-			"source_sha256": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
-			"target_sha256": "8b7f67e19f7cb17ee637f2ca5fee08226b41ffd7c443389f32be7b7f179c0511",
+			"source_sha256": "04fa4fb0f73dc33811c40b9574f92b8bc0ddafb8a458242497a92400c009e3f0",
+			"target_sha256": "efd5b5f4dc20102a9e67585066fce1543132b58dcaf8b1d1baaa8eb04f7b1680",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -3762,24 +3880,48 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
-					"result": "clean",
-					"instance": "4c5ca9d6810d",
-					"receipt": "i18n/receipts/4c5ca9d6810d.json",
-					"receipt_sha256": "92f91f7b4425ae15ecf4a5f55f7ff776108095d483bd64163b782eb1c2da0269",
-					"scope": "Full independent copy audit, all keys at recorded source/target hashes",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "ru-bind-efd5b5f4dc20",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 4
 					},
-					"note": "Automatic fallback from anthropic/claude-sonnet-5-5 due to quota. Copy audit only; rendered and second high-visibility audit gates remain separate."
+					"receipt": "i18n/receipts/ru-bind-efd5b5f4dc20.json",
+					"receipt_sha256": "9f8814704cd4e928bf07272bf2b5ff37ed67359c01c69a7116d620c2ec726ef3"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+					"target_sha256": "8b7f67e19f7cb17ee637f2ca5fee08226b41ffd7c443389f32be7b7f179c0511",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "4c5ca9d6810d",
+							"receipt": "i18n/receipts/4c5ca9d6810d.json",
+							"receipt_sha256": "92f91f7b4425ae15ecf4a5f55f7ff776108095d483bd64163b782eb1c2da0269",
+							"scope": "Full independent copy audit, all keys at recorded source/target hashes",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"note": "Automatic fallback from anthropic/claude-sonnet-5-5 due to quota. Copy audit only; rendered and second high-visibility audit gates remain separate."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
@@ -3817,7 +3959,7 @@
 			"locale": "ru",
 			"namespace": "ui.chat.composer",
 			"source_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
-			"target_sha256": "48268585ccb500cadb11ac6c4936a9442000106433d9e4e158ddf71d0e955143",
+			"target_sha256": "1f6d86a128e758f04a6bd4cf6323ecdde8120e2d64a83148677dc89a3f7d090f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -3828,19 +3970,17 @@
 				{
 					"agent": "translation-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
+					"date": "2026-10-25",
 					"result": "clean-with-findings",
-					"instance": "ru-extract-0244d275e02a-r2",
+					"instance": "ru-bind-1f6d86a128e7",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 1,
-						"nit": 0
+						"minor": 2,
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/ru-extract-0244d275e02a-r2.json",
-					"receipt_sha256": "ec704d008434a3ae6048b6914d7e34a380262b0b6cf64de3c940bb2a1fa52759",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/ru-bind-1f6d86a128e7.json",
+					"receipt_sha256": "34376d9d0b170280675d15c951158a4b687d66050d039c250b95a054b430fb8a"
 				}
 			],
 			"status": "audited",
@@ -3922,6 +4062,30 @@
 					"source_sha256": "12ebdb50d49dfe5e7101fc29293485d5366f5a52ae7ac3c7dca9ef985fcde8c9",
 					"status": "audited",
 					"target_sha256": "61e92c6ebe9b057835f22d37a56a043b33a8e23850e476cec90b91cb6361308c"
+				},
+				{
+					"source_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+					"target_sha256": "48268585ccb500cadb11ac6c4936a9442000106433d9e4e158ddf71d0e955143",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "ru-extract-0244d275e02a-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ru-extract-0244d275e02a-r2.json",
+							"receipt_sha256": "ec704d008434a3ae6048b6914d7e34a380262b0b6cf64de3c940bb2a1fa52759",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -9237,8 +9401,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.common.errors",
-			"source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
-			"target_sha256": "d1dfe6dd624d682b8f0842900e6718825f5a7707c11315948b4b525b6991cd17",
+			"source_sha256": "79e061d415b61aed65c06e6800b379b332048a200d8d88f6cbbf4647eba593db",
+			"target_sha256": "71d310c0c205088ab6b56c569203ad26a7c3eacf58bc4ed3010aaa5912f6c30f",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "deepseek/deepseek-flash",
@@ -9246,23 +9410,47 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"instance": "628fb828ffe1-ru-ui2-e-delta-530398b4bd",
-					"model": "anthropic/claude-sonnet-5-5",
-					"date": "2026-10-18",
-					"result": "clean",
-					"receipt": "i18n/receipts/628fb828ffe1-ru-ui2-e-delta-530398b4bd.json",
-					"receipt_sha256": "4fcadbe4d9087bd2ae4be47678f9e45c2bfab5741484a08bee45d3672fbc47d4",
-					"scope": "Delta 65ad12e7..2ee9bcd2 plus explicitly retained full-audit baseline; no full re-audit",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "ru-bind-71d310c0c205",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
-					}
+					},
+					"receipt": "i18n/receipts/ru-bind-71d310c0c205.json",
+					"receipt_sha256": "a34c79f8be88f30a647964d4856b2a8e893a45d62f1338d2b2217ae85faf1211"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
+					"target_sha256": "d1dfe6dd624d682b8f0842900e6718825f5a7707c11315948b4b525b6991cd17",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"instance": "628fb828ffe1-ru-ui2-e-delta-530398b4bd",
+							"model": "anthropic/claude-sonnet-5-5",
+							"date": "2026-10-18",
+							"result": "clean",
+							"receipt": "i18n/receipts/628fb828ffe1-ru-ui2-e-delta-530398b4bd.json",
+							"receipt_sha256": "4fcadbe4d9087bd2ae4be47678f9e45c2bfab5741484a08bee45d3672fbc47d4",
+							"scope": "Delta 65ad12e7..2ee9bcd2 plus explicitly retained full-audit baseline; no full re-audit",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							}
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ru",
@@ -12124,8 +12312,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.common.errors",
-			"source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
-			"target_sha256": "abaa7006d3acf97c27a0612db81a6e1c328ba66d8ce3622ada0b65cf3c76c390",
+			"source_sha256": "79e061d415b61aed65c06e6800b379b332048a200d8d88f6cbbf4647eba593db",
+			"target_sha256": "b60673ac76679830aa909c0c9cad6b34b58c8522891a22275eccf8902512eda6",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -12133,24 +12321,48 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "6b6868c6f100",
+					"instance": "zh-cn-bind-b60673ac7667",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6b6868c6f100.json",
-					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
-					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
-					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+					"receipt": "i18n/receipts/zh-cn-bind-b60673ac7667.json",
+					"receipt_sha256": "09f274383d32ee3c242d7efa00d8b82400ac8a4d8805bb41f17d5bf28ad6ac55"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
+					"target_sha256": "abaa7006d3acf97c27a0612db81a6e1c328ba66d8ce3622ada0b65cf3c76c390",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "6b6868c6f100",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6b6868c6f100.json",
+							"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+							"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+							"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",
@@ -12580,8 +12792,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.header",
-			"source_sha256": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
-			"target_sha256": "cb3016cb9651db9ce7d0eb57db27e712bd948daef0cbfc21351b1f98cf4dd195",
+			"source_sha256": "04fa4fb0f73dc33811c40b9574f92b8bc0ddafb8a458242497a92400c009e3f0",
+			"target_sha256": "0a807d72162fef2e94807ac581e20906273afaa2d08d48dcc5758172bbe27832",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -12589,24 +12801,48 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "6b6868c6f100",
+					"instance": "zh-cn-bind-0a807d72162f",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6b6868c6f100.json",
-					"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
-					"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
-					"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+					"receipt": "i18n/receipts/zh-cn-bind-0a807d72162f.json",
+					"receipt_sha256": "b096b75e213b424678cc620891e92bd7fed4e1a386a3f5cea40f82de03033d19"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+					"target_sha256": "cb3016cb9651db9ce7d0eb57db27e712bd948daef0cbfc21351b1f98cf4dd195",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "6b6868c6f100",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6b6868c6f100.json",
+							"receipt_sha256": "35d802cb2f5c2117e83a58e7cd3819479964cdfc14cae977896e692286bfe9d6",
+							"scope": "round 2: remediation delta 1844a072210c29a34ea1462d0ee31333d4407575..44e22f031ddaee2b3e10a0cd5b8f5a773cfe6d84",
+							"note": "Full independent pass; zero findings. Translated by a task subagent on the actual fallback model openai/gpt-6.1-sol after Anthropic quota exhaustion."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "zh-CN",
@@ -14573,8 +14809,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.header",
-			"source_sha256": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
-			"target_sha256": "93f87c0176ff38aaef1e3853bf1836a76266306928f4014c6be7974e719c0e71",
+			"source_sha256": "04fa4fb0f73dc33811c40b9574f92b8bc0ddafb8a458242497a92400c009e3f0",
+			"target_sha256": "47187b9de7320afbcdc0db47ea271393aa25cf8b925f197b158d679472559a66",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -14582,21 +14818,19 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "9d4e059e6be8",
+					"instance": "hi-bind-47187b9de732",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/9d4e059e6be8.json",
-					"receipt_sha256": "7669edd35b9616c1d0b81d73a9cb2c7d8843468980710f3a5169f6552425f727",
-					"scope": "hi ui.chat.header vs en source — round 3 review-remediation audit on final bytes",
-					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+					"receipt": "i18n/receipts/hi-bind-47187b9de732.json",
+					"receipt_sha256": "3304f460e92f2ff290230be1e403152f559657af1935e42547fcafe55b0e570e"
 				}
 			],
 			"status": "audited",
@@ -14620,6 +14854,30 @@
 							"receipt": "i18n/receipts/4f53d9a1df52.json",
 							"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
 							"scope": "hi ui.chat.header vs en source — round 1 independent full pass, 10 keys",
+							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+						}
+					],
+					"status": "audited"
+				},
+				{
+					"source_sha256": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+					"target_sha256": "93f87c0176ff38aaef1e3853bf1836a76266306928f4014c6be7974e719c0e71",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "9d4e059e6be8",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/9d4e059e6be8.json",
+							"receipt_sha256": "7669edd35b9616c1d0b81d73a9cb2c7d8843468980710f3a5169f6552425f727",
+							"scope": "hi ui.chat.header vs en source — round 3 review-remediation audit on final bytes",
 							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
 						}
 					],
@@ -15094,8 +15352,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.common.errors",
-			"source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
-			"target_sha256": "cccc445c93b170ad4f70a7cc8a24ead16dd8b77b59ced866dd55dc704506c4a4",
+			"source_sha256": "79e061d415b61aed65c06e6800b379b332048a200d8d88f6cbbf4647eba593db",
+			"target_sha256": "fbaf5e0ff7f536010b6c2f8a91140c331763e36636cf7071d5f164cbc7a3852e",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -15103,24 +15361,48 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "4f53d9a1df52",
+					"instance": "hi-bind-fbaf5e0ff7f5",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/4f53d9a1df52.json",
-					"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
-					"scope": "hi ui.common.errors vs en source — round 1 independent full pass, 4 keys",
-					"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+					"receipt": "i18n/receipts/hi-bind-fbaf5e0ff7f5.json",
+					"receipt_sha256": "0fa2145781e5e0a2f9fe57ff01d789b6a13f30cd295689ccd27c98cfe596d23e"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
+					"target_sha256": "cccc445c93b170ad4f70a7cc8a24ead16dd8b77b59ced866dd55dc704506c4a4",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "4f53d9a1df52",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/4f53d9a1df52.json",
+							"receipt_sha256": "c337156ee6eed6363260f89bcc1a43a439b897c1723d948824ad241b9175c7c4",
+							"scope": "hi ui.common.errors vs en source — round 1 independent full pass, 4 keys",
+							"note": "Independent audit on openai/gpt-6.1-sol after the pinned anthropic/claude-sonnet-5-5 quota fallback."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "hi",
@@ -18785,8 +19067,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.header",
-			"source_sha256": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
-			"target_sha256": "403864dd874acd8b95d426454d01a7b06bdbdb4fc97ba812b531d35c4521ee9b",
+			"source_sha256": "04fa4fb0f73dc33811c40b9574f92b8bc0ddafb8a458242497a92400c009e3f0",
+			"target_sha256": "bae711b8664e1c3eb08500407c194150908c27151f3d9b504a7905baad11b6d4",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -18794,24 +19076,48 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
-					"result": "clean",
-					"instance": "6a1c5f8e3d29",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "vi-bind-bae711b8664e",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6a1c5f8e3d29.json",
-					"receipt_sha256": "b89d416d59d13757353b742e959568d2ff0fd3f8ca34203ad18c4d69af997958",
-					"scope": "full namespace; post-remediation verification of round-1 native audit findings",
-					"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+					"receipt": "i18n/receipts/vi-bind-bae711b8664e.json",
+					"receipt_sha256": "aa0de8eadd7f75d4cfd4a6f0ef9858546c2cb37f1cc64a55f1ad93cd193dd2ad"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+					"target_sha256": "403864dd874acd8b95d426454d01a7b06bdbdb4fc97ba812b531d35c4521ee9b",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "6a1c5f8e3d29",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6a1c5f8e3d29.json",
+							"receipt_sha256": "b89d416d59d13757353b742e959568d2ff0fd3f8ca34203ad18c4d69af997958",
+							"scope": "full namespace; post-remediation verification of round-1 native audit findings",
+							"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
@@ -19129,8 +19435,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.common.errors",
-			"source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
-			"target_sha256": "213e355b1280d2b9ab1bf8468cf1a2c0381f0d1811e83e28985158ed71558f67",
+			"source_sha256": "79e061d415b61aed65c06e6800b379b332048a200d8d88f6cbbf4647eba593db",
+			"target_sha256": "c6082f69de5b1ad6f63f6579dec81cb0a24c736cef65478af9b8dcaa7748d8c0",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -19138,24 +19444,48 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-18",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "6a1c5f8e3d29",
+					"instance": "vi-bind-c6082f69de5b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/6a1c5f8e3d29.json",
-					"receipt_sha256": "b89d416d59d13757353b742e959568d2ff0fd3f8ca34203ad18c4d69af997958",
-					"scope": "full namespace; post-remediation verification of round-1 native audit findings",
-					"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+					"receipt": "i18n/receipts/vi-bind-c6082f69de5b.json",
+					"receipt_sha256": "d648cf58b578e7bed2c4993e84eed27052a6b77a861ce13ce3abf9064adfea84"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
+					"target_sha256": "213e355b1280d2b9ab1bf8468cf1a2c0381f0d1811e83e28985158ed71558f67",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-18",
+							"result": "clean",
+							"instance": "6a1c5f8e3d29",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/6a1c5f8e3d29.json",
+							"receipt_sha256": "b89d416d59d13757353b742e959568d2ff0fd3f8ca34203ad18c4d69af997958",
+							"scope": "full namespace; post-remediation verification of round-1 native audit findings",
+							"note": "Full-UI vi tranche. Independent audit of the English source, context sidecar and Vietnamese bytes. Translator and auditor both ran on the harness-reported fallback model openai/gpt-6.1-sol after the pinned Anthropic model was unavailable."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "vi",
@@ -19920,8 +20250,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.header",
-			"source_sha256": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
-			"target_sha256": "80d3fa0bd8d20ac591063fa0b63086421412fc7c08050837e8a1f32a0f3aa7ac",
+			"source_sha256": "04fa4fb0f73dc33811c40b9574f92b8bc0ddafb8a458242497a92400c009e3f0",
+			"target_sha256": "a5a4d13ae09edfcc835824fce2a5396f662c8abbcce5d4c0136ba51074406247",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -19929,24 +20259,48 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
-					"result": "clean",
-					"instance": "102ffa6d185d",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "ur-bind-a5a4d13ae09e",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 2
 					},
-					"receipt": "i18n/receipts/102ffa6d185d.json",
-					"receipt_sha256": "9cf5311d3e87ee9ff90304782aae6ea3a5535cb78213ad107f9f48c737df1d63",
-					"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
-					"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+					"receipt": "i18n/receipts/ur-bind-a5a4d13ae09e.json",
+					"receipt_sha256": "c3d668b6857219f954b8cb342fcbce268662644680a8a91fa0625089a66157f3"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "1e395f1110147c45fea1182e26542cfdb44c966eaed0966d2fefcade11d161aa",
+					"target_sha256": "80d3fa0bd8d20ac591063fa0b63086421412fc7c08050837e8a1f32a0f3aa7ac",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "102ffa6d185d",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/102ffa6d185d.json",
+							"receipt_sha256": "9cf5311d3e87ee9ff90304782aae6ea3a5535cb78213ad107f9f48c737df1d63",
+							"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
+							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
@@ -20929,8 +21283,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.common.errors",
-			"source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
-			"target_sha256": "f8cbc27aaab276fce5e993cfbf3e11bb5ca2c62c36ee2efaa4f8b53f33b7957f",
+			"source_sha256": "79e061d415b61aed65c06e6800b379b332048a200d8d88f6cbbf4647eba593db",
+			"target_sha256": "62303bdffebdd663771b4cf53866e580aaf11a4b333eca39c6af32e840ae33e2",
 			"translator": {
 				"agent": "i18n-translator",
 				"model": "openai/gpt-6.1-sol",
@@ -20938,24 +21292,48 @@
 			},
 			"auditors": [
 				{
-					"agent": "i18n-auditor",
-					"model": "openai/gpt-6.1-sol",
-					"date": "2026-10-19",
+					"agent": "translation-auditor",
+					"model": "deepseek/deepseek-flash",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "2a41a79633ed",
+					"instance": "ur-bind-62303bdffebd",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/2a41a79633ed.json",
-					"receipt_sha256": "7be92f4a2a4f9b5aff5a834d859d39e06e341caf831df08db9f9a64a75c306bf",
-					"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
-					"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+					"receipt": "i18n/receipts/ur-bind-62303bdffebd.json",
+					"receipt_sha256": "298ab5cd546063e8b94b6d3ecb6aaa70b425efade6b6cfb874a91e884ca47550"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "5c86553fecfa353e53b31d69a27ce1523a26681660a2923e8601279ad36672e6",
+					"target_sha256": "f8cbc27aaab276fce5e993cfbf3e11bb5ca2c62c36ee2efaa4f8b53f33b7957f",
+					"auditors": [
+						{
+							"agent": "i18n-auditor",
+							"model": "openai/gpt-6.1-sol",
+							"date": "2026-10-19",
+							"result": "clean",
+							"instance": "2a41a79633ed",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/2a41a79633ed.json",
+							"receipt_sha256": "7be92f4a2a4f9b5aff5a834d859d39e06e341caf831df08db9f9a64a75c306bf",
+							"scope": "Full independent copy audit of the namespace at the recorded bytes; zero findings.",
+							"note": "Independent auditor post-dates the translator; all findings remediated and re-audited to zero. Audit model fell back from anthropic/claude-sonnet-5-5 to openai/gpt-6.1-sol due to provider quota."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "ur",
@@ -27485,8 +27863,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.chat.sidebar",
-			"source_sha256": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
-			"target_sha256": "2ee131c8d07a4892f327af6ff2b87a8b7d565526e976475bd523131398d5d28c",
+			"source_sha256": "ef1e1be1e56216cbace31a229d20979c2fc00fb43d15559a93605e33e900b171",
+			"target_sha256": "152536bbe8f3a1ed6c5aaf78109a6bc7494645f82d3c0c584b38308e4ac9d2df",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -27496,19 +27874,17 @@
 				{
 					"agent": "translation-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "fr-extract-da12aa6ade20-r2",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "fr-bind-152536bbe8f3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/fr-extract-da12aa6ade20-r2.json",
-					"receipt_sha256": "c56cf3241e239dc06441c5cff8c944ab04f7b81584390228b0c497e1d956842d",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/fr-bind-152536bbe8f3.json",
+					"receipt_sha256": "a01fa2fcb50c0cc73a66d53de8391e74b4c2799bcca6a16914f43772ed9a8638"
 				}
 			],
 			"status": "audited",
@@ -27599,6 +27975,30 @@
 					"source_sha256": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
 					"status": "audited",
 					"target_sha256": "5cd5a9b91f58ffff725c16da768873136223c37afa33eb65b1c1a47bad513f5c"
+				},
+				{
+					"source_sha256": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+					"target_sha256": "2ee131c8d07a4892f327af6ff2b87a8b7d565526e976475bd523131398d5d28c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "fr-extract-da12aa6ade20-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/fr-extract-da12aa6ade20-r2.json",
+							"receipt_sha256": "c56cf3241e239dc06441c5cff8c944ab04f7b81584390228b0c497e1d956842d",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -27867,8 +28267,8 @@
 		{
 			"locale": "fr",
 			"namespace": "ui.common.viewer",
-			"source_sha256": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
-			"target_sha256": "7434486d50fc318ef2c2014a66c48974a93aef1c73fb95278beef3b6f5400f82",
+			"source_sha256": "13e7cccf566f6a41d890c36a9dc24242a154b80d9e8cdbcfdf6988d5c5376243",
+			"target_sha256": "d30909795b6c895b9cd7a59c873bb588a2bab60585a35e83432a64c3977450f7",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -27878,19 +28278,17 @@
 				{
 					"agent": "translation-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
+					"date": "2026-10-25",
 					"result": "clean-with-findings",
-					"instance": "fr-extract-da12aa6ade20-r2",
+					"instance": "fr-bind-d30909795b6c",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/fr-extract-da12aa6ade20-r2.json",
-					"receipt_sha256": "c56cf3241e239dc06441c5cff8c944ab04f7b81584390228b0c497e1d956842d",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/fr-bind-d30909795b6c.json",
+					"receipt_sha256": "94afb589b2ffafba5a15fd4a84a46733c256bea61e4e39b5b9991de0df00da82"
 				}
 			],
 			"status": "audited",
@@ -27962,6 +28360,30 @@
 					"source_sha256": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
 					"status": "audited",
 					"target_sha256": "45b0e3669be462ff23652796e5f7779f3484ba130e265e9d612f015349f68c90"
+				},
+				{
+					"source_sha256": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+					"target_sha256": "7434486d50fc318ef2c2014a66c48974a93aef1c73fb95278beef3b6f5400f82",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean-with-findings",
+							"instance": "fr-extract-da12aa6ade20-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 1,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/fr-extract-da12aa6ade20-r2.json",
+							"receipt_sha256": "c56cf3241e239dc06441c5cff8c944ab04f7b81584390228b0c497e1d956842d",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -28112,8 +28534,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.chat.sidebar",
-			"source_sha256": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
-			"target_sha256": "6c80a46c6c7dd83a67bd1c5521bfbde38b36d2883ae7c91439a9d74a14b3b84d",
+			"source_sha256": "ef1e1be1e56216cbace31a229d20979c2fc00fb43d15559a93605e33e900b171",
+			"target_sha256": "dcf7a90d4488229bb88db0627be92b659308e5d692e8ded2b7ad3f1c4f9d368a",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -28123,19 +28545,17 @@
 				{
 					"agent": "translation-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "es-extract-a815d841bd5d-r2",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "es-bind-dcf7a90d4488",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
-						"nit": 0
+						"minor": 2,
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/es-extract-a815d841bd5d-r2.json",
-					"receipt_sha256": "b37f2739657032c91a518679588dcd44e37ac6f5c75f6afe74db65ebd3ec150a",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/es-bind-dcf7a90d4488.json",
+					"receipt_sha256": "ccd0cce599e8ee68139dd455158ee205f4daa04822f4958a6ae3f5f2e8d26a57"
 				}
 			],
 			"status": "audited",
@@ -28226,6 +28646,30 @@
 					"source_sha256": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
 					"status": "audited",
 					"target_sha256": "797a6f9b45b98829d4d332a512fb9cf42e7456e29d2d0a8d589f8abcd877502a"
+				},
+				{
+					"source_sha256": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+					"target_sha256": "6c80a46c6c7dd83a67bd1c5521bfbde38b36d2883ae7c91439a9d74a14b3b84d",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "es-extract-a815d841bd5d-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/es-extract-a815d841bd5d-r2.json",
+							"receipt_sha256": "b37f2739657032c91a518679588dcd44e37ac6f5c75f6afe74db65ebd3ec150a",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -28494,8 +28938,8 @@
 		{
 			"locale": "es",
 			"namespace": "ui.common.viewer",
-			"source_sha256": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
-			"target_sha256": "8cf0db58a6fa91720ec802b8c0f452175d5ec1cd5431e6e9ba6aa8e9176b0232",
+			"source_sha256": "13e7cccf566f6a41d890c36a9dc24242a154b80d9e8cdbcfdf6988d5c5376243",
+			"target_sha256": "4342bf1a6706d05a48eaf8f2773859dfeec50d3fde41431a5ea13b422ab334a0",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -28505,19 +28949,17 @@
 				{
 					"agent": "translation-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "es-extract-a815d841bd5d-r2",
+					"instance": "es-bind-4342bf1a6706",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/es-extract-a815d841bd5d-r2.json",
-					"receipt_sha256": "b37f2739657032c91a518679588dcd44e37ac6f5c75f6afe74db65ebd3ec150a",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/es-bind-4342bf1a6706.json",
+					"receipt_sha256": "7f878eb0f237be932ee28c40ff11398668957d457dac261d310f24c1363ebbe5"
 				}
 			],
 			"status": "audited",
@@ -28589,6 +29031,30 @@
 					"source_sha256": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
 					"status": "audited",
 					"target_sha256": "8c2e0cfbe0d28250e5d005bc93d10eee355ad024057b9e3b70df5ae3170cd28c"
+				},
+				{
+					"source_sha256": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+					"target_sha256": "8cf0db58a6fa91720ec802b8c0f452175d5ec1cd5431e6e9ba6aa8e9176b0232",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "es-extract-a815d841bd5d-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/es-extract-a815d841bd5d-r2.json",
+							"receipt_sha256": "b37f2739657032c91a518679588dcd44e37ac6f5c75f6afe74db65ebd3ec150a",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -28835,8 +29301,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.common.viewer",
-			"source_sha256": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
-			"target_sha256": "26197d9377d8fffeaa52113f5a29752d611b01f4528793bb8985a0cc93a0eb35",
+			"source_sha256": "13e7cccf566f6a41d890c36a9dc24242a154b80d9e8cdbcfdf6988d5c5376243",
+			"target_sha256": "9bcd6142dcc132be0850ec6f7e9854ed47425d9f0073613ba0485a88e1ff1032",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -28846,19 +29312,17 @@
 				{
 					"agent": "translation-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "ru-extract-0244d275e02a-r2",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "ru-bind-9bcd6142dcc1",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ru-extract-0244d275e02a-r2.json",
-					"receipt_sha256": "ec704d008434a3ae6048b6914d7e34a380262b0b6cf64de3c940bb2a1fa52759",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/ru-bind-9bcd6142dcc1.json",
+					"receipt_sha256": "b1d06a0ee65e29c2f45ecfc4a9240e5f773909512c64af3f38bf26fd29129e40"
 				}
 			],
 			"status": "audited",
@@ -28931,6 +29395,30 @@
 					"source_sha256": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
 					"status": "audited",
 					"target_sha256": "99f8f73c4ada32164bd8fe89b62a6d3cf17f1ee57071d74e9f16fb8da6a3ed3b"
+				},
+				{
+					"source_sha256": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+					"target_sha256": "26197d9377d8fffeaa52113f5a29752d611b01f4528793bb8985a0cc93a0eb35",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "ru-extract-0244d275e02a-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ru-extract-0244d275e02a-r2.json",
+							"receipt_sha256": "ec704d008434a3ae6048b6914d7e34a380262b0b6cf64de3c940bb2a1fa52759",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -29129,8 +29617,8 @@
 		{
 			"locale": "ru",
 			"namespace": "ui.chat.sidebar",
-			"source_sha256": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
-			"target_sha256": "e7874df65f468a3235fb091de9b8bfcd177c41bd3696b4db592cc579108d63c5",
+			"source_sha256": "ef1e1be1e56216cbace31a229d20979c2fc00fb43d15559a93605e33e900b171",
+			"target_sha256": "334e372f09e056a1c2b257c47a1a27e04660ffea061ab79221f8963a9bc9992b",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -29140,19 +29628,17 @@
 				{
 					"agent": "translation-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "ru-extract-0244d275e02a-r2",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "ru-bind-334e372f09e0",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 3
 					},
-					"receipt": "i18n/receipts/ru-extract-0244d275e02a-r2.json",
-					"receipt_sha256": "ec704d008434a3ae6048b6914d7e34a380262b0b6cf64de3c940bb2a1fa52759",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/ru-bind-334e372f09e0.json",
+					"receipt_sha256": "12fc55e4d273f814dcfc8dfd1756042243e5fdbdec18a48157e098a5225d5329"
 				}
 			],
 			"status": "audited",
@@ -29243,6 +29729,30 @@
 					"source_sha256": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
 					"status": "audited",
 					"target_sha256": "5f4701d6cb99cbbce5d0a3a849c6ca11b3b1051e1b73051cd15714a691cf44ce"
+				},
+				{
+					"source_sha256": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+					"target_sha256": "e7874df65f468a3235fb091de9b8bfcd177c41bd3696b4db592cc579108d63c5",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "ru-extract-0244d275e02a-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ru-extract-0244d275e02a-r2.json",
+							"receipt_sha256": "ec704d008434a3ae6048b6914d7e34a380262b0b6cf64de3c940bb2a1fa52759",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -29465,8 +29975,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.chat.sidebar",
-			"source_sha256": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
-			"target_sha256": "803e8e97f2fa3843ef81f6af485ede51b95ca88d349638f8d9810f22059b894f",
+			"source_sha256": "ef1e1be1e56216cbace31a229d20979c2fc00fb43d15559a93605e33e900b171",
+			"target_sha256": "b7005a5e5fc15f0c7abb3cd11db15c6dde25f9e06f12df8648aae41ed88db1e5",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -29476,19 +29986,17 @@
 				{
 					"agent": "translation-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "hi-extract-a51f5b96d24e-r2",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "hi-bind-b7005a5e5fc1",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/hi-extract-a51f5b96d24e-r2.json",
-					"receipt_sha256": "2cd6dd756cad65fa3c640189bcb0db1c158de53f19e93ded83de29eb610e4684",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/hi-bind-b7005a5e5fc1.json",
+					"receipt_sha256": "b710a736bf7c8003d4264a60115268de9d3d6233a2360b50a46a75204edac9b5"
 				}
 			],
 			"status": "audited",
@@ -29579,6 +30087,30 @@
 					"source_sha256": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
 					"status": "audited",
 					"target_sha256": "75c694c9196e7838ec4ca67e17b9b5cfefd81c376acd4f2f06383fb84238088b"
+				},
+				{
+					"source_sha256": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+					"target_sha256": "803e8e97f2fa3843ef81f6af485ede51b95ca88d349638f8d9810f22059b894f",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "hi-extract-a51f5b96d24e-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/hi-extract-a51f5b96d24e-r2.json",
+							"receipt_sha256": "2cd6dd756cad65fa3c640189bcb0db1c158de53f19e93ded83de29eb610e4684",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -29825,8 +30357,8 @@
 		{
 			"locale": "hi",
 			"namespace": "ui.common.viewer",
-			"source_sha256": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
-			"target_sha256": "b75b08e7838283cadb563c789de0dedfc1bdd8832e82332b7b47ccd687b3adcb",
+			"source_sha256": "13e7cccf566f6a41d890c36a9dc24242a154b80d9e8cdbcfdf6988d5c5376243",
+			"target_sha256": "a6583077d2a3a83e296c6ff12b4ec0786383836e1fe86042da702bfba8f54c3b",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -29836,19 +30368,17 @@
 				{
 					"agent": "translation-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "hi-extract-a51f5b96d24e-r2",
+					"instance": "hi-bind-a6583077d2a3",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/hi-extract-a51f5b96d24e-r2.json",
-					"receipt_sha256": "2cd6dd756cad65fa3c640189bcb0db1c158de53f19e93ded83de29eb610e4684",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/hi-bind-a6583077d2a3.json",
+					"receipt_sha256": "37138ab7a1531497198241470886e62192c86bf60e40947d414adbfa520bc44e"
 				}
 			],
 			"status": "audited",
@@ -29920,6 +30450,30 @@
 					"source_sha256": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
 					"status": "audited",
 					"target_sha256": "c84afbfc57b0ae35a8aa90aa23fa874382ebfc29c1d0a577f3581880d2fe0be5"
+				},
+				{
+					"source_sha256": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+					"target_sha256": "b75b08e7838283cadb563c789de0dedfc1bdd8832e82332b7b47ccd687b3adcb",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "hi-extract-a51f5b96d24e-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/hi-extract-a51f5b96d24e-r2.json",
+							"receipt_sha256": "2cd6dd756cad65fa3c640189bcb0db1c158de53f19e93ded83de29eb610e4684",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -30548,8 +31102,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.common.viewer",
-			"source_sha256": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
-			"target_sha256": "118e8cf4bd36a8d9e115d8214d26cac59483b708ab2a0909f4fc49877819e29b",
+			"source_sha256": "13e7cccf566f6a41d890c36a9dc24242a154b80d9e8cdbcfdf6988d5c5376243",
+			"target_sha256": "9b0acb464ecd381ff63fdd6e86a014edf018c5fa14db3e3259fe11488e18544f",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -30559,19 +31113,17 @@
 				{
 					"agent": "translation-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "ur-extract-d082bd9595-r2",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "ur-bind-9b0acb464ecd",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/ur-extract-d082bd9595-r2.json",
-					"receipt_sha256": "44374566d4590f979488fc37452f1d1a9756b5da8629bdd74a240e1950e54757",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/ur-bind-9b0acb464ecd.json",
+					"receipt_sha256": "c0f86d429a09cab046476a3152900cb3428695a7cdf48b27c344125e8d84e622"
 				}
 			],
 			"status": "audited",
@@ -30644,6 +31196,30 @@
 					"source_sha256": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
 					"status": "audited",
 					"target_sha256": "4bb4a186ec2ab6f631da48a730b9ef590587cadb9de9050dd1b32e0c01ed4593"
+				},
+				{
+					"source_sha256": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+					"target_sha256": "118e8cf4bd36a8d9e115d8214d26cac59483b708ab2a0909f4fc49877819e29b",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "ur-extract-d082bd9595-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ur-extract-d082bd9595-r2.json",
+							"receipt_sha256": "44374566d4590f979488fc37452f1d1a9756b5da8629bdd74a240e1950e54757",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -30842,8 +31418,8 @@
 		{
 			"locale": "ur",
 			"namespace": "ui.chat.sidebar",
-			"source_sha256": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
-			"target_sha256": "b0f865f4a7dbbb405a2fcdfa1676659ed6544ce33f9396002836bff1faeaf19c",
+			"source_sha256": "ef1e1be1e56216cbace31a229d20979c2fc00fb43d15559a93605e33e900b171",
+			"target_sha256": "a8f887acc20d6048affe143677c0c5be993a3c3494e4c500dd59caaceb6f676e",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -30853,19 +31429,17 @@
 				{
 					"agent": "translation-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "ur-extract-d082bd9595-r2",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "ur-bind-a8f887acc20d",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/ur-extract-d082bd9595-r2.json",
-					"receipt_sha256": "44374566d4590f979488fc37452f1d1a9756b5da8629bdd74a240e1950e54757",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/ur-bind-a8f887acc20d.json",
+					"receipt_sha256": "a2392e44556858843ba414a7c5930b20587469eedddb6e37676543128db8281f"
 				}
 			],
 			"status": "audited",
@@ -30956,6 +31530,30 @@
 					"source_sha256": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
 					"status": "audited",
 					"target_sha256": "872f25eb7db98a41750a371a079d666165b5f4c9a82655a5536260b116fb933d"
+				},
+				{
+					"source_sha256": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+					"target_sha256": "b0f865f4a7dbbb405a2fcdfa1676659ed6544ce33f9396002836bff1faeaf19c",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "ur-extract-d082bd9595-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/ur-extract-d082bd9595-r2.json",
+							"receipt_sha256": "44374566d4590f979488fc37452f1d1a9756b5da8629bdd74a240e1950e54757",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -31154,8 +31752,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.common.viewer",
-			"source_sha256": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
-			"target_sha256": "517830ed45a14db0de431ceb30fc4330f4e210338558dc2210e6a184705ffc01",
+			"source_sha256": "13e7cccf566f6a41d890c36a9dc24242a154b80d9e8cdbcfdf6988d5c5376243",
+			"target_sha256": "cb365aba19fe6edbc9c5e8c633052a452bd5f78509e83352b4ef2d5c3305cdda",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -31165,19 +31763,17 @@
 				{
 					"agent": "translation-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "vi-extract-517c59bfdfe3-r2",
+					"instance": "vi-bind-cb365aba19fe",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/vi-extract-517c59bfdfe3-r2.json",
-					"receipt_sha256": "d7ce2a90d7e6378933cf8d95f27ca5b9471499432507c93bfc8cfd396962e502",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/vi-bind-cb365aba19fe.json",
+					"receipt_sha256": "223b5e97bbdd1e5c8eb001cf8682783000aa18efd5a5c6a5a4c64cf459181cd8"
 				}
 			],
 			"status": "audited",
@@ -31249,6 +31845,30 @@
 					"source_sha256": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
 					"status": "audited",
 					"target_sha256": "6870b8b1de074943c687442d16cc24cd5a75beead9de8a25396fa94c550072d6"
+				},
+				{
+					"source_sha256": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+					"target_sha256": "517830ed45a14db0de431ceb30fc4330f4e210338558dc2210e6a184705ffc01",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "vi-extract-517c59bfdfe3-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/vi-extract-517c59bfdfe3-r2.json",
+							"receipt_sha256": "d7ce2a90d7e6378933cf8d95f27ca5b9471499432507c93bfc8cfd396962e502",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -31447,8 +32067,8 @@
 		{
 			"locale": "vi",
 			"namespace": "ui.chat.sidebar",
-			"source_sha256": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
-			"target_sha256": "e27adae002290a4a3ace16ba29569836e1ef91656c67a5e8ada9dd97e5dc6494",
+			"source_sha256": "ef1e1be1e56216cbace31a229d20979c2fc00fb43d15559a93605e33e900b171",
+			"target_sha256": "6e9c1ff48a0b65dc36d041a421abe8421ca9cba4bd93d03f52df8fafd988d294",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -31458,19 +32078,17 @@
 				{
 					"agent": "translation-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "vi-extract-517c59bfdfe3-r2",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "vi-bind-6e9c1ff48a0b",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 1,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/vi-extract-517c59bfdfe3-r2.json",
-					"receipt_sha256": "d7ce2a90d7e6378933cf8d95f27ca5b9471499432507c93bfc8cfd396962e502",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/vi-bind-6e9c1ff48a0b.json",
+					"receipt_sha256": "117312187f28ce98a8cba1ce52e3e2317557a9ddd809d53832ed3add56b39c2b"
 				}
 			],
 			"status": "audited",
@@ -31561,6 +32179,30 @@
 					"source_sha256": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
 					"status": "audited",
 					"target_sha256": "7a52079c6e7552269734420a0a02fcf7e246a9642e7eac4197e90630639bee75"
+				},
+				{
+					"source_sha256": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+					"target_sha256": "e27adae002290a4a3ace16ba29569836e1ef91656c67a5e8ada9dd97e5dc6494",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "vi-extract-517c59bfdfe3-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/vi-extract-517c59bfdfe3-r2.json",
+							"receipt_sha256": "d7ce2a90d7e6378933cf8d95f27ca5b9471499432507c93bfc8cfd396962e502",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -31733,8 +32375,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.chat.sidebar",
-			"source_sha256": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
-			"target_sha256": "8c123f38a30f55130c7bfe62a6d49068095cb440431723b11b347c4f63870f53",
+			"source_sha256": "ef1e1be1e56216cbace31a229d20979c2fc00fb43d15559a93605e33e900b171",
+			"target_sha256": "7cbdb74557a098e5925710df0c8498b0148c291476cbb5ba5eb28ba238c0b571",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -31744,19 +32386,17 @@
 				{
 					"agent": "translation-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "zh-cn-extract-734dc4749c3d-r2",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "zh-cn-bind-7cbdb74557a0",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
-						"minor": 0,
+						"minor": 2,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/zh-cn-extract-734dc4749c3d-r2.json",
-					"receipt_sha256": "b450f3650b62cd22fbfd25ab914b24064faa002ca8d0a016fe31aadd00d3a265",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/zh-cn-bind-7cbdb74557a0.json",
+					"receipt_sha256": "a3265b33f3b9b05b5ced5ff39c585271e53f8587f724ba3e20f11b42f16f78ae"
 				}
 			],
 			"status": "audited",
@@ -31847,6 +32487,30 @@
 					"source_sha256": "bd0bf045b2aa5a4495695592dcd3ccad76ec5bdea23cfda37460ce751479965f",
 					"status": "audited",
 					"target_sha256": "05091e7028843aa083de7975e3a9682ed66adb3309f1ba6c41e8ecb9c16a25dd"
+				},
+				{
+					"source_sha256": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+					"target_sha256": "8c123f38a30f55130c7bfe62a6d49068095cb440431723b11b347c4f63870f53",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "zh-cn-extract-734dc4749c3d-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/zh-cn-extract-734dc4749c3d-r2.json",
+							"receipt_sha256": "b450f3650b62cd22fbfd25ab914b24064faa002ca8d0a016fe31aadd00d3a265",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -32115,8 +32779,8 @@
 		{
 			"locale": "zh-CN",
 			"namespace": "ui.common.viewer",
-			"source_sha256": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
-			"target_sha256": "5efff290b4ad62356dd60d5a18116b64e88c6b161ff115bd895cd875704323e3",
+			"source_sha256": "13e7cccf566f6a41d890c36a9dc24242a154b80d9e8cdbcfdf6988d5c5376243",
+			"target_sha256": "61808642e66894384d5cc5007f46a4083e99e84cdece1cdadac9398daa808a7f",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -32126,19 +32790,17 @@
 				{
 					"agent": "translation-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
+					"date": "2026-10-25",
 					"result": "clean",
-					"instance": "zh-cn-extract-734dc4749c3d-r2",
+					"instance": "zh-cn-bind-61808642e668",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
 						"nit": 0
 					},
-					"receipt": "i18n/receipts/zh-cn-extract-734dc4749c3d-r2.json",
-					"receipt_sha256": "b450f3650b62cd22fbfd25ab914b24064faa002ca8d0a016fe31aadd00d3a265",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/zh-cn-bind-61808642e668.json",
+					"receipt_sha256": "89b4f2750007cf68ad7b7de88fa6a72ef9a65fc2092e90b77c03f182dd145397"
 				}
 			],
 			"status": "audited",
@@ -32210,6 +32872,30 @@
 					"source_sha256": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
 					"status": "audited",
 					"target_sha256": "340dc07cd763562727e2bdabc1284e5bc17ab34d9ce0b408c761947e186df027"
+				},
+				{
+					"source_sha256": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+					"target_sha256": "5efff290b4ad62356dd60d5a18116b64e88c6b161ff115bd895cd875704323e3",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "zh-cn-extract-734dc4749c3d-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/zh-cn-extract-734dc4749c3d-r2.json",
+							"receipt_sha256": "b450f3650b62cd22fbfd25ab914b24064faa002ca8d0a016fe31aadd00d3a265",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
 				}
 			]
 		},
@@ -32392,7 +33078,7 @@
 			"locale": "fr",
 			"namespace": "ui.chat.directory",
 			"source_sha256": "911d137202d2dbca8c18d3536a7da10019424181a42c44817774da07cfef57ec",
-			"target_sha256": "f2bc95305fbd48a9ae73b5189bc0e6539d99f2e18fe283806389562a9cc06de7",
+			"target_sha256": "e143ec8e1081cf7b0f1581009d089800b285e7584219cd312c36069a9099f320",
 			"translator": {
 				"agent": "translator",
 				"model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -32402,22 +33088,46 @@
 				{
 					"agent": "translation-auditor",
 					"model": "deepseek/deepseek-flash",
-					"date": "2026-10-24",
-					"result": "clean",
-					"instance": "fr-extract-da12aa6ade20-r2",
+					"date": "2026-10-25",
+					"result": "clean-with-findings",
+					"instance": "fr-bind-e143ec8e1081",
 					"findings": {
 						"blocker": 0,
 						"major": 0,
 						"minor": 0,
-						"nit": 0
+						"nit": 1
 					},
-					"receipt": "i18n/receipts/fr-extract-da12aa6ade20-r2.json",
-					"receipt_sha256": "c56cf3241e239dc06441c5cff8c944ab04f7b81584390228b0c497e1d956842d",
-					"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
-					"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+					"receipt": "i18n/receipts/fr-bind-e143ec8e1081.json",
+					"receipt_sha256": "e0e89d77a2243f4e9feaaeeca0f69b05967a212a0997abf4e0da988d7fa061d1"
 				}
 			],
-			"status": "audited"
+			"status": "audited",
+			"superseded": [
+				{
+					"source_sha256": "911d137202d2dbca8c18d3536a7da10019424181a42c44817774da07cfef57ec",
+					"target_sha256": "f2bc95305fbd48a9ae73b5189bc0e6539d99f2e18fe283806389562a9cc06de7",
+					"auditors": [
+						{
+							"agent": "translation-auditor",
+							"model": "deepseek/deepseek-flash",
+							"date": "2026-10-24",
+							"result": "clean",
+							"instance": "fr-extract-da12aa6ade20-r2",
+							"findings": {
+								"blocker": 0,
+								"major": 0,
+								"minor": 0,
+								"nit": 0
+							},
+							"receipt": "i18n/receipts/fr-extract-da12aa6ade20-r2.json",
+							"receipt_sha256": "c56cf3241e239dc06441c5cff8c944ab04f7b81584390228b0c497e1d956842d",
+							"scope": "round-2 extraction audit at PR #1403 head d082bd9595 (scope and delta as recorded in the receipt)",
+							"note": "Actual model deepseek/deepseek-flash as named in the receipt; no fallback disclosed."
+						}
+					],
+					"status": "audited"
+				}
+			]
 		},
 		{
 			"locale": "es",
