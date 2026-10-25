@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -46,6 +47,9 @@ const limits = await import(
 /* Top-level so the fixture's own build hook does not allocate a regex per call. */
 const ELECTRON_MODULE = /^electron$/;
 const ANY_FILE = /.*/;
+const PREVIEW_IN_STORE = /Ada|Minerva|sent a message|title|body/;
+const NOTIFICATION_REFUSAL = /cannot use Team Bridge notifications/;
+const DOCUMENT_REFUSAL = /cannot use/;
 
 const electronFixture = {
 	name: "electron-fixture",
@@ -56,6 +60,8 @@ const electronFixture = {
 		}));
 		builder.onLoad({ filter: ANY_FILE, namespace: "fixture" }, () => ({
 			contents: `
+	export const ipcMain = { handle: (name, handler) => globalThis.__teamBridgeHandlers.set(name, handler) };
+	export const shell = { openExternal: async () => {} };
 	export class Notification {
 		static isSupported() { return globalThis.__notifySupported !== false; }
 		constructor(options) { this.options = options; }
@@ -77,7 +83,8 @@ const electronFixture = {
 
 const mainBundle = await build({
 	stdin: {
-		contents: 'export * from "./src/main/team-bridge-notifier";',
+		contents:
+			'export * from "./src/main/team-bridge-notifier"; export { registerDesktopIPC } from "./src/main/desktop-ipc";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -210,6 +217,7 @@ function plan(overrides = {}) {
 
 test("a valid notification payload parses exactly", () => {
 	const request = {
+		owner: { accountId: "acct_a", epoch: 1 },
 		conversationId: "bcv_abc123",
 		tenantId: "tnt_1",
 		title: "Ada (Minerva)",
@@ -221,6 +229,7 @@ test("a valid notification payload parses exactly", () => {
 
 test("bad payloads are refused, not repaired", () => {
 	const valid = {
+		owner: { accountId: "acct_a", epoch: 1 },
 		conversationId: "bcv_abc123",
 		tenantId: "tnt_1",
 		title: "Ada (Minerva)",
@@ -230,6 +239,8 @@ test("bad payloads are refused, not repaired", () => {
 	const cases = [
 		["null", null],
 		["array", []],
+		["missing owner", { ...valid, owner: undefined }],
+		["missing epoch", { ...valid, owner: { accountId: "acct_a" } }],
 		["missing conversation", { ...valid, conversationId: undefined }],
 		["empty id", { ...valid, conversationId: "" }],
 		["id with a space", { ...valid, conversationId: "bcv 1" }],
@@ -426,6 +437,7 @@ test("the QA account + tenant payloads produce one candidate and one banner", ()
 	try {
 		const h = harness({ file });
 		const request = {
+			owner: { accountId: "acct_a", epoch: 1 },
 			conversationId: candidate.conversationId,
 			tenantId: candidate.tenantId,
 			title: `${candidate.conversationName} (${candidate.organizationName})`,
@@ -568,6 +580,7 @@ function harness({
 		},
 		present: (targetWindow) => presented.push(targetWindow),
 	});
+	notifier.setAuthority?.({ accountId: "acct_a", epoch: 1 });
 	return { notifier, banners, signals, reopens, presented, store, window };
 }
 
@@ -577,12 +590,38 @@ function tempFile() {
 }
 
 const request = (patch = {}) => ({
+	owner: { accountId: "acct_a", epoch: 1 },
 	conversationId: "bcv_abc123",
 	tenantId: "tnt_1",
 	title: "Ada (Minerva)",
 	body: "Ada sent a message",
 	seq: 4,
 	...patch,
+});
+
+test("account transition revokes old banners and cannot route their clicks", () => {
+	const { dir, file } = tempFile();
+	try {
+		const h = harness({ file });
+		h.notifier.setAuthority?.({ accountId: "acct_a", epoch: 1 });
+		h.notifier.notify(request({ owner: { accountId: "acct_a", epoch: 1 } }));
+		h.notifier.setAuthority?.({ accountId: "acct_b", epoch: 2 });
+		assert.equal(h.banners[0].closed, true);
+		h.banners[0].emit("click");
+		assert.equal(h.notifier.takePendingOpen(), null);
+		assert.equal(h.signals.length, 0);
+		assert.equal(h.presented.length, 0);
+		assert.deepEqual(
+			h.notifier.notify(request({ owner: { accountId: "acct_b", epoch: 2 } })),
+			{ shown: true },
+		);
+		assert.notEqual(h.banners[0].options.id, h.banners[1].options.id);
+		h.banners[1].emit("click");
+		assert.equal(h.notifier.takePendingOpen()?.owner.accountId, "acct_b");
+		assert.doesNotMatch(readFileSync(file, "utf8"), PREVIEW_IN_STORE);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
 });
 
 test("main raises one banner with the exact renderer strings", () => {
@@ -633,7 +672,10 @@ test("the persisted cursor survives a restart", () => {
 		const first = harness({ file });
 		first.notifier.notify(request());
 		const raw = readFileSync(file, "utf8");
-		assert.equal(JSON.parse(raw).cursors.bcv_abc123, 4);
+		assert.equal(
+			JSON.parse(raw).cursors[JSON.stringify(["acct_a", "bcv_abc123"])],
+			4,
+		);
 		assert.equal(raw.includes("Ada sent"), false);
 
 		const second = harness({ file });
@@ -685,6 +727,7 @@ test("a click signals and parks the target until the renderer pulls it", () => {
 		 * pull is what delivers it - exactly once.
 		 */
 		assert.deepEqual(h.notifier.takePendingOpen(), {
+			owner: { accountId: "acct_a", epoch: 1 },
 			conversationId: "bcv_abc123",
 			tenantId: "tnt_1",
 		});
@@ -704,6 +747,7 @@ test("a click with no window asks for one and parks the target", () => {
 		assert.equal(h.reopens.length, 1);
 		assert.equal(h.signals.length, 0);
 		assert.deepEqual(h.notifier.takePendingOpen(), {
+			owner: { accountId: "acct_a", epoch: 1 },
 			conversationId: "bcv_abc123",
 			tenantId: "tnt_1",
 		});
@@ -717,11 +761,11 @@ test("a corrupt cursor file fails toward a possible duplicate, never a crash", (
 	const { dir, file } = tempFile();
 	try {
 		const store = new storeModule.TeamBridgeNotifyStore(file);
-		store.record("bcv_abc123", 3);
+		store.record("acct_a", "bcv_abc123", 3);
 		// Simulate corruption between runs.
 		rmSync(file);
 		const fresh = new storeModule.TeamBridgeNotifyStore(file);
-		assert.equal(fresh.notifiedSeq("bcv_abc123"), undefined);
+		assert.equal(fresh.notifiedSeq("acct_a", "bcv_abc123"), undefined);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
@@ -733,15 +777,15 @@ test("load enforces the cursor bound, not only record", () => {
 		const bound = storeModule.TEAM_BRIDGE_NOTIFY_CURSOR_BOUND;
 		const cursors = {};
 		for (let index = 0; index < bound + 3; index += 1) {
-			cursors[`bcv_${index}`] = index + 1;
+			cursors[JSON.stringify(["acct_a", `bcv_${index}`])] = index + 1;
 		}
-		writeFileSync(file, JSON.stringify({ version: 1, cursors }));
+		writeFileSync(file, JSON.stringify({ version: 2, cursors }));
 
 		const store = new storeModule.TeamBridgeNotifyStore(file);
-		assert.equal(store.notifiedSeq("bcv_0"), undefined);
-		assert.equal(store.notifiedSeq(`bcv_${bound + 2}`), bound + 3);
+		assert.equal(store.notifiedSeq("acct_a", "bcv_0"), undefined);
+		assert.equal(store.notifiedSeq("acct_a", `bcv_${bound + 2}`), bound + 3);
 
-		store.record("bcv_new", 1);
+		store.record("acct_a", "bcv_new", 1);
 		const persisted = JSON.parse(readFileSync(file, "utf8")).cursors;
 		assert.equal(Object.keys(persisted).length, bound);
 	} finally {
@@ -780,6 +824,7 @@ test("reply summary seq/root survive planning, native click and old-root navigat
 		h.banners[0].emit("click");
 		const target = h.notifier.takePendingOpen();
 		assert.deepEqual(target, {
+			owner: { accountId: "acct_a", epoch: 1 },
 			conversationId: "bcv_1",
 			tenantId: "tnt_1",
 			threadId: "bcmsg_oldroot",
@@ -791,6 +836,267 @@ test("reply summary seq/root survive planning, native click and old-root navigat
 		assert.equal(
 			limits.teamBridgeOpenPath(target),
 			"/team-bridge?tenant=tnt_1&conversation=bcv_1",
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("same conversation cursor is isolated by account across restart", () => {
+	const { dir, file } = tempFile();
+	try {
+		const a = harness({ file });
+		assert.deepEqual(a.notifier.notify(request()), { shown: true });
+		const b = harness({ file });
+		b.notifier.setAuthority?.({ accountId: "acct_b", epoch: 2 });
+		assert.deepEqual(
+			b.notifier.notify(request({ owner: { accountId: "acct_b", epoch: 2 } })),
+			{ shown: true },
+		);
+		assert.deepEqual(
+			b.notifier.notify(request({ owner: { accountId: "acct_b", epoch: 2 } })),
+			{ shown: false },
+		);
+		assert.equal(
+			Object.keys(JSON.parse(readFileSync(file, "utf8")).cursors).length,
+			2,
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("logout revokes preview retention and parked targets; late authority cannot rearm them", () => {
+	const { dir, file } = tempFile();
+	try {
+		const h = harness({ file });
+		h.notifier.notify(request());
+		h.banners[0].emit("click");
+		h.notifier.notify(request({ seq: 5 }));
+		h.notifier.setAuthority({ epoch: 2 });
+		assert.equal(h.banners[1].closed, true);
+		assert.equal(h.notifier.takePendingOpen(), null);
+		assert.equal(
+			h.notifier.lifetime.size,
+			0,
+			"even an adapter without close events releases previews",
+		);
+		h.notifier.setAuthority({ accountId: "acct_a", epoch: 1 });
+		assert.deepEqual(h.notifier.notify(request({ seq: 6 })), { shown: false });
+		h.notifier.setAuthority({ accountId: "acct_b", epoch: 2 });
+		h.notifier.setAuthority({ accountId: "acct_a", epoch: 2 });
+		assert.deepEqual(
+			h.notifier.notify(
+				request({ owner: { accountId: "acct_a", epoch: 2 }, seq: 6 }),
+			),
+			{ shown: false },
+		);
+		h.banners[1].emit("click");
+		assert.equal(h.notifier.takePendingOpen(), null);
+		assert.equal(h.signals.length, 1, "only the click before logout signalled");
+		assert.throws(() => h.notifier.notify(request({ owner: undefined })));
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("A to B to A cannot revive an earlier credential epoch click or notify", () => {
+	const { dir, file } = tempFile();
+	try {
+		const h = harness({ file });
+		h.notifier.notify(request());
+		h.notifier.setAuthority({ accountId: "acct_b", epoch: 2 });
+		h.notifier.setAuthority({ accountId: "acct_a", epoch: 3 });
+		h.banners[0].emit("click");
+		assert.equal(h.notifier.takePendingOpen(), null);
+		assert.deepEqual(h.notifier.notify(request({ seq: 5 })), { shown: false });
+		assert.deepEqual(
+			h.notifier.notify(
+				request({ owner: { accountId: "acct_a", epoch: 3 }, seq: 5 }),
+			),
+			{ shown: true },
+		);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("legacy accountless cursor is never assigned to the next account", () => {
+	const { dir, file } = tempFile();
+	try {
+		writeFileSync(
+			file,
+			JSON.stringify({ version: 1, cursors: { bcv_abc123: 999 } }),
+		);
+		const h = harness({ file });
+		assert.deepEqual(h.notifier.notify(request()), { shown: true });
+		const persisted = JSON.parse(readFileSync(file, "utf8"));
+		assert.equal(persisted.version, 2);
+		assert.equal(persisted.cursors.bcv_abc123, undefined);
+	} finally {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("authorized IPC fences late epochs, auxiliary frames and document replacement", () => {
+	const { dir, file } = tempFile();
+	try {
+		const h = harness({ file });
+		const contents = new EventEmitter();
+		contents.mainFrame = { url: "file:///app/index.html" };
+		h.window.webContents = contents;
+		const auxiliary = {
+			isDestroyed: () => false,
+			webContents: { mainFrame: { url: "file:///app/mini.html" } },
+		};
+		globalThis.__teamBridgeHandlers = new Map();
+		notifierModule.registerDesktopIPC(
+			() => h.window,
+			"file:///app/index.html",
+			async () => ({}),
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			() => [{ window: auxiliary, url: "file:///app/mini.html" }],
+			undefined,
+			h.notifier,
+		);
+		const invoke = (
+			name,
+			input,
+			event = { sender: contents, senderFrame: contents.mainFrame },
+		) =>
+			globalThis.__teamBridgeHandlers.get(`team-bridge:${name}`)(event, input);
+		invoke("authority", { accountId: "acct_a", epoch: 5 });
+		assert.deepEqual(
+			invoke("notify", request({ owner: { accountId: "acct_a", epoch: 5 } })),
+			{ shown: true },
+		);
+		invoke("authority", { epoch: 6 });
+		assert.equal(h.banners[0].closed, true);
+		invoke("authority", { accountId: "acct_a", epoch: 5 });
+		assert.deepEqual(
+			invoke(
+				"notify",
+				request({ owner: { accountId: "acct_a", epoch: 5 }, seq: 5 }),
+			),
+			{ shown: false },
+		);
+		assert.throws(
+			() =>
+				invoke(
+					"authority",
+					{ accountId: "acct_a", epoch: 999 },
+					{
+						sender: auxiliary.webContents,
+						senderFrame: auxiliary.webContents.mainFrame,
+					},
+				),
+			NOTIFICATION_REFUSAL,
+		);
+		invoke("authority", { accountId: "acct_b", epoch: 6 });
+		invoke("notify", request({ owner: { accountId: "acct_b", epoch: 6 } }));
+		contents.emit(
+			"did-start-navigation",
+			{},
+			"file:///app/index.html",
+			false,
+			true,
+		);
+		assert.equal(h.banners[1].closed, true);
+		assert.throws(
+			() => invoke("authority", { accountId: "acct_b", epoch: 6 }),
+			DOCUMENT_REFUSAL,
+		);
+		const oldFrame = contents.mainFrame;
+		contents.mainFrame = { url: "file:///app/index.html" };
+		contents.emit(
+			"did-frame-navigate",
+			{},
+			"file:///app/index.html",
+			200,
+			"OK",
+			true,
+		);
+		assert.throws(
+			() =>
+				invoke(
+					"authority",
+					{ accountId: "acct_b", epoch: 6 },
+					{ sender: contents, senderFrame: oldFrame },
+				),
+			DOCUMENT_REFUSAL,
+		);
+		invoke("authority", { accountId: "acct_b", epoch: 0 });
+		assert.deepEqual(
+			invoke(
+				"notify",
+				request({ owner: { accountId: "acct_b", epoch: 0 }, seq: 5 }),
+			),
+			{ shown: true },
+		);
+		contents.emit("destroyed");
+		assert.equal(h.banners[2].closed, true);
+		h.banners[2].emit("click");
+		assert.equal(invoke("pending-open"), null);
+	} finally {
+		globalThis.__teamBridgeHandlers = undefined;
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+test("native identifiers cannot collide across colon-bearing owner/conversation pairs", () => {
+	assert.notEqual(
+		notifierModule.teamBridgeBannerId("acct:a", "bcv"),
+		notifierModule.teamBridgeBannerId("acct", "a:bcv"),
+	);
+});
+
+test("R2 unknown revocation preserves the established epoch owner", () => {
+	const { dir, file } = tempFile();
+	try {
+		const h = harness({ file });
+		h.notifier.setAuthority({ accountId: "acct_a", epoch: 5 });
+		h.notifier.setAuthority({ epoch: 5 });
+		assert.deepEqual(
+			h.notifier.notify(request({ owner: { accountId: "acct_a", epoch: 5 } })),
+			{ shown: false },
+		);
+		h.notifier.setAuthority({ accountId: "acct_b", epoch: 5 });
+		assert.deepEqual(
+			h.notifier.notify(request({ owner: { accountId: "acct_b", epoch: 5 } })),
+			{ shown: false },
+		);
+		h.notifier.setAuthority({ accountId: "acct_a", epoch: 5 });
+		assert.deepEqual(
+			h.notifier.notify(request({ owner: { accountId: "acct_a", epoch: 5 } })),
+			{ shown: true },
+			"the established owner can resolve a temporary unknown",
+		);
+		h.notifier.setAuthority({ epoch: 6 });
+		h.notifier.setAuthority({ accountId: "acct_b", epoch: 5 });
+		assert.deepEqual(
+			h.notifier.notify(
+				request({ owner: { accountId: "acct_b", epoch: 5 }, seq: 7 }),
+			),
+			{ shown: false },
+		);
+		h.notifier.setAuthority({ accountId: "acct_b", epoch: 6 });
+		assert.deepEqual(
+			h.notifier.notify(request({ owner: { accountId: "acct_b", epoch: 6 } })),
+			{ shown: true },
+			"higher epoch can establish a new owner",
+		);
+		h.notifier.resetAuthority();
+		h.notifier.setAuthority({ accountId: "acct_c", epoch: 0 });
+		assert.deepEqual(
+			h.notifier.notify(
+				request({ owner: { accountId: "acct_c", epoch: 0 }, seq: 8 }),
+			),
+			{ shown: true },
+			"trusted document reset clears epoch binding",
 		);
 	} finally {
 		rmSync(dir, { recursive: true, force: true });

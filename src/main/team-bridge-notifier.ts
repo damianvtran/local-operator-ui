@@ -22,7 +22,7 @@
  * entitled to. This module persists only the sequence number it was told
  * about, never the text, and never logs a field of the payload.
  *
- * ONE BANNER PER CONVERSATION. Every banner for a conversation carries the same
+ * ONE BANNER PER ACCOUNT/CONVERSATION. Every banner for that pair carries the same
  * OS identifier (`teamBridgeBannerId`), so macOS (`UNNotificationRequest`'s
  * identifier) and Windows (the toast `Tag`) REPLACE the delivered one in place
  * rather than stacking a second; the renderer's count line ("3 new messages")
@@ -38,9 +38,12 @@
 
 import { type BrowserWindow, type NativeImage, Notification } from "electron";
 import {
+	type TeamBridgeNotifyAuthority,
 	type TeamBridgeNotifyRequest,
 	type TeamBridgeOpenTarget,
+	parseTeamBridgeNotifyAuthority,
 	parseTeamBridgeNotifyRequest,
+	teamBridgeNotifyOwnerMatches,
 } from "../shared/team-bridge-notify";
 import {
 	type LifetimeNotification,
@@ -126,14 +129,19 @@ export type TeamBridgeNotifyResult = { shown: boolean };
 export const TEAM_BRIDGE_COALESCE_MS = 10_000;
 
 /**
- * The OS identifier for a conversation's banner.
+ * The OS identifier for an account's conversation banner.
  *
  * Namespaced so it can never collide with the `DesktopNotifier`'s random ids,
- * and built from the already-validated conversation id (`SAFE_ID`), so it is a
+ * and built from the already-validated owner and conversation IDs (`SAFE_ID`), so it is a
  * legal `UNNotificationRequest` identifier and toast tag as-is.
  */
-export function teamBridgeBannerId(conversationId: string): string {
-	return `team-bridge:${conversationId}`;
+export function teamBridgeBannerId(
+	accountId: string,
+	conversationId: string,
+): string {
+	// SAFE_ID permits colons; escape each component so two different pairs
+	// cannot collapse to one OS identifier at the account separator.
+	return `team-bridge:${encodeURIComponent(accountId)}:${encodeURIComponent(conversationId)}`;
 }
 
 /**
@@ -200,8 +208,12 @@ export class TeamBridgeNotifier {
 	/** When each conversation's live banner was raised, for `COALESCE_MS`. */
 	private readonly raisedAt = new Map<string, number>();
 	/** The banners this process must keep reachable for their clicks to fire. */
-	private readonly lifetime = new NotificationLifetime();
+	private lifetime = new NotificationLifetime();
 	private pendingOpen: TeamBridgeOpenTarget | null = null;
+	private authority: TeamBridgeNotifyAuthority | null = null;
+	// Unknown revokes delivery, not the epoch's established identity. Otherwise
+	// A -> unknown -> B could silently replace A without a credential write.
+	private epochOwner: string | undefined;
 	private readonly createBanner: (
 		options: TeamBridgeBannerOptions,
 	) => TeamBridgeBanner;
@@ -212,6 +224,50 @@ export class TeamBridgeNotifier {
 			options.createBanner ??
 			((bannerOptions) => new Notification(bannerOptions));
 		this.canNotify = options.canNotify ?? (() => Notification.isSupported());
+	}
+
+	/** Only the authorized shell's journal subscription calls this, NEVER notify.
+	 * Delayed requests cannot promote their captured owner to live authority.
+	 * Epochs only advance; same-epoch settlement may resolve an unknown owner,
+	 * but a different known owner cannot replace it without a credential write.
+	 * This fences client races, not a compromised renderer or server-side auth. */
+	setAuthority(input: unknown): void {
+		const next = parseTeamBridgeNotifyAuthority(input);
+		if (!next) throw new Error("Invalid Team Bridge notification authority.");
+		const current = this.authority;
+		if (
+			current &&
+			(next.epoch < current.epoch ||
+				(next.epoch === current.epoch &&
+					this.epochOwner &&
+					next.accountId &&
+					next.accountId !== this.epochOwner))
+		)
+			return;
+		if (current?.epoch === next.epoch && current.accountId === next.accountId)
+			return;
+		this.revoke();
+		if (!current || next.epoch > current.epoch) this.epochOwner = undefined;
+		this.epochOwner ??= next.accountId;
+		this.authority = next;
+	}
+
+	/** Document epochs restart on reload. Only main's document lifecycle can
+	 * reset that counter; an IPC payload cannot lower it. */
+	resetAuthority(): void {
+		this.revoke();
+		this.authority = null;
+		this.epochOwner = undefined;
+	}
+
+	private revoke(): void {
+		this.pendingOpen = null;
+		for (const notification of this.banners.values()) notification.close?.();
+		this.banners.clear();
+		this.raisedAt.clear();
+		// Some adapters do not emit close. Drop this owner's retention registry
+		// anyway; other desktop notification owners keep their own lifetimes.
+		this.lifetime = new NotificationLifetime();
 	}
 
 	/**
@@ -227,12 +283,17 @@ export class TeamBridgeNotifier {
 		if (request === null) {
 			throw new Error("Invalid Team Bridge notification payload.");
 		}
+		if (!teamBridgeNotifyOwnerMatches(request.owner, this.authority))
+			return { shown: false };
 		if (this.options.show === "never") return { shown: false };
 		if (!this.canNotify()) return { shown: false };
 		if (teamBridgeWindowIsQuiet(this.options.window(), request.viewing)) {
 			return { shown: false };
 		}
-		const previous = this.options.store.notifiedSeq(request.conversationId);
+		const previous = this.options.store.notifiedSeq(
+			request.owner.accountId,
+			request.conversationId,
+		);
 		if (previous !== undefined && request.seq <= previous) {
 			return { shown: false };
 		}
@@ -253,8 +314,11 @@ export class TeamBridgeNotifier {
 		 * the exemption is one line, and it is spelled.
 		 */
 		const notification = this.createBanner({
-			id: teamBridgeBannerId(request.conversationId),
-			groupId: teamBridgeBannerId(request.conversationId),
+			id: teamBridgeBannerId(request.owner.accountId, request.conversationId),
+			groupId: teamBridgeBannerId(
+				request.owner.accountId,
+				request.conversationId,
+			),
 			...teamBridgeBannerLines(
 				request,
 				this.options.platform ?? process.platform,
@@ -273,6 +337,7 @@ export class TeamBridgeNotifier {
 		// text: do not capture the preview-bearing IPC request in these closures.
 		const conversationId = request.conversationId;
 		const target: TeamBridgeOpenTarget = {
+			owner: request.owner,
 			conversationId,
 			tenantId: request.tenantId,
 			...(request.threadId ? { threadId: request.threadId } : {}),
@@ -284,7 +349,11 @@ export class TeamBridgeNotifier {
 		// Recorded only after `show()`: a banner that failed to exist was never
 		// a thing the user was told about, and advancing first would suppress
 		// the retry forever.
-		this.options.store.record(request.conversationId, request.seq);
+		this.options.store.record(
+			request.owner.accountId,
+			request.conversationId,
+			request.seq,
+		);
 		return { shown: true };
 	}
 
@@ -300,7 +369,10 @@ export class TeamBridgeNotifier {
 	takePendingOpen(): TeamBridgeOpenTarget | null {
 		const pending = this.pendingOpen;
 		this.pendingOpen = null;
-		return pending;
+		return pending &&
+			teamBridgeNotifyOwnerMatches(pending.owner, this.authority)
+			? pending
+			: null;
 	}
 
 	private replace(conversationId: string): void {
@@ -317,6 +389,7 @@ export class TeamBridgeNotifier {
 	): void {
 		const conversationId = target.conversationId;
 		this.lifetime.retain(notification, () => {
+			if (this.banners.get(conversationId) !== notification) return;
 			this.banners.delete(conversationId);
 			this.open(target);
 		});
@@ -328,6 +401,7 @@ export class TeamBridgeNotifier {
 	}
 
 	private open(target: TeamBridgeOpenTarget): void {
+		if (!teamBridgeNotifyOwnerMatches(target.owner, this.authority)) return;
 		/*
 		 * ALWAYS PARKED FIRST, THEN SIGNALLED. The signal wakes a loaded renderer,
 		 * but a renderer that is loading or reloading has no listener yet and the

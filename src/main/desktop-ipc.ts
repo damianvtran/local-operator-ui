@@ -392,12 +392,49 @@ export function registerDesktopIPC(
 	 * target for the next renderer, which asks for it exactly once.
 	 */
 	if (teamBridgeNotifier) {
+		const watched = new WeakSet<IpcMainInvokeEvent["sender"]>();
+		const navigating = new WeakSet<IpcMainInvokeEvent["sender"]>();
+		const authorizeNotifications = (event: IpcMainInvokeEvent) => {
+			// Only the shell owns the auth journal, not an admitted auxiliary pane.
+			if (
+				!isAdmittedSender(event, [{ window: window(), url: expectedUrl }]) ||
+				navigating.has(event.sender)
+			) {
+				throw new Error("This document cannot use Team Bridge notifications.");
+			}
+		};
+		ipcMain.handle("team-bridge:authority", (event, input: unknown) => {
+			authorizeNotifications(event);
+			if (!watched.has(event.sender)) {
+				watched.add(event.sender);
+				const contents = event.sender;
+				// Epochs belong to the credential journal of ONE renderer document.
+				// Revoke at navigation start; accept a reset only after main observes
+				// the new document. Late IPC from the departing frame cannot reset it.
+				contents.on(
+					"did-start-navigation",
+					(_event, _url, inPlace, mainFrame) => {
+						if (inPlace || !mainFrame) return;
+						navigating.add(contents);
+						teamBridgeNotifier.resetAuthority();
+					},
+				);
+				contents.on(
+					"did-frame-navigate",
+					(_event, _url, _code, _text, mainFrame) => {
+						if (mainFrame) navigating.delete(contents);
+					},
+				);
+				contents.once("destroyed", () => teamBridgeNotifier.resetAuthority());
+			}
+			teamBridgeNotifier.setAuthority(input);
+		});
 		ipcMain.handle("team-bridge:notify", (event, input: unknown) => {
-			authorize(event);
+			authorizeNotifications(event);
 			return teamBridgeNotifier.notify(input);
 		});
 		ipcMain.handle("team-bridge:pending-open", (event) => {
-			authorize(event);
+			authorizeNotifications(event);
 			return teamBridgeNotifier.takePendingOpen();
 		});
 	}

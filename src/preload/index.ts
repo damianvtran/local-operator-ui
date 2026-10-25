@@ -59,6 +59,7 @@ import {
 } from "../shared/mini-view";
 import { readLaunchTarget, readOpenSessionArgv } from "../shared/open-session";
 import type {
+	TeamBridgeNotifyAuthority,
 	TeamBridgeNotifyRequest,
 	TeamBridgeOpenTarget,
 } from "../shared/team-bridge-notify";
@@ -144,6 +145,8 @@ const api = {
 		 * the renderer is loading is delivered on the next pull rather than dropped.
 		 */
 		teamBridge: {
+			setAuthority: (authority: TeamBridgeNotifyAuthority): Promise<void> =>
+				ipcRenderer.invoke("team-bridge:authority", authority),
 			notify: (input: TeamBridgeNotifyRequest): Promise<{ shown: boolean }> =>
 				ipcRenderer.invoke("team-bridge:notify", input),
 			onOpen: (callback: () => void) => {
