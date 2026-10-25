@@ -3612,6 +3612,39 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z
+		.object({ op: z.literal("team_bridge.scheduled.list"), tenant_id: id })
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.scheduled.create"),
+			tenant_id: id,
+			conversation_id: id,
+			client_ref: id,
+			body: z.string().min(1),
+			send_at: z.string().datetime({ offset: true }),
+			/* A scheduled REPLY. The core route carried this and the renderer's
+			   strict model did not, so scheduling a reply was unreachable (round
+			   12, minor c). Forwarded only when set, like a normal send. */
+			thread_root_id: id.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.scheduled.update"),
+			tenant_id: id,
+			scheduled_id: id,
+			body: z.string().min(1).optional(),
+			send_at: z.string().datetime({ offset: true }).optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("team_bridge.scheduled.cancel"),
+			tenant_id: id,
+			scheduled_id: id,
+		})
+		.strict(),
+	z
 		.object({
 			op: z.literal("team_bridge.read"),
 			expected_account_id: id.optional(),
@@ -8980,6 +9013,42 @@ export function desktopEndpoint(request: DesktopRequest): {
 						? { thread_root_id: request.thread_root_id }
 						: {}),
 				},
+			};
+		case "team_bridge.scheduled.list":
+			return {
+				path: `/v1/desktop/team-bridge/scheduled?${new URLSearchParams({ tenant_id: request.tenant_id })}`,
+				method: "GET",
+			};
+		case "team_bridge.scheduled.create":
+			return {
+				path: "/v1/desktop/team-bridge/scheduled",
+				method: "POST",
+				body: {
+					tenant_id: request.tenant_id,
+					conversation_id: request.conversation_id,
+					client_ref: request.client_ref,
+					body: request.body,
+					send_at: request.send_at,
+					...(request.thread_root_id
+						? { thread_root_id: request.thread_root_id }
+						: {}),
+				},
+			};
+		case "team_bridge.scheduled.update":
+			return {
+				path: `/v1/desktop/team-bridge/scheduled/${encodeURIComponent(request.scheduled_id)}?${new URLSearchParams({ tenant_id: request.tenant_id })}`,
+				method: "PATCH",
+				body: {
+					...(request.body === undefined ? {} : { body: request.body }),
+					...(request.send_at === undefined
+						? {}
+						: { send_at: request.send_at }),
+				},
+			};
+		case "team_bridge.scheduled.cancel":
+			return {
+				path: `/v1/desktop/team-bridge/scheduled/${encodeURIComponent(request.scheduled_id)}?${new URLSearchParams({ tenant_id: request.tenant_id })}`,
+				method: "DELETE",
 			};
 		case "team_bridge.messages.replies": {
 			const query = new URLSearchParams();
