@@ -12,7 +12,7 @@
 	"ui.chat.sidebar.catalogue.total_search_clipped": "{shown, number, ::group-off}+ {shown, plural, one {correspondance} other {correspondances}} sur {total, number, ::group-off} conversations",
 	"ui.chat.sidebar.drafts.clear_all": "Tout effacer",
 	"ui.chat.sidebar.drafts.clear_all_label": "Effacer tous les brouillons",
-	"ui.chat.sidebar.groups.badge": "{badge, number, ::group-off} conversations dans ce groupe",
+	"ui.chat.sidebar.groups.badge": "{badge, plural, one {{badge, number, ::group-off} conversation dans ce groupe} many {{badge, number, ::group-off} de conversations dans ce groupe} other {{badge, number, ::group-off} conversations dans ce groupe}}",
 	"ui.chat.sidebar.header.create": "Nouvel agent ou nouvelle équipe",
 	"ui.chat.sidebar.header.create_agent": "Nouvel agent",
 	"ui.chat.sidebar.header.create_team": "Nouvelle équipe",
