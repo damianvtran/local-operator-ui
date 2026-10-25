@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "auditor": "reviewer",
+  "model": "openrouter/moonshotai/kimi-k3.1-pro",
+  "instance": "4e5c84cceada-vi",
+  "audit_session": "4e5c84cceada",
+  "locale": "vi",
+  "namespace": "ui.mesh",
+  "date": "2026-10-25",
+  "scope": "ui.mesh.mesh_types.unnamed_device only: absence-marker semantics, real-name separation, locale style, NFC and RTL checks",
+  "status": "passed",
+  "sha256": {
+    "en": "6b2df37af5c79e404888a00b279ec4f6eda46bf8a68e70ffec0fa6002cd41a44",
+    "vi": "945290eec8604bcdc594e058ca7794cf90f32b22fb698e3c3b1781ee4ba7dc90"
+  },
+  "findings": []
+}

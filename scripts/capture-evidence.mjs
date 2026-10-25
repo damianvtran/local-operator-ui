@@ -11364,7 +11364,7 @@ export const STORIES = [
 				from: `[data-mesh-session="0123456789ab"]`,
 				to: `[data-mesh-device="d_${"b".repeat(32)}"]`,
 			},
-			expectSentence: "Move to cloud-node-1",
+			expectSentence: 'Move to "cloud-node-1" d_bbbbbbbb…',
 		},
 	],
 	[

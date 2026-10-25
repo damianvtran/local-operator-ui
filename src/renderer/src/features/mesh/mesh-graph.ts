@@ -58,6 +58,7 @@ import {
 	type PeerList,
 	type PeerRelayState,
 	type PeerRow,
+	deviceIdentityText,
 	deviceLabel,
 	networkLabel,
 	strings,
@@ -110,6 +111,8 @@ export type Membership = {
 
 export type MeshDevice = {
 	id: string;
+	/** The stored name before display quoting; empty or absent means unnamed. */
+	name?: string;
 	label: string;
 	state: DeviceState;
 	/**
@@ -379,6 +382,7 @@ export function meshGraph(input: {
 			const named = list.find((entry) => text(entry.member.name));
 			return {
 				id,
+				name: text(named?.member.name),
 				label: deviceLabel({ device_id: id, name: text(named?.member.name) }),
 				state: stateOf(
 					id,
@@ -699,7 +703,7 @@ export function meshSummary(graph: MeshGraph): string {
 		);
 		parts.push(
 			t("ui.mesh.mesh_graph.self_identity", {
-				device: self ? self.label : graph.selfDeviceId,
+				device: self ? deviceIdentityText(self) : graph.selfDeviceId,
 			}),
 		);
 	}
