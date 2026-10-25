@@ -64,6 +64,13 @@ export const TeamBridgeMessageList: FC<{
 	 * rather than guessing a tenant).
 	 */
 	tenantId?: string;
+	/*
+	 * The account this subtree was RENDERED under: the attachment byte route now
+	 * carries `expected_account_id` (the captured-owner guard), and passing the
+	 * render-time prop is what makes it a receipt rather than a lookup of
+	 * whoever happens to be signed in when the fetch runs.
+	 */
+	accountId?: string;
 	/* `compact`: the thread pane's narrow column (see `boxFor`). */
 	density?: "regular" | "compact";
 }> = ({
@@ -74,6 +81,7 @@ export const TeamBridgeMessageList: FC<{
 	forceToolbar,
 	tenantId,
 	density,
+	accountId,
 }) => {
 	const locale = useI18nLocale();
 	const items = threadItems(messages, new Date());
@@ -93,6 +101,7 @@ export const TeamBridgeMessageList: FC<{
 						onReply={onReply}
 						forceToolbar={forceToolbar}
 						tenantId={tenantId}
+						accountId={accountId}
 						density={density}
 					/>
 				),
@@ -151,6 +160,7 @@ const MessageRow: FC<{
 	onReply?: (message: TeamBridgeMessage) => void;
 	forceToolbar?: boolean;
 	tenantId?: string;
+	accountId?: string;
 	density?: "regular" | "compact";
 }> = ({ reactionContext, ...props }) =>
 	reactionContext && props.message.body !== null ? (
@@ -184,6 +194,7 @@ type MessageRowProps = {
 	onReply?: (message: TeamBridgeMessage) => void;
 	forceToolbar?: boolean;
 	tenantId?: string;
+	accountId?: string;
 	density?: "regular" | "compact";
 };
 
@@ -196,6 +207,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 	onReply,
 	forceToolbar,
 	tenantId,
+	accountId,
 	density,
 }) => {
 	const summary = threadSummary(message);
@@ -322,6 +334,7 @@ const MessageRowView: FC<MessageRowProps> = ({
 						message={message}
 						tenantId={tenantId ?? null}
 						density={density}
+						accountId={accountId}
 					/>
 				)}
 				{reactions && <TeamBridgeReactionChips state={reactions} />}

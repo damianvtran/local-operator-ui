@@ -281,9 +281,15 @@ export const TeamBridgeApi = {
 		tenantId: string,
 		conversationId: string,
 		bytes: Uint8Array,
+		expectedAccountId: string,
 	): Promise<TeamBridgeAttachment> {
 		const answer = await desktopMedia(
-			{ op: "team_bridge.attachment.upload", tenantId, conversationId },
+			{
+				op: "team_bridge.attachment.upload",
+				tenantId,
+				conversationId,
+				expectedAccountId,
+			},
 			bytes,
 		);
 		if (answer.kind !== "json")
@@ -304,10 +310,12 @@ export const TeamBridgeApi = {
 		tenantId: string,
 		conversationId: string,
 		attachmentId: string,
+		expectedAccountId: string,
 	): Promise<unknown> {
 		return desktopResult<unknown>({
 			op: "team_bridge.attachments.delete",
 			tenant_id: tenantId,
+			expected_account_id: expectedAccountId,
 			conversation_id: conversationId,
 			attachment_id: attachmentId,
 		});
@@ -322,6 +330,7 @@ export const TeamBridgeApi = {
 		conversationId: string;
 		messageId: string;
 		attachmentId: string;
+		expectedAccountId: string;
 	}): Promise<{ data: Uint8Array; mimeType: string }> {
 		const answer = await desktopMedia(
 			{ op: "team_bridge.attachment", ...input },

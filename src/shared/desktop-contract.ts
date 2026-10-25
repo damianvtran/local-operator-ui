@@ -3658,6 +3658,9 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			tenant_id: id,
 			conversation_id: id,
 			attachment_id: id,
+			/* REQUIRED by the runtime route: the captured owner this delete runs
+			   under. A delete with no receipt would be refused 422 anyway. */
+			expected_account_id: id,
 		})
 		.strict(),
 	z
@@ -6601,6 +6604,10 @@ export type DesktopMediaRequest =
 			op: "team_bridge.attachment.upload";
 			tenantId: string;
 			conversationId: string;
+			/* The captured-owner receipt the runtime now REQUIRES on these routes:
+			   comparing an account to itself is not a guard, so it is the identity
+			   the view was authorized under, captured at the call site. */
+			expectedAccountId: string;
 	  }
 	| {
 			op: "team_bridge.attachment";
@@ -6608,6 +6615,7 @@ export type DesktopMediaRequest =
 			conversationId: string;
 			messageId: string;
 			attachmentId: string;
+			expectedAccountId: string;
 	  }
 	/*
 	 * A Library audio asset's PRE-RENDER peaks, as the same `{version, bars,
@@ -9108,7 +9116,7 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "team_bridge.attachments.delete":
 			return {
-				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/attachments/${encodeURIComponent(request.attachment_id)}?${new URLSearchParams({ tenant_id: request.tenant_id })}`,
+				path: `/v1/desktop/team-bridge/conversations/${encodeURIComponent(request.conversation_id)}/attachments/${encodeURIComponent(request.attachment_id)}?${new URLSearchParams({ tenant_id: request.tenant_id, expected_account_id: request.expected_account_id })}`,
 				method: "DELETE",
 			};
 		case "team_bridge.scheduled.cancel":
