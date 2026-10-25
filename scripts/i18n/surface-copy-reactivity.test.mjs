@@ -138,11 +138,22 @@ test("an empty desktop refusal keeps a stable sentinel and localizes on presenta
 	}
 });
 
-test("theme registry and palette both retain lazy description reads", () => {
+test("the palette carries the description key and the registry resolves it per call", () => {
+	/*
+	 * Two halves, both lazy. The palette is colour DATA: `descriptionKey` is the
+	 * static message key, and nothing in the palette resolves copy (a frozen
+	 * `description` here was the import-time-English bug). The registry's getter
+	 * is the resolution point, and it must answer per call - English, the
+	 * registered locale, then English again.
+	 */
+	assert.equal(
+		mod.dracula.descriptionKey,
+		"ui.settings.appearance.theme.dracula",
+	);
 	assertLocaleCycle(
-		() => `${mod.themes.dracula.description}|${mod.dracula.description}`,
-		"Blue-grey ground with the signature Dracula purple.|Blue-grey ground with the signature Dracula purple.",
-		"fixture dracula|fixture dracula",
+		() => mod.themes.dracula.description,
+		"Blue-grey ground with the signature Dracula purple.",
+		"fixture dracula",
 	);
 });
 

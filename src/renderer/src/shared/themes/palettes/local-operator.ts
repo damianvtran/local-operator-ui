@@ -231,7 +231,7 @@ export const localOperatorDark: ThemeDefinition = {
 export const localOperatorLight: ThemeDefinition = {
 	id: "localOperatorLight",
 	name: "Local Operator Light",
-	descriptionKey: "ui.settings.appearance.theme.local_operator_dark",
+	descriptionKey: "ui.settings.appearance.theme.local_operator_light",
 	palette: {
 		mode: "light",
 
