@@ -436,7 +436,7 @@ test("diagnostic CI stays retired while the manual utility remains registered", 
 		text.indexOf("  test:\n"),
 		text.indexOf("  evidence:\n"),
 	);
-	assert.match(desktop, /timeout-minutes: 50/);
+	assert.match(desktop, /timeout-minutes: 75/);
 	assert.equal(
 		(desktop.match(/node scripts\/desktop-test-shards\.mjs run /g) ?? [])
 			.length,
