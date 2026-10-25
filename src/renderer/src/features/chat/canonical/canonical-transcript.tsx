@@ -47,6 +47,7 @@ import {
 	NO_PROVIDER_NOTICE,
 	useConnectProviderStore,
 } from "@features/providers/connect-provider-store";
+import { SpeechGateScope } from "@shared/components/common/speak-control";
 import { TextSelectionControls } from "@shared/components/common/text-selection-controls";
 import { Button } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
@@ -206,7 +207,10 @@ import {
 	copyTextForRecord,
 	transcriptRowActions,
 } from "./transcript-copy";
-import { TranscriptCopyMenu } from "./transcript-copy-menu";
+import {
+	TranscriptCopyMenu,
+	type TranscriptCopyPayload,
+} from "./transcript-copy-menu";
 import {
 	type EntryDescriptor,
 	candidateSlots,
@@ -3203,18 +3207,39 @@ const TranscriptRow = memo(function TranscriptRow({
 	const { record } = row;
 	const messageRow = transcriptRowActions(record);
 	/*
-	 * The line's two clipboard payloads, derived once per record version: the
-	 * visible words and the source form. Both are handed to the menu instead of
-	 * being read back out of the DOM, which is what keeps a fence and a list
-	 * intact and keeps the selection from deciding what "copy this row" means.
+	 * The line's two clipboard payloads: the visible words and the source form.
+	 * Both are handed to the menu instead of being read back out of the DOM,
+	 * which is what keeps a fence and a list intact and keeps the selection from
+	 * deciding what "copy this row" means.
+	 *
+	 * DERIVED WHEN THE MENU OPENS, NOT WHEN THE ROW MOUNTS. `copyTextForRecord`
+	 * runs the markdown parser over the record's whole body, and doing it in a
+	 * `useMemo` here put one parse per mounted row inside the transcript's
+	 * single mount task (174 ms inclusive on a long cold open; renderer profile
+	 * §4 L2-a) for a menu that is almost never opened. The getter reads
+	 * `latestRecord` at the press, so a record REPLACED under a mounted row (a
+	 * stream delta, a settle) copies its current text rather than the one the
+	 * row mounted with, and the cache is keyed by record identity so a second
+	 * open of an unchanged record does not parse again. The payload is the same
+	 * function of the same record it always was - only when it is computed moved.
 	 */
-	const copyPayload = useMemo(
-		() => ({
-			text: copyTextForRecord(record),
-			markdown: copyMarkdownForRecord(record),
-		}),
-		[record],
-	);
+	const latestRecord = useRef(record);
+	latestRecord.current = record;
+	const copyPayloadCache = useRef<{
+		record: TranscriptRecord;
+		payload: TranscriptCopyPayload;
+	} | null>(null);
+	const getCopyPayload = useCallback((): TranscriptCopyPayload => {
+		const current = latestRecord.current;
+		const cached = copyPayloadCache.current;
+		if (cached && cached.record === current) return cached.payload;
+		const payload = {
+			text: copyTextForRecord(current),
+			markdown: copyMarkdownForRecord(current),
+		};
+		copyPayloadCache.current = { record: current, payload };
+		return payload;
+	}, []);
 	/**
 	 * Message rows are the only focusable lines, and the keyboard opener is
 	 * stated rather than left to the browser: Chromium turns Shift+F10 into a
@@ -3344,7 +3369,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	}
 	if (body === null) return null;
 	return (
-		<TranscriptCopyMenu text={copyPayload.text} markdown={copyPayload.markdown}>
+		<TranscriptCopyMenu getPayload={getCopyPayload}>
 			<div
 				data-record-id={record.id}
 				// The row's SPEAKER, as a machine-readable marker beside the id. It exists because
@@ -3469,7 +3494,26 @@ type SectionGroup =
 	  })
 	| Extract<FoldGroup, { kind: "row" }>;
 
-export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
+/**
+ * The transcript pane, inside the one credential probe its Speak controls share.
+ *
+ * ONE PROBE FOR THE WHOLE PANE (`SpeechGateScope`, `speak-control.tsx`): every
+ * answer row, quote strip and link toolbar below reads the speech gate from the
+ * scope instead of mounting its own credential query observer set per row,
+ * which on a 61-row open was 18-34% of the mount task when those queries were
+ * stale (renderer profile §4 L2-b). The scope hands down the probe's own
+ * memoised answer, so every control renders the same gate and reason it did,
+ * and a credential change still reaches all of them through the one
+ * subscription. A wrapper rather than a provider inside the pane's JSX so the
+ * pane's own render tree, and its diff, are untouched.
+ */
+export const CanonicalTranscript: FC<CanonicalTranscriptProps> = (props) => (
+	<SpeechGateScope>
+		<CanonicalTranscriptPane {...props} />
+	</SpeechGateScope>
+);
+
+const CanonicalTranscriptPane: FC<CanonicalTranscriptProps> = ({
 	frontend,
 	transcript,
 	gate,
