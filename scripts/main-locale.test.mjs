@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -433,11 +433,19 @@ test("tag validation accepts BCP-47 shapes and refuses data", () => {
 
 test("the watchdog's localized sentences travel as data, not shell syntax", () => {
 	reset();
+	/*
+	 * THE FORMAT-HOSTILE SET (R2 M2-1). Each item is a way a translator's
+	 * sentence used to be interpreted rather than printed: a leading `-n` (printf
+	 * option), `\c` (truncates the rest), a literal backslash, `%`, a command
+	 * substitution, backticks and non-ASCII. The elapsed token appears ONCE.
+	 */
 	const hostile = [
-		"Hostile \"double\" 'single' `touch /tmp/pwned` $(touch /tmp/pwned)",
-		"100% literal and {elapsed}",
-		"newline follows",
-		"second line",
+		"-n leading option",
+		"backslash \\c and literal \\",
+		"percent 100% and a stray %s",
+		"command $(touch /tmp/pwned) and `touch /tmp/pwned`",
+		"Unicode ✓ عربى",
+		"elapsed {elapsed} end",
 	].join("\n");
 	const plan = buildWatchdogPlan({
 		appBundlePath: "/tmp/Fixture.app",
@@ -452,31 +460,104 @@ test("the watchdog's localized sentences travel as data, not shell syntax", () =
 			takingLonger: watchdogMessages().takingLonger,
 		},
 	});
-	const envValue = plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT;
 	/*
-	 * The value is the sentence with `%` escaped and the elapsed token converted:
-	 * that is what makes it a safe `printf` FORMAT rather than text inside quotes.
+	 * The elapsed sentence is split around its token and travels as ARGUMENTS to
+	 * a FIXED format. The prefix keeps every hostile byte verbatim - no `%%`
+	 * doubling, no `%s`, no backslash escaping - because nothing here is a format.
 	 */
-	assert.ok(
-		envValue.includes("Hostile \"double\" 'single' `touch /tmp/pwned`"),
+	assert.equal(
+		plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT_PREFIX,
+		[
+			"-n leading option",
+			"backslash \\c and literal \\",
+			"percent 100% and a stray %s",
+			"command $(touch /tmp/pwned) and `touch /tmp/pwned`",
+			"Unicode ✓ عربى",
+			"elapsed ",
+		].join("\n"),
 	);
-	assert.ok(envValue.includes("100%% literal and %s"));
-	assert.ok(envValue.includes("\nsecond line"));
+	assert.equal(plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT_SUFFIX, " end");
+	assert.equal(plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT_ELAPSED, "1");
 	assert.equal(
 		plan.script.includes("touch /tmp/pwned"),
 		false,
 		"a translation must never be interpolated into the script's source",
 	);
+	// The script composes with a fixed format and quotes every argument.
+	assert.match(plan.script, /compose_elapsed\(\) \{/);
+	assert.match(plan.script, /printf '%s%s%s' "\$1" "\$\(elapsed_text\)" "\$3"/);
+	assert.match(plan.script, /printf '%s' "\$1"/);
 	assert.match(
 		plan.script,
-		/notify "\$\(printf "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT" "\$\(elapsed_text\)"\)"/,
+		/notify "\$\(compose_elapsed "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_PREFIX" "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_ELAPSED" "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_SUFFIX"\)"/,
 	);
 	assert.ok(plan.env.LO_UPDATE_WATCHDOG_MSG_INSTALLING.length > 0);
+});
+
+test("a wait sentence without the elapsed token prints no fake reading", () => {
+	reset();
+	const plan = buildWatchdogPlan({
+		appBundlePath: "/tmp/Fixture.app",
+		executableName: "Fixture",
+		appPid: 123,
+		shipItJob: null,
+		messages: {
+			...watchdogMessages(),
+			appWait: "No reading here",
+		},
+	});
 	assert.equal(
-		watchdogMessages().appWait.includes(WATCHDOG_ELAPSED_TOKEN),
-		true,
-		"the shipped English sentence keeps the elapsed token the script converts",
+		plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT_PREFIX,
+		"No reading here",
 	);
+	assert.equal(plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT_SUFFIX, "");
+	assert.equal(
+		plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT_ELAPSED,
+		"",
+		"a dropped token must not invent an elapsed claim",
+	);
+});
+
+test("each localized wait sentence keeps exactly one elapsed token (R2 M2-2)", () => {
+	/*
+	 * The focused translation gate for the two token-bearing keys. The English
+	 * context already states the rule, and ICU parity will enforce the argument
+	 * once every target carries the keys; this check is what enforces the COUNT
+	 * (exactly one substitution) in the meantime. Missing translations are not
+	 * this check's failure - they are the open translator gate.
+	 */
+	const ENGLISH = "src/i18n/catalogues/en/ui.notices.json";
+	const WAIT_KEYS = [
+		"ui.notices.main.watchdog_app_wait",
+		"ui.notices.main.watchdog_app_wait_fallback",
+	];
+	const tokenCount = (value) => value.split(WATCHDOG_ELAPSED_TOKEN).length - 1;
+	const en = JSON.parse(readFileSync(ENGLISH, "utf8"));
+	for (const key of WAIT_KEYS) {
+		assert.equal(
+			tokenCount(en[key]),
+			1,
+			`en ${key} must carry exactly one token`,
+		);
+	}
+	for (const locale of readdirSync("src/i18n/catalogues")) {
+		if (locale === "en") continue;
+		const path = `src/i18n/catalogues/${locale}/ui.notices.json`;
+		let catalogue;
+		try {
+			catalogue = JSON.parse(readFileSync(path, "utf8"));
+		} catch {
+			continue; // a locale without the namespace is the coverage gate's subject
+		}
+		for (const key of WAIT_KEYS) {
+			if (!(key in catalogue)) continue; // not translated yet: open gate
+			assert.equal(
+				tokenCount(catalogue[key]),
+				1,
+				`${locale} ${key} must keep exactly one {elapsed}`,
+			);
+		}
+	}
 });
 
 test("the index wires the refresh on every source, including with no window", () => {

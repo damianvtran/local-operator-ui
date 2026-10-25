@@ -1985,26 +1985,41 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	);
 	assert.match(
 		plan.script,
-		/\$app_wait_notice" -eq 0 \] && \[ "\$_waited" -ge 15 \]; then\n\t\tapp_wait_notice=1\n\t\tnotify "\$\(printf "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT" "\$\(elapsed_text\)"\)"/,
+		/\$app_wait_notice" -eq 0 \] && \[ "\$_waited" -ge 15 \]; then\n\t\tapp_wait_notice=1\n\t\tnotify "\$\(compose_elapsed "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_PREFIX" "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_ELAPSED" "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_SUFFIX"\)"/,
 	);
 	assert.match(
 		plan.script,
-		/\$app_wait_fallback" -eq 0 \] && \[ "\$_waited" -ge 160 \]; then\n\t\tapp_wait_fallback=1\n\t\tnotify "\$\(printf "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK" "\$\(elapsed_text\)"\)"/,
+		/\$app_wait_fallback" -eq 0 \] && \[ "\$_waited" -ge 160 \]; then\n\t\tapp_wait_fallback=1\n\t\tnotify "\$\(compose_elapsed "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_PREFIX" "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_ELAPSED" "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_SUFFIX"\)"/,
 	);
 	/*
 	 * The copy itself is DATA in the plan's environment now (agent review round 1,
-	 * R1-1/R1-3): a translation must never become shell source. The messages are
-	 * still the operator's sentences, and the elapsed reading is still a shell
-	 * substitution - now one `printf` conversion rather than text inside quotes.
+	 * R1-1/R1-3): a translation must never become shell source. Since R2 M2-1 the
+	 * elapsed sentences are SPLIT around the token and composed by a fixed
+	 * `printf '%s%s%s'` whose arguments are the sentence halves and the shell's
+	 * reading - so the sentence is never a format, and a leading hyphen, a
+	 * backslash or a percent in it cannot be interpreted.
 	 */
 	assert.equal(
-		plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT,
-		"Waiting for Local Operator to close so the update can install (waiting %s). No action is needed yet.",
+		plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT_PREFIX,
+		"Waiting for Local Operator to close so the update can install (waiting ",
+	);
+	assert.equal(
+		plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT_SUFFIX,
+		"). No action is needed yet.",
+	);
+	assert.equal(plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT_ELAPSED, "1");
+	assert.equal(
+		plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_PREFIX,
+		"The update is still waiting for Local Operator to close (waiting ",
 	);
 	assert.match(
-		plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK,
+		plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_SUFFIX,
 		/If nothing happens, quit Local Operator \(Force Quit if it does not respond\) and leave it closed until it opens again by itself\./,
 	);
+	assert.equal(plan.env.LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_ELAPSED, "1");
+	assert.match(plan.script, /compose_elapsed\(\) \{/);
+	assert.match(plan.script, /printf '%s%s%s' "\$1" "\$\(elapsed_text\)" "\$3"/);
+	assert.match(plan.script, /printf '%s' "\$1"/);
 	/*
 	 * The hard bound's notice tells the truth on BOTH arms (2026-10-11): the arm
 	 * where the app is STILL RUNNING is the arm that exits without launching
@@ -2015,7 +2030,7 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	 */
 	assert.match(
 		plan.script,
-		/if app_running; then\n\t\t\t\tnotify "\$\(printf "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK"/,
+		/if app_running; then\n\t\t\t\tnotify "\$\(compose_elapsed "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_PREFIX"/,
 	);
 	assert.match(plan.script, /hard_deadline=\$\(\( \$\(now\) \+ 1800 \)\)/);
 	// The hold is keyed on `install_live`, which is the installer's own pid for an
@@ -2026,7 +2041,7 @@ test("the watchdog is built from the app's pid and the ShipIt job, not a name pa
 	// wait/fallback copy, app gone -> the stay-closed copy.
 	assert.match(
 		plan.script,
-		/&& install_live; then\n\t\t\tholding=1\n(?:\t\t\t# [^\n]*\n)*\t\t\tif app_running; then\n\t\t\t\tnotify "\$\(printf "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK"/,
+		/&& install_live; then\n\t\t\tholding=1\n(?:\t\t\t# [^\n]*\n)*\t\t\tif app_running; then\n\t\t\t\tnotify "\$\(compose_elapsed "\$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_PREFIX"/,
 	);
 	assert.match(
 		plan.script,
@@ -2428,7 +2443,12 @@ tr -d '\\n\\t' < "$plist" | sed -n 's|.*<key>CFBundleShortVersionString</key><st
 	const setNotifierExit = (exitCode = 0) => {
 		writeFileSync(
 			notifierShim,
-			`#!/bin/sh\necho "$*" >> "${notifyLog}"\nexit ${exitCode}\n`,
+			/*
+			 * printf, not echo: `/bin/sh` echo interprets backslash escapes and `\c`
+			 * stops the line, which would silently truncate the very sentences this
+			 * shim exists to record. The watchdog passes its text as one argument.
+			 */
+			`#!/bin/sh\nprintf '%s\\n' "$*" >> "${notifyLog}"\nexit ${exitCode}\n`,
 			"utf8",
 		);
 	};
@@ -3418,9 +3438,12 @@ test(
 		const fixture = makeWatchdogFixture(dir);
 		const pwned = join(dir, "pwned-by-a-translation");
 		const hostile = [
+			"-n leading option",
 			"quote \"double\" and 'single'",
+			"backslash \\c and literal \\ inside",
 			`tick \`touch ${pwned}\``,
 			`sub $(touch ${pwned})`,
+			"Unicode ✓ عربى",
 			"percent 100% and elapsed {elapsed} end",
 		].join("\n");
 		const app = startProcess("/bin/sleep", ["60"]);
@@ -3474,11 +3497,21 @@ test(
 		);
 		// The sentence is printed literally: the substitution happened, and the
 		// shell never executed what the "translation" contained.
-		assert.match(
-			painted,
-			/quote "double" and 'single'\s+tick `touch [^`]+`\s+sub \$\(touch /,
-			"the translated text was altered before it reached the user",
-		);
+		// Each hostile fragment is present EXACTLY as written (the lines between
+		// them are independent sentences, so no adjacency is implied).
+		assert.match(painted, /quote "double" and 'single'/);
+		assert.match(painted, /tick `touch [^`]+`/);
+		assert.match(painted, /sub \$\(touch /);
+		/*
+		 * FORMAT-HOSTILE REGRESSION SET (R2 M2-1): a leading `-n` must not be read
+		 * as a printf option, `\c` must not truncate, a literal backslash and a
+		 * percent must print, and non-ASCII must survive. The elapsed reading is
+		 * still substituted exactly once, between the split halves.
+		 */
+		assert.match(painted, /-n leading option/);
+		assert.match(painted, /backslash \\c and literal \\ inside/);
+		assert.match(painted, /Unicode ✓ عربى/);
+		assert.match(painted, /percent 100% and elapsed \d+ s end/);
 		assert.doesNotMatch(painted, /\{elapsed\}/);
 		assert.equal(
 			existsSync(pwned),

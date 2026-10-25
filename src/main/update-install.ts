@@ -2702,15 +2702,43 @@ export function watchdogMessages(): WatchdogMessages {
 	};
 }
 
+type SplitElapsed = {
+	/** The sentence before its elapsed token. */
+	prefix: string;
+	/** Everything after the token; empty when it had none. */
+	suffix: string;
+	/** Whether the sentence carried the token at all. */
+	hasElapsed: boolean;
+};
+
 /**
- * A catalogue sentence as a POSIX `printf` format string.
+ * Split one translated sentence around its single elapsed token.
  *
- * `%` is escaped first so a literal percent in a translation survives; then the
- * elapsed token becomes the one `%s` the script supplies. The order matters:
- * escaping after the conversion would turn our own `%s` into `%%s`.
+ * WHY SPLIT RATHER THAN FORMAT (agent review round 2, M2-1). The script runs
+ * under `/bin/sh` and the sentence is translator-authored data. Passing it as
+ * `printf`'s FORMAT gives `printf` licence to interpret it: a leading `-n` is
+ * parsed as an option (the notice comes out empty), `%` consumes arguments, and
+ * backslash escapes - `\c` above all - truncate the rest of the line. Escaping
+ * `%` and `\` fixes those two by convention, but the format is still the one
+ * string a translation must never be. Splitting at the token and passing the
+ * halves as ARGUMENTS to a fixed `'%s%s%s'` removes the whole class: hyphens,
+ * backslashes, percent signs, command substitutions, backticks and Unicode in
+ * the sentence are bytes.
+ *
+ * Exactly one substitution is structural: only this token is replaced, by the
+ * shell's own `elapsed_text` reading, and `hasElapsed` says whether the sentence
+ * had it at all. A translation that drops or duplicates it is caught by the
+ * focused translation-gate test; at run time a dropped token prints the sentence
+ * without inventing a reading, rather than an empty or truncated notice.
  */
-function printfFormat(message: string): string {
-	return message.split("%").join("%%").split(WATCHDOG_ELAPSED_TOKEN).join("%s");
+function splitElapsed(message: string): SplitElapsed {
+	const at = message.indexOf(WATCHDOG_ELAPSED_TOKEN);
+	if (at < 0) return { prefix: message, suffix: "", hasElapsed: false };
+	return {
+		prefix: message.slice(0, at),
+		suffix: message.slice(at + WATCHDOG_ELAPSED_TOKEN.length),
+		hasElapsed: true,
+	};
 }
 
 /**
@@ -2927,6 +2955,8 @@ export function buildWatchdogPlan(input: {
 }): WatchdogPlan {
 	const signals = input.signals ?? watchdogSignals(input.platform ?? "darwin");
 	const messages = input.messages ?? watchdogMessages();
+	const appWait = splitElapsed(messages.appWait);
+	const appWaitFallback = splitElapsed(messages.appWaitFallback);
 	const timeoutSeconds = input.timeoutSeconds ?? WATCHDOG_TIMEOUT_SECONDS;
 	const hardTimeoutSeconds =
 		input.hardTimeoutSeconds ?? WATCHDOG_HARD_TIMEOUT_SECONDS;
@@ -3131,7 +3161,28 @@ notify() {
 	# default spells "a run", not "the user's own app" - and only an ABSENT key
 	# arms. The "NAME+x" set-test (no colon) stays legal under set -u.
 	[ -n "\${LOCAL_OPERATOR_NO_NOTIFICATIONS+x}" ] && return 0
-	osascript -e 'on run argv' -e 'display notification (item 1 of argv) with title (item 2 of argv)' -e 'end run' "$1" "Local Operator" >/dev/null 2>&1 &
+	# THE FIXED TITLE GOES FIRST, the translated body second. osascript parses
+	# leading "-" arguments as its own options (-n is an illegal option and the
+	# notice is lost), and BSD option parsing stops at the first operand - so the
+	# non-hyphen title is what ends option parsing and the sentence is data from
+	# there. Measured on this macOS with the title first and a "-n ..." body.
+	osascript -e 'on run argv' -e 'display notification (item 2 of argv) with title (item 1 of argv)' -e 'end run' "Local Operator" "$1" >/dev/null 2>&1 &
+}
+# Compose a notice whose sentence carries the elapsed reading.
+#
+# THE SENTENCE IS AN ARGUMENT, NEVER THE FORMAT (R2 M2-1). A printf FORMAT
+# treats a leading "-" as an option, "%" as a conversion and backslash escapes -
+# "\c" truncates the line - as instructions, so a translated sentence could
+# print nothing or lose its end. This fixed format is the only string printf
+# interprets; prefix, elapsed reading and suffix are data. The flag says whether
+# the sentence carried the token, so a translation that dropped it prints the
+# sentence without inventing a reading.
+compose_elapsed() {
+	if [ -n "$2" ]; then
+		printf '%s%s%s' "$1" "$(elapsed_text)" "$3"
+	else
+		printf '%s' "$1"
+	fi
 }
 # launchctl list <label> exits 0 when the job is loaded and 113 when launchd has
 # no such job; every other status is not an answer at all. An unanswerable probe
@@ -3302,11 +3353,11 @@ while app_running; do
 	_waited=$(( $(now) - started ))
 	if [ "$app_wait_notice" -eq 0 ] && [ "$_waited" -ge ${appWaitNoticeSeconds} ]; then
 		app_wait_notice=1
-		notify "$(printf "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT" "$(elapsed_text)")"
+		notify "$(compose_elapsed "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_PREFIX" "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_ELAPSED" "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_SUFFIX")"
 	fi
 	if [ "$app_wait_fallback" -eq 0 ] && [ "$_waited" -ge ${appWaitFallbackSeconds} ]; then
 		app_wait_fallback=1
-		notify "$(printf "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK" "$(elapsed_text)")"
+		notify "$(compose_elapsed "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_PREFIX" "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_ELAPSED" "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_SUFFIX")"
 	fi
 	sleep ${intervalSeconds}
 done
@@ -3388,7 +3439,7 @@ while :; do
 			# elapsed reading; app gone -> the stay-closed copy, which is true there
 			# (an install this app spawned is live and the swap still needs quiet).
 			if app_running; then
-				notify "$(printf "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK" "$(elapsed_text)")"
+				notify "$(compose_elapsed "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_PREFIX" "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_ELAPSED" "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_SUFFIX")"
 			else
 				notify "$LO_UPDATE_WATCHDOG_MSG_STILL_INSTALLING"
 			fi
@@ -3429,7 +3480,7 @@ if [ "$holding" -eq 1 ]; then
 			# the wait's own notices use; the app-gone arm keeps the notice the
 			# panel's copy expects (UX U10).
 			if app_running; then
-				notify "$(printf "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK" "$(elapsed_text)")"
+				notify "$(compose_elapsed "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_PREFIX" "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_ELAPSED" "$LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_SUFFIX")"
 			else
 				notify "$LO_UPDATE_WATCHDOG_MSG_TAKING_LONGER"
 			fi
@@ -3479,13 +3530,18 @@ exit 0
 			 * The five notices as DATA, not shell source. `notify` reads them from
 			 * these variables, so a quote, backtick, newline or `$(...)` in a
 			 * translated sentence is a byte in a notification rather than syntax in
-			 * the script. The two elapsed sentences are `printf` FORMATS (see
-			 * `printfFormat`), with every other percent escaped by the builder.
+			 * the script. The two elapsed sentences are split at their token: each
+			 * half is an ARGUMENT to `compose_elapsed`'s fixed format, never a
+			 * format itself (R2 M2-1), and the flag records whether the token was
+			 * present so a translation that dropped it prints no fake reading.
 			 */
-			LO_UPDATE_WATCHDOG_MSG_APP_WAIT: printfFormat(messages.appWait),
-			LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK: printfFormat(
-				messages.appWaitFallback,
-			),
+			LO_UPDATE_WATCHDOG_MSG_APP_WAIT_PREFIX: appWait.prefix,
+			LO_UPDATE_WATCHDOG_MSG_APP_WAIT_SUFFIX: appWait.suffix,
+			LO_UPDATE_WATCHDOG_MSG_APP_WAIT_ELAPSED: appWait.hasElapsed ? "1" : "",
+			LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_PREFIX: appWaitFallback.prefix,
+			LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_SUFFIX: appWaitFallback.suffix,
+			LO_UPDATE_WATCHDOG_MSG_APP_WAIT_FALLBACK_ELAPSED:
+				appWaitFallback.hasElapsed ? "1" : "",
 			LO_UPDATE_WATCHDOG_MSG_INSTALLING: messages.installing,
 			LO_UPDATE_WATCHDOG_MSG_STILL_INSTALLING: messages.stillInstalling,
 			LO_UPDATE_WATCHDOG_MSG_TAKING_LONGER: messages.takingLonger,

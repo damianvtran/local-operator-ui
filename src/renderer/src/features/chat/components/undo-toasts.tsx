@@ -288,24 +288,31 @@ export function UndoToasts() {
 			 * the full documented life.
 			 */
 			const raised = archiveRaisedRef.current;
-			const redraw =
+			const sameMessage =
 				raised !== null &&
 				raised.kind === "failure" &&
 				raised.at === archiveFailure.at;
-			const duration = redraw
+			/*
+			 * NOTHING TO REDRAW WHEN NEITHER THE MESSAGE NOR THE LANGUAGE MOVED
+			 * (R2 N2-1). Without this, an unrelated re-run of the effect would
+			 * re-raise a live card and restart its timer; the locale is part of the
+			 * raise's identity because the sentence was drawn from it, and returning
+			 * here is what makes the stored value load-bearing rather than write-only.
+			 */
+			if (sameMessage && raised.locale === locale) return;
+			const duration = sameMessage
 				? raised.raisedAt + raised.duration - Date.now()
 				: ARCHIVE_FAILURE_TOAST_MS;
 			if (duration <= 0) return;
-			if (!redraw)
-				archiveRaisedRef.current = {
-					kind: "failure",
-					at: archiveFailure.at,
-					raisedAt: Date.now(),
-					duration,
-					locale,
-				};
-			else if (raised.locale !== locale)
-				archiveRaisedRef.current = { ...raised, locale };
+			archiveRaisedRef.current = sameMessage
+				? { ...raised, locale }
+				: {
+						kind: "failure",
+						at: archiveFailure.at,
+						raisedAt: Date.now(),
+						duration,
+						locale,
+					};
 			showWarningToast(
 				`${archiveFailure.archived ? t("ui.notices.chat.archive_failed", { title: archiveFailureTitle }) : t("ui.notices.chat.unarchive_failed", { title: archiveFailureTitle })}${archiveFailure.detail ? ` ${archiveFailure.detail}` : ""}`,
 				{
@@ -359,24 +366,25 @@ export function UndoToasts() {
 			 * a language switch cannot lose the Undo; only the deadline is preserved.
 			 */
 			const raised = archiveRaisedRef.current;
-			const redraw =
+			const sameMessage =
 				raised !== null &&
 				raised.kind === "offer" &&
 				raised.at === archiveUndo.at;
-			const duration = redraw
+			/* Same no-op rule as the refusal above (R2 N2-1). */
+			if (sameMessage && raised.locale === locale) return;
+			const duration = sameMessage
 				? raised.raisedAt + raised.duration - Date.now()
 				: ARCHIVE_UNDO_TOAST_MS;
 			if (duration <= 0) return;
-			if (!redraw)
-				archiveRaisedRef.current = {
-					kind: "offer",
-					at: archiveUndo.at,
-					raisedAt: Date.now(),
-					duration,
-					locale,
-				};
-			else if (raised.locale !== locale)
-				archiveRaisedRef.current = { ...raised, locale };
+			archiveRaisedRef.current = sameMessage
+				? { ...raised, locale }
+				: {
+						kind: "offer",
+						at: archiveUndo.at,
+						raisedAt: Date.now(),
+						duration,
+						locale,
+					};
 			showInfoToast(
 				/*
 				 * THE NAME FLEXES; THE VERB DOES NOT (agent review round 2, R2-3). The
@@ -470,19 +478,16 @@ export function UndoToasts() {
 		}
 		draftsDrawnRef.current = true;
 		const raised = draftsRaisedRef.current;
-		const redraw = raised !== null && raised.at === draftsUndo.at;
-		const duration = redraw
+		const sameMessage = raised !== null && raised.at === draftsUndo.at;
+		/* Same no-op rule as the archive offers above (R2 N2-1). */
+		if (sameMessage && raised.locale === locale) return;
+		const duration = sameMessage
 			? raised.raisedAt + ARCHIVE_UNDO_TOAST_MS - Date.now()
 			: ARCHIVE_UNDO_TOAST_MS;
 		if (duration <= 0) return;
-		if (!redraw)
-			draftsRaisedRef.current = {
-				at: draftsUndo.at,
-				raisedAt: Date.now(),
-				locale,
-			};
-		else if (raised.locale !== locale)
-			draftsRaisedRef.current = { ...raised, locale };
+		draftsRaisedRef.current = sameMessage
+			? { ...raised, locale }
+			: { at: draftsUndo.at, raisedAt: Date.now(), locale };
 		const settle = () => {
 			const state = useCanonicalSessionsStore.getState();
 			if (state.draftsUndo?.at !== draftsUndo.at) return;
