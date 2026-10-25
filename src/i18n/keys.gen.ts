@@ -63,8 +63,10 @@ import enUiCommonEditing from "./catalogues/en/ui.common.editing.json";
 import enUiCommonErrors from "./catalogues/en/ui.common.errors.json";
 import enUiCommonFileActions from "./catalogues/en/ui.common.file_actions.json";
 import enUiCommonForms from "./catalogues/en/ui.common.forms.json";
+import enUiCommonLayout from "./catalogues/en/ui.common.layout.json";
 import enUiCommonLoading from "./catalogues/en/ui.common.loading.json";
 import enUiCommonModels from "./catalogues/en/ui.common.models.json";
+import enUiCommonSpeech from "./catalogues/en/ui.common.speech.json";
 import enUiCommonUpdates from "./catalogues/en/ui.common.updates.json";
 import enUiCommonViewer from "./catalogues/en/ui.common.viewer.json";
 import enUiConsole from "./catalogues/en/ui.console.json";
@@ -138,8 +140,10 @@ import esUiCommonEditing from "./catalogues/es/ui.common.editing.json";
 import esUiCommonErrors from "./catalogues/es/ui.common.errors.json";
 import esUiCommonFileActions from "./catalogues/es/ui.common.file_actions.json";
 import esUiCommonForms from "./catalogues/es/ui.common.forms.json";
+import esUiCommonLayout from "./catalogues/es/ui.common.layout.json";
 import esUiCommonLoading from "./catalogues/es/ui.common.loading.json";
 import esUiCommonModels from "./catalogues/es/ui.common.models.json";
+import esUiCommonSpeech from "./catalogues/es/ui.common.speech.json";
 import esUiCommonUpdates from "./catalogues/es/ui.common.updates.json";
 import esUiCommonViewer from "./catalogues/es/ui.common.viewer.json";
 import esUiConsole from "./catalogues/es/ui.console.json";
@@ -213,8 +217,10 @@ import frUiCommonEditing from "./catalogues/fr/ui.common.editing.json";
 import frUiCommonErrors from "./catalogues/fr/ui.common.errors.json";
 import frUiCommonFileActions from "./catalogues/fr/ui.common.file_actions.json";
 import frUiCommonForms from "./catalogues/fr/ui.common.forms.json";
+import frUiCommonLayout from "./catalogues/fr/ui.common.layout.json";
 import frUiCommonLoading from "./catalogues/fr/ui.common.loading.json";
 import frUiCommonModels from "./catalogues/fr/ui.common.models.json";
+import frUiCommonSpeech from "./catalogues/fr/ui.common.speech.json";
 import frUiCommonUpdates from "./catalogues/fr/ui.common.updates.json";
 import frUiCommonViewer from "./catalogues/fr/ui.common.viewer.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
@@ -288,8 +294,10 @@ import hiUiCommonEditing from "./catalogues/hi/ui.common.editing.json";
 import hiUiCommonErrors from "./catalogues/hi/ui.common.errors.json";
 import hiUiCommonFileActions from "./catalogues/hi/ui.common.file_actions.json";
 import hiUiCommonForms from "./catalogues/hi/ui.common.forms.json";
+import hiUiCommonLayout from "./catalogues/hi/ui.common.layout.json";
 import hiUiCommonLoading from "./catalogues/hi/ui.common.loading.json";
 import hiUiCommonModels from "./catalogues/hi/ui.common.models.json";
+import hiUiCommonSpeech from "./catalogues/hi/ui.common.speech.json";
 import hiUiCommonUpdates from "./catalogues/hi/ui.common.updates.json";
 import hiUiCommonViewer from "./catalogues/hi/ui.common.viewer.json";
 import hiUiConsole from "./catalogues/hi/ui.console.json";
@@ -363,8 +371,10 @@ import ruUiCommonEditing from "./catalogues/ru/ui.common.editing.json";
 import ruUiCommonErrors from "./catalogues/ru/ui.common.errors.json";
 import ruUiCommonFileActions from "./catalogues/ru/ui.common.file_actions.json";
 import ruUiCommonForms from "./catalogues/ru/ui.common.forms.json";
+import ruUiCommonLayout from "./catalogues/ru/ui.common.layout.json";
 import ruUiCommonLoading from "./catalogues/ru/ui.common.loading.json";
 import ruUiCommonModels from "./catalogues/ru/ui.common.models.json";
+import ruUiCommonSpeech from "./catalogues/ru/ui.common.speech.json";
 import ruUiCommonUpdates from "./catalogues/ru/ui.common.updates.json";
 import ruUiCommonViewer from "./catalogues/ru/ui.common.viewer.json";
 import ruUiConsole from "./catalogues/ru/ui.console.json";
@@ -438,8 +448,10 @@ import urUiCommonEditing from "./catalogues/ur/ui.common.editing.json";
 import urUiCommonErrors from "./catalogues/ur/ui.common.errors.json";
 import urUiCommonFileActions from "./catalogues/ur/ui.common.file_actions.json";
 import urUiCommonForms from "./catalogues/ur/ui.common.forms.json";
+import urUiCommonLayout from "./catalogues/ur/ui.common.layout.json";
 import urUiCommonLoading from "./catalogues/ur/ui.common.loading.json";
 import urUiCommonModels from "./catalogues/ur/ui.common.models.json";
+import urUiCommonSpeech from "./catalogues/ur/ui.common.speech.json";
 import urUiCommonUpdates from "./catalogues/ur/ui.common.updates.json";
 import urUiCommonViewer from "./catalogues/ur/ui.common.viewer.json";
 import urUiConsole from "./catalogues/ur/ui.console.json";
@@ -513,8 +525,10 @@ import viUiCommonEditing from "./catalogues/vi/ui.common.editing.json";
 import viUiCommonErrors from "./catalogues/vi/ui.common.errors.json";
 import viUiCommonFileActions from "./catalogues/vi/ui.common.file_actions.json";
 import viUiCommonForms from "./catalogues/vi/ui.common.forms.json";
+import viUiCommonLayout from "./catalogues/vi/ui.common.layout.json";
 import viUiCommonLoading from "./catalogues/vi/ui.common.loading.json";
 import viUiCommonModels from "./catalogues/vi/ui.common.models.json";
+import viUiCommonSpeech from "./catalogues/vi/ui.common.speech.json";
 import viUiCommonUpdates from "./catalogues/vi/ui.common.updates.json";
 import viUiCommonViewer from "./catalogues/vi/ui.common.viewer.json";
 import viUiConsole from "./catalogues/vi/ui.console.json";
@@ -588,8 +602,10 @@ import zhCNUiCommonEditing from "./catalogues/zh-CN/ui.common.editing.json";
 import zhCNUiCommonErrors from "./catalogues/zh-CN/ui.common.errors.json";
 import zhCNUiCommonFileActions from "./catalogues/zh-CN/ui.common.file_actions.json";
 import zhCNUiCommonForms from "./catalogues/zh-CN/ui.common.forms.json";
+import zhCNUiCommonLayout from "./catalogues/zh-CN/ui.common.layout.json";
 import zhCNUiCommonLoading from "./catalogues/zh-CN/ui.common.loading.json";
 import zhCNUiCommonModels from "./catalogues/zh-CN/ui.common.models.json";
+import zhCNUiCommonSpeech from "./catalogues/zh-CN/ui.common.speech.json";
 import zhCNUiCommonUpdates from "./catalogues/zh-CN/ui.common.updates.json";
 import zhCNUiCommonViewer from "./catalogues/zh-CN/ui.common.viewer.json";
 import zhCNUiConsole from "./catalogues/zh-CN/ui.console.json";
@@ -666,8 +682,10 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiCommonErrors,
 	...enUiCommonFileActions,
 	...enUiCommonForms,
+	...enUiCommonLayout,
 	...enUiCommonLoading,
 	...enUiCommonModels,
+	...enUiCommonSpeech,
 	...enUiCommonUpdates,
 	...enUiCommonViewer,
 	...enUiConsole,
@@ -749,8 +767,10 @@ export const bundledCatalogues: Readonly<
 		...esUiCommonErrors,
 		...esUiCommonFileActions,
 		...esUiCommonForms,
+		...esUiCommonLayout,
 		...esUiCommonLoading,
 		...esUiCommonModels,
+		...esUiCommonSpeech,
 		...esUiCommonUpdates,
 		...esUiCommonViewer,
 		...esUiConsole,
@@ -826,8 +846,10 @@ export const bundledCatalogues: Readonly<
 		...frUiCommonErrors,
 		...frUiCommonFileActions,
 		...frUiCommonForms,
+		...frUiCommonLayout,
 		...frUiCommonLoading,
 		...frUiCommonModels,
+		...frUiCommonSpeech,
 		...frUiCommonUpdates,
 		...frUiCommonViewer,
 		...frUiConsole,
@@ -903,8 +925,10 @@ export const bundledCatalogues: Readonly<
 		...hiUiCommonErrors,
 		...hiUiCommonFileActions,
 		...hiUiCommonForms,
+		...hiUiCommonLayout,
 		...hiUiCommonLoading,
 		...hiUiCommonModels,
+		...hiUiCommonSpeech,
 		...hiUiCommonUpdates,
 		...hiUiCommonViewer,
 		...hiUiConsole,
@@ -980,8 +1004,10 @@ export const bundledCatalogues: Readonly<
 		...ruUiCommonErrors,
 		...ruUiCommonFileActions,
 		...ruUiCommonForms,
+		...ruUiCommonLayout,
 		...ruUiCommonLoading,
 		...ruUiCommonModels,
+		...ruUiCommonSpeech,
 		...ruUiCommonUpdates,
 		...ruUiCommonViewer,
 		...ruUiConsole,
@@ -1057,8 +1083,10 @@ export const bundledCatalogues: Readonly<
 		...urUiCommonErrors,
 		...urUiCommonFileActions,
 		...urUiCommonForms,
+		...urUiCommonLayout,
 		...urUiCommonLoading,
 		...urUiCommonModels,
+		...urUiCommonSpeech,
 		...urUiCommonUpdates,
 		...urUiCommonViewer,
 		...urUiConsole,
@@ -1134,8 +1162,10 @@ export const bundledCatalogues: Readonly<
 		...viUiCommonErrors,
 		...viUiCommonFileActions,
 		...viUiCommonForms,
+		...viUiCommonLayout,
 		...viUiCommonLoading,
 		...viUiCommonModels,
+		...viUiCommonSpeech,
 		...viUiCommonUpdates,
 		...viUiCommonViewer,
 		...viUiConsole,
@@ -1211,8 +1241,10 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiCommonErrors,
 		...zhCNUiCommonFileActions,
 		...zhCNUiCommonForms,
+		...zhCNUiCommonLayout,
 		...zhCNUiCommonLoading,
 		...zhCNUiCommonModels,
+		...zhCNUiCommonSpeech,
 		...zhCNUiCommonUpdates,
 		...zhCNUiCommonViewer,
 		...zhCNUiConsole,
@@ -1833,6 +1865,89 @@ export type MessageParams = {
 	"ui.browser.webauthn_chooser.the_site_stored_no_name_for_this": undefined;
 	"ui.browser.webauthn_chooser.this_passkey_request_expired": undefined;
 	"ui.browser.webauthn_chooser.this_passkey_request_was_cancelled": undefined;
+	"ui.canvas.close_copy.closed_your_edits_could_not_be_saved_and_are_kept_until_the_app_quits_op": {
+		title: string;
+	};
+	"ui.canvas.code_editor_diff.add": undefined;
+	"ui.canvas.code_editor_diff.proposed_change": undefined;
+	"ui.canvas.code_editor_diff.remove": undefined;
+	"ui.canvas.create_file_dialog.a_file_named_already_exists_do_you_want_to_overwrite_it": {
+		filename: string;
+		filetype: string;
+	};
+	"ui.canvas.create_file_dialog.backend_and_scripting": undefined;
+	"ui.canvas.create_file_dialog.c_c": undefined;
+	"ui.canvas.create_file_dialog.c_cpp": undefined;
+	"ui.canvas.create_file_dialog.c_cs": undefined;
+	"ui.canvas.create_file_dialog.cancel": undefined;
+	"ui.canvas.create_file_dialog.change_the_working_directory_from_the_composer_to_create_the_file_elsewh": undefined;
+	"ui.canvas.create_file_dialog.configuration": undefined;
+	"ui.canvas.create_file_dialog.create_file": undefined;
+	"ui.canvas.create_file_dialog.create_new_file": undefined;
+	"ui.canvas.create_file_dialog.creating": undefined;
+	"ui.canvas.create_file_dialog.css_css": undefined;
+	"ui.canvas.create_file_dialog.dockerfile": undefined;
+	"ui.canvas.create_file_dialog.enter_file_name_e_g_my_new_script": undefined;
+	"ui.canvas.create_file_dialog.env": undefined;
+	"ui.canvas.create_file_dialog.file_already_exists": undefined;
+	"ui.canvas.create_file_dialog.file_name": undefined;
+	"ui.canvas.create_file_dialog.file_type": undefined;
+	"ui.canvas.create_file_dialog.general": undefined;
+	"ui.canvas.create_file_dialog.go_go": undefined;
+	"ui.canvas.create_file_dialog.html_html": undefined;
+	"ui.canvas.create_file_dialog.ini_ini": undefined;
+	"ui.canvas.create_file_dialog.java_java": undefined;
+	"ui.canvas.create_file_dialog.javascript_js": undefined;
+	"ui.canvas.create_file_dialog.json_json": undefined;
+	"ui.canvas.create_file_dialog.jsx_jsx": undefined;
+	"ui.canvas.create_file_dialog.kotlin_kt": undefined;
+	"ui.canvas.create_file_dialog.loading_file_types": undefined;
+	"ui.canvas.create_file_dialog.location": undefined;
+	"ui.canvas.create_file_dialog.markdown_md": undefined;
+	"ui.canvas.create_file_dialog.other_languages": undefined;
+	"ui.canvas.create_file_dialog.overwrite": undefined;
+	"ui.canvas.create_file_dialog.php_php": undefined;
+	"ui.canvas.create_file_dialog.pick_an_extension_or_type_one_that_is_not_listed": undefined;
+	"ui.canvas.create_file_dialog.plain_text_txt": undefined;
+	"ui.canvas.create_file_dialog.python_py": undefined;
+	"ui.canvas.create_file_dialog.ruby_rb": undefined;
+	"ui.canvas.create_file_dialog.rust_rs": undefined;
+	"ui.canvas.create_file_dialog.scala_scala": undefined;
+	"ui.canvas.create_file_dialog.select_or_type_an_extension": undefined;
+	"ui.canvas.create_file_dialog.shell_script_sh": undefined;
+	"ui.canvas.create_file_dialog.swift_swift": undefined;
+	"ui.canvas.create_file_dialog.the_file_will_be_created_in_this_working_directory": undefined;
+	"ui.canvas.create_file_dialog.toml_toml": undefined;
+	"ui.canvas.create_file_dialog.tsx_tsx": undefined;
+	"ui.canvas.create_file_dialog.typescript_ts": undefined;
+	"ui.canvas.create_file_dialog.web_development": undefined;
+	"ui.canvas.create_file_dialog.xml_xml": undefined;
+	"ui.canvas.create_file_dialog.yaml_yaml": undefined;
+	"ui.canvas.create_file_dialog.yaml_yml": undefined;
+	"ui.canvas.document_freshness_bar.check_the_file_your_edits_are_kept": undefined;
+	"ui.canvas.document_freshness_bar.load_the_file_s_version_your_unsaved_edits_are_discarded": undefined;
+	"ui.canvas.document_freshness_bar.modified": {
+		formatcalendardatetime: string;
+	};
+	"ui.canvas.document_freshness_bar.not_read_from_disk_yet": undefined;
+	"ui.canvas.document_freshness_bar.re_read_from_disk": undefined;
+	"ui.canvas.file_row.ui_canvas_files_fileactions": undefined;
+	"ui.canvas.file_rows.archives": undefined;
+	"ui.canvas.file_rows.code": undefined;
+	"ui.canvas.file_rows.count": { total: number };
+	"ui.canvas.file_rows.documents": undefined;
+	"ui.canvas.file_rows.images": undefined;
+	"ui.canvas.file_rows.narrow_count": { visible: number; total: number };
+	"ui.canvas.file_rows.other": undefined;
+	"ui.canvas.file_rows.presentations": undefined;
+	"ui.canvas.file_rows.sounds": undefined;
+	"ui.canvas.file_rows.spreadsheets": undefined;
+	"ui.canvas.file_rows.video": undefined;
+	"ui.canvas.file_viewer.copy_its_path_from_the_row_s_menu_to_look_for_it_or_check_whether_the_ag": undefined;
+	"ui.canvas.file_viewer.file_no_longer_exists_at": { value: string };
+	"ui.canvas.file_viewer.ui_canvas_files_saveerror": undefined;
+	"ui.canvas.file_viewer.unknown_error_reading_file": undefined;
+	"ui.canvas.file_viewer_state.open_in_default_app": undefined;
 	"ui.canvas.files.archives": undefined;
 	"ui.canvas.files.asc": undefined;
 	"ui.canvas.files.audio": undefined;
@@ -1890,6 +2005,233 @@ export type MessageParams = {
 	"ui.canvas.files.unreadable": undefined;
 	"ui.canvas.files.videos": undefined;
 	"ui.canvas.files.working": undefined;
+	"ui.canvas.finder_files_view.ui_canvas_files_fileactions": undefined;
+	"ui.canvas.finder_files_view.ui_canvas_files_imageactions": undefined;
+	"ui.canvas.finder_files_view.ui_canvas_files_searchplaceholder": undefined;
+	"ui.canvas.finder_layout.files": undefined;
+	"ui.canvas.finder_layout.highlights": undefined;
+	"ui.canvas.finder_layout.working_files": undefined;
+	"ui.canvas.finder_thumbnails.could_not_be_read": undefined;
+	"ui.canvas.goals_viewer.count": { count: number };
+	"ui.canvas.goals_viewer.count_shown": { count: number };
+	"ui.canvas.goals_viewer.goals": undefined;
+	"ui.canvas.goals_viewer.goals_appear_here_once_they_are_finished": undefined;
+	"ui.canvas.goals_viewer.no_goal_set_goal_text_to_set_one_finished_goals_are_kept_here": undefined;
+	"ui.canvas.goals_viewer.no_goals_completed_yet": undefined;
+	"ui.canvas.goals_viewer.older_settled_goals_are_not_carried_here_this_list_is_capped": undefined;
+	"ui.canvas.html_preview.edit": undefined;
+	"ui.canvas.html_preview.html_preview": { title: string };
+	"ui.canvas.html_preview.preview": undefined;
+	"ui.canvas.image_preview.file_no_longer_exists": undefined;
+	"ui.canvas.image_preview.this_image_could_not_be_opened": undefined;
+	"ui.canvas.image_preview.this_image_could_not_be_shown": undefined;
+	"ui.canvas.image_preview.this_image_is_no_longer_in_the_session": undefined;
+	"ui.canvas.image_preview.too_large_to_preview": undefined;
+	"ui.canvas.inline_edit.accept": undefined;
+	"ui.canvas.inline_edit.accept_all": undefined;
+	"ui.canvas.inline_edit.accepted": undefined;
+	"ui.canvas.inline_edit.add_attachments": undefined;
+	"ui.canvas.inline_edit.apply_all_ctrl_enter": undefined;
+	"ui.canvas.inline_edit.apply_all_enter": undefined;
+	"ui.canvas.inline_edit.ask_for_an_edit": undefined;
+	"ui.canvas.inline_edit.cancel_edit": undefined;
+	"ui.canvas.inline_edit.cancel_recording": undefined;
+	"ui.canvas.inline_edit.cancel_recording_esc": undefined;
+	"ui.canvas.inline_edit.change": undefined;
+	"ui.canvas.inline_edit.change_125665": { index: number; state: string };
+	"ui.canvas.inline_edit.close": undefined;
+	"ui.canvas.inline_edit.confirm_recording": undefined;
+	"ui.canvas.inline_edit.confirm_recording_enter": undefined;
+	"ui.canvas.inline_edit.dictation_is_not_available_on_this_device": undefined;
+	"ui.canvas.inline_edit.edit": undefined;
+	"ui.canvas.inline_edit.edit_instructions": undefined;
+	"ui.canvas.inline_edit.editing": undefined;
+	"ui.canvas.inline_edit.error_accessing_microphone_please_ensure_microphone_permissions_are_gran": undefined;
+	"ui.canvas.inline_edit.failed_to_edit_file": undefined;
+	"ui.canvas.inline_edit.next_change": undefined;
+	"ui.canvas.inline_edit.no_changes_were_needed": undefined;
+	"ui.canvas.inline_edit.not_reviewed_yet": undefined;
+	"ui.canvas.inline_edit.of": undefined;
+	"ui.canvas.inline_edit.please_select_an_agent_first": undefined;
+	"ui.canvas.inline_edit.previous_change": undefined;
+	"ui.canvas.inline_edit.processing_audio": undefined;
+	"ui.canvas.inline_edit.reject": undefined;
+	"ui.canvas.inline_edit.reject_all": undefined;
+	"ui.canvas.inline_edit.rejected": undefined;
+	"ui.canvas.inline_edit.review_progress": undefined;
+	"ui.canvas.inline_edit.reviewing_now": undefined;
+	"ui.canvas.inline_edit.start_recording": undefined;
+	"ui.canvas.inline_edit.start_recording_or_hold": {
+		shortcuttext: string;
+		label: string;
+	};
+	"ui.canvas.inline_edit.stop_reviewing": undefined;
+	"ui.canvas.insert_image_dialog.cancel": undefined;
+	"ui.canvas.insert_image_dialog.drag_and_drop_an_image_here_or_click_to_select_one": undefined;
+	"ui.canvas.insert_image_dialog.image_path_on_device": undefined;
+	"ui.canvas.insert_image_dialog.insert": undefined;
+	"ui.canvas.insert_image_dialog.insert_image": undefined;
+	"ui.canvas.insert_image_dialog.or": undefined;
+	"ui.canvas.insert_image_dialog.users_eren_documents_image_png": undefined;
+	"ui.canvas.insert_link_dialog.cancel": undefined;
+	"ui.canvas.insert_link_dialog.https_example_com": undefined;
+	"ui.canvas.insert_link_dialog.insert": undefined;
+	"ui.canvas.insert_link_dialog.insert_link": undefined;
+	"ui.canvas.insert_link_dialog.link_text_optional": undefined;
+	"ui.canvas.insert_link_dialog.text_to_display": undefined;
+	"ui.canvas.insert_link_dialog.url": undefined;
+	"ui.canvas.insert_table_popover.columns": undefined;
+	"ui.canvas.insert_table_popover.custom_size": undefined;
+	"ui.canvas.insert_table_popover.insert_table": undefined;
+	"ui.canvas.insert_table_popover.rows": undefined;
+	"ui.canvas.insert_table_popover.table": { rows: number; cols: number };
+	"ui.canvas.pdf_preview.file_no_longer_exists": undefined;
+	"ui.canvas.pdf_preview.opening": undefined;
+	"ui.canvas.pdf_preview.pdf": { title: string };
+	"ui.canvas.pdf_preview.this_pdf_could_not_be_opened": undefined;
+	"ui.canvas.pdf_preview.too_large_to_preview": undefined;
+	"ui.canvas.shell.browse_files": undefined;
+	"ui.canvas.shell.browse_filesc0c547": { filecountvalue: number };
+	"ui.canvas.shell.canvas": undefined;
+	"ui.canvas.shell.canvas_view": undefined;
+	"ui.canvas.shell.close_canvas": undefined;
+	"ui.canvas.shell.documents": undefined;
+	"ui.canvas.shell.file": undefined;
+	"ui.canvas.shell.files": undefined;
+	"ui.canvas.shell.goal": undefined;
+	"ui.canvas.shell.goals": undefined;
+	"ui.canvas.shell.new_file": undefined;
+	"ui.canvas.shell.new_file_n": { modifierkey: string };
+	"ui.canvas.shell.no_conversation_open": undefined;
+	"ui.canvas.shell.nothing_open_yet": undefined;
+	"ui.canvas.shell.open_a_file_to_read_or_edit_it_here_files_the_agent_mentions_in_the_conv": undefined;
+	"ui.canvas.shell.open_file_from_disk": undefined;
+	"ui.canvas.shell.open_file_from_disk_o": { modifierkey: string };
+	"ui.canvas.shell.start_a_conversation_with_an_agent_to_see_the_files_and_variables_it_is": undefined;
+	"ui.canvas.shell.variables": undefined;
+	"ui.canvas.spreadsheet_preview.failed_to_save_spreadsheet": { value: string };
+	"ui.canvas.spreadsheet_preview.spreadsheet_saved": undefined;
+	"ui.canvas.spreadsheet_preview.the_file_changed_on_disk_so_this_save_was_not_written_use_the_row_above": undefined;
+	"ui.canvas.spreadsheet_preview.unknown_error": undefined;
+	"ui.canvas.tabs.all_open_files": undefined;
+	"ui.canvas.tabs.close": { value: string };
+	"ui.canvas.tabs.open_documents": undefined;
+	"ui.canvas.text_style_dropdown.heading_1": undefined;
+	"ui.canvas.text_style_dropdown.heading_2": undefined;
+	"ui.canvas.text_style_dropdown.heading_3": undefined;
+	"ui.canvas.text_style_dropdown.heading_4": undefined;
+	"ui.canvas.text_style_dropdown.heading_5": undefined;
+	"ui.canvas.text_style_dropdown.heading_6": undefined;
+	"ui.canvas.text_style_dropdown.paragraph": undefined;
+	"ui.canvas.text_style_dropdown.text_style": undefined;
+	"ui.canvas.use_file_freshness.already_up_to_date_the_file_is_unchanged": undefined;
+	"ui.canvas.use_file_freshness.changed_on_disk_load_it_or_save_to_replace_it": undefined;
+	"ui.canvas.use_file_freshness.could_not_be_re_read_showing_the_version_we_last_read": undefined;
+	"ui.canvas.use_file_freshness.could_not_be_read_showing_the_version_we_last_read": undefined;
+	"ui.canvas.use_file_freshness.local_file_access_is_unavailable_outside_the_desktop_app": undefined;
+	"ui.canvas.use_file_freshness.local_file_access_is_unavailable_so_there_is_nothing_to_re_read_from": undefined;
+	"ui.canvas.use_file_freshness.no_local_file_access": undefined;
+	"ui.canvas.use_file_freshness.no_longer_on_disk_showing_the_version_we_last_read": undefined;
+	"ui.canvas.use_file_freshness.the_file_s_version_was_re_read_from_disk_and_is_now_on_screen": undefined;
+	"ui.canvas.use_file_freshness.this_file_could_not_be_re_read_so_the_version_we_last_read_is_still_show": undefined;
+	"ui.canvas.use_file_freshness.this_file_could_not_be_read_the_last_version_we_read_is_still_shown_and": undefined;
+	"ui.canvas.use_file_freshness.this_file_is_no_longer_on_disk_the_last_version_we_read_is_still_shown_a": undefined;
+	"ui.canvas.use_file_freshness.up_to_date": undefined;
+	"ui.canvas.use_file_freshness.your_save_replaced_the_change_on_disk": undefined;
+	"ui.canvas.use_file_freshness.your_save_replaced_the_version_that_had_changed_on_disk_re_read_the_file": undefined;
+	"ui.canvas.use_file_freshness.your_unsaved_edits_are_kept_until_the_app_quits_and_saving_is_paused_whi": undefined;
+	"ui.canvas.variable_form_dialog.about_the_variable_name": undefined;
+	"ui.canvas.variable_form_dialog.cancel": undefined;
+	"ui.canvas.variable_form_dialog.create": undefined;
+	"ui.canvas.variable_form_dialog.e_g_my_variable_name": undefined;
+	"ui.canvas.variable_form_dialog.edit_variable": undefined;
+	"ui.canvas.variable_form_dialog.enter_a_valid_json_structure": undefined;
+	"ui.canvas.variable_form_dialog.enter_variable_value": undefined;
+	"ui.canvas.variable_form_dialog.example_key_example_value": undefined;
+	"ui.canvas.variable_form_dialog.item1_item2": undefined;
+	"ui.canvas.variable_form_dialog.name_key": undefined;
+	"ui.canvas.variable_form_dialog.new_variable": undefined;
+	"ui.canvas.variable_form_dialog.save": undefined;
+	"ui.canvas.variable_form_dialog.saving": undefined;
+	"ui.canvas.variable_form_dialog.the_unique_identifier_for_the_variable_e_g_api_key_user_preference_canno": undefined;
+	"ui.canvas.variable_form_dialog.the_variable_could_not_be_saved_try_again": undefined;
+	"ui.canvas.variable_form_dialog.this_name_cannot_be_sent_use_up_to_128_characters_without_control_charac": undefined;
+	"ui.canvas.variable_form_dialog.true_or_false": undefined;
+	"ui.canvas.variable_form_dialog.type": undefined;
+	"ui.canvas.variable_form_dialog.value": undefined;
+	"ui.canvas.variable_form_dialog.value_json_array": undefined;
+	"ui.canvas.variable_form_dialog.value_json_object": undefined;
+	"ui.canvas.variable_form_dialog.value_true_false": undefined;
+	"ui.canvas.variables_viewer.are_you_sure_you_want_to_delete_the_variable": undefined;
+	"ui.canvas.variables_viewer.cancel": undefined;
+	"ui.canvas.variables_viewer.code_memory": undefined;
+	"ui.canvas.variables_viewer.code_memory_starts_when_you_send_your_first_message": undefined;
+	"ui.canvas.variables_viewer.copied": undefined;
+	"ui.canvas.variables_viewer.copy_value": undefined;
+	"ui.canvas.variables_viewer.could_not_load_variables": undefined;
+	"ui.canvas.variables_viewer.could_not_reach_the_backend": undefined;
+	"ui.canvas.variables_viewer.count": { count: number };
+	"ui.canvas.variables_viewer.delete": undefined;
+	"ui.canvas.variables_viewer.delete_variable": undefined;
+	"ui.canvas.variables_viewer.edit_variable": undefined;
+	"ui.canvas.variables_viewer.it_fills_in_when_code_runs_in_this_chat": undefined;
+	"ui.canvas.variables_viewer.loading_variables": undefined;
+	"ui.canvas.variables_viewer.new_variable": undefined;
+	"ui.canvas.variables_viewer.no_code_memory_yet": undefined;
+	"ui.canvas.variables_viewer.nothing_stored_yet": undefined;
+	"ui.canvas.variables_viewer.reading": undefined;
+	"ui.canvas.variables_viewer.settings_then_application_updates_and_info_installs_the_newer_backend": undefined;
+	"ui.canvas.variables_viewer.the_backend_did_not_answer_so_this_chat_s_code_memory_could_not_be_read": undefined;
+	"ui.canvas.variables_viewer.the_backend_does_not_have_a_chat_with_this_session_id": undefined;
+	"ui.canvas.variables_viewer.this_action_cannot_be_undone": undefined;
+	"ui.canvas.variables_viewer.this_app_can_read_code_memory_the_backend_it_is_running_against_is_older": undefined;
+	"ui.canvas.variables_viewer.this_chat_cannot_read_code_memory": undefined;
+	"ui.canvas.variables_viewer.this_chat_keeps_a_value_bigger_than_this_panel_can_list_so_nothing_is_sh": undefined;
+	"ui.canvas.variables_viewer.this_variable_can_t_be_edited_because_its_type_is_not_yet_supported_for": undefined;
+	"ui.canvas.variables_viewer.this_variable_s_name_can_t_be_edited_from_here_copy_it_to_the_session_un": undefined;
+	"ui.canvas.variables_viewer.too_large_to_show_here": undefined;
+	"ui.canvas.variables_viewer.update_the_backend_to_read_code_memory": undefined;
+	"ui.canvas.variables_viewer.when_the_agent_runs_code_for_you_the_values_it_keeps_around_between_step": undefined;
+	"ui.canvas.video_preview.file_no_longer_exists": undefined;
+	"ui.canvas.video_preview.this_video_could_not_be_played": undefined;
+	"ui.canvas.video_preview.this_video_is_no_longer_in_the_session": undefined;
+	"ui.canvas.video_preview.too_large_to_preview": undefined;
+	"ui.canvas.view_name.view_count": {
+		label: string;
+		counted: number;
+		noun: string;
+		pluralnoun: string;
+	};
+	"ui.canvas.view_name.view_empty": { label: string };
+	"ui.canvas.view_name.view_shown_this_list_is_capped": {
+		label: string;
+		counted: number;
+		noun: string;
+		pluralnoun: string;
+	};
+	"ui.canvas.wysiwyg_markdown_editor.add": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.bold_ctrl_b": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.bullet_list": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.cell": { i: number; j: number };
+	"ui.canvas.wysiwyg_markdown_editor.checklist": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.code_block": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.file_saved": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.file_saved_replacing_the_change": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.header": { j: number };
+	"ui.canvas.wysiwyg_markdown_editor.insert_image": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.insert_link": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.insert_table": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.italic_ctrl_i": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.more_formatting": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.numbered_list": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.proposed_change": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.quote": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.redo": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.redo_ctrl_shift_z": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.remove": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.strikethrough": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.undo": undefined;
+	"ui.canvas.wysiwyg_markdown_editor.undo_ctrl_z": undefined;
 	"ui.chat.analytics.filters.top_level_only": undefined;
 	"ui.chat.analytics.search.clear": undefined;
 	"ui.chat.analytics.search.sessions": undefined;
@@ -2165,40 +2507,1013 @@ export type MessageParams = {
 	"ui.chat.live_updates.reload": undefined;
 	"ui.chat.live_updates.reload_failed": undefined;
 	"ui.chat.live_updates.reloading": undefined;
+	"ui.chat.pickers.analytics_model.all_sessions": { base: string };
+	"ui.chat.pickers.analytics_model.as_of": {
+		base: string;
+		formatclock: string;
+	};
+	"ui.chat.pickers.analytics_model.cache_hit_rate": undefined;
+	"ui.chat.pickers.analytics_model.cache_reads_as_a_share_of_read_context_tokens_means_no_call_reported_a_c": undefined;
+	"ui.chat.pickers.analytics_model.coverage": undefined;
+	"ui.chat.pickers.analytics_model.daily_rollup": { spanlabel: string };
+	"ui.chat.pickers.analytics_model.daily_spend": undefined;
+	"ui.chat.pickers.analytics_model.daily_tokens": undefined;
+	"ui.chat.pickers.analytics_model.decode_rate_over_all_calls": {
+		formatcount: string;
+	};
+	"ui.chat.pickers.analytics_model.decode_rate_over_of_calls": {
+		formatcount: string;
+		formatcount2: string;
+	};
+	"ui.chat.pickers.analytics_model.from_with_usage": {
+		series: string;
+		span: string;
+		length: number;
+	};
+	"ui.chat.pickers.analytics_model.highest_at": {
+		formatdaybucket: string;
+		format: string;
+		unit: string;
+	};
+	"ui.chat.pickers.analytics_model.last_days": { days: number };
+	"ui.chat.pickers.analytics_model.no_call_in_this_window_has_a_measured_generation_time_yet_so_the_rate_re": {
+		unknown: string;
+	};
+	"ui.chat.pickers.analytics_model.spend": undefined;
+	"ui.chat.pickers.analytics_model.to": {
+		formatdaybucket: string;
+		formatdaybucket2: string;
+	};
+	"ui.chat.pickers.analytics_model.today": undefined;
+	"ui.chat.pickers.analytics_model.tok_s_decode": undefined;
+	"ui.chat.pickers.analytics_model.tok_s_wall": undefined;
+	"ui.chat.pickers.analytics_model.tokens": undefined;
+	"ui.chat.pickers.analytics_model.total": { format: string; unit: string };
+	"ui.chat.pickers.analytics_model.wall_rate_over_of_calls": {
+		formatcount: string;
+		formatcount2: string;
+	};
+	"ui.chat.pickers.analytics_panel.30_days": undefined;
+	"ui.chat.pickers.analytics_panel.7_days": undefined;
+	"ui.chat.pickers.analytics_panel.all_sessions": undefined;
+	"ui.chat.pickers.analytics_panel.analytics_accrue_as_sessions_make_provider_calls": undefined;
+	"ui.chat.pickers.analytics_panel.analytics_region": undefined;
+	"ui.chat.pickers.analytics_panel.basis": undefined;
+	"ui.chat.pickers.analytics_panel.calls": undefined;
+	"ui.chat.pickers.analytics_panel.channel": undefined;
+	"ui.chat.pickers.analytics_panel.channel_rows_in_this_conversation_could_not_be_read": undefined;
+	"ui.chat.pickers.analytics_panel.channel_spend_for_this_conversation_from_the_published_channel_ledger": undefined;
+	"ui.chat.pickers.analytics_panel.cost": undefined;
+	"ui.chat.pickers.analytics_panel.daily_spend": undefined;
+	"ui.chat.pickers.analytics_panel.daily_tokens": undefined;
+	"ui.chat.pickers.analytics_panel.failed": { formatcount: string };
+	"ui.chat.pickers.analytics_panel.from_the_ledger_ranked_by_output_tokens": {
+		windowtitle: string;
+	};
+	"ui.chat.pickers.analytics_panel.generation_rate_by_model_read_from_the_usage_ledger": {
+		value: string;
+	};
+	"ui.chat.pickers.analytics_panel.in_out": {
+		formattokens: string;
+		formattokens2: string;
+	};
+	"ui.chat.pickers.analytics_panel.metric": undefined;
+	"ui.chat.pickers.analytics_panel.model": undefined;
+	"ui.chat.pickers.analytics_panel.model_calls_tokens_and_known_cost_from_the_backend_analytics_ledger": undefined;
+	"ui.chat.pickers.analytics_panel.no_call_in_this_window_has_a_published_price": undefined;
+	"ui.chat.pickers.analytics_panel.no_calls_recorded_in_the_last_days": {
+		windowdays: number;
+	};
+	"ui.chat.pickers.analytics_panel.no_calls_recorded_today": undefined;
+	"ui.chat.pickers.analytics_panel.no_channel_rows_in_this_conversation": undefined;
+	"ui.chat.pickers.analytics_panel.no_daily_rows_for_this_window": undefined;
+	"ui.chat.pickers.analytics_panel.no_per_model_rows_in_this_window": undefined;
+	"ui.chat.pickers.analytics_panel.no_per_provider_rows_in_this_window": undefined;
+	"ui.chat.pickers.analytics_panel.no_per_session_rows_in_this_window": undefined;
+	"ui.chat.pickers.analytics_panel.no_priced_calls_in_this_window": undefined;
+	"ui.chat.pickers.analytics_panel.of_calls_priced": {
+		formatcount: string;
+		formatcount2: string;
+	};
+	"ui.chat.pickers.analytics_panel.of_context_written": {
+		formattokens: string;
+		formattokens2: string;
+		formattokens3: string;
+	};
+	"ui.chat.pickers.analytics_panel.of_in_this_window": {
+		key: string;
+		percentageof: string;
+		value: string;
+	};
+	"ui.chat.pickers.analytics_panel.of_in_this_windowf655cc": {
+		label: string;
+		percentageof: string;
+		value: string;
+	};
+	"ui.chat.pickers.analytics_panel.of_the_output_tokens_this_ledger_read_recorded_in_this_window": {
+		label: string;
+		percentageof: string;
+	};
+	"ui.chat.pickers.analytics_panel.own_figures_per_session_totals_include_subagents": undefined;
+	"ui.chat.pickers.analytics_panel.provider": undefined;
+	"ui.chat.pickers.analytics_panel.requests": undefined;
+	"ui.chat.pickers.analytics_panel.session": undefined;
+	"ui.chat.pickers.analytics_panel.sessionf7f199": undefined;
+	"ui.chat.pickers.analytics_panel.sessions": undefined;
+	"ui.chat.pickers.analytics_panel.spend": undefined;
+	"ui.chat.pickers.analytics_panel.the_backend_returned_no_analytics": undefined;
+	"ui.chat.pickers.analytics_panel.the_daily_rollup_only_covers_calls_recorded_since_it_began": undefined;
+	"ui.chat.pickers.analytics_panel.the_ledger_records_a_model_on_every_provider_call_so_this_window_has_non": undefined;
+	"ui.chat.pickers.analytics_panel.this_conversation_all_time_total": {
+		total: string;
+	};
+	"ui.chat.pickers.analytics_panel.this_session": undefined;
+	"ui.chat.pickers.analytics_panel.today": undefined;
+	"ui.chat.pickers.analytics_panel.tokens": undefined;
+	"ui.chat.pickers.analytics_panel.usage_by_provider_in_this_window": {
+		cache_hit_meaning: string;
+	};
+	"ui.chat.pickers.analytics_panel.usage_by_session_in_this_window": {
+		cache_hit_meaning: string;
+	};
+	"ui.chat.pickers.analytics_panel.window": undefined;
+	"ui.chat.pickers.analytics_session_state.a_to_z": undefined;
+	"ui.chat.pickers.analytics_session_state.all_sessions_in_this_window_have_a_parent": {
+		formatcount: string;
+	};
+	"ui.chat.pickers.analytics_session_state.calls": undefined;
+	"ui.chat.pickers.analytics_session_state.clear_the_search_to_see": {
+		filteredtext: string;
+		filtered: number;
+		scope: string;
+	};
+	"ui.chat.pickers.analytics_session_state.cost": undefined;
+	"ui.chat.pickers.analytics_session_state.filter_top": {
+		matchedtext: string;
+		matched: number;
+	};
+	"ui.chat.pickers.analytics_session_state.filter_top_zero": undefined;
+	"ui.chat.pickers.analytics_session_state.highest_first": undefined;
+	"ui.chat.pickers.analytics_session_state.lowest_first": undefined;
+	"ui.chat.pickers.analytics_session_state.match_count": {
+		matchedtext: string;
+		totaltext: string;
+		total: number;
+	};
+	"ui.chat.pickers.analytics_session_state.match_query": {
+		matchedtext: string;
+		totaltext: string;
+		total: number;
+		matched: number;
+		query: string;
+	};
+	"ui.chat.pickers.analytics_session_state.no_sessions_match": {
+		value: string;
+	};
+	"ui.chat.pickers.analytics_session_state.no_sessions_match890478": {
+		query: string;
+	};
+	"ui.chat.pickers.analytics_session_state.no_top_level_sessions_in_this_window": undefined;
+	"ui.chat.pickers.analytics_session_state.page_of": {
+		page: number;
+		pagecount: number;
+	};
+	"ui.chat.pickers.analytics_session_state.search_cleared": undefined;
+	"ui.chat.pickers.analytics_session_state.search_match": {
+		matchedtext: string;
+		matched: number;
+		query: string;
+	};
+	"ui.chat.pickers.analytics_session_state.session": undefined;
+	"ui.chat.pickers.analytics_session_state.sorted_by": {
+		value: string;
+		sortword: string;
+	};
+	"ui.chat.pickers.analytics_session_state.the_one_session_in_this_window_has_a_parent": undefined;
+	"ui.chat.pickers.analytics_session_state.tokens": undefined;
+	"ui.chat.pickers.analytics_session_state.top_level_only": {
+		searched: string;
+	};
+	"ui.chat.pickers.analytics_session_state.top_level_only_off": {
+		matchedtext: string;
+		matched: number;
+	};
+	"ui.chat.pickers.analytics_session_state.z_to_a": undefined;
 	"ui.chat.pickers.approvals.title": undefined;
 	"ui.chat.pickers.commands.title": undefined;
+	"ui.chat.pickers.context_model.context_breakdown_unavailable": undefined;
+	"ui.chat.pickers.context_model.environment": undefined;
+	"ui.chat.pickers.context_model.instructions": undefined;
+	"ui.chat.pickers.context_model.messages": undefined;
+	"ui.chat.pickers.context_model.not_measured": undefined;
+	"ui.chat.pickers.context_model.skills_mcp_goal": undefined;
+	"ui.chat.pickers.context_model.tool_inventory": undefined;
+	"ui.chat.pickers.context_model.tool_schemas": undefined;
+	"ui.chat.pickers.context_panel.asking_the_owner": undefined;
+	"ui.chat.pickers.context_panel.block": undefined;
+	"ui.chat.pickers.context_panel.context": undefined;
+	"ui.chat.pickers.context_panel.context_estimate_region": undefined;
+	"ui.chat.pickers.context_panel.context_window": { value: string };
+	"ui.chat.pickers.context_panel.estimate": undefined;
+	"ui.chat.pickers.context_panel.estimated_tokenized_when_this_panel_opened": undefined;
+	"ui.chat.pickers.context_panel.exact_from_the_last_provider_reply": undefined;
+	"ui.chat.pickers.context_panel.last_cache_read": undefined;
+	"ui.chat.pickers.context_panel.live_measured_on_the_last_request": undefined;
+	"ui.chat.pickers.context_panel.live_not_measured_yet": undefined;
+	"ui.chat.pickers.context_panel.next_request": undefined;
+	"ui.chat.pickers.context_panel.next_request_estimate": undefined;
+	"ui.chat.pickers.context_panel.next_request_estimate_by_row": undefined;
+	"ui.chat.pickers.context_panel.of_this_estimate": {
+		label: string;
+		formatpercent: string;
+	};
+	"ui.chat.pickers.context_panel.the_breakdown_is_not_available_for_this_session_yet_send_a_turn_and_open": undefined;
+	"ui.chat.pickers.context_panel.the_owner_returned_no_breakdown": undefined;
+	"ui.chat.pickers.context_panel.this_conversation": undefined;
+	"ui.chat.pickers.context_panel.tokens": undefined;
+	"ui.chat.pickers.context_panel.tokens_read": undefined;
+	"ui.chat.pickers.context_panel.total": undefined;
+	"ui.chat.pickers.context_panel.total_of_the_context_window": {
+		formatpercent: string;
+	};
+	"ui.chat.pickers.context_panel.what_the_next_request_will_carry": undefined;
 	"ui.chat.pickers.copy.title": undefined;
 	"ui.chat.pickers.credential.forget": undefined;
 	"ui.chat.pickers.credential.forget_confirmation": { name: string };
 	"ui.chat.pickers.credential.title": undefined;
+	"ui.chat.pickers.destination_pickers.a_judge_decides_when_it_is_met": undefined;
+	"ui.chat.pickers.destination_pickers.a_standing_goal_the_agent_keeps_in_view_on_every_turn": undefined;
+	"ui.chat.pickers.destination_pickers.active": { activelabel: string };
+	"ui.chat.pickers.destination_pickers.agent_profile": undefined;
+	"ui.chat.pickers.destination_pickers.aggregated": undefined;
+	"ui.chat.pickers.destination_pickers.also_make_this_the_default_effort_for_new_sessions": undefined;
+	"ui.chat.pickers.destination_pickers.also_make_this_the_default_for_new_sessions": undefined;
+	"ui.chat.pickers.destination_pickers.an_explicit_name_takes_precedence_over_the_generated_title": undefined;
+	"ui.chat.pickers.destination_pickers.applies_to_this_session_only": undefined;
+	"ui.chat.pickers.destination_pickers.as_quote": undefined;
+	"ui.chat.pickers.destination_pickers.attach_team": undefined;
+	"ui.chat.pickers.destination_pickers.available": undefined;
+	"ui.chat.pickers.destination_pickers.chars": { length: number };
+	"ui.chat.pickers.destination_pickers.checking": undefined;
+	"ui.chat.pickers.destination_pickers.choose_the_model_for_this_session": undefined;
+	"ui.chat.pickers.destination_pickers.choose_the_model_this_conversation_starts_on_and_keeps_running_on_your_d": undefined;
+	"ui.chat.pickers.destination_pickers.clipboard_refused": {
+		errortext: string;
+	};
+	"ui.chat.pickers.destination_pickers.code": undefined;
+	"ui.chat.pickers.destination_pickers.code_blocks": undefined;
+	"ui.chat.pickers.destination_pickers.cold_no_owner_running": undefined;
+	"ui.chat.pickers.destination_pickers.cold_reopens_on_the_next_message": undefined;
+	"ui.chat.pickers.destination_pickers.commands_pick_one_to_run_it_commands_that_take_an_argument_open_their_pi": {
+		length: number;
+	};
+	"ui.chat.pickers.destination_pickers.completed": undefined;
+	"ui.chat.pickers.destination_pickers.completed_of": {
+		completed: number;
+		iterations: number;
+	};
+	"ui.chat.pickers.destination_pickers.completed_only": { completed: number };
+	"ui.chat.pickers.destination_pickers.context": undefined;
+	"ui.chat.pickers.destination_pickers.copied_characters": { length: number };
+	"ui.chat.pickers.destination_pickers.copies_the_complete_history_into_a_new_conversation_at_the_next_safe_bou": undefined;
+	"ui.chat.pickers.destination_pickers.copies_this_conversation_up_to_and_including_everything_after_it_is_left": {
+		value: string;
+	};
+	"ui.chat.pickers.destination_pickers.create": undefined;
+	"ui.chat.pickers.destination_pickers.default_approvals_for_all_sessions_that_follow_it_this_session_follows_i": {
+		string: string;
+	};
+	"ui.chat.pickers.destination_pickers.default_effort": undefined;
+	"ui.chat.pickers.destination_pickers.default_effort_for_new_sessions": {
+		effortdisplay: string;
+	};
+	"ui.chat.pickers.destination_pickers.default_effort_for_new_sessions_picks_here_update_it_too": {
+		effortdisplay: string;
+	};
+	"ui.chat.pickers.destination_pickers.default_for_all_sessions_that_follow_it": undefined;
+	"ui.chat.pickers.destination_pickers.default_for_new_sessions": {
+		modelname: string;
+	};
+	"ui.chat.pickers.destination_pickers.default_for_new_sessions_picks_here_update_it_too": {
+		modelname: string;
+	};
+	"ui.chat.pickers.destination_pickers.delivered_exactly_once_to_the_new_conversation": undefined;
+	"ui.chat.pickers.destination_pickers.desktop": undefined;
+	"ui.chat.pickers.destination_pickers.desktop_theme_the_terminal_keeps_its_own_tui_theme_setting": undefined;
+	"ui.chat.pickers.destination_pickers.discoverable": undefined;
+	"ui.chat.pickers.destination_pickers.effort_for_this_conversation": {
+		value: string;
+	};
+	"ui.chat.pickers.destination_pickers.effort_is_not_adjustable_on_this_model": undefined;
+	"ui.chat.pickers.destination_pickers.effort_levels_supports_applies_to_this_session_unless_you_also_make_it_t": {
+		label: string;
+	};
+	"ui.chat.pickers.destination_pickers.effort_levels_supports_this_sets_the_level_this_conversation_starts_on_a": {
+		label: string;
+	};
+	"ui.chat.pickers.destination_pickers.effort_not_changed_default_for_new_sessions_stays": {
+		effortdisplay: string;
+	};
+	"ui.chat.pickers.destination_pickers.ends_the_chosen_sessions_current_work_through_the_runtime_s_own_stop_pro": undefined;
+	"ui.chat.pickers.destination_pickers.every_canonical_session_live_or_cold_picking_one_attaches_this_window_to": undefined;
+	"ui.chat.pickers.destination_pickers.family": undefined;
+	"ui.chat.pickers.destination_pickers.first_message_in_the_fork_optional": undefined;
+	"ui.chat.pickers.destination_pickers.fixed_number_of_turns": undefined;
+	"ui.chat.pickers.destination_pickers.forgot": { value: string };
+	"ui.chat.pickers.destination_pickers.fork": undefined;
+	"ui.chat.pickers.destination_pickers.fork_from_this_message": undefined;
+	"ui.chat.pickers.destination_pickers.fork_this_conversation": undefined;
+	"ui.chat.pickers.destination_pickers.forked_at_the_next_safe_boundary_into_a_new_conversation_the_original_co": undefined;
+	"ui.chat.pickers.destination_pickers.forked_from_this_message_everything_after_it_stays_in_the_original_which": undefined;
+	"ui.chat.pickers.destination_pickers.goal": undefined;
+	"ui.chat.pickers.destination_pickers.has_no_adjustable_effort_pick_a_reasoning_model_with_model_first": {
+		label: string;
+	};
+	"ui.chat.pickers.destination_pickers.has_no_adjustable_effort_pick_another_model": {
+		label: string;
+	};
+	"ui.chat.pickers.destination_pickers.has_not_reported_its_effort_levels_yet_they_appear_after_the_first_turn": {
+		label: string;
+	};
+	"ui.chat.pickers.destination_pickers.has_not_reported_its_effort_levels_yet_they_appear_after_the_next_turn_o": {
+		label: string;
+	};
+	"ui.chat.pickers.destination_pickers.if_that_message_was_sent_just_now_it_may_not_be_in_the_conversation_s_hi": undefined;
+	"ui.chat.pickers.destination_pickers.judge": undefined;
+	"ui.chat.pickers.destination_pickers.k": { value: number };
+	"ui.chat.pickers.destination_pickers.lines": { length: number };
+	"ui.chat.pickers.destination_pickers.loop_mode": undefined;
+	"ui.chat.pickers.destination_pickers.masked_cleared_after_storing": undefined;
+	"ui.chat.pickers.destination_pickers.message": undefined;
+	"ui.chat.pickers.destination_pickers.messages": undefined;
+	"ui.chat.pickers.destination_pickers.model_not_changed_default_for_new_sessions_stays": {
+		modelname: string;
+	};
+	"ui.chat.pickers.destination_pickers.must_exist_on_this_machine": undefined;
+	"ui.chat.pickers.destination_pickers.my_api_key": undefined;
+	"ui.chat.pickers.destination_pickers.name": undefined;
+	"ui.chat.pickers.destination_pickers.native_inputs": undefined;
+	"ui.chat.pickers.destination_pickers.native_outputs": undefined;
+	"ui.chat.pickers.destination_pickers.needs_an_argument": undefined;
+	"ui.chat.pickers.destination_pickers.needs_sign_in": undefined;
+	"ui.chat.pickers.destination_pickers.needs_sign_in660cb8": undefined;
+	"ui.chat.pickers.destination_pickers.new_conversation_the_previous_one_keeps_running": {
+		id: string;
+	};
+	"ui.chat.pickers.destination_pickers.no_credentials_stored_yet": undefined;
+	"ui.chat.pickers.destination_pickers.no_desktop_theme_named": {
+		wanted: string;
+	};
+	"ui.chat.pickers.destination_pickers.no_detail_returned": undefined;
+	"ui.chat.pickers.destination_pickers.no_models_are_signed_in_yet": undefined;
+	"ui.chat.pickers.destination_pickers.no_profiles_found": undefined;
+	"ui.chat.pickers.destination_pickers.no_session_was_running_so_it_was_reopened_from_history": undefined;
+	"ui.chat.pickers.destination_pickers.no_skills_are_discoverable_from_this_session_s_directory": undefined;
+	"ui.chat.pickers.destination_pickers.no_stored_account_for": {
+		wanted: string;
+	};
+	"ui.chat.pickers.destination_pickers.no_stored_accounts": undefined;
+	"ui.chat.pickers.destination_pickers.no_teams_are_registered": undefined;
+	"ui.chat.pickers.destination_pickers.not_known_yet": undefined;
+	"ui.chat.pickers.destination_pickers.not_supported": undefined;
+	"ui.chat.pickers.destination_pickers.nothing_to_copy_yet": undefined;
+	"ui.chat.pickers.destination_pickers.nothing_was_running": undefined;
+	"ui.chat.pickers.destination_pickers.opens_the_provider_s_sign_in_methods_in_settings_browser_and_device_flow": undefined;
+	"ui.chat.pickers.destination_pickers.output": { toolname: string };
+	"ui.chat.pickers.destination_pickers.output_limit": undefined;
+	"ui.chat.pickers.destination_pickers.pick_a_message_a_code_block_or_a_quoted_excerpt_it_goes_to_the_clipboard": undefined;
+	"ui.chat.pickers.destination_pickers.pick_a_team_to_see_how_it_resolves": undefined;
+	"ui.chat.pickers.destination_pickers.picks_here_also_set_the_default_effort_for_new_sessions": undefined;
+	"ui.chat.pickers.destination_pickers.picks_here_also_set_the_default_for_new_sessions": undefined;
+	"ui.chat.pickers.destination_pickers.ports": undefined;
+	"ui.chat.pickers.destination_pickers.quote": undefined;
+	"ui.chat.pickers.destination_pickers.re_reads_the_canonical_session_from_the_backend_and_re_attaches_the_stre": undefined;
+	"ui.chat.pickers.destination_pickers.reason": undefined;
+	"ui.chat.pickers.destination_pickers.reasoning": undefined;
+	"ui.chat.pickers.destination_pickers.reattached_to_the_running_session": undefined;
+	"ui.chat.pickers.destination_pickers.refresh_from_providers": undefined;
+	"ui.chat.pickers.destination_pickers.refreshing": undefined;
+	"ui.chat.pickers.destination_pickers.released": undefined;
+	"ui.chat.pickers.destination_pickers.reload": undefined;
+	"ui.chat.pickers.destination_pickers.removes_one_stored_account_credentials_supplied_through_environment_vari": undefined;
+	"ui.chat.pickers.destination_pickers.rename": undefined;
+	"ui.chat.pickers.destination_pickers.reopened_recent": {
+		subject: string;
+		value: string;
+		recentrows: number;
+	};
+	"ui.chat.pickers.destination_pickers.repeats_turns_toward_a_goal_approval_and_question_gates_still_stop_and_w": undefined;
+	"ui.chat.pickers.destination_pickers.request_admitted_once": {
+		text: string;
+		duplicate: string;
+	};
+	"ui.chat.pickers.destination_pickers.request_optional": undefined;
+	"ui.chat.pickers.destination_pickers.resolving_the_effort": undefined;
+	"ui.chat.pickers.destination_pickers.resolving_the_effortd0fa08": undefined;
+	"ui.chat.pickers.destination_pickers.resolving_the_model": undefined;
+	"ui.chat.pickers.destination_pickers.resolving_the_model24577b": undefined;
+	"ui.chat.pickers.destination_pickers.resumed": { sessionlabel: string };
+	"ui.chat.pickers.destination_pickers.resumed_2d9cda": { label: string };
+	"ui.chat.pickers.destination_pickers.saving_the_default": undefined;
+	"ui.chat.pickers.destination_pickers.saving_the_default9573f2": undefined;
+	"ui.chat.pickers.destination_pickers.scope": undefined;
+	"ui.chat.pickers.destination_pickers.search_by_title_or_id": undefined;
+	"ui.chat.pickers.destination_pickers.search_commands": undefined;
+	"ui.chat.pickers.destination_pickers.search_models": undefined;
+	"ui.chat.pickers.destination_pickers.sent_once_with_the_attachment_it_becomes_the_first_turn": undefined;
+	"ui.chat.pickers.destination_pickers.session_runs_on_the_owner": undefined;
+	"ui.chat.pickers.destination_pickers.set_a_standing_goal_with_goal_first_or_switch_to_a_goal_loop": undefined;
+	"ui.chat.pickers.destination_pickers.set_goal": undefined;
+	"ui.chat.pickers.destination_pickers.show_all_supported_models": undefined;
+	"ui.chat.pickers.destination_pickers.show_all_supported_models_sign_in": {
+		scopecount: number;
+	};
+	"ui.chat.pickers.destination_pickers.sign_in_state_unknown": undefined;
+	"ui.chat.pickers.destination_pickers.sign_out": undefined;
+	"ui.chat.pickers.destination_pickers.sign_out_failed": undefined;
+	"ui.chat.pickers.destination_pickers.signed_in": undefined;
+	"ui.chat.pickers.destination_pickers.signed_out_environment_variables_and_other_accounts_are_untouched": undefined;
+	"ui.chat.pickers.destination_pickers.skill": undefined;
+	"ui.chat.pickers.destination_pickers.skills_discoverable_from_this_session_s_working_directory_scope_listed_i": {
+		value: string;
+	};
+	"ui.chat.pickers.destination_pickers.stalled_send_a_message_to_continue": undefined;
+	"ui.chat.pickers.destination_pickers.start_loop": undefined;
+	"ui.chat.pickers.destination_pickers.starts_a_fresh_canonical_session_work_in_the_current_one_continues": undefined;
+	"ui.chat.pickers.destination_pickers.status": undefined;
+	"ui.chat.pickers.destination_pickers.stop": undefined;
+	"ui.chat.pickers.destination_pickers.stop_requested_acknowledged_not_a_completed_exit": undefined;
+	"ui.chat.pickers.destination_pickers.stop_was_not_accepted": undefined;
+	"ui.chat.pickers.destination_pickers.store": undefined;
+	"ui.chat.pickers.destination_pickers.stored": undefined;
+	"ui.chat.pickers.destination_pickers.stored54112c": {
+		stored_credentials: number;
+	};
+	"ui.chat.pickers.destination_pickers.stored_the_value_was_not_echoed": {
+		value: string;
+	};
+	"ui.chat.pickers.destination_pickers.stores_a_secret_for_this_session_s_tools_by_name_the_value_never_appears": undefined;
+	"ui.chat.pickers.destination_pickers.supported": undefined;
+	"ui.chat.pickers.destination_pickers.switching_the_effort": undefined;
+	"ui.chat.pickers.destination_pickers.switching_the_effort87b64b": undefined;
+	"ui.chat.pickers.destination_pickers.switching_the_model": undefined;
+	"ui.chat.pickers.destination_pickers.switching_the_model8e7138": undefined;
+	"ui.chat.pickers.destination_pickers.takes_an_argument": undefined;
+	"ui.chat.pickers.destination_pickers.team": undefined;
+	"ui.chat.pickers.destination_pickers.team_chart": undefined;
+	"ui.chat.pickers.destination_pickers.the_conversation_could_not_be_reopened": undefined;
+	"ui.chat.pickers.destination_pickers.the_conversation_was_not_created": undefined;
+	"ui.chat.pickers.destination_pickers.the_credential_was_not_removed": undefined;
+	"ui.chat.pickers.destination_pickers.the_credential_was_not_stored": undefined;
+	"ui.chat.pickers.destination_pickers.the_current_model": undefined;
+	"ui.chat.pickers.destination_pickers.the_default_was_not_saved": undefined;
+	"ui.chat.pickers.destination_pickers.the_effort_default_was_not_saved": undefined;
+	"ui.chat.pickers.destination_pickers.the_effort_default_was_not_saved6143e6": undefined;
+	"ui.chat.pickers.destination_pickers.the_effort_was_not_changed": undefined;
+	"ui.chat.pickers.destination_pickers.the_fork_starts_before_the_message_you_chose_a_cut_cannot_separate_a_too": undefined;
+	"ui.chat.pickers.destination_pickers.the_fork_was_not_created": undefined;
+	"ui.chat.pickers.destination_pickers.the_message_you_chose": undefined;
+	"ui.chat.pickers.destination_pickers.the_model_was_not_changed": undefined;
+	"ui.chat.pickers.destination_pickers.the_model_was_not_changed6dd4bb": {
+		text: string;
+	};
+	"ui.chat.pickers.destination_pickers.the_standing_goal_is_prepended_to_every_turn_clear_it_to_remove_it": undefined;
+	"ui.chat.pickers.destination_pickers.theme": { name: string };
+	"ui.chat.pickers.destination_pickers.theme_058ec5": { label: string };
+	"ui.chat.pickers.destination_pickers.this_conversation_starts_on_and_keeps_running_on_it_choosing_another_cha": {
+		shownselector: string;
+	};
+	"ui.chat.pickers.destination_pickers.this_conversation_will_run": {
+		selectorofresolution: string;
+	};
+	"ui.chat.pickers.destination_pickers.this_goal_is_settled_it_stays_in_the_goal_history_dismiss_it_to_clear_th": undefined;
+	"ui.chat.pickers.destination_pickers.this_message": { cutexcerpt: string };
+	"ui.chat.pickers.destination_pickers.this_pane_has_not_resolved_a_model_to_change": {
+		refused: string;
+	};
+	"ui.chat.pickers.destination_pickers.this_session": undefined;
+	"ui.chat.pickers.destination_pickers.this_session_runs_choosing_another_applies_to_this_session_only_unless_y": {
+		shownselector: string;
+	};
+	"ui.chat.pickers.destination_pickers.tool_output": undefined;
+	"ui.chat.pickers.destination_pickers.tools": undefined;
+	"ui.chat.pickers.destination_pickers.tools_run_without_asking": undefined;
+	"ui.chat.pickers.destination_pickers.turns_1_to_25": undefined;
+	"ui.chat.pickers.destination_pickers.unknown": undefined;
+	"ui.chat.pickers.destination_pickers.until_a_goal_is_met": undefined;
+	"ui.chat.pickers.destination_pickers.untitled": { id: string };
+	"ui.chat.pickers.destination_pickers.use_profile": undefined;
+	"ui.chat.pickers.destination_pickers.use_team": undefined;
+	"ui.chat.pickers.destination_pickers.uses_the_standing_goal": {
+		standinggoal: string;
+	};
+	"ui.chat.pickers.destination_pickers.value": undefined;
+	"ui.chat.pickers.destination_pickers.what_should_do": {
+		readableprofilename: string;
+	};
+	"ui.chat.pickers.destination_pickers.whether_write_and_command_tools_ask_before_running": undefined;
+	"ui.chat.pickers.destination_pickers.working_directory": undefined;
+	"ui.chat.pickers.destination_pickers.write_and_command_tools_prompt_before_running": undefined;
+	"ui.chat.pickers.destination_pickers.your_first_message_starts_the_chat_with_this_profile": undefined;
+	"ui.chat.pickers.destination_pickers.your_first_message_starts_the_chat_with_this_team": undefined;
+	"ui.chat.pickers.destination_pickers.your_message_was_admitted_once": {
+		detail: string;
+	};
 	"ui.chat.pickers.effort.title": undefined;
+	"ui.chat.pickers.failovers_model.failover_is_in_force": undefined;
+	"ui.chat.pickers.failovers_model.no_model_recorded": undefined;
+	"ui.chat.pickers.failovers_model.same_as_selected": undefined;
+	"ui.chat.pickers.failovers_panel.a_failure_here_goes_straight_to_an_error": undefined;
+	"ui.chat.pickers.failovers_panel.chains_are_configuration_read_from_your_settings_file_what_is_actually_s": undefined;
+	"ui.chat.pickers.failovers_panel.configured_defaults": undefined;
+	"ui.chat.pickers.failovers_panel.failover_chains_region": undefined;
+	"ui.chat.pickers.failovers_panel.failovers": undefined;
+	"ui.chat.pickers.failovers_panel.fallback_chains": undefined;
+	"ui.chat.pickers.failovers_panel.live_from_the_session_s_owner": undefined;
+	"ui.chat.pickers.failovers_panel.no_fallback_chains_configured": undefined;
+	"ui.chat.pickers.failovers_panel.none": undefined;
+	"ui.chat.pickers.failovers_panel.not_live_routing_state": { value: string };
+	"ui.chat.pickers.failovers_panel.scope": undefined;
+	"ui.chat.pickers.failovers_panel.selected": undefined;
+	"ui.chat.pickers.failovers_panel.serving": undefined;
+	"ui.chat.pickers.failovers_panel.the_model_this_session_selected_the_one_actually_serving_it_and_the_conf": undefined;
 	"ui.chat.pickers.fast.premium_acknowledgement": undefined;
 	"ui.chat.pickers.fast.title": undefined;
+	"ui.chat.pickers.fast_picker_options.off": undefined;
+	"ui.chat.pickers.fast_picker_options.on": undefined;
+	"ui.chat.pickers.fast_picker_options.priority_processing_billed_at_premium_rates_where_the_provider_offers_it": undefined;
+	"ui.chat.pickers.fast_picker_options.standard_processing": undefined;
 	"ui.chat.pickers.fork.search_placeholder": undefined;
+	"ui.chat.pickers.formatters.unknown": undefined;
 	"ui.chat.pickers.goal.clear": undefined;
 	"ui.chat.pickers.goal.mark_done": undefined;
 	"ui.chat.pickers.goal.placeholder": undefined;
 	"ui.chat.pickers.goal.title": undefined;
+	"ui.chat.pickers.info_model.active": undefined;
+	"ui.chat.pickers.info_model.agent": { active_agent: string };
+	"ui.chat.pickers.info_model.agent_home": undefined;
+	"ui.chat.pickers.info_model.agent_profiles": undefined;
+	"ui.chat.pickers.info_model.ago": { formatduration: string };
+	"ui.chat.pickers.info_model.answering_model": undefined;
+	"ui.chat.pickers.info_model.approval_mode": undefined;
+	"ui.chat.pickers.info_model.browser": undefined;
+	"ui.chat.pickers.info_model.browser_status": {
+		backend: string;
+		hasname: string;
+		browsername: string;
+		paired: string;
+	};
+	"ui.chat.pickers.info_model.busy": undefined;
+	"ui.chat.pickers.info_model.cache_dir": undefined;
+	"ui.chat.pickers.info_model.checked_ago": { formatduration: string };
+	"ui.chat.pickers.info_model.colorterm": undefined;
+	"ui.chat.pickers.info_model.columns": undefined;
+	"ui.chat.pickers.info_model.config_dir": undefined;
+	"ui.chat.pickers.info_model.context": undefined;
+	"ui.chat.pickers.info_model.control_port": undefined;
+	"ui.chat.pickers.info_model.conversation": undefined;
+	"ui.chat.pickers.info_model.cost_knowledge": undefined;
+	"ui.chat.pickers.info_model.could_not_scan_the_session_registry_close_and_reopen_this_panel_to_try_a": undefined;
+	"ui.chat.pickers.info_model.count_noun": {
+		count: number;
+		noun: string;
+		pluralnoun: string;
+	};
+	"ui.chat.pickers.info_model.detached": undefined;
+	"ui.chat.pickers.info_model.estimate": undefined;
+	"ui.chat.pickers.info_model.goal": undefined;
+	"ui.chat.pickers.info_model.guides": {
+		guidetext: string;
+		guides: number;
+		hasskills: string;
+		skilltext: string;
+		skills: number;
+	};
+	"ui.chat.pickers.info_model.guides_and_skills": undefined;
+	"ui.chat.pickers.info_model.interactive_terminal": undefined;
+	"ui.chat.pickers.info_model.kind": undefined;
+	"ui.chat.pickers.info_model.last_active_ago": { lastactive: string };
+	"ui.chat.pickers.info_model.live_not_answering": {
+		formatcount: string;
+		separator: string;
+		formatcount2: string;
+	};
+	"ui.chat.pickers.info_model.log_dir": undefined;
+	"ui.chat.pickers.info_model.mcp_servers": undefined;
+	"ui.chat.pickers.info_model.measured": undefined;
+	"ui.chat.pickers.info_model.mobile_relay": undefined;
+	"ui.chat.pickers.info_model.mobile_status": {
+		healthy: string;
+		hasport: string;
+		port: string;
+	};
+	"ui.chat.pickers.info_model.model": undefined;
+	"ui.chat.pickers.info_model.multiplexer": undefined;
+	"ui.chat.pickers.info_model.names_only_values_are_never_read": undefined;
+	"ui.chat.pickers.info_model.needs": { pending: string };
+	"ui.chat.pickers.info_model.never_checked": undefined;
+	"ui.chat.pickers.info_model.no": undefined;
+	"ui.chat.pickers.info_model.none": undefined;
+	"ui.chat.pickers.info_model.none_configured": undefined;
+	"ui.chat.pickers.info_model.none_running": { plural: string };
+	"ui.chat.pickers.info_model.none_running_queued": {
+		plural: string;
+		formatcount: string;
+	};
+	"ui.chat.pickers.info_model.not_answering_caveat": { count: number };
+	"ui.chat.pickers.info_model.not_installed": undefined;
+	"ui.chat.pickers.info_model.not_listening": undefined;
+	"ui.chat.pickers.info_model.not_measured": undefined;
+	"ui.chat.pickers.info_model.not_read_in_this_view": undefined;
+	"ui.chat.pickers.info_model.of_connected": {
+		formatcount: string;
+		formatcount2: string;
+	};
+	"ui.chat.pickers.info_model.of_did_not_report": {
+		formatcount: string;
+		plural: string;
+	};
+	"ui.chat.pickers.info_model.older_build_caveat": { count: number };
+	"ui.chat.pickers.info_model.pid": { pid: number };
+	"ui.chat.pickers.info_model.pid_7837d5": { pid: number };
+	"ui.chat.pickers.info_model.process": undefined;
+	"ui.chat.pickers.info_model.protocol_v": { protocol: number };
+	"ui.chat.pickers.info_model.python": { python_version: string };
+	"ui.chat.pickers.info_model.queued": { formatcount: string };
+	"ui.chat.pickers.info_model.redirected_by_local_operator_config_dir": undefined;
+	"ui.chat.pickers.info_model.redirected_by_local_operator_home": undefined;
+	"ui.chat.pickers.info_model.rows": undefined;
+	"ui.chat.pickers.info_model.runtime": undefined;
+	"ui.chat.pickers.info_model.runtime_trajectories": {
+		runtimecount: string;
+		bound: string;
+		trajectorycount: string;
+	};
+	"ui.chat.pickers.info_model.runtimes": undefined;
+	"ui.chat.pickers.info_model.session": undefined;
+	"ui.chat.pickers.info_model.sessionfcbdc4": undefined;
+	"ui.chat.pickers.info_model.sessions": undefined;
+	"ui.chat.pickers.info_model.started": undefined;
+	"ui.chat.pickers.info_model.still_connecting_deferred_servers": undefined;
+	"ui.chat.pickers.info_model.stopped_ago": { stoppedage: string };
+	"ui.chat.pickers.info_model.stopped_ago_reason": {
+		stoppedage: string;
+		clause_separator: string;
+		stopreason: string;
+	};
+	"ui.chat.pickers.info_model.stored_credentials": undefined;
+	"ui.chat.pickers.info_model.subagent": undefined;
+	"ui.chat.pickers.info_model.subagents": undefined;
+	"ui.chat.pickers.info_model.team": { activeteam: string };
+	"ui.chat.pickers.info_model.teams": undefined;
+	"ui.chat.pickers.info_model.term": undefined;
+	"ui.chat.pickers.info_model.theme": undefined;
+	"ui.chat.pickers.info_model.this_session": undefined;
+	"ui.chat.pickers.info_model.title": undefined;
+	"ui.chat.pickers.info_model.total": { bound: string; formatcount: string };
+	"ui.chat.pickers.info_model.trajectories": undefined;
+	"ui.chat.pickers.info_model.trajectories4288bf": {
+		plural: string;
+		unknown: string;
+	};
+	"ui.chat.pickers.info_model.trajectory": undefined;
+	"ui.chat.pickers.info_model.unavailable": undefined;
+	"ui.chat.pickers.info_model.unknown_platform": undefined;
+	"ui.chat.pickers.info_model.untitled_session": undefined;
+	"ui.chat.pickers.info_model.up_to_date": undefined;
+	"ui.chat.pickers.info_model.update_available": undefined;
+	"ui.chat.pickers.info_model.v_available_update": { latest_known: string };
+	"ui.chat.pickers.info_model.working_dir": undefined;
+	"ui.chat.pickers.info_model.yes": undefined;
+	"ui.chat.pickers.info_panel.activity": undefined;
+	"ui.chat.pickers.info_panel.agents_and_subagents": undefined;
+	"ui.chat.pickers.info_panel.backend_runtime_and_this_app": undefined;
+	"ui.chat.pickers.info_panel.busy": undefined;
+	"ui.chat.pickers.info_panel.could_not_be_read": undefined;
+	"ui.chat.pickers.info_panel.environment": undefined;
+	"ui.chat.pickers.info_panel.field": undefined;
+	"ui.chat.pickers.info_panel.fields_that_could_not_be_read": undefined;
+	"ui.chat.pickers.info_panel.git_snapshot": { value: string };
+	"ui.chat.pickers.info_panel.host_info_region": undefined;
+	"ui.chat.pickers.info_panel.host_runtime": undefined;
+	"ui.chat.pickers.info_panel.info": undefined;
+	"ui.chat.pickers.info_panel.install": undefined;
+	"ui.chat.pickers.info_panel.install_and_running_code_paths": undefined;
+	"ui.chat.pickers.info_panel.install_kind": undefined;
+	"ui.chat.pickers.info_panel.install_path": undefined;
+	"ui.chat.pickers.info_panel.interpreter": undefined;
+	"ui.chat.pickers.info_panel.item": undefined;
+	"ui.chat.pickers.info_panel.live": undefined;
+	"ui.chat.pickers.info_panel.live65c821": undefined;
+	"ui.chat.pickers.info_panel.live_this_conversation": undefined;
+	"ui.chat.pickers.info_panel.live_total": {
+		formatcount: string;
+		formatcount2: string;
+	};
+	"ui.chat.pickers.info_panel.markers": undefined;
+	"ui.chat.pickers.info_panel.mcp_server_failures": undefined;
+	"ui.chat.pickers.info_panel.memory": undefined;
+	"ui.chat.pickers.info_panel.memory_could_not_be_measured_on_this_machine": undefined;
+	"ui.chat.pickers.info_panel.model": undefined;
+	"ui.chat.pickers.info_panel.more_than_one_build_is_running_a_change_may_look_absent_in_a_window_that": undefined;
+	"ui.chat.pickers.info_panel.needs_input": undefined;
+	"ui.chat.pickers.info_panel.no_other_lop_sessions_are_running_on_this_machine": undefined;
+	"ui.chat.pickers.info_panel.not_answering": undefined;
+	"ui.chat.pickers.info_panel.not_answering824ea0": undefined;
+	"ui.chat.pickers.info_panel.nothing_to_report_here": undefined;
+	"ui.chat.pickers.info_panel.path": undefined;
+	"ui.chat.pickers.info_panel.reason": undefined;
+	"ui.chat.pickers.info_panel.reported": undefined;
+	"ui.chat.pickers.info_panel.running_code": undefined;
+	"ui.chat.pickers.info_panel.runtime_terminal": undefined;
+	"ui.chat.pickers.info_panel.server": undefined;
+	"ui.chat.pickers.info_panel.session": undefined;
+	"ui.chat.pickers.info_panel.sessions_on_this_machine": undefined;
+	"ui.chat.pickers.info_panel.stale": undefined;
+	"ui.chat.pickers.info_panel.state": undefined;
+	"ui.chat.pickers.info_panel.stored": undefined;
+	"ui.chat.pickers.info_panel.the_install_the_host_this_app_is_connected_to_and_the_conversation_in_fr": undefined;
+	"ui.chat.pickers.info_panel.the_install_the_host_this_app_is_connected_to_and_the_sessions_on_this_m": undefined;
+	"ui.chat.pickers.info_panel.the_machine_this_app_is_connected_to": undefined;
+	"ui.chat.pickers.info_panel.this_backend_cannot_serve_this_panel_yet_update_the_backend_and_try_agai": undefined;
+	"ui.chat.pickers.info_panel.this_conversation": undefined;
+	"ui.chat.pickers.info_panel.unavailable": undefined;
+	"ui.chat.pickers.info_panel.value": undefined;
+	"ui.chat.pickers.info_panel.version": undefined;
+	"ui.chat.pickers.info_panel.why_a_field_above_shows_an_unknown": undefined;
 	"ui.chat.pickers.login.title": undefined;
 	"ui.chat.pickers.logout.confirm": undefined;
 	"ui.chat.pickers.logout.title": undefined;
 	"ui.chat.pickers.loop.cancel": undefined;
 	"ui.chat.pickers.loop.title": undefined;
+	"ui.chat.pickers.mcp_command.unknown_mcp_server_no_server_was_changed": {
+		name: string;
+		extra: string;
+	};
+	"ui.chat.pickers.mcp_command.unknown_mcp_server_or_command_use_mcp_login_name_or_mcp_reauth_name": {
+		text: string;
+	};
+	"ui.chat.pickers.mcp_picker.close": undefined;
+	"ui.chat.pickers.mcp_picker.could_not_load_mcp_servers": undefined;
+	"ui.chat.pickers.mcp_picker.loading_configured_mcp_servers": undefined;
+	"ui.chat.pickers.mcp_picker.mcp_servers": undefined;
+	"ui.chat.pickers.mcp_picker.no_mcp_servers_are_configured_for_this_conversation": undefined;
+	"ui.chat.pickers.mcp_picker.retry": undefined;
+	"ui.chat.pickers.model_catalogue_listing.some_providers_did_not_answer_the_rows_below_are_the_ones_that_did": {
+		length: number;
+	};
+	"ui.chat.pickers.model_catalogue_listing.the_last_listing_that_answered": undefined;
+	"ui.chat.pickers.model_catalogue_listing.the_provider_listing_failed_the_rows_below_are_refresh_from_providers_tr": {
+		value: string;
+	};
+	"ui.chat.pickers.model_catalogue_listing.the_shipped_models": undefined;
 	"ui.chat.pickers.models.connect_provider": undefined;
 	"ui.chat.pickers.models.native_details": { name: string };
 	"ui.chat.pickers.models.set_as_default": undefined;
 	"ui.chat.pickers.models.title": undefined;
 	"ui.chat.pickers.new_session.title": undefined;
+	"ui.chat.pickers.picker_host.apply": undefined;
+	"ui.chat.pickers.picker_host.applying_the_change": undefined;
+	"ui.chat.pickers.picker_host.applying_the_changea9b670": undefined;
+	"ui.chat.pickers.picker_host.arrows_move_enter_connects_esc_closes": {
+		activeconnectprovider: string;
+	};
+	"ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes": undefined;
+	"ui.chat.pickers.picker_host.arrows_move_enter_picks_esc_closes5710e2": {
+		activelabel: string;
+	};
+	"ui.chat.pickers.picker_host.close": undefined;
+	"ui.chat.pickers.picker_host.current": undefined;
+	"ui.chat.pickers.picker_host.done": undefined;
+	"ui.chat.pickers.picker_host.esc_closes": undefined;
+	"ui.chat.pickers.picker_host.loading": undefined;
+	"ui.chat.pickers.picker_host.nothing_matches": undefined;
+	"ui.chat.pickers.picker_host.panel_content": undefined;
+	"ui.chat.pickers.picker_host.search": undefined;
+	"ui.chat.pickers.picker_host.the_row_you_were_on_is_gone_enter_picks": {
+		retargetedlabel: string;
+	};
 	"ui.chat.pickers.profile.loading_detail": undefined;
 	"ui.chat.pickers.reload.title": undefined;
 	"ui.chat.pickers.rename.title": undefined;
 	"ui.chat.pickers.resume.title": undefined;
+	"ui.chat.pickers.session_panel.basis": undefined;
+	"ui.chat.pickers.session_panel.by_model": undefined;
+	"ui.chat.pickers.session_panel.by_purpose": undefined;
+	"ui.chat.pickers.session_panel.cache_hit_rate": undefined;
+	"ui.chat.pickers.session_panel.calls": undefined;
+	"ui.chat.pickers.session_panel.component": undefined;
+	"ui.chat.pickers.session_panel.context": undefined;
+	"ui.chat.pickers.session_panel.context_window": undefined;
+	"ui.chat.pickers.session_panel.context_window_not_measured": undefined;
+	"ui.chat.pickers.session_panel.context_window_of": {
+		formatcontexttokens: string;
+		formatwindow: string;
+		formatpercent: string;
+	};
+	"ui.chat.pickers.session_panel.cost": undefined;
+	"ui.chat.pickers.session_panel.cost_and_tokens_above_cover_this_session": undefined;
+	"ui.chat.pickers.session_panel.could_not_read_local_usage_records_close_and_reopen_to_try_again": undefined;
+	"ui.chat.pickers.session_panel.dispatched": { formatcount: string };
+	"ui.chat.pickers.session_panel.duration": undefined;
+	"ui.chat.pickers.session_panel.emitted_excluded": {
+		formatcount: string;
+		formatcount2: string;
+	};
+	"ui.chat.pickers.session_panel.estimate": undefined;
+	"ui.chat.pickers.session_panel.estimated_context_split_by_component": undefined;
+	"ui.chat.pickers.session_panel.estimated_split_of_context_tokens": undefined;
+	"ui.chat.pickers.session_panel.execution_error_rate": undefined;
+	"ui.chat.pickers.session_panel.failed": undefined;
+	"ui.chat.pickers.session_panel.failed4d8830": { formatcount: string };
+	"ui.chat.pickers.session_panel.fault": undefined;
+	"ui.chat.pickers.session_panel.in_out": {
+		formattokens: string;
+		formattokens2: string;
+	};
+	"ui.chat.pickers.session_panel.ledger_coverage_for_this_session": undefined;
+	"ui.chat.pickers.session_panel.live_not_from_the_ledger": undefined;
+	"ui.chat.pickers.session_panel.mean": undefined;
+	"ui.chat.pickers.session_panel.metric": undefined;
+	"ui.chat.pickers.session_panel.model": undefined;
+	"ui.chat.pickers.session_panel.nested_calls": undefined;
+	"ui.chat.pickers.session_panel.newest_first_shown": { formatcount: string };
+	"ui.chat.pickers.session_panel.no_component_split_recorded_for_this_session": undefined;
+	"ui.chat.pickers.session_panel.no_model_rows_recorded_for_this_session": undefined;
+	"ui.chat.pickers.session_panel.no_purpose_rows_recorded_for_this_session": undefined;
+	"ui.chat.pickers.session_panel.no_recent_requests_recorded_for_this_session": undefined;
+	"ui.chat.pickers.session_panel.no_recorded_requests_for_this_session_yet": undefined;
+	"ui.chat.pickers.session_panel.no_tool_call_faults_recorded": undefined;
+	"ui.chat.pickers.session_panel.not_measured": undefined;
+	"ui.chat.pickers.session_panel.not_measured_for_this_session": undefined;
+	"ui.chat.pickers.session_panel.of_context_from_cache": undefined;
+	"ui.chat.pickers.session_panel.of_this_session_s": {
+		label: string;
+		formatpercent: string;
+		value: string;
+	};
+	"ui.chat.pickers.session_panel.ok": undefined;
+	"ui.chat.pickers.session_panel.ok_they_are_a_different_population_and_are_counted_in_neither_rate_above": undefined;
+	"ui.chat.pickers.session_panel.outcome": undefined;
+	"ui.chat.pickers.session_panel.output": undefined;
+	"ui.chat.pickers.session_panel.phase": undefined;
+	"ui.chat.pickers.session_panel.plus_its_subagents_where_the_ledger_could_be_walked": undefined;
+	"ui.chat.pickers.session_panel.purpose": undefined;
+	"ui.chat.pickers.session_panel.range": undefined;
+	"ui.chat.pickers.session_panel.recent_requests": undefined;
+	"ui.chat.pickers.session_panel.records_run_from": undefined;
+	"ui.chat.pickers.session_panel.request_timings": undefined;
+	"ui.chat.pickers.session_panel.requests": undefined;
+	"ui.chat.pickers.session_panel.samples": undefined;
+	"ui.chat.pickers.session_panel.scope": undefined;
+	"ui.chat.pickers.session_panel.session": undefined;
+	"ui.chat.pickers.session_panel.session_diagnostics_region": undefined;
+	"ui.chat.pickers.session_panel.the_backend_returned_no_report": undefined;
+	"ui.chat.pickers.session_panel.this_backend_cannot_serve_this_panel_yet_update_the_backend_and_try_agai": undefined;
+	"ui.chat.pickers.session_panel.timings": undefined;
+	"ui.chat.pickers.session_panel.to": undefined;
+	"ui.chat.pickers.session_panel.tokens": undefined;
+	"ui.chat.pickers.session_panel.tool_call_faults_by_name": undefined;
+	"ui.chat.pickers.session_panel.tool_call_validity": undefined;
+	"ui.chat.pickers.session_panel.tool_calls": undefined;
+	"ui.chat.pickers.session_panel.totals": undefined;
+	"ui.chat.pickers.session_panel.unknown": undefined;
+	"ui.chat.pickers.session_panel.unknown_value": undefined;
+	"ui.chat.pickers.session_panel.untitled_session": undefined;
+	"ui.chat.pickers.session_panel.usage_by_model_in_this_session": undefined;
+	"ui.chat.pickers.session_panel.usage_by_purpose_in_this_session": undefined;
+	"ui.chat.pickers.session_panel.what_this_session_has_used_from_one_read_of_the_local_ledger": undefined;
+	"ui.chat.pickers.session_panel.where_input_went": undefined;
+	"ui.chat.pickers.session_report_model.basis_spend": {
+		label: string;
+		amount: string;
+		equivalent: string;
+	};
+	"ui.chat.pickers.session_report_model.conversation": undefined;
+	"ui.chat.pickers.session_report_model.cost": undefined;
+	"ui.chat.pickers.session_report_model.custom_instructions_agents_teams": undefined;
+	"ui.chat.pickers.session_report_model.duration": undefined;
+	"ui.chat.pickers.session_report_model.environment": undefined;
+	"ui.chat.pickers.session_report_model.first_output": undefined;
+	"ui.chat.pickers.session_report_model.images_est": undefined;
+	"ui.chat.pickers.session_report_model.knowledge_skills": undefined;
+	"ui.chat.pickers.session_report_model.no_call_in_this_session_has_a_published_price": undefined;
+	"ui.chat.pickers.session_report_model.own_subagents": {
+		formatmicrousd: string;
+		formatmicrousd2: string;
+	};
+	"ui.chat.pickers.session_report_model.part_of_this_session_s_usage_could_not_be_read_update_the_backend_and_tr": undefined;
+	"ui.chat.pickers.session_report_model.preparation": undefined;
+	"ui.chat.pickers.session_report_model.spend_by_basis": undefined;
+	"ui.chat.pickers.session_report_model.spend_by_basis_own": undefined;
+	"ui.chat.pickers.session_report_model.subagent_spend_not_measured": undefined;
+	"ui.chat.pickers.session_report_model.system_prompt": undefined;
+	"ui.chat.pickers.session_report_model.tokens": undefined;
+	"ui.chat.pickers.session_report_model.tool_inventory": undefined;
+	"ui.chat.pickers.session_report_model.tool_results": undefined;
+	"ui.chat.pickers.session_report_model.tool_schemas": undefined;
+	"ui.chat.pickers.session_report_model.totals_meta": {
+		calls: number;
+		failed: number;
+		scope: string;
+	};
+	"ui.chat.pickers.session_report_model.unknown": undefined;
+	"ui.chat.pickers.session_report_model.unknown_0_samples": undefined;
+	"ui.chat.pickers.session_report_model.without_a_tracked_basis": undefined;
 	"ui.chat.pickers.skills.loading": undefined;
 	"ui.chat.pickers.skills.title": undefined;
 	"ui.chat.pickers.stop.all_sessions": { count: number };
 	"ui.chat.pickers.stop.confirm": { count: number };
 	"ui.chat.pickers.stop.title": undefined;
+	"ui.chat.pickers.table_pager.first": undefined;
+	"ui.chat.pickers.table_pager.last": undefined;
+	"ui.chat.pickers.table_pager.next": undefined;
+	"ui.chat.pickers.table_pager.prev": undefined;
+	"ui.chat.pickers.table_pager.range": {
+		from: string;
+		to: string;
+		totaltext: string;
+		total: number;
+		label: string;
+		plurallabel: string;
+	};
 	"ui.chat.pickers.theme.title": undefined;
+	"ui.chat.pickers.usage_view.ask_providers_again": undefined;
+	"ui.chat.pickers.usage_view.ask_providers_now": undefined;
+	"ui.chat.pickers.usage_view.asking_providers": undefined;
+	"ui.chat.pickers.usage_view.checking_for_an_updated_usage_report": undefined;
+	"ui.chat.pickers.usage_view.checking_provider_usage": undefined;
+	"ui.chat.pickers.usage_view.getting_fresh_usage_from_providers": undefined;
+	"ui.chat.pickers.usage_view.loading_provider_usage": undefined;
+	"ui.chat.pickers.usage_view.near_limit": undefined;
+	"ui.chat.pickers.usage_view.no_limit_reported": undefined;
+	"ui.chat.pickers.usage_view.no_usage_reports_sign_in_to_a_provider_that_publishes_quota_then_ask_pro": undefined;
+	"ui.chat.pickers.usage_view.not_reported": undefined;
+	"ui.chat.pickers.usage_view.provider_usage": undefined;
+	"ui.chat.pickers.usage_view.providers_answered": undefined;
+	"ui.chat.pickers.usage_view.quota_and_usage_as_the_providers_report_it": undefined;
+	"ui.chat.pickers.usage_view.report_list": undefined;
+	"ui.chat.pickers.usage_view.resets_in": undefined;
+	"ui.chat.pickers.usage_view.retrying": { errortext: string };
+	"ui.chat.pickers.usage_view.usage_unavailable": undefined;
+	"ui.chat.pickers.usage_view.within_limit": undefined;
+	"ui.chat.pickers.usage_view_model.cached": undefined;
+	"ui.chat.pickers.usage_view_model.credits": undefined;
+	"ui.chat.pickers.usage_view_model.d_ago": { trunc: number };
+	"ui.chat.pickers.usage_view_model.exhausted": undefined;
+	"ui.chat.pickers.usage_view_model.h_ago": { hours: number };
+	"ui.chat.pickers.usage_view_model.just_now": undefined;
+	"ui.chat.pickers.usage_view_model.last_known": undefined;
+	"ui.chat.pickers.usage_view_model.last_known1c1a43": {
+		note: string;
+		age: string;
+	};
+	"ui.chat.pickers.usage_view_model.last_known63737e": { age: string };
+	"ui.chat.pickers.usage_view_model.last_response_allowance_refresh_does_not_query_muse": undefined;
+	"ui.chat.pickers.usage_view_model.left": { withunit: string };
+	"ui.chat.pickers.usage_view_model.limit": { withunit: string };
+	"ui.chat.pickers.usage_view_model.live": undefined;
+	"ui.chat.pickers.usage_view_model.m_ago": { minutes: number };
+	"ui.chat.pickers.usage_view_model.model_cap_exhausted": { count: number };
+	"ui.chat.pickers.usage_view_model.near_limit": undefined;
+	"ui.chat.pickers.usage_view_model.no_allowance_observation_recorded_refresh_does_not_query_muse": undefined;
+	"ui.chat.pickers.usage_view_model.no_windows_reported": undefined;
+	"ui.chat.pickers.usage_view_model.not_reported": undefined;
+	"ui.chat.pickers.usage_view_model.note_with_period": { note: string };
+	"ui.chat.pickers.usage_view_model.observed_with_note": {
+		notes: string;
+		formatage: string;
+	};
+	"ui.chat.pickers.usage_view_model.report": {
+		value: string;
+		formatage: string;
+	};
+	"ui.chat.pickers.usage_view_model.reported_balance": { count: number };
+	"ui.chat.pickers.usage_view_model.requests": undefined;
+	"ui.chat.pickers.usage_view_model.sign_in_expired_run_login": {
+		provider: string;
+	};
+	"ui.chat.pickers.usage_view_model.stale_response_allowance_current_usage_unknown_refresh_does_not_query_mu": undefined;
+	"ui.chat.pickers.usage_view_model.stale_sign_in_allowance_current_usage_unknown_refresh_does_not_query_mus": undefined;
+	"ui.chat.pickers.usage_view_model.tokens": undefined;
+	"ui.chat.pickers.usage_view_model.usage_unavailable": undefined;
+	"ui.chat.pickers.usage_view_model.usage_unavailable_last_known": {
+		age: string;
+	};
+	"ui.chat.pickers.usage_view_model.used": { tofixedhalfeven: string };
+	"ui.chat.pickers.usage_view_model.window": { count: number };
+	"ui.chat.pickers.usage_view_model.without_a_limit": undefined;
+	"ui.chat.pickers.use_picker_backend.did_not_run": { command: string };
+	"ui.chat.pickers.use_picker_backend.loop_turns": {
+		status: string;
+		completed: number;
+		of: string;
+		iterations: number;
+	};
+	"ui.chat.pickers.use_picker_backend.the_backend_needs_more_input_for": {
+		destination: string;
+	};
+	"ui.chat.pickers.use_picker_backend.the_backend_refused_it": undefined;
 	"ui.chat.response_actions.label": undefined;
 	"ui.chat.run_details.jobs": undefined;
 	"ui.chat.run_details.keep": undefined;
@@ -2534,10 +3849,45 @@ export type MessageParams = {
 	"ui.common.account.radient_auth_buttons.signing_in_needs_a_newer_local_operator_backend_update_the_backen": undefined;
 	"ui.common.actions.cancel": undefined;
 	"ui.common.actions.close": undefined;
+	"ui.common.actions.confirmation_modal.cancel": undefined;
+	"ui.common.actions.confirmation_modal.confirm": undefined;
 	"ui.common.actions.copied": undefined;
 	"ui.common.actions.copy_failed": undefined;
+	"ui.common.actions.date_time_picker.choose_date": { label: string };
+	"ui.common.actions.date_time_picker.choose_time": { label: string };
+	"ui.common.actions.date_time_picker.select_date": undefined;
+	"ui.common.actions.date_time_picker.select_time": undefined;
+	"ui.common.actions.date_time_picker.set_to_current_time": undefined;
+	"ui.common.actions.date_time_picker.set_to_current_time369877": {
+		label: string;
+	};
+	"ui.common.actions.file_actions_menu.failed_to_copy_file_path": undefined;
+	"ui.common.actions.file_actions_menu.file_actions": undefined;
+	"ui.common.actions.file_actions_menu.file_path_copied_to_clipboard": undefined;
+	"ui.common.actions.find_replace_widget.all": undefined;
+	"ui.common.actions.find_replace_widget.close": undefined;
+	"ui.common.actions.find_replace_widget.find": undefined;
+	"ui.common.actions.find_replace_widget.next_match": undefined;
+	"ui.common.actions.find_replace_widget.no_results": undefined;
+	"ui.common.actions.find_replace_widget.of": {
+		currentmatch: number;
+		matchcount: number;
+	};
+	"ui.common.actions.find_replace_widget.previous_match": undefined;
+	"ui.common.actions.find_replace_widget.replace": undefined;
+	"ui.common.actions.find_replace_widget.replace_all": undefined;
+	"ui.common.actions.find_replace_widget.replace_all_cmd_ctrl_enter": undefined;
+	"ui.common.actions.find_replace_widget.replace_enter": undefined;
+	"ui.common.actions.find_replace_widget.switch_to_find": undefined;
+	"ui.common.actions.find_replace_widget.switch_to_replace": undefined;
 	"ui.common.actions.retry": undefined;
 	"ui.common.actions.retry_again": undefined;
+	"ui.common.actions.text_selection_controls.ask_for_an_edit": undefined;
+	"ui.common.actions.text_selection_controls.copy": undefined;
+	"ui.common.actions.text_selection_controls.copy_without_formatting": undefined;
+	"ui.common.actions.text_selection_controls.open_in_browser": undefined;
+	"ui.common.actions.text_selection_controls.refer_to_this_from_file": undefined;
+	"ui.common.actions.text_selection_controls.reply": undefined;
 	"ui.common.connection.backend_compatibility_banner.the_backend_update_could_not_start_retry_or_update_from_settings_": undefined;
 	"ui.common.connection.backend_compatibility_banner.update_backend": undefined;
 	"ui.common.connection.backend_compatibility_banner.updating": undefined;
@@ -2571,6 +3921,10 @@ export type MessageParams = {
 	"ui.common.forms.autocomplete_field.save": { label: string };
 	"ui.common.forms.autocomplete_field.save_changes": undefined;
 	"ui.common.forms.autocomplete_field.saving": { label: string };
+	"ui.common.forms.categories_input_chips.add_category": undefined;
+	"ui.common.forms.categories_input_chips.category": { category: string };
+	"ui.common.forms.categories_input_chips.no_categories_selected": undefined;
+	"ui.common.forms.categories_input_chips.remove_category": { value: string };
 	"ui.common.forms.compact_pagination.next_page": undefined;
 	"ui.common.forms.compact_pagination.previous_page": undefined;
 	"ui.common.forms.editable_field.cancel_escape": undefined;
@@ -2596,6 +3950,21 @@ export type MessageParams = {
 	"ui.common.forms.searchable_select.no_matches": undefined;
 	"ui.common.forms.searchable_select.use": { text: string };
 	"ui.common.forms.select.unlisted_value": undefined;
+	"ui.common.forms.slider_setting.saving": { label: string };
+	"ui.common.forms.tags_input_chips.add_tag": undefined;
+	"ui.common.forms.tags_input_chips.add_tage0db29": undefined;
+	"ui.common.forms.tags_input_chips.no_tags_added": undefined;
+	"ui.common.forms.tags_input_chips.remove_tag": { tag: string };
+	"ui.common.forms.toggle_setting.saving": { label: string };
+	"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": undefined;
+	"ui.common.layout.chat_layout.resize_the_sidebar": {
+		sidebartogglecap: string;
+	};
+	"ui.common.layout.sidebar_header.create_a_new_agent": undefined;
+	"ui.common.layout.sidebar_header.import_agent": undefined;
+	"ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file": undefined;
+	"ui.common.layout.sidebar_header.new_agent": undefined;
+	"ui.common.layout.sidebar_header.search_agents": undefined;
 	"ui.common.loading.page": undefined;
 	"ui.common.models.default": undefined;
 	"ui.common.models.hosting_select.clear_hosting_provider_selection": undefined;
@@ -2621,6 +3990,14 @@ export type MessageParams = {
 	"ui.common.models.model_select.select_a_hosting_provider_first": undefined;
 	"ui.common.models.model_select.select_a_model": undefined;
 	"ui.common.models.model_select.select_the_ai_model_that_you_want_to_use_each_model_has_different": undefined;
+	"ui.common.speech.speak_control.loading_speech_press_again_to_cancel": undefined;
+	"ui.common.speech.speak_control.reading_the_first_characters_the_rest_is_not_read_aloud": {
+		tolocalestring: string;
+	};
+	"ui.common.speech.speak_control.replay_speech": undefined;
+	"ui.common.speech.speak_control.speak_aloud": undefined;
+	"ui.common.speech.speak_control.stop": undefined;
+	"ui.common.updates.check_for_updates_button.at_an_unknown_time": undefined;
 	"ui.common.updates.check_for_updates_button.check_for_updates": undefined;
 	"ui.common.updates.check_for_updates_button.checking": undefined;
 	"ui.common.updates.check_for_updates_button.detail": {
@@ -2640,7 +4017,18 @@ export type MessageParams = {
 	"ui.common.updates.server.on_version": { version: string };
 	"ui.common.updates.update_error_alert.checking": undefined;
 	"ui.common.updates.update_foot_icon.available": undefined;
+	"ui.common.updates.update_foot_icon.available_show_the_update_notice": {
+		joined: string;
+	};
+	"ui.common.updates.update_foot_icon.in_progress": {
+		subject: string;
+		percent: string;
+	};
 	"ui.common.updates.update_foot_icon.show_the_update_notice": undefined;
+	"ui.common.updates.update_foot_icon.subject_join": {
+		left: string;
+		right: string;
+	};
 	"ui.common.updates.update_notification.a_newer_build": undefined;
 	"ui.common.updates.update_notification.a_newer_version": undefined;
 	"ui.common.updates.update_notification.an_older_build": undefined;
@@ -2672,6 +4060,42 @@ export type MessageParams = {
 	"ui.common.updates.update_notification.error_starting_the_update": {
 		detail: string;
 	};
+	"ui.common.updates.update_notification.failure_cause_disk": undefined;
+	"ui.common.updates.update_notification.failure_cause_lock": undefined;
+	"ui.common.updates.update_notification.failure_cause_network": undefined;
+	"ui.common.updates.update_notification.failure_cause_ownership": undefined;
+	"ui.common.updates.update_notification.failure_cause_publication": {
+		target: string;
+	};
+	"ui.common.updates.update_notification.failure_cause_publication_no_version": undefined;
+	"ui.common.updates.update_notification.failure_cause_refused": undefined;
+	"ui.common.updates.update_notification.failure_cause_serve": {
+		version: string;
+	};
+	"ui.common.updates.update_notification.failure_cause_serve_no_version": undefined;
+	"ui.common.updates.update_notification.failure_cause_unknown": undefined;
+	"ui.common.updates.update_notification.failure_consequence_group_survived": undefined;
+	"ui.common.updates.update_notification.failure_consequence_nothing_restarted": undefined;
+	"ui.common.updates.update_notification.failure_heading_serve": undefined;
+	"ui.common.updates.update_notification.failure_remedy_disk": undefined;
+	"ui.common.updates.update_notification.failure_remedy_lock": undefined;
+	"ui.common.updates.update_notification.failure_remedy_network": undefined;
+	"ui.common.updates.update_notification.failure_remedy_ownership": undefined;
+	"ui.common.updates.update_notification.failure_remedy_publication": undefined;
+	"ui.common.updates.update_notification.failure_remedy_refused": undefined;
+	"ui.common.updates.update_notification.failure_remedy_refused_checkout": undefined;
+	"ui.common.updates.update_notification.failure_remedy_serve_external": undefined;
+	"ui.common.updates.update_notification.failure_remedy_serve_restartable": undefined;
+	"ui.common.updates.update_notification.failure_remedy_unknown": undefined;
+	"ui.common.updates.update_notification.failure_step_check": undefined;
+	"ui.common.updates.update_notification.failure_step_download": undefined;
+	"ui.common.updates.update_notification.failure_step_environment": undefined;
+	"ui.common.updates.update_notification.failure_step_install": undefined;
+	"ui.common.updates.update_notification.failure_step_lock": undefined;
+	"ui.common.updates.update_notification.failure_step_promote": undefined;
+	"ui.common.updates.update_notification.failure_step_publish": undefined;
+	"ui.common.updates.update_notification.failure_step_report": undefined;
+	"ui.common.updates.update_notification.failure_step_services": undefined;
 	"ui.common.updates.update_notification.has_been_downloaded_you_are_currently_using_version": undefined;
 	"ui.common.updates.update_notification.has_failed_to_install": undefined;
 	"ui.common.updates.update_notification.install_now": undefined;
@@ -2687,6 +4111,7 @@ export type MessageParams = {
 	"ui.common.updates.update_notification.please_wait_while_the_server_is_being_updated_the_update_can_t_be": undefined;
 	"ui.common.updates.update_notification.please_wait_while_we_check_for_available_updates": undefined;
 	"ui.common.updates.update_notification.quit_and_let_the_update_finish": undefined;
+	"ui.common.updates.update_notification.rebuilding_the_server_from_this_machine_s_checkout_the_app_waited_for_th": undefined;
 	"ui.common.updates.update_notification.release_notes": undefined;
 	"ui.common.updates.update_notification.release_notes_caption": undefined;
 	"ui.common.updates.update_notification.restart_local_operator_and_the_server_comes_back_on_the_new_build": undefined;
@@ -2736,6 +4161,7 @@ export type MessageParams = {
 		detail2: string;
 	};
 	"ui.common.updates.update_notification.the_last_update_didn_t_finish": undefined;
+	"ui.common.updates.update_notification.the_new_build": undefined;
 	"ui.common.updates.update_notification.the_new_build_has_landed_nothing_in_flight_was_cut_off_the_turns_": undefined;
 	"ui.common.updates.update_notification.the_new_version": undefined;
 	"ui.common.updates.update_notification.the_server_did_not_come_back_after_the_restart": undefined;
@@ -2799,7 +4225,13 @@ export type MessageParams = {
 		runningversion: string;
 	};
 	"ui.common.updates.update_quiet_indicator.application_update": undefined;
+	"ui.common.updates.update_quiet_indicator.available": {
+		quietoffersubject: string;
+	};
 	"ui.common.updates.update_quiet_indicator.dismiss_update_notice": undefined;
+	"ui.common.updates.update_quiet_indicator.open_release_details": {
+		quietoffertext: string;
+	};
 	"ui.common.updates.update_quiet_indicator.server_update": undefined;
 	"ui.common.updates.wait.minutes": { minutes: number };
 	"ui.common.updates.wait.minutes_seconds": {
@@ -2808,6 +4240,10 @@ export type MessageParams = {
 	};
 	"ui.common.updates.wait.seconds": { seconds: number };
 	"ui.common.viewer.close": { kind: string };
+	"ui.common.viewer.image_lightbox.asset_of": { index: number; count: number };
+	"ui.common.viewer.image_lightbox.close": { medialabel: string };
+	"ui.common.viewer.image_lightbox.next": { medialabel: string };
+	"ui.common.viewer.image_lightbox.previous": { medialabel: string };
 	"ui.common.viewer.next": { kind: string };
 	"ui.common.viewer.opening": undefined;
 	"ui.common.viewer.position": { kind: string; index: number; count: number };

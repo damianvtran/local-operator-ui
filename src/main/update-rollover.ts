@@ -63,6 +63,77 @@ export const UPDATE_REPORT_KEY = "update_report";
 /** The schema family this parser accepts. A different family is not read. */
 export const UPDATE_REPORT_SCHEMA_PREFIX = "update.report.";
 
+/**
+ * The steps a failing updater can name, per the frozen contract.
+ *
+ * A SET, not a free string: `step` decides which part of the run the reader is
+ * told about, and an unrecognised value would be interpolated into copy this app
+ * owns. A future schema that adds a step fails this check and the failure block
+ * degrades like an absent one, which is the honest direction (the report as a
+ * whole still parses - see `failureFromPayload`).
+ */
+const UPDATE_REPORT_FAILURE_STEPS: ReadonlySet<string> = new Set([
+	"check",
+	"publish",
+	"download",
+	"environment",
+	"install",
+	"promote",
+	"services",
+	"lock",
+	"report",
+]);
+
+/** The failure kinds, per the frozen contract, and the set `failureFromPayload` validates. */
+const UPDATE_REPORT_FAILURE_KINDS: ReadonlySet<string> = new Set([
+	"network",
+	"publication",
+	"lock",
+	"disk",
+	"ownership",
+	"serve",
+	"refused",
+	"unknown",
+]);
+
+export type UpdateReportFailureStep =
+	| "check"
+	| "publish"
+	| "download"
+	| "environment"
+	| "install"
+	| "promote"
+	| "services"
+	| "lock"
+	| "report";
+
+export type UpdateReportFailureKind =
+	| "network"
+	| "publication"
+	| "lock"
+	| "disk"
+	| "ownership"
+	| "serve"
+	| "refused"
+	| "unknown";
+
+/**
+ * Why a failing run stopped: the updater's own structured verdict.
+ *
+ * ADDITIVE to `UpdateReport` (contract 2026-10-24). A build that predates it
+ * omits both fields and parses exactly as before; `detail` is optional because
+ * the contract allows it to be empty, and an absent detail is not a cause the
+ * reader needs.
+ */
+export type UpdateReportFailure = {
+	step: UpdateReportFailureStep;
+	kind: UpdateReportFailureKind;
+	exit_code: number;
+	/** One sentence naming the cause, in the updater's own words. */
+	error: string;
+	detail?: string;
+};
+
 /** One serve entry of the report: what the updater did to the serving process. */
 export type UpdateReportServeEntry = {
 	pid: number;
@@ -101,6 +172,17 @@ export type UpdateReport = {
 	target: string;
 	serve: UpdateReportServeEntry[];
 	daemons: UpdateReportDaemon[];
+	/**
+	 * The run's own verdict, when the build emits one.
+	 *
+	 * ABSENT means an older build (or a malformed value - see `reportFromPayload`),
+	 * and every caller must fall back to the pre-contract behaviour rather than
+	 * infer success from the absence. A success report carries `ok: true`; a
+	 * failing one carries `ok: false` plus `failure`.
+	 */
+	ok?: boolean;
+	/** The structured cause of a failed run, when the updater named one. */
+	failure?: UpdateReportFailure;
 };
 
 const DAEMON_STATUSES: ReadonlySet<string> = new Set([
@@ -198,12 +280,58 @@ function reportFromPayload(payload: unknown): UpdateReport | null {
 			version,
 		});
 	}
-	return {
+	const report: UpdateReport = {
 		schema,
 		install_version: installVersion,
 		target,
 		serve: serveEntries,
 		daemons: daemonEntries,
+	};
+	/*
+	 * THE ADDITIVE FIELDS ARE READ ONE AT A TIME, and a malformed one is DROPPED
+	 * rather than failing the report. Why: `ok` and `failure` answer a question
+	 * the report already answered (the caller knows the run failed - this is the
+	 * failing branch), so a build that emits a block this app cannot read still
+	 * carries valid install/serve/daemon evidence. Invalidating the whole report
+	 * for a field nothing before this contract had would throw that evidence away
+	 * to punish a value the app can simply not use.
+	 */
+	if (typeof raw.ok === "boolean") report.ok = raw.ok;
+	const failure = failureFromPayload(raw.failure);
+	if (failure) report.failure = failure;
+	return report;
+}
+
+/**
+ * The failure block, or null.
+ *
+ * STRICT ABOUT TYPES, NOT ABOUT EXTRA KEYS: every field this parser reads must
+ * have its declared type, `step`/`kind` must be in the contract's sets, and the
+ * sentence must be non-empty (an empty string is not a cause). A block that
+ * fails any of those is null, which makes the caller fall back to the raw
+ * installer output - the same surface it had before this contract existed.
+ */
+function failureFromPayload(value: unknown): UpdateReportFailure | null {
+	if (!isRecord(value)) return null;
+	const { step, kind, exit_code: exitCode, error, detail } = value;
+	if (
+		typeof step !== "string" ||
+		!UPDATE_REPORT_FAILURE_STEPS.has(step) ||
+		typeof kind !== "string" ||
+		!UPDATE_REPORT_FAILURE_KINDS.has(kind) ||
+		typeof exitCode !== "number" ||
+		!Number.isInteger(exitCode) ||
+		typeof error !== "string" ||
+		error.trim() === ""
+	)
+		return null;
+	if (detail !== undefined && typeof detail !== "string") return null;
+	return {
+		step: step as UpdateReportFailureStep,
+		kind: kind as UpdateReportFailureKind,
+		exit_code: exitCode,
+		error,
+		...(typeof detail === "string" ? { detail } : {}),
 	};
 }
 

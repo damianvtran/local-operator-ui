@@ -98,6 +98,8 @@ const bundle = await build({
 			import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
 			import { goalStateWord, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS } from "./src/renderer/src/features/chat/pickers/session-commands";
 			import { goalCapability } from "./src/shared/desktop-session-contract";
+			import { goalJudgeStall } from "./src/shared/goal-judge-stall";
+			import { clearRegisteredCatalogues, currentLocale, registerCatalogue, setLocale } from "./src/i18n/index";
 
 			export const renderRow = (props) =>
 				renderToStaticMarkup(createElement(ComposerStatusRow, props));
@@ -136,7 +138,7 @@ const bundle = await build({
 				);
 			export { GoalPicker };
 			export { toasts };
-			export { askChipClause, askDeadlineShortText, askQueueView, AskDrawer, ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, monitorsChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, monitorClause, scrollRegionToTop, useUiPreferencesStore };
+			export { askChipClause, askDeadlineShortText, askQueueView, AskDrawer, ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, monitorsChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, monitorClause, scrollRegionToTop, useUiPreferencesStore, goalJudgeStall, setLocale, registerCatalogue, clearRegisteredCatalogues, currentLocale };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -245,6 +247,11 @@ const {
 	monitorClause,
 	scrollRegionToTop,
 	useUiPreferencesStore,
+	goalJudgeStall,
+	setLocale,
+	registerCatalogue,
+	clearRegisteredCatalogues,
+	currentLocale,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -5256,6 +5263,67 @@ test("the lifecycle's derived strings, one per state", () => {
 		goalStalledNote("the judge kept asking for continuations"),
 		"goal stalled: auto-continuation stopped — send a message to continue",
 	);
+});
+
+/*
+ * THE WIRE'S SENTINELS ARE PROTOCOL, NOT COPY (chat audit Z3). `goal_judge.reason`
+ * arrives in English from `session/goal_judge.py`; a catalogue may translate the
+ * SENTENCE, but it may never move the phrase the classification runs on. The map
+ * installed below is what a translated chat catalogue carries for these two keys:
+ * with it active, the breaker and the cap must still resolve to their own
+ * sentences rather than to the unnamed fallback.
+ *
+ * THIS IS THE REGRESSION THE SOURCE FIX CLOSES. A comparison that reads `t()`
+ * passes in English and fails here, which is exactly how the bug reached locale
+ * review; the pin is on the decision (`goalJudgeStall`) and on the sentence the
+ * transition announces (`goalStalledNote`), because those are the two places the
+ * extraction had coupled to copy.
+ */
+test("the stall phrases are matched as protocol, not through the catalogue", () => {
+	const previous = currentLocale();
+	setLocale("xx-test");
+	registerCatalogue("xx-test", {
+		"ui.chat.composer.composer_status_row.judge_could_not_decide":
+			"评判器无法判定",
+		"ui.chat.composer.composer_status_row.stopped_after": "停止于 ",
+	});
+	try {
+		// The wire's own phrases, unchanged by the catalogue above.
+		assert.deepEqual(goalJudgeStall("judge could not decide"), {
+			code: "judge_could_not_decide",
+		});
+		assert.deepEqual(goalJudgeStall("stopped after 12 continuations"), {
+			code: "continuation_cap",
+			count: "12",
+		});
+		// The cap's shape with no readable count is still the cap, with no count.
+		assert.deepEqual(goalJudgeStall("stopped after twelve continuations"), {
+			code: "continuation_cap",
+			count: null,
+		});
+		assert.equal(
+			goalStalledNote("judge could not decide"),
+			"goal stalled: judge could not decide — send a message to continue",
+		);
+		assert.equal(
+			goalStalledNote("stopped after 12 continuations"),
+			"goal stalled: stopped after 12 continuations — send a message to continue",
+		);
+		/*
+		 * And an unrelated status stays unnamed: the catalogue must not turn a
+		 * reason this build does not know into one it claims to.
+		 */
+		assert.deepEqual(goalJudgeStall("a bound added after this build"), {
+			code: "unnamed",
+		});
+		assert.equal(
+			goalStalledNote("a bound added after this build"),
+			"goal stalled: auto-continuation stopped — send a message to continue",
+		);
+	} finally {
+		clearRegisteredCatalogues();
+		setLocale(previous);
+	}
 });
 
 /* ---------------------------------------------------------------- */

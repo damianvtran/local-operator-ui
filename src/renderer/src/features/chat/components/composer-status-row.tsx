@@ -157,6 +157,7 @@ import {
 	goalCapability,
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
+import { goalJudgeStall } from "../../../../../shared/goal-judge-stall";
 import { chipClause } from "../../code-review/code-review-model";
 import { useCodeRequestsChip } from "../../code-review/hooks/use-code-requests";
 import {
@@ -334,9 +335,12 @@ const GOAL_DONE_TAG = "— done";
  * simply ran out of auto-continuations are two different next moves, so one sentence
  * for both would be a claim the record does not support.
  *
- * The two sentences are BUILDERS of the wire's reason rather than a constant: the
- * field was added to `CanonicalGoalJudge` for exactly this, so the sentence follows
- * the cause instead of the cause being rounded to the sentence.
+ * The two sentences are selected by the CODE the wire's reason classifies to
+ * (`shared/goal-judge-stall.ts`), never by the sentence itself: the reason is
+ * protocol, the sentence is copy, and a translated sentence must not be able to
+ * move which cause the row reports. The field was added to `CanonicalGoalJudge`
+ * for exactly this, so the sentence follows the cause instead of the cause being
+ * rounded to the sentence.
  *
  * THE CAP'S SENTENCE IS THE BACKEND'S, BYTE FOR BYTE (QA round 2, Q-2). The backend
  * writes `STALLED_CAP_NOTICE` = `goal stalled: {STALLED_CAP_REASON} — send a message
@@ -372,33 +376,14 @@ const goalStalledCapNote = (count: string): string =>
 const GOAL_STALLED_UNKNOWN_NOTE =
 	"goal stalled: auto-continuation stopped — send a message to continue";
 
-/**
- * The wire's own spellings of the two stall causes, as `goal_judge.reason` carries
- * them (`session/goal_judge.py`).
- *
- * A MIRROR, not an import: the two halves of this feature are a Python package and a
- * TypeScript renderer, so there is no mechanism that would keep one constant from
- * being read as the other. What holds them together is this comment and the test that
- * pins both sentences — the same discipline the contract's closed-vocabulary fields
- * are read under.
- *
- * THE CAP IS MATCHED BY SHAPE rather than by literal, and that is the one place this
- * mirror is looser than the breaker's. The breaker's reason is a fixed phrase; the
- * cap's is an f-string over the budget (`stopped after 12 continuations`), so a
- * literal here would silently downgrade the cap's sentence to the fallback the day
- * the backend moves that number — a copy regression with no test to catch it, since a
- * pin on `stopped after 12 continuations` would stay green while the product moved.
- * Head and tail are both required, so a reason that merely mentions continuations is
- * not claimed to be the cap.
- */
-const STALLED_BREAKER_REASON = "judge could not decide";
-const STALLED_CAP_REASON_HEAD = "stopped after ";
-const STALLED_CAP_REASON_TAIL = " continuations";
 /*
- * Digits only: the backend's budget is an int, and anything else is not a count this
- * build may print as one. Top-level for `lint/performance/useTopLevelRegex`.
+ * The wire's two stall causes are CLASSIFIED in `shared/goal-judge-stall.ts`,
+ * against the backend's own English phrases, and not here beside the sentences.
+ * THIS SEPARATION IS THE FIX (chat audit Z3): the extraction had mirrored the
+ * phrases as catalogue values, so translating them turned the equality and the
+ * prefix test false in every non-English locale and both specific notes degraded
+ * to the generic fallback. Protocol stays out of the catalogue; only copy goes in.
  */
-const STALLED_CAP_COUNT = /^\d+$/;
 
 /**
  * The sentence a stall owes the user, for the reason the judge published.
@@ -409,21 +394,17 @@ const STALLED_CAP_COUNT = /^\d+$/;
  * cause it did not carry.
  */
 export const goalStalledNote = (reason: string | undefined): string => {
-	const named = (reason ?? "").trim();
-	if (named === STALLED_BREAKER_REASON) return GOAL_STALLED_BREAKER_NOTE;
-	if (
-		named.startsWith(STALLED_CAP_REASON_HEAD) &&
-		named.endsWith(STALLED_CAP_REASON_TAIL)
-	) {
-		const count = named.slice(
-			STALLED_CAP_REASON_HEAD.length,
-			named.length - STALLED_CAP_REASON_TAIL.length,
-		);
-		return STALLED_CAP_COUNT.test(count)
-			? goalStalledCapNote(count)
-			: GOAL_STALLED_CAP_FALLBACK_NOTE;
+	const stall = goalJudgeStall(reason);
+	switch (stall.code) {
+		case "judge_could_not_decide":
+			return GOAL_STALLED_BREAKER_NOTE;
+		case "continuation_cap":
+			return stall.count === null
+				? GOAL_STALLED_CAP_FALLBACK_NOTE
+				: goalStalledCapNote(stall.count);
+		case "unnamed":
+			return GOAL_STALLED_UNKNOWN_NOTE;
 	}
-	return GOAL_STALLED_UNKNOWN_NOTE;
 };
 
 /**

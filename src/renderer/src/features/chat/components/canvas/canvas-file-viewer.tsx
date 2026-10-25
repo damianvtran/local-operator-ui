@@ -213,12 +213,15 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 				probe?.error === undefined
 			) {
 				showErrorToast(
-					`File no longer exists at ${probe?.resolved ?? normalizedPath}`,
+					t("ui.canvas.file_viewer.file_no_longer_exists_at", {
+						value: probe?.resolved ?? normalizedPath,
+					}),
 					{
 						// What to do next, not only what happened: the path alone leaves
 						// the reader with a three-line wrap and nowhere to go.
-						description:
-							"Copy its path from the row's ⋯ menu to look for it, or check whether the agent wrote it somewhere else.",
+						description: t(
+							"ui.canvas.file_viewer.copy_its_path_from_the_row_s_menu_to_look_for_it_or_check_whether_the_ag",
+						),
 					},
 				);
 				return;
@@ -272,7 +275,7 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 						? result.error instanceof Error
 							? result.error.message
 							: String(result.error)
-						: "Unknown error reading file";
+						: t("ui.canvas.file_viewer.unknown_error_reading_file");
 					return fallbackAction(errorMessage);
 				}
 				openDocument(
@@ -285,7 +288,9 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 				const message =
 					error instanceof Error
 						? error.message
-						: String(error ?? "Unknown error reading file");
+						: String(
+								error ?? t("ui.canvas.file_viewer.unknown_error_reading_file"),
+							);
 				return fallbackAction(message);
 			}
 		},
@@ -353,7 +358,11 @@ const CanvasFileViewerComponent: FC<CanvasFileViewerProps> = ({
 								}),
 							),
 						)
-						.catch(() => showErrorToast(t("ui.canvas.files.saveError")));
+						.catch(() =>
+							showErrorToast(
+								t("ui.canvas.file_viewer.ui_canvas_files_saveerror"),
+							),
+						);
 				} else void handleFileClick(document);
 			}}
 		/>

@@ -60,5 +60,38 @@
 		"length": "Two words.",
 		"note": "One key for aria-label and title. Disabled at fit and below, so the pair with Zoom in stays legible side by side.",
 		"placeholders": {}
+	},
+	"ui.common.viewer.image_lightbox.previous": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in image-lightbox.tsx; accessible label in the image lightbox surface.",
+		"placeholders": {
+			"medialabel": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.common.viewer.image_lightbox.next": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in image-lightbox.tsx; accessible label in the image lightbox surface.",
+		"placeholders": {
+			"medialabel": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.common.viewer.image_lightbox.close": {
+		"role": "accessible label",
+		"tone": "Plain, concise product language; preserve the original meaning and technical tokens.",
+		"note": "Shown in image-lightbox.tsx; accessible label in the image lightbox surface.",
+		"placeholders": {
+			"medialabel": "Dynamic value supplied by the product; retain verbatim unless it is a user-facing number already formatted by the caller."
+		}
+	},
+	"ui.common.viewer.image_lightbox.asset_of": {
+		"role": "interface copy",
+		"tone": "Plain, concise product language; preserve meaning and technical tokens.",
+		"note": "Complete ICU message for the viewer surface; dynamic values are composed without English fragment concatenation.",
+		"placeholders": {
+			"index": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting.",
+			"count": "Dynamic value supplied by the product; numeric counts select native plural categories and retain their existing display formatting."
+		}
 	}
 }

@@ -283,6 +283,14 @@ const APP_SPAWN_SITES = [
 		/withTelemetryOff\(env\);/,
 	),
 	guarded(
+		"scripts/browser-approvals-narrow-panel-proof.mjs",
+		"spawn",
+		1,
+		/(?:\{|,)\s*env\s*,/,
+		"boots the built app headless at 264px to measure the full-width approvals panel and its controls, so this launch needs the same telemetry switch every app rig has",
+		/withTelemetryOff\(env\);/,
+	),
+	guarded(
 		"scripts/browser-approvals-s6a-probe.mjs",
 		"spawn",
 		1,

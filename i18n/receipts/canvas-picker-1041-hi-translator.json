@@ -1,0 +1,199 @@
+{
+  "schema": 1,
+  "kind": "translator-provenance",
+  "locale": "hi",
+  "date": "2026-10-24",
+  "agent": "translator",
+  "team": "lopdev",
+  "session": "cb9b2869b58b",
+  "served_model": "radient/auto",
+  "fallback_used": false,
+  "model_provenance": "All 1,041 initial translations were authored while this session was served by openrouter/moonshotai/kimi-k3.1-pro. The session's served model switched to radient/auto after that; under it, 10 values were revised for Hindi grammar or composition, the five corrected-English canvas alias keys were translated, and five labels were shortened (20 values total). No automatic fallback was reported or used.",
+  "worktree_head": "eb963e1baa63078a708161efd19336d4a32429c7",
+  "status": "translated",
+  "manifest": {
+    "path": "/Users/damian/.local-operator/sessions/df7760fbd1c2/scratchpad/i18n-canvas-new-keys.json",
+    "sha256": "b9faa8d3abc3f81c100b54657549e4065135f98ba2e12a10c4f606c5b4dd778e",
+    "base_sha": "f6b9aae9ce5594e79dddb0d654edc4b4a0862331",
+    "assigned_keys": 1041
+  },
+  "namespaces": {
+    "ui.canvas.json": {
+      "status": "translated",
+      "keys": 290,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.canvas.json",
+        "hi": "src/i18n/catalogues/hi/ui.canvas.json",
+        "context": "src/i18n/catalogues/en/ui.canvas.context.json"
+      },
+      "sha256": {
+        "en": "be8acd20add01188abed4985d0aad11325a7ebd8cdbc3bd5c9376be65543563f",
+        "hi": "246abbbc2bb843cd03ca472ddee4cbcefcd99ff399fd724ba8a37f48273e8aaf",
+        "context": "4bc0f2bc47d4b0e826ebb10ba78ff965c550debef54f47c912b9e257fd1784f8"
+      }
+    },
+    "ui.chat.pickers.json": {
+      "status": "translated",
+      "keys": 686,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.pickers.json",
+        "hi": "src/i18n/catalogues/hi/ui.chat.pickers.json",
+        "context": "src/i18n/catalogues/en/ui.chat.pickers.context.json"
+      },
+      "sha256": {
+        "en": "8109df703e1a4901e4d892607dddd875e6a737c9ea8ee7ef41ec28dbe6ac2e58",
+        "hi": "6a51144066459ea9ddde289bbfec0abde69e754555d4f674b19f6bc89f01b78b",
+        "context": "c921d3e37ce54288a18e2b45310034a0df0114f15c30e57133422018a00b38d9"
+      }
+    },
+    "ui.common.actions.json": {
+      "status": "translated",
+      "keys": 30,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.actions.json",
+        "hi": "src/i18n/catalogues/hi/ui.common.actions.json",
+        "context": "src/i18n/catalogues/en/ui.common.actions.context.json"
+      },
+      "sha256": {
+        "en": "d65be7beac66c209a55db5d8a672ff8a8a743eea49ba21593120d4b8664603b2",
+        "hi": "de06b007034dfc6b33ea572d8d0eda8ebf1ae62149bd6c177a69b71829f55532",
+        "context": "29a6cc54f8605ab2612775708bf5eb202a89e6708167d8a7c3f329a536b339db"
+      }
+    },
+    "ui.common.forms.json": {
+      "status": "translated",
+      "keys": 10,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.forms.json",
+        "hi": "src/i18n/catalogues/hi/ui.common.forms.json",
+        "context": "src/i18n/catalogues/en/ui.common.forms.context.json"
+      },
+      "sha256": {
+        "en": "c87c16b1169f32105e017fd27eb80047446938b1b45046c28bcf693856898238",
+        "hi": "a335138452363b574e0ae47579620081f7d15f3bbf067ee5325f7269cc1c159e",
+        "context": "c11472cc390fe7771e08dcd34bb633e63797f979a113feaa47d70d06daea38b4"
+      }
+    },
+    "ui.common.layout.json": {
+      "status": "translated",
+      "keys": 8,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.layout.json",
+        "hi": "src/i18n/catalogues/hi/ui.common.layout.json",
+        "context": "src/i18n/catalogues/en/ui.common.layout.context.json"
+      },
+      "sha256": {
+        "en": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+        "hi": "46c5067d3e83e5033998ea54cca2da3ce02eba787015ab1d25b9db55ec96b0d8",
+        "context": "318673c640a31e11f5249127c8ef5a76d63c16c3c191960824391d934766bd39"
+      }
+    },
+    "ui.common.speech.json": {
+      "status": "translated",
+      "keys": 5,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.speech.json",
+        "hi": "src/i18n/catalogues/hi/ui.common.speech.json",
+        "context": "src/i18n/catalogues/en/ui.common.speech.context.json"
+      },
+      "sha256": {
+        "en": "fa6a973f1a6a36f25218e884174299ba154e124baaddc87594bd516c8d07d8f6",
+        "hi": "45cf7b7de19829fb4ebb38fa8578f2c1fae7ba9838bf77ebf9e4a456ca89ab2a",
+        "context": "740828525702d67b6ee0ecf7eb0a3f1582167989355bd12d0579d698b982267a"
+      }
+    },
+    "ui.common.updates.json": {
+      "status": "translated",
+      "keys": 8,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.updates.json",
+        "hi": "src/i18n/catalogues/hi/ui.common.updates.json",
+        "context": "src/i18n/catalogues/en/ui.common.updates.context.json"
+      },
+      "sha256": {
+        "en": "1f81721263fa4c7d74219bd2c0af82b908bf2fb4491df074e99e2215ad00d667",
+        "hi": "4d64ea0fe9e275e1544fa6b4433261a9467e63e42b69c42810356615fe4407e8",
+        "context": "cb4a160ef62b1760d4622b29c90e130cff1b4165ac770dab200ebc54eca38bee"
+      }
+    },
+    "ui.common.viewer.json": {
+      "status": "translated",
+      "keys": 4,
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.viewer.json",
+        "hi": "src/i18n/catalogues/hi/ui.common.viewer.json",
+        "context": "src/i18n/catalogues/en/ui.common.viewer.context.json"
+      },
+      "sha256": {
+        "en": "c0ffdd08058b062c88c6fad428db0e33c4162bcee1094dd5dd16890fe4e9705f",
+        "hi": "a7b086981a04508b9d6e57e4ea42158f06bd0b5836f1e08d4c1fe94282936918",
+        "context": "8b324e966ddb4aaef92ec3b3465f8ac6a80982529bcbd3b45a3c1cf1f9b28dd8"
+      }
+    }
+  },
+  "reference_sha256": {
+    "docs/I18N.md": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca",
+    "i18n/glossary.md": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd",
+    "i18n/style-guides/hi.md": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+  },
+  "terminology_choices": {
+    "canvas": "कैनवस (existing UI catalogue term)",
+    "session": "सत्र",
+    "agent / subagent": "एजेंट / उप-एजेंट",
+    "credentials": "क्रेडेंशियल्स (plural form used by the catalogue)",
+    "effort": "प्रयास (existing settings term)",
+    "fork": "फ़ोर्क (existing core catalogue term)",
+    "failover / fallback chain": "फ़ेलओवर / फ़ॉलबैक चेन",
+    "cold / canonical session": "कोल्ड सत्र / कैननिकल सत्र (state terms kept as loans)",
+    "analytics window vs context window": "अवधि vs कॉन्टेक्स्ट विंडो",
+    "ledger": "लेजर",
+    "allowance / quota": "उपलब्ध मात्रा / कोटा",
+    "decode rate / wall rate": "डिकोड दर / वॉल दर",
+    "trajectory": "ट्रैजेक्टरी",
+    "overwrite": "अधिलेखित करें",
+    "other_category / unknown id": "अन्य; unknown category ids pass through the other arm verbatim",
+    "MAC": "MAC kept byte-identical: chat-layout.tsx matches this value against the user agent"
+  },
+  "overflow_watch": [
+    {
+      "key": "ui.chat.pickers.info_model.config_dir",
+      "value": "कॉन्फ़िग फ़ोल्डर",
+      "english": "Config dir",
+      "note": "16 characters versus 10 in English; shortened from the full directory word to the settled loan फ़ोल्डर, which is the shortest natural label."
+    },
+    {
+      "key": "ui.chat.pickers.info_model.log_dir",
+      "value": "लॉग फ़ोल्डर",
+      "english": "Log dir",
+      "note": "11 characters versus 7 in English; फ़ोल्डर is the shortest natural label."
+    },
+    {
+      "key": "ui.chat.pickers.destination_pickers.as_quote",
+      "value": "उद्धरण के रूप में",
+      "english": "As quote",
+      "note": "17 characters versus 8 in English; context-menu action, no shorter idiomatic phrasing found."
+    },
+    {
+      "key": "ui.canvas.create_file_dialog.loading_file_types",
+      "value": "फ़ाइल प्रकार लोड हो रहे हैं",
+      "english": "Loading file types",
+      "note": "27 characters versus 18 in English; shortened from the fuller possessive phrasing and still a dialog status line, not a fixed-width button."
+    }
+  ],
+  "validation": {
+    "scoped_structural_icu_pseudo": "PASS — 1,041 assigned keys; 1,041 source-bound structural/ICU pairs; 74 plural nodes; 28 select nodes; 596 formatted argument occurrences; 142 number/date skeleton occurrences; 1,283 pseudo-localized renders, 185 plural cases and 57 select cases; zero problems.",
+    "runtime": "PASS — the generated Hindi bundle carries all 1,041 assigned values; 1,283 messages.t/translate renders, 185 plural cases and 57 select cases; other_category=अन्य and an unknown category id returned verbatim; zero unrendered arguments.",
+    "targeted_tests": "PASS — 42 tests, 42 passed, 0 failed (format, hi activation, canvas-picker remediation, runtime, typed keys).",
+    "generate_check": "PASS — keys.gen.ts byte-identical to a fresh generation after the en source-fix rebase.",
+    "check_types": "PASS — pnpm check-types (main and renderer).",
+    "broad_locale_parity": "EXPECTED RED — 43 tests, 35 passed, 8 failed; hi placeholder parity passed. The hi failures are the 38 excluded older-backfill keys (34 ui.chat.pickers, 4 ui.common.viewer) and 45 values that are legitimately identical technical tokens, file-extension labels, literal examples or placeholder-only messages. Integration/audit resolves these; no gate was edited.",
+    "coverage": "EXPECTED RED — 6,246 globally missing keys; zero hi lines, because every assigned key is present and the 38 older gaps are already allowlisted.",
+    "ledger": "EXPECTED RED — 88 global findings, 16 hi lines: stale en/target hashes for the four modified audited namespaces and no ledger row yet for the four newly added ones; independent audit is required before activation."
+  },
+  "unresolved_issues": [
+    "38 older-backfill keys are intentionally absent (34 ui.chat.pickers, 4 ui.common.viewer); per-namespace completeness stays red until integration supplies them.",
+    "No independent translation audit or ledger row for this hi batch; ledger-check remains red with 16 hi findings.",
+    "45 legitimately identical values need integration/auditor disposition (file-extension labels, MAC/TERM/COLORTERM and key-reference-style tokens, literal examples, placeholder-only messages).",
+    "No rendered-fit, screenshot, native-speaker or release evidence is claimed; overflow watch lists the labels that could not be shortened further."
+  ]
+}

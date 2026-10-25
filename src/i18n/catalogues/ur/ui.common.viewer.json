@@ -6,5 +6,9 @@
 	"ui.common.viewer.previous": "{kind, select, image {پچھلی تصویر} asset {پچھلا اثاثہ} other {پچھلا}}",
 	"ui.common.viewer.reset_view": "منظر ری سیٹ کریں",
 	"ui.common.viewer.zoom_in": "زوم بڑھائیں",
-	"ui.common.viewer.zoom_out": "زوم گھٹائیں"
+	"ui.common.viewer.zoom_out": "زوم گھٹائیں",
+	"ui.common.viewer.image_lightbox.previous": "پچھلا {medialabel}",
+	"ui.common.viewer.image_lightbox.next": "اگلا {medialabel}",
+	"ui.common.viewer.image_lightbox.close": "{medialabel} بند کریں",
+	"ui.common.viewer.image_lightbox.asset_of": "اثاثہ {index, number, ::group-off} / {count, number, ::group-off}"
 }

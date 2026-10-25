@@ -10,6 +10,7 @@ import { Badge, countLabel } from "@shared/components/ui";
 import { Button, Tooltip } from "@shared/components/ui";
 import { currentLocale, resolveLanguage, t } from "@shared/i18n";
 import { useI18nLocale } from "@shared/i18n/use-locale";
+import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { AlertTriangle, Globe, ShieldCheck, X } from "lucide-react";
 import type { FC } from "react";
@@ -45,6 +46,7 @@ import {
 	tabsInScope,
 } from "../model/tab-index-model";
 import { sessionDisplayName } from "../model/tab-index-model";
+import { useApprovalsDockWidth } from "../model/use-approvals-dock-width";
 import { BrowserApprovalsDock } from "./browser-approvals-dock";
 import { defaultApprovalHeaderLabel } from "./browser-approvals-tray";
 import { BrowserConsentBar } from "./browser-consent-bar";
@@ -304,6 +306,12 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 	 */
 	const overlaySuppressing = browserOverlaySuppressing(suppressedBy);
 	const contentRef = useRef<HTMLDivElement | null>(null);
+	/**
+	 * The row the page and the dock share. Its width decides whether the side
+	 * layout still has room for both; measuring the row (not the viewport) is
+	 * what makes the pane's narrow width behave, including in a wide window.
+	 */
+	const { fullWidth: dockFullWidth, attachDockRow } = useApprovalsDockWidth();
 	const approvalsTriggerRef = useRef<HTMLButtonElement | null>(null);
 	/* The ⋯ trigger: at narrow widths the Approvals control is folded, so the
 	   dock has no shield to return focus to and falls back to the menu it came
@@ -1263,7 +1271,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 			    dock opens. That is the design's whole point (`spec 2`): a native view
 			    cannot be CSS-scaled or overlaid, so the dock is in flow, and the
 			    `ResizeObserver` above re-reports on the same frame. */}
-			<div className="flex min-h-0 grow">
+			<div className="flex min-h-0 grow" ref={attachDockRow}>
 				{/* The content rect. The native view paints ABOVE this element, so
 				    everything below is visible only while the view is hidden — which is
 				    exactly why the treatment is a page title and one line rather than a
@@ -1282,7 +1290,13 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 					/* The viewport host: the native page view paints over it, so its own
 					   ground is cleared and the pane above owns the alpha. */
 					data-glass-region="pane-leaf"
-					className="relative min-h-0 min-w-0 grow bg-elevated"
+					className={cn(
+						"relative min-h-0 min-w-0 grow bg-elevated",
+						// At full width the content is displaced to zero: clip its own
+						// states so a centered empty/failure message cannot paint over the
+						// panel that displaced it. The panel is in flow, not on top.
+						dockFullWidth && "overflow-hidden",
+					)}
 					data-tour-tag="browser-content"
 					id={tabPanelId}
 					role="tabpanel"
@@ -1438,6 +1452,7 @@ export const BrowserSurface: FC<BrowserSurfaceProps> = ({
 				</div>
 				<BrowserApprovalsDock
 					open={nativeApprovalsCard?.available ? false : dockOpen}
+					fullWidth={dockFullWidth}
 					focusRequest={dockFocusRequest}
 					rows={queue.rows}
 					resolved={queue.resolved}

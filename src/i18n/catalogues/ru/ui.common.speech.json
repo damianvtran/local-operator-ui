@@ -1,0 +1,7 @@
+{
+	"ui.common.speech.speak_control.loading_speech_press_again_to_cancel": "Загрузка озвучивания. Нажмите ещё раз для отмены.",
+	"ui.common.speech.speak_control.reading_the_first_characters_the_rest_is_not_read_aloud": "Озвучивается начало текста. Символов: {tolocalestring}; остальное не озвучивается.",
+	"ui.common.speech.speak_control.replay_speech": "Повторить озвучивание",
+	"ui.common.speech.speak_control.speak_aloud": "Озвучить",
+	"ui.common.speech.speak_control.stop": "Остановить"
+}
