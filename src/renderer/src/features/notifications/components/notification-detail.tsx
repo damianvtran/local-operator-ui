@@ -256,7 +256,7 @@ export const NotificationDetail: FC<NotificationDetailProps> = ({
 						<X aria-hidden="true" />
 						{repeat > 0
 							? t("ui.notifications.detail.dismiss_repeat", {
-									count: repeat,
+									count: formatNumber(repeat),
 								})
 							: t("ui.notifications.detail.dismiss")}
 					</Button>

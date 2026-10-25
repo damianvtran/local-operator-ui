@@ -25,6 +25,7 @@ const bundle = await build({
 		contents: [
 			'export * from "./src/renderer/src/features/notifications/notifications-model";',
 			'export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";',
+			'export { qualifiesInView, IN_VIEW_DWELL_MS } from "./src/renderer/src/features/notifications/in-view-read";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -51,6 +52,8 @@ const {
 	sessionDismissCount,
 	timeBucketOf,
 	DEFAULT_FILTERS,
+	qualifiesInView,
+	IN_VIEW_DWELL_MS,
 } = model;
 
 const NOW = new Date(2026, 9, 25, 15, 0, 0).getTime();
@@ -289,5 +292,42 @@ test("the schema refuses a sweep with no high-water mark and a path-bearing id",
 		}),
 		false,
 		"exactly one target",
+	);
+});
+
+test("in-view read: every one of the five conditions is required (contract section 6.4)", () => {
+	const base = { visibleSinceMs: 1_000, uncovered: true, updatedAtMs: 500, unread: true };
+	const edge = 2_000;
+	const fired = edge + IN_VIEW_DWELL_MS;
+	assert.equal(qualifiesInView(base, edge, fired), true, "all five hold");
+	assert.equal(
+		qualifiesInView({ ...base, visibleSinceMs: null }, edge, fired),
+		false,
+		"(a) not visible now",
+	);
+	assert.equal(
+		qualifiesInView({ ...base, uncovered: false }, edge, fired),
+		false,
+		"(b) covered by a modal or drawer",
+	);
+	assert.equal(
+		qualifiesInView({ ...base, visibleSinceMs: edge + 1 }, edge, fired),
+		false,
+		"(c) the input came before the line was visible: a scroll that brought it in is not the edge",
+	);
+	assert.equal(
+		qualifiesInView(base, edge, fired - 1),
+		false,
+		"(d) under the 1 s dwell: a scroll-past",
+	);
+	assert.equal(
+		qualifiesInView({ ...base, updatedAtMs: edge }, edge, fired),
+		false,
+		"(e) a keyed update that landed at or after the edge was not seen",
+	);
+	assert.equal(
+		qualifiesInView({ ...base, unread: false }, edge, fired),
+		false,
+		"a read item is never re-posted",
 	);
 });

@@ -75,7 +75,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type {
 	DesktopNotificationItem,
 	DesktopNotificationsList,
@@ -158,7 +158,15 @@ export const NotificationsPage: FC<NotificationsPageProps> = ({
 	const [grouping, setGrouping] = useState<NotificationGrouping>(() =>
 		readStored(GROUPING_KEY, ["time", "conversation"] as const, "time"),
 	);
-	const [filters, setFilters] = useState<NotificationFilters>(DEFAULT_FILTERS);
+	/*
+	 * `?from=<session>` presets the From filter: the asks drawer's footer link
+	 * opens the reel scoped to the conversation it came from (design § 18).
+	 */
+	const [searchParams] = useSearchParams();
+	const [filters, setFilters] = useState<NotificationFilters>(() => ({
+		...DEFAULT_FILTERS,
+		from: searchParams.get("from") || null,
+	}));
 	const [selected, setSelected] = useState<Set<string>>(() => new Set());
 	const [anchorId, setAnchorId] = useState<string | null>(null);
 	const [focusId, setFocusId] = useState<string | null>(null);

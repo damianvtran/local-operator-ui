@@ -97,7 +97,13 @@ import {
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import { PanelRightClose } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import {
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+} from "react";
 import type { CanonicalFrontendState } from "../../../../../../shared/desktop-session-contract";
 import type {
 	AskDismissReason,
@@ -284,6 +290,13 @@ export type AskDrawerProps = {
 	conversationOf?: (row: AskPresentation) => string | null;
 	/** A story pins the clock so its frames are reproducible. */
 	nowMs?: number;
+	/**
+	 * THE NOTIFICATIONS TAB STRIP (decisions D9, design § 18), supplied by the
+	 * mount when `features.notifications` is advertised. `strip` draws under the
+	 * chrome bar; `body` REPLACES the asks body while a non-asks tab is chosen.
+	 * Absent means this drawer renders exactly as it did before the feature.
+	 */
+	tabs?: { strip: ReactNode; body: ReactNode | null };
 };
 
 /**
@@ -306,6 +319,7 @@ export const AskDrawer = ({
 	onDraftChange,
 	conversationOf,
 	nowMs,
+	tabs,
 }: AskDrawerProps) => {
 	useI18nLocale();
 	/*
@@ -1062,7 +1076,12 @@ export const AskDrawer = ({
 			 * shrink below its content so `overflow-y-auto` can actually take the overflow
 			 * (without it the drawer grows and the page scroller returns - the D1 defect).
 			 */}
-			<div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2">
+			{tabs?.strip}
+			{tabs?.body ?? null}
+			<div
+				hidden={Boolean(tabs?.body)}
+				className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2"
+			>
 				{/*
 				 * THE BODY, AND WHY THERE ARE THREE READINGS RATHER THAN TWO (remediation round
 				 * 1, D1). `AskPanel` draws the queue, its designed empty sentence and - R1 - the
