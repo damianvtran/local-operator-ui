@@ -29382,8 +29382,8 @@
   {
    "locale": "es",
    "namespace": "ui.common.layout",
-   "source_sha256": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
-   "target_sha256": "b6a05ab03b37c55451155dfa8282a5bc2d5cebb7ce54df8a20669763b589bc89",
+   "source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
+   "target_sha256": "11b18a217b443e8656692185a36782ea9be508b4e2b26942f39dd51515eb72f9",
    "translator": {
     "agent": "translator",
     "model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -29392,21 +29392,51 @@
    "auditors": [
     {
      "agent": "translation-auditor",
-     "model": "radient/auto",
+     "model": "deepseek/deepseek-flash",
      "date": "2026-10-24",
      "result": "clean",
-     "instance": "3ac75cca27a3",
+     "instance": "2f21e85319a6-layout-mac-removal",
      "findings": {
       "blocker": 0,
       "major": 0,
       "minor": 0,
       "nit": 0
      },
-     "receipt": "i18n/receipts/3ac75cca27a3.json",
-     "receipt_sha256": "2257b30cca565c081f02b5d321046ce96fb65d70edf10caafc2197caa4be8728"
+     "receipt": "i18n/receipts/2f21e85319a6-layout-mac-removal.json",
+     "receipt_sha256": "c4364b742bb1730abb39fde7bda59245cf582f1910600c900e4881386f7335f8",
+     "scope": "deletion-only delta at the new bytes; every remaining value identical to the previous audit"
     }
    ],
-   "status": "audited"
+   "status": "audited",
+   "superseded": [
+    {
+     "source_sha256": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+     "target_sha256": "b6a05ab03b37c55451155dfa8282a5bc2d5cebb7ce54df8a20669763b589bc89",
+     "translator": {
+      "agent": "translator",
+      "model": "openrouter/moonshotai/kimi-k3.1-pro",
+      "date": "2026-10-24"
+     },
+     "auditors": [
+      {
+       "agent": "translation-auditor",
+       "model": "radient/auto",
+       "date": "2026-10-24",
+       "result": "clean",
+       "instance": "3ac75cca27a3",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/3ac75cca27a3.json",
+       "receipt_sha256": "2257b30cca565c081f02b5d321046ce96fb65d70edf10caafc2197caa4be8728"
+      }
+     ],
+     "status": "audited"
+    }
+   ]
   },
   {
    "locale": "es",
@@ -29440,8 +29470,8 @@
   {
    "locale": "hi",
    "namespace": "ui.common.layout",
-   "source_sha256": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
-   "target_sha256": "a907ed6e267dd2a569abb0015e662a35b220197579f1a35d80be92cce547f941",
+   "source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
+   "target_sha256": "79a31ceba8349d49afb1abcb14ad67fd6022a6cd6facc4635514809e2f88bf4f",
    "translator": {
     "agent": "translator",
     "model": "radient/auto",
@@ -29450,21 +29480,51 @@
    "auditors": [
     {
      "agent": "translation-auditor",
-     "model": "radient/auto",
+     "model": "deepseek/deepseek-flash",
      "date": "2026-10-24",
-     "result": "clean-with-findings",
-     "instance": "dab47dfc690a",
+     "result": "clean",
+     "instance": "2f21e85319a6-layout-mac-removal",
      "findings": {
       "blocker": 0,
       "major": 0,
-      "minor": 1,
+      "minor": 0,
       "nit": 0
      },
-     "receipt": "i18n/receipts/dab47dfc690a.json",
-     "receipt_sha256": "ddc129330ebb12e139c95c2d1e636b43c46c475d74d775a1b084048d05525871"
+     "receipt": "i18n/receipts/2f21e85319a6-layout-mac-removal.json",
+     "receipt_sha256": "c4364b742bb1730abb39fde7bda59245cf582f1910600c900e4881386f7335f8",
+     "scope": "deletion-only delta at the new bytes; every remaining value identical to the previous audit"
     }
    ],
-   "status": "audited"
+   "status": "audited",
+   "superseded": [
+    {
+     "source_sha256": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+     "target_sha256": "a907ed6e267dd2a569abb0015e662a35b220197579f1a35d80be92cce547f941",
+     "translator": {
+      "agent": "translator",
+      "model": "radient/auto",
+      "date": "2026-10-24"
+     },
+     "auditors": [
+      {
+       "agent": "translation-auditor",
+       "model": "radient/auto",
+       "date": "2026-10-24",
+       "result": "clean-with-findings",
+       "instance": "dab47dfc690a",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 1,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/dab47dfc690a.json",
+       "receipt_sha256": "ddc129330ebb12e139c95c2d1e636b43c46c475d74d775a1b084048d05525871"
+      }
+     ],
+     "status": "audited"
+    }
+   ]
   },
   {
    "locale": "hi",
@@ -29498,8 +29558,8 @@
   {
    "locale": "ru",
    "namespace": "ui.common.layout",
-   "source_sha256": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
-   "target_sha256": "58c4d7a152138cf8f9ddee54d631880d3ed2f7ce443b477573d71322dd1eb4ca",
+   "source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
+   "target_sha256": "9b1e73c64483cf7bf2332c5acd4f5b82bd131473b745136b5756db113189be3b",
    "translator": {
     "agent": "i18n-translator",
     "model": "radient/auto",
@@ -29508,22 +29568,52 @@
    "auditors": [
     {
      "agent": "translation-auditor",
-     "model": "radient/auto",
+     "model": "deepseek/deepseek-flash",
      "date": "2026-10-24",
      "result": "clean",
-     "instance": "23463a773a32-canvas",
+     "instance": "2f21e85319a6-layout-mac-removal",
      "findings": {
       "blocker": 0,
       "major": 0,
       "minor": 0,
       "nit": 0
      },
-     "receipt": "i18n/receipts/23463a773a32-canvas.json",
-     "receipt_sha256": "d5e7cddbe80bae8dbee4ade1a2a8c28d75f5608c27e9270bd7a9800abd7b696a",
-     "scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recor"
+     "receipt": "i18n/receipts/2f21e85319a6-layout-mac-removal.json",
+     "receipt_sha256": "c4364b742bb1730abb39fde7bda59245cf582f1910600c900e4881386f7335f8",
+     "scope": "deletion-only delta at the new bytes; every remaining value identical to the previous audit"
     }
    ],
-   "status": "audited"
+   "status": "audited",
+   "superseded": [
+    {
+     "source_sha256": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+     "target_sha256": "58c4d7a152138cf8f9ddee54d631880d3ed2f7ce443b477573d71322dd1eb4ca",
+     "translator": {
+      "agent": "i18n-translator",
+      "model": "radient/auto",
+      "date": "2026-10-24"
+     },
+     "auditors": [
+      {
+       "agent": "translation-auditor",
+       "model": "radient/auto",
+       "date": "2026-10-24",
+       "result": "clean",
+       "instance": "23463a773a32-canvas",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/23463a773a32-canvas.json",
+       "receipt_sha256": "d5e7cddbe80bae8dbee4ade1a2a8c28d75f5608c27e9270bd7a9800abd7b696a",
+       "scope": "Remediation delta only: every ru value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical English/context hashes and the per-namespace target hashes recor"
+      }
+     ],
+     "status": "audited"
+    }
+   ]
   },
   {
    "locale": "ru",
@@ -29558,8 +29648,8 @@
   {
    "locale": "ur",
    "namespace": "ui.common.layout",
-   "source_sha256": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
-   "target_sha256": "d6f37cb2b8c03d079bf52b50b811f5e0febde9ddbe88bbbe87681f9d1e4776c2",
+   "source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
+   "target_sha256": "212a6e075e18de28942340c2b7fac59f65e5eab317bc9b374158ab33cd4cc68b",
    "translator": {
     "agent": "translator",
     "model": "radient/auto",
@@ -29568,22 +29658,52 @@
    "auditors": [
     {
      "agent": "translation-auditor",
-     "model": "radient/auto",
+     "model": "deepseek/deepseek-flash",
      "date": "2026-10-24",
      "result": "clean",
-     "instance": "21fe6c635cf3",
+     "instance": "2f21e85319a6-layout-mac-removal",
      "findings": {
       "blocker": 0,
       "major": 0,
       "minor": 0,
       "nit": 0
      },
-     "receipt": "i18n/receipts/21fe6c635cf3.json",
-     "receipt_sha256": "3719777f6a0ad81c384b6152f2a44dd20f9f645e6555ae08b7d3c959e39d64c0",
-     "scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below."
+     "receipt": "i18n/receipts/2f21e85319a6-layout-mac-removal.json",
+     "receipt_sha256": "c4364b742bb1730abb39fde7bda59245cf582f1910600c900e4881386f7335f8",
+     "scope": "deletion-only delta at the new bytes; every remaining value identical to the previous audit"
     }
    ],
-   "status": "audited"
+   "status": "audited",
+   "superseded": [
+    {
+     "source_sha256": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+     "target_sha256": "d6f37cb2b8c03d079bf52b50b811f5e0febde9ddbe88bbbe87681f9d1e4776c2",
+     "translator": {
+      "agent": "translator",
+      "model": "radient/auto",
+      "date": "2026-10-24"
+     },
+     "auditors": [
+      {
+       "agent": "translation-auditor",
+       "model": "radient/auto",
+       "date": "2026-10-24",
+       "result": "clean",
+       "instance": "21fe6c635cf3",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/21fe6c635cf3.json",
+       "receipt_sha256": "3719777f6a0ad81c384b6152f2a44dd20f9f645e6555ae08b7d3c959e39d64c0",
+       "scope": "Remediation delta only: every value this remediation changed in the audited namespaces, plus the round-1 findings themselves. Unchanged keys are not re-audited; their round-1 coverage stands on the byte-identical hashes recorded below."
+      }
+     ],
+     "status": "audited"
+    }
+   ]
   },
   {
    "locale": "ur",
@@ -29618,8 +29738,8 @@
   {
    "locale": "fr",
    "namespace": "ui.common.layout",
-   "source_sha256": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
-   "target_sha256": "26c831d3c079c031c9b406e4e480e8faab8d3670912971a575da5873d73b47d4",
+   "source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
+   "target_sha256": "18dc2a80958773f32f2bdefbb93a079a53ee020911f501a590aefbf2c41e347b",
    "translator": {
     "agent": "translator",
     "model": "radient/auto",
@@ -29628,21 +29748,51 @@
    "auditors": [
     {
      "agent": "translation-auditor",
-     "model": "radient/auto",
+     "model": "deepseek/deepseek-flash",
      "date": "2026-10-24",
      "result": "clean",
-     "instance": "d94011de0dc0",
+     "instance": "2f21e85319a6-layout-mac-removal",
      "findings": {
       "blocker": 0,
       "major": 0,
       "minor": 0,
       "nit": 0
      },
-     "receipt": "i18n/receipts/d94011de0dc0.json",
-     "receipt_sha256": "47b8cc59535099ee6ca1b4b8f2f166eb31ca5e2c63ad0d29f1429cca440aec6b"
+     "receipt": "i18n/receipts/2f21e85319a6-layout-mac-removal.json",
+     "receipt_sha256": "c4364b742bb1730abb39fde7bda59245cf582f1910600c900e4881386f7335f8",
+     "scope": "deletion-only delta at the new bytes; every remaining value identical to the previous audit"
     }
    ],
-   "status": "audited"
+   "status": "audited",
+   "superseded": [
+    {
+     "source_sha256": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+     "target_sha256": "26c831d3c079c031c9b406e4e480e8faab8d3670912971a575da5873d73b47d4",
+     "translator": {
+      "agent": "translator",
+      "model": "radient/auto",
+      "date": "2026-10-24"
+     },
+     "auditors": [
+      {
+       "agent": "translation-auditor",
+       "model": "radient/auto",
+       "date": "2026-10-24",
+       "result": "clean",
+       "instance": "d94011de0dc0",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/d94011de0dc0.json",
+       "receipt_sha256": "47b8cc59535099ee6ca1b4b8f2f166eb31ca5e2c63ad0d29f1429cca440aec6b"
+      }
+     ],
+     "status": "audited"
+    }
+   ]
   },
   {
    "locale": "fr",
@@ -29676,8 +29826,8 @@
   {
    "locale": "vi",
    "namespace": "ui.common.layout",
-   "source_sha256": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
-   "target_sha256": "8eb978ebdec1aaf91083f11750f52a70dbf2c5d430ea0a0e2f1130b4daf85981",
+   "source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
+   "target_sha256": "f219394a79ef63502c87e853a7b642cbe46a5b56f9a5b26ce833b72d46f7d16c",
    "translator": {
     "agent": "translator",
     "model": "radient/auto",
@@ -29686,21 +29836,51 @@
    "auditors": [
     {
      "agent": "translation-auditor",
-     "model": "radient/auto",
+     "model": "deepseek/deepseek-flash",
      "date": "2026-10-24",
      "result": "clean",
-     "instance": "b928c7f0c96d",
+     "instance": "2f21e85319a6-layout-mac-removal",
      "findings": {
       "blocker": 0,
       "major": 0,
       "minor": 0,
       "nit": 0
      },
-     "receipt": "i18n/receipts/b928c7f0c96d.json",
-     "receipt_sha256": "fa09631a6ef82d9b05796a237dfc2542b700a7dcbe952ee1dfcd2638787c6bc2"
+     "receipt": "i18n/receipts/2f21e85319a6-layout-mac-removal.json",
+     "receipt_sha256": "c4364b742bb1730abb39fde7bda59245cf582f1910600c900e4881386f7335f8",
+     "scope": "deletion-only delta at the new bytes; every remaining value identical to the previous audit"
     }
    ],
-   "status": "audited"
+   "status": "audited",
+   "superseded": [
+    {
+     "source_sha256": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+     "target_sha256": "8eb978ebdec1aaf91083f11750f52a70dbf2c5d430ea0a0e2f1130b4daf85981",
+     "translator": {
+      "agent": "translator",
+      "model": "radient/auto",
+      "date": "2026-10-24"
+     },
+     "auditors": [
+      {
+       "agent": "translation-auditor",
+       "model": "radient/auto",
+       "date": "2026-10-24",
+       "result": "clean",
+       "instance": "b928c7f0c96d",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/b928c7f0c96d.json",
+       "receipt_sha256": "fa09631a6ef82d9b05796a237dfc2542b700a7dcbe952ee1dfcd2638787c6bc2"
+      }
+     ],
+     "status": "audited"
+    }
+   ]
   },
   {
    "locale": "vi",
@@ -29734,8 +29914,8 @@
   {
    "locale": "zh-CN",
    "namespace": "ui.common.layout",
-   "source_sha256": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
-   "target_sha256": "c02cd9a6bf613448b3da6b3e03285a055243446b66543a58a56b36c9b2bb750f",
+   "source_sha256": "0273823f7fc6e9e8470c96b52351e107ba492821f481b965d06890c0fb9c55f6",
+   "target_sha256": "624ad6806694ae82302898beca4af37c5c820f64964b90ab2420ed01e8a5c9ac",
    "translator": {
     "agent": "translator",
     "model": "openrouter/moonshotai/kimi-k3.1-pro",
@@ -29744,21 +29924,51 @@
    "auditors": [
     {
      "agent": "translation-auditor",
-     "model": "radient/auto",
+     "model": "deepseek/deepseek-flash",
      "date": "2026-10-24",
      "result": "clean",
-     "instance": "93ed237d2e46",
+     "instance": "2f21e85319a6-layout-mac-removal",
      "findings": {
       "blocker": 0,
       "major": 0,
       "minor": 0,
       "nit": 0
      },
-     "receipt": "i18n/receipts/93ed237d2e46.json",
-     "receipt_sha256": "2752cfdbaca9d7d26792aea54cffcc37ab0aeaa090674aa113a84ef3dbd0c6e0"
+     "receipt": "i18n/receipts/2f21e85319a6-layout-mac-removal.json",
+     "receipt_sha256": "c4364b742bb1730abb39fde7bda59245cf582f1910600c900e4881386f7335f8",
+     "scope": "deletion-only delta at the new bytes; every remaining value identical to the previous audit"
     }
    ],
-   "status": "audited"
+   "status": "audited",
+   "superseded": [
+    {
+     "source_sha256": "c4efaa88bba85706ac9fb976bc3d3d009f3bb08fc762a90dfeb73d90d0c14db6",
+     "target_sha256": "c02cd9a6bf613448b3da6b3e03285a055243446b66543a58a56b36c9b2bb750f",
+     "translator": {
+      "agent": "translator",
+      "model": "openrouter/moonshotai/kimi-k3.1-pro",
+      "date": "2026-10-24"
+     },
+     "auditors": [
+      {
+       "agent": "translation-auditor",
+       "model": "radient/auto",
+       "date": "2026-10-24",
+       "result": "clean",
+       "instance": "93ed237d2e46",
+       "findings": {
+        "blocker": 0,
+        "major": 0,
+        "minor": 0,
+        "nit": 0
+       },
+       "receipt": "i18n/receipts/93ed237d2e46.json",
+       "receipt_sha256": "2752cfdbaca9d7d26792aea54cffcc37ab0aeaa090674aa113a84ef3dbd0c6e0"
+      }
+     ],
+     "status": "audited"
+    }
+   ]
   },
   {
    "locale": "zh-CN",

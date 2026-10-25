@@ -610,9 +610,10 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
  * and not a chrome decision: the chrome gates (`data-chrome-*`) say where the
  * OS DRAWS, and the cap says which modifier the handler here answers.
  *
- * The comparison token is a literal, never `t("…mac")`: catalogue copy must
- * not decide which branch runs, or the same platform would resolve differently
- * per UI language. The caption itself stays keyed in `sidebarToggleCap()`.
+ * The comparison token is a literal, never catalogue copy: a translated
+ * platform word would make the same machine resolve differently per UI
+ * language. The caption is `sidebarToggleCap()`'s literal keycap (`⌘B` /
+ * `Ctrl+B`) — a modifier glyph, not prose, so it has no catalogue key.
  */
 const MAC_PLATFORM_TOKEN = "MAC";
 const isMacPlatform = (): boolean =>

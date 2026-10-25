@@ -1076,10 +1076,6 @@ const IDENTICAL_OK = new Map([
 		"kept-English technical term: the style guides keep « token » in English",
 	],
 	[
-		"ui.common.layout.chat_layout.mac",
-		"platform-detection token: the value is compared against navigator.platform",
-	],
-	[
 		"ui.settings.shortcuts.row.canvas",
 		"product surface name: Canvas is preserved verbatim by the glossary",
 	],

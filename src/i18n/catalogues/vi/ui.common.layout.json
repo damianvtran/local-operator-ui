@@ -1,5 +1,4 @@
 {
-	"ui.common.layout.chat_layout.mac": "MAC",
 	"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": "Đổi kích thước khung câu hỏi. Nhấp đúp để đặt lại chiều rộng khung dùng chung.",
 	"ui.common.layout.chat_layout.resize_the_sidebar": "Đổi kích thước thanh bên ({sidebartogglecap})",
 	"ui.common.layout.sidebar_header.create_a_new_agent": "Tạo tác nhân mới",

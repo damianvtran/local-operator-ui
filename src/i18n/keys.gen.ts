@@ -3774,7 +3774,6 @@ export type MessageParams = {
 	"ui.common.forms.tags_input_chips.no_tags_added": undefined;
 	"ui.common.forms.tags_input_chips.remove_tag": { tag: string };
 	"ui.common.forms.toggle_setting.saving": { label: string };
-	"ui.common.layout.chat_layout.mac": undefined;
 	"ui.common.layout.chat_layout.resize_asks_double_click_resets_the_shared_pane_width": undefined;
 	"ui.common.layout.chat_layout.resize_the_sidebar": {
 		sidebartogglecap: string;

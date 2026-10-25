@@ -5,6 +5,5 @@
 	"ui.common.layout.sidebar_header.create_a_new_agent": "Créer un agent",
 	"ui.common.layout.sidebar_header.import_an_agent_from_a_zip_file": "Importer un agent depuis un fichier ZIP",
 	"ui.common.layout.sidebar_header.import_agent": "Importer un agent",
-	"ui.common.layout.sidebar_header.new_agent": "Nouvel agent",
-	"ui.common.layout.chat_layout.mac": "MAC"
+	"ui.common.layout.sidebar_header.new_agent": "Nouvel agent"
 }
