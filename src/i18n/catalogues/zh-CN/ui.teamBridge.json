@@ -162,6 +162,7 @@
 	"ui.teamBridge.attachments.error_invalid": "无法读取此图片，文件可能已损坏。",
 	"ui.teamBridge.attachments.error_rate": "一次添加的图片过多。请等待一分钟后重试。",
 	"ui.teamBridge.attachments.error_quota": "待发送的图片过多。请先发送或移除部分图片，然后重试。",
+	"ui.teamBridge.attachments.error_account_changed": "开始撰写此消息后，当前登录的账户已变更。请重新登录后再发送。",
 	"ui.teamBridge.attachments.error_offline": "无法连接Local Operator，图片未能上传。恢复连接后请重试。",
 	"ui.teamBridge.attachments.error_upload": "图片未能上传。请重试或将其移除。",
 	"ui.teamBridge.attachments.expired_staged": "此图片已无法发送。请将其移除，然后重新添加。",

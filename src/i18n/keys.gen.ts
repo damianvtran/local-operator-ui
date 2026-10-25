@@ -6735,6 +6735,7 @@ export type MessageParams = {
 	};
 	"ui.teamBridge.actions.label": undefined;
 	"ui.teamBridge.attachments.add": undefined;
+	"ui.teamBridge.attachments.error_account_changed": undefined;
 	"ui.teamBridge.attachments.error_invalid": undefined;
 	"ui.teamBridge.attachments.error_offline": undefined;
 	"ui.teamBridge.attachments.error_quota": undefined;

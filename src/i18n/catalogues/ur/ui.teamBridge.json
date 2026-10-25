@@ -162,6 +162,7 @@
 	"ui.teamBridge.attachments.error_invalid": "یہ تصویر پڑھی نہیں جا سکی۔ شاید فائل خراب ہے۔",
 	"ui.teamBridge.attachments.error_rate": "ایک ساتھ بہت زیادہ تصاویر۔ ایک منٹ انتظار کریں، پھر دوبارہ کوشش کریں۔",
 	"ui.teamBridge.attachments.error_quota": "آپ کی بہت زیادہ تصاویر بھیجے جانے کے انتظار میں ہیں۔ کچھ بھیجیں یا ہٹائیں، پھر دوبارہ کوشش کریں۔",
+	"ui.teamBridge.attachments.error_account_changed": "آپ کا سائن ان اکاؤنٹ اس پیغام کو لکھنا شروع کرنے کے بعد بدل گیا ہے۔ اسے بھیجنے کے لیے دوبارہ سائن ان کریں۔",
 	"ui.teamBridge.attachments.error_offline": "تصویر اپ لوڈ نہیں ہو سکی کیونکہ Local Operator سے رابطہ نہیں ہو رہا۔ رابطہ بحال ہونے پر دوبارہ کوشش کریں۔",
 	"ui.teamBridge.attachments.error_upload": "تصویر اپ لوڈ نہیں ہو سکی۔ دوبارہ کوشش کریں یا اسے ہٹا دیں۔",
 	"ui.teamBridge.attachments.expired_staged": "یہ تصویر اب بھیجنے کے لیے تیار نہیں ہے۔ اسے ہٹا دیں اور دوبارہ شامل کریں۔",

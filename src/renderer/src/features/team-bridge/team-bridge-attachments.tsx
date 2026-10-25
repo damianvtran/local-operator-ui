@@ -85,13 +85,14 @@ const failureCopy = (reason: AttachmentFailure | undefined): string => {
 		case "signed_out":
 			return t("ui.teamBridge.plan.sign_in_reason");
 		/*
-		 * A dedicated "your account changed" sentence needs a translation round
-		 * (the ledger admits no untranslated key), so this reuses the sign-in
-		 * sentence and its action. What it must NOT do is claim a quota: that was
-		 * the falsehood R1-01 found. Deferred: a precise account-change string.
+		 * Its own sentence, because neither neighbour is true: "signed out" is a
+		 * different fact and the quota line is a different failure. The key stays
+		 * in the `attachments` namespace — that is where it renders — and says
+		 * "changed" rather than "mismatch" because it describes a change over
+		 * time, not a comparison (design round 1 D1, code review R3-01).
 		 */
 		case "account_mismatch":
-			return t("ui.teamBridge.plan.sign_in_reason");
+			return t("ui.teamBridge.attachments.error_account_changed");
 		default:
 			return t("ui.teamBridge.attachments.error_upload");
 	}

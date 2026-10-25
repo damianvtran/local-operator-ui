@@ -162,6 +162,7 @@
 	"ui.teamBridge.attachments.error_invalid": "This image couldn’t be read. It may be damaged.",
 	"ui.teamBridge.attachments.error_rate": "Too many images at once. Wait a minute, then retry.",
 	"ui.teamBridge.attachments.error_quota": "You have too many images waiting to be sent. Send or remove some, then retry.",
+	"ui.teamBridge.attachments.error_account_changed": "The signed-in account has changed since this message was started. Sign in again to send it.",
 	"ui.teamBridge.attachments.error_offline": "The image couldn’t be uploaded because Local Operator isn’t reachable. Retry when it’s back.",
 	"ui.teamBridge.attachments.error_upload": "The image couldn’t be uploaded. Retry or remove it.",
 	"ui.teamBridge.attachments.expired_staged": "This image is no longer ready to send. Remove it and add the image again.",

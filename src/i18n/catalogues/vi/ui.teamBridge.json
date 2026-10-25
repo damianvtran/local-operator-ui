@@ -162,6 +162,7 @@
 	"ui.teamBridge.attachments.error_invalid": "Không đọc được hình ảnh này. Tệp có thể đã bị hỏng.",
 	"ui.teamBridge.attachments.error_rate": "Quá nhiều hình ảnh cùng lúc. Hãy chờ một phút rồi thử lại.",
 	"ui.teamBridge.attachments.error_quota": "Có quá nhiều hình ảnh đang chờ gửi. Hãy gửi hoặc gỡ bớt rồi thử lại.",
+	"ui.teamBridge.attachments.error_account_changed": "Tài khoản bạn đang đăng nhập đã thay đổi kể từ khi bạn bắt đầu soạn tin nhắn này. Hãy đăng nhập lại để gửi tin nhắn.",
 	"ui.teamBridge.attachments.error_offline": "Không tải hình ảnh lên được vì không kết nối được Local Operator. Hãy thử lại khi kết nối trở lại.",
 	"ui.teamBridge.attachments.error_upload": "Không tải hình ảnh lên được. Hãy thử lại hoặc gỡ hình ảnh.",
 	"ui.teamBridge.attachments.expired_staged": "Hình ảnh này không còn sẵn sàng để gửi. Hãy gỡ hình ảnh rồi thêm lại.",
