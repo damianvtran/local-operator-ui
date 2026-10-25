@@ -159,6 +159,7 @@ import esUiCommonUpdates from "./catalogues/es/ui.common.updates.json";
 import esUiCommonViewer from "./catalogues/es/ui.common.viewer.json";
 import esUiConsoleErrors from "./catalogues/es/ui.console.errors.json";
 import esUiConsole from "./catalogues/es/ui.console.json";
+import esUiHubBrowse from "./catalogues/es/ui.hub.browse.json";
 import esUiHubComments from "./catalogues/es/ui.hub.comments.json";
 import esUiHub from "./catalogues/es/ui.hub.json";
 import esUiHubTaxonomy from "./catalogues/es/ui.hub.taxonomy.json";
@@ -244,6 +245,7 @@ import frUiCommonUpdates from "./catalogues/fr/ui.common.updates.json";
 import frUiCommonViewer from "./catalogues/fr/ui.common.viewer.json";
 import frUiConsoleErrors from "./catalogues/fr/ui.console.errors.json";
 import frUiConsole from "./catalogues/fr/ui.console.json";
+import frUiHubBrowse from "./catalogues/fr/ui.hub.browse.json";
 import frUiHubComments from "./catalogues/fr/ui.hub.comments.json";
 import frUiHub from "./catalogues/fr/ui.hub.json";
 import frUiHubTaxonomy from "./catalogues/fr/ui.hub.taxonomy.json";
@@ -329,6 +331,7 @@ import hiUiCommonUpdates from "./catalogues/hi/ui.common.updates.json";
 import hiUiCommonViewer from "./catalogues/hi/ui.common.viewer.json";
 import hiUiConsoleErrors from "./catalogues/hi/ui.console.errors.json";
 import hiUiConsole from "./catalogues/hi/ui.console.json";
+import hiUiHubBrowse from "./catalogues/hi/ui.hub.browse.json";
 import hiUiHubComments from "./catalogues/hi/ui.hub.comments.json";
 import hiUiHub from "./catalogues/hi/ui.hub.json";
 import hiUiHubTaxonomy from "./catalogues/hi/ui.hub.taxonomy.json";
@@ -414,6 +417,7 @@ import ruUiCommonUpdates from "./catalogues/ru/ui.common.updates.json";
 import ruUiCommonViewer from "./catalogues/ru/ui.common.viewer.json";
 import ruUiConsoleErrors from "./catalogues/ru/ui.console.errors.json";
 import ruUiConsole from "./catalogues/ru/ui.console.json";
+import ruUiHubBrowse from "./catalogues/ru/ui.hub.browse.json";
 import ruUiHubComments from "./catalogues/ru/ui.hub.comments.json";
 import ruUiHub from "./catalogues/ru/ui.hub.json";
 import ruUiHubTaxonomy from "./catalogues/ru/ui.hub.taxonomy.json";
@@ -499,6 +503,7 @@ import urUiCommonUpdates from "./catalogues/ur/ui.common.updates.json";
 import urUiCommonViewer from "./catalogues/ur/ui.common.viewer.json";
 import urUiConsoleErrors from "./catalogues/ur/ui.console.errors.json";
 import urUiConsole from "./catalogues/ur/ui.console.json";
+import urUiHubBrowse from "./catalogues/ur/ui.hub.browse.json";
 import urUiHubComments from "./catalogues/ur/ui.hub.comments.json";
 import urUiHub from "./catalogues/ur/ui.hub.json";
 import urUiHubTaxonomy from "./catalogues/ur/ui.hub.taxonomy.json";
@@ -584,6 +589,7 @@ import viUiCommonUpdates from "./catalogues/vi/ui.common.updates.json";
 import viUiCommonViewer from "./catalogues/vi/ui.common.viewer.json";
 import viUiConsoleErrors from "./catalogues/vi/ui.console.errors.json";
 import viUiConsole from "./catalogues/vi/ui.console.json";
+import viUiHubBrowse from "./catalogues/vi/ui.hub.browse.json";
 import viUiHubComments from "./catalogues/vi/ui.hub.comments.json";
 import viUiHub from "./catalogues/vi/ui.hub.json";
 import viUiHubTaxonomy from "./catalogues/vi/ui.hub.taxonomy.json";
@@ -669,6 +675,7 @@ import zhCNUiCommonUpdates from "./catalogues/zh-CN/ui.common.updates.json";
 import zhCNUiCommonViewer from "./catalogues/zh-CN/ui.common.viewer.json";
 import zhCNUiConsoleErrors from "./catalogues/zh-CN/ui.console.errors.json";
 import zhCNUiConsole from "./catalogues/zh-CN/ui.console.json";
+import zhCNUiHubBrowse from "./catalogues/zh-CN/ui.hub.browse.json";
 import zhCNUiHubComments from "./catalogues/zh-CN/ui.hub.comments.json";
 import zhCNUiHub from "./catalogues/zh-CN/ui.hub.json";
 import zhCNUiHubTaxonomy from "./catalogues/zh-CN/ui.hub.taxonomy.json";
@@ -851,6 +858,7 @@ export const bundledCatalogues: Readonly<
 		...esUiCommonViewer,
 		...esUiConsoleErrors,
 		...esUiConsole,
+		...esUiHubBrowse,
 		...esUiHubComments,
 		...esUiHub,
 		...esUiHubTaxonomy,
@@ -938,6 +946,7 @@ export const bundledCatalogues: Readonly<
 		...frUiCommonViewer,
 		...frUiConsoleErrors,
 		...frUiConsole,
+		...frUiHubBrowse,
 		...frUiHubComments,
 		...frUiHub,
 		...frUiHubTaxonomy,
@@ -1025,6 +1034,7 @@ export const bundledCatalogues: Readonly<
 		...hiUiCommonViewer,
 		...hiUiConsoleErrors,
 		...hiUiConsole,
+		...hiUiHubBrowse,
 		...hiUiHubComments,
 		...hiUiHub,
 		...hiUiHubTaxonomy,
@@ -1112,6 +1122,7 @@ export const bundledCatalogues: Readonly<
 		...ruUiCommonViewer,
 		...ruUiConsoleErrors,
 		...ruUiConsole,
+		...ruUiHubBrowse,
 		...ruUiHubComments,
 		...ruUiHub,
 		...ruUiHubTaxonomy,
@@ -1199,6 +1210,7 @@ export const bundledCatalogues: Readonly<
 		...urUiCommonViewer,
 		...urUiConsoleErrors,
 		...urUiConsole,
+		...urUiHubBrowse,
 		...urUiHubComments,
 		...urUiHub,
 		...urUiHubTaxonomy,
@@ -1286,6 +1298,7 @@ export const bundledCatalogues: Readonly<
 		...viUiCommonViewer,
 		...viUiConsoleErrors,
 		...viUiConsole,
+		...viUiHubBrowse,
 		...viUiHubComments,
 		...viUiHub,
 		...viUiHubTaxonomy,
@@ -1373,6 +1386,7 @@ export const bundledCatalogues: Readonly<
 		...zhCNUiCommonViewer,
 		...zhCNUiConsoleErrors,
 		...zhCNUiConsole,
+		...zhCNUiHubBrowse,
 		...zhCNUiHubComments,
 		...zhCNUiHub,
 		...zhCNUiHubTaxonomy,

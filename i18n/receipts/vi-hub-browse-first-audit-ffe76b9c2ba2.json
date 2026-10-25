@@ -1,0 +1,192 @@
+{
+	"schema": 1,
+	"kind": "translation-audit",
+	"audit_kind": "first-independent-audit",
+	"locale": "vi",
+	"source_locale": "en",
+	"namespace": "ui.hub.browse",
+	"namespace_keys": 41,
+	"target_file": "src/i18n/catalogues/vi/ui.hub.browse.json",
+	"source_file": "src/i18n/catalogues/en/ui.hub.browse.json",
+	"context_file": "src/i18n/catalogues/en/ui.hub.browse.context.json",
+	"target_binding": "Uncommitted working-tree candidate in worktree i18n-agent-hub-copy; it exists in no commit. Bound by the sha256 below.",
+	"source_commit": "68208fff1f340c14050483eeb6eb558523169302",
+	"source_commit_state": "local only (push paused by an attribution rewrite); clean worktree at audit time",
+	"date": "2026-10-25",
+	"instance": "ffe76b9c2ba2",
+	"instance_basis": "run id minted for this audit from the bound target sha256 prefix (not a harness session id, which this session does not expose)",
+	"auditor": {
+		"agent": "translation-auditor",
+		"role": "independent translation auditor (team lopdev); not the translator of this namespace",
+		"model": "radient/auto",
+		"model_note": "The session interface reports the route as radient/auto. The concrete upstream model behind that auto-route is not exposed to the session, so no stronger claim is made; no fallback route was reported or observed during this run.",
+		"independence": "This session wrote no catalogue, ledger, allowance or key. It read the English source, context sidecar, target candidate and consuming code only. Translator job dbc7b81921e5 is a different run; its report was not present in the worktree or scratchpad, so the rulings below come from the bytes and shipped catalogues."
+	},
+	"status": "passed",
+	"result": "clean-with-findings",
+	"findings": [
+		{
+			"key": "ui.hub.browse.card.favourite.tooltip_unknown",
+			"severity": "nit",
+			"current": "Không đọc được mục yêu thích của bạn nên nút này không được hiển thị ở trạng thái chưa yêu thích.",
+			"proposed": "Không đọc được mục yêu thích của bạn nên nút này không hiển thị như thể chưa yêu thích.",
+			"reason": "“không được hiển thị ở trạng thái chưa yêu thích” can be read as the button being hidden while unfavourited; English says only that it is not rendered as the unfavourited state, so “không hiển thị như thể chưa yêu thích” states the limit without the false reading."
+		},
+		{
+			"key": "ui.hub.browse.card.like.tooltip_unknown",
+			"severity": "nit",
+			"current": "Không đọc được lượt thích của bạn nên nút này không được hiển thị ở trạng thái chưa thích.",
+			"proposed": "Không đọc được lượt thích của bạn nên nút này không hiển thị như thể chưa thích.",
+			"reason": "Mirror of the favourite string: the same “không được hiển thị ở trạng thái chưa thích” clause; the heart is shown disabled rather than hidden when the agent is not liked."
+		},
+		{
+			"key": "ui.hub.browse.details.failure.delist",
+			"severity": "nit",
+			"current": "Tác nhân chưa được gỡ khỏi trung tâm.",
+			"proposed": "Không gỡ được tác nhân khỏi trung tâm.",
+			"reason": "This is an AlertTitle and delist has no retry control (retry: undefined in agent-details-page.tsx), so “chưa” (not yet) suggests a removal still in flight; the completed-failure form names what did not happen, which is what the context note asks for."
+		}
+	],
+	"findings_summary": {
+		"blocker": 0,
+		"major": 0,
+		"minor": 0,
+		"nit": 3
+	},
+	"observations": [
+		{
+			"topic": "Agent Hub naming — “Trung tâm tác nhân”",
+			"ruling": "approved",
+			"detail": "Matches the shipped surface name: ui.shell.sidebar_navigation.agent_hub is “Trung tâm tác nhân” and ui.agents.dialogs.create.hub_link is “Duyệt trung tâm tác nhân để tải tác nhân có sẵn”. The namespace keeps the right split: the full surface name where English says “Agent Hub” (details.back_aria, details.delist_tooltip) and lower-case generic “trung tâm” where English says “the hub” (delist_aria, delist_body, delist_title, failure.delist). Vietnamese surface names are not title-cased, so sentence case is correct. Out-of-namespace inconsistency noted, not this target's defect: ui.hub.updates.error.model_unavailable still reads “Kiểm tra Cài đặt › Agent Hub.”"
+		},
+		{
+			"topic": "Download register — “Tải” vs “Tải xuống”",
+			"ruling": "approved as an intentional split; no change",
+			"detail": "Both spellings are named here because this is glossary drift: the same English “download” renders as “Tải” (card.get, card.download_aria) and as “Tải xuống” (details.download_aria, details.failure.download, delist_body), while bare “tải” also renders “load” in details.load_failed_title. The split is justified by the render sites: card.get is the card's only labelled action inside a shrink-wrapped action area (agent-card.tsx) whose accessible name must contain the visible label, “Tải” is the conventional short download verb on a button that already carries a download icon and a download count, and the uncapped surfaces use the full “Tải xuống” / “Tải … xuống”. A future harmonisation of card.download_aria to “Tải xuống {name}” would still satisfy containment and is a style call, not a defect; nothing is requested now."
+		},
+		{
+			"topic": "Delist wording and the width of delist_confirm",
+			"ruling": "wording approved; width plausible, rendered check belongs to QA/design",
+			"detail": "“Gỡ … khỏi trung tâm” is the shipped remove verb (ui.schedules, ui.projects and this namespace's own delist_body all use “gỡ”) at the plain register the context asks for; “hủy niêm yết” would be marketplace-formal and “Gỡ” alone would drop the object. delist_confirm “Gỡ khỏi trung tâm” is 17 characters against English “Delist” (6) — the largest absolute growth in the namespace — and it sits in BaseDialog's action row (flex-col-reverse gap-2 sm:flex-row sm:justify-end) inside maxWidth=“xs”, beside “Hủy” (ui.common.actions.cancel), with no truncate, no fixed width and no width cap in the context note (delist_body is explicitly free to wrap). An estimate at the app's UI size puts the two-button row near 200px inside an xs panel, so it should stay on one line; this is an estimate, not a pixel measurement — no browser surface was available to this audit, so the rendered check belongs to QA/design."
+		},
+		{
+			"topic": "Failure headlines end with a full stop where English has none",
+			"ruling": "accepted; design may rule once for all alert titles",
+			"detail": "All four details.failure.* strings are AlertTitle text and end with “.” while English has none. This is locale punctuation rather than a defect — shipped vi error copy uses full stops (“Không thể xuất bản tác nhân.”) and Vietnamese sentences normally close. Flagged only so the heading style can be ruled on once, not per string."
+		},
+		{
+			"topic": "details.created_by — “Được tạo bởi”",
+			"ruling": "considered, accepted",
+			"detail": "“Được tạo bởi: {author}” is standard Vietnamese passive with agent and it takes the caller-assembled “Name (email)” correctly (the parenthetical is built in agent-details-page.tsx, not in the message). “Tạo bởi:” would be one syllable shorter and matches the “Đã tạo:” sibling shape, but the difference is stylistic; no change requested."
+		},
+		{
+			"topic": "Plurals and ICU arguments",
+			"ruling": "verified clean",
+			"detail": "Verified rather than assumed: none of the 41 English messages contains a plural or select node, so Vietnamese needs no additional CLDR categories. Every argument name and type matches: {name} in download_aria and delist_body, {age} in updated/created/last_modified, {date} in created/last_modified, {author} in created_by. The only count-bearing text is {age}, produced by ui.hub.comments.age.* which is already pluralised in vi (“{count} giờ trước”); the joins therefore read “Tên · cập nhật 2 giờ trước”, “Đã tạo: 2 giờ trước (…)” and “Sửa đổi lần cuối: 2 giờ trước (…)” with no doubled preposition and no English residue."
+		},
+		{
+			"topic": "Accessible names containing their visible labels",
+			"ruling": "verified",
+			"detail": "card.download_aria “Tải {name}” contains the visible card.get word “Tải” exactly. The pager's visible “Sau”/“Trước” are contained in the accessible names “Trang sau”/“Trang trước” from ui.common.forms.compact_pagination, which hub-pager.tsx passes. delist_aria “Gỡ tác nhân khỏi trung tâm” opens with the same verb “Gỡ” as delist_confirm “Gỡ khỏi trung tâm”, which is what the context requires (the verb, not the full label). All pass."
+		},
+		{
+			"topic": "Allowed English tokens, bidi and NFC",
+			"ruling": "verified",
+			"detail": "Only “Radient” remains in Latin script, in three strings, and the context names it a product name that stays English. No other Latin runs, no manual bidi or zero-width characters, every value NFC-normalised, “…” is U+2026 and no value contains “...”."
+		}
+	],
+	"checks": {
+		"keys": {
+			"english": 41,
+			"translated": 41,
+			"missing": [],
+			"extra": [],
+			"duplicate_values": [],
+			"all_41_read": true
+		},
+		"placeholders": {
+			"sets_equal": true,
+			"missing": [],
+			"added": [],
+			"literal_tokens_checked": [
+				"{name}",
+				"{age}",
+				"{date}",
+				"{author}"
+			]
+		},
+		"icu": {
+			"parser": "@formatjs/icu-messageformat-parser 3.5.21 (the catalogue tooling's parser, via node)",
+			"messages_parsed": 82,
+			"messages_total": 82,
+			"plural_or_select_messages": 0,
+			"argument_name_type_mismatches": 0
+		},
+		"unicode": {
+			"nfc_all": true,
+			"bidi_or_zero_width": [],
+			"three_dot_ellipsis": [],
+			"u2026_in_action_trying": true
+		},
+		"widths": {
+			"card_get_chars": {
+				"en": 3,
+				"vi": 3
+			},
+			"delist_confirm_chars": {
+				"en": 6,
+				"vi": 17
+			},
+			"largest_expansions": [
+				"card.like.tooltip_unknown +28",
+				"card.favourite.tooltip_unknown +25",
+				"details.viewer_unknown +19"
+			],
+			"note": "the large expansions are tooltip and status sentences that wrap; only delist_confirm was reasoned about for a rendered check"
+		},
+		"terminology_evidence": {
+			"agent": "“tác nhân” — 320 occurrences in shipped vi catalogues (candidate file excluded)",
+			"hub_surface": "ui.shell.sidebar_navigation.agent_hub = “Trung tâm tác nhân”",
+			"pager": "ui.chat.pickers.table_pager next/prev = “Sau”/“Trước”",
+			"favourite": "ui.library.menu.favorite/unfavorite = “Thêm vào yêu thích”/“Bỏ yêu thích”",
+			"sign_in": "ui.common.account.radient_auth_buttons.sign_in_to_radient = “Đăng nhập Radient”",
+			"cancel": "ui.common.actions.cancel = “Hủy”",
+			"curly_quotes": "shipped vi uses “…” (ui.teamBridge)"
+		},
+		"register": {
+			"address_form": "“bạn” throughout, matching shipped vi",
+			"case": "sentence case; imperatives plain",
+			"radient": "kept in English in all three strings that name it"
+		},
+		"consuming_code_read": [
+			"src/renderer/src/features/agent-hub/components/agent-card.tsx",
+			"src/renderer/src/features/agent-hub/agent-details-page.tsx",
+			"src/renderer/src/features/agent-hub/components/hub-pager.tsx",
+			"src/renderer/src/features/agent-hub/comment-age.ts"
+		]
+	},
+	"verdict": "pass — clean-with-findings: 0 blocker, 0 major, 0 minor, 3 nit across all 41 keys read. No placeholder, plural, register or terminology defect; the three judgement calls in the brief are ruled approved with reasons; the nits are wording clarity in two unknown-state tooltips and the pending tone of one AlertTitle, none gating.",
+	"method": [
+		"Read the English source, context sidecar and vi candidate as bytes from the bound worktree; recomputed all three sha256 values from disk and they match the brief.",
+		"Read all 41 English/target pairs side by side with the role, tone and width note for each key, forming findings before any translator report was looked for.",
+		"Read the consuming components — agent-card.tsx (provenance join “name · updated {age}”, action area, aria names), agent-details-page.tsx (AlertTitle failure headlines, author assembly, BaseDialog maxWidth xs action row, back/download/delist controls), hub-pager.tsx (visible step words vs shared accessible names), comment-age.ts (the age is the complete “… trước” phrase).",
+		"Parsed all 82 English and target messages with the ICU parser and diffed argument names and types; enumerated plural/select nodes.",
+		"Checked every placeholder literally in the target bytes, confirming none was renamed or dropped.",
+		"Unicode pass: NFC on every value, scan for bidi and zero-width controls, U+2026 check, three-dot scan.",
+		"Compared terminology and register against shipped vi catalogues by grep: hub naming, download/favourite/like/remove verbs, pager step words, “Đăng nhập Radient”, “Hủy”, second-person “bạn”.",
+		"Measured character length for every key and reasoned about the two width-sensitive controls; no rendered check was possible here, so nothing in this receipt is a pixel claim."
+	],
+	"notes": [
+		"First independent audit of an uncommitted candidate: the receipt binds the exact bytes by sha256 and says nothing about bytes that later replace them.",
+		"No file was edited, no git write, build, suite or browser action was performed; this receipt is the only artefact added.",
+		"The three nits are recorded rather than churned; clean-with-findings is the honest label for a namespace with no blocker/major and recorded nits."
+	],
+	"source_sha256": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+	"target_sha256": "ffe76b9c2ba23dd7eba728d031543242864401163d5b897cc972bcae235f25ab",
+	"context_sha256": "2b2ab8e9d56a7c3c32fa3925a1952bb0e1bcfac658ab9ff2184bf20501b2a2de",
+	"sha256": {
+		"en": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+		"vi": "ffe76b9c2ba23dd7eba728d031543242864401163d5b897cc972bcae235f25ab",
+		"context": "2b2ab8e9d56a7c3c32fa3925a1952bb0e1bcfac658ab9ff2184bf20501b2a2de"
+	}
+}

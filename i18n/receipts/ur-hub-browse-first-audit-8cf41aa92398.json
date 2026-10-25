@@ -1,0 +1,143 @@
+{
+  "schema": 1,
+  "kind": "i18n-namespace-audit-receipt",
+  "audit": "first",
+  "namespace": "ui.hub.browse",
+  "locale": "ur",
+  "locale_dir": "rtl",
+  "instance": "8cf41aa92398",
+  "auditor": "translation-auditor",
+  "model": "radient/auto",
+  "model_route": "radient/auto, the host-declared session model; no fallback model was substituted in this run",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "date": "2026-10-25",
+  "repository": "damianvtran/local-operator-ui",
+  "worktree": "~/local-operator-ui/.worktrees/i18n-agent-hub-copy",
+  "source_commit": "68208fff1f340c14050483eeb6eb558523169302",
+  "source_commit_note": "LOCAL ONLY — not pushed (attribution rewrite in progress); the English source and sidecar were read at this commit and bound by sha256",
+  "target_state": "uncommitted candidate file in that worktree; bound by sha256, not by any commit",
+  "keys_read": 41,
+  "source_sha256": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+  "target_sha256": "39cb1df0e3cc7625eb7ce589daa672e37a017f1ea0d72841dd5547f47d6f113f",
+  "sha256": {
+    "en": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+    "ur": "39cb1df0e3cc7625eb7ce589daa672e37a017f1ea0d72841dd5547f47d6f113f",
+    "context": "2b2ab8e9d56a7c3c32fa3925a1952bb0e1bcfac658ab9ff2184bf20501b2a2de"
+  },
+  "findings": [
+    {
+      "severity": "minor",
+      "key": "ui.hub.browse.card.download_aria",
+      "current": "{name} حاصل کریں",
+      "proposed": "{name} ڈاؤن لوڈ کریں (paired with card.get: ڈاؤن لوڈ)",
+      "reason": "English names the action 'Download {name}', but the Urdu aria repeats the visible Get verb حاصل کریں, so a screen-reader user is only ever told 'obtain' and never that the control downloads; the card's download button carries no tooltip, so this aria is the only spoken text. The constraint that produced it is real (label-in-name: the aria must contain the visible حاصل کریں), so the clean fix moves the visible label too — ڈاؤن لوڈ is one glyph cluster shorter than حاصل کریں, and it matches the 39 shipped ur keys that already render download as ڈاؤن لوڈ (counted from the ur catalogues, this candidate excluded)."
+    },
+    {
+      "severity": "minor",
+      "key": "ui.hub.browse.card.favourite.tooltip_unknown",
+      "also_affects": [
+        "ui.hub.browse.card.like.tooltip_unknown"
+      ],
+      "current": "آپ کے پسندیدہ پڑھے نہیں جا سکے، اس لیے یہ غیر پسندیدہ نہیں دکھایا گیا۔",
+      "proposed": "آپ کے پسندیدہ پڑھے نہیں جا سکے، اس لیے یہ نہیں دکھایا گیا کہ یہ پسندیدہ نہیں ہے۔",
+      "reason": "غیر پسندیدہ is a live Urdu adjective meaning 'undesirable/unfavourable', so 'یہ غیر پسندیدہ نہیں دکھایا گیا' invites the reading 'this is not shown as undesirable' where English says 'not shown as unfavourited'; the same file's details.viewer_unknown already uses the unambiguous 'یہ نہیں دکھایا گیا کہ …' construction, and غیر لائک in the like mirror is the same ad-hoc negation."
+    },
+    {
+      "severity": "minor",
+      "key": "ui.hub.browse.details.delist_aria",
+      "also_affects": [
+        "ui.hub.browse.details.delist_title",
+        "ui.hub.browse.details.delist_body",
+        "ui.hub.browse.details.delisting",
+        "ui.hub.browse.details.failure.delist"
+      ],
+      "current": "ایجنٹ کو ہب سے ہٹائیں",
+      "proposed": "ایجنٹ کو Agent Hub سے ہٹائیں (and Agent Hub in the title, body, delisting and failure.delist)",
+      "reason": "The same referent is spelled two ways inside one dialog: the tooltip on this very control says Agent Hub سے ہٹائیں while the aria, title, body, status and failure headline say ہب سے; shipped ur is itself split (ہب 45, Agent Hub 25), so this is partial drift rather than a violation, but a screen reader reads the tooltip and the aria of the same button back to back."
+    },
+    {
+      "severity": "minor",
+      "key": "ui.hub.browse.pager.aria",
+      "current": "ایجنٹ کے صفحات",
+      "proposed": "ایجنٹوں کے صفحات",
+      "reason": "'ایجنٹ کے صفحات' reads as 'the agent's pages' (one possessor), while English 'Agent pages' labels a pager over the agent list; Urdu marks the plural on the genitive (ایجنٹوں), a form the shipped ur catalogues already use."
+    },
+    {
+      "severity": "nit",
+      "key": "ui.hub.browse.details.created",
+      "current": "تخلیق: {age} ({date})",
+      "proposed": "تخلیق کا وقت: {age} ({date})",
+      "reason": "The locale already ships تخلیق کا وقت for the English label 'Created' (ui.agents.settings.general.created, ui.chat.sidebar_view.created), so the bare تخلیق: is a second rendering of one term; the current line is understandable as 'Creation: 3 days ago (date)', this is consistency, not correction."
+    },
+    {
+      "severity": "nit",
+      "key": "ui.hub.browse.details.delist_confirm",
+      "current": "ہب سے ہٹائیں",
+      "proposed": "ہٹا دیں",
+      "reason": "English is the one word 'Delist'; the Urdu repeats the dialog title's whole phrase in a maxWidth xs footer beside منسوخ کریں, and the shorter form stays correct under the title that already names the object — flagged for a rendered check, no pixel claim made."
+    }
+  ],
+  "observations": [
+    {
+      "id": "O1",
+      "about": "translator judgement call: حاصل کریں for Get",
+      "ruling": "accepted",
+      "evidence": "shipped ur already renders obtaining agents from the hub as حاصل کرنا (ui.agents.dialogs.create.hub_link: 'تیار ایجنٹس حاصل کرنے کے لیے Agent Hub دیکھیں'); حاصل کریں is the standard Urdu CTA for 'Get' and mirrors English's visible-Get/aria-Download split. The only cost is recorded as finding 1."
+    },
+    {
+      "id": "O2",
+      "about": "translator judgement call: لائک",
+      "ruling": "accepted",
+      "evidence": "7 occurrences, all in this namespace — no shipped ur precedent to drift from; لائک is the ordinary Urdu web transliteration of the social 'like' and keeps the heart distinct from پسندیدہ (favourite). لائق (worthy) is a different word, so no homograph risk."
+    },
+    {
+      "id": "O3",
+      "about": "translator judgement call: age placed first in card.updated",
+      "ruling": "accepted",
+      "evidence": "matches the shipped ur construction exactly — ui.hub.updates.detail.applied_ago '{ago} اپ ڈیٹ ہوا۔' and ui.code_review.age.days '{amountText} دن پہلے اپ ڈیٹ ہوا'. Urdu is verb-final, so the age adverbial precedes the verb; the {age} fragment (ui.hub.comments.age.*) already carries پہلے and no second preposition was appended. The sidecar's 'keep the leading lowercase word before the placeholder' is a casing/Latin-order note that cannot apply to a caseless RTL language; its intent (no bare time expression, no added preposition) is met."
+    },
+    {
+      "id": "O4",
+      "about": "translator judgement call: delist wording",
+      "ruling": "accepted with finding 3",
+      "evidence": "ہٹائیں is a faithful 'take off the listing', distinct from حذف کریں (delete, used for comments) and from مقامی نقل ہٹائیں (unpull, used for skills); the same verb root runs through all six delist strings, and the body keeps English's 'you can upload it again later'. Only the surface-name spelling drifts (finding 3)."
+    },
+    {
+      "id": "O5",
+      "about": "placeholder and plural integrity",
+      "ruling": "verified clean",
+      "evidence": "41/41 keys present, key order identical to English; placeholder sets identical for all 41 ({name}, {age}, {date}, {author}); zero ICU plural/select in this namespace (checked, not assumed); NFC-normalised; no manual bidi controls (U+200E/200F/202A-202E/2066-2069/061C absent); U+2026 present in action.trying; tabs and trailing newline match the English file."
+    },
+    {
+      "id": "O6",
+      "about": "register and punctuation",
+      "ruling": "verified clean",
+      "evidence": "one address form throughout (آپ + polite کریں/جائیں; no تم/تو); Urdu ۔ ؟ ، used; no ASCII . ? !; no double or edge spaces; sentence-final stops mirror the English punctuation key for key."
+    },
+    {
+      "id": "O7",
+      "about": "ur is not in the backend shipped set",
+      "ruling": "context, not a defect",
+      "evidence": "read at this session from ~/local-operator/local_operator/i18n/data/shipped.json: locales are en, fr, es, ru, vi, hi — ur absent, so backend resolution will not select ur. The renderer does bundle ur (src/i18n/keys.gen.ts bundledCatalogues includes ur), so these strings can surface pre-connection from a device ur locale. This audit is evidence about the bytes, not evidence that ur ships."
+    },
+    {
+      "id": "O8",
+      "about": "width budget (codepoints only, no pixel claim)",
+      "ruling": "rendered check requested",
+      "evidence": "card.get 3 -> 9 codepoints, details.delist_confirm 6 -> 12. The card footer is flex-wrap with a shrink-0 action (agent-card.tsx), so a longer Get label drops the action to a second line rather than clipping — which would move the card's pinned settled height, so ur needs a rendered check on the narrowest grid. The confirm sits in a maxWidth xs DialogFooter. Ten of the 41 strings exceed English by more than 50% in codepoints; after the two short-budget controls the rest are the tooltips, delisting and delist_aria, all in wrapping contexts. These are codepoint counts, not measured widths — no pixel claim is made and none was possible on this host."
+    },
+    {
+      "id": "O9",
+      "about": "English source tension, reported not counted",
+      "ruling": "not a ur defect",
+      "evidence": "details.delist_tooltip says 'Permanently delist' while details.delist_body says the agent can be uploaded again; the Urdu renders both faithfully, so the contradiction belongs to the English source owner."
+    },
+    {
+      "id": "O10",
+      "about": "independence",
+      "ruling": "stated",
+      "evidence": "findings were formed from the English catalogue, the context sidecar, the consuming components and the shipped ur catalogues before any translator report was read; the four judgement calls were named in the brief, not taken from the translator's reasoning."
+    }
+  ]
+}

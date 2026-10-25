@@ -1,0 +1,129 @@
+{
+	"schema": 1,
+	"kind": "i18n-namespace-audit-receipt",
+	"audit": "first",
+	"namespace": "ui.hub.browse",
+	"locale": "hi",
+	"locale_dir": "ltr",
+	"instance": "334f3f93a6ee",
+	"instance_basis": "session id of this independent audit run (lop session 334f3f93a6ee); no other audit run shares it",
+	"auditor": "translation-auditor",
+	"model": "radient/auto",
+	"model_route": "radient/auto — the host-declared session model for this run; no fallback model or route substitution was used",
+	"model_fallback": "none",
+	"status": "passed",
+	"result": "clean-with-findings",
+	"namespace_verdict": "clean-with-findings",
+	"date": "2026-10-25",
+	"repository": "damianvtran/local-operator-ui",
+	"worktree": "~/local-operator-ui/.worktrees/i18n-agent-hub-copy",
+	"source_commit": "68208fff1f340c14050483eeb6eb558523169302",
+	"source_commit_note": "LOCAL ONLY — push paused by an attribution rewrite; the English catalogue and its context sidecar were read at this commit and bound by sha256, not by publication",
+	"target_state": "uncommitted candidate file in the same worktree (git status: ?? src/i18n/catalogues/hi/ui.hub.browse.json); bound by sha256, not by a commit",
+	"keys_read": 41,
+	"source_sha256": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+	"target_sha256": "c84f781a2de519f7a7ce1885da8f0d66f5c966188c8dedb2bcfc63cfb60610fd",
+	"sha256": {
+		"en": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+		"hi": "c84f781a2de519f7a7ce1885da8f0d66f5c966188c8dedb2bcfc63cfb60610fd",
+		"context": "2b2ab8e9d56a7c3c32fa3925a1952bb0e1bcfac658ab9ff2184bf20501b2a2de"
+	},
+	"checks": {
+		"key_parity": "41/41 English keys present in hi, same order, no extras, no missing",
+		"placeholders": "6 placeholder-bearing keys / 8 placeholder instances ({name} x3 keys, {age} x4, {date} x2, {author} x1); every token survives exactly in the same spelling",
+		"icu": "no plural/select/number-skeleton messages in this namespace — verified by scanning all 41 values, not assumed; plural-category safety is therefore not at issue",
+		"nfc": "all 41 values NFC-normalised; no decomposed Devanagari sequences",
+		"bidi": "no manual bidi controls (no LRM/RLM/isolates) in any value; LTR locale",
+		"punctuation": "Devanagari danda for full sentences, ASCII '?' for the confirmation title, U+2026 exactly as the English for action.trying; colon and parentheses retained in created/last_modified",
+		"english_tokens": "Radient is the only Latin-script token, kept per its context notes (product name); no other English left untranslated and no untranslated fallback",
+		"label_in_name": "card.download_aria contains card.get exactly ('पाएँ'); details.delist_aria contains details.delist_confirm exactly ('सूची से हटाएँ'); the shipped pager aria labels (ui.common.forms.compact_pagination.*) contain the visible अगला/पिछला",
+		"age_joins": "hubAge returns a complete '{count} घंटे पहले' (ui.hub.comments.age.*), so card.updated renders '2 घंटे पहले अपडेट किया गया' with no second preposition; created/last_modified put the complete age after the label and keep the colon and parentheses",
+		"widths": "see O10: codepoint growth is listed with dispositions; only details.delist_confirm is changed (nit 3) and card.updated is flagged for the rendered truncation check"
+	},
+	"findings": [
+		{
+			"severity": "minor",
+			"key": "ui.hub.browse.card.download_aria",
+			"current": "{name} पाएँ",
+			"proposed": "{name} पाएँ (डाउनलोड करें)",
+			"reason": "English names the action 'Download {name}', but the Hindi accessible name only repeats the visible 'Get' word, so a screen-reader user never hears that the button downloads the agent. The parenthetical keeps the required visible-word containment and changes no visible layout; the alternative is to pair card.get: 'डाउनलोड' with aria '{name} डाउनलोड करें', at the cost of a longer visible label."
+		},
+		{
+			"severity": "minor",
+			"key": "ui.hub.browse.details.last_modified",
+			"current": "अंतिम बदलाव: {age} ({date})",
+			"proposed": "आखिरी बदलाव: {age} ({date})",
+			"reason": "The same English term 'Last modified' already ships as 'आखिरी बदलाव' in ui.settings.configuration.settings_page.last_modified and 'आखिरी बदलाव:' in ui.settings.model.system_prompt.last_modified; 'अंतिम बदलाव' is a second rendering of one term on a metadata line that sits beside the shipped 'Created' word."
+		},
+		{
+			"severity": "nit",
+			"key": "ui.hub.browse.details.delist_confirm",
+			"current": "सूची से हटाएँ",
+			"proposed": "हटाएँ",
+			"reason": "English is the one word 'Delist'; the Hindi repeats the title's whole phrase (6 -> 13 codepoints) in a maxWidth xs dialog footer beside 'रद्द करें'. The locale's shipped confirm buttons use the bare verb (ui.chat.dialogs.delete_action, ui.agents.dialogs.delete.confirm both 'हटाएँ'), and the title and body already name the object. Optional; if kept, check this footer in a rendered pass."
+		}
+	],
+	"observations": [
+		{
+			"id": "O1",
+			"about": "translator judgement call: पाएँ for Get",
+			"ruling": "accepted as the visible label",
+			"evidence": "Shipped hi renders 'Get' as पाएँ in ui.providers.provider_detail.get_a_sign_in_code ('साइन इन कोड पाएँ') and ui.onboarding.search.row.get_your ('अपनी {name} पाएँ'), and card.get's note requires a short word for the narrow footer; 'डाउनलोड' is this locale's download term (ui.library.menu.download 'डाउनलोड करें', ui.hub.skills.download). Containment of the visible word in the aria is exact. The cost of using Get (not Download) in the aria is recorded as finding 1."
+		},
+		{
+			"id": "O2",
+			"about": "translator judgement call: delist wording (सूची से हटाएँ)",
+			"ruling": "accepted",
+			"evidence": "No shipped English or hi 'delist' term exists (the only delist strings are this namespace), so there is no glossary drift to inherit. 'सूची से हटाना' is the locale's removal-from-a-list idiom (ui.agentMessages.settings 'किसी को सूची से हटाने पर ...'), and the six delist strings are internally consistent: aria, title, tooltip, body, spinner and failure all use the same सूची से हटा- stem. 'डीलिस्ट करें' would be jargon; it was not used. Only the confirm button's length is recorded, as nit 3."
+		},
+		{
+			"id": "O3",
+			"about": "translator judgement call: लाइक for like",
+			"ruling": "accepted",
+			"evidence": "No shipped hi 'like' term exists (all लाइक occurrences are this namespace), so no drift. लाइक is the ordinary Hindi web transliteration for the social action and keeps the heart distinct from पसंदीदा, which already ships as 'पसंदीदा बनाएँ' / 'पसंदीदा से हटाएँ' in ui.library.menu.favorite / unfavorite and is reused verbatim here. 'एजेंट का लाइक हटाएँ' is the normal 'remove the like on X' construction, parallel to 'पसंदीदा से हटाएँ'."
+		},
+		{
+			"id": "O4",
+			"about": "translator judgement call: age placed first in card.updated",
+			"ruling": "accepted",
+			"evidence": "Hindi is verb-final, and the shipped locale already uses the age-first construction: ui.hub.updates '{ago} अपडेट किया गया।' and ui.code_review '{amount} घंटे पहले अपडेट हुआ'. With ui.hub.comments.age.hours = '{count} घंटे पहले', card.updated reads '2 घंटे पहले अपडेट किया गया' — complete, natural, and with no second preposition. details.created ('बनाया गया: {age} ({date})') and details.last_modified keep the labelled-line order, which is also correct because the age itself carries पहले."
+		},
+		{
+			"id": "O5",
+			"about": "translator judgement call: curly quotes in tooltip_unknown and delist_body",
+			"ruling": "accepted",
+			"evidence": "The locale already ships “ ” in user-facing copy (ui.chat.tags, ui.projects, ui.schedule, ui.teamBridge), and the quotes scope the negated state word 'पसंदीदा नहीं' / 'लाइक नहीं' and the agent name in the delist body. No NFC or bidi issue; the source's straight quotes are typography, not a placeholder."
+		},
+		{
+			"id": "O6",
+			"about": "translator judgement call: Radient kept Latin",
+			"ruling": "accepted",
+			"evidence": "The context notes for the three signed-out strings say Radient is a product name and stays English; it is the only Latin token in the file. Agent Hub is rendered as the shipped एजेंट हब (ui.shell.sidebar_navigation.agent_hub, ui.command_palette), which is the locale's established surface name."
+		},
+		{
+			"id": "O7",
+			"about": "Created by rendered as निर्माता while Unknown author uses लेखक",
+			"ruling": "accepted; not a glossary drift",
+			"evidence": "The English terms differ ('Created by: {author}' vs 'Unknown author'), so the two-word choice is not one English term rendered two ways. 'निर्माता: {author}' reads naturally as a metadata label; 'अज्ञात लेखक' reads naturally on the card. Watch only if a future visible 'Author:' label is added."
+		},
+		{
+			"id": "O8",
+			"about": "viewer_unknown renders 'viewer state' as आपकी स्थिति",
+			"ruling": "accepted",
+			"evidence": "The preceding clause names लाइक और पसंदीदा, so 'इस एजेंट के लिए आपकी स्थिति' is scoped to those reactions rather than a generic account status; 'व्यूअर स्थिति' would be jargon in hi. No change needed."
+		},
+		{
+			"id": "O9",
+			"about": "translator report availability",
+			"ruling": "ruled from the bytes, not from the report document",
+			"evidence": "Translator job 5a7e3ce23483's report was not present in the worktree or the scratchpad this audit could read. The judgement calls named in the brief (Get, delist, लाइक, age order) plus the quote/Radient choices visible in the delivered file were ruled from the catalogue bytes and the shipped hi catalogues, independently of the translator."
+		},
+		{
+			"id": "O10",
+			"about": "overflow watch list (Hindi codepoint growth >=1.5x English)",
+			"ruling": "no text change except nit 3; card.updated flagged for a rendered check",
+			"evidence": "agent-card.tsx renders the provenance paragraph with `truncate`, so card.updated's 13->20 growth can ellipsize the end of 'अपडेट किया गया' beside a long author name; there is no browser host in this run, so this is flagged for the rendered pass rather than guessed at. The remaining growth sits in copy with no stated width cap: action.trying 7->16 and details.delisting 15->29 (button and spinner status), card.favourite.tooltip_favourited 17->25 and card.like.tooltip_liked 12->19 (tooltips/accessible names), details.sign_in_hint 38->58 (tooltip). card.get is 3->4 and is the shortest action label in the file, so the narrow card footer is not at risk from the Hindi choice. details.delist_confirm is nit 3."
+		}
+	],
+	"not_verified": "No rendered frame, browser, build or test suite was run (no browser host in this run, and the brief forbids suites beyond reading). Overflow observations are reasons from codepoint counts and the card's flex-wrap footer, not pixel measurements. The target is an uncommitted candidate bound by sha256; if the file changes, this receipt no longer applies."
+}

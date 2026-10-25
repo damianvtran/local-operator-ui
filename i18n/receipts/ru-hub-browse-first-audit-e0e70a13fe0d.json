@@ -1,0 +1,184 @@
+{
+  "schema": 1,
+  "receipt_kind": "independent-first-audit",
+  "auditor": {
+    "agent": "translation-auditor",
+    "model": "radient/auto",
+    "route": "radient/auto — auto-routed by the Radient model router; the concrete upstream provider/model id is not exposed to this session, so none is claimed",
+    "fallback": "none observed — the audit ran on the configured route above; no model substitution was requested or observed",
+    "independence": "not the translator; findings were formed from the English source, the context sidecar, the Russian catalogue and the consuming components before the translator's report was read"
+  },
+  "model": "radient/auto",
+  "instance": "e0e70a13fe0d",
+  "locale": "ru",
+  "namespace": "ui.hub.browse",
+  "date": "2026-10-25",
+  "translator_job": "9bc3df261d7b",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "binding": "Bind by hash: read from disk in worktree ~/local-operator-ui/.worktrees/i18n-agent-hub-copy at source commit 68208fff1f340c14050483eeb6eb558523169302 (local only; push paused by an attribution rewrite). The Russian target is an UNCOMMITTED candidate; source_sha256 and target_sha256 are its bytes at audit time, not a committed blob.",
+  "source_sha256": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+  "target_sha256": "7edfc11a3e16a2aaf0b87ac7f225f9f0f830ad454f4d6e2b39547a34d2572828",
+  "sha256": {
+    "en": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+    "ru": "7edfc11a3e16a2aaf0b87ac7f225f9f0f830ad454f4d6e2b39547a34d2572828",
+    "context": "2b2ab8e9d56a7c3c32fa3925a1952bb0e1bcfac658ab9ff2184bf20501b2a2de"
+  },
+  "keys_read": 41,
+  "rendered_check": "not performed — the desktop browser host is unavailable in this session; no pixel, clipping or frame claim is made anywhere in this receipt. Width figures below are estimates from the Tailwind classes and the 12/13/14 px type scale, labelled as estimates.",
+  "findings_note": "Two minors and two nits, recorded rather than churned; twelve observations record what was verified or ruled on. No blocker or major finding.",
+  "findings": [
+    {
+      "id": "RU-HB-1",
+      "severity": "minor",
+      "key": "ui.hub.browse.action.trying",
+      "current": "Попытка…",
+      "proposed": "Повторная попытка…",
+      "reason": "The retry-in-flight label is a bare noun («attempt»), while every shipped Russian retry-control label uses «Повторная попытка…»; the same button's idle label is «Повторить» (ui.common.actions.retry_again), so the control changes name mid-press. Mirroring the English «Trying…» literally is understandable, but it drifts from the app's retry idiom and reads as a status fragment rather than progress.",
+      "evidence": [
+        "ui.agents.navigation.updates.action.retrying = Повторная попытка…",
+        "ui.chat.pickers.usage_view.retrying = {errortext} Повторная попытка…",
+        "ui.providers.provider_grid.retrying = Повторная попытка",
+        "ui.settings.configuration.backend_settings_section.retrying = Повторная попытка",
+        "ui.settings.language.dialog.retrying = Повторная попытка",
+        "ui.settings.profile.retrying = Повторная попытка",
+        "ui.settings.navigation.settings_page.retrying = Повторная попытка"
+      ]
+    },
+    {
+      "id": "RU-HB-2",
+      "severity": "minor",
+      "keys": [
+        "ui.hub.browse.card.favourite.tooltip_unknown",
+        "ui.hub.browse.card.like.tooltip_unknown"
+      ],
+      "current": "Не удалось прочитать ваше избранное, поэтому нельзя показать, что агента нет в избранном. / Не удалось прочитать ваши лайки, поэтому нельзя показать, что лайка нет.",
+      "proposed": "Не удалось прочитать ваше избранное, поэтому не показано, что агент не в избранном. / Не удалось прочитать ваши лайки, поэтому не показано, что лайка нет.",
+      "reason": "«нельзя показать, что…» frames a display decision as an impossibility («it is impossible to demonstrate that…»), where the English only says the control is not shown as unfavourited/unliked. The double negative plus the modal reads translated; dropping «нельзя» keeps the claim and the impersonal register."
+    },
+    {
+      "id": "RU-HB-3",
+      "severity": "nit",
+      "key": "ui.hub.browse.details.sign_in_hint",
+      "current": "Войдите в Radient, чтобы пользоваться этой возможностью",
+      "proposed": "Войдите в Radient, чтобы пользоваться этой функцией",
+      "reason": "«пользоваться возможностью» idiomatically reads «take the opportunity»; the settled Russian UI term for a feature is «функция» (cf. the shipped «Функция доступна…»), while «возможности» is the app's word for capabilities."
+    },
+    {
+      "id": "RU-HB-4",
+      "severity": "nit",
+      "key": "ui.hub.browse.card.get",
+      "current": "Скачать",
+      "proposed": "Keep «Скачать»; rendered check requested at the narrowest card column — no shorter natural Russian label exists and the footer wraps by design",
+      "reason": "«Скачать» is 7 characters against «Get» at 3 (+133%), roughly +23 px at the 12 px button type in a shrink-0 sm button beside three counters; the 17.5 rem minimum column leaves about 256 px of footer content, so the action may drop to the footer's second line. That is the footer's designed wrap, not clipping, but it should be seen before it is called clean."
+    }
+  ],
+  "observations": [
+    {
+      "id": "O1",
+      "severity": "observation",
+      "verdict": "verified",
+      "note": "Placeholders/ICU: 41/41 messages parse with @formatjs/icu-messageformat-parser; argument sets identical to English; arguments seen: {name}, {age}, {date}, {author}; 0 plural/select messages in the namespace; all 41 format under IntlMessageFormat locale ru; no value is byte-identical to English."
+    },
+    {
+      "id": "O2",
+      "severity": "observation",
+      "verdict": "verified",
+      "note": "Age joins render as «обновлено 2 дня назад», «Создано: 2 дня назад (25 октября 2026 г.)», «Последнее изменение: 1 час назад (25 октября 2026 г.)» using the shipped ru ui.hub.comments.age.* messages (one/few/many/other). No extra preposition is appended; the leading lowercase word precedes the placeholder."
+    },
+    {
+      "id": "O3",
+      "severity": "observation",
+      "verdict": "verified",
+      "note": "Quoting: delist_body renders «Content Writer» сразу исчезнет из хаба…; «ёлочки» are the ru style-guide convention and match shipped name quoting (ui.agents.dialogs.delete.question «Удалить агента «{name}»?»). The name placeholder survives exactly."
+    },
+    {
+      "id": "O4",
+      "severity": "observation",
+      "verdict": "ruled on",
+      "note": "Delist term and fit: aria, title, confirm, delisting, tooltip and failure all use the «снять … с публикации» family. The confirm label is 19 characters in a max-w-md (448 px) dialog with p-6 (400 px content) beside a min-w-25 Cancel — estimated ~271 px row, so it fits; the pending Spinner label is sr-only and adds no width."
+    },
+    {
+      "id": "O5",
+      "severity": "observation",
+      "verdict": "verified",
+      "note": "Label-in-name: card.download_aria «Скачать {name}» contains the visible card.get word «Скачать»; delist_aria «Снять агента с публикации» shares the verb «Снять» with delist_confirm; the pager's visible «Следующая»/«Предыдущая» are contained in the shipped aria labels «Следующая страница»/«Предыдущая страница»."
+    },
+    {
+      "id": "O6",
+      "severity": "observation",
+      "verdict": "verified",
+      "note": "Hub naming: the surface name is capitalised in back_aria/delist_tooltip («Хаб агентов»), while generic prose is lowercase («из хаба») in delist_body — matching shipped usage (ui.shell.sidebar_navigation.agent_hub «Хаб агентов»; ui.agents.dialogs.menu.upload «Загрузить в хаб»). Pre-existing shipped outlier named, not this file: ui.hub.updates.error.model_unavailable keeps «Agent Hub» in Latin."
+    },
+    {
+      "id": "O7",
+      "severity": "observation",
+      "verdict": "ruled on",
+      "note": "«Лайк» term: no shipped ru catalogue used a like term before this file; all six like keys use «лайк» consistently and «Поставить лайк»/«Убрать лайк» is the idiomatic verb pair. Accepted as a settled borrowing (the class of промпт/токен/кэш/коммит), not a calque; no competing shipped term to drift from."
+    },
+    {
+      "id": "O8",
+      "severity": "observation",
+      "verdict": "verified",
+      "note": "Downloads tooltip: «Скачивания» is the bare count noun the sidecar requires; no plural message is used. The shipped folder term «Загрузки» (ui.chat.directory.folder.downloads) names a different object (the folder), so the two are not a contradiction."
+    },
+    {
+      "id": "O9",
+      "severity": "observation",
+      "verdict": "source-level note",
+      "note": "The English source itself is in tension: delist_tooltip says «Permanently delist» while delist_body says the agent can be uploaded again. The Russian mirrors both faithfully; this is a copy question for the manager, not a translation defect."
+    },
+    {
+      "id": "O10",
+      "severity": "observation",
+      "verdict": "out of scope, flagged",
+      "note": "English leak on the same page but outside this namespace: agent-details-page.tsx:558 renders hardcoded \"No description provided.\"; public-teams-library.tsx:499 and org-teams-list.tsx:683 render \"No description\". Not the translator's file and not a ui.hub.browse key — recorded for the manager/coder."
+    },
+    {
+      "id": "O11",
+      "severity": "observation",
+      "verdict": "verified",
+      "note": "Byte hygiene: 4035 bytes, UTF-8, NFC, tab indentation, LF, one trailing newline, no BOM, no NBSP/U+202F, no bidi controls, literal «» and U+2026 (one occurrence), no \\u escapes, key order identical to English, 41 keys with no missing or extra key."
+    },
+    {
+      "id": "O12",
+      "severity": "observation",
+      "verdict": "verified",
+      "note": "Allowed English tokens: the only Latin run outside placeholders is «Radient» in the four strings that name it (card.favourite.tooltip_signed_out, card.like.tooltip_signed_out, details.catalogue_no_answer, details.sign_in_hint), kept exactly as a product name per the glossary §1 and ru style-guide product-name policy; it is undeclined. No other English word survives in the file."
+    }
+  ],
+  "translator_calls": [
+    {
+      "call": "Age join order: the leading word stays before {age} («обновлено {age}», «Создано: {age}», «Последнее изменение: {age}»).",
+      "ruling": "accepted",
+      "reason": "The age argument is a complete phrase ending in «назад», and Russian places the impersonal participle first; the context note's leading-lowercase-word rule is met and the renders are grammatical (O2)."
+    },
+    {
+      "call": "Quoting the agent name with «ёлочки» in delist_body.",
+      "ruling": "accepted",
+      "reason": "The ru style guide mandates «ёлочки» in prose; shipped confirmations quote names the same way, and the {name} placeholder is intact (O3)."
+    },
+    {
+      "call": "Like terminology: «Лайк» as the noun for the heart control.",
+      "ruling": "accepted",
+      "reason": "Consistent across all six like keys, idiomatic with «поставить/убрать», and there is no shipped ru competitor to drift from (O7)."
+    },
+    {
+      "call": "Delist terminology: «Снять с публикации», including its fit in the confirmation row.",
+      "ruling": "accepted",
+      "reason": "It is the settled Russian term for unpublishing, shares the verb with delist_aria, and the 19-character confirm fits the 448 px dialog by estimate (O4); the body correctly distinguishes the surface name «Хаб агентов» from generic lowercase «хаба» (O6)."
+    }
+  ],
+  "namespace_verdicts": {
+    "ui.hub.browse": "passed (clean-with-findings) — 41/41 keys read; accuracy, register (вы, infinitive actions, sentence case), glossary, placeholder/ICU integrity and typography pass; two minors and two nits, none blocking."
+  },
+  "verdict": "Overall: passed with two minors and two nits. No blocker or major. The delist term «Снять с публикации» and the «Лайк» term are ruled acceptable; the age joins and «ёлочки» quoting are correct; the only open risk is a rendered check of the Get button width, which this session cannot perform (no browser host).",
+  "counts": {
+    "keys_read": 41,
+    "blocker": 0,
+    "major": 0,
+    "minor": 2,
+    "nit": 2,
+    "observations": 12
+  }
+}

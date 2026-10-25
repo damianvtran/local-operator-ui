@@ -1,0 +1,130 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "first-audit-by-source-bytes",
+  "date": "2026-10-25",
+  "locale": "zh-CN",
+  "locale_name": "Simplified Chinese",
+  "namespace": "ui.hub.browse",
+  "instance": "e3f309fa9f33",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); not the translator, not the implementer of these values",
+    "instance": "e3f309fa9f33",
+    "session": "e3f309fa9f33",
+    "model": "radient/auto",
+    "model_note": "Session record (transcript.jsonl selected_model) is route radient/auto, effort auto, boot radient/auto. No provider fallback event appears in this session; disclosed as radient/auto, not a guessed provider id."
+  },
+  "source_commit": "68208fff1f340c14050483eeb6eb558523169302",
+  "source_commit_note": "LOCAL ONLY - push paused by an attribution rewrite. Worktree clean at that commit; the seven target locale files (incl. zh-CN this receipt audits) are UNCOMMITTED candidates, so this audit is bound to their bytes by sha256, not to a commit.",
+  "translator_job": "23239fc5288c",
+  "translator_report": "Not present in the worktree: no file names job 23239fc5288c and i18n/ledger.json has no ui.hub.browse row yet. Judgement calls were therefore ruled on from the target bytes, the English source, the context sidecar and the calls listed in the audit brief (Get rendered 下载 so download_aria contains the visible label; 下架; 点赞; fullwidth punctuation / no ASCII spaces).",
+  "source_file": "src/i18n/catalogues/en/ui.hub.browse.json",
+  "target_file": "src/i18n/catalogues/zh-CN/ui.hub.browse.json",
+  "context_file": "src/i18n/catalogues/en/ui.hub.browse.context.json",
+  "source_sha256": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+  "target_sha256": "fd814145dc7efe8ec3043dda8f610023c45726297e285c8196a10eefd522ffad",
+  "sha256": {
+    "en": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+    "zh-CN": "fd814145dc7efe8ec3043dda8f610023c45726297e285c8196a10eefd522ffad",
+    "context": "2b2ab8e9d56a7c3c32fa3925a1952bb0e1bcfac658ab9ff2184bf20501b2a2de"
+  },
+  "keys_read": {
+    "english": 41,
+    "context": 41,
+    "target": 41
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": {
+    "ui.hub.browse": "clean-with-findings"
+  },
+  "overall_verdict": "clean-with-findings - 0 blocker, 0 major, 0 minor, 1 nit across 41 keys",
+  "findings": [
+    {
+      "key": "ui.hub.browse.details.delist_body",
+      "severity": "nit",
+      "current": "这会立即将“{name}”从中心下架，任何人都将无法下载。你之后可以重新上传。",
+      "proposed": "这会立即将“{name}”从中心下架，任何人都无法下载。你之后可以重新上传。",
+      "reason": "“任何人都将无法下载” carries a second 将 in the same sentence as the 将…下架 construction; 将 there is a calque of English “will be able to”, and dropping it reads more naturally. Meaning and the two-sentence shape are unchanged, so this is optional polish, not a gate."
+    }
+  ],
+  "checks": {
+    "placeholder_integrity": {
+      "result": "PASS",
+      "detail": "Args identical in name and multiplicity: {name} card.download_aria + details.delist_body, {age} card.updated + details.created + details.last_modified, {date} details.created + details.last_modified, {author} details.created_by. Braces balanced in all 41 values; no renamed, dropped or added argument."
+    },
+    "icu_plural": {
+      "result": "PASS",
+      "detail": "Verified rather than assumed: neither side contains a plural/select/number/date/time ICU construct. The namespace has args but no plural branches, so no zh-CN plural categories are needed; {count}-style age is supplied already formatted by ui.hub.comments.age.* ({count}天前)."
+    },
+    "key_coverage": {
+      "result": "PASS",
+      "detail": "41/41 keys present, no extra, no missing; key order alphabetical as in English; tabs + trailing newline; no duplicate JSON members."
+    },
+    "accuracy": {
+      "result": "PASS",
+      "detail": "All 41 values say what the English says, including implied role: 下载量 for the bare count noun, 智能体未下架 / 下载未开始 as the sidecar's deliberate 'what did not happen' headlines, “不会显示为‘未收藏’” preserving the never-assert-unfavourited point, 更新于{age} not appending a second ago-marker to an age that already ends in 前."
+    },
+    "register": {
+      "result": "PASS",
+      "detail": "你 throughout, matching shipped zh-CN (174 你, 0 您); 登录Radient以… matches the shipped construction in ui.common.speech.*, ui.hub.updates.*; no 请 tacked onto terse controls."
+    },
+    "glossary_consistency": {
+      "result": "PASS",
+      "detail": "智能体 = agent (shipped 315 uses); 智能体中心 = Agent Hub (shipped 前往智能体中心) with the shipped short form 中心 in delist_body (cf. 上传到中心); 下载 = download; 收藏/取消收藏 = favourite/unfavourite (ui.library precedent); 下架 = delist used for aria, confirm and tooltip alike; 点赞/取消点赞 = like/unlike consistently across all seven like keys (no earlier shipped zh term existed, so this file sets the glossary). No drift between spellings."
+    },
+    "accessible_names": {
+      "result": "PASS",
+      "detail": "card.download_aria 下载{name} contains visible card.get 下载; details.delist_aria 下架智能体 contains delist_confirm 下架; pager visible 下一页/上一页 equal the shipped aria labels ui.common.forms.compact_pagination.next_page/previous_page, so containment holds."
+    },
+    "age_date_joins": {
+      "result": "PASS",
+      "detail": "hubAge yields {count}天前, so card.updated renders 更新于3天前 and details.created renders 创建：3天前（2026年10月25日） - formatCalendarDate is Intl long-year/month/day, so the fullwidth parens wrap a whole formatted date, not a fragment."
+    },
+    "punctuation_normalisation": {
+      "result": "PASS",
+      "detail": "0 ASCII spaces, 0 ASCII , ; : ! ? ( ) in the target; fullwidth ：（）？ and curly “” used, matching shipped zh-CN (341 fullwidth colons, 141 quote pairs); NFC-clean (unicodedata NFC == bytes); no U+200E/200F/202A-202E/2066-2069 bidi controls. Ellipsis is …… (two U+2026), the shipped zh convention (158 instances), which also honours the sidecar's 'U+2026, not three periods'."
+    },
+    "width_budget": {
+      "result": "PASS",
+      "detail": "Approximate em widths (CJK/fullwidth 1, other 0.5) - no pixel or browser claims. Only two strings exceed their English by >1.4x: pager.next 下一页 3.0 vs Next 2.0 and action.trying 正在重试…… 5.0 vs Trying… 3.5; both are absolute-small and sit in buttons already carrying icons, no shorter accurate form exists. card.get 下载 is 2.0 vs Get 1.5 in the narrow footer button and delist_confirm 下架 is 2.0 vs Delist 3.0, so neither narrow control grows materially; all other keys are shorter than or equal to English (max delist_title 1.00). No rendered check requested."
+    },
+    "rtl": {
+      "result": "PASS",
+      "detail": "zh-CN is LTR; nothing to place and no embedded direction-sensitive token introduced."
+    }
+  },
+  "translator_judgement_calls": [
+    {
+      "call": "card.get rendered 下载 rather than 获取",
+      "ruling": "ACCEPTED",
+      "reason": "The button downloads the agent to this machine (context sidecar), 下载 is the locale's shipped download verb, it is the shortest accurate label (2 chars) for the narrow footer, and it is what keeps card.download_aria (下载{name}) containing the visible word, which the sidecar requires 'where the language allows'. A literal 获取 would break that containment for no accuracy gain."
+    },
+    {
+      "call": "delist family rendered 下架 / 下架智能体 / 要下架此智能体吗？ / 下架",
+      "ruling": "ACCEPTED",
+      "reason": "下架 is the standard Chinese term for unpublishing from a marketplace listing, it keeps the verb identical across tooltip, accessible name, dialog title and confirm (so speech control 'click 下架' finds the control), and the fullwidth ？ matches the locale's confirmation convention (cf. ui.hub.comments.delete.confirm 确定要删除这条评论吗？)."
+    },
+    {
+      "call": "like family rendered 点赞 / 取消点赞",
+      "ruling": "ACCEPTED",
+      "reason": "No shipped zh-CN string used a like term (0 点赞, 0 喜欢 before this file), so this namespace sets it; 点赞 is the standard social-media like and mirrors the 收藏/取消收藏 pairing used for favourites, giving a consistent reaction glossary. The count/aria/tooltip/unknown variants all use it without drift."
+    },
+    {
+      "call": "fullwidth punctuation and no ASCII spaces",
+      "ruling": "ACCEPTED",
+      "reason": "Verified in bytes, not just claimed: no ASCII space or ASCII punctuation in any of the 41 values, fullwidth ：（）？ and curly “” present, NFC-clean, no manual bidi. This matches the shipped locale convention."
+    },
+    {
+      "call": "ellipsis as …… instead of the source's single …",
+      "ruling": "ACCEPTED",
+      "reason": "Chinese typography uses the double ellipsis and the shipped catalogue does too (158 instances); it still uses U+2026 characters rather than three periods, which is what the sidecar actually forbids."
+    }
+  ],
+  "out_of_scope_observations": [
+    "Caller-side, not this catalogue: agent-details-page.tsx assembles the author as `${name} (${email})` with an ASCII space and ASCII parentheses, so the rendered zh line is 创建者：张三 (a@b.com) even though the catalogue is all-fullwidth. Fixing it means changing the assembly in code for CJK locales; no catalogue change can, and it is not counted as a finding against the translation.",
+    "Source-level: details.delist_tooltip says 永久下架 (Permanently) while details.delist_body says 可以重新上传; the tension exists in English and the sidecar explains 'permanently' as removal from the public listing. The translation mirrors it faithfully rather than resolving it."
+  ],
+  "method": "Read all 41 English values, all 41 context sidecar entries and all 41 zh-CN candidates side by side; read the consumers agent-card.tsx, agent-details-page.tsx, hub-pager.tsx and comment-age.ts for join/render behaviour; compared terminology against the 5,453 shipped zh-CN keys; checked hashes, placeholders, ICU, NFC, punctuation, bidi and approximate widths programmatically. No edits to catalogues, no builds, no suites, no pixel/browser claims (host unavailable)."
+}

@@ -1,0 +1,190 @@
+{
+  "schema": 1,
+  "auditor": {
+    "agent": "translation-auditor",
+    "model": "radient/auto",
+    "route": "radient/auto — auto-routed by the Radient router; the resolved provider/model id is not exposed to this session, so no finer id is claimed",
+    "fallback": "none observed — this run used the configured route above; no model substitution was made or needed",
+    "independence": "independent of the translator; findings formed from the catalogue bytes, context sidecar and consuming code before any translator report was sought"
+  },
+  "model": "radient/auto",
+  "instance": "ed40c38c4d7f",
+  "locale": "fr",
+  "namespace": "ui.hub.browse",
+  "date": "2026-10-25",
+  "translator_job": "67a42792c128",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "binding": "Bind by hash: target is an UNCOMMITTED candidate in worktree ~/local-operator-ui/.worktrees/i18n-agent-hub-copy at source commit 68208fff1f340c14050483eeb6eb558523169302 (local only). English, context and target sha256 below were computed from disk at audit time.",
+  "source_sha256": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+  "target_sha256": "dda4f3f92dc735bb9add823bcb62f035a9b434116bfc55ab477d3e7c1c30036b",
+  "sha256": {
+    "en": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+    "fr": "dda4f3f92dc735bb9add823bcb62f035a9b434116bfc55ab477d3e7c1c30036b",
+    "context": "2b2ab8e9d56a7c3c32fa3925a1952bb0e1bcfac658ab9ff2184bf20501b2a2de"
+  },
+  "keys_read": 41,
+  "rendered_check": "not performed — no browser host in this session; no pixel, clipping or frame claim is made anywhere in this receipt",
+  "findings_note": "One systematic minor defect recorded, not churned. Twelve observations record what was verified correct or ruled on; they carry severity 'observation' and are not findings.",
+  "findings": [
+    {
+      "id": "FR-HB-1",
+      "severity": "minor",
+      "key": "ui.hub.browse.card.like.aria_unknown / ui.hub.browse.card.like.tooltip_liked / ui.hub.browse.card.like.tooltip_signed_out / ui.hub.browse.card.like.tooltip_unknown / ui.hub.browse.card.like.tooltip_unliked / ui.hub.browse.details.failure.like / ui.hub.browse.details.viewer_unknown",
+      "keys": [
+        "ui.hub.browse.card.like.aria_unknown",
+        "ui.hub.browse.card.like.tooltip_liked",
+        "ui.hub.browse.card.like.tooltip_signed_out",
+        "ui.hub.browse.card.like.tooltip_unknown",
+        "ui.hub.browse.card.like.tooltip_unliked",
+        "ui.hub.browse.details.failure.like",
+        "ui.hub.browse.details.viewer_unknown"
+      ],
+      "current": "État du J’aime indisponible; Retirer le J’aime de l’agent; Connectez-vous à Radient pour ajouter un J’aime aux agents; Vos J’aime n’ont pas pu être lus ; l’absence de J’aime n’est donc pas confirmée.; Ajouter un J’aime à l’agent; Le J’aime n’a pas été pris en compte; Vos J’aime et vos favoris n’ont pas pu être lus ; …",
+      "proposed": "Lowercase the noun in all seven: « État du j’aime indisponible », « Retirer le j’aime de l’agent », « … pour ajouter un j’aime aux agents », « Vos j’aime n’ont pas pu être lus ; l’absence de j’aime n’est donc pas confirmée. », « Ajouter un j’aime à l’agent », « Le j’aime n’a pas été pris en compte », « Vos j’aime et vos favoris … ». No other word changes; the participle « lus » already agrees with the masculine plural.",
+      "reason": "French common nouns are lowercase mid-sentence; the shipped catalogue already does this for feature nouns (label « Push automatique » in ui.hub.subscriptions.auto_push vs mid-sentence « Activer le push automatique »), and after a determiner (du/le/un/vos) the capital reads as a proper name — « Le J’aime n’a pas été pris en compte » reads like a person's name in an alert headline.",
+      "evidence": "src/i18n/catalogues/fr/ui.hub.subscriptions.auto_push vs .enable in the same shipped file; no shipped fr string capitalises a common noun after a determiner mid-sentence.",
+      "severity_calibration": "Graded minor, not major: the meaning and referent stay correct, and this programme grades form-only defects at minor (precedent: fr-bind-64b9c66fc88c, U+0020 instead of U+202F before a colon = minor; fr-final-71a6fccf5747, invented compound « contrôles de bureau » = minor). Majors are reserved for wrong referents and ungrammatical output."
+    }
+  ],
+  "observations": [
+    {
+      "id": "O1",
+      "severity": "observation",
+      "keys": [
+        "ui.hub.browse.card.get",
+        "ui.hub.browse.card.download_aria"
+      ],
+      "verdict": "accepted",
+      "note": "« Obtenir » for Get beside « Télécharger » for Download is not drift: it mirrors the source's own Get/Download split and is precedented in shipped fr — ui.onboarding.search.row.get_your « Obtenir {name} » and ui.hub.skills.pull_title « Télécharger {item} depuis {source} ». The aria « Obtenir l’agent {name} » contains the visible label, satisfying label-in-name."
+    },
+    {
+      "id": "O2",
+      "severity": "observation",
+      "keys": [
+        "ui.hub.browse.action.trying"
+      ],
+      "verdict": "accepted",
+      "note": "« Nouvelle tentative… » for « Trying… » is a translator judgement call and correct: it matches the shipped retry vocabulary (ui.hub.links.retry « Réessayer », ui.hub.status.retry_wait « Une nouvelle tentative est planifiée »), and carries U+2026, not three periods."
+    },
+    {
+      "id": "O3",
+      "severity": "observation",
+      "keys": [
+        "ui.hub.browse.details.back_aria",
+        "ui.hub.browse.details.delist_tooltip",
+        "ui.hub.browse.details.delist_body",
+        "ui.hub.browse.details.delist_aria",
+        "ui.hub.browse.details.delist_confirm",
+        "ui.hub.browse.details.delisting",
+        "ui.hub.browse.details.failure.delist"
+      ],
+      "verdict": "accepted",
+      "note": "Lowercase « hub » for the generic surface and capitalised « Hub des agents » for the named surface is the correct mapping of the source's own distinction (English « the hub » vs « Agent Hub »), and « Hub des agents » matches shipped ui.shell.sidebar_navigation.agent_hub and ui.command_palette.use_palette_sources.agent_hub. Looks like drift; is not."
+    },
+    {
+      "id": "O4",
+      "severity": "observation",
+      "keys": [
+        "ui.hub.browse.details.delist_body"
+      ],
+      "verdict": "accepted",
+      "note": "« l’envoyer à nouveau vers le hub » for « upload it again » uses the shipped term exactly: ui.agents.dialogs.menu.upload and ui.agents.navigation.legacy.upload are both « Envoyer vers le hub »."
+    },
+    {
+      "id": "O5",
+      "severity": "observation",
+      "keys": [
+        "ui.hub.browse.card.updated",
+        "ui.hub.browse.details.created",
+        "ui.hub.browse.details.last_modified"
+      ],
+      "verdict": "verified",
+      "note": "Age joins checked against the emitting code: comment-age.ts/hubAge formats via ui.hub.comments.age.*, whose fr values already contain « il y a » (e.g. « il y a {count} heures »). So « mis à jour il y a 2 heures », « Créé : il y a 2 heures (12/03/2026) » and « Dernière modification : il y a 2 heures (…) » read correctly with no doubled preposition, and the leading lowercase fragment « mis à jour » follows the sidecar's instruction."
+    },
+    {
+      "id": "O6",
+      "severity": "observation",
+      "keys": [
+        "*"
+      ],
+      "verdict": "verified",
+      "note": "Typography verified in the bytes: U+202F before every : ; ? (9 occurrences: created, created_by, last_modified, delist_title, both tooltip_unknown, viewer_unknown, plus the two inside the « {name} » guillemets); 21 U+2019 apostrophes and no ASCII apostrophe; U+2026 ellipsis; all values NFC; no U+200E/U+200F/U+202A-U+202E/U+2066-U+2069 bidi controls; no double, leading or trailing spaces."
+    },
+    {
+      "id": "O7",
+      "severity": "observation",
+      "keys": [
+        "*"
+      ],
+      "verdict": "verified",
+      "note": "Placeholder integrity: 12 argument occurrences over 4 names (name, age, date, author), identical sets and names in English and French, zero mismatches. Neither catalogue uses plural/select/selectordinal anywhere in this namespace, so no additional French plural category is required — verified, not assumed."
+    },
+    {
+      "id": "O8",
+      "severity": "observation",
+      "keys": [
+        "ui.hub.browse.card.like.aria_unknown",
+        "ui.hub.browse.card.like.tooltip_liked",
+        "ui.hub.browse.card.like.tooltip_signed_out",
+        "ui.hub.browse.card.like.tooltip_unknown",
+        "ui.hub.browse.card.like.tooltip_unliked",
+        "ui.hub.browse.details.failure.like",
+        "ui.hub.browse.details.viewer_unknown"
+      ],
+      "verdict": "ruled on",
+      "note": "Translator judgement call ruled on: using « J’aime » as the like noun is accepted, not a calque defect, because the sidecar for details.failure.like explicitly asks for « the noun the UI uses for this control » and the tooltip notes describe the press as removing/adding the like. « un j’aime » is dictionary-attested and invariable. Only the capitalisation is a defect (FR-HB-1). If a future native rewrite is preferred, « Aimer l’agent » / « Ne plus aimer l’agent » reads more idiomatically — offered, not requested."
+    },
+    {
+      "id": "O9",
+      "severity": "observation",
+      "keys": [
+        "ui.hub.browse.card.get",
+        "ui.hub.browse.details.delist_title"
+      ],
+      "verdict": "flagged, no claim",
+      "note": "Widths flagged for a rendered check only, no pixel claim: « Obtenir » is +4 characters on « Get » in a shrink-0 sm button sitting in a narrow footer beside a count, and « Retirer cet agent du hub ? » is 27 characters against « Delist this agent? » at 18 in an xs dialog. Both are the natural French minimum; the shorter form would cost meaning. Re-measure if the footer or dialog width changes."
+    },
+    {
+      "id": "O10",
+      "severity": "observation",
+      "keys": [
+        "ui.hub.browse.details.delist_tooltip",
+        "ui.hub.browse.details.delist_body"
+      ],
+      "verdict": "source-level note",
+      "note": "The source itself is in tension: the tooltip says « Permanently delist » while the body says the upload can be repeated. The French mirrors both faithfully, so this is a copy question for the manager, not a translation defect."
+    },
+    {
+      "id": "O11",
+      "severity": "observation",
+      "keys": [
+        "ui.hub.updates.error.model_unavailable"
+      ],
+      "verdict": "out of scope, pre-existing",
+      "note": "Glossary drift found in a SHIPPED catalogue, not in this candidate: ui.hub.updates.error.model_unavailable says « Paramètres › Agent Hub. » (English surface name) while ui.shell, ui.command_palette and this namespace say « Hub des agents ». Two spellings named: « Agent Hub » and « Hub des agents ». Not this translator's file; recorded for the manager."
+    },
+    {
+      "id": "O12",
+      "severity": "observation",
+      "keys": [
+        "ui.hub.browse.pager.previous",
+        "ui.hub.browse.pager.next"
+      ],
+      "verdict": "verified",
+      "note": "Label-in-name checked against hub-pager.tsx: the visible words are « Précédent »/« Suivant » while the accessible names come from shipped ui.common.forms.compact_pagination (« Page précédente »/« Page suivante »). Strict substring containment holds (« précédent » is a prefix of « précédente »), though the word form differs for voice control. No change requested here: the visible words are correct French for a compact pager and the aria is a shipped sibling."
+    }
+  ],
+  "namespace_verdicts": {
+    "ui.hub.browse": "passed (clean-with-findings) — 41/41 keys read; accuracy, address form (vous throughout), glossary and placeholder integrity pass; one minor orthographic finding (FR-HB-1) on 7 like-keys"
+  },
+  "verdict": "Overall: passed with one minor. The namespace is accurate, consistently registered and terminologically aligned with the shipped French hub catalogues; no blocker or major finding. The only required change is lowercasing « J’aime » in the seven like-keys.",
+  "counts": {
+    "keys_read": 41,
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0,
+    "observations": 12
+  }
+}

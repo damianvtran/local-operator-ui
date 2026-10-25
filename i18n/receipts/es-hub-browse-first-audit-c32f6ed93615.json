@@ -1,0 +1,118 @@
+{
+  "schema": 1,
+  "kind": "i18n-namespace-audit-receipt",
+  "audit": "first",
+  "namespace": "ui.hub.browse",
+  "locale": "es",
+  "locale_dir": "ltr",
+  "instance": "c32f6ed93615",
+  "auditor": "translation-auditor",
+  "model": "radient/auto",
+  "model_route": "radient/auto, the host-declared session model; the resolved upstream model is not exposed to this session, and no fallback model was substituted in this run",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "date": "2026-10-25",
+  "translator_job": "e7ae8e779f26",
+  "repository": "damianvtran/local-operator-ui",
+  "worktree": "~/local-operator-ui/.worktrees/i18n-agent-hub-copy",
+  "source_commit": "68208fff1f340c14050483eeb6eb558523169302",
+  "source_commit_note": "LOCAL ONLY - not pushed (attribution rewrite in progress); the English source and the context sidecar were read at this commit and bound by sha256",
+  "target_state": "uncommitted candidate file in that worktree; bound by sha256, not by any commit",
+  "keys_read": 41,
+  "source_sha256": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+  "target_sha256": "6a2a129554dca91ff9d96043cdcad834ff81573f235f7c1cf528c9e22aef1457",
+  "sha256": {
+    "en": "a371ca4c1f718558093f053784b8afe4f1884aafd9ec130b8f8814e32a1083f3",
+    "es": "6a2a129554dca91ff9d96043cdcad834ff81573f235f7c1cf528c9e22aef1457",
+    "context": "2b2ab8e9d56a7c3c32fa3925a1952bb0e1bcfac658ab9ff2184bf20501b2a2de"
+  },
+  "findings": [
+    {
+      "severity": "minor",
+      "key": "ui.hub.browse.card.like.tooltip_liked",
+      "current": "Quitar el me gusta al agente",
+      "proposed": "Quitar el “me gusta” al agente",
+      "reason": "This namespace quotes the substantivised noun whenever it carries an article (details.failure.like: 'No se guardó el “me gusta”'), and the unquoted 'quitar el me gusta' reads first as the clause 'remove that I like it'; the curly-quoted form is the one shipped es already uses for quoted user-facing phrases (ui.agents.dialogs.delete.question, ui.chat.sidebar.search.no_match)."
+    },
+    {
+      "severity": "minor",
+      "key": "ui.hub.browse.card.favourite.aria_unknown",
+      "also_affects": [
+        "ui.hub.browse.details.failure.favourite"
+      ],
+      "current": "Estado de favorito no disponible",
+      "proposed": "Estado de favoritos no disponible",
+      "reason": "The state this label reports is the viewer's favourites collection, which this file and the shipped es catalogues always name in the plural ('tus favoritos', 'añadir agentes a favoritos', 'en favoritos'), and the like mirror is built as 'Estado de “me gusta” no disponible' - a bare singular 'favorito' is the one place the pair stops being parallel."
+    },
+    {
+      "severity": "minor",
+      "key": "ui.hub.browse.card.get",
+      "current": "Descargar",
+      "proposed": "Descargar (keep; rendered check requested on the narrowest card column - no text change proposed unless it wraps)",
+      "reason": "3 codepoints -> 9 (3.0x, the largest ratio in the namespace) on the one control whose context note says 'keep it short: the button sits in a narrow footer beside a count'; the footer is flex-wrap with a shrink-0 action, so the failure mode is the action dropping to a second line at the 17.5rem column the page and the NarrowColumns story pin - a card-height change, not clipping. No pixel or browser claim is made here (no browser host in this run); the shorter alternative 'Obtener' saves 2 codepoints, keeps the same risk and loses the glossary match, so the fix, if the rendered check fails, is a source-side icon-only control carrying this same aria-label."
+    },
+    {
+      "severity": "nit",
+      "key": "ui.hub.browse.details.viewer_unknown",
+      "current": "No se pudieron leer tus “me gusta” y favoritos, así que no se muestra si te gusta este agente o lo tienes en favoritos.",
+      "proposed": "No se pudieron leer tus “me gusta” y tus favoritos, así que no se muestra si te gusta este agente o lo tienes en favoritos.",
+      "reason": "Optional: the coordination puts a quoted substantivised phrase beside a bare plural under one possessive, so repeating 'tus' makes the scope explicit; the sentence as written is grammatical and its meaning is carried either way."
+    }
+  ],
+  "observations": [
+    {
+      "id": "O1",
+      "about": "translator judgement call: delist -> Retirar",
+      "ruling": "accepted",
+      "evidence": "English 'delist' appears only in this namespace across all 170 shipped en catalogues, so there is no shipped es term to drift from and the choice stands on idiom. 'Retirar' is a withdrawal from the public listing, reversible by re-uploading - which the body states ('Puedes volver a subirlo más adelante') - and it stays clear of 'Eliminar', which shipped es uses for actually deleting an agent (ui.agents.dialogs.delete.question). One verb root runs through all six delist strings (delist_aria, delist_title, delist_confirm, delist_tooltip, delisting, failure.delist)."
+    },
+    {
+      "id": "O2",
+      "about": "translator judgement call: Descargar for Get (not Obtener)",
+      "ruling": "accepted, width cost recorded as finding 3",
+      "evidence": "The button writes the agent to this machine, and shipped es renders that action as descargar everywhere it appears (ui.common.updates 'Descargar la actualización', ui.browser 'carpeta de descargas', ui.chat.directory.folder.downloads 'Descargas'); the detail-page counterpart in the same file is 'Descargar el agente'. Naming the same action 'Obtener' on the card and 'Descargar' on the page it links to would be exactly the drift this audit looks for. Obtener is also the vaguer of the two: it would leave 'Descargar {name}' in card.download_aria saying more than the visible label implies is possible."
+    },
+    {
+      "id": "O3",
+      "about": "translator judgement call: meaning-based viewer_unknown sentences",
+      "ruling": "accepted, with nit 4",
+      "evidence": "'viewer state' has no natural es noun (the calque 'estado de visualización' would name a display mode, not the viewer's own like/favourite state), so spelling out the two things not shown is the faithful rendering, not an expansion of scope: it keeps English's framing - the sentence reports an ABSENCE ('no se muestra si...') rather than asserting 'no te gusta / no está en favoritos', which is the distinction the context sidecar and agent-card.tsx's viewerStateKnown docstring both exist to protect. It renders in a flex-wrap <output> at text-meta, so its 87 -> 119 codepoints wrap freely; the same two-mirror reading is used in card.like.tooltip_unknown and card.favourite.tooltip_unknown, which stay parallel."
+    },
+    {
+      "id": "O4",
+      "about": "placeholder and ICU integrity",
+      "ruling": "verified clean",
+      "evidence": "41/41 keys present, key order identical to English; the placeholder set is identical for all 41 keys ({name} in card.download_aria and details.delist_body, {age} in card.updated, details.created, details.last_modified, {date} in details.created and details.last_modified, {author} in details.created_by), with equal brace counts. No ICU branch exists in this namespace in either locale - checked by scanning for plural/select/selectordinal/number/date/time argument forms, and the only brace hits are the literal placeholders named {date}; so no plural category is dropped or needed here, because no count is interpolated in this namespace (the ages arrive complete from ui.hub.comments.age.*, which already carry es one/many/other branches). NFC-normalised in both locales; no manual bidi controls (U+200E/200F/202A-202E/2066-2069/061C absent); U+2026 present in action.trying and no '...' anywhere."
+    },
+    {
+      "id": "O5",
+      "about": "register and punctuation",
+      "ruling": "verified clean",
+      "evidence": "One address form throughout: tú imperatives and possessives ('Inicia sesión', 'Puedes volver a subirlo', 'tus favoritos', 'no te guste'), matching the 58 shipped es strings that use 'Inicia sesión en Radient...' and no usted anywhere in the file - no T/V mismatch across the screen. Curly quotes “ ” only (no ASCII quote or apostrophe survives), which is the shipped es convention and matches the nearest sibling confirmation (ui.agents.dialogs.delete.question). Punctuation mirrors English key for key except the Spanish opening '¿' in details.delist_title, which is required. No leading/trailing or double spaces."
+    },
+    {
+      "id": "O6",
+      "about": "cross-key label-in-name joins",
+      "ruling": "verified clean",
+      "evidence": "Read from the consuming components rather than assumed: card.download_aria 'Descargar {name}' contains the visible card.get word 'Descargar' (agent-card.tsx renders card.get as the button's text); details.delist_aria 'Retirar el agente' contains details.delist_confirm 'Retirar' (agent-details-page.tsx); and the pager's accessible names come from ui.common.forms.compact_pagination.previous_page/next_page ('Página anterior' / 'Página siguiente'), both of which contain the visible pager.previous/next word ('Anterior' / 'Siguiente') case-insensitively, so hub-pager.tsx's 'speech control still finds them' property survives in es."
+    },
+    {
+      "id": "O7",
+      "about": "glossary consistency against shipped es",
+      "ruling": "clean, no drift found",
+      "evidence": "Hub de agentes (capital H) is the shipped surface name (ui.shell.sidebar_navigation.agent_hub, ui.command_palette.use_palette_sources.agent_hub, ui.agents.dialogs.create.hub_link), and lowercase 'hub' for the generic noun in details.delist_body mirrors the English sentence's own lowercase 'the hub' and the shipped 'Subir al hub'. Descargar/Descargas, equipo for 'computer' (68 shipped hits, e.g. 'la conexión de este equipo'), Siguiente/Anterior for pager steps (ui.chat.pickers.table_pager.next/prev) and Reintentar for the retry beside action.trying all match shipped usage. Only Radient (4x, product name) and hub/Hub (3x, established loanword) remain as non-Spanish tokens, each with a stated reason."
+    },
+    {
+      "id": "O8",
+      "about": "English source tensions, reported not counted",
+      "ruling": "not an es defect",
+      "evidence": "details.delist_tooltip says 'Permanently delist' while details.delist_body says the agent can be uploaded again, and the es renders both faithfully - the contradiction belongs to the English source owner, as the context sidecar's own note on 'Permanently' concedes. Separately, the delist control renders a Trash2 icon in text-danger while the dialog is explicitly not a danger action (agent-details-page.tsx comment); 'Retirar' is the right word for a reversible withdraw, so the icon is the part that overstates, and that is a source-side matter."
+    },
+    {
+      "id": "O9",
+      "about": "independence, scope and what was not verified",
+      "ruling": "stated",
+      "evidence": "Findings were formed from the English catalogue, the context sidecar, agent-card.tsx / agent-details-page.tsx / hub-pager.tsx / comment-age.ts and the shipped es catalogues before any translator report was read; the three judgement calls were ruled from the brief's naming of them, because the translator's report for e7ae8e779f26 was not present in this worktree and the id does not appear in i18n/ledger.json. Unverified in this run: any rendered frame - no browser host was available, so the card-footer width item (finding 3) is a codepoint measurement plus the code's own flex-wrap behaviour, not a pixel observation. Nothing in the repository was edited except this receipt."
+    }
+  ]
+}
