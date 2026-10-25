@@ -10,5 +10,16 @@
 	"ui.chat.asks.dismiss.receipt.answered_in_chat": "Dismissed — settled in chat",
 	"ui.chat.asks.dismiss.receipt.moot": "Dismissed — no longer needed",
 	"ui.chat.asks.dismiss.refused": "Couldn't dismiss this ask — nothing was sent.",
-	"ui.chat.asks.dismiss.trigger": "Dismiss…"
+	"ui.chat.asks.dismiss.trigger": "Dismiss…",
+	"ui.chat.asks.other_label": "Other",
+	"ui.chat.asks.urgent": "Urgent.",
+	"ui.chat.asks.no_answer": "No answer given",
+	"ui.chat.asks.changed_handoff": "Changed — the agent has not been handed it yet.",
+	"ui.chat.asks.send_answer": "Send answer",
+	"ui.chat.asks.decline": "Decline",
+	"ui.chat.asks.update_answer": "Update answer",
+	"ui.chat.asks.cancel": "Cancel",
+	"ui.chat.asks.change_answer": "Change answer",
+	"ui.chat.asks.filter_label": "Filter asks",
+	"ui.chat.asks.settled_heading": "Settled"
 }

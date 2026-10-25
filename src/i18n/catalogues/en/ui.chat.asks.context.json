@@ -85,5 +85,16 @@
 		"placeholders": {},
 		"role": "button that opens the dismissal chooser on an open ask card",
 		"tone": "verb with an ellipsis, sentence case"
-	}
+	},
+	"ui.chat.asks.other_label": "Answer option that is not one of the offered choices; also the label of that answer in the summary.",
+	"ui.chat.asks.urgent": "Screen-reader-only prefix marking the ask as urgent.",
+	"ui.chat.asks.no_answer": "Shown in an ask's summary when the reader answered nothing.",
+	"ui.chat.asks.changed_handoff": "State of an answer edited after it was sent but not yet passed to the agent.",
+	"ui.chat.asks.send_answer": "Primary button that sends the answer to the agent.",
+	"ui.chat.asks.decline": "Secondary button that declines the agent's ask.",
+	"ui.chat.asks.update_answer": "Button that saves an edited answer, replacing the one already sent.",
+	"ui.chat.asks.cancel": "Button that discards an answer edit.",
+	"ui.chat.asks.change_answer": "Button that re-opens an already-sent answer for editing.",
+	"ui.chat.asks.filter_label": "Accessible name of the fieldset that filters the ask list.",
+	"ui.chat.asks.settled_heading": "Heading over the settled (resolved) half of the ask list."
 }
