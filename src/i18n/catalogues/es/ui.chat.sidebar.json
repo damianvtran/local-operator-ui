@@ -12,7 +12,7 @@
 	"ui.chat.sidebar.catalogue.total_search_clipped": "Mostrando {shown, number, ::group-off}+ {shown, plural, one {coincidencia} many {de coincidencias} other {coincidencias}} de {total, number, ::group-off} chats",
 	"ui.chat.sidebar.drafts.clear_all": "Borrar todo",
 	"ui.chat.sidebar.drafts.clear_all_label": "Borrar todos los borradores",
-	"ui.chat.sidebar.groups.badge": "{badge, number, ::group-off} chats en este grupo",
+	"ui.chat.sidebar.groups.badge": "{badge, plural, one {{badge, number, ::group-off} chat en este grupo} many {{badge, number, ::group-off} de chats en este grupo} other {{badge, number, ::group-off} chats en este grupo}}",
 	"ui.chat.sidebar.header.create": "Nuevo agente o equipo",
 	"ui.chat.sidebar.header.create_agent": "Nuevo agente",
 	"ui.chat.sidebar.header.create_team": "Nuevo equipo",
