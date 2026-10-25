@@ -23,10 +23,12 @@
 
 import enUiAgentMessages from "./catalogues/en/ui.agentMessages.json";
 import enUiAgentMessagesSettings from "./catalogues/en/ui.agentMessages.settings.json";
+import enUiAgentsDetail from "./catalogues/en/ui.agents.detail.json";
 import enUiAgentsDialogs from "./catalogues/en/ui.agents.dialogs.json";
 import enUiAgents from "./catalogues/en/ui.agents.json";
 import enUiAgentsModels from "./catalogues/en/ui.agents.models.json";
 import enUiAgentsNavigation from "./catalogues/en/ui.agents.navigation.json";
+import enUiAgentsPages from "./catalogues/en/ui.agents.pages.json";
 import enUiAgentsRefusals from "./catalogues/en/ui.agents.refusals.json";
 import enUiAgentsSettings from "./catalogues/en/ui.agents.settings.json";
 import enUiAgentsStarters from "./catalogues/en/ui.agents.starters.json";
@@ -75,7 +77,9 @@ import enUiConsoleErrors from "./catalogues/en/ui.console.errors.json";
 import enUiConsole from "./catalogues/en/ui.console.json";
 import enUiHubComments from "./catalogues/en/ui.hub.comments.json";
 import enUiHub from "./catalogues/en/ui.hub.json";
+import enUiHubPages from "./catalogues/en/ui.hub.pages.json";
 import enUiHubTaxonomy from "./catalogues/en/ui.hub.taxonomy.json";
+import enUiHubTeams from "./catalogues/en/ui.hub.teams.json";
 import enUiHubUpdates from "./catalogues/en/ui.hub.updates.json";
 import enUiInstaller from "./catalogues/en/ui.installer.json";
 import enUiLibraryErrors from "./catalogues/en/ui.library.errors.json";
@@ -706,10 +710,12 @@ import zhCNUiTeamBridge from "./catalogues/zh-CN/ui.teamBridge.json";
 export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiAgentMessages,
 	...enUiAgentMessagesSettings,
+	...enUiAgentsDetail,
 	...enUiAgentsDialogs,
 	...enUiAgents,
 	...enUiAgentsModels,
 	...enUiAgentsNavigation,
+	...enUiAgentsPages,
 	...enUiAgentsRefusals,
 	...enUiAgentsSettings,
 	...enUiAgentsStarters,
@@ -758,7 +764,9 @@ export const bundledEnglish: Readonly<Record<string, string>> = {
 	...enUiConsole,
 	...enUiHubComments,
 	...enUiHub,
+	...enUiHubPages,
 	...enUiHubTaxonomy,
+	...enUiHubTeams,
 	...enUiHubUpdates,
 	...enUiInstaller,
 	...enUiLibraryErrors,
@@ -1512,6 +1520,13 @@ export type MessageParams = {
 	"ui.agentMessages.settings.state.read_only": undefined;
 	"ui.agentMessages.settings.state.turned_off_org": undefined;
 	"ui.agentMessages.settings.state.turned_off_title": undefined;
+	"ui.agents.detail.action.discard_changes": undefined;
+	"ui.agents.detail.action.discard_question": undefined;
+	"ui.agents.detail.action.keep_editing": undefined;
+	"ui.agents.detail.action.save_changes": undefined;
+	"ui.agents.detail.action.saving": undefined;
+	"ui.agents.detail.action.unsaved_changes": undefined;
+	"ui.agents.detail.no_description": undefined;
 	"ui.agents.dialogs.clear.cancel": undefined;
 	"ui.agents.dialogs.clear.confirm": undefined;
 	"ui.agents.dialogs.clear.title": undefined;
@@ -1624,6 +1639,22 @@ export type MessageParams = {
 	"ui.agents.navigation.updates.preview.local": undefined;
 	"ui.agents.navigation.updates.preview.nothing": undefined;
 	"ui.agents.navigation.updates.preview.remote": undefined;
+	"ui.agents.pages.back_to_list": undefined;
+	"ui.agents.pages.browse_aria": undefined;
+	"ui.agents.pages.discard_bar.agent": undefined;
+	"ui.agents.pages.discard_bar.team": undefined;
+	"ui.agents.pages.heading": undefined;
+	"ui.agents.pages.loading_saved": undefined;
+	"ui.agents.pages.scope.all": undefined;
+	"ui.agents.pages.scope.builtin": undefined;
+	"ui.agents.pages.scope.custom": undefined;
+	"ui.agents.pages.scope.installed": undefined;
+	"ui.agents.pages.scope_legend": undefined;
+	"ui.agents.pages.search.agents": undefined;
+	"ui.agents.pages.search.teams": undefined;
+	"ui.agents.pages.search_aria": undefined;
+	"ui.agents.pages.tab.agents": undefined;
+	"ui.agents.pages.tab.teams": undefined;
 	"ui.agents.refusals.class.effect.proactive": undefined;
 	"ui.agents.refusals.class.effect.reactive": undefined;
 	"ui.agents.refusals.class.error.install_landed": { reason: string };
@@ -5126,6 +5157,40 @@ export type MessageParams = {
 	"ui.hub.subscriptions.subscribe_description": { source: string };
 	"ui.hub.subscriptions.subscribe_description_blocked": { source: string };
 	"ui.hub.subscriptions.unsupported": undefined;
+	"ui.hub.pages.browse_aria": undefined;
+	"ui.hub.pages.header.subtitle": undefined;
+	"ui.hub.pages.header.title": undefined;
+	"ui.hub.pages.orgs_unavailable": undefined;
+	"ui.hub.pages.publish": undefined;
+	"ui.hub.pages.scope.org_label": undefined;
+	"ui.hub.pages.scope.org_unnamed": undefined;
+	"ui.hub.pages.scope.public": undefined;
+	"ui.hub.pages.scope_label": undefined;
+	"ui.hub.pages.scope_legend": undefined;
+	"ui.hub.pages.search.aria": undefined;
+	"ui.hub.pages.search.placeholder": undefined;
+	"ui.hub.pages.search.scope_aria": undefined;
+	"ui.hub.pages.search_field.description": undefined;
+	"ui.hub.pages.search_field.name": undefined;
+	"ui.hub.pages.sort.aria": undefined;
+	"ui.hub.pages.sort.most_downloaded": undefined;
+	"ui.hub.pages.sort.most_favourited": undefined;
+	"ui.hub.pages.sort.most_liked": undefined;
+	"ui.hub.pages.sort.name_asc": undefined;
+	"ui.hub.pages.sort.newest": undefined;
+	"ui.hub.pages.sort.recently_updated": undefined;
+	"ui.hub.pages.status.agents_scope": { scope: string };
+	"ui.hub.pages.status.count.agents": { count: number; scope: string };
+	"ui.hub.pages.status.count.teams": { count: number; scope: string };
+	"ui.hub.pages.status.loading_agents": undefined;
+	"ui.hub.pages.status.loading_teams": undefined;
+	"ui.hub.pages.status.scope.public": undefined;
+	"ui.hub.pages.status.scope.shared_with": { org: string };
+	"ui.hub.pages.status.teams_scope": { scope: string };
+	"ui.hub.pages.tab.agents": undefined;
+	"ui.hub.pages.tab.teams": undefined;
+	"ui.hub.pages.updating": undefined;
+	"ui.hub.pages.viewer_unknown": undefined;
 	"ui.hub.taxonomy.all": undefined;
 	"ui.hub.taxonomy.category.accounting": undefined;
 	"ui.hub.taxonomy.category.analysis": undefined;
@@ -5147,6 +5212,14 @@ export type MessageParams = {
 	"ui.hub.taxonomy.origin.named": { name: string };
 	"ui.hub.taxonomy.origin.organization": undefined;
 	"ui.hub.taxonomy.origin.unnamed": undefined;
+	"ui.hub.teams.kind.role": undefined;
+	"ui.hub.teams.kind.specialist": undefined;
+	"ui.hub.teams.manager": undefined;
+	"ui.hub.teams.manager_label": undefined;
+	"ui.hub.teams.member_count": { count: number };
+	"ui.hub.teams.members": undefined;
+	"ui.hub.teams.no_description": undefined;
+	"ui.hub.teams.no_members": undefined;
 	"ui.hub.updates.action.details": undefined;
 	"ui.hub.updates.action.retry": undefined;
 	"ui.hub.updates.action.review": undefined;

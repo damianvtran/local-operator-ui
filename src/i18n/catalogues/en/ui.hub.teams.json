@@ -1,0 +1,10 @@
+{
+	"ui.hub.teams.kind.role": "Role",
+	"ui.hub.teams.kind.specialist": "Specialist",
+	"ui.hub.teams.manager": "Manager",
+	"ui.hub.teams.manager_label": "Manager:",
+	"ui.hub.teams.member_count": "{count, plural, one {# member} other {# members}}:",
+	"ui.hub.teams.members": "Members",
+	"ui.hub.teams.no_description": "No description",
+	"ui.hub.teams.no_members": "No members"
+}

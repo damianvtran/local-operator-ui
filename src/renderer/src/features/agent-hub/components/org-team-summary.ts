@@ -1,4 +1,5 @@
 import type { HubTeam, HubTeamMember } from "@shared/api/radient/types";
+import { t } from "@shared/i18n";
 import { format, formatDistanceStrict } from "date-fns";
 
 /**
@@ -210,9 +211,13 @@ export const teamDates = (
 	};
 };
 
-/** `Role` / `Specialist` for the two kinds the hub defines; anything else is shown as stored. */
+/**
+ * `Role` / `Specialist` for the two kinds the hub defines; anything else is shown
+ * as stored. Read through `t()` at call time so the label follows the locale; the
+ * callers re-render on a locale change, which is what makes that visible.
+ */
 export const kindLabel = (kind: string): string => {
-	if (kind === "role") return "Role";
-	if (kind === "specialist") return "Specialist";
+	if (kind === "role") return t("ui.hub.teams.kind.role");
+	if (kind === "specialist") return t("ui.hub.teams.kind.specialist");
 	return kind;
 };

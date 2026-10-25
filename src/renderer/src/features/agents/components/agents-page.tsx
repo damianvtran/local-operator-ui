@@ -67,6 +67,9 @@ import { Button } from "@shared/components/ui/button";
 import { Input } from "@shared/components/ui/input";
 import { Skeleton } from "@shared/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@shared/components/ui/tabs";
+import { t } from "@shared/i18n";
+import type { MessageKey } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Bot, Plus, Search, Users } from "lucide-react";
@@ -129,12 +132,17 @@ const EFFORT_TIER_KEY = /^subagents\.models\.([^.]+)$/;
  */
 const CANONICAL_EFFORT_TIERS: readonly string[] = ["lo", "med", "hi"];
 
-const SCOPE_LABEL: Record<Scope, string> = {
-	all: "All",
-	custom: "Custom",
-	installed: "Installed",
-	builtin: "Built-in",
-};
+/**
+ * The scope segments' WORDS, as catalogue keys rather than copy: a module-level
+ * English map would freeze at import and never follow the language picker, so the
+ * label is resolved through `t()` where the segment renders.
+ */
+const SCOPE_LABEL = {
+	all: "ui.agents.pages.scope.all",
+	custom: "ui.agents.pages.scope.custom",
+	installed: "ui.agents.pages.scope.installed",
+	builtin: "ui.agents.pages.scope.builtin",
+} as const satisfies Record<Scope, MessageKey>;
 
 /**
  * WHERE "KEEP EDITING" MAY PUT FOCUS BACK, which is never on a control whose focus
@@ -165,6 +173,9 @@ function focusThatActivatesNothing(
 }
 
 export function AgentsPage() {
+	// The page's copy is read through `t()` during render; this subscription is
+	// what makes a language change repaint the mounted page.
+	useI18nLocale();
 	const { agentId } = useParams<{ agentId?: string }>();
 	const [params, setParams] = useSearchParams();
 
@@ -579,7 +590,9 @@ export function AgentsPage() {
 	if (agentId)
 		return (
 			<Suspense
-				fallback={<p className="p-6 text-body">Loading saved agent…</p>}
+				fallback={
+					<p className="p-6 text-body">{t("ui.agents.pages.loading_saved")}</p>
+				}
 			>
 				<LegacyAgentsPage />
 			</Suspense>
@@ -632,7 +645,7 @@ export function AgentsPage() {
 				className="panel-top-pad flex w-72 shrink-0 flex-col gap-3 bg-surface px-4 pb-4 max-[999px]:data-[open=true]:hidden"
 			>
 				{/* The page's ONLY h1 (design D9): a definition's name is an h2. */}
-				<h1 className="pt-4 text-heading">Agents and teams</h1>
+				<h1 className="pt-4 text-heading">{t("ui.agents.pages.heading")}</h1>
 
 				{/*
 				 * ONE CLUSTER, 8 px INSIDE AND 12 px BETWEEN COMPONENTS (design spec s3):
@@ -648,7 +661,7 @@ export function AgentsPage() {
 						}
 					>
 						<TabsList
-							aria-label="Browse definitions by type"
+							aria-label={t("ui.agents.pages.browse_aria")}
 							className="w-full"
 						>
 							<TabsTrigger
@@ -657,7 +670,7 @@ export function AgentsPage() {
 								data-testid="agents-tab"
 							>
 								<Bot className="size-3.5" />
-								Agents
+								{t("ui.agents.pages.tab.agents")}
 								{profiles.data ? (
 									<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
 										{profiles.data.length}
@@ -670,7 +683,7 @@ export function AgentsPage() {
 								data-testid="teams-tab"
 							>
 								<Users className="size-3.5" />
-								Teams
+								{t("ui.agents.pages.tab.teams")}
 								{teams.data ? (
 									<span className="min-w-[2ch] font-normal text-ink-dim tabular-nums">
 										{teams.data.length}
@@ -688,8 +701,12 @@ export function AgentsPage() {
 						<Input
 							className="ps-8"
 							type="search"
-							aria-label="Search agents and teams"
-							placeholder={teamMode ? "Search teams" : "Search agents"}
+							aria-label={t("ui.agents.pages.search_aria")}
+							placeholder={
+								teamMode
+									? t("ui.agents.pages.search.teams")
+									: t("ui.agents.pages.search.agents")
+							}
 							value={search}
 							onChange={(event) => setSearch(event.target.value)}
 						/>
@@ -704,7 +721,9 @@ export function AgentsPage() {
 					 */}
 					{!teamMode && profiles.data ? (
 						<fieldset className="m-0 min-w-0 border-0 p-0">
-							<legend className="sr-only">Show definitions owned by</legend>
+							<legend className="sr-only">
+								{t("ui.agents.pages.scope_legend")}
+							</legend>
 							{/*
 							 * NO VISIBLE "Showing" LABEL (design spec D10): it cost 24 px of height
 							 * and pushed the segments' right edge in from the tabs' and the search's.
@@ -726,7 +745,7 @@ export function AgentsPage() {
 										onClick={() => setScope(value)}
 										className={cn("flex-1", scope === value && rowCurrent)}
 									>
-										{SCOPE_LABEL[value]}
+										{t(SCOPE_LABEL[value])}
 									</Button>
 								))}
 							</div>
@@ -822,7 +841,7 @@ export function AgentsPage() {
 							onClick={() => requestGo({ name: null })}
 						>
 							<ArrowLeft className="size-4" />
-							Back to the list
+							{t("ui.agents.pages.back_to_list")}
 						</Button>
 					</div>
 				) : null}
@@ -1118,12 +1137,12 @@ export function AgentsPage() {
 					<div
 						className="flex flex-wrap items-center gap-2 border-hairline border-t bg-surface px-4 py-3"
 						role="alertdialog"
-						aria-label="Discard your unsaved changes?"
+						aria-label={t("ui.agents.detail.action.discard_question")}
 					>
 						<span className="text-body-sm text-ink">
 							{teamMode
-								? "Discard your unsaved changes to this team?"
-								: "Discard your unsaved changes to this agent?"}
+								? t("ui.agents.pages.discard_bar.team")
+								: t("ui.agents.pages.discard_bar.agent")}
 						</span>
 						<Button
 							variant="danger"
@@ -1134,10 +1153,10 @@ export function AgentsPage() {
 								go(pendingNav);
 							}}
 						>
-							Discard changes
+							{t("ui.agents.detail.action.discard_changes")}
 						</Button>
 						<Button ref={keepBarRef} variant="ghost" onClick={dismissBar}>
-							Keep editing
+							{t("ui.agents.detail.action.keep_editing")}
 						</Button>
 					</div>
 				) : null}
@@ -1453,7 +1472,7 @@ function Roster({
 									 * not move.
 									 */
 									<span className="min-w-0 flex-1 truncate text-ink-dim">
-										No description
+										{t("ui.agents.detail.no_description")}
 									</span>
 								)}
 							</span>

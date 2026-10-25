@@ -1,0 +1,9 @@
+{
+	"ui.agents.detail.action.discard_changes": "Discard changes",
+	"ui.agents.detail.action.discard_question": "Discard your unsaved changes?",
+	"ui.agents.detail.action.keep_editing": "Keep editing",
+	"ui.agents.detail.action.save_changes": "Save changes",
+	"ui.agents.detail.action.saving": "Saving…",
+	"ui.agents.detail.action.unsaved_changes": "Unsaved changes",
+	"ui.agents.detail.no_description": "No description"
+}

@@ -1,0 +1,37 @@
+{
+	"ui.agents.detail.action.discard_changes": {
+		"note": "Confirms discarding the edits on the pane. Same verb as the question beside it; no object because the question already named it.",
+		"role": "button label (danger action)",
+		"tone": "plain, decisive"
+	},
+	"ui.agents.detail.action.discard_question": {
+		"note": "Asked before edits are thrown away when the pane has no caller-supplied hint. Sentence case with a question mark, one line; wraps in the footer.",
+		"role": "inline question in the sticky edit footer",
+		"tone": "plain, direct question"
+	},
+	"ui.agents.detail.action.keep_editing": {
+		"note": "Dismisses the discard question and returns focus to the field being edited. Mirrors discard_changes in length so the pair does not jump.",
+		"role": "button label",
+		"tone": "plain"
+	},
+	"ui.agents.detail.action.save_changes": {
+		"note": "Default for EditFooter's primary action when the caller passes no label; the agent and team panes both use it. Sentence case.",
+		"role": "primary button label",
+		"tone": "plain"
+	},
+	"ui.agents.detail.action.saving": {
+		"note": "Replaces save_changes while the request runs; the button is disabled and aria-busy beside it. U+2026, not three dots.",
+		"role": "primary button label while the write is in flight",
+		"tone": "plain, progress"
+	},
+	"ui.agents.detail.action.unsaved_changes": {
+		"note": "Says the pane holds edits that are not saved yet. Small meta weight; no colour of its own.",
+		"role": "quiet status marker at the end of the pane footer",
+		"tone": "neutral, no alarm"
+	},
+	"ui.agents.detail.no_description": {
+		"note": "Shared by the agents roster row, and any detail surface that has no description to show. Sits in the same line box as a real description so a row's height does not move; truncates in the roster, wraps in a detail pane.",
+		"role": "inline fallback where a description would be",
+		"tone": "plain, factual, not an error"
+	}
+}

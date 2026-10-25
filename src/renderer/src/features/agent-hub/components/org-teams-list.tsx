@@ -17,6 +17,8 @@ import {
 } from "@shared/components/ui";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { TEXT_SURFACE_PROPS } from "@shared/components/ui/text-surface";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import {
 	type KeyboardEvent as ReactKeyboardEvent,
@@ -534,23 +536,27 @@ const Dot = () => (
  * guessing is worse than showing. Labels are `ink-dim`, values `ink-muted`.
  */
 const TeamComposition = ({ team }: { team: HubTeam }) => {
+	// `t()` reads the active locale per call; this is what repaints the line.
+	useI18nLocale();
 	const manager = team.manager?.trim();
 	const count = memberCount(team);
 	return (
 		<span className="block truncate text-meta">
 			{manager ? (
 				<>
-					<span className="text-ink-dim">Manager:</span>{" "}
+					<span className="text-ink-dim">
+						{t("ui.hub.teams.manager_label")}
+					</span>{" "}
 					<span className="text-ink-muted">{manager}</span>
 				</>
 			) : null}
 			{manager ? <Dot /> : null}
 			{team.members.length === 0 ? (
-				<span className="text-ink-dim">No members</span>
+				<span className="text-ink-dim">{t("ui.hub.teams.no_members")}</span>
 			) : (
 				<>
 					<span className="text-ink-dim">
-						{count} {count === 1 ? "member" : "members"}:
+						{t("ui.hub.teams.member_count", { count })}
 					</span>{" "}
 					<span className="text-ink-muted">{slotList(team)}</span>
 				</>
@@ -628,6 +634,8 @@ const TeamSummary = ({
 	team,
 	expanded,
 }: { team: HubTeam; expanded: boolean }) => {
+	// `t()` is read per render; the subscription repaints on a locale change.
+	useI18nLocale();
 	const description = teamDescription(team);
 	const version = teamVersion(team);
 	return (
@@ -644,6 +652,7 @@ const TeamSummary = ({
 				</span>
 				{version ? (
 					<span className="ml-2 shrink-0 text-ink-dim text-meta">
+						{/* i18n: ignore version prefix - "v" + a version number is a technical token, not copy */}
 						v{version}
 					</span>
 				) : null}
@@ -680,7 +689,9 @@ const TeamSummary = ({
 					</span>
 				</>
 			) : (
-				<span className="mt-1 text-body-sm text-ink-dim">No description</span>
+				<span className="mt-1 text-body-sm text-ink-dim">
+					{t("ui.hub.teams.no_description")}
+				</span>
 			)}
 			<span className="mt-1 flex min-w-0 flex-col">
 				<TeamComposition team={team} />
@@ -721,6 +732,7 @@ const TeamSummary = ({
  * rather than a fifth summary line.
  */
 const TeamDetails = ({ team }: { team: HubTeam }) => {
+	useI18nLocale();
 	const manager = team.manager?.trim();
 	const dates = teamDates(team);
 	const dateParts = [
@@ -732,13 +744,15 @@ const TeamDetails = ({ team }: { team: HubTeam }) => {
 		<div className="mt-1 flex flex-col gap-2">
 			{hasRoster || dateParts.length === 0 ? (
 				<div className="flex flex-col gap-1">
-					<p className="text-ink-dim text-meta">Members</p>
+					<p className="text-ink-dim text-meta">{t("ui.hub.teams.members")}</p>
 					<ul className="flex flex-col gap-0.5">
 						{manager ? (
 							<li className="flex items-baseline gap-1.5">
 								{/* `ink-muted`, not `ink`: a member outshouted the description it belongs to (design round 1, D1). */}
 								<span className="text-body-sm text-ink-muted">{manager}</span>
-								<span className="text-ink-dim text-meta">Manager</span>
+								<span className="text-ink-dim text-meta">
+									{t("ui.hub.teams.manager")}
+								</span>
 							</li>
 						) : null}
 						{team.members.map((slot) => (
@@ -758,7 +772,9 @@ const TeamDetails = ({ team }: { team: HubTeam }) => {
 							</li>
 						))}
 						{!hasRoster ? (
-							<li className="text-ink-dim text-meta">No members</li>
+							<li className="text-ink-dim text-meta">
+								{t("ui.hub.teams.no_members")}
+							</li>
 						) : null}
 					</ul>
 				</div>

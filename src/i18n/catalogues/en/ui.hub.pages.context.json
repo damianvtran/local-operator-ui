@@ -1,0 +1,172 @@
+{
+	"ui.hub.pages.browse_aria": [
+		"accessible name for the section tab list",
+		"plain, names the axis",
+		"The three tabs switch what the hub lists (agents, teams, skills). No visible label, so this is the group's only name."
+	],
+	"ui.hub.pages.header.subtitle": [
+		"page subtitle",
+		"plain, one line of scope",
+		"Names the three things the hub holds and the company it comes from. Radient is a product name and stays English. Wraps under the title on narrow widths."
+	],
+	"ui.hub.pages.header.title": [
+		"page title",
+		"plain, product name",
+		"The surface's own name in the app's navigation vocabulary; 'Agent Hub' is the shipped English name and the sidebar uses it too."
+	],
+	"ui.hub.pages.orgs_unavailable": [
+		"alert title",
+		"calm, specific",
+		"The viewer is signed in but the backend cannot serve organization scopes, so only the public hub is readable. The sentence explaining why is a shared backend message, not this key."
+	],
+	"ui.hub.pages.publish": [
+		"button label in the empty roster",
+		"plain, action",
+		"Opens the agents page where a new agent is published. Sentence case, one line beside the empty-state copy."
+	],
+	"ui.hub.pages.scope.org_label": [
+		"scope chip label, fallback",
+		"plain, short",
+		"Used when an organization has no readable name; the chip normally shows the tenant name as data. Truncates at max-w-48, so keep it short."
+	],
+	"ui.hub.pages.scope.org_unnamed": [
+		"fragment inside the status sentence",
+		"plain, factual",
+		"Names the organization whose shared hub is being read when its name is unknown. Flows inside status.scope.shared_with, so it must read as a noun phrase, not a sentence."
+	],
+	"ui.hub.pages.scope.public": [
+		"scope chip label",
+		"plain, product vocabulary",
+		"The public half of the hub, as opposed to one organization's. Shares a segmented row with organization chips; 'Public hub' is shipped terminology."
+	],
+	"ui.hub.pages.scope_label": [
+		"visible label beside the scope chips",
+		"plain, quiet",
+		"Says what the chip group chooses. aria-hidden because the fieldset legend carries the same fact for assistive tech; small meta weight."
+	],
+	"ui.hub.pages.scope_legend": [
+		"screen-reader legend for the scope chips",
+		"plain, names the choice",
+		"The group picks WHICH hub is shown: the public one or one organization's. Ends the sentence the chips complete."
+	],
+	"ui.hub.pages.search.aria": [
+		"accessible name for the hub search input",
+		"plain",
+		"Stable whatever the scope selector says, because the accessible name must not change under focus. Names the records searched."
+	],
+	"ui.hub.pages.search.placeholder": [
+		"placeholder in the hub search input",
+		"plain",
+		"Deliberately does not name the searched field: the segment to its right does. Same input width as the aria name's wording allows."
+	],
+	"ui.hub.pages.search.scope_aria": [
+		"accessible name for the field-scope select",
+		"plain, names the choice",
+		"Names what the adjacent select chooses: which field the query is matched against (name or description)."
+	],
+	"ui.hub.pages.search_field.description": [
+		"option label in the field-scope select",
+		"plain, one word",
+		"Search matches the description field only. Paired with search_field.name in one select."
+	],
+	"ui.hub.pages.search_field.name": [
+		"option label in the field-scope select",
+		"plain, one word",
+		"Search matches the name field only. Paired with search_field.description; the select is narrow, so keep both short."
+	],
+	"ui.hub.pages.sort.aria": [
+		"accessible name for the sort select",
+		"plain, names the control",
+		"Names the ordering control. The visible trigger shows the current option's label, so this only has to say what the control is."
+	],
+	"ui.hub.pages.sort.most_downloaded": [
+		"sort option label",
+		"plain, one line",
+		"Orders by download count, highest first. Select trigger is w-48; keep it within that box without truncation where the language allows."
+	],
+	"ui.hub.pages.sort.most_favourited": [
+		"sort option label",
+		"plain, one line",
+		"Orders by favourite count, highest first. Distinct from most_liked: the star and the heart are different actions."
+	],
+	"ui.hub.pages.sort.most_liked": [
+		"sort option label",
+		"plain, one line",
+		"Orders by like count, highest first. Keep the like/favourite distinction the two controls make."
+	],
+	"ui.hub.pages.sort.name_asc": [
+		"sort option label",
+		"plain, states the direction",
+		"Alphabetical by display name, ascending. The parenthetical carries the direction and the alphabet assumption; use the locale's customary phrase."
+	],
+	"ui.hub.pages.sort.newest": [
+		"sort option label",
+		"plain, one word",
+		"Orders by creation date, newest first. Short label in a w-48 trigger."
+	],
+	"ui.hub.pages.sort.recently_updated": [
+		"sort option label",
+		"plain, one line",
+		"Orders by last-modified time, most recent first. Distinct from newest (creation date)."
+	],
+	"ui.hub.pages.status.agents_scope": [
+		"status line under the browse bar",
+		"plain, factual",
+		"Shown when the count is not known yet (a failed or pending read): says which list is being read. {scope} is status.scope.public or status.scope.shared_with."
+	],
+	"ui.hub.pages.status.count.agents": [
+		"status line, agents view",
+		"plain, factual",
+		"{count} is a record count and takes an ICU plural; {scope} is one of the scope phrases and joins the sentence the locale's way. The line keeps one line box in every state."
+	],
+	"ui.hub.pages.status.count.teams": [
+		"status line, teams view with an organization scope",
+		"plain, factual",
+		"Team counterpart of status.count.agents: {count} takes an ICU plural and {scope} is the organization phrase. Public teams show no count line at all."
+	],
+	"ui.hub.pages.status.loading_agents": [
+		"status line while the first agents read runs",
+		"plain, progress",
+		"Cold-loading state of the agents view. U+2026 rather than three periods."
+	],
+	"ui.hub.pages.status.loading_teams": [
+		"status line while an organization's teams read runs",
+		"plain, progress",
+		"Only the organization teams view uses this; the public teams catalogue owns its own line."
+	],
+	"ui.hub.pages.status.scope.public": [
+		"fragment appended to a count or a list name",
+		"plain, factual",
+		"Says the records come from the public hub. A sentence fragment by design: it completes status.count.* and status.*_scope."
+	],
+	"ui.hub.pages.status.scope.shared_with": [
+		"fragment appended to a count or a list name",
+		"plain, factual",
+		"{org} is the organization's name, user data of unknown length, or scope.org_unnamed when it has none. Fragment, not a sentence."
+	],
+	"ui.hub.pages.status.teams_scope": [
+		"status line under the browse bar",
+		"plain, factual",
+		"Teams counterpart of status.agents_scope for an organization whose teams could not be counted. {scope} is the scope phrase."
+	],
+	"ui.hub.pages.tab.agents": [
+		"tab label",
+		"plain, one word",
+		"First of the three section tabs. A live count sits beside it in a two-character slot, so keep it short."
+	],
+	"ui.hub.pages.tab.teams": [
+		"tab label",
+		"plain, one word",
+		"Second section tab; pairs with tab.agents and shares its count slot."
+	],
+	"ui.hub.pages.updating": [
+		"inline status beside the count",
+		"plain, progress",
+		"Says a refresh is in flight while the previous result stays on screen. U+2026, not three periods; sits mid-sentence after a count."
+	],
+	"ui.hub.pages.viewer_unknown": [
+		"status sentence in an output element",
+		"plain, explains an absence",
+		"One failed batched read means no card can show like/favourite state, so this says why once rather than letting every card read as 'not liked'. Full sentence; wraps."
+	]
+}

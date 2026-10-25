@@ -1,0 +1,42 @@
+{
+	"ui.hub.teams.kind.role": {
+		"note": "A roster slot whose kind is `role` on the wire. The wire token stays English in data; this is only what the roster prints. Narrow cell, never wraps.",
+		"role": "roster slot kind label",
+		"tone": "plain, one word"
+	},
+	"ui.hub.teams.kind.specialist": {
+		"note": "A roster slot whose kind is `specialist` on the wire. Sits beside kind.role in the same column, so keep the two comparable in length. Narrow cell.",
+		"role": "roster slot kind label",
+		"tone": "plain, one word"
+	},
+	"ui.hub.teams.manager": {
+		"note": "Names the role of the person listed above it in the expanded roster, and is also the row's own caption. One word where the language allows; small meta weight.",
+		"role": "roster row label under a manager name",
+		"tone": "plain, quiet"
+	},
+	"ui.hub.teams.manager_label": {
+		"note": "Prefixes the manager's name on the summary row: label, then the name. The colon is part of this message; keep the space handling to the caller.",
+		"role": "inline field label in the composition line",
+		"tone": "plain, quiet"
+	},
+	"ui.hub.teams.member_count": {
+		"note": "{count} is the number of declared member slots, the manager excluded. ICU plural: the trailing colon belongs to the message. Follow the locale's plural categories, not English's two.",
+		"role": "inline count in the composition line",
+		"tone": "plain, factual"
+	},
+	"ui.hub.teams.members": {
+		"note": "Title above the roster list inside a disclosed team row. Small meta weight; sentence case in languages that have case.",
+		"role": "section heading in the expanded roster",
+		"tone": "plain, quiet"
+	},
+	"ui.hub.teams.no_description": {
+		"note": "The team record carries no description, so the summary shows this instead of an empty gap. Must read as a statement, not a call to action.",
+		"role": "inline fallback where a description would be",
+		"tone": "plain, factual, not an error"
+	},
+	"ui.hub.teams.no_members": {
+		"note": "The team declares no member slots. Appears both on the summary line and (only for a row with nothing else) in the expanded body, so it must stand alone in either position.",
+		"role": "inline fallback in the composition line and the roster body",
+		"tone": "plain, factual"
+	}
+}

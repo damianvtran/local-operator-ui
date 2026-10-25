@@ -1,0 +1,18 @@
+{
+	"ui.agents.pages.back_to_list": "Back to the list",
+	"ui.agents.pages.browse_aria": "Browse definitions by type",
+	"ui.agents.pages.discard_bar.agent": "Discard your unsaved changes to this agent?",
+	"ui.agents.pages.discard_bar.team": "Discard your unsaved changes to this team?",
+	"ui.agents.pages.heading": "Agents and teams",
+	"ui.agents.pages.loading_saved": "Loading saved agent…",
+	"ui.agents.pages.scope.all": "All",
+	"ui.agents.pages.scope.builtin": "Built-in",
+	"ui.agents.pages.scope.custom": "Custom",
+	"ui.agents.pages.scope.installed": "Installed",
+	"ui.agents.pages.scope_legend": "Show definitions owned by",
+	"ui.agents.pages.search.agents": "Search agents",
+	"ui.agents.pages.search.teams": "Search teams",
+	"ui.agents.pages.search_aria": "Search agents and teams",
+	"ui.agents.pages.tab.agents": "Agents",
+	"ui.agents.pages.tab.teams": "Teams"
+}

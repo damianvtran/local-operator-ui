@@ -1,0 +1,82 @@
+{
+	"ui.agents.pages.back_to_list": {
+		"note": "Returns to the roster on widths where the list and the detail pane do not fit together. Sentence case, one short line beside a left arrow that mirrors in RTL.",
+		"role": "button label in the narrow-width back bar",
+		"tone": "plain"
+	},
+	"ui.agents.pages.browse_aria": {
+		"note": "Says what the two tabs switch between: definitions of different kinds. No visible label, so this is the only name the group has.",
+		"role": "accessible name for the tab list",
+		"tone": "plain, names the axis"
+	},
+	"ui.agents.pages.discard_bar.agent": {
+		"note": "Names the record type the unsaved edits belong to; the team variant is the sibling message. The bar's accessible name is the shared discard question.",
+		"role": "question in an alertdialog bar above the pane",
+		"tone": "plain, direct question"
+	},
+	"ui.agents.pages.discard_bar.team": {
+		"note": "Team counterpart of discard_bar.agent; keep the two parallel so the sentence differs only in its object.",
+		"role": "question in an alertdialog bar above the pane",
+		"tone": "plain, direct question"
+	},
+	"ui.agents.pages.heading": {
+		"note": "Names both halves of the surface, because the page lists agents and teams. Sentence case; a narrow sidebar column (288 px) bounds it.",
+		"role": "page heading (the page's only h1)",
+		"tone": "plain, noun phrase"
+	},
+	"ui.agents.pages.loading_saved": {
+		"note": "Shown while a saved agent's route loads its legacy page. U+2026 rather than three periods.",
+		"role": "route-level loading sentence",
+		"tone": "plain, progress"
+	},
+	"ui.agents.pages.scope.all": {
+		"note": "One of four segments: every definition regardless of origin. Short by design - four segments share one row.",
+		"role": "segment label in the ownership scope group",
+		"tone": "plain, one word"
+	},
+	"ui.agents.pages.scope.builtin": {
+		"note": "Definitions that ship with the app. Hyphenated in English; don't assume the hyphen in other locales.",
+		"role": "segment label in the ownership scope group",
+		"tone": "plain, one word"
+	},
+	"ui.agents.pages.scope.custom": {
+		"note": "Definitions created or edited on this machine. Same row as the other three scope segments, so keep it short.",
+		"role": "segment label in the ownership scope group",
+		"tone": "plain, one word"
+	},
+	"ui.agents.pages.scope.installed": {
+		"note": "Definitions fetched from the hub. Distinguished from 'Built-in' and 'Custom'; keep the three terms distinct in the target language.",
+		"role": "segment label in the ownership scope group",
+		"tone": "plain, one word"
+	},
+	"ui.agents.pages.scope_legend": {
+		"note": "The group has no visible label, so this names what the four segments choose: who owns the definition. Ends the sentence the segments complete.",
+		"role": "screen-reader legend for the scope group",
+		"tone": "plain, names the axis"
+	},
+	"ui.agents.pages.search.agents": {
+		"note": "Placeholder in the roster search input when agents are listed. The accessible name is search_aria and does not change with the tab.",
+		"role": "search field placeholder, agents tab",
+		"tone": "plain"
+	},
+	"ui.agents.pages.search.teams": {
+		"note": "Placeholder when teams are listed. Pairs with search.agents; both must fit the same input width.",
+		"role": "placeholder in the roster search input, teams tab",
+		"tone": "plain"
+	},
+	"ui.agents.pages.search_aria": {
+		"note": "Stable across both tabs, so it names both record kinds even when one is shown. Do not make it tab-dependent: the name must not change under focus.",
+		"role": "accessible name for the roster search input",
+		"tone": "plain"
+	},
+	"ui.agents.pages.tab.agents": {
+		"note": "Half of the two-tab switch between agents and teams. A live count sits beside it in a two-character slot, so keep the word short.",
+		"role": "tab label",
+		"tone": "plain, one word"
+	},
+	"ui.agents.pages.tab.teams": {
+		"note": "The other half of the agent/team switch; pairs with tab.agents and shares its count slot.",
+		"role": "tab label",
+		"tone": "plain, one word"
+	}
+}

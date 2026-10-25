@@ -15,6 +15,8 @@
 import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { Skeleton } from "@shared/components/ui/skeleton";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import { cn } from "@shared/lib/utils";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
@@ -332,8 +334,8 @@ export function EditFooter({
 	pending,
 	onSave,
 	onCancel,
-	saveLabel = "Save changes",
-	pendingLabel = "Saving…",
+	saveLabel = t("ui.agents.detail.action.save_changes"),
+	pendingLabel = t("ui.agents.detail.action.saving"),
 	dirtyHint,
 	submit,
 	confirming,
@@ -369,6 +371,9 @@ export function EditFooter({
 	confirming?: boolean;
 	onConfirmingChange?: (next: boolean) => void;
 }) {
+	// `t()` is read during render (including the label defaults above), so the
+	// subscription is what makes a locale change repaint the footer.
+	useI18nLocale();
 	const [uncontrolledConfirming, setUncontrolledConfirming] = useState(false);
 	const primaryRef = useRef<HTMLButtonElement>(null);
 	const keepEditingRef = useRef<HTMLButtonElement>(null);
@@ -506,10 +511,10 @@ export function EditFooter({
 			{isConfirming ? (
 				<>
 					<span className="text-body-sm text-ink-muted">
-						{dirtyHint ?? "Discard your unsaved changes?"}
+						{dirtyHint ?? t("ui.agents.detail.action.discard_question")}
 					</span>
 					<Button variant="danger" onClick={onCancel}>
-						Discard changes
+						{t("ui.agents.detail.action.discard_changes")}
 					</Button>
 					<Button
 						ref={keepEditingRef}
@@ -524,7 +529,7 @@ export function EditFooter({
 							primaryRef.current?.focus();
 						}}
 					>
-						Keep editing
+						{t("ui.agents.detail.action.keep_editing")}
 					</Button>
 				</>
 			) : (
@@ -544,11 +549,13 @@ export function EditFooter({
 					}}
 					disabled={pending}
 				>
-					Cancel
+					{t("ui.common.actions.cancel")}
 				</Button>
 			)}
 			{dirty && !isConfirming ? (
-				<span className="ms-auto text-meta text-ink-dim">Unsaved changes</span>
+				<span className="ms-auto text-meta text-ink-dim">
+					{t("ui.agents.detail.action.unsaved_changes")}
+				</span>
 			) : null}
 		</div>
 	);
