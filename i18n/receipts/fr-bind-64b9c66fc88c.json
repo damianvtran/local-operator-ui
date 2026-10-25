@@ -1,0 +1,153 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "current-byte rebind",
+  "date": "2026-10-25",
+  "locale": "fr",
+  "namespace": "ui.chat.composer",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "merge": "ab9bd739c21ebc24c22b9d4fb25ce78a43c4fede",
+  "instance": "fr-bind-64b9c66fc88c",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); authored no catalogue value for PR #1403 and edited no catalogue or ledger",
+    "team": "lopdev",
+    "harness": "Local Operator",
+    "session": "e2287a4a6524",
+    "model": "deepseek/deepseek-flash",
+    "actual_model": "deepseek/deepseek-flash",
+    "model_source": "harness session banner (system prompt line 'Model: deepseek/deepseek-flash'); no fallback used",
+    "fallback": null,
+    "independence": "This run read the catalogue bytes with git show, wrote no translated value, and edited no catalogue, English source, context sidecar, ledger or allowance file. It did not author any fr value under audit. The unchanged 64 values were audited by fr-extract-da12aa6ade20-r2 at d082bd95; the two changed values were read fresh here.",
+    "instance": "fr-bind-64b9c66fc88c"
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "binding": "Current-byte rebind at PR #1403 head 0adbb37b94, not a fresh translation wave. The file has 66 keys, unchanged in count from the round-2 audit at d082bd95 (fr 944d792a), but two values moved in the design/review remediation commit 5ffc6a5a78: placeholder.waiting and tip.search_past_work. This run re-read both changed values and the still-present round-2 minor FR-EXT-11; the other 64 values are byte-identical to the audited d082bd95 file. It also records that the remediation reintroduced the exact « Orientez l’agent » wording that the round-1 audit rated MAJOR (FR-EXT-01) and the round-2 audit verified fixed to « Infléchissez l’agent »; the re-bind records that as a minor glossary drift and escalates the contradiction for a manager decision, rather than silently re-raising or ignoring the prior major.",
+  "scope": "All 66 ui.chat.composer keys for fr at current PR head 0adbb37b94, read against the English source and its context sidecar. The changed values are placeholder.waiting and tip.search_past_work; the two FR-EXT-11 tips and the other 63 values were also checked against the audited d082bd95 file.",
+  "sha256": {
+    "en": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+    "fr": "64b9c66fc88c54d51235c558cb4b424d907f4ba0f04123e949980531d76d4c86",
+    "context": "85ef8b6622f33788650bdbb7462b78d29b753291d2e4a3ca64ac344d77e9ce0c"
+  },
+  "parents": {
+    "prior": {
+      "rev": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+      "role": "round-2 audited tree; 64 values unchanged",
+      "en_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+      "fr_sha256": "944d792aafbbbba2b0e2c75336ab6d1f6a38323cd22bf7f54fb51045d1c5daec",
+      "context_sha256": "85ef8b6622f33788650bdbb7462b78d29b753291d2e4a3ca64ac344d77e9ce0c",
+      "keys": 66
+    }
+  },
+  "keys_read": 66,
+  "key_set": "equal to English: 66/66, same key order, no missing or extra key, no duplicate key, no English stub",
+  "icu": "All 66 values parse with @formatjs/icu-messageformat-parser. Arguments match English exactly; secret_confirm_chars keeps fr one/many/other; no placeholder was renamed, dropped or re-skeletoned by the remediation. The two changed values contain no placeholders.",
+  "register": "vous throughout; tips are lowercase action sentences with no full stop; placeholders are sentence-case state sentences; no tu/ton/ta/tes. « secret » is the established term in this namespace (demande de secret, champ secret).",
+  "glossary": "turn -> tour; aside -> aparté; runtime kept English where it appeared; provider -> fournisseur; agent -> agent; session -> session. The one drift is steer: « orienter » here vs « infléchir » in ui.projects.project_quick_send.the_session_is_working_this_message_steers_the_running_turn and ui.mesh.mesh_approvals.steer_a_running_turn_there (see F1).",
+  "typography": "U+2019 apostrophes; U+202F before ? in welcome and before the prose colons in dictation_failed_transient; U+2026 ellipsis; no ASCII quotes, NBSP or bidi controls. The two FR-EXT-11 tips still use a plain U+0020 before the colon (see F2).",
+  "findings": [
+    {
+      "id": "FR-EXT-01",
+      "severity": "minor",
+      "key": "ui.chat.composer.placeholder.waiting",
+      "current": "Orientez l’agent. Entrée envoie maintenant · Échap arrête",
+      "proposed": "Infléchissez l’agent. Entrée envoie maintenant · Échap arrête",
+      "reason": "One English verb, two French verbs: « orienter » here, « infléchir » in the two other fr rows that render English « steer ». The round-1 independent audit rated the same value MAJOR (FR-EXT-01): « orienter » with a person as its object can read as to induct/orient someone, while the placeholder is shown during a running turn and means what you type now steers it. The round-2 audit verified the fix to « Infléchissez l’agent » at d082bd95; remediation commit 5ffc6a5a78 (design review D3) reverted it to « Orientez l’agent », citing the French auditor’s adjudicated form. I searched the repository receipts and the PR thread for that adjudication and found no record of it; the only recorded adjudication is FR-EXT-01, which rated the same value MAJOR and fixed it to « Infléchissez ». On the current bytes the meaning is clear and the design review adjudicated the form, so this re-bind records a minor glossary-consistency drift rather than re-raising the major; if the team still treats FR-EXT-01 as binding, restore the proposed value and re-run the one-value delta audit. Either way one spelling must win and the glossary should record the decision.",
+      "disposition": "regression of a prior major; non-gating as recorded here, escalated to the manager for a one-line decision."
+    },
+    {
+      "id": "FR-EXT-11",
+      "severity": "minor",
+      "keys": [
+        "ui.chat.composer.tip.ask_for_a_team",
+        "ui.chat.composer.tip.run_panel"
+      ],
+      "current_by_key": {
+        "ui.chat.composer.tip.ask_for_a_team": "demandez une équipe : plusieurs agents partagent la requête",
+        "ui.chat.composer.tip.run_panel": "ouvrez le panneau d’exécution : plan et sous-agents"
+      },
+      "proposed_by_key": {
+        "ui.chat.composer.tip.ask_for_a_team": "demandez une équipe : plusieurs agents partagent la requête",
+        "ui.chat.composer.tip.run_panel": "ouvrez le panneau d’exécution : plan et sous-agents"
+      },
+      "reason": "Both tips put an ASCII space U+0020 before the colon; the fr style guide’s punctuation section requires espace fine insécable U+202F before : ; ! ? in prose, and every other prose colon in the fr catalogue uses U+202F. The fix is a punctuation swap only; the cell count is unchanged because U+202F counts one cell.",
+      "disposition": "inherited from fr-extract-da12aa6ade20-r2 (FR-EXT-11), still present at the current bytes; non-gating minor."
+    }
+  ],
+  "inherited_findings": [
+    {
+      "id": "7c40d1c357cf-round2 / F4",
+      "severity": "minor",
+      "counted": false,
+      "keys": [
+        "ui.chat.composer.start_recording",
+        "ui.chat.composer.confirm_recording",
+        "ui.chat.composer.starting_recording",
+        "ui.chat.composer.secret_ask_open",
+        "ui.chat.composer.secret_confirm_put",
+        "ui.chat.composer.secret_confirm_put_multi",
+        "ui.chat.composer.secret_fill_locked"
+      ],
+      "note": "The prior receipt’s F4 recorded these seven values as source-level over-budget against their advisory maxCells (25/24, 26/24, 29/24, 19/16, 27/24, 30/24, 135/120), explicitly NOT observed clipping. The values are unchanged here; they were accepted as nonblocking then and are not re-counted in this re-bind."
+    }
+  ],
+  "observations": [
+    {
+      "severity": "info",
+      "key": "ui.chat.composer.tip.search_past_work",
+      "observation": "The remediation changed « recherchez conversations et agents pour rouvrir une session » to « retrouvez une session dans vos conversations et vos agents » (design D2). It restores the articles and stays within the 59-cell tip pin (57 cells); « retrouvez » carries the find-again sense and the sentence names a move the reader can make, so the meaning is preserved."
+    }
+  ],
+  "prior_audits": [
+    {
+      "instance": "fr-extract-b6b8aea1e47a",
+      "receipt": "i18n/receipts/fr-extract-audit-b6b8aea1e47a.json",
+      "receipt_sha256": "cea9728be656cf422ce9b8ce64c3997246e8a5a0046aa6ef2011b58fdc0fd449",
+      "covers": "changes_requested round-1 audit of 134 values at f517ec48: 1 major (FR-EXT-01, steer) + minors/nits across the batch; FR-EXT-01 is the regression source"
+    },
+    {
+      "instance": "fr-extract-da12aa6ade20-r2",
+      "receipt": "i18n/receipts/fr-extract-da12aa6ade20-r2.json",
+      "receipt_sha256": "c56cf3241e239dc06441c5cff8c944ab04f7b81584390228b0c497e1d956842d",
+      "covers": "clean-with-findings round-2 audit at d082bd95 (en 1770509f, fr 944d792a): FR-EXT-01 verified fixed, FR-EXT-11 minor recorded; 64 values unchanged here",
+      "namespace_block_sha256": {
+        "en": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+        "fr": "944d792aafbbbba2b0e2c75336ab6d1f6a38323cd22bf7f54fb51045d1c5daec"
+      }
+    },
+    {
+      "instance": "7c40d1c357cf",
+      "receipt": "i18n/receipts/7c40d1c357cf-round2.json",
+      "receipt_sha256": "bb0dd9cf343d3c859d940a5b6be5274972456cd386589af0535486a598dbec9e",
+      "covers": "prior full audit of the composer/header keys at 718219be; its F4 overflow notes are inherited, not re-counted"
+    }
+  ],
+  "method": [
+    "Pulled every value with git show <head>:<path>; did not check out or edit the PR worktree catalogue.",
+    "Compared key list and key order with English in both directions; rejected duplicate keys.",
+    "Parsed every message with @formatjs/icu-messageformat-parser and compared arguments and plural categories with English.",
+    "Diffed the current fr file against the audited d082bd95 file: exactly two values changed, both named in the remediation commit.",
+    "Re-read the two changed values and the two FR-EXT-11 tips against the English source, the sidecar and the fr style guide; checked codepoints for the colon spacing.",
+    "Searched the fr catalogue for the two established renderings of English « steer » to establish the drift."
+  ],
+  "verdict": "clean-with-findings — 66/66 values read; 0 blocker; 2 minors (F1, the « Orientez l’agent » regression of prior major FR-EXT-01, recorded as a glossary drift and escalated; F2, the two plain-space colons in the tips). The other 64 values are byte-identical to the round-2 audited file.",
+  "limitations": "Static catalogue audit only; no rendered French screen was built or captured, so the 59-cell tip pin is a source-level count, not measured pixels. No native-speaker sign-off is claimed.",
+  "ledger_binding": {
+    "agent": "translation-auditor",
+    "model": "deepseek/deepseek-flash",
+    "result": "clean-with-findings",
+    "instance": "fr-bind-64b9c66fc88c",
+    "receipt": "i18n/receipts/fr-bind-64b9c66fc88c.json",
+    "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 2,
+      "nit": 0
+    },
+    "scope": "current-byte rebind at 0adbb37b94; all 66 keys; 2 changed values re-read; FR-EXT-01 regression recorded as minor and escalated; FR-EXT-11 carried",
+    "note": "Re-binds fr/ui.chat.composer to en 1770509f4dfe / fr 64b9c66fc88c at PR #1403 head. Manager decision needed on FR-EXT-01/design D3."
+  }
+}

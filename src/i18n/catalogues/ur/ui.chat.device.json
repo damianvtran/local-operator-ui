@@ -1,0 +1,16 @@
+{
+	"ui.chat.device.label.moving_to": "{name} پر منتقلی",
+	"ui.chat.device.label.new_on": "{name} پر نیا",
+	"ui.chat.device.label.new_on_this_device": "اس ڈیوائس پر نیا",
+	"ui.chat.device.label.on": "{name} پر",
+	"ui.chat.device.label.on_this_device": "اس ڈیوائس پر",
+	"ui.chat.device.sentence.draft_elsewhere": "نئی گفتگوئیں {name} پر بنتی ہیں۔ دوسری ڈیوائس منتخب کرنے کے لیے کلک کریں۔",
+	"ui.chat.device.sentence.draft_here": "نئی گفتگوئیں اس ڈیوائس پر بنتی ہیں۔ دوسری ڈیوائس منتخب کرنے کے لیے کلک کریں۔",
+	"ui.chat.device.sentence.gone": "یہ گفتگو {name} پر منتقل ہو گئی۔ یہاں کی کاپی حذف ہو گئی۔ اسے یہاں واپس لانے کے لیے کلک کریں۔",
+	"ui.chat.device.sentence.gone_did_not_answer": "یہ گفتگو {name} پر منتقل ہو گئی، جس نے آخری پڑھنے کی درخواست کا جواب نہیں دیا۔ یہاں کی کاپی حذف ہو گئی۔ اسے یہاں واپس لانے کے لیے کلک کریں۔",
+	"ui.chat.device.sentence.local": "یہ گفتگو اس ڈیوائس پر چلتی ہے۔ کسی دوسری ڈیوائس پر منتقل کرنے یا بعد میں واپس لانے کے لیے کلک کریں۔",
+	"ui.chat.device.sentence.moving": "یہ گفتگو {name} پر منتقل ہو رہی ہے۔",
+	"ui.chat.device.sentence.remote": "یہ گفتگو {name} پر چلتی ہے۔ اسے یہاں واپس لانے یا آگے منتقل کرنے کے لیے کلک کریں۔",
+	"ui.chat.device.sentence.remote_did_not_answer": "یہ گفتگو {name} پر چلتی ہے، جس نے آخری پڑھنے کی درخواست کا جواب نہیں دیا۔",
+	"ui.chat.device.sentence.remote_did_not_answer_reason": "یہ گفتگو {name} پر چلتی ہے، جس نے آخری پڑھنے کی درخواست کا جواب نہیں دیا ({reason})۔"
+}

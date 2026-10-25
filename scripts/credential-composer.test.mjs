@@ -320,6 +320,7 @@ const bundle = await build({
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
 			export { ASK_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";
+			export { t } from "@shared/i18n";
 			export {
 				CREDENTIAL_ARMED_NOTICE,
 				CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
@@ -374,6 +375,7 @@ const {
 	MASK_CELL,
 	unredactedNotice,
 	ASK_ITEM_SELECTOR,
+	t,
 } = await import(bundlePath.href);
 await unlink(bundlePath);
 
@@ -3247,7 +3249,11 @@ test("a refused composer is read-only rather than disabled, and refuses Enter it
 		"true",
 		"the refusal has to reach a screen reader through the attribute it has left",
 	);
-	assert.equal(field.placeholder, "This conversation is gone");
+	assert.equal(
+		field.placeholder,
+		t("ui.chat.composer.placeholder.unavailable"),
+		"the gone conversation's sentence is the catalogue's",
+	);
 
 	await type(missing, "still typing");
 	assert.equal(missing.value(), "", "a read-only field takes no edit");
@@ -4169,7 +4175,7 @@ test("a secret gate refuses the composer the way an unavailable one is refused, 
 	assert.equal(field.getAttribute("aria-disabled"), "true");
 	assert.equal(
 		field.placeholder,
-		"Answer the secret request in the asks panel",
+		t("ui.chat.composer.placeholder.secret_answer"),
 		"the empty refusal says where the answer goes",
 	);
 	assert.equal(

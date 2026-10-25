@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "convergence-rebind",
+  "date": "2026-10-25",
+  "locale": "hi",
+  "namespace": "ui.common.errors",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "content_audited_head": "ae40ebc959d9e3dbee6001f7e16d41f050af113e",
+  "instance": "hi-bind-fbaf5e0ff7f5",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); authored no catalogue value for PR #1403 and edited no catalogue or ledger",
+    "team": "lopdev",
+    "harness": "Local Operator",
+    "session": "8c59b09ca817",
+    "model": "deepseek/deepseek-flash",
+    "actual_model": "deepseek/deepseek-flash",
+    "model_source": "harness session banner (system prompt line 'Model: deepseek/deepseek-flash'); no fallback used",
+    "fallback": null,
+    "independence": "This run read the catalogue bytes with git show, wrote no translated value, edited no catalogue, English source, context sidecar, ledger or allowance file, and did not author any hi value under audit. The prior audit of these same bytes was instance hi-final-eadf747e4286, a different session; this receipt re-binds that audit's bytes at the post-merge head."
+  },
+  "status": "passed",
+  "result": "clean",
+  "binding": "Current-byte convergence re-bind, not a fresh translation wave. The en, en.context and hi blobs for this namespace are byte-identical between the audited content head ae40ebc959 and the current PR head 0adbb37b94 (verified with git show + sha256 on the three files); the merge ab9bd739c2 integrated origin/main 91aa8f5f10 without touching this namespace. This receipt re-names the current bytes so the stale ledger row can be re-bound.",
+  "scope": "All 8 ui.common.errors keys at current PR head 0adbb37b94, read against src/i18n/catalogues/en/ui.common.errors.json and its context sidecar. The batch delta over origin/main is 4 keys (the four desktop_refusal diagnoses).",
+  "sha256": {
+    "en": "79e061d415b61aed65c06e6800b379b332048a200d8d88f6cbbf4647eba593db",
+    "hi": "fbaf5e0ff7f536010b6c2f8a91140c331763e36636cf7071d5f164cbc7a3852e",
+    "context": "33432e29556ed7d91eac12edeff1998b623da3fcb48e3515b045e1e0b5c84049"
+  },
+  "keys_read": 8,
+  "key_set": "equal to English: 8/8, same key order, no extra or missing key, no English stub and no Latin-only value",
+  "icu": "No message in this namespace contains a placeholder, plural, select, skeleton or tag; both catalogues are plain strings. Nothing to preserve beyond the literal product name 'Local Operator', which stays Latin in all four desktop_refusal sentences.",
+  "register": "Calm factual diagnoses in the binding आप register; the four refusal sentences keep their distinct causes (not paired / credential refused / plane not served / no answer) and, as the sidecar requires, give no restart or reconfiguration instruction. Danda । closes every prose sentence.",
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/hi.md",
+      "sha256": "82292dc8d13fcc93dc752457719264aed3cc20bb65ecfaba0f0e5a31f4cb40d5"
+    },
+    "docs": {
+      "path": "docs/I18N.md",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca"
+    }
+  },
+  "prior_audit": {
+    "instance": "hi-final-eadf747e4286",
+    "receipt": "i18n/receipts/hi-final-eadf747e4286.json",
+    "receipt_sha256": "12de092041ecd75c5d8fb5b98551c62c5f4cda0ee1802d18bda9308a29f81a96",
+    "audited_head": "ae40ebc959d9e3dbee6001f7e16d41f050af113e",
+    "verdict": "clean, 8/8 values, 0 findings",
+    "byte_identity": "The prior receipt records exactly the en/hi/context hashes above; no byte moved between its head and the current head."
+  },
+  "method": [
+    "Read every value at the current head with git show and compared it side by side with the English source and the context sidecar's role/tone notes.",
+    "Verified key parity and key order in both directions (8 keys each) and rejected English stubs or untranslated Latin-only values.",
+    "Confirmed no ICU placeholder/plural/select/skeleton exists in either side; checked 'Local Operator' stays byte-identical Latin.",
+    "Checked UTF-8/NFC, BOM, CRLF, duplicate keys, bidi controls and danda typography.",
+    "Proved the three blobs are byte-identical to the content head already audited by hi-final-eadf747e4286."
+  ],
+  "findings": [],
+  "verdict": "clean — 8 keys read; the four refusal diagnoses and the four error-boundary strings preserve English meaning, the sidecar's no-instruction constraint and the hi terminology (क्रेडेंशियल, नियंत्रण, ऐप), with no placeholder or register drift.",
+  "limitations": "Static catalogue audit only: no rendered screen was built or captured in this pass. No native-speaker sign-off is claimed."
+}

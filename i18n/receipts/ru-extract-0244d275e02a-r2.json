@@ -1,0 +1,702 @@
+{
+  "schema": 1,
+  "audit_kind": "independent-namespace-delta-translation-audit-round2",
+  "kind": "translation-audit-receipt",
+  "date": "2026-10-24",
+  "locale": "ru",
+  "batch": "extract",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "audited_head": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+  "requested_head": "d082bd9595dcc41018b86f22a26fa7f3ae4e891f",
+  "previous_head": "658afbc0b37c02b8839a207429362c04cdeece9e",
+  "delta_base": "658afbc0b37c02b8839a207429362c04cdeece9e",
+  "delta_base_note": "Round-2 scope is the remediation range 658afbc0..d082bd9595 only; it contains one ru-catalogue commit (c40cecc8cf) with 11 value changes in three files. The PR base remains 3d0e9010d7.",
+  "pr_base": "3d0e9010d71c00662902971e4bd6888f7a8f6f1c",
+  "translation_commit": "c40cecc8cfc97d64af169128241acc1ec99e24a4",
+  "round": 2,
+  "instance": "ru-extract-0244d275e02a-r2",
+  "instance_note": "12-hex run id is this audit session's id (0244d275e02a), prefixed with locale/batch and suffixed -r2; it is distinct from the round-1 instance ru-extract-34b5520d7848 and names this receipt file.",
+  "previous_receipt": {
+    "path": "i18n/receipts/ru-extract-34b5520d7848.json",
+    "sha256": "1eac382cc47aa775026794b06807c68614aca84d8bbbf06c3ca2b29be7039e33"
+  },
+  "auditor": {
+    "agent": "translation-auditor",
+    "harness": "Local Operator",
+    "team": "lopdev",
+    "session": "0244d275e02a",
+    "instance": "ru-extract-0244d275e02a-r2",
+    "model": "deepseek/deepseek-flash",
+    "actual_model": "deepseek/deepseek-flash",
+    "actual_model_source": "harness session model (system prompt: Model: deepseek/deepseek-flash); no fallback selected or observed",
+    "fallback": null,
+    "independent_from_translator": true,
+    "independence_basis": "Round 2 of the same auditor role; this session 0244d275e02a is separate from round 1 (294dfb89f7f0) and from the translator. Branch commits are authored by Damian Tran through the shared GitHub account, so authorship proves nothing; this auditor authored no catalogue value and writes only this receipt."
+  },
+  "independence": "Independent translation-auditor session 0244d275e02a; no translator session is recorded in the branch, and this audit did not author or remediate any value. No catalogue, English, other-locale, ledger, allowance or generated file was edited.",
+  "status": "passed",
+  "result": "clean-with-findings",
+  "verdict": "passed — 11/11 round-1 remediation values applied byte-exactly at d082bd9595; the two width breaches are closed (last_reading 15/16, new_on_this_device 11/20); ICU is intact (124/124 parses, 0 failures, no ICU tokens in any changed value); the four unchanged namespaces are byte-identical to round 1 on en, target and context. One new minor is non-gating: tip.canvas now renders the Canvas pane as «холст» although the en pane-name context says Canvas stays untranslated and 5 of the 6 other target locales keep it Latin. Two round-1 nits remain open by scope (RU-EX-12 moving_to rendered check; RU-EX-13 pre-existing console working-directory string), plus the RU-EX-6 review_repo_pr rendered width check (45/42, non-gating).",
+  "scope": "The 11 changed ru values at PR #1403 head d082bd9595, read against the current en catalogue and en context sidecars; the three changed namespaces were also parsed in full en/ru (124 pairs). The four unchanged namespaces were not re-audited semantically: their en, target and context bytes are identical to the round-1 receipt hashes and are carried. Catalogue-level audit only: no rendered-frame pass, no browser, and no native-speaker sign-off is claimed.",
+  "method": [
+    "Verified the branch tip and PR #1403 head are d082bd9595dcc41018b86f22a26fa7f3ae4e891f (PR open, non-draft, base 3d0e9010d7).",
+    "Diffed 658afbc0b3..d082bd9595 for ru catalogues: exactly one commit (c40cecc8cf) and exactly 11 changed values in three files; no key added, removed or reordered, tabs and trailing newline preserved.",
+    "Re-read all 11 applied values from the head bytes against the English source and its context sidecars; compared each to the round-1 proposal (11/11 exact). Did not rely on the remediation summary.",
+    "Parsed all 124 en/ru pairs in ui.chat.composer, ui.chat and ui.chat.device with @formatjs/icu-messageformat-parser: 0 parse failures. The 11 changed values contain no ICU tokens. The only two structural differences are pre-existing and unchanged: secret_confirm_chars adds the required ru few/many categories, and skill_invocation.trigger_label reorders the single {token} argument.",
+    "Measured the advisory maxCells budgets: last_reading 15/16 (was 19/16), new_on_this_device 11/20 (was 24/20), tip pool 55/55/54 of 59, wake chip 38/42, review_repo_pr 45/42 (open rendered check), tabs.raw 12 cells on a content-sized dev-only strip.",
+    "Verified the four unchanged namespaces (ui.chat.dialogs, ui.chat.directory, ui.chat.sidebar, ui.common.viewer) are byte-identical to the round-1 receipt on en, target and context; the three changed namespaces keep en/context byte-identical and differ only in the 11 target values.",
+    "Checked en↔ru key-set parity across all 75 catalogue files at head: 3,813 keys each, 0 missing/extra; the seven audited namespaces have exact key sets and no duplicate keys.",
+    "Checked register and typography on the 11 changed values: lowercase «вы» forms, lowercase tip verbs, no ты/Вы, no double spaces, no straight quotes, no exclamation, spaced em dash, NFC.",
+    "Cross-checked the canvas term against the en pane-name context and all other target locales: fr/es/vi/hi/ur keep Canvas in the tip; zh-CN uses 画布; ru rail/palette already use «холст». Recorded R2-RU-EX-01 and a pre-existing outside-scope observation.",
+    "No catalogue, English, other-locale, ledger, allowance or generated file was edited; this receipt is the only file written."
+  ],
+  "references": {
+    "glossary": {
+      "path": "~/local-operator/i18n/glossary.md",
+      "sha256": "ef07b446668778822d0ff4dcd7b380543456ddf7b08e060dce5818cb8fd6fdcd"
+    },
+    "style_guide": {
+      "path": "~/local-operator/i18n/style-guides/ru.md",
+      "sha256": "97e41ced06d41df40d7f71b6609d43147b4af04f92bc15a9a40c662bb252a465"
+    },
+    "docs": {
+      "path": "docs/I18N.md (UI repo)",
+      "sha256": "34e127cd042f46bdb5a6cab48afe23835ae316dc46217a759b98506bfb1299ca8"
+    }
+  },
+  "checks": {
+    "branch_tip_matches_requested_head": true,
+    "pr_head_verified": true,
+    "remediation_commit": "c40cecc8cfc97d64af169128241acc1ec99e24a4",
+    "changed_values": 11,
+    "changed_files": 3,
+    "key_set_changed": false,
+    "key_order_changed": false,
+    "json_formatting": "tabs and trailing newline preserved in all seven files; no key added, removed or reordered",
+    "locales_checked": [
+      "en",
+      "ru"
+    ],
+    "files_checked": 75,
+    "keys_per_locale": 3813,
+    "missing_keys": 0,
+    "extra_keys": 0,
+    "seven_namespace_head_keys": 229,
+    "keys_semantically_read_round2": 11,
+    "keys_mechanically_parsed_round2": 124,
+    "keys_carried_byte_identical": 105,
+    "icu_pairs_parsed": 124,
+    "icu_parse_failures": 0,
+    "changed_values_with_icu_tokens": 0,
+    "placeholder_mismatches": 0,
+    "plural_messages_in_changed_values": 0,
+    "max_cells": {
+      "last_reading": {
+        "value": 15,
+        "budget": 16,
+        "status": "pass",
+        "round1": "19/16"
+      },
+      "new_on_this_device": {
+        "value": 11,
+        "budget": 20,
+        "status": "pass",
+        "round1": "24/20"
+      },
+      "tip_pool": {
+        "approvals": "55/59",
+        "mcp_tools": "55/59",
+        "canvas": "54/59",
+        "status": "pass"
+      },
+      "wake_with_summary": {
+        "value": 38,
+        "budget": 42,
+        "status": "pass"
+      },
+      "review_repo_pr": {
+        "value": 45,
+        "budget": 42,
+        "status": "open-rendered-check"
+      },
+      "tabs_raw": {
+        "value": 12,
+        "note": "content-sized tab strip; dev-only; no maxCells"
+      }
+    },
+    "unchanged_namespaces_byte_identical": true,
+    "unchanged_namespaces": [
+      "ui.chat.dialogs",
+      "ui.chat.directory",
+      "ui.chat.sidebar",
+      "ui.common.viewer"
+    ],
+    "changed_namespaces_english_and_context_byte_identical": true,
+    "rendered_pass": false,
+    "browser_used": false,
+    "canvas_cross_check": {
+      "fr": "Canvas",
+      "es": "Canvas",
+      "vi": "Canvas",
+      "hi": "Canvas",
+      "ur": "Canvas",
+      "zh-CN": "画布",
+      "ru": "холст"
+    },
+    "icu_structural_mismatches": 0,
+    "icu_pre_existing_structural_differences": 2,
+    "icu_pre_existing_structural_difference_note": "Both are pre-existing and unchanged by the remediation: ru secret_confirm_chars carries the required few/many branches for the same {count} plural; ru skill_invocation.trigger_label places the same single {token} argument after a literal for word order. No placeholder, argument, skeleton or tag was lost."
+  },
+  "remediation": [
+    {
+      "id": "RU-EX-1",
+      "key": "ui.chat.composer.tip.approvals",
+      "file": "src/i18n/catalogues/ru/ui.chat.composer.json",
+      "status": "FIXED",
+      "exact_match": true,
+      "old": "введите /approvals — настроить запросы перед инструментами",
+      "applied": "введите /approvals — настроить, спрашивать ли одобрение",
+      "round1_proposed": "введите /approvals — настроить, спрашивать ли одобрение",
+      "note": "Applied byte-exactly."
+    },
+    {
+      "id": "RU-EX-2",
+      "key": "ui.chat.composer.tip.mcp_tools",
+      "file": "src/i18n/catalogues/ru/ui.chat.composer.json",
+      "status": "FIXED",
+      "exact_match": true,
+      "old": "включите серверы MCP в настройках — агент получит инструменты",
+      "applied": "подключите MCP в настройках — агент получит инструменты",
+      "round1_proposed": "подключите MCP в настройках — агент получит инструменты",
+      "note": "Applied byte-exactly."
+    },
+    {
+      "id": "RU-EX-3",
+      "key": "ui.chat.composer.tip.canvas",
+      "file": "src/i18n/catalogues/ru/ui.chat.composer.json",
+      "status": "FIXED",
+      "exact_match": true,
+      "old": "откройте документ в Canvas, чтобы он был рядом с чатом",
+      "applied": "откройте документ в холсте, чтобы он был рядом с чатом",
+      "round1_proposed": "откройте документ в холсте, чтобы он был рядом с чатом",
+      "note": "Applied byte-exactly. New round-2 minor R2-RU-EX-01 supersedes this choice."
+    },
+    {
+      "id": "RU-EX-4",
+      "key": "ui.chat.composer.suggestion.wake_with_summary",
+      "file": "src/i18n/catalogues/ru/ui.chat.composer.json",
+      "status": "FIXED",
+      "exact_match": true,
+      "old": "Разбудите меня завтра утром с отчётом",
+      "applied": "Разбудите меня завтра утром со сводкой",
+      "round1_proposed": "Разбудите меня завтра утром со сводкой",
+      "note": "Applied byte-exactly."
+    },
+    {
+      "id": "RU-EX-5",
+      "key": "ui.chat.composer.placeholder.unavailable",
+      "file": "src/i18n/catalogues/ru/ui.chat.composer.json",
+      "status": "FIXED",
+      "exact_match": true,
+      "old": "Этот разговор недоступен",
+      "applied": "Этого разговора больше нет",
+      "round1_proposed": "Этого разговора больше нет",
+      "note": "Applied byte-exactly."
+    },
+    {
+      "id": "RU-EX-6",
+      "key": "ui.chat.composer.suggestion.review_repo_pr",
+      "file": "src/i18n/catalogues/ru/ui.chat.composer.json",
+      "status": "FIXED",
+      "exact_match": true,
+      "old": "Проверьте этот репозиторий и откройте PR",
+      "applied": "Проверьте репозиторий и откройте pull request",
+      "round1_proposed": "Проверьте репозиторий и откройте pull request",
+      "note": "Applied byte-exactly; the adopted text is 45 cells against the 42-cell chip budget, so the round-1 rendered fit check remains open."
+    },
+    {
+      "id": "RU-EX-7",
+      "key": "ui.chat.composer.placeholder.waiting",
+      "file": "src/i18n/catalogues/ru/ui.chat.composer.json",
+      "status": "FIXED",
+      "exact_match": true,
+      "old": "Направьте агента. Enter отправит сразу · Esc остановит",
+      "applied": "Направляйте агента. Enter отправит сразу · Esc остановит",
+      "round1_proposed": "Направляйте агента. Enter отправит сразу · Esc остановит",
+      "note": "Applied byte-exactly."
+    },
+    {
+      "id": "RU-EX-8",
+      "key": "ui.chat.question_dock.secret_answer_label",
+      "file": "src/i18n/catalogues/ru/ui.chat.json",
+      "status": "FIXED",
+      "exact_match": true,
+      "old": "Ответ с секретом",
+      "applied": "Секретный ответ",
+      "round1_proposed": "Секретный ответ",
+      "note": "Applied byte-exactly."
+    },
+    {
+      "id": "RU-EX-9",
+      "key": "ui.chat.session_status.last_reading",
+      "file": "src/i18n/catalogues/ru/ui.chat.json",
+      "status": "FIXED",
+      "exact_match": true,
+      "old": "Последнее измерение",
+      "applied": "Последний замер",
+      "round1_proposed": "Последний замер",
+      "note": "Applied byte-exactly."
+    },
+    {
+      "id": "RU-EX-10",
+      "key": "ui.chat.tabs.raw",
+      "file": "src/i18n/catalogues/ru/ui.chat.json",
+      "status": "FIXED",
+      "exact_match": true,
+      "old": "Исходные данные",
+      "applied": "Сырые данные",
+      "round1_proposed": "Сырые данные",
+      "note": "Applied byte-exactly."
+    },
+    {
+      "id": "RU-EX-11",
+      "key": "ui.chat.device.label.new_on_this_device",
+      "file": "src/i18n/catalogues/ru/ui.chat.device.json",
+      "status": "FIXED",
+      "exact_match": true,
+      "old": "Новое на этом устройстве",
+      "applied": "Новое здесь",
+      "round1_proposed": "Новое здесь",
+      "note": "Applied byte-exactly."
+    }
+  ],
+  "namespaces": {
+    "ui.chat.composer": {
+      "namespace": "ui.chat.composer",
+      "status": "passed",
+      "result": "clean-with-findings",
+      "verdict": "clean with one new minor — 7/7 round-1 values applied exactly; tip.canvas conflicts with the Canvas pane-name policy",
+      "batch_keys": 30,
+      "head_keys": 66,
+      "changed_values": 7,
+      "carried_from_round1": false,
+      "byte_identical_to_round1": {
+        "en": true,
+        "ru": false,
+        "context": true
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.composer.json",
+        "ru": "src/i18n/catalogues/ru/ui.chat.composer.json",
+        "context": "src/i18n/catalogues/en/ui.chat.composer.context.json"
+      },
+      "sha256": {
+        "en": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+        "ru": "48268585ccb500cadb11ac6c4936a9442000106433d9e4e158ddf71d0e955143",
+        "context": "85ef8b6622f33788650bdbb7462b78d29b753291d2e4a3ca64ac344d77e9ce0c"
+      },
+      "en_sha256": "1770509f4dfefe58b931db662622e2cddbaa38323be792ec045947d9e6b3d204",
+      "ru_sha256": "48268585ccb500cadb11ac6c4936a9442000106433d9e4e158ddf71d0e955143",
+      "context_sha256": "85ef8b6622f33788650bdbb7462b78d29b753291d2e4a3ca64ac344d77e9ce0c",
+      "round1_findings_verified": [
+        {
+          "id": "RU-EX-1",
+          "key": "ui.chat.composer.tip.approvals",
+          "status": "FIXED",
+          "exact_match": true
+        },
+        {
+          "id": "RU-EX-2",
+          "key": "ui.chat.composer.tip.mcp_tools",
+          "status": "FIXED",
+          "exact_match": true
+        },
+        {
+          "id": "RU-EX-3",
+          "key": "ui.chat.composer.tip.canvas",
+          "status": "FIXED",
+          "exact_match": true
+        },
+        {
+          "id": "RU-EX-4",
+          "key": "ui.chat.composer.suggestion.wake_with_summary",
+          "status": "FIXED",
+          "exact_match": true
+        },
+        {
+          "id": "RU-EX-5",
+          "key": "ui.chat.composer.placeholder.unavailable",
+          "status": "FIXED",
+          "exact_match": true
+        },
+        {
+          "id": "RU-EX-6",
+          "key": "ui.chat.composer.suggestion.review_repo_pr",
+          "status": "FIXED",
+          "exact_match": true
+        },
+        {
+          "id": "RU-EX-7",
+          "key": "ui.chat.composer.placeholder.waiting",
+          "status": "FIXED",
+          "exact_match": true
+        }
+      ],
+      "findings": [
+        {
+          "id": "R2-RU-EX-01",
+          "severity": "minor",
+          "category": "glossary-consistency",
+          "key": "ui.chat.composer.tip.canvas",
+          "current": "откройте документ в холсте, чтобы он был рядом с чатом",
+          "proposed": "откройте документ в Canvas, чтобы он был рядом с чатом",
+          "reason": "The en context sidecars for the Canvas pane declare it the product's own pane name and say it stays untranslated; five of the six other target locales (fr, es, vi, hi, ur) keep Canvas in this tip, while zh-CN uses its normal word 画布. The remediation aligned the tip with the older rail/palette «холст» translations instead of the newer pane-name policy. The proposed revert is 54 cells, inside the 59-cell tip pool.",
+          "regression": true,
+          "introduced_by": "RU-EX-3 remediation, c40cecc8cf",
+          "related_keys": [
+            "ui.common.file_actions.show_in_canvas",
+            "ui.chat.canonical.supplement.file_actions.open_in_canvas",
+            "ui.shell.rail.canvas.tooltip",
+            "ui.command_palette.use_palette_sources.open_canvas",
+            "ui.command_palette.use_palette_sources.close_canvas"
+          ]
+        }
+      ],
+      "checks": {
+        "exact_key_set": true,
+        "key_order_unchanged": true,
+        "icu_pairs_parsed": 66,
+        "icu_parse_failures": 0,
+        "changed_values_with_icu_tokens": 0
+      }
+    },
+    "ui.chat.device": {
+      "namespace": "ui.chat.device",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — 1/1 round-1 value applied exactly; new_on_this_device 11/20; RU-EX-12 rendered check carried",
+      "batch_keys": 14,
+      "head_keys": 14,
+      "changed_values": 1,
+      "carried_from_round1": false,
+      "byte_identical_to_round1": {
+        "en": true,
+        "ru": false,
+        "context": true
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.device.json",
+        "ru": "src/i18n/catalogues/ru/ui.chat.device.json",
+        "context": "src/i18n/catalogues/en/ui.chat.device.context.json"
+      },
+      "sha256": {
+        "en": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+        "ru": "a034ec695656b5a3e5195f21b768776784f7d6b44a4f6922fc78a6dac7592e25",
+        "context": "011a317e02583cb0485a8cb03ae2892607d118d005a7b1fc1118c60f557352ce"
+      },
+      "en_sha256": "2b18a4425f1a8c8173fff5b317bd6eed3d576dda334306025a721d7fe2e6e895",
+      "ru_sha256": "a034ec695656b5a3e5195f21b768776784f7d6b44a4f6922fc78a6dac7592e25",
+      "context_sha256": "011a317e02583cb0485a8cb03ae2892607d118d005a7b1fc1118c60f557352ce",
+      "round1_findings_verified": [
+        {
+          "id": "RU-EX-11",
+          "key": "ui.chat.device.label.new_on_this_device",
+          "status": "FIXED",
+          "exact_match": true
+        },
+        {
+          "id": "RU-EX-12",
+          "key": "ui.chat.device.label.moving_to",
+          "status": "CARRIED",
+          "exact_match": null,
+          "note": "rendered fit check only; value unchanged"
+        }
+      ],
+      "findings": [],
+      "checks": {
+        "exact_key_set": true,
+        "key_order_unchanged": true,
+        "icu_pairs_parsed": 14,
+        "icu_parse_failures": 0,
+        "changed_values_with_icu_tokens": 0
+      }
+    },
+    "ui.chat.dialogs": {
+      "namespace": "ui.chat.dialogs",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — bytes identical to the round-1 receipt; 10 keys carried",
+      "batch_keys": 6,
+      "head_keys": 10,
+      "changed_values": 0,
+      "carried_from_round1": true,
+      "byte_identical_to_round1": {
+        "en": true,
+        "ru": true,
+        "context": true
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.dialogs.json",
+        "ru": "src/i18n/catalogues/ru/ui.chat.dialogs.json",
+        "context": "src/i18n/catalogues/en/ui.chat.dialogs.context.json"
+      },
+      "sha256": {
+        "en": "05f2c86f08148e7ba94a3536861958cbed9e0b3b0f25292d8c7f0f64eef82493",
+        "ru": "45ef7036e21615447e523a82956de494dcd62c3a3596203a648726b7d050d158",
+        "context": "2cc1cccec0e40f46106cc862422c7cb7770e99fe8b54ad5820ed6c722444e299"
+      },
+      "en_sha256": "05f2c86f08148e7ba94a3536861958cbed9e0b3b0f25292d8c7f0f64eef82493",
+      "ru_sha256": "45ef7036e21615447e523a82956de494dcd62c3a3596203a648726b7d050d158",
+      "context_sha256": "2cc1cccec0e40f46106cc862422c7cb7770e99fe8b54ad5820ed6c722444e299",
+      "round1_findings_verified": [],
+      "findings": [],
+      "checks": {
+        "exact_key_set": true,
+        "key_order_unchanged": true,
+        "icu_pairs_parsed": 0,
+        "icu_parse_failures": 0,
+        "changed_values_with_icu_tokens": 0
+      }
+    },
+    "ui.chat.directory": {
+      "namespace": "ui.chat.directory",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — bytes identical to the round-1 receipt; 43 keys carried",
+      "batch_keys": 43,
+      "head_keys": 43,
+      "changed_values": 0,
+      "carried_from_round1": true,
+      "byte_identical_to_round1": {
+        "en": true,
+        "ru": true,
+        "context": true
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.directory.json",
+        "ru": "src/i18n/catalogues/ru/ui.chat.directory.json",
+        "context": "src/i18n/catalogues/en/ui.chat.directory.context.json"
+      },
+      "sha256": {
+        "en": "911d137202d2dbca8c18d3536a7da10019424181a42c44817774da07cfef57ec",
+        "ru": "faa371bebad7f9764592307597f9aa144f70b833020259a79840304720824c34",
+        "context": "8e224faff8632471b3a0cb34aa420d90b3a97230b8f3fd3d6c0c13bcdd0a16a8"
+      },
+      "en_sha256": "911d137202d2dbca8c18d3536a7da10019424181a42c44817774da07cfef57ec",
+      "ru_sha256": "faa371bebad7f9764592307597f9aa144f70b833020259a79840304720824c34",
+      "context_sha256": "8e224faff8632471b3a0cb34aa420d90b3a97230b8f3fd3d6c0c13bcdd0a16a8",
+      "round1_findings_verified": [],
+      "findings": [],
+      "checks": {
+        "exact_key_set": true,
+        "key_order_unchanged": true,
+        "icu_pairs_parsed": 0,
+        "icu_parse_failures": 0,
+        "changed_values_with_icu_tokens": 0
+      }
+    },
+    "ui.chat": {
+      "namespace": "ui.chat",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — 3/3 round-1 values applied exactly; last_reading 15/16",
+      "batch_keys": 36,
+      "head_keys": 44,
+      "changed_values": 3,
+      "carried_from_round1": false,
+      "byte_identical_to_round1": {
+        "en": true,
+        "ru": false,
+        "context": true
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.json",
+        "ru": "src/i18n/catalogues/ru/ui.chat.json",
+        "context": "src/i18n/catalogues/en/ui.chat.context.json"
+      },
+      "sha256": {
+        "en": "346506195ffc36897dee351eb12a47aab4c21acdf3062710392eb0086024b442",
+        "ru": "870d94305f1237963e28952c3b8478bda69dc3cb57ec55b7d681294f983cc015",
+        "context": "e2f4f6310081e9c54efd893faf10f34eb7bcc5101337a0f4d96a49bdf6dab424"
+      },
+      "en_sha256": "346506195ffc36897dee351eb12a47aab4c21acdf3062710392eb0086024b442",
+      "ru_sha256": "870d94305f1237963e28952c3b8478bda69dc3cb57ec55b7d681294f983cc015",
+      "context_sha256": "e2f4f6310081e9c54efd893faf10f34eb7bcc5101337a0f4d96a49bdf6dab424",
+      "round1_findings_verified": [
+        {
+          "id": "RU-EX-8",
+          "key": "ui.chat.question_dock.secret_answer_label",
+          "status": "FIXED",
+          "exact_match": true
+        },
+        {
+          "id": "RU-EX-9",
+          "key": "ui.chat.session_status.last_reading",
+          "status": "FIXED",
+          "exact_match": true
+        },
+        {
+          "id": "RU-EX-10",
+          "key": "ui.chat.tabs.raw",
+          "status": "FIXED",
+          "exact_match": true
+        }
+      ],
+      "findings": [],
+      "checks": {
+        "exact_key_set": true,
+        "key_order_unchanged": true,
+        "icu_pairs_parsed": 44,
+        "icu_parse_failures": 0,
+        "changed_values_with_icu_tokens": 0
+      }
+    },
+    "ui.chat.sidebar": {
+      "namespace": "ui.chat.sidebar",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — bytes identical to the round-1 receipt; 44 keys carried",
+      "batch_keys": 1,
+      "head_keys": 44,
+      "changed_values": 0,
+      "carried_from_round1": true,
+      "byte_identical_to_round1": {
+        "en": true,
+        "ru": true,
+        "context": true
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.chat.sidebar.json",
+        "ru": "src/i18n/catalogues/ru/ui.chat.sidebar.json",
+        "context": "src/i18n/catalogues/en/ui.chat.sidebar.context.json"
+      },
+      "sha256": {
+        "en": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+        "ru": "e7874df65f468a3235fb091de9b8bfcd177c41bd3696b4db592cc579108d63c5",
+        "context": "4c7581e198d0fcc05a2ce61a0e569c550d126e352e2956830ceee34f6ed6b0de"
+      },
+      "en_sha256": "b20a2e81d766857b5694b4f20333254e9c599b700b138e7312082bcec0270be5",
+      "ru_sha256": "e7874df65f468a3235fb091de9b8bfcd177c41bd3696b4db592cc579108d63c5",
+      "context_sha256": "4c7581e198d0fcc05a2ce61a0e569c550d126e352e2956830ceee34f6ed6b0de",
+      "round1_findings_verified": [],
+      "findings": [],
+      "checks": {
+        "exact_key_set": true,
+        "key_order_unchanged": true,
+        "icu_pairs_parsed": 0,
+        "icu_parse_failures": 0,
+        "changed_values_with_icu_tokens": 0
+      }
+    },
+    "ui.common.viewer": {
+      "namespace": "ui.common.viewer",
+      "status": "passed",
+      "result": "clean",
+      "verdict": "clean — bytes identical to the round-1 receipt; 8 keys carried",
+      "batch_keys": 4,
+      "head_keys": 8,
+      "changed_values": 0,
+      "carried_from_round1": true,
+      "byte_identical_to_round1": {
+        "en": true,
+        "ru": true,
+        "context": true
+      },
+      "paths": {
+        "en": "src/i18n/catalogues/en/ui.common.viewer.json",
+        "ru": "src/i18n/catalogues/ru/ui.common.viewer.json",
+        "context": "src/i18n/catalogues/en/ui.common.viewer.context.json"
+      },
+      "sha256": {
+        "en": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+        "ru": "26197d9377d8fffeaa52113f5a29752d611b01f4528793bb8985a0cc93a0eb35",
+        "context": "e754ce6c5403f7fc27c1b7d768f25626ecc77be9886eaec1e12fdeed267514d5"
+      },
+      "en_sha256": "1faadd19f505153f97f239f612ad3316282a8ba85da55b882d626fc276593de5",
+      "ru_sha256": "26197d9377d8fffeaa52113f5a29752d611b01f4528793bb8985a0cc93a0eb35",
+      "context_sha256": "e754ce6c5403f7fc27c1b7d768f25626ecc77be9886eaec1e12fdeed267514d5",
+      "round1_findings_verified": [],
+      "findings": [],
+      "checks": {
+        "exact_key_set": true,
+        "key_order_unchanged": true,
+        "icu_pairs_parsed": 0,
+        "icu_parse_failures": 0,
+        "changed_values_with_icu_tokens": 0
+      }
+    }
+  },
+  "carried_open_items": [
+    {
+      "id": "RU-EX-12",
+      "severity": "nit",
+      "key": "ui.chat.device.label.moving_to",
+      "status": "carried",
+      "note": "rendered fit check only; value unchanged and no rendered pass is claimed."
+    },
+    {
+      "id": "RU-EX-13",
+      "severity": "nit",
+      "key": "ui.console.pane.needs_conversation.detail",
+      "status": "carried",
+      "note": "pre-existing console string outside the seven audited namespaces and outside this batch; «рабочей папке» vs the locale’s «рабочий каталог» drift remains."
+    },
+    {
+      "id": "RU-EX-6-R",
+      "severity": "nit",
+      "key": "ui.chat.composer.suggestion.review_repo_pr",
+      "status": "carried",
+      "note": "the adopted text is 45 cells against the 42-cell chip budget; round 1 asked for a rendered fit check, which this catalogue-level round does not perform."
+    }
+  ],
+  "outside_scope_observations": [
+    {
+      "key": "ui.shell.rail.canvas.tooltip, ui.command_palette.use_palette_sources.open_canvas, ui.command_palette.use_palette_sources.close_canvas",
+      "observation": "Four pre-existing ru strings render the Canvas pane as «холст», while ui.common.file_actions and ui.chat.canonical keep «Canvas» under the pane-name context. They are outside the seven audited namespaces and byte-identical to round 1; align them to Canvas in a future pass if the pane-name policy stands."
+    }
+  ],
+  "counts": {
+    "batch_keys": 134,
+    "head_keys_seven_namespaces": 229,
+    "keys_semantically_read_round2": 11,
+    "keys_mechanically_parsed_round2": 124,
+    "keys_carried_byte_identical": 105,
+    "round1_findings": 13,
+    "round1_findings_fixed": 11,
+    "round1_findings_carried_open": 2,
+    "round2_new_findings": 1,
+    "round2_new_blocker": 0,
+    "round2_new_major": 0,
+    "round2_new_minor": 1,
+    "round2_new_nit": 0
+  },
+  "finding_counts": {
+    "blocker": 0,
+    "major": 0,
+    "minor": 1,
+    "nit": 0
+  },
+  "totals": {
+    "round1_findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 8,
+      "nit": 5
+    },
+    "round1_findings_fixed": 11,
+    "round1_findings_carried_open": 2,
+    "new_findings_round2": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 1,
+      "nit": 0
+    },
+    "keys_semantically_read_round2": 11,
+    "keys_mechanically_parsed_round2": 124,
+    "keys_carried_byte_identical": 105,
+    "changed_keys_rechecked": 11,
+    "consistency_satellites": 5
+  },
+  "head_note": "The shared checkout was left at its existing detached HEAD 72f94df2697e85734b08d97c1335414ab1ac7c5b; every audited byte was read with `git show d082bd9595dcc41018b86f22a26fa7f3ae4e891f:<path>` and hashed from those bytes. The branch tip and PR #1403 head both resolve to d082bd9595."
+}

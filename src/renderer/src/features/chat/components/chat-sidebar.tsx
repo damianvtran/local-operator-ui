@@ -238,6 +238,7 @@ import {
 import {
 	DEFAULT_SIDEBAR_VIEW,
 	SECTION_GROWN_HINT,
+	SIDEBAR_SECTION_LABEL,
 	SIDEBAR_SECTION_ROWS,
 	type SidebarSectionKey,
 	entityMore,
@@ -954,20 +955,6 @@ const pressRowAct = (sessionId: string, act: ChatRowAct) => {
 		?.click();
 };
 
-/*
- * The words this sentence uses for a count of at most six; digits beyond that,
- * because "Eleven built-in agents" is a figure the eye has to translate back.
- */
-const BUILTIN_COUNT_WORDS = [
-	"No",
-	"One",
-	"Two",
-	"Three",
-	"Four",
-	"Five",
-	"Six",
-];
-
 /**
  * The sentence that offers the built-ins, built from the names actually offered.
  *
@@ -985,16 +972,24 @@ const builtinOfferSentence = (
 	builtins: readonly { name: string }[],
 ): string => {
 	const names = builtins.map((builtin) => builtin.name);
-	const count = BUILTIN_COUNT_WORDS[names.length] ?? String(names.length);
-	const plural = names.length === 1 ? "agent" : "agents";
-	const verb = names.length === 1 ? "is" : "are";
+	/*
+	 * THE LIST IS JOINED HERE, deliberately: IntlMessageFormat has no list
+	 * formatter, and the English source joins with commas and a bare "and" (no
+	 * Oxford comma) - a shape ICU cannot express for a variable-length list. So the
+	 * count and the pre-joined names are parameters of ONE catalogue message (whose
+	 * arms carry the spelled numbers and the it/them pronoun), and a locale cannot
+	 * change the conjunction. That is a stated limit of keying this sentence, not
+	 * an oversight; moving the join into the catalogue would need a list-format
+	 * placeholder the runtime does not have.
+	 */
 	const list =
 		names.length === 1
 			? names[0]
 			: `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
-	return `${count} built-in ${plural} ${verb} ready to install — ${list}. You can edit ${
-		names.length === 1 ? "it" : "them"
-	} once installed.`;
+	return t("ui.chat.sidebar.agents.builtin_offer", {
+		count: names.length,
+		list,
+	});
 };
 
 /**
@@ -7203,7 +7198,8 @@ export function ChatSidebar({
 						 * drawn only while the lift is, so a group the bound did not withhold
 						 * this row from pays nothing for it.
 						 */}
-						{page.lifted && sectionLabel("Current chat")}
+						{page.lifted &&
+							sectionLabel(t("ui.chat.sidebar.section.current_chat"))}
 						{shown.map((row) => sessionRow(row, true))} {/*
 						 * THE GROUP'S OWN SENTENCE.
 						 *
@@ -8526,7 +8522,7 @@ export function ChatSidebar({
 						<section>
 							{heading(
 								"agents",
-								"Agents",
+								t(SIDEBAR_SECTION_LABEL.agents),
 								true,
 								undefined,
 								Bot,
@@ -8877,7 +8873,7 @@ export function ChatSidebar({
 						>
 							{heading(
 								"teams",
-								"Teams",
+								t(SIDEBAR_SECTION_LABEL.teams),
 								true,
 								undefined,
 								Users,
@@ -9107,7 +9103,7 @@ export function ChatSidebar({
 			 */}
 			{liftedRow && (
 				<section data-chat-section="current">
-					{sectionLabel("Current chat")}
+					{sectionLabel(t("ui.chat.sidebar.section.current_chat"))}
 					{sessionRow(liftedRow)}
 				</section>
 			)}
@@ -9559,7 +9555,7 @@ export function ChatSidebar({
 					 */
 					className="relative"
 				>
-					{sectionLabel("Pinned")}
+					{sectionLabel(t(SIDEBAR_SECTION_LABEL.pinned))}
 					{taggedRows(orderedPinned)}
 					{/*
 					 * THE INSERTION INDICATOR, and it exists ONLY while a drag does: a 2px line in
@@ -9592,7 +9588,7 @@ export function ChatSidebar({
 						 */
 						return (
 							<section key={key}>
-								{sectionLabel(CHAT_LIST_SECTION_LABEL[key])}
+								{sectionLabel(t(CHAT_LIST_SECTION_LABEL[key]))}
 								<p className="px-2 text-meta text-ink-dim">
 									{livenessUnread
 										? "The daemon could not read which chats are running, so this list may be incomplete."
@@ -9607,7 +9603,7 @@ export function ChatSidebar({
 					return (
 						<section key={key} data-chat-section={key}>
 							{sectionLabel(
-								CHAT_LIST_SECTION_LABEL[key],
+								t(CHAT_LIST_SECTION_LABEL[key]),
 								/*
 								 * The bulk read receipt sits on the FIRST section that has rows - the
 								 * one the eye lands on - while the set it clears is the STORE's, so

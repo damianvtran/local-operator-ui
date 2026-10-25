@@ -1,0 +1,107 @@
+{
+  "schema": 1,
+  "kind": "translation-audit-receipt",
+  "audit_kind": "current-byte rebind",
+  "date": "2026-10-25",
+  "locale": "fr",
+  "namespace": "ui.chat.directory",
+  "pr": 1403,
+  "branch": "feat/i18n-key-remaining-copy",
+  "head": "0adbb37b9429e2c70cbe64ea149cb091432c8dd6",
+  "merge": "ab9bd739c21ebc24c22b9d4fb25ce78a43c4fede",
+  "instance": "fr-bind-e143ec8e1081",
+  "auditor": {
+    "agent": "translation-auditor",
+    "role": "independent translation auditor (team lopdev); authored no catalogue value for PR #1403 and edited no catalogue or ledger",
+    "team": "lopdev",
+    "harness": "Local Operator",
+    "session": "e2287a4a6524",
+    "model": "deepseek/deepseek-flash",
+    "actual_model": "deepseek/deepseek-flash",
+    "model_source": "harness session banner (system prompt line 'Model: deepseek/deepseek-flash'); no fallback used",
+    "fallback": null,
+    "independence": "This run read the catalogue bytes with git show, wrote no translated value, and edited no catalogue, English source, context sidecar, ledger or allowance file. It did not author any fr value under audit. The 40 unchanged values were audited by fr-extract-da12aa6ade20-r2 at d082bd95; the three changed folder values were read fresh here.",
+    "instance": "fr-bind-e143ec8e1081"
+  },
+  "status": "passed",
+  "result": "clean-with-findings",
+  "binding": "Current-byte rebind at PR #1403 head 0adbb37b94, not a fresh translation wave. The file has 43 keys. The en source is unchanged from the round-2 audit at d082bd95 (en 911d1372); three fr folder values moved in the design/review remediation commit 5ffc6a5a78: folder.home, folder.program_files, folder.program_files_x86. This run re-read the three changed values against the platform display names, confirmed the other 40 values are byte-identical to the audited d082bd95 file, and records one inherited typography nit.",
+  "scope": "All 43 ui.chat.directory keys for fr at current PR head 0adbb37b94, read against the English source and its context sidecar. No value was authored or edited by this run.",
+  "sha256": {
+    "en": "911d137202d2dbca8c18d3536a7da10019424181a42c44817774da07cfef57ec",
+    "fr": "e143ec8e1081cf7b0f1581009d089800b285e7584219cd312c36069a9099f320",
+    "context": "8e224faff8632471b3a0cb34aa420d90b3a97230b8f3fd3d6c0c13bcdd0a16a8"
+  },
+  "keys_read": 43,
+  "key_set": "equal to English: 43/43, same key order, no missing or extra key, no duplicate key, no English stub",
+  "icu": "All 43 values parse with @formatjs/icu-messageformat-parser. Placeholders {path} and the plural-free folder labels are preserved exactly; no plural, select or number-skeleton structures in this namespace.",
+  "register": "vous throughout; sentence case; imperatives for chip actions (« Cliquez pour… »); « Dossier de travail » for working directory; « runtime » kept English per the fr guide.",
+  "glossary": "Working directory -> dossier de travail; path -> chemin; folder names follow the platform file manager: macOS « Bureau », « Bibliothèque », « Dossier personnel »; Windows « Programmes » / « Programmes (x86) »; the literal path segments etc/media/mnt/opt/srv/usr/var stay byte-identical. « runtime » is the fr guide’s kept-English term.",
+  "typography": "U+2019 apostrophes; U+2026 ellipsis in menu.browse/menu.enter_custom (the prior FR-EXT-02 fix); U+202F before the colon in label.working_directory_value; no ASCII ellipsis, straight quotes, NBSP, bidi controls; NFC-clean.",
+  "findings": [
+    {
+      "id": "FR-BIND-DIR-01",
+      "severity": "nit",
+      "key": "ui.chat.directory.tooltip.truncated_move_cost",
+      "current": "{path} - Cliquez pour changer le dossier de travail. Le runtime d’une session en cours y redémarre.",
+      "proposed": "{path} — Cliquez pour changer le dossier de travail. Le runtime d’une session en cours y redémarre.",
+      "reason": "The fr style guide settles the prose dash as « — » (em dash, spaced), and the fr catalogue uses that form elsewhere (e.g. sidebar list.offline). This value keeps the English source’s « - » hyphen-minus. It is a nit because the string is a path-prefixed tooltip, the English source deliberately uses the same separator, and the meaning is unaffected; a rendered check is not needed for punctuation.",
+      "disposition": "inherited from the d082bd95 bytes, unchanged; non-gating nit."
+    }
+  ],
+  "inherited_findings": [],
+  "observations": [
+    {
+      "severity": "info",
+      "key": "ui.chat.directory.folder.home",
+      "observation": "« Dossier personnel » is the current macOS French name for the user’s home folder (design review D4), not the older « Dossier de départ »."
+    },
+    {
+      "severity": "info",
+      "key": "ui.chat.directory.folder.program_files / _x86",
+      "observation": "« Programmes » / « Programmes (x86) » are the French Windows Explorer display names for Program Files / Program Files (x86); the path C:\\Program Files stays machine text. Verified against the published per-language folder-name table."
+    }
+  ],
+  "prior_audits": [
+    {
+      "instance": "fr-extract-da12aa6ade20-r2",
+      "receipt": "i18n/receipts/fr-extract-da12aa6ade20-r2.json",
+      "receipt_sha256": "c56cf3241e239dc06441c5cff8c944ab04f7b81584390228b0c497e1d956842d",
+      "covers": "clean audit of all 43 values at d082bd95 (en 911d1372, fr f2bc9530); FR-EXT-02 ellipsis fix verified; 0 findings",
+      "namespace_block_sha256": {
+        "en": "911d137202d2dbca8c18d3536a7da10019424181a42c44817774da07cfef57ec",
+        "fr": "f2bc95305fbd48a9ae73b5189bc0e6539d99f2e18fe283806389562a9cc06de7"
+      }
+    },
+    {
+      "instance": "fr-extract-b6b8aea1e47a",
+      "receipt": "i18n/receipts/fr-extract-audit-b6b8aea1e47a.json",
+      "receipt_sha256": "cea9728be656cf422ce9b8ce64c3997246e8a5a0046aa6ef2011b58fdc0fd449",
+      "covers": "round-1 audit of the 43 values at f517ec48; 1 minor (FR-EXT-02) on the ASCII ellipses, fixed before round 2"
+    }
+  ],
+  "method": [
+    "Pulled every value with git show <head>:<path>; did not check out or edit the PR worktree catalogue.",
+    "Compared key list and key order with English in both directions; rejected duplicate keys.",
+    "Parsed every message with @formatjs/icu-messageformat-parser and compared placeholders with English.",
+    "Diffed the current fr file against the audited d082bd95 file: exactly three values changed, all three named in the remediation commit.",
+    "Checked the three changed folder labels against the platform display names; checked the inherited hyphen nit against the fr style guide."
+  ],
+  "verdict": "clean-with-findings — 43/43 values read; 0 blocker/major; 1 nit (the inherited « - » separator in tooltip.truncated_move_cost). The three changed folder values match the platform names and the prior clean audit’s bytes cover the other 40.",
+  "limitations": "Static catalogue audit only; no rendered French screen was built or captured, so width/register judgement is source-level. No native-speaker sign-off is claimed.",
+  "ledger_binding": {
+    "agent": "translation-auditor",
+    "model": "deepseek/deepseek-flash",
+    "result": "clean-with-findings",
+    "instance": "fr-bind-e143ec8e1081",
+    "receipt": "i18n/receipts/fr-bind-e143ec8e1081.json",
+    "findings": {
+      "blocker": 0,
+      "major": 0,
+      "minor": 0,
+      "nit": 1
+    },
+    "scope": "current-byte rebind at 0adbb37b94; all 43 keys; 3 changed folder values re-read; 1 inherited nit",
+    "note": "Re-binds fr/ui.chat.directory to en 911d137202d2 / fr e143ec8e1081 at PR #1403 head."
+  }
+}

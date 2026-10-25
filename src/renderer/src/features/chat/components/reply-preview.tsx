@@ -1,4 +1,6 @@
 import { Button } from "@shared/components/ui";
+import { t } from "@shared/i18n";
+import { useI18nLocale } from "@shared/i18n/use-locale";
 import type { Reply } from "@shared/store/conversation-input-store";
 import { MessageSquareReply, X } from "lucide-react";
 import type { FC } from "react";
@@ -39,35 +41,40 @@ type ReplyPreviewProps = {
 export const ReplyPreview: FC<ReplyPreviewProps> = ({
 	replies,
 	onRemoveReply,
-}) => (
-	<div className="mb-2 flex flex-col gap-1.5 rounded-sm bg-sunken p-2">
-		<div className="flex items-center gap-1.5 text-ink-dim">
-			<MessageSquareReply size={12} aria-hidden="true" />
-			<span className="text-meta">Replying to</span>
-		</div>
-		{replies.map((reply) => (
-			<div
-				key={reply.id}
-				className="flex items-center gap-2 border-hairline border-s-2 py-0.5 ps-2"
-			>
-				<span
-					className="flex-1 truncate text-body-sm text-ink-muted"
-					title={reply.text}
-				>
-					{reply.text}
-				</span>
-				{onRemoveReply && (
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						className="shrink-0 text-ink-dim hover:bg-elevated hover:text-ink"
-						onClick={() => onRemoveReply(reply.id)}
-						aria-label="Remove reply"
-					>
-						<X aria-hidden="true" />
-					</Button>
-				)}
+}) => {
+	/* A quoted reply is copy on the composer; subscribing redraws it when the
+	 * backend language changes. */
+	useI18nLocale();
+	return (
+		<div className="mb-2 flex flex-col gap-1.5 rounded-sm bg-sunken p-2">
+			<div className="flex items-center gap-1.5 text-ink-dim">
+				<MessageSquareReply size={12} aria-hidden="true" />
+				<span className="text-meta">{t("ui.chat.reply.replying_to")}</span>
 			</div>
-		))}
-	</div>
-);
+			{replies.map((reply) => (
+				<div
+					key={reply.id}
+					className="flex items-center gap-2 border-hairline border-s-2 py-0.5 ps-2"
+				>
+					<span
+						className="flex-1 truncate text-body-sm text-ink-muted"
+						title={reply.text}
+					>
+						{reply.text}
+					</span>
+					{onRemoveReply && (
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							className="shrink-0 text-ink-dim hover:bg-elevated hover:text-ink"
+							onClick={() => onRemoveReply(reply.id)}
+							aria-label={t("ui.chat.reply.remove")}
+						>
+							<X aria-hidden="true" />
+						</Button>
+					)}
+				</div>
+			))}
+		</div>
+	);
+};

@@ -8,5 +8,7 @@
 	"ui.chat.header.delete": "Удалить разговор…",
 	"ui.chat.header.move_device": "На другое устройство…",
 	"ui.chat.header.open_run_details": "Открыть сведения",
-	"ui.chat.header.transcript_display": "Вид транскрипта"
+	"ui.chat.header.transcript_display": "Вид транскрипта",
+	"ui.chat.header.new_chat": "Новый чат",
+	"ui.chat.header.new_chat_with": "Новый чат с {target}"
 }
