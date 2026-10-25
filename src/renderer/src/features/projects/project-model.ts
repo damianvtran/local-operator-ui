@@ -290,10 +290,10 @@ export function progressAge(
 		kind: "elapsed",
 		text:
 			seconds < 3600
-				? `${formatNumber(Math.floor(seconds / 60), { useGrouping: false })}m`
+				? `${formatNumber(Math.floor(seconds / 60), { useGrouping: false })}m` // i18n: ignore compact duration token; the sentence wraps it through t()
 				: seconds < 86400
-					? `${formatNumber(Math.floor(seconds / 3600), { useGrouping: false })}h`
-					: `${formatNumber(Math.floor(seconds / 86400), { useGrouping: false })}d`,
+					? `${formatNumber(Math.floor(seconds / 3600), { useGrouping: false })}h` // i18n: ignore compact duration token; the sentence wraps it through t()
+					: `${formatNumber(Math.floor(seconds / 86400), { useGrouping: false })}d`, // i18n: ignore compact duration token; the sentence wraps it through t()
 	};
 }
 
